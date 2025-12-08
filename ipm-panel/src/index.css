@@ -1,0 +1,51 @@
+/* فونت اصلی */
+@import url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* فونت روی کل سایت */
+:root {
+  font-family: Vazirmatn, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+
+html, body {
+  font-family: Vazirmatn, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* صفحه کامل پر بشه */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/* حالت پیش‌فرض (لایت مود) */
+body {
+  direction: rtl;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  background-color: #f8fafc;  /* روشن مثل پروژه قبلی */
+  color: #111827;
+}
+
+/* وقتی تیلویند dark فعال باشه (dark روی html) */
+.dark body {
+  background-color: #020617;  /* نزدیک bg-slate-950 / neutral-950 */
+  color: #f9fafb;
+}
+
+/* کمک برای فیلدهای LTR مثل شماره، مبلغ و ... */
+.ltr {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+/* جدول‌ها راست‌چین بمونن */
+th,
+td {
+  text-align: right;
+}
