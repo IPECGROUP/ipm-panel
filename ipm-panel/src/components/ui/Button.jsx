@@ -42,7 +42,13 @@ export const PrimaryBtn = ({ className = "", children, ...props }) => (
   </button>
 );
 
-export const LinkBtn = ({ to, children, className = "", variant = "ghost", ...props }) => {
+export const LinkBtn = ({
+  to,
+  children,
+  className = "",
+  variant = "ghost",
+  ...props
+}) => {
   const base =
     "block text-center rounded-2xl px-3 py-2 border transition focus:outline-none focus:ring-2";
   const v =
