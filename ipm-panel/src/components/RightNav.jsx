@@ -14,15 +14,27 @@ function RightNav() {
   const clean = (p) => (p || "").replace(/\/+$/, "") || "/";
   const [pendingPath, setPendingPath] = useState(null);
 
-  // وقتی مسیر عوض شد، مسیر جاری را به‌عنوان active نگه دار
   useEffect(() => {
     setPendingPath(clean(pathname));
   }, [pathname]);
 
   const isActive = (to) => {
-    const p = clean(pathname),
-      t = clean(to);
-    return p === t || (t !== "/" && p.startsWith(t + "/"));
+    const p = clean(pendingPath ?? pathname);
+    const t = clean(to);
+
+    if (p === t || (t !== "/" && p.startsWith(t + "/"))) return true;
+
+    // اگر لینک‌های ادمین/بیسی با مسیر کوتاه‌تر در روتر تعریف شده باشند (مثلاً /users)
+    if (t.startsWith("/admin/")) {
+      const last = "/" + t.split("/").filter(Boolean).slice(-1)[0];
+      if (p === last || p.startsWith(last + "/")) return true;
+    }
+    if (t.startsWith("/base/")) {
+      const last = "/" + t.split("/").filter(Boolean).slice(-1)[0];
+      if (p === last || p.startsWith(last + "/")) return true;
+    }
+
+    return false;
   };
 
   const [open, setOpen] = useState(() => {
@@ -81,13 +93,6 @@ function RightNav() {
     </svg>
   );
 
-  const IcReport = () => (
-    <svg viewBox="0 0 24 24" className={svgCls} fill="none" stroke="currentColor" strokeWidth={sw}>
-      <path d="M3 3h18v18H3z" />
-      <path d="M7 15l3-3 2 2 4-4 3 3" />
-    </svg>
-  );
-
   const IcWorksheet = () => (
     <svg viewBox="0 0 24 24" className={svgCls} fill="none" stroke="currentColor" strokeWidth={sw}>
       <rect x="3" y="4" width="18" height="16" rx="2" />
@@ -115,7 +120,6 @@ function RightNav() {
     </svg>
   );
 
-  // کلاس‌ها (همان قبلی)
   const railBtn = (active) =>
     [
       "group w-14 h-14 border transition-all duration-200 p-0 mx-auto",
@@ -125,16 +129,6 @@ function RightNav() {
         ? "!bg-[#F48B35] !border-[#F48B35] !text-neutral-900"
         : "bg-neutral-900/90 text-white/90 border-neutral-800 hover:bg-[#f5882c] hover:border-[#f5882c] dark:bg-neutral-800/90 dark:text-neutral-100 dark:border-neutral-700",
     ].join(" ");
-
-  // 👈 این قسمت فقط برای active: inline style که هیچ چیز نتونه override کنه
-  const railStyle = (active) =>
-    active
-      ? {
-          backgroundColor: "#F48B35",
-          borderColor: "#F48B35",
-          color: "#111827",
-        }
-      : undefined;
 
   const [tip, setTip] = useState({ show: false, y: 0, label: "" });
 
@@ -162,7 +156,6 @@ function RightNav() {
             <LinkBtn
               to="/"
               className={railBtn(isActive("/"))}
-              style={railStyle(isActive("/"))}
               aria-label="داشبورد"
               onPointerDown={() => setPendingPath(clean("/"))}
               onTouchStart={() => setPendingPath(clean("/"))}
@@ -175,7 +168,6 @@ function RightNav() {
             <LinkBtn
               to="/payment"
               className={railBtn(isActive("/payment"))}
-              style={railStyle(isActive("/payment"))}
               aria-label="درخواست پرداخت"
               onPointerDown={() => setPendingPath(clean("/payment"))}
               onTouchStart={() => setPendingPath(clean("/payment"))}
@@ -188,7 +180,6 @@ function RightNav() {
             <LinkBtn
               to="/letters"
               className={railBtn(isActive("/letters"))}
-              style={railStyle(isActive("/letters"))}
               aria-label="نامه‌ها"
               onPointerDown={() => setPendingPath(clean("/letters"))}
               onTouchStart={() => setPendingPath(clean("/letters"))}
@@ -199,10 +190,8 @@ function RightNav() {
 
           <RailDivider />
 
-          {/* پروژه‌ها */}
           <Btn
             className={railBtn(open.projects)}
-            style={railStyle(open.projects)}
             onClick={() => toggle("projects")}
             aria-label="پروژه‌ها"
             onMouseEnter={(e) => showTip("پروژه‌ها", e)}
@@ -217,7 +206,6 @@ function RightNav() {
                 <LinkBtn
                   to="/centers/contract-info"
                   className={railBtn(isActive("/centers/contract-info"))}
-                  style={railStyle(isActive("/centers/contract-info"))}
                   aria-label="اطلاعات قراردادی"
                   onPointerDown={() => setPendingPath(clean("/centers/contract-info"))}
                   onTouchStart={() => setPendingPath(clean("/centers/contract-info"))}
@@ -230,7 +218,6 @@ function RightNav() {
                 <LinkBtn
                   to="/projects/financial-worksheet"
                   className={railBtn(isActive("/projects/financial-worksheet"))}
-                  style={railStyle(isActive("/projects/financial-worksheet"))}
                   aria-label="کاربرگ مالی"
                   onPointerDown={() => setPendingPath(clean("/projects/financial-worksheet"))}
                   onTouchStart={() => setPendingPath(clean("/projects/financial-worksheet"))}
@@ -239,24 +226,10 @@ function RightNav() {
                 </LinkBtn>
               </div>
 
-              <div onMouseEnter={(e) => showTip("گزارش‌ها", e)} onMouseLeave={hideTip}>
-                <LinkBtn
-                  to="/projects/reports"
-                  className={railBtn(isActive("/projects/reports"))}
-                  style={railStyle(isActive("/projects/reports"))}
-                  aria-label="گزارش‌ها"
-                  onPointerDown={() => setPendingPath(clean("/projects/reports"))}
-                  onTouchStart={() => setPendingPath(clean("/projects/reports"))}
-                >
-                  <img src="/images/icons/gozareshrozane.svg" className={icImgCls + " invert"} alt="" />
-                </LinkBtn>
-              </div>
-
               <div onMouseEnter={(e) => showTip("صورت وضعیت‌ها", e)} onMouseLeave={hideTip}>
                 <LinkBtn
                   to="/projects/statements"
                   className={railBtn(isActive("/projects/statements"))}
-                  style={railStyle(isActive("/projects/statements"))}
                   aria-label="صورت وضعیت‌ها"
                   onPointerDown={() => setPendingPath(clean("/projects/statements"))}
                   onTouchStart={() => setPendingPath(clean("/projects/statements"))}
@@ -269,7 +242,6 @@ function RightNav() {
                 <LinkBtn
                   to="/projects/receipts"
                   className={railBtn(isActive("/projects/receipts"))}
-                  style={railStyle(isActive("/projects/receipts"))}
                   aria-label="دریافتی‌ها"
                   onPointerDown={() => setPendingPath(clean("/projects/receipts"))}
                   onTouchStart={() => setPendingPath(clean("/projects/receipts"))}
@@ -282,7 +254,6 @@ function RightNav() {
                 <LinkBtn
                   to="/projects/balance"
                   className={railBtn(isActive("/projects/balance"))}
-                  style={railStyle(isActive("/projects/balance"))}
                   aria-label="ترازمالی پروژه"
                   onPointerDown={() => setPendingPath(clean("/projects/balance"))}
                   onTouchStart={() => setPendingPath(clean("/projects/balance"))}
@@ -295,7 +266,6 @@ function RightNav() {
                 <LinkBtn
                   to="/projects/daily-log"
                   className={railBtn(isActive("/projects/daily-log"))}
-                  style={railStyle(isActive("/projects/daily-log"))}
                   aria-label="روزنگار پروژه"
                   onPointerDown={() => setPendingPath(clean("/projects/daily-log"))}
                   onTouchStart={() => setPendingPath(clean("/projects/daily-log"))}
@@ -308,10 +278,8 @@ function RightNav() {
 
           <RailDivider />
 
-          {/* بودجه‌بندی */}
           <Btn
             className={railBtn(open.budget)}
-            style={railStyle(open.budget)}
             onClick={() => toggle("budget")}
             aria-label="بودجه‌بندی"
             onMouseEnter={(e) => showTip("بودجه‌بندی", e)}
@@ -326,7 +294,6 @@ function RightNav() {
                 <LinkBtn
                   to="/budget/centers"
                   className={railBtn(isActive("/budget/centers"))}
-                  style={railStyle(isActive("/budget/centers"))}
                   aria-label="تعریف مراکز بودجه"
                   onPointerDown={() => setPendingPath(clean("/budget/centers"))}
                   onTouchStart={() => setPendingPath(clean("/budget/centers"))}
@@ -339,7 +306,6 @@ function RightNav() {
                 <LinkBtn
                   to="/estimates"
                   className={railBtn(isActive("/estimates"))}
-                  style={railStyle(isActive("/estimates"))}
                   aria-label="برآورد هزینه‌ها"
                   onPointerDown={() => setPendingPath(clean("/estimates"))}
                   onTouchStart={() => setPendingPath(clean("/estimates"))}
@@ -352,7 +318,6 @@ function RightNav() {
                 <LinkBtn
                   to="/budget-allocation"
                   className={railBtn(isActive("/budget-allocation"))}
-                  style={railStyle(isActive("/budget-allocation"))}
                   aria-label="تخصیص بودجه"
                   onPointerDown={() => setPendingPath(clean("/budget-allocation"))}
                   onTouchStart={() => setPendingPath(clean("/budget-allocation"))}
@@ -365,7 +330,6 @@ function RightNav() {
                 <LinkBtn
                   to="/budget/reports"
                   className={railBtn(isActive("/budget/reports"))}
-                  style={railStyle(isActive("/budget/reports"))}
                   aria-label="گزارش‌ها"
                   onPointerDown={() => setPendingPath(clean("/budget/reports"))}
                   onTouchStart={() => setPendingPath(clean("/budget/reports"))}
@@ -378,10 +342,8 @@ function RightNav() {
 
           <RailDivider />
 
-          {/* اطلاعات پایه */}
           <Btn
             className={railBtn(open.base)}
-            style={railStyle(open.base)}
             onClick={() => toggle("base")}
             aria-label="اطلاعات پایه"
             onMouseEnter={(e) => showTip("اطلاعات پایه", e)}
@@ -396,7 +358,6 @@ function RightNav() {
                 <LinkBtn
                   to="/base/units"
                   className={railBtn(isActive("/base/units"))}
-                  style={railStyle(isActive("/base/units"))}
                   aria-label="واحدها"
                   onPointerDown={() => setPendingPath(clean("/base/units"))}
                   onTouchStart={() => setPendingPath(clean("/base/units"))}
@@ -409,7 +370,6 @@ function RightNav() {
                 <LinkBtn
                   to="/base/user-roles"
                   className={railBtn(isActive("/base/user-roles"))}
-                  style={railStyle(isActive("/base/user-roles"))}
                   aria-label="نقش‌های کاربری"
                   onPointerDown={() => setPendingPath(clean("/base/user-roles"))}
                   onTouchStart={() => setPendingPath(clean("/base/user-roles"))}
@@ -423,7 +383,6 @@ function RightNav() {
                   <LinkBtn
                     to="/admin/users"
                     className={railBtn(isActive("/admin/users"))}
-                    style={railStyle(isActive("/admin/users"))}
                     aria-label="کاربران"
                     onPointerDown={() => setPendingPath(clean("/admin/users"))}
                     onTouchStart={() => setPendingPath(clean("/admin/users"))}
@@ -437,7 +396,6 @@ function RightNav() {
                 <LinkBtn
                   to="/centers/projects"
                   className={railBtn(isActive("/centers/projects"))}
-                  style={railStyle(isActive("/centers/projects"))}
                   aria-label="پروژه‌ها"
                   onPointerDown={() => setPendingPath(clean("/centers/projects"))}
                   onTouchStart={() => setPendingPath(clean("/centers/projects"))}
@@ -450,7 +408,6 @@ function RightNav() {
                 <LinkBtn
                   to="/base/currencies"
                   className={railBtn(isActive("/base/currencies"))}
-                  style={railStyle(isActive("/base/currencies"))}
                   aria-label="ارزها"
                   onPointerDown={() => setPendingPath(clean("/base/currencies"))}
                   onTouchStart={() => setPendingPath(clean("/base/currencies"))}
@@ -476,5 +433,3 @@ function RightNav() {
 }
 
 export default RightNav;
-
-
