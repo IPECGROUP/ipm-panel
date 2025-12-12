@@ -1,27 +1,28 @@
 // src/utils/api.js
+const API_BASE =
+  import.meta.env.VITE_API_URL || "/api";
 
-// همان رفتار قبلی: از window.API_URL یا '/api'
-const API_URL = (window.API_URL || "/api").replace(/\/+$/, "");
-
-export async function api(path, opts = {}) {
-  const headers = { ...(opts.headers || {}) };
-
-  const res = await fetch(API_URL + path, {
-    credentials: "include", // سشن
-    ...opts,
-    headers,
+export async function api(path, opt = {}) {
+  const res = await fetch(API_BASE + path, {
+    credentials: "include",
+    ...opt,
+    headers: {
+      "Content-Type": "application/json",
+      ...(opt.headers || {}),
+    },
   });
 
-  const ct = res.headers.get("content-type") || "";
-  if (!ct.includes("application/json")) {
-    const text = await res.text().catch(() => "");
-    const msg = text
-      ? `server returned non-json: ${text.slice(0, 160)}`
-      : "server returned non-json";
-    throw new Error(msg);
+  const txt = await res.text();
+  let data = {};
+  try {
+    data = txt ? JSON.parse(txt) : {};
+  } catch {}
+
+  if (!res.ok) {
+    throw new Error(
+      data?.error || data?.message || "request_failed"
+    );
   }
 
-  const data = await res.json();
-  if (!res.ok) throw new Error(data?.error || "error");
   return data;
 }

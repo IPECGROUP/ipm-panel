@@ -3,6 +3,16 @@ import React from "react";
 import Shell from "../components/layout/Shell";
 import { Card } from "../components/ui/Card";
 
+// ===== تب‌ها به صورت ثابت بیرون از کامپوننت =====
+const REPORT_TABS = [
+  { id: "office", label: "دفتر مرکزی", prefix: "OB" },
+  { id: "site", label: "سایت", prefix: "SB" },
+  { id: "finance", label: "مالی", prefix: "FB" },
+  { id: "cash", label: "نقدی", prefix: "CB" },
+  { id: "capex", label: "سرمایه‌ای", prefix: "IB" },
+  { id: "projects", label: "پروژه‌ها", prefix: "" },
+];
+
 // ===== Fake local DB برای گزارش‌ها (بدون API واقعی) =====
 function createFakeReportsDb() {
   const projects = [
@@ -161,14 +171,7 @@ function createFakeReportsDb() {
 }
 
 function ReportsPage() {
-  const tabs = [
-    { id: "office", label: "دفتر مرکزی", prefix: "OB" },
-    { id: "site", label: "سایت", prefix: "SB" },
-    { id: "finance", label: "مالی", prefix: "FB" },
-    { id: "cash", label: "نقدی", prefix: "CB" },
-    { id: "capex", label: "سرمایه‌ای", prefix: "IB" },
-    { id: "projects", label: "پروژه‌ها", prefix: "" },
-  ];
+  const tabs = REPORT_TABS;
 
   const [active, setActive] = React.useState("office");
 
@@ -216,7 +219,8 @@ function ReportsPage() {
       setAllowedTabs(all);
       if (!all.includes(active)) setActive(all[0]);
     }
-  }, [me, isAllAccess, active, tabs]);
+    // tabs ثابت است (REPORT_TABS) و نیازی به dependency ندارد
+  }, [me, isAllAccess, active]);
 
   const canAccessPage = React.useMemo(() => {
     if (!me) return null;
@@ -307,7 +311,7 @@ function ReportsPage() {
       }
       return pref ? `${pref}-${raw}` : raw;
     },
-    [] // prefixOf ثابت است
+    [] // prefixOf روی REPORT_TABS ثابت کار می‌کند
   );
 
   // ===== projects (برای تب پروژه‌ها) =====
@@ -647,7 +651,7 @@ function ReportsPage() {
                         renderBudgetCodeOnce(
                           a,
                           active
-                        ).localeCompare(
+                       ).localeCompare(
                           renderBudgetCodeOnce(
                             b,
                             active
