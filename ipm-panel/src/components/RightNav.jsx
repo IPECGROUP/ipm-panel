@@ -5,7 +5,6 @@ import { useAuth } from "./AuthProvider";
 import { isMainAdminUser } from "../utils/auth";
 import { Btn, LinkBtn } from "./ui/Button";
 
-// menu
 function RightNav() {
   const { user } = useAuth();
   const isMainAdmin = isMainAdminUser(user);
@@ -19,23 +18,42 @@ function RightNav() {
   }, [pathname]);
 
   const isActive = (to) => {
-    const p = clean(pendingPath ?? pathname);
-    const t = clean(to);
-
-    if (p === t || (t !== "/" && p.startsWith(t + "/"))) return true;
-
-    // اگر لینک‌های ادمین/بیسی با مسیر کوتاه‌تر در روتر تعریف شده باشند (مثلاً /users)
-    if (t.startsWith("/admin/")) {
-      const last = "/" + t.split("/").filter(Boolean).slice(-1)[0];
-      if (p === last || p.startsWith(last + "/")) return true;
-    }
-    if (t.startsWith("/base/")) {
-      const last = "/" + t.split("/").filter(Boolean).slice(-1)[0];
-      if (p === last || p.startsWith(last + "/")) return true;
-    }
-
-    return false;
+    const p = clean(pathname),
+      t = clean(to);
+    return p === t || (t !== "/" && p.startsWith(t + "/"));
   };
+
+  const sectionFromPath = (p) => {
+    const path = clean(p);
+
+    // بودجه‌بندی
+    if (
+      path.startsWith("/budget/") ||
+      path === "/budget/centers" ||
+      path === "/estimates" ||
+      path === "/revenue-estimates" ||
+      path === "/budget-allocation" ||
+      path === "/budget/reports"
+    ) return "budget";
+
+    // اطلاعات پایه
+    if (
+      path.startsWith("/base/") ||
+      path === "/centers/projects" ||
+      path.startsWith("/admin/")
+    ) return "base";
+
+    // پروژه‌ها
+    if (
+      path.startsWith("/projects/") ||
+      path.startsWith("/contracts/") ||
+      path === "/centers/contract-info"
+    ) return "projects";
+
+    return null;
+  };
+
+  const activeSection = sectionFromPath(pathname);
 
   const [open, setOpen] = useState(() => {
     try {
@@ -44,6 +62,18 @@ function RightNav() {
       return {};
     }
   });
+
+  // وقتی مسیر عوض شد، سکشن مربوطه رو باز کن (و فقط همون باز باشه)
+  useEffect(() => {
+    const sec = sectionFromPath(pathname);
+    if (!sec) return;
+    setOpen((curr) => {
+      if (curr[sec]) return curr;
+      const next = { [sec]: true };
+      localStorage.setItem("nav_open", JSON.stringify(next));
+      return next;
+    });
+  }, [pathname]);
 
   const toggle = (key) =>
     setOpen((curr) => {
@@ -126,9 +156,14 @@ function RightNav() {
       "flex items-center justify-center cursor-pointer select-none",
       "focus:outline-none focus:ring-0",
       active
-        ? "!bg-[#F48B35] !border-[#F48B35] !text-neutral-900"
+        ? "text-neutral-900 border-neutral-800"
         : "bg-neutral-900/90 text-white/90 border-neutral-800 hover:bg-[#f5882c] hover:border-[#f5882c] dark:bg-neutral-800/90 dark:text-neutral-100 dark:border-neutral-700",
     ].join(" ");
+
+  const railStyle = (active) =>
+    active
+      ? { backgroundColor: "#F48B35", borderColor: "#F48B35", color: "#111827" }
+      : undefined;
 
   const [tip, setTip] = useState({ show: false, y: 0, label: "" });
 
@@ -143,6 +178,10 @@ function RightNav() {
     <div className="my-2 h-px bg-neutral-800/60 dark:bg-neutral-700/60 w-10 mx-auto" />
   );
 
+  const projectsActive = open.projects || activeSection === "projects";
+  const budgetActive = open.budget || activeSection === "budget";
+  const baseActive = open.base || activeSection === "base";
+
   return (
     <>
       <aside
@@ -156,6 +195,7 @@ function RightNav() {
             <LinkBtn
               to="/"
               className={railBtn(isActive("/"))}
+              style={railStyle(isActive("/"))}
               aria-label="داشبورد"
               onPointerDown={() => setPendingPath(clean("/"))}
               onTouchStart={() => setPendingPath(clean("/"))}
@@ -168,6 +208,7 @@ function RightNav() {
             <LinkBtn
               to="/payment"
               className={railBtn(isActive("/payment"))}
+              style={railStyle(isActive("/payment"))}
               aria-label="درخواست پرداخت"
               onPointerDown={() => setPendingPath(clean("/payment"))}
               onTouchStart={() => setPendingPath(clean("/payment"))}
@@ -180,6 +221,7 @@ function RightNav() {
             <LinkBtn
               to="/letters"
               className={railBtn(isActive("/letters"))}
+              style={railStyle(isActive("/letters"))}
               aria-label="نامه‌ها"
               onPointerDown={() => setPendingPath(clean("/letters"))}
               onTouchStart={() => setPendingPath(clean("/letters"))}
@@ -190,8 +232,10 @@ function RightNav() {
 
           <RailDivider />
 
+          {/* پروژه‌ها */}
           <Btn
-            className={railBtn(open.projects)}
+            className={railBtn(projectsActive)}
+            style={railStyle(projectsActive)}
             onClick={() => toggle("projects")}
             aria-label="پروژه‌ها"
             onMouseEnter={(e) => showTip("پروژه‌ها", e)}
@@ -206,9 +250,8 @@ function RightNav() {
                 <LinkBtn
                   to="/centers/contract-info"
                   className={railBtn(isActive("/centers/contract-info"))}
+                  style={railStyle(isActive("/centers/contract-info"))}
                   aria-label="اطلاعات قراردادی"
-                  onPointerDown={() => setPendingPath(clean("/centers/contract-info"))}
-                  onTouchStart={() => setPendingPath(clean("/centers/contract-info"))}
                 >
                   <IcContract />
                 </LinkBtn>
@@ -218,9 +261,8 @@ function RightNav() {
                 <LinkBtn
                   to="/projects/financial-worksheet"
                   className={railBtn(isActive("/projects/financial-worksheet"))}
+                  style={railStyle(isActive("/projects/financial-worksheet"))}
                   aria-label="کاربرگ مالی"
-                  onPointerDown={() => setPendingPath(clean("/projects/financial-worksheet"))}
-                  onTouchStart={() => setPendingPath(clean("/projects/financial-worksheet"))}
                 >
                   <IcWorksheet />
                 </LinkBtn>
@@ -230,9 +272,8 @@ function RightNav() {
                 <LinkBtn
                   to="/projects/statements"
                   className={railBtn(isActive("/projects/statements"))}
+                  style={railStyle(isActive("/projects/statements"))}
                   aria-label="صورت وضعیت‌ها"
-                  onPointerDown={() => setPendingPath(clean("/projects/statements"))}
-                  onTouchStart={() => setPendingPath(clean("/projects/statements"))}
                 >
                   <IcDoc />
                 </LinkBtn>
@@ -242,9 +283,8 @@ function RightNav() {
                 <LinkBtn
                   to="/projects/receipts"
                   className={railBtn(isActive("/projects/receipts"))}
+                  style={railStyle(isActive("/projects/receipts"))}
                   aria-label="دریافتی‌ها"
-                  onPointerDown={() => setPendingPath(clean("/projects/receipts"))}
-                  onTouchStart={() => setPendingPath(clean("/projects/receipts"))}
                 >
                   <IcReceipt />
                 </LinkBtn>
@@ -254,9 +294,8 @@ function RightNav() {
                 <LinkBtn
                   to="/projects/balance"
                   className={railBtn(isActive("/projects/balance"))}
+                  style={railStyle(isActive("/projects/balance"))}
                   aria-label="ترازمالی پروژه"
-                  onPointerDown={() => setPendingPath(clean("/projects/balance"))}
-                  onTouchStart={() => setPendingPath(clean("/projects/balance"))}
                 >
                   <IcBalance />
                 </LinkBtn>
@@ -266,9 +305,8 @@ function RightNav() {
                 <LinkBtn
                   to="/projects/daily-log"
                   className={railBtn(isActive("/projects/daily-log"))}
+                  style={railStyle(isActive("/projects/daily-log"))}
                   aria-label="روزنگار پروژه"
-                  onPointerDown={() => setPendingPath(clean("/projects/daily-log"))}
-                  onTouchStart={() => setPendingPath(clean("/projects/daily-log"))}
                 >
                   <IcDaily />
                 </LinkBtn>
@@ -278,8 +316,10 @@ function RightNav() {
 
           <RailDivider />
 
+          {/* بودجه‌بندی */}
           <Btn
-            className={railBtn(open.budget)}
+            className={railBtn(budgetActive)}
+            style={railStyle(budgetActive)}
             onClick={() => toggle("budget")}
             aria-label="بودجه‌بندی"
             onMouseEnter={(e) => showTip("بودجه‌بندی", e)}
@@ -294,9 +334,8 @@ function RightNav() {
                 <LinkBtn
                   to="/budget/centers"
                   className={railBtn(isActive("/budget/centers"))}
+                  style={railStyle(isActive("/budget/centers"))}
                   aria-label="تعریف مراکز بودجه"
-                  onPointerDown={() => setPendingPath(clean("/budget/centers"))}
-                  onTouchStart={() => setPendingPath(clean("/budget/centers"))}
                 >
                   <img src="/images/icons/tarifmarakez.svg" className={icImgCls + " invert"} alt="" />
                 </LinkBtn>
@@ -306,35 +345,10 @@ function RightNav() {
                 <LinkBtn
                   to="/estimates"
                   className={railBtn(isActive("/estimates"))}
+                  style={railStyle(isActive("/estimates"))}
                   aria-label="برآورد هزینه‌ها"
-                  onPointerDown={() => setPendingPath(clean("/estimates"))}
-                  onTouchStart={() => setPendingPath(clean("/estimates"))}
                 >
                   <img src="/images/icons/baravord.svg" className={icImgCls + " invert"} alt="" />
-                </LinkBtn>
-              </div>
-
-              <div onMouseEnter={(e) => showTip("تخصیص بودجه", e)} onMouseLeave={hideTip}>
-                <LinkBtn
-                  to="/budget-allocation"
-                  className={railBtn(isActive("/budget-allocation"))}
-                  aria-label="تخصیص بودجه"
-                  onPointerDown={() => setPendingPath(clean("/budget-allocation"))}
-                  onTouchStart={() => setPendingPath(clean("/budget-allocation"))}
-                >
-                  <img src="/images/icons/taksisbodge.svg" className={icImgCls + " invert"} alt="" />
-                </LinkBtn>
-              </div>
-
-              <div onMouseEnter={(e) => showTip("گزارش‌ها", e)} onMouseLeave={hideTip}>
-                <LinkBtn
-                  to="/budget/reports"
-                  className={railBtn(isActive("/budget/reports"))}
-                  aria-label="گزارش‌ها"
-                  onPointerDown={() => setPendingPath(clean("/budget/reports"))}
-                  onTouchStart={() => setPendingPath(clean("/budget/reports"))}
-                >
-                  <img src="/images/icons/gozareshha.svg" className={icImgCls + " invert"} alt="" />
                 </LinkBtn>
               </div>
             </div>
@@ -342,8 +356,10 @@ function RightNav() {
 
           <RailDivider />
 
+          {/* اطلاعات پایه */}
           <Btn
-            className={railBtn(open.base)}
+            className={railBtn(baseActive)}
+            style={railStyle(baseActive)}
             onClick={() => toggle("base")}
             aria-label="اطلاعات پایه"
             onMouseEnter={(e) => showTip("اطلاعات پایه", e)}
@@ -354,27 +370,14 @@ function RightNav() {
 
           {open.base && (
             <div className="ms-2 mt-2 flex flex-col items-stretch gap-2">
-              <div onMouseEnter={(e) => showTip("واحدها", e)} onMouseLeave={hideTip}>
+              <div onMouseEnter={(e) => showTip("پروژه‌ها", e)} onMouseLeave={hideTip}>
                 <LinkBtn
-                  to="/base/units"
-                  className={railBtn(isActive("/base/units"))}
-                  aria-label="واحدها"
-                  onPointerDown={() => setPendingPath(clean("/base/units"))}
-                  onTouchStart={() => setPendingPath(clean("/base/units"))}
+                  to="/centers/projects"
+                  className={railBtn(isActive("/centers/projects"))}
+                  style={railStyle(isActive("/centers/projects"))}
+                  aria-label="پروژه‌ها"
                 >
-                  <img src="/images/icons/unit.svg" className={icImgCls + " invert"} alt="" />
-                </LinkBtn>
-              </div>
-
-              <div onMouseEnter={(e) => showTip("نقش‌های کاربری", e)} onMouseLeave={hideTip}>
-                <LinkBtn
-                  to="/base/user-roles"
-                  className={railBtn(isActive("/base/user-roles"))}
-                  aria-label="نقش‌های کاربری"
-                  onPointerDown={() => setPendingPath(clean("/base/user-roles"))}
-                  onTouchStart={() => setPendingPath(clean("/base/user-roles"))}
-                >
-                  <img src="/images/icons/role.svg" className={icImgCls + " invert"} alt="" />
+                  <IcProjects />
                 </LinkBtn>
               </div>
 
@@ -383,34 +386,20 @@ function RightNav() {
                   <LinkBtn
                     to="/admin/users"
                     className={railBtn(isActive("/admin/users"))}
+                    style={railStyle(isActive("/admin/users"))}
                     aria-label="کاربران"
-                    onPointerDown={() => setPendingPath(clean("/admin/users"))}
-                    onTouchStart={() => setPendingPath(clean("/admin/users"))}
                   >
                     <IcUsers />
                   </LinkBtn>
                 </div>
               )}
 
-              <div onMouseEnter={(e) => showTip("پروژه‌ها", e)} onMouseLeave={hideTip}>
-                <LinkBtn
-                  to="/centers/projects"
-                  className={railBtn(isActive("/centers/projects"))}
-                  aria-label="پروژه‌ها"
-                  onPointerDown={() => setPendingPath(clean("/centers/projects"))}
-                  onTouchStart={() => setPendingPath(clean("/centers/projects"))}
-                >
-                  <IcProjects />
-                </LinkBtn>
-              </div>
-
               <div onMouseEnter={(e) => showTip("ارزها", e)} onMouseLeave={hideTip}>
                 <LinkBtn
                   to="/base/currencies"
                   className={railBtn(isActive("/base/currencies"))}
+                  style={railStyle(isActive("/base/currencies"))}
                   aria-label="ارزها"
-                  onPointerDown={() => setPendingPath(clean("/base/currencies"))}
-                  onTouchStart={() => setPendingPath(clean("/base/currencies"))}
                 >
                   <IcCurrency />
                 </LinkBtn>
