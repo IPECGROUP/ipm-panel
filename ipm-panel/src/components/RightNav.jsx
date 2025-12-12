@@ -5,74 +5,42 @@ import { useAuth } from "./AuthProvider";
 import { isMainAdminUser } from "../utils/auth";
 import { Btn, LinkBtn } from "./ui/Button";
 
-// menu
 function RightNav() {
   const { user } = useAuth();
   const isMainAdmin = isMainAdminUser(user);
 
   const { pathname } = useLocation();
+
   const clean = (p) => (p || "").replace(/\/+$/, "") || "/";
 
+  // اگر پروژه با BASE_URL (ساب‌پث) بالا بیاد، path رو normalize کن
+  const base = (import.meta?.env?.BASE_URL || "/").replace(/\/+$/, "");
+  const stripBase = (p) => {
+    const cp = clean(p);
+    if (!base || base === "/" || base === "") return cp;
+    return cp.startsWith(base) ? clean(cp.slice(base.length) || "/") : cp;
+  };
+
+  const pNow = stripBase(pathname);
+
+  const [pendingPath, setPendingPath] = useState(null);
+  useEffect(() => {
+    setPendingPath(pNow);
+  }, [pNow]);
+
   const isActive = (to) => {
-    const p = clean(pathname),
-      t = clean(to);
+    const p = clean(pNow);
+    const t = clean(stripBase(to));
     return p === t || (t !== "/" && p.startsWith(t + "/"));
   };
 
-  // تشخیص اینکه آدرس فعلی زیر کدوم گروه است (برای هایلایت گروه‌ها)
-  const sectionFromPath = (p) => {
-    const path = clean(p);
-
-    if (
-      path.startsWith("/projects/") ||
-      path.startsWith("/contracts/") ||
-      path === "/centers/contract-info"
-    ) {
-      return "projects";
-    }
-
-    if (
-      path.startsWith("/budget/") ||
-      path === "/budget/centers" ||
-      path === "/estimates" ||
-      path === "/revenue-estimates" ||
-      path === "/budget-allocation"
-    ) {
-      return "budget";
-    }
-
-    if (
-      path.startsWith("/base/") ||
-      path.startsWith("/admin/") ||
-      path === "/centers/projects"
-    ) {
-      return "base";
-    }
-
-    return null;
-  };
-
-  const activeSection = sectionFromPath(pathname);
-
   const [open, setOpen] = useState(() => {
     try {
-      const stored = JSON.parse(localStorage.getItem("nav_open") || "{}");
-      return stored || {};
+      return JSON.parse(localStorage.getItem("nav_open") || "{}");
     } catch {
       return {};
     }
   });
-
-  // وقتی رفتی داخل یک سکشن، همون سکشن باز بشه
-  useEffect(() => {
-    if (!activeSection) return;
-    setOpen((curr) => {
-      if (curr[activeSection]) return curr;
-      const next = { [activeSection]: true };
-      localStorage.setItem("nav_open", JSON.stringify(next));
-      return next;
-    });
-  }, [activeSection]);
 
   const toggle = (key) =>
     setOpen((curr) => {
@@ -82,35 +50,42 @@ function RightNav() {
       return next;
     });
 
+  // تشخیص سکشن فعال بر اساس مسیر
+  const sectionFromPath = (p) => {
+    const path = clean(p);
+
+    if (
+      path.startsWith("/budget/") ||
+      path === "/budget/centers" ||
+      path === "/estimates" ||
+      path === "/revenue-estimates" ||
+      path === "/budget-allocation" ||
+      path === "/budget/reports"
+    )
+      return "budget";
+
+    if (path.startsWith("/base/") || path === "/centers/projects" || path.startsWith("/admin/"))
+      return "base";
+
+    if (path.startsWith("/centers/contract-info") || path.startsWith("/projects/"))
+      return "projects";
+
+    return null;
+  };
+
+  const activeSection = sectionFromPath(pNow);
+
   // آیکن‌ها
-  const icImgCls = "w-6 h-6 block m-0";
-  const IcDashboard = () => (
-    <img src="/images/icons/dashbaord.svg" className={icImgCls + " invert"} alt="" />
-  );
-  const IcPay = () => (
-    <img src="/images/icons/darkastpardakht.svg" className={icImgCls + " invert"} alt="" />
-  );
-  const IcLetter = () => (
-    <img src="/images/icons/nameha.svg" className={icImgCls + " invert"} alt="" />
-  );
-  const IcProjects = () => (
-    <img src="/images/icons/project.svg" className={icImgCls + " invert"} alt="" />
-  );
-  const IcBudget = () => (
-    <img src="/images/icons/busgebandi.svg" className={icImgCls + " invert"} alt="" />
-  );
-  const IcBase = () => (
-    <img src="/images/icons/atelaatpaye.svg" className={icImgCls + " invert"} alt="" />
-  );
-  const IcCurrency = () => (
-    <img src="/images/icons/arz.svg" className={icImgCls + " invert"} alt="" />
-  );
-  const IcUsers = () => (
-    <img src="/images/icons/users.svg" className={icImgCls + " invert"} alt="" />
-  );
-  const IcContract = () => (
-    <img src="/images/icons/gharadad.svg" className={icImgCls + " invert"} alt="" />
-  );
+  const icImgCls = "w-6 h-6 block m-0 invert";
+  const IcDashboard = () => <img src="/images/icons/dashbaord.svg" className={icImgCls} alt="" />;
+  const IcPay = () => <img src="/images/icons/darkastpardakht.svg" className={icImgCls} alt="" />;
+  const IcLetter = () => <img src="/images/icons/nameha.svg" className={icImgCls} alt="" />;
+  const IcProjects = () => <img src="/images/icons/project.svg" className={icImgCls} alt="" />;
+  const IcBudget = () => <img src="/images/icons/busgebandi.svg" className={icImgCls} alt="" />;
+  const IcBase = () => <img src="/images/icons/atelaatpaye.svg" className={icImgCls} alt="" />;
+  const IcCurrency = () => <img src="/images/icons/arz.svg" className={icImgCls} alt="" />;
+  const IcUsers = () => <img src="/images/icons/users.svg" className={icImgCls} alt="" />;
+  const IcContract = () => <img src="/images/icons/gharadad.svg" className={icImgCls} alt="" />;
 
   const svgCls = "w-6 h-6 block m-0";
   const sw = 2.2;
@@ -149,7 +124,7 @@ function RightNav() {
     </svg>
   );
 
-  // ✅ اینجا اصلاح شد: active واقعاً bg می‌گیرد
+  // ✅ کلاس Active با ! (هیچ چیزی نتونه override کنه)
   const railBtn = (active) =>
     [
       "group w-14 h-14 border transition-all duration-200 p-0 mx-auto",
@@ -166,17 +141,16 @@ function RightNav() {
     const rect = e.currentTarget.getBoundingClientRect();
     setTip({ show: true, y: rect.top + rect.height / 2, label });
   };
-
   const hideTip = () => setTip({ show: false, y: 0, label: "" });
 
   const RailDivider = () => (
     <div className="my-2 h-px bg-neutral-800/60 dark:bg-neutral-700/60 w-10 mx-auto" />
   );
 
-  // ✅ گروه‌ها: اگر زیرمنو فعال بود هم active حساب میشن
-  const projectsActive = open.projects || activeSection === "projects";
-  const budgetActive = open.budget || activeSection === "budget";
-  const baseActive = open.base || activeSection === "base";
+  // والدها هم وقتی زیرمنو فعاله یا خودش بازه، هایلایت بشن
+  const projectsParentActive = !!open.projects || activeSection === "projects";
+  const budgetParentActive = !!open.budget || activeSection === "budget";
+  const baseParentActive = !!open.base || activeSection === "base";
 
   return (
     <>
@@ -188,28 +162,45 @@ function RightNav() {
       >
         <div className="h-full flex flex-col items-center pt-4 gap-2">
           <div onMouseEnter={(e) => showTip("داشبورد", e)} onMouseLeave={hideTip}>
-            <LinkBtn to="/" className={railBtn(isActive("/"))} aria-label="داشبورد">
+            <LinkBtn
+              to="/"
+              className={railBtn(isActive("/"))}
+              aria-label="داشبورد"
+              onPointerDown={() => setPendingPath(clean("/"))}
+              onTouchStart={() => setPendingPath(clean("/"))}
+            >
               <IcDashboard />
             </LinkBtn>
           </div>
 
           <div onMouseEnter={(e) => showTip("درخواست پرداخت", e)} onMouseLeave={hideTip}>
-            <LinkBtn to="/payment" className={railBtn(isActive("/payment"))} aria-label="درخواست پرداخت">
+            <LinkBtn
+              to="/payment"
+              className={railBtn(isActive("/payment"))}
+              aria-label="درخواست پرداخت"
+              onPointerDown={() => setPendingPath(clean("/payment"))}
+              onTouchStart={() => setPendingPath(clean("/payment"))}
+            >
               <IcPay />
             </LinkBtn>
           </div>
 
           <div onMouseEnter={(e) => showTip("نامه‌ها", e)} onMouseLeave={hideTip}>
-            <LinkBtn to="/letters" className={railBtn(isActive("/letters"))} aria-label="نامه‌ها">
+            <LinkBtn
+              to="/letters"
+              className={railBtn(isActive("/letters"))}
+              aria-label="نامه‌ها"
+              onPointerDown={() => setPendingPath(clean("/letters"))}
+              onTouchStart={() => setPendingPath(clean("/letters"))}
+            >
               <IcLetter />
             </LinkBtn>
           </div>
 
           <RailDivider />
 
-          {/* پروژه‌ها */}
           <Btn
-            className={railBtn(projectsActive)}
+            className={railBtn(projectsParentActive)}
             onClick={() => toggle("projects")}
             aria-label="پروژه‌ها"
             onMouseEnter={(e) => showTip("پروژه‌ها", e)}
@@ -246,7 +237,7 @@ function RightNav() {
                   className={railBtn(isActive("/projects/reports"))}
                   aria-label="گزارش‌ها"
                 >
-                  <img src="/images/icons/gozareshrozane.svg" className={icImgCls + " invert"} alt="" />
+                  <img src="/images/icons/gozareshrozane.svg" className={icImgCls} alt="" />
                 </LinkBtn>
               </div>
 
@@ -294,9 +285,8 @@ function RightNav() {
 
           <RailDivider />
 
-          {/* بودجه‌بندی */}
           <Btn
-            className={railBtn(budgetActive)}
+            className={railBtn(budgetParentActive)}
             onClick={() => toggle("budget")}
             aria-label="بودجه‌بندی"
             onMouseEnter={(e) => showTip("بودجه‌بندی", e)}
@@ -308,26 +298,26 @@ function RightNav() {
           {open.budget && (
             <div className="ms-2 mt-2 flex flex-col items-stretch gap-2">
               <div onMouseEnter={(e) => showTip("تعریف مراکز بودجه", e)} onMouseLeave={hideTip}>
-                <LinkBtn to="/budget/centers" className={railBtn(isActive("/budget/centers"))} aria-label="تعریف مراکز بودجه">
-                  <img src="/images/icons/tarifmarakez.svg" className={icImgCls + " invert"} alt="" />
+                <LinkBtn to="/budget/centers" className={railBtn(isActive("/budget/centers"))}>
+                  <img src="/images/icons/tarifmarakez.svg" className={icImgCls} alt="" />
                 </LinkBtn>
               </div>
 
               <div onMouseEnter={(e) => showTip("برآورد هزینه‌ها", e)} onMouseLeave={hideTip}>
-                <LinkBtn to="/estimates" className={railBtn(isActive("/estimates"))} aria-label="برآورد هزینه‌ها">
-                  <img src="/images/icons/baravord.svg" className={icImgCls + " invert"} alt="" />
+                <LinkBtn to="/estimates" className={railBtn(isActive("/estimates"))}>
+                  <img src="/images/icons/baravord.svg" className={icImgCls} alt="" />
                 </LinkBtn>
               </div>
 
               <div onMouseEnter={(e) => showTip("تخصیص بودجه", e)} onMouseLeave={hideTip}>
-                <LinkBtn to="/budget-allocation" className={railBtn(isActive("/budget-allocation"))} aria-label="تخصیص بودجه">
-                  <img src="/images/icons/taksisbodge.svg" className={icImgCls + " invert"} alt="" />
+                <LinkBtn to="/budget-allocation" className={railBtn(isActive("/budget-allocation"))}>
+                  <img src="/images/icons/taksisbodge.svg" className={icImgCls} alt="" />
                 </LinkBtn>
               </div>
 
               <div onMouseEnter={(e) => showTip("گزارش‌ها", e)} onMouseLeave={hideTip}>
-                <LinkBtn to="/budget/reports" className={railBtn(isActive("/budget/reports"))} aria-label="گزارش‌ها">
-                  <img src="/images/icons/gozareshha.svg" className={icImgCls + " invert"} alt="" />
+                <LinkBtn to="/budget/reports" className={railBtn(isActive("/budget/reports"))}>
+                  <img src="/images/icons/gozareshha.svg" className={icImgCls} alt="" />
                 </LinkBtn>
               </div>
             </div>
@@ -335,9 +325,8 @@ function RightNav() {
 
           <RailDivider />
 
-          {/* اطلاعات پایه */}
           <Btn
-            className={railBtn(baseActive)}
+            className={railBtn(baseParentActive)}
             onClick={() => toggle("base")}
             aria-label="اطلاعات پایه"
             onMouseEnter={(e) => showTip("اطلاعات پایه", e)}
@@ -349,33 +338,33 @@ function RightNav() {
           {open.base && (
             <div className="ms-2 mt-2 flex flex-col items-stretch gap-2">
               <div onMouseEnter={(e) => showTip("واحدها", e)} onMouseLeave={hideTip}>
-                <LinkBtn to="/base/units" className={railBtn(isActive("/base/units"))} aria-label="واحدها">
-                  <img src="/images/icons/unit.svg" className={icImgCls + " invert"} alt="" />
+                <LinkBtn to="/base/units" className={railBtn(isActive("/base/units"))}>
+                  <img src="/images/icons/unit.svg" className={icImgCls} alt="" />
                 </LinkBtn>
               </div>
 
               <div onMouseEnter={(e) => showTip("نقش‌های کاربری", e)} onMouseLeave={hideTip}>
-                <LinkBtn to="/base/user-roles" className={railBtn(isActive("/base/user-roles"))} aria-label="نقش‌های کاربری">
-                  <img src="/images/icons/role.svg" className={icImgCls + " invert"} alt="" />
+                <LinkBtn to="/base/user-roles" className={railBtn(isActive("/base/user-roles"))}>
+                  <img src="/images/icons/role.svg" className={icImgCls} alt="" />
                 </LinkBtn>
               </div>
 
               {isMainAdmin && (
                 <div onMouseEnter={(e) => showTip("کاربران", e)} onMouseLeave={hideTip}>
-                  <LinkBtn to="/admin/users" className={railBtn(isActive("/admin/users"))} aria-label="کاربران">
+                  <LinkBtn to="/admin/users" className={railBtn(isActive("/admin/users"))}>
                     <IcUsers />
                   </LinkBtn>
                 </div>
               )}
 
               <div onMouseEnter={(e) => showTip("پروژه‌ها", e)} onMouseLeave={hideTip}>
-                <LinkBtn to="/centers/projects" className={railBtn(isActive("/centers/projects"))} aria-label="پروژه‌ها">
+                <LinkBtn to="/centers/projects" className={railBtn(isActive("/centers/projects"))}>
                   <IcProjects />
                 </LinkBtn>
               </div>
 
               <div onMouseEnter={(e) => showTip("ارزها", e)} onMouseLeave={hideTip}>
-                <LinkBtn to="/base/currencies" className={railBtn(isActive("/base/currencies"))} aria-label="ارزها">
+                <LinkBtn to="/base/currencies" className={railBtn(isActive("/base/currencies"))}>
                   <IcCurrency />
                 </LinkBtn>
               </div>
