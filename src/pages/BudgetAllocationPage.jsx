@@ -9,6 +9,16 @@ import Shell from "../components/layout/Shell";
 import { Card } from "../components/ui/Card";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table";
 
+// تب‌ها به‌صورت ثابت بیرون کامپوننت
+const ALLOC_TABS = [
+  { id: "office", label: "دفتر مرکزی", prefix: "OB" },
+  { id: "site", label: "سایت", prefix: "SB" },
+  { id: "finance", label: "مالی", prefix: "FB" },
+  { id: "cash", label: "نقدی", prefix: "CB" },
+  { id: "capex", label: "سرمایه‌ای", prefix: "IB" },
+  { id: "projects", label: "پروژه‌ها", prefix: "" },
+];
+
 // ===== Fake local DB (بدون هیچ اتصال به API واقعی) =====
 function createFakeBudgetDb() {
   const baseItems = [
@@ -35,14 +45,7 @@ function createFakeBudgetDb() {
 
 function BudgetAllocationPage() {
   const [active, setActive] = useState("office"); // office|site|finance|cash|capex|projects
-  const tabs = [
-    { id: "office", label: "دفتر مرکزی", prefix: "OB" },
-    { id: "site", label: "سایت", prefix: "SB" },
-    { id: "finance", label: "مالی", prefix: "FB" },
-    { id: "cash", label: "نقدی", prefix: "CB" },
-    { id: "capex", label: "سرمایه‌ای", prefix: "IB" },
-    { id: "projects", label: "پروژه‌ها", prefix: "" },
-  ];
+  const tabs = ALLOC_TABS;
 
   // fake DB (یک بار ساخته می‌شود و در کل طول عمر کامپوننت می‌ماند)
   const fakeDbRef = useRef(null);
@@ -90,7 +93,7 @@ function BudgetAllocationPage() {
       setAllowedTabs(all);
       if (!all.includes(active)) setActive(all[0]);
     }
-  }, [me, isAllAccess, active, tabs]);
+  }, [me, isAllAccess, active]); // tabs دیگه توی deps نیست چون ثابت است
 
   const canAccessPage = useMemo(() => {
     if (!me) return null;
@@ -100,8 +103,8 @@ function BudgetAllocationPage() {
 
   const visibleTabs = useMemo(() => {
     if (!allowedTabs) return [];
-    return tabs.filter((t) => allowedTabs.includes(t.id));
-  }, [allowedTabs, tabs]);
+    return ALLOC_TABS.filter((t) => allowedTabs.includes(t.id));
+  }, [allowedTabs]);
 
   const prefixOf = (k) =>
     visibleTabs.find((t) => t.id === k)?.prefix || "";
@@ -1180,7 +1183,7 @@ function BudgetAllocationPage() {
                 {(rows || []).length > 0 && (
                   <div className="overflow-auto rounded-xl ring-1 ring-black/10 dark:ring-neutral-800 mb-6">
                     <table className="w-full text-sm [&_th]:text-center [&_td]:text-center">
-                      <thead className="bg-black/5 dark:bg-white/5 dark:text-neutral-100">
+                      <thead className="bg-black/5 dark:bg:white/5 dark:text-neutral-100">
                         <tr>
                           <th className="py-3 px-2 text-center">
                             #
@@ -1260,7 +1263,7 @@ function BudgetAllocationPage() {
                 </h3>
                 <div className="overflow-auto rounded-xl ring-1 ring-black/10 dark:ring-neutral-800 mt-2">
                   <table className="w-full text-sm [&_th]:text-center [&_td]:text-center">
-                    <thead className="bg-black/5 dark:bg-white/5 dark:text-neutral-100">
+                    <thead className="bg-black/5 dark:bg:white/5 dark:text-neutral-100">
                       <tr>
                         <th className="py-3 px-2 w-56 text-center">
                           کد بودجه

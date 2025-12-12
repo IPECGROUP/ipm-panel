@@ -30,7 +30,6 @@ import BudgetCodesPage, {
   CapexPage,
 } from "./pages/BudgetCodesPage.jsx";
 
-// --- mock api فقط برای UI (فعلاً بک‌اند نداریم) ---
 const api = async (path, opt = {}) => {
   console.log("mock api called:", path, opt);
 
