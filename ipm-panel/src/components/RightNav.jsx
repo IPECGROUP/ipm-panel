@@ -122,7 +122,7 @@ function RightNav() {
       "flex items-center justify-center cursor-pointer select-none",
       "focus:outline-none focus:ring-0",
       active
-        ? "text-neutral-900 border-neutral-800"
+        ? "!bg-[#F48B35] !border-[#F48B35] !text-neutral-900"
         : "bg-neutral-900/90 text-white/90 border-neutral-800 hover:bg-[#f5882c] hover:border-[#f5882c] dark:bg-neutral-800/90 dark:text-neutral-100 dark:border-neutral-700",
     ].join(" ");
 
@@ -476,3 +476,5 @@ function RightNav() {
 }
 
 export default RightNav;
+
+
