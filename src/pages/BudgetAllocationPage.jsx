@@ -192,24 +192,39 @@ function BudgetAllocationPage() {
   );
 
   const normalizeProject = (p) => {
+    const id =
+      p?.id ??
+      p?.project_id ??
+      p?.projectId ??
+      p?.pid ??
+      null;
+
     const code =
       p?.code ??
       p?.project_code ??
+      p?.project_code_text ??
       p?.projectCode ??
       p?.projectCodeText ??
+      p?.projectCodeTxt ??
       p?.project_no ??
       p?.projectNo ??
+      p?.code_text ??
+      p?.codeText ??
       "";
+
     const name =
       p?.name ??
       p?.project_name ??
       p?.projectName ??
       p?.title ??
       p?.label ??
+      p?.project_title ??
+      p?.projectTitle ??
       "";
+
     return {
       ...p,
-      id: p?.id,
+      id,
       code: code == null ? "" : String(code),
       name: name == null ? "" : String(name),
     };
@@ -224,17 +239,22 @@ function BudgetAllocationPage() {
         const r = await api("/projects");
         if (!alive) return;
 
-        const raw =
+        let raw =
           Array.isArray(r)
             ? r
-            : r?.projects || r?.items || r?.data || [];
+            : r?.projects || r?.items || r?.data || r?.rows || [];
+
+        if (!Array.isArray(raw) && raw && Array.isArray(raw?.items)) {
+          raw = raw.items;
+        }
+        if (!Array.isArray(raw) && raw && Array.isArray(raw?.projects)) {
+          raw = raw.projects;
+        }
 
         const list = Array.isArray(raw) ? raw : [];
         const norm = list
           .map(normalizeProject)
-          .filter(
-            (x) => x && x.id != null && String(x.code || "").trim()
-          );
+          .filter((x) => x && x.id != null);
 
         setProjects(norm);
       } catch {
