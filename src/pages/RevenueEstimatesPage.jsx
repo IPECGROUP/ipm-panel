@@ -217,7 +217,6 @@ function RevenueEstimatesPage() {
         rowIdRef.current = 1;
         const tree = buildTreeFromItems(items);
 
-        // اگر یک روت child داشت، برای UX بهتر خودش باز نباشه؛ کاربر با آیکن بازش می‌کنه
         setRows(tree);
       } catch (e) {
         console.error('load revenue estimates failed', e);
@@ -321,7 +320,6 @@ function RevenueEstimatesPage() {
       expanded: false,
     });
 
-    // projectId را از نزدیک‌ترین والد می‌گیریم
     const findProjectId = (nodes, pid) => {
       for (const n of nodes) {
         if (n.id === pid) return n.projectId || null;
@@ -404,7 +402,7 @@ function RevenueEstimatesPage() {
   }, []);
 
   const openMonthModal = (row, month) => {
-    if (hasChildren(row)) return; // parent با زیرمجموعه فقط نمایشی است
+    if (hasChildren(row)) return;
     const rawVal = Number(row.months?.[month.key] || 0);
     setMonthModal({
       open: true,
@@ -461,8 +459,6 @@ function RevenueEstimatesPage() {
       if (node.expanded) {
         const children = node.children || [];
         children.forEach((ch, i) => walk(ch, depth + 1, [...indexPath, i + 1]));
-
-        // ردیف افزودن زیرمجموعه
         out.push({ type: 'addChild', parentId: node.id, depth: depth + 1, indexPath: [...indexPath, 0] });
       }
     };
@@ -723,7 +719,7 @@ function RevenueEstimatesPage() {
                                 aria-label="افزودن زیرمجموعه"
                                 title="افزودن زیرمجموعه"
                               >
-                                <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
+                                <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
                               </button>
                             </div>
                           </TD>
@@ -751,51 +747,57 @@ function RevenueEstimatesPage() {
                         <TD className="px-2 py-3 text-center whitespace-nowrap">
                           <div className="flex items-center justify-center gap-2">
                             <div className="flex items-center justify-center gap-2" style={{ paddingInlineStart: depthPad }}>
-                              <button
-                                type="button"
+                              <div
                                 onClick={() => openViewRowModal(r)}
                                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-2xl border border-black/10 bg-black/[0.04] text-[11px] text-black cursor-pointer dark:border-neutral-700 dark:bg:white/10 dark:text-neutral-100"
                                 title="مشاهده جزئیات"
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') openViewRowModal(r);
+                                }}
                               >
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    toggleExpand(r.id);
+                                  }}
+                                  className={`h-7 w-7 grid place-items-center rounded-xl border border-black/10 hover:bg-black/5 dark:border-neutral-700 dark:hover:bg-white/10 ${
+                                    hasChildren(r) ? '' : 'opacity-40 pointer-events-none'
+                                  }`}
+                                  aria-label="باز/بسته"
+                                  title="باز/بسته"
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                    <path
+                                      d={r.expanded ? 'M7 14l5-5 5 5' : 'M7 10l5 5 5-5'}
+                                      stroke="currentColor"
+                                      strokeWidth="2.2"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    openChildModal(r.id);
+                                  }}
+                                  className="h-7 w-7 grid place-items-center rounded-xl border border-black/10 hover:bg-black/5 dark:border-neutral-700 dark:hover:bg-white/10"
+                                  aria-label="افزودن زیرمجموعه"
+                                  title="افزودن زیرمجموعه"
+                                >
+                                  <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
+                                </button>
+
                                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-black/50 dark:bg-white/70" />
                                 <span className="max-w-[220px] truncate">{r.title || '—'}</span>
-
-                                {hasChildren(r) && (
-                                  <span className="inline-flex items-center justify-center ms-1">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="opacity-80">
-                                      <path
-                                        d={r.expanded ? 'M7 14l5-5 5 5' : 'M7 10l5 5 5-5'}
-                                        stroke="currentColor"
-                                        strokeWidth="2.2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      />
-                                    </svg>
-                                  </span>
-                                )}
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  toggleExpand(r.id);
-                                }}
-                                className={`h-8 w-8 grid place-items-center rounded-xl border border-black/10 hover:bg-black/5 dark:border-neutral-700 dark:hover:bg-white/10 ${hasChildren(r) ? '' : 'opacity-40 pointer-events-none'}`}
-                                aria-label="باز/بسته"
-                                title="باز/بسته"
-                              >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                                  <path
-                                    d={r.expanded ? 'M7 14l5-5 5 5' : 'M7 10l5 5 5-5'}
-                                    stroke="currentColor"
-                                    strokeWidth="2.2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                  />
-                                </svg>
-                              </button>
+                              </div>
                             </div>
 
                             <button
@@ -861,7 +863,7 @@ function RevenueEstimatesPage() {
                         aria-label="افزودن ردیف"
                         title="افزودن ردیف جدید"
                       >
-                        <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
+                        <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
                       </button>
                     </TD>
                     {dynamicMonths.map((m) => (
@@ -1006,10 +1008,12 @@ function RevenueEstimatesPage() {
                 <button
                   type="button"
                   onClick={handleAddSave}
-                  className="h-9 px-5 rounded-xl bg-neutral-900 text-xs text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="h-9 w-11 grid place-items-center rounded-xl bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed"
                   disabled={!addModal.title.trim()}
+                  aria-label="افزودن"
+                  title="افزودن"
                 >
-                  افزودن
+                  <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
                 </button>
               </div>
             </div>
@@ -1064,10 +1068,12 @@ function RevenueEstimatesPage() {
                 <button
                   type="button"
                   onClick={handleChildSave}
-                  className="h-9 px-5 rounded-xl bg-neutral-900 text-xs text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="h-9 w-11 grid place-items-center rounded-xl bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed"
                   disabled={!childModal.title.trim()}
+                  aria-label="افزودن"
+                  title="افزودن"
                 >
-                  ذخیره
+                  <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
                 </button>
               </div>
             </div>
