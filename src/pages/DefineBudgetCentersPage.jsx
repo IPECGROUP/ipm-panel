@@ -52,7 +52,6 @@ function DefineBudgetCentersPage() {
     [API_BASE]
   );
 
-  // ===== me (مثل BudgetAllocationPage) =====
   const [me, setMe] = useState(null);
   useEffect(() => {
     let alive = true;
@@ -63,7 +62,6 @@ function DefineBudgetCentersPage() {
         setMe(r?.user || r || null);
       } catch {
         if (!alive) return;
-        // fallback برای وقتی /auth/me خراب/۵۰۰ است: صفحه قفل نشود
         setMe({ username: "marandi", name: "marandi", role: "admin", access_labels: ["all"] });
       }
     })();
@@ -89,7 +87,7 @@ function DefineBudgetCentersPage() {
     return labels.includes("all");
   }, [me]);
 
-  const [allowedTabs, setAllowedTabs] = useState(null); // null=checking
+  const [allowedTabs, setAllowedTabs] = useState(null);
   useEffect(() => {
     if (!me) return;
 
@@ -156,7 +154,6 @@ function DefineBudgetCentersPage() {
     [prefixOf]
   );
 
-  // ===== Helpers digits =====
   const toEnDigits = (s = "") =>
     String(s)
       .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d))
@@ -194,7 +191,6 @@ function DefineBudgetCentersPage() {
     [prefixOf]
   );
 
-  // ===== state =====
   const [active, setActive] = useState("office");
 
   useEffect(() => {
@@ -202,15 +198,20 @@ function DefineBudgetCentersPage() {
     if (!tabs.some((t) => t.id === active)) setActive(tabs[0].id);
   }, [tabs, active]);
 
-  const [projects, setProjects] = useState([]);
-  const [projectId, setProjectId] = useState("");
+  const extractArray = useCallback((r) => {
+    if (!r) return [];
+    if (Array.isArray(r)) return r;
+    if (Array.isArray(r.items)) return r.items;
+    if (Array.isArray(r.projects)) return r.projects;
+    if (Array.isArray(r.data)) return r.data;
+    if (Array.isArray(r.rows)) return r.rows;
+    if (Array.isArray(r.result)) return r.result;
+    if (r?.data && Array.isArray(r.data.items)) return r.data.items;
+    if (r?.data && Array.isArray(r.data.projects)) return r.data.projects;
+    return [];
+  }, []);
 
-  const selectedProject = useMemo(
-    () => (projects || []).find((p) => String(p.id) === String(projectId)),
-    [projects, projectId]
-  );
-
-  const normalizeProject = (p) => {
+  const normalizeProject = useCallback((p, idx = 0) => {
     const code =
       p?.code ??
       p?.project_code ??
@@ -219,7 +220,9 @@ function DefineBudgetCentersPage() {
       p?.project_no ??
       p?.projectNo ??
       p?.suffix ??
+      p?.project_suffix ??
       "";
+
     const name =
       p?.name ??
       p?.project_name ??
@@ -228,46 +231,87 @@ function DefineBudgetCentersPage() {
       p?.title ??
       p?.label ??
       "";
+
+    const id =
+      p?.id ??
+      p?.project_id ??
+      p?.projectId ??
+      p?.pid ??
+      p?.ProjectID ??
+      (code != null && String(code).trim() ? String(code).trim() : idx + 1);
+
     return {
       ...p,
-      id: p?.id,
-      code: code == null ? "" : String(code),
-      name: name == null ? "" : String(name),
+      id,
+      code: code == null ? "" : String(code).trim(),
+      name: name == null ? "" : String(name).trim(),
     };
-  };
+  }, []);
+
+  const [projects, setProjects] = useState([]);
+  const [projectId, setProjectId] = useState("");
+  const [projectsLoading, setProjectsLoading] = useState(false);
+
+  const selectedProject = useMemo(
+    () => (projects || []).find((p) => String(p.id) === String(projectId)),
+    [projects, projectId]
+  );
 
   useEffect(() => {
     if (canAccessPage !== true) return;
+
     let alive = true;
     (async () => {
+      setProjectsLoading(true);
       try {
-        const pj = await api("/projects");
-        if (!alive) return;
+        const candidates = ["/projects", "/projects/list", "/projects/all", "/meta/projects"];
+        let raw = [];
+        for (const path of candidates) {
+          try {
+            const r = await api(path);
+            raw = extractArray(r);
+            if (raw.length) break;
+          } catch (e) {
+            if (e?.status === 404) continue;
+            if (e?.status === 401 || e?.status === 403) break;
+          }
+        }
 
-        const raw = Array.isArray(pj)
-          ? pj
-          : Array.isArray(pj?.items)
-          ? pj.items
-          : Array.isArray(pj?.projects)
-          ? pj.projects
-          : Array.isArray(pj?.data)
-          ? pj.data
-          : [];
-
-        const list = (raw || [])
-          .map(normalizeProject)
+        let list = (raw || [])
+          .map((x, i) => normalizeProject(x, i))
           .filter((x) => x && x.id != null && String(x.code || "").trim());
 
+        if (!list.length) {
+          try {
+            const c = await api("/centers/projects");
+            const items = extractArray(c);
+            const bases = new Map();
+            (items || []).forEach((it) => {
+              const suf = String(it?.suffix || "").trim();
+              if (!suf) return;
+              const base = suf.split(".")[0];
+              if (!base) return;
+              if (!bases.has(base)) bases.set(base, { id: base, code: base, name: "" });
+            });
+            list = Array.from(bases.values());
+          } catch {}
+        }
+
+        if (!alive) return;
         setProjects(list);
       } catch {
         if (!alive) return;
         setProjects([]);
+      } finally {
+        if (!alive) return;
+        setProjectsLoading(false);
       }
     })();
+
     return () => {
       alive = false;
     };
-  }, [canAccessPage, api]);
+  }, [canAccessPage, api, extractArray, normalizeProject]);
 
   const sortedProjects = useMemo(() => {
     return (projects || [])
@@ -540,7 +584,6 @@ function DefineBudgetCentersPage() {
     return result;
   }, [rows, active, getSuffixPlain, openCodes, codeTextOf]);
 
-  // ===== UI states =====
   if (!me || allowedTabs === null) {
     return (
       <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
@@ -606,10 +649,11 @@ function DefineBudgetCentersPage() {
               onChange={(e) => setProjectId(e.target.value)}
             >
               <option className="bg-white dark:bg-neutral-900" value="">
-                انتخاب کنید
+                {projectsLoading ? "در حال دریافت پروژه‌ها…" : "انتخاب کنید"}
               </option>
+
               {(sortedProjects || []).map((p) => (
-                <option className="bg-white dark:bg-neutral-900" key={p.id} value={p.id}>
+                <option className="bg-white dark:bg-neutral-900" key={String(p.id)} value={String(p.id)}>
                   {p.code ? p.code : "—"}
                 </option>
               ))}
