@@ -1,9 +1,7 @@
-// تعریف مراکز بودجه
+// src/pages/DefineBudgetCentersPage.jsx
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import Shell from "../components/layout/Shell.jsx";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
-import PrefixInput from "../components/PrefixInput.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
 
 function DefineBudgetCentersPage() {
@@ -11,7 +9,27 @@ function DefineBudgetCentersPage() {
   const PAGE_KEY = "DefineBudgetCentersPage";
   const [accessLoaded, setAccessLoaded] = useState(false);
 
-  const isAdmin = user?.role === "admin";
+  const API_BASE = (window.API_URL || "/api").replace(/\/+$/, "");
+
+  async function api(path, opt = {}) {
+    const res = await fetch(API_BASE + path, {
+      credentials: "include",
+      ...opt,
+      headers: {
+        "Content-Type": "application/json",
+        ...(opt.headers || {}),
+      },
+    });
+    const txt = await res.text();
+    let data = {};
+    try {
+      data = txt ? JSON.parse(txt) : {};
+    } catch {}
+    if (!res.ok) throw new Error(data?.error || data?.message || "request_failed");
+    return data;
+  }
+
+  const isAdmin = String(user?.role || "").toLowerCase() === "admin";
 
   const ua = React.useMemo(() => {
     const raw = user?.unit_access ?? {};
@@ -51,14 +69,32 @@ function DefineBudgetCentersPage() {
   const hasPageLabel = React.useMemo(() => labels.includes("page:centers"), [labels]);
 
   const [accessMy, setAccessMy] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const data = await api("/access/my");
+        if (!alive) return;
+        setAccessMy(data || null);
+      } catch {
+      } finally {
+        if (!alive) return;
+        setAccessLoaded(true);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const apiTabsRaw = accessMy?.pages?.[PAGE_KEY];
   const apiTabs = React.useMemo(() => {
     if (apiTabsRaw === null) return "ALL";
     if (Array.isArray(apiTabsRaw)) return apiTabsRaw.map(String);
     return [];
   }, [apiTabsRaw]);
-
   const accessFromApiPage = apiTabs === "ALL" || (Array.isArray(apiTabs) && apiTabs.length > 0);
+
   const canAccessPage = isAdmin || centersEnabled || hasPageLabel || accessFromApiPage;
 
   const allTabs = [
@@ -99,60 +135,31 @@ function DefineBudgetCentersPage() {
     return allTabs.filter((t) => allow.has(t.id));
   }, [isAdmin, unitTabsFromUA, unitTabsFromLabels, apiTabs]);
 
+  const [active, setActive] = useState("office");
+  useEffect(() => {
+    if (tabs.length === 0) return;
+    if (!tabs.some((t) => t.id === active)) setActive(tabs[0]?.id || "office");
+  }, [tabs, active]);
+
   const prefixOf = (kind) => tabs.find((t) => t.id === kind)?.prefix || "";
   const visualPrefix = (kind) => (kind === "projects" ? "PB-" : prefixOf(kind) ? prefixOf(kind) + "-" : "");
-
-  const api = async (path, opt = {}) => {
-    const res = await fetch("/api" + path, {
-      credentials: "include",
-      ...opt,
-      headers: { "Content-Type": "application/json", ...(opt.headers || {}) },
-    });
-    const txt = await res.text();
-    let data = {};
-    try {
-      data = txt ? JSON.parse(txt) : {};
-    } catch {
-      data = {};
-    }
-    if (!res.ok) throw new Error(data?.error || data?.message || "request_failed");
-    return data;
-  };
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const data = await api("/access/my");
-        setAccessMy(data || null);
-      } catch {}
-      finally {
-        setAccessLoaded(true);
-      }
-    })();
-  }, []);
-
-  const [active, setActive] = useState(() => tabs[0]?.id || "");
-
-  useEffect(() => {
-    if (!tabs.some((t) => t.id === active)) setActive(tabs[0]?.id || "");
-  }, [tabs, active]);
 
   const toEnDigits = (s = "") =>
     String(s)
       .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d))
       .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
+
   const onlyDigitsDot = (s = "") => toEnDigits(s).replace(/[^0-9.]/g, "");
 
   const canonForCompare = (kind, rawSuffix) => {
-    const onlyDigits = (txt) => toEnDigits(txt).replace(/[^\d]/g, "");
     if (kind === "projects") {
       const en = toEnDigits(String(rawSuffix || "")).replace(/[^0-9.]/g, "");
-      const segments = en.split(".").filter(Boolean);
-      if (!segments.length) return "";
-      return segments
-        .map((s) => {
-          const n = parseInt(s, 10);
-          return isNaN(n) ? s : String(n);
+      const seg = en.split(".").filter(Boolean);
+      if (!seg.length) return "";
+      return seg
+        .map((x) => {
+          const n = parseInt(x, 10);
+          return Number.isNaN(n) ? x : String(n);
         })
         .join(".");
     }
@@ -162,15 +169,31 @@ function DefineBudgetCentersPage() {
       const re = new RegExp("^" + pref + "[\\-\\.]?", "i");
       s = s.replace(re, "");
     }
-    return onlyDigits(s);
+    return toEnDigits(s).replace(/[^\d]/g, "");
   };
 
+  // ===== projects (مثل BudgetAllocationPage) =====
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState("");
 
   const normalizeProject = (p) => {
-    const code = p?.code ?? p?.project_code ?? p?.projectCode ?? p?.projectNo ?? p?.project_no ?? p?.suffix ?? "";
-    const name = p?.name ?? p?.project_name ?? p?.projectName ?? p?.description ?? p?.title ?? p?.label ?? "";
+    const code =
+      p?.code ??
+      p?.project_code ??
+      p?.projectCode ??
+      p?.projectCodeText ??
+      p?.project_no ??
+      p?.projectNo ??
+      p?.suffix ??
+      "";
+    const name =
+      p?.name ??
+      p?.project_name ??
+      p?.projectName ??
+      p?.description ??
+      p?.title ??
+      p?.label ??
+      "";
     return {
       ...p,
       id: p?.id,
@@ -179,34 +202,39 @@ function DefineBudgetCentersPage() {
     };
   };
 
-  // ✅ پروژه‌ها را از items/projects/array بخوان
   useEffect(() => {
+    if (!accessLoaded) return;
+    if (!canAccessPage) return;
+    let alive = true;
     (async () => {
       try {
-        const pj = await api("/projects");
-        const raw =
-          Array.isArray(pj) ? pj :
-          Array.isArray(pj?.items) ? pj.items :
-          Array.isArray(pj?.projects) ? pj.projects :
-          Array.isArray(pj?.data) ? pj.data :
-          [];
+        const r = await api("/projects");
+        if (!alive) return;
+
+        const raw = Array.isArray(r)
+          ? r
+          : Array.isArray(r?.items)
+          ? r.items
+          : Array.isArray(r?.projects)
+          ? r.projects
+          : Array.isArray(r?.data)
+          ? r.data
+          : [];
 
         const list = (raw || [])
           .map(normalizeProject)
           .filter((x) => x && x.id != null && String(x.code || "").trim());
 
         setProjects(list);
-      } catch (e) {
-        console.warn("projects load:", e?.message || e);
+      } catch {
+        if (!alive) return;
         setProjects([]);
       }
     })();
-  }, []);
-
-  const selectedProject = useMemo(
-    () => projects.find((p) => String(p.id) === String(projectId)),
-    [projects, projectId]
-  );
+    return () => {
+      alive = false;
+    };
+  }, [accessLoaded, canAccessPage]);
 
   const sortedProjects = useMemo(() => {
     return (projects || []).slice().sort((a, b) =>
@@ -214,14 +242,12 @@ function DefineBudgetCentersPage() {
     );
   }, [projects]);
 
-  // ✅ وقتی تب projects فعال شد و هنوز پروژه انتخاب نشده، اولین پروژه را خودکار انتخاب کن
-  useEffect(() => {
-    if (active !== "projects") return;
-    if (projectId) return;
-    if ((sortedProjects || []).length === 0) return;
-    setProjectId(String(sortedProjects[0].id));
-  }, [active, projectId, sortedProjects]);
+  const selectedProject = useMemo(
+    () => (projects || []).find((p) => String(p.id) === String(projectId)),
+    [projects, projectId]
+  );
 
+  // ===== centers table =====
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -242,8 +268,10 @@ function DefineBudgetCentersPage() {
       const pref = prefixOf(kind);
       const raw = String(suffix || "").trim();
       let normalized = raw;
-      const re = new RegExp("^" + pref + "[\\-\\.]?", "i");
-      if (re.test(raw)) normalized = raw.replace(re, "").replace(/^[-.]/, "");
+      if (pref) {
+        const re = new RegExp("^" + pref + "[\\-\\.]?", "i");
+        if (re.test(raw)) normalized = raw.replace(re, "").replace(/^[-.]/, "");
+      }
       return (pref ? pref + "-" : "") + normalized;
     },
     [tabs]
@@ -254,20 +282,20 @@ function DefineBudgetCentersPage() {
       setRows([]);
       return;
     }
+    if (kind === "projects" && !projectId) {
+      setRows([]);
+      return;
+    }
+
     setLoading(true);
     setErr("");
     try {
       let items = [];
       if (kind === "projects") {
-        // اگر پروژه هنوز انتخاب نشده، فعلاً خالی بگذار تا auto-select انجام شود
-        if (!selectedProject?.code) {
-          setRows([]);
-          return;
-        }
         const list = await api("/centers/projects").catch(() => ({ items: [] }));
+        const base = String(selectedProject?.code || "").trim();
         items = (list.items || []).filter((it) => {
-          const base = String(selectedProject?.code || "").trim();
-          const suf = String(it.suffix || it.code || "").trim();
+          const suf = String(it.suffix || "").trim();
           return suf === base || suf.startsWith(base + ".");
         });
       } else {
@@ -283,7 +311,7 @@ function DefineBudgetCentersPage() {
       );
       setRows(sorted);
     } catch (e) {
-      setErr(e?.message || "خطا در دریافت لیست");
+      setErr(e.message || "خطا در دریافت لیست");
       setRows([]);
     } finally {
       setLoading(false);
@@ -298,22 +326,22 @@ function DefineBudgetCentersPage() {
     setEditSuffix("");
     setEditDesc("");
     if (active !== "projects") setProjectId("");
-    if (active) loadCenters(active);
+    setOpenCodes({});
+    loadCenters(active);
   }, [active]);
 
   useEffect(() => {
-    if (active === "projects") loadCenters(active);
-  }, [projectId, selectedProject?.code]);
-
-  useEffect(() => {
-    setOpenCodes({});
-  }, [active, projectId]);
+    if (active === "projects") {
+      setOpenCodes({});
+      loadCenters(active);
+    }
+  }, [projectId]);
 
   const getSuffixPlain = useCallback(
     (r) => {
       if (active === "projects") {
         const base = String(selectedProject?.code || "").trim();
-        const raw = String(r.suffix || r.code || "").trim();
+        const raw = String(r.suffix || "").trim();
         if (!base) return raw;
         if (raw === base) return "";
         if (raw.startsWith(base + ".")) return raw.slice((base + ".").length);
@@ -326,21 +354,12 @@ function DefineBudgetCentersPage() {
 
   const addRow = async () => {
     setErr("");
-    if (!active) {
-      setErr("ابتدا تب را انتخاب کنید.");
-      return;
-    }
-    if (active === "projects" && !projectId) {
-      setErr("ابتدا کد پروژه را انتخاب کنید.");
-      return;
-    }
+    if (!active) return setErr("ابتدا تب را انتخاب کنید.");
+    if (active === "projects" && !projectId) return setErr("ابتدا کد پروژه را انتخاب کنید.");
 
     const desc = (newDesc || "").trim();
     const suffixRaw = onlyDigitsDot(newSuffix || "");
-    if (!suffixRaw && active !== "projects") {
-      setErr("کد بودجه را وارد کنید.");
-      return;
-    }
+    if (!suffixRaw && active !== "projects") return setErr("کد بودجه را وارد کنید.");
 
     let suffixToSend = "";
     if (active === "projects") {
@@ -352,10 +371,7 @@ function DefineBudgetCentersPage() {
 
     const newCanon = canonForCompare(active, suffixToSend);
     const dup = (rows || []).some((r) => canonForCompare(active, r.suffix) === newCanon);
-    if (dup) {
-      setErr("این کد بودجه قبلاً ثبت شده است.");
-      return;
-    }
+    if (dup) return setErr("این کد بودجه قبلاً ثبت شده است.");
 
     setSaving(true);
     try {
@@ -367,7 +383,7 @@ function DefineBudgetCentersPage() {
       setNewDesc("");
       await loadCenters(active);
     } catch (ex) {
-      setErr(ex?.message || "خطا در ثبت");
+      setErr(ex.message || "خطا در ثبت");
     } finally {
       setSaving(false);
     }
@@ -393,6 +409,7 @@ function DefineBudgetCentersPage() {
 
   const saveEdit = async () => {
     if (!editId) return;
+
     const desc = (editDesc || "").trim();
     const sufRaw = onlyDigitsDot(editSuffix || "");
 
@@ -406,10 +423,7 @@ function DefineBudgetCentersPage() {
 
     const newCanon = canonForCompare(active, suffixToSend);
     const dup = (rows || []).some((r) => r.id !== editId && canonForCompare(active, r.suffix) === newCanon);
-    if (dup) {
-      setErr("این کد بودجه قبلاً ثبت شده است.");
-      return;
-    }
+    if (dup) return setErr("این کد بودجه قبلاً ثبت شده است.");
 
     setSaving(true);
     setErr("");
@@ -421,7 +435,7 @@ function DefineBudgetCentersPage() {
       cancelEdit();
       await loadCenters(active);
     } catch (ex) {
-      setErr(ex?.message || "خطا در ویرایش");
+      setErr(ex.message || "خطا در ویرایش");
     } finally {
       setSaving(false);
     }
@@ -467,10 +481,9 @@ function DefineBudgetCentersPage() {
       result.push({ ...node, depth });
       if (!node.hasChildren) return;
       if (!openCodes[node.key]) return;
-      (childrenMap.get(node.key) || []).forEach((child) => visit(child, depth + 1));
+      (childrenMap.get(node.key) || []).forEach((ch) => visit(ch, depth + 1));
     };
-
-    roots.forEach((root) => visit(root, 0));
+    roots.forEach((r) => visit(r, 0));
     return result;
   }, [rows, active, getSuffixPlain, openCodes, codeTextOf]);
 
@@ -480,7 +493,7 @@ function DefineBudgetCentersPage() {
       await api(`/centers/${active}/${r.id}`, { method: "DELETE" });
       await loadCenters(active);
     } catch (ex) {
-      alert(ex?.message || "خطا در حذف");
+      alert(ex.message || "خطا در حذف");
     }
   };
 
@@ -525,11 +538,12 @@ function DefineBudgetCentersPage() {
           <button
             key={t.id}
             onClick={() => setActive(t.id)}
-            className={`h-10 px-4 rounded-2xl text-sm shadow-sm transition border ${
-              active === t.id
-                ? "bg-neutral-900 text-white border-neutral-900 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-100"
-                : "bg-white text-neutral-900 border-neutral-300 hover:bg-neutral-50 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800"
-            }`}
+            className={`h-10 px-4 rounded-2xl text-sm shadow-sm transition border
+              ${
+                active === t.id
+                  ? "bg-neutral-900 text-white border-neutral-900 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-100"
+                  : "bg-white text-neutral-900 border-neutral-300 hover:bg-neutral-50 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800"
+              }`}
           >
             {t.label}
           </button>
@@ -541,7 +555,9 @@ function DefineBudgetCentersPage() {
           <div className="flex flex-col gap-1">
             <label className="text-sm text-neutral-700 dark:text-neutral-300">کد پروژه</label>
             <select
-              className="w-full rounded-xl px-3 py-2 ltr font-[inherit] bg-white text-neutral-900 border border-neutral-200 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
+              className="w-full rounded-xl px-3 py-2 ltr font-[inherit]
+                         bg-white text-neutral-900 border border-neutral-200 outline-none
+                         dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
             >
@@ -550,7 +566,7 @@ function DefineBudgetCentersPage() {
               </option>
               {(sortedProjects || []).map((p) => (
                 <option className="bg-white dark:bg-neutral-900" key={p.id} value={p.id}>
-                  {p.code ? p.code : "—"}
+                  {p.code ? p.code : "—"} {p?.name ? `— ${p.name}` : ""}
                 </option>
               ))}
             </select>
@@ -558,7 +574,9 @@ function DefineBudgetCentersPage() {
           <div className="flex flex-col gap-1">
             <label className="text-sm text-neutral-700 dark:text-neutral-300">نام پروژه</label>
             <input
-              className="w-full rounded-xl px-3 py-2 bg-white text-neutral-900 border border-neutral-200 outline-none placeholder:text-neutral-400 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
+              className="w-full rounded-xl px-3 py-2
+                         bg-white text-neutral-900 border border-neutral-200 outline-none placeholder:text-neutral-400
+                         dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
               value={selectedProject?.name || ""}
               readOnly
               placeholder="پس از انتخاب کد پروژه پر می‌شود"
@@ -584,7 +602,9 @@ function DefineBudgetCentersPage() {
           <div className="flex-1 min-w-[260px] flex flex-col gap-1">
             <label className="text-sm text-neutral-700 dark:text-neutral-300">شرح بودجه</label>
             <input
-              className="w-full rounded-2xl px-3 py-2 text-center bg-white text-neutral-900 border border-neutral-200 outline-none placeholder:text-neutral-400 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
+              className="w-full rounded-2xl px-3 py-2 text-center
+                         bg-white text-neutral-900 border border-neutral-200 outline-none placeholder:text-neutral-400
+                         dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
               value={newDesc}
               onChange={(e) => setNewDesc(e.target.value)}
               placeholder="شرح…"
@@ -630,7 +650,10 @@ function DefineBudgetCentersPage() {
       </div>
 
       <TableWrap>
-        <div className="bg-white text-neutral-900 rounded-2xl ring-1 ring-neutral-200 border border-neutral-200 overflow-hidden dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-800 dark:border-neutral-800 [&_th]:text-neutral-900 [&_td]:text-neutral-900 dark:[&_th]:text-neutral-100 dark:[&_td]:text-neutral-100">
+        <div className="bg-white text-neutral-900 rounded-2xl ring-1 ring-neutral-200 border border-neutral-200 overflow-hidden
+                        dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-800 dark:border-neutral-800
+                        [&_th]:text-neutral-900 [&_td]:text-neutral-900
+                        dark:[&_th]:text-neutral-100 dark:[&_td]:text-neutral-100">
           <table className="w-full text-[13px] md:text-sm text-center [&_th]:text-center [&_td]:text-center" dir="rtl">
             <THead>
               <tr className="bg-neutral-100 text-neutral-900 border-b border-neutral-200 sticky top-0 z-10 dark:bg-white/5 dark:text-neutral-100 dark:border-neutral-700">
@@ -656,7 +679,6 @@ function DefineBudgetCentersPage() {
               ) : (
                 (displayRows || []).map((node, idx) => {
                   const r = node.row;
-                  const level = node.depth || 0;
                   const hasChildren = !!node.hasChildren;
                   const codeText = codeTextOf(active, r.suffix);
                   const isEditing = editId === r.id;
@@ -665,10 +687,12 @@ function DefineBudgetCentersPage() {
                   return (
                     <TR
                       key={r.id}
-                      className="border-t border-neutral-200 odd:bg-neutral-50 even:bg-neutral-100/70 hover:bg-neutral-200/40 transition-colors dark:border-neutral-800 dark:odd:bg-transparent dark:even:bg-white/5 dark:hover:bg-white/10"
+                      className="border-t border-neutral-200 odd:bg-neutral-50 even:bg-neutral-100/70 hover:bg-neutral-200/40 transition-colors
+                                 dark:border-neutral-800 dark:odd:bg-transparent dark:even:bg-white/5 dark:hover:bg-white/10"
                     >
                       <TD className="px-2.5 py-2">{idx + 1}</TD>
-                      <TD className="px-2.5 py-2 font-mono ltr text-center" style={{ paddingRight: level * 12 }}>
+
+                      <TD className="px-2.5 py-2 font-mono ltr text-center" style={{ paddingRight: (node.depth || 0) * 12 }}>
                         {isEditing ? (
                           <input
                             className="w-full max-w-[220px] rounded-xl px-2 py-1.5 bg-white text-neutral-900 font-mono ltr text-center border border-neutral-300 outline-none placeholder:text-neutral-400 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
@@ -694,17 +718,13 @@ function DefineBudgetCentersPage() {
                                 {isOpen ? "−" : "+"}
                               </button>
                             )}
-                            <button
-                              type="button"
-                              onClick={() => prefillFromRow(r)}
-                              className="px-1 py-0.5 hover:underline"
-                              title="قرار دادن این کد در فیلد کد بودجه"
-                            >
+                            <button type="button" onClick={() => prefillFromRow(r)} className="px-1 py-0.5 hover:underline" title="قرار دادن این کد در فیلد کد بودجه">
                               {codeText}
                             </button>
                           </div>
                         )}
                       </TD>
+
                       <TD className="px-2.5 py-2 text-center">
                         {isEditing ? (
                           <input
@@ -722,6 +742,7 @@ function DefineBudgetCentersPage() {
                           r.description || "—"
                         )}
                       </TD>
+
                       <TD className="px-2.5 py-2 text-center">
                         {isEditing ? (
                           <div className="inline-flex items-center gap-2">
