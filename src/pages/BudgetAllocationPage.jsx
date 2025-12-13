@@ -184,13 +184,36 @@ function BudgetAllocationPage() {
 
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState("");
+
   const selectedProject = useMemo(
     () =>
-      (projects || []).find(
-        (p) => String(p.id) === String(projectId)
-      ),
+      (projects || []).find((p) => String(p.id) === String(projectId)),
     [projects, projectId]
   );
+
+  const normalizeProject = (p) => {
+    const code =
+      p?.code ??
+      p?.project_code ??
+      p?.projectCode ??
+      p?.projectCodeText ??
+      p?.project_no ??
+      p?.projectNo ??
+      "";
+    const name =
+      p?.name ??
+      p?.project_name ??
+      p?.projectName ??
+      p?.title ??
+      p?.label ??
+      "";
+    return {
+      ...p,
+      id: p?.id,
+      code: code == null ? "" : String(code),
+      name: name == null ? "" : String(name),
+    };
+  };
 
   // پروژه‌ها از سرور
   useEffect(() => {
@@ -200,12 +223,20 @@ function BudgetAllocationPage() {
       try {
         const r = await api("/projects");
         if (!alive) return;
-        const list =
-          r?.projects ||
-          r?.items ||
-          r?.data ||
-          [];
-        setProjects(Array.isArray(list) ? list : []);
+
+        const raw =
+          Array.isArray(r)
+            ? r
+            : r?.projects || r?.items || r?.data || [];
+
+        const list = Array.isArray(raw) ? raw : [];
+        const norm = list
+          .map(normalizeProject)
+          .filter(
+            (x) => x && x.id != null && String(x.code || "").trim()
+          );
+
+        setProjects(norm);
       } catch {
         if (!alive) return;
         setProjects([]);
@@ -276,9 +307,7 @@ function BudgetAllocationPage() {
         }).format(new Date(dt))
       );
     } catch {
-      return toFaDigits(
-        new Date(dt).toLocaleString("fa-IR")
-      );
+      return toFaDigits(new Date(dt).toLocaleString("fa-IR"));
     }
   };
 
