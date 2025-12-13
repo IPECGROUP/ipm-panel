@@ -309,6 +309,12 @@ function RightNav() {
                 </LinkBtn>
               </div>
 
+              <div onMouseEnter={(e) => showTip("برآورد درآمد", e)} onMouseLeave={hideTip}>
+                <LinkBtn to="/revenue-estimates" className={railBtn(isActive("/revenue-estimates"))}>
+                  <img src="/images/icons/baravord-daramad.svg" className={icImgCls} alt="" />
+                </LinkBtn>
+              </div>
+
               <div onMouseEnter={(e) => showTip("تخصیص بودجه", e)} onMouseLeave={hideTip}>
                 <LinkBtn to="/budget-allocation" className={railBtn(isActive("/budget-allocation"))}>
                   <img src="/images/icons/taksisbodge.svg" className={icImgCls} alt="" />
