@@ -192,39 +192,24 @@ function BudgetAllocationPage() {
   );
 
   const normalizeProject = (p) => {
-    const id =
-      p?.id ??
-      p?.project_id ??
-      p?.projectId ??
-      p?.pid ??
-      null;
-
     const code =
       p?.code ??
       p?.project_code ??
-      p?.project_code_text ??
       p?.projectCode ??
       p?.projectCodeText ??
-      p?.projectCodeTxt ??
       p?.project_no ??
       p?.projectNo ??
-      p?.code_text ??
-      p?.codeText ??
       "";
-
     const name =
       p?.name ??
       p?.project_name ??
       p?.projectName ??
       p?.title ??
       p?.label ??
-      p?.project_title ??
-      p?.projectTitle ??
       "";
-
     return {
       ...p,
-      id,
+      id: p?.id,
       code: code == null ? "" : String(code),
       name: name == null ? "" : String(name),
     };
@@ -239,22 +224,20 @@ function BudgetAllocationPage() {
         const r = await api("/projects");
         if (!alive) return;
 
-        let raw =
-          Array.isArray(r)
-            ? r
-            : r?.projects || r?.items || r?.data || r?.rows || [];
-
-        if (!Array.isArray(raw) && raw && Array.isArray(raw?.items)) {
-          raw = raw.items;
-        }
-        if (!Array.isArray(raw) && raw && Array.isArray(raw?.projects)) {
-          raw = raw.projects;
-        }
+        const raw = Array.isArray(r)
+          ? r
+          : Array.isArray(r?.items)
+          ? r.items
+          : Array.isArray(r?.projects)
+          ? r.projects
+          : Array.isArray(r?.data)
+          ? r.data
+          : [];
 
         const list = Array.isArray(raw) ? raw : [];
         const norm = list
           .map(normalizeProject)
-          .filter((x) => x && x.id != null);
+          .filter((x) => x && x.id != null && String(x.code || "").trim());
 
         setProjects(norm);
       } catch {
@@ -271,11 +254,10 @@ function BudgetAllocationPage() {
     return (projects || [])
       .slice()
       .sort((a, b) =>
-        String(a?.code || "").localeCompare(
-          String(b?.code || ""),
-          "fa",
-          { numeric: true, sensitivity: "base" }
-        )
+        String(a?.code || "").localeCompare(String(b?.code || ""), "fa", {
+          numeric: true,
+          sensitivity: "base",
+        })
       );
   }, [projects]);
 
@@ -350,7 +332,8 @@ function BudgetAllocationPage() {
   const getNextSerial = async () => {
     const qs = new URLSearchParams();
     qs.set("kind", active);
-    if (active === "projects" && projectId) qs.set("project_id", String(projectId));
+    if (active === "projects" && projectId)
+      qs.set("project_id", String(projectId));
     qs.set("_", String(Date.now()));
     const r = await api("/budget-allocations/next?" + qs.toString());
     return r || {};
@@ -384,10 +367,7 @@ function BudgetAllocationPage() {
           try {
             const centers = await api(`/centers/${active}`);
             const raw =
-              centers?.items ||
-              centers?.centers ||
-              centers?.data ||
-              [];
+              centers?.items || centers?.centers || centers?.data || [];
             const list = Array.isArray(raw) ? raw : [];
             items = list
               .map((c) => ({
@@ -432,11 +412,10 @@ function BudgetAllocationPage() {
         const sorted = (items || [])
           .slice()
           .sort((a, b) =>
-            String(a.code).localeCompare(
-              String(b.code),
-              "fa",
-              { numeric: true, sensitivity: "base" }
-            )
+            String(a.code).localeCompare(String(b.code), "fa", {
+              numeric: true,
+              sensitivity: "base",
+            })
           );
 
         const built = sorted.map((s) => ({
@@ -453,8 +432,7 @@ function BudgetAllocationPage() {
         setHistoryByCode(histMap);
         setRows(built);
       } catch (ex) {
-        if (!abort)
-          setErr(ex.message || "خطا در بارگذاری");
+        if (!abort) setErr(ex.message || "خطا در بارگذاری");
       } finally {
         if (!abort) setLoading(false);
       }
@@ -470,25 +448,17 @@ function BudgetAllocationPage() {
       if (!document.hidden) kick();
     };
     window.addEventListener("focus", kick);
-    document.addEventListener(
-      "visibilitychange",
-      onVis
-    );
+    document.addEventListener("visibilitychange", onVis);
     return () => {
       window.removeEventListener("focus", kick);
-      document.removeEventListener(
-        "visibilitychange",
-        onVis
-      );
+      document.removeEventListener("visibilitychange", onVis);
     };
   }, []);
 
   const onAllocChange = (code, v) => {
     const rawVal = parseMoney(v);
     setRows((prev) =>
-      prev.map((r) =>
-        r.code === code ? { ...r, allocRaw: rawVal } : r
-      )
+      prev.map((r) => (r.code === code ? { ...r, allocRaw: rawVal } : r))
     );
     requestAnimationFrame(() => {
       const el = moneyRefs.current[code];
@@ -501,11 +471,7 @@ function BudgetAllocationPage() {
   };
 
   const onDescChange = (code, v) => {
-    setRows((prev) =>
-      prev.map((r) =>
-        r.code === code ? { ...r, desc: v } : r
-      )
-    );
+    setRows((prev) => prev.map((r) => (r.code === code ? { ...r, desc: v } : r)));
   };
 
   const removeRow = async (code) => {
@@ -517,11 +483,7 @@ function BudgetAllocationPage() {
       }
       const last = hist
         .slice()
-        .sort(
-          (a, b) =>
-            new Date(a.created_at) -
-            new Date(b.created_at)
-        )
+        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
         .pop();
       const lastAmt = Number(last?.amount || 0);
       if (!lastAmt) {
@@ -536,40 +498,17 @@ function BudgetAllocationPage() {
       const body = {
         serial,
         date_jalali,
-        project_id:
-          active === "projects"
-            ? projectId
-              ? Number(projectId)
-              : null
-            : null,
-        project_name:
-          active === "projects" && selectedProject
-            ? selectedProject.name
-            : null,
+        project_id: active === "projects" ? (projectId ? Number(projectId) : null) : null,
+        project_name: active === "projects" && selectedProject ? selectedProject.name : null,
         kind: active,
-        rows: [
-          {
-            code,
-            alloc: -lastAmt,
-            desc: "حذف آخرین تخصیص",
-          },
-        ],
+        rows: [{ code, alloc: -lastAmt, desc: "حذف آخرین تخصیص" }],
       };
-      await api("/budget-allocations", {
-        method: "POST",
-        body: JSON.stringify(body),
-      });
+      await api("/budget-allocations", { method: "POST", body: JSON.stringify(body) });
 
-      setTotals((prev) => ({
-        ...prev,
-        [code]:
-          Number(prev[code] || 0) - lastAmt,
-      }));
+      setTotals((prev) => ({ ...prev, [code]: Number(prev[code] || 0) - lastAmt }));
       setRefreshKey((x) => x + 1);
     } catch (ex) {
-      setErr(
-        ex.message || "خطا در حذف آخرین تخصیص"
-      );
+      setErr(ex.message || "خطا در حذف آخرین تخصیص");
     }
   };
 
@@ -582,36 +521,20 @@ function BudgetAllocationPage() {
       setErr("");
       const payloadRows = rows
         .filter((r) => (r.allocRaw || 0) !== 0)
-        .map((r) => ({
-          code: r.code,
-          alloc: Number(r.allocRaw || 0),
-          desc: (r.desc || "").trim() || null,
-        }));
+        .map((r) => ({ code: r.code, alloc: Number(r.allocRaw || 0), desc: (r.desc || "").trim() || null }));
 
       if (payloadRows.length === 0) {
-        setModalMsg({
-          ok: true,
-          msg: "چیزی برای ثبت انتخاب نشده است.",
-        });
+        setModalMsg({ ok: true, msg: "چیزی برای ثبت انتخاب نشده است." });
         return;
       }
 
       const viol = payloadRows.find((pr) => {
-        const r = rows.find(
-          (x) => x.code === pr.code
-        );
-        const newTotal =
-          Number(r?.totalAlloc || 0) +
-          Number(pr.alloc || 0);
-        return (
-          newTotal >
-          Number(r?.lastAmount || 0)
-        );
+        const r = rows.find((x) => x.code === pr.code);
+        const newTotal = Number(r?.totalAlloc || 0) + Number(pr.alloc || 0);
+        return newTotal > Number(r?.lastAmount || 0);
       });
       if (viol) {
-        setErr(
-          "مبلغ تخصیص از آخرین برآورد این کُد بیشتر می‌شود."
-        );
+        setErr("مبلغ تخصیص از آخرین برآورد این کُد بیشتر می‌شود.");
         setSaving(false);
         return;
       }
@@ -623,49 +546,25 @@ function BudgetAllocationPage() {
       const body = {
         serial,
         date_jalali,
-        project_id:
-          active === "projects"
-            ? projectId
-              ? Number(projectId)
-              : null
-            : null,
-        project_name:
-          active === "projects" && selectedProject
-            ? selectedProject.name
-            : null,
+        project_id: active === "projects" ? (projectId ? Number(projectId) : null) : null,
+        project_name: active === "projects" && selectedProject ? selectedProject.name : null,
         kind: active,
         rows: payloadRows,
       };
-      await api("/budget-allocations", {
-        method: "POST",
-        body: JSON.stringify(body),
-      });
+      await api("/budget-allocations", { method: "POST", body: JSON.stringify(body) });
 
-      // به‌روزرسانی state لوکال
       setRows((prev) =>
         prev.map((r) => ({
           ...r,
-          totalAlloc:
-            Number(r.totalAlloc || 0) +
-            Number(
-              payloadRows.find(
-                (p) => p.code === r.code
-              )?.alloc || 0
-            ),
+          totalAlloc: Number(r.totalAlloc || 0) + Number(payloadRows.find((p) => p.code === r.code)?.alloc || 0),
           allocRaw: 0,
           desc: "",
         }))
       );
       setRefreshKey((x) => x + 1);
-      setModalMsg({
-        ok: true,
-        msg: `ثبت با موفقیت انجام شد. سریال: ${serial}`,
-      });
+      setModalMsg({ ok: true, msg: `ثبت با موفقیت انجام شد. سریال: ${serial}` });
     } catch (ex) {
-      setModalMsg({
-        ok: false,
-        msg: ex.message || "خطا از سرور",
-      });
+      setModalMsg({ ok: false, msg: ex.message || "خطا از سرور" });
     } finally {
       setSaving(false);
     }
@@ -681,25 +580,14 @@ function BudgetAllocationPage() {
           className="w-full rounded-xl px-3 py-2 bg-white text-black placeholder-black/40 border border-black/15 outline-none
                      dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700"
           value={pickCode}
-          onChange={(e) =>
-            setPickCode(e.target.value)
-          }
-          disabled={
-            active === "projects" && !projectId
-          }
+          onChange={(e) => setPickCode(e.target.value)}
+          disabled={active === "projects" && !projectId}
         >
-          <option
-            className="bg-white dark:bg-neutral-900"
-            value=""
-          >
+          <option className="bg-white dark:bg-neutral-900" value="">
             -- همه موارد --
           </option>
           {(sourceItems || []).map((it) => (
-            <option
-              className="bg-white dark:bg-neutral-900"
-              key={it.code}
-              value={it.code}
-            >
+            <option className="bg-white dark:bg-neutral-900" key={it.code} value={it.code}>
               {`${toFaDigits(renderDisplayBudgetCode(it.code))} — ${it.center_desc || it.name || ""}`}
             </option>
           ))}
@@ -711,25 +599,17 @@ function BudgetAllocationPage() {
   const rowsToRender = useMemo(() => {
     let base = rows || [];
     if (pickCode) {
-      base = base.filter(
-        (r) =>
-          String(r.code) === String(pickCode)
-      );
+      base = base.filter((r) => String(r.code) === String(pickCode));
     }
-    const sorted = base
-      .slice()
-      .sort((a, b) => {
-        const ac = renderDisplayBudgetCode(a.code);
-        const bc = renderDisplayBudgetCode(b.code);
-        const cmp = String(ac || "").localeCompare(
-          String(bc || ""),
-          "fa",
-          { numeric: true, sensitivity: "base" }
-        );
-        return codeSortDir === "asc"
-          ? cmp
-          : -cmp;
+    const sorted = base.slice().sort((a, b) => {
+      const ac = renderDisplayBudgetCode(a.code);
+      const bc = renderDisplayBudgetCode(b.code);
+      const cmp = String(ac || "").localeCompare(String(bc || ""), "fa", {
+        numeric: true,
+        sensitivity: "base",
       });
+      return codeSortDir === "asc" ? cmp : -cmp;
+    });
     return sorted;
   }, [rows, pickCode, codeSortDir, active, projectId, selectedProject]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -760,9 +640,7 @@ function BudgetAllocationPage() {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-sm text-black/70 dark:text-neutral-300">
-            کد پروژه
-          </label>
+          <label className="text-sm text-black/70 dark:text-neutral-300">کد پروژه</label>
           <select
             className="w-full rounded-xl px-3 py-2 ltr font-[inherit] bg-white text-black placeholder-black/40 border border-black/15 outline-none
                        dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700"
@@ -772,28 +650,18 @@ function BudgetAllocationPage() {
               setProjectId(e.target.value);
             }}
           >
-            <option
-              className="bg-white dark:bg-neutral-900"
-              value=""
-            >
+            <option className="bg-white dark:bg-neutral-900" value="">
               انتخاب کنید
             </option>
             {(sortedProjects || []).map((p) => (
-              <option
-                className="bg-white dark:bg-neutral-900"
-                key={p.id}
-                value={p.id}
-              >
-                {toFaDigits(p.code || "—")}{" "}
-                {p?.name ? `— ${p.name}` : ""}
+              <option className="bg-white dark:bg-neutral-900" key={p.id} value={p.id}>
+                {toFaDigits(p.code || "—")} {p?.name ? `— ${p.name}` : ""}
               </option>
             ))}
           </select>
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-sm text-black/70 dark:text-neutral-300">
-            نام پروژه
-          </label>
+          <label className="text-sm text-black/70 dark:text-neutral-300">نام پروژه</label>
           <input
             className="w-full rounded-xl px-3 py-2 bg-black/5 text-black border border-black/15 outline-none
                        dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
@@ -813,9 +681,7 @@ function BudgetAllocationPage() {
           <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
             <span>بودجه‌بندی</span>
             <span className="mx-2">›</span>
-            <span className="font-semibold text-black dark:text-neutral-100">
-              تخصیص بودجه
-            </span>
+            <span className="font-semibold text-black dark:text-neutral-100">تخصیص بودجه</span>
           </div>
           <div className="p-5 rounded-2xl ring-1 ring-black/10 bg-white text-center text-red-600 dark:bg-neutral-900 dark:ring-neutral-800 dark:text-red-400">
             شما سطح دسترسی لازم را ندارید.
@@ -833,13 +699,9 @@ function BudgetAllocationPage() {
           <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
             <span>بودجه‌بندی</span>
             <span className="mx-2">›</span>
-            <span className="font-semibold text-black dark:text-neutral-100">
-              تخصیص بودجه
-            </span>
+            <span className="font-semibold text-black dark:text-neutral-100">تخصیص بودجه</span>
           </div>
-          <div className="p-5 text-center text-black/60 dark:text-neutral-300">
-            در حال بررسی دسترسی…
-          </div>
+          <div className="p-5 text-center text-black/60 dark:text-neutral-300">در حال بررسی دسترسی…</div>
         </Card>
       </>
     );
@@ -851,15 +713,11 @@ function BudgetAllocationPage() {
         <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
           <span>بودجه‌بندی</span>
           <span className="mx-2">›</span>
-          <span className="font-semibold text-black dark:text-neutral-100">
-            تخصیص بودجه
-          </span>
+          <span className="font-semibold text-black dark:text-neutral-100">تخصیص بودجه</span>
         </div>
 
         <div className="mb-3 flex items-center gap-2">
-          <div className="text-sm text-black/60 dark:text-neutral-400">
-            تاریخ:
-          </div>
+          <div className="text-sm text-black/60 dark:text-neutral-400">تاریخ:</div>
           <div className="px-3 py-1 rounded-lg bg-black/5 text-black text-sm ring-1 ring-black/15 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-800">
             {toFaDigits(todayFa)}
           </div>
@@ -874,265 +732,151 @@ function BudgetAllocationPage() {
         <TableWrap>
           <div className="bg-white rounded-2xl overflow-hidden border border-black/10 shadow-sm
                           text-black dark:bg-neutral-900 dark:text-neutral-200 dark:border-neutral-800">
-            <table
-              className="w-full text-sm [&_th]:text-center [&_td]:text-center"
-              dir="rtl"
-            >
+            <table className="w-full text-sm [&_th]:text-center [&_td]:text-center" dir="rtl">
               <THead>
                 <tr className="bg-black/5 text-black border-y border-black/10
                                dark:bg-white/5 dark:text-neutral-100 dark:border-neutral-700">
-                  <TH className="!text-center py-3 w-16 !text-black dark:!text-neutral-100">
-                    #
-                  </TH>
+                  <TH className="!text-center py-3 w-16 !text-black dark:!text-neutral-100">#</TH>
                   <TH className="!text-center py-3 w-56 !text-black dark:!text-neutral-100">
                     <div className="flex items-center justify-center gap-1 w-full">
                       <span>{budgetCodeHeader}</span>
                       <button
                         type="button"
-                        onClick={() =>
-                          setCodeSortDir((prev) =>
-                            prev === "asc" ? "desc" : "asc"
-                          )
-                        }
+                        onClick={() => setCodeSortDir((prev) => (prev === "asc" ? "desc" : "asc"))}
                         className="rounded-lg px-2 py-1 ring-1 ring-black/15 hover:bg-black/5
                                    dark:ring-neutral-800 dark:hover:bg-white/10"
                         aria-label="مرتب‌سازی کد بودجه"
                       >
                         <img
-                          src={
-                            codeSortDir === "asc"
-                              ? "/images/icons/kochikbebozorg.svg"
-                              : "/images/icons/bozorgbekochik.svg"
-                          }
+                          src={codeSortDir === "asc" ? "/images/icons/kochikbebozorg.svg" : "/images/icons/bozorgbekochik.svg"}
                           alt=""
                           className="w-5 h-5 dark:invert"
                         />
                       </button>
                     </div>
                   </TH>
-                  <TH className="!text-center py-3 !text-black dark:!text-neutral-100">
-                    نام بودجه
-                  </TH>
-                  <TH className="!text-center py-3 w-40 !text-black dark:!text-neutral-100">
-                    آخرین برآورد
-                  </TH>
-                  <TH className="!text-center py-3 w-44 !text-black dark:!text-neutral-100">
-                    مجموع تخصیص‌ها
-                  </TH>
-                  <TH className="!text-center py-3 w-48 !text-black dark:!text-neutral-100">
-                    تخصیص جدید
-                  </TH>
-                  <TH className="!text-center py-3 w-[28ch] !text-black dark:!text-neutral-100">
-                    شرح
-                  </TH>
-                  <TH className="!text-center py-3 w-28 !text-black dark:!text-neutral-100">
-                    اقدامات
-                  </TH>
+                  <TH className="!text-center py-3 !text-black dark:!text-neutral-100">نام بودجه</TH>
+                  <TH className="!text-center py-3 w-40 !text-black dark:!text-neutral-100">آخرین برآورد</TH>
+                  <TH className="!text-center py-3 w-44 !text-black dark:!text-neutral-100">مجموع تخصیص‌ها</TH>
+                  <TH className="!text-center py-3 w-48 !text-black dark:!text-neutral-100">تخصیص جدید</TH>
+                  <TH className="!text-center py-3 w-[28ch] !text-black dark:!text-neutral-100">شرح</TH>
+                  <TH className="!text-center py-3 w-28 !text-black dark:!text-neutral-100">اقدامات</TH>
                 </tr>
               </THead>
 
               <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100">
                 {loading ? (
                   <TR>
-                    <TD
-                      colSpan={8}
-                      className="!text-center text-black/60 dark:text-neutral-400 py-3"
-                    >
+                    <TD colSpan={8} className="!text-center text-black/60 dark:text-neutral-400 py-3">
                       در حال بارگذاری…
                     </TD>
                   </TR>
                 ) : (rowsToRender || []).length === 0 ? (
                   <TR>
-                    <TD
-                      colSpan={8}
-                      className="!text-center text-black/60 dark:text-neutral-400 py-3"
-                    >
-                      {active === "projects" &&
-                      !projectId
-                        ? "ابتدا پروژه را انتخاب کنید"
-                        : "موردی یافت نشد."}
+                    <TD colSpan={8} className="!text-center text-black/60 dark:text-neutral-400 py-3">
+                      {active === "projects" && !projectId ? "ابتدا پروژه را انتخاب کنید" : "موردی یافت نشد."}
                     </TD>
                   </TR>
                 ) : (
-                  (rowsToRender || []).map(
-                    (r, idx) => {
-                      const newTotal =
-                        Number(r.totalAlloc || 0) +
-                        Number(r.allocRaw || 0);
-                      const limit = Number(
-                        r.lastAmount || 0
-                      );
-                      const isOver =
-                        newTotal > limit;
+                  (rowsToRender || []).map((r, idx) => {
+                    const newTotal = Number(r.totalAlloc || 0) + Number(r.allocRaw || 0);
+                    const limit = Number(r.lastAmount || 0);
+                    const isOver = newTotal > limit;
 
-                      return (
-                        <TR
-                          key={r.code}
-                          className="border-t border-black/10 odd:bg-black/[0.02] even:bg-black/[0.04] hover:bg-black/[0.06] transition-colors
+                    return (
+                      <TR
+                        key={r.code}
+                        className="border-t border-black/10 odd:bg-black/[0.02] even:bg-black/[0.04] hover:bg-black/[0.06] transition-colors
                                      dark:border-neutral-800 dark:odd:bg-white/5 dark:even:bg-white/10 dark:hover:bg-white/15 last:border-b"
-                        >
-                          <TD className="px-2.5 py-2 align-middle !text-center">
-                            {toFaDigits(
-                              idx + 1
-                            )}
-                          </TD>
-                          <TD className="px-2.5 py-2 align-middle">
-                            <div className="flex justify-center ltr">
-                              {toFaDigits(
-                                renderDisplayBudgetCode(
-                                  r.code
-                                )
-                              )}
-                            </div>
-                          </TD>
-                          <TD className="px-2.5 py-2 whitespace-normal break-words leading-snug align-middle max-w-[28ch] mx-auto !text-center">
-                            {r.name || "—"}
-                          </TD>
-                          <TD className="px-2.5 py-2 align-middle">
-                            <div className="flex justify-center ltr">
-                              {toFaDigits(
-                                formatMoney(
-                                  r.lastAmount ||
-                                    0
-                                )
-                              )}
-                            </div>
-                          </TD>
-                          <TD className="px-2.5 py-2 align-middle">
-                            <div className="flex justify-center ltr">
-                              {toFaDigits(
-                                formatMoney(
-                                  r.totalAlloc ||
-                                    0
-                                )
-                              )}
-                            </div>
-                          </TD>
-                          <TD className="px-2.5 py-2 align-middle !text-center">
-                            <div className="flex flex-col">
-                              <input
-                                ref={(el) =>
-                                  (moneyRefs.current[
-                                    r.code
-                                  ] = el)
-                                }
-                                dir="ltr"
-                                className={`w-full rounded-xl px-2 py-1.5 outline-none border transition
+                      >
+                        <TD className="px-2.5 py-2 align-middle !text-center">{toFaDigits(idx + 1)}</TD>
+                        <TD className="px-2.5 py-2 align-middle">
+                          <div className="flex justify-center ltr">{toFaDigits(renderDisplayBudgetCode(r.code))}</div>
+                        </TD>
+                        <TD className="px-2.5 py-2 whitespace-normal break-words leading-snug align-middle max-w-[28ch] mx-auto !text-center">
+                          {r.name || "—"}
+                        </TD>
+                        <TD className="px-2.5 py-2 align-middle">
+                          <div className="flex justify-center ltr">{toFaDigits(formatMoney(r.lastAmount || 0))}</div>
+                        </TD>
+                        <TD className="px-2.5 py-2 align-middle">
+                          <div className="flex justify-center ltr">{toFaDigits(formatMoney(r.totalAlloc || 0))}</div>
+                        </TD>
+                        <TD className="px-2.5 py-2 align-middle !text-center">
+                          <div className="flex flex-col">
+                            <input
+                              ref={(el) => (moneyRefs.current[r.code] = el)}
+                              dir="ltr"
+                              className={`w-full rounded-xl px-2 py-1.5 outline-none border transition
                                         ${
                                           isOver
                                             ? "border-red-500 ring-1 ring-red-400 bg-red-50 text-red-700 placeholder-red-400 dark:bg-red-600/10 dark:text-red-200"
                                             : "bg-white text-black placeholder-black/40 border border-black/15 focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
                                         }`}
-                                value={toFaDigits(
-                                  formatMoney(
-                                    r.allocRaw
-                                  )
-                                )}
-                                onChange={(e) =>
-                                  onAllocChange(
-                                    r.code,
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="۰"
-                                title={
-                                  isOver
-                                    ? "تخصیص جدید از آخرین برآورد بیشتر می‌شود"
-                                    : ""
-                                }
-                                aria-invalid={
-                                  isOver
-                                    ? "true"
-                                    : "false"
-                                }
-                              />
-                              {isOver && (
-                                <span className="mt-1 text-[11px] leading-none text-red-600 dark:text-red-400">
-                                  مقدار «تخصیص
-                                  جدید» از مقدار
-                                  آخرین برآورد
-                                  بیشتر می‌شود
-                                </span>
-                              )}
-                            </div>
-                          </TD>
-                          <TD className="px-2.5 py-2 align-middle !text-center">
-                            <textarea
-                              ref={(el) =>
-                                (descRefs.current[
-                                  r.code
-                                ] = el)
-                              }
-                              className="w-full rounded-xl px-2 py-1.5 whitespace-normal break-words leading-snug outline-none
+                              value={toFaDigits(formatMoney(r.allocRaw))}
+                              onChange={(e) => onAllocChange(r.code, e.target.value)}
+                              placeholder="۰"
+                              title={isOver ? "تخصیص جدید از آخرین برآورد بیشتر می‌شود" : ""}
+                              aria-invalid={isOver ? "true" : "false"}
+                            />
+                            {isOver && (
+                              <span className="mt-1 text-[11px] leading-none text-red-600 dark:text-red-400">
+                                مقدار «تخصیص جدید» از مقدار آخرین برآورد بیشتر می‌شود
+                              </span>
+                            )}
+                          </div>
+                        </TD>
+                        <TD className="px-2.5 py-2 align-middle !text-center">
+                          <textarea
+                            ref={(el) => (descRefs.current[r.code] = el)}
+                            className="w-full rounded-xl px-2 py-1.5 whitespace-normal break-words leading-snug outline-none
                                      bg-white text-black placeholder-black/40 border border-black/15 focus:ring-2 focus:ring-black/10
                                      dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-                              rows={2}
-                              value={r.desc}
-                              onChange={(e) =>
-                                onDescChange(
-                                  r.code,
-                                  e.target.value
-                                )
-                              }
-                              placeholder="شرح تخصیص…"
-                            />
-                          </TD>
-                          <TD className="px-2.5 py-2 align-middle !text-center">
-                            <div className="inline-flex items-center justify-center gap-2">
-                              <button
-                                onClick={() =>
-                                  removeRow(
-                                    r.code
-                                  )
-                                }
-                                className="h-9 w-11 grid place-items-center rounded-xl bg-white text-red-600
+                            rows={2}
+                            value={r.desc}
+                            onChange={(e) => onDescChange(r.code, e.target.value)}
+                            placeholder="شرح تخصیص…"
+                          />
+                        </TD>
+                        <TD className="px-2.5 py-2 align-middle !text-center">
+                          <div className="inline-flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => removeRow(r.code)}
+                              className="h-9 w-11 grid place-items-center rounded-xl bg-white text-red-600
                                       border border-red-500 hover:bg-red-50 transition
                                       dark:bg-transparent dark:text-red-300 dark:border-red-400/60 dark:hover:bg-white/10"
-                                aria-label="حذف"
-                                title="حذف"
-                              >
-                                <img
-                                  src="/images/icons/hazf.svg"
-                                  alt=""
-                                  className="w-5 h-5 [filter:invert(22%)_sepia(94%)_saturate(7488%)_hue-rotate(1deg)_brightness(103%)_contrast(122%)]"
-                                />
-                              </button>
-                            </div>
-                          </TD>
-                        </TR>
-                      );
-                    }
-                  )
+                              aria-label="حذف"
+                              title="حذف"
+                            >
+                              <img
+                                src="/images/icons/hazf.svg"
+                                alt=""
+                                className="w-5 h-5 [filter:invert(22%)_sepia(94%)_saturate(7488%)_hue-rotate(1deg)_brightness(103%)_contrast(122%)]"
+                              />
+                            </button>
+                          </div>
+                        </TD>
+                      </TR>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
         </TableWrap>
 
-        {err && (
-          <div className="text-sm text-red-600 dark:text-red-400 mt-3">
-            {err}
-          </div>
-        )}
+        {err && <div className="text-sm text-red-600 dark:text-red-400 mt-3">{err}</div>}
 
         <div className="mt-4 flex items-center gap-2 justify-end">
           <button
             onClick={onSubmit}
-            disabled={
-              saving ||
-              (active === "projects" &&
-                !projectId)
-            }
+            disabled={saving || (active === "projects" && !projectId)}
             className="h-10 w-14 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50
                        dark:bg-neutral-100 dark:text-neutral-900"
             aria-label="ثبت"
             title="ثبت"
           >
-            <img
-              src="/images/icons/check.svg"
-              alt=""
-              className="w-5 h-5 invert dark:invert"
-            />
+            <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert dark:invert" />
           </button>
         </div>
 
@@ -1153,43 +897,27 @@ function BudgetAllocationPage() {
                 </h2>
                 <div className="meta text-sm text-black/70 dark:text-neutral-300 grid sm:grid-cols-2 gap-x-6 gap-y-1 mb-3 text-center">
                   <div>
-                    تاریخ:{" "}
-                    <b className="text-black dark:text-neutral-100">
-                      {toFaDigits(todayFa)}
-                    </b>
+                    تاریخ: <b className="text-black dark:text-neutral-100">{toFaDigits(todayFa)}</b>
                   </div>
                   <div>
                     ساعت:{" "}
                     <b className="text-black dark:text-neutral-100">
-                      {toFaDigits(
-                        new Date().toLocaleTimeString(
-                          "fa-IR"
-                        )
-                      )}
+                      {toFaDigits(new Date().toLocaleTimeString("fa-IR"))}
                     </b>
                   </div>
                   {me && (
                     <div>
-                      کاربر:{" "}
+                      کاربر: <b className="text-black dark:text-neutral-100">{me.name || me.username || me.email}</b>
+                    </div>
+                  )}
+                  {active === "projects" && selectedProject && (
+                    <div>
+                      پروژه:{" "}
                       <b className="text-black dark:text-neutral-100">
-                        {me.name ||
-                          me.username ||
-                          me.email}
+                        {toFaDigits(selectedProject.code)} — {selectedProject.name}
                       </b>
                     </div>
                   )}
-                  {active === "projects" &&
-                    selectedProject && (
-                      <div>
-                        پروژه:{" "}
-                        <b className="text-black dark:text-neutral-100">
-                          {toFaDigits(
-                            selectedProject.code
-                          )}{" "}
-                          — {selectedProject.name}
-                        </b>
-                      </div>
-                    )}
                 </div>
 
                 {(rows || []).length > 0 && (
@@ -1197,69 +925,26 @@ function BudgetAllocationPage() {
                     <table className="w-full text-sm [&_th]:text-center [&_td]:text-center">
                       <thead className="bg-black/5 dark:bg:white/5 dark:text-neutral-100">
                         <tr>
-                          <th className="py-3 px-2 text-center">
-                            #
-                          </th>
-                          <th className="py-3 px-2 text-center">
-                            {budgetCodeHeader}
-                          </th>
-                          <th className="py-3 px-2 text-center">
-                            نام بودجه
-                          </th>
-                          <th className="py-3 px-2 text-center">
-                            آخرین برآورد
-                          </th>
-                          <th className="py-3 px-2 text-center">
-                            مجموع تخصیص‌ها
-                          </th>
-                          <th className="py-3 px-2 text-center">
-                            تخصیص جدید
-                          </th>
-                          <th className="py-3 px-2 text-center">
-                            شرح
-                          </th>
+                          <th className="py-3 px-2 text-center">#</th>
+                          <th className="py-3 px-2 text-center">{budgetCodeHeader}</th>
+                          <th className="py-3 px-2 text-center">نام بودجه</th>
+                          <th className="py-3 px-2 text-center">آخرین برآورد</th>
+                          <th className="py-3 px-2 text-center">مجموع تخصیص‌ها</th>
+                          <th className="py-3 px-2 text-center">تخصیص جدید</th>
+                          <th className="py-3 px-2 text-center">شرح</th>
                         </tr>
                       </thead>
                       <tbody>
                         {rows.map((r, i) => (
-                          <tr
-                            key={r.code}
-                            className="border-t border-black/10 dark:border-neutral-800"
-                          >
-                            <td className="py-2 px-2 text-center">
-                              {toFaDigits(i + 1)}
-                            </td>
-                            <td className="py-2 px-2 text-center">
-                              {toFaDigits(
-                                renderDisplayBudgetCode(
-                                  r.code
-                                )
-                              )}
-                            </td>
+                          <tr key={r.code} className="border-t border-black/10 dark:border-neutral-800">
+                            <td className="py-2 px-2 text-center">{toFaDigits(i + 1)}</td>
+                            <td className="py-2 px-2 text-center">{toFaDigits(renderDisplayBudgetCode(r.code))}</td>
                             <td className="py-2 px-2 whitespace-normal break-words leading-relaxed text-center max-w-[28ch] mx-auto">
                               {r.name || "—"}
                             </td>
-                            <td className="py-2 px-2 text-center">
-                              {toFaDigits(
-                                formatMoney(
-                                  r.lastAmount || 0
-                                )
-                              )}
-                            </td>
-                            <td className="py-2 px-2 text-center">
-                              {toFaDigits(
-                                formatMoney(
-                                  r.totalAlloc || 0
-                                )
-                              )}
-                            </td>
-                            <td className="py-2 px-2 text-center">
-                              {toFaDigits(
-                                formatMoney(
-                                  r.allocRaw || 0
-                                )
-                              )}
-                            </td>
+                            <td className="py-2 px-2 text-center">{toFaDigits(formatMoney(r.lastAmount || 0))}</td>
+                            <td className="py-2 px-2 text-center">{toFaDigits(formatMoney(r.totalAlloc || 0))}</td>
+                            <td className="py-2 px-2 text-center">{toFaDigits(formatMoney(r.allocRaw || 0))}</td>
                             <td className="py-2 px-2 whitespace-normal break-words leading-relaxed text-center">
                               {r.desc || "—"}
                             </td>
@@ -1277,68 +962,31 @@ function BudgetAllocationPage() {
                   <table className="w-full text-sm [&_th]:text-center [&_td]:text-center">
                     <thead className="bg-black/5 dark:bg:white/5 dark:text-neutral-100">
                       <tr>
-                        <th className="py-3 px-2 w-56 text-center">
-                          {budgetCodeHeader}
-                        </th>
-                        <th className="py-3 px-2 text-center">
-                          سوابق (مبلغ — تاریخ/ساعت)
-                        </th>
+                        <th className="py-3 px-2 w-56 text-center">{budgetCodeHeader}</th>
+                        <th className="py-3 px-2 text-center">سوابق (مبلغ — تاریخ/ساعت)</th>
                       </tr>
                     </thead>
                     <tbody>
                       {(rows || []).map((r) => {
-                        const hist =
-                          historyByCode?.[r.code] ||
-                          {};
-                        const list = Array.isArray(
-                          hist
-                        )
-                          ? hist
-                          : [];
+                        const hist = historyByCode?.[r.code] || {};
+                        const list = Array.isArray(hist) ? hist : [];
                         return (
-                          <tr
-                            key={"h-" + r.code}
-                            className="border-t border-black/10 dark:border-neutral-800"
-                          >
+                          <tr key={"h-" + r.code} className="border-t border-black/10 dark:border-neutral-800">
                             <td className="py-2 px-2 text-center align-middle">
-                              {toFaDigits(
-                                renderDisplayBudgetCode(
-                                  r.code
-                                )
-                              )}
+                              {toFaDigits(renderDisplayBudgetCode(r.code))}
                             </td>
                             <td className="py-2 px-2 text-center">
                               {list.length === 0 ? (
-                                <span className="text-black/50 dark:text-neutral-400">
-                                  — سابقه‌ای یافت نشد —
-                                </span>
+                                <span className="text-black/50 dark:text-neutral-400">— سابقه‌ای یافت نشد —</span>
                               ) : (
                                 <div className="grid gap-1">
-                                  {list.map(
-                                    (h, i) => (
-                                      <div
-                                        key={i}
-                                        className="flex items-center justify-center gap-4 text-sm"
-                                      >
-                                        <span>
-                                          {toFaDigits(
-                                            formatMoney(
-                                              h.amount ||
-                                                0
-                                            )
-                                          )}
-                                        </span>
-                                        <span className="text-black/70 dark:text-neutral-300">
-                                          —
-                                        </span>
-                                        <span>
-                                          {formatDateTimeFa(
-                                            h.created_at
-                                          )}
-                                        </span>
-                                      </div>
-                                    )
-                                  )}
+                                  {list.map((h, i) => (
+                                    <div key={i} className="flex items-center justify-center gap-4 text-sm">
+                                      <span>{toFaDigits(formatMoney(h.amount || 0))}</span>
+                                      <span className="text-black/70 dark:text-neutral-300">—</span>
+                                      <span>{formatDateTimeFa(h.created_at)}</span>
+                                    </div>
+                                  ))}
                                 </div>
                               )}
                             </td>
@@ -1356,21 +1004,13 @@ function BudgetAllocationPage() {
                   className="h-10 w-10 grid place-items-center rounded-xl border border-black/15 bg-white hover:bg-black/5 transition
                dark:bg-neutral-900 dark:border-neutral-700 dark:hover:bg-neutral-800"
                 >
-                  <img
-                    src="/images/icons/print.svg"
-                    alt="چاپ"
-                    className="w-5 h-5 dark:invert"
-                  />
+                  <img src="/images/icons/print.svg" alt="چاپ" className="w-5 h-5 dark:invert" />
                 </button>
                 <button
                   onClick={() => setModalMsg(null)}
                   className="h-10 w-10 grid place-items-center rounded-xl bg-black text-white dark:bg-neutral-100 dark:text-neutral-900"
                 >
-                  <img
-                    src="/images/icons/bastan.svg"
-                    alt="بستن"
-                    className="w-5 h-5 invert dark:invert-0"
-                  />
+                  <img src="/images/icons/bastan.svg" alt="بستن" className="w-5 h-5 invert dark:invert-0" />
                 </button>
               </div>
             </div>
