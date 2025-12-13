@@ -1,15 +1,11 @@
+// تعریف مراکز بودجه
+
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Shell from "../components/layout/Shell.jsx";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 import PrefixInput from "../components/PrefixInput.jsx";
-import {
-  TableWrap,
-  THead,
-  TH,
-  TR,
-  TD,
-} from "../components/ui/Table.jsx";
+import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
 
 function DefineBudgetCentersPage(){
   const { user } = useAuth();
@@ -124,8 +120,11 @@ function DefineBudgetCentersPage(){
       ...opt,
       headers: { 'Content-Type':'application/json', ...(opt.headers||{}) },
     });
+
+    const txt = await res.text();
     let data = {};
-    try { data = await res.json(); } catch {}
+    try { data = txt ? JSON.parse(txt) : {}; } catch { data = {}; }
+
     if (!res.ok) throw new Error(data?.error || data?.message || 'request_failed');
     return data;
   };
@@ -150,8 +149,9 @@ function DefineBudgetCentersPage(){
 
   // ==== helpers ====
   const toEnDigits = (s='') =>
-    String(s).replace(/[۰-۹]/g, d=>'۰۱۲۳۴۵۶۷۸۹'[d])
-             .replace(/[٠-٩]/g, d=>'٠١٢٣٤٥٦٧٨٩'[d]);
+    String(s)
+      .replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+      .replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
   const onlyDigitsDot = (s='') => toEnDigits(s).replace(/[^0-9.]/g, '');
 
   const canonForCompare = (kind, rawSuffix, baseProjectCode='')=>{
@@ -207,12 +207,42 @@ function DefineBudgetCentersPage(){
   // وضعیت باز/بسته بودن سلسله‌مراتب کدها
   const [openCodes, setOpenCodes] = useState({});
 
-  // بار پروژه‌ها
+  const normalizeProject = (p)=>{
+    const id = p?.id;
+    const code = p?.code ?? p?.project_code ?? p?.projectCode ?? "";
+    const name = p?.name ?? p?.project_name ?? p?.projectName ?? "";
+    return {
+      ...p,
+      id,
+      code: code == null ? "" : String(code),
+      name: name == null ? "" : String(name),
+    };
+  };
+
+  // ✅ بار پروژه‌ها (FIX: items/projects/array)
   useEffect(()=>{ (async ()=>{
     try{
       const pj = await api('/projects');
-      setProjects(pj.projects || []);
-    }catch(e){ console.warn('projects load:', e.message); }
+
+      const raw = Array.isArray(pj)
+        ? pj
+        : Array.isArray(pj?.items)
+        ? pj.items
+        : Array.isArray(pj?.projects)
+        ? pj.projects
+        : Array.isArray(pj?.data)
+        ? pj.data
+        : [];
+
+      const list = (raw || [])
+        .map(normalizeProject)
+        .filter(x => x && x.id != null && String(x.code || '').trim());
+
+      setProjects(list);
+    }catch(e){
+      console.warn('projects load:', e.message);
+      setProjects([]);
+    }
   })(); },[]);
 
   const codeTextOf = useCallback((kind, suffix)=>{
@@ -531,7 +561,7 @@ function DefineBudgetCentersPage(){
               className={`h-10 px-4 rounded-2xl text-sm shadow-sm transition border
                 ${active===t.id
                   ? 'bg-neutral-900 text-white border-neutral-900 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-100'
-                  : 'bg-white text-neutral-900 border-neutral-300 hover:bg-neutral-50 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800'}`}
+                  : 'bg-white text-neutral-900 border border-neutral-300 hover:bg-neutral-50 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800'}`}
             >
               {t.label}
             </button>
@@ -588,7 +618,6 @@ function DefineBudgetCentersPage(){
               </button>
             </div>
 
-            {/* شرح بودجه */}
             <div className="flex-1 min-w-[260px] flex flex-col gap-1">
               <label className="text-sm text-neutral-700 dark:text-neutral-300">شرح بودجه</label>
               <input
@@ -601,7 +630,6 @@ function DefineBudgetCentersPage(){
               />
             </div>
 
-            {/* کد بودجه */}
             <div className="w-[260px] flex flex-col gap-1">
               <label className="text-sm text-neutral-700 dark:text-neutral-300">کد بودجه</label>
 
@@ -636,7 +664,6 @@ function DefineBudgetCentersPage(){
           {err && <div className="text-sm text-red-600 dark:text-red-400 mt-2 text-center">{err}</div>}
         </div>
 
-        {/* جدول */}
         <TableWrap>
           <div className="bg-white text-neutral-900 rounded-2xl ring-1 ring-neutral-200 border border-neutral-200 overflow-hidden
                           dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-800 dark:border-neutral-800
