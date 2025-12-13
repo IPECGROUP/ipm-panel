@@ -1,5 +1,4 @@
 // تعریف مراکز بودجه
-
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Shell from "../components/layout/Shell.jsx";
 import Card from "../components/ui/Card.jsx";
@@ -58,8 +57,8 @@ function DefineBudgetCentersPage() {
     if (Array.isArray(apiTabsRaw)) return apiTabsRaw.map(String);
     return [];
   }, [apiTabsRaw]);
-  const accessFromApiPage = apiTabs === "ALL" || (Array.isArray(apiTabs) && apiTabs.length > 0);
 
+  const accessFromApiPage = apiTabs === "ALL" || (Array.isArray(apiTabs) && apiTabs.length > 0);
   const canAccessPage = isAdmin || centersEnabled || hasPageLabel || accessFromApiPage;
 
   const allTabs = [
@@ -95,9 +94,7 @@ function DefineBudgetCentersPage() {
     if (isAdmin) return allTabs;
     if (apiTabs === "ALL") return allTabs;
     const allow = new Set(
-      [...(unitTabsFromUA || []), ...(unitTabsFromLabels || []), ...(Array.isArray(apiTabs) ? apiTabs : [])].map(
-        String
-      )
+      [...(unitTabsFromUA || []), ...(unitTabsFromLabels || []), ...(Array.isArray(apiTabs) ? apiTabs : [])].map(String)
     );
     return allTabs.filter((t) => allow.has(t.id));
   }, [isAdmin, unitTabsFromUA, unitTabsFromLabels, apiTabs]);
@@ -127,8 +124,8 @@ function DefineBudgetCentersPage() {
       try {
         const data = await api("/access/my");
         setAccessMy(data || null);
-      } catch (e) {
-      } finally {
+      } catch {}
+      finally {
         setAccessLoaded(true);
       }
     })();
@@ -137,28 +134,21 @@ function DefineBudgetCentersPage() {
   const [active, setActive] = useState(() => tabs[0]?.id || "");
 
   useEffect(() => {
-    if (!tabs.some((t) => t.id === active)) {
-      setActive(tabs[0]?.id || "");
-    }
+    if (!tabs.some((t) => t.id === active)) setActive(tabs[0]?.id || "");
   }, [tabs, active]);
 
   const toEnDigits = (s = "") =>
     String(s)
-      .replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)))
-      .replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
-
+      .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d))
+      .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
   const onlyDigitsDot = (s = "") => toEnDigits(s).replace(/[^0-9.]/g, "");
 
   const canonForCompare = (kind, rawSuffix) => {
-    const onlyDigits = (txt) => {
-      const en = toEnDigits(txt);
-      return en.replace(/[^\d]/g, "");
-    };
-
+    const onlyDigits = (txt) => toEnDigits(txt).replace(/[^\d]/g, "");
     if (kind === "projects") {
       const en = toEnDigits(String(rawSuffix || "")).replace(/[^0-9.]/g, "");
       const segments = en.split(".").filter(Boolean);
-      if (segments.length === 0) return "";
+      if (!segments.length) return "";
       return segments
         .map((s) => {
           const n = parseInt(s, 10);
@@ -166,7 +156,6 @@ function DefineBudgetCentersPage() {
         })
         .join(".");
     }
-
     const pref = prefixOf(kind);
     let s = String(rawSuffix || "").toUpperCase().trim();
     if (pref) {
@@ -179,16 +168,59 @@ function DefineBudgetCentersPage() {
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState("");
 
+  const normalizeProject = (p) => {
+    const code = p?.code ?? p?.project_code ?? p?.projectCode ?? p?.projectNo ?? p?.project_no ?? p?.suffix ?? "";
+    const name = p?.name ?? p?.project_name ?? p?.projectName ?? p?.description ?? p?.title ?? p?.label ?? "";
+    return {
+      ...p,
+      id: p?.id,
+      code: code == null ? "" : String(code),
+      name: name == null ? "" : String(name),
+    };
+  };
+
+  // ✅ پروژه‌ها را از items/projects/array بخوان
+  useEffect(() => {
+    (async () => {
+      try {
+        const pj = await api("/projects");
+        const raw =
+          Array.isArray(pj) ? pj :
+          Array.isArray(pj?.items) ? pj.items :
+          Array.isArray(pj?.projects) ? pj.projects :
+          Array.isArray(pj?.data) ? pj.data :
+          [];
+
+        const list = (raw || [])
+          .map(normalizeProject)
+          .filter((x) => x && x.id != null && String(x.code || "").trim());
+
+        setProjects(list);
+      } catch (e) {
+        console.warn("projects load:", e?.message || e);
+        setProjects([]);
+      }
+    })();
+  }, []);
+
   const selectedProject = useMemo(
     () => projects.find((p) => String(p.id) === String(projectId)),
     [projects, projectId]
   );
 
   const sortedProjects = useMemo(() => {
-    return (projects || [])
-      .slice()
-      .sort((a, b) => String(a.code || "").localeCompare(String(b.code || ""), "fa", { numeric: true, sensitivity: "base" }));
+    return (projects || []).slice().sort((a, b) =>
+      String(a.code || "").localeCompare(String(b.code || ""), "fa", { numeric: true, sensitivity: "base" })
+    );
   }, [projects]);
+
+  // ✅ وقتی تب projects فعال شد و هنوز پروژه انتخاب نشده، اولین پروژه را خودکار انتخاب کن
+  useEffect(() => {
+    if (active !== "projects") return;
+    if (projectId) return;
+    if ((sortedProjects || []).length === 0) return;
+    setProjectId(String(sortedProjects[0].id));
+  }, [active, projectId, sortedProjects]);
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -204,76 +236,14 @@ function DefineBudgetCentersPage() {
 
   const [openCodes, setOpenCodes] = useState({});
 
-  const normalizeProject = (p) => {
-    const code =
-      p?.code ??
-      p?.project_code ??
-      p?.projectCode ??
-      p?.projectNo ??
-      p?.project_no ??
-      p?.suffix ??
-      "";
-    const name =
-      p?.name ??
-      p?.project_name ??
-      p?.projectName ??
-      p?.description ??
-      p?.title ??
-      p?.label ??
-      "";
-    return {
-      ...p,
-      id: p?.id,
-      code: code == null ? "" : String(code),
-      name: name == null ? "" : String(name),
-    };
-  };
-
-  // ✅ لود پروژه‌ها وقتی user آماده شد (و دوباره اگر تب پروژه‌ها باز شد)
-  useEffect(() => {
-    if (!user) return;
-
-    let alive = true;
-
-    (async () => {
-      try {
-        const pj = await api("/projects");
-
-        const raw =
-          Array.isArray(pj) ? pj :
-          Array.isArray(pj?.items) ? pj.items :
-          Array.isArray(pj?.projects) ? pj.projects :
-          Array.isArray(pj?.data) ? pj.data :
-          [];
-
-        const list = (raw || [])
-          .map(normalizeProject)
-          .filter((x) => x && x.id != null && String(x.code || "").trim());
-
-        if (alive) setProjects(list);
-      } catch (e) {
-        if (alive) setProjects([]);
-        console.warn("projects load:", e?.message || e);
-      }
-    })();
-
-    return () => {
-      alive = false;
-    };
-  }, [user?.id, active]);
-
   const codeTextOf = useCallback(
     (kind, suffix) => {
-      if (kind === "projects") {
-        return "PB-" + String(suffix || "");
-      }
+      if (kind === "projects") return "PB-" + String(suffix || "");
       const pref = prefixOf(kind);
       const raw = String(suffix || "").trim();
       let normalized = raw;
       const re = new RegExp("^" + pref + "[\\-\\.]?", "i");
-      if (re.test(raw)) {
-        normalized = raw.replace(re, "").replace(/^[-.]/, "");
-      }
+      if (re.test(raw)) normalized = raw.replace(re, "").replace(/^[-.]/, "");
       return (pref ? pref + "-" : "") + normalized;
     },
     [tabs]
@@ -289,16 +259,15 @@ function DefineBudgetCentersPage() {
     try {
       let items = [];
       if (kind === "projects") {
-        const allowSet = new Set(tabs.map((t) => t.id));
-        if (!allowSet.has("projects") || !projectId) {
+        // اگر پروژه هنوز انتخاب نشده، فعلاً خالی بگذار تا auto-select انجام شود
+        if (!selectedProject?.code) {
           setRows([]);
-          setLoading(false);
           return;
         }
         const list = await api("/centers/projects").catch(() => ({ items: [] }));
         items = (list.items || []).filter((it) => {
           const base = String(selectedProject?.code || "").trim();
-          const suf = String(it.suffix || "").trim();
+          const suf = String(it.suffix || it.code || "").trim();
           return suf === base || suf.startsWith(base + ".");
         });
       } else {
@@ -306,17 +275,15 @@ function DefineBudgetCentersPage() {
         items = r.items || [];
       }
 
-      const sorted = items
-        .slice()
-        .sort((a, b) =>
-          String(codeTextOf(kind, a.suffix)).localeCompare(String(codeTextOf(kind, b.suffix)), "fa", {
-            numeric: true,
-            sensitivity: "base",
-          })
-        );
+      const sorted = items.slice().sort((a, b) =>
+        String(codeTextOf(kind, a.suffix)).localeCompare(String(codeTextOf(kind, b.suffix)), "fa", {
+          numeric: true,
+          sensitivity: "base",
+        })
+      );
       setRows(sorted);
     } catch (e) {
-      setErr(e.message || "خطا در دریافت لیست");
+      setErr(e?.message || "خطا در دریافت لیست");
       setRows([]);
     } finally {
       setLoading(false);
@@ -336,7 +303,7 @@ function DefineBudgetCentersPage() {
 
   useEffect(() => {
     if (active === "projects") loadCenters(active);
-  }, [projectId]);
+  }, [projectId, selectedProject?.code]);
 
   useEffect(() => {
     setOpenCodes({});
@@ -346,7 +313,7 @@ function DefineBudgetCentersPage() {
     (r) => {
       if (active === "projects") {
         const base = String(selectedProject?.code || "").trim();
-        const raw = String(r.suffix || "").trim();
+        const raw = String(r.suffix || r.code || "").trim();
         if (!base) return raw;
         if (raw === base) return "";
         if (raw.startsWith(base + ".")) return raw.slice((base + ".").length);
@@ -400,7 +367,7 @@ function DefineBudgetCentersPage() {
       setNewDesc("");
       await loadCenters(active);
     } catch (ex) {
-      setErr(ex.message || "خطا در ثبت");
+      setErr(ex?.message || "خطا در ثبت");
     } finally {
       setSaving(false);
     }
@@ -438,10 +405,7 @@ function DefineBudgetCentersPage() {
     }
 
     const newCanon = canonForCompare(active, suffixToSend);
-    const dup = (rows || []).some((r) => {
-      if (r.id === editId) return false;
-      return canonForCompare(active, r.suffix) === newCanon;
-    });
+    const dup = (rows || []).some((r) => r.id !== editId && canonForCompare(active, r.suffix) === newCanon);
     if (dup) {
       setErr("این کد بودجه قبلاً ثبت شده است.");
       return;
@@ -457,7 +421,7 @@ function DefineBudgetCentersPage() {
       cancelEdit();
       await loadCenters(active);
     } catch (ex) {
-      setErr(ex.message || "خطا در ویرایش");
+      setErr(ex?.message || "خطا در ویرایش");
     } finally {
       setSaving(false);
     }
@@ -471,8 +435,7 @@ function DefineBudgetCentersPage() {
       const suffixPlain = getSuffixPlain(r);
       const parts = suffixPlain ? suffixPlain.split(".").filter(Boolean) : [];
       const key = suffixPlain;
-      let parentKey = null;
-      if (parts.length > 1) parentKey = parts.slice(0, -1).join(".");
+      const parentKey = parts.length > 1 ? parts.slice(0, -1).join(".") : null;
       return { row: r, key, parentKey, suffixPlain, parts };
     });
 
@@ -517,343 +480,306 @@ function DefineBudgetCentersPage() {
       await api(`/centers/${active}/${r.id}`, { method: "DELETE" });
       await loadCenters(active);
     } catch (ex) {
-      alert(ex.message || "خطا در حذف");
+      alert(ex?.message || "خطا در حذف");
     }
   };
 
   if (!accessLoaded) {
     return (
-      <>
-        <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-          <div className="mb-4 text-base md:text-lg">
-            <span className="text-neutral-700 dark:text-neutral-300">بودجه‌بندی</span>
-            <span className="mx-2 text-neutral-500 dark:text-neutral-400">›</span>
-            <span className="font-semibold text-neutral-900 dark:text-neutral-100">تعریف مراکز بودجه</span>
-          </div>
-          <div className="p-6 text-center text-neutral-600 dark:text-neutral-400">در حال بررسی دسترسی…</div>
-        </Card>
-      </>
-    );
-  }
-
-  if (!canAccessPage) {
-    return (
-      <>
-        <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-          <div className="mb-4 text-base md:text-lg">
-            <span className="text-neutral-700 dark:text-neutral-300">بودجه‌بندی</span>
-            <span className="mx-2 text-neutral-500 dark:text-neutral-400">›</span>
-            <span className="font-semibold text-neutral-900 dark:text-neutral-100">تعریف مراکز بودجه</span>
-          </div>
-          <div className="p-6 rounded-2xl ring-1 ring-neutral-200 bg-white text-center text-red-600 dark:bg-neutral-900 dark:ring-neutral-800 dark:text-red-400">
-            شما سطح دسترسی لازم را ندارید.
-          </div>
-        </Card>
-      </>
-    );
-  }
-
-  if (tabs.length === 0) {
-    return (
-      <>
-        <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-          <div className="mb-4 text-base md:text-lg">
-            <span className="text-neutral-700 dark:text-neutral-300">بودجه‌بندی</span>
-            <span className="mx-2 text-neutral-500 dark:text-neutral-400">›</span>
-            <span className="font-semibold text-neutral-900 dark:text-neutral-100">تعریف مراکز بودجه</span>
-          </div>
-          <div className="p-6 rounded-2xl ring-1 ring-neutral-200 bg-white text-center text-red-600 dark:bg-neutral-900 dark:ring-neutral-800 dark:text-red-400">
-            شما سطح دسترسی لازم را ندارید.
-          </div>
-        </Card>
-      </>
-    );
-  }
-
-  return (
-    <>
       <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
         <div className="mb-4 text-base md:text-lg">
           <span className="text-neutral-700 dark:text-neutral-300">بودجه‌بندی</span>
           <span className="mx-2 text-neutral-500 dark:text-neutral-400">›</span>
           <span className="font-semibold text-neutral-900 dark:text-neutral-100">تعریف مراکز بودجه</span>
         </div>
+        <div className="p-6 text-center text-neutral-600 dark:text-neutral-400">در حال بررسی دسترسی…</div>
+      </Card>
+    );
+  }
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-4">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setActive(t.id)}
-              className={`h-10 px-4 rounded-2xl text-sm shadow-sm transition border
-                ${
-                  active === t.id
-                    ? "bg-neutral-900 text-white border-neutral-900 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-100"
-                    : "bg-white text-neutral-900 border-neutral-300 hover:bg-neutral-50 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800"
-                }`}
-            >
-              {t.label}
-            </button>
-          ))}
+  if (!canAccessPage || tabs.length === 0) {
+    return (
+      <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+        <div className="mb-4 text-base md:text-lg">
+          <span className="text-neutral-700 dark:text-neutral-300">بودجه‌بندی</span>
+          <span className="mx-2 text-neutral-500 dark:text-neutral-400">›</span>
+          <span className="font-semibold text-neutral-900 dark:text-neutral-100">تعریف مراکز بودجه</span>
         </div>
-
-        {active === "projects" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-neutral-700 dark:text-neutral-300">کد پروژه</label>
-              <select
-                className="w-full rounded-xl px-3 py-2 ltr font-[inherit]
-                           bg-white text-neutral-900 border border-neutral-200 outline-none
-                           dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-              >
-                <option value="">انتخاب کنید</option>
-                {(sortedProjects || []).map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.code || "—"}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-neutral-700 dark:text-neutral-300">نام پروژه</label>
-              <input
-                className="w-full rounded-xl px-3 py-2
-                           bg-white text-neutral-900 border border-neutral-200 outline-none placeholder:text-neutral-400
-                           dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                value={selectedProject?.name || ""}
-                readOnly
-                placeholder="پس از انتخاب کد پروژه پر می‌شود"
-              />
-            </div>
-          </div>
-        )}
-
-        <div
-          className="rounded-2xl ring-1 ring-neutral-200 border border-neutral-200 p-4 mb-4 bg-white dark:bg-neutral-900 dark:ring-neutral-800 dark:border-neutral-800"
-          dir="rtl"
-        >
-          <form className="flex flex-col md:flex-row-reverse md:items-end gap-3" onSubmit={(e) => { e.preventDefault(); addRow(); }}>
-            <div className="md:w-auto">
-              <button
-                type="submit"
-                disabled={saving || (active === "projects" && !projectId)}
-                className="h-10 w-12 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
-                title={active === "projects" && !projectId ? "ابتدا کد پروژه را انتخاب کنید" : "افزودن"}
-                aria-label="افزودن"
-              >
-                <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
-              </button>
-            </div>
-
-            <div className="flex-1 min-w-[260px] flex flex-col gap-1">
-              <label className="text-sm text-neutral-700 dark:text-neutral-300">شرح بودجه</label>
-              <input
-                className="w-full rounded-2xl px-3 py-2 text-center
-                           bg-white text-neutral-900 border border-neutral-200 outline-none placeholder:text-neutral-400
-                           dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                value={newDesc}
-                onChange={(e) => setNewDesc(e.target.value)}
-                placeholder="شرح…"
-              />
-            </div>
-
-            <div className="w-[260px] flex flex-col gap-1">
-              <label className="text-sm text-neutral-700 dark:text-neutral-300">کد بودجه</label>
-
-              {active !== "projects" && (
-                <div className="w-full flex items-center rounded-xl overflow-hidden bg-white text-neutral-900 ltr border border-neutral-200 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700">
-                  <span className="px-3 py-2 font-mono select-none bg-neutral-100 ring-1 ring-neutral-200 dark:bg-neutral-900 dark:ring-neutral-800">
-                    {visualPrefix(active)}
-                  </span>
-                  <input
-                    className="flex-1 px-3 py-2 font-mono outline-none bg-transparent placeholder:text-neutral-400 text-center"
-                    value={newSuffix}
-                    onChange={(e) => setNewSuffix(onlyDigitsDot(e.target.value))}
-                    spellCheck={false}
-                  />
-                </div>
-              )}
-
-              {active === "projects" && (
-                <div className="w-full flex items-center rounded-xl overflow-hidden bg-white text-neutral-900 ltr border border-neutral-200 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700">
-                  <span className="px-3 py-2 font-mono select-none bg-neutral-100 ring-1 ring-neutral-200 text-xs md:text-sm whitespace-nowrap dark:bg-neutral-900 dark:ring-neutral-800">
-                    {"PB-"}
-                    {selectedProject?.code || ""}
-                    {selectedProject ? "." : ""}
-                  </span>
-                  <input
-                    className="flex-1 px-3 py-2 font-mono outline-none bg-transparent text-center text-sm md:text-base placeholder:text-neutral-400"
-                    value={newSuffix}
-                    onChange={(e) => setNewSuffix(onlyDigitsDot(e.target.value))}
-                    spellCheck={false}
-                  />
-                </div>
-              )}
-            </div>
-          </form>
-
-          {err && <div className="text-sm text-red-600 dark:text-red-400 mt-2 text-center">{err}</div>}
+        <div className="p-6 rounded-2xl ring-1 ring-neutral-200 bg-white text-center text-red-600 dark:bg-neutral-900 dark:ring-neutral-800 dark:text-red-400">
+          شما سطح دسترسی لازم را ندارید.
         </div>
+      </Card>
+    );
+  }
 
-        <TableWrap>
-          <div
-            className="bg-white text-neutral-900 rounded-2xl ring-1 ring-neutral-200 border border-neutral-200 overflow-hidden
-                          dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-800 dark:border-neutral-800
-                          [&_th]:text-neutral-900 [&_td]:text-neutral-900
-                          dark:[&_th]:text-neutral-100 dark:[&_td]:text-neutral-100"
+  return (
+    <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+      <div className="mb-4 text-base md:text-lg">
+        <span className="text-neutral-700 dark:text-neutral-300">بودجه‌بندی</span>
+        <span className="mx-2 text-neutral-500 dark:text-neutral-400">›</span>
+        <span className="font-semibold text-neutral-900 dark:text-neutral-100">تعریف مراکز بودجه</span>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-4">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setActive(t.id)}
+            className={`h-10 px-4 rounded-2xl text-sm shadow-sm transition border ${
+              active === t.id
+                ? "bg-neutral-900 text-white border-neutral-900 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-100"
+                : "bg-white text-neutral-900 border-neutral-300 hover:bg-neutral-50 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800"
+            }`}
           >
-            <table className="w-full text-[13px] md:text-sm text-center [&_th]:text-center [&_td]:text-center" dir="rtl">
-              <THead>
-                <tr className="bg-neutral-100 text-neutral-900 border-b border-neutral-200 sticky top-0 z-10 dark:bg-white/5 dark:text-neutral-100 dark:border-neutral-700">
-                  <TH className="!text-center !font-semibold !py-2 w-20">#</TH>
-                  <TH className="!text-center !font-semibold !py-2 w-56">کد بودجه</TH>
-                  <TH className="!text-center !font-semibold !py-2">شرح</TH>
-                  <TH className="!text-center !font-semibold !py-2 w-40">اقدامات</TH>
-                </tr>
-              </THead>
-              <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
-                {loading ? (
-                  <TR>
-                    <TD colSpan={4} className="text-center text-neutral-700 dark:text-neutral-400 py-3">
-                      در حال بارگذاری…
-                    </TD>
-                  </TR>
-                ) : (displayRows || []).length === 0 ? (
-                  <TR>
-                    <TD colSpan={4} className="text-center text-neutral-700 py-3 bg-neutral-50 dark:text-neutral-400 dark:bg-transparent">
-                      {active === "projects" && !projectId ? "ابتدا کد پروژه را انتخاب کنید" : "موردی ثبت نشده."}
-                    </TD>
-                  </TR>
-                ) : (
-                  (displayRows || []).map((node, idx) => {
-                    const r = node.row;
-                    const level = node.depth || 0;
-                    const hasChildren = !!node.hasChildren;
-                    const codeText = codeTextOf(active, r.suffix);
-                    const isEditing = editId === r.id;
-                    const isOpen = !!openCodes[node.key];
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-                    return (
-                      <TR
-                        key={r.id}
-                        className="border-t border-neutral-200 odd:bg-neutral-50 even:bg-neutral-100/70 hover:bg-neutral-200/40 transition-colors
-                                   dark:border-neutral-800 dark:odd:bg-transparent dark:even:bg-white/5 dark:hover:bg-white/10"
-                      >
-                        <TD className="px-2.5 py-2">{idx + 1}</TD>
-                        <TD className="px-2.5 py-2 font-mono ltr text-center" style={{ paddingRight: level * 12 }}>
-                          {isEditing ? (
-                            <input
-                              className="w-full max-w-[220px] rounded-xl px-2 py-1.5 bg-white text-neutral-900 font-mono ltr text-center border border-neutral-300 outline-none placeholder:text-neutral-400 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                              value={editSuffix}
-                              onChange={(e) => setEditSuffix(onlyDigitsDot(e.target.value))}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  saveEdit();
-                                }
-                              }}
-                              spellCheck={false}
-                            />
-                          ) : (
-                            <div className="inline-flex items-center justify-center gap-1">
-                              {hasChildren && (
-                                <button
-                                  type="button"
-                                  onClick={() => setOpenCodes((prev) => ({ ...prev, [node.key]: !isOpen }))}
-                                  className="w-5 h-5 grid place-items-center rounded-full border border-neutral-300 text-xs bg-white dark:bg-neutral-800 dark:border-neutral-600"
-                                  aria-label={isOpen ? "بستن زیرمجموعه" : "باز کردن زیرمجموعه"}
-                                >
-                                  {isOpen ? "−" : "+"}
-                                </button>
-                              )}
+      {active === "projects" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+          <div className="flex flex-col gap-1">
+            <label className="text-sm text-neutral-700 dark:text-neutral-300">کد پروژه</label>
+            <select
+              className="w-full rounded-xl px-3 py-2 ltr font-[inherit] bg-white text-neutral-900 border border-neutral-200 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+            >
+              <option className="bg-white dark:bg-neutral-900" value="">
+                انتخاب کنید
+              </option>
+              {(sortedProjects || []).map((p) => (
+                <option className="bg-white dark:bg-neutral-900" key={p.id} value={p.id}>
+                  {p.code ? p.code : "—"}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm text-neutral-700 dark:text-neutral-300">نام پروژه</label>
+            <input
+              className="w-full rounded-xl px-3 py-2 bg-white text-neutral-900 border border-neutral-200 outline-none placeholder:text-neutral-400 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
+              value={selectedProject?.name || ""}
+              readOnly
+              placeholder="پس از انتخاب کد پروژه پر می‌شود"
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="rounded-2xl ring-1 ring-neutral-200 border border-neutral-200 p-4 mb-4 bg-white dark:bg-neutral-900 dark:ring-neutral-800 dark:border-neutral-800" dir="rtl">
+        <form className="flex flex-col md:flex-row-reverse md:items-end gap-3" onSubmit={(e) => (e.preventDefault(), addRow())}>
+          <div className="md:w-auto">
+            <button
+              type="submit"
+              disabled={saving || (active === "projects" && !projectId)}
+              className="h-10 w-12 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
+              title={active === "projects" && !projectId ? "ابتدا کد پروژه را انتخاب کنید" : "افزودن"}
+              aria-label="افزودن"
+            >
+              <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
+            </button>
+          </div>
+
+          <div className="flex-1 min-w-[260px] flex flex-col gap-1">
+            <label className="text-sm text-neutral-700 dark:text-neutral-300">شرح بودجه</label>
+            <input
+              className="w-full rounded-2xl px-3 py-2 text-center bg-white text-neutral-900 border border-neutral-200 outline-none placeholder:text-neutral-400 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
+              value={newDesc}
+              onChange={(e) => setNewDesc(e.target.value)}
+              placeholder="شرح…"
+            />
+          </div>
+
+          <div className="w-[260px] flex flex-col gap-1">
+            <label className="text-sm text-neutral-700 dark:text-neutral-300">کد بودجه</label>
+
+            {active !== "projects" && (
+              <div className="w-full flex items-center rounded-xl overflow-hidden bg-white text-neutral-900 ltr border border-neutral-200 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700">
+                <span className="px-3 py-2 font-mono select-none bg-neutral-100 ring-1 ring-neutral-200 dark:bg-neutral-900 dark:ring-neutral-800">
+                  {visualPrefix(active)}
+                </span>
+                <input
+                  className="flex-1 px-3 py-2 font-mono outline-none bg-transparent placeholder:text-neutral-400 text-center"
+                  value={newSuffix}
+                  onChange={(e) => setNewSuffix(onlyDigitsDot(e.target.value))}
+                  spellCheck={false}
+                />
+              </div>
+            )}
+
+            {active === "projects" && (
+              <div className="w-full flex items-center rounded-xl overflow-hidden bg-white text-neutral-900 ltr border border-neutral-200 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700">
+                <span className="px-3 py-2 font-mono select-none bg-neutral-100 ring-1 ring-neutral-200 text-xs md:text-sm whitespace-nowrap dark:bg-neutral-900 dark:ring-neutral-800">
+                  {"PB-"}
+                  {selectedProject?.code || ""}
+                  {selectedProject ? "." : ""}
+                </span>
+                <input
+                  className="flex-1 px-3 py-2 font-mono outline-none bg-transparent text-center text-sm md:text-base placeholder:text-neutral-400"
+                  value={newSuffix}
+                  onChange={(e) => setNewSuffix(onlyDigitsDot(e.target.value))}
+                  spellCheck={false}
+                />
+              </div>
+            )}
+          </div>
+        </form>
+
+        {err && <div className="text-sm text-red-600 dark:text-red-400 mt-2 text-center">{err}</div>}
+      </div>
+
+      <TableWrap>
+        <div className="bg-white text-neutral-900 rounded-2xl ring-1 ring-neutral-200 border border-neutral-200 overflow-hidden dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-800 dark:border-neutral-800 [&_th]:text-neutral-900 [&_td]:text-neutral-900 dark:[&_th]:text-neutral-100 dark:[&_td]:text-neutral-100">
+          <table className="w-full text-[13px] md:text-sm text-center [&_th]:text-center [&_td]:text-center" dir="rtl">
+            <THead>
+              <tr className="bg-neutral-100 text-neutral-900 border-b border-neutral-200 sticky top-0 z-10 dark:bg-white/5 dark:text-neutral-100 dark:border-neutral-700">
+                <TH className="!text-center !font-semibold !py-2 w-20">#</TH>
+                <TH className="!text-center !font-semibold !py-2 w-56">کد بودجه</TH>
+                <TH className="!text-center !font-semibold !py-2">شرح</TH>
+                <TH className="!text-center !font-semibold !py-2 w-40">اقدامات</TH>
+              </tr>
+            </THead>
+            <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+              {loading ? (
+                <TR>
+                  <TD colSpan={4} className="text-center text-neutral-700 dark:text-neutral-400 py-3">
+                    در حال بارگذاری…
+                  </TD>
+                </TR>
+              ) : (displayRows || []).length === 0 ? (
+                <TR>
+                  <TD colSpan={4} className="text-center text-neutral-700 py-3 bg-neutral-50 dark:text-neutral-400 dark:bg-transparent">
+                    {active === "projects" && !projectId ? "ابتدا کد پروژه را انتخاب کنید" : "موردی ثبت نشده."}
+                  </TD>
+                </TR>
+              ) : (
+                (displayRows || []).map((node, idx) => {
+                  const r = node.row;
+                  const level = node.depth || 0;
+                  const hasChildren = !!node.hasChildren;
+                  const codeText = codeTextOf(active, r.suffix);
+                  const isEditing = editId === r.id;
+                  const isOpen = !!openCodes[node.key];
+
+                  return (
+                    <TR
+                      key={r.id}
+                      className="border-t border-neutral-200 odd:bg-neutral-50 even:bg-neutral-100/70 hover:bg-neutral-200/40 transition-colors dark:border-neutral-800 dark:odd:bg-transparent dark:even:bg-white/5 dark:hover:bg-white/10"
+                    >
+                      <TD className="px-2.5 py-2">{idx + 1}</TD>
+                      <TD className="px-2.5 py-2 font-mono ltr text-center" style={{ paddingRight: level * 12 }}>
+                        {isEditing ? (
+                          <input
+                            className="w-full max-w-[220px] rounded-xl px-2 py-1.5 bg-white text-neutral-900 font-mono ltr text-center border border-neutral-300 outline-none placeholder:text-neutral-400 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
+                            value={editSuffix}
+                            onChange={(e) => setEditSuffix(onlyDigitsDot(e.target.value))}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                saveEdit();
+                              }
+                            }}
+                            spellCheck={false}
+                          />
+                        ) : (
+                          <div className="inline-flex items-center justify-center gap-1">
+                            {hasChildren && (
                               <button
                                 type="button"
-                                onClick={() => prefillFromRow(r)}
-                                className="px-1 py-0.5 hover:underline"
-                                title="قرار دادن این کد در فیلد کد بودجه"
+                                onClick={() => setOpenCodes((prev) => ({ ...prev, [node.key]: !isOpen }))}
+                                className="w-5 h-5 grid place-items-center rounded-full border border-neutral-300 text-xs bg-white dark:bg-neutral-800 dark:border-neutral-600"
+                                aria-label={isOpen ? "بستن زیرمجموعه" : "باز کردن زیرمجموعه"}
                               >
-                                {codeText}
+                                {isOpen ? "−" : "+"}
                               </button>
-                            </div>
-                          )}
-                        </TD>
-                        <TD className="px-2.5 py-2 text-center">
-                          {isEditing ? (
-                            <input
-                              className="w-full max-w-md rounded-xl px-2 py-1.5 bg-white text-neutral-900 text-center border border-neutral-300 outline-none placeholder:text-neutral-400 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                              value={editDesc}
-                              onChange={(e) => setEditDesc(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  saveEdit();
-                                }
-                              }}
-                            />
-                          ) : (
-                            r.description || "—"
-                          )}
-                        </TD>
-                        <TD className="px-2.5 py-2 text-center">
-                          {isEditing ? (
-                            <div className="inline-flex items-center gap-2">
-                              <button
-                                onClick={saveEdit}
-                                className="h-9 w-11 grid place-items-center rounded-xl bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
-                                aria-label="ذخیره"
-                                title="ذخیره"
-                              >
-                                <img src="/images/icons/check.svg" alt="" className="w-4 h-4 invert dark:invert-0" />
-                              </button>
-                              <button
-                                onClick={cancelEdit}
-                                className="h-9 w-11 grid place-items-center rounded-xl ring-1 ring-neutral-200 text-neutral-900 hover:bg-neutral-50 transition dark:ring-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10"
-                                aria-label="انصراف"
-                                title="انصراف"
-                              >
-                                <img src="/images/icons/hazf.svg" alt="" className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="inline-flex items-center gap-2">
-                              <button
-                                onClick={() => beginEdit(r)}
-                                className="h-9 w-11 grid place-items-center rounded-xl ring-1 ring-neutral-200 bg-white text-neutral-800 hover:bg-neutral-50 transition dark:bg-transparent dark:ring-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10"
-                                aria-label="ویرایش"
-                                title="ویرایش"
-                              >
-                                <img src="/images/icons/pencil.svg" alt="" className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => del(r)}
-                                className="h-9 w-11 grid place-items-center rounded-xl ring-1 ring-red-400 bg-white text-red-600 hover:bg-neutral-50 transition dark:bg-transparent dark:ring-red-500 dark:text-red-400 dark:hover:bg-white/10"
-                                aria-label="حذف"
-                                title="حذف"
-                              >
-                                <img
-                                  src="/images/icons/hazf.svg"
-                                  alt=""
-                                  className="w-4 h-4"
-                                  style={{
-                                    filter:
-                                      "invert(18%) sepia(93%) saturate(7494%) hue-rotate(2deg) brightness(96%) contrast(110%)",
-                                  }}
-                                />
-                              </button>
-                            </div>
-                          )}
-                        </TD>
-                      </TR>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </TableWrap>
-      </Card>
-    </>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => prefillFromRow(r)}
+                              className="px-1 py-0.5 hover:underline"
+                              title="قرار دادن این کد در فیلد کد بودجه"
+                            >
+                              {codeText}
+                            </button>
+                          </div>
+                        )}
+                      </TD>
+                      <TD className="px-2.5 py-2 text-center">
+                        {isEditing ? (
+                          <input
+                            className="w-full max-w-md rounded-xl px-2 py-1.5 bg-white text-neutral-900 text-center border border-neutral-300 outline-none placeholder:text-neutral-400 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
+                            value={editDesc}
+                            onChange={(e) => setEditDesc(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                saveEdit();
+                              }
+                            }}
+                          />
+                        ) : (
+                          r.description || "—"
+                        )}
+                      </TD>
+                      <TD className="px-2.5 py-2 text-center">
+                        {isEditing ? (
+                          <div className="inline-flex items-center gap-2">
+                            <button
+                              onClick={saveEdit}
+                              className="h-9 w-11 grid place-items-center rounded-xl bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
+                              aria-label="ذخیره"
+                              title="ذخیره"
+                            >
+                              <img src="/images/icons/check.svg" alt="" className="w-4 h-4 invert dark:invert-0" />
+                            </button>
+                            <button
+                              onClick={cancelEdit}
+                              className="h-9 w-11 grid place-items-center rounded-xl ring-1 ring-neutral-200 text-neutral-900 hover:bg-neutral-50 transition dark:ring-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10"
+                              aria-label="انصراف"
+                              title="انصراف"
+                            >
+                              <img src="/images/icons/hazf.svg" alt="" className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-2">
+                            <button
+                              onClick={() => beginEdit(r)}
+                              className="h-9 w-11 grid place-items-center rounded-xl ring-1 ring-neutral-200 bg-white text-neutral-800 hover:bg-neutral-50 transition dark:bg-transparent dark:ring-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10"
+                              aria-label="ویرایش"
+                              title="ویرایش"
+                            >
+                              <img src="/images/icons/pencil.svg" alt="" className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => del(r)}
+                              className="h-9 w-11 grid place-items-center rounded-xl ring-1 ring-red-400 bg-white text-red-600 hover:bg-neutral-50 transition dark:bg-transparent dark:ring-red-500 dark:text-red-400 dark:hover:bg-white/10"
+                              aria-label="حذف"
+                              title="حذف"
+                            >
+                              <img
+                                src="/images/icons/hazf.svg"
+                                alt=""
+                                className="w-4 h-4"
+                                style={{
+                                  filter:
+                                    "invert(18%) sepia(93%) saturate(7494%) hue-rotate(2deg) brightness(96%) contrast(110%)",
+                                }}
+                              />
+                            </button>
+                          </div>
+                        )}
+                      </TD>
+                    </TR>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </TableWrap>
+    </Card>
   );
 }
 
