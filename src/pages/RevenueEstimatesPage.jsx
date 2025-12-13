@@ -11,7 +11,6 @@ import { Card } from '../components/ui/Card';
 import { TableWrap, THead, TR, TH, TD } from '../components/ui/Table';
 
 function RevenueEstimatesPage() {
-  // ==== ابزار نمایش اعداد ====
   const formatMoney = (n) => {
     const s = String(n ?? '');
     if (s === '') return '';
@@ -36,7 +35,6 @@ function RevenueEstimatesPage() {
     return sign * parseInt(d, 10);
   };
 
-  // ==== helper ساده برای API ====
   const api = async (path, opt = {}) => {
     const res = await fetch('/api' + path, {
       credentials: 'include',
@@ -55,7 +53,6 @@ function RevenueEstimatesPage() {
     return data;
   };
 
-  // ==== ماه‌های داینامیک (ماه جاری + ۶ ماه بعد) ====
   const monthNames = [
     'فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور',
     'مهر','آبان','آذر','دی','بهمن','اسفند',
@@ -82,8 +79,7 @@ function RevenueEstimatesPage() {
     return arr;
   }, [jalaliMonthIndex]);
 
-  // ==== ساختار ردیف‌ها (درختی) ====
-  const [rows, setRows] = useState([]); // root nodes
+  const [rows, setRows] = useState([]);
   const rowIdRef = useRef(1);
 
   const makeNode = (p) => ({
@@ -130,9 +126,8 @@ function RevenueEstimatesPage() {
     [rows, sumNodeMonths]
   );
 
-  // ==== پروژه‌ها برای لیست انتخاب ====
   const [projects, setProjects] = useState([]);
-  const [addProjectMode, setAddProjectMode] = useState(''); // '' | 'other' | 'select'
+  const [addProjectMode, setAddProjectMode] = useState('');
   const [addSelectedProjectId, setAddSelectedProjectId] = useState('');
 
   useEffect(() => {
@@ -146,7 +141,6 @@ function RevenueEstimatesPage() {
     })();
   }, []);
 
-  // ==== کمک: ساخت/بازسازی درخت از روی title path ====
   const SEP = ' › ';
 
   const buildTreeFromItems = useCallback(
@@ -204,7 +198,6 @@ function RevenueEstimatesPage() {
     []
   );
 
-  // ==== لود کردن داده‌های ذخیره شده از بک‌اند ====
   useEffect(() => {
     (async () => {
       try {
@@ -224,7 +217,6 @@ function RevenueEstimatesPage() {
     })();
   }, [buildTreeFromItems]);
 
-  // ==== مودال ثبت ردیف جدید (سطح اول: پروژه) ====
   const [addModal, setAddModal] = useState({ open: false, title: '', desc: '' });
 
   const openAddModal = () => {
@@ -279,7 +271,6 @@ function RevenueEstimatesPage() {
     setAddSelectedProjectId('');
   };
 
-  // ==== مودال افزودن زیرمجموعه (فقط متن + توضیح) ====
   const [childModal, setChildModal] = useState({ open: false, parentId: null, title: '', desc: '' });
 
   const openChildModal = (parentId) => {
@@ -338,7 +329,6 @@ function RevenueEstimatesPage() {
     setChildModal({ open: false, parentId: null, title: '', desc: '' });
   };
 
-  // ==== expand/collapse ====
   const toggleExpand = useCallback((id) => {
     const rec = (nodes) =>
       nodes.map((n) => {
@@ -349,7 +339,6 @@ function RevenueEstimatesPage() {
     setRows((prev) => rec(prev));
   }, []);
 
-  // ==== حذف ردیف (کل زیر درخت) ====
   const removeNode = useCallback((id) => {
     const rec = (nodes) =>
       nodes
@@ -358,13 +347,11 @@ function RevenueEstimatesPage() {
     setRows((prev) => rec(prev));
   }, []);
 
-  // ==== مودال نمایش جزئیات (روی چیپ کلیک شود) ====
   const [viewRowModal, setViewRowModal] = useState({ open: false, row: null });
 
   const openViewRowModal = (row) => setViewRowModal({ open: true, row });
   const closeViewRowModal = () => setViewRowModal({ open: false, row: null });
 
-  // ==== مودال ثبت مقدار ماهانه ====
   const [monthModal, setMonthModal] = useState({
     open: false,
     rowId: null,
@@ -449,7 +436,6 @@ function RevenueEstimatesPage() {
     }
   }, [monthModal.open]);
 
-  // ==== ساخت لیست نمایشی (flatten با عمق + ردیف افزودن زیرمجموعه) ====
   const displayRows = useMemo(() => {
     const out = [];
 
@@ -473,7 +459,6 @@ function RevenueEstimatesPage() {
     return cleaned.join('.');
   };
 
-  // ==== ذخیره‌سازی در بک‌اند: flatten (با title path) ====
   const handleSave = async () => {
     if (!rows.length) return;
 
@@ -528,7 +513,6 @@ function RevenueEstimatesPage() {
 
   const totalCols = 2 + dynamicMonths.length + 1;
 
-  // ==== مودال پیش‌نمایش (نگه داشتیم) ====
   const [showModal, setShowModal] = useState(false);
 
   const printModal = () => {
@@ -747,57 +731,41 @@ function RevenueEstimatesPage() {
                         <TD className="px-2 py-3 text-center whitespace-nowrap">
                           <div className="flex items-center justify-center gap-2">
                             <div className="flex items-center justify-center gap-2" style={{ paddingInlineStart: depthPad }}>
-                              <div
+                              <button
+                                type="button"
                                 onClick={() => openViewRowModal(r)}
                                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-2xl border border-black/10 bg-black/[0.04] text-[11px] text-black cursor-pointer dark:border-neutral-700 dark:bg:white/10 dark:text-neutral-100"
                                 title="مشاهده جزئیات"
-                                role="button"
-                                tabIndex={0}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') openViewRowModal(r);
-                                }}
                               >
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    toggleExpand(r.id);
-                                  }}
-                                  className={`h-7 w-7 grid place-items-center rounded-xl border border-black/10 hover:bg-black/5 dark:border-neutral-700 dark:hover:bg-white/10 ${
-                                    hasChildren(r) ? '' : 'opacity-40 pointer-events-none'
-                                  }`}
-                                  aria-label="باز/بسته"
-                                  title="باز/بسته"
-                                >
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                                    <path
-                                      d={r.expanded ? 'M7 14l5-5 5 5' : 'M7 10l5 5 5-5'}
-                                      stroke="currentColor"
-                                      strokeWidth="2.2"
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                    />
-                                  </svg>
-                                </button>
+                                <span className="inline-flex items-center gap-2">
+                                  {hasChildren(r) && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        toggleExpand(r.id);
+                                      }}
+                                      className="inline-flex items-center justify-center -ms-1 h-6 w-6 rounded-lg hover:bg-black/10 dark:hover:bg-white/10"
+                                      aria-label="باز/بسته"
+                                      title="باز/بسته"
+                                    >
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="opacity-80">
+                                        <path
+                                          d={r.expanded ? 'M7 14l5-5 5 5' : 'M7 10l5 5 5-5'}
+                                          stroke="currentColor"
+                                          strokeWidth="2.2"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                        />
+                                      </svg>
+                                    </button>
+                                  )}
 
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    openChildModal(r.id);
-                                  }}
-                                  className="h-7 w-7 grid place-items-center rounded-xl border border-black/10 hover:bg-black/5 dark:border-neutral-700 dark:hover:bg-white/10"
-                                  aria-label="افزودن زیرمجموعه"
-                                  title="افزودن زیرمجموعه"
-                                >
-                                  <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
-                                </button>
-
-                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-black/50 dark:bg-white/70" />
-                                <span className="max-w-[220px] truncate">{r.title || '—'}</span>
-                              </div>
+                                  <span className="max-w-[220px] truncate">{r.title || '—'}</span>
+                                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-black/50 dark:bg-white/70" />
+                                </span>
+                              </button>
                             </div>
 
                             <button
@@ -889,7 +857,6 @@ function RevenueEstimatesPage() {
           </button>
         </div>
 
-        {/* مودال مقدار ماهانه */}
         {monthModal.open && (
           <div className="fixed inset-0 z-40 grid place-items-center px-3">
             <div className="absolute inset-0 bg-black/25 dark:bg-neutral-950/55 backdrop-blur-[2px]" onClick={closeMonthModal} />
@@ -943,7 +910,6 @@ function RevenueEstimatesPage() {
           </div>
         )}
 
-        {/* مودال افزودن ردیف سطح اول (پروژه) */}
         {addModal.open && (
           <div className="fixed inset-0 z-40 grid place-items-center px-3">
             <div className="absolute inset-0 bg-black/25 dark:bg-neutral-950/55 backdrop-blur-[2px]" onClick={closeAddModal} />
@@ -1008,19 +974,18 @@ function RevenueEstimatesPage() {
                 <button
                   type="button"
                   onClick={handleAddSave}
-                  className="h-9 w-11 grid place-items-center rounded-xl bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="h-9 px-5 rounded-xl bg-neutral-900 text-xs text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed grid place-items-center"
                   disabled={!addModal.title.trim()}
                   aria-label="افزودن"
                   title="افزودن"
                 >
-                  <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
+                  <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* مودال افزودن زیرمجموعه */}
         {childModal.open && (
           <div className="fixed inset-0 z-40 grid place-items-center px-3">
             <div className="absolute inset-0 bg-black/25 dark:bg-neutral-950/55 backdrop-blur-[2px]" onClick={closeChildModal} />
@@ -1068,19 +1033,16 @@ function RevenueEstimatesPage() {
                 <button
                   type="button"
                   onClick={handleChildSave}
-                  className="h-9 w-11 grid place-items-center rounded-xl bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="h-9 px-5 rounded-xl bg-neutral-900 text-xs text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed"
                   disabled={!childModal.title.trim()}
-                  aria-label="افزودن"
-                  title="افزودن"
                 >
-                  <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
+                  ذخیره
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* مودال نمایش جزئیات */}
         {viewRowModal.open && (
           <div className="fixed inset-0 z-40 grid place-items-center px-3">
             <div className="absolute inset-0 bg-black/25 dark:bg-neutral-950/55 backdrop-blur-[2px]" onClick={closeViewRowModal} />
