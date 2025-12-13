@@ -12,10 +12,8 @@ function DefineBudgetCentersPage(){
   const PAGE_KEY = 'DefineBudgetCentersPage';
   const [accessLoaded, setAccessLoaded] = useState(false);
 
-  // ===== قوانین دسترسی صفحه =====
   const isAdmin = user?.role === 'admin';
 
-  // unit_access ممکن است رشته JSON باشد؛ نرمال‌سازی
   const ua = React.useMemo(()=>{
     const raw = user?.unit_access ?? {};
     let obj = {};
@@ -27,7 +25,6 @@ function DefineBudgetCentersPage(){
     return obj;
   }, [user?.unit_access]);
 
-  // access_labels هم ممکن است رشته باشد؛ نرمال‌سازی
   const labels = React.useMemo(()=>{
     const raw = user?.access_labels ?? [];
     if (Array.isArray(raw)) return raw.map(String);
@@ -40,7 +37,6 @@ function DefineBudgetCentersPage(){
     return [];
   }, [user?.access_labels]);
 
-  // enabled ممکن است true/"true"/۱ باشد؛ به بولین تبدیل کن
   const centersEnabled = !!(
     ua && ua.centers && (
       ua.centers.enabled === true ||
@@ -49,23 +45,19 @@ function DefineBudgetCentersPage(){
     )
   );
 
-  // فلبک: اگر labels شامل page:centers بود، اجازه بده
   const hasPageLabel = React.useMemo(()=> labels.includes('page:centers'), [labels]);
 
-  // --- دسترسی از سرور (/access/my) ---
   const [accessMy, setAccessMy] = useState(null);
   const apiTabsRaw = accessMy?.pages?.[PAGE_KEY];
   const apiTabs = React.useMemo(()=>{
-    if (apiTabsRaw === null) return 'ALL';          // یعنی کل صفحه آزاد
+    if (apiTabsRaw === null) return 'ALL';
     if (Array.isArray(apiTabsRaw)) return apiTabsRaw.map(String);
     return [];
   }, [apiTabsRaw]);
   const accessFromApiPage = (apiTabs === 'ALL') || (Array.isArray(apiTabs) && apiTabs.length>0);
 
-  // صفحه فقط وقتی باز است که ادمین باشی یا centers فعال باشد یا برچسب صفحه داشته باشی یا سرور اجازه بده
   const canAccessPage = isAdmin || centersEnabled || hasPageLabel || accessFromApiPage;
 
-  // ===== تب‌ها =====
   const allTabs = [
     { id:'office',  label:'دفتر مرکزی', prefix:'OB' },
     { id:'site',    label:'سایت',       prefix:'SB' },
@@ -75,7 +67,6 @@ function DefineBudgetCentersPage(){
     { id:'projects',label:'پروژه‌ها',   prefix:''  },
   ];
 
-  // tabs ممکن است رشته/شیء عجیب باشد؛ به آرایه‌ی رشته‌ها نرمال کن
   const unitTabsRaw = ua?.centers?.tabs;
   const unitTabsFromUA = React.useMemo(()=>{
     if (!unitTabsRaw) return [];
@@ -89,7 +80,6 @@ function DefineBudgetCentersPage(){
     return [];
   }, [ua?.centers?.tabs]);
 
-  // فلبک دوم: اگر UA تب نداشت، از برچسب‌های tab:centers:* بساز
   const unitTabsFromLabels = React.useMemo(()=>{
     const pref = 'tab:centers:';
     return labels
@@ -97,7 +87,6 @@ function DefineBudgetCentersPage(){
       .map(x => x.slice(pref.length));
   }, [labels]);
 
-  // فقط از تب‌های مجاز استفاده کن (ادمین = همه‌ی تب‌ها)
   const tabs = React.useMemo(()=> {
     if (isAdmin) return allTabs;
     if (apiTabs === 'ALL') return allTabs;
@@ -109,36 +98,29 @@ function DefineBudgetCentersPage(){
     return allTabs.filter(t => allow.has(t.id));
   }, [isAdmin, unitTabsFromUA, unitTabsFromLabels, apiTabs]);
 
-  // --- helpers مشترک ---
   const prefixOf = (kind)=> tabs.find(t=>t.id===kind)?.prefix || '';
   const visualPrefix = (kind)=> kind==='projects' ? 'PB-' : (prefixOf(kind) ? prefixOf(kind)+'-' : '');
 
-  // --- api helper ---
   const api = async (path, opt={})=>{
     const res = await fetch('/api'+path, {
       credentials: 'include',
       ...opt,
       headers: { 'Content-Type':'application/json', ...(opt.headers||{}) },
     });
-
-    const txt = await res.text();
     let data = {};
-    try { data = txt ? JSON.parse(txt) : {}; } catch { data = {}; }
-
+    try { data = await res.json(); } catch {}
     if (!res.ok) throw new Error(data?.error || data?.message || 'request_failed');
     return data;
   };
 
-  // بارگذاری دسترسی از سرور
   useEffect(()=>{ (async ()=>{
     try{
       const data = await api('/access/my');
       setAccessMy(data || null);
-    }catch(e){ /* سکوت */ }
+    }catch(e){}
     finally { setAccessLoaded(true); }
   })(); },[]);
 
-  // تبِ پیش‌فرض: اولین تب مجاز (اگر تب نداریم، خالی)
   const [active, setActive] = useState(() => tabs[0]?.id || '');
 
   useEffect(()=>{
@@ -147,11 +129,9 @@ function DefineBudgetCentersPage(){
     }
   }, [tabs, active]);
 
-  // ==== helpers ====
   const toEnDigits = (s='') =>
-    String(s)
-      .replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
-      .replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+    String(s).replace(/[۰-۹]/g, d=>'۰۱۲۳۴۵۶۷۸۹'[d])
+             .replace(/[٠-٩]/g, d=>'٠١٢٣٤٥٦٧٨٩'[d]);
   const onlyDigitsDot = (s='') => toEnDigits(s).replace(/[^0-9.]/g, '');
 
   const canonForCompare = (kind, rawSuffix, baseProjectCode='')=>{
@@ -179,7 +159,6 @@ function DefineBudgetCentersPage(){
     return onlyDigits(s);
   };
 
-  // --- state ---
   const [projects, setProjects]   = useState([]);
   const [projectId, setProjectId] = useState('');
   const selectedProject = useMemo(
@@ -204,45 +183,45 @@ function DefineBudgetCentersPage(){
   const [editSuffix, setEditSuffix] = useState('');
   const [editDesc,   setEditDesc]   = useState('');
 
-  // وضعیت باز/بسته بودن سلسله‌مراتب کدها
   const [openCodes, setOpenCodes] = useState({});
 
-  const normalizeProject = (p)=>{
-    const id = p?.id;
-    const code = p?.code ?? p?.project_code ?? p?.projectCode ?? "";
-    const name = p?.name ?? p?.project_name ?? p?.projectName ?? "";
+  const normalizeProject = (p) => {
+    const code =
+      p?.code ??
+      p?.project_code ??
+      p?.projectCode ??
+      p?.projectNo ??
+      p?.project_no ??
+      p?.suffix ??
+      '';
+    const name =
+      p?.name ??
+      p?.project_name ??
+      p?.projectName ??
+      p?.description ??
+      p?.title ??
+      p?.label ??
+      '';
     return {
       ...p,
-      id,
-      code: code == null ? "" : String(code),
-      name: name == null ? "" : String(name),
+      id: p?.id,
+      code: code == null ? '' : String(code),
+      name: name == null ? '' : String(name),
     };
   };
 
-  // ✅ بار پروژه‌ها (FIX: items/projects/array)
   useEffect(()=>{ (async ()=>{
     try{
       const pj = await api('/projects');
-
-      const raw = Array.isArray(pj)
-        ? pj
-        : Array.isArray(pj?.items)
-        ? pj.items
-        : Array.isArray(pj?.projects)
-        ? pj.projects
-        : Array.isArray(pj?.data)
-        ? pj.data
-        : [];
-
-      const list = (raw || [])
-        .map(normalizeProject)
-        .filter(x => x && x.id != null && String(x.code || '').trim());
-
+      const raw =
+        Array.isArray(pj) ? pj :
+        Array.isArray(pj?.items) ? pj.items :
+        Array.isArray(pj?.projects) ? pj.projects :
+        Array.isArray(pj?.data) ? pj.data :
+        [];
+      const list = (raw || []).map(normalizeProject).filter(x => x && x.id != null && String(x.code||'').trim());
       setProjects(list);
-    }catch(e){
-      console.warn('projects load:', e.message);
-      setProjects([]);
-    }
+    }catch(e){ console.warn('projects load:', e.message); setProjects([]); }
   })(); },[]);
 
   const codeTextOf = useCallback((kind, suffix)=>{
@@ -312,12 +291,10 @@ function DefineBudgetCentersPage(){
     if (active==='projects') loadCenters(active);
   }, [projectId]);
 
-  // هر بار تب یا پروژه عوض شد، سلسله‌مراتب باز/بسته ریست شود
   useEffect(()=>{
     setOpenCodes({});
   }, [active, projectId]);
 
-  // helper: suffix "خام" بدون پیشوند PB-/OB- و بدون base پروژه
   const getSuffixPlain = useCallback((r)=>{
     if (active === 'projects') {
       const base = String(selectedProject?.code || '').trim();
@@ -330,7 +307,6 @@ function DefineBudgetCentersPage(){
     return String(r.suffix || '').trim();
   }, [active, selectedProject]);
 
-  // ===== افزدن ردیف =====
   const addRow = async ()=>{
     setErr('');
     if (!active) { setErr('ابتدا تب را انتخاب کنید.'); return; }
@@ -371,13 +347,11 @@ function DefineBudgetCentersPage(){
     }
   };
 
-  // وقتی روی یک کد در جدول کلیک می‌کنیم، عدد آن برود داخل فیلد "کد بودجه" فرم افزودن
   const prefillFromRow = (r)=>{
     const part = getSuffixPlain(r);
     setNewSuffix(onlyDigitsDot(part));
   };
 
-  // ===== ویرایش =====
   const beginEdit = (r)=>{
     setEditId(r.id);
     const part = getSuffixPlain(r);
@@ -426,7 +400,6 @@ function DefineBudgetCentersPage(){
     }
   };
 
-  // ساخت آرایه‌ی نمایش با سلسله‌مراتب (سطوح + باز/بسته)
   const displayRows = useMemo(()=>{
     const baseList = rows || [];
     if (!baseList.length) return [];
@@ -482,7 +455,6 @@ function DefineBudgetCentersPage(){
     return result;
   }, [rows, active, getSuffixPlain, openCodes, codeTextOf]);
 
-  // ===== حذف =====
   const del = async (r)=>{
     if (!confirm('حذف این ردیف؟')) return;
     try{
@@ -493,7 +465,6 @@ function DefineBudgetCentersPage(){
     }
   };
 
-  // ===== گاردها =====
   if (!accessLoaded){
     return (
       <>
@@ -543,7 +514,6 @@ function DefineBudgetCentersPage(){
     );
   }
 
-  // -------- UI --------
   return (
     <>
       <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
@@ -561,7 +531,7 @@ function DefineBudgetCentersPage(){
               className={`h-10 px-4 rounded-2xl text-sm shadow-sm transition border
                 ${active===t.id
                   ? 'bg-neutral-900 text-white border-neutral-900 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-100'
-                  : 'bg-white text-neutral-900 border border-neutral-300 hover:bg-neutral-50 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800'}`}
+                  : 'bg-white text-neutral-900 border-neutral-300 hover:bg-neutral-50 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800'}`}
             >
               {t.label}
             </button>
