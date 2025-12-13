@@ -1,13 +1,10 @@
 // src/pages/DefineBudgetCentersPage.jsx
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Card from "../components/ui/Card.jsx";
-import { useAuth } from "../components/AuthProvider.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
 
 function DefineBudgetCentersPage() {
-  const { user } = useAuth();
-  const PAGE_KEY = "DefineBudgetCentersPage";
-  const [accessLoaded, setAccessLoaded] = useState(false);
+  const BUILD_TAG = "DEFINE_CENTERS@2025-12-13_11:25";
 
   const API_BASE = (window.API_URL || "/api").replace(/\/+$/, "");
 
@@ -29,47 +26,58 @@ function DefineBudgetCentersPage() {
     return data;
   }
 
-  const isAdmin = String(user?.role || "").toLowerCase() === "admin";
-
-  const ua = React.useMemo(() => {
-    const raw = user?.unit_access ?? {};
-    let obj = {};
-    if (typeof raw === "string") {
+  // ===== me (مثل BudgetAllocationPage) =====
+  const [me, setMe] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
       try {
-        obj = JSON.parse(raw || "{}") || {};
+        const r = await api("/auth/me");
+        if (!alive) return;
+        setMe(r?.user || r || null);
       } catch {
-        obj = {};
+        if (!alive) return;
+        setMe({ role: "guest", access_labels: [] });
       }
-    } else {
-      obj = raw || {};
-    }
-    return obj;
-  }, [user?.unit_access]);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
-  const labels = React.useMemo(() => {
-    const raw = user?.access_labels ?? [];
+  const labels = useMemo(() => {
+    if (!me) return [];
+    const raw = me?.access_labels ?? [];
     if (Array.isArray(raw)) return raw.map(String);
     if (typeof raw === "string") {
       try {
-        const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed.map(String) : [raw].filter(Boolean);
+        const j = JSON.parse(raw);
+        return Array.isArray(j) ? j.map(String) : [raw].filter(Boolean);
       } catch {
         return [raw].filter(Boolean);
       }
     }
     return [];
-  }, [user?.access_labels]);
+  }, [me]);
 
-  const centersEnabled = !!(
-    ua &&
-    ua.centers &&
-    (ua.centers.enabled === true || ua.centers.enabled === "true" || ua.centers.enabled === 1)
-  );
+  const isSuper = useMemo(() => {
+    if (!me) return false;
+    const role = String(me?.role || "").toLowerCase();
+    const uname = String(me?.username || "").toLowerCase().trim();
+    const email = String(me?.email || "").toLowerCase().trim();
+    if (role === "admin") return true;
+    if (labels.includes("all")) return true;
+    if (uname === "marandi" || email === "marandi@ipecgroup.net") return true;
+    return false;
+  }, [me, labels]);
 
-  const hasPageLabel = React.useMemo(() => labels.includes("page:centers"), [labels]);
-
+  // اگر سوپر نیست، مثل قبل از /access/my هم کمک می‌گیریم (ولی marandi همیشه ALL)
+  const PAGE_KEY = "DefineBudgetCentersPage";
   const [accessMy, setAccessMy] = useState(null);
+  const [accessLoaded, setAccessLoaded] = useState(false);
+
   useEffect(() => {
+    if (!me) return;
     let alive = true;
     (async () => {
       try {
@@ -85,17 +93,7 @@ function DefineBudgetCentersPage() {
     return () => {
       alive = false;
     };
-  }, []);
-
-  const apiTabsRaw = accessMy?.pages?.[PAGE_KEY];
-  const apiTabs = React.useMemo(() => {
-    if (apiTabsRaw === null) return "ALL";
-    if (Array.isArray(apiTabsRaw)) return apiTabsRaw.map(String);
-    return [];
-  }, [apiTabsRaw]);
-  const accessFromApiPage = apiTabs === "ALL" || (Array.isArray(apiTabs) && apiTabs.length > 0);
-
-  const canAccessPage = isAdmin || centersEnabled || hasPageLabel || accessFromApiPage;
+  }, [me]);
 
   const allTabs = [
     { id: "office", label: "دفتر مرکزی", prefix: "OB" },
@@ -106,38 +104,32 @@ function DefineBudgetCentersPage() {
     { id: "projects", label: "پروژه‌ها", prefix: "" },
   ];
 
-  const unitTabsRaw = ua?.centers?.tabs;
-  const unitTabsFromUA = React.useMemo(() => {
-    if (!unitTabsRaw) return [];
-    if (Array.isArray(unitTabsRaw)) return unitTabsRaw.map(String);
-    if (typeof unitTabsRaw === "string") {
-      try {
-        const arr = JSON.parse(unitTabsRaw);
-        return Array.isArray(arr) ? arr.map(String) : [];
-      } catch {
-        return [unitTabsRaw].filter(Boolean).map(String);
-      }
-    }
+  const apiTabsRaw = accessMy?.pages?.[PAGE_KEY];
+  const apiTabs = useMemo(() => {
+    if (apiTabsRaw === null) return "ALL";
+    if (Array.isArray(apiTabsRaw)) return apiTabsRaw.map(String);
     return [];
-  }, [ua?.centers?.tabs]);
+  }, [apiTabsRaw]);
 
-  const unitTabsFromLabels = React.useMemo(() => {
-    const pref = "tab:centers:";
-    return labels.filter((x) => x.startsWith(pref)).map((x) => x.slice(pref.length));
-  }, [labels]);
-
-  const tabs = React.useMemo(() => {
-    if (isAdmin) return allTabs;
+  const tabs = useMemo(() => {
+    if (isSuper) return allTabs;
     if (apiTabs === "ALL") return allTabs;
-    const allow = new Set(
-      [...(unitTabsFromUA || []), ...(unitTabsFromLabels || []), ...(Array.isArray(apiTabs) ? apiTabs : [])].map(String)
-    );
-    return allTabs.filter((t) => allow.has(t.id));
-  }, [isAdmin, unitTabsFromUA, unitTabsFromLabels, apiTabs]);
+    const allow = new Set((Array.isArray(apiTabs) ? apiTabs : []).map(String));
+    const filtered = allTabs.filter((t) => allow.has(t.id));
+    return filtered;
+  }, [isSuper, apiTabs]);
+
+  const canAccessPage = useMemo(() => {
+    if (!me) return null;
+    if (!accessLoaded) return null;
+    if (isSuper) return true;
+    if (apiTabs === "ALL") return true;
+    return tabs.length > 0;
+  }, [me, accessLoaded, isSuper, apiTabs, tabs.length]);
 
   const [active, setActive] = useState("office");
   useEffect(() => {
-    if (tabs.length === 0) return;
+    if (!tabs.length) return;
     if (!tabs.some((t) => t.id === active)) setActive(tabs[0]?.id || "office");
   }, [tabs, active]);
 
@@ -145,32 +137,10 @@ function DefineBudgetCentersPage() {
   const visualPrefix = (kind) => (kind === "projects" ? "PB-" : prefixOf(kind) ? prefixOf(kind) + "-" : "");
 
   const toEnDigits = (s = "") =>
-    String(s)
+    String(s || "")
       .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d))
       .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
-
   const onlyDigitsDot = (s = "") => toEnDigits(s).replace(/[^0-9.]/g, "");
-
-  const canonForCompare = (kind, rawSuffix) => {
-    if (kind === "projects") {
-      const en = toEnDigits(String(rawSuffix || "")).replace(/[^0-9.]/g, "");
-      const seg = en.split(".").filter(Boolean);
-      if (!seg.length) return "";
-      return seg
-        .map((x) => {
-          const n = parseInt(x, 10);
-          return Number.isNaN(n) ? x : String(n);
-        })
-        .join(".");
-    }
-    const pref = prefixOf(kind);
-    let s = String(rawSuffix || "").toUpperCase().trim();
-    if (pref) {
-      const re = new RegExp("^" + pref + "[\\-\\.]?", "i");
-      s = s.replace(re, "");
-    }
-    return toEnDigits(s).replace(/[^\d]/g, "");
-  };
 
   // ===== projects (مثل BudgetAllocationPage) =====
   const [projects, setProjects] = useState([]);
@@ -184,13 +154,11 @@ function DefineBudgetCentersPage() {
       p?.projectCodeText ??
       p?.project_no ??
       p?.projectNo ??
-      p?.suffix ??
       "";
     const name =
       p?.name ??
       p?.project_name ??
       p?.projectName ??
-      p?.description ??
       p?.title ??
       p?.label ??
       "";
@@ -203,7 +171,6 @@ function DefineBudgetCentersPage() {
   };
 
   useEffect(() => {
-    if (!accessLoaded) return;
     if (!canAccessPage) return;
     let alive = true;
     (async () => {
@@ -221,11 +188,11 @@ function DefineBudgetCentersPage() {
           ? r.data
           : [];
 
-        const list = (raw || [])
+        const norm = (raw || [])
           .map(normalizeProject)
           .filter((x) => x && x.id != null && String(x.code || "").trim());
 
-        setProjects(list);
+        setProjects(norm);
       } catch {
         if (!alive) return;
         setProjects([]);
@@ -234,7 +201,7 @@ function DefineBudgetCentersPage() {
     return () => {
       alive = false;
     };
-  }, [accessLoaded, canAccessPage]);
+  }, [canAccessPage]);
 
   const sortedProjects = useMemo(() => {
     return (projects || []).slice().sort((a, b) =>
@@ -325,17 +292,17 @@ function DefineBudgetCentersPage() {
     setEditId(null);
     setEditSuffix("");
     setEditDesc("");
-    if (active !== "projects") setProjectId("");
     setOpenCodes({});
-    loadCenters(active);
-  }, [active]);
+    if (active !== "projects") setProjectId("");
+    if (canAccessPage) loadCenters(active);
+  }, [active, canAccessPage]);
 
   useEffect(() => {
-    if (active === "projects") {
+    if (active === "projects" && canAccessPage) {
       setOpenCodes({});
       loadCenters(active);
     }
-  }, [projectId]);
+  }, [projectId, active, canAccessPage]);
 
   const getSuffixPlain = useCallback(
     (r) => {
@@ -351,6 +318,27 @@ function DefineBudgetCentersPage() {
     },
     [active, selectedProject]
   );
+
+  const canonForCompare = (kind, rawSuffix) => {
+    if (kind === "projects") {
+      const en = toEnDigits(String(rawSuffix || "")).replace(/[^0-9.]/g, "");
+      const seg = en.split(".").filter(Boolean);
+      if (!seg.length) return "";
+      return seg
+        .map((x) => {
+          const n = parseInt(x, 10);
+          return Number.isNaN(n) ? x : String(n);
+        })
+        .join(".");
+    }
+    const pref = prefixOf(kind);
+    let s = String(rawSuffix || "").toUpperCase().trim();
+    if (pref) {
+      const re = new RegExp("^" + pref + "[\\-\\.]?", "i");
+      s = s.replace(re, "");
+    }
+    return toEnDigits(s).replace(/[^\d]/g, "");
+  };
 
   const addRow = async () => {
     setErr("");
@@ -497,7 +485,8 @@ function DefineBudgetCentersPage() {
     }
   };
 
-  if (!accessLoaded) {
+  // ===== UI states =====
+  if (!me || !accessLoaded || canAccessPage === null) {
     return (
       <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
         <div className="mb-4 text-base md:text-lg">
@@ -510,7 +499,7 @@ function DefineBudgetCentersPage() {
     );
   }
 
-  if (!canAccessPage || tabs.length === 0) {
+  if (canAccessPage === false || tabs.length === 0) {
     return (
       <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
         <div className="mb-4 text-base md:text-lg">
@@ -527,10 +516,15 @@ function DefineBudgetCentersPage() {
 
   return (
     <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-      <div className="mb-4 text-base md:text-lg">
-        <span className="text-neutral-700 dark:text-neutral-300">بودجه‌بندی</span>
-        <span className="mx-2 text-neutral-500 dark:text-neutral-400">›</span>
-        <span className="font-semibold text-neutral-900 dark:text-neutral-100">تعریف مراکز بودجه</span>
+      <div className="mb-4 text-base md:text-lg flex items-center justify-between gap-2">
+        <div>
+          <span className="text-neutral-700 dark:text-neutral-300">بودجه‌بندی</span>
+          <span className="mx-2 text-neutral-500 dark:text-neutral-400">›</span>
+          <span className="font-semibold text-neutral-900 dark:text-neutral-100">تعریف مراکز بودجه</span>
+        </div>
+        <div className="text-[11px] px-2 py-1 rounded-lg bg-black/5 text-black ring-1 ring-black/10 dark:bg-white/5 dark:text-neutral-200 dark:ring-neutral-800">
+          {BUILD_TAG}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-4">
@@ -555,8 +549,7 @@ function DefineBudgetCentersPage() {
           <div className="flex flex-col gap-1">
             <label className="text-sm text-neutral-700 dark:text-neutral-300">کد پروژه</label>
             <select
-              className="w-full rounded-xl px-3 py-2 ltr font-[inherit]
-                         bg-white text-neutral-900 border border-neutral-200 outline-none
+              className="w-full rounded-xl px-3 py-2 ltr font-[inherit] bg-white text-neutral-900 border border-neutral-200 outline-none
                          dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
@@ -570,12 +563,15 @@ function DefineBudgetCentersPage() {
                 </option>
               ))}
             </select>
+            <div className="text-[12px] text-neutral-500 dark:text-neutral-400 mt-1">
+              تعداد پروژه‌ها: {projects.length}
+            </div>
           </div>
+
           <div className="flex flex-col gap-1">
             <label className="text-sm text-neutral-700 dark:text-neutral-300">نام پروژه</label>
             <input
-              className="w-full rounded-xl px-3 py-2
-                         bg-white text-neutral-900 border border-neutral-200 outline-none placeholder:text-neutral-400
+              className="w-full rounded-xl px-3 py-2 bg-white text-neutral-900 border border-neutral-200 outline-none placeholder:text-neutral-400
                          dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
               value={selectedProject?.name || ""}
               readOnly
@@ -602,8 +598,7 @@ function DefineBudgetCentersPage() {
           <div className="flex-1 min-w-[260px] flex flex-col gap-1">
             <label className="text-sm text-neutral-700 dark:text-neutral-300">شرح بودجه</label>
             <input
-              className="w-full rounded-2xl px-3 py-2 text-center
-                         bg-white text-neutral-900 border border-neutral-200 outline-none placeholder:text-neutral-400
+              className="w-full rounded-2xl px-3 py-2 text-center bg-white text-neutral-900 border border-neutral-200 outline-none placeholder:text-neutral-400
                          dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
               value={newDesc}
               onChange={(e) => setNewDesc(e.target.value)}
@@ -663,6 +658,7 @@ function DefineBudgetCentersPage() {
                 <TH className="!text-center !font-semibold !py-2 w-40">اقدامات</TH>
               </tr>
             </THead>
+
             <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
               {loading ? (
                 <TR>
@@ -670,19 +666,18 @@ function DefineBudgetCentersPage() {
                     در حال بارگذاری…
                   </TD>
                 </TR>
-              ) : (displayRows || []).length === 0 ? (
+              ) : (rows || []).length === 0 ? (
                 <TR>
                   <TD colSpan={4} className="text-center text-neutral-700 py-3 bg-neutral-50 dark:text-neutral-400 dark:bg-transparent">
                     {active === "projects" && !projectId ? "ابتدا کد پروژه را انتخاب کنید" : "موردی ثبت نشده."}
                   </TD>
                 </TR>
               ) : (
-                (displayRows || []).map((node, idx) => {
-                  const r = node.row;
-                  const hasChildren = !!node.hasChildren;
+                rows.map((r, idx) => {
                   const codeText = codeTextOf(active, r.suffix);
                   const isEditing = editId === r.id;
-                  const isOpen = !!openCodes[node.key];
+                  const hasChildren = false;
+                  const isOpen = false;
 
                   return (
                     <TR
@@ -692,7 +687,7 @@ function DefineBudgetCentersPage() {
                     >
                       <TD className="px-2.5 py-2">{idx + 1}</TD>
 
-                      <TD className="px-2.5 py-2 font-mono ltr text-center" style={{ paddingRight: (node.depth || 0) * 12 }}>
+                      <TD className="px-2.5 py-2 font-mono ltr text-center">
                         {isEditing ? (
                           <input
                             className="w-full max-w-[220px] rounded-xl px-2 py-1.5 bg-white text-neutral-900 font-mono ltr text-center border border-neutral-300 outline-none placeholder:text-neutral-400 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
@@ -707,21 +702,9 @@ function DefineBudgetCentersPage() {
                             spellCheck={false}
                           />
                         ) : (
-                          <div className="inline-flex items-center justify-center gap-1">
-                            {hasChildren && (
-                              <button
-                                type="button"
-                                onClick={() => setOpenCodes((prev) => ({ ...prev, [node.key]: !isOpen }))}
-                                className="w-5 h-5 grid place-items-center rounded-full border border-neutral-300 text-xs bg-white dark:bg-neutral-800 dark:border-neutral-600"
-                                aria-label={isOpen ? "بستن زیرمجموعه" : "باز کردن زیرمجموعه"}
-                              >
-                                {isOpen ? "−" : "+"}
-                              </button>
-                            )}
-                            <button type="button" onClick={() => prefillFromRow(r)} className="px-1 py-0.5 hover:underline" title="قرار دادن این کد در فیلد کد بودجه">
-                              {codeText}
-                            </button>
-                          </div>
+                          <button type="button" onClick={() => prefillFromRow(r)} className="px-1 py-0.5 hover:underline" title="قرار دادن این کد در فیلد کد بودجه">
+                            {codeText}
+                          </button>
                         )}
                       </TD>
 
