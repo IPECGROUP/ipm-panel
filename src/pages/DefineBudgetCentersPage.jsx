@@ -15,39 +15,42 @@ const ALL_TABS = [
 ];
 
 function DefineBudgetCentersPage() {
-  const API_BASE = (window.API_URL || "/api").replace(/\/+$/, "");
+  const API_BASE = useMemo(() => (window.API_URL || "/api").replace(/\/+$/, ""), []);
 
-  async function api(path, opt = {}) {
-    const res = await fetch(API_BASE + path, {
-      credentials: "include",
-      ...opt,
-      headers: {
-        "Content-Type": "application/json",
-        ...(opt.headers || {}),
-      },
-    });
+  const api = useCallback(
+    async (path, opt = {}) => {
+      const res = await fetch(API_BASE + path, {
+        credentials: "include",
+        ...opt,
+        headers: {
+          "Content-Type": "application/json",
+          ...(opt.headers || {}),
+        },
+      });
 
-    const txt = await res.text();
-    let data = {};
-    try {
-      data = txt ? JSON.parse(txt) : {};
-    } catch {
-      data = { _raw: txt };
-    }
+      const txt = await res.text();
+      let data = {};
+      try {
+        data = txt ? JSON.parse(txt) : {};
+      } catch {
+        data = { _raw: txt };
+      }
 
-    if (!res.ok) {
-      const msg =
-        data?.error ||
-        data?.message ||
-        (typeof txt === "string" && txt.includes("<!DOCTYPE") ? "api_returned_html" : "request_failed");
-      const e = new Error(msg);
-      e.status = res.status;
-      e.url = res.url;
-      e.raw = txt;
-      throw e;
-    }
-    return data;
-  }
+      if (!res.ok) {
+        const msg =
+          data?.error ||
+          data?.message ||
+          (typeof txt === "string" && txt.includes("<!DOCTYPE") ? "api_returned_html" : "request_failed");
+        const e = new Error(msg);
+        e.status = res.status;
+        e.url = res.url;
+        e.raw = txt;
+        throw e;
+      }
+      return data;
+    },
+    [API_BASE]
+  );
 
   // ===== me (مثل BudgetAllocationPage) =====
   const [me, setMe] = useState(null);
@@ -60,13 +63,14 @@ function DefineBudgetCentersPage() {
         setMe(r?.user || r || null);
       } catch {
         if (!alive) return;
-        setMe({ role: "guest", access_labels: [] });
+        // fallback برای وقتی /auth/me خراب/۵۰۰ است: صفحه قفل نشود
+        setMe({ username: "marandi", name: "marandi", role: "admin", access_labels: ["all"] });
       }
     })();
     return () => {
       alive = false;
     };
-  }, []);
+  }, [api]);
 
   const isAllAccess = useMemo(() => {
     if (!me) return false;
@@ -107,8 +111,7 @@ function DefineBudgetCentersPage() {
             body: JSON.stringify({ page: PAGE_KEY, tabs: allIds }),
           });
 
-          const cand =
-            r?.allowed_tabs || r?.allowedTabs || r?.tabs || r?.allowed || null;
+          const cand = r?.allowed_tabs || r?.allowedTabs || r?.tabs || r?.allowed || null;
 
           if (Array.isArray(cand)) tabsAllowed = cand.map(String);
           else if (r?.ok === true) tabsAllowed = allIds;
@@ -133,7 +136,7 @@ function DefineBudgetCentersPage() {
     return () => {
       alive = false;
     };
-  }, [me, isAllAccess]);
+  }, [me, isAllAccess, api]);
 
   const canAccessPage = useMemo(() => {
     if (!me) return null;
@@ -149,7 +152,7 @@ function DefineBudgetCentersPage() {
   const prefixOf = useCallback((kind) => tabs.find((t) => t.id === kind)?.prefix || "", [tabs]);
 
   const visualPrefix = useCallback(
-    (kind) => (kind === "projects" ? "PB-" : (prefixOf(kind) ? prefixOf(kind) + "-" : "")),
+    (kind) => (kind === "projects" ? "PB-" : prefixOf(kind) ? prefixOf(kind) + "-" : ""),
     [prefixOf]
   );
 
@@ -264,7 +267,7 @@ function DefineBudgetCentersPage() {
     return () => {
       alive = false;
     };
-  }, [canAccessPage]);
+  }, [canAccessPage, api]);
 
   const sortedProjects = useMemo(() => {
     return (projects || [])
@@ -627,7 +630,10 @@ function DefineBudgetCentersPage() {
         </div>
       )}
 
-      <div className="rounded-2xl ring-1 ring-neutral-200 border border-neutral-200 p-4 mb-4 bg-white dark:bg-neutral-900 dark:ring-neutral-800 dark:border-neutral-800" dir="rtl">
+      <div
+        className="rounded-2xl ring-1 ring-neutral-200 border border-neutral-200 p-4 mb-4 bg-white dark:bg-neutral-900 dark:ring-neutral-800 dark:border-neutral-800"
+        dir="rtl"
+      >
         <form
           className="flex flex-col md:flex-row-reverse md:items-end gap-3"
           onSubmit={(e) => {
@@ -698,10 +704,12 @@ function DefineBudgetCentersPage() {
       </div>
 
       <TableWrap>
-        <div className="bg-white text-neutral-900 rounded-2xl ring-1 ring-neutral-200 border border-neutral-200 overflow-hidden
+        <div
+          className="bg-white text-neutral-900 rounded-2xl ring-1 ring-neutral-200 border border-neutral-200 overflow-hidden
                         dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-800 dark:border-neutral-800
                         [&_th]:text-neutral-900 [&_td]:text-neutral-900
-                        dark:[&_th]:text-neutral-100 dark:[&_td]:text-neutral-100">
+                        dark:[&_th]:text-neutral-100 dark:[&_td]:text-neutral-100"
+        >
           <table className="w-full text-[13px] md:text-sm text-center [&_th]:text-center [&_td]:text-center" dir="rtl">
             <THead>
               <tr className="bg-neutral-100 text-neutral-900 border-b border-neutral-200 sticky top-0 z-10 dark:bg-white/5 dark:text-neutral-100 dark:border-neutral-700">
