@@ -33,11 +33,30 @@ function createFakeBudgetDb() {
     estimatesByKind[k] = baseItems.map((it) => ({ ...it }));
   });
 
+  // اگر پروژه‌ها جایی (مثلاً ProjectsPage) در لوکال ذخیره شده باشند، از همان بخوان
+  let storedProjects = null;
+  try {
+    const raw = localStorage.getItem("mock_projects");
+    if (raw) {
+      const j = JSON.parse(raw);
+      if (Array.isArray(j)) storedProjects = j;
+      else if (Array.isArray(j?.projects)) storedProjects = j.projects;
+    }
+  } catch {}
+
   return {
-    projects: [
-      { id: 1, code: "P-101", name: "پروژه نمونه ۱" },
-      { id: 2, code: "P-102", name: "پروژه نمونه ۲" },
-    ],
+    projects:
+      (storedProjects && storedProjects.length
+        ? storedProjects
+        : [
+            { id: 1, code: "P-101", name: "پروژه نمونه ۱" },
+            { id: 2, code: "P-102", name: "پروژه نمونه ۲" },
+          ]
+      ).map((p, i) => ({
+        id: p?.id ?? i + 1,
+        code: String(p?.code || "").trim() || `P-${i + 1}`,
+        name: String(p?.name || "").trim() || "بدون نام",
+      })),
     estimatesByKind,
     allocations: [], // {kind, project_id, code, amount, desc, created_at, serial, date_jalali}
   };
@@ -214,6 +233,22 @@ function BudgetAllocationPage() {
       );
     }
   };
+
+  // ===== نمایش کد بودجه در حالت پروژه با پیشوند کد پروژه (نمایشی، بدون تغییر منطق ذخیره) =====
+  const renderDisplayBudgetCode = (code) => {
+    const base = renderCode(code);
+    if (active === "projects" && selectedProject?.code) {
+      const pc = String(selectedProject.code || "").trim();
+      if (!pc) return base;
+      return `${pc}-${base}`;
+    }
+    return base;
+  };
+
+  const budgetCodeHeader = useMemo(() => {
+    if (active === "projects") return "کد بودجه (پروژه)";
+    return "کد بودجه";
+  }, [active]);
 
   // ===== Fake API روی fakeDb (بدون fetch) =====
   async function api(path, opt = {}) {
@@ -681,15 +716,7 @@ function BudgetAllocationPage() {
               key={it.code}
               value={it.code}
             >
-              {active === "projects"
-                ? toFaDigits(it.code || "")
-                : `${toFaDigits(
-                    renderCode(it.code)
-                  )} — ${
-                    it.center_desc ||
-                    it.name ||
-                    ""
-                  }`}
+              {`${toFaDigits(renderDisplayBudgetCode(it.code))} — ${it.center_desc || it.name || ""}`}
             </option>
           ))}
         </select>
@@ -708,8 +735,8 @@ function BudgetAllocationPage() {
     const sorted = base
       .slice()
       .sort((a, b) => {
-        const ac = renderCode(a.code);
-        const bc = renderCode(b.code);
+        const ac = renderDisplayBudgetCode(a.code);
+        const bc = renderDisplayBudgetCode(b.code);
         const cmp = String(ac || "").localeCompare(
           String(bc || ""),
           "fa",
@@ -720,7 +747,7 @@ function BudgetAllocationPage() {
           : -cmp;
       });
     return sorted;
-  }, [rows, pickCode, codeSortDir]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [rows, pickCode, codeSortDir, active, projectId, selectedProject]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const TopButtons = () => (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
@@ -773,7 +800,8 @@ function BudgetAllocationPage() {
                 key={p.id}
                 value={p.id}
               >
-                {toFaDigits(p.code || "—")}
+                {toFaDigits(p.code || "—")}{" "}
+                {p?.name ? `— ${p.name}` : ""}
               </option>
             ))}
           </select>
@@ -874,7 +902,7 @@ function BudgetAllocationPage() {
                   </TH>
                   <TH className="!text-center py-3 w-56 !text-black dark:!text-neutral-100">
                     <div className="flex items-center justify-center gap-1 w-full">
-                      <span>کد بودجه</span>
+                      <span>{budgetCodeHeader}</span>
                       <button
                         type="button"
                         onClick={() =>
@@ -967,7 +995,7 @@ function BudgetAllocationPage() {
                           <TD className="px-2.5 py-2 align-middle">
                             <div className="flex justify-center ltr">
                               {toFaDigits(
-                                renderCode(
+                                renderDisplayBudgetCode(
                                   r.code
                                 )
                               )}
@@ -1189,7 +1217,7 @@ function BudgetAllocationPage() {
                             #
                           </th>
                           <th className="py-3 px-2 text-center">
-                            کد بودجه
+                            {budgetCodeHeader}
                           </th>
                           <th className="py-3 px-2 text-center">
                             نام بودجه
@@ -1219,7 +1247,7 @@ function BudgetAllocationPage() {
                             </td>
                             <td className="py-2 px-2 text-center">
                               {toFaDigits(
-                                renderCode(
+                                renderDisplayBudgetCode(
                                   r.code
                                 )
                               )}
@@ -1266,7 +1294,7 @@ function BudgetAllocationPage() {
                     <thead className="bg-black/5 dark:bg:white/5 dark:text-neutral-100">
                       <tr>
                         <th className="py-3 px-2 w-56 text-center">
-                          کد بودجه
+                          {budgetCodeHeader}
                         </th>
                         <th className="py-3 px-2 text-center">
                           سوابق (مبلغ — تاریخ/ساعت)
@@ -1290,7 +1318,7 @@ function BudgetAllocationPage() {
                           >
                             <td className="py-2 px-2 text-center align-middle">
                               {toFaDigits(
-                                renderCode(
+                                renderDisplayBudgetCode(
                                   r.code
                                 )
                               )}
@@ -1298,8 +1326,7 @@ function BudgetAllocationPage() {
                             <td className="py-2 px-2 text-center">
                               {list.length === 0 ? (
                                 <span className="text-black/50 dark:text-neutral-400">
-                                  — سابقه‌ای یافت نشد
-                                  —
+                                  — سابقه‌ای یافت نشد —
                                 </span>
                               ) : (
                                 <div className="grid gap-1">
