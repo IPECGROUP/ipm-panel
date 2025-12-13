@@ -311,7 +311,7 @@ function RightNav() {
 
               <div onMouseEnter={(e) => showTip("برآورد درآمد", e)} onMouseLeave={hideTip}>
                 <LinkBtn to="/revenue-estimates" className={railBtn(isActive("/revenue-estimates"))}>
-                  <img src="/images/icons/baravord-daramad.svg" className={icImgCls} alt="" />
+                  <img src="/images/icons/baravordhazine.svg" className={icImgCls} alt="" />
                 </LinkBtn>
               </div>
 
@@ -392,4 +392,3 @@ function RightNav() {
 }
 
 export default RightNav;
-
