@@ -19,76 +19,52 @@ const ALLOC_TABS = [
   { id: "projects", label: "پروژه‌ها", prefix: "" },
 ];
 
-// ===== Fake local DB (بدون هیچ اتصال به API واقعی) =====
-function createFakeBudgetDb() {
-  const baseItems = [
-    { code: "101", center_desc: "حقوق و دستمزد", last_amount: 500000000 },
-    { code: "102", center_desc: "هزینه‌های اداری", last_amount: 300000000 },
-    { code: "103", center_desc: "خدمات مشاوره", last_amount: 200000000 },
-  ];
-
-  const kinds = ["office", "site", "finance", "cash", "capex", "projects"];
-  const estimatesByKind = {};
-  kinds.forEach((k) => {
-    estimatesByKind[k] = baseItems.map((it) => ({ ...it }));
-  });
-
-  // اگر پروژه‌ها جایی (مثلاً ProjectsPage) در لوکال ذخیره شده باشند، از همان بخوان
-  let storedProjects = null;
-  try {
-    const raw = localStorage.getItem("mock_projects");
-    if (raw) {
-      const j = JSON.parse(raw);
-      if (Array.isArray(j)) storedProjects = j;
-      else if (Array.isArray(j?.projects)) storedProjects = j.projects;
-    }
-  } catch {}
-
-  return {
-    projects:
-      (storedProjects && storedProjects.length
-        ? storedProjects
-        : [
-            { id: 1, code: "P-101", name: "پروژه نمونه ۱" },
-            { id: 2, code: "P-102", name: "پروژه نمونه ۲" },
-          ]
-      ).map((p, i) => ({
-        id: p?.id ?? i + 1,
-        code: String(p?.code || "").trim() || `P-${i + 1}`,
-        name: String(p?.name || "").trim() || "بدون نام",
-      })),
-    estimatesByKind,
-    allocations: [], // {kind, project_id, code, amount, desc, created_at, serial, date_jalali}
-  };
-}
-
 function BudgetAllocationPage() {
   const [active, setActive] = useState("office"); // office|site|finance|cash|capex|projects
   const tabs = ALLOC_TABS;
 
-  // fake DB (یک بار ساخته می‌شود و در کل طول عمر کامپوننت می‌ماند)
-  const fakeDbRef = useRef(null);
-  if (!fakeDbRef.current) {
-    fakeDbRef.current = createFakeBudgetDb();
-  }
-  const fakeDb = fakeDbRef.current;
+  const API_BASE = (window.API_URL || "/api").replace(/\/+$/, "");
 
-  // ===== کاربر (همیشه admin لوکال) =====
+  async function api(path, opt = {}) {
+    const res = await fetch(API_BASE + path, {
+      credentials: "include",
+      ...opt,
+      headers: {
+        "Content-Type": "application/json",
+        ...(opt.headers || {}),
+      },
+    });
+    const txt = await res.text();
+    let data = {};
+    try {
+      data = txt ? JSON.parse(txt) : {};
+    } catch {}
+    if (!res.ok) {
+      throw new Error(data?.error || data?.message || "request_failed");
+    }
+    return data;
+  }
+
+  // ===== کاربر (واقعی از سرور) =====
   const [me, setMe] = useState(null);
   useEffect(() => {
-    // شبیه‌سازی پاسخ /auth/me
-    setTimeout(() => {
-      setMe({
-        id: 1,
-        name: "کاربر تست",
-        username: "demo",
-        role: "admin",
-        access_labels: ["all"],
-      });
-    }, 150);
+    let alive = true;
+    (async () => {
+      try {
+        const r = await api("/auth/me");
+        if (!alive) return;
+        setMe(r?.user || r || null);
+      } catch (e) {
+        if (!alive) return;
+        setMe({ role: "guest", access_labels: [] });
+      }
+    })();
+    return () => {
+      alive = false;
+    };
   }, []);
 
-  // دسترسی کل (همیشه true چون admin لوکال داریم)
+  // دسترسی کل (admin/all)
   const isAllAccess = useMemo(() => {
     if (!me) return false;
     if (String(me.role || "").toLowerCase() === "admin") return true;
@@ -105,14 +81,67 @@ function BudgetAllocationPage() {
 
   const [allowedTabs, setAllowedTabs] = useState(null); // null=درحال‌بررسی | []=هیچ تبی مجاز نیست | [...ids]
 
-  // اگر دسترسی‌کل داشت، همه تب‌ها مجاز
+  // اگر دسترسی‌کل داشت، همه تب‌ها مجاز؛ در غیر اینصورت از سرور می‌پرسیم (fallback: همه)
   useEffect(() => {
-    if (me && isAllAccess) {
-      const all = tabs.map((t) => t.id);
-      setAllowedTabs(all);
-      if (!all.includes(active)) setActive(all[0]);
-    }
-  }, [me, isAllAccess, active]); // tabs دیگه توی deps نیست چون ثابت است
+    if (!me) return;
+
+    let alive = true;
+    (async () => {
+      try {
+        if (isAllAccess) {
+          const all = tabs.map((t) => t.id);
+          if (!alive) return;
+          setAllowedTabs(all);
+          if (!all.includes(active)) setActive(all[0]);
+          return;
+        }
+
+        // تلاش برای چک دسترسی صفحه/تب‌ها از سرور (اگر endpoint وجود داشت)
+        let tabsAllowed = null;
+        try {
+          const r = await api("/auth/check-page", {
+            method: "POST",
+            body: JSON.stringify({
+              page: "BudgetAllocationPage",
+              tabs: tabs.map((t) => t.id),
+            }),
+          });
+          const cand =
+            r?.allowed_tabs ||
+            r?.allowedTabs ||
+            r?.tabs ||
+            r?.allowed ||
+            null;
+          if (Array.isArray(cand)) tabsAllowed = cand;
+          else if (r?.ok === true) tabsAllowed = tabs.map((t) => t.id);
+          else if (r?.ok === false) tabsAllowed = [];
+        } catch {
+          tabsAllowed = null;
+        }
+
+        if (!alive) return;
+
+        const allIds = tabs.map((t) => t.id);
+        const finalTabs = Array.isArray(tabsAllowed)
+          ? tabsAllowed.filter((x) => allIds.includes(x))
+          : allIds;
+
+        setAllowedTabs(finalTabs);
+        if (finalTabs.length && !finalTabs.includes(active)) {
+          setActive(finalTabs[0]);
+        }
+      } catch {
+        if (!alive) return;
+        const all = tabs.map((t) => t.id);
+        setAllowedTabs(all);
+        if (!all.includes(active)) setActive(all[0]);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [me, isAllAccess, active]); // tabs ثابت است
 
   const canAccessPage = useMemo(() => {
     if (!me) return null;
@@ -163,10 +192,29 @@ function BudgetAllocationPage() {
     [projects, projectId]
   );
 
-  // پروژه‌ها از fake DB
+  // پروژه‌ها از سرور
   useEffect(() => {
-    setProjects(fakeDb.projects || []);
-  }, [fakeDb]);
+    if (!canAccessPage) return;
+    let alive = true;
+    (async () => {
+      try {
+        const r = await api("/projects");
+        if (!alive) return;
+        const list =
+          r?.projects ||
+          r?.items ||
+          r?.data ||
+          [];
+        setProjects(Array.isArray(list) ? list : []);
+      } catch {
+        if (!alive) return;
+        setProjects([]);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [canAccessPage]);
 
   const sortedProjects = useMemo(() => {
     return (projects || [])
@@ -250,127 +298,16 @@ function BudgetAllocationPage() {
     return "کد بودجه";
   }, [active]);
 
-  // ===== Fake API روی fakeDb (بدون fetch) =====
-  async function api(path, opt = {}) {
-    // کمی 딜ِی برای حس واقعی‌تر
-    await new Promise((r) => setTimeout(r, 100));
+  const getNextSerial = async () => {
+    const qs = new URLSearchParams();
+    qs.set("kind", active);
+    if (active === "projects" && projectId) qs.set("project_id", String(projectId));
+    qs.set("_", String(Date.now()));
+    const r = await api("/budget-allocations/next?" + qs.toString());
+    return r || {};
+  };
 
-    // /projects
-    if (path === "/projects") {
-      return { projects: fakeDb.projects };
-    }
-
-    // /budget-estimates?kind=...
-    if (path.startsWith("/budget-estimates")) {
-      const url = new URL(path, window.location.origin);
-      const kind = url.searchParams.get("kind") || "office";
-      const items =
-        (fakeDb.estimatesByKind[kind] ||
-          fakeDb.estimatesByKind.office)
-          .map((it) => ({ ...it }));
-      return { items };
-    }
-
-    // /budget-allocations/summary
-    if (path.startsWith("/budget-allocations/summary")) {
-      const url = new URL(path, window.location.origin);
-      const kind = url.searchParams.get("kind") || "office";
-      const projectIdParam =
-        url.searchParams.get("project_id") || null;
-
-      const rel = fakeDb.allocations.filter((a) => {
-        if (a.kind !== kind) return false;
-        if (kind === "projects") {
-          return (
-            String(a.project_id || "") ===
-            String(projectIdParam || "")
-          );
-        }
-        return true;
-      });
-
-      const totals = {};
-      rel.forEach((a) => {
-        totals[a.code] =
-          (totals[a.code] || 0) +
-          Number(a.amount || 0);
-      });
-
-      return { totals };
-    }
-
-    // /budget-allocations/history
-    if (path.startsWith("/budget-allocations/history")) {
-      const url = new URL(path, window.location.origin);
-      const kind = url.searchParams.get("kind") || "office";
-      const projectIdParam =
-        url.searchParams.get("project_id") || null;
-
-      const rel = fakeDb.allocations.filter((a) => {
-        if (a.kind !== kind) return false;
-        if (kind === "projects") {
-          return (
-            String(a.project_id || "") ===
-            String(projectIdParam || "")
-          );
-        }
-        return true;
-      });
-
-      const history = {};
-      rel.forEach((a) => {
-        if (!history[a.code]) history[a.code] = [];
-        history[a.code].push({
-          amount: a.amount,
-          created_at: a.created_at,
-        });
-      });
-
-      return { history };
-    }
-
-    // POST /budget-allocations
-    if (
-      path === "/budget-allocations" &&
-      String(opt.method || "POST").toUpperCase() === "POST"
-    ) {
-      let body = {};
-      try {
-        body =
-          typeof opt.body === "string"
-            ? JSON.parse(opt.body || "{}")
-            : opt.body || {};
-      } catch {
-        body = {};
-      }
-
-      const kind = body.kind || "office";
-      const project_id = body.project_id || null;
-      const serial = body.serial || "";
-      const date_jalali = body.date_jalali || "";
-      const nowIso = new Date().toISOString();
-
-      (body.rows || []).forEach((row) => {
-        fakeDb.allocations.push({
-          kind,
-          project_id,
-          code: row.code,
-          amount: Number(row.alloc || 0),
-          desc: row.desc || "",
-          serial,
-          date_jalali,
-          created_at: nowIso,
-        });
-      });
-
-      return { ok: true };
-    }
-
-    // پیش‌فرض
-    return {};
-  }
-
-  // ===== لود داده‌ها از fakeApi =====
+  // ===== لود داده‌ها از سرور =====
   useEffect(() => {
     if (!canAccessPage) return;
     if (active === "projects" && !projectId) return;
@@ -385,18 +322,48 @@ function BudgetAllocationPage() {
         if (active === "projects" && projectId)
           qs1.set("project_id", String(projectId));
         qs1.set("_", String(Date.now()));
-        const est = await api(
-          "/budget-estimates?" + qs1.toString()
-        );
+
+        let items = [];
+        try {
+          const est = await api("/budget-estimates?" + qs1.toString());
+          items = Array.isArray(est?.items) ? est.items.slice() : [];
+        } catch {
+          items = [];
+        }
+
+        if (items.length === 0) {
+          try {
+            const centers = await api(`/centers/${active}`);
+            const raw =
+              centers?.items ||
+              centers?.centers ||
+              centers?.data ||
+              [];
+            const list = Array.isArray(raw) ? raw : [];
+            items = list
+              .map((c) => ({
+                code: c?.code || c?.center_code || c?.suffix || "",
+                center_desc: c?.center_desc || c?.description || c?.name || "",
+                last_amount: Number(c?.last_amount || 0),
+              }))
+              .filter((x) => String(x.code || "").trim());
+          } catch {
+            items = [];
+          }
+        }
 
         const qs2 = new URLSearchParams();
         qs2.set("kind", active);
         if (active === "projects" && projectId)
           qs2.set("project_id", String(projectId));
         qs2.set("_", String(Date.now()));
-        const sum = await api(
-          "/budget-allocations/summary?" + qs2.toString()
-        );
+
+        let sum = { totals: {} };
+        try {
+          sum = await api("/budget-allocations/summary?" + qs2.toString());
+        } catch {
+          sum = { totals: {} };
+        }
 
         let histMap = {};
         try {
@@ -405,15 +372,15 @@ function BudgetAllocationPage() {
           if (active === "projects" && projectId)
             qs3.set("project_id", String(projectId));
           qs3.set("_", String(Date.now()));
-          const hist = await api(
-            "/budget-allocations/history?" + qs3.toString()
-          );
+          const hist = await api("/budget-allocations/history?" + qs3.toString());
           histMap = hist?.history || {};
-        } catch {}
+        } catch {
+          histMap = {};
+        }
 
         if (abort) return;
 
-        const items = (est.items || [])
+        const sorted = (items || [])
           .slice()
           .sort((a, b) =>
             String(a.code).localeCompare(
@@ -423,17 +390,17 @@ function BudgetAllocationPage() {
             )
           );
 
-        const built = items.map((s) => ({
+        const built = sorted.map((s) => ({
           code: s.code,
           name: s.center_desc || "",
           lastAmount: s.last_amount || 0,
-          totalAlloc: (sum.totals || {})[s.code] || 0,
+          totalAlloc: (sum?.totals || {})[s.code] || 0,
           allocRaw: 0,
           desc: "",
         }));
 
-        setSourceItems(items);
-        setTotals(sum.totals || {});
+        setSourceItems(sorted);
+        setTotals(sum?.totals || {});
         setHistoryByCode(histMap);
         setRows(built);
       } catch (ex) {
@@ -513,10 +480,13 @@ function BudgetAllocationPage() {
         return;
       }
 
-      const serial = makeSerial();
+      const next = await getNextSerial();
+      const serial = next?.serial || "";
+      const date_jalali = next?.date_jalali || todayFa;
+
       const body = {
         serial,
-        date_jalali: todayFa,
+        date_jalali,
         project_id:
           active === "projects"
             ? projectId
@@ -552,44 +522,6 @@ function BudgetAllocationPage() {
         ex.message || "خطا در حذف آخرین تخصیص"
       );
     }
-  };
-
-  const makeSerial = () => {
-    let yDigit = "0",
-      m2 = "01",
-      y4 = "1400";
-    try {
-      const df = new Intl.DateTimeFormat(
-        "fa-IR-u-ca-persian",
-        { year: "numeric", month: "2-digit" }
-      );
-      const parts = df.formatToParts(new Date());
-      const y = (parts.find(
-        (p) => p.type === "year"
-      )?.value || "1400").replace(/[^\d]/g, "");
-      const m = (parts.find(
-        (p) => p.type === "month"
-      )?.value || "01").replace(/[^\d]/g, "");
-      y4 = y;
-      yDigit = y.slice(-1);
-      m2 = m.padStart(2, "0");
-    } catch {
-      const d = new Date();
-      const m = (d.getMonth() + 1)
-        .toString()
-        .padStart(2, "0");
-      const y = d.getFullYear().toString();
-      y4 = y;
-      yDigit = y.slice(-1);
-      m2 = m;
-    }
-    const lmKey = `alloc_seq_${y4}${m2}`;
-    const last =
-      Number(localStorage.getItem(lmKey) || "0") +
-      1;
-    localStorage.setItem(lmKey, String(last));
-    const seq = String(last).padStart(3, "0");
-    return `BA0${yDigit}0${m2}${seq}`;
   };
 
   const [saving, setSaving] = useState(false);
@@ -635,10 +567,13 @@ function BudgetAllocationPage() {
         return;
       }
 
-      const serial = makeSerial();
+      const next = await getNextSerial();
+      const serial = next?.serial || "";
+      const date_jalali = next?.date_jalali || todayFa;
+
       const body = {
         serial,
-        date_jalali: todayFa,
+        date_jalali,
         project_id:
           active === "projects"
             ? projectId
@@ -841,7 +776,7 @@ function BudgetAllocationPage() {
     );
   }
 
-  // حالت لودینگ (فقط تا اومدن fake user)
+  // حالت لودینگ
   if (!me || allowedTabs === null) {
     return (
       <>
