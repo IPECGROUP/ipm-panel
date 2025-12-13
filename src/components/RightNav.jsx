@@ -76,7 +76,7 @@ function RightNav() {
   const activeSection = sectionFromPath(pNow);
 
   // آیکن‌ها
-  const icImgCls = "w-6 h-6 block m-0 invert";
+  const icImgCls = "w-5 h-5 block m-0 dark:invert";
   const IcDashboard = () => <img src="/images/icons/dashbaord.svg" className={icImgCls} alt="" />;
   const IcPay = () => <img src="/images/icons/darkastpardakht.svg" className={icImgCls} alt="" />;
   const IcLetter = () => <img src="/images/icons/nameha.svg" className={icImgCls} alt="" />;
@@ -87,7 +87,7 @@ function RightNav() {
   const IcUsers = () => <img src="/images/icons/users.svg" className={icImgCls} alt="" />;
   const IcContract = () => <img src="/images/icons/gharadad.svg" className={icImgCls} alt="" />;
 
-  const svgCls = "w-6 h-6 block m-0";
+  const svgCls = "w-5 h-5 block m-0";
   const sw = 2.2;
 
   const IcDoc = () => (
@@ -156,7 +156,7 @@ function RightNav() {
     <>
       <aside
         dir="rtl"
-        className="fixed right-0 top-0 bottom-0 z-50 w-[88px] rounded-none
+        className="fixed right-0 top-0 bottom-0 z-50 w-[92px] rounded-none
                    bg-neutral-900/85 backdrop-blur-xl border-s border-neutral-800 shadow-2xl
                    px-3 overflow-auto"
       >
