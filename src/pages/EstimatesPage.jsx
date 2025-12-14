@@ -12,7 +12,26 @@ import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 
 function EstimatesPage({ api: apiProp }) {
-  const api = apiProp || (async () => ({}));
+  const api =
+    apiProp ||
+    (async (path, opt = {}) => {
+      const res = await fetch("/api" + path, {
+        credentials: "include",
+        ...opt,
+        headers: {
+          "Content-Type": "application/json",
+          ...(opt.headers || {}),
+        },
+      });
+      const txt = await res.text();
+      let data = {};
+      try {
+        data = txt ? JSON.parse(txt) : {};
+      } catch {}
+      if (!res.ok) throw new Error(data?.error || data?.message || "request_failed");
+      return data;
+    });
+
   const { user } = useAuth();
 
   const [active, setActive] = useState("office"); // office|site|finance|cash|capex|projects
@@ -38,7 +57,6 @@ function EstimatesPage({ api: apiProp }) {
       (Array.isArray(me?.roles) && me.roles.includes("admin")))
   );
 
-  // ---- تب‌های مجاز (فعلاً همه مجاز، چون فقط UI می‌خوایم) ----
   const [tabAccess, setTabAccess] = useState({});
   const [tabsReady, setTabsReady] = useState(false);
   const tabs = useMemo(
@@ -47,7 +65,6 @@ function EstimatesPage({ api: apiProp }) {
   );
 
   const checkPageOr = useCallback(async (_tabId) => {
-    // فعلاً همه تب‌ها مجازند (بدون تماس به سرور)
     return { ok: true, message: "" };
   }, []);
 
@@ -74,7 +91,6 @@ function EstimatesPage({ api: apiProp }) {
     };
   }, [checkPageOr]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ---- گیت نهایی تب فعال ----
   const [allowed, setAllowed] = useState(true);
   const [denyMsg, setDenyMsg] = useState("");
   useEffect(() => {
@@ -213,7 +229,6 @@ function EstimatesPage({ api: apiProp }) {
     return pre + "-" + suffix;
   };
 
-  // هسته‌ی کد برای ساخت سلسله‌مراتب (حذف حروف و جداکننده‌های اول و نرمال‌سازی به اعداد و نقطه)
   const coreOf = (s) => {
     const raw = String(s || "").trim();
     const noPrefix = raw.replace(/^[A-Za-z]+[^0-9]*/, "");
@@ -225,7 +240,6 @@ function EstimatesPage({ api: apiProp }) {
     return cleaned;
   };
 
-  // ==== ماه‌های داینامیک (ماه جاری + ۶ ماه بعد) ====
   const monthNames = [
     "فروردین",
     "اردیبهشت",
@@ -270,7 +284,6 @@ function EstimatesPage({ api: apiProp }) {
     return arr;
   }, [jalaliMonthIndex]);
 
-  // delta ماه‌ها نسبت به آخرین مقدار ذخیره‌شده
   const sumMonths = (r) =>
     dynamicMonths.reduce((acc, m) => {
       const lastVal = Number((r.lastMonths && r.lastMonths[m.key]) || 0);
@@ -280,7 +293,6 @@ function EstimatesPage({ api: apiProp }) {
       return acc + (curVal - lastVal);
     }, 0);
 
-  // ---- لود داده‌ها ----
   useEffect(() => {
     let abort = false;
     (async () => {
@@ -306,7 +318,6 @@ function EstimatesPage({ api: apiProp }) {
           const r = await api("/budget-estimates?" + qs.toString());
           items = r.items || [];
 
-          // ⬅️ اتصال به تعریف مراکز بودجه (projects)
           try {
             const centers = await api("/centers/projects");
             const base = String(selectedProject?.code || "").trim();
@@ -327,7 +338,6 @@ function EstimatesPage({ api: apiProp }) {
             items = Array.from(byCode.values());
           } catch (_e) {}
 
-          // آخرین مقدار از history (در صورت نیاز)
           try {
             const qh = new URLSearchParams();
             qh.set("kind", "projects");
@@ -361,7 +371,6 @@ function EstimatesPage({ api: apiProp }) {
           const r = await api("/budget-estimates?" + qs.toString());
           items = r.items || [];
 
-          // ⬅️ اتصال به تعریف مراکز بودجه (office/site/finance/cash/capex)
           try {
             const centers = await api("/centers/" + active);
             const extra = (centers?.items || [])
@@ -453,7 +462,6 @@ function EstimatesPage({ api: apiProp }) {
     api,
   ]);
 
-  // ---- فیلتر پروژه ----
   const filteredRows = useMemo(() => {
     if (active !== "projects") return rows || [];
     const preCore = coreOf(selectedProject?.code);
@@ -463,9 +471,6 @@ function EstimatesPage({ api: apiProp }) {
       return cCore === preCore || cCore.startsWith(preCore + ".");
     });
   }, [rows, active, selectedProject]);
-
-  const onChangeDesc = (code, v) =>
-    setRows((prev) => prev.map((r) => (r.code === code ? { ...r, desc: v } : r)));
 
   const finalPreviewOf = (r) =>
     dynamicMonths.reduce((acc, m) => {
@@ -514,8 +519,7 @@ function EstimatesPage({ api: apiProp }) {
             }
           }
 
-          if (!delta && !plainDesc && !Object.keys(nextMonths).length)
-            return null;
+          if (!delta && !plainDesc && !Object.keys(nextMonths).length) return null;
 
           const total = Object.values(nextMonths).reduce(
             (sum, v) => sum + Number(v || 0),
@@ -764,8 +768,7 @@ function EstimatesPage({ api: apiProp }) {
       setHistLoading(true);
       const qs = new URLSearchParams();
       qs.set("kind", active);
-      if (active === "projects" && projectId)
-        qs.set("project_id", String(projectId));
+      if (active === "projects" && projectId) qs.set("project_id", String(projectId));
       const r = await api("/budget-estimates/history?" + qs.toString()).catch(
         () => ({ history: {} }),
       );
@@ -786,45 +789,6 @@ function EstimatesPage({ api: apiProp }) {
   useEffect(() => {
     if (showModal) fetchHistory();
   }, [showModal, fetchHistory]);
-
-  const deltasOf = (code) => {
-    const arr = (historyMap?.[code] || [])
-      .slice()
-      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-    if (arr.length === 0) return [];
-    const out = [];
-    let prev = null;
-    for (const it of arr) {
-      if (prev === null)
-        out.push({
-          amount: Number(it.amount || 0),
-          desc: it.desc || null,
-          created_at: it.created_at,
-        });
-      else
-        out.push({
-          amount: Number(it.amount || 0) - Number(prev.amount || 0),
-          desc: it.desc || null,
-          created_at: it.created_at,
-        });
-      prev = it;
-    }
-    return out.filter((x) => x.amount !== 0);
-  };
-
-  const fmtDateTimeFa = (dt) => {
-    try {
-      return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
-        dateStyle: "short",
-        timeStyle: "short",
-      }).format(new Date(dt));
-    } catch {
-      return new Date(dt).toLocaleTimeString("fa-IR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    }
-  };
 
   const [openCodes, setOpenCodes] = useState({});
   const [codeSortDir, setCodeSortDir] = useState("asc");
@@ -857,11 +821,7 @@ function EstimatesPage({ api: apiProp }) {
         return oc && oc.startsWith(prefix);
       });
     });
-    const isLeafByCode = {};
-    Object.keys(coreByCode).forEach((code) => {
-      isLeafByCode[code] = !hasChildrenByCode[code];
-    });
-    return { coreByCode, hasChildrenByCode, isLeafByCode };
+    return { coreByCode, hasChildrenByCode };
   }, [rowsToRender, active]);
 
   const displayRows = useMemo(() => {
@@ -940,7 +900,6 @@ function EstimatesPage({ api: apiProp }) {
   let totalGrand = 0;
   (rowsToRender || []).forEach((r) => {
     if (!r || !r.code) return;
-    if (!hierarchyMaps.isLeafByCode[r.code]) return;
     dynamicMonths.forEach((m) => {
       let val;
       if (r.months && r.months[m.key] != null) {
@@ -948,9 +907,7 @@ function EstimatesPage({ api: apiProp }) {
       } else {
         val = Number((r.lastMonths && r.lastMonths[m.key]) || 0);
       }
-      if (val) {
-        totalsByMonth[m.key] += val;
-      }
+      if (val) totalsByMonth[m.key] += val;
     });
     totalGrand += finalPreviewOf(r);
   });
@@ -1012,7 +969,6 @@ function EstimatesPage({ api: apiProp }) {
     );
   };
 
-  // ---- مودال وارد کردن مقدار ماهانه ----
   const [monthModal, setMonthModal] = useState({
     open: false,
     code: null,
@@ -1087,6 +1043,8 @@ function EstimatesPage({ api: apiProp }) {
       monthInputRef.current.select();
     }
   }, [monthModal.open]);
+
+  const colCount = 3 + dynamicMonths.length + 1;
 
   if (!tabsReady) {
     return (
@@ -1172,9 +1130,7 @@ function EstimatesPage({ api: apiProp }) {
                         <button
                           type="button"
                           onClick={() =>
-                            setCodeSortDir((prev) =>
-                              prev === "asc" ? "desc" : "asc",
-                            )
+                            setCodeSortDir((prev) => (prev === "asc" ? "desc" : "asc"))
                           }
                           className="rounded-lg px-2 py-1 ring-1 ring-black/15 hover:bg-black/5
                                      dark:ring-neutral-800 dark:hover:bg-white/10"
@@ -1226,7 +1182,7 @@ function EstimatesPage({ api: apiProp }) {
                   {loading ? (
                     <TR>
                       <TD
-                        colSpan={9}
+                        colSpan={colCount}
                         className="text-center text-black/60 dark:text-neutral-400 py-4"
                       >
                         در حال بارگذاری…
@@ -1235,7 +1191,7 @@ function EstimatesPage({ api: apiProp }) {
                   ) : (displayRows || []).length === 0 ? (
                     <TR>
                       <TD
-                        colSpan={9}
+                        colSpan={colCount}
                         className="text-center text-black/60 py-4 dark:text-neutral-400"
                       >
                         {active === "projects" && !projectId
@@ -1288,27 +1244,12 @@ function EstimatesPage({ api: apiProp }) {
                       {(displayRows || []).map((node, idx) => {
                         const r = node.row;
                         const code = r.code;
-                        const isParent =
-                          !!code && !hierarchyMaps.isLeafByCode[r.code];
-                        const hasChildren = !!node.hasChildren || isParent;
+                        const hasChildren = !!node.hasChildren;
+
                         const toggleKey = node.core || node.key;
                         const isOpen = !!openCodes[toggleKey];
 
-                        const finalTotal = (() => {
-                          if (!code || !isParent) return finalPreviewOf(r);
-                          const core = hierarchyMaps.coreByCode[code];
-                          if (!core) return finalPreviewOf(r);
-                          const prefix = core + ".";
-                          let sum = 0;
-                          (rowsToRender || []).forEach((rr) => {
-                            if (!rr || !rr.code) return;
-                            const c2 = hierarchyMaps.coreByCode[rr.code];
-                            if (!c2 || !hierarchyMaps.isLeafByCode[rr.code]) return;
-                            if (!c2.startsWith(prefix)) return;
-                            sum += finalPreviewOf(rr);
-                          });
-                          return sum;
-                        })();
+                        const finalTotal = finalPreviewOf(r);
 
                         return (
                           <TR
@@ -1352,48 +1293,27 @@ function EstimatesPage({ api: apiProp }) {
                             <TD className="px-2 py-3 text-center break-words text-[11px] md:text-[13px] max-w-[180px]">
                               {r.name || "—"}
                             </TD>
+
                             {dynamicMonths.map((m) => {
                               let val = 0;
-                              if (!isParent) {
-                                if (r.months && r.months[m.key] != null) {
-                                  val = Number(r.months[m.key] || 0);
-                                } else {
-                                  val = Number((r.lastMonths && r.lastMonths[m.key]) || 0);
-                                }
+                              if (r.months && r.months[m.key] != null) {
+                                val = Number(r.months[m.key] || 0);
                               } else {
-                                const core = hierarchyMaps.coreByCode[code];
-                                if (core) {
-                                  const prefix = core + ".";
-                                  (rowsToRender || []).forEach((rr) => {
-                                    if (!rr || !rr.code) return;
-                                    const c2 = hierarchyMaps.coreByCode[rr.code];
-                                    if (!c2 || !hierarchyMaps.isLeafByCode[rr.code]) return;
-                                    if (!c2.startsWith(prefix)) return;
-                                    let childVal = 0;
-                                    if (rr.months && rr.months[m.key] != null) {
-                                      childVal = Number(rr.months[m.key] || 0);
-                                    } else {
-                                      childVal = Number((rr.lastMonths && rr.lastMonths[m.key]) || 0);
-                                    }
-                                    if (childVal) val += childVal;
-                                  });
-                                }
+                                val = Number((r.lastMonths && r.lastMonths[m.key]) || 0);
                               }
                               const hasVal = !!val;
+
                               return (
                                 <TD key={m.key} className="px-0 py-2 text-center align-middle">
                                   <button
                                     type="button"
-                                    onClick={() => {
-                                      if (!isParent) openMonthModal(r, m);
-                                    }}
-                                    disabled={isParent}
+                                    onClick={() => openMonthModal(r, m)}
                                     className={`w-24 mx-auto h-12 md:w-24 md:h-12 rounded-2xl border text-[11px] md:text-[12px] flex items-center justify-center shadow-sm transition
                                     ${
                                       hasVal
                                         ? "bg-[#edaf7c] border-[#edaf7c]/90 text-black"
                                         : "bg-black/5 border-black/10 text-black/70 dark:bg-white/5 dark:border-neutral-700 dark:text-neutral-100"
-                                    } ${isParent ? "cursor-default" : "cursor-pointer"}`}
+                                    }`}
                                   >
                                     {hasVal ? (
                                       <div className="flex flex-col items-center justify-center leading-tight">
@@ -1409,6 +1329,7 @@ function EstimatesPage({ api: apiProp }) {
                                 </TD>
                               );
                             })}
+
                             <TD className="px-3 py-3 whitespace-nowrap text-center border-l border-r border-black/10 dark:border-neutral-700">
                               <span className="inline-flex items-center justify-center gap-1">
                                 <span className="ltr">{toFaDigits(formatMoney(finalTotal || 0))}</span>
