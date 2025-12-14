@@ -82,14 +82,19 @@ export default function EstimatesPage() {
     [active, prefixOf],
   );
 
-  const coreOf = useCallback((s) => {
-    const raw = String(s || "").trim();
-    const noPrefix = raw.replace(/^[A-Za-z]+[^0-9]*/, "");
-    const normalized = noPrefix.replace(/[^\d.]+/g, ".");
-    const cleaned = normalized.replace(/\.+/g, ".").replace(/^\./, "").replace(/\.$/, "");
-    return cleaned;
-  }, []);
+  // ✅ اصلاح: پشتیبانی از اعداد فارسی/عربی برای فیلتر پروژه‌ها
+  const coreOf = useCallback(
+    (s) => {
+      const raw = toEnDigits(String(s || "")).trim();
+      const noPrefix = raw.replace(/^[A-Za-z]+[^0-9]*/, "");
+      const normalized = noPrefix.replace(/[^0-9.]+/g, ".");
+      const cleaned = normalized.replace(/\.+/g, ".").replace(/^\./, "").replace(/\.$/, "");
+      return cleaned;
+    },
+    [toEnDigits],
+  );
 
+  // projects
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState("");
 
@@ -107,7 +112,8 @@ export default function EstimatesPage() {
     return () => {
       stop = true;
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const selectedProject = useMemo(
     () => (projects || []).find((p) => String(p.id) === String(projectId)),
@@ -122,6 +128,7 @@ export default function EstimatesPage() {
       );
   }, [projects]);
 
+  // months
   const monthNames = useMemo(
     () => ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"],
     [],
@@ -148,12 +155,38 @@ export default function EstimatesPage() {
     return arr;
   }, [jalaliMonthIndex, monthNames]);
 
+  // data rows
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
 
   const reqSeq = useRef(0);
+
+  const parseDescMonths = useCallback(
+    (descRaw) => {
+      let desc = descRaw ?? "";
+      let lastMonths = {};
+      if (desc && typeof desc === "string") {
+        try {
+          const parsed = JSON.parse(desc);
+          if (parsed && typeof parsed === "object") {
+            if (typeof parsed.desc === "string") desc = parsed.desc;
+            if (parsed.months && typeof parsed.months === "object") {
+              const mm = {};
+              dynamicMonths.forEach((m) => {
+                const v = parsed.months[m.key];
+                if (v !== undefined && v !== null && !isNaN(Number(v))) mm[m.key] = Number(v);
+              });
+              lastMonths = mm;
+            }
+          }
+        } catch {}
+      }
+      return { desc: desc || "", lastMonths };
+    },
+    [dynamicMonths],
+  );
 
   useEffect(() => {
     let dead = false;
@@ -174,43 +207,101 @@ export default function EstimatesPage() {
         qs.set("kind", active);
         if (active === "projects") qs.set("project_id", String(projectId));
 
-        const r = await api("/budget-estimates?" + qs.toString());
+        if (active !== "projects") {
+          const r = await api("/budget-estimates?" + qs.toString());
+          if (dead || seq !== reqSeq.current) return;
+
+          const items = r.items || [];
+          const mapped = (items || []).map((it) => {
+            const { desc, lastMonths } = parseDescMonths(it.last_desc ?? it.description ?? "");
+            return {
+              code: it.code,
+              name: it.center_desc ?? it.name ?? "",
+              desc,
+              baseAmount: it.last_amount ?? it.amount ?? 0,
+              months: {},
+              lastMonths,
+            };
+          });
+
+          mapped.sort((a, b) =>
+            String(renderCode(a.code)).localeCompare(String(renderCode(b.code)), "fa", {
+              numeric: true,
+              sensitivity: "base",
+            }),
+          );
+
+          setRows(mapped);
+          return;
+        }
+
+        // ✅ پروژه‌ها: هم مراکز پروژه‌ها را بخوان، هم برآوردها را (برای اینکه حتی بدون برآورد هم جدول پر شود)
+        const [rEst, rCenters] = await Promise.all([
+          api("/budget-estimates?" + qs.toString()).catch(() => ({ items: [] })),
+          api("/centers/projects").catch(() => ({ items: [] })),
+        ]);
         if (dead || seq !== reqSeq.current) return;
 
-        const items = r.items || [];
-        const mapped = (items || []).map((it) => {
-          let desc = it.last_desc ?? it.description ?? "";
-          let lastMonths = {};
+        const estItems = Array.isArray(rEst?.items) ? rEst.items : [];
+        const centersListRaw = rCenters?.items || rCenters?.centers || rCenters?.data || [];
+        const centersList = Array.isArray(centersListRaw) ? centersListRaw : [];
 
-          if (desc && typeof desc === "string") {
-            try {
-              const parsed = JSON.parse(desc);
-              if (parsed && typeof parsed === "object") {
-                if (typeof parsed.desc === "string") desc = parsed.desc;
-                if (parsed.months && typeof parsed.months === "object") {
-                  const mm = {};
-                  dynamicMonths.forEach((m) => {
-                    const v = parsed.months[m.key];
-                    if (v !== undefined && v !== null && !isNaN(Number(v))) mm[m.key] = Number(v);
-                  });
-                  lastMonths = mm;
-                }
-              }
-            } catch {}
-          }
+        const pCore = coreOf(selectedProject?.code);
+        const matchedCenters = pCore
+          ? centersList.filter((c) => {
+              const code = String(c?.suffix ?? c?.code ?? "").trim();
+              if (!code) return false;
+              const cCore = coreOf(code);
+              return cCore === pCore || cCore.startsWith(pCore + ".");
+            })
+          : [];
 
-          return {
-            code: it.code,
-            name: it.center_desc ?? it.name ?? "",
-            desc: desc || "",
-            baseAmount: it.last_amount ?? it.amount ?? 0,
+        const byCode = new Map();
+
+        // اول: مراکز (که همیشه باید نمایش داده شوند)
+        for (const c of matchedCenters) {
+          const code = String(c?.suffix ?? c?.code ?? "").trim();
+          if (!code) continue;
+          byCode.set(code, {
+            code,
+            name: String(c?.description ?? c?.name ?? ""),
+            desc: "",
+            baseAmount: 0,
             months: {},
-            lastMonths,
+            lastMonths: {},
+          });
+        }
+
+        // دوم: داده‌های estimate (برای مقدار/توضیح/ماه‌ها)
+        for (const it of estItems) {
+          const code = String(it?.code ?? "").trim();
+          if (!code) continue;
+          const prev = byCode.get(code) || {
+            code,
+            name: "",
+            desc: "",
+            baseAmount: 0,
+            months: {},
+            lastMonths: {},
           };
-        });
+          const { desc, lastMonths } = parseDescMonths(it.last_desc ?? it.description ?? "");
+          byCode.set(code, {
+            ...prev,
+            name: prev.name || String(it.center_desc ?? it.name ?? ""),
+            desc: desc || prev.desc || "",
+            baseAmount: it.last_amount ?? it.amount ?? prev.baseAmount ?? 0,
+            months: {},
+            lastMonths: lastMonths || prev.lastMonths || {},
+          });
+        }
+
+        const mapped = Array.from(byCode.values());
 
         mapped.sort((a, b) =>
-          String(renderCode(a.code)).localeCompare(String(renderCode(b.code)), "fa", { numeric: true, sensitivity: "base" }),
+          String(renderCode(a.code)).localeCompare(String(renderCode(b.code)), "fa", {
+            numeric: true,
+            sensitivity: "base",
+          }),
         );
 
         setRows(mapped);
@@ -224,17 +315,13 @@ export default function EstimatesPage() {
     return () => {
       dead = true;
     };
-  }, [active, projectId, dynamicMonths, renderCode]);
+  }, [active, projectId, dynamicMonths, renderCode, parseDescMonths, coreOf, selectedProject]); // ✅
 
   const filteredRows = useMemo(() => {
     if (active !== "projects") return rows || [];
-    const preCore = coreOf(selectedProject?.code);
-    if (!preCore) return [];
-    return (rows || []).filter((r) => {
-      const cCore = coreOf(r.code);
-      return cCore === preCore || cCore.startsWith(preCore + ".");
-    });
-  }, [rows, active, selectedProject, coreOf]);
+    // چون در حالت پروژه‌ها بالا فیلتر کردیم، همین را برگردانیم
+    return rows || [];
+  }, [rows, active]);
 
   const finalPreviewOf = useCallback(
     (r) =>
@@ -259,6 +346,7 @@ export default function EstimatesPage() {
     [dynamicMonths],
   );
 
+  // hierarchy (for display tree)
   const [codeSortDir, setCodeSortDir] = useState("asc");
   const [openCodes, setOpenCodes] = useState({});
   useEffect(() => setOpenCodes({}), [active, projectId]);
@@ -369,6 +457,7 @@ export default function EstimatesPage() {
     return grand;
   }, [rowsToRender, hierarchyMaps, finalPreviewOf]);
 
+  // month modal
   const [monthModal, setMonthModal] = useState({ open: false, code: null, monthKey: "", label: "", name: "", value: "" });
   const monthInputRef = useRef(null);
 
@@ -457,45 +546,12 @@ export default function EstimatesPage() {
 
       await api("/budget-estimates", { method: "POST", body: JSON.stringify(body) });
 
+      // رفرش بعد از ذخیره
       const qs = new URLSearchParams();
       qs.set("kind", active);
       if (active === "projects") qs.set("project_id", String(projectId));
-      const r2 = await api("/budget-estimates?" + qs.toString());
-      const items2 = r2.items || [];
-
-      const mapped2 = (items2 || []).map((it) => {
-        let desc = it.last_desc ?? it.description ?? "";
-        let lastMonths = {};
-        if (desc && typeof desc === "string") {
-          try {
-            const parsed = JSON.parse(desc);
-            if (parsed && typeof parsed === "object") {
-              if (typeof parsed.desc === "string") desc = parsed.desc;
-              if (parsed.months && typeof parsed.months === "object") {
-                const mm = {};
-                dynamicMonths.forEach((m) => {
-                  const v = parsed.months[m.key];
-                  if (v !== undefined && v !== null && !isNaN(Number(v))) mm[m.key] = Number(v);
-                });
-                lastMonths = mm;
-              }
-            }
-          } catch {}
-        }
-        return {
-          code: it.code,
-          name: it.center_desc ?? it.name ?? "",
-          desc: desc || "",
-          baseAmount: it.last_amount ?? it.amount ?? 0,
-          months: {},
-          lastMonths,
-        };
-      });
-
-      mapped2.sort((a, b) =>
-        String(renderCode(a.code)).localeCompare(String(renderCode(b.code)), "fa", { numeric: true, sensitivity: "base" }),
-      );
-      setRows(mapped2);
+      await api("/budget-estimates?" + qs.toString()); // فقط برای اطمینان از موفقیت؛ ریلود اصلی با useEffect انجام می‌شود
+      setRows((p) => p.map((x) => ({ ...x, months: {} })));
     } catch (ex) {
       setErr(ex.message || "خطا در بروزرسانی");
     } finally {
@@ -523,25 +579,15 @@ export default function EstimatesPage() {
         }),
       });
 
-      const qs = new URLSearchParams();
-      qs.set("kind", active);
-      if (active === "projects") qs.set("project_id", String(projectId));
-      const r2 = await api("/budget-estimates?" + qs.toString());
-      const items2 = r2.items || [];
-
-      const mapped2 = (items2 || []).map((it) => ({
-        code: it.code,
-        name: it.center_desc ?? "",
-        desc: "",
-        baseAmount: it.last_amount ?? 0,
-        months: {},
-        lastMonths: {},
-      }));
-
-      mapped2.sort((a, b) =>
-        String(renderCode(a.code)).localeCompare(String(renderCode(b.code)), "fa", { numeric: true, sensitivity: "base" }),
+      setRows((prev) =>
+        (prev || []).map((r) => ({
+          ...r,
+          desc: "",
+          baseAmount: 0,
+          months: {},
+          lastMonths: {},
+        })),
       );
-      setRows(mapped2);
     } catch (ex) {
       setErr(ex.message || "خطا در صفر کردن برآوردها");
     } finally {
@@ -554,9 +600,7 @@ export default function EstimatesPage() {
       {tabs.map((t) => (
         <button
           key={t.id}
-          onClick={() => {
-            setActive(t.id);
-          }}
+          onClick={() => setActive(t.id)}
           className={`h-10 px-4 rounded-2xl border text-sm shadow-sm transition ${
             active === t.id
               ? "bg-black text-white border-black"
