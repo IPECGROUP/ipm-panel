@@ -6,12 +6,10 @@ import React, {
   useRef,
 } from 'react';
 
-import Shell from '../components/layout/Shell';
 import { Card } from '../components/ui/Card';
 import { TableWrap, THead, TR, TH, TD } from '../components/ui/Table';
 
 function RevenueEstimatesPage() {
-  // ==== ابزار نمایش اعداد ====
   const formatMoney = (n) => {
     const s = String(n ?? '');
     if (s === '') return '';
@@ -36,7 +34,6 @@ function RevenueEstimatesPage() {
     return sign * parseInt(d, 10);
   };
 
-  // ==== helper ساده برای API ====
   const api = async (path, opt = {}) => {
     const res = await fetch('/api' + path, {
       credentials: 'include',
@@ -55,7 +52,6 @@ function RevenueEstimatesPage() {
     return data;
   };
 
-  // ==== ماه‌های داینامیک (ماه جاری + ۶ ماه بعد) ====
   const monthNames = [
     'فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور',
     'مهر','آبان','آذر','دی','بهمن','اسفند',
@@ -82,8 +78,7 @@ function RevenueEstimatesPage() {
     return arr;
   }, [jalaliMonthIndex]);
 
-  // ==== ساختار ردیف‌ها (درختی) ====
-  const [rows, setRows] = useState([]); // root nodes
+  const [rows, setRows] = useState([]);
   const rowIdRef = useRef(1);
 
   const makeNode = (p) => ({
@@ -130,9 +125,8 @@ function RevenueEstimatesPage() {
     [rows, sumNodeMonths]
   );
 
-  // ==== پروژه‌ها برای لیست انتخاب ====
   const [projects, setProjects] = useState([]);
-  const [addProjectMode, setAddProjectMode] = useState(''); // '' | 'other' | 'select'
+  const [addProjectMode, setAddProjectMode] = useState('');
   const [addSelectedProjectId, setAddSelectedProjectId] = useState('');
 
   useEffect(() => {
@@ -146,17 +140,25 @@ function RevenueEstimatesPage() {
     })();
   }, []);
 
-  // ==== کمک: ساخت/بازسازی درخت از روی title path ====
   const SEP = ' › ';
 
   const buildTreeFromItems = useCallback(
     (items) => {
       const rootMap = new Map();
+
       const getOrCreateChild = (parent, seg) => {
         const arr = parent.children || [];
         let found = arr.find((x) => x.title === seg);
         if (!found) {
-          found = makeNode({ id: rowIdRef.current++, title: seg, desc: '', projectId: parent.projectId, months: {}, children: [], expanded: false });
+          found = makeNode({
+            id: rowIdRef.current++,
+            title: seg,
+            desc: '',
+            projectId: parent.projectId,
+            months: {},
+            children: [],
+            expanded: false,
+          });
           parent.children = [...arr, found];
         }
         return found;
@@ -167,7 +169,15 @@ function RevenueEstimatesPage() {
         if (!rootMap.has(key)) {
           rootMap.set(
             key,
-            makeNode({ id: rowIdRef.current++, title: seg0, desc: '', projectId: projectId || null, months: {}, children: [], expanded: false })
+            makeNode({
+              id: rowIdRef.current++,
+              title: seg0,
+              desc: '',
+              projectId: projectId || null,
+              months: {},
+              children: [],
+              expanded: false,
+            })
           );
         }
         return rootMap.get(key);
@@ -198,13 +208,11 @@ function RevenueEstimatesPage() {
         node.months = monthsMap;
       });
 
-      const roots = Array.from(rootMap.values());
-      return roots;
+      return Array.from(rootMap.values());
     },
     []
   );
 
-  // ==== لود کردن داده‌های ذخیره شده از بک‌اند ====
   useEffect(() => {
     (async () => {
       try {
@@ -223,7 +231,6 @@ function RevenueEstimatesPage() {
     })();
   }, [buildTreeFromItems]);
 
-  // ==== مودال ثبت ردیف جدید (سطح اول: پروژه) ====
   const [addModal, setAddModal] = useState({ open: false, title: '', desc: '' });
 
   const openAddModal = () => {
@@ -278,7 +285,6 @@ function RevenueEstimatesPage() {
     setAddSelectedProjectId('');
   };
 
-  // ==== مودال افزودن زیرمجموعه (فقط متن + توضیح) ====
   const [childModal, setChildModal] = useState({ open: false, parentId: null, title: '', desc: '' });
 
   const openChildModal = (parentId) => {
@@ -337,7 +343,6 @@ function RevenueEstimatesPage() {
     setChildModal({ open: false, parentId: null, title: '', desc: '' });
   };
 
-  // ==== expand/collapse ====
   const toggleExpand = useCallback((id) => {
     const rec = (nodes) =>
       nodes.map((n) => {
@@ -348,7 +353,6 @@ function RevenueEstimatesPage() {
     setRows((prev) => rec(prev));
   }, []);
 
-  // ==== حذف ردیف (کل زیر درخت) ====
   const removeNode = useCallback((id) => {
     const rec = (nodes) =>
       nodes
@@ -357,13 +361,11 @@ function RevenueEstimatesPage() {
     setRows((prev) => rec(prev));
   }, []);
 
-  // ==== مودال نمایش جزئیات (روی چیپ کلیک شود) ====
   const [viewRowModal, setViewRowModal] = useState({ open: false, row: null });
 
   const openViewRowModal = (row) => setViewRowModal({ open: true, row });
   const closeViewRowModal = () => setViewRowModal({ open: false, row: null });
 
-  // ==== مودال ثبت مقدار ماهانه ====
   const [monthModal, setMonthModal] = useState({
     open: false,
     rowId: null,
@@ -373,17 +375,6 @@ function RevenueEstimatesPage() {
     value: '',
   });
   const monthInputRef = useRef(null);
-
-  const findNodeById = useCallback((nodes, id) => {
-    for (const n of nodes) {
-      if (n.id === id) return n;
-      if (n.children?.length) {
-        const r = findNodeById(n.children, id);
-        if (r) return r;
-      }
-    }
-    return null;
-  }, []);
 
   const updateNodeMonths = useCallback((nodes, id, monthKey, val) => {
     const rec = (arr) =>
@@ -448,7 +439,6 @@ function RevenueEstimatesPage() {
     }
   }, [monthModal.open]);
 
-  // ==== ساخت لیست نمایشی ====
   const displayRows = useMemo(() => {
     const out = [];
 
@@ -472,66 +462,64 @@ function RevenueEstimatesPage() {
     return cleaned.join('.');
   };
 
-  // ==== ذخیره‌سازی ====
   const handleSave = async () => {
-  if (!rows.length) return;
+    if (!rows.length) return;
 
-  const flatten = [];
-  const buildTitlePath = (prefix, node) => (prefix ? prefix + SEP + node.title : node.title);
+    const flatten = [];
+    const buildTitlePath = (prefix, node) => (prefix ? prefix + SEP + node.title : node.title);
 
-  const walk = (node, prefix) => {
-    const titlePath = buildTitlePath(prefix, node);
-    const months = dynamicMonths.map((m) => ({
-      key: m.key,
-      month_index: m.monthIndex,
-      label: m.label,
-      amount: hasChildren(node) ? sumNodeMonth(node, m.key) : Number(node.months?.[m.key] || 0),
-    }));
-    const total = months.reduce((acc, mm) => acc + (mm.amount || 0), 0);
+    const walk = (node, prefix) => {
+      const titlePath = buildTitlePath(prefix, node);
+      const months = dynamicMonths.map((m) => ({
+        key: m.key,
+        month_index: m.monthIndex,
+        label: m.label,
+        amount: hasChildren(node) ? sumNodeMonth(node, m.key) : Number(node.months?.[m.key] || 0),
+      }));
+      const total = months.reduce((acc, mm) => acc + (mm.amount || 0), 0);
 
-    flatten.push({
-      title: titlePath,
-      description: node.desc || '',
-      project_id: node.projectId || null,
-      months,
-      amount: total,
-    });
+      flatten.push({
+        title: titlePath,
+        description: node.desc || '',
+        project_id: node.projectId || null,
+        months,
+        amount: total,
+      });
 
-    (node.children || []).forEach((ch) => walk(ch, titlePath));
+      (node.children || []).forEach((ch) => walk(ch, titlePath));
+    };
+
+    rows.forEach((r) => walk(r, ''));
+
+    try {
+      const payloadRows = flatten.map((r, idx) => ({
+        code: 'R' + (idx + 1),
+        row_index: idx + 1,
+        title: r.title,
+        description: r.description,
+        project_id: r.project_id,
+        months: r.months,
+        amount: r.amount,
+      }));
+
+      await api('/revenue-estimates', {
+        method: 'POST',
+        body: JSON.stringify({ rows: payloadRows }),
+      });
+
+      const data = await api('/revenue-estimates');
+      const items = data.items || [];
+      items.sort((a, b) => (a.row_index || 0) - (b.row_index || 0));
+      rowIdRef.current = 1;
+      const tree = buildTreeFromItems(items);
+      setRows(tree);
+
+      alert('برآورد درآمد با موفقیت ذخیره شد.');
+    } catch (e) {
+      console.error('save revenue estimates failed', e);
+      alert('ذخیره برآورد با خطا مواجه شد.');
+    }
   };
-
-  rows.forEach((r) => walk(r, ''));
-
-  try {
-    const payloadRows = flatten.map((r, idx) => ({
-      code: 'R' + (idx + 1),
-      row_index: idx + 1,
-      title: r.title,
-      description: r.description,
-      project_id: r.project_id,
-      months: r.months,
-      amount: r.amount,
-    }));
-
-    await api('/revenue-estimates', {
-      method: 'POST',
-      body: JSON.stringify({ rows: payloadRows }),
-    });
-
-    const data = await api('/revenue-estimates');
-    const items = data.items || [];
-    items.sort((a, b) => (a.row_index || 0) - (b.row_index || 0));
-    rowIdRef.current = 1;
-    const tree = buildTreeFromItems(items);
-    setRows(tree);
-
-    alert('برآورد درآمد با موفقیت ذخیره شد.');
-  } catch (e) {
-    console.error('save revenue estimates failed', e);
-    alert('ذخیره برآورد با خطا مواجه شد.');
-  }
-};
-
 
   const totalCols = 2 + dynamicMonths.length + 1;
 
@@ -687,7 +675,7 @@ function RevenueEstimatesPage() {
 
                 <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100">
                   {rows.length > 0 && (
-                    <TR className="text-center border-t border-black/10 bg-black/[0.04] font-semibold dark:border-neutral-800 dark:bg:white/10">
+                    <TR className="text-center border-t border-black/10 bg-black/[0.04] font-semibold dark:border-neutral-800 dark:bg-white/10">
                       <TD className="px-2 py-3 border-b border-black/10 dark:border-neutral-800">-</TD>
                       <TD className="px-2 py-3 text-center border-b border-black/10 dark:border-neutral-800">جمع</TD>
                       {dynamicMonths.map((m) => (
@@ -714,7 +702,7 @@ function RevenueEstimatesPage() {
                   {displayRows.map((x, idx) => {
                     if (x.type === 'addChild') {
                       return (
-                        <TR key={'addchild-' + x.parentId} className="border-t border-black/10 bg-black/[0.015] dark:border-neutral-800 dark:bg:white/5">
+                        <TR key={'addchild-' + x.parentId} className="border-t border-black/10 bg-black/[0.015] dark:border-neutral-800 dark:bg-white/5">
                           <TD className="px-2 py-3 text-center text-black/60 dark:text-neutral-400">—</TD>
                           <TD className="px-2 py-3 text-center">
                             <div className="flex items-center justify-center" style={{ paddingInlineStart: Math.min(44, x.depth * 18) }}>
@@ -746,7 +734,7 @@ function RevenueEstimatesPage() {
                     return (
                       <TR
                         key={r.id}
-                        className="text-center border-t border-black/10 odd:bg-black/[0.02] even:bg-black/[0.04] hover:bg-black/[0.06] transition-colors dark:border-neutral-800 dark:odd:bg-white/5 dark:even:bg:white/10 dark:hover:bg:white/15"
+                        className="text-center border-t border-black/10 odd:bg-black/[0.02] even:bg-black/[0.04] hover:bg-black/[0.06] transition-colors dark:border-neutral-800 dark:odd:bg-white/5 dark:even:bg-white/10 dark:hover:bg-white/15"
                       >
                         <TD className="px-2 py-3">{toFaDigits(idxText || (idx + 1))}</TD>
 
@@ -760,7 +748,7 @@ function RevenueEstimatesPage() {
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') openViewRowModal(r);
                                 }}
-                                className="inline-flex flex-row-reverse items-center gap-2 px-3 py-1.5 rounded-2xl border border-black/10 bg-black/[0.04] text-[11px] text-black cursor-pointer select-none dark:border-neutral-700 dark:bg:white/10 dark:text-neutral-100"
+                                className="inline-flex flex-row-reverse items-center gap-2 px-3 py-1.5 rounded-2xl border border-black/10 bg-black/[0.04] text-[11px] text-black cursor-pointer select-none dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100"
                                 title="مشاهده جزئیات"
                               >
                                 <button
@@ -793,11 +781,11 @@ function RevenueEstimatesPage() {
                             <button
                               type="button"
                               onClick={() => removeNode(r.id)}
-                              className="h-7 w-7 grid place-items-center rounded-full hover:bg-black/10 dark:hover:bg:white/20"
+                              className="h-10 w-10 grid place-items-center rounded-xl ring-1 ring-black/15 hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10"
                               aria-label="حذف"
                               title="حذف"
                             >
-                              <img src="/images/icons/bastan.svg" alt="" className="w-3 h-3" />
+                              <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
                             </button>
                           </div>
                         </TD>
@@ -814,7 +802,7 @@ function RevenueEstimatesPage() {
                                 className={`w-24 mx-auto h-12 md:w-24 md:h-12 rounded-2xl border text-[11px] md:text-[12px] flex items-center justify-center shadow-sm transition ${
                                   hasVal
                                     ? 'bg-[#edaf7c] border-[#edaf7c]/90 text-black'
-                                    : 'bg-black/5 border-black/10 text-black/70 dark:bg:white/5 dark:border-neutral-700 dark:text-neutral-100'
+                                    : 'bg-black/5 border-black/10 text-black/70 dark:bg-white/5 dark:border-neutral-700 dark:text-neutral-100'
                                 } ${isComputed ? 'opacity-70 cursor-default' : 'cursor-pointer'}`}
                                 title={isComputed ? 'این مقدار از زیرمجموعه‌ها محاسبه می‌شود' : 'ثبت/ویرایش مقدار'}
                               >
@@ -841,7 +829,7 @@ function RevenueEstimatesPage() {
                     );
                   })}
 
-                  <TR className="border-t border-black/10 bg-black/[0.015] dark:border-neutral-800 dark:bg:white/5">
+                  <TR className="border-t border-black/10 bg-black/[0.015] dark:border-neutral-800 dark:bg-white/5">
                     <TD className="px-2 py-3 text-center text-black/60 dark:text-neutral-400">
                       {rows.length ? '—' : toFaDigits(1)}
                     </TD>
@@ -879,7 +867,6 @@ function RevenueEstimatesPage() {
           </button>
         </div>
 
-        {/* مودال مقدار ماهانه */}
         {monthModal.open && (
           <div className="fixed inset-0 z-40 grid place-items-center px-3">
             <div className="absolute inset-0 bg-black/25 dark:bg-neutral-950/55 backdrop-blur-[2px]" onClick={closeMonthModal} />
@@ -933,7 +920,6 @@ function RevenueEstimatesPage() {
           </div>
         )}
 
-        {/* مودال افزودن ردیف سطح اول (پروژه) */}
         {addModal.open && (
           <div className="fixed inset-0 z-40 grid place-items-center px-3">
             <div className="absolute inset-0 bg-black/25 dark:bg-neutral-950/55 backdrop-blur-[2px]" onClick={closeAddModal} />
@@ -1011,7 +997,6 @@ function RevenueEstimatesPage() {
           </div>
         )}
 
-        {/* مودال افزودن زیرمجموعه */}
         {childModal.open && (
           <div className="fixed inset-0 z-40 grid place-items-center px-3">
             <div className="absolute inset-0 bg-black/25 dark:bg-neutral-950/55 backdrop-blur-[2px]" onClick={closeChildModal} />
@@ -1069,7 +1054,6 @@ function RevenueEstimatesPage() {
           </div>
         )}
 
-        {/* مودال نمایش جزئیات */}
         {viewRowModal.open && (
           <div className="fixed inset-0 z-40 grid place-items-center px-3">
             <div className="absolute inset-0 bg-black/25 dark:bg-neutral-950/55 backdrop-blur-[2px]" onClick={closeViewRowModal} />
@@ -1128,7 +1112,7 @@ function RevenueEstimatesPage() {
               <div id="revenue-preview" className="p-4 max-h-[70vh] overflow-auto space-y-4 text-center flex-1">
                 <div className="overflow-auto rounded-xl border border-black/10 dark:border-neutral-800 bg-white dark:bg-neutral-900">
                   <table className="w-full table-fixed text-[11px] md:text-xs text-center [&_th]:text-center [&_td]:text-center">
-                    <thead className="bg-black/5 text-black border-b border-black/10 sticky top-0 dark:bg:white/5 dark:text-neutral-100 dark:border-neutral-700">
+                    <thead className="bg-black/5 text-black border-b border-black/10 sticky top-0 dark:bg-white/5 dark:text-neutral-100 dark:border-neutral-700">
                       <tr>
                         <th className="py-2.5 px-2 w-16 text-center">#</th>
                         <th className="py-2.5 px-2 w-56 text-center">پروژه / مورد</th>
@@ -1145,7 +1129,7 @@ function RevenueEstimatesPage() {
                         </tr>
                       ) : (
                         <>
-                          <tr className="border-t border-b border-black/10 bg-black/[0.04] font-semibold dark:border-neutral-800 dark:bg:white/10">
+                          <tr className="border-t border-b border-black/10 bg-black/[0.04] font-semibold dark:border-neutral-800 dark:bg-white/10">
                             <td className="py-2 px-2 w-16 text-center">-</td>
                             <td className="py-2 px-2 w-56 text-center">جمع</td>
                             {dynamicMonths.map((m) => (
@@ -1172,7 +1156,7 @@ function RevenueEstimatesPage() {
                 </div>
               </div>
 
-              <div className="px-4 py-3 flex items-center justify-between gap-3 border-t border-black/10 dark:border-neutral-800 bg:white/80 dark:bg-neutral-900/80 shrink-0">
+              <div className="px-4 py-3 flex items-center justify-between gap-3 border-t border-black/10 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/80 shrink-0">
                 <div className="flex items-center gap-2">
                   <button onClick={printModal} className="h-9 w-11 grid place-items-center rounded-xl border border-black/15 hover:bg-black hover:text-white transition dark:border-neutral-700" aria-label="چاپ" title="چاپ">
                     <img src="/images/icons/print.svg" alt="" className="w-5 h-5" />
@@ -1194,6 +1178,3 @@ function RevenueEstimatesPage() {
 }
 
 export default RevenueEstimatesPage;
-
-
-
