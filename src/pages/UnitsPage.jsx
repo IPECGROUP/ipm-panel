@@ -27,7 +27,7 @@ function UnitsPage() {
   const pageOptions = [
     { key: "centers", label: "تعریف مراکز بودجه" },
     { key: "estimate", label: "برآورد هزینه‌ها" },
-    { key: "revenue", label: "برآورد درآمدها" }, // ✅ اضافه شد
+    { key: "revenue", label: "برآورد درآمدها" }, 
     { key: "alloc", label: "تخصیص بودجه" },
     { key: "reports", label: "گزارش‌ها" },
   ];
@@ -53,7 +53,7 @@ function UnitsPage() {
   const PAGE_MAP = {
     centers: "DefineBudgetCentersPage",
     estimate: "EstimatesPage",
-    revenue: "RevenueEstimatesPage", // ✅ اضافه شد
+    revenue: "RevenueEstimatesPage", 
     alloc: "BudgetAllocationPage",
     reports: "ReportsPage",
   };
