@@ -23,12 +23,15 @@ function UnitsPage() {
   // --- پاپ‌آپ سطح دسترسی ---
   const [accessUnit, setAccessUnit] = useState(null);
   const [accessOpen, setAccessOpen] = useState(false);
+
   const pageOptions = [
     { key: "centers", label: "تعریف مراکز بودجه" },
-    { key: "estimate", label: "برآورد هزینه" },
+    { key: "estimate", label: "برآورد هزینه‌ها" },
+    { key: "revenue", label: "برآورد درآمدها" }, // ✅ اضافه شد
     { key: "alloc", label: "تخصیص بودجه" },
     { key: "reports", label: "گزارش‌ها" },
   ];
+
   const tabOptions = [
     { key: "office", label: "دفتر مرکزی" },
     { key: "site", label: "سایت" },
@@ -37,6 +40,7 @@ function UnitsPage() {
     { key: "capex", label: "سرمایه‌ای" },
     { key: "projects", label: "پروژه‌ها" },
   ];
+
   const [checkedPages, setCheckedPages] = useState({});
   const [checkedTabsByPage, setCheckedTabsByPage] = useState({});
   const [openPages, setOpenPages] = useState({});
@@ -49,6 +53,7 @@ function UnitsPage() {
   const PAGE_MAP = {
     centers: "DefineBudgetCentersPage",
     estimate: "EstimatesPage",
+    revenue: "RevenueEstimatesPage", // ✅ اضافه شد
     alloc: "BudgetAllocationPage",
     reports: "ReportsPage",
   };
@@ -79,10 +84,8 @@ function UnitsPage() {
       });
 
       for (const row of items) {
-        if (row.permitted !== 1) continue;
-        const pageKey = Object.keys(PAGE_MAP).find(
-          (k) => PAGE_MAP[k] === row.page
-        );
+        if (row.permitted !== 1 && row.permitted !== true) continue;
+        const pageKey = Object.keys(PAGE_MAP).find((k) => PAGE_MAP[k] === row.page);
         if (!pageKey) continue;
 
         const currentTabs = tabsMap[pageKey] || {};
@@ -563,13 +566,9 @@ function UnitsPage() {
                               const pageTabs = checkedTabsByPage[opt.key] || {};
 
                               const totalTabs = tabOptions.length;
-                              const checkedCount = tabOptions.filter(
-                                (t) => pageTabs[t.key]
-                              ).length;
-                              const isAllChecked =
-                                totalTabs > 0 && checkedCount === totalTabs;
-                              const isSomeChecked =
-                                checkedCount > 0 && checkedCount < totalTabs;
+                              const checkedCount = tabOptions.filter((t) => pageTabs[t.key]).length;
+                              const isAllChecked = totalTabs > 0 && checkedCount === totalTabs;
+                              const isSomeChecked = checkedCount > 0 && checkedCount < totalTabs;
 
                               return (
                                 <div
@@ -616,9 +615,7 @@ function UnitsPage() {
                                               type="checkbox"
                                               className="w-4 h-4 accent-black dark:accent-neutral-200"
                                               checked={!!pageTabs[t.key]}
-                                              onChange={() =>
-                                                toggleTabInPage(opt.key, t.key)
-                                              }
+                                              onChange={() => toggleTabInPage(opt.key, t.key)}
                                             />
                                           </label>
                                         ))}
@@ -638,9 +635,7 @@ function UnitsPage() {
 
               {(accessError || accessOk) && (
                 <div
-                  className={`mt-3 text-sm ${
-                    accessError ? "text-red-600" : "text-green-600"
-                  }`}
+                  className={`mt-3 text-sm ${accessError ? "text-red-600" : "text-green-600"}`}
                 >
                   {accessError || accessOk}
                 </div>
