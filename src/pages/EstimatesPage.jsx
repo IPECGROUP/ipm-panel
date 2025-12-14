@@ -1,40 +1,30 @@
 // src/pages/EstimatesPage.jsx
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useCallback,
-  useRef,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Shell from "../components/layout/Shell.jsx";
 import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
-import { useAuth } from "../components/AuthProvider.jsx";
 
-function EstimatesPage({ api: apiProp }) {
-  const api =
-    apiProp ||
-    (async (path, opt = {}) => {
-      const res = await fetch("/api" + path, {
-        credentials: "include",
-        ...opt,
-        headers: {
-          "Content-Type": "application/json",
-          ...(opt.headers || {}),
-        },
-      });
-      const txt = await res.text();
-      let data = {};
-      try {
-        data = txt ? JSON.parse(txt) : {};
-      } catch {}
-      if (!res.ok) throw new Error(data?.error || data?.message || "request_failed");
-      return data;
+const PAGE_KEY = "EstimatesPage";
+
+export default function EstimatesPage() {
+  const API_BASE = (window.API_URL || "/api").replace(/\/+$/, "");
+
+  async function api(path, opt = {}) {
+    const res = await fetch(API_BASE + path, {
+      credentials: "include",
+      ...opt,
+      headers: { "Content-Type": "application/json", ...(opt.headers || {}) },
     });
+    const txt = await res.text();
+    let data = {};
+    try {
+      data = txt ? JSON.parse(txt) : {};
+    } catch (_e) {}
+    if (!res.ok) throw new Error(data?.error || data?.message || "request_failed");
+    return data;
+  }
 
-  const { user } = useAuth();
-
-  const [active, setActive] = useState("office"); // office|site|finance|cash|capex|projects
+  const [active, setActive] = useState("office");
   const allTabs = [
     { id: "office", label: "دفتر", prefix: "OB" },
     { id: "site", label: "سایت", prefix: "SB" },
@@ -44,10 +34,19 @@ function EstimatesPage({ api: apiProp }) {
     { id: "projects", label: "پروژه‌ها", prefix: "" },
   ];
 
-  const [me, setMe] = useState(user || null);
+  const [me, setMe] = useState(null);
   useEffect(() => {
-    setMe(user || null);
-  }, [user]);
+    let stop = false;
+    (async () => {
+      try {
+        const r = await api("/auth/me");
+        if (!stop) setMe(r.user || r.me || null);
+      } catch (_) {}
+    })();
+    return () => {
+      stop = true;
+    };
+  }, []);
 
   const isAdmin = !!(
     me &&
@@ -59,25 +58,98 @@ function EstimatesPage({ api: apiProp }) {
 
   const [tabAccess, setTabAccess] = useState({});
   const [tabsReady, setTabsReady] = useState(false);
-  const tabs = useMemo(
-    () => allTabs.filter((t) => tabAccess[t.id]?.ok),
-    [tabAccess],
+
+  const tabs = useMemo(() => allTabs.filter((t) => tabAccess[t.id]?.ok), [tabAccess]);
+
+  const checkPageOr = useCallback(
+    async (tabId) => {
+      try {
+        const q = new URLSearchParams({
+          page: PAGE_KEY,
+          tab: tabId,
+          _: String(Date.now()),
+        });
+        const res = await fetch(API_BASE + "/auth/check-page?" + q.toString(), {
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+        });
+        const txt = await res.text();
+        let data = {};
+        try {
+          data = txt ? JSON.parse(txt) : {};
+        } catch {}
+        if (res.status === 403) return { ok: false, message: data?.message || "" };
+        if (!res.ok) return { ok: false, message: data?.message || "" };
+        return { ok: !!(data && data.allowed !== false), message: data?.message || "" };
+      } catch (e) {
+        return { ok: false, message: e?.message || "" };
+      }
+    },
+    [API_BASE],
   );
 
-  const checkPageOr = useCallback(async (_tabId) => {
-    return { ok: true, message: "" };
-  }, []);
+  const getAccessFromMy = useCallback(async () => {
+    try {
+      const r = await api("/access/my");
+      const obj = r?.access || r?.pages || r?.permissions || r?.allowed_pages || r || null;
+
+      let pageNode = null;
+
+      if (Array.isArray(obj)) {
+        pageNode =
+          obj.find((x) => x?.page_key === PAGE_KEY) ||
+          obj.find((x) => x?.page === PAGE_KEY) ||
+          obj.find((x) => x?.key === PAGE_KEY) ||
+          null;
+      } else if (obj && typeof obj === "object") {
+        pageNode = obj[PAGE_KEY] || obj.pages?.[PAGE_KEY] || obj.permissions?.[PAGE_KEY] || null;
+        if (!pageNode && Array.isArray(obj.pages)) {
+          pageNode =
+            obj.pages.find((x) => x?.page_key === PAGE_KEY) ||
+            obj.pages.find((x) => x?.page === PAGE_KEY) ||
+            null;
+        }
+      }
+
+      const tabMap = pageNode?.tabs || pageNode?.tab_access || pageNode?.tabAccess || pageNode || null;
+      if (!tabMap || typeof tabMap !== "object") return null;
+
+      const out = {};
+      allTabs.forEach((t) => {
+        const v = tabMap[t.id];
+        if (typeof v === "boolean") out[t.id] = { ok: v, message: "" };
+        else if (v && typeof v === "object") out[t.id] = { ok: v.ok !== false, message: v.message || "" };
+        else out[t.id] = { ok: false, message: "" };
+      });
+
+      return out;
+    } catch {
+      return null;
+    }
+  }, [allTabs]);
 
   useEffect(() => {
     let dead = false;
     setTabsReady(false);
     (async () => {
+      const fast = await getAccessFromMy();
+      if (dead) return;
+
+      if (fast) {
+        setTabAccess(fast);
+        setTabsReady(true);
+        const allowedIds = allTabs.filter((t) => fast[t.id]?.ok).map((t) => t.id);
+        if (!allowedIds.includes(active)) setActive(allowedIds[0] || "");
+        return;
+      }
+
       const results = await Promise.all(
         allTabs.map(async (t) => {
           const { ok, message } = await checkPageOr(t.id);
           return [t.id, ok, message];
         }),
       );
+
       if (dead) return;
       const map = {};
       for (const [id, ok, message] of results) map[id] = { ok, message };
@@ -86,10 +158,11 @@ function EstimatesPage({ api: apiProp }) {
       const allowedIds = results.filter(([, ok]) => ok).map(([id]) => id);
       if (!allowedIds.includes(active)) setActive(allowedIds[0] || "");
     })();
+
     return () => {
       dead = true;
     };
-  }, [checkPageOr]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [me, checkPageOr, getAccessFromMy]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [allowed, setAllowed] = useState(true);
   const [denyMsg, setDenyMsg] = useState("");
@@ -108,7 +181,7 @@ function EstimatesPage({ api: apiProp }) {
     const access = tabAccess[active];
     if (access && access.ok === false) {
       setAllowed(false);
-      setDenyMsg(access.message || "شما سطح دسترسی لازم را ندار ندارید.");
+      setDenyMsg(access.message || "شما سطح دسترسی لازم را ندارید.");
     } else {
       setAllowed(true);
       setDenyMsg("");
@@ -124,29 +197,30 @@ function EstimatesPage({ api: apiProp }) {
     (async () => {
       try {
         const r = await api("/projects");
-        if (!stop) setProjects(r.projects || r.items || []);
+        const list = r.projects || r.items || r.data || [];
+        if (!stop) setProjects(Array.isArray(list) ? list : []);
       } catch (_) {}
     })();
     return () => {
       stop = true;
     };
-  }, [api]);
+  }, []);
+
   const selectedProject = useMemo(
     () => (projects || []).find((p) => String(p.id) === String(projectId)),
     [projects, projectId],
   );
-  const sortedProjects = useMemo(
-    () =>
-      (projects || [])
-        .slice()
-        .sort((a, b) =>
-          String(a?.code || "").localeCompare(String(b?.code || ""), "fa", {
-            numeric: true,
-            sensitivity: "base",
-          }),
-        ),
-    [projects],
-  );
+
+  const sortedProjects = useMemo(() => {
+    return (projects || [])
+      .slice()
+      .sort((a, b) =>
+        String(a?.code || "").localeCompare(String(b?.code || ""), "fa", {
+          numeric: true,
+          sensitivity: "base",
+        }),
+      );
+  }, [projects]);
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -170,14 +244,8 @@ function EstimatesPage({ api: apiProp }) {
     const desiredLeft = rect.left - 12;
     const panelW = 360;
     const panelH = Math.min(window.innerHeight - 2 * margin, 420);
-    let left = Math.max(
-      margin,
-      Math.min(desiredLeft, window.innerWidth - panelW - margin),
-    );
-    let top = Math.max(
-      margin,
-      Math.min(desiredTop, window.innerHeight - panelH - margin),
-    );
+    const left = Math.max(margin, Math.min(desiredLeft, window.innerWidth - panelW - margin));
+    const top = Math.max(margin, Math.min(desiredTop, window.innerHeight - panelH - margin));
     setInfoPos({ top, left, width: panelW, maxH: panelH });
   }, []);
 
@@ -206,8 +274,7 @@ function EstimatesPage({ api: apiProp }) {
     const digits = String(Math.abs(Number(n) || 0));
     return sign + digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
-  const toFaDigits = (s) =>
-    String(s ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]);
+  const toFaDigits = (s) => String(s ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]);
   const toEnDigits = (s) =>
     String(s || "")
       .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d))
@@ -233,10 +300,7 @@ function EstimatesPage({ api: apiProp }) {
     const raw = String(s || "").trim();
     const noPrefix = raw.replace(/^[A-Za-z]+[^0-9]*/, "");
     const normalized = noPrefix.replace(/[^\d.]+/g, ".");
-    const cleaned = normalized
-      .replace(/\.+/g, ".")
-      .replace(/^\./, "")
-      .replace(/\.$/, "");
+    const cleaned = normalized.replace(/\.+/g, ".").replace(/^\./, "").replace(/\.$/, "");
     return cleaned;
   };
 
@@ -257,14 +321,10 @@ function EstimatesPage({ api: apiProp }) {
 
   const jalaliMonthIndex = useMemo(() => {
     try {
-      const fmt = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
-        month: "numeric",
-      });
+      const fmt = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { month: "numeric" });
       const fa = fmt.format(new Date());
       const en = Number(toEnDigits(fa));
-      if (!en || en < 1 || en > 12) {
-        return new Date().getMonth() + 1;
-      }
+      if (!en || en < 1 || en > 12) return new Date().getMonth() + 1;
       return en;
     } catch {
       return new Date().getMonth() + 1;
@@ -275,11 +335,7 @@ function EstimatesPage({ api: apiProp }) {
     const arr = [];
     for (let i = 0; i < 6; i++) {
       const m = ((jalaliMonthIndex + i - 1) % 12) + 1;
-      arr.push({
-        key: "m" + m,
-        monthIndex: m,
-        label: monthNames[m - 1],
-      });
+      arr.push({ key: "m" + m, monthIndex: m, label: monthNames[m - 1] });
     }
     return arr;
   }, [jalaliMonthIndex]);
@@ -311,17 +367,19 @@ function EstimatesPage({ api: apiProp }) {
       setLoading(true);
       try {
         let items = [];
+
         if (active === "projects") {
           const qs = new URLSearchParams();
           qs.set("kind", "projects");
           qs.set("project_id", String(projectId));
+
           const r = await api("/budget-estimates?" + qs.toString());
-          items = r.items || [];
+          items = r.items || r.data || [];
 
           try {
             const centers = await api("/centers/projects");
             const base = String(selectedProject?.code || "").trim();
-            const extra = (centers?.items || [])
+            const extra = (centers?.items || centers?.data || [])
               .filter((c) => {
                 const suf = String(c?.suffix || "").trim();
                 return suf === base || suf.startsWith(base + ".");
@@ -332,9 +390,8 @@ function EstimatesPage({ api: apiProp }) {
                 last_desc: "",
                 last_amount: 0,
               }));
-            const byCode = new Map(items.map((it) => [String(it.code), it]));
-            for (const e of extra)
-              if (!byCode.has(String(e.code))) byCode.set(String(e.code), e);
+            const byCode = new Map((items || []).map((it) => [String(it.code), it]));
+            for (const e of extra) if (!byCode.has(String(e.code))) byCode.set(String(e.code), e);
             items = Array.from(byCode.values());
           } catch (_e) {}
 
@@ -342,65 +399,31 @@ function EstimatesPage({ api: apiProp }) {
             const qh = new URLSearchParams();
             qh.set("kind", "projects");
             qh.set("project_id", String(projectId));
-            const hist = await api(
-              "/budget-estimates/history?" + qh.toString(),
-            );
+            const hist = await api("/budget-estimates/history?" + qh.toString());
             const hmap = hist?.history || {};
             const lastMap = {};
             Object.keys(hmap).forEach((code) => {
               const arr = (hmap[code] || [])
                 .slice()
-                .sort((a, b) =>
-                  String(b.created_at || "").localeCompare(
-                    String(a.created_at || ""),
-                  ),
-                );
+                .sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
               if (arr[0]) lastMap[code] = Number(arr[0].amount || 0);
             });
-            items = items.map((it) => ({
+            items = (items || []).map((it) => ({
               ...it,
-              last_amount:
-                (lastMap[it.code] !== undefined
-                  ? lastMap[it.code]
-                  : it.last_amount) || 0,
+              last_amount: (lastMap[it.code] !== undefined ? lastMap[it.code] : it.last_amount) || 0,
             }));
           } catch (_e) {}
         } else {
           const qs = new URLSearchParams();
           qs.set("kind", active);
           const r = await api("/budget-estimates?" + qs.toString());
-          items = r.items || [];
-
-          try {
-            const centers = await api("/centers/" + active);
-            const extra = (centers?.items || [])
-              .map((c) => {
-                const suf = String(c?.suffix || c?.code || "").trim();
-                return {
-                  code: suf,
-                  center_desc: c?.description || "",
-                  last_desc: "",
-                  last_amount: 0,
-                };
-              })
-              .filter((x) => x.code);
-
-            const byCore = new Map();
-            (items || []).forEach((it) => {
-              const k = coreOf(it.code);
-              if (k) byCore.set(k, it);
-            });
-            for (const e of extra) {
-              const k = coreOf(e.code);
-              if (k && !byCore.has(k)) byCore.set(k, e);
-            }
-            items = Array.from(byCore.values());
-          } catch (_e) {}
+          items = r.items || r.data || [];
         }
 
         if (abort) return;
+
         const mapped = (items || []).map((it) => {
-          let desc = it.last_desc ?? "";
+          let desc = it.last_desc ?? it.description ?? "";
           let lastMonths = {};
           if (desc && typeof desc === "string") {
             try {
@@ -411,9 +434,7 @@ function EstimatesPage({ api: apiProp }) {
                   const mm = {};
                   dynamicMonths.forEach((m) => {
                     const v = parsed.months[m.key];
-                    if (v !== undefined && v !== null && !isNaN(Number(v))) {
-                      mm[m.key] = Number(v);
-                    }
+                    if (v !== undefined && v !== null && !isNaN(Number(v))) mm[m.key] = Number(v);
                   });
                   lastMonths = mm;
                 }
@@ -422,24 +443,21 @@ function EstimatesPage({ api: apiProp }) {
           }
           return {
             code: it.code,
-            name: it.center_desc ?? "",
+            name: it.center_desc ?? it.name ?? "",
             desc: desc || "",
-            baseAmount: it.last_amount ?? 0,
+            baseAmount: it.last_amount ?? it.amount ?? 0,
             amountRaw: 0,
             amountStr: "",
             months: {},
             lastMonths,
           };
         });
+
         const sorted = mapped.slice().sort((a, b) =>
-          String(renderCode(a.code)).localeCompare(
-            String(renderCode(b.code)),
-            "fa",
-            {
-              numeric: true,
-              sensitivity: "base",
-            },
-          ),
+          String(renderCode(a.code)).localeCompare(String(renderCode(b.code)), "fa", {
+            numeric: true,
+            sensitivity: "base",
+          }),
         );
         setRows(sorted);
       } catch (ex) {
@@ -448,19 +466,11 @@ function EstimatesPage({ api: apiProp }) {
         if (!abort) setLoading(false);
       }
     })();
+
     return () => {
       abort = true;
     };
-  }, [
-    active,
-    projectId,
-    selectedProject?.code,
-    allowed,
-    tabs,
-    tabsReady,
-    dynamicMonths,
-    api,
-  ]);
+  }, [active, projectId, selectedProject?.code, allowed, tabs, tabsReady, dynamicMonths]);
 
   const filteredRows = useMemo(() => {
     if (active !== "projects") return rows || [];
@@ -475,18 +485,274 @@ function EstimatesPage({ api: apiProp }) {
   const finalPreviewOf = (r) =>
     dynamicMonths.reduce((acc, m) => {
       let val = 0;
-      if (r.months && r.months[m.key] != null) {
-        val = Number(r.months[m.key] || 0);
-      } else {
-        val = Number((r.lastMonths && r.lastMonths[m.key]) || 0);
-      }
+      if (r.months && r.months[m.key] != null) val = Number(r.months[m.key] || 0);
+      else val = Number((r.lastMonths && r.lastMonths[m.key]) || 0);
       return acc + (val || 0);
     }, 0);
+
+  const [codeSortDir, setCodeSortDir] = useState("asc");
+  const [openCodes, setOpenCodes] = useState({});
+  useEffect(() => {
+    setOpenCodes({});
+  }, [active, projectId]);
+
+  const rowsToRender = useMemo(() => filteredRows || [], [filteredRows]);
+
+  const hierarchyMaps = useMemo(() => {
+    const base = rowsToRender || [];
+    const coreByCode = {};
+    base.forEach((r) => {
+      if (!r || !r.code) return;
+      coreByCode[r.code] = coreOf(r.code);
+    });
+    const hasChildrenByCode = {};
+    base.forEach((r) => {
+      if (!r || !r.code) return;
+      const core = coreByCode[r.code];
+      if (!core) {
+        hasChildrenByCode[r.code] = false;
+        return;
+      }
+      const prefix = core + ".";
+      hasChildrenByCode[r.code] = base.some((other) => {
+        if (!other || !other.code || other === r) return false;
+        const oc = coreByCode[other.code];
+        return oc && oc.startsWith(prefix);
+      });
+    });
+    const isLeafByCode = {};
+    Object.keys(coreByCode).forEach((code) => {
+      isLeafByCode[code] = !hasChildrenByCode[code];
+    });
+    return { coreByCode, hasChildrenByCode, isLeafByCode };
+  }, [rowsToRender]);
+
+  const displayRows = useMemo(() => {
+    const base = rowsToRender || [];
+    if (!base.length) return [];
+
+    const nodes = base.map((r, index) => {
+      const core = coreOf(r.code);
+      const parts = core ? core.split(".").filter(Boolean) : [];
+      const key = core || `__idx_${index}`;
+      let parentCore = null;
+      if (parts.length > 1) parentCore = parts.slice(0, -1).join(".");
+      return { row: r, key, core, parentCore, parts };
+    });
+
+    const byCore = new Map();
+    nodes.forEach((n) => {
+      if (n.core) byCore.set(n.core, n);
+    });
+
+    const childrenMap = new Map();
+    nodes.forEach((n) => {
+      if (!n.parentCore) return;
+      if (!byCore.has(n.parentCore)) return;
+      if (!childrenMap.has(n.parentCore)) childrenMap.set(n.parentCore, []);
+      childrenMap.get(n.parentCore).push(n);
+    });
+
+    nodes.forEach((n) => {
+      n.hasChildren = !!(n.core && childrenMap.has(n.core));
+    });
+
+    const sortFn = (a, b) => {
+      const ca = renderCode(a.row.code);
+      const cb = renderCode(b.row.code);
+      const cmp = String(ca || "").localeCompare(String(cb || ""), "fa", {
+        numeric: true,
+        sensitivity: "base",
+      });
+      return codeSortDir === "asc" ? cmp : -cmp;
+    };
+
+    const roots = nodes.filter((n) => !n.parentCore || !byCore.has(n.parentCore));
+    roots.sort(sortFn);
+    for (const list of childrenMap.values()) list.sort(sortFn);
+
+    const result = [];
+    const visit = (node, depth) => {
+      result.push({ row: node.row, depth, key: node.key, core: node.core, hasChildren: node.hasChildren });
+      if (!node.hasChildren) return;
+      const toggleKey = node.core || node.key;
+      const isOpen = !!openCodes[toggleKey];
+      if (!isOpen) return;
+      const children = node.core ? childrenMap.get(node.core) || [] : [];
+      children.forEach((child) => visit(child, depth + 1));
+    };
+
+    roots.forEach((root) => visit(root, 0));
+    return result;
+  }, [rowsToRender, openCodes, renderCode, coreOf, codeSortDir]);
+
+  const totalsByMonth = useMemo(() => {
+    const totals = {};
+    dynamicMonths.forEach((m) => (totals[m.key] = 0));
+    return totals;
+  }, [dynamicMonths]);
+
+  const totalGrand = useMemo(() => {
+    let grand = 0;
+    (rowsToRender || []).forEach((r) => {
+      if (!r || !r.code) return;
+      if (!hierarchyMaps.isLeafByCode[r.code]) return;
+      grand += finalPreviewOf(r);
+    });
+    return grand;
+  }, [rowsToRender, hierarchyMaps, finalPreviewOf]);
+
+  const totalsComputed = useMemo(() => {
+    const t = {};
+    dynamicMonths.forEach((m) => (t[m.key] = 0));
+    (rowsToRender || []).forEach((r) => {
+      if (!r || !r.code) return;
+      if (!hierarchyMaps.isLeafByCode[r.code]) return;
+      dynamicMonths.forEach((m) => {
+        let val = 0;
+        if (r.months && r.months[m.key] != null) val = Number(r.months[m.key] || 0);
+        else val = Number((r.lastMonths && r.lastMonths[m.key]) || 0);
+        if (val) t[m.key] += val;
+      });
+    });
+    return t;
+  }, [rowsToRender, hierarchyMaps, dynamicMonths]);
+
+  const TopButtons = () => (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+      {tabs.map((t) => (
+        <button
+          key={t.id}
+          onClick={() => {
+            setActive(t.id);
+            setOpenInfoFor(null);
+          }}
+          className={`h-10 px-4 rounded-2xl border text-sm shadow-sm transition ${
+            active === t.id
+              ? "bg-neutral-100 text-neutral-900 border-neutral-100"
+              : "bg-white text-black border border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800"
+          }`}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  const ProjectsControls = () => {
+    if (active !== "projects") return null;
+    return (
+      <div className="grid grid-cols-1 gap-3">
+        <div className="flex flex-col gap-1">
+          <label className="text-sm text-black/70 dark:text-neutral-300">پروژه</label>
+          <select
+            className="w-full rounded-xl px-3 py-2 text-sm font-[inherit] bg-white text-black placeholder-black/40 border border-black/15 outline-none text-right dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400"
+            value={projectId}
+            onChange={(e) => {
+              setProjectId(e.target.value);
+              setOpenInfoFor(null);
+            }}
+          >
+            <option className="bg-white dark:bg-neutral-900" value="">
+              انتخاب کنید
+            </option>
+            {(sortedProjects || []).map((p) => (
+              <option className="bg-white dark:bg-neutral-900" key={p.id} value={p.id}>
+                {p.code ? `${p.code} - ${p.name || ""}` : p.name || "—"}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+    );
+  };
+
+  const [monthModal, setMonthModal] = useState({
+    open: false,
+    code: null,
+    monthKey: "",
+    label: "",
+    name: "",
+    value: "",
+  });
+
+  const monthInputRef = useRef(null);
+
+  const openMonthModal = (row, month) => {
+    let rawVal = 0;
+    if (row.months && row.months[month.key] != null) rawVal = row.months[month.key];
+    else if (row.lastMonths && row.lastMonths[month.key] != null) rawVal = row.lastMonths[month.key];
+    const currentVal = Number(rawVal || 0);
+    setMonthModal({
+      open: true,
+      code: row.code,
+      monthKey: month.key,
+      label: month.label,
+      name: row.name || "",
+      value: currentVal ? formatMoney(currentVal) : "",
+    });
+  };
+
+  const closeMonthModal = () => setMonthModal((prev) => ({ ...prev, open: false }));
+
+  const handleMonthModalChange = (raw) => {
+    const en = toEnDigits(raw);
+    const digits = en.replace(/[^\d]/g, "");
+    const formatted = digits ? formatMoney(Number(digits)) : "";
+    setMonthModal((prev) => ({ ...prev, value: formatted }));
+  };
+
+  const handleMonthModalSave = () => {
+    if (!monthModal.code || !monthModal.monthKey) {
+      closeMonthModal();
+      return;
+    }
+    const num = parseMoney(monthModal.value);
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.code !== monthModal.code) return r;
+        const oldMonths = r.months || {};
+        return { ...r, months: { ...oldMonths, [monthModal.monthKey]: num } };
+      }),
+    );
+    setMonthModal({ open: false, code: null, monthKey: "", label: "", name: "", value: "" });
+  };
+
+  useEffect(() => {
+    if (monthModal.open && monthInputRef.current) {
+      monthInputRef.current.focus();
+      monthInputRef.current.select();
+    }
+  }, [monthModal.open]);
+
+  const fetchHistory = useCallback(async () => {
+    try {
+      setHistLoading(true);
+      const qs = new URLSearchParams();
+      qs.set("kind", active);
+      if (active === "projects" && projectId) qs.set("project_id", String(projectId));
+      const r = await api("/budget-estimates/history?" + qs.toString()).catch(() => ({ history: {} }));
+      const h = r?.history || {};
+      Object.keys(h).forEach((k) => {
+        h[k] = (h[k] || [])
+          .slice()
+          .sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
+      });
+      setHistoryMap(h);
+    } finally {
+      setHistLoading(false);
+    }
+  }, [active, projectId]);
+
+  useEffect(() => {
+    if (showModal) fetchHistory();
+  }, [showModal, fetchHistory]);
 
   const onUpdate = async () => {
     try {
       setSaving(true);
       setErr("");
+
       const monthsByCode = new Map();
       const payloadRows = (filteredRows || [])
         .map((r) => {
@@ -498,10 +764,7 @@ function EstimatesPage({ api: apiProp }) {
           dynamicMonths.forEach((m) => {
             const cur = r.months && r.months[m.key];
             const last = r.lastMonths && r.lastMonths[m.key];
-            const effective =
-              cur !== undefined && cur !== null
-                ? Number(cur) || 0
-                : Number(last) || 0;
+            const effective = cur !== undefined && cur !== null ? Number(cur) || 0 : Number(last) || 0;
             if (effective) nextMonths[m.key] = effective;
           });
           monthsByCode.set(r.code, nextMonths);
@@ -510,10 +773,7 @@ function EstimatesPage({ api: apiProp }) {
           let description = null;
           if (plainDesc || Object.keys(nextMonths).length) {
             try {
-              description = JSON.stringify({
-                desc: plainDesc || null,
-                months: nextMonths,
-              });
+              description = JSON.stringify({ desc: plainDesc || null, months: nextMonths });
             } catch {
               description = plainDesc || null;
             }
@@ -521,16 +781,9 @@ function EstimatesPage({ api: apiProp }) {
 
           if (!delta && !plainDesc && !Object.keys(nextMonths).length) return null;
 
-          const total = Object.values(nextMonths).reduce(
-            (sum, v) => sum + Number(v || 0),
-            0,
-          );
+          const total = Object.values(nextMonths).reduce((sum, v) => sum + Number(v || 0), 0);
 
-          return {
-            code: r.code,
-            description,
-            amount: total,
-          };
+          return { code: r.code, description, amount: total };
         })
         .filter(Boolean);
 
@@ -538,24 +791,19 @@ function EstimatesPage({ api: apiProp }) {
         setShowModal(true);
         return;
       }
+
       const body = {
         kind: active,
         project_id: active === "projects" ? Number(projectId) : null,
         rows: payloadRows,
       };
-      await api("/budget-estimates", {
-        method: "POST",
-        body: JSON.stringify(body),
-      });
+
+      await api("/budget-estimates", { method: "POST", body: JSON.stringify(body) });
+
       setRows((prev) =>
         prev.map((r) => {
           const hit = payloadRows.find((pr) => pr.code === r.code);
-          if (!hit)
-            return {
-              ...r,
-              amountRaw: 0,
-              amountStr: "0",
-            };
+          if (!hit) return { ...r, amountRaw: 0, amountStr: "0" };
           const nextMonths = monthsByCode.get(r.code) || r.lastMonths || {};
           return {
             ...r,
@@ -568,6 +816,7 @@ function EstimatesPage({ api: apiProp }) {
           };
         }),
       );
+
       setShowModal(true);
       await fetchHistory();
     } catch (ex) {
@@ -577,80 +826,36 @@ function EstimatesPage({ api: apiProp }) {
     }
   };
 
-  const resetEstimate = async (code) => {
-    try {
-      setErr("");
-      const body = {
-        kind: active,
-        project_id: active === "projects" ? Number(projectId) : null,
-        rows: [{ code, amount: 0, description: null }],
-      };
-      await api("/budget-estimates", {
-        method: "POST",
-        body: JSON.stringify(body),
-      });
-      setRows((prev) =>
-        prev.map((r) =>
-          r.code === code
-            ? {
-                ...r,
-                baseAmount: 0,
-                amountRaw: 0,
-                amountStr: "0",
-                months: {},
-                lastMonths: {},
-                desc: "",
-              }
-            : r,
-        ),
-      );
-    } catch (ex) {
-      setErr(ex.message || "خطا در صفر کردن برآورد");
-    }
-  };
-
   const resetAllEstimates = async () => {
     if (!isAdmin) return;
     if (!rows.length) return;
-    const ok = window.confirm(
-      "آیا از صفر کردن تمام برآوردهای این صفحه اطمینان دارید؟ این کار قابل بازگشت نیست.",
-    );
+    const ok = window.confirm("آیا از صفر کردن تمام برآوردهای این صفحه اطمینان دارید؟ این کار قابل بازگشت نیست.");
     if (!ok) return;
     try {
       setSaving(true);
       setErr("");
+
       const rowsToSend = (rowsToRender || [])
         .filter((r) => r.code)
-        .map((r) => ({
-          code: r.code,
-          amount: 0,
-          description: null,
-        }));
+        .map((r) => ({ code: r.code, amount: 0, description: null }));
+
       if (!rowsToSend.length) {
         setSaving(false);
         return;
       }
+
       const body = {
         kind: active,
         project_id: active === "projects" ? Number(projectId) : null,
         rows: rowsToSend,
       };
-      await api("/budget-estimates", {
-        method: "POST",
-        body: JSON.stringify(body),
-      });
+
+      await api("/budget-estimates", { method: "POST", body: JSON.stringify(body) });
+
       setRows((prev) =>
         prev.map((r) =>
           rowsToSend.find((x) => x.code === r.code)
-            ? {
-                ...r,
-                baseAmount: 0,
-                amountRaw: 0,
-                amountStr: "0",
-                months: {},
-                lastMonths: {},
-                desc: "",
-              }
+            ? { ...r, baseAmount: 0, amountRaw: 0, amountStr: "0", months: {}, lastMonths: {}, desc: "" }
             : r,
         ),
       );
@@ -744,15 +949,13 @@ function EstimatesPage({ api: apiProp }) {
         <body>
           <table>
             <thead>${headerHtml}</thead>
-            <tbody>${bodyHtml || '<tr><td colspan="7">موردی برای نمایش نیست.</td></tr>'}</tbody>
+            <tbody>${bodyHtml || `<tr><td colspan="7">موردی برای نمایش نیست.</td></tr>`}</tbody>
           </table>
         </body>
       </html>
     `;
 
-    const blob = new Blob(["\ufeff" + html], {
-      type: "application/vnd.ms-excel;charset=utf-8;",
-    });
+    const blob = new Blob(["\ufeff" + html], { type: "application/vnd.ms-excel;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -763,342 +966,49 @@ function EstimatesPage({ api: apiProp }) {
     URL.revokeObjectURL(url);
   };
 
-  const fetchHistory = useCallback(async () => {
-    try {
-      setHistLoading(true);
-      const qs = new URLSearchParams();
-      qs.set("kind", active);
-      if (active === "projects" && projectId) qs.set("project_id", String(projectId));
-      const r = await api("/budget-estimates/history?" + qs.toString()).catch(
-        () => ({ history: {} }),
-      );
-      const h = r?.history || {};
-      Object.keys(h).forEach((k) => {
-        h[k] = (h[k] || [])
-          .slice()
-          .sort((a, b) =>
-            String(b.created_at || "").localeCompare(String(a.created_at || "")),
-          );
-      });
-      setHistoryMap(h);
-    } finally {
-      setHistLoading(false);
-    }
-  }, [active, projectId, api]);
-
-  useEffect(() => {
-    if (showModal) fetchHistory();
-  }, [showModal, fetchHistory]);
-
-  const [openCodes, setOpenCodes] = useState({});
-  const [codeSortDir, setCodeSortDir] = useState("asc");
-
-  useEffect(() => {
-    setOpenCodes({});
-  }, [active, projectId]);
-
-  const rowsToRender = useMemo(() => filteredRows || [], [filteredRows]);
-
-  const hierarchyMaps = useMemo(() => {
-    const base = rowsToRender || [];
-    const coreByCode = {};
-    base.forEach((r) => {
-      if (!r || !r.code) return;
-      coreByCode[r.code] = coreOf(r.code);
-    });
-    const hasChildrenByCode = {};
-    base.forEach((r) => {
-      if (!r || !r.code) return;
-      const core = coreByCode[r.code];
-      if (!core) {
-        hasChildrenByCode[r.code] = false;
-        return;
-      }
-      const prefix = core + ".";
-      hasChildrenByCode[r.code] = base.some((other) => {
-        if (!other || !other.code || other === r) return false;
-        const oc = coreByCode[other.code];
-        return oc && oc.startsWith(prefix);
-      });
-    });
-    return { coreByCode, hasChildrenByCode };
-  }, [rowsToRender, active]);
-
-  const displayRows = useMemo(() => {
-    const base = rowsToRender || [];
-    if (!base.length) return [];
-
-    const nodes = base.map((r, index) => {
-      const core = coreOf(r.code);
-      const parts = core ? core.split(".").filter(Boolean) : [];
-      const key = core || `__idx_${index}`;
-      let parentCore = null;
-      if (parts.length > 1) {
-        parentCore = parts.slice(0, -1).join(".");
-      }
-      return { row: r, key, core, parentCore, parts };
-    });
-
-    const byCore = new Map();
-    nodes.forEach((n) => {
-      if (n.core) byCore.set(n.core, n);
-    });
-
-    const childrenMap = new Map();
-    nodes.forEach((n) => {
-      if (!n.parentCore) return;
-      if (!byCore.has(n.parentCore)) return;
-      if (!childrenMap.has(n.parentCore)) childrenMap.set(n.parentCore, []);
-      childrenMap.get(n.parentCore).push(n);
-    });
-
-    nodes.forEach((n) => {
-      n.hasChildren = !!(n.core && childrenMap.has(n.core));
-    });
-
-    const sortFn = (a, b) => {
-      const ca = renderCode(a.row.code);
-      const cb = renderCode(b.row.code);
-      const cmp = String(ca || "").localeCompare(String(cb || ""), "fa", {
-        numeric: true,
-        sensitivity: "base",
-      });
-      return codeSortDir === "asc" ? cmp : -cmp;
-    };
-
-    const roots = nodes.filter((n) => !n.parentCore || !byCore.has(n.parentCore));
-    roots.sort(sortFn);
-    for (const list of childrenMap.values()) {
-      list.sort(sortFn);
-    }
-
-    const result = [];
-    const visit = (node, depth) => {
-      result.push({
-        row: node.row,
-        depth,
-        key: node.key,
-        core: node.core,
-        hasChildren: node.hasChildren,
-      });
-      if (!node.hasChildren) return;
-      const toggleKey = node.core || node.key;
-      const isOpen = !!openCodes[toggleKey];
-      if (!isOpen) return;
-      const children = node.core ? childrenMap.get(node.core) || [] : [];
-      children.forEach((child) => visit(child, depth + 1));
-    };
-
-    roots.forEach((root) => visit(root, 0));
-    return result;
-  }, [rowsToRender, openCodes, renderCode, codeSortDir]);
-
-  const totalsByMonth = {};
-  dynamicMonths.forEach((m) => {
-    totalsByMonth[m.key] = 0;
-  });
-  let totalGrand = 0;
-  (rowsToRender || []).forEach((r) => {
-    if (!r || !r.code) return;
-    dynamicMonths.forEach((m) => {
-      let val;
-      if (r.months && r.months[m.key] != null) {
-        val = Number(r.months[m.key] || 0);
-      } else {
-        val = Number((r.lastMonths && r.lastMonths[m.key]) || 0);
-      }
-      if (val) totalsByMonth[m.key] += val;
-    });
-    totalGrand += finalPreviewOf(r);
-  });
-
-  const TopButtons = () => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-      {tabs.map((t) => (
-        <button
-          key={t.id}
-          onClick={() => {
-            setActive(t.id);
-            setOpenInfoFor(null);
-          }}
-          className={`h-10 px-4 rounded-2xl border text-sm shadow-sm transition
-            ${
-              active === t.id
-                ? "bg-black text-white border-black"
-                : "bg-white text-black border border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800"
-            }`}
-        >
-          {t.label}
-        </button>
-      ))}
-    </div>
-  );
-
-  const ProjectsControls = () => {
-    if (active !== "projects") return null;
-    return (
-      <div className="grid grid-cols-1 gap-3">
-        <div className="flex flex-col gap-1">
-          <label className="text-sm text-black/70 dark:text-neutral-300">
-            پروژه
-          </label>
-          <select
-            className="w-full rounded-xl px-3 py-2 text-sm font-[inherit] bg-white text-black placeholder-black/40 border border-black/15 outline-none text-right
-                       dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400"
-            value={projectId}
-            onChange={(e) => {
-              setProjectId(e.target.value);
-              setOpenInfoFor(null);
-            }}
-          >
-            <option className="bg-white dark:bg-neutral-900" value="">
-              انتخاب کنید
-            </option>
-            {(sortedProjects || []).map((p) => (
-              <option
-                className="bg-white dark:bg-neutral-900"
-                key={p.id}
-                value={p.id}
-              >
-                {p.code ? `${p.code} - ${p.name || ""}` : p.name || "—"}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-    );
-  };
-
-  const [monthModal, setMonthModal] = useState({
-    open: false,
-    code: null,
-    monthKey: "",
-    label: "",
-    name: "",
-    value: "",
-  });
-
-  const monthInputRef = useRef(null);
-
-  const openMonthModal = (row, month) => {
-    let rawVal = 0;
-    if (row.months && row.months[month.key] != null) {
-      rawVal = row.months[month.key];
-    } else if (row.lastMonths && row.lastMonths[month.key] != null) {
-      rawVal = row.lastMonths[month.key];
-    }
-    const currentVal = Number(rawVal || 0);
-    setMonthModal({
-      open: true,
-      code: row.code,
-      monthKey: month.key,
-      label: month.label,
-      name: row.name || "",
-      value: currentVal ? formatMoney(currentVal) : "",
-    });
-  };
-
-  const closeMonthModal = () =>
-    setMonthModal((prev) => ({ ...prev, open: false }));
-
-  const handleMonthModalChange = (raw) => {
-    const en = toEnDigits(raw);
-    const digits = en.replace(/[^\d]/g, "");
-    const formatted = digits ? formatMoney(Number(digits)) : "";
-    setMonthModal((prev) => ({ ...prev, value: formatted }));
-  };
-
-  const handleMonthModalSave = () => {
-    if (!monthModal.code || !monthModal.monthKey) {
-      closeMonthModal();
-      return;
-    }
-    const num = parseMoney(monthModal.value);
-    setRows((prev) =>
-      prev.map((r) => {
-        if (r.code !== monthModal.code) return r;
-        const oldMonths = r.months || {};
-        return {
-          ...r,
-          months: {
-            ...oldMonths,
-            [monthModal.monthKey]: num,
-          },
-        };
-      }),
-    );
-    setMonthModal({
-      open: false,
-      code: null,
-      monthKey: "",
-      label: "",
-      name: "",
-      value: "",
-    });
-  };
-
-  useEffect(() => {
-    if (monthModal.open && monthInputRef.current) {
-      monthInputRef.current.focus();
-      monthInputRef.current.select();
-    }
-  }, [monthModal.open]);
-
-  const colCount = 3 + dynamicMonths.length + 1;
-
   if (!tabsReady) {
     return (
-      <>
+      <Shell>
         <Card>
           <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
             <span>بودجه‌بندی</span>
             <span className="mx-2">›</span>
-            <span className="font-semibold text-black dark:text-neutral-100">
-              برآورد هزینه‌ها
-            </span>
+            <span className="font-semibold text-black dark:text-neutral-100">برآورد هزینه‌ها</span>
           </div>
-          <div
-            className="p-6 rounded-2xl ring-1 ring-black/10 bg-white text-center text-black/70
-                          dark:ring-neutral-800 dark:bg-neutral-900 dark:text-neutral-300"
-          >
+          <div className="p-6 rounded-2xl ring-1 ring-black/10 bg-white text-center text-black/70 dark:ring-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
             در حال بررسی دسترسی‌ها…
           </div>
         </Card>
-      </>
+      </Shell>
     );
   }
 
   if (!tabs.length || !allowed) {
     return (
-      <>
+      <Shell>
         <Card>
           <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
             <span>بودجه‌بندی</span>
             <span className="mx-2">›</span>
-            <span className="font-semibold text-black dark:text-neutral-100">
-              برآورد هزینه‌ها
-            </span>
+            <span className="font-semibold text-black dark:text-neutral-100">برآورد هزینه‌ها</span>
           </div>
-          <div
-            className="p-6 rounded-2xl ring-1 ring-black/10 bg-white text-center text-red-600
-                          dark:ring-neutral-800 dark:bg-neutral-900 dark:text-red-400"
-          >
+          <div className="p-6 rounded-2xl ring-1 ring-black/10 bg-white text-center text-red-600 dark:ring-neutral-800 dark:bg-neutral-900 dark:text-red-400">
             {denyMsg || "شما سطح دسترسی لازم را ندارید."}
           </div>
         </Card>
-      </>
+      </Shell>
     );
   }
 
+  const colCount = 3 + dynamicMonths.length + 1;
+
   return (
-    <>
+    <Shell>
       <Card>
         <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
           <span>بودجه‌بندی</span>
           <span className="mx-2">›</span>
-          <span className="font-semibold text-black dark:text-neutral-100">
-            برآورد هزینه‌ها
-          </span>
+          <span className="font-semibold text-black dark:text-neutral-100">برآورد هزینه‌ها</span>
         </div>
 
         <div className="space-y-4 mb-4">
@@ -1107,55 +1017,32 @@ function EstimatesPage({ api: apiProp }) {
         </div>
 
         <TableWrap>
-          <div
-            className="bg-white rounded-2xl overflow-hidden border border-black/10 shadow-sm
-                          text-black dark:bg-neutral-900 dark:text-neutral-200 dark:border-neutral-800"
-          >
+          <div className="bg-white rounded-2xl overflow-hidden border border-black/10 shadow-sm text-black dark:bg-neutral-900 dark:text-neutral-200 dark:border-neutral-800">
             <div className="overflow-x-auto">
-              <table
-                className="w-full table-fixed text-[12px] md:text-[13px] text-center [&_th]:text-center [&_td]:text-center"
-                dir="rtl"
-              >
+              <table className="w-full table-fixed text-[12px] md:text-[13px] text-center [&_th]:text-center [&_td]:text-center" dir="rtl">
                 <THead>
-                  <tr
-                    className="bg-black/5 border-b border-black/10 sticky top-0 z-10
-                                 text-black dark:bg-neutral-900 dark:text-neutral-300 dark:border-neutral-700"
-                  >
-                    <TH className="!text-center py-3 w-14 !text-black dark:!text-neutral-300">
-                      #
-                    </TH>
+                  <tr className="bg-black/5 border-b border-black/10 sticky top-0 z-10 text-black dark:bg-neutral-900 dark:text-neutral-300 dark:border-neutral-700">
+                    <TH className="!text-center py-3 w-14 !text-black dark:!text-neutral-300">#</TH>
                     <TH className="!text-center py-3 w-40 !text-black dark:!text-neutral-300">
                       <div className="flex items-center justify-center gap-1 w-full">
                         <span>کد بودجه</span>
                         <button
                           type="button"
-                          onClick={() =>
-                            setCodeSortDir((prev) => (prev === "asc" ? "desc" : "asc"))
-                          }
-                          className="rounded-lg px-2 py-1 ring-1 ring-black/15 hover:bg-black/5
-                                     dark:ring-neutral-800 dark:hover:bg-white/10"
+                          onClick={() => setCodeSortDir((prev) => (prev === "asc" ? "desc" : "asc"))}
+                          className="rounded-lg px-2 py-1 ring-1 ring-black/15 hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10"
                           aria-label="مرتب‌سازی کد بودجه"
                         >
                           <img
-                            src={
-                              codeSortDir === "asc"
-                                ? "/images/icons/kochikbebozorg.svg"
-                                : "/images/icons/bozorgbekochik.svg"
-                            }
+                            src={codeSortDir === "asc" ? "/images/icons/kochikbebozorg.svg" : "/images/icons/bozorgbekochik.svg"}
                             alt=""
                             className="w-5 h-5 dark:invert"
                           />
                         </button>
                       </div>
                     </TH>
-                    <TH className="!text-center py-3 w-40 !text-black dark:!text-neutral-300">
-                      نام بودجه
-                    </TH>
+                    <TH className="!text-center py-3 w-40 !text-black dark:!text-neutral-300">نام بودجه</TH>
                     {dynamicMonths.map((m) => (
-                      <TH
-                        key={m.key}
-                        className="!text-center py-3 w-24 px-0 !text-black dark:!text-neutral-300"
-                      >
+                      <TH key={m.key} className="!text-center py-3 w-24 px-0 !text-black dark:!text-neutral-300">
                         {m.label}
                       </TH>
                     ))}
@@ -1166,8 +1053,7 @@ function EstimatesPage({ api: apiProp }) {
                           <button
                             type="button"
                             onClick={resetAllEstimates}
-                            className="h-5 w-5 flex items-center justify-center rounded-full border border-black/20 text-xs leading-none hover:bg-black/10
-                                       dark:border-neutral-600 dark:hover:bg-white/10"
+                            className="h-5 w-5 flex items-center justify-center rounded-full border border-black/20 text-xs leading-none hover:bg-black/10 dark:border-neutral-600 dark:hover:bg-white/10"
                             title="صفر کردن همه"
                           >
                             <span className="text-[11px]">×</span>
@@ -1181,49 +1067,27 @@ function EstimatesPage({ api: apiProp }) {
                 <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100">
                   {loading ? (
                     <TR>
-                      <TD
-                        colSpan={colCount}
-                        className="text-center text-black/60 dark:text-neutral-400 py-4"
-                      >
+                      <TD colSpan={colCount} className="text-center text-black/60 dark:text-neutral-400 py-4">
                         در حال بارگذاری…
                       </TD>
                     </TR>
                   ) : (displayRows || []).length === 0 ? (
                     <TR>
-                      <TD
-                        colSpan={colCount}
-                        className="text-center text-black/60 py-4 dark:text-neutral-400"
-                      >
-                        {active === "projects" && !projectId
-                          ? "ابتدا پروژه را انتخاب کنید"
-                          : "موردی یافت نشد."}
+                      <TD colSpan={colCount} className="text-center text-black/60 py-4 dark:text-neutral-400">
+                        {active === "projects" && !projectId ? "ابتدا پروژه را انتخاب کنید" : "موردی یافت نشد."}
                       </TD>
                     </TR>
                   ) : (
                     <>
-                      <TR
-                        className="text-center border-t border-black/10 bg-black/[0.04] font-semibold
-                                   dark:border-neutral-800 dark:bg-white/10"
-                      >
-                        <TD className="px-2 py-3 border-b border-black/10 dark:border-neutral-800">
-                          -
-                        </TD>
-                        <TD className="px-2 py-3 border-b border-black/10 dark:border-neutral-800">
-                          -
-                        </TD>
-                        <TD className="px-2 py-3 text-center border-b border-black/10 dark:border-neutral-800">
-                          جمع
-                        </TD>
+                      <TR className="text-center border-t border-black/10 bg-black/[0.04] font-semibold dark:border-neutral-800 dark:bg-white/10">
+                        <TD className="px-2 py-3 border-b border-black/10 dark:border-neutral-800">-</TD>
+                        <TD className="px-2 py-3 border-b border-black/10 dark:border-neutral-800">-</TD>
+                        <TD className="px-2 py-3 text-center border-b border-black/10 dark:border-neutral-800">جمع</TD>
                         {dynamicMonths.map((m) => (
-                          <TD
-                            key={m.key}
-                            className="px-0 py-2 text-center align-middle border-b border-black/10 dark:border-neutral-800"
-                          >
-                            {totalsByMonth[m.key] ? (
+                          <TD key={m.key} className="px-0 py-2 text-center align-middle border-b border-black/10 dark:border-neutral-800">
+                            {totalsComputed[m.key] ? (
                               <span className="inline-flex items-center justify-center gap-1">
-                                <span className="ltr">
-                                  {toFaDigits(formatMoney(totalsByMonth[m.key]))}
-                                </span>
+                                <span className="ltr">{toFaDigits(formatMoney(totalsComputed[m.key]))}</span>
                                 <span>ریال</span>
                               </span>
                             ) : (
@@ -1233,9 +1097,7 @@ function EstimatesPage({ api: apiProp }) {
                         ))}
                         <TD className="px-3 py-3 whitespace-nowrap text-center border-l border-r border-b border-black/10 dark:border-neutral-700">
                           <span className="inline-flex items-center justify-center gap-1">
-                            <span className="ltr">
-                              {toFaDigits(formatMoney(totalGrand || 0))}
-                            </span>
+                            <span className="ltr">{toFaDigits(formatMoney(totalGrand || 0))}</span>
                             <span>ریال</span>
                           </span>
                         </TD>
@@ -1244,50 +1106,51 @@ function EstimatesPage({ api: apiProp }) {
                       {(displayRows || []).map((node, idx) => {
                         const r = node.row;
                         const code = r.code;
-                        const hasChildren = !!node.hasChildren;
-
+                        const isParent = !!code && !hierarchyMaps.isLeafByCode[r.code];
+                        const hasChildren = !!node.hasChildren || isParent;
                         const toggleKey = node.core || node.key;
                         const isOpen = !!openCodes[toggleKey];
 
-                        const finalTotal = finalPreviewOf(r);
+                        const finalTotal = (() => {
+                          if (!code || !isParent) return finalPreviewOf(r);
+                          const core = hierarchyMaps.coreByCode[code];
+                          if (!core) return finalPreviewOf(r);
+                          const prefix = core + ".";
+                          let sum = 0;
+                          (rowsToRender || []).forEach((rr) => {
+                            if (!rr || !rr.code) return;
+                            const c2 = hierarchyMaps.coreByCode[rr.code];
+                            if (!c2 || !hierarchyMaps.isLeafByCode[rr.code]) return;
+                            if (!c2.startsWith(prefix)) return;
+                            sum += finalPreviewOf(rr);
+                          });
+                          return sum;
+                        })();
 
                         return (
                           <TR
                             key={code || idx}
-                            className="text-center border-t border-black/10 odd:bg-black/[0.02] even:bg-black/[0.04] hover:bg-black/[0.06] transition-colors
-                                       dark:border-neutral-800 dark:odd:bg-white/5 dark:even:bg-white/10 dark:hover:bg-white/15"
+                            className="text-center border-t border-black/10 odd:bg-black/[0.02] even:bg-black/[0.04] hover:bg-black/[0.06] transition-colors dark:border-neutral-800 dark:odd:bg-white/5 dark:even:bg-white/10 dark:hover:bg-white/15"
                           >
                             <TD className="px-2 py-3">{toFaDigits(idx + 1)}</TD>
                             <TD className="px-2 py-3 text-center whitespace-nowrap">
                               <div
                                 className="inline-flex items-center justify-center gap-1 flex-row-reverse"
-                                style={{
-                                  paddingRight: node.depth ? node.depth * 12 : 0,
-                                }}
+                                style={{ paddingRight: node.depth ? node.depth * 12 : 0 }}
                               >
                                 {hasChildren && (
                                   <button
                                     type="button"
                                     onClick={() =>
-                                      setOpenCodes((prev) => {
-                                        const prevOpen = !!prev[toggleKey];
-                                        return { ...prev, [toggleKey]: !prevOpen };
-                                      })
+                                      setOpenCodes((prev) => ({ ...prev, [toggleKey]: !prev[toggleKey] }))
                                     }
-                                    className="h-5 w-5 grid place-items-center rounded-md border border-black/25 bg-white text-black
-                                               dark:border-neutral-500 dark:bg-white dark:text-black"
+                                    className="h-5 w-5 grid place-items-center rounded-md border border-black/25 bg-white text-black dark:border-neutral-500 dark:bg-white dark:text-black"
                                     aria-label={isOpen ? "بستن زیرمجموعه" : "باز کردن زیرمجموعه"}
                                   >
-                                    {isOpen ? (
-                                      <span className="text-[11px] leading-none text-black">−</span>
-                                    ) : (
-                                      <img src="/images/icons/afzodan.svg" alt="" className="w-3 h-3" />
-                                    )}
+                                    {isOpen ? <span className="text-[11px] leading-none text-black">−</span> : <img src="/images/icons/afzodan.svg" alt="" className="w-3 h-3" />}
                                   </button>
                                 )}
-                                <span className="ltr text-xs md:text-[13px]">
-                                  {renderCode(code)}
-                                </span>
+                                <span className="ltr text-xs md:text-[13px]">{renderCode(code)}</span>
                               </div>
                             </TD>
                             <TD className="px-2 py-3 text-center break-words text-[11px] md:text-[13px] max-w-[180px]">
@@ -1296,31 +1159,47 @@ function EstimatesPage({ api: apiProp }) {
 
                             {dynamicMonths.map((m) => {
                               let val = 0;
-                              if (r.months && r.months[m.key] != null) {
-                                val = Number(r.months[m.key] || 0);
+
+                              if (!isParent) {
+                                if (r.months && r.months[m.key] != null) val = Number(r.months[m.key] || 0);
+                                else val = Number((r.lastMonths && r.lastMonths[m.key]) || 0);
                               } else {
-                                val = Number((r.lastMonths && r.lastMonths[m.key]) || 0);
+                                const core = hierarchyMaps.coreByCode[code];
+                                if (core) {
+                                  const prefix = core + ".";
+                                  (rowsToRender || []).forEach((rr) => {
+                                    if (!rr || !rr.code) return;
+                                    const c2 = hierarchyMaps.coreByCode[rr.code];
+                                    if (!c2 || !hierarchyMaps.isLeafByCode[rr.code]) return;
+                                    if (!c2.startsWith(prefix)) return;
+                                    let childVal = 0;
+                                    if (rr.months && rr.months[m.key] != null) childVal = Number(rr.months[m.key] || 0);
+                                    else childVal = Number((rr.lastMonths && rr.lastMonths[m.key]) || 0);
+                                    if (childVal) val += childVal;
+                                  });
+                                }
                               }
+
                               const hasVal = !!val;
 
                               return (
                                 <TD key={m.key} className="px-0 py-2 text-center align-middle">
                                   <button
                                     type="button"
-                                    onClick={() => openMonthModal(r, m)}
-                                    className={`w-24 mx-auto h-12 md:w-24 md:h-12 rounded-2xl border text-[11px] md:text-[12px] flex items-center justify-center shadow-sm transition
-                                    ${
+                                    onClick={() => {
+                                      if (!isParent) openMonthModal(r, m);
+                                    }}
+                                    disabled={isParent}
+                                    className={`w-24 mx-auto h-12 md:w-24 md:h-12 rounded-2xl border text-[11px] md:text-[12px] flex items-center justify-center shadow-sm transition ${
                                       hasVal
                                         ? "bg-[#edaf7c] border-[#edaf7c]/90 text-black"
                                         : "bg-black/5 border-black/10 text-black/70 dark:bg-white/5 dark:border-neutral-700 dark:text-neutral-100"
-                                    }`}
+                                    } ${isParent ? "cursor-default" : "cursor-pointer"}`}
                                   >
                                     {hasVal ? (
                                       <div className="flex flex-col items-center justify-center leading-tight">
                                         <span>{toFaDigits(formatMoney(val))}</span>
-                                        <span className="mt-0.5 text-[10px] text-black/70 dark:text-neutral-300">
-                                          ریال
-                                        </span>
+                                        <span className="mt-0.5 text-[10px] text-black/70 dark:text-neutral-300">ریال</span>
                                       </div>
                                     ) : (
                                       "—"
@@ -1349,23 +1228,14 @@ function EstimatesPage({ api: apiProp }) {
 
         {monthModal.open && (
           <div className="fixed inset-0 z-40 flex items-center justify-center px-3">
-            <div
-              className="absolute inset-0 bg-black/40 dark:bg-neutral-950/70 backdrop-blur-[2px]"
-              onClick={closeMonthModal}
-            />
-            <div
-              className="relative w-full max-w-sm rounded-2xl bg-white text-neutral-900 border border-black/10 shadow-2xl
-                         dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 p-4 space-y-3"
-            >
+            <div className="absolute inset-0 bg-black/40 dark:bg-neutral-950/70 backdrop-blur-[2px]" onClick={closeMonthModal} />
+            <div className="relative w-full max-w-sm rounded-2xl bg-white text-neutral-900 border border-black/10 shadow-2xl dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 p-4 space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <div className="text-sm font-semibold">ثبت برآورد ماهانه</div>
                   <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400 space-y-0.5">
                     <div>
-                      کد بودجه:{" "}
-                      <b className="ltr text-xs">
-                        {monthModal.code ? renderCode(monthModal.code) : "—"}
-                      </b>
+                      کد بودجه: <b className="ltr text-xs">{monthModal.code ? renderCode(monthModal.code) : "—"}</b>
                     </div>
                     <div>
                       نام بودجه: <b>{monthModal.name || "—"}</b>
@@ -1378,28 +1248,19 @@ function EstimatesPage({ api: apiProp }) {
                 <button
                   type="button"
                   onClick={closeMonthModal}
-                  className="h-8 w-8 grid place-items-center rounded-xl bg-black text-white
-                             dark:bg-neutral-100 dark:text-neutral-900"
+                  className="h-8 w-8 grid place-items-center rounded-xl bg-black text-white dark:bg-neutral-100 dark:text-neutral-900"
                 >
-                  <img
-                    src="/images/icons/bastan.svg"
-                    alt=""
-                    className="w-4 h-4 invert dark:invert-0"
-                  />
+                  <img src="/images/icons/bastan.svg" alt="" className="w-4 h-4 invert dark:invert-0" />
                 </button>
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs text-neutral-600 dark:text-neutral-300">
-                  مبلغ برآورد برای این ماه
-                </label>
+                <label className="text-xs text-neutral-600 dark:text-neutral-300">مبلغ برآورد برای این ماه</label>
                 <div className="flex items-center gap-2">
                   <input
                     ref={monthInputRef}
                     dir="ltr"
-                    className="flex-1 w-full rounded-xl px-3 py-2 text-sm text-center bg-white text-black placeholder-black/40 border border-black/15 outline-none
-                               focus:ring-2 focus:ring-black/10
-                               dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                    className="flex-1 w-full rounded-xl px-3 py-2 text-sm text-center bg-white text-black placeholder-black/40 border border-black/15 outline-none focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
                     placeholder="0"
                     value={monthModal.value ? toFaDigits(monthModal.value) : ""}
                     onChange={(e) => handleMonthModalChange(e.target.value)}
@@ -1410,9 +1271,7 @@ function EstimatesPage({ api: apiProp }) {
                       }
                     }}
                   />
-                  <span className="text-xs text-neutral-600 dark:text-neutral-300">
-                    ریال
-                  </span>
+                  <span className="text-xs text-neutral-600 dark:text-neutral-300">ریال</span>
                 </div>
               </div>
 
@@ -1420,16 +1279,14 @@ function EstimatesPage({ api: apiProp }) {
                 <button
                   type="button"
                   onClick={closeMonthModal}
-                  className="h-9 px-4 rounded-xl border border-neutral-300 text-xs text-neutral-700 hover:bg-neutral-100
-                             dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
+                  className="h-9 px-4 rounded-xl border border-neutral-300 text-xs text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
                 >
                   انصراف
                 </button>
                 <button
                   type="button"
                   onClick={handleMonthModalSave}
-                  className="h-9 px-5 rounded-xl bg-neutral-900 text-xs text-white hover:bg-neutral-800
-                             dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
+                  className="h-9 px-5 rounded-xl bg-neutral-900 text-xs text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
                 >
                   ثبت برآورد
                 </button>
@@ -1438,11 +1295,7 @@ function EstimatesPage({ api: apiProp }) {
           </div>
         )}
 
-        {err && (
-          <div className="text-sm text-red-600 dark:text-red-400 mt-3">
-            {err}
-          </div>
-        )}
+        {err && <div className="text-sm text-red-600 dark:text-red-400 mt-3">{err}</div>}
 
         <div className="mt-4 flex items-center gap-2 justify-end">
           <button
@@ -1450,8 +1303,7 @@ function EstimatesPage({ api: apiProp }) {
               setShowModal(true);
               setOpenInfoFor(null);
             }}
-            className="h-10 w-14 grid place-items-center rounded-xl border border-black/15 bg-white text-black hover:bg-black/5
-                       dark:border-neutral-700 dark:bg-white dark:text-black dark:hover:bg-black/10"
+            className="h-10 w-14 grid place-items-center rounded-xl border border-black/15 bg-white text-black hover:bg-black/5 dark:border-neutral-700 dark:bg-white dark:text-black dark:hover:bg-black/10"
             disabled={active === "projects" && !projectId}
             aria-label="نمایش"
             title="نمایش"
@@ -1462,60 +1314,35 @@ function EstimatesPage({ api: apiProp }) {
           <button
             onClick={onUpdate}
             disabled={saving || (active === "projects" && !projectId)}
-            className="h-10 w-14 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50
-                       dark:bg-neutral-100 dark:text-neutral-900"
+            className="h-10 w-14 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
             aria-label="بروزرسانی"
             title="بروزرسانی"
           >
-            <img
-              src="/images/icons/berozresani.svg"
-              alt=""
-              className="w-5 h-5 invert dark:invert-0"
-            />
+            <img src="/images/icons/berozresani.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
           </button>
         </div>
 
         {showModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-2 sm:px-4">
-            <div
-              className="absolute inset-0 bg-black/35 dark:bg-neutral-950/60 backdrop-blur-[2px]"
-              onClick={() => setShowModal(false)}
-            />
+            <div className="absolute inset-0 bg-black/35 dark:bg-neutral-950/60 backdrop-blur-[2px]" onClick={() => setShowModal(false)} />
             <div
               className="relative w-full max-w-3xl bg-white dark:bg-neutral-900 dark:text-neutral-100 rounded-2xl shadow-2xl border border-black/10 dark:border-neutral-800 overflow-hidden max-h-[90vh] flex flex-col"
-              style={{
-                fontFamily:
-                  "Vazirmatn, Vazir, IRANSans, Segoe UI, Tahoma, sans-serif",
-              }}
+              style={{ fontFamily: "Vazirmatn, Vazir, IRANSans, Segoe UI, Tahoma, sans-serif" }}
             >
-              <style>{`
-                #estimate-preview * { font-family: Vazirmatn, Vazir, IRANSans, Segoe UI, Tahoma, sans-serif; }
-                #estimate-preview table { border-collapse: collapse; }
-                #estimate-preview thead th { background: #f8fafc; color:#0f172a; }
-                #estimate-preview th, #estimate-preview td { border-top: 1px solid rgba(0,0,0,.08); }
-                #estimate-preview .panel { border:1px solid rgba(0,0,0,.12); border-radius:16px; }
-              `}</style>
-
               <div className="px-4 py-3 border-t border-black/10 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/80 backdrop-blur shrink-0">
                 <div className="flex flex-col items-center justify-center text-center gap-1">
-                  <h2 className="text-sm md:text-base font-bold text-black dark:text-neutral-100">
-                    برآورد هزینه‌ها
-                  </h2>
+                  <h2 className="text-sm md:text-base font-bold text-black dark:text-neutral-100">برآورد هزینه‌ها</h2>
                   <div className="text-[11px] md:text-xs text-black/70 dark:text-neutral-300 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
                     {me && (
                       <span>
-                        کاربر:{" "}
-                        <b className="text-black dark:text-neutral-100">
-                          {me.name || me.username || me.email}
-                        </b>
+                        کاربر: <b className="text-black dark:text-neutral-100">{me.name || me.username || me.email}</b>
                       </span>
                     )}
                     {active === "projects" && selectedProject && (
                       <span>
                         پروژه:{" "}
                         <b className="text-black dark:text-neutral-100">
-                          {toFaDigits(selectedProject.code)} —{" "}
-                          {selectedProject.name}
+                          {toFaDigits(selectedProject.code)} — {selectedProject.name}
                         </b>
                       </span>
                     )}
@@ -1523,11 +1350,8 @@ function EstimatesPage({ api: apiProp }) {
                 </div>
               </div>
 
-              <div
-                id="estimate-preview"
-                className="p-4 max-h-[70vh] overflow-auto space-y-4 text-center flex-1"
-              >
-                <div className="overflow-auto rounded-xl ring-1 ring-black/10 dark:ring-neutral-800 panel">
+              <div id="estimate-preview" className="p-4 max-h-[70vh] overflow-auto space-y-4 text-center flex-1">
+                <div className="overflow-auto rounded-xl ring-1 ring-black/10 dark:ring-neutral-800">
                   <table className="w-full table-fixed text-[11px] md:text-xs text-center [&_th]:text-center [&_td]:text-center">
                     <thead className="bg-black/5 text-black sticky top-0">
                       <tr>
@@ -1539,18 +1363,13 @@ function EstimatesPage({ api: apiProp }) {
                             {m.label}
                           </th>
                         ))}
-                        <th className="py-2.5 px-2 w-32 text-center border-l border-r border-black/10">
-                          جمع
-                        </th>
+                        <th className="py-2.5 px-2 w-32 text-center border-l border-r border-black/10">جمع</th>
                       </tr>
                     </thead>
                     <tbody className="text-black dark:text-neutral-100">
                       {(filteredRows || []).length === 0 ? (
                         <tr>
-                          <td
-                            colSpan={3 + dynamicMonths.length + 1}
-                            className="py-6 text-black/60 dark:text-neutral-400 text-center"
-                          >
+                          <td colSpan={3 + dynamicMonths.length + 1} className="py-6 text-black/60 dark:text-neutral-400 text-center">
                             موردی برای نمایش نیست.
                           </td>
                         </tr>
@@ -1562,11 +1381,9 @@ function EstimatesPage({ api: apiProp }) {
                             <td className="py-2 px-2 text-center">جمع</td>
                             {dynamicMonths.map((m) => (
                               <td key={m.key} className="py-2 px-2 w-24 text-center whitespace-nowrap">
-                                {totalsByMonth[m.key] ? (
+                                {totalsComputed[m.key] ? (
                                   <span className="inline-flex items-center justify-center gap-1">
-                                    <span className="ltr">
-                                      {toFaDigits(formatMoney(totalsByMonth[m.key]))}
-                                    </span>
+                                    <span className="ltr">{toFaDigits(formatMoney(totalsComputed[m.key]))}</span>
                                     <span>ریال</span>
                                   </span>
                                 ) : (
@@ -1576,42 +1393,26 @@ function EstimatesPage({ api: apiProp }) {
                             ))}
                             <td className="py-2 px-2 w-32 text-center whitespace-nowrap border-l border-r border-black/10">
                               <span className="inline-flex items-center justify-center gap-1">
-                                <span className="ltr">
-                                  {toFaDigits(formatMoney(totalGrand || 0))}
-                                </span>
+                                <span className="ltr">{toFaDigits(formatMoney(totalGrand || 0))}</span>
                                 <span>ریال</span>
                               </span>
                             </td>
                           </tr>
 
                           {(filteredRows || []).map((r, i) => (
-                            <tr
-                              key={r.code || i}
-                              className="border-t border-black/10 dark:border-neutral-800 odd:bg-black/[0.015]"
-                            >
-                              <td className="py-2 px-2 w-16 text-center">
-                                {toFaDigits(i + 1)}
-                              </td>
-                              <td className="py-2 px-2 w-40 whitespace-nowrap text-center ltr">
-                                {renderCode(r.code)}
-                              </td>
-                              <td className="py-2 px-2 text-center break-words">
-                                {r.name || "—"}
-                              </td>
+                            <tr key={r.code || i} className="border-t border-black/10 dark:border-neutral-800 odd:bg-black/[0.015]">
+                              <td className="py-2 px-2 w-16 text-center">{toFaDigits(i + 1)}</td>
+                              <td className="py-2 px-2 w-40 whitespace-nowrap text-center ltr">{renderCode(r.code)}</td>
+                              <td className="py-2 px-2 text-center break-words">{r.name || "—"}</td>
                               {dynamicMonths.map((m) => {
-                                let val;
-                                if (r.months && r.months[m.key] != null) {
-                                  val = Number(r.months[m.key] || 0);
-                                } else {
-                                  val = Number((r.lastMonths && r.lastMonths[m.key]) || 0);
-                                }
+                                let val = 0;
+                                if (r.months && r.months[m.key] != null) val = Number(r.months[m.key] || 0);
+                                else val = Number((r.lastMonths && r.lastMonths[m.key]) || 0);
                                 return (
                                   <td key={m.key} className="py-2 px-2 w-24 text-center whitespace-nowrap">
                                     {val ? (
                                       <span className="inline-flex items-center justify-center gap-1">
-                                        <span className="ltr">
-                                          {toFaDigits(formatMoney(val))}
-                                        </span>
+                                        <span className="ltr">{toFaDigits(formatMoney(val))}</span>
                                         <span>ریال</span>
                                       </span>
                                     ) : (
@@ -1622,9 +1423,7 @@ function EstimatesPage({ api: apiProp }) {
                               })}
                               <td className="py-2 px-2 w-32 text-center whitespace-nowrap border-l border-r border-black/10">
                                 <span className="inline-flex items-center justify-center gap-1">
-                                  <span className="ltr">
-                                    {toFaDigits(formatMoney(finalPreviewOf(r) || 0))}
-                                  </span>
+                                  <span className="ltr">{toFaDigits(formatMoney(finalPreviewOf(r) || 0))}</span>
                                   <span>ریال</span>
                                 </span>
                               </td>
@@ -1669,8 +1468,6 @@ function EstimatesPage({ api: apiProp }) {
           </div>
         )}
       </Card>
-    </>
+    </Shell>
   );
 }
-
-export default EstimatesPage;
