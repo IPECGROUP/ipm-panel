@@ -12,28 +12,88 @@ export default function EstimatesPage() {
       ...opt,
       headers: { "Content-Type": "application/json", ...(opt.headers || {}) },
     });
+
     const txt = await res.text();
     let data = {};
     try {
       data = txt ? JSON.parse(txt) : {};
-    } catch (_e) {}
+    } catch (_e) {
+      // اگر سرور HTML/متن داد، همین رو بالا می‌بریم که تو کنسول معلوم شه
+      throw new Error(txt || "bad_json_response");
+    }
+
     if (!res.ok) throw new Error(data?.error || data?.message || "request_failed");
     return data;
   }
 
-  // ✅ بدون سطح دسترسی
+  const tabs = useMemo(
+    () => [
+      { id: "office", label: "دفتر", prefix: "OB" },
+      { id: "site", label: "سایت", prefix: "SB" },
+      { id: "finance", label: "مالی", prefix: "FB" },
+      { id: "cash", label: "نقدی", prefix: "CB" },
+      { id: "capex", label: "سرمایه‌ای", prefix: "IB" },
+      { id: "projects", label: "پروژه‌ها", prefix: "" },
+    ],
+    [],
+  );
+
   const [active, setActive] = useState("office");
-  const tabs = [
-    { id: "office", label: "دفتر", prefix: "OB" },
-    { id: "site", label: "سایت", prefix: "SB" },
-    { id: "finance", label: "مالی", prefix: "FB" },
-    { id: "cash", label: "نقدی", prefix: "CB" },
-    { id: "capex", label: "سرمایه‌ای", prefix: "IB" },
-    { id: "projects", label: "پروژه‌ها", prefix: "" },
-  ];
 
-  const prefixOf = (kind) => tabs.find((t) => t.id === kind)?.prefix || "";
+  const prefixOf = useCallback(
+    (kind) => tabs.find((t) => t.id === kind)?.prefix || "",
+    [tabs],
+  );
 
+  const formatMoney = useCallback((n) => {
+    const s = String(n ?? "");
+    if (s === "") return "";
+    const sign = Number(n) < 0 ? "-" : "";
+    const digits = String(Math.abs(Number(n) || 0));
+    return sign + digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  }, []);
+
+  const toFaDigits = useCallback((s) => String(s ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]), []);
+  const toEnDigits = useCallback(
+    (s) =>
+      String(s || "")
+        .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d))
+        .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d)),
+    [],
+  );
+
+  const parseMoney = useCallback(
+    (s) => {
+      if (s == null) return 0;
+      const sign = /^\s*-/.test(String(s)) ? -1 : 1;
+      const d = toEnDigits(String(s)).replace(/[^\d]/g, "");
+      if (!d) return 0;
+      return sign * parseInt(d, 10);
+    },
+    [toEnDigits],
+  );
+
+  const renderCode = useCallback(
+    (code) => {
+      if (active === "projects") return code || "—";
+      const pre = (prefixOf(active) || "").toUpperCase();
+      const raw = String(code || "").trim();
+      const re = new RegExp("^" + pre + "[\\-\\.]?\\s*", "i");
+      const suffix = raw.replace(re, "");
+      return pre + "-" + suffix;
+    },
+    [active, prefixOf],
+  );
+
+  const coreOf = useCallback((s) => {
+    const raw = String(s || "").trim();
+    const noPrefix = raw.replace(/^[A-Za-z]+[^0-9]*/, "");
+    const normalized = noPrefix.replace(/[^\d.]+/g, ".");
+    const cleaned = normalized.replace(/\.+/g, ".").replace(/^\./, "").replace(/\.$/, "");
+    return cleaned;
+  }, []);
+
+  // projects
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState("");
 
@@ -62,64 +122,15 @@ export default function EstimatesPage() {
     return (projects || [])
       .slice()
       .sort((a, b) =>
-        String(a?.code || "").localeCompare(String(b?.code || ""), "fa", {
-          numeric: true,
-          sensitivity: "base",
-        }),
+        String(a?.code || "").localeCompare(String(b?.code || ""), "fa", { numeric: true, sensitivity: "base" }),
       );
   }, [projects]);
 
-  const formatMoney = (n) => {
-    const s = String(n ?? "");
-    if (s === "") return "";
-    const sign = Number(n) < 0 ? "-" : "";
-    const digits = String(Math.abs(Number(n) || 0));
-    return sign + digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  };
-  const toFaDigits = (s) => String(s ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]);
-  const toEnDigits = (s) =>
-    String(s || "")
-      .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d))
-      .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
-  const parseMoney = (s) => {
-    if (s == null) return 0;
-    const sign = /^\s*-/.test(String(s)) ? -1 : 1;
-    const d = toEnDigits(String(s)).replace(/[^\d]/g, "");
-    if (!d) return 0;
-    return sign * parseInt(d, 10);
-  };
-
-  const renderCode = (code) => {
-    if (active === "projects") return code || "—";
-    const pre = (prefixOf(active) || "").toUpperCase();
-    const raw = String(code || "").trim();
-    const re = new RegExp("^" + pre + "[\\-\\.]?\\s*", "i");
-    const suffix = raw.replace(re, "");
-    return pre + "-" + suffix;
-  };
-
-  const coreOf = (s) => {
-    const raw = String(s || "").trim();
-    const noPrefix = raw.replace(/^[A-Za-z]+[^0-9]*/, "");
-    const normalized = noPrefix.replace(/[^\d.]+/g, ".");
-    const cleaned = normalized.replace(/\.+/g, ".").replace(/^\./, "").replace(/\.$/, "");
-    return cleaned;
-  };
-
-  const monthNames = [
-    "فروردین",
-    "اردیبهشت",
-    "خرداد",
-    "تیر",
-    "مرداد",
-    "شهریور",
-    "مهر",
-    "آبان",
-    "آذر",
-    "دی",
-    "بهمن",
-    "اسفند",
-  ];
+  // months
+  const monthNames = useMemo(
+    () => ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"],
+    [],
+  );
 
   const jalaliMonthIndex = useMemo(() => {
     try {
@@ -131,7 +142,7 @@ export default function EstimatesPage() {
     } catch {
       return new Date().getMonth() + 1;
     }
-  }, []);
+  }, [toEnDigits]);
 
   const dynamicMonths = useMemo(() => {
     const arr = [];
@@ -140,20 +151,20 @@ export default function EstimatesPage() {
       arr.push({ key: "m" + m, monthIndex: m, label: monthNames[m - 1] });
     }
     return arr;
-  }, [jalaliMonthIndex]);
+  }, [jalaliMonthIndex, monthNames]);
 
+  // data rows
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
   const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
 
-  const [showModal, setShowModal] = useState(false);
-  const [histLoading, setHistLoading] = useState(false);
-  const [historyMap, setHistoryMap] = useState({});
+  const reqSeq = useRef(0);
 
-  // ✅ دیتا مستقیم از بک‌اند budget-estimates می‌آید (آن هم خودش از Centers می‌سازد)
   useEffect(() => {
-    let abort = false;
+    let dead = false;
+    const seq = ++reqSeq.current;
+
     (async () => {
       setErr("");
 
@@ -170,13 +181,13 @@ export default function EstimatesPage() {
         if (active === "projects") qs.set("project_id", String(projectId));
 
         const r = await api("/budget-estimates?" + qs.toString());
+        if (dead || seq !== reqSeq.current) return;
+
         const items = r.items || [];
-
-        if (abort) return;
-
         const mapped = (items || []).map((it) => {
           let desc = it.last_desc ?? it.description ?? "";
           let lastMonths = {};
+
           if (desc && typeof desc === "string") {
             try {
               const parsed = JSON.parse(desc);
@@ -199,29 +210,25 @@ export default function EstimatesPage() {
             name: it.center_desc ?? it.name ?? "",
             desc: desc || "",
             baseAmount: it.last_amount ?? it.amount ?? 0,
-            amountRaw: 0,
-            amountStr: "",
             months: {},
             lastMonths,
           };
         });
 
-        const sorted = mapped.slice().sort((a, b) =>
-          String(renderCode(a.code)).localeCompare(String(renderCode(b.code)), "fa", {
-            numeric: true,
-            sensitivity: "base",
-          }),
+        mapped.sort((a, b) =>
+          String(renderCode(a.code)).localeCompare(String(renderCode(b.code)), "fa", { numeric: true, sensitivity: "base" }),
         );
-        setRows(sorted);
+
+        setRows(mapped);
       } catch (ex) {
-        if (!abort) setErr(ex.message || "خطا در بارگذاری");
+        if (!dead && seq === reqSeq.current) setErr(ex.message || "خطا در بارگذاری");
       } finally {
-        if (!abort) setLoading(false);
+        if (!dead && seq === reqSeq.current) setLoading(false);
       }
     })();
 
     return () => {
-      abort = true;
+      dead = true;
     };
   }, [active, projectId, dynamicMonths, renderCode]);
 
@@ -233,7 +240,7 @@ export default function EstimatesPage() {
       const cCore = coreOf(r.code);
       return cCore === preCore || cCore.startsWith(preCore + ".");
     });
-  }, [rows, active, selectedProject]);
+  }, [rows, active, selectedProject, coreOf]);
 
   const finalPreviewOf = useCallback(
     (r) =>
@@ -258,11 +265,10 @@ export default function EstimatesPage() {
     [dynamicMonths],
   );
 
+  // hierarchy (for display tree)
   const [codeSortDir, setCodeSortDir] = useState("asc");
   const [openCodes, setOpenCodes] = useState({});
-  useEffect(() => {
-    setOpenCodes({});
-  }, [active, projectId]);
+  useEffect(() => setOpenCodes({}), [active, projectId]);
 
   const rowsToRender = useMemo(() => filteredRows || [], [filteredRows]);
 
@@ -270,30 +276,27 @@ export default function EstimatesPage() {
     const base = rowsToRender || [];
     const coreByCode = {};
     base.forEach((r) => {
-      if (!r || !r.code) return;
+      if (!r?.code) return;
       coreByCode[r.code] = coreOf(r.code);
     });
+
     const hasChildrenByCode = {};
     base.forEach((r) => {
-      if (!r || !r.code) return;
+      if (!r?.code) return;
       const core = coreByCode[r.code];
-      if (!core) {
-        hasChildrenByCode[r.code] = false;
-        return;
-      }
+      if (!core) return (hasChildrenByCode[r.code] = false);
       const prefix = core + ".";
-      hasChildrenByCode[r.code] = base.some((other) => {
-        if (!other || !other.code || other === r) return false;
-        const oc = coreByCode[other.code];
+      hasChildrenByCode[r.code] = base.some((o) => {
+        if (!o?.code || o === r) return false;
+        const oc = coreByCode[o.code];
         return oc && oc.startsWith(prefix);
       });
     });
+
     const isLeafByCode = {};
-    Object.keys(coreByCode).forEach((code) => {
-      isLeafByCode[code] = !hasChildrenByCode[code];
-    });
+    Object.keys(coreByCode).forEach((code) => (isLeafByCode[code] = !hasChildrenByCode[code]));
     return { coreByCode, hasChildrenByCode, isLeafByCode };
-  }, [rowsToRender]);
+  }, [rowsToRender, coreOf]);
 
   const displayRows = useMemo(() => {
     const base = rowsToRender || [];
@@ -305,13 +308,11 @@ export default function EstimatesPage() {
       const key = core || `__idx_${index}`;
       let parentCore = null;
       if (parts.length > 1) parentCore = parts.slice(0, -1).join(".");
-      return { row: r, key, core, parentCore, parts };
+      return { row: r, key, core, parentCore };
     });
 
     const byCore = new Map();
-    nodes.forEach((n) => {
-      if (n.core) byCore.set(n.core, n);
-    });
+    nodes.forEach((n) => n.core && byCore.set(n.core, n));
 
     const childrenMap = new Map();
     nodes.forEach((n) => {
@@ -321,17 +322,12 @@ export default function EstimatesPage() {
       childrenMap.get(n.parentCore).push(n);
     });
 
-    nodes.forEach((n) => {
-      n.hasChildren = !!(n.core && childrenMap.has(n.core));
-    });
+    nodes.forEach((n) => (n.hasChildren = !!(n.core && childrenMap.has(n.core))));
 
     const sortFn = (a, b) => {
       const ca = renderCode(a.row.code);
       const cb = renderCode(b.row.code);
-      const cmp = String(ca || "").localeCompare(String(cb || ""), "fa", {
-        numeric: true,
-        sensitivity: "base",
-      });
+      const cmp = String(ca || "").localeCompare(String(cb || ""), "fa", { numeric: true, sensitivity: "base" });
       return codeSortDir === "asc" ? cmp : -cmp;
     };
 
@@ -352,23 +348,13 @@ export default function EstimatesPage() {
 
     roots.forEach((root) => visit(root, 0));
     return result;
-  }, [rowsToRender, openCodes, renderCode, coreOf, codeSortDir]);
-
-  const totalGrand = useMemo(() => {
-    let grand = 0;
-    (rowsToRender || []).forEach((r) => {
-      if (!r || !r.code) return;
-      if (!hierarchyMaps.isLeafByCode[r.code]) return;
-      grand += finalPreviewOf(r);
-    });
-    return grand;
-  }, [rowsToRender, hierarchyMaps, finalPreviewOf]);
+  }, [rowsToRender, coreOf, renderCode, codeSortDir, openCodes]);
 
   const totalsComputed = useMemo(() => {
     const t = {};
     dynamicMonths.forEach((m) => (t[m.key] = 0));
     (rowsToRender || []).forEach((r) => {
-      if (!r || !r.code) return;
+      if (!r?.code) return;
       if (!hierarchyMaps.isLeafByCode[r.code]) return;
       dynamicMonths.forEach((m) => {
         let val = 0;
@@ -380,55 +366,17 @@ export default function EstimatesPage() {
     return t;
   }, [rowsToRender, hierarchyMaps, dynamicMonths]);
 
-  const TopButtons = () => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-      {tabs.map((t) => (
-        <button
-          key={t.id}
-          onClick={() => {
-            setActive(t.id);
-            setShowModal(false);
-          }}
-          className={`h-10 px-4 rounded-2xl border text-sm shadow-sm transition ${
-            active === t.id
-              ? "bg-black text-white border-black"
-              : "bg-white text-black border border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800"
-          }`}
-        >
-          {t.label}
-        </button>
-      ))}
-    </div>
-  );
+  const totalGrand = useMemo(() => {
+    let grand = 0;
+    (rowsToRender || []).forEach((r) => {
+      if (!r?.code) return;
+      if (!hierarchyMaps.isLeafByCode[r.code]) return;
+      grand += finalPreviewOf(r);
+    });
+    return grand;
+  }, [rowsToRender, hierarchyMaps, finalPreviewOf]);
 
-  const ProjectsControls = () => {
-    if (active !== "projects") return null;
-    return (
-      <div className="grid grid-cols-1 gap-3">
-        <div className="flex flex-col gap-1">
-          <label className="text-sm text-black/70 dark:text-neutral-300">پروژه</label>
-          <select
-            className="w-full rounded-xl px-3 py-2 text-sm font-[inherit] bg-white text-black placeholder-black/40 border border-black/15 outline-none text-right dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400"
-            value={projectId}
-            onChange={(e) => {
-              setProjectId(e.target.value);
-              setShowModal(false);
-            }}
-          >
-            <option className="bg-white dark:bg-neutral-900" value="">
-              انتخاب کنید
-            </option>
-            {(sortedProjects || []).map((p) => (
-              <option className="bg-white dark:bg-neutral-900" key={p.id} value={p.id}>
-                {p.code ? `${p.code} - ${p.name || ""}` : p.name || "—"}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-    );
-  };
-
+  // month modal
   const [monthModal, setMonthModal] = useState({
     open: false,
     code: null,
@@ -437,7 +385,6 @@ export default function EstimatesPage() {
     name: "",
     value: "",
   });
-
   const monthInputRef = useRef(null);
 
   const openMonthModal = (row, month) => {
@@ -454,62 +401,30 @@ export default function EstimatesPage() {
       value: currentVal ? formatMoney(currentVal) : "",
     });
   };
-
-  const closeMonthModal = () => setMonthModal((prev) => ({ ...prev, open: false }));
-
+  const closeMonthModal = () => setMonthModal((p) => ({ ...p, open: false }));
   const handleMonthModalChange = (raw) => {
     const en = toEnDigits(raw);
     const digits = en.replace(/[^\d]/g, "");
     const formatted = digits ? formatMoney(Number(digits)) : "";
-    setMonthModal((prev) => ({ ...prev, value: formatted }));
+    setMonthModal((p) => ({ ...p, value: formatted }));
   };
-
   const handleMonthModalSave = () => {
-    if (!monthModal.code || !monthModal.monthKey) {
-      closeMonthModal();
-      return;
-    }
+    if (!monthModal.code || !monthModal.monthKey) return closeMonthModal();
     const num = parseMoney(monthModal.value);
     setRows((prev) =>
       prev.map((r) => {
         if (r.code !== monthModal.code) return r;
-        const oldMonths = r.months || {};
-        return { ...r, months: { ...oldMonths, [monthModal.monthKey]: num } };
+        return { ...r, months: { ...(r.months || {}), [monthModal.monthKey]: num } };
       }),
     );
     setMonthModal({ open: false, code: null, monthKey: "", label: "", name: "", value: "" });
   };
-
   useEffect(() => {
     if (monthModal.open && monthInputRef.current) {
       monthInputRef.current.focus();
       monthInputRef.current.select();
     }
   }, [monthModal.open]);
-
-  const fetchHistory = useCallback(async () => {
-    try {
-      setHistLoading(true);
-      const qs = new URLSearchParams();
-      qs.set("kind", active);
-      if (active === "projects" && projectId) qs.set("project_id", String(projectId));
-      qs.set("history", "1");
-      const r = await api("/budget-estimates?" + qs.toString()).catch(() => ({ history: {} }));
-      const h = r?.history || {};
-      Object.keys(h).forEach((k) => {
-        h[k] = (h[k] || [])
-          .slice()
-          .sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
-      });
-      setHistoryMap(h);
-    } finally {
-      setHistLoading(false);
-    }
-  }, [active, projectId]);
-
-  useEffect(() => {
-    if (showModal) fetchHistory();
-  }, [showModal, fetchHistory]);
 
   const onUpdate = async () => {
     try {
@@ -532,13 +447,7 @@ export default function EstimatesPage() {
           const total = Object.values(nextMonths).reduce((sum, v) => sum + Number(v || 0), 0);
 
           const delta = sumMonths(r);
-          const monthsChanged = dynamicMonths.some((m) => {
-            const cur = r.months && r.months[m.key];
-            return cur !== undefined && cur !== null && Number(cur || 0) !== Number((r.lastMonths && r.lastMonths[m.key]) || 0);
-          });
-          const descChanged = plainDesc !== "";
-
-          if (!delta && !monthsChanged && !descChanged) return null;
+          if (!delta && !plainDesc && !Object.keys(nextMonths).length) return null;
 
           let description = null;
           if (plainDesc || Object.keys(nextMonths).length) {
@@ -553,10 +462,7 @@ export default function EstimatesPage() {
         })
         .filter(Boolean);
 
-      if (payloadRows.length === 0) {
-        setShowModal(true);
-        return;
-      }
+      if (!payloadRows.length) return;
 
       const body = {
         kind: active,
@@ -566,37 +472,46 @@ export default function EstimatesPage() {
 
       await api("/budget-estimates", { method: "POST", body: JSON.stringify(body) });
 
-      setRows((prev) =>
-        prev.map((r) => {
-          const hit = payloadRows.find((pr) => pr.code === r.code);
-          if (!hit) return r;
+      // بعد از ذخیره، دوباره GET می‌زند و UI sync می‌شود (به‌جای حدس زدن)
+      const qs = new URLSearchParams();
+      qs.set("kind", active);
+      if (active === "projects") qs.set("project_id", String(projectId));
+      const r2 = await api("/budget-estimates?" + qs.toString());
+      const items2 = r2.items || [];
 
-          let nextMonths = {};
+      const mapped2 = (items2 || []).map((it) => {
+        let desc = it.last_desc ?? it.description ?? "";
+        let lastMonths = {};
+        if (desc && typeof desc === "string") {
           try {
-            const parsed = hit.description ? JSON.parse(hit.description) : null;
-            nextMonths = parsed?.months && typeof parsed.months === "object" ? parsed.months : {};
-          } catch {
-            nextMonths = {};
-          }
+            const parsed = JSON.parse(desc);
+            if (parsed && typeof parsed === "object") {
+              if (typeof parsed.desc === "string") desc = parsed.desc;
+              if (parsed.months && typeof parsed.months === "object") {
+                const mm = {};
+                dynamicMonths.forEach((m) => {
+                  const v = parsed.months[m.key];
+                  if (v !== undefined && v !== null && !isNaN(Number(v))) mm[m.key] = Number(v);
+                });
+                lastMonths = mm;
+              }
+            }
+          } catch {}
+        }
+        return {
+          code: it.code,
+          name: it.center_desc ?? it.name ?? "",
+          desc: desc || "",
+          baseAmount: it.last_amount ?? it.amount ?? 0,
+          months: {},
+          lastMonths,
+        };
+      });
 
-          const normalizedMonths = {};
-          dynamicMonths.forEach((m) => {
-            const v = nextMonths[m.key];
-            if (v !== undefined && v !== null && !isNaN(Number(v))) normalizedMonths[m.key] = Number(v);
-          });
-
-          return {
-            ...r,
-            baseAmount: Number(hit.amount || 0),
-            desc: "",
-            months: {},
-            lastMonths: normalizedMonths,
-          };
-        }),
+      mapped2.sort((a, b) =>
+        String(renderCode(a.code)).localeCompare(String(renderCode(b.code)), "fa", { numeric: true, sensitivity: "base" }),
       );
-
-      setShowModal(true);
-      await fetchHistory();
+      setRows(mapped2);
     } catch (ex) {
       setErr(ex.message || "خطا در بروزرسانی");
     } finally {
@@ -615,15 +530,35 @@ export default function EstimatesPage() {
 
       const codes = (rowsToRender || []).map((r) => String(r.code || "").trim()).filter(Boolean);
 
-      const body = {
-        kind: active,
-        project_id: active === "projects" ? Number(projectId) : null,
-        codes,
-      };
+      await api("/budget-estimates", {
+        method: "DELETE",
+        body: JSON.stringify({
+          kind: active,
+          project_id: active === "projects" ? Number(projectId) : null,
+          codes,
+        }),
+      });
 
-      await api("/budget-estimates", { method: "DELETE", body: JSON.stringify(body) });
+      // refresh
+      const qs = new URLSearchParams();
+      qs.set("kind", active);
+      if (active === "projects") qs.set("project_id", String(projectId));
+      const r2 = await api("/budget-estimates?" + qs.toString());
+      const items2 = r2.items || [];
 
-      setRows((prev) => prev.map((r) => ({ ...r, months: {}, lastMonths: {}, desc: "", baseAmount: 0 })));
+      const mapped2 = (items2 || []).map((it) => ({
+        code: it.code,
+        name: it.center_desc ?? "",
+        desc: "",
+        baseAmount: it.last_amount ?? 0,
+        months: {},
+        lastMonths: {},
+      }));
+
+      mapped2.sort((a, b) =>
+        String(renderCode(a.code)).localeCompare(String(renderCode(b.code)), "fa", { numeric: true, sensitivity: "base" }),
+      );
+      setRows(mapped2);
     } catch (ex) {
       setErr(ex.message || "خطا در صفر کردن برآوردها");
     } finally {
@@ -631,96 +566,49 @@ export default function EstimatesPage() {
     }
   };
 
-  const printModal = () => {
-    const el = document.getElementById("estimate-preview");
-    if (!el) return;
-    const win = window.open("", "_blank");
-    if (!win) return;
-    win.document.write(`
-      <html lang="fa" dir="rtl">
-        <head>
-          <meta charset="utf-8" />
-          <title>برآورد هزینه‌ها</title>
-          <style>
-            @page { size: A4; margin: 14mm; }
-            *{box-sizing:border-box}
-            body { font-family: Vazirmatn, Vazir, IRANSans, Segoe UI, Tahoma, sans-serif; color:#0f172a; background:#fff; margin:0; }
-            .wrap { max-width: 190mm; margin: 0 auto; }
-            .panel { border:1px solid #e5e7eb; border-radius:16px; padding:16px; }
-            table { width:100%; border-collapse: collapse; font-size: 12px; }
-            th, td { border-top: 1px solid #e5e7eb; padding: 8px; text-align: center; }
-            thead th { background:#f8fafc; border-top:none; }
-          </style>
-        </head>
-        <body>
-          <div class="wrap panel">${el.innerHTML}</div>
-          <script>window.print(); setTimeout(()=>window.close(), 300);</script>
-        </body>
-      </html>
-    `);
-    win.document.close();
-  };
+  const TopButtons = () => (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+      {tabs.map((t) => (
+        <button
+          key={t.id}
+          onClick={() => {
+            setActive(t.id);
+          }}
+          className={`h-10 px-4 rounded-2xl border text-sm shadow-sm transition ${
+            active === t.id
+              ? "bg-black text-white border-black"
+              : "bg-white text-black border border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800"
+          }`}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
 
-  const exportExcel = () => {
-    const rowsData = filteredRows || [];
-    const buildCell = (v) =>
-      String(v ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-
-    const headerHtml = `
-      <tr>
-        <th>#</th>
-        <th>کد بودجه</th>
-        <th>نام بودجه</th>
-        <th>جمع</th>
-      </tr>
-    `;
-
-    const bodyHtml = rowsData
-      .map((r, i) => {
-        const total = finalPreviewOf(r);
-        return `
-        <tr>
-          <td>${buildCell(toFaDigits(i + 1))}</td>
-          <td>${buildCell(renderCode(r.code))}</td>
-          <td>${buildCell(r.name || "—")}</td>
-          <td>${buildCell(toFaDigits(formatMoney(total || 0)))}</td>
-        </tr>
-      `;
-      })
-      .join("");
-
-    const html = `
-      <html lang="fa" dir="rtl">
-        <head>
-          <meta charset="utf-8" />
-          <style>
-            body { font-family: Vazirmatn, Vazir, IRANSans, Segoe UI, Tahoma, sans-serif; direction: rtl; }
-            table { border-collapse: collapse; width: 100%; font-size: 11pt; }
-            th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: center; vertical-align: middle; }
-            thead th { background-color: #f3f4f6; font-weight: 600; }
-          </style>
-        </head>
-        <body>
-          <table>
-            <thead>${headerHtml}</thead>
-            <tbody>${bodyHtml || `<tr><td colspan="4">موردی برای نمایش نیست.</td></tr>`}</tbody>
-          </table>
-        </body>
-      </html>
-    `;
-
-    const blob = new Blob(["\ufeff" + html], { type: "application/vnd.ms-excel;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "estimates.xls";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const ProjectsControls = () => {
+    if (active !== "projects") return null;
+    return (
+      <div className="grid grid-cols-1 gap-3">
+        <div className="flex flex-col gap-1">
+          <label className="text-sm text-black/70 dark:text-neutral-300">پروژه</label>
+          <select
+            className="w-full rounded-xl px-3 py-2 text-sm font-[inherit] bg-white text-black border border-black/15 outline-none text-right dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
+            value={projectId}
+            onChange={(e) => setProjectId(e.target.value)}
+          >
+            <option className="bg-white dark:bg-neutral-900" value="">
+              انتخاب کنید
+            </option>
+            {(sortedProjects || []).map((p) => (
+              <option className="bg-white dark:bg-neutral-900" key={p.id} value={p.id}>
+                {p.code ? `${p.code} - ${p.name || ""}` : p.name || "—"}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+    );
   };
 
   const colCount = 3 + dynamicMonths.length + 1;
@@ -751,7 +639,7 @@ export default function EstimatesPage() {
                         <span>کد بودجه</span>
                         <button
                           type="button"
-                          onClick={() => setCodeSortDir((prev) => (prev === "asc" ? "desc" : "asc"))}
+                          onClick={() => setCodeSortDir((p) => (p === "asc" ? "desc" : "asc"))}
                           className="rounded-lg px-2 py-1 ring-1 ring-black/15 hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10"
                           aria-label="مرتب‌سازی کد بودجه"
                         >
@@ -839,7 +727,7 @@ export default function EstimatesPage() {
                           const prefix = core + ".";
                           let sum = 0;
                           (rowsToRender || []).forEach((rr) => {
-                            if (!rr || !rr.code) return;
+                            if (!rr?.code) return;
                             const c2 = hierarchyMaps.coreByCode[rr.code];
                             if (!c2 || !hierarchyMaps.isLeafByCode[rr.code]) return;
                             if (!c2.startsWith(prefix)) return;
@@ -854,28 +742,23 @@ export default function EstimatesPage() {
                             className="text-center border-t border-black/10 odd:bg-black/[0.02] even:bg-black/[0.04] hover:bg-black/[0.06] transition-colors dark:border-neutral-800 dark:odd:bg-white/5 dark:even:bg-white/10 dark:hover:bg-white/15"
                           >
                             <TD className="px-2 py-3">{toFaDigits(idx + 1)}</TD>
+
                             <TD className="px-2 py-3 text-center whitespace-nowrap">
-                              <div
-                                className="inline-flex items-center justify-center gap-1 flex-row-reverse"
-                                style={{ paddingRight: node.depth ? node.depth * 12 : 0 }}
-                              >
+                              <div className="inline-flex items-center justify-center gap-1 flex-row-reverse" style={{ paddingRight: node.depth ? node.depth * 12 : 0 }}>
                                 {hasChildren && (
                                   <button
                                     type="button"
-                                    onClick={() => setOpenCodes((prev) => ({ ...prev, [toggleKey]: !prev[toggleKey] }))}
+                                    onClick={() => setOpenCodes((p) => ({ ...p, [toggleKey]: !p[toggleKey] }))}
                                     className="h-5 w-5 grid place-items-center rounded-md border border-black/25 bg-white text-black dark:border-neutral-500 dark:bg-white dark:text-black"
                                     aria-label={isOpen ? "بستن زیرمجموعه" : "باز کردن زیرمجموعه"}
                                   >
-                                    {isOpen ? (
-                                      <span className="text-[11px] leading-none text-black">−</span>
-                                    ) : (
-                                      <img src="/images/icons/afzodan.svg" alt="" className="w-3 h-3" />
-                                    )}
+                                    {isOpen ? <span className="text-[11px] leading-none text-black">−</span> : <img src="/images/icons/afzodan.svg" alt="" className="w-3 h-3" />}
                                   </button>
                                 )}
                                 <span className="ltr text-xs md:text-[13px]">{renderCode(code)}</span>
                               </div>
                             </TD>
+
                             <TD className="px-2 py-3 text-center break-words text-[11px] md:text-[13px] max-w-[180px]">{r.name || "—"}</TD>
 
                             {dynamicMonths.map((m) => {
@@ -889,7 +772,7 @@ export default function EstimatesPage() {
                                 if (core) {
                                   const prefix = core + ".";
                                   (rowsToRender || []).forEach((rr) => {
-                                    if (!rr || !rr.code) return;
+                                    if (!rr?.code) return;
                                     const c2 = hierarchyMaps.coreByCode[rr.code];
                                     if (!c2 || !hierarchyMaps.isLeafByCode[rr.code]) return;
                                     if (!c2.startsWith(prefix)) return;
@@ -981,7 +864,7 @@ export default function EstimatesPage() {
                   <input
                     ref={monthInputRef}
                     dir="ltr"
-                    className="flex-1 w-full rounded-xl px-3 py-2 text-sm text-center bg-white text-black placeholder-black/40 border border-black/15 outline-none focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                    className="flex-1 w-full rounded-xl px-3 py-2 text-sm text-center bg-white text-black border border-black/15 outline-none focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
                     placeholder="0"
                     value={monthModal.value ? toFaDigits(monthModal.value) : ""}
                     onChange={(e) => handleMonthModalChange(e.target.value)}
@@ -1020,16 +903,6 @@ export default function EstimatesPage() {
 
         <div className="mt-4 flex items-center gap-2 justify-end">
           <button
-            onClick={() => setShowModal(true)}
-            className="h-10 w-14 grid place-items-center rounded-xl border border-black/15 bg-white text-black hover:bg-black/5 dark:border-neutral-700 dark:bg-white dark:text-black dark:hover:bg-black/10"
-            disabled={active === "projects" && !projectId}
-            aria-label="نمایش"
-            title="نمایش"
-          >
-            <img src="/images/icons/namayesh.svg" alt="" className="w-5 h-5" />
-          </button>
-
-          <button
             onClick={onUpdate}
             disabled={saving || (active === "projects" && !projectId)}
             className="h-10 w-14 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
@@ -1039,148 +912,6 @@ export default function EstimatesPage() {
             <img src="/images/icons/berozresani.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
           </button>
         </div>
-
-        {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-2 sm:px-4">
-            <div className="absolute inset-0 bg-black/35 dark:bg-neutral-950/60 backdrop-blur-[2px]" onClick={() => setShowModal(false)} />
-            <div
-              className="relative w-full max-w-3xl bg-white dark:bg-neutral-900 dark:text-neutral-100 rounded-2xl shadow-2xl border border-black/10 dark:border-neutral-800 overflow-hidden max-h-[90vh] flex flex-col"
-              style={{ fontFamily: "Vazirmatn, Vazir, IRANSans, Segoe UI, Tahoma, sans-serif" }}
-            >
-              <div className="px-4 py-3 border-t border-black/10 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/80 backdrop-blur shrink-0">
-                <div className="flex flex-col items-center justify-center text-center gap-1">
-                  <h2 className="text-sm md:text-base font-bold text-black dark:text-neutral-100">برآورد هزینه‌ها</h2>
-                  <div className="text-[11px] md:text-xs text-black/70 dark:text-neutral-300 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-                    {active === "projects" && selectedProject && (
-                      <span>
-                        پروژه:{" "}
-                        <b className="text-black dark:text-neutral-100">
-                          {toFaDigits(selectedProject.code)} — {selectedProject.name}
-                        </b>
-                      </span>
-                    )}
-                    {histLoading ? <span>در حال خواندن تاریخچه…</span> : null}
-                  </div>
-                </div>
-              </div>
-
-              <div id="estimate-preview" className="p-4 max-h-[70vh] overflow-auto space-y-4 text-center flex-1">
-                <div className="overflow-auto rounded-xl ring-1 ring-black/10 dark:ring-neutral-800">
-                  <table className="w-full table-fixed text-[11px] md:text-xs text-center [&_th]:text-center [&_td]:text-center">
-                    <thead className="bg-black/5 text-black sticky top-0">
-                      <tr>
-                        <th className="py-2.5 px-2 w-16 text-center">#</th>
-                        <th className="py-2.5 px-2 w-40 text-center">کد بودجه</th>
-                        <th className="py-2.5 px-2 text-center">نام بودجه</th>
-                        {dynamicMonths.map((m) => (
-                          <th key={m.key} className="py-2.5 px-2 w-24 text-center">
-                            {m.label}
-                          </th>
-                        ))}
-                        <th className="py-2.5 px-2 w-32 text-center border-l border-r border-black/10">جمع</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-black dark:text-neutral-100">
-                      {(filteredRows || []).length === 0 ? (
-                        <tr>
-                          <td colSpan={3 + dynamicMonths.length + 1} className="py-6 text-black/60 dark:text-neutral-400 text-center">
-                            موردی برای نمایش نیست.
-                          </td>
-                        </tr>
-                      ) : (
-                        <>
-                          <tr className="border-t border-b border-black/10 bg-black/[0.04] font-semibold dark:border-neutral-800 dark:bg-white/10">
-                            <td className="py-2 px-2 w-16 text-center">-</td>
-                            <td className="py-2 px-2 w-40 text-center">-</td>
-                            <td className="py-2 px-2 text-center">جمع</td>
-                            {dynamicMonths.map((m) => (
-                              <td key={m.key} className="py-2 px-2 w-24 text-center whitespace-nowrap">
-                                {totalsComputed[m.key] ? (
-                                  <span className="inline-flex items-center justify-center gap-1">
-                                    <span className="ltr">{toFaDigits(formatMoney(totalsComputed[m.key]))}</span>
-                                    <span>ریال</span>
-                                  </span>
-                                ) : (
-                                  "—"
-                                )}
-                              </td>
-                            ))}
-                            <td className="py-2 px-2 w-32 text-center whitespace-nowrap border-l border-r border-black/10">
-                              <span className="inline-flex items-center justify-center gap-1">
-                                <span className="ltr">{toFaDigits(formatMoney(totalGrand || 0))}</span>
-                                <span>ریال</span>
-                              </span>
-                            </td>
-                          </tr>
-
-                          {(filteredRows || []).map((r, i) => (
-                            <tr key={r.code || i} className="border-t border-black/10 dark:border-neutral-800 odd:bg-black/[0.015]">
-                              <td className="py-2 px-2 w-16 text-center">{toFaDigits(i + 1)}</td>
-                              <td className="py-2 px-2 w-40 whitespace-nowrap text-center ltr">{renderCode(r.code)}</td>
-                              <td className="py-2 px-2 text-center break-words">{r.name || "—"}</td>
-                              {dynamicMonths.map((m) => {
-                                let val = 0;
-                                if (r.months && r.months[m.key] != null) val = Number(r.months[m.key] || 0);
-                                else val = Number((r.lastMonths && r.lastMonths[m.key]) || 0);
-                                return (
-                                  <td key={m.key} className="py-2 px-2 w-24 text-center whitespace-nowrap">
-                                    {val ? (
-                                      <span className="inline-flex items-center justify-center gap-1">
-                                        <span className="ltr">{toFaDigits(formatMoney(val))}</span>
-                                        <span>ریال</span>
-                                      </span>
-                                    ) : (
-                                      "—"
-                                    )}
-                                  </td>
-                                );
-                              })}
-                              <td className="py-2 px-2 w-32 text-center whitespace-nowrap border-l border-r border-black/10">
-                                <span className="inline-flex items-center justify-center gap-1">
-                                  <span className="ltr">{toFaDigits(formatMoney(finalPreviewOf(r) || 0))}</span>
-                                  <span>ریال</span>
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div className="px-4 py-3 flex items-center justify-between gap-3 border-t border-black/10 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/80 shrink-0">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={printModal}
-                    className="h-9 w-11 grid place-items-center rounded-xl border border-black/15 hover:bg-black hover:text-white transition dark:border-neutral-700"
-                    aria-label="چاپ"
-                    title="چاپ"
-                  >
-                    <img src="/images/icons/print.svg" alt="" className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={exportExcel}
-                    className="h-9 w-11 grid place-items-center rounded-xl border border-black/15 hover:bg-black/5 transition dark:border-neutral-700 dark:hover:bg-neutral-800"
-                    aria-label="خروجی اکسل"
-                    title="خروجی اکسل"
-                  >
-                    <img src="/images/icons/excel.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
-                  </button>
-                </div>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="h-9 w-11 grid place-items-center rounded-xl bg-black text-white dark:bg-neutral-100 dark:text-neutral-900"
-                  aria-label="بستن"
-                  title="بستن"
-                >
-                  <img src="/images/icons/bastan.svg" alt="بستن" className="w-5 h-5 invert dark:invert-0" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </Card>
     </>
   );
