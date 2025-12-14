@@ -968,7 +968,7 @@ export default function EstimatesPage() {
 
   if (!tabsReady) {
     return (
-      <Shell>
+      <>
         <Card>
           <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
             <span>بودجه‌بندی</span>
@@ -979,13 +979,13 @@ export default function EstimatesPage() {
             در حال بررسی دسترسی‌ها…
           </div>
         </Card>
-      </Shell>
+      </>
     );
   }
 
   if (!tabs.length || !allowed) {
     return (
-      <Shell>
+      <>
         <Card>
           <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
             <span>بودجه‌بندی</span>
@@ -996,14 +996,14 @@ export default function EstimatesPage() {
             {denyMsg || "شما سطح دسترسی لازم را ندارید."}
           </div>
         </Card>
-      </Shell>
+      </>
     );
   }
 
   const colCount = 3 + dynamicMonths.length + 1;
 
   return (
-    <Shell>
+    <>
       <Card>
         <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
           <span>بودجه‌بندی</span>
@@ -1468,6 +1468,6 @@ export default function EstimatesPage() {
           </div>
         )}
       </Card>
-    </Shell>
+    </>
   );
 }
