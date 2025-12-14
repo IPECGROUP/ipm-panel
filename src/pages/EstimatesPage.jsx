@@ -5,7 +5,6 @@ import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
 
 export default function EstimatesPage() {
   const API_BASE = (window.API_URL || "/api").replace(/\/+$/, "");
-  const EST_ENDPOINT = "/budget-estimates";
 
   async function api(path, opt = {}) {
     const res = await fetch(API_BASE + path, {
@@ -91,7 +90,6 @@ export default function EstimatesPage() {
     return cleaned;
   }, []);
 
-  // projects
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState("");
 
@@ -124,7 +122,6 @@ export default function EstimatesPage() {
       );
   }, [projects]);
 
-  // months
   const monthNames = useMemo(
     () => ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"],
     [],
@@ -151,7 +148,6 @@ export default function EstimatesPage() {
     return arr;
   }, [jalaliMonthIndex, monthNames]);
 
-  // data rows
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -178,8 +174,7 @@ export default function EstimatesPage() {
         qs.set("kind", active);
         if (active === "projects") qs.set("project_id", String(projectId));
 
-        // ✅ مسیر صحیح بک‌اند
-        const r = await api(`${EST_ENDPOINT}?` + qs.toString());
+        const r = await api("/budget-estimates?" + qs.toString());
         if (dead || seq !== reqSeq.current) return;
 
         const items = r.items || [];
@@ -215,10 +210,7 @@ export default function EstimatesPage() {
         });
 
         mapped.sort((a, b) =>
-          String(renderCode(a.code)).localeCompare(String(renderCode(b.code)), "fa", {
-            numeric: true,
-            sensitivity: "base",
-          }),
+          String(renderCode(a.code)).localeCompare(String(renderCode(b.code)), "fa", { numeric: true, sensitivity: "base" }),
         );
 
         setRows(mapped);
@@ -232,7 +224,7 @@ export default function EstimatesPage() {
     return () => {
       dead = true;
     };
-  }, [active, projectId, dynamicMonths, renderCode, EST_ENDPOINT]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [active, projectId, dynamicMonths, renderCode]);
 
   const filteredRows = useMemo(() => {
     if (active !== "projects") return rows || [];
@@ -267,7 +259,6 @@ export default function EstimatesPage() {
     [dynamicMonths],
   );
 
-  // hierarchy (for display tree)
   const [codeSortDir, setCodeSortDir] = useState("asc");
   const [openCodes, setOpenCodes] = useState({});
   useEffect(() => setOpenCodes({}), [active, projectId]);
@@ -378,15 +369,7 @@ export default function EstimatesPage() {
     return grand;
   }, [rowsToRender, hierarchyMaps, finalPreviewOf]);
 
-  // month modal
-  const [monthModal, setMonthModal] = useState({
-    open: false,
-    code: null,
-    monthKey: "",
-    label: "",
-    name: "",
-    value: "",
-  });
+  const [monthModal, setMonthModal] = useState({ open: false, code: null, monthKey: "", label: "", name: "", value: "" });
   const monthInputRef = useRef(null);
 
   const openMonthModal = (row, month) => {
@@ -472,13 +455,12 @@ export default function EstimatesPage() {
         rows: payloadRows,
       };
 
-      // ✅ مسیر صحیح بک‌اند
-      await api(EST_ENDPOINT, { method: "POST", body: JSON.stringify(body) });
+      await api("/budget-estimates", { method: "POST", body: JSON.stringify(body) });
 
       const qs = new URLSearchParams();
       qs.set("kind", active);
       if (active === "projects") qs.set("project_id", String(projectId));
-      const r2 = await api(`${EST_ENDPOINT}?` + qs.toString());
+      const r2 = await api("/budget-estimates?" + qs.toString());
       const items2 = r2.items || [];
 
       const mapped2 = (items2 || []).map((it) => {
@@ -511,10 +493,7 @@ export default function EstimatesPage() {
       });
 
       mapped2.sort((a, b) =>
-        String(renderCode(a.code)).localeCompare(String(renderCode(b.code)), "fa", {
-          numeric: true,
-          sensitivity: "base",
-        }),
+        String(renderCode(a.code)).localeCompare(String(renderCode(b.code)), "fa", { numeric: true, sensitivity: "base" }),
       );
       setRows(mapped2);
     } catch (ex) {
@@ -533,12 +512,9 @@ export default function EstimatesPage() {
       setSaving(true);
       setErr("");
 
-      const codes = (rowsToRender || [])
-        .map((r) => String(r.code || "").trim())
-        .filter(Boolean);
+      const codes = (rowsToRender || []).map((r) => String(r.code || "").trim()).filter(Boolean);
 
-      // ✅ مسیر صحیح بک‌اند
-      await api(EST_ENDPOINT, {
+      await api("/budget-estimates", {
         method: "DELETE",
         body: JSON.stringify({
           kind: active,
@@ -550,7 +526,7 @@ export default function EstimatesPage() {
       const qs = new URLSearchParams();
       qs.set("kind", active);
       if (active === "projects") qs.set("project_id", String(projectId));
-      const r2 = await api(`${EST_ENDPOINT}?` + qs.toString());
+      const r2 = await api("/budget-estimates?" + qs.toString());
       const items2 = r2.items || [];
 
       const mapped2 = (items2 || []).map((it) => ({
@@ -563,10 +539,7 @@ export default function EstimatesPage() {
       }));
 
       mapped2.sort((a, b) =>
-        String(renderCode(a.code)).localeCompare(String(renderCode(b.code)), "fa", {
-          numeric: true,
-          sensitivity: "base",
-        }),
+        String(renderCode(a.code)).localeCompare(String(renderCode(b.code)), "fa", { numeric: true, sensitivity: "base" }),
       );
       setRows(mapped2);
     } catch (ex) {
