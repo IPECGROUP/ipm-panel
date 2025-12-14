@@ -18,8 +18,8 @@ export default function EstimatesPage() {
     try {
       data = txt ? JSON.parse(txt) : {};
     } catch (_e) {
-      // اگر سرور HTML/متن داد، همین رو بالا می‌بریم که تو کنسول معلوم شه
-      throw new Error(txt || "bad_json_response");
+      const snippet = String(txt || "").slice(0, 300);
+      throw new Error(`bad_json_response: ${res.status} ${res.statusText} :: ${snippet}`);
     }
 
     if (!res.ok) throw new Error(data?.error || data?.message || "request_failed");
@@ -40,10 +40,7 @@ export default function EstimatesPage() {
 
   const [active, setActive] = useState("office");
 
-  const prefixOf = useCallback(
-    (kind) => tabs.find((t) => t.id === kind)?.prefix || "",
-    [tabs],
-  );
+  const prefixOf = useCallback((kind) => tabs.find((t) => t.id === kind)?.prefix || "", [tabs]);
 
   const formatMoney = useCallback((n) => {
     const s = String(n ?? "");
@@ -111,7 +108,7 @@ export default function EstimatesPage() {
     return () => {
       stop = true;
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedProject = useMemo(
     () => (projects || []).find((p) => String(p.id) === String(projectId)),
@@ -180,7 +177,8 @@ export default function EstimatesPage() {
         qs.set("kind", active);
         if (active === "projects") qs.set("project_id", String(projectId));
 
-        const r = await api("/budget-estimates?" + qs.toString());
+        // ✅ تغییر اصلی: مسیر جدید
+        const r = await api("/estimate?" + qs.toString());
         if (dead || seq !== reqSeq.current) return;
 
         const items = r.items || [];
@@ -216,7 +214,10 @@ export default function EstimatesPage() {
         });
 
         mapped.sort((a, b) =>
-          String(renderCode(a.code)).localeCompare(String(renderCode(b.code)), "fa", { numeric: true, sensitivity: "base" }),
+          String(renderCode(a.code)).localeCompare(String(renderCode(b.code)), "fa", {
+            numeric: true,
+            sensitivity: "base",
+          }),
         );
 
         setRows(mapped);
@@ -470,13 +471,13 @@ export default function EstimatesPage() {
         rows: payloadRows,
       };
 
-      await api("/budget-estimates", { method: "POST", body: JSON.stringify(body) });
+      // ✅ تغییر اصلی: مسیر جدید
+      await api("/estimate", { method: "POST", body: JSON.stringify(body) });
 
-      // بعد از ذخیره، دوباره GET می‌زند و UI sync می‌شود (به‌جای حدس زدن)
       const qs = new URLSearchParams();
       qs.set("kind", active);
       if (active === "projects") qs.set("project_id", String(projectId));
-      const r2 = await api("/budget-estimates?" + qs.toString());
+      const r2 = await api("/estimate?" + qs.toString());
       const items2 = r2.items || [];
 
       const mapped2 = (items2 || []).map((it) => {
@@ -509,7 +510,10 @@ export default function EstimatesPage() {
       });
 
       mapped2.sort((a, b) =>
-        String(renderCode(a.code)).localeCompare(String(renderCode(b.code)), "fa", { numeric: true, sensitivity: "base" }),
+        String(renderCode(a.code)).localeCompare(String(renderCode(b.code)), "fa", {
+          numeric: true,
+          sensitivity: "base",
+        }),
       );
       setRows(mapped2);
     } catch (ex) {
@@ -528,9 +532,12 @@ export default function EstimatesPage() {
       setSaving(true);
       setErr("");
 
-      const codes = (rowsToRender || []).map((r) => String(r.code || "").trim()).filter(Boolean);
+      const codes = (rowsToRender || [])
+        .map((r) => String(r.code || "").trim())
+        .filter(Boolean);
 
-      await api("/budget-estimates", {
+      // ✅ تغییر اصلی: مسیر جدید
+      await api("/estimate", {
         method: "DELETE",
         body: JSON.stringify({
           kind: active,
@@ -539,11 +546,10 @@ export default function EstimatesPage() {
         }),
       });
 
-      // refresh
       const qs = new URLSearchParams();
       qs.set("kind", active);
       if (active === "projects") qs.set("project_id", String(projectId));
-      const r2 = await api("/budget-estimates?" + qs.toString());
+      const r2 = await api("/estimate?" + qs.toString());
       const items2 = r2.items || [];
 
       const mapped2 = (items2 || []).map((it) => ({
@@ -556,7 +562,10 @@ export default function EstimatesPage() {
       }));
 
       mapped2.sort((a, b) =>
-        String(renderCode(a.code)).localeCompare(String(renderCode(b.code)), "fa", { numeric: true, sensitivity: "base" }),
+        String(renderCode(a.code)).localeCompare(String(renderCode(b.code)), "fa", {
+          numeric: true,
+          sensitivity: "base",
+        }),
       );
       setRows(mapped2);
     } catch (ex) {
@@ -630,7 +639,10 @@ export default function EstimatesPage() {
         <TableWrap>
           <div className="bg-white rounded-2xl overflow-hidden border border-black/10 shadow-sm text-black dark:bg-neutral-900 dark:text-neutral-200 dark:border-neutral-800">
             <div className="overflow-x-auto">
-              <table className="w-full table-fixed text-[12px] md:text-[13px] text-center [&_th]:text-center [&_td]:text-center" dir="rtl">
+              <table
+                className="w-full table-fixed text-[12px] md:text-[13px] text-center [&_th]:text-center [&_td]:text-center"
+                dir="rtl"
+              >
                 <THead>
                   <tr className="bg-black/5 border-b border-black/10 sticky top-0 z-10 text-black dark:bg-neutral-900 dark:text-neutral-300 dark:border-neutral-700">
                     <TH className="!text-center py-3 w-14 !text-black dark:!text-neutral-300">#</TH>
@@ -644,7 +656,11 @@ export default function EstimatesPage() {
                           aria-label="مرتب‌سازی کد بودجه"
                         >
                           <img
-                            src={codeSortDir === "asc" ? "/images/icons/kochikbebozorg.svg" : "/images/icons/bozorgbekochik.svg"}
+                            src={
+                              codeSortDir === "asc"
+                                ? "/images/icons/kochikbebozorg.svg"
+                                : "/images/icons/bozorgbekochik.svg"
+                            }
                             alt=""
                             className="w-5 h-5 dark:invert"
                           />
@@ -693,7 +709,10 @@ export default function EstimatesPage() {
                         <TD className="px-2 py-3 border-b border-black/10 dark:border-neutral-800">-</TD>
                         <TD className="px-2 py-3 text-center border-b border-black/10 dark:border-neutral-800">جمع</TD>
                         {dynamicMonths.map((m) => (
-                          <TD key={m.key} className="px-0 py-2 text-center align-middle border-b border-black/10 dark:border-neutral-800">
+                          <TD
+                            key={m.key}
+                            className="px-0 py-2 text-center align-middle border-b border-black/10 dark:border-neutral-800"
+                          >
                             {totalsComputed[m.key] ? (
                               <span className="inline-flex items-center justify-center gap-1">
                                 <span className="ltr">{toFaDigits(formatMoney(totalsComputed[m.key]))}</span>
@@ -744,7 +763,10 @@ export default function EstimatesPage() {
                             <TD className="px-2 py-3">{toFaDigits(idx + 1)}</TD>
 
                             <TD className="px-2 py-3 text-center whitespace-nowrap">
-                              <div className="inline-flex items-center justify-center gap-1 flex-row-reverse" style={{ paddingRight: node.depth ? node.depth * 12 : 0 }}>
+                              <div
+                                className="inline-flex items-center justify-center gap-1 flex-row-reverse"
+                                style={{ paddingRight: node.depth ? node.depth * 12 : 0 }}
+                              >
                                 {hasChildren && (
                                   <button
                                     type="button"
@@ -752,14 +774,20 @@ export default function EstimatesPage() {
                                     className="h-5 w-5 grid place-items-center rounded-md border border-black/25 bg-white text-black dark:border-neutral-500 dark:bg-white dark:text-black"
                                     aria-label={isOpen ? "بستن زیرمجموعه" : "باز کردن زیرمجموعه"}
                                   >
-                                    {isOpen ? <span className="text-[11px] leading-none text-black">−</span> : <img src="/images/icons/afzodan.svg" alt="" className="w-3 h-3" />}
+                                    {isOpen ? (
+                                      <span className="text-[11px] leading-none text-black">−</span>
+                                    ) : (
+                                      <img src="/images/icons/afzodan.svg" alt="" className="w-3 h-3" />
+                                    )}
                                   </button>
                                 )}
                                 <span className="ltr text-xs md:text-[13px]">{renderCode(code)}</span>
                               </div>
                             </TD>
 
-                            <TD className="px-2 py-3 text-center break-words text-[11px] md:text-[13px] max-w-[180px]">{r.name || "—"}</TD>
+                            <TD className="px-2 py-3 text-center break-words text-[11px] md:text-[13px] max-w-[180px]">
+                              {r.name || "—"}
+                            </TD>
 
                             {dynamicMonths.map((m) => {
                               let val = 0;
@@ -832,14 +860,18 @@ export default function EstimatesPage() {
 
         {monthModal.open && (
           <div className="fixed inset-0 z-40 flex items-center justify-center px-3">
-            <div className="absolute inset-0 bg-black/40 dark:bg-neutral-950/70 backdrop-blur-[2px]" onClick={closeMonthModal} />
+            <div
+              className="absolute inset-0 bg-black/40 dark:bg-neutral-950/70 backdrop-blur-[2px]"
+              onClick={closeMonthModal}
+            />
             <div className="relative w-full max-w-sm rounded-2xl bg-white text-neutral-900 border border-black/10 shadow-2xl dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 p-4 space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <div className="text-sm font-semibold">ثبت برآورد ماهانه</div>
                   <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400 space-y-0.5">
                     <div>
-                      کد بودجه: <b className="ltr text-xs">{monthModal.code ? renderCode(monthModal.code) : "—"}</b>
+                      کد بودجه:{" "}
+                      <b className="ltr text-xs">{monthModal.code ? renderCode(monthModal.code) : "—"}</b>
                     </div>
                     <div>
                       نام بودجه: <b>{monthModal.name || "—"}</b>
