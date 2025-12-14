@@ -749,7 +749,7 @@ function RevenueEstimatesPage() {
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') openViewRowModal(r);
                                 }}
-                                className="inline-flex flex-row-reverse items-center gap-2 px-4 py-2 rounded-full border border-black/15 bg-white shadow-sm text-[11px] text-black cursor-pointer select-none hover:bg-black/[0.03] dark:border-neutral-700 dark:bg-neutral-900/70 dark:text-neutral-100 dark:hover:bg-white/10"
+                                className="inline-flex flex-row-reverse items-center gap-2 px-3 py-2 rounded-2xl border border-black/10 bg-white/90 shadow-sm ring-1 ring-black/5 text-[11px] text-black cursor-pointer select-none hover:bg-black/[0.03] hover:shadow transition dark:border-neutral-700 dark:bg-neutral-900/70 dark:ring-0 dark:text-neutral-100 dark:hover:bg-white/10"
                                 title="مشاهده جزئیات"
                               >
                                 <button
@@ -786,7 +786,7 @@ function RevenueEstimatesPage() {
                               aria-label="حذف"
                               title="حذف"
                             >
-                              <img src="/images/icons/bastan.svg" alt="" className="w-4 h-4 invert dark:invert" />
+                              <img src="/images/icons/bastan.svg" alt="" className="w-4 h-4 dark:invert" />
                             </button>
                           </div>
                         </TD>
