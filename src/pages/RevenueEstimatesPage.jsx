@@ -474,56 +474,64 @@ function RevenueEstimatesPage() {
 
   // ==== ذخیره‌سازی ====
   const handleSave = async () => {
-    if (!rows.length) return;
+  if (!rows.length) return;
 
-    const flatten = [];
-    const buildTitlePath = (prefix, node) => (prefix ? prefix + SEP + node.title : node.title);
+  const flatten = [];
+  const buildTitlePath = (prefix, node) => (prefix ? prefix + SEP + node.title : node.title);
 
-    const walk = (node, prefix) => {
-      const titlePath = buildTitlePath(prefix, node);
-      const months = dynamicMonths.map((m) => ({
-        key: m.key,
-        month_index: m.monthIndex,
-        label: m.label,
-        amount: hasChildren(node) ? sumNodeMonth(node, m.key) : Number(node.months?.[m.key] || 0),
-      }));
-      const total = months.reduce((acc, mm) => acc + (mm.amount || 0), 0);
+  const walk = (node, prefix) => {
+    const titlePath = buildTitlePath(prefix, node);
+    const months = dynamicMonths.map((m) => ({
+      key: m.key,
+      month_index: m.monthIndex,
+      label: m.label,
+      amount: hasChildren(node) ? sumNodeMonth(node, m.key) : Number(node.months?.[m.key] || 0),
+    }));
+    const total = months.reduce((acc, mm) => acc + (mm.amount || 0), 0);
 
-      flatten.push({
-        title: titlePath,
-        description: node.desc || '',
-        project_id: node.projectId || null,
-        months,
-        amount: total,
-      });
+    flatten.push({
+      title: titlePath,
+      description: node.desc || '',
+      project_id: node.projectId || null,
+      months,
+      amount: total,
+    });
 
-      (node.children || []).forEach((ch) => walk(ch, titlePath));
-    };
-
-    rows.forEach((r) => walk(r, ''));
-
-    try {
-      const payloadRows = flatten.map((r, idx) => ({
-        code: 'R' + (idx + 1),
-        row_index: idx + 1,
-        title: r.title,
-        description: r.description,
-        project_id: r.project_id,
-        months: r.months,
-        amount: r.amount,
-      }));
-
-      await api('/revenue-estimates', {
-        method: 'POST',
-        body: JSON.stringify({ rows: payloadRows }),
-      });
-
-      alert('برآورد درآمد با موفقیت ذخیره شد.');
-    } catch (e) {
-      console.error('save revenue estimates failed', e);
-      alert('ذخیره برآورد با خطا مواجه شد.');
-    }
+    (node.children || []).forEach((ch) => walk(ch, titlePath));
   };
+
+  rows.forEach((r) => walk(r, ''));
+
+  try {
+    const payloadRows = flatten.map((r, idx) => ({
+      code: 'R' + (idx + 1),
+      row_index: idx + 1,
+      title: r.title,
+      description: r.description,
+      project_id: r.project_id,
+      months: r.months,
+      amount: r.amount,
+    }));
+
+    await api('/revenue-estimates', {
+      method: 'POST',
+      body: JSON.stringify({ rows: payloadRows }),
+    });
+
+    const data = await api('/revenue-estimates');
+    const items = data.items || [];
+    items.sort((a, b) => (a.row_index || 0) - (b.row_index || 0));
+    rowIdRef.current = 1;
+    const tree = buildTreeFromItems(items);
+    setRows(tree);
+
+    alert('برآورد درآمد با موفقیت ذخیره شد.');
+  } catch (e) {
+    console.error('save revenue estimates failed', e);
+    alert('ذخیره برآورد با خطا مواجه شد.');
+  }
+};
+
 
   const totalCols = 2 + dynamicMonths.length + 1;
 
