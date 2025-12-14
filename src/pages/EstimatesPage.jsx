@@ -82,7 +82,6 @@ export default function EstimatesPage() {
     [active, prefixOf],
   );
 
-  // ✅ اصلاح: پشتیبانی از اعداد فارسی/عربی برای فیلتر پروژه‌ها
   const coreOf = useCallback(
     (s) => {
       const raw = toEnDigits(String(s || "")).trim();
@@ -134,6 +133,17 @@ export default function EstimatesPage() {
     [],
   );
 
+  const ALL_MONTH_KEYS = useMemo(() => Array.from({ length: 12 }, (_, i) => "m" + (i + 1)), []);
+
+  const [todayKey, setTodayKey] = useState(() => new Date().toDateString());
+  useEffect(() => {
+    const id = setInterval(() => {
+      const k = new Date().toDateString();
+      setTodayKey((p) => (p === k ? p : k));
+    }, 60 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+
   const jalaliMonthIndex = useMemo(() => {
     try {
       const fmt = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { month: "numeric" });
@@ -144,7 +154,7 @@ export default function EstimatesPage() {
     } catch {
       return new Date().getMonth() + 1;
     }
-  }, [toEnDigits]);
+  }, [toEnDigits, todayKey]);
 
   const dynamicMonths = useMemo(() => {
     const arr = [];
@@ -157,6 +167,11 @@ export default function EstimatesPage() {
 
   // data rows
   const [rows, setRows] = useState([]);
+  const rowsRef = useRef(rows);
+  useEffect(() => {
+    rowsRef.current = rows;
+  }, [rows]);
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
@@ -174,9 +189,10 @@ export default function EstimatesPage() {
             if (typeof parsed.desc === "string") desc = parsed.desc;
             if (parsed.months && typeof parsed.months === "object") {
               const mm = {};
-              dynamicMonths.forEach((m) => {
-                const v = parsed.months[m.key];
-                if (v !== undefined && v !== null && !isNaN(Number(v))) mm[m.key] = Number(v);
+              Object.keys(parsed.months || {}).forEach((k) => {
+                if (!/^m(1[0-2]|[1-9])$/.test(k)) return;
+                const v = parsed.months[k];
+                if (v !== undefined && v !== null && !isNaN(Number(v))) mm[k] = Number(v);
               });
               lastMonths = mm;
             }
@@ -185,7 +201,7 @@ export default function EstimatesPage() {
       }
       return { desc: desc || "", lastMonths };
     },
-    [dynamicMonths],
+    [],
   );
 
   useEffect(() => {
@@ -235,7 +251,6 @@ export default function EstimatesPage() {
           return;
         }
 
-        // ✅ پروژه‌ها: هم مراکز پروژه‌ها را بخوان، هم برآوردها را (برای اینکه حتی بدون برآورد هم جدول پر شود)
         const [rEst, rCenters] = await Promise.all([
           api("/budget-estimates?" + qs.toString()).catch(() => ({ items: [] })),
           api("/centers/projects").catch(() => ({ items: [] })),
@@ -258,7 +273,6 @@ export default function EstimatesPage() {
 
         const byCode = new Map();
 
-        // اول: مراکز (که همیشه باید نمایش داده شوند)
         for (const c of matchedCenters) {
           const code = String(c?.suffix ?? c?.code ?? "").trim();
           if (!code) continue;
@@ -272,7 +286,6 @@ export default function EstimatesPage() {
           });
         }
 
-        // دوم: داده‌های estimate (برای مقدار/توضیح/ماه‌ها)
         for (const it of estItems) {
           const code = String(it?.code ?? "").trim();
           if (!code) continue;
@@ -319,7 +332,6 @@ export default function EstimatesPage() {
 
   const filteredRows = useMemo(() => {
     if (active !== "projects") return rows || [];
-    // چون در حالت پروژه‌ها بالا فیلتر کردیم، همین را برگردانیم
     return rows || [];
   }, [rows, active]);
 
@@ -476,23 +488,92 @@ export default function EstimatesPage() {
     });
   };
   const closeMonthModal = () => setMonthModal((p) => ({ ...p, open: false }));
+
   const handleMonthModalChange = (raw) => {
     const en = toEnDigits(raw);
     const digits = en.replace(/[^\d]/g, "");
     const formatted = digits ? formatMoney(Number(digits)) : "";
     setMonthModal((p) => ({ ...p, value: formatted }));
   };
+
+  const persistSingleCell = async (code, monthKey, num) => {
+    const list = rowsRef.current || [];
+    const row = list.find((r) => String(r.code) === String(code));
+    if (!row) return;
+
+    const merged = { ...(row.lastMonths || {}), ...(row.months || {}) };
+    merged[monthKey] = num;
+
+    const nextMonths = {};
+    ALL_MONTH_KEYS.forEach((k) => {
+      const v = Number(merged[k] || 0);
+      if (v) nextMonths[k] = v;
+    });
+
+    const plainDesc = (row.desc || "").trim();
+    const total = Object.values(nextMonths).reduce((sum, v) => sum + Number(v || 0), 0);
+
+    let description = null;
+    if (plainDesc || Object.keys(nextMonths).length) {
+      try {
+        description = JSON.stringify({ desc: plainDesc || null, months: nextMonths });
+      } catch {
+        description = plainDesc || null;
+      }
+    }
+
+    const body = {
+      kind: active,
+      project_id: active === "projects" ? (projectId ? Number(projectId) : null) : null,
+      rows: [{ code, description, amount: total }],
+    };
+
+    setSaving(true);
+    setErr("");
+    try {
+      await api("/budget-estimates", { method: "POST", body: JSON.stringify(body) });
+
+      setRows((prev) =>
+        (prev || []).map((r) => {
+          if (String(r.code) !== String(code)) return r;
+          const lm = { ...(r.lastMonths || {}), ...(r.months || {}) };
+          if (num) lm[monthKey] = num;
+          else delete lm[monthKey];
+          const mm = { ...(r.months || {}) };
+          delete mm[monthKey];
+          return { ...r, lastMonths: lm, months: mm };
+        }),
+      );
+    } catch (ex) {
+      setErr(ex.message || "خطا در ذخیره برآورد");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleMonthModalSave = () => {
     if (!monthModal.code || !monthModal.monthKey) return closeMonthModal();
     const num = parseMoney(monthModal.value);
+
     setRows((prev) =>
-      prev.map((r) => {
-        if (r.code !== monthModal.code) return r;
-        return { ...r, months: { ...(r.months || {}), [monthModal.monthKey]: num } };
+      (prev || []).map((r) => {
+        if (String(r.code) !== String(monthModal.code)) return r;
+        const nextMonths = { ...(r.months || {}), [monthModal.monthKey]: num };
+        const nextLast = { ...(r.lastMonths || {}) };
+        if (num) nextLast[monthModal.monthKey] = num;
+        else delete nextLast[monthModal.monthKey];
+        return { ...r, months: nextMonths, lastMonths: nextLast };
       }),
     );
+
+    const c = monthModal.code;
+    const mk = monthModal.monthKey;
+
     setMonthModal({ open: false, code: null, monthKey: "", label: "", name: "", value: "" });
+
+    persistSingleCell(c, mk, num);
   };
+
   useEffect(() => {
     if (monthModal.open && monthInputRef.current) {
       monthInputRef.current.focus();
@@ -510,11 +591,11 @@ export default function EstimatesPage() {
           if (!r.code) return null;
 
           const nextMonths = {};
-          dynamicMonths.forEach((m) => {
-            const cur = r.months && r.months[m.key];
-            const last = r.lastMonths && r.lastMonths[m.key];
+          ALL_MONTH_KEYS.forEach((k) => {
+            const cur = r.months && r.months[k];
+            const last = r.lastMonths && r.lastMonths[k];
             const effective = cur !== undefined && cur !== null ? Number(cur) || 0 : Number(last) || 0;
-            if (effective) nextMonths[m.key] = effective;
+            if (effective) nextMonths[k] = effective;
           });
 
           const plainDesc = (r.desc || "").trim();
@@ -546,12 +627,12 @@ export default function EstimatesPage() {
 
       await api("/budget-estimates", { method: "POST", body: JSON.stringify(body) });
 
-      // رفرش بعد از ذخیره
-      const qs = new URLSearchParams();
-      qs.set("kind", active);
-      if (active === "projects") qs.set("project_id", String(projectId));
-      await api("/budget-estimates?" + qs.toString()); // فقط برای اطمینان از موفقیت؛ ریلود اصلی با useEffect انجام می‌شود
-      setRows((p) => p.map((x) => ({ ...x, months: {} })));
+      setRows((p) =>
+        (p || []).map((r) => {
+          const lm = { ...(r.lastMonths || {}), ...(r.months || {}) };
+          return { ...r, lastMonths: lm, months: {} };
+        }),
+      );
     } catch (ex) {
       setErr(ex.message || "خطا در بروزرسانی");
     } finally {
@@ -914,12 +995,16 @@ export default function EstimatesPage() {
                 >
                   انصراف
                 </button>
+
                 <button
                   type="button"
                   onClick={handleMonthModalSave}
-                  className="h-9 px-5 rounded-xl bg-neutral-900 text-xs text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
+                  disabled={saving}
+                  className="h-9 w-11 rounded-xl bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200 grid place-items-center disabled:opacity-50"
+                  aria-label="ثبت برآورد"
+                  title="ثبت برآورد"
                 >
-                  ثبت برآورد
+                  <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
                 </button>
               </div>
             </div>
