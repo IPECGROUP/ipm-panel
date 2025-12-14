@@ -1,3 +1,4 @@
+// براورد درامد ها
 import React, {
   useState,
   useEffect,
@@ -67,7 +68,7 @@ function RevenueEstimatesPage() {
     } catch {
       return new Date().getMonth() + 1;
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const dynamicMonths = useMemo(() => {
     const arr = [];
@@ -138,7 +139,7 @@ function RevenueEstimatesPage() {
         console.error('load projects failed', e);
       }
     })();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const SEP = ' › ';
 
@@ -229,7 +230,7 @@ function RevenueEstimatesPage() {
         console.error('load revenue estimates failed', e);
       }
     })();
-  }, [buildTreeFromItems]);
+  }, [buildTreeFromItems]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [addModal, setAddModal] = useState({ open: false, title: '', desc: '' });
 
@@ -748,7 +749,7 @@ function RevenueEstimatesPage() {
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') openViewRowModal(r);
                                 }}
-                                className="inline-flex flex-row-reverse items-center gap-2 px-3 py-1.5 rounded-2xl border border-black/10 bg-black/[0.04] text-[11px] text-black cursor-pointer select-none dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100"
+                                className="inline-flex flex-row-reverse items-center gap-2 px-4 py-2 rounded-full border border-black/15 bg-white shadow-sm text-[11px] text-black cursor-pointer select-none hover:bg-black/[0.03] dark:border-neutral-700 dark:bg-neutral-900/70 dark:text-neutral-100 dark:hover:bg-white/10"
                                 title="مشاهده جزئیات"
                               >
                                 <button
@@ -758,7 +759,7 @@ function RevenueEstimatesPage() {
                                     e.stopPropagation();
                                     toggleExpand(r.id);
                                   }}
-                                  className="h-7 w-7 grid place-items-center rounded-xl hover:bg-black/10 dark:hover:bg-white/15"
+                                  className="h-6 w-6 grid place-items-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10"
                                   aria-label="باز/بسته"
                                   title="باز/بسته"
                                 >
@@ -781,11 +782,11 @@ function RevenueEstimatesPage() {
                             <button
                               type="button"
                               onClick={() => removeNode(r.id)}
-                              className="h-10 w-10 grid place-items-center rounded-xl ring-1 ring-black/15 hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10"
+                              className="inline-flex items-center justify-center p-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10"
                               aria-label="حذف"
                               title="حذف"
                             >
-                              <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
+                              <img src="/images/icons/bastan.svg" alt="" className="w-4 h-4 invert dark:invert" />
                             </button>
                           </div>
                         </TD>
