@@ -108,7 +108,7 @@ function EstimatesPage({ api: apiProp }) {
     (async () => {
       try {
         const r = await api("/projects");
-        if (!stop) setProjects(r.projects || []);
+        if (!stop) setProjects(r.projects || r.items || []);
       } catch (_) {}
     })();
     return () => {
@@ -216,11 +216,8 @@ function EstimatesPage({ api: apiProp }) {
   // هسته‌ی کد برای ساخت سلسله‌مراتب (حذف حروف و جداکننده‌های اول و نرمال‌سازی به اعداد و نقطه)
   const coreOf = (s) => {
     const raw = String(s || "").trim();
-    // حذف حروف اول + هرچیزی تا قبل از اولین رقم
     const noPrefix = raw.replace(/^[A-Za-z]+[^0-9]*/, "");
-    // هر کاراکتر غیر از رقم و نقطه را تبدیل به نقطه کن
     const normalized = noPrefix.replace(/[^\d.]+/g, ".");
-    // چند نقطه‌ی پشت‌سرهم را یکی کن و نقطه‌ی اول/آخر را حذف کن
     const cleaned = normalized
       .replace(/\.+/g, ".")
       .replace(/^\./, "")
@@ -249,10 +246,10 @@ function EstimatesPage({ api: apiProp }) {
       const fmt = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
         month: "numeric",
       });
-      const fa = fmt.format(new Date()); // مثلا "۹"
+      const fa = fmt.format(new Date());
       const en = Number(toEnDigits(fa));
       if (!en || en < 1 || en > 12) {
-        return new Date().getMonth() + 1; // fallback گریگوری
+        return new Date().getMonth() + 1;
       }
       return en;
     } catch {
@@ -262,9 +259,8 @@ function EstimatesPage({ api: apiProp }) {
 
   const dynamicMonths = useMemo(() => {
     const arr = [];
-    // ماه جاری + ۵ ماه بعد از ماه فعلی (جمعاً ۶ ماه)
     for (let i = 0; i < 6; i++) {
-      const m = ((jalaliMonthIndex + i - 1) % 12) + 1; // ۱..۱۲
+      const m = ((jalaliMonthIndex + i - 1) % 12) + 1;
       arr.push({
         key: "m" + m,
         monthIndex: m,
@@ -309,6 +305,8 @@ function EstimatesPage({ api: apiProp }) {
           qs.set("project_id", String(projectId));
           const r = await api("/budget-estimates?" + qs.toString());
           items = r.items || [];
+
+          // ⬅️ اتصال به تعریف مراکز بودجه (projects)
           try {
             const centers = await api("/centers/projects");
             const base = String(selectedProject?.code || "").trim();
@@ -328,6 +326,8 @@ function EstimatesPage({ api: apiProp }) {
               if (!byCode.has(String(e.code))) byCode.set(String(e.code), e);
             items = Array.from(byCode.values());
           } catch (_e) {}
+
+          // آخرین مقدار از history (در صورت نیاز)
           try {
             const qh = new URLSearchParams();
             qh.set("kind", "projects");
@@ -360,6 +360,33 @@ function EstimatesPage({ api: apiProp }) {
           qs.set("kind", active);
           const r = await api("/budget-estimates?" + qs.toString());
           items = r.items || [];
+
+          // ⬅️ اتصال به تعریف مراکز بودجه (office/site/finance/cash/capex)
+          try {
+            const centers = await api("/centers/" + active);
+            const extra = (centers?.items || [])
+              .map((c) => {
+                const suf = String(c?.suffix || c?.code || "").trim();
+                return {
+                  code: suf,
+                  center_desc: c?.description || "",
+                  last_desc: "",
+                  last_amount: 0,
+                };
+              })
+              .filter((x) => x.code);
+
+            const byCore = new Map();
+            (items || []).forEach((it) => {
+              const k = coreOf(it.code);
+              if (k) byCore.set(k, it);
+            });
+            for (const e of extra) {
+              const k = coreOf(e.code);
+              if (k && !byCore.has(k)) byCore.set(k, e);
+            }
+            items = Array.from(byCore.values());
+          } catch (_e) {}
         }
 
         if (abort) return;
@@ -375,20 +402,14 @@ function EstimatesPage({ api: apiProp }) {
                   const mm = {};
                   dynamicMonths.forEach((m) => {
                     const v = parsed.months[m.key];
-                    if (
-                      v !== undefined &&
-                      v !== null &&
-                      !isNaN(Number(v))
-                    ) {
+                    if (v !== undefined && v !== null && !isNaN(Number(v))) {
                       mm[m.key] = Number(v);
                     }
                   });
                   lastMonths = mm;
                 }
               }
-            } catch {
-              // desc متن ساده بوده
-            }
+            } catch {}
           }
           return {
             code: it.code,
@@ -397,8 +418,8 @@ function EstimatesPage({ api: apiProp }) {
             baseAmount: it.last_amount ?? 0,
             amountRaw: 0,
             amountStr: "",
-            months: {}, // مقادیر جدید (جلسه فعلی)
-            lastMonths, // آخرین مقادیر ذخیره‌شده در DB برای هر ماه
+            months: {},
+            lastMonths,
           };
         });
         const sorted = mapped.slice().sort((a, b) =>
@@ -446,7 +467,6 @@ function EstimatesPage({ api: apiProp }) {
   const onChangeDesc = (code, v) =>
     setRows((prev) => prev.map((r) => (r.code === code ? { ...r, desc: v } : r)));
 
-  // جمع فقط بر اساس ماه‌های فعلی (dynamicMonths)
   const finalPreviewOf = (r) =>
     dynamicMonths.reduce((acc, m) => {
       let val = 0;
@@ -497,7 +517,6 @@ function EstimatesPage({ api: apiProp }) {
           if (!delta && !plainDesc && !Object.keys(nextMonths).length)
             return null;
 
-          // مجموع بر اساس ماه‌های فعلی
           const total = Object.values(nextMonths).reduce(
             (sum, v) => sum + Number(v || 0),
             0,
@@ -586,7 +605,6 @@ function EstimatesPage({ api: apiProp }) {
     }
   };
 
-  // صفر کردن تمام اعداد صفحه (فقط برای ادمین)
   const resetAllEstimates = async () => {
     if (!isAdmin) return;
     if (!rows.length) return;
@@ -670,7 +688,6 @@ function EstimatesPage({ api: apiProp }) {
     win.document.close();
   };
 
-  // خروجی اکسل
   const exportExcel = () => {
     const rowsData = filteredRows || [];
     const buildCell = (v) =>
@@ -714,25 +731,10 @@ function EstimatesPage({ api: apiProp }) {
         <head>
           <meta charset="utf-8" />
           <style>
-            body {
-              font-family: Vazirmatn, Vazir, IRANSans, Segoe UI, Tahoma, sans-serif;
-              direction: rtl;
-            }
-            table {
-              border-collapse: collapse;
-              width: 100%;
-              font-size: 11pt;
-            }
-            th, td {
-              border: 1px solid #d1d5db;
-              padding: 6px 8px;
-              text-align: center;
-              vertical-align: middle;
-            }
-            thead th {
-              background-color: #f3f4f6;
-              font-weight: 600;
-            }
+            body { font-family: Vazirmatn, Vazir, IRANSans, Segoe UI, Tahoma, sans-serif; direction: rtl; }
+            table { border-collapse: collapse; width: 100%; font-size: 11pt; }
+            th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: center; vertical-align: middle; }
+            thead th { background-color: #f3f4f6; font-weight: 600; }
           </style>
         </head>
         <body>
@@ -764,19 +766,15 @@ function EstimatesPage({ api: apiProp }) {
       qs.set("kind", active);
       if (active === "projects" && projectId)
         qs.set("project_id", String(projectId));
-      const r = await api(
-        "/budget-estimates/history?" + qs.toString(),
-      ).catch(() => ({
-        history: {},
-      }));
+      const r = await api("/budget-estimates/history?" + qs.toString()).catch(
+        () => ({ history: {} }),
+      );
       const h = r?.history || {};
       Object.keys(h).forEach((k) => {
         h[k] = (h[k] || [])
           .slice()
           .sort((a, b) =>
-            String(b.created_at || "").localeCompare(
-              String(a.created_at || ""),
-            ),
+            String(b.created_at || "").localeCompare(String(a.created_at || "")),
           );
       });
       setHistoryMap(h);
@@ -828,18 +826,15 @@ function EstimatesPage({ api: apiProp }) {
     }
   };
 
-  // وضعیت باز/بسته بودن کدها برای سلسله‌مراتب
   const [openCodes, setOpenCodes] = useState({});
   const [codeSortDir, setCodeSortDir] = useState("asc");
 
-  // هر بار تب یا پروژه عوض شد، درخت ریست شود
   useEffect(() => {
     setOpenCodes({});
   }, [active, projectId]);
 
   const rowsToRender = useMemo(() => filteredRows || [], [filteredRows]);
 
-  // نقشه‌ی سلسله‌مراتب برای تشخیص والد/برگ
   const hierarchyMaps = useMemo(() => {
     const base = rowsToRender || [];
     const coreByCode = {};
@@ -869,12 +864,10 @@ function EstimatesPage({ api: apiProp }) {
     return { coreByCode, hasChildrenByCode, isLeafByCode };
   }, [rowsToRender, active]);
 
-  // ساخت نسخه‌ی نمایش با سلسله‌مراتب (سطح + باز/بسته)
   const displayRows = useMemo(() => {
     const base = rowsToRender || [];
     if (!base.length) return [];
 
-    // نودهای اصلی از روی ردیف‌های واقعی
     const nodes = base.map((r, index) => {
       const core = coreOf(r.code);
       const parts = core ? core.split(".").filter(Boolean) : [];
@@ -913,9 +906,7 @@ function EstimatesPage({ api: apiProp }) {
       return codeSortDir === "asc" ? cmp : -cmp;
     };
 
-    const roots = nodes.filter(
-      (n) => !n.parentCore || !byCore.has(n.parentCore),
-    );
+    const roots = nodes.filter((n) => !n.parentCore || !byCore.has(n.parentCore));
     roots.sort(sortFn);
     for (const list of childrenMap.values()) {
       list.sort(sortFn);
@@ -932,7 +923,6 @@ function EstimatesPage({ api: apiProp }) {
       });
       if (!node.hasChildren) return;
       const toggleKey = node.core || node.key;
-      // پیش‌فرض: بسته (فقط اگر true صریحاً ذخیره شده باشد، باز حساب می‌شود)
       const isOpen = !!openCodes[toggleKey];
       if (!isOpen) return;
       const children = node.core ? childrenMap.get(node.core) || [] : [];
@@ -943,7 +933,6 @@ function EstimatesPage({ api: apiProp }) {
     return result;
   }, [rowsToRender, openCodes, renderCode, codeSortDir]);
 
-  // محاسبه جمع کل برای ردیف "جمع" — فقط بر اساس برگ‌ها و ماه‌های فعلی
   const totalsByMonth = {};
   dynamicMonths.forEach((m) => {
     totalsByMonth[m.key] = 0;
@@ -978,7 +967,7 @@ function EstimatesPage({ api: apiProp }) {
           className={`h-10 px-4 rounded-2xl border text-sm shadow-sm transition
             ${
               active === t.id
-                ? "bg-neutral-100 text-neutral-900 border-neutral-100"
+                ? "bg-black text-white border-black"
                 : "bg-white text-black border border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800"
             }`}
         >
@@ -1014,9 +1003,7 @@ function EstimatesPage({ api: apiProp }) {
                 key={p.id}
                 value={p.id}
               >
-                {p.code
-                  ? `${p.code} - ${p.name || ""}`
-                  : p.name || "—"}
+                {p.code ? `${p.code} - ${p.name || ""}` : p.name || "—"}
               </option>
             ))}
           </select>
@@ -1094,7 +1081,6 @@ function EstimatesPage({ api: apiProp }) {
     });
   };
 
-  // فوکوس خودکار روی فیلد مبلغ در باز شدن مودال
   useEffect(() => {
     if (monthModal.open && monthInputRef.current) {
       monthInputRef.current.focus();
@@ -1102,7 +1088,6 @@ function EstimatesPage({ api: apiProp }) {
     }
   }, [monthModal.open]);
 
-  // ---- صفحات عدم دسترسی/لود ----
   if (!tabsReady) {
     return (
       <>
@@ -1150,7 +1135,6 @@ function EstimatesPage({ api: apiProp }) {
   return (
     <>
       <Card>
-        {/* Breadcrumb */}
         <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
           <span>بودجه‌بندی</span>
           <span className="mx-2">›</span>
@@ -1164,7 +1148,6 @@ function EstimatesPage({ api: apiProp }) {
           <ProjectsControls />
         </div>
 
-        {/* جدول اصلی */}
         <TableWrap>
           <div
             className="bg-white rounded-2xl overflow-hidden border border-black/10 shadow-sm
@@ -1262,7 +1245,6 @@ function EstimatesPage({ api: apiProp }) {
                     </TR>
                   ) : (
                     <>
-                      {/* ردیف جمع */}
                       <TR
                         className="text-center border-t border-black/10 bg-black/[0.04] font-semibold
                                    dark:border-neutral-800 dark:bg-white/10"
@@ -1284,9 +1266,7 @@ function EstimatesPage({ api: apiProp }) {
                             {totalsByMonth[m.key] ? (
                               <span className="inline-flex items-center justify-center gap-1">
                                 <span className="ltr">
-                                  {toFaDigits(
-                                    formatMoney(totalsByMonth[m.key]),
-                                  )}
+                                  {toFaDigits(formatMoney(totalsByMonth[m.key]))}
                                 </span>
                                 <span>ریال</span>
                               </span>
@@ -1298,9 +1278,7 @@ function EstimatesPage({ api: apiProp }) {
                         <TD className="px-3 py-3 whitespace-nowrap text-center border-l border-r border-b border-black/10 dark:border-neutral-700">
                           <span className="inline-flex items-center justify-center gap-1">
                             <span className="ltr">
-                              {toFaDigits(
-                                formatMoney(totalGrand || 0),
-                              )}
+                              {toFaDigits(formatMoney(totalGrand || 0))}
                             </span>
                             <span>ریال</span>
                           </span>
@@ -1312,8 +1290,7 @@ function EstimatesPage({ api: apiProp }) {
                         const code = r.code;
                         const isParent =
                           !!code && !hierarchyMaps.isLeafByCode[r.code];
-                        const hasChildren =
-                          !!node.hasChildren || isParent;
+                        const hasChildren = !!node.hasChildren || isParent;
                         const toggleKey = node.core || node.key;
                         const isOpen = !!openCodes[toggleKey];
 
@@ -1326,11 +1303,7 @@ function EstimatesPage({ api: apiProp }) {
                           (rowsToRender || []).forEach((rr) => {
                             if (!rr || !rr.code) return;
                             const c2 = hierarchyMaps.coreByCode[rr.code];
-                            if (
-                              !c2 ||
-                              !hierarchyMaps.isLeafByCode[rr.code]
-                            )
-                              return;
+                            if (!c2 || !hierarchyMaps.isLeafByCode[rr.code]) return;
                             if (!c2.startsWith(prefix)) return;
                             sum += finalPreviewOf(rr);
                           });
@@ -1343,16 +1316,12 @@ function EstimatesPage({ api: apiProp }) {
                             className="text-center border-t border-black/10 odd:bg-black/[0.02] even:bg-black/[0.04] hover:bg-black/[0.06] transition-colors
                                        dark:border-neutral-800 dark:odd:bg-white/5 dark:even:bg-white/10 dark:hover:bg-white/15"
                           >
-                            <TD className="px-2 py-3">
-                              {toFaDigits(idx + 1)}
-                            </TD>
+                            <TD className="px-2 py-3">{toFaDigits(idx + 1)}</TD>
                             <TD className="px-2 py-3 text-center whitespace-nowrap">
                               <div
                                 className="inline-flex items-center justify-center gap-1 flex-row-reverse"
                                 style={{
-                                  paddingRight: node.depth
-                                    ? node.depth * 12
-                                    : 0,
+                                  paddingRight: node.depth ? node.depth * 12 : 0,
                                 }}
                               >
                                 {hasChildren && (
@@ -1360,32 +1329,18 @@ function EstimatesPage({ api: apiProp }) {
                                     type="button"
                                     onClick={() =>
                                       setOpenCodes((prev) => {
-                                        const prevOpen =
-                                          !!prev[toggleKey];
-                                        return {
-                                          ...prev,
-                                          [toggleKey]: !prevOpen,
-                                        };
+                                        const prevOpen = !!prev[toggleKey];
+                                        return { ...prev, [toggleKey]: !prevOpen };
                                       })
                                     }
                                     className="h-5 w-5 grid place-items-center rounded-md border border-black/25 bg-white text-black
                                                dark:border-neutral-500 dark:bg-white dark:text-black"
-                                    aria-label={
-                                      isOpen
-                                        ? "بستن زیرمجموعه"
-                                        : "باز کردن زیرمجموعه"
-                                    }
+                                    aria-label={isOpen ? "بستن زیرمجموعه" : "باز کردن زیرمجموعه"}
                                   >
                                     {isOpen ? (
-                                      <span className="text-[11px] leading-none text-black">
-                                        −
-                                      </span>
+                                      <span className="text-[11px] leading-none text-black">−</span>
                                     ) : (
-                                      <img
-                                        src="/images/icons/afzodan.svg"
-                                        alt=""
-                                        className="w-3 h-3"
-                                      />
+                                      <img src="/images/icons/afzodan.svg" alt="" className="w-3 h-3" />
                                     )}
                                   </button>
                                 )}
@@ -1400,49 +1355,25 @@ function EstimatesPage({ api: apiProp }) {
                             {dynamicMonths.map((m) => {
                               let val = 0;
                               if (!isParent) {
-                                if (
-                                  r.months &&
-                                  r.months[m.key] != null
-                                ) {
-                                  val = Number(
-                                    r.months[m.key] || 0,
-                                  );
+                                if (r.months && r.months[m.key] != null) {
+                                  val = Number(r.months[m.key] || 0);
                                 } else {
-                                  val = Number(
-                                    (r.lastMonths &&
-                                      r.lastMonths[m.key]) ||
-                                      0,
-                                  );
+                                  val = Number((r.lastMonths && r.lastMonths[m.key]) || 0);
                                 }
                               } else {
-                                const core =
-                                  hierarchyMaps.coreByCode[code];
+                                const core = hierarchyMaps.coreByCode[code];
                                 if (core) {
                                   const prefix = core + ".";
                                   (rowsToRender || []).forEach((rr) => {
                                     if (!rr || !rr.code) return;
-                                    const c2 =
-                                      hierarchyMaps.coreByCode[rr.code];
-                                    if (
-                                      !c2 ||
-                                      !hierarchyMaps.isLeafByCode[rr.code]
-                                    )
-                                      return;
+                                    const c2 = hierarchyMaps.coreByCode[rr.code];
+                                    if (!c2 || !hierarchyMaps.isLeafByCode[rr.code]) return;
                                     if (!c2.startsWith(prefix)) return;
                                     let childVal = 0;
-                                    if (
-                                      rr.months &&
-                                      rr.months[m.key] != null
-                                    ) {
-                                      childVal = Number(
-                                        rr.months[m.key] || 0,
-                                      );
+                                    if (rr.months && rr.months[m.key] != null) {
+                                      childVal = Number(rr.months[m.key] || 0);
                                     } else {
-                                      childVal = Number(
-                                        (rr.lastMonths &&
-                                          rr.lastMonths[m.key]) ||
-                                          0,
-                                      );
+                                      childVal = Number((rr.lastMonths && rr.lastMonths[m.key]) || 0);
                                     }
                                     if (childVal) val += childVal;
                                   });
@@ -1450,15 +1381,11 @@ function EstimatesPage({ api: apiProp }) {
                               }
                               const hasVal = !!val;
                               return (
-                                <TD
-                                  key={m.key}
-                                  className="px-0 py-2 text-center align-middle"
-                                >
+                                <TD key={m.key} className="px-0 py-2 text-center align-middle">
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      if (!isParent)
-                                        openMonthModal(r, m);
+                                      if (!isParent) openMonthModal(r, m);
                                     }}
                                     disabled={isParent}
                                     className={`w-24 mx-auto h-12 md:w-24 md:h-12 rounded-2xl border text-[11px] md:text-[12px] flex items-center justify-center shadow-sm transition
@@ -1466,19 +1393,11 @@ function EstimatesPage({ api: apiProp }) {
                                       hasVal
                                         ? "bg-[#edaf7c] border-[#edaf7c]/90 text-black"
                                         : "bg-black/5 border-black/10 text-black/70 dark:bg-white/5 dark:border-neutral-700 dark:text-neutral-100"
-                                    } ${
-                                      isParent
-                                        ? "cursor-default"
-                                        : "cursor-pointer"
-                                    }`}
+                                    } ${isParent ? "cursor-default" : "cursor-pointer"}`}
                                   >
                                     {hasVal ? (
                                       <div className="flex flex-col items-center justify-center leading-tight">
-                                        <span>
-                                          {toFaDigits(
-                                            formatMoney(val),
-                                          )}
-                                        </span>
+                                        <span>{toFaDigits(formatMoney(val))}</span>
                                         <span className="mt-0.5 text-[10px] text-black/70 dark:text-neutral-300">
                                           ریال
                                         </span>
@@ -1492,11 +1411,7 @@ function EstimatesPage({ api: apiProp }) {
                             })}
                             <TD className="px-3 py-3 whitespace-nowrap text-center border-l border-r border-black/10 dark:border-neutral-700">
                               <span className="inline-flex items-center justify-center gap-1">
-                                <span className="ltr">
-                                  {toFaDigits(
-                                    formatMoney(finalTotal || 0),
-                                  )}
-                                </span>
+                                <span className="ltr">{toFaDigits(formatMoney(finalTotal || 0))}</span>
                                 <span>ریال</span>
                               </span>
                             </TD>
@@ -1511,7 +1426,6 @@ function EstimatesPage({ api: apiProp }) {
           </div>
         </TableWrap>
 
-        {/* مودال برآورد ماهانه */}
         {monthModal.open && (
           <div className="fixed inset-0 z-40 flex items-center justify-center px-3">
             <div
@@ -1524,16 +1438,12 @@ function EstimatesPage({ api: apiProp }) {
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <div className="text-sm font-semibold">
-                    ثبت برآورد ماهانه
-                  </div>
+                  <div className="text-sm font-semibold">ثبت برآورد ماهانه</div>
                   <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400 space-y-0.5">
                     <div>
                       کد بودجه:{" "}
                       <b className="ltr text-xs">
-                        {monthModal.code
-                          ? renderCode(monthModal.code)
-                          : "—"}
+                        {monthModal.code ? renderCode(monthModal.code) : "—"}
                       </b>
                     </div>
                     <div>
@@ -1613,9 +1523,7 @@ function EstimatesPage({ api: apiProp }) {
           </div>
         )}
 
-        {/* اکشن‌ها */}
         <div className="mt-4 flex items-center gap-2 justify-end">
-          {/* دکمه نمایش */}
           <button
             onClick={() => {
               setShowModal(true);
@@ -1627,13 +1535,9 @@ function EstimatesPage({ api: apiProp }) {
             aria-label="نمایش"
             title="نمایش"
           >
-            <img
-              src="/images/icons/namayesh.svg"
-              alt=""
-              className="w-5 h-5"
-            />
+            <img src="/images/icons/namayesh.svg" alt="" className="w-5 h-5" />
           </button>
-          {/* دکمه بروزرسانی */}
+
           <button
             onClick={onUpdate}
             disabled={saving || (active === "projects" && !projectId)}
@@ -1650,10 +1554,8 @@ function EstimatesPage({ api: apiProp }) {
           </button>
         </div>
 
-        {/* مودال نمایش */}
         {showModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-2 sm:px-4">
-            {/* پس‌زمینه */}
             <div
               className="absolute inset-0 bg-black/35 dark:bg-neutral-950/60 backdrop-blur-[2px]"
               onClick={() => setShowModal(false)}
@@ -1673,7 +1575,6 @@ function EstimatesPage({ api: apiProp }) {
                 #estimate-preview .panel { border:1px solid rgba(0,0,0,.12); border-radius:16px; }
               `}</style>
 
-              {/* هدر پاپ‌آپ */}
               <div className="px-4 py-3 border-t border-black/10 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/80 backdrop-blur shrink-0">
                 <div className="flex flex-col items-center justify-center text-center gap-1">
                   <h2 className="text-sm md:text-base font-bold text-black dark:text-neutral-100">
@@ -1701,7 +1602,6 @@ function EstimatesPage({ api: apiProp }) {
                 </div>
               </div>
 
-              {/* بدنه پاپ‌آپ */}
               <div
                 id="estimate-preview"
                 className="p-4 max-h-[70vh] overflow-auto space-y-4 text-center flex-1"
@@ -1711,15 +1611,10 @@ function EstimatesPage({ api: apiProp }) {
                     <thead className="bg-black/5 text-black sticky top-0">
                       <tr>
                         <th className="py-2.5 px-2 w-16 text-center">#</th>
-                        <th className="py-2.5 px-2 w-40 text-center">
-                          کد بودجه
-                        </th>
+                        <th className="py-2.5 px-2 w-40 text-center">کد بودجه</th>
                         <th className="py-2.5 px-2 text-center">نام بودجه</th>
                         {dynamicMonths.map((m) => (
-                          <th
-                            key={m.key}
-                            className="py-2.5 px-2 w-24 text-center"
-                          >
+                          <th key={m.key} className="py-2.5 px-2 w-24 text-center">
                             {m.label}
                           </th>
                         ))}
@@ -1740,25 +1635,16 @@ function EstimatesPage({ api: apiProp }) {
                         </tr>
                       ) : (
                         <>
-                          {/* ردیف جمع در مودال */}
-                          <tr
-                            className="border-t border-b border-black/10 bg-black/[0.04] font-semibold
-                                       dark:border-neutral-800 dark:bg-white/10"
-                          >
+                          <tr className="border-t border-b border-black/10 bg-black/[0.04] font-semibold dark:border-neutral-800 dark:bg-white/10">
                             <td className="py-2 px-2 w-16 text-center">-</td>
                             <td className="py-2 px-2 w-40 text-center">-</td>
                             <td className="py-2 px-2 text-center">جمع</td>
                             {dynamicMonths.map((m) => (
-                              <td
-                                key={m.key}
-                                className="py-2 px-2 w-24 text-center whitespace-nowrap"
-                              >
+                              <td key={m.key} className="py-2 px-2 w-24 text-center whitespace-nowrap">
                                 {totalsByMonth[m.key] ? (
                                   <span className="inline-flex items-center justify-center gap-1">
                                     <span className="ltr">
-                                      {toFaDigits(
-                                        formatMoney(totalsByMonth[m.key]),
-                                      )}
+                                      {toFaDigits(formatMoney(totalsByMonth[m.key]))}
                                     </span>
                                     <span>ریال</span>
                                   </span>
@@ -1770,9 +1656,7 @@ function EstimatesPage({ api: apiProp }) {
                             <td className="py-2 px-2 w-32 text-center whitespace-nowrap border-l border-r border-black/10">
                               <span className="inline-flex items-center justify-center gap-1">
                                 <span className="ltr">
-                                  {toFaDigits(
-                                    formatMoney(totalGrand || 0),
-                                  )}
+                                  {toFaDigits(formatMoney(totalGrand || 0))}
                                 </span>
                                 <span>ریال</span>
                               </span>
@@ -1798,22 +1682,14 @@ function EstimatesPage({ api: apiProp }) {
                                 if (r.months && r.months[m.key] != null) {
                                   val = Number(r.months[m.key] || 0);
                                 } else {
-                                  val = Number(
-                                    (r.lastMonths && r.lastMonths[m.key]) ||
-                                      0,
-                                  );
+                                  val = Number((r.lastMonths && r.lastMonths[m.key]) || 0);
                                 }
                                 return (
-                                  <td
-                                    key={m.key}
-                                    className="py-2 px-2 w-24 text-center whitespace-nowrap"
-                                  >
+                                  <td key={m.key} className="py-2 px-2 w-24 text-center whitespace-nowrap">
                                     {val ? (
                                       <span className="inline-flex items-center justify-center gap-1">
                                         <span className="ltr">
-                                          {toFaDigits(
-                                            formatMoney(val),
-                                          )}
+                                          {toFaDigits(formatMoney(val))}
                                         </span>
                                         <span>ریال</span>
                                       </span>
@@ -1826,9 +1702,7 @@ function EstimatesPage({ api: apiProp }) {
                               <td className="py-2 px-2 w-32 text-center whitespace-nowrap border-l border-r border-black/10">
                                 <span className="inline-flex items-center justify-center gap-1">
                                   <span className="ltr">
-                                    {toFaDigits(
-                                      formatMoney(finalPreviewOf(r) || 0),
-                                    )}
+                                    {toFaDigits(formatMoney(finalPreviewOf(r) || 0))}
                                   </span>
                                   <span>ریال</span>
                                 </span>
@@ -1842,34 +1716,23 @@ function EstimatesPage({ api: apiProp }) {
                 </div>
               </div>
 
-              {/* فوتر پاپ‌آپ */}
               <div className="px-4 py-3 flex items-center justify-between gap-3 border-t border-black/10 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/80 shrink-0">
                 <div className="flex items-center gap-2">
                   <button
                     onClick={printModal}
-                    className="h-9 w-11 grid place-items-center rounded-xl border border-black/15 hover:bg-black hover:text-white transition
-                               dark:border-neutral-700"
+                    className="h-9 w-11 grid place-items-center rounded-xl border border-black/15 hover:bg-black hover:text-white transition dark:border-neutral-700"
                     aria-label="چاپ"
                     title="چاپ"
                   >
-                    <img
-                      src="/images/icons/print.svg"
-                      alt=""
-                      className="w-5 h-5"
-                    />
+                    <img src="/images/icons/print.svg" alt="" className="w-5 h-5" />
                   </button>
                   <button
                     onClick={exportExcel}
-                    className="h-9 w-11 grid place-items-center rounded-xl border border-black/15 hover:bg-black/5 transition
-                               dark:border-neutral-700 dark:hover:bg-neutral-800"
+                    className="h-9 w-11 grid place-items-center rounded-xl border border-black/15 hover:bg-black/5 transition dark:border-neutral-700 dark:hover:bg-neutral-800"
                     aria-label="خروجی اکسل"
                     title="خروجی اکسل"
                   >
-                    <img
-                      src="/images/icons/excel.svg"
-                      alt=""
-                      className="w-5 h-5 invert dark:invert-0"
-                    />
+                    <img src="/images/icons/excel.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
                   </button>
                 </div>
                 <button
@@ -1878,11 +1741,7 @@ function EstimatesPage({ api: apiProp }) {
                   aria-label="بستن"
                   title="بستن"
                 >
-                  <img
-                    src="/images/icons/bastan.svg"
-                    alt="بستن"
-                    className="w-5 h-5 invert dark:invert-0"
-                  />
+                  <img src="/images/icons/bastan.svg" alt="بستن" className="w-5 h-5 invert dark:invert-0" />
                 </button>
               </div>
             </div>
