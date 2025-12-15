@@ -12,6 +12,7 @@ export default function EstimatesPage() {
   async function api(path, opt = {}) {
     const res = await fetch(API_BASE + path, {
       credentials: "include",
+      cache: "no-store",
       ...opt,
       headers: { "Content-Type": "application/json", ...(opt.headers || {}) },
     });
@@ -42,118 +43,87 @@ export default function EstimatesPage() {
   );
 
   const [accessMy, setAccessMy] = useState(null);
-  const [allowedTabs, setAllowedTabs] = useState(null);
+  const [accessLoading, setAccessLoading] = useState(true);
+  const [accessErr, setAccessErr] = useState("");
+
+  const fetchAccess = useCallback(async () => {
+    setAccessErr("");
+    setAccessLoading(true);
+    try {
+      const r = await api("/access/my");
+      setAccessMy(r || null);
+    } catch (e) {
+      setAccessMy(null);
+      setAccessErr(e?.message || "خطا در بررسی دسترسی");
+    } finally {
+      setAccessLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     let alive = true;
     (async () => {
-      try {
-        const r = await api("/access/my");
-        if (!alive) return;
-        setAccessMy(r || null);
-      } catch {
-        if (!alive) return;
-        setAccessMy({
-          ok: true,
-          user: { role: "admin", access: ["all"], access_labels: ["all"] },
-          pages: { [PAGE_KEY]: { permitted: 1, tabs: null } },
-        });
-      }
+      if (!alive) return;
+      await fetchAccess();
     })();
     return () => {
       alive = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchAccess]);
+
+  useEffect(() => {
+    const onFocus = () => fetchAccess().catch(() => {});
+    const onVis = () => {
+      if (document.visibilityState === "visible") fetchAccess().catch(() => {});
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [fetchAccess]);
 
   const isAllAccess = useMemo(() => {
     const u = accessMy?.user;
     if (!u) return false;
     if (String(u.role || "").toLowerCase() === "admin") return true;
 
-    let labels = [];
     const raw = u.access_labels ?? u.access;
-    if (Array.isArray(raw)) labels = raw.map(String);
-    else if (typeof raw === "string") labels = [raw];
+    const labels = Array.isArray(raw) ? raw.map((x) => String(x)) : typeof raw === "string" ? [raw] : [];
     return labels.includes("all");
+  }, [accessMy]);
+
+  const pageRule = useMemo(() => {
+    if (!accessMy) return null;
+    return accessMy?.pages?.[PAGE_KEY] ?? null;
   }, [accessMy]);
 
   const canAccessPage = useMemo(() => {
     if (!accessMy) return null;
     if (isAllAccess) return true;
-    const p = accessMy?.pages?.[PAGE_KEY];
-    const permitted = p?.permitted;
-    return permitted === 1 || permitted === true;
-  }, [accessMy, isAllAccess]);
+    if (!pageRule) return false;
+    return pageRule?.permitted === 1 || pageRule?.permitted === true;
+  }, [accessMy, isAllAccess, pageRule]);
 
-  useEffect(() => {
-    if (canAccessPage !== true) return;
-
-    let alive = true;
-    (async () => {
-      try {
-        const allIds = ALL_TABS.map((t) => t.id);
-
-        if (isAllAccess) {
-          if (!alive) return;
-          setAllowedTabs(allIds);
-          return;
-        }
-
-        const pageTabs = accessMy?.pages?.[PAGE_KEY]?.tabs;
-        if (Array.isArray(pageTabs)) {
-          if (!alive) return;
-          setAllowedTabs(pageTabs.map(String).filter((x) => allIds.includes(x)));
-          return;
-        }
-
-        let tabsAllowed = null;
-        try {
-          const r = await api("/auth/check-page", {
-            method: "POST",
-            body: JSON.stringify({ page: PAGE_KEY, tabs: allIds }),
-          });
-
-          const cand = r?.allowed_tabs || r?.allowedTabs || r?.tabs || r?.allowed || null;
-
-          if (Array.isArray(cand)) tabsAllowed = cand.map(String);
-          else if (r?.ok === true) tabsAllowed = allIds;
-          else if (r?.ok === false) tabsAllowed = [];
-        } catch {
-          tabsAllowed = null;
-        }
-
-        if (!alive) return;
-
-        const finalTabs = Array.isArray(tabsAllowed)
-          ? tabsAllowed.filter((x) => allIds.includes(x))
-          : allIds;
-
-        setAllowedTabs(finalTabs);
-      } catch {
-        if (!alive) return;
-        setAllowedTabs(ALL_TABS.map((t) => t.id));
-      }
-    })();
-
-    return () => {
-      alive = false;
-    };
-  }, [canAccessPage, isAllAccess, api, ALL_TABS, accessMy]);
-
-  const tabs = useMemo(() => {
+  const allowedTabIds = useMemo(() => {
     if (canAccessPage !== true) return [];
-    if (allowedTabs === null) return [];
-    return ALL_TABS.filter((t) => allowedTabs.includes(t.id));
-  }, [ALL_TABS, allowedTabs, canAccessPage]);
+    const allIds = ALL_TABS.map((t) => t.id);
+    if (isAllAccess) return allIds;
+
+    const tabs = pageRule?.tabs;
+    if (Array.isArray(tabs)) return tabs.map(String).filter((x) => allIds.includes(x));
+    return allIds; // tabs=null => کل تب‌های صفحه
+  }, [canAccessPage, ALL_TABS, isAllAccess, pageRule]);
+
+  const tabs = useMemo(() => ALL_TABS.filter((t) => allowedTabIds.includes(t.id)), [ALL_TABS, allowedTabIds]);
 
   const [active, setActive] = useState("office");
   useEffect(() => {
     if (canAccessPage !== true) return;
-    if (allowedTabs === null) return;
     if (!tabs.length) return;
     if (!tabs.some((t) => t.id === active)) setActive(tabs[0].id);
-  }, [tabs, active, canAccessPage, allowedTabs]);
+  }, [tabs, active, canAccessPage]);
 
   const prefixOf = useCallback((kind) => ALL_TABS.find((t) => t.id === kind)?.prefix || "", [ALL_TABS]);
 
@@ -294,31 +264,28 @@ export default function EstimatesPage() {
 
   const reqSeq = useRef(0);
 
-  const parseDescMonths = useCallback(
-    (descRaw) => {
-      let desc = descRaw ?? "";
-      let lastMonths = {};
-      if (desc && typeof desc === "string") {
-        try {
-          const parsed = JSON.parse(desc);
-          if (parsed && typeof parsed === "object") {
-            if (typeof parsed.desc === "string") desc = parsed.desc;
-            if (parsed.months && typeof parsed.months === "object") {
-              const mm = {};
-              Object.keys(parsed.months || {}).forEach((k) => {
-                if (!/^m(1[0-2]|[1-9])$/.test(k)) return;
-                const v = parsed.months[k];
-                if (v !== undefined && v !== null && !isNaN(Number(v))) mm[k] = Number(v);
-              });
-              lastMonths = mm;
-            }
+  const parseDescMonths = useCallback((descRaw) => {
+    let desc = descRaw ?? "";
+    let lastMonths = {};
+    if (desc && typeof desc === "string") {
+      try {
+        const parsed = JSON.parse(desc);
+        if (parsed && typeof parsed === "object") {
+          if (typeof parsed.desc === "string") desc = parsed.desc;
+          if (parsed.months && typeof parsed.months === "object") {
+            const mm = {};
+            Object.keys(parsed.months || {}).forEach((k) => {
+              if (!/^m(1[0-2]|[1-9])$/.test(k)) return;
+              const v = parsed.months[k];
+              if (v !== undefined && v !== null && !isNaN(Number(v))) mm[k] = Number(v);
+            });
+            lastMonths = mm;
           }
-        } catch {}
-      }
-      return { desc: desc || "", lastMonths };
-    },
-    [],
-  );
+        }
+      } catch {}
+    }
+    return { desc: desc || "", lastMonths };
+  }, []);
 
   useEffect(() => {
     if (canAccessPage !== true) return;
@@ -407,14 +374,8 @@ export default function EstimatesPage() {
         for (const it of estItems) {
           const code = String(it?.code ?? "").trim();
           if (!code) continue;
-          const prev = byCode.get(code) || {
-            code,
-            name: "",
-            desc: "",
-            baseAmount: 0,
-            months: {},
-            lastMonths: {},
-          };
+          const prev =
+            byCode.get(code) || ({ code, name: "", desc: "", baseAmount: 0, months: {}, lastMonths: {} });
           const { desc, lastMonths } = parseDescMonths(it.last_desc ?? it.description ?? "");
           byCode.set(code, {
             ...prev,
@@ -427,7 +388,6 @@ export default function EstimatesPage() {
         }
 
         const mapped = Array.from(byCode.values());
-
         mapped.sort((a, b) =>
           String(renderCode(a.code)).localeCompare(String(renderCode(b.code)), "fa", {
             numeric: true,
@@ -446,7 +406,7 @@ export default function EstimatesPage() {
     return () => {
       dead = true;
     };
-  }, [canAccessPage, active, projectId, dynamicMonths, renderCode, parseDescMonths, coreOf, selectedProject]); // ✅
+  }, [canAccessPage, active, projectId, dynamicMonths, renderCode, parseDescMonths, coreOf, selectedProject]);
 
   const filteredRows = useMemo(() => {
     if (active !== "projects") return rows || [];
@@ -476,7 +436,6 @@ export default function EstimatesPage() {
     [dynamicMonths],
   );
 
-  // hierarchy (for display tree)
   const [codeSortDir, setCodeSortDir] = useState("asc");
   const [openCodes, setOpenCodes] = useState({});
   useEffect(() => setOpenCodes({}), [active, projectId]);
@@ -587,7 +546,6 @@ export default function EstimatesPage() {
     return grand;
   }, [rowsToRender, hierarchyMaps, finalPreviewOf]);
 
-  // month modal
   const [monthModal, setMonthModal] = useState({ open: false, code: null, monthKey: "", label: "", name: "", value: "" });
   const monthInputRef = useRef(null);
 
@@ -839,7 +797,7 @@ export default function EstimatesPage() {
 
   const colCount = 3 + dynamicMonths.length + 1;
 
-  if (!accessMy || allowedTabs === null) {
+  if (accessLoading) {
     return (
       <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
         <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
@@ -852,7 +810,22 @@ export default function EstimatesPage() {
     );
   }
 
-  if (canAccessPage === false) {
+  if (accessErr) {
+    return (
+      <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+        <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
+          <span>بودجه‌بندی</span>
+          <span className="mx-2">›</span>
+          <span className="font-semibold text-black dark:text-neutral-100">برآورد هزینه‌ها</span>
+        </div>
+        <div className="p-6 rounded-2xl ring-1 ring-neutral-200 bg-white text-center text-red-600 dark:bg-neutral-900 dark:ring-neutral-800 dark:text-red-400">
+          {accessErr}
+        </div>
+      </Card>
+    );
+  }
+
+  if (canAccessPage !== true) {
     return (
       <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
         <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
