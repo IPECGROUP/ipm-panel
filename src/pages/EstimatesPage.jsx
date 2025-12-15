@@ -1,7 +1,10 @@
+// برآورد هزینه
 // src/pages/EstimatesPage.jsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
+
+const PAGE_KEY = "EstimatesPage";
 
 export default function EstimatesPage() {
   const API_BASE = (window.API_URL || "/api").replace(/\/+$/, "");
@@ -26,7 +29,7 @@ export default function EstimatesPage() {
     return data;
   }
 
-  const tabs = useMemo(
+  const ALL_TABS = useMemo(
     () => [
       { id: "office", label: "دفتر", prefix: "OB" },
       { id: "site", label: "سایت", prefix: "SB" },
@@ -38,9 +41,121 @@ export default function EstimatesPage() {
     [],
   );
 
-  const [active, setActive] = useState("office");
+  const [accessMy, setAccessMy] = useState(null);
+  const [allowedTabs, setAllowedTabs] = useState(null);
 
-  const prefixOf = useCallback((kind) => tabs.find((t) => t.id === kind)?.prefix || "", [tabs]);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await api("/access/my");
+        if (!alive) return;
+        setAccessMy(r || null);
+      } catch {
+        if (!alive) return;
+        setAccessMy({
+          ok: true,
+          user: { role: "admin", access: ["all"], access_labels: ["all"] },
+          pages: { [PAGE_KEY]: { permitted: 1, tabs: null } },
+        });
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const isAllAccess = useMemo(() => {
+    const u = accessMy?.user;
+    if (!u) return false;
+    if (String(u.role || "").toLowerCase() === "admin") return true;
+
+    let labels = [];
+    const raw = u.access_labels ?? u.access;
+    if (Array.isArray(raw)) labels = raw.map(String);
+    else if (typeof raw === "string") labels = [raw];
+    return labels.includes("all");
+  }, [accessMy]);
+
+  const canAccessPage = useMemo(() => {
+    if (!accessMy) return null;
+    if (isAllAccess) return true;
+    const p = accessMy?.pages?.[PAGE_KEY];
+    const permitted = p?.permitted;
+    return permitted === 1 || permitted === true;
+  }, [accessMy, isAllAccess]);
+
+  useEffect(() => {
+    if (canAccessPage !== true) return;
+
+    let alive = true;
+    (async () => {
+      try {
+        const allIds = ALL_TABS.map((t) => t.id);
+
+        if (isAllAccess) {
+          if (!alive) return;
+          setAllowedTabs(allIds);
+          return;
+        }
+
+        const pageTabs = accessMy?.pages?.[PAGE_KEY]?.tabs;
+        if (Array.isArray(pageTabs)) {
+          if (!alive) return;
+          setAllowedTabs(pageTabs.map(String).filter((x) => allIds.includes(x)));
+          return;
+        }
+
+        let tabsAllowed = null;
+        try {
+          const r = await api("/auth/check-page", {
+            method: "POST",
+            body: JSON.stringify({ page: PAGE_KEY, tabs: allIds }),
+          });
+
+          const cand = r?.allowed_tabs || r?.allowedTabs || r?.tabs || r?.allowed || null;
+
+          if (Array.isArray(cand)) tabsAllowed = cand.map(String);
+          else if (r?.ok === true) tabsAllowed = allIds;
+          else if (r?.ok === false) tabsAllowed = [];
+        } catch {
+          tabsAllowed = null;
+        }
+
+        if (!alive) return;
+
+        const finalTabs = Array.isArray(tabsAllowed)
+          ? tabsAllowed.filter((x) => allIds.includes(x))
+          : allIds;
+
+        setAllowedTabs(finalTabs);
+      } catch {
+        if (!alive) return;
+        setAllowedTabs(ALL_TABS.map((t) => t.id));
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [canAccessPage, isAllAccess, api, ALL_TABS, accessMy]);
+
+  const tabs = useMemo(() => {
+    if (canAccessPage !== true) return [];
+    if (allowedTabs === null) return [];
+    return ALL_TABS.filter((t) => allowedTabs.includes(t.id));
+  }, [ALL_TABS, allowedTabs, canAccessPage]);
+
+  const [active, setActive] = useState("office");
+  useEffect(() => {
+    if (canAccessPage !== true) return;
+    if (allowedTabs === null) return;
+    if (!tabs.length) return;
+    if (!tabs.some((t) => t.id === active)) setActive(tabs[0].id);
+  }, [tabs, active, canAccessPage, allowedTabs]);
+
+  const prefixOf = useCallback((kind) => ALL_TABS.find((t) => t.id === kind)?.prefix || "", [ALL_TABS]);
 
   const formatMoney = useCallback((n) => {
     const s = String(n ?? "");
@@ -98,6 +213,7 @@ export default function EstimatesPage() {
   const [projectId, setProjectId] = useState("");
 
   useEffect(() => {
+    if (canAccessPage !== true) return;
     let stop = false;
     (async () => {
       try {
@@ -112,7 +228,7 @@ export default function EstimatesPage() {
       stop = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [canAccessPage]);
 
   const selectedProject = useMemo(
     () => (projects || []).find((p) => String(p.id) === String(projectId)),
@@ -205,6 +321,8 @@ export default function EstimatesPage() {
   );
 
   useEffect(() => {
+    if (canAccessPage !== true) return;
+
     let dead = false;
     const seq = ++reqSeq.current;
 
@@ -328,7 +446,7 @@ export default function EstimatesPage() {
     return () => {
       dead = true;
     };
-  }, [active, projectId, dynamicMonths, renderCode, parseDescMonths, coreOf, selectedProject]); // ✅
+  }, [canAccessPage, active, projectId, dynamicMonths, renderCode, parseDescMonths, coreOf, selectedProject]); // ✅
 
   const filteredRows = useMemo(() => {
     if (active !== "projects") return rows || [];
@@ -720,6 +838,34 @@ export default function EstimatesPage() {
   };
 
   const colCount = 3 + dynamicMonths.length + 1;
+
+  if (!accessMy || allowedTabs === null) {
+    return (
+      <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+        <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
+          <span>بودجه‌بندی</span>
+          <span className="mx-2">›</span>
+          <span className="font-semibold text-black dark:text-neutral-100">برآورد هزینه‌ها</span>
+        </div>
+        <div className="p-6 text-center text-neutral-600 dark:text-neutral-400">در حال بررسی دسترسی…</div>
+      </Card>
+    );
+  }
+
+  if (canAccessPage === false) {
+    return (
+      <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+        <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
+          <span>بودجه‌بندی</span>
+          <span className="mx-2">›</span>
+          <span className="font-semibold text-black dark:text-neutral-100">برآورد هزینه‌ها</span>
+        </div>
+        <div className="p-6 rounded-2xl ring-1 ring-neutral-200 bg-white text-center text-red-600 dark:bg-neutral-900 dark:ring-neutral-800 dark:text-red-400">
+          شما سطح دسترسی لازم را ندارید.
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <>
