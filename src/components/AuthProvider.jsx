@@ -1,54 +1,56 @@
 import React, {
   createContext,
   useContext,
+  useEffect,
+  useMemo,
   useState,
 } from "react";
-
-/** تشخیص ادمین اصلی (مثل پروژه قبلی) */
-export function isMainAdminUser(u) {
-  if (!u) return false;
-  const email = String(u.email || "").toLowerCase().trim();
-  const uname = String(u.username || "").toLowerCase().trim();
-  if (email === "marandi@ipecgroup.net" || uname === "marandi") return true;
-  return (
-    u.role === "admin" ||
-    u.can_manage_users === true ||
-    (u.scopes || []).includes("all")
-  );
-}
+import { api } from "../utils/api";
+import { isMainAdminUser } from "../utils/auth";
 
 const AuthCtx = createContext(null);
 
-/** هوک استفاده از auth – اگر Provider نبود، کرش نمی‌کنه */
 export function useAuth() {
   const ctx = useContext(AuthCtx);
   if (!ctx) {
     return {
       user: null,
-      setUser: () => {},
+      loading: false,
+      isAdmin: false,
       login: async () => {
         throw new Error("AuthProvider is not mounted");
       },
-      logout: () => {},
+      logout: async () => {},
+      reloadMe: async () => {},
+      setUser: () => {},
     };
   }
   return ctx;
 }
 
-export function AuthProvider({ children }) {
-  const normalizeUser = (u) => {
-    if (!u) return u;
-    if (isMainAdminUser(u)) {
-      return {
-        ...u,
-        role: "admin",
-        can_manage_users: true,
-        scopes: Array.from(new Set([...(u.scopes || []), "all"])),
-      };
-    }
-    return u;
-  };
+function normalizeUser(u) {
+  if (!u) return u;
+  if (isMainAdminUser(u)) {
+    return {
+      ...u,
+      role: "admin",
+      can_manage_users: true,
+      scopes: Array.from(new Set([...(u.scopes || []), "all"])),
+    };
+  }
+  return u;
+}
 
+function mapAuthError(err) {
+  const m = String(err?.message || err || "");
+  if (m === "invalid_credentials") return "نام کاربری یا رمز عبور اشتباه است";
+  if (m === "username_password_required") return "نام کاربری و رمز عبور الزامی است";
+  if (m === "user_has_no_password") return "برای این کاربر رمز تعریف نشده است";
+  if (m === "request_failed") return "خطا در ارتباط با سرور";
+  return m || "خطای ورود";
+}
+
+export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
       const raw = localStorage.getItem("user");
@@ -58,40 +60,80 @@ export function AuthProvider({ children }) {
     }
   });
 
-  const login = async (username, password) => {
-    const u = String(username || "").trim().toLowerCase();
-    const p = String(password || "").trim();
+  const [loading, setLoading] = useState(true);
 
-    // ✅ فقط همین یک اکانت فعلاً
-    if (u === "marandi" && p === "1234") {
-      const fakeUser = normalizeUser({
-        id: 1,
-        username: "marandi",
-        email: "marandi@ipecgroup.net",
-        name: "مهندس مرندی",
-        role: "admin",
-        can_manage_users: true,
-        scopes: ["all"],
+  const reloadMe = async () => {
+    try {
+      const r = await api("/auth/me", { method: "GET" });
+      const u = normalizeUser(r?.user || null);
+      setUser(u);
+      try {
+        if (u) localStorage.setItem("user", JSON.stringify(u));
+        else localStorage.removeItem("user");
+      } catch {}
+      return u;
+    } catch {
+      setUser(null);
+      try {
+        localStorage.removeItem("user");
+      } catch {}
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    reloadMe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const login = async (username, password) => {
+    try {
+      const r = await api("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({
+          username: String(username || "").trim(),
+          password: String(password || "").trim(),
+        }),
       });
 
-      localStorage.removeItem("token");
-      localStorage.setItem("user", JSON.stringify(fakeUser));
-      setUser(fakeUser);
-      return;
+      const u = normalizeUser(r?.user || null);
+      if (!u) throw new Error("خطا در ورود");
+
+      setUser(u);
+      try {
+        localStorage.setItem("user", JSON.stringify(u));
+      } catch {}
+
+      return u;
+    } catch (e) {
+      throw new Error(mapAuthError(e));
     }
-
-    throw new Error("نام کاربری یا رمز عبور اشتباه است");
   };
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+  const logout = async () => {
+    try {
+      await api("/auth/logout", { method: "POST" });
+    } catch {}
     setUser(null);
+    try {
+      localStorage.removeItem("user");
+    } catch {}
   };
 
-  return (
-    <AuthCtx.Provider value={{ user, setUser, login, logout }}>
-      {children}
-    </AuthCtx.Provider>
+  const value = useMemo(
+    () => ({
+      user,
+      setUser,
+      loading,
+      login,
+      logout,
+      reloadMe,
+      isAdmin: isMainAdminUser(user) || user?.role === "admin",
+    }),
+    [user, loading]
   );
+
+  return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
