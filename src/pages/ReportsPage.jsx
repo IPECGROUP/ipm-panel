@@ -13,6 +13,8 @@ const REPORT_TABS = [
   { id: "projects", label: "پروژه‌ها", prefix: "" },
 ];
 
+const PAGE_KEY = "ReportsPage";
+
 // ===== Fake local DB برای گزارش‌ها (بدون API واقعی) =====
 function createFakeReportsDb() {
   const projects = [
@@ -49,8 +51,7 @@ function createFakeReportsDb() {
   };
 
   // تاریخچه تخصیص‌ها
-  const sampleDate = (d, h) =>
-    new Date(2025, 0, d, h, 15, 0).toISOString(); // فقط برای تست
+  const sampleDate = (d, h) => new Date(2025, 0, d, h, 15, 0).toISOString(); // فقط برای تست
 
   const historyByKind = {
     office: {
@@ -175,35 +176,52 @@ function ReportsPage() {
 
   const [active, setActive] = React.useState("office");
 
-  const prefixOf = (k) =>
-    tabs.find((t) => t.id === k)?.prefix || "";
+  const prefixOf = (k) => tabs.find((t) => t.id === k)?.prefix || "";
 
-  // ===== fake user + دسترسی لوکال =====
+  // ===== دسترسی واقعی از سرور =====
+  const API_BASE = (window.API_URL || "/api").replace(/\/+$/, "");
+  async function realApi(path, opt = {}) {
+    const res = await fetch(API_BASE + path, {
+      credentials: "include",
+      ...opt,
+      headers: {
+        "Content-Type": "application/json",
+        ...(opt.headers || {}),
+      },
+    });
+    const txt = await res.text();
+    let data = {};
+    try {
+      data = txt ? JSON.parse(txt) : {};
+    } catch {}
+    if (!res.ok) throw new Error(data?.error || data?.message || "request_failed");
+    return data;
+  }
+
   const [me, setMe] = React.useState(null);
-  const [allowedTabs, setAllowedTabs] = React.useState(null); // null=درحال بررسی | []=هیچ
-
   React.useEffect(() => {
-    // شبیه‌سازی /auth/me
-    const t = setTimeout(() => {
-      setMe({
-        id: 1,
-        name: "کاربر تست",
-        username: "demo",
-        role: "admin",
-        access_labels: ["all"],
-      });
-    }, 150);
-    return () => clearTimeout(t);
-  }, []);
+    let alive = true;
+    (async () => {
+      try {
+        const r = await realApi("/auth/me");
+        if (!alive) return;
+        setMe(r?.user || r || null);
+      } catch {
+        if (!alive) return;
+        setMe({ role: "guest", access_labels: [] });
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isAllAccess = React.useMemo(() => {
     if (!me) return false;
-    if (String(me.role || "").toLowerCase() === "admin")
-      return true;
+    if (String(me.role || "").toLowerCase() === "admin") return true;
     let labels = [];
-    if (Array.isArray(me.access_labels))
-      labels = me.access_labels;
-    else if (typeof me.access_labels === "string") {
+    if (Array.isArray(me?.access_labels)) labels = me.access_labels;
+    else if (typeof me?.access_labels === "string") {
       try {
         const j = JSON.parse(me.access_labels);
         if (Array.isArray(j)) labels = j;
@@ -212,15 +230,79 @@ function ReportsPage() {
     return labels.includes("all");
   }, [me]);
 
+  const [allowedTabs, setAllowedTabs] = React.useState(null); // null=درحال بررسی | []=هیچ
+  const [accessRefreshKey, setAccessRefreshKey] = React.useState(0);
+
   React.useEffect(() => {
-    // چون fake user ادمین است، همه تب‌ها مجازند
-    if (me && isAllAccess) {
-      const all = tabs.map((t) => t.id);
-      setAllowedTabs(all);
-      if (!all.includes(active)) setActive(all[0]);
-    }
-    // tabs ثابت است (REPORT_TABS) و نیازی به dependency ندارد
-  }, [me, isAllAccess, active]);
+    if (!me) return;
+
+    let alive = true;
+    (async () => {
+      try {
+        if (isAllAccess) {
+          const all = tabs.map((t) => t.id);
+          if (!alive) return;
+          setAllowedTabs(all);
+          if (!all.includes(active)) setActive(all[0]);
+          return;
+        }
+
+        let tabsAllowed = null;
+        try {
+          const r = await realApi("/auth/check-page", {
+            method: "POST",
+            body: JSON.stringify({
+              page: PAGE_KEY,
+              tabs: tabs.map((t) => t.id),
+            }),
+          });
+
+          const cand =
+            r?.allowed_tabs || r?.allowedTabs || r?.tabs || r?.allowed || null;
+
+          if (Array.isArray(cand)) tabsAllowed = cand;
+          else if (r?.ok === true) tabsAllowed = tabs.map((t) => t.id);
+          else if (r?.ok === false) tabsAllowed = [];
+        } catch {
+          tabsAllowed = null;
+        }
+
+        if (!alive) return;
+
+        const allIds = tabs.map((t) => t.id);
+        const finalTabs = Array.isArray(tabsAllowed)
+          ? tabsAllowed.filter((x) => allIds.includes(x))
+          : allIds;
+
+        setAllowedTabs(finalTabs);
+        if (finalTabs.length && !finalTabs.includes(active)) {
+          setActive(finalTabs[0]);
+        }
+      } catch {
+        if (!alive) return;
+        const all = tabs.map((t) => t.id);
+        setAllowedTabs(all);
+        if (!all.includes(active)) setActive(all[0]);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [me, isAllAccess, active, accessRefreshKey]); // tabs ثابت است
+
+  React.useEffect(() => {
+    const kick = () => setAccessRefreshKey((x) => x + 1);
+    const onVis = () => {
+      if (!document.hidden) kick();
+    };
+    window.addEventListener("focus", kick);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("focus", kick);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
 
   const canAccessPage = React.useMemo(() => {
     if (!me) return null;
@@ -242,7 +324,6 @@ function ReportsPage() {
 
   // ===== fake API بدون fetch =====
   async function api(path) {
-    // کمی تاخیر برای حس واقعی‌تر
     await new Promise((r) => setTimeout(r, 120));
 
     if (path === "/projects") {
@@ -252,7 +333,6 @@ function ReportsPage() {
     if (path.startsWith("/budget-allocations/summary")) {
       const url = new URL(path, window.location.origin);
       const kind = url.searchParams.get("kind") || "office";
-      // project_id را برای سادگی فعلاً نادیده می‌گیریم
       const totals = fakeDb.totalsByKind[kind] || {};
       return { totals };
     }
@@ -270,10 +350,9 @@ function ReportsPage() {
   // ===== today (fa) =====
   const todayFa = React.useMemo(() => {
     try {
-      return new Intl.DateTimeFormat(
-        "fa-IR-u-ca-persian",
-        { dateStyle: "medium" }
-      ).format(new Date());
+      return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+        dateStyle: "medium",
+      }).format(new Date());
     } catch {
       return new Intl.DateTimeFormat("fa-IR", {
         year: "numeric",
@@ -288,26 +367,17 @@ function ReportsPage() {
     if (n === null || n === undefined) return "";
     const sign = n < 0 ? "-" : "";
     const s = String(Math.abs(Number(n) || 0));
-    return sign + s.replace(
-      /\B(?=(\d{3})+(?!\d))/g,
-      ","
-    );
+    return sign + s.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
 
   const renderBudgetCodeOnce = React.useCallback(
     (code, scope) => {
-      if (scope === "projects")
-        return String(code || "");
+      if (scope === "projects") return String(code || "");
       const pref = String(prefixOf(scope) || "").toUpperCase();
       let raw = String(code || "").trim();
       if (pref) {
-        const re = new RegExp(
-          "^" + pref + "[\\-\\.]?",
-          "i"
-        );
-        raw = raw
-          .replace(re, "")
-          .replace(/^[-.]/, "");
+        const re = new RegExp("^" + pref + "[\\-\\.]?", "i");
+        raw = raw.replace(re, "").replace(/^[-.]/, "");
       }
       return pref ? `${pref}-${raw}` : raw;
     },
@@ -318,14 +388,12 @@ function ReportsPage() {
   const [projects, setProjects] = React.useState([]);
   const [projectId, setProjectId] = React.useState("");
   const selectedProject = React.useMemo(
-    () =>
-      (projects || []).find(
-        (p) => String(p.id) === String(projectId)
-      ),
+    () => (projects || []).find((p) => String(p.id) === String(projectId)),
     [projects, projectId]
   );
 
   React.useEffect(() => {
+    if (canAccessPage === false) return;
     let stop = false;
     (async () => {
       try {
@@ -336,17 +404,16 @@ function ReportsPage() {
     return () => {
       stop = true;
     };
-  }, []);
+  }, [canAccessPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sortedProjects = React.useMemo(() => {
     return (projects || [])
       .slice()
       .sort((a, b) =>
-        String(a?.code || "").localeCompare(
-          String(b?.code || ""),
-          "fa",
-          { numeric: true, sensitivity: "base" }
-        )
+        String(a?.code || "").localeCompare(String(b?.code || ""), "fa", {
+          numeric: true,
+          sensitivity: "base",
+        })
       );
   }, [projects]);
 
@@ -364,29 +431,19 @@ function ReportsPage() {
     try {
       const qs1 = new URLSearchParams();
       qs1.set("kind", active);
-      if (active === "projects" && projectId)
-        qs1.set("project_id", String(projectId));
-      const sum = await api(
-        "/budget-allocations/summary?" +
-          qs1.toString()
-      );
+      if (active === "projects" && projectId) qs1.set("project_id", String(projectId));
+      const sum = await api("/budget-allocations/summary?" + qs1.toString());
 
       const qs2 = new URLSearchParams();
       qs2.set("kind", active);
-      if (active === "projects" && projectId)
-        qs2.set("project_id", String(projectId));
-      const hist = await api(
-        "/budget-allocations/history?" +
-          qs2.toString()
-      );
+      if (active === "projects" && projectId) qs2.set("project_id", String(projectId));
+      const hist = await api("/budget-allocations/history?" + qs2.toString());
 
       setTotals(sum.totals || {});
       setHistory(hist.history || {});
       setShow(true);
     } catch (ex) {
-      setErr(
-        ex.message || "خطا در بارگذاری گزارش"
-      );
+      setErr(ex.message || "خطا در بارگذاری گزارش");
     } finally {
       setLoading(false);
     }
@@ -397,11 +454,10 @@ function ReportsPage() {
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
       <button
         onClick={loadReport}
-        disabled={
-          active === "projects" && !projectId
-        }
+        disabled={active === "projects" && !projectId}
         className="h-10 px-4 rounded-2xl text-sm shadow-sm transition
-                   bg-neutral-100 text-neutral-900 disabled:opacity-50"
+                   bg-neutral-100 text-neutral-900 disabled:opacity-50
+                   dark:bg-neutral-100 dark:text-neutral-900"
       >
         تخصیص بودجه
       </button>
@@ -415,7 +471,12 @@ function ReportsPage() {
         {(visibleTabs || []).map((t) => (
           <button
             key={t.id}
-            onClick={() => setActive(t.id)}
+            onClick={() => {
+              setShow(false);
+              setErr("");
+              setActive(t.id);
+              if (t.id !== "projects") setProjectId("");
+            }}
             className={`h-10 px-4 rounded-2xl border text-sm shadow-sm transition
               ${
                 active === t.id
@@ -438,23 +499,22 @@ function ReportsPage() {
               className="w-full rounded-xl px-3 py-2 ltr font-[inherit] bg-white text-black placeholder-black/40 border border-black/15 outline-none
                          dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700"
               value={projectId}
-              onChange={(e) =>
-                setProjectId(e.target.value)
-              }
+              onChange={(e) => {
+                setShow(false);
+                setErr("");
+                setProjectId(e.target.value);
+              }}
             >
-              <option
-                className="bg-white dark:bg-neutral-900"
-                value=""
-              >
+              <option className="bg-white text-black dark:bg-neutral-900 dark:text-neutral-100" value="">
                 انتخاب کنید
               </option>
               {(sortedProjects || []).map((p) => (
                 <option
-                  className="bg-white dark:bg-neutral-900"
+                  className="bg-white text-black dark:bg-neutral-900 dark:text-neutral-100"
                   key={p.id}
                   value={p.id}
                 >
-                  {p.code ? p.code : "—"}
+                  {p.code ? p.code : "—"} {p?.name ? `— ${p.name}` : ""}
                 </option>
               ))}
             </select>
@@ -527,9 +587,7 @@ function ReportsPage() {
 
         {/* تاریخ */}
         <div className="mb-3 flex items-center gap-2">
-          <div className="text-sm text-black/60 dark:text-neutral-400">
-            تاریخ:
-          </div>
+          <div className="text-sm text-black/60 dark:text-neutral-400">تاریخ:</div>
           <div className="px-3 py-1 rounded-lg bg-black/5 text-black text-sm ring-1 ring-black/15 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-800">
             {todayFa}
           </div>
@@ -549,67 +607,49 @@ function ReportsPage() {
           </div>
         )}
 
+        {loading && (
+          <div className="mt-4 text-center text-sm text-black/60 dark:text-neutral-400">
+            در حال بارگذاری…
+          </div>
+        )}
+
         {/* نمایش گزارش */}
         {show && (
           <div className="mt-5 space-y-6">
             {/* خلاصه تخصیص‌ها */}
             <div className="rounded-xl ring-1 ring-black/10 overflow-hidden dark:ring-neutral-800">
               <table className="w-full text-sm text-center bg-white text-black dark:bg-neutral-900 dark:text-neutral-200">
-                <thead className="bg-black/5 text-black dark:bg-neutral-900 dark:text-neutral-200">
+                <thead className="bg-black/5 text-black dark:bg-white/5 dark:text-neutral-100">
                   <tr>
-                    <th className="py-3 px-2 w-16 text-center">
-                      ردیف
-                    </th>
-                    <th className="py-3 px-2 w-56 text-center">
-                      کد بودجه
-                    </th>
-                    <th className="py-3 px-2 text-center">
-                      مجموع تخصیص‌ها
-                    </th>
+                    <th className="py-3 px-2 w-16 text-center">ردیف</th>
+                    <th className="py-3 px-2 w-56 text-center">کد بودجه</th>
+                    <th className="py-3 px-2 text-center">مجموع تخصیص‌ها</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.keys(totals || {}).length ===
-                  0 ? (
+                  {Object.keys(totals || {}).length === 0 ? (
                     <tr>
-                      <td
-                        colSpan={3}
-                        className="py-6 text-black/60 text-center dark:text-neutral-400"
-                      >
+                      <td colSpan={3} className="py-6 text-black/60 text-center dark:text-neutral-400">
                         موردی یافت نشد.
                       </td>
                     </tr>
                   ) : (
                     Object.entries(totals)
                       .sort((a, b) =>
-                        renderBudgetCodeOnce(
-                          a[0],
-                          active
-                        ).localeCompare(
-                          renderBudgetCodeOnce(
-                            b[0],
-                            active
-                          ),
+                        renderBudgetCodeOnce(a[0], active).localeCompare(
+                          renderBudgetCodeOnce(b[0], active),
                           "fa",
-                          {
-                            numeric: true,
-                            sensitivity: "base",
-                          }
+                          { numeric: true, sensitivity: "base" }
                         )
                       )
                       .map(([code, sum], i) => (
                         <tr
                           key={code}
-                          className="border-t border-black/10 odd:bg-black/[0.02] dark:border-neutral-800 dark:odd:bg-white/5"
+                          className="border-t border-black/10 odd:bg-black/[0.02] even:bg-black/[0.04] dark:border-neutral-800 dark:odd:bg-white/5 dark:even:bg-white/10"
                         >
-                          <td className="py-2 px-2 text-center">
-                            {i + 1}
-                          </td>
+                          <td className="py-2 px-2 text-center">{i + 1}</td>
                           <td className="py-2 px-2 font-mono ltr text-center">
-                            {renderBudgetCodeOnce(
-                              code,
-                              active
-                            )}
+                            {renderBudgetCodeOnce(code, active)}
                           </td>
                           <td className="py-2 px-2 font-mono ltr text-center">
                             {formatMoney(sum)}
@@ -624,96 +664,48 @@ function ReportsPage() {
             {/* تاریخچه تخصیص‌ها */}
             <div className="rounded-xl ring-1 ring-black/10 overflow-hidden dark:ring-neutral-800">
               <table className="w-full text-sm text-center bg-white text-black dark:bg-neutral-900 dark:text-neutral-200">
-                <thead className="bg-black/5 text-black dark:bg-neutral-900 dark:text-neutral-200">
+                <thead className="bg-black/5 text-black dark:bg-white/5 dark:text-neutral-100">
                   <tr>
-                    <th className="py-3 px-2 w-56 text-center">
-                      کد بودجه
-                    </th>
-                    <th className="py-3 px-2 text-center">
-                      (مبلغ / تاریخ/ساعت) — سریال
-                    </th>
+                    <th className="py-3 px-2 w-56 text-center">کد بودجه</th>
+                    <th className="py-3 px-2 text-center">(مبلغ / تاریخ/ساعت) — سریال</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.keys(history || {}).length ===
-                  0 ? (
+                  {Object.keys(history || {}).length === 0 ? (
                     <tr>
-                      <td
-                        colSpan={2}
-                        className="py-6 text-black/60 text-center dark:text-neutral-400"
-                      >
+                      <td colSpan={2} className="py-6 text-black/60 text-center dark:text-neutral-400">
                         سابقه‌ای یافت نشد.
                       </td>
                     </tr>
                   ) : (
                     Object.keys(history)
                       .sort((a, b) =>
-                        renderBudgetCodeOnce(
-                          a,
-                          active
-                       ).localeCompare(
-                          renderBudgetCodeOnce(
-                            b,
-                            active
-                          ),
+                        renderBudgetCodeOnce(a, active).localeCompare(
+                          renderBudgetCodeOnce(b, active),
                           "fa",
-                          {
-                            numeric: true,
-                            sensitivity: "base",
-                          }
+                          { numeric: true, sensitivity: "base" }
                         )
                       )
                       .map((code) => (
                         <tr
                           key={code}
-                          className="border-t border-black/10 odd:bg-black/[0.02] dark:border-neutral-800 dark:odd:bg-white/5"
+                          className="border-t border-black/10 odd:bg-black/[0.02] even:bg-black/[0.04] dark:border-neutral-800 dark:odd:bg-white/5 dark:even:bg-white/10"
                         >
                           <td className="py-2 px-2 font-mono ltr text-center align-top">
-                            {renderBudgetCodeOnce(
-                              code,
-                              active
-                            )}
+                            {renderBudgetCodeOnce(code, active)}
                           </td>
                           <td className="py-2 px-2 text-center">
-                            {(history[code] || [])
-                              .length === 0 ? (
-                              <span className="text-black/60 dark:text-neutral-400">
-                                —
-                              </span>
+                            {(history[code] || []).length === 0 ? (
+                              <span className="text-black/60 dark:text-neutral-400">—</span>
                             ) : (
                               <div className="flex flex-col gap-1 items-center">
-                                {(history[code] ||
-                                  []
-                                ).map((h, idx) => (
-                                  <div
-                                    key={idx}
-                                    className="text-xs"
-                                  >
-                                    <span className="font-mono ltr">
-                                      {formatMoney(
-                                        h.amount || 0
-                                      )}
-                                    </span>
-                                    <span className="mx-2 text-black/50 dark:text-neutral-500">
-                                      —
-                                    </span>
-                                    <span>
-                                      {new Date(
-                                        h.created_at
-                                      ).toLocaleDateString(
-                                        "fa-IR"
-                                      )}
-                                    </span>
-                                    <span className="mx-1 text-black/50 dark:text-neutral-500">
-                                      /
-                                    </span>
-                                    <span>
-                                      {new Date(
-                                        h.created_at
-                                      ).toLocaleTimeString(
-                                        "fa-IR"
-                                      )}
-                                    </span>
+                                {(history[code] || []).map((h, idx) => (
+                                  <div key={idx} className="text-xs">
+                                    <span className="font-mono ltr">{formatMoney(h.amount || 0)}</span>
+                                    <span className="mx-2 text-black/50 dark:text-neutral-500">—</span>
+                                    <span>{new Date(h.created_at).toLocaleDateString("fa-IR")}</span>
+                                    <span className="mx-1 text-black/50 dark:text-neutral-500">/</span>
+                                    <span>{new Date(h.created_at).toLocaleTimeString("fa-IR")}</span>
                                     {h.serial ? (
                                       <span className="mx-2 text-black/50 dark:text-neutral-400">
                                         [ {h.serial} ]
@@ -740,18 +732,14 @@ function ReportsPage() {
             <div className="flex items-center justify-start gap-2">
               <button
                 onClick={() => window.print()}
-                className="h-10 px-4 rounded-xl border border-black/15 text-black hover:bg-black/5 transition
-                           dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800"
+                className="h-10 w-10 grid place-items-center rounded-xl border border-black/15 bg-white hover:bg-black/5 transition
+                           dark:bg-neutral-900 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                title="چاپ"
+                aria-label="چاپ"
               >
-                چاپ
+                <img src="/images/icons/print.svg" alt="چاپ" className="w-5 h-5 dark:invert" />
               </button>
             </div>
-          </div>
-        )}
-
-        {loading && (
-          <div className="mt-4 text-center text-sm text-black/60 dark:text-neutral-400">
-            در حال بارگذاری…
           </div>
         )}
       </Card>

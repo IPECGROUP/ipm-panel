@@ -14,6 +14,8 @@ const ALLOC_TABS = [
   { id: "projects", label: "پروژه‌ها", prefix: "" },
 ];
 
+const PAGE_KEY = "BudgetAllocationPage";
+
 function BudgetAllocationPage() {
   const [active, setActive] = useState("office"); // office|site|finance|cash|capex|projects
   const tabs = ALLOC_TABS;
@@ -57,7 +59,7 @@ function BudgetAllocationPage() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // دسترسی کل (admin/all)
   const isAllAccess = useMemo(() => {
@@ -75,6 +77,7 @@ function BudgetAllocationPage() {
   }, [me]);
 
   const [allowedTabs, setAllowedTabs] = useState(null); // null=درحال‌بررسی | []=هیچ تبی مجاز نیست | [...ids]
+  const [accessRefreshKey, setAccessRefreshKey] = useState(0);
 
   // اگر دسترسی‌کل داشت، همه تب‌ها مجاز؛ در غیر اینصورت از سرور می‌پرسیم (fallback: همه)
   useEffect(() => {
@@ -97,7 +100,7 @@ function BudgetAllocationPage() {
           const r = await api("/auth/check-page", {
             method: "POST",
             body: JSON.stringify({
-              page: "BudgetAllocationPage",
+              page: PAGE_KEY,
               tabs: tabs.map((t) => t.id),
             }),
           });
@@ -136,7 +139,7 @@ function BudgetAllocationPage() {
     return () => {
       alive = false;
     };
-  }, [me, isAllAccess, active]); // tabs ثابت است
+  }, [me, isAllAccess, active, accessRefreshKey]); // tabs ثابت است
 
   const canAccessPage = useMemo(() => {
     if (!me) return null;
@@ -149,8 +152,7 @@ function BudgetAllocationPage() {
     return ALLOC_TABS.filter((t) => allowedTabs.includes(t.id));
   }, [allowedTabs]);
 
-  const prefixOf = (k) =>
-    visibleTabs.find((t) => t.id === k)?.prefix || "";
+  const prefixOf = (k) => visibleTabs.find((t) => t.id === k)?.prefix || "";
 
   const renderCode = (code) => {
     if (active === "projects") return code || "—";
@@ -181,8 +183,7 @@ function BudgetAllocationPage() {
   const [projectId, setProjectId] = useState("");
 
   const selectedProject = useMemo(
-    () =>
-      (projects || []).find((p) => String(p.id) === String(projectId)),
+    () => (projects || []).find((p) => String(p.id) === String(projectId)),
     [projects, projectId]
   );
 
@@ -243,7 +244,7 @@ function BudgetAllocationPage() {
     return () => {
       alive = false;
     };
-  }, [canAccessPage]);
+  }, [canAccessPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sortedProjects = useMemo(() => {
     return (projects || [])
@@ -438,7 +439,10 @@ function BudgetAllocationPage() {
   }, [active, projectId, refreshKey, canAccessPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const kick = () => setRefreshKey((x) => x + 1);
+    const kick = () => {
+      setRefreshKey((x) => x + 1);
+      setAccessRefreshKey((x) => x + 1);
+    };
     const onVis = () => {
       if (!document.hidden) kick();
     };
@@ -906,14 +910,21 @@ function BudgetAllocationPage() {
                                             : "bg-white text-black placeholder-black/40 border border-black/15 focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
                                         }`}
                               value={toFaDigits(formatMoney(r.allocRaw))}
-                              onChange={(e) => onAllocChange(r.code, e.target.value)}
+                              onChange={(e) =>
+                                onAllocChange(r.code, e.target.value)
+                              }
                               placeholder="۰"
-                              title={isOver ? "تخصیص جدید از آخرین برآورد بیشتر می‌شود" : ""}
+                              title={
+                                isOver
+                                  ? "تخصیص جدید از آخرین برآورد بیشتر می‌شود"
+                                  : ""
+                              }
                               aria-invalid={isOver ? "true" : "false"}
                             />
                             {isOver && (
                               <span className="mt-1 text-[11px] leading-none text-red-600 dark:text-red-400">
-                                مقدار «تخصیص جدید» از مقدار آخرین برآورد بیشتر می‌شود
+                                مقدار «تخصیص جدید» از مقدار آخرین برآورد بیشتر
+                                می‌شود
                               </span>
                             )}
                           </div>
@@ -1020,7 +1031,8 @@ function BudgetAllocationPage() {
                     <div>
                       پروژه:{" "}
                       <b className="text-black dark:text-neutral-100">
-                        {toFaDigits(selectedProject.code)} — {selectedProject.name}
+                        {toFaDigits(selectedProject.code)} —{" "}
+                        {selectedProject.name}
                       </b>
                     </div>
                   )}
@@ -1037,7 +1049,9 @@ function BudgetAllocationPage() {
                           </th>
                           <th className="py-3 px-2 text-center">نام بودجه</th>
                           <th className="py-3 px-2 text-center">آخرین برآورد</th>
-                          <th className="py-3 px-2 text-center">مجموع تخصیص‌ها</th>
+                          <th className="py-3 px-2 text-center">
+                            مجموع تخصیص‌ها
+                          </th>
                           <th className="py-3 px-2 text-center">تخصیص جدید</th>
                           <th className="py-3 px-2 text-center">شرح</th>
                         </tr>
