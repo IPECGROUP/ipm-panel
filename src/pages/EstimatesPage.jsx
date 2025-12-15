@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
+import { usePageAccess } from "../hooks/usePageAccess";
 
 const PAGE_KEY = "EstimatesPage";
 
@@ -42,81 +43,15 @@ export default function EstimatesPage() {
     [],
   );
 
-  const [accessMy, setAccessMy] = useState(null);
-  const [accessLoading, setAccessLoading] = useState(true);
-  const [accessErr, setAccessErr] = useState("");
+  // ✅ Access (مثل DefineBudgetCentersPage)
+  const { me, loading: accessLoading, canAccessPage, allowedTabs } = usePageAccess(PAGE_KEY, ALL_TABS);
 
-  const fetchAccess = useCallback(async () => {
-    setAccessErr("");
-    setAccessLoading(true);
-    try {
-      const r = await api("/access/my");
-      setAccessMy(r || null);
-    } catch (e) {
-      setAccessMy(null);
-      setAccessErr(e?.message || "خطا در بررسی دسترسی");
-    } finally {
-      setAccessLoading(false);
-    }
-  }, []);
+  const tabs = useMemo(() => {
+    if (!allowedTabs) return [];
+    return ALL_TABS.filter((t) => allowedTabs.includes(t.id));
+  }, [ALL_TABS, allowedTabs]);
 
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      if (!alive) return;
-      await fetchAccess();
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [fetchAccess]);
-
-  useEffect(() => {
-    const onFocus = () => fetchAccess().catch(() => {});
-    const onVis = () => {
-      if (document.visibilityState === "visible") fetchAccess().catch(() => {});
-    };
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onVis);
-    return () => {
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onVis);
-    };
-  }, [fetchAccess]);
-
-  const isAllAccess = useMemo(() => {
-    const u = accessMy?.user;
-    if (!u) return false;
-    if (String(u.role || "").toLowerCase() === "admin") return true;
-
-    const raw = u.access_labels ?? u.access;
-    const labels = Array.isArray(raw) ? raw.map((x) => String(x)) : typeof raw === "string" ? [raw] : [];
-    return labels.includes("all");
-  }, [accessMy]);
-
-  const pageRule = useMemo(() => {
-    if (!accessMy) return null;
-    return accessMy?.pages?.[PAGE_KEY] ?? null;
-  }, [accessMy]);
-
-  const canAccessPage = useMemo(() => {
-    if (!accessMy) return null;
-    if (isAllAccess) return true;
-    if (!pageRule) return false;
-    return pageRule?.permitted === 1 || pageRule?.permitted === true;
-  }, [accessMy, isAllAccess, pageRule]);
-
-  const allowedTabIds = useMemo(() => {
-    if (canAccessPage !== true) return [];
-    const allIds = ALL_TABS.map((t) => t.id);
-    if (isAllAccess) return allIds;
-
-    const tabs = pageRule?.tabs;
-    if (Array.isArray(tabs)) return tabs.map(String).filter((x) => allIds.includes(x));
-    return allIds; // tabs=null => کل تب‌های صفحه
-  }, [canAccessPage, ALL_TABS, isAllAccess, pageRule]);
-
-  const tabs = useMemo(() => ALL_TABS.filter((t) => allowedTabIds.includes(t.id)), [ALL_TABS, allowedTabIds]);
+  const canUseProjectsTab = useMemo(() => tabs.some((t) => t.id === "projects"), [tabs]);
 
   const [active, setActive] = useState("office");
   useEffect(() => {
@@ -184,6 +119,8 @@ export default function EstimatesPage() {
 
   useEffect(() => {
     if (canAccessPage !== true) return;
+    if (!canUseProjectsTab) return;
+
     let stop = false;
     (async () => {
       try {
@@ -198,7 +135,7 @@ export default function EstimatesPage() {
       stop = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canAccessPage]);
+  }, [canAccessPage, canUseProjectsTab]);
 
   const selectedProject = useMemo(
     () => (projects || []).find((p) => String(p.id) === String(projectId)),
@@ -289,6 +226,7 @@ export default function EstimatesPage() {
 
   useEffect(() => {
     if (canAccessPage !== true) return;
+    if (!tabs.length) return;
 
     let dead = false;
     const seq = ++reqSeq.current;
@@ -374,8 +312,7 @@ export default function EstimatesPage() {
         for (const it of estItems) {
           const code = String(it?.code ?? "").trim();
           if (!code) continue;
-          const prev =
-            byCode.get(code) || ({ code, name: "", desc: "", baseAmount: 0, months: {}, lastMonths: {} });
+          const prev = byCode.get(code) || { code, name: "", desc: "", baseAmount: 0, months: {}, lastMonths: {} };
           const { desc, lastMonths } = parseDescMonths(it.last_desc ?? it.description ?? "");
           byCode.set(code, {
             ...prev,
@@ -406,7 +343,7 @@ export default function EstimatesPage() {
     return () => {
       dead = true;
     };
-  }, [canAccessPage, active, projectId, dynamicMonths, renderCode, parseDescMonths, coreOf, selectedProject]);
+  }, [canAccessPage, tabs.length, active, projectId, dynamicMonths, renderCode, parseDescMonths, coreOf, selectedProject]);
 
   const filteredRows = useMemo(() => {
     if (active !== "projects") return rows || [];
@@ -797,6 +734,7 @@ export default function EstimatesPage() {
 
   const colCount = 3 + dynamicMonths.length + 1;
 
+  // ✅ Guards (مثل DefineBudgetCentersPage)
   if (accessLoading) {
     return (
       <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
@@ -810,7 +748,7 @@ export default function EstimatesPage() {
     );
   }
 
-  if (accessErr) {
+  if (!me) {
     return (
       <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
         <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
@@ -818,14 +756,12 @@ export default function EstimatesPage() {
           <span className="mx-2">›</span>
           <span className="font-semibold text-black dark:text-neutral-100">برآورد هزینه‌ها</span>
         </div>
-        <div className="p-6 rounded-2xl ring-1 ring-neutral-200 bg-white text-center text-red-600 dark:bg-neutral-900 dark:ring-neutral-800 dark:text-red-400">
-          {accessErr}
-        </div>
+        <div className="p-6 text-center text-red-600 dark:text-red-400">ابتدا وارد سامانه شوید.</div>
       </Card>
     );
   }
 
-  if (canAccessPage !== true) {
+  if (canAccessPage === false) {
     return (
       <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
         <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
@@ -857,7 +793,10 @@ export default function EstimatesPage() {
         <TableWrap>
           <div className="bg-white rounded-2xl overflow-hidden border border-black/10 shadow-sm text-black dark:bg-neutral-900 dark:text-neutral-200 dark:border-neutral-800">
             <div className="overflow-x-auto">
-              <table className="w-full table-fixed text-[12px] md:text-[13px] text-center [&_th]:text-center [&_td]:text-center" dir="rtl">
+              <table
+                className="w-full table-fixed text-[12px] md:text-[13px] text-center [&_th]:text-center [&_td]:text-center"
+                dir="rtl"
+              >
                 <THead>
                   <tr className="bg-black/5 border-b border-black/10 sticky top-0 z-10 text-black dark:bg-neutral-900 dark:text-neutral-300 dark:border-neutral-700">
                     <TH className="!text-center py-3 w-14 !text-black dark:!text-neutral-300">#</TH>
@@ -971,7 +910,10 @@ export default function EstimatesPage() {
                             <TD className="px-2 py-3">{toFaDigits(idx + 1)}</TD>
 
                             <TD className="px-2 py-3 text-center whitespace-nowrap">
-                              <div className="inline-flex items-center justify-center gap-1 flex-row-reverse" style={{ paddingRight: node.depth ? node.depth * 12 : 0 }}>
+                              <div
+                                className="inline-flex items-center justify-center gap-1 flex-row-reverse"
+                                style={{ paddingRight: node.depth ? node.depth * 12 : 0 }}
+                              >
                                 {hasChildren && (
                                   <button
                                     type="button"
@@ -979,14 +921,20 @@ export default function EstimatesPage() {
                                     className="h-5 w-5 grid place-items-center rounded-md border border-black/25 bg-white text-black dark:border-neutral-500 dark:bg-white dark:text-black"
                                     aria-label={isOpen ? "بستن زیرمجموعه" : "باز کردن زیرمجموعه"}
                                   >
-                                    {isOpen ? <span className="text-[11px] leading-none text-black">−</span> : <img src="/images/icons/afzodan.svg" alt="" className="w-3 h-3" />}
+                                    {isOpen ? (
+                                      <span className="text-[11px] leading-none text-black">−</span>
+                                    ) : (
+                                      <img src="/images/icons/afzodan.svg" alt="" className="w-3 h-3" />
+                                    )}
                                   </button>
                                 )}
                                 <span className="ltr text-xs md:text-[13px]">{renderCode(code)}</span>
                               </div>
                             </TD>
 
-                            <TD className="px-2 py-3 text-center break-words text-[11px] md:text-[13px] max-w-[180px]">{r.name || "—"}</TD>
+                            <TD className="px-2 py-3 text-center break-words text-[11px] md:text-[13px] max-w-[180px]">
+                              {r.name || "—"}
+                            </TD>
 
                             {dynamicMonths.map((m) => {
                               let val = 0;
@@ -1059,7 +1007,10 @@ export default function EstimatesPage() {
 
         {monthModal.open && (
           <div className="fixed inset-0 z-40 flex items-center justify-center px-3">
-            <div className="absolute inset-0 bg-black/40 dark:bg-neutral-950/70 backdrop-blur-[2px]" onClick={closeMonthModal} />
+            <div
+              className="absolute inset-0 bg-black/40 dark:bg-neutral-950/70 backdrop-blur-[2px]"
+              onClick={closeMonthModal}
+            />
             <div className="relative w-full max-w-sm rounded-2xl bg-white text-neutral-900 border border-black/10 shadow-2xl dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 p-4 space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <div>
