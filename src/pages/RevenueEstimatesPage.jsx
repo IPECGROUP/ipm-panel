@@ -9,6 +9,7 @@ import React, {
 
 import { Card } from '../components/ui/Card';
 import { TableWrap, THead, TR, TH, TD } from '../components/ui/Table';
+import { usePageAccess } from '../hooks/usePageAccess';
 
 const PAGE_KEY = 'RevenueEstimatesPage';
 
@@ -56,58 +57,7 @@ function RevenueEstimatesPage() {
   };
 
   // ===== Access (مثل همون الگو) =====
-  const [accessMy, setAccessMy] = useState(null);
-  const [accessLoading, setAccessLoading] = useState(true);
-  const [accessErr, setAccessErr] = useState('');
-
-  const fetchAccess = useCallback(async () => {
-    setAccessErr('');
-    setAccessLoading(true);
-    try {
-      const r = await api('/access/my');
-      setAccessMy(r || null);
-    } catch (e) {
-      setAccessMy(null);
-      setAccessErr(e?.message || 'خطا در بررسی دسترسی');
-    } finally {
-      setAccessLoading(false);
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      if (!alive) return;
-      await fetchAccess();
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [fetchAccess]);
-
-  const isAllAccess = useMemo(() => {
-    const u = accessMy?.user;
-    if (!u) return false;
-
-    if (String(u.role || '').toLowerCase() === 'admin') return true;
-
-    const raw = u.access_labels ?? u.access;
-    const labels = Array.isArray(raw)
-      ? raw.map((x) => String(x))
-      : typeof raw === 'string'
-      ? [raw]
-      : [];
-
-    return labels.includes('all');
-  }, [accessMy]);
-
-  const canAccessPage = useMemo(() => {
-    if (!accessMy) return null;
-    if (isAllAccess) return true;
-
-    const pageRule = accessMy?.pages?.[PAGE_KEY];
-    return pageRule?.permitted === 1 || pageRule?.permitted === true;
-  }, [accessMy, isAllAccess]);
+  const { me, loading: accessLoading, canAccessPage } = usePageAccess(PAGE_KEY);
 
   const monthNames = [
     'فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور',
@@ -718,7 +668,7 @@ function RevenueEstimatesPage() {
     );
   }
 
-  if (accessErr) {
+  if (!me) {
     return (
       <Card>
         <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
@@ -726,7 +676,7 @@ function RevenueEstimatesPage() {
           <span className="mx-2">›</span>
           <span className="font-semibold text-black dark:text-neutral-100">برآورد درآمد ها</span>
         </div>
-        <div className="text-sm text-red-600 dark:text-red-400">{accessErr}</div>
+        <div className="text-sm text-red-600 dark:text-red-400">ابتدا وارد سامانه شوید.</div>
       </Card>
     );
   }
