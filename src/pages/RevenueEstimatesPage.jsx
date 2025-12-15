@@ -10,6 +10,8 @@ import React, {
 import { Card } from '../components/ui/Card';
 import { TableWrap, THead, TR, TH, TD } from '../components/ui/Table';
 
+const PAGE_KEY = 'RevenueEstimatesPage';
+
 function RevenueEstimatesPage() {
   const formatMoney = (n) => {
     const s = String(n ?? '');
@@ -52,6 +54,60 @@ function RevenueEstimatesPage() {
     if (!res.ok) throw new Error(data?.error || data?.message || 'request_failed');
     return data;
   };
+
+  // ===== Access (مثل همون الگو) =====
+  const [accessMy, setAccessMy] = useState(null);
+  const [accessLoading, setAccessLoading] = useState(true);
+  const [accessErr, setAccessErr] = useState('');
+
+  const fetchAccess = useCallback(async () => {
+    setAccessErr('');
+    setAccessLoading(true);
+    try {
+      const r = await api('/access/my');
+      setAccessMy(r || null);
+    } catch (e) {
+      setAccessMy(null);
+      setAccessErr(e?.message || 'خطا در بررسی دسترسی');
+    } finally {
+      setAccessLoading(false);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!alive) return;
+      await fetchAccess();
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [fetchAccess]);
+
+  const isAllAccess = useMemo(() => {
+    const u = accessMy?.user;
+    if (!u) return false;
+
+    if (String(u.role || '').toLowerCase() === 'admin') return true;
+
+    const raw = u.access_labels ?? u.access;
+    const labels = Array.isArray(raw)
+      ? raw.map((x) => String(x))
+      : typeof raw === 'string'
+      ? [raw]
+      : [];
+
+    return labels.includes('all');
+  }, [accessMy]);
+
+  const canAccessPage = useMemo(() => {
+    if (!accessMy) return null;
+    if (isAllAccess) return true;
+
+    const pageRule = accessMy?.pages?.[PAGE_KEY];
+    return pageRule?.permitted === 1 || pageRule?.permitted === true;
+  }, [accessMy, isAllAccess]);
 
   const monthNames = [
     'فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور',
@@ -131,6 +187,7 @@ function RevenueEstimatesPage() {
   const [addSelectedProjectId, setAddSelectedProjectId] = useState('');
 
   useEffect(() => {
+    if (canAccessPage !== true) return;
     (async () => {
       try {
         const data = await api('/projects');
@@ -139,7 +196,7 @@ function RevenueEstimatesPage() {
         console.error('load projects failed', e);
       }
     })();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [canAccessPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const SEP = ' › ';
 
@@ -215,6 +272,7 @@ function RevenueEstimatesPage() {
   );
 
   useEffect(() => {
+    if (canAccessPage !== true) return;
     (async () => {
       try {
         const data = await api('/revenue-estimates');
@@ -230,7 +288,7 @@ function RevenueEstimatesPage() {
         console.error('load revenue estimates failed', e);
       }
     })();
-  }, [buildTreeFromItems]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [buildTreeFromItems, canAccessPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [addModal, setAddModal] = useState({ open: false, title: '', desc: '' });
 
@@ -645,6 +703,46 @@ function RevenueEstimatesPage() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
+
+  // ===== UI states for access =====
+  if (accessLoading) {
+    return (
+      <Card>
+        <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
+          <span>بودجه‌بندی</span>
+          <span className="mx-2">›</span>
+          <span className="font-semibold text-black dark:text-neutral-100">برآورد درآمد ها</span>
+        </div>
+        <div className="text-sm text-black/70 dark:text-neutral-300">در حال بررسی دسترسی...</div>
+      </Card>
+    );
+  }
+
+  if (accessErr) {
+    return (
+      <Card>
+        <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
+          <span>بودجه‌بندی</span>
+          <span className="mx-2">›</span>
+          <span className="font-semibold text-black dark:text-neutral-100">برآورد درآمد ها</span>
+        </div>
+        <div className="text-sm text-red-600 dark:text-red-400">{accessErr}</div>
+      </Card>
+    );
+  }
+
+  if (canAccessPage !== true) {
+    return (
+      <Card>
+        <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
+          <span>بودجه‌بندی</span>
+          <span className="mx-2">›</span>
+          <span className="font-semibold text-black dark:text-neutral-100">برآورد درآمد ها</span>
+        </div>
+        <div className="text-sm text-black/70 dark:text-neutral-300">شما سطح دسترسی لازم را ندارید.</div>
+      </Card>
+    );
+  }
 
   return (
     <>
