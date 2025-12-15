@@ -1,5 +1,5 @@
 // src/pages/BudgetAllocationPage.jsx
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Shell from "../components/layout/Shell";
 import { Card } from "../components/ui/Card";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table";
@@ -42,46 +42,72 @@ function BudgetAllocationPage() {
     return data;
   }
 
-  // ===== کاربر (واقعی از سرور) =====
-  const [me, setMe] = useState(null);
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const r = await api("/auth/me");
-        if (!alive) return;
-        setMe(r?.user || r || null);
-      } catch (e) {
-        if (!alive) return;
-        setMe({ role: "guest", access_labels: [] });
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // دسترسی کل (admin/all)
-  const isAllAccess = useMemo(() => {
-    if (!me) return false;
-    if (String(me.role || "").toLowerCase() === "admin") return true;
-    let labels = [];
-    if (Array.isArray(me?.access_labels)) labels = me.access_labels;
-    else if (typeof me?.access_labels === "string") {
-      try {
-        const j = JSON.parse(me.access_labels);
-        if (Array.isArray(j)) labels = j;
-      } catch {}
-    }
-    return labels.includes("all");
-  }, [me]);
+  // ===== Access (الگوی درست مثل صفحات جدید) =====
+  const [accessMy, setAccessMy] = useState(null);
+  const [accessLoading, setAccessLoading] = useState(true);
+  const [accessErr, setAccessErr] = useState("");
 
   const [allowedTabs, setAllowedTabs] = useState(null); // null=درحال‌بررسی | []=هیچ تبی مجاز نیست | [...ids]
   const [accessRefreshKey, setAccessRefreshKey] = useState(0);
 
+  const fetchAccess = useCallback(async () => {
+    setAccessErr("");
+    setAccessLoading(true);
+    try {
+      const r = await api("/access/my");
+      setAccessMy(r || null);
+    } catch (e) {
+      setAccessMy(null);
+      setAccessErr(e?.message || "خطا در بررسی دسترسی");
+    } finally {
+      setAccessLoading(false);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!alive) return;
+      await fetchAccess();
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [fetchAccess, accessRefreshKey]);
+
+  const me = useMemo(() => accessMy?.user || null, [accessMy]);
+
+  // دسترسی کل (admin/all)
+  const isAllAccess = useMemo(() => {
+    const u = accessMy?.user;
+    if (!u) return false;
+
+    if (String(u.role || "").toLowerCase() === "admin") return true;
+
+    const raw = u.access_labels ?? u.access;
+    const labels = Array.isArray(raw)
+      ? raw.map((x) => String(x))
+      : typeof raw === "string"
+      ? [raw]
+      : [];
+
+    return labels.includes("all");
+  }, [accessMy]);
+
+  const canAccessPage = useMemo(() => {
+    if (!accessMy) return null;
+    if (isAllAccess) return true;
+
+    const pageRule = accessMy?.pages?.[PAGE_KEY];
+    return pageRule?.permitted === 1 || pageRule?.permitted === true;
+  }, [accessMy, isAllAccess]);
+
   // اگر دسترسی‌کل داشت، همه تب‌ها مجاز؛ در غیر اینصورت از سرور می‌پرسیم (fallback: همه)
   useEffect(() => {
-    if (!me) return;
+    if (canAccessPage !== true) {
+      if (canAccessPage === false) setAllowedTabs([]);
+      return;
+    }
 
     let alive = true;
     (async () => {
@@ -90,11 +116,10 @@ function BudgetAllocationPage() {
           const all = tabs.map((t) => t.id);
           if (!alive) return;
           setAllowedTabs(all);
-          if (!all.includes(active)) setActive(all[0]);
+          if (all.length && !all.includes(active)) setActive(all[0]);
           return;
         }
 
-        // تلاش برای چک دسترسی صفحه/تب‌ها از سرور (اگر endpoint وجود داشت)
         let tabsAllowed = null;
         try {
           const r = await api("/auth/check-page", {
@@ -105,11 +130,7 @@ function BudgetAllocationPage() {
             }),
           });
           const cand =
-            r?.allowed_tabs ||
-            r?.allowedTabs ||
-            r?.tabs ||
-            r?.allowed ||
-            null;
+            r?.allowed_tabs || r?.allowedTabs || r?.tabs || r?.allowed || null;
           if (Array.isArray(cand)) tabsAllowed = cand;
           else if (r?.ok === true) tabsAllowed = tabs.map((t) => t.id);
           else if (r?.ok === false) tabsAllowed = [];
@@ -139,17 +160,11 @@ function BudgetAllocationPage() {
     return () => {
       alive = false;
     };
-  }, [me, isAllAccess, active, accessRefreshKey]); // tabs ثابت است
-
-  const canAccessPage = useMemo(() => {
-    if (!me) return null;
-    if (allowedTabs === null) return null;
-    return (allowedTabs || []).length > 0;
-  }, [me, allowedTabs]);
+  }, [canAccessPage, isAllAccess, active]); // tabs ثابت است // eslint-disable-line react-hooks/exhaustive-deps
 
   const visibleTabs = useMemo(() => {
-    if (!allowedTabs) return [];
-    return ALLOC_TABS.filter((t) => allowedTabs.includes(t.id));
+    if (allowedTabs === null) return [];
+    return ALLOC_TABS.filter((t) => (allowedTabs || []).includes(t.id));
   }, [allowedTabs]);
 
   const prefixOf = (k) => visibleTabs.find((t) => t.id === k)?.prefix || "";
@@ -213,7 +228,7 @@ function BudgetAllocationPage() {
 
   // پروژه‌ها از سرور
   useEffect(() => {
-    if (!canAccessPage) return;
+    if (canAccessPage !== true) return;
     let alive = true;
     (async () => {
       try {
@@ -337,7 +352,7 @@ function BudgetAllocationPage() {
 
   // ===== لود داده‌ها از سرور =====
   useEffect(() => {
-    if (!canAccessPage) return;
+    if (canAccessPage !== true) return;
     if (active === "projects" && !projectId) return;
 
     let abort = false;
@@ -713,28 +728,8 @@ function BudgetAllocationPage() {
     );
   };
 
-  // نمایش ارور دسترسی
-  if (me && canAccessPage === false) {
-    return (
-      <>
-        <Card>
-          <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
-            <span>بودجه‌بندی</span>
-            <span className="mx-2">›</span>
-            <span className="font-semibold text-black dark:text-neutral-100">
-              تخصیص بودجه
-            </span>
-          </div>
-          <div className="p-5 rounded-2xl ring-1 ring-black/10 bg-white text-center text-red-600 dark:bg-neutral-900 dark:ring-neutral-800 dark:text-red-400">
-            شما سطح دسترسی لازم را ندارید.
-          </div>
-        </Card>
-      </>
-    );
-  }
-
-  // حالت لودینگ
-  if (!me || allowedTabs === null) {
+  // ===== UI states for access =====
+  if (accessLoading || allowedTabs === null) {
     return (
       <>
         <Card>
@@ -747,6 +742,44 @@ function BudgetAllocationPage() {
           </div>
           <div className="p-5 text-center text-black/60 dark:text-neutral-300">
             در حال بررسی دسترسی…
+          </div>
+        </Card>
+      </>
+    );
+  }
+
+  if (accessErr) {
+    return (
+      <>
+        <Card>
+          <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
+            <span>بودجه‌بندی</span>
+            <span className="mx-2">›</span>
+            <span className="font-semibold text-black dark:text-neutral-100">
+              تخصیص بودجه
+            </span>
+          </div>
+          <div className="p-5 rounded-2xl ring-1 ring-black/10 bg-white text-center text-red-600 dark:bg-neutral-900 dark:ring-neutral-800 dark:text-red-400">
+            {accessErr}
+          </div>
+        </Card>
+      </>
+    );
+  }
+
+  if (canAccessPage !== true || (allowedTabs || []).length === 0) {
+    return (
+      <>
+        <Card>
+          <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
+            <span>بودجه‌بندی</span>
+            <span className="mx-2">›</span>
+            <span className="font-semibold text-black dark:text-neutral-100">
+              تخصیص بودجه
+            </span>
+          </div>
+          <div className="p-5 rounded-2xl ring-1 ring-black/10 bg-white text-center text-red-600 dark:bg-neutral-900 dark:ring-neutral-800 dark:text-red-400">
+            شما سطح دسترسی لازم را ندارید.
           </div>
         </Card>
       </>
