@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
+import { usePageAccess } from "../hooks/usePageAccess";
 
 const PAGE_KEY = "DefineBudgetCentersPage";
 
@@ -52,95 +53,7 @@ function DefineBudgetCentersPage() {
     [API_BASE]
   );
 
-  const [me, setMe] = useState(null);
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const r = await api("/auth/me");
-        if (!alive) return;
-        setMe(r?.user || r || null);
-      } catch {
-        if (!alive) return;
-        setMe({ username: "marandi", name: "marandi", role: "admin", access_labels: ["all"] });
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [api]);
-
-  const isAllAccess = useMemo(() => {
-    if (!me) return false;
-    if (String(me.role || "").toLowerCase() === "admin") return true;
-
-    let labels = [];
-    if (Array.isArray(me?.access_labels)) labels = me.access_labels.map(String);
-    else if (typeof me?.access_labels === "string") {
-      try {
-        const j = JSON.parse(me.access_labels);
-        if (Array.isArray(j)) labels = j.map(String);
-      } catch {
-        labels = [String(me.access_labels)];
-      }
-    }
-    return labels.includes("all");
-  }, [me]);
-
-  const [allowedTabs, setAllowedTabs] = useState(null);
-  useEffect(() => {
-    if (!me) return;
-
-    let alive = true;
-    (async () => {
-      try {
-        const allIds = ALL_TABS.map((t) => t.id);
-
-        if (isAllAccess) {
-          if (!alive) return;
-          setAllowedTabs(allIds);
-          return;
-        }
-
-        let tabsAllowed = null;
-        try {
-          const r = await api("/auth/check-page", {
-            method: "POST",
-            body: JSON.stringify({ page: PAGE_KEY, tabs: allIds }),
-          });
-
-          const cand = r?.allowed_tabs || r?.allowedTabs || r?.tabs || r?.allowed || null;
-
-          if (Array.isArray(cand)) tabsAllowed = cand.map(String);
-          else if (r?.ok === true) tabsAllowed = allIds;
-          else if (r?.ok === false) tabsAllowed = [];
-        } catch {
-          tabsAllowed = null;
-        }
-
-        if (!alive) return;
-
-        const finalTabs = Array.isArray(tabsAllowed)
-          ? tabsAllowed.filter((x) => allIds.includes(x))
-          : allIds;
-
-        setAllowedTabs(finalTabs);
-      } catch {
-        if (!alive) return;
-        setAllowedTabs(ALL_TABS.map((t) => t.id));
-      }
-    })();
-
-    return () => {
-      alive = false;
-    };
-  }, [me, isAllAccess, api]);
-
-  const canAccessPage = useMemo(() => {
-    if (!me) return null;
-    if (allowedTabs === null) return null;
-    return (allowedTabs || []).length > 0;
-  }, [me, allowedTabs]);
+  const { me, loading: accessLoading, canAccessPage, allowedTabs } = usePageAccess(PAGE_KEY, ALL_TABS);
 
   const tabs = useMemo(() => {
     if (!allowedTabs) return [];
@@ -584,7 +497,7 @@ function DefineBudgetCentersPage() {
     return result;
   }, [rows, active, getSuffixPlain, openCodes, codeTextOf]);
 
-  if (!me || allowedTabs === null) {
+  if (accessLoading) {
     return (
       <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
         <div className="mb-4 text-base md:text-lg">
@@ -593,6 +506,19 @@ function DefineBudgetCentersPage() {
           <span className="font-semibold text-neutral-900 dark:text-neutral-100">تعریف مراکز بودجه</span>
         </div>
         <div className="p-6 text-center text-neutral-600 dark:text-neutral-400">در حال بررسی دسترسی…</div>
+      </Card>
+    );
+  }
+
+  if (!me) {
+    return (
+      <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+        <div className="mb-4 text-base md:text-lg">
+          <span className="text-neutral-700 dark:text-neutral-300">بودجه‌بندی</span>
+          <span className="mx-2 text-neutral-500 dark:text-neutral-400">›</span>
+          <span className="font-semibold text-neutral-900 dark:text-neutral-100">تعریف مراکز بودجه</span>
+        </div>
+        <div className="p-6 text-center text-red-600 dark:text-red-400">ابتدا وارد سامانه شوید.</div>
       </Card>
     );
   }
