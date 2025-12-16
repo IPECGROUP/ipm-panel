@@ -798,17 +798,20 @@ function RevenueEstimatesPage() {
           <TableWrap>
             <div className="bg-white rounded-2xl overflow-hidden border border-black/10 shadow-sm text-black dark:bg-neutral-900 dark:text-neutral-200 dark:border-neutral-800">
               <div className="overflow-x-auto">
-                <table className="w-full table-fixed text-[11px] md:text-[12px] text-center [&_th]:text-center [&_td]:text-center" dir="rtl">
+                <table
+                  className="w-full table-fixed text-[11px] md:text-[12px] leading-tight text-center [&_th]:text-center [&_td]:text-center"
+                  dir="rtl"
+                >
                   <THead>
                     <tr className="bg-black/5 border-b border-black/10 sticky top-0 z-10 text-black dark:bg-neutral-900 dark:text-neutral-300 dark:border-neutral-700">
-                      <TH className="!text-center py-2.5 w-14 !text-black dark:!text-neutral-300">#</TH>
-                      <TH className="!text-center py-2.5 w-56 !text-black dark:!text-neutral-300">پروژه / مورد</TH>
+                      <TH className="!text-center py-2 w-14 !text-black dark:!text-neutral-300">#</TH>
+                      <TH className="!text-center py-2 w-56 !text-black dark:!text-neutral-300">پروژه / مورد</TH>
                       {dynamicMonths.map((m) => (
-                        <TH key={m.key} className="!text-center py-2.5 w-24 px-0 !text-black dark:!text-neutral-300">
+                        <TH key={m.key} className="!text-center py-2 w-24 px-0 !text-black dark:!text-neutral-300">
                           {m.label}
                         </TH>
                       ))}
-                      <TH className="!text-center py-2.5 w-28 !text-black dark:!text-neutral-300 border-l border-r border-black/10 dark:border-neutral-700">
+                      <TH className="!text-center py-2 w-28 !text-black dark:!text-neutral-300 border-l border-r border-black/10 dark:border-neutral-700">
                         جمع
                       </TH>
                     </tr>
@@ -816,9 +819,9 @@ function RevenueEstimatesPage() {
 
                   <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100">
                     {rows.length > 0 && (
-                      <TR className="text-center border-t border-black/10 bg-black/[0.04] font-semibold dark:border-neutral-800 dark:bg-white/10">
-                        <TD className="px-2 py-2.5 border-b border-black/10 dark:border-neutral-800">-</TD>
-                        <TD className="px-2 py-2.5 text-center border-b border-black/10 dark:border-neutral-800">جمع</TD>
+                      <TR className="text-center border-t border-black/10 bg-black/[0.035] font-semibold dark:border-neutral-800 dark:bg-white/10">
+                        <TD className="px-2 py-2 border-b border-black/10 dark:border-neutral-800">-</TD>
+                        <TD className="px-2 py-2 text-center border-b border-black/10 dark:border-neutral-800">جمع</TD>
                         {dynamicMonths.map((m) => (
                           <TD key={m.key} className="px-0 py-2 text-center align-middle border-b border-black/10 dark:border-neutral-800">
                             {totalsByMonth[m.key] ? (
@@ -831,7 +834,7 @@ function RevenueEstimatesPage() {
                             )}
                           </TD>
                         ))}
-                        <TD className="px-3 py-2.5 whitespace-nowrap text-center border-l border-r border-b border-black/10 dark:border-neutral-700">
+                        <TD className="px-3 py-2 whitespace-nowrap text-center border-l border-r border-b border-black/10 dark:border-neutral-700">
                           <span className="inline-flex items-center justify-center gap-1">
                             <span className="ltr">{toFaDigits(formatMoney(totalGrand || 0))}</span>
                             <span>ریال</span>
@@ -843,25 +846,25 @@ function RevenueEstimatesPage() {
                     {displayRows.map((x, idx) => {
                       if (x.type === 'addChild') {
                         return (
-                          <TR key={'addchild-' + x.parentId} className="border-t border-black/10 bg-black/[0.015] dark:border-neutral-800 dark:bg-white/5">
-                            <TD className="px-2 py-2.5 text-center text-black/60 dark:text-neutral-400">—</TD>
-                            <TD className="px-2 py-2.5 text-center">
+                          <TR key={'addchild-' + x.parentId} className="border-t border-black/10 bg-black/[0.012] dark:border-neutral-800 dark:bg-white/5">
+                            <TD className="px-2 py-2 text-center text-black/60 dark:text-neutral-400">—</TD>
+                            <TD className="px-2 py-2 text-center">
                               <div className="flex items-center justify-center" style={{ paddingInlineStart: Math.min(44, x.depth * 18) }}>
                                 <button
                                   type="button"
                                   onClick={() => openChildModal(x.parentId)}
-                                  className="h-10 w-10 mx-auto grid place-items-center rounded-xl border border-black/30 bg-white hover:bg-black/5 dark:border-neutral-500 dark:bg-neutral-800 dark:hover:bg-neutral-700"
+                                  className="h-9 w-9 mx-auto grid place-items-center rounded-xl ring-1 ring-black/15 hover:bg-black/5 bg-white dark:bg-neutral-800 dark:ring-neutral-700 dark:hover:bg-white/10"
                                   aria-label="افزودن زیرمجموعه"
                                   title="افزودن زیرمجموعه"
                                 >
-                                  <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
+                                  <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
                                 </button>
                               </div>
                             </TD>
                             {dynamicMonths.map((m) => (
                               <TD key={m.key} className="px-0 py-2 text-center text-black/40 dark:text-neutral-500">—</TD>
                             ))}
-                            <TD className="px-3 py-2.5 text-center text-black/40 dark:text-neutral-500">—</TD>
+                            <TD className="px-3 py-2 text-center text-black/40 dark:text-neutral-500">—</TD>
                           </TR>
                         );
                       }
@@ -875,12 +878,12 @@ function RevenueEstimatesPage() {
                       return (
                         <TR
                           key={r.id}
-                          className="text-center border-t border-black/10 odd:bg-black/[0.02] even:bg-black/[0.04] hover:bg-black/[0.06] transition-colors dark:border-neutral-800 dark:odd:bg-white/5 dark:even:bg-white/10 dark:hover:bg-white/15"
+                          className="text-center border-t border-black/10 odd:bg-black/[0.018] even:bg-black/[0.032] hover:bg-black/[0.05] transition-colors dark:border-neutral-800 dark:odd:bg-white/5 dark:even:bg-white/10 dark:hover:bg-white/15"
                         >
-                          <TD className="px-2 py-2.5">{toFaDigits(idxText || (idx + 1))}</TD>
+                          <TD className="px-2 py-2">{toFaDigits(idxText || (idx + 1))}</TD>
 
-                          <TD className="px-2 py-2.5 text-center whitespace-nowrap">
-                            <div className="flex items-center justify-center gap-2">
+                          <TD className="px-2 py-2 text-center whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-1.5">
                               <div className="flex items-center justify-center gap-2" style={{ paddingInlineStart: depthPad }}>
                                 <div
                                   role="button"
@@ -889,7 +892,7 @@ function RevenueEstimatesPage() {
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter') openEditRowModal(r);
                                   }}
-                                  className="inline-flex flex-row-reverse items-center gap-2 px-3 py-2 rounded-2xl border border-black/10 bg-white/90 shadow-sm ring-1 ring-black/5 text-[11px] text-black cursor-pointer select-none hover:bg-black/[0.03] hover:shadow transition dark:border-neutral-700 dark:bg-neutral-900/70 dark:ring-0 dark:text-neutral-100 dark:hover:bg-white/10"
+                                  className="inline-flex flex-row-reverse items-center gap-2 px-3 py-1.5 rounded-full border border-black/10 bg-white/85 shadow-sm ring-1 ring-black/5 text-[11px] text-black cursor-pointer select-none hover:bg-black/[0.03] hover:shadow transition dark:border-neutral-700 dark:bg-neutral-900/70 dark:ring-0 dark:text-neutral-100 dark:hover:bg-white/10"
                                   title="افزودن/ویرایش توضیحات"
                                 >
                                   <button
@@ -899,7 +902,7 @@ function RevenueEstimatesPage() {
                                       e.stopPropagation();
                                       toggleExpand(r.id);
                                     }}
-                                    className="h-6 w-6 grid place-items-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10"
+                                    className="h-6 w-6 grid place-items-center rounded-full hover:bg-black/5 dark:hover:bg-white/10"
                                     aria-label="باز/بسته"
                                     title="باز/بسته"
                                   >
@@ -923,7 +926,7 @@ function RevenueEstimatesPage() {
                                         setRows((prev) => updateNodeMeta(prev, r.id, { title: v }));
                                       }}
                                       placeholder="عنوان دلخواه..."
-                                      className="w-[180px] md:w-[220px] bg-transparent outline-none text-center placeholder-black/40 dark:placeholder-neutral-500"
+                                      className="w-[170px] md:w-[210px] bg-transparent outline-none text-center placeholder-black/40 dark:placeholder-neutral-500"
                                     />
                                   ) : (
                                     <span className="max-w-[220px] truncate">{r.title || '—'}</span>
@@ -936,7 +939,7 @@ function RevenueEstimatesPage() {
                               <button
                                 type="button"
                                 onClick={() => removeNode(r.id)}
-                                className="inline-flex items-center justify-center p-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10"
+                                className="h-8 w-8 grid place-items-center rounded-xl ring-1 ring-black/10 hover:bg-black/5 dark:ring-neutral-700 dark:hover:bg-white/10"
                                 aria-label="حذف"
                                 title="حذف"
                               >
@@ -954,7 +957,7 @@ function RevenueEstimatesPage() {
                                   type="button"
                                   onClick={() => openMonthModal(r, m)}
                                   disabled={isComputed}
-                                  className={`w-24 mx-auto h-10 md:w-24 md:h-10 rounded-2xl border text-[11px] md:text-[12px] flex items-center justify-center shadow-sm transition ${
+                                  className={`w-24 mx-auto h-9 md:w-24 md:h-9 rounded-xl border text-[11px] md:text-[12px] flex items-center justify-center shadow-sm transition ${
                                     hasVal
                                       ? 'bg-[#edaf7c] border-[#edaf7c]/90 text-black'
                                       : 'bg-black/5 border-black/10 text-black/70 dark:bg-white/5 dark:border-neutral-700 dark:text-neutral-100'
@@ -974,7 +977,7 @@ function RevenueEstimatesPage() {
                             );
                           })}
 
-                          <TD className="px-3 py-2.5 whitespace-nowrap text-center border-l border-r border-black/10 dark:border-neutral-700">
+                          <TD className="px-3 py-2 whitespace-nowrap text-center border-l border-r border-black/10 dark:border-neutral-700">
                             <span className="inline-flex items-center justify-center gap-1">
                               <span className="ltr">{toFaDigits(formatMoney(rowTotal || 0))}</span>
                               <span>ریال</span>
