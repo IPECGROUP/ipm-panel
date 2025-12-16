@@ -96,6 +96,7 @@ function RevenueEstimatesPage() {
     months: p.months || {},
     children: p.children || [],
     expanded: !!p.expanded,
+    isOther: !!p.isOther,
   });
 
   const hasChildren = (node) => (node?.children || []).length > 0;
@@ -133,8 +134,6 @@ function RevenueEstimatesPage() {
   );
 
   const [projects, setProjects] = useState([]);
-  const [addProjectMode, setAddProjectMode] = useState('');
-  const [addSelectedProjectId, setAddSelectedProjectId] = useState('');
 
   useEffect(() => {
     if (canAccessPage !== true) return;
@@ -240,60 +239,6 @@ function RevenueEstimatesPage() {
     })();
   }, [buildTreeFromItems, canAccessPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const [addModal, setAddModal] = useState({ open: false, title: '', desc: '' });
-
-  const openAddModal = () => {
-    setAddModal({ open: true, title: '', desc: '' });
-    setAddProjectMode('');
-    setAddSelectedProjectId('');
-  };
-
-  const closeAddModal = () => setAddModal((prev) => ({ ...prev, open: false }));
-
-  const handleProjectSelectChange = (e) => {
-    const val = e.target.value;
-    if (!val) {
-      setAddProjectMode('');
-      setAddSelectedProjectId('');
-      setAddModal((prev) => ({ ...prev, title: '' }));
-    } else if (val === 'other') {
-      setAddProjectMode('other');
-      setAddSelectedProjectId('other');
-      setAddModal((prev) => ({ ...prev, title: '' }));
-    } else {
-      setAddProjectMode('select');
-      setAddSelectedProjectId(val);
-      const pr = projects.find((p) => String(p.id) === String(val));
-      const name = pr?.name || pr?.title || pr?.project_name || pr?.project || '';
-      setAddModal((prev) => ({ ...prev, title: name }));
-    }
-  };
-
-  const handleAddSave = () => {
-    const title = addModal.title.trim();
-    const desc = addModal.desc.trim();
-    if (!title) {
-      closeAddModal();
-      return;
-    }
-
-    const id = rowIdRef.current++;
-    const newRoot = makeNode({
-      id,
-      title,
-      desc,
-      projectId: addProjectMode === 'select' && addSelectedProjectId ? Number(addSelectedProjectId) : null,
-      months: {},
-      children: [],
-      expanded: false,
-    });
-
-    setRows((prev) => [...prev, newRoot]);
-    setAddModal({ open: false, title: '', desc: '' });
-    setAddProjectMode('');
-    setAddSelectedProjectId('');
-  };
-
   const [childModal, setChildModal] = useState({ open: false, parentId: null, title: '', desc: '' });
 
   const openChildModal = (parentId) => {
@@ -370,10 +315,50 @@ function RevenueEstimatesPage() {
     setRows((prev) => rec(prev));
   }, []);
 
-  const [viewRowModal, setViewRowModal] = useState({ open: false, row: null });
+  const updateNodeMeta = useCallback((nodes, id, patch) => {
+    const rec = (arr) =>
+      arr.map((n) => {
+        if (n.id === id) return { ...n, ...patch };
+        if (n.children?.length) return { ...n, children: rec(n.children) };
+        return n;
+      });
+    return rec(nodes);
+  }, []);
 
-  const openViewRowModal = (row) => setViewRowModal({ open: true, row });
-  const closeViewRowModal = () => setViewRowModal({ open: false, row: null });
+  const [editRowModal, setEditRowModal] = useState({
+    open: false,
+    rowId: null,
+    title: '',
+    desc: '',
+    isOther: false,
+  });
+
+  const openEditRowModal = (row) => {
+    setEditRowModal({
+      open: true,
+      rowId: row?.id || null,
+      title: row?.title || '',
+      desc: row?.desc || '',
+      isOther: !!row?.isOther,
+    });
+  };
+
+  const closeEditRowModal = () =>
+    setEditRowModal({ open: false, rowId: null, title: '', desc: '', isOther: false });
+
+  const saveEditRowModal = () => {
+    if (!editRowModal.rowId) {
+      closeEditRowModal();
+      return;
+    }
+    setRows((prev) =>
+      updateNodeMeta(prev, editRowModal.rowId, {
+        title: editRowModal.isOther ? editRowModal.title : undefined,
+        desc: editRowModal.desc,
+      })
+    );
+    closeEditRowModal();
+  };
 
   const [monthModal, setMonthModal] = useState({
     open: false,
@@ -469,6 +454,64 @@ function RevenueEstimatesPage() {
     if (!pathArr?.length) return '';
     const cleaned = pathArr.filter((x) => x !== 0);
     return cleaned.join('.');
+  };
+
+  const selectedProjectIds = useMemo(() => {
+    const s = new Set();
+    rows.forEach((r) => {
+      if (r?.projectId != null) s.add(String(r.projectId));
+    });
+    return s;
+  }, [rows]);
+
+  const hasOtherRoot = useMemo(
+    () => rows.some((r) => r?.isOther === true),
+    [rows]
+  );
+
+  const toggleProjectChip = (p) => {
+    const pid = String(p?.id ?? '');
+    if (!pid) return;
+
+    setRows((prev) => {
+      const exists = prev.some((r) => String(r.projectId) === pid);
+      if (exists) {
+        return prev.filter((r) => String(r.projectId) !== pid);
+      }
+
+      const name = p?.name || p?.title || p?.project_name || p?.project || '';
+      const newRoot = makeNode({
+        id: rowIdRef.current++,
+        title: name || 'پروژه بدون نام',
+        desc: '',
+        projectId: Number(pid),
+        months: {},
+        children: [],
+        expanded: true,
+      });
+
+      return [...prev, newRoot];
+    });
+  };
+
+  const toggleOtherChip = () => {
+    setRows((prev) => {
+      const exists = prev.some((r) => r?.isOther === true);
+      if (exists) return prev.filter((r) => r?.isOther !== true);
+
+      const newRoot = makeNode({
+        id: rowIdRef.current++,
+        title: '',
+        desc: '',
+        projectId: null,
+        months: {},
+        children: [],
+        expanded: true,
+        isOther: true,
+      });
+
+      return [...prev, newRoot];
+    });
   };
 
   const handleSave = async () => {
@@ -697,212 +740,263 @@ function RevenueEstimatesPage() {
   return (
     <>
       <Card>
-        <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
+        <div className="mb-3 text-black/70 dark:text-neutral-300 text-base md:text-lg">
           <span>بودجه‌بندی</span>
           <span className="mx-2">›</span>
           <span className="font-semibold text-black dark:text-neutral-100">برآورد درآمد ها</span>
         </div>
 
-        <TableWrap>
-          <div className="bg-white rounded-2xl overflow-hidden border border-black/10 shadow-sm text-black dark:bg-neutral-900 dark:text-neutral-200 dark:border-neutral-800">
-            <div className="overflow-x-auto">
-              <table className="w-full table-fixed text-[12px] md:text-[13px] text-center [&_th]:text-center [&_td]:text-center" dir="rtl">
-                <THead>
-                  <tr className="bg-black/5 border-b border-black/10 sticky top-0 z-10 text-black dark:bg-neutral-900 dark:text-neutral-300 dark:border-neutral-700">
-                    <TH className="!text-center py-3 w-14 !text-black dark:!text-neutral-300">#</TH>
-                    <TH className="!text-center py-3 w-56 !text-black dark:!text-neutral-300">پروژه / مورد</TH>
-                    {dynamicMonths.map((m) => (
-                      <TH key={m.key} className="!text-center py-3 w-24 px-0 !text-black dark:!text-neutral-300">
-                        {m.label}
-                      </TH>
-                    ))}
-                    <TH className="!text-center py-3 w-28 !text-black dark:!text-neutral-300 border-l border-r border-black/10 dark:border-neutral-700">
-                      جمع
-                    </TH>
-                  </tr>
-                </THead>
+        {/* کپسول پروژه‌ها */}
+        <div className="rounded-2xl border border-black/10 dark:border-neutral-800 bg-white/70 dark:bg-neutral-900/70 backdrop-blur px-3 py-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="text-xs text-black/60 dark:text-neutral-400">پروژه‌ها را انتخاب کنید تا وارد جدول شوند:</div>
+            <div className="text-xs text-black/50 dark:text-neutral-500">
+              انتخاب‌شده: <span className="font-semibold">{toFaDigits(selectedProjectIds.size + (hasOtherRoot ? 1 : 0))}</span>
+            </div>
+          </div>
 
-                <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100">
-                  {rows.length > 0 && (
-                    <TR className="text-center border-t border-black/10 bg-black/[0.04] font-semibold dark:border-neutral-800 dark:bg-white/10">
-                      <TD className="px-2 py-3 border-b border-black/10 dark:border-neutral-800">-</TD>
-                      <TD className="px-2 py-3 text-center border-b border-black/10 dark:border-neutral-800">جمع</TD>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {projects.map((p) => {
+              const pid = String(p?.id ?? '');
+              const name = p?.name || p?.title || p?.project_name || p?.project || 'پروژه بدون نام';
+              const active = selectedProjectIds.has(pid);
+
+              return (
+                <button
+                  key={pid}
+                  type="button"
+                  onClick={() => toggleProjectChip(p)}
+                  className={`px-3 py-2 rounded-full text-xs md:text-[13px] border transition select-none
+                    ${active
+                      ? 'bg-black text-white border-black'
+                      : 'bg-white text-black border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-white/10'
+                    }`}
+                  title={active ? 'حذف از جدول' : 'افزودن به جدول'}
+                >
+                  {name}
+                </button>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={toggleOtherChip}
+              className={`px-3 py-2 rounded-full text-xs md:text-[13px] border transition select-none
+                ${hasOtherRoot
+                  ? 'bg-black text-white border-black'
+                  : 'bg-white text-black border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-white/10'
+                }`}
+              title={hasOtherRoot ? 'حذف از جدول' : 'افزودن مورد دلخواه'}
+            >
+              سایر
+            </button>
+          </div>
+        </div>
+
+        {/* جدول (کمی پایین‌تر + فاصله‌ها جمع‌وجورتر) */}
+        <div className="mt-4">
+          <TableWrap>
+            <div className="bg-white rounded-2xl overflow-hidden border border-black/10 shadow-sm text-black dark:bg-neutral-900 dark:text-neutral-200 dark:border-neutral-800">
+              <div className="overflow-x-auto">
+                <table className="w-full table-fixed text-[11px] md:text-[12px] text-center [&_th]:text-center [&_td]:text-center" dir="rtl">
+                  <THead>
+                    <tr className="bg-black/5 border-b border-black/10 sticky top-0 z-10 text-black dark:bg-neutral-900 dark:text-neutral-300 dark:border-neutral-700">
+                      <TH className="!text-center py-2.5 w-14 !text-black dark:!text-neutral-300">#</TH>
+                      <TH className="!text-center py-2.5 w-56 !text-black dark:!text-neutral-300">پروژه / مورد</TH>
                       {dynamicMonths.map((m) => (
-                        <TD key={m.key} className="px-0 py-2 text-center align-middle border-b border-black/10 dark:border-neutral-800">
-                          {totalsByMonth[m.key] ? (
-                            <span className="inline-flex items-center justify-center gap-1">
-                              <span className="ltr">{toFaDigits(formatMoney(totalsByMonth[m.key]))}</span>
-                              <span>ریال</span>
-                            </span>
-                          ) : (
-                            '—'
-                          )}
-                        </TD>
+                        <TH key={m.key} className="!text-center py-2.5 w-24 px-0 !text-black dark:!text-neutral-300">
+                          {m.label}
+                        </TH>
                       ))}
-                      <TD className="px-3 py-3 whitespace-nowrap text-center border-l border-r border-b border-black/10 dark:border-neutral-700">
-                        <span className="inline-flex items-center justify-center gap-1">
-                          <span className="ltr">{toFaDigits(formatMoney(totalGrand || 0))}</span>
-                          <span>ریال</span>
-                        </span>
-                      </TD>
-                    </TR>
-                  )}
+                      <TH className="!text-center py-2.5 w-28 !text-black dark:!text-neutral-300 border-l border-r border-black/10 dark:border-neutral-700">
+                        جمع
+                      </TH>
+                    </tr>
+                  </THead>
 
-                  {displayRows.map((x, idx) => {
-                    if (x.type === 'addChild') {
-                      return (
-                        <TR key={'addchild-' + x.parentId} className="border-t border-black/10 bg-black/[0.015] dark:border-neutral-800 dark:bg-white/5">
-                          <TD className="px-2 py-3 text-center text-black/60 dark:text-neutral-400">—</TD>
-                          <TD className="px-2 py-3 text-center">
-                            <div className="flex items-center justify-center" style={{ paddingInlineStart: Math.min(44, x.depth * 18) }}>
-                              <button
-                                type="button"
-                                onClick={() => openChildModal(x.parentId)}
-                                className="h-10 w-10 mx-auto grid place-items-center rounded-xl border border-black/30 bg-white hover:bg-black/5 dark:border-neutral-500 dark:bg-neutral-800 dark:hover:bg-neutral-700"
-                                aria-label="افزودن زیرمجموعه"
-                                title="افزودن زیرمجموعه"
-                              >
-                                <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
-                              </button>
-                            </div>
+                  <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100">
+                    {rows.length > 0 && (
+                      <TR className="text-center border-t border-black/10 bg-black/[0.04] font-semibold dark:border-neutral-800 dark:bg-white/10">
+                        <TD className="px-2 py-2.5 border-b border-black/10 dark:border-neutral-800">-</TD>
+                        <TD className="px-2 py-2.5 text-center border-b border-black/10 dark:border-neutral-800">جمع</TD>
+                        {dynamicMonths.map((m) => (
+                          <TD key={m.key} className="px-0 py-2 text-center align-middle border-b border-black/10 dark:border-neutral-800">
+                            {totalsByMonth[m.key] ? (
+                              <span className="inline-flex items-center justify-center gap-1">
+                                <span className="ltr">{toFaDigits(formatMoney(totalsByMonth[m.key]))}</span>
+                                <span>ریال</span>
+                              </span>
+                            ) : (
+                              '—'
+                            )}
                           </TD>
-                          {dynamicMonths.map((m) => (
-                            <TD key={m.key} className="px-0 py-2 text-center text-black/40 dark:text-neutral-500">—</TD>
-                          ))}
-                          <TD className="px-3 py-3 text-center text-black/40 dark:text-neutral-500">—</TD>
-                        </TR>
-                      );
-                    }
-
-                    const r = x.node;
-                    const rowTotal = sumNodeMonths(r);
-                    const isComputed = hasChildren(r);
-                    const depthPad = Math.min(44, x.depth * 18);
-                    const idxText = indexLabel(x.indexPath);
-
-                    return (
-                      <TR
-                        key={r.id}
-                        className="text-center border-t border-black/10 odd:bg-black/[0.02] even:bg-black/[0.04] hover:bg-black/[0.06] transition-colors dark:border-neutral-800 dark:odd:bg-white/5 dark:even:bg-white/10 dark:hover:bg-white/15"
-                      >
-                        <TD className="px-2 py-3">{toFaDigits(idxText || (idx + 1))}</TD>
-
-                        <TD className="px-2 py-3 text-center whitespace-nowrap">
-                          <div className="flex items-center justify-center gap-2">
-                            <div className="flex items-center justify-center gap-2" style={{ paddingInlineStart: depthPad }}>
-                              <div
-                                role="button"
-                                tabIndex={0}
-                                onClick={() => openViewRowModal(r)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') openViewRowModal(r);
-                                }}
-                                className="inline-flex flex-row-reverse items-center gap-2 px-3 py-2 rounded-2xl border border-black/10 bg-white/90 shadow-sm ring-1 ring-black/5 text-[11px] text-black cursor-pointer select-none hover:bg-black/[0.03] hover:shadow transition dark:border-neutral-700 dark:bg-neutral-900/70 dark:ring-0 dark:text-neutral-100 dark:hover:bg-white/10"
-                                title="مشاهده جزئیات"
-                              >
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    toggleExpand(r.id);
-                                  }}
-                                  className="h-6 w-6 grid place-items-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10"
-                                  aria-label="باز/بسته"
-                                  title="باز/بسته"
-                                >
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="opacity-90">
-                                    <path
-                                      d={r.expanded ? 'M7 14l5-5 5 5' : 'M7 10l5 5 5-5'}
-                                      stroke="currentColor"
-                                      strokeWidth="2.2"
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                    />
-                                  </svg>
-                                </button>
-
-                                <span className="max-w-[220px] truncate">{r.title || '—'}</span>
-                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-black/50 dark:bg-white/70" />
-                              </div>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => removeNode(r.id)}
-                              className="inline-flex items-center justify-center p-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10"
-                              aria-label="حذف"
-                              title="حذف"
-                            >
-                              <img src="/images/icons/bastan.svg" alt="" className="w-4 h-4 dark:invert" />
-                            </button>
-                          </div>
-                        </TD>
-
-                        {dynamicMonths.map((m) => {
-                          const val = sumNodeMonth(r, m.key);
-                          const hasVal = !!val;
-                          return (
-                            <TD key={m.key} className="px-0 py-2 text-center align-middle">
-                              <button
-                                type="button"
-                                onClick={() => openMonthModal(r, m)}
-                                disabled={isComputed}
-                                className={`w-24 mx-auto h-12 md:w-24 md:h-12 rounded-2xl border text-[11px] md:text-[12px] flex items-center justify-center shadow-sm transition ${
-                                  hasVal
-                                    ? 'bg-[#edaf7c] border-[#edaf7c]/90 text-black'
-                                    : 'bg-black/5 border-black/10 text-black/70 dark:bg-white/5 dark:border-neutral-700 dark:text-neutral-100'
-                                } ${isComputed ? 'opacity-70 cursor-default' : 'cursor-pointer'}`}
-                                title={isComputed ? 'این مقدار از زیرمجموعه‌ها محاسبه می‌شود' : 'ثبت/ویرایش مقدار'}
-                              >
-                                {hasVal ? (
-                                  <div className="flex flex-col items-center justify-center leading-tight">
-                                    <span>{toFaDigits(formatMoney(val))}</span>
-                                    <span className="mt-0.5 text-[10px] text-black/70 dark:text-neutral-300">ریال</span>
-                                  </div>
-                                ) : (
-                                  '—'
-                                )}
-                              </button>
-                            </TD>
-                          );
-                        })}
-
-                        <TD className="px-3 py-3 whitespace-nowrap text-center border-l border-r border-black/10 dark:border-neutral-700">
+                        ))}
+                        <TD className="px-3 py-2.5 whitespace-nowrap text-center border-l border-r border-b border-black/10 dark:border-neutral-700">
                           <span className="inline-flex items-center justify-center gap-1">
-                            <span className="ltr">{toFaDigits(formatMoney(rowTotal || 0))}</span>
+                            <span className="ltr">{toFaDigits(formatMoney(totalGrand || 0))}</span>
                             <span>ریال</span>
                           </span>
                         </TD>
                       </TR>
-                    );
-                  })}
+                    )}
 
-                  <TR className="border-t border-black/10 bg-black/[0.015] dark:border-neutral-800 dark:bg-white/5">
-                    <TD className="px-2 py-3 text-center text-black/60 dark:text-neutral-400">
-                      {rows.length ? '—' : toFaDigits(1)}
-                    </TD>
-                    <TD className="px-2 py-3 text-center">
-                      <button
-                        type="button"
-                        onClick={openAddModal}
-                        className="h-10 w-10 mx-auto grid place-items-center rounded-xl border border-black/30 bg-white hover:bg-black/5 dark:border-neutral-500 dark:bg-neutral-800 dark:hover:bg-neutral-700"
-                        aria-label="افزودن ردیف"
-                        title="افزودن ردیف جدید"
-                      >
-                        <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
-                      </button>
-                    </TD>
-                    {dynamicMonths.map((m) => (
-                      <TD key={m.key} className="px-0 py-2 text-center text-black/40 dark:text-neutral-500">—</TD>
-                    ))}
-                    <TD className="px-3 py-3 text-center text-black/40 dark:text-neutral-500">—</TD>
-                  </TR>
-                </tbody>
-              </table>
+                    {displayRows.map((x, idx) => {
+                      if (x.type === 'addChild') {
+                        return (
+                          <TR key={'addchild-' + x.parentId} className="border-t border-black/10 bg-black/[0.015] dark:border-neutral-800 dark:bg-white/5">
+                            <TD className="px-2 py-2.5 text-center text-black/60 dark:text-neutral-400">—</TD>
+                            <TD className="px-2 py-2.5 text-center">
+                              <div className="flex items-center justify-center" style={{ paddingInlineStart: Math.min(44, x.depth * 18) }}>
+                                <button
+                                  type="button"
+                                  onClick={() => openChildModal(x.parentId)}
+                                  className="h-10 w-10 mx-auto grid place-items-center rounded-xl border border-black/30 bg-white hover:bg-black/5 dark:border-neutral-500 dark:bg-neutral-800 dark:hover:bg-neutral-700"
+                                  aria-label="افزودن زیرمجموعه"
+                                  title="افزودن زیرمجموعه"
+                                >
+                                  <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
+                                </button>
+                              </div>
+                            </TD>
+                            {dynamicMonths.map((m) => (
+                              <TD key={m.key} className="px-0 py-2 text-center text-black/40 dark:text-neutral-500">—</TD>
+                            ))}
+                            <TD className="px-3 py-2.5 text-center text-black/40 dark:text-neutral-500">—</TD>
+                          </TR>
+                        );
+                      }
+
+                      const r = x.node;
+                      const rowTotal = sumNodeMonths(r);
+                      const isComputed = hasChildren(r);
+                      const depthPad = Math.min(44, x.depth * 18);
+                      const idxText = indexLabel(x.indexPath);
+
+                      return (
+                        <TR
+                          key={r.id}
+                          className="text-center border-t border-black/10 odd:bg-black/[0.02] even:bg-black/[0.04] hover:bg-black/[0.06] transition-colors dark:border-neutral-800 dark:odd:bg-white/5 dark:even:bg-white/10 dark:hover:bg-white/15"
+                        >
+                          <TD className="px-2 py-2.5">{toFaDigits(idxText || (idx + 1))}</TD>
+
+                          <TD className="px-2 py-2.5 text-center whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-2">
+                              <div className="flex items-center justify-center gap-2" style={{ paddingInlineStart: depthPad }}>
+                                <div
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={() => openEditRowModal(r)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') openEditRowModal(r);
+                                  }}
+                                  className="inline-flex flex-row-reverse items-center gap-2 px-3 py-2 rounded-2xl border border-black/10 bg-white/90 shadow-sm ring-1 ring-black/5 text-[11px] text-black cursor-pointer select-none hover:bg-black/[0.03] hover:shadow transition dark:border-neutral-700 dark:bg-neutral-900/70 dark:ring-0 dark:text-neutral-100 dark:hover:bg-white/10"
+                                  title="افزودن/ویرایش توضیحات"
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      toggleExpand(r.id);
+                                    }}
+                                    className="h-6 w-6 grid place-items-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10"
+                                    aria-label="باز/بسته"
+                                    title="باز/بسته"
+                                  >
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="opacity-90">
+                                      <path
+                                        d={r.expanded ? 'M7 14l5-5 5 5' : 'M7 10l5 5 5-5'}
+                                        stroke="currentColor"
+                                        strokeWidth="2.2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      />
+                                    </svg>
+                                  </button>
+
+                                  {r.isOther ? (
+                                    <input
+                                      value={r.title}
+                                      onClick={(e) => e.stopPropagation()}
+                                      onChange={(e) => {
+                                        const v = e.target.value;
+                                        setRows((prev) => updateNodeMeta(prev, r.id, { title: v }));
+                                      }}
+                                      placeholder="عنوان دلخواه..."
+                                      className="w-[180px] md:w-[220px] bg-transparent outline-none text-center placeholder-black/40 dark:placeholder-neutral-500"
+                                    />
+                                  ) : (
+                                    <span className="max-w-[220px] truncate">{r.title || '—'}</span>
+                                  )}
+
+                                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-black/50 dark:bg-white/70" />
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => removeNode(r.id)}
+                                className="inline-flex items-center justify-center p-1.5 rounded-md hover:bg-black/5 dark:hover:bg-white/10"
+                                aria-label="حذف"
+                                title="حذف"
+                              >
+                                <img src="/images/icons/bastan.svg" alt="" className="w-4 h-4 dark:invert" />
+                              </button>
+                            </div>
+                          </TD>
+
+                          {dynamicMonths.map((m) => {
+                            const val = sumNodeMonth(r, m.key);
+                            const hasVal = !!val;
+                            return (
+                              <TD key={m.key} className="px-0 py-2 text-center align-middle">
+                                <button
+                                  type="button"
+                                  onClick={() => openMonthModal(r, m)}
+                                  disabled={isComputed}
+                                  className={`w-24 mx-auto h-10 md:w-24 md:h-10 rounded-2xl border text-[11px] md:text-[12px] flex items-center justify-center shadow-sm transition ${
+                                    hasVal
+                                      ? 'bg-[#edaf7c] border-[#edaf7c]/90 text-black'
+                                      : 'bg-black/5 border-black/10 text-black/70 dark:bg-white/5 dark:border-neutral-700 dark:text-neutral-100'
+                                  } ${isComputed ? 'opacity-70 cursor-default' : 'cursor-pointer'}`}
+                                  title={isComputed ? 'این مقدار از زیرمجموعه‌ها محاسبه می‌شود' : 'ثبت/ویرایش مقدار'}
+                                >
+                                  {hasVal ? (
+                                    <div className="flex flex-col items-center justify-center leading-tight">
+                                      <span>{toFaDigits(formatMoney(val))}</span>
+                                      <span className="mt-0.5 text-[10px] text-black/70 dark:text-neutral-300">ریال</span>
+                                    </div>
+                                  ) : (
+                                    '—'
+                                  )}
+                                </button>
+                              </TD>
+                            );
+                          })}
+
+                          <TD className="px-3 py-2.5 whitespace-nowrap text-center border-l border-r border-black/10 dark:border-neutral-700">
+                            <span className="inline-flex items-center justify-center gap-1">
+                              <span className="ltr">{toFaDigits(formatMoney(rowTotal || 0))}</span>
+                              <span>ریال</span>
+                            </span>
+                          </TD>
+                        </TR>
+                      );
+                    })}
+
+                    {rows.length === 0 && (
+                      <TR className="border-t border-black/10 dark:border-neutral-800">
+                        <TD colSpan={totalCols} className="py-6 text-black/60 dark:text-neutral-400 text-center">
+                          از کپسول‌های بالا پروژه را انتخاب کنید تا وارد جدول شود.
+                        </TD>
+                      </TR>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-        </TableWrap>
+          </TableWrap>
+        </div>
 
         <div className="mt-4 flex items-center gap-2 justify-end">
           <button
@@ -969,83 +1063,6 @@ function RevenueEstimatesPage() {
           </div>
         )}
 
-        {addModal.open && (
-          <div className="fixed inset-0 z-40 grid place-items-center px-3">
-            <div className="absolute inset-0 bg-black/25 dark:bg-neutral-950/55 backdrop-blur-[2px]" onClick={closeAddModal} />
-            <div
-              className="relative w-full max-w-sm rounded-2xl bg-white text-neutral-900 border border-black/10 shadow-2xl dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 p-4 space-y-3"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="text-sm font-semibold">افزودن ردیف جدید</div>
-                  <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">یک پروژه / مورد جدید برای برآورد درآمد اضافه کنید.</div>
-                </div>
-                <button type="button" onClick={closeAddModal} className="h-8 w-8 grid place-items-center rounded-xl bg-black text-white dark:bg-neutral-100 dark:text-neutral-900">
-                  <img src="/images/icons/bastan.svg" alt="" className="w-4 h-4 invert dark:invert-0" />
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                <div className="space-y-1">
-                  <label className="text-xs text-neutral-600 dark:text-neutral-300">عنوان پروژه / مورد</label>
-
-                  <select
-                    className="mt-1 w-full rounded-xl px-3 py-2 text-sm bg-white text-neutral-900 border border-black/15 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                    value={addProjectMode === 'other' ? 'other' : addProjectMode === 'select' ? addSelectedProjectId : ''}
-                    onChange={handleProjectSelectChange}
-                  >
-                    <option value="">انتخاب پروژه...</option>
-                    {projects.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name || p.title || p.project_name || p.project || 'پروژه بدون نام'}
-                      </option>
-                    ))}
-                    <option value="other">سایر</option>
-                  </select>
-
-                  {addProjectMode === 'other' && (
-                    <input
-                      type="text"
-                      className="mt-2 w-full rounded-xl px-3 py-2 text-sm bg-white text-black placeholder-black/40 border border-black/15 outline-none focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-                      value={addModal.title}
-                      onChange={(e) => setAddModal((prev) => ({ ...prev, title: e.target.value }))}
-                      placeholder="مثلاً فروش خدمات، اجاره تجهیزات و ..."
-                    />
-                  )}
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs text-neutral-600 dark:text-neutral-300">توضیحات (اختیاری)</label>
-                  <textarea
-                    className="w-full min-h-[72px] rounded-xl px-3 py-2 text-sm bg-white text-black placeholder-black/40 border border-black/15 outline-none focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-                    value={addModal.desc}
-                    onChange={(e) => setAddModal((prev) => ({ ...prev, desc: e.target.value }))}
-                    placeholder="در صورت نیاز توضیحات تکمیلی را بنویسید."
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between gap-2 pt-1">
-                <button type="button" onClick={closeAddModal} className="h-9 px-4 rounded-xl border border-neutral-300 text-xs text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800">
-                  انصراف
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleAddSave}
-                  className="h-9 w-11 rounded-xl bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 grid place-items-center disabled:opacity-40 disabled:cursor-not-allowed"
-                  disabled={!addModal.title.trim()}
-                  aria-label="افزودن"
-                  title="افزودن"
-                >
-                  <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {childModal.open && (
           <div className="fixed inset-0 z-40 grid place-items-center px-3">
             <div className="absolute inset-0 bg-black/25 dark:bg-neutral-950/55 backdrop-blur-[2px]" onClick={closeChildModal} />
@@ -1103,19 +1120,19 @@ function RevenueEstimatesPage() {
           </div>
         )}
 
-        {viewRowModal.open && (
+        {editRowModal.open && (
           <div className="fixed inset-0 z-40 grid place-items-center px-3">
-            <div className="absolute inset-0 bg-black/25 dark:bg-neutral-950/55 backdrop-blur-[2px]" onClick={closeViewRowModal} />
+            <div className="absolute inset-0 bg-black/25 dark:bg-neutral-950/55 backdrop-blur-[2px]" onClick={closeEditRowModal} />
             <div
               className="relative w-full max-w-sm rounded-2xl bg-white text-neutral-900 border border-black/10 shadow-2xl dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 p-4 space-y-3"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <div className="text-sm font-semibold">جزئیات ردیف</div>
-                  <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">عنوان و توضیحات ثبت‌شده را مشاهده می‌کنید.</div>
+                  <div className="text-sm font-semibold">جزئیات / توضیحات</div>
+                  <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">در صورت نیاز، توضیحات را ثبت کنید.</div>
                 </div>
-                <button type="button" onClick={closeViewRowModal} className="h-8 w-8 grid place-items-center rounded-xl bg-black text-white dark:bg-neutral-100 dark:text-neutral-900">
+                <button type="button" onClick={closeEditRowModal} className="h-8 w-8 grid place-items-center rounded-xl bg-black text-white dark:bg-neutral-100 dark:text-neutral-900">
                   <img src="/images/icons/bastan.svg" alt="" className="w-4 h-4 invert dark:invert-0" />
                 </button>
               </div>
@@ -1123,22 +1140,44 @@ function RevenueEstimatesPage() {
               <div className="space-y-2">
                 <div className="space-y-1">
                   <label className="text-xs text-neutral-600 dark:text-neutral-300">عنوان</label>
-                  <div className="mt-1 w-full rounded-xl px-3 py-2 text-sm bg-black/[0.02] text-black border border-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700">
-                    {viewRowModal.row?.title || '—'}
-                  </div>
+
+                  {editRowModal.isOther ? (
+                    <input
+                      type="text"
+                      className="w-full rounded-xl px-3 py-2 text-sm bg-white text-black placeholder-black/40 border border-black/15 outline-none focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                      value={editRowModal.title}
+                      onChange={(e) => setEditRowModal((p) => ({ ...p, title: e.target.value }))}
+                      placeholder="عنوان دلخواه را وارد کنید"
+                    />
+                  ) : (
+                    <div className="mt-1 w-full rounded-xl px-3 py-2 text-sm bg-black/[0.02] text-black border border-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700">
+                      {editRowModal.title || '—'}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs text-neutral-600 dark:text-neutral-300">توضیحات</label>
-                  <div className="w-full min-h-[72px] rounded-xl px-3 py-2 text-sm bg-black/[0.02] text-black border border-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 whitespace-pre-wrap">
-                    {viewRowModal.row?.desc?.trim() ? viewRowModal.row.desc : 'بدون توضیحات'}
-                  </div>
+                  <label className="text-xs text-neutral-600 dark:text-neutral-300">توضیحات (اختیاری)</label>
+                  <textarea
+                    className="w-full min-h-[88px] rounded-xl px-3 py-2 text-sm bg-white text-black placeholder-black/40 border border-black/15 outline-none focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                    value={editRowModal.desc}
+                    onChange={(e) => setEditRowModal((p) => ({ ...p, desc: e.target.value }))}
+                    placeholder="مثلاً توضیحات تکمیلی برای این مورد..."
+                  />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-1">
-                <button type="button" onClick={closeViewRowModal} className="h-9 px-5 rounded-xl border border-neutral-300 text-xs text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800">
-                  بستن
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <button type="button" onClick={closeEditRowModal} className="h-9 px-4 rounded-xl border border-neutral-300 text-xs text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800">
+                  انصراف
+                </button>
+                <button
+                  type="button"
+                  onClick={saveEditRowModal}
+                  className="h-9 px-5 rounded-xl bg-neutral-900 text-xs text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                  disabled={editRowModal.isOther ? !editRowModal.title.trim() : false}
+                >
+                  ذخیره
                 </button>
               </div>
             </div>
