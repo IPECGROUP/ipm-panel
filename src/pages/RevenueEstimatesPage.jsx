@@ -239,6 +239,94 @@ function RevenueEstimatesPage() {
     })();
   }, [buildTreeFromItems, canAccessPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ===== Auto Save (برای حذف/کپسول‌ها و سایر تغییرات) =====
+  const saveTimerRef = useRef(null);
+  const savingRef = useRef(false);
+  const pendingRowsRef = useRef(null);
+  const lastSavedRef = useRef('');
+
+  const saveRowsToServer = useCallback(
+    async (rowsArg) => {
+      const flatten = [];
+      const buildTitlePath = (prefix, node) => (prefix ? prefix + SEP + node.title : node.title);
+
+      const walk = (node, prefix) => {
+        const titlePath = buildTitlePath(prefix, node);
+        const months = dynamicMonths.map((m) => ({
+          key: m.key,
+          month_index: m.monthIndex,
+          label: m.label,
+          amount: hasChildren(node) ? sumNodeMonth(node, m.key) : Number(node.months?.[m.key] || 0),
+        }));
+        const total = months.reduce((acc, mm) => acc + (mm.amount || 0), 0);
+
+        flatten.push({
+          title: titlePath,
+          description: node.desc || '',
+          project_id: node.projectId || null,
+          months,
+          amount: total,
+        });
+
+        (node.children || []).forEach((ch) => walk(ch, titlePath));
+      };
+
+      (rowsArg || []).forEach((r) => walk(r, ''));
+
+      const payloadRows = flatten.map((r, idx) => ({
+        code: 'R' + (idx + 1),
+        row_index: idx + 1,
+        title: r.title,
+        description: r.description,
+        project_id: r.project_id,
+        months: r.months,
+        amount: r.amount,
+      }));
+
+      const sig = JSON.stringify(payloadRows);
+      if (sig === lastSavedRef.current) return;
+
+      await api('/revenue-estimates', {
+        method: 'POST',
+        body: JSON.stringify({ rows: payloadRows }),
+      });
+
+      lastSavedRef.current = sig;
+    },
+    [api, dynamicMonths, hasChildren, sumNodeMonth]
+  );
+
+  const scheduleSave = useCallback(
+    (nextRows, delay = 250) => {
+      if (canAccessPage !== true) return;
+      pendingRowsRef.current = nextRows;
+
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(async () => {
+        if (savingRef.current) return;
+        savingRef.current = true;
+        try {
+          await saveRowsToServer(pendingRowsRef.current || []);
+        } catch (e) {
+          console.error('auto save revenue estimates failed', e);
+        } finally {
+          savingRef.current = false;
+        }
+      }, delay);
+    },
+    [canAccessPage, saveRowsToServer]
+  );
+
+  const handleSave = async () => {
+    try {
+      await saveRowsToServer(rows || []);
+      alert('برآورد درآمد با موفقیت ذخیره شد.');
+    } catch (e) {
+      console.error('save revenue estimates failed', e);
+      alert('ذخیره برآورد با خطا مواجه شد.');
+    }
+  };
+
   const [childModal, setChildModal] = useState({ open: false, parentId: null, title: '', desc: '' });
 
   const openChildModal = (parentId) => {
@@ -290,10 +378,14 @@ function RevenueEstimatesPage() {
       return null;
     };
     const pProjectId = findProjectId(rows, childModal.parentId);
-
     newChild.projectId = pProjectId;
 
-    setRows((prev) => addChildToTree(prev, childModal.parentId, newChild));
+    setRows((prev) => {
+      const next = addChildToTree(prev, childModal.parentId, newChild);
+      scheduleSave(next, 350);
+      return next;
+    });
+
     setChildModal({ open: false, parentId: null, title: '', desc: '' });
   };
 
@@ -307,13 +399,21 @@ function RevenueEstimatesPage() {
     setRows((prev) => rec(prev));
   }, []);
 
-  const removeNode = useCallback((id) => {
-    const rec = (nodes) =>
-      nodes
-        .filter((n) => n.id !== id)
-        .map((n) => (n.children?.length ? { ...n, children: rec(n.children) } : n));
-    setRows((prev) => rec(prev));
-  }, []);
+  const removeNode = useCallback(
+    (id) => {
+      const rec = (nodes) =>
+        nodes
+          .filter((n) => n.id !== id)
+          .map((n) => (n.children?.length ? { ...n, children: rec(n.children) } : n));
+
+      setRows((prev) => {
+        const next = rec(prev);
+        scheduleSave(next, 120);
+        return next;
+      });
+    },
+    [scheduleSave]
+  );
 
   const updateNodeMeta = useCallback((nodes, id, patch) => {
     const rec = (arr) =>
@@ -351,12 +451,14 @@ function RevenueEstimatesPage() {
       closeEditRowModal();
       return;
     }
-    setRows((prev) =>
-      updateNodeMeta(prev, editRowModal.rowId, {
+    setRows((prev) => {
+      const next = updateNodeMeta(prev, editRowModal.rowId, {
         title: editRowModal.isOther ? editRowModal.title : undefined,
         desc: editRowModal.desc,
-      })
-    );
+      });
+      scheduleSave(next, 500);
+      return next;
+    });
     closeEditRowModal();
   };
 
@@ -414,7 +516,11 @@ function RevenueEstimatesPage() {
     }
     const num = parseMoney(monthModal.value);
 
-    setRows((prev) => updateNodeMonths(prev, monthModal.rowId, monthModal.monthKey, num));
+    setRows((prev) => {
+      const next = updateNodeMonths(prev, monthModal.rowId, monthModal.monthKey, num);
+      scheduleSave(next, 350);
+      return next;
+    });
 
     setMonthModal({
       open: false,
@@ -475,102 +581,53 @@ function RevenueEstimatesPage() {
 
     setRows((prev) => {
       const exists = prev.some((r) => String(r.projectId) === pid);
+      let next = prev;
+
       if (exists) {
-        return prev.filter((r) => String(r.projectId) !== pid);
+        next = prev.filter((r) => String(r.projectId) !== pid);
+      } else {
+        const name = p?.name || p?.title || p?.project_name || p?.project || '';
+        const newRoot = makeNode({
+          id: rowIdRef.current++,
+          title: name || 'پروژه بدون نام',
+          desc: '',
+          projectId: Number(pid),
+          months: {},
+          children: [],
+          expanded: true,
+        });
+        next = [...prev, newRoot];
       }
 
-      const name = p?.name || p?.title || p?.project_name || p?.project || '';
-      const newRoot = makeNode({
-        id: rowIdRef.current++,
-        title: name || 'پروژه بدون نام',
-        desc: '',
-        projectId: Number(pid),
-        months: {},
-        children: [],
-        expanded: true,
-      });
-
-      return [...prev, newRoot];
+      scheduleSave(next, 250);
+      return next;
     });
   };
 
   const toggleOtherChip = () => {
     setRows((prev) => {
       const exists = prev.some((r) => r?.isOther === true);
-      if (exists) return prev.filter((r) => r?.isOther !== true);
+      let next = prev;
 
-      const newRoot = makeNode({
-        id: rowIdRef.current++,
-        title: '',
-        desc: '',
-        projectId: null,
-        months: {},
-        children: [],
-        expanded: true,
-        isOther: true,
-      });
+      if (exists) {
+        next = prev.filter((r) => r?.isOther !== true);
+      } else {
+        const newRoot = makeNode({
+          id: rowIdRef.current++,
+          title: '',
+          desc: '',
+          projectId: null,
+          months: {},
+          children: [],
+          expanded: true,
+          isOther: true,
+        });
+        next = [...prev, newRoot];
+      }
 
-      return [...prev, newRoot];
+      scheduleSave(next, 250);
+      return next;
     });
-  };
-
-  const handleSave = async () => {
-    if (!rows.length) return;
-
-    const flatten = [];
-    const buildTitlePath = (prefix, node) => (prefix ? prefix + SEP + node.title : node.title);
-
-    const walk = (node, prefix) => {
-      const titlePath = buildTitlePath(prefix, node);
-      const months = dynamicMonths.map((m) => ({
-        key: m.key,
-        month_index: m.monthIndex,
-        label: m.label,
-        amount: hasChildren(node) ? sumNodeMonth(node, m.key) : Number(node.months?.[m.key] || 0),
-      }));
-      const total = months.reduce((acc, mm) => acc + (mm.amount || 0), 0);
-
-      flatten.push({
-        title: titlePath,
-        description: node.desc || '',
-        project_id: node.projectId || null,
-        months,
-        amount: total,
-      });
-
-      (node.children || []).forEach((ch) => walk(ch, titlePath));
-    };
-
-    rows.forEach((r) => walk(r, ''));
-
-    try {
-      const payloadRows = flatten.map((r, idx) => ({
-        code: 'R' + (idx + 1),
-        row_index: idx + 1,
-        title: r.title,
-        description: r.description,
-        project_id: r.project_id,
-        months: r.months,
-        amount: r.amount,
-      }));
-
-      await api('/revenue-estimates', {
-        method: 'POST',
-        body: JSON.stringify({ rows: payloadRows }),
-      });
-
-      const data = await api('/revenue-estimates');
-      const items = data.items || [];
-      items.sort((a, b) => (a.row_index || 0) - (b.row_index || 0));
-      rowIdRef.current = 1;
-      const tree = buildTreeFromItems(items);
-      setRows(tree);
-
-      alert('برآورد درآمد با موفقیت ذخیره شد.');
-    } catch (e) {
-      console.error('save revenue estimates failed', e);
-      alert('ذخیره برآورد با خطا مواجه شد.');
-    }
   };
 
   const totalCols = 2 + dynamicMonths.length + 1;
@@ -766,12 +823,12 @@ function RevenueEstimatesPage() {
                   key={pid}
                   type="button"
                   onClick={() => toggleProjectChip(p)}
-                  className={`px-3 py-2 rounded-full text-xs md:text-[13px] border transition select-none
+                  className={`px-3 py-2 rounded-full text-xs md:text-[13px] border transition select-none shadow-sm
                     ${active
                       ? 'bg-black text-white border-black'
                       : 'bg-white text-black border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-white/10'
                     }`}
-                  title={active ? 'حذف از جدول' : 'افزودن به جدول'}
+                  title={active ? 'حذف از جدول (و ذخیره)' : 'افزودن به جدول (و ذخیره)'}
                 >
                   {name}
                 </button>
@@ -781,19 +838,19 @@ function RevenueEstimatesPage() {
             <button
               type="button"
               onClick={toggleOtherChip}
-              className={`px-3 py-2 rounded-full text-xs md:text-[13px] border transition select-none
+              className={`px-3 py-2 rounded-full text-xs md:text-[13px] border transition select-none shadow-sm
                 ${hasOtherRoot
                   ? 'bg-black text-white border-black'
                   : 'bg-white text-black border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-white/10'
                 }`}
-              title={hasOtherRoot ? 'حذف از جدول' : 'افزودن مورد دلخواه'}
+              title={hasOtherRoot ? 'حذف سایر (و ذخیره)' : 'افزودن سایر (و ذخیره)'}
             >
               سایر
             </button>
           </div>
         </div>
 
-        {/* جدول (کمی پایین‌تر + فاصله‌ها جمع‌وجورتر) */}
+        {/* جدول */}
         <div className="mt-4">
           <TableWrap>
             <div className="bg-white rounded-2xl overflow-hidden border border-black/10 shadow-sm text-black dark:bg-neutral-900 dark:text-neutral-200 dark:border-neutral-800">
@@ -883,7 +940,7 @@ function RevenueEstimatesPage() {
                           <TD className="px-2 py-2">{toFaDigits(idxText || (idx + 1))}</TD>
 
                           <TD className="px-2 py-2 text-center whitespace-nowrap">
-                            <div className="flex items-center justify-center gap-1.5">
+                            <div className="flex items-center justify-center gap-2">
                               <div className="flex items-center justify-center gap-2" style={{ paddingInlineStart: depthPad }}>
                                 <div
                                   role="button"
@@ -892,7 +949,7 @@ function RevenueEstimatesPage() {
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter') openEditRowModal(r);
                                   }}
-                                  className="inline-flex flex-row-reverse items-center gap-2 px-3 py-1.5 rounded-full border border-black/10 bg-white/85 shadow-sm ring-1 ring-black/5 text-[11px] text-black cursor-pointer select-none hover:bg-black/[0.03] hover:shadow transition dark:border-neutral-700 dark:bg-neutral-900/70 dark:ring-0 dark:text-neutral-100 dark:hover:bg-white/10"
+                                  className="inline-flex flex-row-reverse items-center gap-2 px-3 py-1.5 rounded-full border border-black/10 bg-white/90 shadow-sm ring-1 ring-black/5 text-[11px] text-black cursor-pointer select-none hover:bg-black/[0.03] hover:shadow transition dark:border-neutral-700 dark:bg-neutral-900/70 dark:ring-0 dark:text-neutral-100 dark:hover:bg-white/10"
                                   title="افزودن/ویرایش توضیحات"
                                 >
                                   <button
@@ -918,21 +975,28 @@ function RevenueEstimatesPage() {
                                   </button>
 
                                   {r.isOther ? (
-                                    <input
-                                      value={r.title}
-                                      onClick={(e) => e.stopPropagation()}
-                                      onChange={(e) => {
-                                        const v = e.target.value;
-                                        setRows((prev) => updateNodeMeta(prev, r.id, { title: v }));
-                                      }}
-                                      placeholder="عنوان دلخواه..."
-                                      className="w-[170px] md:w-[210px] bg-transparent outline-none text-center placeholder-black/40 dark:placeholder-neutral-500"
-                                    />
+                                    <div className="flex items-center gap-2">
+                                      <span className="px-2 py-1 rounded-full text-[10px] border border-black/10 bg-black/[0.03] text-black/70 dark:border-neutral-700 dark:bg-white/5 dark:text-neutral-200">
+                                        سایر
+                                      </span>
+                                      <input
+                                        value={r.title}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onChange={(e) => {
+                                          const v = e.target.value;
+                                          setRows((prev) => {
+                                            const next = updateNodeMeta(prev, r.id, { title: v });
+                                            scheduleSave(next, 700);
+                                            return next;
+                                          });
+                                        }}
+                                        placeholder="عنوان..."
+                                        className="w-[110px] md:w-[130px] bg-transparent outline-none text-center placeholder-black/40 dark:placeholder-neutral-500"
+                                      />
+                                    </div>
                                   ) : (
                                     <span className="max-w-[220px] truncate">{r.title || '—'}</span>
                                   )}
-
-                                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-black/50 dark:bg-white/70" />
                                 </div>
                               </div>
 
@@ -941,9 +1005,9 @@ function RevenueEstimatesPage() {
                                 onClick={() => removeNode(r.id)}
                                 className="h-8 w-8 grid place-items-center rounded-xl ring-1 ring-black/10 hover:bg-black/5 dark:ring-neutral-700 dark:hover:bg-white/10"
                                 aria-label="حذف"
-                                title="حذف"
+                                title="حذف (و ذخیره)"
                               >
-                                <img src="/images/icons/bastan.svg" alt="" className="w-4 h-4 dark:invert" />
+                                <img src="/images/icons/bastan.svg" alt="" className="w-3 h-3 dark:invert" />
                               </button>
                             </div>
                           </TD>
@@ -962,7 +1026,7 @@ function RevenueEstimatesPage() {
                                       ? 'bg-[#edaf7c] border-[#edaf7c]/90 text-black'
                                       : 'bg-black/5 border-black/10 text-black/70 dark:bg-white/5 dark:border-neutral-700 dark:text-neutral-100'
                                   } ${isComputed ? 'opacity-70 cursor-default' : 'cursor-pointer'}`}
-                                  title={isComputed ? 'این مقدار از زیرمجموعه‌ها محاسبه می‌شود' : 'ثبت/ویرایش مقدار'}
+                                  title={isComputed ? 'این مقدار از زیرمجموعه‌ها محاسبه می‌شود' : 'ثبت/ویرایش مقدار (و ذخیره)'}
                                 >
                                   {hasVal ? (
                                     <div className="flex flex-col items-center justify-center leading-tight">
@@ -1001,13 +1065,13 @@ function RevenueEstimatesPage() {
           </TableWrap>
         </div>
 
+        {/* دکمه ذخیره دستی (اختیاری) */}
         <div className="mt-4 flex items-center gap-2 justify-end">
           <button
             onClick={handleSave}
             className="h-10 w-10 rounded-xl bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200 grid place-items-center disabled:opacity-40 disabled:cursor-not-allowed"
-            aria-label="ذخیره برآورد"
-            title="ذخیره برآورد"
-            disabled={!rows.length}
+            aria-label="ذخیره دستی"
+            title="ذخیره دستی"
           >
             <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
           </button>
