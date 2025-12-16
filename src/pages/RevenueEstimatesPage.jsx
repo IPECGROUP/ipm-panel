@@ -147,6 +147,30 @@ function RevenueEstimatesPage() {
     })();
   }, [canAccessPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const projectById = useMemo(() => {
+    const m = new Map();
+    (projects || []).forEach((p) => {
+      const id = p?.id;
+      if (id != null) m.set(String(id), p);
+    });
+    return m;
+  }, [projects]);
+
+  const getProjectLabel = useCallback((p) => {
+    const code = String(p?.code ?? p?.project_code ?? p?.projectCode ?? '').trim();
+    const name = String(p?.name ?? p?.title ?? p?.project_name ?? p?.project ?? '').trim();
+    if (code && name) return `${code} - ${name}`;
+    return code || name || 'پروژه بدون نام';
+  }, []);
+
+  const getProjectLabelById = useCallback(
+    (pid, fallback = '') => {
+      const p = projectById.get(String(pid));
+      return p ? getProjectLabel(p) : (fallback || '—');
+    },
+    [projectById, getProjectLabel]
+  );
+
   const SEP = ' › ';
 
   const buildTreeFromItems = useCallback(
@@ -434,10 +458,14 @@ function RevenueEstimatesPage() {
   });
 
   const openEditRowModal = (row) => {
+    const baseTitle = row?.title || '';
+    const showTitle =
+      row?.isOther ? baseTitle : (row?.projectId != null ? getProjectLabelById(row.projectId, baseTitle) : baseTitle);
+
     setEditRowModal({
       open: true,
       rowId: row?.id || null,
-      title: row?.title || '',
+      title: showTitle || '',
       desc: row?.desc || '',
       isOther: !!row?.isOther,
     });
@@ -575,31 +603,46 @@ function RevenueEstimatesPage() {
     [rows]
   );
 
-  const toggleProjectChip = (p) => {
-    const pid = String(p?.id ?? '');
+  const [pickedProjectId, setPickedProjectId] = useState('');
+
+  const addPickedProject = () => {
+    const pid = String(pickedProjectId || '');
     if (!pid) return;
+    if (selectedProjectIds.has(pid)) {
+      setPickedProjectId('');
+      return;
+    }
+    const p = projectById.get(pid);
+    if (!p) return;
 
     setRows((prev) => {
       const exists = prev.some((r) => String(r.projectId) === pid);
-      let next = prev;
+      if (exists) return prev;
 
-      if (exists) {
-        next = prev.filter((r) => String(r.projectId) !== pid);
-      } else {
-        const name = p?.name || p?.title || p?.project_name || p?.project || '';
-        const newRoot = makeNode({
-          id: rowIdRef.current++,
-          title: name || 'پروژه بدون نام',
-          desc: '',
-          projectId: Number(pid),
-          months: {},
-          children: [],
-          expanded: true,
-        });
-        next = [...prev, newRoot];
-      }
+      const newRoot = makeNode({
+        id: rowIdRef.current++,
+        title: getProjectLabel(p),
+        desc: '',
+        projectId: Number(pid),
+        months: {},
+        children: [],
+        expanded: true,
+      });
 
+      const next = [...prev, newRoot];
       scheduleSave(next, 250);
+      return next;
+    });
+
+    setPickedProjectId('');
+  };
+
+  const removeProjectById = (pid) => {
+    const spid = String(pid || '');
+    if (!spid) return;
+    setRows((prev) => {
+      const next = prev.filter((r) => String(r.projectId) !== spid);
+      scheduleSave(next, 120);
       return next;
     });
   };
@@ -629,6 +672,18 @@ function RevenueEstimatesPage() {
       return next;
     });
   };
+
+  const selectedProjectsForChips = useMemo(() => {
+    return (rows || [])
+      .filter((r) => r?.projectId != null)
+      .map((r) => {
+        const pid = String(r.projectId);
+        return {
+          pid,
+          label: getProjectLabelById(pid, r.title || '—'),
+        };
+      });
+  }, [rows, getProjectLabelById]);
 
   const totalCols = 2 + dynamicMonths.length + 1;
 
@@ -687,6 +742,11 @@ function RevenueEstimatesPage() {
       .map((x, i) => {
         const r = x.node;
         const rowTotal = sumNodeMonths(r);
+        const titleCell =
+          x.depth === 0 && r?.projectId != null
+            ? getProjectLabelById(r.projectId, r.title || '—')
+            : (r.title || '—');
+
         const monthsHtml = dynamicMonths
           .map((m) => {
             const val = sumNodeMonth(r, m.key);
@@ -696,7 +756,7 @@ function RevenueEstimatesPage() {
         return `
           <tr>
             <td>${buildCell(toFaDigits(indexLabel(x.indexPath) || (i + 1)))}</td>
-            <td>${buildCell(r.title || '—')}</td>
+            <td>${buildCell(titleCell)}</td>
             ${monthsHtml}
             <td>${rowTotal ? buildCell(toFaDigits(formatMoney(rowTotal))) : '—'}</td>
           </tr>
@@ -803,7 +863,7 @@ function RevenueEstimatesPage() {
           <span className="font-semibold text-black dark:text-neutral-100">برآورد درآمد ها</span>
         </div>
 
-        {/* کپسول پروژه‌ها */}
+        {/* کپسول/انتخاب پروژه‌ها */}
         <div className="rounded-2xl border border-black/10 dark:border-neutral-800 bg-white/70 dark:bg-neutral-900/70 backdrop-blur px-3 py-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="text-xs text-black/60 dark:text-neutral-400">پروژه‌ها را انتخاب کنید تا وارد جدول شوند:</div>
@@ -812,25 +872,65 @@ function RevenueEstimatesPage() {
             </div>
           </div>
 
-          <div className="mt-2 flex flex-wrap gap-2">
-            {projects.map((p) => {
-              const pid = String(p?.id ?? '');
-              const name = p?.name || p?.title || p?.project_name || p?.project || 'پروژه بدون نام';
-              const active = selectedProjectIds.has(pid);
+          {/* انتخاب پروژه + دکمه افزودن (مثل تصویر) */}
+          <div className="mt-3 flex items-center gap-2">
+            <div className="flex-1 flex items-stretch gap-2">
+              <select
+                value={pickedProjectId}
+                onChange={(e) => setPickedProjectId(e.target.value)}
+                className="flex-1 h-11 rounded-2xl border border-black/15 bg-white text-black px-3 text-sm outline-none focus:ring-2 focus:ring-black/10
+                  dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                title="انتخاب پروژه"
+              >
+                <option value="">پروژه را انتخاب کنید...</option>
+                {projects.map((p) => {
+                  const pid = String(p?.id ?? '');
+                  if (!pid) return null;
+                  return (
+                    <option key={pid} value={pid}>
+                      {getProjectLabel(p)}
+                    </option>
+                  );
+                })}
+              </select>
 
+              <button
+                type="button"
+                onClick={addPickedProject}
+                disabled={!pickedProjectId || selectedProjectIds.has(String(pickedProjectId))}
+                className="h-11 w-12 rounded-2xl bg-black text-white grid place-items-center transition disabled:opacity-40 disabled:cursor-not-allowed
+                  dark:bg-neutral-100 dark:text-neutral-900"
+                aria-label="افزودن پروژه"
+                title={
+                  !pickedProjectId
+                    ? 'ابتدا پروژه را انتخاب کنید'
+                    : selectedProjectIds.has(String(pickedProjectId))
+                      ? 'این پروژه قبلاً اضافه شده است'
+                      : 'افزودن پروژه به جدول'
+                }
+              >
+                <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
+              </button>
+            </div>
+          </div>
+
+          {/* کپسول‌های انتخاب‌شده */}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {selectedProjectsForChips.map((x) => {
+              const active = true;
               return (
                 <button
-                  key={pid}
+                  key={x.pid}
                   type="button"
-                  onClick={() => toggleProjectChip(p)}
+                  onClick={() => removeProjectById(x.pid)}
                   className={`px-3 py-2 rounded-full text-xs md:text-[13px] border transition select-none shadow-sm
                     ${active
                       ? 'bg-black text-white border-black'
                       : 'bg-white text-black border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-white/10'
                     }`}
-                  title={active ? 'حذف از جدول (و ذخیره)' : 'افزودن به جدول (و ذخیره)'}
+                  title="حذف از جدول (و ذخیره)"
                 >
-                  {name}
+                  {x.label}
                 </button>
               );
             })}
@@ -932,6 +1032,13 @@ function RevenueEstimatesPage() {
                       const depthPad = Math.min(44, x.depth * 18);
                       const idxText = indexLabel(x.indexPath);
 
+                      const displayTitle =
+                        r.isOther
+                          ? (r.title || '—')
+                          : (x.depth === 0 && r?.projectId != null
+                              ? getProjectLabelById(r.projectId, r.title || '—')
+                              : (r.title || '—'));
+
                       return (
                         <TR
                           key={r.id}
@@ -995,7 +1102,7 @@ function RevenueEstimatesPage() {
                                       />
                                     </div>
                                   ) : (
-                                    <span className="max-w-[220px] truncate">{r.title || '—'}</span>
+                                    <span className="max-w-[240px] truncate">{displayTitle}</span>
                                   )}
                                 </div>
                               </div>
@@ -1054,7 +1161,7 @@ function RevenueEstimatesPage() {
                     {rows.length === 0 && (
                       <TR className="border-t border-black/10 dark:border-neutral-800">
                         <TD colSpan={totalCols} className="py-6 text-black/60 dark:text-neutral-400 text-center">
-                          از کپسول‌های بالا پروژه را انتخاب کنید تا وارد جدول شود.
+                          از بخش انتخاب پروژه بالا، پروژه را اضافه کنید تا وارد جدول شود.
                         </TD>
                       </TR>
                     )}
@@ -1333,4 +1440,3 @@ function RevenueEstimatesPage() {
 }
 
 export default RevenueEstimatesPage;
-

@@ -76,23 +76,23 @@ export default function Shell() {
             : "border-black/10 bg-gradient-to-l from-black/5 to-transparent")
         }
       >
-        <div className="mx-auto max-w-[1400px] flex items-center justify-between gap-3 p-3 md:p-4">
+        <div className="mx-auto max-w-[1400px] flex items-center justify-between gap-2 p-2.5 md:p-3">
           <Link
             to="/"
-            className="flex items-center hover:opacity-95 transition"
+            className="flex items-center justify-start hover:opacity-95 transition shrink-0"
             aria-label="خانه"
             title="خانه"
           >
-            {/* هدر لایت/دارک */}
+            {/* لوگو لایت/دارک */}
             <img
-              src="/images/IPS%20headerr.png"
-              alt="IPS header"
-              className="h-9 md:h-11 w-auto object-contain block dark:hidden"
+              src="/images/light%20mode.png"
+              alt="logo"
+              className="h-7 md:h-8 w-auto object-contain block dark:hidden"
             />
             <img
-              src="/images/IPS%20headerrr%20dark%20mode.png"
-              alt="IPS header (dark)"
-              className="h-9 md:h-11 w-auto object-contain hidden dark:block"
+              src="/images/dark%20mode.png"
+              alt="logo (dark)"
+              className="h-7 md:h-8 w-auto object-contain hidden dark:block"
             />
           </Link>
 
@@ -270,4 +270,3 @@ export default function Shell() {
     </div>
   );
 }
-
