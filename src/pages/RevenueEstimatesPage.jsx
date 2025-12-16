@@ -97,6 +97,7 @@ function RevenueEstimatesPage() {
     children: p.children || [],
     expanded: !!p.expanded,
     isOther: !!p.isOther,
+    otherUid: p.otherUid || null,
   });
 
   const hasChildren = (node) => (node?.children || []).length > 0;
@@ -157,9 +158,32 @@ function RevenueEstimatesPage() {
 
   const SEP = ' › ';
 
+  // ===== UID helpers for "سایر" (پایداری بعد از رفرش) =====
+  const OTHER_UID_RE = /^\[\[OID:([^\]]+)\]\]\s*/;
+
+  const stripOtherUid = (s) => String(s || '').replace(OTHER_UID_RE, '').trim();
+  const parseOtherSeg0 = (seg0) => {
+    const raw = String(seg0 || '').trim();
+    const m = raw.match(OTHER_UID_RE);
+    if (!m) return { uid: null, title: raw };
+    return { uid: String(m[1] || '').trim() || null, title: stripOtherUid(raw) };
+  };
+
+  const genUid = () => {
+    try {
+      return (
+        Date.now().toString(36) +
+        '-' +
+        Math.random().toString(36).slice(2, 10)
+      ).toUpperCase();
+    } catch {
+      return String(Date.now());
+    }
+  };
+
   // ===== انتخاب‌ها (کپسول‌ها) =====
   const [poolProjectIds, setPoolProjectIds] = useState([]); // پروژه‌هایی که به کپسول‌ها اضافه شده‌اند
-  const [poolOtherIds, setPoolOtherIds] = useState([]);     // آیتم‌های "سایر" که ساخته شده‌اند (id روت)
+  const [poolOtherIds, setPoolOtherIds] = useState([]);     // سایرها (UID پایدار)
   const [selectedKeysArr, setSelectedKeysArr] = useState([]); // انتخاب‌های فعال برای نمایش در جدول اصلی
 
   const projectKey = (pid) => `p:${String(pid)}`;
@@ -196,23 +220,24 @@ function RevenueEstimatesPage() {
     });
   }, [projectById, getProjectLabel]);
 
-  const ensureRootForOther = useCallback(() => {
+  const ensureRootForOther = useCallback((uid, title) => {
     return makeNode({
       id: rowIdRef.current++,
-      title: '',
+      title: title || 'سایر',
       desc: '',
       projectId: null,
       months: {},
       children: [],
       expanded: true,
       isOther: true,
+      otherUid: uid || genUid(),
     });
   }, []);
 
   const visibleRoots = useMemo(() => {
     const keys = selectedKeys;
     return (allRows || []).filter((r) => {
-      const k = r?.projectId != null ? projectKey(r.projectId) : otherKey(r.id);
+      const k = r?.projectId != null ? projectKey(r.projectId) : otherKey(r.otherUid || r.id);
       return keys.has(k);
     });
   }, [allRows, selectedKeys]);
@@ -239,12 +264,14 @@ function RevenueEstimatesPage() {
       const rootMap = new Map();
 
       const getOrCreateChild = (parent, seg) => {
+        const segClean = String(seg || '').trim();
+        if (!segClean) return parent;
         const arr = parent.children || [];
-        let found = arr.find((x) => x.title === seg);
+        let found = arr.find((x) => x.title === segClean);
         if (!found) {
           found = makeNode({
             id: rowIdRef.current++,
-            title: seg,
+            title: segClean,
             desc: '',
             projectId: parent.projectId,
             months: {},
@@ -256,45 +283,64 @@ function RevenueEstimatesPage() {
         return found;
       };
 
-      const ensureRoot = (seg0, projectId, isOther) => {
-        const key = (projectId != null ? String(projectId) : 'null') + '::' + String(seg0);
+      const ensureRoot = (seg0, projectId, isOther, otherUid) => {
+        const key =
+          (projectId != null ? String(projectId) : 'null') +
+          '::' +
+          String(seg0) +
+          '::' +
+          String(otherUid || '');
         if (!rootMap.has(key)) {
           rootMap.set(
             key,
             makeNode({
               id: rowIdRef.current++,
-              title: seg0,
+              title: String(seg0 || '').trim(),
               desc: '',
               projectId: projectId != null ? projectId : null,
               months: {},
               children: [],
               expanded: false,
               isOther: !!isOther,
+              otherUid: otherUid || null,
             })
           );
         }
         return rootMap.get(key);
       };
 
-      items.forEach((it) => {
-        const rawTitle = String(it.title || it.code || '').trim();
-        if (!rawTitle) return;
-        const parts = rawTitle.split(SEP).map((x) => x.trim()).filter(Boolean);
-        if (!parts.length) return;
-
+      items.forEach((it, idx) => {
         const projectId = it.project_id ?? null;
         const isOther = it.is_other === true || it.isOther === true;
+
+        let rawTitle = String(it.title || '').trim();
+
+        // اگر عنوان خالی بود و "سایر" است، به‌جای R1/R2 یک عنوان صحیح بساز
+        if (!rawTitle && isOther) {
+          const ri = Number(it.row_index || (idx + 1)) || (idx + 1);
+          rawTitle = `سایر ${ri}`;
+        }
+
+        if (!rawTitle) return;
+
+        const partsRaw = rawTitle.split(SEP).map((x) => x.trim()).filter(Boolean);
+        if (!partsRaw.length) return;
+
+        // بخش اول می‌تواند UID مخفی داشته باشد
+        const p0 = parseOtherSeg0(partsRaw[0]);
+        const seg0 = p0.title || partsRaw[0];
+        const otherUid = isOther ? (p0.uid || null) : null;
 
         const monthsMap = {};
         (it.months || []).forEach((m) => {
           if (m && m.key) monthsMap[m.key] = Number(m.amount || 0);
         });
 
-        const root = ensureRoot(parts[0], projectId, isOther);
+        const root = ensureRoot(seg0, projectId, isOther, otherUid);
 
         let node = root;
-        for (let i = 1; i < parts.length; i++) {
-          node = getOrCreateChild(node, parts[i]);
+        for (let i = 1; i < partsRaw.length; i++) {
+          node = getOrCreateChild(node, partsRaw[i]);
         }
 
         node.desc = String(it.description || '');
@@ -307,52 +353,7 @@ function RevenueEstimatesPage() {
     []
   );
 
-  useEffect(() => {
-    if (canAccessPage !== true) return;
-    (async () => {
-      try {
-        const data = await api('/revenue-estimates');
-        const items = data.items || [];
-        if (!items.length) {
-          setAllRows([]);
-          setPoolProjectIds([]);
-          setPoolOtherIds([]);
-          setSelectedKeysArr([]);
-          return;
-        }
-
-        items.sort((a, b) => (a.row_index || 0) - (b.row_index || 0));
-
-        rowIdRef.current = 1;
-        const tree = buildTreeFromItems(items);
-        setAllRows(tree);
-
-        const pids = [];
-        const oids = [];
-        tree.forEach((r) => {
-          if (r?.projectId != null) pids.push(String(r.projectId));
-          else oids.push(r.id);
-        });
-
-        const uniqP = Array.from(new Set(pids));
-        const uniqO = Array.from(new Set(oids));
-
-        setPoolProjectIds(uniqP);
-        setPoolOtherIds(uniqO);
-
-        // پیش‌فرض: همه موارد موجود، داخل جدول نمایش داده شوند
-        const initKeys = [
-          ...uniqP.map((pid) => projectKey(pid)),
-          ...uniqO.map((oid) => otherKey(oid)),
-        ];
-        setSelectedKeysArr(initKeys);
-      } catch (e) {
-        console.error('load revenue estimates failed', e);
-      }
-    })();
-  }, [buildTreeFromItems, canAccessPage]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ===== Auto Save (فقط برای تغییرات داده‌ای؛ نه انتخاب/حذف نمایشی) =====
+  // ===== Auto Save (فقط برای تغییرات داده‌ای) =====
   const saveTimerRef = useRef(null);
   const savingRef = useRef(false);
   const pendingRowsRef = useRef(null);
@@ -361,10 +362,25 @@ function RevenueEstimatesPage() {
   const saveRowsToServer = useCallback(
     async (rowsArg) => {
       const flatten = [];
-      const buildTitlePath = (prefix, node) => (prefix ? prefix + SEP + node.title : node.title);
 
-      const walk = (node, prefix) => {
-        const titlePath = buildTitlePath(prefix, node);
+      const encodeTitleSeg = (node, seg, isRoot) => {
+        if (isRoot && node?.isOther && node?.otherUid) {
+          return `[[OID:${node.otherUid}]] ${seg || 'سایر'}`.trim();
+        }
+        return seg || '';
+      };
+
+      const buildTitlePath = (prefix, node, isRoot) => {
+        const seg = encodeTitleSeg(node, node.title, isRoot);
+        return prefix ? prefix + SEP + seg : seg;
+      };
+
+      const walk = (node, prefix, isRoot) => {
+        const titlePath = buildTitlePath(prefix, node, isRoot);
+
+        // اگر به هر دلیل عنوان خالی شد، ارسال نکن
+        if (!String(titlePath || '').trim()) return;
+
         const months = dynamicMonths.map((m) => ({
           key: m.key,
           month_index: m.monthIndex,
@@ -382,10 +398,10 @@ function RevenueEstimatesPage() {
           amount: total,
         });
 
-        (node.children || []).forEach((ch) => walk(ch, titlePath));
+        (node.children || []).forEach((ch) => walk(ch, titlePath, false));
       };
 
-      (rowsArg || []).forEach((r) => walk(r, ''));
+      (rowsArg || []).forEach((r) => walk(r, '', true));
 
       const payloadRows = flatten.map((r, idx) => ({
         code: 'R' + (idx + 1),
@@ -442,6 +458,126 @@ function RevenueEstimatesPage() {
     }
   };
 
+  // ===== UI state persist (همون لحظه) =====
+  const persistKey = useMemo(() => {
+    const uid = me?.id != null ? String(me.id) : (me?.username ? String(me.username) : 'anon');
+    return `RevenueEstimatesPage:UI:${uid}`;
+  }, [me]);
+
+  const readPersistedUI = useCallback(() => {
+    try {
+      const raw = localStorage.getItem(persistKey);
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      if (!obj || typeof obj !== 'object') return null;
+      return obj;
+    } catch {
+      return null;
+    }
+  }, [persistKey]);
+
+  useEffect(() => {
+    if (!persistKey) return;
+    try {
+      localStorage.setItem(
+        persistKey,
+        JSON.stringify({
+          poolProjectIds: poolProjectIds || [],
+          poolOtherIds: poolOtherIds || [],
+          selectedKeysArr: selectedKeysArr || [],
+        })
+      );
+    } catch {}
+  }, [persistKey, poolProjectIds, poolOtherIds, selectedKeysArr]);
+
+  // ===== Load from server =====
+  const didInitUIRef = useRef(false);
+
+  useEffect(() => {
+    if (canAccessPage !== true) return;
+    (async () => {
+      try {
+        const data = await api('/revenue-estimates');
+        const items = data.items || [];
+
+        items.sort((a, b) => (a.row_index || 0) - (b.row_index || 0));
+
+        rowIdRef.current = 1;
+        const tree = buildTreeFromItems(items);
+        setAllRows(tree);
+
+        // استخراج ریشه‌ها
+        const derivedPids = [];
+        const derivedOtherUids = [];
+
+        const patchedTree = (tree || []).map((r) => {
+          if (r?.projectId != null) {
+            derivedPids.push(String(r.projectId));
+            return r;
+          }
+          if (r?.isOther) {
+            // اگر UID نداشت، همینجا ایجاد کنیم و سریع ذخیره شود تا پایدار شود
+            const uid = r.otherUid || genUid();
+            if (!r.otherUid) {
+              const baseTitle = stripOtherUid(r.title) || 'سایر';
+              return { ...r, otherUid: uid, title: baseTitle };
+            }
+            derivedOtherUids.push(String(uid));
+            return r;
+          }
+          return r;
+        });
+
+        // اگر UID جدید ساختیم، به لیست‌ها هم اضافه کنیم + ذخیره
+        const normalizedTree = patchedTree.map((r) => {
+          if (r?.isOther) derivedOtherUids.push(String(r.otherUid || ''));
+          return r;
+        }).filter(Boolean);
+
+        setAllRows(normalizedTree);
+
+        const uniqP = Array.from(new Set(derivedPids.filter(Boolean)));
+        const uniqO = Array.from(new Set(derivedOtherUids.filter(Boolean)));
+
+        const persisted = readPersistedUI();
+
+        // pool ها
+        const pPool = persisted?.poolProjectIds ? Array.from(new Set([...(persisted.poolProjectIds || []), ...uniqP])) : uniqP;
+        const oPool = persisted?.poolOtherIds ? Array.from(new Set([...(persisted.poolOtherIds || []), ...uniqO])) : uniqO;
+
+        setPoolProjectIds(pPool);
+        setPoolOtherIds(oPool);
+
+        // selected ها
+        const poolK = [
+          ...pPool.map((pid) => projectKey(pid)),
+          ...oPool.map((oid) => otherKey(oid)),
+        ];
+
+        let nextSelected = [];
+        if (persisted?.selectedKeysArr && Array.isArray(persisted.selectedKeysArr)) {
+          const s = new Set(persisted.selectedKeysArr);
+          nextSelected = poolK.filter((k) => s.has(k));
+        } else {
+          // پیش‌فرض: همه موارد موجود نمایش داده شوند
+          nextSelected = poolK;
+        }
+
+        setSelectedKeysArr(nextSelected);
+
+        // اگر UID جدید ساخته شده بود و در title ذخیره نشده بود، یک‌بار ذخیره کن
+        const hasAnyNewUid = (normalizedTree || []).some((r) => r?.isOther && r?.otherUid && !String(items?.[0]?.title || '').includes(`[[OID:`));
+        if (hasAnyNewUid) {
+          scheduleSave(normalizedTree, 150);
+        }
+
+        didInitUIRef.current = true;
+      } catch (e) {
+        console.error('load revenue estimates failed', e);
+      }
+    })();
+  }, [buildTreeFromItems, canAccessPage, readPersistedUI]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ===== ابزارهای انتخاب/نمایش =====
   const addToSelected = (k) => {
     setSelectedKeysArr((prev) => {
@@ -495,16 +631,20 @@ function RevenueEstimatesPage() {
 
   // ===== اضافه کردن "سایر" (هر کلیک = یک آیتم جدید) =====
   const addOtherChip = () => {
-    const newRoot = ensureRootForOther();
+    const uid = genUid();
+    const idx = (poolOtherIds || []).length + 1;
+    const title = `سایر ${toFaDigits(idx)}`;
+
+    const newRoot = ensureRootForOther(uid, title);
 
     setAllRows((prev) => {
       const next = [...(prev || []), newRoot];
-      scheduleSave(next, 250);
+      scheduleSave(next, 120);
       return next;
     });
 
-    setPoolOtherIds((prev) => [...(prev || []), newRoot.id]);
-    addToSelected(otherKey(newRoot.id));
+    setPoolOtherIds((prev) => [...(prev || []), uid]);
+    addToSelected(otherKey(uid));
   };
 
   // ===== کلیک روی کپسول‌ها: اضافه/کم کردن از جدول اصلی =====
@@ -518,7 +658,7 @@ function RevenueEstimatesPage() {
         const exists = (prev || []).some((r) => String(r?.projectId) === String(pid));
         if (exists) return prev;
         const next = [...(prev || []), ensureRootForProject(pid)];
-        scheduleSave(next, 250);
+        scheduleSave(next, 180);
         return next;
       });
     }
@@ -529,6 +669,30 @@ function RevenueEstimatesPage() {
   const onToggleOtherChip = (oid) => {
     const k = otherKey(oid);
     toggleSelected(k);
+  };
+
+  // ===== حذف کپسول‌ها (واقعاً از جدول/دیتا حذف شود) =====
+  const removeProjectChipHard = (pid) => {
+    const spid = String(pid);
+    setPoolProjectIds((prev) => (prev || []).filter((x) => String(x) !== spid));
+    removeFromSelected(projectKey(spid));
+    setAllRows((prev) => {
+      const next = (prev || []).filter((r) => String(r?.projectId ?? '') !== spid);
+      scheduleSave(next, 120);
+      return next;
+    });
+    if (String(pickedProjectId || '') === spid) setPickedProjectId('');
+  };
+
+  const removeOtherChipHard = (oid) => {
+    const soid = String(oid);
+    setPoolOtherIds((prev) => (prev || []).filter((x) => String(x) !== soid));
+    removeFromSelected(otherKey(soid));
+    setAllRows((prev) => {
+      const next = (prev || []).filter((r) => String(r?.otherUid || '') !== soid);
+      scheduleSave(next, 120);
+      return next;
+    });
   };
 
   // ===== Tree ops (فقط روی allRows) =====
@@ -588,7 +752,7 @@ function RevenueEstimatesPage() {
 
     setAllRows((prev) => {
       const next = addChildToTree(prev, childModal.parentId, newChild);
-      scheduleSave(next, 350);
+      scheduleSave(next, 120);
       return next;
     });
 
@@ -650,7 +814,7 @@ function RevenueEstimatesPage() {
         title: editRowModal.isOther ? editRowModal.title : undefined,
         desc: editRowModal.desc,
       });
-      scheduleSave(next, 500);
+      scheduleSave(next, 120);
       return next;
     });
     closeEditRowModal();
@@ -712,7 +876,7 @@ function RevenueEstimatesPage() {
 
     setAllRows((prev) => {
       const next = updateNodeMonths(prev, monthModal.rowId, monthModal.monthKey, num);
-      scheduleSave(next, 350);
+      scheduleSave(next, 120);
       return next;
     });
 
@@ -756,13 +920,22 @@ function RevenueEstimatesPage() {
     return cleaned.join('.');
   };
 
+  const otherRoots = useMemo(() => {
+    const roots = (allRows || []).filter((r) => r?.isOther && (r.otherUid || r.id));
+    const byUid = new Map();
+    roots.forEach((r) => byUid.set(String(r.otherUid || r.id), r));
+    return { roots, byUid };
+  }, [allRows]);
+
   const otherLabelMap = useMemo(() => {
     const map = new Map();
     (poolOtherIds || []).forEach((oid, idx) => {
-      map.set(String(oid), `سایر ${toFaDigits(idx + 1)}`);
+      const r = otherRoots.byUid.get(String(oid));
+      const t = stripOtherUid(r?.title || '');
+      map.set(String(oid), t || `سایر ${toFaDigits(idx + 1)}`);
     });
     return map;
-  }, [poolOtherIds]);
+  }, [poolOtherIds, otherRoots]);
 
   const totalCols = 2 + dynamicMonths.length + 1;
 
@@ -933,6 +1106,14 @@ function RevenueEstimatesPage() {
     );
   }
 
+  // ===== UI: منوی انتخاب سایرها =====
+  const [otherMenuOpen, setOtherMenuOpen] = useState(false);
+  const anyOtherSelected = useMemo(() => {
+    return (poolOtherIds || []).some((oid) => selectedKeys.has(otherKey(oid)));
+  }, [poolOtherIds, selectedKeys]);
+
+  const closeOtherMenu = () => setOtherMenuOpen(false);
+
   return (
     <>
       <Card>
@@ -989,7 +1170,7 @@ function RevenueEstimatesPage() {
           </div>
 
           {/* کپسول‌ها (با کلیک: اضافه/کم کردن از جدول اصلی) */}
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-2 relative">
             <button
               type="button"
               onClick={toggleSelectAll}
@@ -1012,47 +1193,145 @@ function RevenueEstimatesPage() {
                   key={k}
                   type="button"
                   onClick={() => onToggleProjectChip(pid)}
-                  className={`px-3 py-2 rounded-full text-xs md:text-[13px] border transition select-none shadow-sm
+                  className={`px-3 py-2 rounded-full text-xs md:text-[13px] border transition select-none shadow-sm inline-flex items-center gap-2
                     ${active
                       ? 'bg-black text-white border-black'
                       : 'bg-white text-black border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-white/10'
                     }`}
                   title={active ? 'حذف از جدول اصلی' : 'افزودن به جدول اصلی'}
                 >
-                  {label}
+                  <span className="max-w-[220px] truncate">{label}</span>
+
+                  {/* حذف خیلی کوچک */}
+                  <span className="inline-flex items-center">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        removeProjectChipHard(pid);
+                      }}
+                      className="h-5 w-5 grid place-items-center rounded-full hover:bg-white/15 dark:hover:bg-white/10"
+                      aria-label="حذف کپسول"
+                      title="حذف کپسول (حذف از جدول و دیتا)"
+                    >
+                      <img src="/images/icons/bastan.svg" alt="" className="w-3 h-3 invert dark:invert-0" />
+                    </button>
+                  </span>
                 </button>
               );
             })}
 
-            {(poolOtherIds || []).map((oid) => {
-              const k = otherKey(oid);
-              const active = selectedKeys.has(k);
-              return (
+            {/* سایر: فقط یک کپسول + ایکن اضافه + ایکن زیرمجموعه */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setOtherMenuOpen((v) => !v)}
+                className={`px-3 py-2 rounded-full text-xs md:text-[13px] border transition select-none shadow-sm inline-flex items-center gap-2
+                  ${anyOtherSelected
+                    ? 'bg-black text-white border-black'
+                    : 'bg-white text-black border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-white/10'
+                  }`}
+                title="سایر (زیرمجموعه‌ها)"
+              >
+                <span>سایر</span>
+
+                {/* نشانگر زیرمجموعه */}
+                <span className="inline-flex items-center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="opacity-90">
+                    <path
+                      d={otherMenuOpen ? 'M7 14l5-5 5 5' : 'M7 10l5 5 5-5'}
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+
+                {/* ایکن اضافه فقط کنار سایر */}
                 <button
-                  key={k}
                   type="button"
-                  onClick={() => onToggleOtherChip(oid)}
-                  className={`px-3 py-2 rounded-full text-xs md:text-[13px] border transition select-none shadow-sm
-                    ${active
-                      ? 'bg-black text-white border-black'
-                      : 'bg-white text-black border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-white/10'
-                    }`}
-                  title={active ? 'حذف از جدول اصلی' : 'افزودن به جدول اصلی'}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    addOtherChip();
+                    setOtherMenuOpen(true);
+                  }}
+                  className="h-5 w-5 grid place-items-center rounded-full hover:bg-white/15 dark:hover:bg-white/10"
+                  aria-label="افزودن سایر"
+                  title="افزودن سایر جدید"
                 >
-                  {otherLabelMap.get(String(oid)) || 'سایر'}
+                  <img src="/images/icons/afzodan.svg" alt="" className="w-3 h-3 invert dark:invert-0" />
                 </button>
-              );
-            })}
+              </button>
 
-            <button
-              type="button"
-              onClick={addOtherChip}
-              className="px-3 py-2 rounded-full text-xs md:text-[13px] border transition select-none shadow-sm
-                bg-white text-black border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-white/10"
-              title="افزودن یک مورد جدید از سایر"
-            >
-              سایر
-            </button>
+              {otherMenuOpen && (
+                <div className="absolute z-30 mt-2 w-64 rounded-2xl border border-black/10 bg-white text-black shadow-xl overflow-hidden dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+                  <div className="px-3 py-2 text-xs text-black/60 dark:text-neutral-400 border-b border-black/10 dark:border-neutral-800">
+                    زیرمجموعه‌های سایر را انتخاب/حذف کنید
+                  </div>
+
+                  <div className="max-h-72 overflow-auto">
+                    {(poolOtherIds || []).length === 0 ? (
+                      <div className="px-3 py-3 text-xs text-black/60 dark:text-neutral-400">
+                        هنوز موردی اضافه نشده.
+                      </div>
+                    ) : (
+                      (poolOtherIds || []).map((oid) => {
+                        const k = otherKey(oid);
+                        const active = selectedKeys.has(k);
+                        const label = otherLabelMap.get(String(oid)) || 'سایر';
+                        return (
+                          <button
+                            key={k}
+                            type="button"
+                            onClick={() => onToggleOtherChip(oid)}
+                            className={`w-full px-3 py-2 flex items-center justify-between gap-2 text-xs transition border-b border-black/5 dark:border-neutral-800
+                              ${active ? 'bg-black text-white' : 'hover:bg-black/5 dark:hover:bg-white/10'}`}
+                            title={active ? 'حذف از جدول' : 'افزودن به جدول'}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={`inline-flex h-5 w-5 rounded-full border items-center justify-center text-[10px]
+                                ${active ? 'border-white/40' : 'border-black/20 dark:border-neutral-700'}`}>
+                                {active ? '✓' : ''}
+                              </span>
+                              <span className="truncate">{label}</span>
+                            </div>
+
+                            {/* حذف خیلی کوچک */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                removeOtherChipHard(oid);
+                              }}
+                              className={`h-6 w-6 grid place-items-center rounded-xl ring-1
+                                ${active ? 'ring-white/30 hover:bg-white/15' : 'ring-black/10 hover:bg-black/5 dark:ring-neutral-700 dark:hover:bg-white/10'}`}
+                              aria-label="حذف این سایر"
+                              title="حذف این سایر (حذف از جدول و دیتا)"
+                            >
+                              <img src="/images/icons/bastan.svg" alt="" className="w-3 h-3 invert dark:invert-0" />
+                            </button>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <div className="px-3 py-2 flex items-center justify-end">
+                    <button
+                      type="button"
+                      onClick={closeOtherMenu}
+                      className="h-9 px-4 rounded-xl border border-black/15 text-xs hover:bg-black/5 dark:border-neutral-700 dark:hover:bg-white/10"
+                    >
+                      بستن
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1140,12 +1419,12 @@ function RevenueEstimatesPage() {
 
                       const displayTitle =
                         r.isOther
-                          ? (r.title || '—')
+                          ? (stripOtherUid(r.title) || '—')
                           : (x.depth === 0 && r?.projectId != null
                               ? getProjectLabelById(r.projectId, r.title || '—')
                               : (r.title || '—'));
 
-                      const rootKey = r?.projectId != null ? projectKey(r.projectId) : otherKey(r.id);
+                      const rootKey = r?.projectId != null ? projectKey(r.projectId) : otherKey(r.otherUid || r.id);
                       const canHideFromTable = x.depth === 0;
 
                       return (
@@ -1196,13 +1475,13 @@ function RevenueEstimatesPage() {
                                         سایر
                                       </span>
                                       <input
-                                        value={r.title}
+                                        value={stripOtherUid(r.title)}
                                         onClick={(e) => e.stopPropagation()}
                                         onChange={(e) => {
                                           const v = e.target.value;
                                           setAllRows((prev) => {
                                             const next = updateNodeMeta(prev, r.id, { title: v });
-                                            scheduleSave(next, 700);
+                                            scheduleSave(next, 120);
                                             return next;
                                           });
                                         }}
@@ -1225,7 +1504,7 @@ function RevenueEstimatesPage() {
                                 className={`h-8 w-8 grid place-items-center rounded-xl ring-1 ring-black/10 dark:ring-neutral-700
                                   ${canHideFromTable ? 'hover:bg-black/5 dark:hover:bg-white/10' : 'opacity-40 cursor-not-allowed'}`}
                                 aria-label="حذف از جدول"
-                                title={canHideFromTable ? 'حذف از جدول (فقط نمایشی؛ دیتا حذف نمی‌شود)' : 'حذف فقط برای سطرهای اصلی فعال است'}
+                                title={canHideFromTable ? 'حذف از جدول (نمایشی)' : 'حذف فقط برای سطرهای اصلی فعال است'}
                               >
                                 <img src="/images/icons/bastan.svg" alt="" className="w-3 h-3 dark:invert" />
                               </button>
