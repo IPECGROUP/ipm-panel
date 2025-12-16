@@ -10,7 +10,6 @@ export default function Shell() {
   const auth = useAuth() || {};
   const { user, logout } = auth;
   const isMainAdmin = isMainAdminUser(user);
-  const LOGO_SRC = "images/4.webp";
 
   // ===== تم (dark|light) فقط برای همین سشن، بدون localStorage =====
   const [theme, setTheme] = React.useState("light"); // همیشه لایت شروع می‌کنه
@@ -21,8 +20,43 @@ export default function Shell() {
     else root.classList.remove("dark");
   }, [theme]);
 
-  const toggleTheme = () =>
-    setTheme((t) => (t === "dark" ? "light" : "dark"));
+  const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
+
+  // ===== Date (Jalali + Gregorian) =====
+  const [now, setNow] = React.useState(() => new Date());
+
+  React.useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60 * 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const jalaliDate = React.useMemo(() => {
+    try {
+      return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }).format(now);
+    } catch {
+      return "";
+    }
+  }, [now]);
+
+  const gregorianDate = React.useMemo(() => {
+    try {
+      return new Intl.DateTimeFormat("en-GB", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(now);
+    } catch {
+      return "";
+    }
+  }, [now]);
+
+  const displayName = user?.name || user?.username || user?.email || "کاربر";
+  const displayRole = user?.role ? String(user.role) : "";
 
   return (
     <div
@@ -42,44 +76,76 @@ export default function Shell() {
             : "border-black/10 bg-gradient-to-l from-black/5 to-transparent")
         }
       >
-        <div className="mx-auto max-w-[1400px] flex items-center justify-between p-3 md:p-4">
+        <div className="mx-auto max-w-[1400px] flex items-center justify-between gap-3 p-3 md:p-4">
           <Link
             to="/"
-            className="font-semibold tracking-tight flex items-center gap-2 hover:opacity-90 transition"
+            className="flex items-center hover:opacity-95 transition"
+            aria-label="خانه"
+            title="خانه"
           >
-            {/* لوگو لایت/دارک (کمی بزرگ‌تر) */}
+            {/* هدر لایت/دارک */}
             <img
-              src="/images/light.png"
-              alt="logo"
-              className="h-8 w-auto object-contain block dark:hidden"
+              src="/images/IPS%20headerr.png"
+              alt="IPS header"
+              className="h-9 md:h-11 w-auto object-contain block dark:hidden"
             />
             <img
-              src="/images/dark.JPG"
-              alt="logo"
-              className="h-8 w-auto object-contain hidden dark:block"
+              src="/images/IPS%20headerrr%20dark%20mode.png"
+              alt="IPS header (dark)"
+              className="h-9 md:h-11 w-auto object-contain hidden dark:block"
             />
-
-            <span
-              className={
-                "text-base md:text-lg " +
-                (theme === "dark"
-                  ? "bg-clip-text text-transparent bg-gradient-to-tr from-amber-200 via-white to-purple-200"
-                  : "text-neutral-900")
-              }
-            >
-              مدیریت یکپارچه فرآیند های شرکت ایده پویان انرژی
-            </span>
           </Link>
 
           <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm">
-            <span
+            {/* تاریخ */}
+            <div
               className={
-                theme === "dark" ? "text-white/80" : "text-neutral-700"
+                "hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl border " +
+                (theme === "dark"
+                  ? "border-white/15 bg-white/5 text-white/85"
+                  : "border-black/10 bg-white/70 text-neutral-700")
               }
+              title="تاریخ امروز"
             >
-              {(user?.name || user?.username || user?.email || "بدون نام") +
-                (user?.role ? ` • ${user.role}` : "")}
-            </span>
+              <span className="whitespace-nowrap">{jalaliDate || "—"}</span>
+              <span className={theme === "dark" ? "text-white/30" : "text-black/20"}>
+                •
+              </span>
+              <span className="whitespace-nowrap">{gregorianDate || "—"}</span>
+            </div>
+
+            {/* خوش‌آمد + نقش */}
+            <div
+              className={
+                "flex items-center gap-2 px-3 py-1.5 rounded-xl border " +
+                (theme === "dark"
+                  ? "border-white/15 bg-white/5 text-white/90"
+                  : "border-black/10 bg-white/70 text-neutral-800")
+              }
+              title="حساب کاربری"
+            >
+              <span className={theme === "dark" ? "text-white/70" : "text-neutral-600"}>
+                خوش آمدید،
+              </span>
+              <span className="font-semibold">{displayName}</span>
+              {displayRole ? (
+                <>
+                  <span className={theme === "dark" ? "text-white/30" : "text-black/20"}>
+                    •
+                  </span>
+                  <span
+                    className={
+                      "px-2 py-0.5 rounded-lg text-[11px] border " +
+                      (theme === "dark"
+                        ? "border-white/15 bg-white/5 text-white/80"
+                        : "border-black/10 bg-black/[0.03] text-neutral-700")
+                    }
+                  >
+                    {displayRole}
+                  </span>
+                </>
+              ) : null}
+            </div>
 
             {isMainAdmin && (
               <span
@@ -168,6 +234,24 @@ export default function Shell() {
             >
               خروج
             </button>
+          </div>
+        </div>
+
+        {/* تاریخ برای موبایل/تبلت */}
+        <div className="mx-auto max-w-[1400px] px-3 pb-3 md:px-4 lg:hidden">
+          <div
+            className={
+              "w-full flex items-center justify-center gap-2 px-3 py-2 rounded-2xl border text-xs " +
+              (theme === "dark"
+                ? "border-white/10 bg-white/5 text-white/80"
+                : "border-black/10 bg-white/70 text-neutral-700")
+            }
+          >
+            <span className="whitespace-nowrap">{jalaliDate || "—"}</span>
+            <span className={theme === "dark" ? "text-white/30" : "text-black/20"}>
+              •
+            </span>
+            <span className="whitespace-nowrap">{gregorianDate || "—"}</span>
           </div>
         </div>
       </header>
