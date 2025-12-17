@@ -414,39 +414,46 @@ function RevenueEstimatesPage() {
         setAllRows(tree);
 
         // پروژه‌ها از meta (اگر باشد) یا از خود tree
-        const pidsFromTree = [];
-        (tree || []).forEach((r) => {
-          if (r?.projectId != null) pidsFromTree.push(String(r.projectId));
-        });
-        const uniqTree = Array.from(new Set(pidsFromTree));
+        // پروژه‌ها از meta (اگر باشد) یا از خود tree
+const pidsFromTree = [];
+(tree || []).forEach((r) => {
+  if (r?.projectId != null) pidsFromTree.push(String(r.projectId));
+});
+const uniqTree = Array.from(new Set(pidsFromTree));
 
-        const metaPool = Array.isArray(meta?.poolProjectIds) ? meta.poolProjectIds.map((x) => String(x)).filter(Boolean) : null;
-        const nextPool = metaPool && metaPool.length ? Array.from(new Set(metaPool)) : uniqTree;
-        setPoolProjectIds(nextPool);
+const hasMetaPool = Array.isArray(meta?.poolProjectIds);
+const metaPool = hasMetaPool ? meta.poolProjectIds.map((x) => String(x)).filter(Boolean) : null;
+const nextPool = hasMetaPool ? Array.from(new Set(metaPool)) : uniqTree;
+setPoolProjectIds(nextPool);
 
-        // انتخاب‌ها از meta (اگر باشد) یا همه
-        const otherRoot = getOtherRoot(tree);
-        const otherTitles = (otherRoot?.children || []).map((ch) => String(ch?.title || '').trim()).filter(Boolean);
+// انتخاب‌ها از meta (اگر باشد) یا همه
+const otherRoot = getOtherRoot(tree);
+const otherTitles = (otherRoot?.children || []).map((ch) => String(ch?.title || '').trim()).filter(Boolean);
 
-        const defaultKeys = [
-          ...nextPool.map((pid) => projectKey(pid)),
-          ...otherTitles.map((t) => otherKeyFromTitle(t)),
-        ];
+const defaultKeys = [
+  ...nextPool.map((pid) => projectKey(pid)),
+  ...otherTitles.map((t) => otherKeyFromTitle(t)),
+];
 
-        const metaSel = Array.isArray(meta?.selectedKeysArr) ? meta.selectedKeysArr.map(String) : null;
-        const rawSel = (metaSel && metaSel.length) ? metaSel : defaultKeys;
+const hasMetaSel = Array.isArray(meta?.selectedKeysArr);
+const metaSel = hasMetaSel ? meta.selectedKeysArr.map(String) : null;
+const rawSel = hasMetaSel ? metaSel : defaultKeys;
 
-        const allowedProjectKeys = new Set(nextPool.map((pid) => projectKey(pid)));
-        const allowedOtherKeys = new Set(otherTitles.map((t) => otherKeyFromTitle(t)));
+const allowedProjectKeys = new Set(nextPool.map((pid) => projectKey(pid)));
+const allowedOtherKeys = new Set(otherTitles.map((t) => otherKeyFromTitle(t)));
 
-        const filteredSel = rawSel.filter((k) => {
-          const s = String(k || '');
-          if (s.startsWith('p:')) return allowedProjectKeys.has(s);
-          if (s.startsWith('o:')) return allowedOtherKeys.has(s);
-          return false;
-        });
+const filteredSel = (rawSel || []).filter((k) => {
+  const s = String(k || '');
+  if (s.startsWith('p:')) return allowedProjectKeys.has(s);
+  if (s.startsWith('o:')) return allowedOtherKeys.has(s);
+  return false;
+});
 
-        setSelectedKeysArr(Array.from(new Set(filteredSel.length ? filteredSel : defaultKeys)));
+// نکته مهم: اگر metaSel وجود داشت (حتی خالی)، همون را نگه دار
+const finalSel = hasMetaSel ? filteredSel : (filteredSel.length ? filteredSel : defaultKeys);
+
+setSelectedKeysArr(Array.from(new Set(finalSel)));
+
       } catch (e) {
         console.error('load revenue estimates failed', e);
       }
@@ -533,17 +540,22 @@ function RevenueEstimatesPage() {
       pendingRowsRef.current = nextRows;
 
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(async () => {
-        if (savingRef.current) return;
-        savingRef.current = true;
-        try {
-          await saveRowsToServer(pendingRowsRef.current || []);
-        } catch (e) {
-          console.error('auto save revenue estimates failed', e);
-        } finally {
-          savingRef.current = false;
-        }
-      }, delay);
+      saveTimerRef.current = setTimeout(async function run() {
+  if (savingRef.current) {
+    saveTimerRef.current = setTimeout(run, 200);
+    return;
+  }
+  savingRef.current = true;
+  try {
+    await saveRowsToServer(pendingRowsRef.current || []);
+  } catch (e) {
+    console.error('auto save revenue estimates failed', e);
+  } finally {
+    savingRef.current = false;
+  }
+}, delay);
+
+
     },
     [canAccessPage, saveRowsToServer]
   );
