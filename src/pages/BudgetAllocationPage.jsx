@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import Shell from "../components/layout/Shell";
 import { Card } from "../components/ui/Card";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table";
+import { usePageAccess } from "../hooks/usePageAccess";
 
 // تب‌ها به‌صورت ثابت بیرون کامپوننت
 const ALLOC_TABS = [
@@ -18,7 +19,6 @@ const PAGE_KEY = "BudgetAllocationPage";
 
 function BudgetAllocationPage() {
   const [active, setActive] = useState("office"); // office|site|finance|cash|capex|projects
-  const tabs = ALLOC_TABS;
 
   const API_BASE = (window.API_URL || "/api").replace(/\/+$/, "");
 
@@ -42,132 +42,19 @@ function BudgetAllocationPage() {
     return data;
   }
 
-  // ===== Access (الگوی درست مثل صفحات جدید) =====
-  const [accessMy, setAccessMy] = useState(null);
-  const [accessLoading, setAccessLoading] = useState(true);
-  const [accessErr, setAccessErr] = useState("");
+  const { me, loading: accessLoading, canAccessPage, allowedTabs } = usePageAccess(PAGE_KEY, ALLOC_TABS);
 
-  const [allowedTabs, setAllowedTabs] = useState(null); // null=درحال‌بررسی | []=هیچ تبی مجاز نیست | [...ids]
-  const [accessRefreshKey, setAccessRefreshKey] = useState(0);
-
-  const fetchAccess = useCallback(async () => {
-    setAccessErr("");
-    setAccessLoading(true);
-    try {
-      const r = await api("/access/my");
-      setAccessMy(r || null);
-    } catch (e) {
-      setAccessMy(null);
-      setAccessErr(e?.message || "خطا در بررسی دسترسی");
-    } finally {
-      setAccessLoading(false);
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      if (!alive) return;
-      await fetchAccess();
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [fetchAccess, accessRefreshKey]);
-
-  const me = useMemo(() => accessMy?.user || null, [accessMy]);
-
-  // دسترسی کل (admin/all)
-  const isAllAccess = useMemo(() => {
-    const u = accessMy?.user;
-    if (!u) return false;
-
-    if (String(u.role || "").toLowerCase() === "admin") return true;
-
-    const raw = u.access_labels ?? u.access;
-    const labels = Array.isArray(raw)
-      ? raw.map((x) => String(x))
-      : typeof raw === "string"
-      ? [raw]
-      : [];
-
-    return labels.includes("all");
-  }, [accessMy]);
-
-  const canAccessPage = useMemo(() => {
-    if (!accessMy) return null;
-    if (isAllAccess) return true;
-
-    const pageRule = accessMy?.pages?.[PAGE_KEY];
-    return pageRule?.permitted === 1 || pageRule?.permitted === true;
-  }, [accessMy, isAllAccess]);
-
-  // اگر دسترسی‌کل داشت، همه تب‌ها مجاز؛ در غیر اینصورت از سرور می‌پرسیم (fallback: همه)
-  useEffect(() => {
-    if (canAccessPage !== true) {
-      if (canAccessPage === false) setAllowedTabs([]);
-      return;
-    }
-
-    let alive = true;
-    (async () => {
-      try {
-        if (isAllAccess) {
-          const all = tabs.map((t) => t.id);
-          if (!alive) return;
-          setAllowedTabs(all);
-          if (all.length && !all.includes(active)) setActive(all[0]);
-          return;
-        }
-
-        let tabsAllowed = null;
-        try {
-          const r = await api("/auth/check-page", {
-            method: "POST",
-            body: JSON.stringify({
-              page: PAGE_KEY,
-              tabs: tabs.map((t) => t.id),
-            }),
-          });
-          const cand =
-            r?.allowed_tabs || r?.allowedTabs || r?.tabs || r?.allowed || null;
-          if (Array.isArray(cand)) tabsAllowed = cand;
-          else if (r?.ok === true) tabsAllowed = tabs.map((t) => t.id);
-          else if (r?.ok === false) tabsAllowed = [];
-        } catch {
-          tabsAllowed = null;
-        }
-
-        if (!alive) return;
-
-        const allIds = tabs.map((t) => t.id);
-        const finalTabs = Array.isArray(tabsAllowed)
-          ? tabsAllowed.filter((x) => allIds.includes(x))
-          : allIds;
-
-        setAllowedTabs(finalTabs);
-        if (finalTabs.length && !finalTabs.includes(active)) {
-          setActive(finalTabs[0]);
-        }
-      } catch {
-        if (!alive) return;
-        const all = tabs.map((t) => t.id);
-        setAllowedTabs(all);
-        if (!all.includes(active)) setActive(all[0]);
-      }
-    })();
-
-    return () => {
-      alive = false;
-    };
-  }, [canAccessPage, isAllAccess, active]); // tabs ثابت است // eslint-disable-line react-hooks/exhaustive-deps
-
-  const visibleTabs = useMemo(() => {
-    if (allowedTabs === null) return [];
-    return ALLOC_TABS.filter((t) => (allowedTabs || []).includes(t.id));
+  const tabs = useMemo(() => {
+    if (!allowedTabs) return [];
+    return ALLOC_TABS.filter((t) => allowedTabs.includes(t.id));
   }, [allowedTabs]);
 
-  const prefixOf = (k) => visibleTabs.find((t) => t.id === k)?.prefix || "";
+  useEffect(() => {
+    if (!tabs.length) return;
+    if (!tabs.some((t) => t.id === active)) setActive(tabs[0].id);
+  }, [tabs, active]);
+
+  const prefixOf = (k) => tabs.find((t) => t.id === k)?.prefix || "";
 
   const renderCode = (code) => {
     if (active === "projects") return code || "—";
@@ -456,7 +343,6 @@ function BudgetAllocationPage() {
   useEffect(() => {
     const kick = () => {
       setRefreshKey((x) => x + 1);
-      setAccessRefreshKey((x) => x + 1);
     };
     const onVis = () => {
       if (!document.hidden) kick();
@@ -659,7 +545,7 @@ function BudgetAllocationPage() {
 
   const TopButtons = () => (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-      {visibleTabs.map((t) => (
+      {tabs.map((t) => (
         <button
           key={t.id}
           onClick={() => {
@@ -729,7 +615,7 @@ function BudgetAllocationPage() {
   };
 
   // ===== UI states for access =====
-  if (accessLoading || allowedTabs === null) {
+  if (accessLoading) {
     return (
       <>
         <Card>
@@ -748,7 +634,7 @@ function BudgetAllocationPage() {
     );
   }
 
-  if (accessErr) {
+  if (!me) {
     return (
       <>
         <Card>
@@ -759,15 +645,15 @@ function BudgetAllocationPage() {
               تخصیص بودجه
             </span>
           </div>
-          <div className="p-5 rounded-2xl ring-1 ring-black/10 bg-white text-center text-red-600 dark:bg-neutral-900 dark:ring-neutral-800 dark:text-red-400">
-            {accessErr}
+          <div className="p-5 text-center text-red-600 dark:text-red-400">
+            ابتدا وارد سامانه شوید.
           </div>
         </Card>
       </>
     );
   }
 
-  if (canAccessPage !== true || (allowedTabs || []).length === 0) {
+  if (canAccessPage !== true || (tabs || []).length === 0) {
     return (
       <>
         <Card>
