@@ -563,12 +563,26 @@ function RevenueEstimatesPage() {
     setSelectedKeysArr((prev) => {
       const s = new Set(prev);
       s.add(k);
-      return Array.from(s);
+      const next = Array.from(s);
+      metaRef.current = {
+        ...(metaRef.current || {}),
+        poolProjectIds: (metaRef.current?.poolProjectIds ?? poolProjectIds ?? []),
+        selectedKeysArr: next,
+      };
+      return next;
     });
   };
 
   const removeFromSelected = (k) => {
-    setSelectedKeysArr((prev) => prev.filter((x) => x !== k));
+    setSelectedKeysArr((prev) => {
+      const next = prev.filter((x) => x !== k);
+      metaRef.current = {
+        ...(metaRef.current || {}),
+        poolProjectIds: (metaRef.current?.poolProjectIds ?? poolProjectIds ?? []),
+        selectedKeysArr: next,
+      };
+      return next;
+    });
   };
 
   const toggleSelected = (k) => {
@@ -576,19 +590,39 @@ function RevenueEstimatesPage() {
       const s = new Set(prev);
       if (s.has(k)) s.delete(k);
       else s.add(k);
-      return Array.from(s);
+      const next = Array.from(s);
+      metaRef.current = {
+        ...(metaRef.current || {}),
+        poolProjectIds: (metaRef.current?.poolProjectIds ?? poolProjectIds ?? []),
+        selectedKeysArr: next,
+      };
+      return next;
     });
   };
 
   const toggleSelectAll = () => {
     if (!poolKeys.length) return;
     if (isAllSelected) {
-      setSelectedKeysArr((prev) => prev.filter((k) => !String(k).startsWith('p:')));
+      setSelectedKeysArr((prev) => {
+        const next = prev.filter((k) => !String(k).startsWith('p:'));
+        metaRef.current = {
+          ...(metaRef.current || {}),
+          poolProjectIds: (metaRef.current?.poolProjectIds ?? poolProjectIds ?? []),
+          selectedKeysArr: next,
+        };
+        return next;
+      });
     } else {
       setSelectedKeysArr((prev) => {
         const s = new Set(prev);
         poolKeys.forEach((k) => s.add(k));
-        return Array.from(s);
+        const next = Array.from(s);
+        metaRef.current = {
+          ...(metaRef.current || {}),
+          poolProjectIds: (metaRef.current?.poolProjectIds ?? poolProjectIds ?? []),
+          selectedKeysArr: next,
+        };
+        return next;
       });
     }
     scheduleSave(allRows || [], 150);
@@ -609,7 +643,15 @@ function RevenueEstimatesPage() {
 
     if (pid === '__ALL__') {
       const all = (projects || []).map((p) => String(p?.id ?? '')).filter(Boolean);
-      setPoolProjectIds((prev) => Array.from(new Set([...(prev || []), ...all])));
+      setPoolProjectIds((prev) => {
+        const next = Array.from(new Set([...(prev || []), ...all]));
+        metaRef.current = {
+          ...(metaRef.current || {}),
+          poolProjectIds: next,
+          selectedKeysArr: (metaRef.current?.selectedKeysArr ?? selectedKeysArr ?? []),
+        };
+        return next;
+      });
       setPickedProjectId('');
       return;
     }
@@ -619,14 +661,30 @@ function RevenueEstimatesPage() {
       setPickedProjectId('');
       return;
     }
-    setPoolProjectIds((prev) => [...(prev || []), pid]);
+    setPoolProjectIds((prev) => {
+      const next = [...(prev || []), pid];
+      metaRef.current = {
+        ...(metaRef.current || {}),
+        poolProjectIds: next,
+        selectedKeysArr: (metaRef.current?.selectedKeysArr ?? selectedKeysArr ?? []),
+      };
+      return next;
+    });
     setPickedProjectId('');
   };
 
   // ===== حذف پروژه از کپسول (بدون حذف دیتا) =====
   const removeProjectChip = (pid) => {
     const spid = String(pid);
-    setPoolProjectIds((prev) => (prev || []).filter((x) => String(x) !== spid));
+    setPoolProjectIds((prev) => {
+      const next = (prev || []).filter((x) => String(x) !== spid);
+      metaRef.current = {
+        ...(metaRef.current || {}),
+        poolProjectIds: next,
+        selectedKeysArr: (metaRef.current?.selectedKeysArr ?? selectedKeysArr ?? []),
+      };
+      return next;
+    });
     removeFromSelected(projectKey(spid));
     scheduleSave(allRows || [], 150);
   };
@@ -661,6 +719,9 @@ function RevenueEstimatesPage() {
     const title = String(rawTitle || '').trim();
     if (!title) return;
 
+    const selK = otherKeyFromTitle(title);
+    addToSelected(selK);
+
     ensureOtherRootInState();
 
     setAllRows((prev) => {
@@ -670,7 +731,6 @@ function RevenueEstimatesPage() {
 
       const exists = (otherRoot.children || []).some((ch) => String(ch?.title || '').trim() === title);
       if (exists) {
-        addToSelected(otherKeyFromTitle(title));
         scheduleSave(rows, 150);
         return rows;
       }
@@ -698,8 +758,6 @@ function RevenueEstimatesPage() {
 
       const next = rec(rows);
       scheduleSave(next, 150);
-
-      addToSelected(otherKeyFromTitle(newChild.title));
       return next;
     });
   };
@@ -919,7 +977,13 @@ function RevenueEstimatesPage() {
       const newK = otherKeyFromTitle(newTitle);
       setSelectedKeysArr((prev) => {
         const mapped = prev.map((k) => (k === oldK ? newK : k));
-        return Array.from(new Set(mapped));
+        const next = Array.from(new Set(mapped));
+        metaRef.current = {
+          ...(metaRef.current || {}),
+          poolProjectIds: (metaRef.current?.poolProjectIds ?? poolProjectIds ?? []),
+          selectedKeysArr: next,
+        };
+        return next;
       });
     }
 
@@ -1659,12 +1723,26 @@ function RevenueEstimatesPage() {
                       if (!titles.length) return;
                       const anySelected = titles.some((t) => selectedOtherSet.has(t));
                       if (anySelected) {
-                        setSelectedKeysArr((prev) => prev.filter((k) => !String(k).startsWith('o:')));
+                        setSelectedKeysArr((prev) => {
+                          const next = prev.filter((k) => !String(k).startsWith('o:'));
+                          metaRef.current = {
+                            ...(metaRef.current || {}),
+                            poolProjectIds: (metaRef.current?.poolProjectIds ?? poolProjectIds ?? []),
+                            selectedKeysArr: next,
+                          };
+                          return next;
+                        });
                       } else {
                         setSelectedKeysArr((prev) => {
                           const s = new Set(prev);
                           titles.forEach((t) => s.add(otherKeyFromTitle(t)));
-                          return Array.from(s);
+                          const next = Array.from(s);
+                          metaRef.current = {
+                            ...(metaRef.current || {}),
+                            poolProjectIds: (metaRef.current?.poolProjectIds ?? poolProjectIds ?? []),
+                            selectedKeysArr: next,
+                          };
+                          return next;
                         });
                       }
                       scheduleSave(allRows || [], 150);
