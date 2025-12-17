@@ -728,51 +728,62 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
   };
 
   const addOtherChildWithTitle = (rawTitle) => {
-    const title = String(rawTitle || '').trim();
-    if (!title) return;
+  const title = String(rawTitle || '').trim();
+  if (!title) return;
 
-    const selK = otherKeyFromTitle(title);
-    addToSelected(selK);
+  const selK = otherKeyFromTitle(title);
 
-    ensureOtherRootInState();
+  // ✅ مهم: قبل از هر scheduleSave، metaRef و انتخاب‌ها را همینجا سینک کن
+  const nextSel = Array.from(new Set([...(selectedKeysArr || []), selK]));
+  setSelectedKeysArr(nextSel);
+  metaRef.current = {
+    ...(metaRef.current || {}),
+    poolProjectIds: (metaRef.current?.poolProjectIds ?? poolProjectIds ?? []),
+    selectedKeysArr: nextSel,
+  };
 
-    setAllRows((prev) => {
-      const rows = upsertOtherRoot(prev || []);
-      const otherRoot = getOtherRoot(rows);
-      if (!otherRoot) return rows;
+  ensureOtherRootInState();
 
-      const exists = (otherRoot.children || []).some((ch) => String(ch?.title || '').trim() === title);
-      if (exists) {
-        scheduleSave(rows, 150);
-        return rows;
-      }
+  setAllRows((prev) => {
+    const rows = upsertOtherRoot(prev || []);
+    const otherRoot = getOtherRoot(rows);
+    if (!otherRoot) return rows;
 
-      const newChild = makeNode({
-        id: rowIdRef.current++,
-        title,
-        desc: '',
-        projectId: null,
-        months: {},
-        children: [],
-        expanded: true,
-        isOther: true,
-        otherRoot: false,
+    const exists = (otherRoot.children || []).some(
+      (ch) => String(ch?.title || '').trim() === title
+    );
+    if (exists) {
+      scheduleSave(rows, 150);
+      return rows;
+    }
+
+    const newChild = makeNode({
+      id: rowIdRef.current++,
+      title,
+      desc: '',
+      projectId: null,
+      months: {},
+      children: [],
+      expanded: true,
+      isOther: true,
+      otherRoot: false,
+    });
+
+    const rec = (arr) =>
+      arr.map((n) => {
+        if (n?.isOther && n?.otherRoot) {
+          return { ...n, expanded: true, children: [...(n.children || []), newChild] };
+        }
+        if (n.children?.length) return { ...n, children: rec(n.children) };
+        return n;
       });
 
-      const rec = (arr) =>
-        arr.map((n) => {
-          if (n?.isOther && n?.otherRoot) {
-            return { ...n, expanded: true, children: [...(n.children || []), newChild] };
-          }
-          if (n.children?.length) return { ...n, children: rec(n.children) };
-          return n;
-        });
+    const next = rec(rows);
+    scheduleSave(next, 150);
+    return next;
+  });
+};
 
-      const next = rec(rows);
-      scheduleSave(next, 150);
-      return next;
-    });
-  };
 
   const handleAddOtherFromModal = () => {
     const t = String(otherDraftTitle || '').trim();
@@ -784,11 +795,20 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     const otherRoot = getOtherRoot(allRows);
     const exists = (otherRoot?.children || []).some((ch) => String(ch?.title || '').trim() === t);
     if (exists) {
-      setOtherDraftErr('این عنوان قبلاً اضافه شده است.');
-      addToSelected(otherKeyFromTitle(t));
-      scheduleSave(allRows || [], 150);
-      return;
-    }
+  setOtherDraftErr('این عنوان قبلاً اضافه شده است.');
+
+  const selK = otherKeyFromTitle(t);
+  const nextSel = Array.from(new Set([...(selectedKeysArr || []), selK]));
+  setSelectedKeysArr(nextSel);
+  metaRef.current = {
+    ...(metaRef.current || {}),
+    poolProjectIds: (metaRef.current?.poolProjectIds ?? poolProjectIds ?? []),
+    selectedKeysArr: nextSel,
+  };
+
+  scheduleSave(allRows || [], 150);
+  return;
+}
 
     setOtherDraftErr('');
     addOtherChildWithTitle(t);
