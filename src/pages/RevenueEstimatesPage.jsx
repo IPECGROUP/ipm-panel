@@ -158,24 +158,7 @@ function RevenueEstimatesPage() {
 
   const SEP = ' › ';
 
-  // ===== Persist UI state (local) =====
-  const UI_KEY = 'RevenueEstimatesPage:UI:v2';
-
-  const readUI = () => {
-    try {
-      const raw = localStorage.getItem(UI_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  };
-
-  const writeUI = (next) => {
-    try {
-      localStorage.setItem(UI_KEY, JSON.stringify(next || {}));
-    } catch {}
-  };
-
+  
   // ===== انتخاب‌ها (کپسول‌ها) =====
   const [poolProjectIds, setPoolProjectIds] = useState([]); // پروژه‌هایی که به کپسول‌ها اضافه شده‌اند
   const [selectedKeysArr, setSelectedKeysArr] = useState([]); // انتخاب‌های فعال برای نمایش در جدول اصلی
@@ -208,14 +191,7 @@ function RevenueEstimatesPage() {
 
   const selectedOtherSet = useMemo(() => new Set(selectedOtherTitles), [selectedOtherTitles]);
 
-  useEffect(() => {
-    writeUI({
-      poolProjectIds: poolProjectIds || [],
-      selectedProjectIds: selectedProjectIds || [],
-      selectedOtherTitles: selectedOtherTitles || [],
-    });
-  }, [poolProjectIds, selectedProjectIds, selectedOtherTitles]);
-
+ 
   const poolKeys = useMemo(() => {
     const out = [];
     (poolProjectIds || []).forEach((pid) => out.push(projectKey(pid)));
@@ -407,17 +383,11 @@ function RevenueEstimatesPage() {
         const data = await api('/revenue-estimates');
         const items = data.items || [];
 
-        const ui = readUI();
 
         if (!items.length) {
           setAllRows([]);
-          setPoolProjectIds(ui?.poolProjectIds || []);
-          const initKeys = [
-            ...(ui?.selectedProjectIds || []).map((pid) => projectKey(pid)),
-            ...(ui?.selectedOtherTitles || []).map((t) => otherKeyFromTitle(t)),
-          ];
-          setSelectedKeysArr(initKeys);
-          return;
+          setPoolProjectIds([]);
+          setSelectedKeysArr([]);
         }
 
         items.sort((a, b) => (a.row_index || 0) - (b.row_index || 0));
@@ -444,15 +414,15 @@ function RevenueEstimatesPage() {
         const uniqP = Array.from(new Set(pids));
 
         // pool پروژه‌ها: اگر ui داشته باشیم، همان، وگرنه از tree
-        const nextPool = Array.isArray(ui?.poolProjectIds) ? ui.poolProjectIds : uniqP;
-        setPoolProjectIds(nextPool);
+        setPoolProjectIds(uniqP);
 
         // انتخاب‌ها: اگر ui داشته باشیم همان، وگرنه مثل قبل همه پروژه‌ها + همه زیرمجموعه‌های سایر (اگر بود)
         const otherRoot = getOtherRoot(tree);
         const otherTitles = (otherRoot?.children || []).map((ch) => String(ch?.title || '').trim()).filter(Boolean);
 
-        const initSelectedProjectIds = Array.isArray(ui?.selectedProjectIds) ? ui.selectedProjectIds : uniqP;
-        const initSelectedOtherTitles = Array.isArray(ui?.selectedOtherTitles) ? ui.selectedOtherTitles : otherTitles;
+        
+        const initSelectedProjectIds = uniqP;
+        const initSelectedOtherTitles = otherTitles;
 
         const initKeys = [
           ...Array.from(new Set(initSelectedProjectIds)).map((pid) => projectKey(pid)),
@@ -844,8 +814,7 @@ function RevenueEstimatesPage() {
 
   const openEditRowModal = (row) => {
     const baseTitle = row?.title || '';
-    const showTitle =
-      row?.isOther ? baseTitle : (row?.projectId != null ? getProjectLabelById(row.projectId, baseTitle) : baseTitle);
+    const showTitle = baseTitle;
 
     setEditRowModal({
       open: true,
@@ -860,7 +829,25 @@ function RevenueEstimatesPage() {
   const closeEditRowModal = () =>
     setEditRowModal({ open: false, rowId: null, title: '', desc: '', isOther: false, isOtherRoot: false });
 
+
+
+  const findNodeById = (nodes, id) => {
+  for (const n of nodes || []) {
+    if (n?.id === id) return n;
+    const r = findNodeById(n?.children, id);
+    if (r) return r;
+  }
+  return null;
+};
+
+
+
   const saveEditRowModal = () => {
+
+    const oldNode = findNodeById(allRows, editRowModal.rowId);
+const oldTitle = String(oldNode?.title || '').trim();
+const newTitle = String(editRowModal.title || '').trim();
+
     if (!editRowModal.rowId) {
       closeEditRowModal();
       return;
@@ -875,6 +862,13 @@ function RevenueEstimatesPage() {
     });
     closeEditRowModal();
   };
+
+  if (editRowModal.isOther && !editRowModal.isOtherRoot && oldTitle && newTitle && oldTitle !== newTitle) {
+  const oldK = otherKeyFromTitle(oldTitle);
+  const newK = otherKeyFromTitle(newTitle);
+  setSelectedKeysArr((prev) => prev.map((k) => (k === oldK ? newK : k)));
+}
+
 
   const [monthModal, setMonthModal] = useState({
     open: false,
@@ -1252,7 +1246,11 @@ function RevenueEstimatesPage() {
                     aria-label="حذف کپسول پروژه"
                     title="حذف کپسول پروژه"
                   >
-                    <img src="/images/icons/bastan.svg" alt="" className="w-3 h-3 invert dark:invert-0" />
+                    <img
+                      src="/images/icons/bastan.svg"
+                      alt=""
+                      className={`w-3 h-3 ${active ? 'invert' : 'dark:invert'}`}
+                    />
                   </button>
                 </div>
               );
@@ -1570,20 +1568,6 @@ function RevenueEstimatesPage() {
                                   )}
                                 </div>
                               </div>
-
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (canHideFromTable) removeFromSelected(rootKey);
-                                }}
-                                disabled={!canHideFromTable}
-                                className={`h-8 w-8 grid place-items-center rounded-xl ring-1 ring-black/10 dark:ring-neutral-700
-                                  ${canHideFromTable ? 'hover:bg-black/5 dark:hover:bg-white/10' : 'opacity-40 cursor-not-allowed'}`}
-                                aria-label="حذف از جدول"
-                                title={canHideFromTable ? 'حذف از جدول' : 'حذف فقط برای سطرهای پروژه فعال است'}
-                              >
-                                <img src="/images/icons/bastan.svg" alt="" className="w-3 h-3 dark:invert" />
-                              </button>
                             </div>
                           </TD>
 
