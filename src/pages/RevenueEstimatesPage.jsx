@@ -158,7 +158,6 @@ function RevenueEstimatesPage() {
 
   const SEP = ' › ';
 
-  
   // ===== انتخاب‌ها (کپسول‌ها) =====
   const [poolProjectIds, setPoolProjectIds] = useState([]); // پروژه‌هایی که به کپسول‌ها اضافه شده‌اند
   const [selectedKeysArr, setSelectedKeysArr] = useState([]); // انتخاب‌های فعال برای نمایش در جدول اصلی
@@ -176,12 +175,6 @@ function RevenueEstimatesPage() {
 
   const selectedKeys = useMemo(() => new Set(selectedKeysArr), [selectedKeysArr]);
 
-  const selectedProjectIds = useMemo(() => {
-    return selectedKeysArr
-      .filter((k) => String(k).startsWith('p:'))
-      .map((k) => String(k).slice(2));
-  }, [selectedKeysArr]);
-
   const selectedOtherTitles = useMemo(() => {
     return selectedKeysArr
       .filter((k) => String(k).startsWith('o:'))
@@ -191,7 +184,6 @@ function RevenueEstimatesPage() {
 
   const selectedOtherSet = useMemo(() => new Set(selectedOtherTitles), [selectedOtherTitles]);
 
- 
   const poolKeys = useMemo(() => {
     const out = [];
     (poolProjectIds || []).forEach((pid) => out.push(projectKey(pid)));
@@ -337,7 +329,7 @@ function RevenueEstimatesPage() {
       };
 
       items.forEach((it) => {
-        const rawTitle = String(it.title || '').trim(); // ❗️فقط title (نه code) تا R1/R2 نمایش داده نشه
+        const rawTitle = String(it.title || '').trim(); // فقط title
         if (!rawTitle) return;
 
         let parts = rawTitle.split(SEP).map((x) => x.trim()).filter(Boolean);
@@ -370,7 +362,6 @@ function RevenueEstimatesPage() {
         node.months = monthsMap;
       });
 
-      // اگر روت سایر نبود، نسازیم (فقط وقتی لازم شد در UI اضافه میشه)
       return Array.from(rootMap.values());
     },
     []
@@ -383,11 +374,11 @@ function RevenueEstimatesPage() {
         const data = await api('/revenue-estimates');
         const items = data.items || [];
 
-
         if (!items.length) {
           setAllRows([]);
           setPoolProjectIds([]);
           setSelectedKeysArr([]);
+          return;
         }
 
         items.sort((a, b) => (a.row_index || 0) - (b.row_index || 0));
@@ -395,14 +386,10 @@ function RevenueEstimatesPage() {
         rowIdRef.current = 1;
         let tree = buildTreeFromItems(items);
 
-        // تضمین روت سایر اگر دیتا دارد یا انتخاب ذخیره‌شده دارد
+        // تضمین روت سایر اگر دیتا دارد
         const hasOtherInTree = (tree || []).some((r) => r?.isOther && r?.otherRoot);
-        const shouldHaveOther =
-          hasOtherInTree || ((ui?.selectedOtherTitles || []).length > 0) || items.some((x) => (x.is_other === true || x.isOther === true) && (x.project_id == null));
-
-        if (shouldHaveOther) {
-          tree = upsertOtherRoot(tree);
-        }
+        const shouldHaveOther = hasOtherInTree || items.some((x) => (x.is_other === true || x.isOther === true) && (x.project_id == null));
+        if (shouldHaveOther) tree = upsertOtherRoot(tree);
 
         setAllRows(tree);
 
@@ -412,23 +399,17 @@ function RevenueEstimatesPage() {
           if (r?.projectId != null) pids.push(String(r.projectId));
         });
         const uniqP = Array.from(new Set(pids));
-
-        // pool پروژه‌ها: اگر ui داشته باشیم، همان، وگرنه از tree
         setPoolProjectIds(uniqP);
 
-        // انتخاب‌ها: اگر ui داشته باشیم همان، وگرنه مثل قبل همه پروژه‌ها + همه زیرمجموعه‌های سایر (اگر بود)
+        // انتخاب‌ها: همه پروژه‌ها + همه زیرمجموعه‌های سایر (اگر بود)
         const otherRoot = getOtherRoot(tree);
         const otherTitles = (otherRoot?.children || []).map((ch) => String(ch?.title || '').trim()).filter(Boolean);
 
-        
-        const initSelectedProjectIds = uniqP;
-        const initSelectedOtherTitles = otherTitles;
-
         const initKeys = [
-          ...Array.from(new Set(initSelectedProjectIds)).map((pid) => projectKey(pid)),
-          ...Array.from(new Set(initSelectedOtherTitles)).map((t) => otherKeyFromTitle(t)),
+          ...uniqP.map((pid) => projectKey(pid)),
+          ...otherTitles.map((t) => otherKeyFromTitle(t)),
         ];
-        setSelectedKeysArr(initKeys);
+        setSelectedKeysArr(Array.from(new Set(initKeys)));
       } catch (e) {
         console.error('load revenue estimates failed', e);
       }
@@ -638,7 +619,6 @@ function RevenueEstimatesPage() {
       const next = rec(rows);
       scheduleSave(next, 250);
 
-      // انتخاب همین مورد
       addToSelected(otherKeyFromTitle(newChild.title));
       return next;
     });
@@ -653,7 +633,6 @@ function RevenueEstimatesPage() {
   };
 
   const toggleOtherRootChip = () => {
-    // اگر هیچ زیرمجموعه‌ای انتخاب نشده، همه را انتخاب کن؛ وگرنه همه را لغو کن
     const otherRoot = getOtherRoot(allRows);
     const titles = (otherRoot?.children || []).map((ch) => String(ch?.title || '').trim()).filter(Boolean);
 
@@ -665,10 +644,8 @@ function RevenueEstimatesPage() {
 
     const anySelected = titles.some((t) => selectedOtherSet.has(t));
     if (anySelected) {
-      // پاک کردن همه انتخاب‌های سایر
       setSelectedKeysArr((prev) => prev.filter((k) => !String(k).startsWith('o:')));
     } else {
-      // انتخاب همه
       setSelectedKeysArr((prev) => {
         const s = new Set(prev);
         titles.forEach((t) => s.add(otherKeyFromTitle(t)));
@@ -814,12 +791,10 @@ function RevenueEstimatesPage() {
 
   const openEditRowModal = (row) => {
     const baseTitle = row?.title || '';
-    const showTitle = baseTitle;
-
     setEditRowModal({
       open: true,
       rowId: row?.id || null,
-      title: showTitle || '',
+      title: baseTitle || '',
       desc: row?.desc || '',
       isOther: !!row?.isOther,
       isOtherRoot: !!row?.otherRoot,
@@ -829,46 +804,48 @@ function RevenueEstimatesPage() {
   const closeEditRowModal = () =>
     setEditRowModal({ open: false, rowId: null, title: '', desc: '', isOther: false, isOtherRoot: false });
 
-
-
   const findNodeById = (nodes, id) => {
-  for (const n of nodes || []) {
-    if (n?.id === id) return n;
-    const r = findNodeById(n?.children, id);
-    if (r) return r;
-  }
-  return null;
-};
-
-
+    for (const n of nodes || []) {
+      if (n?.id === id) return n;
+      const r = findNodeById(n?.children, id);
+      if (r) return r;
+    }
+    return null;
+  };
 
   const saveEditRowModal = () => {
-
-    const oldNode = findNodeById(allRows, editRowModal.rowId);
-const oldTitle = String(oldNode?.title || '').trim();
-const newTitle = String(editRowModal.title || '').trim();
-
     if (!editRowModal.rowId) {
       closeEditRowModal();
       return;
     }
+
+    const oldNode = findNodeById(allRows, editRowModal.rowId);
+    const oldTitle = String(oldNode?.title || '').trim();
+    const newTitle = String(editRowModal.title || '').trim();
+
+    const patch = { desc: editRowModal.desc };
+    if (editRowModal.isOther && !editRowModal.isOtherRoot) {
+      patch.title = newTitle;
+    }
+
     setAllRows((prev) => {
-      const next = updateNodeMeta(prev, editRowModal.rowId, {
-        title: (editRowModal.isOther && !editRowModal.isOtherRoot) ? editRowModal.title : undefined,
-        desc: editRowModal.desc,
-      });
+      const next = updateNodeMeta(prev, editRowModal.rowId, patch);
       scheduleSave(next, 500);
       return next;
     });
+
+    // ✅ اگر "سایر" بود و عنوان تغییر کرد، کلید انتخاب هم آپدیت شود تا آیتم غیب نشود
+    if (editRowModal.isOther && !editRowModal.isOtherRoot && oldTitle && newTitle && oldTitle !== newTitle) {
+      const oldK = otherKeyFromTitle(oldTitle);
+      const newK = otherKeyFromTitle(newTitle);
+      setSelectedKeysArr((prev) => {
+        const mapped = prev.map((k) => (k === oldK ? newK : k));
+        return Array.from(new Set(mapped));
+      });
+    }
+
     closeEditRowModal();
   };
-
-  if (editRowModal.isOther && !editRowModal.isOtherRoot && oldTitle && newTitle && oldTitle !== newTitle) {
-  const oldK = otherKeyFromTitle(oldTitle);
-  const newK = otherKeyFromTitle(newTitle);
-  setSelectedKeysArr((prev) => prev.map((k) => (k === oldK ? newK : k)));
-}
-
 
   const [monthModal, setMonthModal] = useState({
     open: false,
@@ -1249,7 +1226,7 @@ const newTitle = String(editRowModal.title || '').trim();
                     <img
                       src="/images/icons/bastan.svg"
                       alt=""
-                      className={`w-3 h-3 ${active ? 'invert' : 'dark:invert'}`}
+                      className={`w-3 h-3 ${active ? 'invert-0 dark:invert-0' : 'invert dark:invert-0'}`}
                     />
                   </button>
                 </div>
@@ -1316,7 +1293,7 @@ const newTitle = String(editRowModal.title || '').trim();
 
               {otherMenuOpen && (
                 <div
-                  className="absolute z-30 mt-2 w-72 rounded-2xl border border-black/10 bg-white text-black shadow-xl p-2
+                  className="absolute z-30 mt-2 w-80 rounded-2xl border border-black/10 bg-white text-black shadow-xl p-2
                     dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800"
                   onMouseDown={(e) => e.stopPropagation()}
                 >
@@ -1365,7 +1342,7 @@ const newTitle = String(editRowModal.title || '').trim();
                             aria-label="حذف زیرمجموعه"
                             title="حذف زیرمجموعه"
                           >
-                            <img src="/images/icons/bastan.svg" alt="" className="w-3 h-3 dark:invert" />
+                            <img src="/images/icons/bastan.svg" alt="" className="w-3 h-3 invert dark:invert-0" />
                           </button>
                         </div>
                       );
@@ -1458,7 +1435,7 @@ const newTitle = String(editRowModal.title || '').trim();
                                   aria-label="افزودن زیرمجموعه"
                                   title="افزودن زیرمجموعه"
                                 >
-                                  <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
+                                  <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 invert dark:invert-0" />
                                 </button>
                               </div>
                             </TD>
@@ -1482,9 +1459,6 @@ const newTitle = String(editRowModal.title || '').trim();
                           : (x.depth === 0 && r?.projectId != null
                               ? getProjectLabelById(r.projectId, r.title || '—')
                               : (r.title || '—'));
-
-                      const rootKey = r?.projectId != null ? projectKey(r.projectId) : '';
-                      const canHideFromTable = x.depth === 0 && r?.projectId != null;
 
                       return (
                         <TR
@@ -1534,34 +1508,12 @@ const newTitle = String(editRowModal.title || '').trim();
                                         سایر
                                       </span>
                                     ) : (
-                                      <div className="flex items-center gap-2">
+                                      <span className="inline-flex items-center gap-2">
                                         <span className="px-2 py-1 rounded-full text-[10px] border border-black/10 bg-black/[0.03] text-black/70 dark:border-neutral-700 dark:bg-white/5 dark:text-neutral-200">
                                           سایر
                                         </span>
-                                        <input
-                                          value={r.title}
-                                          onClick={(e) => e.stopPropagation()}
-                                          onChange={(e) => {
-                                            const oldT = String(r.title || '').trim();
-                                            const v = e.target.value;
-                                            const newT = String(v || '').trim();
-
-                                            setAllRows((prev) => {
-                                              const next = updateNodeMeta(prev, r.id, { title: v });
-                                              scheduleSave(next, 700);
-                                              return next;
-                                            });
-
-                                            if (oldT && oldT !== newT) {
-                                              const oldK = otherKeyFromTitle(oldT);
-                                              const newK = otherKeyFromTitle(newT || oldT);
-                                              setSelectedKeysArr((prev) => prev.map((kk) => (kk === oldK ? newK : kk)));
-                                            }
-                                          }}
-                                          placeholder="عنوان..."
-                                          className="w-[110px] md:w-[130px] bg-transparent outline-none text-center placeholder-black/40 dark:placeholder-neutral-500"
-                                        />
-                                      </div>
+                                        <span className="max-w-[240px] truncate">{displayTitle}</span>
+                                      </span>
                                     )
                                   ) : (
                                     <span className="max-w-[240px] truncate">{displayTitle}</span>
@@ -1755,8 +1707,12 @@ const newTitle = String(editRowModal.title || '').trim();
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <div className="text-sm font-semibold">جزئیات / توضیحات</div>
-                  <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">در صورت نیاز، توضیحات را ثبت کنید.</div>
+                  <div className="text-sm font-semibold">
+                    {editRowModal.isOther && !editRowModal.isOtherRoot ? 'ویرایش مورد سایر' : 'جزئیات / توضیحات'}
+                  </div>
+                  <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                    {editRowModal.isOther && !editRowModal.isOtherRoot ? 'عنوان و توضیحات مورد را ثبت کنید.' : 'در صورت نیاز، توضیحات را ثبت کنید.'}
+                  </div>
                 </div>
                 <button type="button" onClick={closeEditRowModal} className="h-8 w-8 grid place-items-center rounded-xl bg-black text-white dark:bg-neutral-100 dark:text-neutral-900">
                   <img src="/images/icons/bastan.svg" alt="" className="w-4 h-4 invert dark:invert-0" />
