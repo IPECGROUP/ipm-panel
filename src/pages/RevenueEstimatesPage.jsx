@@ -247,16 +247,14 @@ function RevenueEstimatesPage() {
       if (k && keys.has(k)) out.push(r);
     });
 
-    // سایر (فقط اگر زیرمجموعه انتخاب شده)
+    // سایر (بدون نمایش روت "سایر"؛ فقط آیتم‌ها به‌صورت ریشه نمایش داده شوند)
     const otherRoot = (allRows || []).find((r) => r?.isOther && r?.otherRoot);
     if (otherRoot && selectedOtherSet.size > 0) {
       const filteredChildren = (otherRoot.children || []).filter((ch) => {
         const t = String(ch?.title || '').trim();
         return t && selectedOtherSet.has(t);
       });
-      if (filteredChildren.length > 0) {
-        out.push({ ...otherRoot, children: filteredChildren });
-      }
+      filteredChildren.forEach((ch) => out.push(ch));
     }
 
     return out;
@@ -564,17 +562,11 @@ function RevenueEstimatesPage() {
     setPickedProjectId('');
   };
 
-  // ===== حذف پروژه از کپسول (و دیتای مربوط) =====
+  // ===== حذف پروژه از کپسول (بدون حذف دیتا) =====
   const removeProjectChip = (pid) => {
     const spid = String(pid);
     setPoolProjectIds((prev) => (prev || []).filter((x) => String(x) !== spid));
     removeFromSelected(projectKey(spid));
-
-    setAllRows((prev) => {
-      const next = (prev || []).filter((r) => String(r?.projectId ?? '') !== spid);
-      scheduleSave(next, 250);
-      return next;
-    });
   };
 
   // ===== سایر: روت + زیرمجموعه‌ها =====
@@ -586,7 +578,27 @@ function RevenueEstimatesPage() {
     });
   };
 
-  const addOtherChild = () => {
+  const [otherDraftTitle, setOtherDraftTitle] = useState('');
+  const [otherDraftErr, setOtherDraftErr] = useState('');
+  const otherTitleRef = useRef(null);
+
+  useEffect(() => {
+    if (otherMenuOpen && otherTitleRef.current) {
+      otherTitleRef.current.focus();
+      otherTitleRef.current.select();
+    }
+  }, [otherMenuOpen]);
+
+  const openOtherManager = () => {
+    ensureOtherRootInState();
+    setOtherDraftErr('');
+    setOtherMenuOpen(true);
+  };
+
+  const addOtherChildWithTitle = (rawTitle) => {
+    const title = String(rawTitle || '').trim();
+    if (!title) return;
+
     ensureOtherRootInState();
 
     setAllRows((prev) => {
@@ -594,15 +606,20 @@ function RevenueEstimatesPage() {
       const otherRoot = getOtherRoot(rows);
       if (!otherRoot) return rows;
 
-      const count = (otherRoot.children || []).length;
+      const exists = (otherRoot.children || []).some((ch) => String(ch?.title || '').trim() === title);
+      if (exists) {
+        addToSelected(otherKeyFromTitle(title));
+        return rows;
+      }
+
       const newChild = makeNode({
         id: rowIdRef.current++,
-        title: `مورد ${toFaDigits(count + 1)}`,
+        title,
         desc: '',
         projectId: null,
         months: {},
         children: [],
-        expanded: false,
+        expanded: true,
         isOther: true,
         otherRoot: false,
       });
@@ -622,36 +639,32 @@ function RevenueEstimatesPage() {
       addToSelected(otherKeyFromTitle(newChild.title));
       return next;
     });
+  };
 
-    setOtherMenuOpen(true);
+  const handleAddOtherFromModal = () => {
+    const t = String(otherDraftTitle || '').trim();
+    if (!t) {
+      setOtherDraftErr('عنوان را وارد کنید.');
+      return;
+    }
+
+    const otherRoot = getOtherRoot(allRows);
+    const exists = (otherRoot?.children || []).some((ch) => String(ch?.title || '').trim() === t);
+    if (exists) {
+      setOtherDraftErr('این عنوان قبلاً اضافه شده است.');
+      addToSelected(otherKeyFromTitle(t));
+      return;
+    }
+
+    setOtherDraftErr('');
+    addOtherChildWithTitle(t);
+    setOtherDraftTitle('');
   };
 
   const toggleOtherChild = (title) => {
     const t = String(title || '').trim();
     if (!t) return;
     toggleSelected(otherKeyFromTitle(t));
-  };
-
-  const toggleOtherRootChip = () => {
-    const otherRoot = getOtherRoot(allRows);
-    const titles = (otherRoot?.children || []).map((ch) => String(ch?.title || '').trim()).filter(Boolean);
-
-    if (!titles.length) {
-      ensureOtherRootInState();
-      setOtherMenuOpen(true);
-      return;
-    }
-
-    const anySelected = titles.some((t) => selectedOtherSet.has(t));
-    if (anySelected) {
-      setSelectedKeysArr((prev) => prev.filter((k) => !String(k).startsWith('o:')));
-    } else {
-      setSelectedKeysArr((prev) => {
-        const s = new Set(prev);
-        titles.forEach((t) => s.add(otherKeyFromTitle(t)));
-        return Array.from(s);
-      });
-    }
   };
 
   const deleteOtherChild = (title) => {
@@ -1175,7 +1188,7 @@ function RevenueEstimatesPage() {
           </div>
 
           {/* کپسول‌ها */}
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-2 items-center">
             <button
               type="button"
               onClick={toggleSelectAll}
@@ -1211,7 +1224,7 @@ function RevenueEstimatesPage() {
                     {label}
                   </button>
 
-                  {/* حذف کوچک کنار کپسول */}
+                  {/* حذف کوچک کنار کپسول (فقط حذف از کپسول، نه حذف دیتا) */}
                   <button
                     type="button"
                     onClick={(e) => {
@@ -1219,154 +1232,51 @@ function RevenueEstimatesPage() {
                       e.stopPropagation();
                       removeProjectChip(pid);
                     }}
-                    className="h-6 w-6 grid place-items-center rounded-full hover:bg-white/10"
+                    className="h-6 w-6 grid place-items-center rounded-full hover:bg-black/5 dark:hover:bg-white/10"
                     aria-label="حذف کپسول پروژه"
                     title="حذف کپسول پروژه"
                   >
                     <img
                       src="/images/icons/bastan.svg"
                       alt=""
-                      className={`w-3 h-3 ${active ? 'invert-0 dark:invert-0' : 'invert dark:invert-0'}`}
+                      className={`w-3 h-3 ${active ? 'invert dark:invert' : 'invert-0 dark:invert'}`}
                     />
                   </button>
                 </div>
               );
             })}
 
-            {/* کپسول سایر (یک عدد) */}
-            <div className="relative">
-              <div
-                className={`inline-flex items-center gap-1.5 px-2 py-1.5 rounded-full border transition select-none shadow-sm
-                  ${selectedOtherSet.size > 0
-                    ? 'bg-black text-white border-black'
-                    : 'bg-white text-black border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-white/10'
-                  }`}
-                title="سایر (زیرمجموعه دارد)"
+            {/* کنترل سایر (بدون متن) */}
+            <div className="inline-flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={openOtherManager}
+                className="h-10 w-10 grid place-items-center rounded-xl bg-white text-black ring-1 ring-black/15 hover:bg-black/5
+                  dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-800 dark:hover:bg-white/10"
+                aria-label="افزودن مورد جدید"
+                title="افزودن مورد جدید"
               >
-                <button
-                  type="button"
-                  onClick={toggleOtherRootChip}
-                  className="px-1.5 py-0.5 text-xs md:text-[13px]"
-                >
-                  سایر
-                </button>
+                <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert-0 dark:invert" />
+              </button>
 
-                {/* آیکن اضافه */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    addOtherChild();
-                  }}
-                  className="h-6 w-6 grid place-items-center rounded-full hover:bg-white/10"
-                  aria-label="افزودن زیرمجموعه سایر"
-                  title="افزودن زیرمجموعه سایر"
-                >
-                  <img src="/images/icons/afzodan.svg" alt="" className="w-3 h-3 invert dark:invert-0" />
-                </button>
-
-                {/* آیکن زیرمجموعه/انتخاب */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    ensureOtherRootInState();
-                    setOtherMenuOpen((v) => !v);
-                  }}
-                  className="h-6 w-6 grid place-items-center rounded-full hover:bg-white/10"
-                  aria-label="نمایش زیرمجموعه‌های سایر"
-                  title="نمایش زیرمجموعه‌های سایر"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="opacity-90">
-                    <path
-                      d={otherMenuOpen ? 'M7 14l5-5 5 5' : 'M7 10l5 5 5-5'}
-                      stroke="currentColor"
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </button>
-              </div>
-
-              {otherMenuOpen && (
-                <div
-                  className="absolute z-30 mt-2 w-80 rounded-2xl border border-black/10 bg-white text-black shadow-xl p-2
-                    dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800"
-                  onMouseDown={(e) => e.stopPropagation()}
-                >
-                  <div className="px-2 py-1 text-xs text-black/60 dark:text-neutral-400">
-                    زیرمجموعه‌های سایر:
-                  </div>
-
-                  {otherChildrenNow.length === 0 && (
-                    <div className="px-2 py-2 text-xs text-black/50 dark:text-neutral-400">
-                      فعلاً موردی ندارید. با + اضافه کنید.
-                    </div>
-                  )}
-
-                  <div className="max-h-56 overflow-auto">
-                    {otherChildrenNow.map((t) => {
-                      const active = selectedOtherSet.has(t);
-                      return (
-                        <div
-                          key={t}
-                          className={`flex items-center justify-between gap-2 rounded-xl px-2 py-2 transition
-                            ${active ? 'bg-black/5 dark:bg-white/10' : 'hover:bg-black/[0.03] dark:hover:bg-white/5'}`}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => toggleOtherChild(t)}
-                            className="flex-1 text-right text-xs"
-                            title={active ? 'حذف از جدول' : 'افزودن به جدول'}
-                          >
-                            <span className="inline-flex items-center gap-2">
-                              <span className={`h-4 w-4 rounded border grid place-items-center
-                                ${active ? 'bg-black text-white border-black' : 'bg-white border-black/20 dark:bg-neutral-900 dark:border-neutral-700'}`}>
-                                {active ? (
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                                    <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                ) : null}
-                              </span>
-                              <span className="truncate">{t}</span>
-                            </span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => deleteOtherChild(t)}
-                            className="h-8 w-8 grid place-items-center rounded-xl ring-1 ring-black/10 hover:bg-black/5 dark:ring-neutral-700 dark:hover:bg-white/10"
-                            aria-label="حذف زیرمجموعه"
-                            title="حذف زیرمجموعه"
-                          >
-                            <img src="/images/icons/bastan.svg" alt="" className="w-3 h-3 invert dark:invert-0" />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="mt-2 flex items-center justify-between gap-2 px-1">
-                    <button
-                      type="button"
-                      onClick={() => setOtherMenuOpen(false)}
-                      className="h-9 px-3 rounded-xl border border-black/15 text-xs hover:bg-black/5 dark:border-neutral-700 dark:hover:bg-white/10"
-                    >
-                      بستن
-                    </button>
-                    <button
-                      type="button"
-                      onClick={addOtherChild}
-                      className="h-9 px-3 rounded-xl bg-black text-white text-xs dark:bg-neutral-100 dark:text-neutral-900"
-                    >
-                      افزودن مورد جدید
-                    </button>
-                  </div>
-                </div>
-              )}
+              <button
+                type="button"
+                onClick={openOtherManager}
+                className="h-10 w-10 grid place-items-center rounded-xl bg-white text-black ring-1 ring-black/15 hover:bg-black/5
+                  dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-800 dark:hover:bg-white/10"
+                aria-label="نمایش/مدیریت موارد"
+                title="نمایش/مدیریت موارد"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="opacity-90">
+                  <path
+                    d={otherMenuOpen ? 'M7 14l5-5 5 5' : 'M7 10l5 5 5-5'}
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
             </div>
           </div>
         </div>
@@ -1435,7 +1345,7 @@ function RevenueEstimatesPage() {
                                   aria-label="افزودن زیرمجموعه"
                                   title="افزودن زیرمجموعه"
                                 >
-                                  <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 invert dark:invert-0" />
+                                  <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 invert-0 dark:invert" />
                                 </button>
                               </div>
                             </TD>
@@ -1502,22 +1412,7 @@ function RevenueEstimatesPage() {
                                     </svg>
                                   </button>
 
-                                  {r.isOther ? (
-                                    r.otherRoot ? (
-                                      <span className="px-2 py-1 rounded-full text-[10px] border border-black/10 bg-black/[0.03] text-black/70 dark:border-neutral-700 dark:bg-white/5 dark:text-neutral-200">
-                                        سایر
-                                      </span>
-                                    ) : (
-                                      <span className="inline-flex items-center gap-2">
-                                        <span className="px-2 py-1 rounded-full text-[10px] border border-black/10 bg-black/[0.03] text-black/70 dark:border-neutral-700 dark:bg-white/5 dark:text-neutral-200">
-                                          سایر
-                                        </span>
-                                        <span className="max-w-[240px] truncate">{displayTitle}</span>
-                                      </span>
-                                    )
-                                  ) : (
-                                    <span className="max-w-[240px] truncate">{displayTitle}</span>
-                                  )}
+                                  <span className="max-w-[240px] truncate">{displayTitle}</span>
                                 </div>
                               </div>
                             </div>
@@ -1587,6 +1482,155 @@ function RevenueEstimatesPage() {
             <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
           </button>
         </div>
+
+        {/* مودال مدیریت سایر (تماماً سفید در لایت و با بک‌دراپ، تا جدول پشتش دیده نشود) */}
+        {otherMenuOpen && (
+          <div className="fixed inset-0 z-50 grid place-items-center px-3">
+            <div
+              className="absolute inset-0 bg-black/25 dark:bg-neutral-950/55 backdrop-blur-[2px]"
+              onClick={() => setOtherMenuOpen(false)}
+            />
+            <div
+              className="relative w-full max-w-md rounded-2xl bg-white text-black border border-black/10 shadow-2xl p-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="text-sm font-semibold">افزودن / مدیریت مورد جدید</div>
+                  <div className="mt-1 text-xs text-black/60">
+                    عنوان را وارد کنید و با دکمه تیک اضافه کنید.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setOtherMenuOpen(false)}
+                  className="h-8 w-8 grid place-items-center rounded-xl bg-black text-white"
+                  aria-label="بستن"
+                  title="بستن"
+                >
+                  <img src="/images/icons/bastan.svg" alt="" className="w-4 h-4 invert" />
+                </button>
+              </div>
+
+              <div className="mt-3 space-y-2">
+                <div className="flex items-stretch gap-2">
+                  <input
+                    ref={otherTitleRef}
+                    type="text"
+                    className="flex-1 rounded-xl px-3 py-2 text-sm bg-white text-black placeholder-black/40 border border-black/15 outline-none focus:ring-2 focus:ring-black/10"
+                    value={otherDraftTitle}
+                    onChange={(e) => {
+                      setOtherDraftTitle(e.target.value);
+                      if (otherDraftErr) setOtherDraftErr('');
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddOtherFromModal();
+                      }
+                    }}
+                    placeholder="عنوان مورد جدید..."
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddOtherFromModal}
+                    className="h-10 w-11 rounded-xl bg-black text-white grid place-items-center"
+                    aria-label="افزودن"
+                    title="افزودن"
+                  >
+                    <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
+                  </button>
+                </div>
+
+                {otherDraftErr && (
+                  <div className="text-xs text-red-600">{otherDraftErr}</div>
+                )}
+
+                <div className="mt-2 text-xs text-black/60">لیست موارد:</div>
+
+                {otherChildrenNow.length === 0 && (
+                  <div className="px-2 py-2 text-xs text-black/50">
+                    فعلاً موردی ندارید.
+                  </div>
+                )}
+
+                <div className="max-h-60 overflow-auto">
+                  {otherChildrenNow.map((t) => {
+                    const active = selectedOtherSet.has(t);
+                    return (
+                      <div
+                        key={t}
+                        className={`flex items-center justify-between gap-2 rounded-xl px-2 py-2 transition border border-black/10
+                          ${active ? 'bg-black/[0.03]' : 'hover:bg-black/[0.02]'}`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => toggleOtherChild(t)}
+                          className="flex-1 text-right text-xs"
+                          title={active ? 'حذف از جدول' : 'افزودن به جدول'}
+                        >
+                          <span className="inline-flex items-center gap-2">
+                            <span className={`h-4 w-4 rounded border grid place-items-center
+                              ${active ? 'bg-black text-white border-black' : 'bg-white border-black/20'}`}>
+                              {active ? (
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                                  <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              ) : null}
+                            </span>
+                            <span className="truncate">{t}</span>
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => deleteOtherChild(t)}
+                          className="h-8 w-8 grid place-items-center rounded-xl ring-1 ring-black/10 hover:bg-black/5"
+                          aria-label="حذف مورد"
+                          title="حذف مورد"
+                        >
+                          <img src="/images/icons/bastan.svg" alt="" className="w-3 h-3 invert-0" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-2 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setOtherMenuOpen(false)}
+                    className="h-9 px-4 rounded-xl border border-black/15 text-xs hover:bg-black/5"
+                  >
+                    بستن
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const titles = otherChildrenNow;
+                      if (!titles.length) return;
+                      const anySelected = titles.some((t) => selectedOtherSet.has(t));
+                      if (anySelected) {
+                        setSelectedKeysArr((prev) => prev.filter((k) => !String(k).startsWith('o:')));
+                      } else {
+                        setSelectedKeysArr((prev) => {
+                          const s = new Set(prev);
+                          titles.forEach((t) => s.add(otherKeyFromTitle(t)));
+                          return Array.from(s);
+                        });
+                      }
+                    }}
+                    className="h-9 px-4 rounded-xl bg-black text-white text-xs"
+                    title="انتخاب/لغو انتخاب همه"
+                  >
+                    انتخاب همه
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {monthModal.open && (
           <div className="fixed inset-0 z-40 grid place-items-center px-3">
@@ -1708,7 +1752,7 @@ function RevenueEstimatesPage() {
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <div className="text-sm font-semibold">
-                    {editRowModal.isOther && !editRowModal.isOtherRoot ? 'ویرایش مورد سایر' : 'جزئیات / توضیحات'}
+                    {editRowModal.isOther && !editRowModal.isOtherRoot ? 'ویرایش مورد' : 'جزئیات / توضیحات'}
                   </div>
                   <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
                     {editRowModal.isOther && !editRowModal.isOtherRoot ? 'عنوان و توضیحات مورد را ثبت کنید.' : 'در صورت نیاز، توضیحات را ثبت کنید.'}
