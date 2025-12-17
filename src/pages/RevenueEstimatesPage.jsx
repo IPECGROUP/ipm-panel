@@ -329,6 +329,7 @@ function RevenueEstimatesPage() {
       items.forEach((it) => {
         const rawTitle = String(it.title || '').trim(); // فقط title
         if (!rawTitle) return;
+        if (rawTitle === '__META__') return;
 
         let parts = rawTitle.split(SEP).map((x) => x.trim()).filter(Boolean);
         if (!parts.length) return;
@@ -365,6 +366,12 @@ function RevenueEstimatesPage() {
     []
   );
 
+  const metaRef = useRef({ poolProjectIds: [], selectedKeysArr: [] });
+
+  useEffect(() => {
+    metaRef.current = { poolProjectIds: poolProjectIds || [], selectedKeysArr: selectedKeysArr || [] };
+  }, [poolProjectIds, selectedKeysArr]);
+
   useEffect(() => {
     if (canAccessPage !== true) return;
     (async () => {
@@ -381,33 +388,65 @@ function RevenueEstimatesPage() {
 
         items.sort((a, b) => (a.row_index || 0) - (b.row_index || 0));
 
+        let meta = null;
+        for (const it of items) {
+          const t = String(it?.title || '').trim();
+          if (t === '__META__') {
+            try {
+              meta = JSON.parse(String(it?.description || '{}') || '{}');
+            } catch {
+              meta = null;
+            }
+            break;
+          }
+        }
+
+        const itemsNoMeta = items.filter((x) => String(x?.title || '').trim() !== '__META__');
+
         rowIdRef.current = 1;
-        let tree = buildTreeFromItems(items);
+        let tree = buildTreeFromItems(itemsNoMeta);
 
         // تضمین روت سایر اگر دیتا دارد
         const hasOtherInTree = (tree || []).some((r) => r?.isOther && r?.otherRoot);
-        const shouldHaveOther = hasOtherInTree || items.some((x) => (x.is_other === true || x.isOther === true) && (x.project_id == null));
+        const shouldHaveOther = hasOtherInTree || itemsNoMeta.some((x) => (x.is_other === true || x.isOther === true) && (x.project_id == null));
         if (shouldHaveOther) tree = upsertOtherRoot(tree);
 
         setAllRows(tree);
 
-        // پروژه‌ها از خود tree
-        const pids = [];
+        // پروژه‌ها از meta (اگر باشد) یا از خود tree
+        const pidsFromTree = [];
         (tree || []).forEach((r) => {
-          if (r?.projectId != null) pids.push(String(r.projectId));
+          if (r?.projectId != null) pidsFromTree.push(String(r.projectId));
         });
-        const uniqP = Array.from(new Set(pids));
-        setPoolProjectIds(uniqP);
+        const uniqTree = Array.from(new Set(pidsFromTree));
 
-        // انتخاب‌ها: همه پروژه‌ها + همه زیرمجموعه‌های سایر (اگر بود)
+        const metaPool = Array.isArray(meta?.poolProjectIds) ? meta.poolProjectIds.map((x) => String(x)).filter(Boolean) : null;
+        const nextPool = metaPool && metaPool.length ? Array.from(new Set(metaPool)) : uniqTree;
+        setPoolProjectIds(nextPool);
+
+        // انتخاب‌ها از meta (اگر باشد) یا همه
         const otherRoot = getOtherRoot(tree);
         const otherTitles = (otherRoot?.children || []).map((ch) => String(ch?.title || '').trim()).filter(Boolean);
 
-        const initKeys = [
-          ...uniqP.map((pid) => projectKey(pid)),
+        const defaultKeys = [
+          ...nextPool.map((pid) => projectKey(pid)),
           ...otherTitles.map((t) => otherKeyFromTitle(t)),
         ];
-        setSelectedKeysArr(Array.from(new Set(initKeys)));
+
+        const metaSel = Array.isArray(meta?.selectedKeysArr) ? meta.selectedKeysArr.map(String) : null;
+        const rawSel = (metaSel && metaSel.length) ? metaSel : defaultKeys;
+
+        const allowedProjectKeys = new Set(nextPool.map((pid) => projectKey(pid)));
+        const allowedOtherKeys = new Set(otherTitles.map((t) => otherKeyFromTitle(t)));
+
+        const filteredSel = rawSel.filter((k) => {
+          const s = String(k || '');
+          if (s.startsWith('p:')) return allowedProjectKeys.has(s);
+          if (s.startsWith('o:')) return allowedOtherKeys.has(s);
+          return false;
+        });
+
+        setSelectedKeysArr(Array.from(new Set(filteredSel.length ? filteredSel : defaultKeys)));
       } catch (e) {
         console.error('load revenue estimates failed', e);
       }
@@ -460,6 +499,21 @@ function RevenueEstimatesPage() {
         amount: r.amount,
       }));
 
+      const meta = metaRef.current || { poolProjectIds: [], selectedKeysArr: [] };
+      payloadRows.push({
+        code: '__META__',
+        row_index: payloadRows.length + 1,
+        title: '__META__',
+        description: JSON.stringify({
+          poolProjectIds: meta.poolProjectIds || [],
+          selectedKeysArr: meta.selectedKeysArr || [],
+        }),
+        project_id: null,
+        is_other: true,
+        months: [],
+        amount: 0,
+      });
+
       const sig = JSON.stringify(payloadRows);
       if (sig === lastSavedRef.current) return;
 
@@ -474,7 +528,7 @@ function RevenueEstimatesPage() {
   );
 
   const scheduleSave = useCallback(
-    (nextRows, delay = 250) => {
+    (nextRows, delay = 150) => {
       if (canAccessPage !== true) return;
       pendingRowsRef.current = nextRows;
 
@@ -537,7 +591,14 @@ function RevenueEstimatesPage() {
         return Array.from(s);
       });
     }
+    scheduleSave(allRows || [], 150);
   };
+
+  // هر تغییر انتخاب/کپسول‌ها هم باید ذخیره شود
+  useEffect(() => {
+    if (canAccessPage !== true) return;
+    scheduleSave(allRows || [], 150);
+  }, [selectedKeysArr, poolProjectIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ===== افزودن پروژه به کپسول‌ها =====
   const [pickedProjectId, setPickedProjectId] = useState('');
@@ -567,13 +628,14 @@ function RevenueEstimatesPage() {
     const spid = String(pid);
     setPoolProjectIds((prev) => (prev || []).filter((x) => String(x) !== spid));
     removeFromSelected(projectKey(spid));
+    scheduleSave(allRows || [], 150);
   };
 
   // ===== سایر: روت + زیرمجموعه‌ها =====
   const ensureOtherRootInState = () => {
     setAllRows((prev) => {
       const next = upsertOtherRoot(prev || []);
-      if (next !== prev) scheduleSave(next, 250);
+      if (next !== prev) scheduleSave(next, 150);
       return next;
     });
   };
@@ -609,6 +671,7 @@ function RevenueEstimatesPage() {
       const exists = (otherRoot.children || []).some((ch) => String(ch?.title || '').trim() === title);
       if (exists) {
         addToSelected(otherKeyFromTitle(title));
+        scheduleSave(rows, 150);
         return rows;
       }
 
@@ -634,7 +697,7 @@ function RevenueEstimatesPage() {
         });
 
       const next = rec(rows);
-      scheduleSave(next, 250);
+      scheduleSave(next, 150);
 
       addToSelected(otherKeyFromTitle(newChild.title));
       return next;
@@ -653,6 +716,7 @@ function RevenueEstimatesPage() {
     if (exists) {
       setOtherDraftErr('این عنوان قبلاً اضافه شده است.');
       addToSelected(otherKeyFromTitle(t));
+      scheduleSave(allRows || [], 150);
       return;
     }
 
@@ -665,6 +729,7 @@ function RevenueEstimatesPage() {
     const t = String(title || '').trim();
     if (!t) return;
     toggleSelected(otherKeyFromTitle(t));
+    scheduleSave(allRows || [], 150);
   };
 
   const deleteOtherChild = (title) => {
@@ -684,7 +749,7 @@ function RevenueEstimatesPage() {
           return n;
         });
       const next = rec(prev || []);
-      scheduleSave(next, 250);
+      scheduleSave(next, 150);
       return next;
     });
   };
@@ -699,12 +764,13 @@ function RevenueEstimatesPage() {
         const exists = (prev || []).some((r) => String(r?.projectId) === String(pid));
         if (exists) return prev;
         const next = [...(prev || []), ensureRootForProject(pid)];
-        scheduleSave(next, 250);
+        scheduleSave(next, 150);
         return next;
       });
     }
 
     toggleSelected(k);
+    scheduleSave(allRows || [], 150);
   };
 
   // ===== Tree ops =====
@@ -766,7 +832,7 @@ function RevenueEstimatesPage() {
 
     setAllRows((prev) => {
       const next = addChildToTree(prev, childModal.parentId, newChild);
-      scheduleSave(next, 350);
+      scheduleSave(next, 150);
       return next;
     });
 
@@ -781,7 +847,7 @@ function RevenueEstimatesPage() {
         return n;
       });
     setAllRows((prev) => rec(prev));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateNodeMeta = useCallback((nodes, id, patch) => {
     const rec = (arr) =>
@@ -843,7 +909,7 @@ function RevenueEstimatesPage() {
 
     setAllRows((prev) => {
       const next = updateNodeMeta(prev, editRowModal.rowId, patch);
-      scheduleSave(next, 500);
+      scheduleSave(next, 150);
       return next;
     });
 
@@ -916,7 +982,7 @@ function RevenueEstimatesPage() {
 
     setAllRows((prev) => {
       const next = updateNodeMonths(prev, monthModal.rowId, monthModal.monthKey, num);
-      scheduleSave(next, 350);
+      scheduleSave(next, 150);
       return next;
     });
 
@@ -1258,25 +1324,6 @@ function RevenueEstimatesPage() {
               >
                 <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert-0 dark:invert" />
               </button>
-
-              <button
-                type="button"
-                onClick={openOtherManager}
-                className="h-10 w-10 grid place-items-center rounded-xl bg-white text-black ring-1 ring-black/15 hover:bg-black/5
-                  dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-800 dark:hover:bg-white/10"
-                aria-label="نمایش/مدیریت موارد"
-                title="نمایش/مدیریت موارد"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="opacity-90">
-                  <path
-                    d={otherMenuOpen ? 'M7 14l5-5 5 5' : 'M7 10l5 5 5-5'}
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
             </div>
           </div>
         </div>
@@ -1554,7 +1601,7 @@ function RevenueEstimatesPage() {
                   </div>
                 )}
 
-                <div className="max-h-60 overflow-auto">
+                <div className="max-h-60 overflow-auto space-y-1">
                   {otherChildrenNow.map((t) => {
                     const active = selectedOtherSet.has(t);
                     return (
@@ -1620,6 +1667,7 @@ function RevenueEstimatesPage() {
                           return Array.from(s);
                         });
                       }
+                      scheduleSave(allRows || [], 150);
                     }}
                     className="h-9 px-4 rounded-xl bg-black text-white text-xs"
                     title="انتخاب/لغو انتخاب همه"
@@ -1892,4 +1940,3 @@ function RevenueEstimatesPage() {
 }
 
 export default RevenueEstimatesPage;
-
