@@ -178,7 +178,7 @@ function ReportsPage() {
 
   const prefixOf = (k) => tabs.find((t) => t.id === k)?.prefix || "";
 
-  // ===== دسترسی واقعی از سرور =====
+  // ===== Access (الگوی درست مثل صفحات جدید) =====
   const API_BASE = (window.API_URL || "/api").replace(/\/+$/, "");
   async function realApi(path, opt = {}) {
     const res = await fetch(API_BASE + path, {
@@ -198,43 +198,69 @@ function ReportsPage() {
     return data;
   }
 
-  const [me, setMe] = React.useState(null);
+  const [accessMy, setAccessMy] = React.useState(null);
+  const [accessLoading, setAccessLoading] = React.useState(true);
+  const [accessErr, setAccessErr] = React.useState("");
+
+  const [allowedTabs, setAllowedTabs] = React.useState(null); // null=درحال‌بررسی | []=هیچ تبی مجاز نیست | [...ids]
+  const [accessRefreshKey, setAccessRefreshKey] = React.useState(0);
+
+  const fetchAccess = React.useCallback(async () => {
+    setAccessErr("");
+    setAccessLoading(true);
+    try {
+      const r = await realApi("/access/my");
+      setAccessMy(r || null);
+    } catch (e) {
+      setAccessMy(null);
+      setAccessErr(e?.message || "خطا در بررسی دسترسی");
+    } finally {
+      setAccessLoading(false);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   React.useEffect(() => {
     let alive = true;
     (async () => {
-      try {
-        const r = await realApi("/auth/me");
-        if (!alive) return;
-        setMe(r?.user || r || null);
-      } catch {
-        if (!alive) return;
-        setMe({ role: "guest", access_labels: [] });
-      }
+      if (!alive) return;
+      await fetchAccess();
     })();
     return () => {
       alive = false;
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fetchAccess, accessRefreshKey]);
+
+  const me = React.useMemo(() => accessMy?.user || null, [accessMy]);
 
   const isAllAccess = React.useMemo(() => {
-    if (!me) return false;
-    if (String(me.role || "").toLowerCase() === "admin") return true;
-    let labels = [];
-    if (Array.isArray(me?.access_labels)) labels = me.access_labels;
-    else if (typeof me?.access_labels === "string") {
-      try {
-        const j = JSON.parse(me.access_labels);
-        if (Array.isArray(j)) labels = j;
-      } catch {}
-    }
-    return labels.includes("all");
-  }, [me]);
+    const u = accessMy?.user;
+    if (!u) return false;
 
-  const [allowedTabs, setAllowedTabs] = React.useState(null); // null=درحال بررسی | []=هیچ
-  const [accessRefreshKey, setAccessRefreshKey] = React.useState(0);
+    if (String(u.role || "").toLowerCase() === "admin") return true;
+
+    const raw = u.access_labels ?? u.access;
+    const labels = Array.isArray(raw)
+      ? raw.map((x) => String(x))
+      : typeof raw === "string"
+      ? [raw]
+      : [];
+
+    return labels.includes("all");
+  }, [accessMy]);
+
+  const canAccessPage = React.useMemo(() => {
+    if (!accessMy) return null;
+    if (isAllAccess) return true;
+
+    const pageRule = accessMy?.pages?.[PAGE_KEY];
+    return pageRule?.permitted === 1 || pageRule?.permitted === true;
+  }, [accessMy, isAllAccess]);
 
   React.useEffect(() => {
-    if (!me) return;
+    if (canAccessPage !== true) {
+      if (canAccessPage === false) setAllowedTabs([]);
+      return;
+    }
 
     let alive = true;
     (async () => {
@@ -243,7 +269,7 @@ function ReportsPage() {
           const all = tabs.map((t) => t.id);
           if (!alive) return;
           setAllowedTabs(all);
-          if (!all.includes(active)) setActive(all[0]);
+          if (all.length && !all.includes(active)) setActive(all[0]);
           return;
         }
 
@@ -289,7 +315,12 @@ function ReportsPage() {
     return () => {
       alive = false;
     };
-  }, [me, isAllAccess, active, accessRefreshKey]); // tabs ثابت است
+  }, [canAccessPage, isAllAccess, active]); // tabs ثابت است // eslint-disable-line react-hooks/exhaustive-deps
+
+  const visibleTabs = React.useMemo(() => {
+    if (allowedTabs === null) return [];
+    return tabs.filter((t) => (allowedTabs || []).includes(t.id));
+  }, [allowedTabs, tabs]);
 
   React.useEffect(() => {
     const kick = () => setAccessRefreshKey((x) => x + 1);
@@ -303,17 +334,6 @@ function ReportsPage() {
       document.removeEventListener("visibilitychange", onVis);
     };
   }, []);
-
-  const canAccessPage = React.useMemo(() => {
-    if (!me) return null;
-    if (allowedTabs === null) return null;
-    return (allowedTabs || []).length > 0;
-  }, [me, allowedTabs]);
-
-  const visibleTabs = React.useMemo(() => {
-    if (!allowedTabs) return [];
-    return tabs.filter((t) => allowedTabs.includes(t.id));
-  }, [allowedTabs, tabs]);
 
   // ===== fake DB این صفحه =====
   const fakeDbRef = React.useRef(null);
@@ -393,7 +413,7 @@ function ReportsPage() {
   );
 
   React.useEffect(() => {
-    if (canAccessPage === false) return;
+    if (canAccessPage !== true) return;
     let stop = false;
     (async () => {
       try {
@@ -431,12 +451,14 @@ function ReportsPage() {
     try {
       const qs1 = new URLSearchParams();
       qs1.set("kind", active);
-      if (active === "projects" && projectId) qs1.set("project_id", String(projectId));
+      if (active === "projects" && projectId)
+        qs1.set("project_id", String(projectId));
       const sum = await api("/budget-allocations/summary?" + qs1.toString());
 
       const qs2 = new URLSearchParams();
       qs2.set("kind", active);
-      if (active === "projects" && projectId) qs2.set("project_id", String(projectId));
+      if (active === "projects" && projectId)
+        qs2.set("project_id", String(projectId));
       const hist = await api("/budget-allocations/history?" + qs2.toString());
 
       setTotals(sum.totals || {});
@@ -505,7 +527,10 @@ function ReportsPage() {
                 setProjectId(e.target.value);
               }}
             >
-              <option className="bg-white text-black dark:bg-neutral-900 dark:text-neutral-100" value="">
+              <option
+                className="bg-white text-black dark:bg-neutral-900 dark:text-neutral-100"
+                value=""
+              >
                 انتخاب کنید
               </option>
               {(sortedProjects || []).map((p) => (
@@ -535,26 +560,7 @@ function ReportsPage() {
     </div>
   );
 
-  if (me && canAccessPage === false) {
-    return (
-      <>
-        <Card>
-          <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
-            <span>گزارش‌ها</span>
-            <span className="mx-2">›</span>
-            <span className="font-semibold text-black dark:text-neutral-100">
-              گزارش‌های بودجه
-            </span>
-          </div>
-          <div className="p-5 rounded-2xl ring-1 ring-black/10 bg-white text-center text-red-600 dark:bg-neutral-900 dark:ring-neutral-800 dark:text-red-400">
-            شما سطح دسترسی لازم را ندارید.
-          </div>
-        </Card>
-      </>
-    );
-  }
-
-  if (!me || allowedTabs === null) {
+  if (accessLoading || allowedTabs === null) {
     return (
       <>
         <Card>
@@ -567,6 +573,44 @@ function ReportsPage() {
           </div>
           <div className="p-5 text-center text-black/60 dark:text-neutral-300">
             در حال بررسی دسترسی…
+          </div>
+        </Card>
+      </>
+    );
+  }
+
+  if (accessErr) {
+    return (
+      <>
+        <Card>
+          <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
+            <span>گزارش‌ها</span>
+            <span className="mx-2">›</span>
+            <span className="font-semibold text-black dark:text-neutral-100">
+              گزارش‌های بودجه
+            </span>
+          </div>
+          <div className="p-5 rounded-2xl ring-1 ring-black/10 bg-white text-center text-red-600 dark:bg-neutral-900 dark:ring-neutral-800 dark:text-red-400">
+            {accessErr}
+          </div>
+        </Card>
+      </>
+    );
+  }
+
+  if (canAccessPage !== true || (allowedTabs || []).length === 0) {
+    return (
+      <>
+        <Card>
+          <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
+            <span>گزارش‌ها</span>
+            <span className="mx-2">›</span>
+            <span className="font-semibold text-black dark:text-neutral-100">
+              گزارش‌های بودجه
+            </span>
+          </div>
+          <div className="p-5 rounded-2xl ring-1 ring-black/10 bg-white text-center text-red-600 dark:bg-neutral-900 dark:ring-neutral-800 dark:text-red-400">
+            شما سطح دسترسی لازم را ندارید.
           </div>
         </Card>
       </>
@@ -587,7 +631,9 @@ function ReportsPage() {
 
         {/* تاریخ */}
         <div className="mb-3 flex items-center gap-2">
-          <div className="text-sm text-black/60 dark:text-neutral-400">تاریخ:</div>
+          <div className="text-sm text-black/60 dark:text-neutral-400">
+            تاریخ:
+          </div>
           <div className="px-3 py-1 rounded-lg bg-black/5 text-black text-sm ring-1 ring-black/15 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-800">
             {todayFa}
           </div>
@@ -629,7 +675,10 @@ function ReportsPage() {
                 <tbody>
                   {Object.keys(totals || {}).length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="py-6 text-black/60 text-center dark:text-neutral-400">
+                      <td
+                        colSpan={3}
+                        className="py-6 text-black/60 text-center dark:text-neutral-400"
+                      >
                         موردی یافت نشد.
                       </td>
                     </tr>
@@ -667,13 +716,18 @@ function ReportsPage() {
                 <thead className="bg-black/5 text-black dark:bg-white/5 dark:text-neutral-100">
                   <tr>
                     <th className="py-3 px-2 w-56 text-center">کد بودجه</th>
-                    <th className="py-3 px-2 text-center">(مبلغ / تاریخ/ساعت) — سریال</th>
+                    <th className="py-3 px-2 text-center">
+                      (مبلغ / تاریخ/ساعت) — سریال
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {Object.keys(history || {}).length === 0 ? (
                     <tr>
-                      <td colSpan={2} className="py-6 text-black/60 text-center dark:text-neutral-400">
+                      <td
+                        colSpan={2}
+                        className="py-6 text-black/60 text-center dark:text-neutral-400"
+                      >
                         سابقه‌ای یافت نشد.
                       </td>
                     </tr>
@@ -696,16 +750,32 @@ function ReportsPage() {
                           </td>
                           <td className="py-2 px-2 text-center">
                             {(history[code] || []).length === 0 ? (
-                              <span className="text-black/60 dark:text-neutral-400">—</span>
+                              <span className="text-black/60 dark:text-neutral-400">
+                                —
+                              </span>
                             ) : (
                               <div className="flex flex-col gap-1 items-center">
                                 {(history[code] || []).map((h, idx) => (
                                   <div key={idx} className="text-xs">
-                                    <span className="font-mono ltr">{formatMoney(h.amount || 0)}</span>
-                                    <span className="mx-2 text-black/50 dark:text-neutral-500">—</span>
-                                    <span>{new Date(h.created_at).toLocaleDateString("fa-IR")}</span>
-                                    <span className="mx-1 text-black/50 dark:text-neutral-500">/</span>
-                                    <span>{new Date(h.created_at).toLocaleTimeString("fa-IR")}</span>
+                                    <span className="font-mono ltr">
+                                      {formatMoney(h.amount || 0)}
+                                    </span>
+                                    <span className="mx-2 text-black/50 dark:text-neutral-500">
+                                      —
+                                    </span>
+                                    <span>
+                                      {new Date(h.created_at).toLocaleDateString(
+                                        "fa-IR"
+                                      )}
+                                    </span>
+                                    <span className="mx-1 text-black/50 dark:text-neutral-500">
+                                      /
+                                    </span>
+                                    <span>
+                                      {new Date(h.created_at).toLocaleTimeString(
+                                        "fa-IR"
+                                      )}
+                                    </span>
                                     {h.serial ? (
                                       <span className="mx-2 text-black/50 dark:text-neutral-400">
                                         [ {h.serial} ]
@@ -737,7 +807,11 @@ function ReportsPage() {
                 title="چاپ"
                 aria-label="چاپ"
               >
-                <img src="/images/icons/print.svg" alt="چاپ" className="w-5 h-5 dark:invert" />
+                <img
+                  src="/images/icons/print.svg"
+                  alt="چاپ"
+                  className="w-5 h-5 dark:invert"
+                />
               </button>
             </div>
           </div>
