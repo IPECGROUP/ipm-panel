@@ -76,10 +76,10 @@ export default function Shell() {
             : "border-black/10 bg-gradient-to-l from-black/5 to-transparent")
         }
       >
-        <div className="mx-auto max-w-[1400px] flex flex-wrap items-center justify-end gap-2 p-2.5 md:p-3">
+        <div className="mx-auto max-w-[1400px] flex items-center justify-between gap-2 p-2.5 md:p-3">
           <Link
             to="/"
-            className="order-2 flex items-center justify-end hover:opacity-95 transition shrink-0 pr-1 md:pr-2"
+            className="flex items-center justify-start hover:opacity-95 transition shrink-0"
             aria-label="خانه"
             title="خانه"
           >
@@ -87,16 +87,16 @@ export default function Shell() {
             <img
               src="/images/light%20mode.png"
               alt="logo"
-              className="h-9 md:h-10 w-auto object-contain block dark:hidden"
+              className="h-7 md:h-8 w-auto object-contain block dark:hidden"
             />
             <img
               src="/images/dark%20mode.png"
               alt="logo (dark)"
-              className="h-9 md:h-10 w-auto object-contain hidden dark:block"
+              className="h-7 md:h-8 w-auto object-contain hidden dark:block"
             />
           </Link>
 
-          <div className="order-1 flex items-center gap-2 md:gap-3 text-xs md:text-sm flex-wrap justify-end">
+          <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm">
             {/* تاریخ */}
             <div
               className={
@@ -256,14 +256,14 @@ export default function Shell() {
         </div>
       </header>
 
-      <main className="grid grid-cols-1 md:grid-cols-[1fr_92px] min-h-[calc(100dvh-64px)] md:min-h-[calc(100dvh-80px)]">
+      <main className="grid grid-cols-[1fr_92px] min-h-[calc(100dvh-64px)] md:min-h-[calc(100dvh-80px)]">
         <div dir="ltr" className="px-4 md:px-6 py-4 md:py-6">
           <div dir="rtl" className="mx-auto max-w-[1400px]">
             {/* اینجا روت‌های داخلی رندر می‌شن */}
             <Outlet />
           </div>
         </div>
-        <div dir="rtl" className="shrink-0 flex justify-end md:block">
+        <div dir="rtl" className="shrink-0">
           <RightNav />
         </div>
       </main>
