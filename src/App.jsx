@@ -21,6 +21,8 @@ import DailyReportPage from "./pages/DailyReportPage.jsx";
 import FinancialWorksheetPage from "./pages/FinancialWorksheetPage.jsx";
 import BudgetAllocationPage from "./pages/BudgetAllocationPage.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
+import LettersPage from "./pages/LettersPage.jsx";
+
 
 import BudgetCodesPage, {
   OfficePage,
@@ -86,6 +88,7 @@ export default function App() {
           path="/projects/financial-worksheet"
           element={<FinancialWorksheetPage />}
         />
+        <Route path="/letters" element={isAuthed ? <LettersPage /> : <Navigate to="/login" />} />
 
         {/* بودجه‌بندی */}
         <Route
