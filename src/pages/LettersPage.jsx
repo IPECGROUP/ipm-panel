@@ -336,6 +336,7 @@ export default function LettersPage() {
 
   const [hasAttachment, setHasAttachment] = useState(false);
   const [returnToIds, setReturnToIds] = useState([""]);
+  const [piroIds, setPiroIds] = useState([""]);
   const [myLetters, setMyLetters] = useState([]);
 
   useEffect(() => {
@@ -438,7 +439,13 @@ export default function LettersPage() {
                   onClick={() => setTab(t.id)}
                   className={
                     "h-10 px-5 rounded-xl border transition text-sm font-semibold " +
-                    (active
+                    (t.id === "outgoing"
+                      ? active
+                        ? "bg-[#1a7431] text-white border-[#1a7431]"
+                        : theme === "dark"
+                        ? "bg-transparent text-white border-[#1a7431] hover:bg-white/5"
+                        : "bg-white text-neutral-900 border-[#1a7431] hover:bg-black/[0.02]"
+                      : active
                       ? "bg-[#4895ef] text-white border-[#4895ef]"
                       : theme === "dark"
                       ? "bg-transparent text-white border-[#4895ef] hover:bg-white/5"
@@ -453,6 +460,23 @@ export default function LettersPage() {
 
           {formOpen && tab === "incoming" && (
             <div className="mt-4">
+              <div className="flex items-center justify-end mb-3">
+                <button
+                  type="button"
+                  onClick={() => {}}
+                  className={
+                    "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
+                    (theme === "dark"
+                      ? "ring-neutral-800 hover:bg-white/10"
+                      : "ring-black/15 hover:bg-black/5")
+                  }
+                  title="ارسال"
+                  aria-label="ارسال"
+                >
+                  <img src="/images/icons/check.svg" alt="" className="w-5 h-5 dark:invert" />
+                </button>
+              </div>
+
               {/* ردیف دسته‌بندی */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
@@ -718,7 +742,343 @@ export default function LettersPage() {
             </div>
           )}
 
-          {formOpen && tab === "outgoing" && <div className="mt-4" />}
+          {formOpen && tab === "outgoing" && (
+            <div className="mt-4">
+              <div className="flex items-center justify-end mb-3">
+                <button
+                  type="button"
+                  onClick={() => {}}
+                  className={
+                    "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
+                    (theme === "dark"
+                      ? "ring-neutral-800 hover:bg-white/10"
+                      : "ring-black/15 hover:bg-black/5")
+                  }
+                  title="ارسال"
+                  aria-label="ارسال"
+                >
+                  <img src="/images/icons/check.svg" alt="" className="w-5 h-5 dark:invert" />
+                </button>
+              </div>
+
+              {/* ردیف دسته‌بندی */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <div className={labelCls}>دسته بندی نامه</div>
+                  <select
+                    value={category}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setCategory(v);
+                      if (v !== "project") setProjectId("");
+                    }}
+                    className={inputCls}
+                  >
+                    <option value=""></option>
+                    <option value="project">پروژه</option>
+                  </select>
+                </div>
+
+                {category === "project" ? (
+                  <div>
+                    <div className={labelCls}>پروژه</div>
+                    <select
+                      value={projectId}
+                      onChange={(e) => setProjectId(e.target.value)}
+                      className={inputCls}
+                    >
+                      <option value=""></option>
+                      {projects.map((p) => (
+                        <option key={p.id} value={String(p.id)}>
+                          {String(p.code || "")} {p.name ? `- ${p.name}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div />
+                )}
+              </div>
+
+              {/* شماره نامه + تاریخ نامه */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                <div>
+                  <div className={labelCls}>شماره نامه</div>
+                  <input
+                    value={letterNo}
+                    onChange={(e) => setLetterNo(e.target.value)}
+                    className={inputCls}
+                    type="text"
+                  />
+                </div>
+
+                <div>
+                  <div className={labelCls}>تاریخ نامه</div>
+                  <JalaliPopupDatePicker value={letterDate} onChange={setLetterDate} theme={theme} />
+                </div>
+              </div>
+
+              {/* از */}
+              <div className="mt-3">
+                <div className={labelCls}>از</div>
+                <input
+                  value={fromName}
+                  onChange={(e) => setFromName(e.target.value)}
+                  className={inputCls}
+                  type="text"
+                />
+              </div>
+
+              {/* به + شرکت/سازمان */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                <div>
+                  <div className={labelCls}>به</div>
+                  <input
+                    value={toName}
+                    onChange={(e) => setToName(e.target.value)}
+                    className={inputCls}
+                    type="text"
+                  />
+                </div>
+
+                <div>
+                  <div className={labelCls}>شرکت/سازمان</div>
+                  <input
+                    value={orgName}
+                    onChange={(e) => setOrgName(e.target.value)}
+                    className={inputCls}
+                    type="text"
+                  />
+                </div>
+              </div>
+
+              {/* موضوع */}
+              <div className="mt-3">
+                <div className={labelCls}>موضوع</div>
+                <input
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  className={inputCls}
+                  type="text"
+                />
+              </div>
+
+              {/* ضمیمه + پیرو + بازگشت به */}
+              <div className="mt-4">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-3">
+                    <div className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>
+                      ضمیمه:
+                    </div>
+
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="hasAttachment"
+                        checked={!hasAttachment}
+                        onChange={() => setHasAttachment(false)}
+                      />
+                      <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-700 text-sm"}>
+                        ندارد
+                      </span>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="hasAttachment"
+                        checked={hasAttachment}
+                        onChange={() => setHasAttachment(true)}
+                      />
+                      <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-700 text-sm"}>
+                        دارد
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {hasAttachment && (
+                  <div className="mt-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={labelCls.replace("mb-1", "mb-0")}>پیرو</div>
+                    </div>
+
+                    <div className="space-y-2">
+                      {piroIds.map((v, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <select
+                            value={v}
+                            onChange={(e) => {
+                              const nv = e.target.value;
+                              setPiroIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
+                            }}
+                            className={inputCls}
+                          >
+                            <option value=""></option>
+                            {myLetters.map((l) => (
+                              <option key={l.id} value={String(l.id)}>
+                                {String(l.letter_no || "")}
+                              </option>
+                            ))}
+                          </select>
+
+                          {idx === piroIds.length - 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setPiroIds((arr) => [...arr, ""])}
+                              className={
+                                "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
+                                (theme === "dark"
+                                  ? "ring-neutral-800 hover:bg-white/10"
+                                  : "ring-black/15 hover:bg-black/5")
+                              }
+                              aria-label="افزودن"
+                              title="افزودن"
+                            >
+                              <svg
+                                viewBox="0 0 24 24"
+                                width="18"
+                                height="18"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M12 5v14M5 12h14" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center gap-2 mt-4 mb-2">
+                      <div className={labelCls.replace("mb-1", "mb-0")}>بازگشت به</div>
+                    </div>
+
+                    <div className="space-y-2">
+                      {returnToIds.map((v, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <select
+                            value={v}
+                            onChange={(e) => {
+                              const nv = e.target.value;
+                              setReturnToIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
+                            }}
+                            className={inputCls}
+                          >
+                            <option value=""></option>
+                            {myLetters.map((l) => (
+                              <option key={l.id} value={String(l.id)}>
+                                {String(l.letter_no || "")}
+                              </option>
+                            ))}
+                          </select>
+
+                          {idx === returnToIds.length - 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setReturnToIds((arr) => [...arr, ""])}
+                              className={
+                                "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
+                                (theme === "dark"
+                                  ? "ring-neutral-800 hover:bg-white/10"
+                                  : "ring-black/15 hover:bg-black/5")
+                              }
+                              aria-label="افزودن"
+                              title="افزودن"
+                            >
+                              <svg
+                                viewBox="0 0 24 24"
+                                width="18"
+                                height="18"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M12 5v14M5 12h14" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* بارگذاری نامه */}
+              <div className="mt-4">
+                <div className={labelCls}>بارگذاری نامه</div>
+                <div
+                  className={
+                    "w-full h-12 rounded-xl border " +
+                    (theme === "dark" ? "border-white/15 bg-white/5" : "border-black/10 bg-white")
+                  }
+                />
+              </div>
+
+              {/* برچسب ها */}
+              <div className="mt-3">
+                <div className={labelCls}>برچسب ها</div>
+                <div
+                  className={
+                    "w-full h-12 rounded-xl border " +
+                    (theme === "dark" ? "border-white/15 bg-white/5" : "border-black/10 bg-white")
+                  }
+                />
+              </div>
+
+              {/* خط جداکننده */}
+              <div className={theme === "dark" ? "my-5 h-px bg-white/10" : "my-5 h-px bg-black/10"} />
+
+              {/* اطلاعات دبیرخانه */}
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <div className={labelCls}>تاریخ ثبت دبیرخانه</div>
+                    <div
+                      className={
+                        "h-11 px-3 rounded-xl border flex items-center " +
+                        (theme === "dark"
+                          ? "border-white/15 bg-white/5 text-white/90"
+                          : "border-black/10 bg-white text-neutral-900")
+                      }
+                    >
+                      <span className="truncate">{todayJalali || ""}</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className={labelCls}>شماره ثبت دبیرخانه</div>
+                    <div
+                      className={
+                        "h-11 px-3 rounded-xl border flex items-center " +
+                        (theme === "dark"
+                          ? "border-white/15 bg-white/5 text-white/90"
+                          : "border-black/10 bg-white text-neutral-900")
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <div className={labelCls}>نام تحویل گیرنده</div>
+                    <div
+                      className={
+                        "h-11 px-3 rounded-xl border flex items-center " +
+                        (theme === "dark"
+                          ? "border-white/15 bg-white/5 text-white/90"
+                          : "border-black/10 bg-white text-neutral-900")
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </Card>
     </div>

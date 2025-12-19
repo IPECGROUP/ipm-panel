@@ -23,6 +23,7 @@ import BudgetAllocationPage from "./pages/BudgetAllocationPage.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
 import LettersPage from "./pages/LettersPage.jsx";
 
+
 import BudgetCodesPage, {
   OfficePage,
   SitePage,
@@ -57,9 +58,6 @@ function PrivateRoute({ children }) {
 }
 
 export default function App() {
-  const auth = useAuth();
-  const isAuthed = !!auth?.user;
-
   return (
     <Routes>
       {/* صفحه لاگین خارج از شِل */}
@@ -82,16 +80,37 @@ export default function App() {
         {/* پروژه‌ها */}
         <Route path="/projects/simple" element={<Projects2Page />} />
         <Route path="/centers/projects" element={<ProjectsPage />} />
-        <Route path="/projects/daily-report" element={<DailyReportPage />} />
-        <Route path="/projects/financial-worksheet" element={<FinancialWorksheetPage />} />
+        <Route
+          path="/projects/daily-report"
+          element={<DailyReportPage />}
+        />
+        <Route
+          path="/projects/financial-worksheet"
+          element={<FinancialWorksheetPage />}
+        />
         <Route path="/letters" element={isAuthed ? <LettersPage /> : <Navigate to="/login" />} />
 
         {/* بودجه‌بندی */}
-        <Route path="/budget/centers" element={<DefineBudgetCentersPage />} />
-        <Route path="/estimates" element={<EstimatesPage api={api} />} />
-        <Route path="/revenue-estimates" element={<RevenueEstimatesPage />} />
-        <Route path="/budget-allocation" element={<BudgetAllocationPage />} />
-        <Route path="/budget/reports" element={<ReportsPage />} />
+        <Route
+          path="/budget/centers"
+          element={<DefineBudgetCentersPage />}
+        />
+        <Route
+          path="/estimates"
+          element={<EstimatesPage api={api} />}
+        />
+        <Route
+          path="/revenue-estimates"
+          element={<RevenueEstimatesPage />}
+        />
+        <Route
+          path="/budget-allocation"
+          element={<BudgetAllocationPage />}
+        />
+        <Route
+          path="/budget/reports"
+          element={<ReportsPage />}
+        />
 
         {/* اطلاعات پایه */}
         <Route path="/base/units" element={<UnitsPage />} />
