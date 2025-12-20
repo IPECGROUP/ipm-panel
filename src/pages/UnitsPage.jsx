@@ -386,29 +386,33 @@ function UnitsPage() {
             >
               <THead>
                 <tr className="bg-black/5 text-black border-b border-black/10 dark:bg-white/5 dark:text-neutral-100 dark:border-neutral-700">
-                  <TH className="w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2">
+                  <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100">
                     #
                   </TH>
-                  <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2">
-                    <div className="flex items-center justify-center gap-2">
+                  <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setNameSortDir((d) => (d === "asc" ? "desc" : "asc"))
+                      }
+                      className={`inline-flex items-center justify-center gap-1 select-none
+                                  text-[13px] font-medium
+                                  hover:underline underline-offset-4 transition
+                                  ${
+                                    true
+                                      ? "text-black/80 hover:text-black decoration-black/30"
+                                      : ""
+                                  }
+                                  dark:text-neutral-100/80 dark:hover:text-neutral-100 dark:decoration-white/30`}
+                      title="مرتب‌سازی نام"
+                    >
                       <span>نام واحد</span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setNameSortDir((d) => (d === "asc" ? "desc" : "asc"))
-                        }
-                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs border border-black/10 text-black/80 hover:bg-black/5 hover:text-black transition
-                                   dark:border-neutral-800 dark:text-neutral-100/90 dark:hover:bg-white/10 dark:hover:text-neutral-100"
-                        title="مرتب‌سازی نام"
-                      >
-                        <span>مرتب‌سازی</span>
-                        <span className="text-[10px] opacity-70">
-                          {nameSortDir === "asc" ? "▲" : "▼"}
-                        </span>
-                      </button>
-                    </div>
+                      <span className="text-[10px] opacity-70">
+                        {nameSortDir === "asc" ? "▲" : "▼"}
+                      </span>
+                    </button>
                   </TH>
-                  <TH className="w-72 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2">
+                  <TH className="w-44 sm:w-72 !text-center !font-semibold !text-black dark:!text-neutral-100">
                     اقدامات
                   </TH>
                 </tr>
@@ -432,8 +436,8 @@ function UnitsPage() {
                                dark:odd:bg-transparent dark:even:bg-white/5 dark:hover:bg-white/10
                                border-b border-black/10 dark:border-neutral-800 last:border-b-0"
                     >
-                      <TD className="px-3 py-2">{idx + 1}</TD>
-                      <TD className="px-3 py-2">
+                      <TD className="px-3">{idx + 1}</TD>
+                      <TD className="px-3">
                         {editId === u.id ? (
                           <input
                             className="w-full max-w-xs rounded-xl px-2 py-2 text-center
@@ -447,7 +451,7 @@ function UnitsPage() {
                           u.name || "—"
                         )}
                       </TD>
-                      <TD className="px-3 py-2">
+                      <TD className="px-3">
                         {editId === u.id ? (
                           <div className="inline-flex items-center gap-2">
                             <PrimaryBtn
@@ -469,11 +473,11 @@ function UnitsPage() {
                             </Btn>
                           </div>
                         ) : (
-                          <div className="inline-flex items-center gap-1">
+                          <div className="inline-flex items-center gap-1 sm:gap-2">
                             <button
                               onClick={() => openAccess(u)}
                               disabled={!isAdmin}
-                              className="h-8 w-8 grid place-items-center rounded-lg bg-transparent text-black disabled:opacity-50 transition-opacity hover:opacity-80
+                              className="h-8 w-8 grid place-items-center rounded-lg bg-transparent text-black hover:opacity-80 disabled:opacity-50 transition-opacity
                                          dark:text-neutral-100"
                               aria-label="سطح دسترسی"
                               title="سطح دسترسی"
