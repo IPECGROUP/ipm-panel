@@ -385,10 +385,11 @@ function UnitsPage() {
               dir="rtl"
             >
               <THead>
-                <tr className="bg-black/5 text-black border-b border-neutral-200 dark:bg-white/5 dark:text-neutral-100 dark:border-neutral-700">
+                <tr className="bg-black/5 text-black border-b border-neutral-300 dark:bg-white/5 dark:text-neutral-100 dark:border-neutral-700">
                   <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100">
                     #
                   </TH>
+
                   <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100">
                     <div className="flex items-center justify-center gap-2">
                       <span>نام واحد</span>
@@ -418,6 +419,7 @@ function UnitsPage() {
                       </button>
                     </div>
                   </TH>
+
                   <TH className="w-44 sm:w-72 !text-center !font-semibold !text-black dark:!text-neutral-100">
                     اقدامات
                   </TH>
@@ -438,9 +440,9 @@ function UnitsPage() {
                   sortedList.map((u, idx) => (
                     <TR
                       key={u.id}
-                      className="odd:bg-white even:bg-neutral-50 hover:bg-neutral-100/70 transition-colors
-                               dark:odd:bg-neutral-900 dark:even:bg-neutral-800/60 dark:hover:bg-white/10
-                               border-b border-neutral-200 dark:border-neutral-700 last:border-b-0"
+                      className="odd:bg-white even:bg-neutral-100/70 hover:bg-neutral-200/60 transition-colors
+                               dark:odd:bg-neutral-900 dark:even:bg-neutral-800/70 dark:hover:bg-white/10
+                               border-b border-neutral-300 dark:border-neutral-700 last:border-b-0"
                     >
                       <TD className="px-3">{idx + 1}</TD>
                       <TD className="px-3">
@@ -512,8 +514,8 @@ function UnitsPage() {
 
                             <DangerBtn
                               onClick={() => del(u)}
-                              className="!h-8 !w-8 !p-0 !rounded-md !bg-transparent !ring-0 !shadow-none hover:!bg-black/5 active:!bg-black/10 disabled:opacity-50
-                                       dark:hover:!bg-white/10 dark:active:!bg-white/15"
+                              className="!h-8 !w-8 !p-0 !rounded-md !bg-transparent !ring-0 !shadow-none !text-red-600 hover:!bg-black/5 active:!bg-black/10 disabled:opacity-50
+                                       dark:!text-red-300 dark:hover:!bg-white/10 dark:active:!bg-white/15"
                               disabled={!isAdmin}
                               aria-label="حذف"
                               title="حذف"
