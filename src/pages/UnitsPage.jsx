@@ -382,11 +382,11 @@ function UnitsPage() {
         <TableWrap>
           <div className="bg-white text-black rounded-2xl border border-black/10 overflow-hidden dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
             <table
-              className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-1 [&_td]:py-0.5"
+              className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
               dir="rtl"
             >
               <THead>
-                <tr className="bg-black/5 text-black border-b border-neutral-300 dark:bg-white/5 dark:text-neutral-100 dark:border-neutral-700">
+                <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
                   <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100">
                     #
                   </TH>
@@ -402,13 +402,13 @@ function UnitsPage() {
                           setNameSortDir((d) => (d === "asc" ? "desc" : "asc"))
                         }
                         className="h-7 w-7 inline-grid place-items-center bg-transparent p-0
-                                   text-neutral-400 hover:text-neutral-500 active:text-neutral-600
+                                   text-neutral-500 hover:text-neutral-600 active:text-neutral-700
                                    dark:text-neutral-400 dark:hover:text-neutral-300"
                         title="مرتب‌سازی نام"
                         aria-label="مرتب‌سازی نام"
                       >
                         <svg
-                          className={`w-4 h-4 transition-transform ${
+                          className={`w-[14px] h-[14px] transition-transform ${
                             nameSortDir === "asc" ? "rotate-180" : ""
                           }`}
                           focusable="false"
@@ -427,11 +427,11 @@ function UnitsPage() {
                 </tr>
               </THead>
 
-              {/* zebra striping (robust) */}
+              {/* zebra striping (lighter) */}
               <tbody
                 className="[&_td]:text-black dark:[&_td]:text-neutral-100
-                           [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-100
-                           dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/70"
+                           [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50
+                           dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50"
               >
                 {(sortedList || []).length === 0 ? (
                   <TR className="bg-white dark:bg-transparent">
@@ -508,7 +508,7 @@ function UnitsPage() {
                                 <img
                                   src="/images/icons/sath.svg"
                                   alt=""
-                                  className="w-[18px] h-[18px] dark:invert"
+                                  className="w-[20px] h-[20px] dark:invert"
                                 />
                               </button>
 
