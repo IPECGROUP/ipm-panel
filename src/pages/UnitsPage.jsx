@@ -387,11 +387,11 @@ function UnitsPage() {
             >
               <THead>
                 <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
-                  <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100">
+                  <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !text-[13px] md:!text-[14px]">
                     #
                   </TH>
 
-                  <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100">
+                  <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !text-[13px] md:!text-[14px]">
                     <div className="flex items-center justify-center gap-2">
                       <span>نام واحد</span>
 
@@ -421,7 +421,7 @@ function UnitsPage() {
                     </div>
                   </TH>
 
-                  <TH className="w-44 sm:w-72 !text-center !font-semibold !text-black dark:!text-neutral-100">
+                  <TH className="w-44 sm:w-72 !text-center !font-semibold !text-black dark:!text-neutral-100 !text-[13px] md:!text-[14px]">
                     اقدامات
                   </TH>
                 </tr>
