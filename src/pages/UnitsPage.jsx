@@ -19,6 +19,7 @@ function UnitsPage() {
   const [editName, setEditName] = useState("");
 
   const [nameSortDir, setNameSortDir] = useState("asc");
+  const [dense, setDense] = useState(false);
 
   // --- پاپ‌آپ سطح دسترسی ---
   const [accessUnit, setAccessUnit] = useState(null);
@@ -381,7 +382,11 @@ function UnitsPage() {
         <TableWrap>
           <div className="bg-white text-black rounded-2xl border border-black/10 overflow-hidden dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
             <table
-              className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-2 [&_td]:py-2"
+              className={`w-full text-sm [&_th]:text-center [&_td]:text-center ${
+                dense
+                  ? "[&_th]:py-1.5 [&_td]:py-1.5"
+                  : "[&_th]:py-2.5 [&_td]:py-2.5"
+              }`}
               dir="rtl"
             >
               <THead>
@@ -398,8 +403,9 @@ function UnitsPage() {
                         onClick={() =>
                           setNameSortDir((d) => (d === "asc" ? "desc" : "asc"))
                         }
-                        className="h-7 w-7 inline-grid place-items-center rounded-md bg-transparent hover:bg-black/5 active:bg-black/10 transition
-                                   dark:hover:bg-white/10 dark:active:bg-white/15"
+                        className="h-8 w-8 inline-grid place-items-center rounded-lg bg-transparent ring-1 ring-black/15
+                                   hover:bg-black/5 active:bg-black/10 transition
+                                   dark:ring-neutral-800 dark:hover:bg-white/10 dark:active:bg-white/15"
                         title="مرتب‌سازی نام"
                         aria-label="مرتب‌سازی نام"
                       >
@@ -407,13 +413,13 @@ function UnitsPage() {
                           <img
                             src="/images/icons/bozorgbekochik.svg"
                             alt=""
-                            className="w-4 h-4 dark:invert"
+                            className="w-5 h-5 dark:invert"
                           />
                         ) : (
                           <img
                             src="/images/icons/kochikbebozorg.svg"
                             alt=""
-                            className="w-4 h-4 dark:invert"
+                            className="w-5 h-5 dark:invert"
                           />
                         )}
                       </button>
@@ -485,22 +491,23 @@ function UnitsPage() {
                             <button
                               onClick={() => openAccess(u)}
                               disabled={!isAdmin}
-                              className="h-8 w-8 grid place-items-center rounded-md bg-transparent hover:bg-black/5 active:bg-black/10 disabled:opacity-50 transition
-                                         dark:hover:bg-white/10 dark:active:bg-white/15"
+                              className="h-8 w-8 grid place-items-center rounded-lg bg-transparent ring-1 ring-black/15
+                                         hover:bg-black/5 active:bg-black/10 disabled:opacity-50 transition
+                                         dark:ring-neutral-800 dark:hover:bg-white/10 dark:active:bg-white/15"
                               aria-label="سطح دسترسی"
                               title="سطح دسترسی"
                             >
                               <img
                                 src="/images/icons/sath.svg"
                                 alt=""
-                                className="w-4 h-4 dark:invert"
+                                className="w-5 h-5 dark:invert"
                               />
                             </button>
 
                             <Btn
                               onClick={() => startEdit(u)}
-                              className="!h-8 !w-8 !p-0 !rounded-md !bg-transparent !ring-0 !shadow-none hover:!bg-black/5 active:!bg-black/10 disabled:opacity-50
-                                       dark:hover:!bg-white/10 dark:active:!bg-white/15"
+                              className="!h-8 !w-8 !p-0 !rounded-lg !bg-transparent !ring-1 !ring-black/15 !shadow-none hover:!bg-black/5 active:!bg-black/10 disabled:opacity-50
+                                       dark:!ring-neutral-800 dark:hover:!bg-white/10 dark:active:!bg-white/15"
                               disabled={!isAdmin}
                               aria-label="ویرایش"
                               title="ویرایش"
@@ -508,14 +515,14 @@ function UnitsPage() {
                               <img
                                 src="/images/icons/pencil.svg"
                                 alt=""
-                                className="w-4 h-4 dark:invert"
+                                className="w-5 h-5 dark:invert"
                               />
                             </Btn>
 
                             <DangerBtn
                               onClick={() => del(u)}
-                              className="!h-8 !w-8 !p-0 !rounded-md !bg-transparent !ring-0 !shadow-none !text-red-600 hover:!bg-black/5 active:!bg-black/10 disabled:opacity-50
-                                       dark:!text-red-300 dark:hover:!bg-white/10 dark:active:!bg-white/15"
+                              className="!h-8 !w-8 !p-0 !rounded-lg !bg-transparent !ring-1 !ring-black/15 !shadow-none !text-red-600 hover:!bg-black/5 active:!bg-black/10 disabled:opacity-50
+                                       dark:!ring-neutral-800 dark:!text-red-300 dark:hover:!bg-white/10 dark:active:!bg-white/15"
                               disabled={!isAdmin}
                               aria-label="حذف"
                               title="حذف"
@@ -523,7 +530,7 @@ function UnitsPage() {
                               <img
                                 src="/images/icons/hazf.svg"
                                 alt=""
-                                className="w-4 h-4 dark:invert"
+                                className="w-5 h-5 dark:invert"
                               />
                             </DangerBtn>
                           </div>
@@ -536,6 +543,19 @@ function UnitsPage() {
             </table>
           </div>
         </TableWrap>
+
+        {/* Dense padding */}
+        <div className="mt-3 flex items-center justify-end">
+          <label className="inline-flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300 select-none">
+            <span>فاصله کم</span>
+            <input
+              type="checkbox"
+              checked={dense}
+              onChange={(e) => setDense(e.target.checked)}
+              className="w-4 h-4 accent-black dark:accent-neutral-200"
+            />
+          </label>
+        </div>
 
         {/* پاپ‌آپ سطح دسترسی */}
         {accessOpen && (
