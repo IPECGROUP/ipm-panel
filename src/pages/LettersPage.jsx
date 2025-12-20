@@ -50,7 +50,7 @@ function getJalaliPartsFromDate(d) {
   }
 }
 
-function JalaliPopupDatePicker({ value, onChange, theme }) {
+function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIcon }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
   const popRef = useRef(null);
@@ -111,37 +111,41 @@ function JalaliPopupDatePicker({ value, onChange, theme }) {
 
   const preview = `${jy}/${pad2(jm)}/${pad2(jd)}`;
 
+  const defaultBtnCls =
+    "w-full h-11 px-3 rounded-xl border text-right flex items-center justify-between gap-2 transition " +
+    (theme === "dark"
+      ? "border-white/15 bg-white/5 text-white/90 hover:bg-white/10"
+      : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]");
+
   return (
     <div className="relative">
       <button
         ref={btnRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={
-          "w-full h-11 px-3 rounded-xl border text-right flex items-center justify-between gap-2 transition " +
-          (theme === "dark"
-            ? "border-white/15 bg-white/5 text-white/90 hover:bg-white/10"
-            : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
-        }
+        className={buttonClassName ? buttonClassName : defaultBtnCls}
       >
         <span className={value ? "" : theme === "dark" ? "text-white/50" : "text-neutral-400"}>
           {value ? toFaDigits(value) : ""}
         </span>
-        <span className={theme === "dark" ? "text-white/50" : "text-neutral-500"}>
-          <svg
-            viewBox="0 0 24 24"
-            width="18"
-            height="18"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <rect x="3" y="4" width="18" height="18" rx="2" />
-            <path d="M16 2v4M8 2v4M3 10h18" />
-          </svg>
-        </span>
+
+        {!hideIcon && (
+          <span className={theme === "dark" ? "text-white/50" : "text-neutral-500"}>
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <path d="M16 2v4M8 2v4M3 10h18" />
+            </svg>
+          </span>
+        )}
       </button>
 
       {open && (
@@ -335,9 +339,25 @@ export default function LettersPage() {
   const [subject, setSubject] = useState("");
 
   const [hasAttachment, setHasAttachment] = useState(false);
+  const [incomingAttachmentTitle, setIncomingAttachmentTitle] = useState("");
+  const [outgoingAttachmentTitle, setOutgoingAttachmentTitle] = useState("");
+
   const [returnToIds, setReturnToIds] = useState([""]);
   const [piroIds, setPiroIds] = useState([""]);
   const [myLetters, setMyLetters] = useState([]);
+
+  const [tags, setTags] = useState([]);
+  const [incomingTagPick, setIncomingTagPick] = useState("");
+  const [outgoingTagPick, setOutgoingTagPick] = useState("");
+  const [incomingTagIds, setIncomingTagIds] = useState([]);
+  const [outgoingTagIds, setOutgoingTagIds] = useState([]);
+
+  const [incomingSecretariatDate, setIncomingSecretariatDate] = useState("");
+  const [outgoingSecretariatDate, setOutgoingSecretariatDate] = useState("");
+  const [incomingSecretariatNo, setIncomingSecretariatNo] = useState("");
+  const [outgoingSecretariatNo, setOutgoingSecretariatNo] = useState("");
+  const [incomingReceiverName, setIncomingReceiverName] = useState("");
+  const [outgoingReceiverName, setOutgoingReceiverName] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -375,7 +395,25 @@ export default function LettersPage() {
     };
   }, []);
 
-  const todayJalali = useMemo(() => {
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const r = await api("/tags");
+        const items = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
+        if (!mounted) return;
+        setTags(items);
+      } catch {
+        if (!mounted) return;
+        setTags([]);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const todayJalaliLong = useMemo(() => {
     try {
       return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
         weekday: "long",
@@ -388,14 +426,77 @@ export default function LettersPage() {
     }
   }, []);
 
-  const inputBase =
-    "w-full h-11 px-3 rounded-xl border outline-none transition text-right";
+  const todayJalaliYmd = useMemo(() => {
+    try {
+      const p = getJalaliPartsFromDate(new Date());
+      return `${p.jy}/${pad2(p.jm)}/${pad2(p.jd)}`;
+    } catch {
+      return "";
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!incomingSecretariatDate) setIncomingSecretariatDate(todayJalaliYmd);
+    if (!outgoingSecretariatDate) setOutgoingSecretariatDate(todayJalaliYmd);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todayJalaliYmd]);
+
+  const inputBase = "w-full h-11 px-3 rounded-xl border outline-none transition text-right";
   const inputCls =
     theme === "dark"
       ? inputBase + " border-white/15 bg-white/5 text-white placeholder:text-white/40 focus:bg-white/10"
       : inputBase + " border-black/10 bg-white text-neutral-900 placeholder:text-neutral-400 focus:bg-black/[0.02]";
 
   const labelCls = theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1";
+
+  const chipBase =
+    "inline-flex items-center gap-2 px-3 h-9 rounded-full border text-xs font-semibold whitespace-nowrap";
+  const chipCls =
+    theme === "dark"
+      ? chipBase + " border-white/15 bg-white/5 text-white hover:bg-white/10"
+      : chipBase + " border-black/10 bg-black/[0.03] text-neutral-900 hover:bg-black/[0.06]";
+
+  const sendBtnCls =
+    "h-11 w-11 rounded-xl flex items-center justify-center transition ring-1 " +
+    (theme === "dark"
+      ? "bg-white text-black ring-white/15 hover:bg-white/90"
+      : "bg-black text-white ring-black/15 hover:bg-black/90");
+
+  const sendIconCls = "w-5 h-5 " + (theme === "dark" ? "invert-0" : "invert");
+
+  const findTag = (id) => tags.find((t) => String(t?.id) === String(id));
+
+  const removeTag = (which, id) => {
+    const sid = String(id || "");
+    if (!sid) return;
+    if (which === "incoming") setIncomingTagIds((arr) => arr.filter((x) => String(x) !== sid));
+    if (which === "outgoing") setOutgoingTagIds((arr) => arr.filter((x) => String(x) !== sid));
+  };
+
+  const addTag = (which, id) => {
+    const sid = String(id || "");
+    if (!sid) return;
+    if (which === "incoming") {
+      setIncomingTagIds((arr) => (arr.some((x) => String(x) === sid) ? arr : [...arr, sid]));
+      setIncomingTagPick("");
+    }
+    if (which === "outgoing") {
+      setOutgoingTagIds((arr) => (arr.some((x) => String(x) === sid) ? arr : [...arr, sid]));
+      setOutgoingTagPick("");
+    }
+  };
+
+  const secretariatPickerBtnCls = (val) =>
+    "w-full h-11 px-3 rounded-xl border flex items-center justify-between gap-2 transition text-right " +
+    (theme === "dark"
+      ? "border-white/15 bg-white/5 text-white/90 hover:bg-white/10"
+      : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]") +
+    (val ? "" : theme === "dark" ? " text-white/50" : " text-neutral-400");
+
+  const secretariatLongText = (ymd) => {
+    if (!ymd) return "";
+    return todayJalaliLong || "";
+  };
 
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
@@ -407,9 +508,7 @@ export default function LettersPage() {
           onClick={() => setFormOpen((v) => !v)}
           className={
             "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
-            (theme === "dark"
-              ? "ring-neutral-800 hover:bg-white/10"
-              : "ring-black/15 hover:bg-black/5")
+            (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
           }
           title={formOpen ? "بستن" : "افزودن"}
           aria-label={formOpen ? "بستن" : "افزودن"}
@@ -460,23 +559,6 @@ export default function LettersPage() {
 
           {formOpen && tab === "incoming" && (
             <div className="mt-4">
-              <div className="flex items-center justify-end mb-3">
-                <button
-                  type="button"
-                  onClick={() => {}}
-                  className={
-                    "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
-                    (theme === "dark"
-                      ? "ring-neutral-800 hover:bg-white/10"
-                      : "ring-black/15 hover:bg-black/5")
-                  }
-                  title="ارسال"
-                  aria-label="ارسال"
-                >
-                  <img src="/images/icons/check.svg" alt="" className="w-5 h-5 dark:invert" />
-                </button>
-              </div>
-
               {/* ردیف دسته‌بندی */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
@@ -498,11 +580,7 @@ export default function LettersPage() {
                 {category === "project" ? (
                   <div>
                     <div className={labelCls}>پروژه</div>
-                    <select
-                      value={projectId}
-                      onChange={(e) => setProjectId(e.target.value)}
-                      className={inputCls}
-                    >
+                    <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={inputCls}>
                       <option value=""></option>
                       {projects.map((p) => (
                         <option key={p.id} value={String(p.id)}>
@@ -520,12 +598,7 @@ export default function LettersPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
                 <div>
                   <div className={labelCls}>شماره نامه</div>
-                  <input
-                    value={letterNo}
-                    onChange={(e) => setLetterNo(e.target.value)}
-                    className={inputCls}
-                    type="text"
-                  />
+                  <input value={letterNo} onChange={(e) => setLetterNo(e.target.value)} className={inputCls} type="text" />
                 </div>
 
                 <div>
@@ -538,78 +611,54 @@ export default function LettersPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
                 <div>
                   <div className={labelCls}>از</div>
-                  <input
-                    value={fromName}
-                    onChange={(e) => setFromName(e.target.value)}
-                    className={inputCls}
-                    type="text"
-                  />
+                  <input value={fromName} onChange={(e) => setFromName(e.target.value)} className={inputCls} type="text" />
                 </div>
 
                 <div>
                   <div className={labelCls}>شرکت/سازمان</div>
-                  <input
-                    value={orgName}
-                    onChange={(e) => setOrgName(e.target.value)}
-                    className={inputCls}
-                    type="text"
-                  />
+                  <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputCls} type="text" />
                 </div>
               </div>
 
               {/* به */}
               <div className="mt-3">
                 <div className={labelCls}>به</div>
-                <input
-                  value={toName}
-                  onChange={(e) => setToName(e.target.value)}
-                  className={inputCls}
-                  type="text"
-                />
+                <input value={toName} onChange={(e) => setToName(e.target.value)} className={inputCls} type="text" />
               </div>
 
               {/* موضوع */}
               <div className="mt-3">
                 <div className={labelCls}>موضوع</div>
-                <input
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  className={inputCls}
-                  type="text"
-                />
+                <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputCls} type="text" />
               </div>
 
-              {/* ضمیمه + بازگشت به */}
+              {/* ضمیمه + عنوان ضمیمه + بازگشت به */}
               <div className="mt-4">
                 <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <div className="flex items-center gap-3">
-                    <div className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>
-                      ضمیمه:
-                    </div>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>ضمیمه:</div>
 
                     <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="hasAttachment"
-                        checked={!hasAttachment}
-                        onChange={() => setHasAttachment(false)}
-                      />
-                      <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-700 text-sm"}>
-                        ندارد
-                      </span>
+                      <input type="radio" name="hasAttachment" checked={!hasAttachment} onChange={() => setHasAttachment(false)} />
+                      <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-700 text-sm"}>ندارد</span>
                     </label>
 
                     <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="hasAttachment"
-                        checked={hasAttachment}
-                        onChange={() => setHasAttachment(true)}
-                      />
-                      <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-700 text-sm"}>
-                        دارد
-                      </span>
+                      <input type="radio" name="hasAttachment" checked={hasAttachment} onChange={() => setHasAttachment(true)} />
+                      <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-700 text-sm"}>دارد</span>
                     </label>
+
+                    {hasAttachment && (
+                      <div className="min-w-[260px]">
+                        <input
+                          value={incomingAttachmentTitle}
+                          onChange={(e) => setIncomingAttachmentTitle(e.target.value)}
+                          className={inputCls}
+                          type="text"
+                          placeholder="عنوان ضمیمه"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -644,23 +693,12 @@ export default function LettersPage() {
                               onClick={() => setReturnToIds((arr) => [...arr, ""])}
                               className={
                                 "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
-                                (theme === "dark"
-                                  ? "ring-neutral-800 hover:bg-white/10"
-                                  : "ring-black/15 hover:bg-black/5")
+                                (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
                               }
                               aria-label="افزودن"
                               title="افزودن"
                             >
-                              <svg
-                                viewBox="0 0 24 24"
-                                width="18"
-                                height="18"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="1.5"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
+                              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M12 5v14M5 12h14" />
                               </svg>
                             </button>
@@ -675,23 +713,50 @@ export default function LettersPage() {
               {/* بارگذاری نامه */}
               <div className="mt-4">
                 <div className={labelCls}>بارگذاری نامه</div>
-                <div
-                  className={
-                    "w-full h-12 rounded-xl border " +
-                    (theme === "dark" ? "border-white/15 bg-white/5" : "border-black/10 bg-white")
-                  }
-                />
+                <div className={"w-full h-12 rounded-xl border " + (theme === "dark" ? "border-white/15 bg-white/5" : "border-black/10 bg-white")} />
               </div>
 
               {/* برچسب ها */}
               <div className="mt-3">
                 <div className={labelCls}>برچسب ها</div>
-                <div
-                  className={
-                    "w-full h-12 rounded-xl border " +
-                    (theme === "dark" ? "border-white/15 bg-white/5" : "border-black/10 bg-white")
-                  }
-                />
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {incomingTagIds.map((id) => {
+                    const t = findTag(id);
+                    const label = String(t?.name || t?.title || t?.label || id || "");
+                    return (
+                      <button
+                        key={String(id)}
+                        type="button"
+                        onClick={() => removeTag("incoming", id)}
+                        className={chipCls}
+                        title="حذف"
+                        aria-label="حذف"
+                      >
+                        <span className="truncate max-w-[180px]">{label}</span>
+                        <span className={theme === "dark" ? "text-white/70" : "text-neutral-600"}>×</span>
+                      </button>
+                    );
+                  })}
+
+                  <select
+                    value={incomingTagPick}
+                    onChange={(e) => addTag("incoming", e.target.value)}
+                    className={
+                      "h-11 px-3 rounded-xl border outline-none transition text-right min-w-[220px] w-[220px] " +
+                      (theme === "dark"
+                        ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                        : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
+                    }
+                  >
+                    <option value="">انتخاب برچسب</option>
+                    {tags.map((t) => (
+                      <option key={String(t?.id)} value={String(t?.id)}>
+                        {String(t?.name || t?.title || t?.label || "")}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* خط جداکننده */}
@@ -702,41 +767,44 @@ export default function LettersPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
                     <div className={labelCls}>تاریخ ثبت دبیرخانه</div>
-                    <div
-                      className={
-                        "h-11 px-3 rounded-xl border flex items-center " +
-                        (theme === "dark"
-                          ? "border-white/15 bg-white/5 text-white/90"
-                          : "border-black/10 bg-white text-neutral-900")
-                      }
-                    >
-                      <span className="truncate">{todayJalali || ""}</span>
+
+                    <JalaliPopupDatePicker
+                      value={incomingSecretariatDate}
+                      onChange={setIncomingSecretariatDate}
+                      theme={theme}
+                      hideIcon={true}
+                      buttonClassName={secretariatPickerBtnCls(incomingSecretariatDate)}
+                    />
+                    <div className={theme === "dark" ? "text-white/50 text-[11px] mt-1" : "text-neutral-500 text-[11px] mt-1"}>
+                      {secretariatLongText(incomingSecretariatDate)}
                     </div>
                   </div>
 
                   <div>
                     <div className={labelCls}>شماره ثبت دبیرخانه</div>
-                    <div
-                      className={
-                        "h-11 px-3 rounded-xl border flex items-center " +
-                        (theme === "dark"
-                          ? "border-white/15 bg-white/5 text-white/90"
-                          : "border-black/10 bg-white text-neutral-900")
-                      }
+                    <input
+                      value={incomingSecretariatNo}
+                      onChange={(e) => setIncomingSecretariatNo(e.target.value)}
+                      className={inputCls}
+                      type="text"
                     />
                   </div>
 
                   <div>
                     <div className={labelCls}>نام تحویل گیرنده</div>
-                    <div
-                      className={
-                        "h-11 px-3 rounded-xl border flex items-center " +
-                        (theme === "dark"
-                          ? "border-white/15 bg-white/5 text-white/90"
-                          : "border-black/10 bg-white text-neutral-900")
-                      }
+                    <input
+                      value={incomingReceiverName}
+                      onChange={(e) => setIncomingReceiverName(e.target.value)}
+                      className={inputCls}
+                      type="text"
                     />
                   </div>
+                </div>
+
+                <div className="flex items-center justify-end pt-2">
+                  <button type="button" onClick={() => {}} className={sendBtnCls} title="ارسال" aria-label="ارسال">
+                    <img src="/images/icons/check.svg" alt="" className={sendIconCls} />
+                  </button>
                 </div>
               </div>
             </div>
@@ -744,23 +812,6 @@ export default function LettersPage() {
 
           {formOpen && tab === "outgoing" && (
             <div className="mt-4">
-              <div className="flex items-center justify-end mb-3">
-                <button
-                  type="button"
-                  onClick={() => {}}
-                  className={
-                    "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
-                    (theme === "dark"
-                      ? "ring-neutral-800 hover:bg-white/10"
-                      : "ring-black/15 hover:bg-black/5")
-                  }
-                  title="ارسال"
-                  aria-label="ارسال"
-                >
-                  <img src="/images/icons/check.svg" alt="" className="w-5 h-5 dark:invert" />
-                </button>
-              </div>
-
               {/* ردیف دسته‌بندی */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
@@ -782,11 +833,7 @@ export default function LettersPage() {
                 {category === "project" ? (
                   <div>
                     <div className={labelCls}>پروژه</div>
-                    <select
-                      value={projectId}
-                      onChange={(e) => setProjectId(e.target.value)}
-                      className={inputCls}
-                    >
+                    <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={inputCls}>
                       <option value=""></option>
                       {projects.map((p) => (
                         <option key={p.id} value={String(p.id)}>
@@ -804,12 +851,7 @@ export default function LettersPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
                 <div>
                   <div className={labelCls}>شماره نامه</div>
-                  <input
-                    value={letterNo}
-                    onChange={(e) => setLetterNo(e.target.value)}
-                    className={inputCls}
-                    type="text"
-                  />
+                  <input value={letterNo} onChange={(e) => setLetterNo(e.target.value)} className={inputCls} type="text" />
                 </div>
 
                 <div>
@@ -821,79 +863,55 @@ export default function LettersPage() {
               {/* از */}
               <div className="mt-3">
                 <div className={labelCls}>از</div>
-                <input
-                  value={fromName}
-                  onChange={(e) => setFromName(e.target.value)}
-                  className={inputCls}
-                  type="text"
-                />
+                <input value={fromName} onChange={(e) => setFromName(e.target.value)} className={inputCls} type="text" />
               </div>
 
               {/* به + شرکت/سازمان */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
                 <div>
                   <div className={labelCls}>به</div>
-                  <input
-                    value={toName}
-                    onChange={(e) => setToName(e.target.value)}
-                    className={inputCls}
-                    type="text"
-                  />
+                  <input value={toName} onChange={(e) => setToName(e.target.value)} className={inputCls} type="text" />
                 </div>
 
                 <div>
                   <div className={labelCls}>شرکت/سازمان</div>
-                  <input
-                    value={orgName}
-                    onChange={(e) => setOrgName(e.target.value)}
-                    className={inputCls}
-                    type="text"
-                  />
+                  <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputCls} type="text" />
                 </div>
               </div>
 
               {/* موضوع */}
               <div className="mt-3">
                 <div className={labelCls}>موضوع</div>
-                <input
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  className={inputCls}
-                  type="text"
-                />
+                <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputCls} type="text" />
               </div>
 
-              {/* ضمیمه + پیرو + بازگشت به */}
+              {/* ضمیمه + عنوان ضمیمه + پیرو + بازگشت به */}
               <div className="mt-4">
                 <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <div className="flex items-center gap-3">
-                    <div className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>
-                      ضمیمه:
-                    </div>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>ضمیمه:</div>
 
                     <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="hasAttachment"
-                        checked={!hasAttachment}
-                        onChange={() => setHasAttachment(false)}
-                      />
-                      <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-700 text-sm"}>
-                        ندارد
-                      </span>
+                      <input type="radio" name="hasAttachment" checked={!hasAttachment} onChange={() => setHasAttachment(false)} />
+                      <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-700 text-sm"}>ندارد</span>
                     </label>
 
                     <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="hasAttachment"
-                        checked={hasAttachment}
-                        onChange={() => setHasAttachment(true)}
-                      />
-                      <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-700 text-sm"}>
-                        دارد
-                      </span>
+                      <input type="radio" name="hasAttachment" checked={hasAttachment} onChange={() => setHasAttachment(true)} />
+                      <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-700 text-sm"}>دارد</span>
                     </label>
+
+                    {hasAttachment && (
+                      <div className="min-w-[260px]">
+                        <input
+                          value={outgoingAttachmentTitle}
+                          onChange={(e) => setOutgoingAttachmentTitle(e.target.value)}
+                          className={inputCls}
+                          type="text"
+                          placeholder="عنوان ضمیمه"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -928,23 +946,12 @@ export default function LettersPage() {
                               onClick={() => setPiroIds((arr) => [...arr, ""])}
                               className={
                                 "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
-                                (theme === "dark"
-                                  ? "ring-neutral-800 hover:bg-white/10"
-                                  : "ring-black/15 hover:bg-black/5")
+                                (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
                               }
                               aria-label="افزودن"
                               title="افزودن"
                             >
-                              <svg
-                                viewBox="0 0 24 24"
-                                width="18"
-                                height="18"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="1.5"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
+                              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M12 5v14M5 12h14" />
                               </svg>
                             </button>
@@ -982,23 +989,12 @@ export default function LettersPage() {
                               onClick={() => setReturnToIds((arr) => [...arr, ""])}
                               className={
                                 "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
-                                (theme === "dark"
-                                  ? "ring-neutral-800 hover:bg-white/10"
-                                  : "ring-black/15 hover:bg-black/5")
+                                (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
                               }
                               aria-label="افزودن"
                               title="افزودن"
                             >
-                              <svg
-                                viewBox="0 0 24 24"
-                                width="18"
-                                height="18"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="1.5"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
+                              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M12 5v14M5 12h14" />
                               </svg>
                             </button>
@@ -1013,23 +1009,50 @@ export default function LettersPage() {
               {/* بارگذاری نامه */}
               <div className="mt-4">
                 <div className={labelCls}>بارگذاری نامه</div>
-                <div
-                  className={
-                    "w-full h-12 rounded-xl border " +
-                    (theme === "dark" ? "border-white/15 bg-white/5" : "border-black/10 bg-white")
-                  }
-                />
+                <div className={"w-full h-12 rounded-xl border " + (theme === "dark" ? "border-white/15 bg-white/5" : "border-black/10 bg-white")} />
               </div>
 
               {/* برچسب ها */}
               <div className="mt-3">
                 <div className={labelCls}>برچسب ها</div>
-                <div
-                  className={
-                    "w-full h-12 rounded-xl border " +
-                    (theme === "dark" ? "border-white/15 bg-white/5" : "border-black/10 bg-white")
-                  }
-                />
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {outgoingTagIds.map((id) => {
+                    const t = findTag(id);
+                    const label = String(t?.name || t?.title || t?.label || id || "");
+                    return (
+                      <button
+                        key={String(id)}
+                        type="button"
+                        onClick={() => removeTag("outgoing", id)}
+                        className={chipCls}
+                        title="حذف"
+                        aria-label="حذف"
+                      >
+                        <span className="truncate max-w-[180px]">{label}</span>
+                        <span className={theme === "dark" ? "text-white/70" : "text-neutral-600"}>×</span>
+                      </button>
+                    );
+                  })}
+
+                  <select
+                    value={outgoingTagPick}
+                    onChange={(e) => addTag("outgoing", e.target.value)}
+                    className={
+                      "h-11 px-3 rounded-xl border outline-none transition text-right min-w-[220px] w-[220px] " +
+                      (theme === "dark"
+                        ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                        : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
+                    }
+                  >
+                    <option value="">انتخاب برچسب</option>
+                    {tags.map((t) => (
+                      <option key={String(t?.id)} value={String(t?.id)}>
+                        {String(t?.name || t?.title || t?.label || "")}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* خط جداکننده */}
@@ -1040,41 +1063,44 @@ export default function LettersPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
                     <div className={labelCls}>تاریخ ثبت دبیرخانه</div>
-                    <div
-                      className={
-                        "h-11 px-3 rounded-xl border flex items-center " +
-                        (theme === "dark"
-                          ? "border-white/15 bg-white/5 text-white/90"
-                          : "border-black/10 bg-white text-neutral-900")
-                      }
-                    >
-                      <span className="truncate">{todayJalali || ""}</span>
+
+                    <JalaliPopupDatePicker
+                      value={outgoingSecretariatDate}
+                      onChange={setOutgoingSecretariatDate}
+                      theme={theme}
+                      hideIcon={true}
+                      buttonClassName={secretariatPickerBtnCls(outgoingSecretariatDate)}
+                    />
+                    <div className={theme === "dark" ? "text-white/50 text-[11px] mt-1" : "text-neutral-500 text-[11px] mt-1"}>
+                      {secretariatLongText(outgoingSecretariatDate)}
                     </div>
                   </div>
 
                   <div>
                     <div className={labelCls}>شماره ثبت دبیرخانه</div>
-                    <div
-                      className={
-                        "h-11 px-3 rounded-xl border flex items-center " +
-                        (theme === "dark"
-                          ? "border-white/15 bg-white/5 text-white/90"
-                          : "border-black/10 bg-white text-neutral-900")
-                      }
+                    <input
+                      value={outgoingSecretariatNo}
+                      onChange={(e) => setOutgoingSecretariatNo(e.target.value)}
+                      className={inputCls}
+                      type="text"
                     />
                   </div>
 
                   <div>
                     <div className={labelCls}>نام تحویل گیرنده</div>
-                    <div
-                      className={
-                        "h-11 px-3 rounded-xl border flex items-center " +
-                        (theme === "dark"
-                          ? "border-white/15 bg-white/5 text-white/90"
-                          : "border-black/10 bg-white text-neutral-900")
-                      }
+                    <input
+                      value={outgoingReceiverName}
+                      onChange={(e) => setOutgoingReceiverName(e.target.value)}
+                      className={inputCls}
+                      type="text"
                     />
                   </div>
+                </div>
+
+                <div className="flex items-center justify-end pt-2">
+                  <button type="button" onClick={() => {}} className={sendBtnCls} title="ارسال" aria-label="ارسال">
+                    <img src="/images/icons/check.svg" alt="" className={sendIconCls} />
+                  </button>
                 </div>
               </div>
             </div>
