@@ -442,11 +442,16 @@ export default function LettersPage() {
   // ===== Filters (page-level) =====
   const [filterCategory, setFilterCategory] = useState("");
   const [filterProjectId, setFilterProjectId] = useState("");
-  const [filterPreset, setFilterPreset] = useState("");
+  const [filterQuick, setFilterQuick] = useState(""); // week|2w|1m|3m|6m
   const [filterFromDate, setFilterFromDate] = useState("");
   const [filterToDate, setFilterToDate] = useState("");
   const [filterTagPick, setFilterTagPick] = useState("");
   const [filterTagIds, setFilterTagIds] = useState([]);
+
+  // ===== Table selection + pagination =====
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [page, setPage] = useState(0);
 
   // ===== Uploader state (incoming/outgoing) =====
   const MAX_DOC_SIZE = 400 * 1024;
@@ -757,22 +762,11 @@ export default function LettersPage() {
   const labelCls = theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1";
 
   const chipBase =
-    "inline-flex items-center gap-2 px-3 h-9 rounded-full border text-xs font-semibold whitespace-nowrap";
+    "inline-flex items-center gap-2 px-3 h-10 rounded-full border text-xs font-semibold whitespace-nowrap transition";
   const chipCls =
     theme === "dark"
       ? chipBase + " border-white/15 bg-white/5 text-white hover:bg-white/10"
       : chipBase + " border-black/10 bg-black/[0.03] text-neutral-900 hover:bg-black/[0.06]";
-
-  const filterChipCls = (active) => {
-    if (active) {
-      return theme === "dark"
-        ? chipBase + " border-white/15 bg-white text-black hover:bg-white/90"
-        : chipBase + " border-black/10 bg-black text-white hover:bg-black/90";
-    }
-    return theme === "dark"
-      ? chipBase + " border-white/15 bg-white/5 text-white hover:bg-white/10"
-      : chipBase + " border-black/10 bg-black/[0.03] text-neutral-900 hover:bg-black/[0.06]";
-  };
 
   const sendBtnCls =
     "h-11 w-11 rounded-xl flex items-center justify-center transition ring-1 " +
@@ -789,7 +783,6 @@ export default function LettersPage() {
     if (!sid) return;
     if (which === "incoming") setIncomingTagIds((arr) => arr.filter((x) => String(x) !== sid));
     if (which === "outgoing") setOutgoingTagIds((arr) => arr.filter((x) => String(x) !== sid));
-    if (which === "filter") setFilterTagIds((arr) => arr.filter((x) => String(x) !== sid));
   };
 
   const addTag = (which, id) => {
@@ -803,10 +796,19 @@ export default function LettersPage() {
       setOutgoingTagIds((arr) => (arr.some((x) => String(x) === sid) ? arr : [...arr, sid]));
       setOutgoingTagPick("");
     }
-    if (which === "filter") {
-      setFilterTagIds((arr) => (arr.some((x) => String(x) === sid) ? arr : [...arr, sid]));
-      setFilterTagPick("");
-    }
+  };
+
+  const removeFilterTag = (id) => {
+    const sid = String(id || "");
+    if (!sid) return;
+    setFilterTagIds((arr) => arr.filter((x) => String(x) !== sid));
+  };
+
+  const addFilterTag = (id) => {
+    const sid = String(id || "");
+    if (!sid) return;
+    setFilterTagIds((arr) => (arr.some((x) => String(x) === sid) ? arr : [...arr, sid]));
+    setFilterTagPick("");
   };
 
   const secretariatPickerBtnCls = (val) =>
@@ -852,13 +854,99 @@ export default function LettersPage() {
     e.stopPropagation();
   };
 
-  const FILTER_PRESETS = [
-    { id: "1w", label: "هفته قبل" },
-    { id: "2w", label: "2 هفته قبل" },
-    { id: "1m", label: "ماه قبل" },
-    { id: "3m", label: "3 ماه قبل" },
-    { id: "6m", label: "6 ماه قبل" },
-  ];
+  const letterIdOf = (l) => {
+    const raw = l?.id ?? l?.letter_id ?? l?.letterId ?? l?._id;
+    const id = Number(raw);
+    return id && Number.isFinite(id) ? id : String(raw || "");
+  };
+
+  const letterKindOf = (l) => {
+    const v = String(l?.kind || l?.type || l?.direction || l?.io || l?.tab || l?.letter_type || "").toLowerCase();
+    if (v.includes("out")) return "outgoing";
+    if (v.includes("in")) return "incoming";
+    if (v === "o" || v === "outgoing") return "outgoing";
+    if (v === "i" || v === "incoming") return "incoming";
+    return "incoming";
+  };
+
+  const letterNoOf = (l) => String(l?.letter_no ?? l?.no ?? l?.number ?? l?.letterNo ?? "");
+  const letterDateOf = (l) => String(l?.letter_date ?? l?.date ?? l?.letterDate ?? "");
+  const fromToOf = (l) => {
+    const a = String(l?.from_name ?? l?.from ?? "");
+    const b = String(l?.to_name ?? l?.to ?? "");
+    const s = `${a}${a && b ? " / " : ""}${b}`.trim();
+    return s || "—";
+  };
+  const orgOf = (l) => String(l?.org_name ?? l?.org ?? l?.organization ?? l?.company ?? "");
+  const subjectOf = (l) => String(l?.subject ?? l?.title ?? "");
+  const categoryOf = (l) => String(l?.category ?? l?.category_name ?? l?.categoryTitle ?? "");
+
+  const filteredLetters = useMemo(() => {
+    return Array.isArray(myLetters) ? myLetters : [];
+  }, [myLetters]);
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+    setPage(0);
+  }, [rowsPerPage]);
+
+  const total = filteredLetters.length;
+  const pageCount = Math.max(1, Math.ceil(total / Math.max(1, rowsPerPage)));
+  const safePage = Math.min(Math.max(0, page), pageCount - 1);
+  const startIdx = safePage * rowsPerPage;
+  const endIdx = Math.min(total, startIdx + rowsPerPage);
+  const pageItems = filteredLetters.slice(startIdx, endIdx);
+
+  useEffect(() => {
+    if (page !== safePage) setPage(safePage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [safePage]);
+
+  const visibleIds = useMemo(() => pageItems.map((l) => String(letterIdOf(l))), [pageItems]);
+  const allVisibleSelected =
+    visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(String(id)));
+  const someVisibleSelected = visibleIds.some((id) => selectedIds.has(String(id))) && !allVisibleSelected;
+
+  const toggleSelectAllVisible = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) {
+        visibleIds.forEach((id) => next.delete(String(id)));
+      } else {
+        visibleIds.forEach((id) => next.add(String(id)));
+      }
+      return next;
+    });
+  };
+
+  const toggleRowSelect = (id) => {
+    const sid = String(id);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(sid)) next.delete(sid);
+      else next.add(sid);
+      return next;
+    });
+  };
+
+  const iconBtnCls =
+    "h-10 w-10 inline-grid place-items-center !bg-transparent !ring-0 !border-0 !shadow-none " +
+    "hover:opacity-80 active:opacity-70 transition disabled:opacity-50";
+
+  const tableWrapCls =
+    "bg-white text-black rounded-2xl border border-black/10 overflow-hidden " +
+    "dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800";
+
+  const theadRowCls =
+    "bg-neutral-200 text-black border-b border-neutral-300 " +
+    "dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700";
+
+  const tbodyCls =
+    "[&_td]:text-black dark:[&_td]:text-neutral-100 " +
+    "[&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50 " +
+    "dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50";
+
+  const rowDividerCls = "border-b border-neutral-300 dark:border-neutral-700";
 
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
@@ -890,7 +978,8 @@ export default function LettersPage() {
         }
       >
         <div className="p-3 md:p-4">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
+          {/* Tabs + top filters row (gap fixed) */}
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
             <div className="flex items-center gap-2">
               {TABS.map((t) => {
                 const active = tab === t.id;
@@ -920,15 +1009,15 @@ export default function LettersPage() {
               })}
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
-              <div className="min-w-[220px] flex-1 md:flex-none md:w-[240px]">
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 lg:max-w-[680px]">
+              <div>
                 <div className={labelCls}>دسته بندی</div>
                 <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className={inputCls}>
                   <option value=""></option>
                 </select>
               </div>
 
-              <div className="min-w-[220px] flex-1 md:flex-none md:w-[320px]">
+              <div>
                 <div className={labelCls}>پروژه</div>
                 <select
                   value={filterProjectId}
@@ -946,80 +1035,136 @@ export default function LettersPage() {
             </div>
           </div>
 
-          {/* Filters section (page-level) */}
-          <div className="mt-4">
-            <div className="flex items-center gap-2 flex-wrap">
-              {FILTER_PRESETS.map((x) => {
-                const active = filterPreset === x.id;
-                return (
-                  <button
-                    key={x.id}
-                    type="button"
-                    onClick={() => setFilterPreset((p) => (p === x.id ? "" : x.id))}
-                    className={filterChipCls(active)}
-                  >
-                    {x.label}
-                  </button>
-                );
-              })}
-
-              <div className="flex items-end gap-2 flex-wrap">
-                <div className="min-w-[220px] w-[220px]">
-                  <div className={labelCls}>از</div>
-                  <JalaliPopupDatePicker value={filterFromDate} onChange={setFilterFromDate} theme={theme} />
-                </div>
-
-                <div className="min-w-[220px] w-[220px]">
-                  <div className={labelCls}>تا</div>
-                  <JalaliPopupDatePicker value={filterToDate} onChange={setFilterToDate} theme={theme} />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-3">
-              <div className={labelCls}>برچسب ها</div>
-
+          {/* Quick range chips + date range (aligned) */}
+          <div className="mt-3 rounded-2xl border border-black/10 dark:border-white/10 p-3">
+            <div className="flex flex-col gap-3">
               <div className="flex flex-wrap items-center gap-2">
-                {filterTagIds.map((id) => {
-                  const t = findTag(id);
-                  const label = String(t?.name || t?.title || t?.label || id || "");
-                  return (
-                    <button
-                      key={String(id)}
-                      type="button"
-                      onClick={() => removeTag("filter", id)}
-                      className={chipCls}
-                      title="حذف"
-                      aria-label="حذف"
-                    >
-                      <span className="truncate max-w-[180px]">{label}</span>
-                      <span className={theme === "dark" ? "text-white/70" : "text-neutral-600"}>×</span>
-                    </button>
-                  );
-                })}
-
-                <select
-                  value={filterTagPick}
-                  onChange={(e) => addTag("filter", e.target.value)}
+                <button
+                  type="button"
+                  onClick={() => setFilterQuick("week")}
                   className={
-                    "h-11 px-3 rounded-xl border outline-none transition text-right min-w-[220px] w-[220px] " +
-                    (theme === "dark"
-                      ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
-                      : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
+                    (filterQuick === "week"
+                      ? theme === "dark"
+                        ? chipBase + " border-white/15 bg-white text-black"
+                        : chipBase + " border-black/15 bg-black text-white"
+                      : chipCls) + " h-10"
                   }
                 >
-                  <option value="">انتخاب برچسب</option>
-                  {tags.map((t) => (
-                    <option key={String(t?.id)} value={String(t?.id)}>
-                      {String(t?.name || t?.title || t?.label || "")}
-                    </option>
-                  ))}
-                </select>
+                  هفته قبل
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterQuick("2w")}
+                  className={
+                    (filterQuick === "2w"
+                      ? theme === "dark"
+                        ? chipBase + " border-white/15 bg-white text-black"
+                        : chipBase + " border-black/15 bg-black text-white"
+                      : chipCls) + " h-10"
+                  }
+                >
+                  2 هفته قبل
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterQuick("1m")}
+                  className={
+                    (filterQuick === "1m"
+                      ? theme === "dark"
+                        ? chipBase + " border-white/15 bg-white text-black"
+                        : chipBase + " border-black/15 bg-black text-white"
+                      : chipCls) + " h-10"
+                  }
+                >
+                  ماه قبل
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterQuick("3m")}
+                  className={
+                    (filterQuick === "3m"
+                      ? theme === "dark"
+                        ? chipBase + " border-white/15 bg-white text-black"
+                        : chipBase + " border-black/15 bg-black text-white"
+                      : chipCls) + " h-10"
+                  }
+                >
+                  3 ماه قبل
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterQuick("6m")}
+                  className={
+                    (filterQuick === "6m"
+                      ? theme === "dark"
+                        ? chipBase + " border-white/15 bg-white text-black"
+                        : chipBase + " border-black/15 bg-black text-white"
+                      : chipCls) + " h-10"
+                  }
+                >
+                  6 ماه قبل
+                </button>
+
+                <div className="flex-1" />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full sm:w-auto sm:min-w-[520px]">
+                  <div>
+                    <div className={labelCls}>از</div>
+                    <JalaliPopupDatePicker value={filterFromDate} onChange={setFilterFromDate} theme={theme} />
+                  </div>
+                  <div>
+                    <div className={labelCls}>تا</div>
+                    <JalaliPopupDatePicker value={filterToDate} onChange={setFilterToDate} theme={theme} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Tags filter */}
+              <div>
+                <div className={labelCls}>برچسب ها</div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {filterTagIds.map((id) => {
+                    const t = findTag(id);
+                    const label = String(t?.name || t?.title || t?.label || id || "");
+                    return (
+                      <button
+                        key={String(id)}
+                        type="button"
+                        onClick={() => removeFilterTag(id)}
+                        className={chipCls}
+                        title="حذف"
+                        aria-label="حذف"
+                      >
+                        <span className="truncate max-w-[180px]">{label}</span>
+                        <span className={theme === "dark" ? "text-white/70" : "text-neutral-600"}>×</span>
+                      </button>
+                    );
+                  })}
+
+                  <select
+                    value={filterTagPick}
+                    onChange={(e) => addFilterTag(e.target.value)}
+                    className={
+                      "h-11 px-3 rounded-xl border outline-none transition text-right min-w-[220px] w-[220px] " +
+                      (theme === "dark"
+                        ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                        : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
+                    }
+                  >
+                    <option value="">انتخاب برچسب</option>
+                    {tags.map((t) => (
+                      <option key={String(t?.id)} value={String(t?.id)}>
+                        {String(t?.name || t?.title || t?.label || "")}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="mt-4 max-h-[calc(100dvh-260px)] overflow-auto overscroll-contain pr-0">
+          {/* Create form */}
+          <div className="mt-4">
             {formOpen && tab === "incoming" && (
               <div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1127,8 +1272,8 @@ export default function LettersPage() {
 
                       <div className="space-y-2">
                         {returnToIds.map((v, idx) => (
-                          <div key={idx} className="flex items-center gap-2 flex-wrap">
-                            {idx === returnToIds.length - 1 ? (
+                          <div key={idx} className="flex items-center gap-2">
+                            {idx === returnToIds.length - 1 && (
                               <button
                                 type="button"
                                 onClick={() => setReturnToIds((arr) => [...arr, ""])}
@@ -1143,18 +1288,16 @@ export default function LettersPage() {
                                   <path d="M12 5v14M5 12h14" />
                                 </svg>
                               </button>
-                            ) : (
-                              <div className="h-10 w-10" />
                             )}
 
-                            <div className="flex-1 min-w-[240px]">
+                            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
                               <select
                                 value={v}
                                 onChange={(e) => {
                                   const nv = e.target.value;
                                   setReturnToIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
                                 }}
-                                className={inputCls}
+                                className={inputCls + " md:col-span-1"}
                               >
                                 <option value=""></option>
                                 {myLetters.map((l) => (
@@ -1163,22 +1306,22 @@ export default function LettersPage() {
                                   </option>
                                 ))}
                               </select>
-                            </div>
 
-                            {idx === 0 ? (
-                              <button
-                                type="button"
-                                onClick={() => openUpload("incoming")}
-                                className={uploadTriggerCls + " flex-1 min-w-[240px]"}
-                                aria-label="آپلود و الصاق فایل ها"
-                                title="آپلود و الصاق فایل ها"
-                              >
-                                <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
-                                <span className="text-sm font-normal">آپلود و الصاق فایل ها</span>
-                              </button>
-                            ) : (
-                              <div className="flex-1 min-w-[240px] hidden md:block" />
-                            )}
+                              {idx === 0 ? (
+                                <button
+                                  type="button"
+                                  onClick={() => openUpload("incoming")}
+                                  className={uploadTriggerCls + " md:col-span-1"}
+                                  aria-label="آپلود و الصاق فایل ها"
+                                  title="آپلود و الصاق فایل ها"
+                                >
+                                  <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
+                                  <span className="text-sm font-normal">آپلود و الصاق فایل ها</span>
+                                </button>
+                              ) : (
+                                <div className="hidden md:block md:col-span-1" />
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1384,26 +1527,24 @@ export default function LettersPage() {
 
                       <div className="space-y-2">
                         {piroIds.map((v, idx) => (
-                          <div key={idx} className="flex items-center gap-2 flex-wrap">
-                            <div className="flex-1 min-w-[240px]">
-                              <select
-                                value={v}
-                                onChange={(e) => {
-                                  const nv = e.target.value;
-                                  setPiroIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
-                                }}
-                                className={inputCls}
-                              >
-                                <option value=""></option>
-                                {myLetters.map((l) => (
-                                  <option key={l.id} value={String(l.id)}>
-                                    {String(l.letter_no || "")}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
+                          <div key={idx} className="flex items-center gap-2">
+                            <select
+                              value={v}
+                              onChange={(e) => {
+                                const nv = e.target.value;
+                                setPiroIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
+                              }}
+                              className={inputCls}
+                            >
+                              <option value=""></option>
+                              {myLetters.map((l) => (
+                                <option key={l.id} value={String(l.id)}>
+                                  {String(l.letter_no || "")}
+                                </option>
+                              ))}
+                            </select>
 
-                            {idx === piroIds.length - 1 ? (
+                            {idx === piroIds.length - 1 && (
                               <button
                                 type="button"
                                 onClick={() => setPiroIds((arr) => [...arr, ""])}
@@ -1418,8 +1559,6 @@ export default function LettersPage() {
                                   <path d="M12 5v14M5 12h14" />
                                 </svg>
                               </button>
-                            ) : (
-                              <div className="h-10 w-10" />
                             )}
                           </div>
                         ))}
@@ -1431,8 +1570,8 @@ export default function LettersPage() {
 
                       <div className="space-y-2">
                         {returnToIds.map((v, idx) => (
-                          <div key={idx} className="flex items-center gap-2 flex-wrap">
-                            {idx === returnToIds.length - 1 ? (
+                          <div key={idx} className="flex items-center gap-2">
+                            {idx === returnToIds.length - 1 && (
                               <button
                                 type="button"
                                 onClick={() => setReturnToIds((arr) => [...arr, ""])}
@@ -1447,18 +1586,16 @@ export default function LettersPage() {
                                   <path d="M12 5v14M5 12h14" />
                                 </svg>
                               </button>
-                            ) : (
-                              <div className="h-10 w-10" />
                             )}
 
-                            <div className="flex-1 min-w-[240px]">
+                            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
                               <select
                                 value={v}
                                 onChange={(e) => {
                                   const nv = e.target.value;
                                   setReturnToIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
                                 }}
-                                className={inputCls}
+                                className={inputCls + " md:col-span-1"}
                               >
                                 <option value=""></option>
                                 {myLetters.map((l) => (
@@ -1467,22 +1604,22 @@ export default function LettersPage() {
                                   </option>
                                 ))}
                               </select>
-                            </div>
 
-                            {idx === 0 ? (
-                              <button
-                                type="button"
-                                onClick={() => openUpload("outgoing")}
-                                className={uploadTriggerCls + " flex-1 min-w-[240px]"}
-                                aria-label="آپلود و الصاق فایل ها"
-                                title="آپلود و الصاق فایل ها"
-                              >
-                                <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
-                                <span className="text-sm font-normal">آپلود و الصاق فایل ها</span>
-                              </button>
-                            ) : (
-                              <div className="flex-1 min-w-[240px] hidden md:block" />
-                            )}
+                              {idx === 0 ? (
+                                <button
+                                  type="button"
+                                  onClick={() => openUpload("outgoing")}
+                                  className={uploadTriggerCls + " md:col-span-1"}
+                                  aria-label="آپلود و الصاق فایل ها"
+                                  title="آپلود و الصاق فایل ها"
+                                >
+                                  <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
+                                  <span className="text-sm font-normal">آپلود و الصاق فایل ها</span>
+                                </button>
+                              ) : (
+                                <div className="hidden md:block md:col-span-1" />
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1581,6 +1718,202 @@ export default function LettersPage() {
               </div>
             )}
           </div>
+
+          {/* Table */}
+          <div className="mt-5">
+            <div className={tableWrapCls}>
+              <div className="max-h-[55vh] overflow-auto">
+                <table className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5" dir="rtl">
+                  <thead>
+                    <tr className={theadRowCls}>
+                      <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold">
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 accent-black dark:accent-neutral-200"
+                          checked={allVisibleSelected}
+                          ref={(el) => {
+                            if (el) el.indeterminate = someVisibleSelected;
+                          }}
+                          onChange={toggleSelectAllVisible}
+                          aria-label="انتخاب همه"
+                          title="انتخاب همه"
+                        />
+                      </th>
+                      <th className="w-44 !py-2 !text-[14px] md:!text-[15px] !font-semibold">دسته بندی</th>
+                      <th className="w-44 !py-2 !text-[14px] md:!text-[15px] !font-semibold">شماره</th>
+                      <th className="w-40 !py-2 !text-[14px] md:!text-[15px] !font-semibold">تاریخ</th>
+                      <th className="w-[280px] !py-2 !text-[14px] md:!text-[15px] !font-semibold">از/به</th>
+                      <th className="w-[220px] !py-2 !text-[14px] md:!text-[15px] !font-semibold">شرکت/سازمان</th>
+                      <th className="min-w-[260px] !py-2 !text-[14px] md:!text-[15px] !font-semibold">موضوع</th>
+                      <th className="w-44 !py-2 !text-[14px] md:!text-[15px] !font-semibold">اقدامات</th>
+                    </tr>
+                  </thead>
+
+                  <tbody className={tbodyCls}>
+                    {pageItems.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="py-6 text-black/60 dark:text-neutral-400">
+                          آیتمی ثبت نشده است.
+                        </td>
+                      </tr>
+                    ) : (
+                      pageItems.map((l, idx) => {
+                        const id = String(letterIdOf(l));
+                        const kind = letterKindOf(l);
+                        const isOutgoing = kind === "outgoing";
+                        const accent = isOutgoing ? "border-r-4 border-[#1a7431]" : "border-r-4 border-[#4895ef]";
+                        const isLast = idx === pageItems.length - 1;
+                        const divider = isLast ? "" : rowDividerCls;
+
+                        return (
+                          <tr key={id} className={accent}>
+                            <td className={"px-3 " + divider}>
+                              <input
+                                type="checkbox"
+                                className="w-4 h-4 accent-black dark:accent-neutral-200"
+                                checked={selectedIds.has(id)}
+                                onChange={() => toggleRowSelect(id)}
+                                aria-label="انتخاب"
+                                title="انتخاب"
+                              />
+                            </td>
+
+                            <td className={"px-3 " + divider}>
+                              <span
+                                className={
+                                  "inline-flex items-center gap-2 px-3 h-8 rounded-full text-xs font-semibold border " +
+                                  (isOutgoing
+                                    ? theme === "dark"
+                                      ? "border-[#1a7431]/60 bg-[#1a7431]/20 text-white"
+                                      : "border-[#1a7431]/50 bg-[#1a7431]/10 text-[#0e4c1e]"
+                                    : theme === "dark"
+                                    ? "border-[#4895ef]/60 bg-[#4895ef]/20 text-white"
+                                    : "border-[#4895ef]/50 bg-[#4895ef]/10 text-[#1b4f9b]")
+                                }
+                              >
+                                {categoryOf(l) || (isOutgoing ? "صادره" : "وارده")}
+                              </span>
+                            </td>
+
+                            <td className={"px-3 " + divider}>{letterNoOf(l) || "—"}</td>
+                            <td className={"px-3 " + divider}>{letterDateOf(l) ? toFaDigits(letterDateOf(l)) : "—"}</td>
+                            <td className={"px-3 " + divider}>{fromToOf(l)}</td>
+                            <td className={"px-3 " + divider}>{orgOf(l) || "—"}</td>
+                            <td className={"px-3 " + divider}>
+                              <span className="block truncate max-w-[520px] mx-auto">{subjectOf(l) || "—"}</span>
+                            </td>
+
+                            <td className={"px-3 " + divider}>
+                              <div className="inline-flex items-center justify-center gap-2">
+                                <button type="button" className={iconBtnCls} aria-label="ویرایش" title="ویرایش">
+                                  <img
+                                    src="/images/icons/pencil.svg"
+                                    alt=""
+                                    className="w-[18px] h-[18px] dark:invert"
+                                  />
+                                </button>
+
+                                <button type="button" className={iconBtnCls} aria-label="حذف" title="حذف">
+                                  <img
+                                    src="/images/icons/hazf.svg"
+                                    alt=""
+                                    className="w-[19px] h-[19px]"
+                                    style={{
+                                      filter:
+                                        "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
+                                    }}
+                                  />
+                                </button>
+
+                                <button type="button" className={iconBtnCls} aria-label="نمایش" title="نمایش">
+                                  <img
+                                    src="/images/icons/marakez.svg"
+                                    alt=""
+                                    className="w-[18px] h-[18px] dark:invert"
+                                  />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination footer */}
+              <div className="border-t border-neutral-300 dark:border-neutral-800 px-3 py-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-black/70 dark:text-neutral-400">Rows per page:</span>
+                    <select
+                      value={rowsPerPage}
+                      onChange={(e) => {
+                        setRowsPerPage(Number(e.target.value) || 10);
+                        setPage(0);
+                      }}
+                      className={
+                        "h-9 px-2 rounded-lg border outline-none " +
+                        (theme === "dark"
+                          ? "border-white/15 bg-white/5 text-white"
+                          : "border-black/10 bg-white text-black")
+                      }
+                    >
+                      {[10, 25, 100].map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-3 text-sm">
+                    <div className="text-black/70 dark:text-neutral-400">
+                      {total === 0 ? "0" : `${startIdx + 1}–${endIdx}`} of {total}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setPage((p) => Math.max(0, p - 1))}
+                      disabled={safePage <= 0}
+                      className={
+                        "h-9 w-9 rounded-xl grid place-items-center transition ring-1 " +
+                        (theme === "dark"
+                          ? "ring-neutral-800 hover:bg-white/10"
+                          : "ring-black/15 hover:bg-black/5")
+                      }
+                      aria-label="قبلی"
+                      title="قبلی"
+                    >
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M15 18l-6-6 6-6" />
+                      </svg>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                      disabled={safePage >= pageCount - 1}
+                      className={
+                        "h-9 w-9 rounded-xl grid place-items-center transition ring-1 " +
+                        (theme === "dark"
+                          ? "ring-neutral-800 hover:bg-white/10"
+                          : "ring-black/15 hover:bg-black/5")
+                      }
+                      aria-label="بعدی"
+                      title="بعدی"
+                    >
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9 18l6-6-6-6" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </Card>
 
