@@ -93,7 +93,7 @@ function UsersPage() {
     "مدیر پروژه": "project_manager",
     "کارشناس حسابداری": "accounting_specialist",
     "مدیر مالی": "finance_manager",
-    "مدیریت": "executive",
+    مدیریت: "executive",
   };
 
   // نگاشت نقش‌ها (کلید: اسلاگ)
@@ -168,13 +168,7 @@ function UsersPage() {
   const allowedAccessRe =
     /^(budget:(projects|office|site|finance|cash|capex)|contracts:(all|nonfinancial)|pack:(pm|com|hr|fin|site|siteA|siteB))$/;
   const sanitizeAccess = (arr = []) =>
-    Array.from(
-      new Set(
-        (arr || []).filter((k) =>
-          allowedAccessRe.test(String(k || ""))
-        )
-      )
-    );
+    Array.from(new Set((arr || []).filter((k) => allowedAccessRe.test(String(k || "")))));
 
   // ===== api helpers =====
   const reload = async () => {
@@ -239,12 +233,7 @@ function UsersPage() {
     const mapped = raw
       .map((u, i) => ({
         id: u.id ?? u._id ?? i,
-        name:
-          (u.name ??
-            u.title ??
-            u.label ??
-            u.department_name ??
-            "").trim(),
+        name: (u.name ?? u.title ?? u.label ?? u.department_name ?? "").trim(),
       }))
       .filter((u) => u.name);
     const seen = new Set();
@@ -286,10 +275,7 @@ function UsersPage() {
   useEffect(() => {
     (async () => {
       await loadRoles().catch(() => {});
-      await Promise.all([
-        reload().catch(() => {}),
-        loadUnits().catch(() => {}),
-      ]);
+      await Promise.all([reload().catch(() => {}), loadUnits().catch(() => {})]);
     })();
   }, []);
 
@@ -312,13 +298,8 @@ function UsersPage() {
       setAddErr("نام کاربری و گذرواژه الزامی است.");
       return;
     }
-    if (
-      (addForm.positions || []).length &&
-      (rolesLoading || (roleItems || []).length === 0)
-    ) {
-      setAddErr(
-        "نقش‌ها هنوز بارگذاری نشده‌اند. چند ثانیه بعد دوباره ذخیره کنید."
-      );
+    if ((addForm.positions || []).length && (rolesLoading || (roleItems || []).length === 0)) {
+      setAddErr("نقش‌ها هنوز بارگذاری نشده‌اند. چند ثانیه بعد دوباره ذخیره کنید.");
       return;
     }
     try {
@@ -376,9 +357,7 @@ function UsersPage() {
       : Array.isArray(u.access)
       ? u.access
       : [];
-    const contracts =
-      acc.find((x) => String(x).startsWith("contracts:")) ||
-      "contracts:nonfinancial";
+    const contracts = acc.find((x) => String(x).startsWith("contracts:")) || "contracts:nonfinancial";
 
     // u.positions یا u.roles را به اسلاگ نقش تبدیل کن
     const rawPos = Array.isArray(u.positions)
@@ -394,8 +373,7 @@ function UsersPage() {
           if (ROLE_SLUG_TO_FA[raw]) return raw;
           return raw;
         }
-        if (typeof p === "number")
-          return idToName[String(p)] || "";
+        if (typeof p === "number") return idToName[String(p)] || "";
         if (p && typeof p === "object") {
           if (p.name) {
             const raw = String(p.name).trim();
@@ -417,9 +395,7 @@ function UsersPage() {
       department: u.department || "",
       role: u.role || "user",
       password: "",
-      access: acc.filter(
-        (x) => !String(x).startsWith("contracts:")
-      ),
+      access: acc.filter((x) => !String(x).startsWith("contracts:")),
       positions: positionsNorm,
     });
     setContracts(contracts);
@@ -431,8 +407,7 @@ function UsersPage() {
     setForm((s) => ({ ...s, password: "" }));
   };
 
-  const has = (key) =>
-    Array.isArray(form.access) && form.access.includes(key);
+  const has = (key) => Array.isArray(form.access) && form.access.includes(key);
   const toggleBudget = (key) =>
     setForm((s) => {
       const set = new Set(s.access || []);
@@ -442,13 +417,8 @@ function UsersPage() {
     });
 
   const saveEdit = async () => {
-    if (
-      (form.positions || []).length &&
-      (rolesLoading || (roleItems || []).length === 0)
-    ) {
-      alert(
-        "نقش‌ها هنوز بارگذاری نشده‌اند. لطفاً چند ثانیه بعد دوباره ذخیره کنید."
-      );
+    if ((form.positions || []).length && (rolesLoading || (roleItems || []).length === 0)) {
+      alert("نقش‌ها هنوز بارگذاری نشده‌اند. لطفاً چند ثانیه بعد دوباره ذخیره کنید.");
       return;
     }
 
@@ -459,9 +429,7 @@ function UsersPage() {
 
     if (payload.role !== "admin") {
       const base = Array.isArray(payload.access)
-        ? payload.access.filter(
-            (x) => !String(x).startsWith("contracts:")
-          )
+        ? payload.access.filter((x) => !String(x).startsWith("contracts:"))
         : [];
       if (contractsSel) base.push(contractsSel);
       payload.access = sanitizeAccess(base);
@@ -470,9 +438,7 @@ function UsersPage() {
     }
     if (!payload.password) delete payload.password;
 
-    const positionsIds = (form.positions || [])
-      .map((n) => nameToId[n])
-      .filter((v) => v != null);
+    const positionsIds = (form.positions || []).map((n) => nameToId[n]).filter((v) => v != null);
     payload.positions = positionsIds;
     payload.roles = positionsIds;
 
@@ -490,12 +456,7 @@ function UsersPage() {
   };
 
   const del = async (u) => {
-    if (
-      !confirm(
-        `حذف کاربر «${u.username || u.name || "-"}»؟`
-      )
-    )
-      return;
+    if (!confirm(`حذف کاربر «${u.username || u.name || "-"}»؟`)) return;
     try {
       await api(`/admin/users`, {
         method: "DELETE",
@@ -533,11 +494,7 @@ function UsersPage() {
   };
   const renderAccessText = (u) => {
     if (u.role === "admin") return "همه";
-    const arr = Array.isArray(u.access)
-      ? u.access
-      : Array.isArray(u.access_labels)
-      ? u.access_labels
-      : [];
+    const arr = Array.isArray(u.access) ? u.access : Array.isArray(u.access_labels) ? u.access_labels : [];
     if (!arr.length) return "—";
     return arr.map(toFaAccess).join(" ، ");
   };
@@ -547,14 +504,8 @@ function UsersPage() {
     const arr = Array.isArray(list) ? [...list] : [];
     if (!sortKey) return arr;
     arr.sort((a, b) => {
-      const av =
-        sortKey === "name"
-          ? a.name || a.username || ""
-          : a.department || "";
-      const bv =
-        sortKey === "name"
-          ? b.name || b.username || ""
-          : b.department || "";
+      const av = sortKey === "name" ? a.name || a.username || "" : a.department || "";
+      const bv = sortKey === "name" ? b.name || b.username || "" : b.department || "";
       const cmp = String(av).localeCompare(String(bv), "fa", {
         sensitivity: "base",
         numeric: true,
@@ -600,19 +551,13 @@ function UsersPage() {
 
   return (
     <>
-      <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+      <Card className="rounded-2xl border bg-white text-black border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
         {/* Header + Add button */}
         <div className="mb-3 flex items-center justify-between">
           <div className="text-base md:text-lg">
-            <span className="text-neutral-700 dark:text-neutral-300">
-              اطلاعات پایه
-            </span>
-            <span className="mx-2 text-neutral-500 dark:text-neutral-400">
-              ›
-            </span>
-            <span className="font-semibold text-neutral-900 dark:text-neutral-100">
-              کاربران
-            </span>
+            <span className="text-black/70 dark:text-neutral-300">اطلاعات پایه</span>
+            <span className="mx-2 text-black/50 dark:text-neutral-400">›</span>
+            <span className="font-semibold text-black dark:text-neutral-100">کاربران</span>
           </div>
 
           <button
@@ -622,11 +567,7 @@ function UsersPage() {
             aria-label="افزودن کاربر"
             title="افزودن کاربر"
           >
-            <img
-              src="/images/icons/afzodan.svg"
-              alt=""
-              className="w-5 h-5 invert dark:invert-0"
-            />
+            <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
           </button>
         </div>
 
@@ -634,101 +575,69 @@ function UsersPage() {
         {addOpen && (
           <form
             onSubmit={submitAdd}
-            className="mb-4 rounded-2xl p-4 border border-neutral-200 bg-white text-neutral-900
-                       dark:ring-1 dark:ring-neutral-800 dark:border-transparent dark:bg-neutral-900 dark:text-neutral-100"
+            className="mb-4 rounded-2xl p-4 border border-black/10 bg-white text-black
+                       dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800"
           >
             <div className="grid md:grid-cols-2 gap-4" dir="rtl">
               <div className="flex flex-col gap-1">
-                <label className="text-sm text-neutral-700 dark:text-neutral-300">
-                  نام
-                </label>
+                <label className="text-sm text-black/70 dark:text-neutral-300">نام</label>
                 <input
-                  className="rounded-xl px-3 py-2 bg-white text-neutral-900 placeholder-neutral-400
-                             border border-neutral-300 outline-none focus:ring-2 focus:ring-neutral-300
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                  className="rounded-xl px-3 py-2 bg-white text-black placeholder-black/40
+                             border border-black/15 outline-none focus:ring-2 focus:ring-black/10
+                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
                   value={addForm.name}
-                  onChange={(e) =>
-                    setAddForm((s) => ({
-                      ...s,
-                      name: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-neutral-700 dark:text-neutral-300 text-left">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  className="rounded-xl px-3 py-2 bg-white text-neutral-900 placeholder-neutral-400
-                             border border-neutral-300 outline-none text-left focus:ring-2 focus:ring-neutral-300
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-                  dir="ltr"
-                  value={addForm.email}
-                  onChange={(e) =>
-                    setAddForm((s) => ({
-                      ...s,
-                      email: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-neutral-700 dark:text-neutral-300 text-left">
-                  Username*
-                </label>
-                <input
-                  className="rounded-xl px-3 py-2 bg-white text-neutral-900 placeholder-neutral-400
-                             border border-neutral-300 outline-none text-left focus:ring-2 focus:ring-neutral-300
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-                  dir="ltr"
-                  required
-                  value={addForm.username}
-                  onChange={(e) =>
-                    setAddForm((s) => ({
-                      ...s,
-                      username: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-neutral-700 dark:text-neutral-300 text-left">
-                  Password* (حداکثر ۸)
-                </label>
-                <input
-                  type="password"
-                  maxLength={8}
-                  className="rounded-xl px-3 py-2 bg-white text-neutral-900 placeholder-neutral-400
-                             border border-neutral-300 outline-none text-left focus:ring-2 focus:ring-neutral-300
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-                  dir="ltr"
-                  required
-                  value={addForm.password}
-                  onChange={(e) =>
-                    setAddForm((s) => ({
-                      ...s,
-                      password: e.target.value.slice(0, 8),
-                    }))
-                  }
+                  onChange={(e) => setAddForm((s) => ({ ...s, name: e.target.value }))}
                 />
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-sm text-neutral-700 dark:text-neutral-300">
-                  واحد
-                </label>
+                <label className="text-sm text-black/70 dark:text-neutral-300 text-left">Email</label>
+                <input
+                  type="email"
+                  className="rounded-xl px-3 py-2 bg-white text-black placeholder-black/40
+                             border border-black/15 outline-none text-left focus:ring-2 focus:ring-black/10
+                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
+                  dir="ltr"
+                  value={addForm.email}
+                  onChange={(e) => setAddForm((s) => ({ ...s, email: e.target.value }))}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-black/70 dark:text-neutral-300 text-left">Username*</label>
+                <input
+                  className="rounded-xl px-3 py-2 bg-white text-black placeholder-black/40
+                             border border-black/15 outline-none text-left focus:ring-2 focus:ring-black/10
+                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
+                  dir="ltr"
+                  required
+                  value={addForm.username}
+                  onChange={(e) => setAddForm((s) => ({ ...s, username: e.target.value }))}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-black/70 dark:text-neutral-300 text-left">Password* (حداکثر ۸)</label>
+                <input
+                  type="password"
+                  maxLength={8}
+                  className="rounded-xl px-3 py-2 bg-white text-black placeholder-black/40
+                             border border-black/15 outline-none text-left focus:ring-2 focus:ring-black/10
+                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
+                  dir="ltr"
+                  required
+                  value={addForm.password}
+                  onChange={(e) => setAddForm((s) => ({ ...s, password: e.target.value.slice(0, 8) }))}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-black/70 dark:text-neutral-300">واحد</label>
                 <select
-                  className="rounded-xl px-3 py-2 bg-white text-neutral-900 border border-neutral-300 outline-none
+                  className="rounded-xl px-3 py-2 bg-white text-black border border-black/15 outline-none
                              dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
                   value={addForm.department}
-                  onChange={(e) =>
-                    setAddForm((s) => ({
-                      ...s,
-                      department: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => setAddForm((s) => ({ ...s, department: e.target.value }))}
                 >
                   <option value="">— انتخاب کنید —</option>
                   {(units || []).map((u) => (
@@ -740,19 +649,12 @@ function UsersPage() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-sm text-neutral-700 dark:text-neutral-300">
-                  نوع
-                </label>
+                <label className="text-sm text-black/70 dark:text-neutral-300">نوع</label>
                 <select
-                  className="rounded-xl px-3 py-2 bg-white text-neutral-900 border border-neutral-300 outline-none
+                  className="rounded-xl px-3 py-2 bg-white text-black border border-black/15 outline-none
                              dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
                   value={addForm.role}
-                  onChange={(e) =>
-                    setAddForm((s) => ({
-                      ...s,
-                      role: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => setAddForm((s) => ({ ...s, role: e.target.value }))}
                 >
                   <option value="user">user</option>
                   <option value="admin">admin</option>
@@ -761,37 +663,29 @@ function UsersPage() {
             </div>
 
             {/* نقش کاربری */}
-            <div
-              className="mt-4 text-neutral-900 dark:text-neutral-100"
-              dir="rtl"
-            >
-              <label className="block mb-2 text-sm text-neutral-700 dark:text-neutral-300">
-                نقش کاربری
-              </label>
+            <div className="mt-4 text-black dark:text-neutral-100" dir="rtl">
+              <label className="block mb-2 text-sm text-black/70 dark:text-neutral-300">نقش کاربری</label>
 
               <div className="flex flex-wrap gap-2 mb-2">
                 {(addForm.positions || []).map((slug) => (
                   <span
                     key={slug}
                     className="inline-flex items-center gap-2 px-3 py-1 rounded-full
-                                             bg-neutral-100 text-neutral-900 border border-neutral-300
-                                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
+                               bg-neutral-100 text-black border border-black/10
+                               dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
                   >
                     {slugToLabel[slug] || slug}
                     <button
                       type="button"
                       onClick={() => removePositionFromAdd(slug)}
-                      className="text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
+                      className="text-black/50 hover:text-black dark:text-neutral-400 dark:hover:text-neutral-200"
                     >
                       ×
                     </button>
                   </span>
                 ))}
-                {(!addForm.positions ||
-                  addForm.positions.length === 0) && (
-                  <span className="text-sm text-neutral-500 dark:text-neutral-400">
-                    نقشی انتخاب نشده است
-                  </span>
+                {(!addForm.positions || addForm.positions.length === 0) && (
+                  <span className="text-sm text-black/50 dark:text-neutral-400">نقشی انتخاب نشده است</span>
                 )}
               </div>
 
@@ -799,22 +693,18 @@ function UsersPage() {
                 <button
                   type="button"
                   onClick={() => setAddRolesOpen((s) => !s)}
-                  className="w-full h-10 text-right rounded-xl px-3 bg-white text-neutral-900 border border-neutral-300 outline-none
-                             hover:bg-neutral-50
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800/90"
+                  className="w-full h-10 text-right rounded-xl px-3 bg-white text-black border border-black/15 outline-none
+                             hover:bg-black/[0.02]
+                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-white/10"
                 >
-                  {rolesLoading
-                    ? "در حال بارگذاری نقش‌ها…"
-                    : "انتخاب از نقش‌های کاربری"}
+                  {rolesLoading ? "در حال بارگذاری نقش‌ها…" : "انتخاب از نقش‌های کاربری"}
                 </button>
 
                 {addRolesOpen && (
-                  <div className="absolute z-20 mt-2 w-full max-h-56 overflow-auto rounded-xl border border-neutral-200 bg-white shadow
-                                  text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+                  <div className="absolute z-20 mt-2 w-full max-h-56 overflow-auto rounded-xl border border-black/10 bg-white shadow
+                                  text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
                     {roleItems.length === 0 ? (
-                      <div className="px-3 py-2 text-sm text-neutral-500 dark:text-neutral-400">
-                        نقشی ثبت نشده است.
-                      </div>
+                      <div className="px-3 py-2 text-sm text-black/50 dark:text-neutral-400">نقشی ثبت نشده است.</div>
                     ) : (
                       roleItems.map((r) => (
                         <button
@@ -823,14 +713,8 @@ function UsersPage() {
                           onClick={() => {
                             addPositionToAdd(r.name);
                           }}
-                          className={`w-full text-right px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-white/10
-                                    ${
-                                      (addForm.positions || []).includes(
-                                        r.name
-                                      )
-                                        ? "bg-neutral-50 dark:bg-white/10"
-                                        : ""
-                                    }`}
+                          className={`w-full text-right px-3 py-2 text-sm hover:bg-black/[0.04] dark:hover:bg-white/10
+                                    ${(addForm.positions || []).includes(r.name) ? "bg-black/[0.02] dark:bg-white/10" : ""}`}
                         >
                           {r.label || r.name}
                         </button>
@@ -843,18 +727,11 @@ function UsersPage() {
 
             {/* دسترسی‌های بودجه و قرارداد */}
             <div
-              className={`mt-4 grid md:grid-cols-2 gap-6 ${
-                addForm.role === "admin"
-                  ? "opacity-50 pointer-events-none"
-                  : ""
-              }`}
+              className={`mt-4 grid md:grid-cols-2 gap-6 ${addForm.role === "admin" ? "opacity-50 pointer-events-none" : ""}`}
               dir="rtl"
             >
-              <div className="rounded-xl p-3 border border-neutral-200 bg-white text-neutral-900
-                              dark:ring-1 dark:ring-neutral-800 dark:border-transparent dark:bg-neutral-900 dark:text-neutral-100">
-                <div className="font-medium mb-2 text-neutral-900 dark:text-neutral-100">
-                  بودجه‌بندی
-                </div>
+              <div className="rounded-xl p-3 border border-black/10 bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+                <div className="font-medium mb-2 text-black dark:text-neutral-100">بودجه‌بندی</div>
                 <div className="flex flex-wrap gap-2">
                   {[
                     ["budget:projects", "پروژه‌ها"],
@@ -867,8 +744,8 @@ function UsersPage() {
                     <label
                       key={key}
                       className="inline-flex items-center gap-2 rounded-full px-3 py-1 cursor-pointer select-none
-                                                ring-1 ring-neutral-300 hover:bg-neutral-100
-                                                dark:ring-neutral-800 dark:hover:bg-white/10"
+                                 ring-1 ring-black/15 hover:bg-black/5
+                                 dark:ring-neutral-800 dark:hover:bg-white/10"
                     >
                       <input
                         type="checkbox"
@@ -877,74 +754,49 @@ function UsersPage() {
                         onChange={() =>
                           setAddForm((s) => ({
                             ...s,
-                            accessBudget: {
-                              ...s.accessBudget,
-                              [key]: !s.accessBudget[key],
-                            },
+                            accessBudget: { ...s.accessBudget, [key]: !s.accessBudget[key] },
                           }))
                         }
                       />
-                      <span className="text-neutral-900 dark:text-neutral-200">
-                        {label}
-                      </span>
+                      <span className="text-black dark:text-neutral-200">{label}</span>
                     </label>
                   ))}
                 </div>
               </div>
 
-              <div className="rounded-xl p-3 border border-neutral-200 bg-white text-neutral-900
-                              dark:ring-1 dark:ring-neutral-800 dark:border-transparent dark:bg-neutral-900 dark:text-neutral-100">
+              <div className="rounded-xl p-3 border border-black/10 bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
                 <div className="font-medium mb-2">قراردادها</div>
                 <div className="flex flex-wrap gap-3">
                   <label className="inline-flex items-center gap-2 rounded-full px-3 py-1 cursor-pointer select-none
-                                      ring-1 ring-neutral-300 hover:bg-neutral-100
-                                      dark:ring-neutral-800 dark:hover:bg-white/10">
+                                    ring-1 ring-black/15 hover:bg-black/5
+                                    dark:ring-neutral-800 dark:hover:bg-white/10">
                     <input
                       type="radio"
                       name="contracts-add"
                       className="accent-neutral-900 dark:accent-neutral-200"
                       checked={addForm.contracts === "contracts:all"}
-                      onChange={() =>
-                        setAddForm((s) => ({
-                          ...s,
-                          contracts: "contracts:all",
-                        }))
-                      }
+                      onChange={() => setAddForm((s) => ({ ...s, contracts: "contracts:all" }))}
                     />
-                    <span className="text-neutral-900 dark:text-neutral-200">
-                      همه اطلاعات
-                    </span>
+                    <span className="text-black dark:text-neutral-200">همه اطلاعات</span>
                   </label>
+
                   <label className="inline-flex items-center gap-2 rounded-full px-3 py-1 cursor-pointer select-none
-                                      ring-1 ring-neutral-300 hover:bg-neutral-100
-                                      dark:ring-neutral-800 dark:hover:bg-white/10">
+                                    ring-1 ring-black/15 hover:bg-black/5
+                                    dark:ring-neutral-800 dark:hover:bg-white/10">
                     <input
                       type="radio"
                       name="contracts-add"
                       className="accent-neutral-900 dark:accent-neutral-200"
-                      checked={
-                        addForm.contracts === "contracts:nonfinancial"
-                      }
-                      onChange={() =>
-                        setAddForm((s) => ({
-                          ...s,
-                          contracts: "contracts:nonfinancial",
-                        }))
-                      }
+                      checked={addForm.contracts === "contracts:nonfinancial"}
+                      onChange={() => setAddForm((s) => ({ ...s, contracts: "contracts:nonfinancial" }))}
                     />
-                    <span className="text-neutral-900 dark:text-neutral-200">
-                      صرفاً اطلاعات غیرمالی
-                    </span>
+                    <span className="text-black dark:text-neutral-200">صرفاً اطلاعات غیرمالی</span>
                   </label>
                 </div>
               </div>
             </div>
 
-            {addErr && (
-              <div className="text-sm text-red-600 dark:text-red-400 mt-3">
-                {addErr}
-              </div>
-            )}
+            {addErr && <div className="text-sm text-red-600 dark:text-red-400 mt-3">{addErr}</div>}
 
             <div className="mt-4 flex items-center gap-2">
               <button
@@ -955,11 +807,7 @@ function UsersPage() {
                 aria-label="افزودن"
                 title="افزودن"
               >
-                <img
-                  src="/images/icons/afzodan.svg"
-                  alt=""
-                  className="w-5 h-5 invert dark:invert-0"
-                />
+                <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
               </button>
               <Btn type="button" onClick={() => setAddOpen(false)}>
                 بستن
@@ -970,146 +818,139 @@ function UsersPage() {
 
         {/* جدول کاربران */}
         <TableWrap>
-          <div className="bg-white text-neutral-900 rounded-2xl border border-neutral-200 overflow-hidden dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-            <table
-              className="w-full text-sm text-neutral-900 [&_th]:text-center [&_td]:text-center dark:text-neutral-100"
-              dir="rtl"
-            >
+          <div className="bg-white text-black rounded-2xl border border-black/10 overflow-hidden dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+            <table className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5" dir="rtl">
               <THead>
-                <tr className="bg-neutral-100 text-neutral-900 border-y border-neutral-200 dark:bg_WHITE/5 dark:text-neutral-100 dark:border-neutral-700">
-                  <TH className="!text-center w-20 !font-semibold !text-neutral-900 dark:!text-neutral-100">
+                <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
+                  <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
                     #
                   </TH>
-                  <TH className="!text-center !font-semibold !text-neutral-900 dark:!text-neutral-100">
+
+                  <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
                     <div className="flex items-center justify-center gap-2">
                       <span>نام</span>
                       <button
                         type="button"
                         onClick={() => toggleSort("name")}
-                        className="rounded-lg px-2 py-1 ring-1 ring-black/15 hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10"
+                        className="h-7 w-7 inline-grid place-items-center bg-transparent p-0
+                                   text-neutral-500 hover:text-neutral-600 active:text-neutral-700
+                                   dark:text-neutral-400 dark:hover:text-neutral-300"
                         title="مرتب‌سازی نام"
                         aria-label="مرتب‌سازی نام"
                       >
-                        {sortKey === "name" && sortDir === "desc" ? (
-                          <img
-                            src="/images/icons/bozorgbekochik.svg"
-                            alt=""
-                            className="w-4 h-4 dark:invert"
-                          />
-                        ) : (
-                          <img
-                            src="/images/icons/kochikbebozorg.svg"
-                            alt=""
-                            className="w-4 h-4 dark:invert"
-                          />
-                        )}
+                        <svg
+                          className={`w-[14px] h-[14px] transition-transform ${
+                            sortKey === "name" ? (sortDir === "asc" ? "rotate-180" : "") : ""
+                          }`}
+                          focusable="false"
+                          aria-hidden="true"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"></path>
+                        </svg>
                       </button>
                     </div>
                   </TH>
-                  <TH className="!text-center !font-semibold !text-neutral-900 dark:!text-neutral-100">
+
+                  <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
                     <div className="flex items-center justify-center gap-2">
                       <span>واحد</span>
                       <button
                         type="button"
                         onClick={() => toggleSort("department")}
-                        className="rounded-lg px-2 py-1 ring-1 ring-black/15 hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10"
+                        className="h-7 w-7 inline-grid place-items-center bg-transparent p-0
+                                   text-neutral-500 hover:text-neutral-600 active:text-neutral-700
+                                   dark:text-neutral-400 dark:hover:text-neutral-300"
                         title="مرتب‌سازی واحد"
                         aria-label="مرتب‌سازی واحد"
                       >
-                        {sortKey === "department" &&
-                        sortDir === "desc" ? (
-                          <img
-                            src="/images/icons/bozorgbekochik.svg"
-                            alt=""
-                            className="w-4 h-4 dark:invert"
-                          />
-                        ) : (
-                          <img
-                            src="/images/icons/kochikbebozorg.svg"
-                            alt=""
-                            className="w-4 h-4 dark:invert"
-                          />
-                        )}
+                        <svg
+                          className={`w-[14px] h-[14px] transition-transform ${
+                            sortKey === "department" ? (sortDir === "asc" ? "rotate-180" : "") : ""
+                          }`}
+                          focusable="false"
+                          aria-hidden="true"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"></path>
+                        </svg>
                       </button>
                     </div>
                   </TH>
-                  <TH className="!text-center !font-semibold !text-neutral-900 dark:!text-neutral-100">
+
+                  <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
                     سطح دسترسی‌ها
                   </TH>
-                  <TH className="!text-center w-56 !font-semibold !text-neutral-900 dark:!text-neutral-100">
+
+                  <TH className="w-44 sm:w-72 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
                     اقدامات
                   </TH>
                 </tr>
               </THead>
 
-              <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+              <tbody
+                className="[&_td]:text-black dark:[&_td]:text-neutral-100
+                           [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50
+                           dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50"
+              >
                 {loading ? (
-                  <TR>
-                    <TD
-                      colSpan={5}
-                      className="text-center !text-neutral-700 dark:!text-neutral-400 py-4"
-                    >
+                  <TR className="bg-white dark:bg-transparent">
+                    <TD colSpan={5} className="text-center text-black/60 dark:text-neutral-400 py-4">
                       در حال بارگذاری...
                     </TD>
                   </TR>
                 ) : (sortedList || []).length === 0 ? (
-                  <TR>
-                    <TD
-                      colSpan={5}
-                      className="text-center !text-neutral-600 dark:!text-neutral-400 py-4 bg-neutral-50 dark:bg-transparent"
-                    >
+                  <TR className="bg-white dark:bg-transparent">
+                    <TD colSpan={5} className="text-center text-black/60 dark:text-neutral-400 py-4">
                       کاربری ثبت نشده است.
                     </TD>
                   </TR>
                 ) : (
-                  (sortedList || []).map((u, idx) => (
-                    <TR
-                      key={u.id}
-                      className="text-neutral-900 odd:bg-white even:bg-neutral-50 hover:bg-neutral-100 transition-colors
-                               dark:text-neutral-100 dark:odd:bg-transparent dark:even:bg_WHITE/5 dark:hover:bg_WHITE/10"
-                    >
-                      <TD className="px-3 py-3 !text-neutral-900 dark:!text-neutral-100">
-                        {idx + 1}
-                      </TD>
-                      <TD className="px-3 py-3 !text-neutral-900 dark:!text-neutral-100">
-                        {u.name || u.username || "—"}
-                      </TD>
-                      <TD className="px-3 py-3 !text-neutral-900 dark:!text-neutral-100">
-                        {u.department || "—"}
-                      </TD>
-                      <TD className="px-3 py-3 !text-neutral-900 dark:!text-neutral-300">
-                        {renderAccessText(u)}
-                      </TD>
-                      <TD className="px-3 py-3 !text-neutral-900 dark:!text-neutral-100">
-                        <div className="inline-flex items-center gap-2 text-neutral-900 dark:text-neutral-100">
-                          <Btn
-                            className="!h-10 !w-10 !rounded-xl !bg-white !text-neutral-900 !ring-1 !ring-neutral-300 hover:!bg-neutral-100
-                                       dark:!bg-transparent dark:!ring-neutral-800 dark:hover:!bg-white/10 grid place-items-center"
-                            onClick={() => startEdit(u)}
-                            aria-label="ویرایش"
-                          >
-                            <img
-                              src="/images/icons/pencil.svg"
-                              alt=""
-                              className="w-5 h-5 dark:invert"
-                            />
-                          </Btn>
-                          <DangerBtn
-                            className="!h-10 !w-10 !rounded-xl !bg-white !text-red-600 !ring-1 !ring-red-500 hover:!bg-red-50
-                                       dark:!bg-transparent dark:!text-red-300 dark:!ring-red-400/60 dark:hover:!bg-white/10 grid place-items-center"
-                            onClick={() => del(u)}
-                            aria-label="حذف"
-                          >
-                            <img
-                              src="/images/icons/hazf.svg"
-                              alt=""
-                              className="w-5 h-5 dark:invert"
-                            />
-                          </DangerBtn>
-                        </div>
-                      </TD>
-                    </TR>
-                  ))
+                  (sortedList || []).map((u, idx) => {
+                    const isLast = idx === (sortedList || []).length - 1;
+                    const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
+
+                    return (
+                      <TR key={u.id}>
+                        <TD className={`px-3 ${tdBorder}`}>{idx + 1}</TD>
+                        <TD className={`px-3 ${tdBorder}`}>{u.name || u.username || "—"}</TD>
+                        <TD className={`px-3 ${tdBorder}`}>{u.department || "—"}</TD>
+                        <TD className={`px-3 ${tdBorder} text-black/80 dark:text-neutral-300`}>{renderAccessText(u)}</TD>
+
+                        <TD className={`px-3 ${tdBorder}`}>
+                          <div className="inline-flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => startEdit(u)}
+                              className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
+                              aria-label="ویرایش"
+                              title="ویرایش"
+                            >
+                              <img src="/images/icons/pencil.svg" alt="" className="w-[18px] h-[18px] dark:invert" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => del(u)}
+                              className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
+                              aria-label="حذف"
+                              title="حذف"
+                            >
+                              <img
+                                src="/images/icons/hazf.svg"
+                                alt=""
+                                className="w-[19px] h-[19px]"
+                                style={{
+                                  filter:
+                                    "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
+                                }}
+                              />
+                            </button>
+                          </div>
+                        </TD>
+                      </TR>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -1120,57 +961,41 @@ function UsersPage() {
       {/* ===== Edit Modal ===== */}
       {editOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={cancelEdit}
-          />
-          <div className="relative w-[96%] max-w-3xl rounded-2xl shadow-2xl p-5 bg-white text-neutral-900 border border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-1 dark:ring-neutral-800 dark:border-transparent">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={cancelEdit} />
+
+          <div className="relative w-[96%] max-w-3xl rounded-2xl shadow-2xl p-5 bg-white text-black border border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-lg md:text-xl font-bold">
-                ویرایش کاربر
-              </h3>
+              <h3 className="text-lg md:text-xl font-bold">ویرایش کاربر</h3>
+
               <button
                 onClick={cancelEdit}
-                className="px-3 py-1 rounded-xl ring-1 ring-neutral-300 hover:bg-neutral-100 text-neutral-800
-                           dark:text-neutral-200 dark:ring-neutral-800 dark:hover:bg_WHITE/10"
+                className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
+                aria-label="بستن"
+                title="بستن"
               >
-                بستن
+                <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
               </button>
             </div>
 
             <div className="grid md:grid-cols-2 gap-4" dir="rtl">
               <div className="flex flex-col gap-1">
-                <label className="text-sm text-neutral-700 dark:text-neutral-300">
-                  نام
-                </label>
+                <label className="text-sm text-black/70 dark:text-neutral-300">نام</label>
                 <input
                   value={form.name}
-                  onChange={(e) =>
-                    setForm((s) => ({
-                      ...s,
-                      name: e.target.value,
-                    }))
-                  }
-                  className="rounded-xl px-3 py-2 bg-white text-neutral-900 placeholder-neutral-400
-                             border border-neutral-300 outline-none focus:ring-2 focus:ring-neutral-300
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                  onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
+                  className="rounded-xl px-3 py-2 bg-white text-black placeholder-black/40
+                             border border-black/15 outline-none focus:ring-2 focus:ring-black/10
+                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
                 />
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-sm text-neutral-700 dark:text-neutral-300">
-                  واحد
-                </label>
+                <label className="text-sm text-black/70 dark:text-neutral-300">واحد</label>
                 <select
-                  className="rounded-xl px-3 py-2 bg-white text-neutral-900 border border-neutral-300 outline-none
+                  className="rounded-xl px-3 py-2 bg-white text-black border border-black/15 outline-none
                              dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
                   value={form.department}
-                  onChange={(e) =>
-                    setForm((s) => ({
-                      ...s,
-                      department: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => setForm((s) => ({ ...s, department: e.target.value }))}
                 >
                   <option value="">— انتخاب کنید —</option>
                   {(units || []).map((u) => (
@@ -1182,57 +1007,36 @@ function UsersPage() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-sm text-neutral-700 dark:text-neutral-300 text-left">
-                  Email
-                </label>
+                <label className="text-sm text-black/70 dark:text-neutral-300 text-left">Email</label>
                 <input
                   type="email"
                   value={form.email}
-                  onChange={(e) =>
-                    setForm((s) => ({
-                      ...s,
-                      email: e.target.value,
-                    }))
-                  }
-                  className="rounded-xl px-3 py-2 bg-white text-neutral-900 placeholder-neutral-400
-                             border border-neutral-300 outline-none text-left focus:ring-2 focus:ring-neutral-300
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                  onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
+                  className="rounded-xl px-3 py-2 bg-white text-black placeholder-black/40
+                             border border-black/15 outline-none text-left focus:ring-2 focus:ring-black/10
+                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
                   dir="ltr"
                 />
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-sm text-neutral-700 dark:text-neutral-300 text-left">
-                  Username
-                </label>
+                <label className="text-sm text-black/70 dark:text-neutral-300 text-left">Username</label>
                 <input
                   value={form.username}
-                  onChange={(e) =>
-                    setForm((s) => ({
-                      ...s,
-                      username: e.target.value,
-                    }))
-                  }
-                  className="rounded-xl px-3 py-2 bg-white text-neutral-900 placeholder-neutral-400
-                             border border-neutral-300 outline-none text-left focus:ring-2 focus:ring-neutral-300
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                  onChange={(e) => setForm((s) => ({ ...s, username: e.target.value }))}
+                  className="rounded-xl px-3 py-2 bg-white text-black placeholder-black/40
+                             border border-black/15 outline-none text-left focus:ring-2 focus:ring-black/10
+                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
                   dir="ltr"
                 />
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-sm text-neutral-700 dark:text-neutral-300">
-                  نوع
-                </label>
+                <label className="text-sm text-black/70 dark:text-neutral-300">نوع</label>
                 <select
                   value={form.role}
-                  onChange={(e) =>
-                    setForm((s) => ({
-                      ...s,
-                      role: e.target.value,
-                    }))
-                  }
-                  className="rounded-xl px-3 py-2 bg-white text-neutral-900 border border-neutral-300 outline-none
+                  onChange={(e) => setForm((s) => ({ ...s, role: e.target.value }))}
+                  className="rounded-xl px-3 py-2 bg-white text-black border border-black/15 outline-none
                              dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
                 >
                   <option value="user">user</option>
@@ -1241,20 +1045,13 @@ function UsersPage() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-sm text-neutral-700 dark:text-neutral-300 text-left">
-                  New password (حداکثر ۸)
-                </label>
+                <label className="text-sm text-black/70 dark:text-neutral-300 text-left">New password (حداکثر ۸)</label>
                 <input
                   value={form.password}
-                  onChange={(e) =>
-                    setForm((s) => ({
-                      ...s,
-                      password: e.target.value.slice(0, 8),
-                    }))
-                  }
-                  className="rounded-xl px-3 py-2 bg-white text-neutral-900 placeholder-neutral-400
-                             border border-neutral-300 outline-none text-left focus:ring-2 focus:ring-neutral-300
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                  onChange={(e) => setForm((s) => ({ ...s, password: e.target.value.slice(0, 8) }))}
+                  className="rounded-xl px-3 py-2 bg-white text-black placeholder-black/40
+                             border border-black/15 outline-none text-left focus:ring-2 focus:ring-black/10
+                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
                   dir="ltr"
                   type="password"
                   maxLength={8}
@@ -1263,10 +1060,7 @@ function UsersPage() {
             </div>
 
             {/* نقش کاربری در ویرایش */}
-            <div
-              className="mt-5 text-neutral-900 dark:text-neutral-100"
-              dir="rtl"
-            >
+            <div className="mt-5 text-black dark:text-neutral-100" dir="rtl">
               <div className="font-medium mb-2">نقش کاربری</div>
 
               <div className="flex flex-wrap gap-2 mb-2">
@@ -1274,24 +1068,21 @@ function UsersPage() {
                   <span
                     key={slug}
                     className="inline-flex items-center gap-2 px-3 py-1 rounded-full
-                                             bg-neutral-100 text-neutral-900 border border-neutral-300
-                                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
+                               bg-neutral-100 text-black border border-black/10
+                               dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
                   >
                     {slugToLabel[slug] || slug}
                     <button
                       type="button"
                       onClick={() => removePositionFromEdit(slug)}
-                      className="text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
+                      className="text-black/50 hover:text-black dark:text-neutral-400 dark:hover:text-neutral-200"
                     >
                       ×
                     </button>
                   </span>
                 ))}
-                {(!form.positions ||
-                  form.positions.length === 0) && (
-                  <span className="text-sm text-neutral-500 dark:text-neutral-400">
-                    نقشی انتخاب نشده است
-                  </span>
+                {(!form.positions || form.positions.length === 0) && (
+                  <span className="text-sm text-black/50 dark:text-neutral-400">نقشی انتخاب نشده است</span>
                 )}
               </div>
 
@@ -1299,22 +1090,18 @@ function UsersPage() {
                 <button
                   type="button"
                   onClick={() => setEditRolesOpen((s) => !s)}
-                  className="w-full h-10 text-right rounded-xl px-3 bg-white text-neutral-900 border border-neutral-300 outline-none
-                             hover:bg-neutral-50
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800/90"
+                  className="w-full h-10 text-right rounded-xl px-3 bg-white text-black border border-black/15 outline-none
+                             hover:bg-black/[0.02]
+                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-white/10"
                 >
-                  {rolesLoading
-                    ? "در حال بارگذاری نقش‌ها…"
-                    : "انتخاب از نقش‌های کاربری"}
+                  {rolesLoading ? "در حال بارگذاری نقش‌ها…" : "انتخاب از نقش‌های کاربری"}
                 </button>
 
                 {editRolesOpen && (
-                  <div className="absolute z-20 mt-2 w-full max-h-56 overflow-auto rounded-xl border border-neutral-200 bg-white shadow
-                                  text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+                  <div className="absolute z-20 mt-2 w-full max-h-56 overflow-auto rounded-xl border border-black/10 bg-white shadow
+                                  text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
                     {roleItems.length === 0 ? (
-                      <div className="px-3 py-2 text-sm text-neutral-500 dark:text-neutral-400">
-                        نقشی ثبت نشده است.
-                      </div>
+                      <div className="px-3 py-2 text-sm text-black/50 dark:text-neutral-400">نقشی ثبت نشده است.</div>
                     ) : (
                       roleItems.map((r) => (
                         <button
@@ -1323,14 +1110,8 @@ function UsersPage() {
                           onClick={() => {
                             addPositionToEdit(r.name);
                           }}
-                          className={`w-full text-right px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-white/10
-                                    ${
-                                      (form.positions || []).includes(
-                                        r.name
-                                      )
-                                        ? "bg-neutral-50 dark:bg-white/10"
-                                        : ""
-                                    }`}
+                          className={`w-full text-right px-3 py-2 text-sm hover:bg-black/[0.04] dark:hover:bg-white/10
+                                    ${(form.positions || []).includes(r.name) ? "bg-black/[0.02] dark:bg-white/10" : ""}`}
                         >
                           {r.label || r.name}
                         </button>
@@ -1343,14 +1124,10 @@ function UsersPage() {
 
             {/* دسترسی‌ها در ویرایش */}
             <div
-              className={`mt-5 grid md:grid-cols-2 gap-6 ${
-                form.role === "admin"
-                  ? "opacity-50 pointer-events-none"
-                  : ""
-              }`}
+              className={`mt-5 grid md:grid-cols-2 gap-6 ${form.role === "admin" ? "opacity-50 pointer-events-none" : ""}`}
               dir="rtl"
             >
-              <div className="rounded-xl p-3 border border-neutral-200 bg-white text-neutral-900 dark:ring-1 dark:ring-neutral-800 dark:border-transparent dark:bg-neutral-900 dark:text-neutral-100">
+              <div className="rounded-xl p-3 border border-black/10 bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
                 <div className="font-medium mb-2">بودجه‌بندی</div>
                 <div className="flex flex-wrap gap-2">
                   {[
@@ -1364,8 +1141,8 @@ function UsersPage() {
                     <label
                       key={key}
                       className="inline-flex items-center gap-2 rounded-full px-3 py-1 cursor-pointer select-none
-                                                ring-1 ring-neutral-300 hover:bg-neutral-100
-                                                dark:ring-neutral-800 dark:hover:bg-white/10"
+                                 ring-1 ring-black/15 hover:bg-black/5
+                                 dark:ring-neutral-800 dark:hover:bg-white/10"
                     >
                       <input
                         type="checkbox"
@@ -1373,20 +1150,18 @@ function UsersPage() {
                         checked={has(key)}
                         onChange={() => toggleBudget(key)}
                       />
-                      <span className="text-neutral-900 dark:text-neutral-200">
-                        {label}
-                      </span>
+                      <span className="text-black dark:text-neutral-200">{label}</span>
                     </label>
                   ))}
                 </div>
               </div>
 
-              <div className="rounded-xl p-3 border border-neutral-200 bg-white text-neutral-900 dark:ring-1 dark:ring-neutral-800 dark:border-transparent dark:bg-neutral-900 dark:text-neutral-100">
+              <div className="rounded-xl p-3 border border-black/10 bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
                 <div className="font-medium mb-2">قراردادها</div>
                 <div className="flex flex-wrap gap-3">
                   <label className="inline-flex items-center gap-2 rounded-full px-3 py-1 cursor-pointer select-none
-                                      ring-1 ring-neutral-300 hover:bg-neutral-100
-                                      dark:ring-neutral-800 dark:hover:bg-white/10">
+                                    ring-1 ring-black/15 hover:bg-black/5
+                                    dark:ring-neutral-800 dark:hover:bg-white/10">
                     <input
                       type="radio"
                       name={`contracts-${editId}`}
@@ -1394,40 +1169,53 @@ function UsersPage() {
                       checked={contractsSel === "contracts:all"}
                       onChange={() => setContracts("contracts:all")}
                     />
-                    <span className="text-neutral-900 dark:text-neutral-200">
-                      همه اطلاعات
-                    </span>
+                    <span className="text-black dark:text-neutral-200">همه اطلاعات</span>
                   </label>
+
                   <label className="inline-flex items-center gap-2 rounded-full px-3 py-1 cursor-pointer select-none
-                                      ring-1 ring-neutral-300 hover:bg-neutral-100
-                                      dark:ring-neutral-800 dark:hover:bg-white/10">
+                                    ring-1 ring-black/15 hover:bg-black/5
+                                    dark:ring-neutral-800 dark:hover:bg-white/10">
                     <input
                       type="radio"
                       name={`contracts-${editId}`}
                       className="accent-neutral-900 dark:accent-neutral-200"
-                      checked={
-                        contractsSel === "contracts:nonfinancial"
-                      }
-                      onChange={() =>
-                        setContracts("contracts:nonfinancial")
-                      }
+                      checked={contractsSel === "contracts:nonfinancial"}
+                      onChange={() => setContracts("contracts:nonfinancial")}
                     />
-                    <span className="text-neutral-900 dark:text-neutral-200">
-                      صرفاً اطلاعات غیرمالی
-                    </span>
+                    <span className="text-black dark:text-neutral-200">صرفاً اطلاعات غیرمالی</span>
                   </label>
                 </div>
               </div>
             </div>
 
             <div className="mt-4 flex items-center justify-between gap-2">
-              <Btn onClick={cancelEdit}>انصراف</Btn>
-              <PrimaryBtn
-                onClick={saveEdit}
-                className="!bg-neutral-900 !text-white dark:!bg-white dark:!text-neutral-900"
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
+                aria-label="انصراف"
+                title="انصراف"
               >
-                ذخیره
-              </PrimaryBtn>
+                <img
+                  src="/images/icons/bastan.svg"
+                  alt=""
+                  className="w-[16px] h-[16px] dark:invert"
+                  style={{
+                    filter:
+                      "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
+                  }}
+                />
+              </button>
+
+              <button
+                type="button"
+                onClick={saveEdit}
+                className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
+                aria-label="ذخیره"
+                title="ذخیره"
+              >
+                <img src="/images/icons/check.svg" alt="" className="w-[18px] h-[18px] dark:invert" />
+              </button>
             </div>
           </div>
         </div>
