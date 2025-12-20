@@ -19,7 +19,6 @@ function UnitsPage() {
   const [editName, setEditName] = useState("");
 
   const [nameSortDir, setNameSortDir] = useState("asc");
-  const [dense, setDense] = useState(false);
 
   // --- پاپ‌آپ سطح دسترسی ---
   const [accessUnit, setAccessUnit] = useState(null);
@@ -382,11 +381,7 @@ function UnitsPage() {
         <TableWrap>
           <div className="bg-white text-black rounded-2xl border border-black/10 overflow-hidden dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
             <table
-              className={`w-full text-sm [&_th]:text-center [&_td]:text-center ${
-                dense
-                  ? "[&_th]:py-1.5 [&_td]:py-1.5"
-                  : "[&_th]:py-2.5 [&_td]:py-2.5"
-              }`}
+              className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-1.5 [&_td]:py-1.5"
               dir="rtl"
             >
               <THead>
@@ -446,15 +441,14 @@ function UnitsPage() {
                   sortedList.map((u, idx) => (
                     <TR
                       key={u.id}
-                      className="odd:bg-white even:bg-neutral-100/70 hover:bg-neutral-200/60 transition-colors
-                               dark:odd:bg-neutral-900 dark:even:bg-neutral-800/70 dark:hover:bg-white/10
-                               border-b border-neutral-300 dark:border-neutral-700 last:border-b-0"
+                      className="odd:bg-white even:bg-neutral-100 border-b border-neutral-300 last:border-b-0
+                               dark:odd:bg-neutral-900 dark:even:bg-neutral-800/70 dark:border-neutral-700"
                     >
                       <TD className="px-3">{idx + 1}</TD>
                       <TD className="px-3">
                         {editId === u.id ? (
                           <input
-                            className="w-full max-w-xs rounded-xl px-2 py-2 text-center
+                            className="w-full max-w-xs rounded-xl px-2 py-1.5 text-center
                                      border border-black/15 dark:border-neutral-700
                                      bg-white text-black placeholder-black/40
                                      dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400"
@@ -487,13 +481,11 @@ function UnitsPage() {
                             </Btn>
                           </div>
                         ) : (
-                          <div className="inline-flex items-center gap-1 sm:gap-2">
+                          <div className="inline-flex items-center gap-2">
                             <button
                               onClick={() => openAccess(u)}
                               disabled={!isAdmin}
-                              className="h-8 w-8 grid place-items-center rounded-lg bg-transparent ring-1 ring-black/15
-                                         hover:bg-black/5 active:bg-black/10 disabled:opacity-50 transition
-                                         dark:ring-neutral-800 dark:hover:bg-white/10 dark:active:bg-white/15"
+                              className="h-10 w-10 grid place-items-center bg-transparent disabled:opacity-50 hover:opacity-80 active:opacity-70 transition"
                               aria-label="سطح دسترسی"
                               title="سطح دسترسی"
                             >
@@ -506,8 +498,7 @@ function UnitsPage() {
 
                             <Btn
                               onClick={() => startEdit(u)}
-                              className="!h-8 !w-8 !p-0 !rounded-lg !bg-transparent !ring-1 !ring-black/15 !shadow-none hover:!bg-black/5 active:!bg-black/10 disabled:opacity-50
-                                       dark:!ring-neutral-800 dark:hover:!bg-white/10 dark:active:!bg-white/15"
+                              className="!h-10 !w-10 !p-0 !rounded-xl !bg-transparent !ring-0 !shadow-none hover:!bg-transparent active:!bg-transparent hover:opacity-80 active:opacity-70 disabled:opacity-50"
                               disabled={!isAdmin}
                               aria-label="ویرایش"
                               title="ویرایش"
@@ -521,8 +512,7 @@ function UnitsPage() {
 
                             <DangerBtn
                               onClick={() => del(u)}
-                              className="!h-8 !w-8 !p-0 !rounded-lg !bg-transparent !ring-1 !ring-black/15 !shadow-none !text-red-600 hover:!bg-black/5 active:!bg-black/10 disabled:opacity-50
-                                       dark:!ring-neutral-800 dark:!text-red-300 dark:hover:!bg-white/10 dark:active:!bg-white/15"
+                              className="!h-10 !w-10 !p-0 !rounded-xl !bg-transparent !ring-0 !shadow-none hover:!bg-transparent active:!bg-transparent hover:opacity-80 active:opacity-70 disabled:opacity-50"
                               disabled={!isAdmin}
                               aria-label="حذف"
                               title="حذف"
@@ -543,19 +533,6 @@ function UnitsPage() {
             </table>
           </div>
         </TableWrap>
-
-        {/* Dense padding */}
-        <div className="mt-3 flex items-center justify-end">
-          <label className="inline-flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300 select-none">
-            <span>فاصله کم</span>
-            <input
-              type="checkbox"
-              checked={dense}
-              onChange={(e) => setDense(e.target.checked)}
-              className="w-4 h-4 accent-black dark:accent-neutral-200"
-            />
-          </label>
-        </div>
 
         {/* پاپ‌آپ سطح دسترسی */}
         {accessOpen && (
