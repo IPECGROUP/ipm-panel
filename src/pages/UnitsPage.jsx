@@ -381,7 +381,7 @@ function UnitsPage() {
         <TableWrap>
           <div className="bg-white text-black rounded-2xl border border-black/10 overflow-hidden dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
             <table
-              className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-1.5 [&_td]:py-1.5"
+              className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-1 [&_td]:py-1"
               dir="rtl"
             >
               <THead>
@@ -400,23 +400,21 @@ function UnitsPage() {
                         }
                         className="h-8 w-8 inline-grid place-items-center rounded-lg bg-transparent ring-1 ring-black/15
                                    hover:bg-black/5 active:bg-black/10 transition
+                                   text-black/70 dark:text-neutral-100
                                    dark:ring-neutral-800 dark:hover:bg-white/10 dark:active:bg-white/15"
                         title="مرتب‌سازی نام"
                         aria-label="مرتب‌سازی نام"
                       >
-                        {nameSortDir === "desc" ? (
-                          <img
-                            src="/images/icons/bozorgbekochik.svg"
-                            alt=""
-                            className="w-5 h-5 dark:invert"
-                          />
-                        ) : (
-                          <img
-                            src="/images/icons/kochikbebozorg.svg"
-                            alt=""
-                            className="w-5 h-5 dark:invert"
-                          />
-                        )}
+                        <svg
+                          className={`w-5 h-5 transition-transform ${
+                            nameSortDir === "asc" ? "rotate-180" : ""
+                          }`}
+                          focusable="false"
+                          aria-hidden="true"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"></path>
+                        </svg>
                       </button>
                     </div>
                   </TH>
@@ -454,7 +452,7 @@ function UnitsPage() {
                         <TD className={`px-3 ${tdBorder}`}>
                           {editId === u.id ? (
                             <input
-                              className="w-full max-w-xs rounded-xl px-2 py-1.5 text-center
+                              className="w-full max-w-xs rounded-xl px-2 py-1 text-center
                                      border border-black/15 dark:border-neutral-700
                                      bg-white text-black placeholder-black/40
                                      dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400"
