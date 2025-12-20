@@ -73,6 +73,7 @@ export default function App() {
         {/* داشبورد و درخواست پرداخت و ... */}
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/requests" element={<PaymentRequestPage />} />
+        <Route path="/payment" element={<PaymentRequestPage />} />
         <Route path="/requests/:id" element={<RequestDetailPage />} />
         <Route path="/contracts/info" element={<ContractInfoPage />} />
 
