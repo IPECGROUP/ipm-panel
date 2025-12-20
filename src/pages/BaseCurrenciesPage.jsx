@@ -409,14 +409,14 @@ function BaseCurrenciesPage() {
                         <div className="inline-flex items-center gap-2">
                           <PrimaryBtn
                             onClick={saveEdit}
-                            className="!h-10 !px-4 !rounded-xl !bg-neutral-900 !text-white !ring-1 !ring-black/15 hover:!bg-black
+                            className="!h-9 !px-3 !rounded-xl !text-sm !bg-neutral-900 !text-white !ring-1 !ring-black/15 hover:!bg-black
                                      dark:!bg-neutral-100 dark:!text-neutral-900 dark:!ring-neutral-700 dark:hover:!bg-neutral-200"
                           >
                             ذخیره
                           </PrimaryBtn>
                           <Btn
                             onClick={cancelEdit}
-                            className="!h-10 !px-4 !rounded-xl !bg-white !text-neutral-900 !ring-1 !ring-neutral-300 hover:!bg-neutral-100
+                            className="!h-9 !px-3 !rounded-xl !text-sm !bg-white !text-neutral-900 !ring-1 !ring-neutral-300 hover:!bg-neutral-100
                                      dark:!bg-transparent dark:!text-neutral-100 dark:!ring-neutral-700 dark:hover:!bg-white/10"
                           >
                             انصراف
