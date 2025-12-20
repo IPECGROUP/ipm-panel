@@ -2,7 +2,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
-import Folder from "../components/ui/Folder.jsx";
 
 const TABS = [
   { id: "incoming", label: "وارده" },
@@ -393,12 +392,7 @@ export default function LettersPage() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFor, setUploadFor] = useState("incoming");
 
-  const [incomingFolderKey, setIncomingFolderKey] = useState(0);
-  const [outgoingFolderKey, setOutgoingFolderKey] = useState(0);
-
   const closeUpload = () => {
-    if (uploadFor === "incoming") setIncomingFolderKey((k) => k + 1);
-    else setOutgoingFolderKey((k) => k + 1);
     setUploadOpen(false);
   };
 
@@ -807,9 +801,11 @@ export default function LettersPage() {
     setUploadOpen(true);
   };
 
-  const folderIconBtnCls =
-    "inline-flex items-center justify-center p-0 bg-transparent border-0 outline-none rounded-xl " +
-    "focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0";
+  const attachBtnCls =
+    "h-11 px-4 rounded-2xl border text-sm font-semibold whitespace-nowrap transition outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
+    (theme === "dark"
+      ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+      : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]");
 
   const uploadBoxCls =
     "rounded-2xl border border-dashed p-4 text-center transition " +
@@ -998,14 +994,14 @@ export default function LettersPage() {
 
                       <div className="space-y-2">
                         {returnToIds.map((v, idx) => (
-                          <div key={idx} className="flex items-center gap-2">
+                          <div key={idx} className="flex items-center gap-2 flex-wrap">
                             <select
                               value={v}
                               onChange={(e) => {
                                 const nv = e.target.value;
                                 setReturnToIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
                               }}
-                              className={inputCls}
+                              className={inputCls + " flex-1 min-w-[220px]"}
                             >
                               <option value=""></option>
                               {myLetters.map((l) => (
@@ -1014,6 +1010,18 @@ export default function LettersPage() {
                                 </option>
                               ))}
                             </select>
+
+                            {idx === 0 && (
+                              <button
+                                type="button"
+                                onClick={() => openUpload("incoming")}
+                                className={attachBtnCls}
+                                aria-label="آپلود و الصاق فایل‌ها"
+                                title="آپلود و الصاق فایل‌ها"
+                              >
+                                آپلود و الصاق فایل‌ها
+                              </button>
+                            )}
 
                             {idx === returnToIds.length - 1 && (
                               <button
@@ -1037,25 +1045,6 @@ export default function LettersPage() {
                     </div>
                   )}
                 </div>
-
-                {hasAttachment && (
-                  <div className="mt-4 mb-6 pb-2">
-                    <div className={labelCls}>بارگذاری نامه</div>
-                    <div className="flex justify-start">
-                      <button
-                        type="button"
-                        onClick={() => openUpload("incoming")}
-                        className={folderIconBtnCls}
-                        aria-label="بارگذاری نامه"
-                        title="بارگذاری نامه"
-                      >
-                        <div className="relative" style={{ height: "46px", width: "46px" }}>
-                          <Folder key={incomingFolderKey} size={0.55} color="#4895ef" className="" />
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-                )}
 
                 <div className="mt-3">
                   <div className={labelCls}>برچسب ها</div>
@@ -1298,14 +1287,14 @@ export default function LettersPage() {
 
                       <div className="space-y-2">
                         {returnToIds.map((v, idx) => (
-                          <div key={idx} className="flex items-center gap-2">
+                          <div key={idx} className="flex items-center gap-2 flex-wrap">
                             <select
                               value={v}
                               onChange={(e) => {
                                 const nv = e.target.value;
                                 setReturnToIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
                               }}
-                              className={inputCls}
+                              className={inputCls + " flex-1 min-w-[220px]"}
                             >
                               <option value=""></option>
                               {myLetters.map((l) => (
@@ -1314,6 +1303,18 @@ export default function LettersPage() {
                                 </option>
                               ))}
                             </select>
+
+                            {idx === 0 && (
+                              <button
+                                type="button"
+                                onClick={() => openUpload("outgoing")}
+                                className={attachBtnCls}
+                                aria-label="آپلود و الصاق فایل‌ها"
+                                title="آپلود و الصاق فایل‌ها"
+                              >
+                                آپلود و الصاق فایل‌ها
+                              </button>
+                            )}
 
                             {idx === returnToIds.length - 1 && (
                               <button
@@ -1337,25 +1338,6 @@ export default function LettersPage() {
                     </div>
                   )}
                 </div>
-
-                {hasAttachment && (
-                  <div className="mt-4 mb-6 pb-2">
-                    <div className={labelCls}>بارگذاری نامه</div>
-                    <div className="flex justify-start">
-                      <button
-                        type="button"
-                        onClick={() => openUpload("outgoing")}
-                        className={folderIconBtnCls}
-                        aria-label="بارگذاری نامه"
-                        title="بارگذاری نامه"
-                      >
-                        <div className="relative" style={{ height: "46px", width: "46px" }}>
-                          <Folder key={outgoingFolderKey} size={0.55} color="#1a7431" className="" />
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-                )}
 
                 <div className="mt-3">
                   <div className={labelCls}>برچسب ها</div>
@@ -1498,11 +1480,7 @@ export default function LettersPage() {
                 <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
 
                 <div className="p-4">
-                  <div
-                    className={uploadBoxCls}
-                    onDragOver={onDragOverUpload}
-                    onDrop={onDropUpload}
-                  >
+                  <div className={uploadBoxCls} onDragOver={onDragOverUpload} onDrop={onDropUpload}>
                     <div className="text-sm font-semibold">فایل را اینجا رها کن</div>
                     <div className={theme === "dark" ? "text-white/60 text-xs mt-1" : "text-neutral-600 text-xs mt-1"}>
                       تصویر یا PDF تا ۴۰۰KB
