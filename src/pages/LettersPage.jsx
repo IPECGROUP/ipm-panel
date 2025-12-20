@@ -166,9 +166,7 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
               onClick={() => setOpen(false)}
               className={
                 "h-9 w-9 rounded-xl border flex items-center justify-center transition " +
-                (theme === "dark"
-                  ? "border-white/10 hover:bg-white/10"
-                  : "border-black/10 hover:bg-black/[0.04]")
+                (theme === "dark" ? "border-white/10 hover:bg-white/10" : "border-black/10 hover:bg-black/[0.04]")
               }
               aria-label="بستن"
               title="بستن"
@@ -198,9 +196,7 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
                 onChange={(e) => setJy(Number(e.target.value))}
                 className={
                   "w-full h-11 px-3 rounded-xl border outline-none " +
-                  (theme === "dark"
-                    ? "border-white/15 bg-white/5 text-white"
-                    : "border-black/10 bg-white text-neutral-900")
+                  (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-neutral-900")
                 }
               >
                 {years.map((y) => (
@@ -220,9 +216,7 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
                 onChange={(e) => setJm(Number(e.target.value))}
                 className={
                   "w-full h-11 px-3 rounded-xl border outline-none " +
-                  (theme === "dark"
-                    ? "border-white/15 bg-white/5 text-white"
-                    : "border-black/10 bg-white text-neutral-900")
+                  (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-neutral-900")
                 }
               >
                 {PERSIAN_MONTHS.map((name, idx) => (
@@ -242,9 +236,7 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
                 onChange={(e) => setJd(Number(e.target.value))}
                 className={
                   "w-full h-11 px-3 rounded-xl border outline-none " +
-                  (theme === "dark"
-                    ? "border-white/15 bg-white/5 text-white"
-                    : "border-black/10 bg-white text-neutral-900")
+                  (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-neutral-900")
                 }
               >
                 {days.map((d) => (
@@ -269,9 +261,7 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
                 }}
                 className={
                   "h-10 px-4 rounded-xl transition " +
-                  (theme === "dark"
-                    ? "bg-white text-black hover:bg-white/90"
-                    : "bg-black text-white hover:bg-black/90")
+                  (theme === "dark" ? "bg-white text-black hover:bg-white/90" : "bg-black text-white hover:bg-black/90")
                 }
               >
                 تایید
@@ -281,9 +271,7 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
                 onClick={() => setOpen(false)}
                 className={
                   "h-10 px-4 rounded-xl border transition " +
-                  (theme === "dark"
-                    ? "border-white/15 hover:bg-white/10"
-                    : "border-black/10 hover:bg-black/[0.04]")
+                  (theme === "dark" ? "border-white/15 hover:bg-white/10" : "border-black/10 hover:bg-black/[0.04]")
                 }
               >
                 بستن
@@ -317,8 +305,7 @@ export default function LettersPage() {
     document.documentElement.classList.contains("dark") ? "dark" : "light"
   );
   useEffect(() => {
-    const tick = () =>
-      setTheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
+    const tick = () => setTheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
     const id = setInterval(tick, 500);
     return () => clearInterval(id);
   }, []);
@@ -449,8 +436,7 @@ export default function LettersPage() {
 
   const labelCls = theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1";
 
-  const chipBase =
-    "inline-flex items-center gap-2 px-3 h-9 rounded-full border text-xs font-semibold whitespace-nowrap";
+  const chipBase = "inline-flex items-center gap-2 px-3 h-9 rounded-full border text-xs font-semibold whitespace-nowrap";
   const chipCls =
     theme === "dark"
       ? chipBase + " border-white/15 bg-white/5 text-white hover:bg-white/10"
@@ -458,9 +444,7 @@ export default function LettersPage() {
 
   const sendBtnCls =
     "h-11 w-11 rounded-xl flex items-center justify-center transition ring-1 " +
-    (theme === "dark"
-      ? "bg-white text-black ring-white/15 hover:bg-white/90"
-      : "bg-black text-white ring-black/15 hover:bg-black/90");
+    (theme === "dark" ? "bg-white text-black ring-white/15 hover:bg-white/90" : "bg-black text-white ring-black/15 hover:bg-black/90");
 
   const sendIconCls = "w-5 h-5 " + (theme === "dark" ? "invert-0" : "invert");
 
@@ -499,8 +483,8 @@ export default function LettersPage() {
   };
 
   return (
-    <div dir="rtl" className="mx-auto max-w-[1400px]">
-      <div className="flex items-center justify-between gap-3 mb-4">
+    <div dir="rtl" className="mx-auto w-full max-w-[1400px] px-2 sm:px-3 md:px-4">
+      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <div className="text-lg md:text-xl font-bold">نامه ها</div>
 
         <button
@@ -523,12 +507,12 @@ export default function LettersPage() {
 
       <Card
         className={
-          "rounded-2xl border overflow-hidden " +
+          "rounded-2xl border overflow-hidden flex flex-col min-h-0 max-h-[calc(100dvh-170px)] " +
           (theme === "dark" ? "border-white/10 bg-neutral-900" : "border-black/10 bg-white")
         }
       >
-        <div className="p-3 md:p-4">
-          <div className="flex items-center gap-2">
+        <div className="p-3 md:p-4 flex flex-col min-h-0">
+          <div className="flex items-center gap-2 flex-wrap">
             {TABS.map((t) => {
               const active = tab === t.id;
               return (
@@ -557,554 +541,516 @@ export default function LettersPage() {
             })}
           </div>
 
-          {formOpen && tab === "incoming" && (
-            <div className="mt-4">
-              {/* ردیف دسته‌بندی */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <div className={labelCls}>دسته بندی نامه</div>
-                  <select
-                    value={category}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setCategory(v);
-                      if (v !== "project") setProjectId("");
-                    }}
-                    className={inputCls}
-                  >
-                    <option value=""></option>
-                    <option value="project">پروژه</option>
-                  </select>
-                </div>
-
-                {category === "project" ? (
+          <div className="mt-4 min-h-0 flex-1 overflow-auto overscroll-contain pr-0">
+            {formOpen && tab === "incoming" && (
+              <div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <div className={labelCls}>پروژه</div>
-                    <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={inputCls}>
+                    <div className={labelCls}>دسته بندی نامه</div>
+                    <select
+                      value={category}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setCategory(v);
+                        if (v !== "project") setProjectId("");
+                      }}
+                      className={inputCls}
+                    >
                       <option value=""></option>
-                      {projects.map((p) => (
-                        <option key={p.id} value={String(p.id)}>
-                          {String(p.code || "")} {p.name ? `- ${p.name}` : ""}
-                        </option>
-                      ))}
+                      <option value="project">پروژه</option>
                     </select>
                   </div>
-                ) : (
-                  <div />
-                )}
-              </div>
 
-              {/* شماره نامه + تاریخ نامه */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                <div>
-                  <div className={labelCls}>شماره نامه</div>
-                  <input value={letterNo} onChange={(e) => setLetterNo(e.target.value)} className={inputCls} type="text" />
-                </div>
-
-                <div>
-                  <div className={labelCls}>تاریخ نامه</div>
-                  <JalaliPopupDatePicker value={letterDate} onChange={setLetterDate} theme={theme} />
-                </div>
-              </div>
-
-              {/* از + شرکت/سازمان */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                <div>
-                  <div className={labelCls}>از</div>
-                  <input value={fromName} onChange={(e) => setFromName(e.target.value)} className={inputCls} type="text" />
-                </div>
-
-                <div>
-                  <div className={labelCls}>شرکت/سازمان</div>
-                  <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputCls} type="text" />
-                </div>
-              </div>
-
-              {/* به */}
-              <div className="mt-3">
-                <div className={labelCls}>به</div>
-                <input value={toName} onChange={(e) => setToName(e.target.value)} className={inputCls} type="text" />
-              </div>
-
-              {/* موضوع */}
-              <div className="mt-3">
-                <div className={labelCls}>موضوع</div>
-                <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputCls} type="text" />
-              </div>
-
-              {/* ضمیمه + عنوان ضمیمه + بازگشت به */}
-              <div className="mt-4">
-                <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <div className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>ضمیمه:</div>
-
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" name="hasAttachment" checked={!hasAttachment} onChange={() => setHasAttachment(false)} />
-                      <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-700 text-sm"}>ندارد</span>
-                    </label>
-
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" name="hasAttachment" checked={hasAttachment} onChange={() => setHasAttachment(true)} />
-                      <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-700 text-sm"}>دارد</span>
-                    </label>
-
-                    {hasAttachment && (
-                      <div className="min-w-[260px]">
-                        <input
-                          value={incomingAttachmentTitle}
-                          onChange={(e) => setIncomingAttachmentTitle(e.target.value)}
-                          className={inputCls}
-                          type="text"
-                          placeholder="عنوان ضمیمه"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {hasAttachment && (
-                  <div className="mt-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className={labelCls.replace("mb-1", "mb-0")}>بازگشت به</div>
+                  {category === "project" ? (
+                    <div>
+                      <div className={labelCls}>پروژه</div>
+                      <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={inputCls}>
+                        <option value=""></option>
+                        {projects.map((p) => (
+                          <option key={p.id} value={String(p.id)}>
+                            {String(p.code || "")} {p.name ? `- ${p.name}` : ""}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-
-                    <div className="space-y-2">
-                      {returnToIds.map((v, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <select
-                            value={v}
-                            onChange={(e) => {
-                              const nv = e.target.value;
-                              setReturnToIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
-                            }}
-                            className={inputCls}
-                          >
-                            <option value=""></option>
-                            {myLetters.map((l) => (
-                              <option key={l.id} value={String(l.id)}>
-                                {String(l.letter_no || "")}
-                              </option>
-                            ))}
-                          </select>
-
-                          {idx === returnToIds.length - 1 && (
-                            <button
-                              type="button"
-                              onClick={() => setReturnToIds((arr) => [...arr, ""])}
-                              className={
-                                "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
-                                (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
-                              }
-                              aria-label="افزودن"
-                              title="افزودن"
-                            >
-                              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M12 5v14M5 12h14" />
-                              </svg>
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* بارگذاری نامه */}
-              <div className="mt-4">
-                <div className={labelCls}>بارگذاری نامه</div>
-                <div className={"w-full h-12 rounded-xl border " + (theme === "dark" ? "border-white/15 bg-white/5" : "border-black/10 bg-white")} />
-              </div>
-
-              {/* برچسب ها */}
-              <div className="mt-3">
-                <div className={labelCls}>برچسب ها</div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  {incomingTagIds.map((id) => {
-                    const t = findTag(id);
-                    const label = String(t?.name || t?.title || t?.label || id || "");
-                    return (
-                      <button
-                        key={String(id)}
-                        type="button"
-                        onClick={() => removeTag("incoming", id)}
-                        className={chipCls}
-                        title="حذف"
-                        aria-label="حذف"
-                      >
-                        <span className="truncate max-w-[180px]">{label}</span>
-                        <span className={theme === "dark" ? "text-white/70" : "text-neutral-600"}>×</span>
-                      </button>
-                    );
-                  })}
-
-                  <select
-                    value={incomingTagPick}
-                    onChange={(e) => addTag("incoming", e.target.value)}
-                    className={
-                      "h-11 px-3 rounded-xl border outline-none transition text-right min-w-[220px] w-[220px] " +
-                      (theme === "dark"
-                        ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
-                        : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
-                    }
-                  >
-                    <option value="">انتخاب برچسب</option>
-                    {tags.map((t) => (
-                      <option key={String(t?.id)} value={String(t?.id)}>
-                        {String(t?.name || t?.title || t?.label || "")}
-                      </option>
-                    ))}
-                  </select>
+                  ) : (
+                    <div />
+                  )}
                 </div>
-              </div>
 
-              {/* خط جداکننده */}
-              <div className={theme === "dark" ? "my-5 h-px bg-white/10" : "my-5 h-px bg-black/10"} />
-
-              {/* اطلاعات دبیرخانه */}
-              <div className="space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
                   <div>
-                    <div className={labelCls}>تاریخ ثبت دبیرخانه</div>
-
-                    <JalaliPopupDatePicker
-                      value={incomingSecretariatDate}
-                      onChange={setIncomingSecretariatDate}
-                      theme={theme}
-                      hideIcon={true}
-                      buttonClassName={secretariatPickerBtnCls(incomingSecretariatDate)}
-                    />
-                    <div className={theme === "dark" ? "text-white/50 text-[11px] mt-1" : "text-neutral-500 text-[11px] mt-1"}>
-                      {secretariatLongText(incomingSecretariatDate)}
-                    </div>
+                    <div className={labelCls}>شماره نامه</div>
+                    <input value={letterNo} onChange={(e) => setLetterNo(e.target.value)} className={inputCls} type="text" />
                   </div>
 
                   <div>
-                    <div className={labelCls}>شماره ثبت دبیرخانه</div>
-                    <input
-                      value={incomingSecretariatNo}
-                      onChange={(e) => setIncomingSecretariatNo(e.target.value)}
-                      className={inputCls}
-                      type="text"
-                    />
+                    <div className={labelCls}>تاریخ نامه</div>
+                    <JalaliPopupDatePicker value={letterDate} onChange={setLetterDate} theme={theme} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <div className={labelCls}>از</div>
+                    <input value={fromName} onChange={(e) => setFromName(e.target.value)} className={inputCls} type="text" />
                   </div>
 
                   <div>
-                    <div className={labelCls}>نام تحویل گیرنده</div>
-                    <input
-                      value={incomingReceiverName}
-                      onChange={(e) => setIncomingReceiverName(e.target.value)}
-                      className={inputCls}
-                      type="text"
-                    />
+                    <div className={labelCls}>شرکت/سازمان</div>
+                    <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputCls} type="text" />
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end pt-2">
-                  <button type="button" onClick={() => {}} className={sendBtnCls} title="ارسال" aria-label="ارسال">
-                    <img src="/images/icons/check.svg" alt="" className={sendIconCls} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {formOpen && tab === "outgoing" && (
-            <div className="mt-4">
-              {/* ردیف دسته‌بندی */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <div className={labelCls}>دسته بندی نامه</div>
-                  <select
-                    value={category}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setCategory(v);
-                      if (v !== "project") setProjectId("");
-                    }}
-                    className={inputCls}
-                  >
-                    <option value=""></option>
-                    <option value="project">پروژه</option>
-                  </select>
-                </div>
-
-                {category === "project" ? (
-                  <div>
-                    <div className={labelCls}>پروژه</div>
-                    <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={inputCls}>
-                      <option value=""></option>
-                      {projects.map((p) => (
-                        <option key={p.id} value={String(p.id)}>
-                          {String(p.code || "")} {p.name ? `- ${p.name}` : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ) : (
-                  <div />
-                )}
-              </div>
-
-              {/* شماره نامه + تاریخ نامه */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                <div>
-                  <div className={labelCls}>شماره نامه</div>
-                  <input value={letterNo} onChange={(e) => setLetterNo(e.target.value)} className={inputCls} type="text" />
-                </div>
-
-                <div>
-                  <div className={labelCls}>تاریخ نامه</div>
-                  <JalaliPopupDatePicker value={letterDate} onChange={setLetterDate} theme={theme} />
-                </div>
-              </div>
-
-              {/* از */}
-              <div className="mt-3">
-                <div className={labelCls}>از</div>
-                <input value={fromName} onChange={(e) => setFromName(e.target.value)} className={inputCls} type="text" />
-              </div>
-
-              {/* به + شرکت/سازمان */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                <div>
+                <div className="mt-3">
                   <div className={labelCls}>به</div>
                   <input value={toName} onChange={(e) => setToName(e.target.value)} className={inputCls} type="text" />
                 </div>
 
-                <div>
-                  <div className={labelCls}>شرکت/سازمان</div>
-                  <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputCls} type="text" />
+                <div className="mt-3">
+                  <div className={labelCls}>موضوع</div>
+                  <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputCls} type="text" />
                 </div>
-              </div>
 
-              {/* موضوع */}
-              <div className="mt-3">
-                <div className={labelCls}>موضوع</div>
-                <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputCls} type="text" />
-              </div>
+                <div className="mt-4">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-3 flex-wrap w-full">
+                      <div className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>ضمیمه:</div>
 
-              {/* ضمیمه + عنوان ضمیمه + پیرو + بازگشت به */}
-              <div className="mt-4">
-                <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <div className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>ضمیمه:</div>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="hasAttachment" checked={!hasAttachment} onChange={() => setHasAttachment(false)} />
+                        <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-700 text-sm"}>ندارد</span>
+                      </label>
 
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" name="hasAttachment" checked={!hasAttachment} onChange={() => setHasAttachment(false)} />
-                      <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-700 text-sm"}>ندارد</span>
-                    </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="hasAttachment" checked={hasAttachment} onChange={() => setHasAttachment(true)} />
+                        <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-700 text-sm"}>دارد</span>
+                      </label>
 
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" name="hasAttachment" checked={hasAttachment} onChange={() => setHasAttachment(true)} />
-                      <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-700 text-sm"}>دارد</span>
-                    </label>
+                      {hasAttachment && (
+                        <div className="w-full sm:min-w-[260px] sm:w-auto flex-1">
+                          <input
+                            value={incomingAttachmentTitle}
+                            onChange={(e) => setIncomingAttachmentTitle(e.target.value)}
+                            className={inputCls}
+                            type="text"
+                            placeholder="عنوان ضمیمه"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
-                    {hasAttachment && (
-                      <div className="min-w-[260px]">
-                        <input
-                          value={outgoingAttachmentTitle}
-                          onChange={(e) => setOutgoingAttachmentTitle(e.target.value)}
-                          className={inputCls}
-                          type="text"
-                          placeholder="عنوان ضمیمه"
-                        />
+                  {hasAttachment && (
+                    <div className="mt-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={labelCls.replace("mb-1", "mb-0")}>بازگشت به</div>
                       </div>
-                    )}
-                  </div>
-                </div>
 
-                {hasAttachment && (
-                  <div className="mt-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className={labelCls.replace("mb-1", "mb-0")}>پیرو</div>
-                    </div>
-
-                    <div className="space-y-2">
-                      {piroIds.map((v, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <select
-                            value={v}
-                            onChange={(e) => {
-                              const nv = e.target.value;
-                              setPiroIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
-                            }}
-                            className={inputCls}
-                          >
-                            <option value=""></option>
-                            {myLetters.map((l) => (
-                              <option key={l.id} value={String(l.id)}>
-                                {String(l.letter_no || "")}
-                              </option>
-                            ))}
-                          </select>
-
-                          {idx === piroIds.length - 1 && (
-                            <button
-                              type="button"
-                              onClick={() => setPiroIds((arr) => [...arr, ""])}
-                              className={
-                                "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
-                                (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
-                              }
-                              aria-label="افزودن"
-                              title="افزودن"
+                      <div className="space-y-2">
+                        {returnToIds.map((v, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <select
+                              value={v}
+                              onChange={(e) => {
+                                const nv = e.target.value;
+                                setReturnToIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
+                              }}
+                              className={inputCls}
                             >
-                              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M12 5v14M5 12h14" />
-                              </svg>
-                            </button>
-                          )}
-                        </div>
+                              <option value=""></option>
+                              {myLetters.map((l) => (
+                                <option key={l.id} value={String(l.id)}>
+                                  {String(l.letter_no || "")}
+                                </option>
+                              ))}
+                            </select>
+
+                            {idx === returnToIds.length - 1 && (
+                              <button
+                                type="button"
+                                onClick={() => setReturnToIds((arr) => [...arr, ""])}
+                                className={
+                                  "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 shrink-0 " +
+                                  (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
+                                }
+                                aria-label="افزودن"
+                                title="افزودن"
+                              >
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M12 5v14M5 12h14" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4">
+                  <div className={labelCls}>بارگذاری نامه</div>
+                  <div className={"w-full h-12 rounded-xl border " + (theme === "dark" ? "border-white/15 bg-white/5" : "border-black/10 bg-white")} />
+                </div>
+
+                <div className="mt-3">
+                  <div className={labelCls}>برچسب ها</div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {incomingTagIds.map((id) => {
+                      const t = findTag(id);
+                      const label = String(t?.name || t?.title || t?.label || id || "");
+                      return (
+                        <button
+                          key={String(id)}
+                          type="button"
+                          onClick={() => removeTag("incoming", id)}
+                          className={chipCls}
+                          title="حذف"
+                          aria-label="حذف"
+                        >
+                          <span className="truncate max-w-[180px]">{label}</span>
+                          <span className={theme === "dark" ? "text-white/70" : "text-neutral-600"}>×</span>
+                        </button>
+                      );
+                    })}
+
+                    <select
+                      value={incomingTagPick}
+                      onChange={(e) => addTag("incoming", e.target.value)}
+                      className={
+                        "h-11 px-3 rounded-xl border outline-none transition text-right w-full sm:w-[220px] sm:min-w-[220px] " +
+                        (theme === "dark"
+                          ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                          : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
+                      }
+                    >
+                      <option value="">انتخاب برچسب</option>
+                      {tags.map((t) => (
+                        <option key={String(t?.id)} value={String(t?.id)}>
+                          {String(t?.name || t?.title || t?.label || "")}
+                        </option>
                       ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className={theme === "dark" ? "my-5 h-px bg-white/10" : "my-5 h-px bg-black/10"} />
+
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <div className={labelCls}>تاریخ ثبت دبیرخانه</div>
+
+                      <JalaliPopupDatePicker
+                        value={incomingSecretariatDate}
+                        onChange={setIncomingSecretariatDate}
+                        theme={theme}
+                        hideIcon={true}
+                        buttonClassName={secretariatPickerBtnCls(incomingSecretariatDate)}
+                      />
+                      <div className={theme === "dark" ? "text-white/50 text-[11px] mt-1" : "text-neutral-500 text-[11px] mt-1"}>
+                        {secretariatLongText(incomingSecretariatDate)}
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2 mt-4 mb-2">
-                      <div className={labelCls.replace("mb-1", "mb-0")}>بازگشت به</div>
+                    <div>
+                      <div className={labelCls}>شماره ثبت دبیرخانه</div>
+                      <input value={incomingSecretariatNo} onChange={(e) => setIncomingSecretariatNo(e.target.value)} className={inputCls} type="text" />
                     </div>
 
-                    <div className="space-y-2">
-                      {returnToIds.map((v, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <select
-                            value={v}
-                            onChange={(e) => {
-                              const nv = e.target.value;
-                              setReturnToIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
-                            }}
+                    <div>
+                      <div className={labelCls}>نام تحویل گیرنده</div>
+                      <input value={incomingReceiverName} onChange={(e) => setIncomingReceiverName(e.target.value)} className={inputCls} type="text" />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end pt-2">
+                    <button type="button" onClick={() => {}} className={sendBtnCls} title="ارسال" aria-label="ارسال">
+                      <img src="/images/icons/check.svg" alt="" className={sendIconCls} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {formOpen && tab === "outgoing" && (
+              <div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <div className={labelCls}>دسته بندی نامه</div>
+                    <select
+                      value={category}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setCategory(v);
+                        if (v !== "project") setProjectId("");
+                      }}
+                      className={inputCls}
+                    >
+                      <option value=""></option>
+                      <option value="project">پروژه</option>
+                    </select>
+                  </div>
+
+                  {category === "project" ? (
+                    <div>
+                      <div className={labelCls}>پروژه</div>
+                      <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={inputCls}>
+                        <option value=""></option>
+                        {projects.map((p) => (
+                          <option key={p.id} value={String(p.id)}>
+                            {String(p.code || "")} {p.name ? `- ${p.name}` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div />
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <div className={labelCls}>شماره نامه</div>
+                    <input value={letterNo} onChange={(e) => setLetterNo(e.target.value)} className={inputCls} type="text" />
+                  </div>
+
+                  <div>
+                    <div className={labelCls}>تاریخ نامه</div>
+                    <JalaliPopupDatePicker value={letterDate} onChange={setLetterDate} theme={theme} />
+                  </div>
+                </div>
+
+                <div className="mt-3">
+                  <div className={labelCls}>از</div>
+                  <input value={fromName} onChange={(e) => setFromName(e.target.value)} className={inputCls} type="text" />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <div className={labelCls}>به</div>
+                    <input value={toName} onChange={(e) => setToName(e.target.value)} className={inputCls} type="text" />
+                  </div>
+
+                  <div>
+                    <div className={labelCls}>شرکت/سازمان</div>
+                    <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputCls} type="text" />
+                  </div>
+                </div>
+
+                <div className="mt-3">
+                  <div className={labelCls}>موضوع</div>
+                  <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputCls} type="text" />
+                </div>
+
+                <div className="mt-4">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-3 flex-wrap w-full">
+                      <div className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>ضمیمه:</div>
+
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="hasAttachment" checked={!hasAttachment} onChange={() => setHasAttachment(false)} />
+                        <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-700 text-sm"}>ندارد</span>
+                      </label>
+
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="hasAttachment" checked={hasAttachment} onChange={() => setHasAttachment(true)} />
+                        <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-700 text-sm"}>دارد</span>
+                      </label>
+
+                      {hasAttachment && (
+                        <div className="w-full sm:min-w-[260px] sm:w-auto flex-1">
+                          <input
+                            value={outgoingAttachmentTitle}
+                            onChange={(e) => setOutgoingAttachmentTitle(e.target.value)}
                             className={inputCls}
-                          >
-                            <option value=""></option>
-                            {myLetters.map((l) => (
-                              <option key={l.id} value={String(l.id)}>
-                                {String(l.letter_no || "")}
-                              </option>
-                            ))}
-                          </select>
-
-                          {idx === returnToIds.length - 1 && (
-                            <button
-                              type="button"
-                              onClick={() => setReturnToIds((arr) => [...arr, ""])}
-                              className={
-                                "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
-                                (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
-                              }
-                              aria-label="افزودن"
-                              title="افزودن"
-                            >
-                              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M12 5v14M5 12h14" />
-                              </svg>
-                            </button>
-                          )}
+                            type="text"
+                            placeholder="عنوان ضمیمه"
+                          />
                         </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {hasAttachment && (
+                    <div className="mt-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className={labelCls.replace("mb-1", "mb-0")}>پیرو</div>
+                      </div>
+
+                      <div className="space-y-2">
+                        {piroIds.map((v, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <select
+                              value={v}
+                              onChange={(e) => {
+                                const nv = e.target.value;
+                                setPiroIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
+                              }}
+                              className={inputCls}
+                            >
+                              <option value=""></option>
+                              {myLetters.map((l) => (
+                                <option key={l.id} value={String(l.id)}>
+                                  {String(l.letter_no || "")}
+                                </option>
+                              ))}
+                            </select>
+
+                            {idx === piroIds.length - 1 && (
+                              <button
+                                type="button"
+                                onClick={() => setPiroIds((arr) => [...arr, ""])}
+                                className={
+                                  "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 shrink-0 " +
+                                  (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
+                                }
+                                aria-label="افزودن"
+                                title="افزودن"
+                              >
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M12 5v14M5 12h14" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-4 mb-2">
+                        <div className={labelCls.replace("mb-1", "mb-0")}>بازگشت به</div>
+                      </div>
+
+                      <div className="space-y-2">
+                        {returnToIds.map((v, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <select
+                              value={v}
+                              onChange={(e) => {
+                                const nv = e.target.value;
+                                setReturnToIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
+                              }}
+                              className={inputCls}
+                            >
+                              <option value=""></option>
+                              {myLetters.map((l) => (
+                                <option key={l.id} value={String(l.id)}>
+                                  {String(l.letter_no || "")}
+                                </option>
+                              ))}
+                            </select>
+
+                            {idx === returnToIds.length - 1 && (
+                              <button
+                                type="button"
+                                onClick={() => setReturnToIds((arr) => [...arr, ""])}
+                                className={
+                                  "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 shrink-0 " +
+                                  (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
+                                }
+                                aria-label="افزودن"
+                                title="افزودن"
+                              >
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M12 5v14M5 12h14" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4">
+                  <div className={labelCls}>بارگذاری نامه</div>
+                  <div className={"w-full h-12 rounded-xl border " + (theme === "dark" ? "border-white/15 bg-white/5" : "border-black/10 bg-white")} />
+                </div>
+
+                <div className="mt-3">
+                  <div className={labelCls}>برچسب ها</div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {outgoingTagIds.map((id) => {
+                      const t = findTag(id);
+                      const label = String(t?.name || t?.title || t?.label || id || "");
+                      return (
+                        <button
+                          key={String(id)}
+                          type="button"
+                          onClick={() => removeTag("outgoing", id)}
+                          className={chipCls}
+                          title="حذف"
+                          aria-label="حذف"
+                        >
+                          <span className="truncate max-w-[180px]">{label}</span>
+                          <span className={theme === "dark" ? "text-white/70" : "text-neutral-600"}>×</span>
+                        </button>
+                      );
+                    })}
+
+                    <select
+                      value={outgoingTagPick}
+                      onChange={(e) => addTag("outgoing", e.target.value)}
+                      className={
+                        "h-11 px-3 rounded-xl border outline-none transition text-right w-full sm:w-[220px] sm:min-w-[220px] " +
+                        (theme === "dark"
+                          ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                          : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
+                      }
+                    >
+                      <option value="">انتخاب برچسب</option>
+                      {tags.map((t) => (
+                        <option key={String(t?.id)} value={String(t?.id)}>
+                          {String(t?.name || t?.title || t?.label || "")}
+                        </option>
                       ))}
-                    </div>
+                    </select>
                   </div>
-                )}
-              </div>
-
-              {/* بارگذاری نامه */}
-              <div className="mt-4">
-                <div className={labelCls}>بارگذاری نامه</div>
-                <div className={"w-full h-12 rounded-xl border " + (theme === "dark" ? "border-white/15 bg-white/5" : "border-black/10 bg-white")} />
-              </div>
-
-              {/* برچسب ها */}
-              <div className="mt-3">
-                <div className={labelCls}>برچسب ها</div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  {outgoingTagIds.map((id) => {
-                    const t = findTag(id);
-                    const label = String(t?.name || t?.title || t?.label || id || "");
-                    return (
-                      <button
-                        key={String(id)}
-                        type="button"
-                        onClick={() => removeTag("outgoing", id)}
-                        className={chipCls}
-                        title="حذف"
-                        aria-label="حذف"
-                      >
-                        <span className="truncate max-w-[180px]">{label}</span>
-                        <span className={theme === "dark" ? "text-white/70" : "text-neutral-600"}>×</span>
-                      </button>
-                    );
-                  })}
-
-                  <select
-                    value={outgoingTagPick}
-                    onChange={(e) => addTag("outgoing", e.target.value)}
-                    className={
-                      "h-11 px-3 rounded-xl border outline-none transition text-right min-w-[220px] w-[220px] " +
-                      (theme === "dark"
-                        ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
-                        : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
-                    }
-                  >
-                    <option value="">انتخاب برچسب</option>
-                    {tags.map((t) => (
-                      <option key={String(t?.id)} value={String(t?.id)}>
-                        {String(t?.name || t?.title || t?.label || "")}
-                      </option>
-                    ))}
-                  </select>
                 </div>
-              </div>
 
-              {/* خط جداکننده */}
-              <div className={theme === "dark" ? "my-5 h-px bg-white/10" : "my-5 h-px bg-black/10"} />
+                <div className={theme === "dark" ? "my-5 h-px bg-white/10" : "my-5 h-px bg-black/10"} />
 
-              {/* اطلاعات دبیرخانه */}
-              <div className="space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <div className={labelCls}>تاریخ ثبت دبیرخانه</div>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <div className={labelCls}>تاریخ ثبت دبیرخانه</div>
 
-                    <JalaliPopupDatePicker
-                      value={outgoingSecretariatDate}
-                      onChange={setOutgoingSecretariatDate}
-                      theme={theme}
-                      hideIcon={true}
-                      buttonClassName={secretariatPickerBtnCls(outgoingSecretariatDate)}
-                    />
-                    <div className={theme === "dark" ? "text-white/50 text-[11px] mt-1" : "text-neutral-500 text-[11px] mt-1"}>
-                      {secretariatLongText(outgoingSecretariatDate)}
+                      <JalaliPopupDatePicker
+                        value={outgoingSecretariatDate}
+                        onChange={setOutgoingSecretariatDate}
+                        theme={theme}
+                        hideIcon={true}
+                        buttonClassName={secretariatPickerBtnCls(outgoingSecretariatDate)}
+                      />
+                      <div className={theme === "dark" ? "text-white/50 text-[11px] mt-1" : "text-neutral-500 text-[11px] mt-1"}>
+                        {secretariatLongText(outgoingSecretariatDate)}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className={labelCls}>شماره ثبت دبیرخانه</div>
+                      <input value={outgoingSecretariatNo} onChange={(e) => setOutgoingSecretariatNo(e.target.value)} className={inputCls} type="text" />
+                    </div>
+
+                    <div>
+                      <div className={labelCls}>نام تحویل گیرنده</div>
+                      <input value={outgoingReceiverName} onChange={(e) => setOutgoingReceiverName(e.target.value)} className={inputCls} type="text" />
                     </div>
                   </div>
 
-                  <div>
-                    <div className={labelCls}>شماره ثبت دبیرخانه</div>
-                    <input
-                      value={outgoingSecretariatNo}
-                      onChange={(e) => setOutgoingSecretariatNo(e.target.value)}
-                      className={inputCls}
-                      type="text"
-                    />
+                  <div className="flex items-center justify-end pt-2">
+                    <button type="button" onClick={() => {}} className={sendBtnCls} title="ارسال" aria-label="ارسال">
+                      <img src="/images/icons/check.svg" alt="" className={sendIconCls} />
+                    </button>
                   </div>
-
-                  <div>
-                    <div className={labelCls}>نام تحویل گیرنده</div>
-                    <input
-                      value={outgoingReceiverName}
-                      onChange={(e) => setOutgoingReceiverName(e.target.value)}
-                      className={inputCls}
-                      type="text"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end pt-2">
-                  <button type="button" onClick={() => {}} className={sendBtnCls} title="ارسال" aria-label="ارسال">
-                    <img src="/images/icons/check.svg" alt="" className={sendIconCls} />
-                  </button>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </Card>
     </div>
