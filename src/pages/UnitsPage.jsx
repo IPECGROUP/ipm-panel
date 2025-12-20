@@ -227,11 +227,22 @@ function UnitsPage() {
     });
   };
 
+  const unitIdOf = (u) => {
+    const raw = u?.id ?? u?.unit_id ?? u?.unitId;
+    const id = Number(raw);
+    return id && Number.isFinite(id) ? id : 0;
+  };
+
   const openAccess = async (u) => {
+    const id = unitIdOf(u);
+    if (!id) {
+      alert("شناسه واحد معتبر نیست.");
+      return;
+    }
     setAccessUnit(u);
     setAccessOpen(true);
     resetAccessState();
-    await loadUnitAccess(u.id);
+    await loadUnitAccess(id);
   };
 
   const closeAccess = () => {
@@ -294,7 +305,12 @@ function UnitsPage() {
   };
 
   const startEdit = (u) => {
-    setEditId(u.id);
+    const id = unitIdOf(u);
+    if (!id) {
+      alert("شناسه واحد معتبر نیست.");
+      return;
+    }
+    setEditId(id);
     setEditName(u.name || "");
   };
 
@@ -305,7 +321,12 @@ function UnitsPage() {
       return;
     }
     try {
-      await api(`/base/units/${editId}`, {
+      const id = Number(editId);
+      if (!id) {
+        alert("شناسه واحد معتبر نیست.");
+        return;
+      }
+      await api(`/base/units/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),
@@ -320,9 +341,14 @@ function UnitsPage() {
   };
 
   const del = async (u) => {
+    const id = unitIdOf(u);
+    if (!id) {
+      alert("شناسه واحد معتبر نیست.");
+      return;
+    }
     if (!confirm(`حذف واحد «${u.name}»؟`)) return;
     try {
-      await api(`/base/units/${u.id}`, {
+      await api(`/base/units/${id}`, {
         method: "DELETE",
         credentials: "include",
       });
