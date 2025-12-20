@@ -360,6 +360,7 @@ function UnitsPage() {
                          dark:bg-neutral-800 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-400"
             />
             <button
+              type="button"
               disabled={!isAdmin || saving}
               onClick={addUnit}
               className="h-10 w-10 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50
@@ -393,11 +394,15 @@ function UnitsPage() {
                     <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 py-2">
                       <button
                         type="button"
-                        onClick={() => setNameSortDir((d) => (d === "asc" ? "desc" : "asc"))}
-                        className="group inline-flex items-center justify-center gap-1 select-none hover:opacity-90"
+                        onClick={() =>
+                          setNameSortDir((d) => (d === "asc" ? "desc" : "asc"))
+                        }
+                        className="inline-flex items-center justify-center gap-1 select-none cursor-pointer group"
                         title="مرتب‌سازی"
                       >
-                        <span>نام واحد</span>
+                        <span className="group-hover:underline underline-offset-4">
+                          نام واحد
+                        </span>
                         <span
                           className={
                             "inline-flex items-center transition-transform " +
@@ -406,17 +411,20 @@ function UnitsPage() {
                         >
                           <svg
                             viewBox="0 0 24 24"
-                            width="16"
-                            height="16"
+                            width="18"
+                            height="18"
                             fill="none"
                             stroke="currentColor"
-                            strokeWidth="1.8"
+                            strokeWidth="2"
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             className="opacity-70 group-hover:opacity-90"
                           >
                             <path d="M6 15l6-6 6 6" />
                           </svg>
+                        </span>
+                        <span className="sr-only">
+                          {nameSortDir === "desc" ? "sorted descending" : "sorted ascending"}
                         </span>
                       </button>
                     </TH>
@@ -440,9 +448,9 @@ function UnitsPage() {
                     sortedList.map((u, idx) => (
                       <TR
                         key={u.id}
-                        className="odd:bg-white even:bg-neutral-50 hover:bg-neutral-100 transition-colors
+                        className="odd:bg-white even:bg-neutral-100 hover:bg-neutral-200/60 transition-colors
                                  dark:odd:bg-neutral-900 dark:even:bg-white/5 dark:hover:bg-white/10
-                                 border-b border-black/20 dark:border-neutral-800"
+                                 border-b border-black/25 dark:border-neutral-800"
                       >
                         <TD className="px-3 py-2">{idx + 1}</TD>
                         <TD className="px-3 py-2">
@@ -483,9 +491,13 @@ function UnitsPage() {
                           ) : (
                             <div className="inline-flex items-center justify-center gap-1.5">
                               <button
-                                onClick={() => openAccess(u)}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openAccess(u);
+                                }}
                                 disabled={!isAdmin}
-                                className="h-8 w-8 grid place-items-center rounded-lg hover:bg-black/5 disabled:opacity-50 transition
+                                className="h-9 w-9 grid place-items-center rounded-lg hover:bg-black/5 disabled:opacity-50 transition
                                            dark:hover:bg-white/10"
                                 aria-label="سطح دسترسی"
                                 title="سطح دسترسی"
@@ -493,14 +505,18 @@ function UnitsPage() {
                                 <img
                                   src="/images/icons/sath.svg"
                                   alt=""
-                                  className="w-4 h-4 dark:invert"
+                                  className="w-5 h-5 dark:invert"
                                 />
                               </button>
 
                               <button
-                                onClick={() => startEdit(u)}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  startEdit(u);
+                                }}
                                 disabled={!isAdmin}
-                                className="h-8 w-8 grid place-items-center rounded-lg hover:bg-black/5 disabled:opacity-50 transition
+                                className="h-9 w-9 grid place-items-center rounded-lg hover:bg-black/5 disabled:opacity-50 transition
                                            dark:hover:bg-white/10"
                                 aria-label="ویرایش"
                                 title="ویرایش"
@@ -508,25 +524,29 @@ function UnitsPage() {
                                 <img
                                   src="/images/icons/pencil.svg"
                                   alt=""
-                                  className="w-4 h-4 dark:invert"
+                                  className="w-5 h-5 dark:invert"
                                 />
                               </button>
 
                               <button
-                                onClick={() => del(u)}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  del(u);
+                                }}
                                 disabled={!isAdmin}
-                                className="h-8 w-8 grid place-items-center rounded-lg hover:bg-black/5 disabled:opacity-50 transition
+                                className="h-9 w-9 grid place-items-center rounded-lg hover:bg-black/5 disabled:opacity-50 transition
                                            dark:hover:bg-white/10"
                                 aria-label="حذف"
                                 title="حذف"
                               >
                                 <svg
                                   viewBox="0 0 24 24"
-                                  width="16"
-                                  height="16"
+                                  width="18"
+                                  height="18"
                                   fill="none"
                                   stroke="currentColor"
-                                  strokeWidth="1.8"
+                                  strokeWidth="2"
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
                                   className="text-red-600 dark:text-red-400"
@@ -561,6 +581,7 @@ function UnitsPage() {
                 </h2>
                 <div className="flex items-center gap-2">
                   <button
+                    type="button"
                     onClick={closeAccess}
                     className="px-3 h-9 rounded-lg border border-black/15 hover:bg-black/5 transition dark:border-neutral-700 dark:hover:bg-white/10"
                   >
