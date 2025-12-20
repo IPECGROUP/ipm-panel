@@ -447,6 +447,8 @@ export default function LettersPage() {
   const [filterToDate, setFilterToDate] = useState("");
   const [filterTagPick, setFilterTagPick] = useState("");
   const [filterTagIds, setFilterTagIds] = useState([]);
+  const [filterSubject, setFilterSubject] = useState("");
+  const [filterOrg, setFilterOrg] = useState("");
 
   // ===== Table selection + pagination =====
   const [selectedIds, setSelectedIds] = useState(() => new Set());
@@ -882,8 +884,25 @@ export default function LettersPage() {
   const categoryOf = (l) => String(l?.category ?? l?.category_name ?? l?.categoryTitle ?? "");
 
   const filteredLetters = useMemo(() => {
-    return Array.isArray(myLetters) ? myLetters : [];
-  }, [myLetters]);
+    const arr = Array.isArray(myLetters) ? myLetters : [];
+    const sSub = String(filterSubject || "").trim().toLowerCase();
+    const sOrg = String(filterOrg || "").trim().toLowerCase();
+
+    return arr.filter((l) => {
+      if (filterCategory && String(categoryOf(l) || "") !== String(filterCategory)) return false;
+      if (filterProjectId && String(l?.project_id ?? l?.projectId ?? "") !== String(filterProjectId)) return false;
+
+      if (sSub) {
+        const x = String(subjectOf(l) || "").toLowerCase();
+        if (!x.includes(sSub)) return false;
+      }
+      if (sOrg) {
+        const x = String(orgOf(l) || "").toLowerCase();
+        if (!x.includes(sOrg)) return false;
+      }
+      return true;
+    });
+  }, [myLetters, filterSubject, filterOrg, filterCategory, filterProjectId]);
 
   useEffect(() => {
     setSelectedIds(new Set());
@@ -978,8 +997,8 @@ export default function LettersPage() {
         }
       >
         <div className="p-3 md:p-4">
-          {/* Tabs + top filters row (gap fixed) */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+          {/* Tabs + category/project (closer) */}
+          <div className="flex flex-col lg:flex-row lg:items-end gap-3">
             <div className="flex items-center gap-2">
               {TABS.map((t) => {
                 const active = tab === t.id;
@@ -1009,15 +1028,15 @@ export default function LettersPage() {
               })}
             </div>
 
-            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 lg:max-w-[680px]">
-              <div>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
+              <div className="w-full sm:w-[260px]">
                 <div className={labelCls}>دسته بندی</div>
                 <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className={inputCls}>
                   <option value=""></option>
                 </select>
               </div>
 
-              <div>
+              <div className="w-full sm:w-[260px]">
                 <div className={labelCls}>پروژه</div>
                 <select
                   value={filterProjectId}
@@ -1035,10 +1054,10 @@ export default function LettersPage() {
             </div>
           </div>
 
-          {/* Quick range chips + date range (aligned) */}
+          {/* Quick range chips + date range (aligned and close) */}
           <div className="mt-3 rounded-2xl border border-black/10 dark:border-white/10 p-3">
             <div className="flex flex-col gap-3">
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-end gap-2">
                 <button
                   type="button"
                   onClick={() => setFilterQuick("week")}
@@ -1105,9 +1124,7 @@ export default function LettersPage() {
                   6 ماه قبل
                 </button>
 
-                <div className="flex-1" />
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full sm:w-auto sm:min-w-[520px]">
+                <div className="w-full sm:w-auto sm:min-w-[520px] grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
                     <div className={labelCls}>از</div>
                     <JalaliPopupDatePicker value={filterFromDate} onChange={setFilterFromDate} theme={theme} />
@@ -1116,6 +1133,30 @@ export default function LettersPage() {
                     <div className={labelCls}>تا</div>
                     <JalaliPopupDatePicker value={filterToDate} onChange={setFilterToDate} theme={theme} />
                   </div>
+                </div>
+              </div>
+
+              {/* New search fields (equal width) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <div className={labelCls}>موضوع</div>
+                  <input
+                    value={filterSubject}
+                    onChange={(e) => setFilterSubject(e.target.value)}
+                    className={inputCls}
+                    type="text"
+                    placeholder="جستجو بر اساس موضوع"
+                  />
+                </div>
+                <div>
+                  <div className={labelCls}>شرکت/سازمان</div>
+                  <input
+                    value={filterOrg}
+                    onChange={(e) => setFilterOrg(e.target.value)}
+                    className={inputCls}
+                    type="text"
+                    placeholder="جستجو بر اساس شرکت/سازمان"
+                  />
                 </div>
               </div>
 
@@ -1806,18 +1847,14 @@ export default function LettersPage() {
                             <td className={"px-3 " + divider}>
                               <div className="inline-flex items-center justify-center gap-2">
                                 <button type="button" className={iconBtnCls} aria-label="ویرایش" title="ویرایش">
-                                  <img
-                                    src="/images/icons/pencil.svg"
-                                    alt=""
-                                    className="w-[18px] h-[18px] dark:invert"
-                                  />
+                                  <img src="/images/icons/pencil.svg" alt="" className="w-5 h-5 dark:invert" />
                                 </button>
 
                                 <button type="button" className={iconBtnCls} aria-label="حذف" title="حذف">
                                   <img
                                     src="/images/icons/hazf.svg"
                                     alt=""
-                                    className="w-[19px] h-[19px]"
+                                    className="w-5 h-5"
                                     style={{
                                       filter:
                                         "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
@@ -1826,11 +1863,7 @@ export default function LettersPage() {
                                 </button>
 
                                 <button type="button" className={iconBtnCls} aria-label="نمایش" title="نمایش">
-                                  <img
-                                    src="/images/icons/marakez.svg"
-                                    alt=""
-                                    className="w-[18px] h-[18px] dark:invert"
-                                  />
+                                  <img src="/images/icons/marakez.svg" alt="" className="w-5 h-5 dark:invert" />
                                 </button>
                               </div>
                             </td>
@@ -1842,11 +1875,55 @@ export default function LettersPage() {
                 </table>
               </div>
 
-              {/* Pagination footer */}
+              {/* Pagination footer (Persian + controls on right) */}
               <div className="border-t border-neutral-300 dark:border-neutral-800 px-3 py-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="text-black/70 dark:text-neutral-400">Rows per page:</span>
+                    <button
+                      type="button"
+                      onClick={() => setPage((p) => Math.max(0, p - 1))}
+                      disabled={safePage <= 0}
+                      className={
+                        "h-9 w-9 rounded-xl grid place-items-center transition ring-1 " +
+                        (theme === "dark"
+                          ? "ring-neutral-800 hover:bg-white/10"
+                          : "ring-black/15 hover:bg-black/5")
+                      }
+                      aria-label="صفحه قبل"
+                      title="صفحه قبل"
+                    >
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9 18l6-6-6-6" />
+                      </svg>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                      disabled={safePage >= pageCount - 1}
+                      className={
+                        "h-9 w-9 rounded-xl grid place-items-center transition ring-1 " +
+                        (theme === "dark"
+                          ? "ring-neutral-800 hover:bg-white/10"
+                          : "ring-black/15 hover:bg-black/5")
+                      }
+                      aria-label="صفحه بعد"
+                      title="صفحه بعد"
+                    >
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M15 18l-6-6 6-6" />
+                      </svg>
+                    </button>
+
+                    <div className="text-black/70 dark:text-neutral-400 whitespace-nowrap">
+                      {total === 0
+                        ? "۰ از ۰"
+                        : `${toFaDigits(startIdx + 1)}–${toFaDigits(endIdx)} از ${toFaDigits(total)}`}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span>
                     <select
                       value={rowsPerPage}
                       onChange={(e) => {
@@ -1862,52 +1939,10 @@ export default function LettersPage() {
                     >
                       {[10, 25, 100].map((n) => (
                         <option key={n} value={n}>
-                          {n}
+                          {toFaDigits(n)}
                         </option>
                       ))}
                     </select>
-                  </div>
-
-                  <div className="flex items-center gap-3 text-sm">
-                    <div className="text-black/70 dark:text-neutral-400">
-                      {total === 0 ? "0" : `${startIdx + 1}–${endIdx}`} of {total}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setPage((p) => Math.max(0, p - 1))}
-                      disabled={safePage <= 0}
-                      className={
-                        "h-9 w-9 rounded-xl grid place-items-center transition ring-1 " +
-                        (theme === "dark"
-                          ? "ring-neutral-800 hover:bg-white/10"
-                          : "ring-black/15 hover:bg-black/5")
-                      }
-                      aria-label="قبلی"
-                      title="قبلی"
-                    >
-                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M15 18l-6-6 6-6" />
-                      </svg>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
-                      disabled={safePage >= pageCount - 1}
-                      className={
-                        "h-9 w-9 rounded-xl grid place-items-center transition ring-1 " +
-                        (theme === "dark"
-                          ? "ring-neutral-800 hover:bg-white/10"
-                          : "ring-black/15 hover:bg-black/5")
-                      }
-                      aria-label="بعدی"
-                      title="بعدی"
-                    >
-                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M9 18l6-6-6-6" />
-                      </svg>
-                    </button>
                   </div>
                 </div>
               </div>
@@ -2071,7 +2106,7 @@ export default function LettersPage() {
                                   {f.status === "optimizing"
                                     ? "آماده‌سازی…"
                                     : f.status === "uploading"
-                                    ? `${f.progress || 0}%`
+                                    ? `${toFaDigits(f.progress || 0)}%`
                                     : f.status === "done"
                                     ? "انجام شد"
                                     : "خطا"}
