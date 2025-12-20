@@ -1,19 +1,10 @@
+// ارز ها
 // src/pages/BaseCurrenciesPage.jsx
 import React from "react";
 import Shell from "../components/layout/Shell.jsx";
 import Card from "../components/ui/Card.jsx";
-import {
-  TableWrap,
-  THead,
-  TH,
-  TR,
-  TD,
-} from "../components/ui/Table.jsx";
-import {
-  Btn,
-  PrimaryBtn,
-  DangerBtn,
-} from "../components/ui/Button.jsx";
+import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
+import { Btn, PrimaryBtn, DangerBtn } from "../components/ui/Button.jsx";
 
 function BaseCurrenciesPage() {
   const [types, setTypes] = React.useState([]);
@@ -53,8 +44,7 @@ function BaseCurrenciesPage() {
       },
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok)
-      throw new Error(data?.error || data?.message || "request_failed");
+    if (!res.ok) throw new Error(data?.error || data?.message || "request_failed");
     return data;
   };
 
@@ -93,8 +83,7 @@ function BaseCurrenciesPage() {
   }, []);
 
   // کمکی: نرمال‌سازی عنوان برای مقایسه تکراری
-  const norm = (s = "") =>
-    String(s).trim().replace(/\s+/g, " ").toLowerCase();
+  const norm = (s = "") => String(s).trim().replace(/\s+/g, " ").toLowerCase();
 
   // افزودن نوع ارز
   const addType = async (e) => {
@@ -106,9 +95,7 @@ function BaseCurrenciesPage() {
       return;
     }
 
-    const exists = (types || []).some(
-      (r) => norm(r.title || r.name || "") === norm(title)
-    );
+    const exists = (types || []).some((r) => norm(r.title || r.name || "") === norm(title));
     if (exists) {
       setErrType("این نوع ارز قبلاً ثبت شده است.");
       return;
@@ -126,12 +113,9 @@ function BaseCurrenciesPage() {
         method: "POST",
         body: JSON.stringify({ title }),
       });
-      const realId =
-        (resp && (resp.id ?? resp.lastId ?? resp.insertId)) || null;
+      const realId = (resp && (resp.id ?? resp.lastId ?? resp.insertId)) || null;
       if (realId) {
-        setTypes((prev) =>
-          prev.map((r) => (r.id === tempId ? { ...r, id: realId } : r))
-        );
+        setTypes((prev) => prev.map((r) => (r.id === tempId ? { ...r, id: realId } : r)));
       } else {
         loadAll().catch(() => {});
       }
@@ -155,9 +139,7 @@ function BaseCurrenciesPage() {
       return;
     }
 
-    const exists = (sources || []).some(
-      (r) => norm(r.title || r.name || "") === norm(title)
-    );
+    const exists = (sources || []).some((r) => norm(r.title || r.name || "") === norm(title));
     if (exists) {
       setErrSrc("این منشأ ارز قبلاً ثبت شده است.");
       return;
@@ -175,12 +157,9 @@ function BaseCurrenciesPage() {
         method: "POST",
         body: JSON.stringify({ title }),
       });
-      const realId =
-        (resp && (resp.id ?? resp.lastId ?? resp.insertId)) || null;
+      const realId = (resp && (resp.id ?? resp.lastId ?? resp.insertId)) || null;
       if (realId) {
-        setSources((prev) =>
-          prev.map((r) => (r.id === tempId ? { ...r, id: realId } : r))
-        );
+        setSources((prev) => prev.map((r) => (r.id === tempId ? { ...r, id: realId } : r)));
       } else {
         loadAll().catch(() => {});
       }
@@ -208,60 +187,44 @@ function BaseCurrenciesPage() {
       return;
     }
 
-    const path =
-      kind === "type"
-        ? `/base/currencies/types`
-        : `/base/currencies/sources`;
+    const path = kind === "type" ? `/base/currencies/types` : `/base/currencies/sources`;
 
     try {
       await api(path, {
         method: "DELETE",
         body: JSON.stringify({ id }),
       });
-      if (kind === "type")
-        setTypes((prev) => prev.filter((r) => r.id !== id));
+      if (kind === "type") setTypes((prev) => prev.filter((r) => r.id !== id));
       else setSources((prev) => prev.filter((r) => r.id !== id));
     } catch (ex) {
       alert(ex.message || "خطا در حذف");
     }
   };
 
-  const startEdit = (kind, row) =>
-    setEditRow({ kind, id: row.id, title: row.title || "" });
+  const startEdit = (kind, row) => setEditRow({ kind, id: row.id, title: row.title || "" });
 
-  const cancelEdit = () =>
-    setEditRow({ kind: null, id: null, title: "" });
+  const cancelEdit = () => setEditRow({ kind: null, id: null, title: "" });
 
   // ویرایش با id داخل body (نه در URL)
   const saveEdit = async () => {
     if (!editRow.id || !editRow.kind) return;
 
     // اگر temp-row است، فقط لوکالی آپدیت کن
-    if (
-      typeof editRow.id === "string" &&
-      editRow.id.startsWith("tmp-")
-    ) {
+    if (typeof editRow.id === "string" && editRow.id.startsWith("tmp-")) {
       if (editRow.kind === "type") {
         setTypes((prev) =>
-          prev.map((r) =>
-            r.id === editRow.id ? { ...r, title: editRow.title } : r
-          )
+          prev.map((r) => (r.id === editRow.id ? { ...r, title: editRow.title } : r))
         );
       } else {
         setSources((prev) =>
-          prev.map((r) =>
-            r.id === editRow.id ? { ...r, title: editRow.title } : r
-          )
+          prev.map((r) => (r.id === editRow.id ? { ...r, title: editRow.title } : r))
         );
       }
       cancelEdit();
       return;
     }
 
-    const path =
-      editRow.kind === "type"
-        ? `/base/currencies/types`
-        : `/base/currencies/sources`;
+    const path = editRow.kind === "type" ? `/base/currencies/types` : `/base/currencies/sources`;
 
     try {
       await api(path, {
@@ -274,15 +237,11 @@ function BaseCurrenciesPage() {
 
       if (editRow.kind === "type") {
         setTypes((prev) =>
-          prev.map((r) =>
-            r.id === editRow.id ? { ...r, title: editRow.title } : r
-          )
+          prev.map((r) => (r.id === editRow.id ? { ...r, title: editRow.title } : r))
         );
       } else {
         setSources((prev) =>
-          prev.map((r) =>
-            r.id === editRow.id ? { ...r, title: editRow.title } : r
-          )
+          prev.map((r) => (r.id === editRow.id ? { ...r, title: editRow.title } : r))
         );
       }
       cancelEdit();
@@ -321,19 +280,8 @@ function BaseCurrenciesPage() {
   }, [sources, srcSortDir]);
 
   // فرم عمومی (در یک ردیف و هم‌ارتفاع با دکمه + آیکن ۲۰px)
-  const FormRow = ({
-    placeholder,
-    value,
-    onChange,
-    onSubmit,
-    inputRef,
-    error,
-  }) => (
-    <form
-      onSubmit={onSubmit}
-      dir="rtl"
-      className="grid grid-cols-[1fr_auto] gap-3 items-center"
-    >
+  const FormRow = ({ placeholder, value, onChange, onSubmit, inputRef, error }) => (
+    <form onSubmit={onSubmit} dir="rtl" className="grid grid-cols-[1fr_auto] gap-3 items-center">
       <input
         ref={inputRef}
         className="h-10 w-full rounded-2xl px-3
@@ -355,171 +303,166 @@ function BaseCurrenciesPage() {
                      dark:bg-neutral-100 dark:text-neutral-900"
           aria-label="افزودن"
         >
-          <img
-            src="/images/icons/afzodan.svg"
-            alt=""
-            className="w-5 h-5 invert dark:invert-0"
-          />
+          <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
         </button>
       </div>
-      {!!error && (
-        <div className="col-span-2 text-sm text-red-600 dark:text-red-400">
-          {error}
-        </div>
-      )}
+      {!!error && <div className="col-span-2 text-sm text-red-600 dark:text-red-400">{error}</div>}
     </form>
   );
 
-  // جدول (بوردر ظریف، وسط‌چین، آیکن‌ها ۲۰px)
+  // جدول (هم‌استایل با جدول UnitsPage)
   const SimpleTable = ({ rows, kind, sortDir, onToggleSort }) => (
     <TableWrap>
-      <div
-        className="bg-white text-black rounded-2xl border border-black/10 overflow-hidden
-                      dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800"
-      >
+      <div className="bg-white text-black rounded-2xl border border-black/10 overflow-hidden dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
         <table
-          className="w-full text-sm text-center [&_th]:text-center [&_td]:text-center"
+          className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
           dir="rtl"
         >
           <THead>
-            <tr
-              className="bg-black/5 text-black border-y border-black/10
-                           dark:bg-white/5 dark:text-neutral-100 dark:border-neutral-700"
-            >
-              <TH className="w-24 !text-center !font-semibold !text-black dark:!text-neutral-100">
+            <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
+              <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
                 #
               </TH>
-              <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100">
+
+              <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
                 <div className="flex items-center justify-center gap-2">
                   <span>عنوان</span>
+
                   <button
                     type="button"
                     onClick={onToggleSort}
-                    className="rounded-lg px-2 py-1 text-xs ring-1 ring-black/15 hover:bg-black/5
-                               dark:ring-neutral-800 dark:hover:bg سفید/10"
+                    className="h-7 w-7 inline-grid place-items-center bg-transparent p-0
+                               text-neutral-500 hover:text-neutral-600 active:text-neutral-700
+                               dark:text-neutral-400 dark:hover:text-neutral-300"
                     title="مرتب‌سازی عنوان"
-                    aria-label="مرتب‌سازی"
+                    aria-label="مرتب‌سازی عنوان"
                   >
-                    {sortDir === "desc" ? (
-                      <img
-                        src="/images/icons/bozorgbekochik.svg"
-                        alt=""
-                        className="w-5 h-5 dark:invert"
-                      />
-                    ) : (
-                      <img
-                        src="/images/icons/kochikbebozorg.svg"
-                        alt=""
-                        className="w-5 h-5 dark:invert"
-                      />
-                    )}
+                    <svg
+                      className={`w-[14px] h-[14px] transition-transform ${
+                        sortDir === "asc" ? "rotate-180" : ""
+                      }`}
+                      focusable="false"
+                      aria-hidden="true"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"></path>
+                    </svg>
                   </button>
                 </div>
               </TH>
-              <TH className="w-48 !text-center !font-semibold !text-black dark:!text-neutral-100">
+
+              <TH className="w-44 sm:w-72 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
                 اقدامات
               </TH>
             </tr>
           </THead>
 
-          <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100">
+          <tbody
+            className="[&_td]:text-black dark:[&_td]:text-neutral-100
+                       [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50
+                       dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50"
+          >
             {loading ? (
-              <TR>
-                <TD
-                  colSpan={3}
-                  className="text-center text-black/60 dark:text-neutral-400 py-4"
-                >
+              <TR className="bg-white dark:bg-transparent">
+                <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-4">
                   در حال بارگذاری…
                 </TD>
               </TR>
             ) : (rows || []).length === 0 ? (
-              <TR>
-                <TD
-                  colSpan={3}
-                  className="text-center text-black/60 dark:text-neutral-400 py-4 bg-black/[0.02] dark:bg-transparent"
-                >
+              <TR className="bg-white dark:bg-transparent">
+                <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-4">
                   موردی ثبت نشده.
                 </TD>
               </TR>
             ) : (
-              rows.map((r, idx) => (
-                <TR
-                  key={`${kind}-${r.id}`}
-                  className="odd:bg-black/[0.02] even:bg-black/[0.04] hover:bg-black/[0.06] transition-colors
-                             dark:odd:bg-white/5 dark:even:bg-white/10 dark:hover:bg-white/15 border-t border-black/10 dark:border-neutral-800"
-                >
-                  <TD className="px-3 py-3">{idx + 1}</TD>
-                  <TD className="px-3 py-3">
-                    {editRow.kind === kind && editRow.id === r.id ? (
-                      <input
-                        className="w-full max-w-md rounded-xl px-2 py-2 text-center
-                                   bg-white text-black border border-black/15 outline-none
-                                   focus:ring-2 focus:ring-black/10
-                                   dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-                        value={editRow.title}
-                        onChange={(e) =>
-                          setEditRow({
-                            ...editRow,
-                            title: e.target.value,
-                          })
-                        }
-                        autoFocus
-                      />
-                    ) : (
-                      r.title || "—"
-                    )}
-                  </TD>
-                  <TD className="px-3 py-3">
-                    {editRow.kind === kind && editRow.id === r.id ? (
-                      <div className="inline-flex items-center gap-2">
-                        <PrimaryBtn
-                          onClick={saveEdit}
-                          className="!h-10 !px-4 !rounded-xl !bg-neutral-900 !text-white !ring-1 !ring-black/15 hover:!bg-black
+              rows.map((r, idx) => {
+                const isLast = idx === rows.length - 1;
+                const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
+
+                return (
+                  <TR key={`${kind}-${r.id}`}>
+                    <TD className={`px-3 ${tdBorder}`}>{idx + 1}</TD>
+
+                    <TD className={`px-3 ${tdBorder}`}>
+                      {editRow.kind === kind && editRow.id === r.id ? (
+                        <input
+                          className="w-full max-w-md rounded-xl px-2 py-0.5 text-center
+                                     border border-black/15 dark:border-neutral-700
+                                     bg-white text-black placeholder-black/40
+                                     dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400"
+                          value={editRow.title}
+                          onChange={(e) =>
+                            setEditRow({
+                              ...editRow,
+                              title: e.target.value,
+                            })
+                          }
+                          autoFocus
+                        />
+                      ) : (
+                        r.title || "—"
+                      )}
+                    </TD>
+
+                    <TD className={`px-3 ${tdBorder}`}>
+                      {editRow.kind === kind && editRow.id === r.id ? (
+                        <div className="inline-flex items-center gap-2">
+                          <PrimaryBtn
+                            onClick={saveEdit}
+                            className="!h-10 !px-4 !rounded-xl !bg-neutral-900 !text-white !ring-1 !ring-black/15 hover:!bg-black
                                      dark:!bg-neutral-100 dark:!text-neutral-900 dark:!ring-neutral-700 dark:hover:!bg-neutral-200"
-                        >
-                          ذخیره
-                        </PrimaryBtn>
-                        <Btn
-                          onClick={cancelEdit}
-                          className="!h-10 !px-4 !rounded-xl !bg-white !text-neutral-900 !ring-1 !ring-neutral-300 hover:!bg-neutral-100
+                          >
+                            ذخیره
+                          </PrimaryBtn>
+                          <Btn
+                            onClick={cancelEdit}
+                            className="!h-10 !px-4 !rounded-xl !bg-white !text-neutral-900 !ring-1 !ring-neutral-300 hover:!bg-neutral-100
                                      dark:!bg-transparent dark:!text-neutral-100 dark:!ring-neutral-700 dark:hover:!bg-white/10"
-                        >
-                          انصراف
-                        </Btn>
-                      </div>
-                    ) : (
-                      <div className="inline-flex items-center gap-2">
-                        <Btn
-                          onClick={() => startEdit(kind, r)}
-                          className="!h-10 !w-10 !rounded-xl !bg-white !text-neutral-900 !ring-1 !ring-neutral-300 hover:!bg-neutral-100
-                                     dark:!bg-transparent dark:!text-neutral-100 dark:!ring-neutral-700 dark:hover:!bg-white/10 grid place-items-center"
-                          aria-label="ویرایش"
-                          title="ویرایش"
-                        >
-                          <img
-                            src="/images/icons/pencil.svg"
-                            alt=""
-                            className="w-5 h-5 dark:invert"
-                          />
-                        </Btn>
-                        <DangerBtn
-                          onClick={() => removeRow(kind, r.id)}
-                          className="!h-10 !w-10 !rounded-xl !bg-white !text-red-600 !ring-1 !ring-red-500 hover:!bg-red-50
-                                     dark:!bg-transparent dark:!text-red-300 dark:!ring-red-400/60 dark:hover:!bg-white/10 grid place-items-center"
-                          aria-label="حذف"
-                          title="حذف"
-                        >
-                          <img
-                            src="/images/icons/hazf.svg"
-                            alt=""
-                            className="w-5 h-5 dark:invert"
-                          />
-                        </DangerBtn>
-                      </div>
-                    )}
-                  </TD>
-                </TR>
-              ))
+                          >
+                            انصراف
+                          </Btn>
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center gap-2">
+                          <Btn
+                            onClick={() => startEdit(kind, r)}
+                            className="!h-10 !w-10 !p-0 !rounded-xl !bg-transparent !bg-none !ring-0 !border-0 !shadow-none
+                                       hover:!bg-transparent active:!bg-transparent focus:!bg-transparent
+                                       hover:opacity-80 active:opacity-70 disabled:opacity-50"
+                            aria-label="ویرایش"
+                            title="ویرایش"
+                          >
+                            <img
+                              src="/images/icons/pencil.svg"
+                              alt=""
+                              className="w-[18px] h-[18px] dark:invert"
+                            />
+                          </Btn>
+
+                          <DangerBtn
+                            onClick={() => removeRow(kind, r.id)}
+                            className="!h-10 !w-10 !p-0 !rounded-xl !bg-transparent !bg-none !ring-0 !border-0 !shadow-none
+                                       hover:!bg-transparent active:!bg-transparent focus:!bg-transparent
+                                       hover:opacity-80 active:opacity-70 disabled:opacity-50"
+                            aria-label="حذف"
+                            title="حذف"
+                          >
+                            <img
+                              src="/images/icons/hazf.svg"
+                              alt=""
+                              className="w-[18px] h-[18px]"
+                              style={{
+                                filter:
+                                  "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
+                              }}
+                            />
+                          </DangerBtn>
+                        </div>
+                      )}
+                    </TD>
+                  </TR>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -532,15 +475,9 @@ function BaseCurrenciesPage() {
       <Card className="rounded-2xl border bg-white text-black border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
         {/* نوار مسیر */}
         <div className="mb-4 text-base md:text-lg">
-          <span className="text-black/70 dark:text-neutral-300">
-            اطلاعات پایه
-          </span>
-          <span className="mx-2 text-black/50 dark:text-neutral-400">
-            ›
-          </span>
-          <span className="font-semibold text-black dark:text-neutral-100">
-            ارزها
-          </span>
+          <span className="text-black/70 dark:text-neutral-300">اطلاعات پایه</span>
+          <span className="mx-2 text-black/50 dark:text-neutral-400">›</span>
+          <span className="font-semibold text-black dark:text-neutral-100">ارزها</span>
         </div>
 
         {/* نوع ارز */}
@@ -549,9 +486,7 @@ function BaseCurrenciesPage() {
                         dark:bg-neutral-900 dark:border-neutral-800"
           dir="rtl"
         >
-          <div className="mb-3 font-medium text-black dark:text-neutral-200">
-            نوع ارز
-          </div>
+          <div className="mb-3 font-medium text-black dark:text-neutral-200">نوع ارز</div>
           <FormRow
             placeholder="نوع ارز…"
             value={typeTitle}
@@ -566,9 +501,7 @@ function BaseCurrenciesPage() {
           rows={sortedTypes}
           kind="type"
           sortDir={typeSortDir}
-          onToggleSort={() =>
-            setTypeSortDir((d) => (d === "asc" ? "desc" : "asc"))
-          }
+          onToggleSort={() => setTypeSortDir((d) => (d === "asc" ? "desc" : "asc"))}
         />
 
         {/* منشأ ارز */}
@@ -577,9 +510,7 @@ function BaseCurrenciesPage() {
                         dark:bg-neutral-900 dark:border-neutral-800"
           dir="rtl"
         >
-          <div className="mb-3 font-medium text-black dark:text-neutral-200">
-            منشأ ارز
-          </div>
+          <div className="mb-3 font-medium text-black dark:text-neutral-200">منشأ ارز</div>
           <FormRow
             placeholder="منشأ ارز…"
             value={srcTitle}
@@ -594,9 +525,7 @@ function BaseCurrenciesPage() {
           rows={sortedSources}
           kind="source"
           sortDir={srcSortDir}
-          onToggleSort={() =>
-            setSrcSortDir((d) => (d === "asc" ? "desc" : "asc"))
-          }
+          onToggleSort={() => setSrcSortDir((d) => (d === "asc" ? "desc" : "asc"))}
         />
       </Card>
     </>
