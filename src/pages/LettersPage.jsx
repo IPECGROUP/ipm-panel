@@ -1,5 +1,6 @@
 // src/pages/LettersPage.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 
 const TABS = [
@@ -54,6 +55,7 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
   const popRef = useRef(null);
+  const [pos, setPos] = useState({ top: 0, right: 0 });
 
   const nowParts = useMemo(() => getJalaliPartsFromDate(new Date()), []);
   const initial = useMemo(() => {
@@ -117,6 +119,52 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
       ? "border-white/15 bg-white/5 text-white/90 hover:bg-white/10"
       : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]");
 
+  const recalcPos = () => {
+    const btn = btnRef.current;
+    if (!btn) return;
+
+    const r = btn.getBoundingClientRect();
+    const margin = 8;
+
+    const right = Math.max(margin, window.innerWidth - r.right);
+
+    let top = r.bottom + margin;
+
+    const pop = popRef.current;
+    if (pop) {
+      const pr = pop.getBoundingClientRect();
+      const h = pr.height || 0;
+
+      if (top + h > window.innerHeight - margin) {
+        const above = r.top - h - margin;
+        if (above >= margin) top = above;
+        else top = Math.max(margin, window.innerHeight - h - margin);
+      }
+    }
+
+    setPos({ top, right });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+
+    recalcPos();
+    const raf = requestAnimationFrame(() => recalcPos());
+
+    const onResize = () => recalcPos();
+    const onScrollAny = () => recalcPos();
+
+    window.addEventListener("resize", onResize);
+    document.addEventListener("scroll", onScrollAny, true);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", onResize);
+      document.removeEventListener("scroll", onScrollAny, true);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   return (
     <div className="relative">
       <button
@@ -148,138 +196,152 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
         )}
       </button>
 
-      {open && (
-        <div
-          ref={popRef}
-          className={
-            "absolute z-50 mt-2 w-[min(420px,calc(100vw-24px))] rounded-2xl border shadow-lg p-4 " +
-            (theme === "dark"
-              ? "border-white/10 bg-neutral-900 text-white"
-              : "border-black/10 bg-white text-neutral-900")
-          }
-          style={{ insetInlineEnd: 0 }}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <div className="font-semibold text-sm">انتخاب تاریخ</div>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className={
-                "h-9 w-9 rounded-xl border flex items-center justify-center transition " +
-                (theme === "dark" ? "border-white/10 hover:bg-white/10" : "border-black/10 hover:bg-black/[0.04]")
-              }
-              aria-label="بستن"
-              title="بستن"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                width="18"
-                height="18"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M18 6 6 18M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>
-                سال
-              </div>
-              <select
-                value={jy}
-                onChange={(e) => setJy(Number(e.target.value))}
-                className={
-                  "w-full h-11 px-3 rounded-xl border outline-none " +
-                  (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-neutral-900")
-                }
-              >
-                {years.map((y) => (
-                  <option key={y} value={y}>
-                    {toFaDigits(y)}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>
-                ماه
-              </div>
-              <select
-                value={jm}
-                onChange={(e) => setJm(Number(e.target.value))}
-                className={
-                  "w-full h-11 px-3 rounded-xl border outline-none " +
-                  (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-neutral-900")
-                }
-              >
-                {PERSIAN_MONTHS.map((name, idx) => (
-                  <option key={name} value={idx + 1}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>
-                روز
-              </div>
-              <select
-                value={jd}
-                onChange={(e) => setJd(Number(e.target.value))}
-                className={
-                  "w-full h-11 px-3 rounded-xl border outline-none " +
-                  (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-neutral-900")
-                }
-              >
-                {days.map((d) => (
-                  <option key={d} value={d}>
-                    {toFaDigits(d)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <div className={theme === "dark" ? "text-white/70 text-xs" : "text-neutral-600 text-xs"}>
-              پیش نمایش: <span className="font-semibold">{toFaDigits(preview)}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  onChange(preview);
-                  setOpen(false);
-                }}
-                className={
-                  "h-10 px-4 rounded-xl transition " +
-                  (theme === "dark" ? "bg-white text-black hover:bg-white/90" : "bg-black text-white hover:bg-black/90")
-                }
-              >
-                تایید
-              </button>
+      {open &&
+        createPortal(
+          <div
+            ref={popRef}
+            className={
+              "fixed z-[9999] w-[min(420px,calc(100vw-24px))] rounded-2xl border shadow-lg p-4 " +
+              (theme === "dark"
+                ? "border-white/10 bg-neutral-900 text-white"
+                : "border-black/10 bg-white text-neutral-900")
+            }
+            style={{ top: pos.top, right: pos.right }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-semibold text-sm">انتخاب تاریخ</div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 className={
-                  "h-10 px-4 rounded-xl border transition " +
-                  (theme === "dark" ? "border-white/15 hover:bg-white/10" : "border-black/10 hover:bg-black/[0.04]")
+                  "h-9 w-9 rounded-xl border flex items-center justify-center transition " +
+                  (theme === "dark"
+                    ? "border-white/10 hover:bg-white/10"
+                    : "border-black/10 hover:bg-black/[0.04]")
                 }
+                aria-label="بستن"
+                title="بستن"
               >
-                بستن
+                <svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
               </button>
             </div>
-          </div>
-        </div>
-      )}
+
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>
+                  سال
+                </div>
+                <select
+                  value={jy}
+                  onChange={(e) => setJy(Number(e.target.value))}
+                  className={
+                    "w-full h-11 px-3 rounded-xl border outline-none " +
+                    (theme === "dark"
+                      ? "border-white/15 bg-white/5 text-white"
+                      : "border-black/10 bg-white text-neutral-900")
+                  }
+                >
+                  {years.map((y) => (
+                    <option key={y} value={y}>
+                      {toFaDigits(y)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>
+                  ماه
+                </div>
+                <select
+                  value={jm}
+                  onChange={(e) => setJm(Number(e.target.value))}
+                  className={
+                    "w-full h-11 px-3 rounded-xl border outline-none " +
+                    (theme === "dark"
+                      ? "border-white/15 bg-white/5 text-white"
+                      : "border-black/10 bg-white text-neutral-900")
+                  }
+                >
+                  {PERSIAN_MONTHS.map((name, idx) => (
+                    <option key={name} value={idx + 1}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>
+                  روز
+                </div>
+                <select
+                  value={jd}
+                  onChange={(e) => setJd(Number(e.target.value))}
+                  className={
+                    "w-full h-11 px-3 rounded-xl border outline-none " +
+                    (theme === "dark"
+                      ? "border-white/15 bg-white/5 text-white"
+                      : "border-black/10 bg-white text-neutral-900")
+                  }
+                >
+                  {days.map((d) => (
+                    <option key={d} value={d}>
+                      {toFaDigits(d)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <div className={theme === "dark" ? "text-white/70 text-xs" : "text-neutral-600 text-xs"}>
+                پیش نمایش: <span className="font-semibold">{toFaDigits(preview)}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(preview);
+                    setOpen(false);
+                  }}
+                  className={
+                    "h-10 px-4 rounded-xl transition " +
+                    (theme === "dark"
+                      ? "bg-white text-black hover:bg-white/90"
+                      : "bg-black text-white hover:bg-black/90")
+                  }
+                >
+                  تایید
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className={
+                    "h-10 px-4 rounded-xl border transition " +
+                    (theme === "dark"
+                      ? "border-white/15 hover:bg-white/10"
+                      : "border-black/10 hover:bg-black/[0.04]")
+                  }
+                >
+                  بستن
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
@@ -305,7 +367,8 @@ export default function LettersPage() {
     document.documentElement.classList.contains("dark") ? "dark" : "light"
   );
   useEffect(() => {
-    const tick = () => setTheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
+    const tick = () =>
+      setTheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
     const id = setInterval(tick, 500);
     return () => clearInterval(id);
   }, []);
@@ -362,6 +425,7 @@ export default function LettersPage() {
     return () => {
       mounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -380,6 +444,7 @@ export default function LettersPage() {
     return () => {
       mounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -398,6 +463,7 @@ export default function LettersPage() {
     return () => {
       mounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const todayJalaliLong = useMemo(() => {
@@ -436,7 +502,8 @@ export default function LettersPage() {
 
   const labelCls = theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1";
 
-  const chipBase = "inline-flex items-center gap-2 px-3 h-9 rounded-full border text-xs font-semibold whitespace-nowrap";
+  const chipBase =
+    "inline-flex items-center gap-2 px-3 h-9 rounded-full border text-xs font-semibold whitespace-nowrap";
   const chipCls =
     theme === "dark"
       ? chipBase + " border-white/15 bg-white/5 text-white hover:bg-white/10"
@@ -444,7 +511,9 @@ export default function LettersPage() {
 
   const sendBtnCls =
     "h-11 w-11 rounded-xl flex items-center justify-center transition ring-1 " +
-    (theme === "dark" ? "bg-white text-black ring-white/15 hover:bg-white/90" : "bg-black text-white ring-black/15 hover:bg-black/90");
+    (theme === "dark"
+      ? "bg-white text-black ring-white/15 hover:bg-white/90"
+      : "bg-black text-white ring-black/15 hover:bg-black/90");
 
   const sendIconCls = "w-5 h-5 " + (theme === "dark" ? "invert-0" : "invert");
 
@@ -483,8 +552,8 @@ export default function LettersPage() {
   };
 
   return (
-    <div dir="rtl" className="mx-auto w-full max-w-[1400px] px-2 sm:px-3 md:px-4">
-      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+    <div dir="rtl" className="mx-auto max-w-[1400px]">
+      <div className="flex items-center justify-between gap-3 mb-4">
         <div className="text-lg md:text-xl font-bold">نامه ها</div>
 
         <button
@@ -507,12 +576,12 @@ export default function LettersPage() {
 
       <Card
         className={
-          "rounded-2xl border overflow-hidden flex flex-col min-h-0 max-h-[calc(100dvh-170px)] " +
+          "rounded-2xl border overflow-hidden " +
           (theme === "dark" ? "border-white/10 bg-neutral-900" : "border-black/10 bg-white")
         }
       >
-        <div className="p-3 md:p-4 flex flex-col min-h-0">
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="p-3 md:p-4">
+          <div className="flex items-center gap-2">
             {TABS.map((t) => {
               const active = tab === t.id;
               return (
@@ -541,7 +610,7 @@ export default function LettersPage() {
             })}
           </div>
 
-          <div className="mt-4 min-h-0 flex-1 overflow-auto overscroll-contain pr-0">
+          <div className="mt-4 max-h-[calc(100dvh-220px)] overflow-auto overscroll-contain pr-0">
             {formOpen && tab === "incoming" && (
               <div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -614,7 +683,7 @@ export default function LettersPage() {
 
                 <div className="mt-4">
                   <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <div className="flex items-center gap-3 flex-wrap w-full">
+                    <div className="flex items-center gap-3 flex-wrap">
                       <div className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>ضمیمه:</div>
 
                       <label className="flex items-center gap-2 cursor-pointer">
@@ -628,7 +697,7 @@ export default function LettersPage() {
                       </label>
 
                       {hasAttachment && (
-                        <div className="w-full sm:min-w-[260px] sm:w-auto flex-1">
+                        <div className="min-w-[260px]">
                           <input
                             value={incomingAttachmentTitle}
                             onChange={(e) => setIncomingAttachmentTitle(e.target.value)}
@@ -671,7 +740,7 @@ export default function LettersPage() {
                                 type="button"
                                 onClick={() => setReturnToIds((arr) => [...arr, ""])}
                                 className={
-                                  "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 shrink-0 " +
+                                  "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
                                   (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
                                 }
                                 aria-label="افزودن"
@@ -720,7 +789,7 @@ export default function LettersPage() {
                       value={incomingTagPick}
                       onChange={(e) => addTag("incoming", e.target.value)}
                       className={
-                        "h-11 px-3 rounded-xl border outline-none transition text-right w-full sm:w-[220px] sm:min-w-[220px] " +
+                        "h-11 px-3 rounded-xl border outline-none transition text-right min-w-[220px] w-[220px] " +
                         (theme === "dark"
                           ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
                           : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
@@ -757,12 +826,22 @@ export default function LettersPage() {
 
                     <div>
                       <div className={labelCls}>شماره ثبت دبیرخانه</div>
-                      <input value={incomingSecretariatNo} onChange={(e) => setIncomingSecretariatNo(e.target.value)} className={inputCls} type="text" />
+                      <input
+                        value={incomingSecretariatNo}
+                        onChange={(e) => setIncomingSecretariatNo(e.target.value)}
+                        className={inputCls}
+                        type="text"
+                      />
                     </div>
 
                     <div>
                       <div className={labelCls}>نام تحویل گیرنده</div>
-                      <input value={incomingReceiverName} onChange={(e) => setIncomingReceiverName(e.target.value)} className={inputCls} type="text" />
+                      <input
+                        value={incomingReceiverName}
+                        onChange={(e) => setIncomingReceiverName(e.target.value)}
+                        className={inputCls}
+                        type="text"
+                      />
                     </div>
                   </div>
 
@@ -847,7 +926,7 @@ export default function LettersPage() {
 
                 <div className="mt-4">
                   <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <div className="flex items-center gap-3 flex-wrap w-full">
+                    <div className="flex items-center gap-3 flex-wrap">
                       <div className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>ضمیمه:</div>
 
                       <label className="flex items-center gap-2 cursor-pointer">
@@ -861,7 +940,7 @@ export default function LettersPage() {
                       </label>
 
                       {hasAttachment && (
-                        <div className="w-full sm:min-w-[260px] sm:w-auto flex-1">
+                        <div className="min-w-[260px]">
                           <input
                             value={outgoingAttachmentTitle}
                             onChange={(e) => setOutgoingAttachmentTitle(e.target.value)}
@@ -904,7 +983,7 @@ export default function LettersPage() {
                                 type="button"
                                 onClick={() => setPiroIds((arr) => [...arr, ""])}
                                 className={
-                                  "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 shrink-0 " +
+                                  "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
                                   (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
                                 }
                                 aria-label="افزودن"
@@ -947,7 +1026,7 @@ export default function LettersPage() {
                                 type="button"
                                 onClick={() => setReturnToIds((arr) => [...arr, ""])}
                                 className={
-                                  "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 shrink-0 " +
+                                  "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
                                   (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
                                 }
                                 aria-label="افزودن"
@@ -996,7 +1075,7 @@ export default function LettersPage() {
                       value={outgoingTagPick}
                       onChange={(e) => addTag("outgoing", e.target.value)}
                       className={
-                        "h-11 px-3 rounded-xl border outline-none transition text-right w-full sm:w-[220px] sm:min-w-[220px] " +
+                        "h-11 px-3 rounded-xl border outline-none transition text-right min-w-[220px] w-[220px] " +
                         (theme === "dark"
                           ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
                           : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
@@ -1033,12 +1112,22 @@ export default function LettersPage() {
 
                     <div>
                       <div className={labelCls}>شماره ثبت دبیرخانه</div>
-                      <input value={outgoingSecretariatNo} onChange={(e) => setOutgoingSecretariatNo(e.target.value)} className={inputCls} type="text" />
+                      <input
+                        value={outgoingSecretariatNo}
+                        onChange={(e) => setOutgoingSecretariatNo(e.target.value)}
+                        className={inputCls}
+                        type="text"
+                      />
                     </div>
 
                     <div>
                       <div className={labelCls}>نام تحویل گیرنده</div>
-                      <input value={outgoingReceiverName} onChange={(e) => setOutgoingReceiverName(e.target.value)} className={inputCls} type="text" />
+                      <input
+                        value={outgoingReceiverName}
+                        onChange={(e) => setOutgoingReceiverName(e.target.value)}
+                        className={inputCls}
+                        type="text"
+                      />
                     </div>
                   </div>
 
