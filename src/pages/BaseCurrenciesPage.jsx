@@ -314,10 +314,7 @@ function BaseCurrenciesPage() {
   const SimpleTable = ({ rows, kind, sortDir, onToggleSort }) => (
     <TableWrap>
       <div className="bg-white text-black rounded-2xl border border-black/10 overflow-hidden dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-        <table
-          className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
-          dir="rtl"
-        >
+        <table className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5" dir="rtl">
           <THead>
             <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
               <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
@@ -327,7 +324,6 @@ function BaseCurrenciesPage() {
               <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
                 <div className="flex items-center justify-center gap-2">
                   <span>عنوان</span>
-
                   <button
                     type="button"
                     onClick={onToggleSort}
@@ -338,9 +334,7 @@ function BaseCurrenciesPage() {
                     aria-label="مرتب‌سازی عنوان"
                   >
                     <svg
-                      className={`w-[14px] h-[14px] transition-transform ${
-                        sortDir === "asc" ? "rotate-180" : ""
-                      }`}
+                      className={`w-[14px] h-[14px] transition-transform ${sortDir === "asc" ? "rotate-180" : ""}`}
                       focusable="false"
                       aria-hidden="true"
                       viewBox="0 0 24 24"
@@ -407,20 +401,29 @@ function BaseCurrenciesPage() {
                     <TD className={`px-3 ${tdBorder}`}>
                       {editRow.kind === kind && editRow.id === r.id ? (
                         <div className="inline-flex items-center gap-2">
-                          <PrimaryBtn
+                          <button
+                            type="button"
                             onClick={saveEdit}
-                            className="!h-9 !px-3 !rounded-xl !text-sm !bg-neutral-900 !text-white !ring-1 !ring-black/15 hover:!bg-black
-                                     dark:!bg-neutral-100 dark:!text-neutral-900 dark:!ring-neutral-700 dark:hover:!bg-neutral-200"
+                            className="!h-10 !w-10 !p-0 !rounded-xl !bg-transparent !bg-none !ring-0 !border-0 !shadow-none
+                                       hover:!bg-transparent active:!bg-transparent focus:!bg-transparent
+                                       hover:opacity-80 active:opacity-70 disabled:opacity-50 grid place-items-center"
+                            aria-label="ذخیره"
+                            title="ذخیره"
                           >
-                            ذخیره
-                          </PrimaryBtn>
-                          <Btn
+                            <img src="/images/icons/check.svg" alt="" className="w-[18px] h-[18px] dark:invert" />
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={cancelEdit}
-                            className="!h-9 !px-3 !rounded-xl !text-sm !bg-white !text-neutral-900 !ring-1 !ring-neutral-300 hover:!bg-neutral-100
-                                     dark:!bg-transparent dark:!text-neutral-100 dark:!ring-neutral-700 dark:hover:!bg-white/10"
+                            className="!h-10 !w-10 !p-0 !rounded-xl !bg-transparent !bg-none !ring-0 !border-0 !shadow-none
+                                       hover:!bg-transparent active:!bg-transparent focus:!bg-transparent
+                                       hover:opacity-80 active:opacity-70 disabled:opacity-50 grid place-items-center"
+                            aria-label="انصراف"
+                            title="انصراف"
                           >
-                            انصراف
-                          </Btn>
+                            <img src="/images/icons/bastan.svg" alt="" className="w-[18px] h-[18px] dark:invert" />
+                          </button>
                         </div>
                       ) : (
                         <div className="inline-flex items-center gap-2">
@@ -432,11 +435,7 @@ function BaseCurrenciesPage() {
                             aria-label="ویرایش"
                             title="ویرایش"
                           >
-                            <img
-                              src="/images/icons/pencil.svg"
-                              alt=""
-                              className="w-[18px] h-[18px] dark:invert"
-                            />
+                            <img src="/images/icons/pencil.svg" alt="" className="w-[18px] h-[18px] dark:invert" />
                           </Btn>
 
                           <DangerBtn
@@ -450,7 +449,7 @@ function BaseCurrenciesPage() {
                             <img
                               src="/images/icons/hazf.svg"
                               alt=""
-                              className="w-[18px] h-[18px]"
+                              className="w-[19px] h-[19px]"
                               style={{
                                 filter:
                                   "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
