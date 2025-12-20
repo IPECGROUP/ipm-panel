@@ -334,16 +334,20 @@ function UnitsPage() {
 
   return (
     <>
-      <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-950 dark:text-neutral-100 dark:border-white/10">
+      <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
         {/* نوار مسیر */}
         <div className="mb-3 text-base md:text-lg">
-          <span className="text-neutral-700 dark:text-neutral-300">اطلاعات پایه</span>
-          <span className="mx-2 text-neutral-500 dark:text-neutral-500">›</span>
-          <span className="font-semibold text-neutral-900 dark:text-neutral-100">واحدها</span>
+          <span className="text-neutral-700 dark:text-neutral-300">
+            اطلاعات پایه
+          </span>
+          <span className="mx-2 text-neutral-500 dark:text-neutral-400">›</span>
+          <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+            واحدها
+          </span>
         </div>
 
         {/* فرم افزودن */}
-        <div className="rounded-2xl p-3 mb-4 border border-neutral-200 bg-white dark:border-white/10 dark:bg-white/5">
+        <div className="border border-neutral-200 dark:border-neutral-800 rounded-2xl p-3 mb-4 bg-white dark:bg-transparent">
           <div className="grid md:grid-cols-[1fr_auto] items-end gap-2">
             <input
               disabled={!isAdmin}
@@ -351,21 +355,23 @@ function UnitsPage() {
               onChange={(e) => setAdding(e.target.value)}
               placeholder="نام واحد..."
               className="h-10 w-full rounded-xl px-3 text-right
-                         border border-neutral-200 bg-white text-neutral-900
-                         focus:outline-none focus:ring-2 focus:ring-black/10
-                         dark:border-white/10 dark:bg-neutral-900/60 dark:text-neutral-100 dark:placeholder-neutral-400
-                         dark:focus:ring-white/10"
+                         border border-neutral-200 dark:border-neutral-700
+                         bg-white text-neutral-900
+                         dark:bg-neutral-800 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-400"
             />
             <button
               disabled={!isAdmin || saving}
               onClick={addUnit}
               className="h-10 w-10 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50
-                         hover:bg-black transition
-                         dark:bg-white/10 dark:text-neutral-100 dark:hover:bg-white/15"
+                         dark:bg-neutral-100 dark:text-neutral-900"
               aria-label="افزودن"
               title="افزودن"
             >
-              <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
+              <img
+                src="/images/icons/afzodan.svg"
+                alt=""
+                className="w-5 h-5 invert dark:invert"
+              />
             </button>
           </div>
           {err && <div className="text-sm text-red-600 mt-2">{err}</div>}
@@ -373,79 +379,59 @@ function UnitsPage() {
 
         {/* جدول واحدها */}
         <TableWrap>
-          <div className="rounded-2xl overflow-hidden border border-black/10 bg-white text-black shadow-sm
-                          dark:border-white/10 dark:bg-neutral-900/60 dark:text-neutral-100 dark:shadow-[0_20px_60px_-30px_rgba(0,0,0,0.8)]">
-            {/* هدر شبیه تصویر */}
-            <div className="flex items-center justify-between px-4 py-4">
-              <div className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">واحدها</div>
-              <button
-                type="button"
-                className="h-10 w-10 grid place-items-center rounded-xl
-                           hover:bg-black/5 active:bg-black/10 transition
-                           dark:hover:bg-white/10 dark:active:bg-white/15"
-                aria-label="فیلتر"
-                title="فیلتر"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  className="w-5 h-5 text-neutral-900 dark:text-neutral-100"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M4 6h10" />
-                  <path d="M18 6h2" />
-                  <path d="M4 12h16" />
-                  <path d="M4 18h6" />
-                  <path d="M14 18h6" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="border-t border-black/10 dark:border-white/10" />
-
-            <table className="w-full text-sm" dir="rtl">
+          <div className="bg-white text-black rounded-2xl border border-black/10 overflow-hidden dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+            <table
+              className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-2 [&_td]:py-2"
+              dir="rtl"
+            >
               <THead>
-                <tr className="text-neutral-700 dark:text-neutral-100">
-                  <TH className="w-20 sm:w-24 !text-center !font-semibold !py-4 border-b border-black/10 dark:border-white/10">
+                <tr className="bg-black/5 text-black border-b border-neutral-300 dark:bg-white/5 dark:text-neutral-100 dark:border-neutral-700">
+                  <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100">
                     #
                   </TH>
 
-                  <TH className="!text-center !font-semibold !py-4 border-b border-black/10 dark:border-white/10">
+                  <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100">
                     <div className="flex items-center justify-center gap-2">
                       <span>نام واحد</span>
                       <button
                         type="button"
-                        onClick={() => setNameSortDir((d) => (d === "asc" ? "desc" : "asc"))}
-                        className="h-8 w-8 inline-grid place-items-center rounded-lg bg-transparent
-                                   hover:bg-black/5 active:bg-black/10 transition
+                        onClick={() =>
+                          setNameSortDir((d) => (d === "asc" ? "desc" : "asc"))
+                        }
+                        className="h-7 w-7 inline-grid place-items-center rounded-md bg-transparent hover:bg-black/5 active:bg-black/10 transition
                                    dark:hover:bg-white/10 dark:active:bg-white/15"
                         title="مرتب‌سازی نام"
                         aria-label="مرتب‌سازی نام"
                       >
                         {nameSortDir === "desc" ? (
-                          <img src="/images/icons/bozorgbekochik.svg" alt="" className="w-5 h-5 dark:invert" />
+                          <img
+                            src="/images/icons/bozorgbekochik.svg"
+                            alt=""
+                            className="w-4 h-4 dark:invert"
+                          />
                         ) : (
-                          <img src="/images/icons/kochikbebozorg.svg" alt="" className="w-5 h-5 dark:invert" />
+                          <img
+                            src="/images/icons/kochikbebozorg.svg"
+                            alt=""
+                            className="w-4 h-4 dark:invert"
+                          />
                         )}
                       </button>
                     </div>
                   </TH>
 
-                  <TH className="w-44 sm:w-72 !text-center !font-semibold !py-4 border-b border-black/10 dark:border-white/10">
+                  <TH className="w-44 sm:w-72 !text-center !font-semibold !text-black dark:!text-neutral-100">
                     اقدامات
                   </TH>
                 </tr>
               </THead>
 
-              <tbody>
+              <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100">
                 {(sortedList || []).length === 0 ? (
-                  <TR>
+                  <TR className="bg-white dark:bg-transparent">
                     <TD
                       colSpan={3}
-                      className="text-center py-8 text-black/60 dark:text-white/60 border-b border-black/10 dark:border-white/10"
+                      className="text-center text-black/60 dark:text-neutral-400 py-4"
                     >
                       واحدی ثبت نشده.
                     </TD>
@@ -454,19 +440,18 @@ function UnitsPage() {
                   sortedList.map((u, idx) => (
                     <TR
                       key={u.id}
-                      className="border-b border-black/10 hover:bg-black/5 transition-colors
-                                 dark:border-white/10 dark:hover:bg-white/10 last:border-b-0"
+                      className="odd:bg-white even:bg-neutral-100/70 hover:bg-neutral-200/60 transition-colors
+                               dark:odd:bg-neutral-900 dark:even:bg-neutral-800/70 dark:hover:bg-white/10
+                               border-b border-neutral-300 dark:border-neutral-700 last:border-b-0"
                     >
-                      <TD className="px-4 py-4 text-center text-neutral-700 dark:text-neutral-100">{idx + 1}</TD>
-
-                      <TD className="px-4 py-4 text-center text-neutral-900 dark:text-neutral-100">
+                      <TD className="px-3">{idx + 1}</TD>
+                      <TD className="px-3">
                         {editId === u.id ? (
                           <input
-                            className="w-full max-w-xs rounded-xl px-3 py-2 text-center
-                                     border border-black/15 bg-white text-black
-                                     focus:outline-none focus:ring-2 focus:ring-black/10
-                                     dark:border-white/10 dark:bg-neutral-950/60 dark:text-neutral-100 dark:placeholder-neutral-400
-                                     dark:focus:ring-white/10"
+                            className="w-full max-w-xs rounded-xl px-2 py-2 text-center
+                                     border border-black/15 dark:border-neutral-700
+                                     bg-white text-black placeholder-black/40
+                                     dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400"
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
                           />
@@ -474,14 +459,13 @@ function UnitsPage() {
                           u.name || "—"
                         )}
                       </TD>
-
-                      <TD className="px-4 py-4 text-center">
+                      <TD className="px-3">
                         {editId === u.id ? (
                           <div className="inline-flex items-center gap-2">
                             <PrimaryBtn
                               onClick={saveEdit}
                               className="!h-10 !px-4 !rounded-xl !bg-neutral-900 !text-white !ring-1 !ring-black/15 hover:!bg-black
-                                       dark:!bg-white/10 dark:!text-neutral-100 dark:!ring-white/10 dark:hover:!bg-white/15"
+                                       dark:!bg-neutral-100 dark:!text-neutral-900 dark:!ring-neutral-700 dark:hover:!bg-neutral-200"
                             >
                               ذخیره
                             </PrimaryBtn>
@@ -490,8 +474,8 @@ function UnitsPage() {
                                 setEditId(null);
                                 setEditName("");
                               }}
-                              className="!h-10 !px-4 !rounded-xl !bg-transparent !text-neutral-900 !ring-1 !ring-black/15 hover:!bg-black/5
-                                       dark:!text-neutral-100 dark:!ring-white/10 dark:hover:!bg-white/10"
+                              className="!h-10 !px-4 !rounded-xl !bg-white !text-neutral-900 !ring-1 !ring-neutral-300 hover:!bg-neutral-100
+                                       dark:!bg-transparent dark:!text-neutral-100 dark:!ring-neutral-700 dark:hover:!bg:white/10"
                             >
                               انصراف
                             </Btn>
@@ -501,37 +485,46 @@ function UnitsPage() {
                             <button
                               onClick={() => openAccess(u)}
                               disabled={!isAdmin}
-                              className="h-10 w-10 grid place-items-center rounded-xl bg-transparent
-                                         hover:bg-black/5 active:bg-black/10 disabled:opacity-50 transition
+                              className="h-8 w-8 grid place-items-center rounded-md bg-transparent hover:bg-black/5 active:bg-black/10 disabled:opacity-50 transition
                                          dark:hover:bg-white/10 dark:active:bg-white/15"
                               aria-label="سطح دسترسی"
                               title="سطح دسترسی"
                             >
-                              <img src="/images/icons/sath.svg" alt="" className="w-5 h-5 dark:invert" />
+                              <img
+                                src="/images/icons/sath.svg"
+                                alt=""
+                                className="w-4 h-4 dark:invert"
+                              />
                             </button>
 
                             <Btn
                               onClick={() => startEdit(u)}
-                              className="!h-10 !w-10 !p-0 !rounded-xl !bg-transparent !ring-0 !shadow-none
-                                       hover:!bg-black/5 active:!bg-black/10 disabled:opacity-50
+                              className="!h-8 !w-8 !p-0 !rounded-md !bg-transparent !ring-0 !shadow-none hover:!bg-black/5 active:!bg-black/10 disabled:opacity-50
                                        dark:hover:!bg-white/10 dark:active:!bg-white/15"
                               disabled={!isAdmin}
                               aria-label="ویرایش"
                               title="ویرایش"
                             >
-                              <img src="/images/icons/pencil.svg" alt="" className="w-5 h-5 dark:invert" />
+                              <img
+                                src="/images/icons/pencil.svg"
+                                alt=""
+                                className="w-4 h-4 dark:invert"
+                              />
                             </Btn>
 
                             <DangerBtn
                               onClick={() => del(u)}
-                              className="!h-10 !w-10 !p-0 !rounded-xl !bg-transparent !ring-0 !shadow-none
-                                       !text-red-600 hover:!bg-black/5 active:!bg-black/10 disabled:opacity-50
+                              className="!h-8 !w-8 !p-0 !rounded-md !bg-transparent !ring-0 !shadow-none !text-red-600 hover:!bg-black/5 active:!bg-black/10 disabled:opacity-50
                                        dark:!text-red-300 dark:hover:!bg-white/10 dark:active:!bg-white/15"
                               disabled={!isAdmin}
                               aria-label="حذف"
                               title="حذف"
                             >
-                              <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5 dark:invert" />
+                              <img
+                                src="/images/icons/hazf.svg"
+                                alt=""
+                                className="w-4 h-4 dark:invert"
+                              />
                             </DangerBtn>
                           </div>
                         )}
@@ -546,136 +539,126 @@ function UnitsPage() {
 
         {/* پاپ‌آپ سطح دسترسی */}
         {accessOpen && (
-          <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 backdrop-blur-sm">
-            <div className="w-[min(96vw,820px)] max-w-[820px] max-h-[90vh] overflow-auto rounded-3xl shadow-2xl border border-black/10
-                            bg-white text-black
-                            dark:border-white/10 dark:bg-neutral-900/70 dark:text-neutral-100">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg md:text-xl font-bold">
-                    سطح دسترسی {accessUnit ? `— ${accessUnit.name}` : ""}
-                  </h2>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={closeAccess}
-                      className="px-3 h-10 rounded-xl border border-black/15 hover:bg-black/5 transition
-                                 dark:border-white/10 dark:hover:bg-white/10"
-                    >
-                      بستن
-                    </button>
-                  </div>
-                </div>
-
-                <div className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
-                  <table className="w-full text-sm">
-                    <thead className="bg-black/5 text-black dark:bg-white/5 dark:text-neutral-100">
-                      <tr>
-                        <th className="py-3 px-4 text-center border-b border-black/10 dark:border-white/10">
-                          صفحه
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-t border-black/10 dark:border-white/10">
-                        <td className="py-3 px-4">
-                          {accessLoading ? (
-                            <div className="text-center text-black/60 dark:text-white/60 py-6">در حال بارگذاری…</div>
-                          ) : (
-                            <div className="grid gap-2">
-                              {pageOptions.map((opt) => {
-                                const isOpen = !!openPages[opt.key];
-                                const pageTabs = checkedTabsByPage[opt.key] || {};
-
-                                const totalTabs = tabOptions.length;
-                                const checkedCount = tabOptions.filter((t) => pageTabs[t.key]).length;
-                                const isAllChecked = totalTabs > 0 && checkedCount === totalTabs;
-                                const isSomeChecked = checkedCount > 0 && checkedCount < totalTabs;
-
-                                return (
-                                  <div
-                                    key={opt.key}
-                                    className="rounded-2xl overflow-hidden border border-black/10 bg-black/[0.02]
-                                               dark:border-white/10 dark:bg-white/5"
-                                  >
-                                    <div className="flex items-center justify-between gap-3 px-3 py-2 hover:bg-black/5 transition dark:hover:bg-white/10">
-                                      <div className="flex items-center gap-3">
-                                        <button
-                                          type="button"
-                                          onClick={() => togglePageOpen(opt.key)}
-                                          className="w-8 h-8 grid place-items-center rounded-xl border border-black/15 text-sm
-                                                     hover:bg-black/5 transition
-                                                     dark:border-white/10 dark:hover:bg-white/10"
-                                          aria-label="باز/بستن"
-                                          title="باز/بستن"
-                                        >
-                                          {isOpen ? "−" : "+"}
-                                        </button>
-                                        <span>{opt.label}</span>
-                                      </div>
-                                      <input
-                                        type="checkbox"
-                                        className="w-4 h-4 accent-black dark:accent-white"
-                                        checked={isAllChecked}
-                                        ref={(el) => {
-                                          if (el) el.indeterminate = isSomeChecked;
-                                        }}
-                                        onChange={() => togglePageCheck(opt.key)}
-                                      />
-                                    </div>
-
-                                    {isOpen && (
-                                      <div className="px-3 py-3 border-t border-black/10 bg-white/60
-                                                      dark:border-white/10 dark:bg-neutral-900/40">
-                                        <div className="text-xs text-black/60 dark:text-white/60 mb-2 text-center">
-                                          تب‌ها
-                                        </div>
-                                        <div className="grid sm:grid-cols-2 gap-2">
-                                          {tabOptions.map((t) => (
-                                            <label
-                                              key={t.key}
-                                              className="flex items-center justify-between gap-3 rounded-xl border border-black/10 px-3 py-2
-                                                         hover:bg-black/5 transition
-                                                         dark:border-white/10 dark:hover:bg-white/10"
-                                            >
-                                              <span>{t.label}</span>
-                                              <input
-                                                type="checkbox"
-                                                className="w-4 h-4 accent-black dark:accent-white"
-                                                checked={!!pageTabs[t.key]}
-                                                onChange={() => toggleTabInPage(opt.key, t.key)}
-                                              />
-                                            </label>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                {(accessError || accessOk) && (
-                  <div className={`mt-3 text-sm ${accessError ? "text-red-600" : "text-green-600"}`}>
-                    {accessError || accessOk}
-                  </div>
-                )}
-
-                <div className="mt-4 flex items-center justify-end gap-2">
-                  <PrimaryBtn
-                    onClick={saveUnitAccess}
-                    disabled={!isAdmin || accessSaving || accessLoading}
-                    className="!h-10 !px-5 !rounded-xl !bg-neutral-900 !text-white !ring-1 !ring-black/15 hover:!bg-black
-                             dark:!bg-white/10 dark:!text-neutral-100 dark:!ring-white/10 dark:hover:!bg-white/15"
+          <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-sm">
+            <div className="w-[min(96vw,820px)] max-w-[820px] max-h-[90vh] overflow-auto rounded-3xl shadow-2xl ring-1 ring-black/10 dark:ring-neutral-800 p-6
+                            bg-white text-black dark:bg-neutral-900 dark:text-neutral-100">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg md:text-xl font-bold">
+                  سطح دسترسی {accessUnit ? `— ${accessUnit.name}` : ""}
+                </h2>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={closeAccess}
+                    className="px-3 h-9 rounded-lg border border-black/15 hover:bg-black/5 transition dark:border-neutral-700 dark:hover:bg-white/10"
                   >
-                    {accessSaving ? "..." : "ذخیره"}
-                  </PrimaryBtn>
+                    بستن
+                  </button>
                 </div>
+              </div>
+
+              <div className="overflow-hidden rounded-2xl border border-black/10 dark:border-neutral-800">
+                <table className="w-full text-sm">
+                  <thead className="bg-black/5 text-black dark:bg:white/5 dark:text-neutral-100">
+                    <tr>
+                      <th className="py-3 px-4 text-center">صفحه</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-t border-black/10 dark:border-neutral-800">
+                      <td className="py-3 px-4">
+                        {accessLoading ? (
+                          <div className="text-center text-black/60 dark:text-neutral-400 py-6">
+                            در حال بارگذاری…
+                          </div>
+                        ) : (
+                          <div className="grid gap-2">
+                            {pageOptions.map((opt) => {
+                              const isOpen = !!openPages[opt.key];
+                              const pageTabs = checkedTabsByPage[opt.key] || {};
+
+                              const totalTabs = tabOptions.length;
+                              const checkedCount = tabOptions.filter((t) => pageTabs[t.key]).length;
+                              const isAllChecked = totalTabs > 0 && checkedCount === totalTabs;
+                              const isSomeChecked = checkedCount > 0 && checkedCount < totalTabs;
+
+                              return (
+                                <div
+                                  key={opt.key}
+                                  className="rounded-xl border border-black/10 dark:border-neutral-800 overflow-hidden"
+                                >
+                                  <div className="flex items-center justify-between gap-3 px-3 py-2 hover:bg-black/[0.04] dark:hover:bg:white/10">
+                                    <div className="flex items-center gap-3">
+                                      <button
+                                        type="button"
+                                        onClick={() => togglePageOpen(opt.key)}
+                                        className="w-6 h-6 grid place-items-center rounded-lg border border-black/20 dark:border-neutral-700 text-xs"
+                                        aria-label="باز/بستن"
+                                        title="باز/بستن"
+                                      >
+                                        {isOpen ? "−" : "+"}
+                                      </button>
+                                      <span>{opt.label}</span>
+                                    </div>
+                                    <input
+                                      type="checkbox"
+                                      className="w-4 h-4 accent-black dark:accent-neutral-200"
+                                      checked={isAllChecked}
+                                      ref={(el) => {
+                                        if (el) el.indeterminate = isSomeChecked;
+                                      }}
+                                      onChange={() => togglePageCheck(opt.key)}
+                                    />
+                                  </div>
+
+                                  {isOpen && (
+                                    <div className="px-3 py-3 bg-black/[0.02] dark:bg-white/5">
+                                      <div className="text-xs text-black/60 dark:text-neutral-400 mb-2 text-center">
+                                        تب‌ها
+                                      </div>
+                                      <div className="grid sm:grid-cols-2 gap-2">
+                                        {tabOptions.map((t) => (
+                                          <label
+                                            key={t.key}
+                                            className="flex items-center justify-between gap-3 rounded-lg border border-black/10 px-3 py-2 hover:bg-black/[0.04] dark:border-neutral-800 dark:hover:bg-white/10"
+                                          >
+                                            <span>{t.label}</span>
+                                            <input
+                                              type="checkbox"
+                                              className="w-4 h-4 accent-black dark:accent-neutral-200"
+                                              checked={!!pageTabs[t.key]}
+                                              onChange={() => toggleTabInPage(opt.key, t.key)}
+                                            />
+                                          </label>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {(accessError || accessOk) && (
+                <div
+                  className={`mt-3 text-sm ${accessError ? "text-red-600" : "text-green-600"}`}
+                >
+                  {accessError || accessOk}
+                </div>
+              )}
+
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <PrimaryBtn
+                  onClick={saveUnitAccess}
+                  disabled={!isAdmin || accessSaving || accessLoading}
+                >
+                  {accessSaving ? "..." : "ذخیره"}
+                </PrimaryBtn>
               </div>
             </div>
           </div>
