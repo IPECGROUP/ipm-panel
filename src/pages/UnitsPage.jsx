@@ -27,7 +27,7 @@ function UnitsPage() {
   const pageOptions = [
     { key: "centers", label: "تعریف مراکز بودجه" },
     { key: "estimate", label: "برآورد هزینه‌ها" },
-    { key: "revenue", label: "برآورد درآمدها" },
+    { key: "revenue", label: "برآورد درآمدها" }, 
     { key: "alloc", label: "تخصیص بودجه" },
     { key: "reports", label: "گزارش‌ها" },
   ];
@@ -53,7 +53,7 @@ function UnitsPage() {
   const PAGE_MAP = {
     centers: "DefineBudgetCentersPage",
     estimate: "EstimatesPage",
-    revenue: "RevenueEstimatesPage",
+    revenue: "RevenueEstimatesPage", 
     alloc: "BudgetAllocationPage",
     reports: "ReportsPage",
   };
@@ -360,7 +360,6 @@ function UnitsPage() {
                          dark:bg-neutral-800 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-400"
             />
             <button
-              type="button"
               disabled={!isAdmin || saving}
               onClick={addUnit}
               className="h-10 w-10 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50
@@ -381,192 +380,149 @@ function UnitsPage() {
         {/* جدول واحدها */}
         <TableWrap>
           <div className="bg-white text-black rounded-2xl border border-black/10 overflow-hidden dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-            <div className="overflow-x-auto">
-              <table
-                className="w-full min-w-[650px] text-sm [&_th]:text-center [&_td]:text-center"
-                dir="rtl"
-              >
-                <THead>
-                  <tr className="bg-black/5 text-black border-b border-black/15 dark:bg-white/5 dark:text-neutral-100 dark:border-neutral-700">
-                    <TH className="w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 py-2">
-                      #
-                    </TH>
-                    <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 py-2">
+            <table className="w-full text-sm [&_th]:text-center [&_td]:text-center" dir="rtl">
+              <THead>
+                <tr className="bg-black/5 text-black border-y border-black/10 dark:bg-white/5 dark:text-neutral-100 dark:border-neutral-700">
+                  <TH className="w-24 !text-center !font-semibold !text-black dark:!text-neutral-100">
+                    #
+                  </TH>
+                  <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100">
+                    <div className="flex items-center justify-center gap-2">
+                      <span>نام واحد</span>
                       <button
                         type="button"
                         onClick={() =>
                           setNameSortDir((d) => (d === "asc" ? "desc" : "asc"))
                         }
-                        className="inline-flex items-center justify-center gap-1 select-none cursor-pointer group"
-                        title="مرتب‌سازی"
+                        className="rounded-lg px-2 py-1 text-xs ring-1 ring-black/15 hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10"
+                        title="مرتب‌سازی نام"
                       >
-                        <span className="group-hover:underline underline-offset-4">
-                          نام واحد
-                        </span>
-                        <span
-                          className={
-                            "inline-flex items-center transition-transform " +
-                            (nameSortDir === "desc" ? "rotate-180" : "")
-                          }
-                        >
-                          <svg
-                            viewBox="0 0 24 24"
-                            width="18"
-                            height="18"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="opacity-70 group-hover:opacity-90"
-                          >
-                            <path d="M6 15l6-6 6 6" />
-                          </svg>
-                        </span>
-                        <span className="sr-only">
-                          {nameSortDir === "desc" ? "sorted descending" : "sorted ascending"}
-                        </span>
+                        {nameSortDir === "desc" ? (
+                          <img
+                            src="/images/icons/bozorgbekochik.svg"
+                            alt=""
+                            className="w-5 h-5 dark:invert"
+                          />
+                        ) : (
+                          <img
+                            src="/images/icons/kochikbebozorg.svg"
+                            alt=""
+                            className="w-5 h-5 dark:invert"
+                          />
+                        )}
                       </button>
-                    </TH>
-                    <TH className="w-40 !text-center !font-semibold !text-black dark:!text-neutral-100 py-2">
-                      اقدامات
-                    </TH>
-                  </tr>
-                </THead>
+                    </div>
+                  </TH>
+                  <TH className="w-72 !text-center !font-semibold !text-black dark:!text-neutral-100">
+                    اقدامات
+                  </TH>
+                </tr>
+              </THead>
 
-                <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100">
-                  {(sortedList || []).length === 0 ? (
-                    <TR>
-                      <TD
-                        colSpan={3}
-                        className="text-center text-black/60 dark:text-neutral-400 py-4 bg-white dark:bg-transparent"
-                      >
-                        واحدی ثبت نشده.
-                      </TD>
-                    </TR>
-                  ) : (
-                    sortedList.map((u, idx) => (
-                      <TR
-                        key={u.id}
-                        className="odd:bg-white even:bg-neutral-100 hover:bg-neutral-200/60 transition-colors
-                                 dark:odd:bg-neutral-900 dark:even:bg-white/5 dark:hover:bg-white/10
-                                 border-b border-black/25 dark:border-neutral-800"
-                      >
-                        <TD className="px-3 py-2">{idx + 1}</TD>
-                        <TD className="px-3 py-2">
-                          {editId === u.id ? (
-                            <input
-                              className="w-full max-w-xs rounded-xl px-2 py-2 text-center
+              <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100">
+                {(sortedList || []).length === 0 ? (
+                  <TR>
+                    <TD
+                      colSpan={3}
+                      className="text-center text-black/60 dark:text-neutral-400 py-4 bg-black/[0.02] dark:bg-transparent"
+                    >
+                      واحدی ثبت نشده.
+                    </TD>
+                  </TR>
+                ) : (
+                  sortedList.map((u, idx) => (
+                    <TR
+                      key={u.id}
+                      className="odd:bg-black/[0.02] even:bg-black/[0.04] hover:bg-black/[0.06] transition-colors
+                               dark:odd:bg-white/5 dark:even:bg-white/10 dark:hover:bg-white/15 border-t border-black/10 dark:border-neutral-800"
+                    >
+                      <TD className="px-3 py-3">{idx + 1}</TD>
+                      <TD className="px-3 py-3">
+                        {editId === u.id ? (
+                          <input
+                            className="w-full max-w-xs rounded-xl px-2 py-2 text-center
                                      border border-black/15 dark:border-neutral-700
                                      bg-white text-black placeholder-black/40
                                      dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400"
-                              value={editName}
-                              onChange={(e) => setEditName(e.target.value)}
-                            />
-                          ) : (
-                            u.name || "—"
-                          )}
-                        </TD>
-                        <TD className="px-3 py-2">
-                          {editId === u.id ? (
-                            <div className="inline-flex items-center gap-2">
-                              <PrimaryBtn
-                                onClick={saveEdit}
-                                className="!h-9 !px-4 !rounded-xl !bg-neutral-900 !text-white !ring-1 !ring-black/15 hover:!bg-black
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                          />
+                        ) : (
+                          u.name || "—"
+                        )}
+                      </TD>
+                      <TD className="px-3 py-3">
+                        {editId === u.id ? (
+                          <div className="inline-flex items-center gap-2">
+                            <PrimaryBtn
+                              onClick={saveEdit}
+                              className="!h-10 !px-4 !rounded-xl !bg-neutral-900 !text-white !ring-1 !ring-black/15 hover:!bg-black
                                        dark:!bg-neutral-100 dark:!text-neutral-900 dark:!ring-neutral-700 dark:hover:!bg-neutral-200"
-                              >
-                                ذخیره
-                              </PrimaryBtn>
-                              <Btn
-                                onClick={() => {
-                                  setEditId(null);
-                                  setEditName("");
-                                }}
-                                className="!h-9 !px-4 !rounded-xl !bg-white !text-neutral-900 !ring-1 !ring-neutral-300 hover:!bg-neutral-100
+                            >
+                              ذخیره
+                            </PrimaryBtn>
+                            <Btn
+                              onClick={() => {
+                                setEditId(null);
+                                setEditName("");
+                              }}
+                              className="!h-10 !px-4 !rounded-xl !bg-white !text-neutral-900 !ring-1 !ring-neutral-300 hover:!bg-neutral-100
                                        dark:!bg-transparent dark:!text-neutral-100 dark:!ring-neutral-700 dark:hover:!bg:white/10"
-                              >
-                                انصراف
-                              </Btn>
-                            </div>
-                          ) : (
-                            <div className="inline-flex items-center justify-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openAccess(u);
-                                }}
-                                disabled={!isAdmin}
-                                className="h-9 w-9 grid place-items-center rounded-lg hover:bg-black/5 disabled:opacity-50 transition
-                                           dark:hover:bg-white/10"
-                                aria-label="سطح دسترسی"
-                                title="سطح دسترسی"
-                              >
-                                <img
-                                  src="/images/icons/sath.svg"
-                                  alt=""
-                                  className="w-5 h-5 dark:invert"
-                                />
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  startEdit(u);
-                                }}
-                                disabled={!isAdmin}
-                                className="h-9 w-9 grid place-items-center rounded-lg hover:bg-black/5 disabled:opacity-50 transition
-                                           dark:hover:bg-white/10"
-                                aria-label="ویرایش"
-                                title="ویرایش"
-                              >
-                                <img
-                                  src="/images/icons/pencil.svg"
-                                  alt=""
-                                  className="w-5 h-5 dark:invert"
-                                />
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  del(u);
-                                }}
-                                disabled={!isAdmin}
-                                className="h-9 w-9 grid place-items-center rounded-lg hover:bg-black/5 disabled:opacity-50 transition
-                                           dark:hover:bg-white/10"
-                                aria-label="حذف"
-                                title="حذف"
-                              >
-                                <svg
-                                  viewBox="0 0 24 24"
-                                  width="18"
-                                  height="18"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  className="text-red-600 dark:text-red-400"
-                                >
-                                  <path d="M3 6h18" />
-                                  <path d="M8 6V4h8v2" />
-                                  <path d="M19 6l-1 16H6L5 6" />
-                                  <path d="M10 11v7" />
-                                  <path d="M14 11v7" />
-                                </svg>
-                              </button>
-                            </div>
-                          )}
-                        </TD>
-                      </TR>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                            >
+                              انصراف
+                            </Btn>
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-2">
+                            <button
+                              onClick={() => openAccess(u)}
+                              disabled={!isAdmin}
+                              className="h-10 w-10 grid place-items-center rounded-xl ring-1 ring-black/15 text-black hover:bg-black/5 disabled:opacity-50 transition dark:ring-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10"
+                              aria-label="سطح دسترسی"
+                              title="سطح دسترسی"
+                            >
+                              <img
+                                src="/images/icons/sath.svg"
+                                alt=""
+                                className="w-5 h-5 dark:invert"
+                              />
+                            </button>
+                            <Btn
+                              onClick={() => startEdit(u)}
+                              className="!rounded-xl !bg:white !text-neutral-900 !ring-1 !ring-neutral-300 hover:!bg-neutral-100 disabled:opacity-50
+                                       dark:!bg-transparent dark:!text-neutral-100 dark:!ring-neutral-700 dark:hover:!bg-white/10"
+                              disabled={!isAdmin}
+                              aria-label="ویرایش"
+                              title="ویرایش"
+                            >
+                              <img
+                                src="/images/icons/pencil.svg"
+                                alt=""
+                                className="w-5 h-5 dark:invert"
+                              />
+                            </Btn>
+                            <DangerBtn
+                              onClick={() => del(u)}
+                              className="!rounded-xl !bg-white !text-red-600 !ring-1 !ring-red-500 hover:!bg-red-50 disabled:opacity-50
+                                       dark:!bg-transparent dark:!text-red-300 dark:!ring-red-400/60 dark:hover:!bg-white/10"
+                              disabled={!isAdmin}
+                              aria-label="حذف"
+                              title="حذف"
+                            >
+                              <img
+                                src="/images/icons/hazf.svg"
+                                alt=""
+                                className="w-5 h-5 dark:invert"
+                              />
+                            </DangerBtn>
+                          </div>
+                        )}
+                      </TD>
+                    </TR>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </TableWrap>
 
@@ -581,7 +537,6 @@ function UnitsPage() {
                 </h2>
                 <div className="flex items-center gap-2">
                   <button
-                    type="button"
                     onClick={closeAccess}
                     className="px-3 h-9 rounded-lg border border-black/15 hover:bg-black/5 transition dark:border-neutral-700 dark:hover:bg-white/10"
                   >
