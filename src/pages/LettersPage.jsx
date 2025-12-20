@@ -347,6 +347,19 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
   );
 }
 
+function formatBytes(n) {
+  const num = Number(n || 0);
+  if (!num) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  let v = num;
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i += 1;
+  }
+  return `${Math.round(v * 10) / 10} ${units[i]}`;
+}
+
 export default function LettersPage() {
   const API_BASE = (window.API_URL || "/api").replace(/\/+$/, "");
   async function api(path, opt = {}) {
@@ -431,6 +444,221 @@ export default function LettersPage() {
   const [outgoingSecretariatNo, setOutgoingSecretariatNo] = useState("");
   const [incomingReceiverName, setIncomingReceiverName] = useState("");
   const [outgoingReceiverName, setOutgoingReceiverName] = useState("");
+
+  // ===== Uploader state (incoming/outgoing) =====
+  const MAX_DOC_SIZE = 400 * 1024;
+  const uploadInputRef = useRef(null);
+
+  const [docFilesByType, setDocFilesByType] = useState({ incoming: [], outgoing: [] });
+
+  const setDocFilesFor = (which, updater) => {
+    setDocFilesByType((prev) => {
+      const cur = Array.isArray(prev?.[which]) ? prev[which] : [];
+      const next = typeof updater === "function" ? updater(cur) : updater;
+      return { ...prev, [which]: next };
+    });
+  };
+
+  const currentDocFiles = useMemo(() => {
+    return Array.isArray(docFilesByType?.[uploadFor]) ? docFilesByType[uploadFor] : [];
+  }, [docFilesByType, uploadFor]);
+
+  const readFileAsDataURL = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  const loadImage = (src) =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+
+  const canvasToBlob = (canvas, mimeType, quality) =>
+    new Promise((resolve) => {
+      canvas.toBlob((blob) => resolve(blob), mimeType, quality);
+    });
+
+  const compressImageFile = async (file, maxSizeBytes = MAX_DOC_SIZE) => {
+    const dataUrl = await readFileAsDataURL(file);
+    const img = await loadImage(dataUrl);
+
+    const MAX_WIDTH = 1600;
+    const scale = img.width > MAX_WIDTH ? MAX_WIDTH / img.width : 1;
+    const width = Math.max(1, Math.round(img.width * scale));
+    const height = Math.max(1, Math.round(img.height * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0, width, height);
+
+    let quality = 0.88;
+    let blob = await canvasToBlob(canvas, "image/jpeg", quality);
+
+    while (blob && blob.size > maxSizeBytes && quality > 0.5) {
+      quality -= 0.08;
+      blob = await canvasToBlob(canvas, "image/jpeg", quality);
+    }
+
+    if (!blob || blob.size > maxSizeBytes) {
+      throw new Error("امکان فشرده‌سازی تصویر تا ۴۰۰ کیلوبایت نیست، لطفاً تصویر را کوچک‌تر کنید.");
+    }
+
+    return new File([blob], file.name, { type: "image/jpeg" });
+  };
+
+  const ensureFileSizeUnderLimit = async (file) => {
+    if (file.size <= MAX_DOC_SIZE) return file;
+
+    const isImg = file.type && file.type.startsWith("image/");
+    if (isImg) return await compressImageFile(file, MAX_DOC_SIZE);
+
+    throw new Error("حجم فایل PDF بیشتر از ۴۰۰ کیلوبایت است؛ لطفاً قبل از آپلود آن را کوچک کنید.");
+  };
+
+  const uploadFileToServer = (file, onProgress) => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", API_BASE + "/upload/payment-doc");
+      xhr.withCredentials = true;
+
+      const fd = new FormData();
+      fd.append("file", file);
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && typeof onProgress === "function") {
+          const p = Math.round((e.loaded / e.total) * 100);
+          onProgress(p);
+        }
+      };
+
+      xhr.onreadystatechange = () => {
+        if (xhr.readyState !== 4) return;
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const data = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+            resolve(data);
+          } catch {
+            resolve({});
+          }
+        } else {
+          reject(new Error("خطا در آپلود فایل"));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error("خطا در آپلود فایل"));
+      xhr.send(fd);
+    });
+  };
+
+  const addFilesToUpload = async (which, fileList) => {
+    const list = Array.from(fileList || []);
+    if (!list.length) return;
+
+    for (const rawFile of list) {
+      const isPdf =
+        rawFile.type === "application/pdf" || rawFile.name.toLowerCase().endsWith(".pdf");
+      const isImg = rawFile.type && rawFile.type.startsWith("image/");
+
+      if (!isImg && !isPdf) {
+        alert("فقط تصویر و PDF مجاز است.");
+        continue;
+      }
+
+      const id = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+      const previewUrl = isImg ? URL.createObjectURL(rawFile) : null;
+
+      setDocFilesFor(which, (prev) => [
+        ...prev,
+        {
+          id,
+          name: rawFile.name,
+          size: rawFile.size,
+          type: rawFile.type,
+          status: "optimizing",
+          progress: 0,
+          error: "",
+          serverId: null,
+          url: null,
+          previewUrl,
+        },
+      ]);
+
+      try {
+        const optimized = await ensureFileSizeUnderLimit(rawFile);
+
+        setDocFilesFor(which, (prev) =>
+          prev.map((f) =>
+            f.id === id
+              ? { ...f, size: optimized.size, status: "uploading", progress: 0, error: "" }
+              : f
+          )
+        );
+
+        const res = await uploadFileToServer(optimized, (p) => {
+          setDocFilesFor(which, (prev) => prev.map((f) => (f.id === id ? { ...f, progress: p } : f)));
+        });
+
+        setDocFilesFor(which, (prev) =>
+          prev.map((f) =>
+            f.id === id
+              ? {
+                  ...f,
+                  status: "done",
+                  progress: 100,
+                  serverId: res?.id ?? res?.fileId ?? null,
+                  url: res?.url ?? res?.path ?? null,
+                }
+              : f
+          )
+        );
+      } catch (e) {
+        setDocFilesFor(which, (prev) =>
+          prev.map((f) =>
+            f.id === id
+              ? { ...f, status: "error", error: e?.message || "خطا در آماده‌سازی یا آپلود فایل." }
+              : f
+          )
+        );
+      }
+    }
+  };
+
+  const removeDocFile = (which, id) => {
+    setDocFilesFor(which, (prev) => {
+      const target = prev.find((x) => x.id === id);
+      if (target?.previewUrl) {
+        try {
+          URL.revokeObjectURL(target.previewUrl);
+        } catch {}
+      }
+      return prev.filter((x) => x.id !== id);
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      const all = [
+        ...(Array.isArray(docFilesByType?.incoming) ? docFilesByType.incoming : []),
+        ...(Array.isArray(docFilesByType?.outgoing) ? docFilesByType.outgoing : []),
+      ];
+      all.forEach((f) => {
+        if (f?.previewUrl) {
+          try {
+            URL.revokeObjectURL(f.previewUrl);
+          } catch {}
+        }
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -581,7 +809,27 @@ export default function LettersPage() {
 
   const folderIconBtnCls =
     "inline-flex items-center justify-center p-0 bg-transparent border-0 outline-none rounded-xl " +
-    "focus:ring-2 focus:ring-black/15 dark:focus:ring-white/20";
+    "focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0";
+
+  const uploadBoxCls =
+    "rounded-2xl border border-dashed p-4 text-center transition " +
+    (theme === "dark"
+      ? "border-white/15 bg-white/5 hover:bg-white/10"
+      : "border-black/15 bg-black/[0.02] hover:bg-black/[0.04]");
+
+  const onDropUpload = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const fl = e.dataTransfer?.files;
+    if (fl && fl.length) {
+      await addFilesToUpload(uploadFor, fl);
+    }
+  };
+
+  const onDragOverUpload = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
 
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
@@ -791,7 +1039,7 @@ export default function LettersPage() {
                 </div>
 
                 {hasAttachment && (
-                  <div className="mt-4">
+                  <div className="mt-4 mb-6 pb-2">
                     <div className={labelCls}>بارگذاری نامه</div>
                     <div className="flex justify-start">
                       <button
@@ -1091,7 +1339,7 @@ export default function LettersPage() {
                 </div>
 
                 {hasAttachment && (
-                  <div className="mt-4">
+                  <div className="mt-4 mb-6 pb-2">
                     <div className={labelCls}>بارگذاری نامه</div>
                     <div className="flex justify-start">
                       <button
@@ -1224,7 +1472,7 @@ export default function LettersPage() {
                     type="button"
                     onClick={closeUpload}
                     className={
-                      "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
+                      "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
                       (theme === "dark"
                         ? "ring-neutral-800 hover:bg-white/10 text-white"
                         : "ring-black/15 hover:bg-black/90 bg-black text-white")
@@ -1250,9 +1498,165 @@ export default function LettersPage() {
                 <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
 
                 <div className="p-4">
-                  <div className={theme === "dark" ? "text-white/70 text-sm" : "text-neutral-700 text-sm"}>
-                    فعلاً فقط برای تست کلیک و باز شدن پاپ‌آپه. مرحله بعد اینجا آپلود واقعی رو اضافه می‌کنیم.
+                  <div
+                    className={uploadBoxCls}
+                    onDragOver={onDragOverUpload}
+                    onDrop={onDropUpload}
+                  >
+                    <div className="text-sm font-semibold">فایل را اینجا رها کن</div>
+                    <div className={theme === "dark" ? "text-white/60 text-xs mt-1" : "text-neutral-600 text-xs mt-1"}>
+                      تصویر یا PDF تا ۴۰۰KB
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-center gap-2">
+                      <input
+                        ref={uploadInputRef}
+                        type="file"
+                        accept="image/*,.pdf,application/pdf"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => {
+                          const fl = e.target.files;
+                          if (fl && fl.length) addFilesToUpload(uploadFor, fl);
+                          e.target.value = "";
+                        }}
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => uploadInputRef.current && uploadInputRef.current.click()}
+                        className={
+                          "h-10 px-4 rounded-xl transition outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
+                          (theme === "dark"
+                            ? "bg-white text-black hover:bg-white/90"
+                            : "bg-black text-white hover:bg-black/90")
+                        }
+                      >
+                        انتخاب فایل
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={closeUpload}
+                        className={
+                          "h-10 px-4 rounded-xl border transition outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
+                          (theme === "dark"
+                            ? "border-white/15 hover:bg-white/10"
+                            : "border-black/10 hover:bg-black/[0.04]")
+                        }
+                      >
+                        بستن
+                      </button>
+                    </div>
                   </div>
+
+                  {currentDocFiles.length > 0 && (
+                    <div
+                      className={
+                        "mt-4 rounded-2xl border overflow-hidden " +
+                        (theme === "dark"
+                          ? "border-white/10 bg-white/5"
+                          : "border-black/10 bg-black/[0.02]")
+                      }
+                    >
+                      <div
+                        className={
+                          "px-3 py-2 text-xs font-semibold border-b " +
+                          (theme === "dark"
+                            ? "border-white/10 text-white/80 bg-white/5"
+                            : "border-black/10 text-neutral-700 bg-white")
+                        }
+                      >
+                        فایل‌های انتخاب‌شده
+                      </div>
+
+                      <div className={theme === "dark" ? "divide-y divide-white/10" : "divide-y divide-black/10"}>
+                        {currentDocFiles.map((f) => (
+                          <div key={f.id} className="px-3 py-2 flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-xl overflow-hidden bg-black/5 dark:bg-white/10 grid place-items-center">
+                              {f.previewUrl ? (
+                                <img src={f.previewUrl} alt="" className="h-full w-full object-cover" />
+                              ) : (
+                                <span className="text-[11px] font-semibold">PDF</span>
+                              )}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="truncate text-[13px] font-medium">{f.name}</div>
+                                <div className={theme === "dark" ? "text-[11px] text-white/60" : "text-[11px] text-neutral-600"}>
+                                  {formatBytes(f.size)}
+                                </div>
+                              </div>
+
+                              <div className="mt-1 flex items-center gap-2">
+                                <div className={theme === "dark" ? "h-1.5 flex-1 rounded-full bg-white/10 overflow-hidden" : "h-1.5 flex-1 rounded-full bg-black/10 overflow-hidden"}>
+                                  <div
+                                    className={theme === "dark" ? "h-full bg-white/70 transition-[width]" : "h-full bg-black/70 transition-[width]"}
+                                    style={{
+                                      width:
+                                        f.status === "done"
+                                          ? "100%"
+                                          : f.status === "error"
+                                          ? "100%"
+                                          : `${Math.max(0, Math.min(100, f.progress || 0))}%`,
+                                      opacity: f.status === "error" ? 0.35 : 1,
+                                    }}
+                                  />
+                                </div>
+
+                                <div className="text-[11px] whitespace-nowrap">
+                                  {f.status === "optimizing"
+                                    ? "آماده‌سازی…"
+                                    : f.status === "uploading"
+                                    ? `${f.progress || 0}%`
+                                    : f.status === "done"
+                                    ? "انجام شد"
+                                    : "خطا"}
+                                </div>
+                              </div>
+
+                              {f.status === "error" && (
+                                <div className="mt-1 text-[11px] text-red-600 dark:text-red-400">
+                                  {f.error || "خطا در آپلود"}
+                                </div>
+                              )}
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => removeDocFile(uploadFor, f.id)}
+                              className={
+                                "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
+                                (theme === "dark"
+                                  ? "ring-neutral-800 hover:bg-white/10"
+                                  : "ring-black/15 hover:bg-black/5")
+                              }
+                              title="حذف"
+                              aria-label="حذف"
+                            >
+                              <svg
+                                viewBox="0 0 24 24"
+                                width="20"
+                                height="20"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.8"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M6 7H18" />
+                                <path d="M10 11V17" />
+                                <path d="M14 11V17" />
+                                <path d="M9 7L10 5H14L15 7" />
+                                <path d="M7 7L8 19H16L17 7" />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-4 pt-0 flex items-center justify-end">
@@ -1260,7 +1664,7 @@ export default function LettersPage() {
                     type="button"
                     onClick={closeUpload}
                     className={
-                      "h-10 px-4 rounded-xl border transition " +
+                      "h-10 px-4 rounded-xl border transition outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
                       (theme === "dark"
                         ? "border-white/15 hover:bg-white/10"
                         : "border-black/10 hover:bg-black/[0.04]")
