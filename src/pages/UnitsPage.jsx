@@ -27,7 +27,7 @@ function UnitsPage() {
   const pageOptions = [
     { key: "centers", label: "تعریف مراکز بودجه" },
     { key: "estimate", label: "برآورد هزینه‌ها" },
-    { key: "revenue", label: "برآورد درآمدها" }, 
+    { key: "revenue", label: "برآورد درآمدها" },
     { key: "alloc", label: "تخصیص بودجه" },
     { key: "reports", label: "گزارش‌ها" },
   ];
@@ -53,7 +53,7 @@ function UnitsPage() {
   const PAGE_MAP = {
     centers: "DefineBudgetCentersPage",
     estimate: "EstimatesPage",
-    revenue: "RevenueEstimatesPage", 
+    revenue: "RevenueEstimatesPage",
     alloc: "BudgetAllocationPage",
     reports: "ReportsPage",
   };
@@ -380,13 +380,16 @@ function UnitsPage() {
         {/* جدول واحدها */}
         <TableWrap>
           <div className="bg-white text-black rounded-2xl border border-black/10 overflow-hidden dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-            <table className="w-full text-sm [&_th]:text-center [&_td]:text-center" dir="rtl">
+            <table
+              className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-2 [&_td]:py-2"
+              dir="rtl"
+            >
               <THead>
-                <tr className="bg-black/5 text-black border-y border-black/10 dark:bg-white/5 dark:text-neutral-100 dark:border-neutral-700">
-                  <TH className="w-24 !text-center !font-semibold !text-black dark:!text-neutral-100">
+                <tr className="bg-black/5 text-black border-b border-black/10 dark:bg-white/5 dark:text-neutral-100 dark:border-neutral-700">
+                  <TH className="w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2">
                     #
                   </TH>
-                  <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100">
+                  <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2">
                     <div className="flex items-center justify-center gap-2">
                       <span>نام واحد</span>
                       <button
@@ -394,26 +397,18 @@ function UnitsPage() {
                         onClick={() =>
                           setNameSortDir((d) => (d === "asc" ? "desc" : "asc"))
                         }
-                        className="rounded-lg px-2 py-1 text-xs ring-1 ring-black/15 hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10"
+                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs border border-black/10 text-black/80 hover:bg-black/5 hover:text-black transition
+                                   dark:border-neutral-800 dark:text-neutral-100/90 dark:hover:bg-white/10 dark:hover:text-neutral-100"
                         title="مرتب‌سازی نام"
                       >
-                        {nameSortDir === "desc" ? (
-                          <img
-                            src="/images/icons/bozorgbekochik.svg"
-                            alt=""
-                            className="w-5 h-5 dark:invert"
-                          />
-                        ) : (
-                          <img
-                            src="/images/icons/kochikbebozorg.svg"
-                            alt=""
-                            className="w-5 h-5 dark:invert"
-                          />
-                        )}
+                        <span>مرتب‌سازی</span>
+                        <span className="text-[10px] opacity-70">
+                          {nameSortDir === "asc" ? "▲" : "▼"}
+                        </span>
                       </button>
                     </div>
                   </TH>
-                  <TH className="w-72 !text-center !font-semibold !text-black dark:!text-neutral-100">
+                  <TH className="w-72 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2">
                     اقدامات
                   </TH>
                 </tr>
@@ -424,7 +419,7 @@ function UnitsPage() {
                   <TR>
                     <TD
                       colSpan={3}
-                      className="text-center text-black/60 dark:text-neutral-400 py-4 bg-black/[0.02] dark:bg-transparent"
+                      className="text-center text-black/60 dark:text-neutral-400 py-4 bg-white dark:bg-transparent"
                     >
                       واحدی ثبت نشده.
                     </TD>
@@ -433,11 +428,12 @@ function UnitsPage() {
                   sortedList.map((u, idx) => (
                     <TR
                       key={u.id}
-                      className="odd:bg-black/[0.02] even:bg-black/[0.04] hover:bg-black/[0.06] transition-colors
-                               dark:odd:bg-white/5 dark:even:bg-white/10 dark:hover:bg-white/15 border-t border-black/10 dark:border-neutral-800"
+                      className="odd:bg-white even:bg-neutral-50 hover:bg-neutral-100/60 transition-colors
+                               dark:odd:bg-transparent dark:even:bg-white/5 dark:hover:bg-white/10
+                               border-b border-black/10 dark:border-neutral-800 last:border-b-0"
                     >
-                      <TD className="px-3 py-3">{idx + 1}</TD>
-                      <TD className="px-3 py-3">
+                      <TD className="px-3 py-2">{idx + 1}</TD>
+                      <TD className="px-3 py-2">
                         {editId === u.id ? (
                           <input
                             className="w-full max-w-xs rounded-xl px-2 py-2 text-center
@@ -451,7 +447,7 @@ function UnitsPage() {
                           u.name || "—"
                         )}
                       </TD>
-                      <TD className="px-3 py-3">
+                      <TD className="px-3 py-2">
                         {editId === u.id ? (
                           <div className="inline-flex items-center gap-2">
                             <PrimaryBtn
@@ -473,24 +469,26 @@ function UnitsPage() {
                             </Btn>
                           </div>
                         ) : (
-                          <div className="inline-flex items-center gap-2">
+                          <div className="inline-flex items-center gap-1">
                             <button
                               onClick={() => openAccess(u)}
                               disabled={!isAdmin}
-                              className="h-10 w-10 grid place-items-center rounded-xl ring-1 ring-black/15 text-black hover:bg-black/5 disabled:opacity-50 transition dark:ring-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10"
+                              className="h-8 w-8 grid place-items-center rounded-lg bg-transparent text-black disabled:opacity-50 transition-opacity hover:opacity-80
+                                         dark:text-neutral-100"
                               aria-label="سطح دسترسی"
                               title="سطح دسترسی"
                             >
                               <img
                                 src="/images/icons/sath.svg"
                                 alt=""
-                                className="w-5 h-5 dark:invert"
+                                className="w-4 h-4 dark:invert"
                               />
                             </button>
+
                             <Btn
                               onClick={() => startEdit(u)}
-                              className="!rounded-xl !bg:white !text-neutral-900 !ring-1 !ring-neutral-300 hover:!bg-neutral-100 disabled:opacity-50
-                                       dark:!bg-transparent dark:!text-neutral-100 dark:!ring-neutral-700 dark:hover:!bg-white/10"
+                              className="!h-8 !w-8 !p-0 !rounded-lg !bg-transparent !text-neutral-900 !ring-0 hover:!bg-transparent hover:opacity-80 disabled:opacity-50
+                                       dark:!text-neutral-100"
                               disabled={!isAdmin}
                               aria-label="ویرایش"
                               title="ویرایش"
@@ -498,13 +496,14 @@ function UnitsPage() {
                               <img
                                 src="/images/icons/pencil.svg"
                                 alt=""
-                                className="w-5 h-5 dark:invert"
+                                className="w-4 h-4 dark:invert"
                               />
                             </Btn>
+
                             <DangerBtn
                               onClick={() => del(u)}
-                              className="!rounded-xl !bg-white !text-red-600 !ring-1 !ring-red-500 hover:!bg-red-50 disabled:opacity-50
-                                       dark:!bg-transparent dark:!text-red-300 dark:!ring-red-400/60 dark:hover:!bg-white/10"
+                              className="!h-8 !w-8 !p-0 !rounded-lg !bg-transparent !ring-0 hover:!bg-transparent hover:opacity-80 disabled:opacity-50
+                                       dark:!text-red-300"
                               disabled={!isAdmin}
                               aria-label="حذف"
                               title="حذف"
@@ -512,7 +511,7 @@ function UnitsPage() {
                               <img
                                 src="/images/icons/hazf.svg"
                                 alt=""
-                                className="w-5 h-5 dark:invert"
+                                className="w-4 h-4 dark:invert"
                               />
                             </DangerBtn>
                           </div>
