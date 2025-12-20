@@ -380,14 +380,24 @@ export default function LettersPage() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFor, setUploadFor] = useState("incoming");
 
+  const [incomingFolderKey, setIncomingFolderKey] = useState(0);
+  const [outgoingFolderKey, setOutgoingFolderKey] = useState(0);
+
+  const closeUpload = () => {
+    if (uploadFor === "incoming") setIncomingFolderKey((k) => k + 1);
+    else setOutgoingFolderKey((k) => k + 1);
+    setUploadOpen(false);
+  };
+
   useEffect(() => {
     if (!uploadOpen) return;
     const onEsc = (e) => {
-      if (e.key === "Escape") setUploadOpen(false);
+      if (e.key === "Escape") closeUpload();
     };
     document.addEventListener("keydown", onEsc);
     return () => document.removeEventListener("keydown", onEsc);
-  }, [uploadOpen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uploadOpen, uploadFor]);
 
   const [category, setCategory] = useState("");
   const [projectId, setProjectId] = useState("");
@@ -570,10 +580,8 @@ export default function LettersPage() {
   };
 
   const folderIconBtnCls =
-    "inline-flex items-center justify-center rounded-2xl border p-1 transition cursor-pointer select-none " +
-    (theme === "dark"
-      ? "border-white/15 bg-white/5 hover:bg-white/10"
-      : "border-black/10 bg-white hover:bg-black/[0.04]");
+    "inline-flex items-center justify-center p-0 bg-transparent border-0 outline-none rounded-xl " +
+    "focus:ring-2 focus:ring-black/15 dark:focus:ring-white/20";
 
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
@@ -793,8 +801,8 @@ export default function LettersPage() {
                         aria-label="بارگذاری نامه"
                         title="بارگذاری نامه"
                       >
-                        <div className="relative" style={{ height: "56px", width: "56px" }}>
-                          <Folder size={0.7} color="#4895ef" className="" />
+                        <div className="relative" style={{ height: "46px", width: "46px" }}>
+                          <Folder key={incomingFolderKey} size={0.55} color="#4895ef" className="" />
                         </div>
                       </button>
                     </div>
@@ -1093,8 +1101,8 @@ export default function LettersPage() {
                         aria-label="بارگذاری نامه"
                         title="بارگذاری نامه"
                       >
-                        <div className="relative" style={{ height: "56px", width: "56px" }}>
-                          <Folder size={0.7} color="#1a7431" className="" />
+                        <div className="relative" style={{ height: "46px", width: "46px" }}>
+                          <Folder key={outgoingFolderKey} size={0.55} color="#1a7431" className="" />
                         </div>
                       </button>
                     </div>
@@ -1198,10 +1206,7 @@ export default function LettersPage() {
       {uploadOpen &&
         createPortal(
           <div className="fixed inset-0 z-[9999]">
-            <div
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-              onClick={() => setUploadOpen(false)}
-            />
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeUpload} />
             <div className="absolute inset-0 flex items-center justify-center p-4">
               <div
                 className={
@@ -1217,7 +1222,7 @@ export default function LettersPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setUploadOpen(false)}
+                    onClick={closeUpload}
                     className={
                       "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
                       (theme === "dark"
@@ -1253,7 +1258,7 @@ export default function LettersPage() {
                 <div className="p-4 pt-0 flex items-center justify-end">
                   <button
                     type="button"
-                    onClick={() => setUploadOpen(false)}
+                    onClick={closeUpload}
                     className={
                       "h-10 px-4 rounded-xl border transition " +
                       (theme === "dark"
