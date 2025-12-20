@@ -385,32 +385,38 @@ function UnitsPage() {
               dir="rtl"
             >
               <THead>
-                <tr className="bg-black/5 text-black border-b border-black/10 dark:bg-white/5 dark:text-neutral-100 dark:border-neutral-700">
+                <tr className="bg-black/5 text-black border-b border-neutral-200 dark:bg-white/5 dark:text-neutral-100 dark:border-neutral-700">
                   <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100">
                     #
                   </TH>
                   <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setNameSortDir((d) => (d === "asc" ? "desc" : "asc"))
-                      }
-                      className={`inline-flex items-center justify-center gap-1 select-none
-                                  text-[13px] font-medium
-                                  hover:underline underline-offset-4 transition
-                                  ${
-                                    true
-                                      ? "text-black/80 hover:text-black decoration-black/30"
-                                      : ""
-                                  }
-                                  dark:text-neutral-100/80 dark:hover:text-neutral-100 dark:decoration-white/30`}
-                      title="مرتب‌سازی نام"
-                    >
+                    <div className="flex items-center justify-center gap-2">
                       <span>نام واحد</span>
-                      <span className="text-[10px] opacity-70">
-                        {nameSortDir === "asc" ? "▲" : "▼"}
-                      </span>
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setNameSortDir((d) => (d === "asc" ? "desc" : "asc"))
+                        }
+                        className="h-7 w-7 inline-grid place-items-center rounded-md bg-transparent hover:bg-black/5 active:bg-black/10 transition
+                                   dark:hover:bg-white/10 dark:active:bg-white/15"
+                        title="مرتب‌سازی نام"
+                        aria-label="مرتب‌سازی نام"
+                      >
+                        {nameSortDir === "desc" ? (
+                          <img
+                            src="/images/icons/bozorgbekochik.svg"
+                            alt=""
+                            className="w-4 h-4 dark:invert"
+                          />
+                        ) : (
+                          <img
+                            src="/images/icons/kochikbebozorg.svg"
+                            alt=""
+                            className="w-4 h-4 dark:invert"
+                          />
+                        )}
+                      </button>
+                    </div>
                   </TH>
                   <TH className="w-44 sm:w-72 !text-center !font-semibold !text-black dark:!text-neutral-100">
                     اقدامات
@@ -420,10 +426,10 @@ function UnitsPage() {
 
               <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100">
                 {(sortedList || []).length === 0 ? (
-                  <TR>
+                  <TR className="bg-white dark:bg-transparent">
                     <TD
                       colSpan={3}
-                      className="text-center text-black/60 dark:text-neutral-400 py-4 bg-white dark:bg-transparent"
+                      className="text-center text-black/60 dark:text-neutral-400 py-4"
                     >
                       واحدی ثبت نشده.
                     </TD>
@@ -432,9 +438,9 @@ function UnitsPage() {
                   sortedList.map((u, idx) => (
                     <TR
                       key={u.id}
-                      className="odd:bg-white even:bg-neutral-50 hover:bg-neutral-100/60 transition-colors
-                               dark:odd:bg-transparent dark:even:bg-white/5 dark:hover:bg-white/10
-                               border-b border-black/10 dark:border-neutral-800 last:border-b-0"
+                      className="odd:bg-white even:bg-neutral-50 hover:bg-neutral-100/70 transition-colors
+                               dark:odd:bg-neutral-900 dark:even:bg-neutral-800/60 dark:hover:bg-white/10
+                               border-b border-neutral-200 dark:border-neutral-700 last:border-b-0"
                     >
                       <TD className="px-3">{idx + 1}</TD>
                       <TD className="px-3">
@@ -477,8 +483,8 @@ function UnitsPage() {
                             <button
                               onClick={() => openAccess(u)}
                               disabled={!isAdmin}
-                              className="h-8 w-8 grid place-items-center rounded-lg bg-transparent text-black hover:opacity-80 disabled:opacity-50 transition-opacity
-                                         dark:text-neutral-100"
+                              className="h-8 w-8 grid place-items-center rounded-md bg-transparent hover:bg-black/5 active:bg-black/10 disabled:opacity-50 transition
+                                         dark:hover:bg-white/10 dark:active:bg-white/15"
                               aria-label="سطح دسترسی"
                               title="سطح دسترسی"
                             >
@@ -491,8 +497,8 @@ function UnitsPage() {
 
                             <Btn
                               onClick={() => startEdit(u)}
-                              className="!h-8 !w-8 !p-0 !rounded-lg !bg-transparent !text-neutral-900 !ring-0 hover:!bg-transparent hover:opacity-80 disabled:opacity-50
-                                       dark:!text-neutral-100"
+                              className="!h-8 !w-8 !p-0 !rounded-md !bg-transparent !ring-0 !shadow-none hover:!bg-black/5 active:!bg-black/10 disabled:opacity-50
+                                       dark:hover:!bg-white/10 dark:active:!bg-white/15"
                               disabled={!isAdmin}
                               aria-label="ویرایش"
                               title="ویرایش"
@@ -506,8 +512,8 @@ function UnitsPage() {
 
                             <DangerBtn
                               onClick={() => del(u)}
-                              className="!h-8 !w-8 !p-0 !rounded-lg !bg-transparent !ring-0 hover:!bg-transparent hover:opacity-80 disabled:opacity-50
-                                       dark:!text-red-300"
+                              className="!h-8 !w-8 !p-0 !rounded-md !bg-transparent !ring-0 !shadow-none hover:!bg-black/5 active:!bg-black/10 disabled:opacity-50
+                                       dark:hover:!bg-white/10 dark:active:!bg-white/15"
                               disabled={!isAdmin}
                               aria-label="حذف"
                               title="حذف"
