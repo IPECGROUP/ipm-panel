@@ -386,12 +386,13 @@ function UnitsPage() {
               dir="rtl"
             >
               <THead>
+                {/* ✅ هدر بزرگ‌تر از بقیه ردیف‌ها */}
                 <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
-                  <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !text-[13px] md:!text-[14px]">
+                  <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
                     #
                   </TH>
 
-                  <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !text-[13px] md:!text-[14px]">
+                  <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
                     <div className="flex items-center justify-center gap-2">
                       <span>نام واحد</span>
 
@@ -421,7 +422,7 @@ function UnitsPage() {
                     </div>
                   </TH>
 
-                  <TH className="w-44 sm:w-72 !text-center !font-semibold !text-black dark:!text-neutral-100 !text-[13px] md:!text-[14px]">
+                  <TH className="w-44 sm:w-72 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
                     اقدامات
                   </TH>
                 </tr>
