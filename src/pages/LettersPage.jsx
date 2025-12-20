@@ -801,10 +801,10 @@ export default function LettersPage() {
     setUploadOpen(true);
   };
 
-  const attachBtnCls =
-    "h-11 px-4 rounded-2xl border text-sm font-semibold whitespace-nowrap transition outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
+  const uploadTriggerCls =
+    "h-11 px-3 rounded-xl border transition flex items-center justify-center gap-2 whitespace-nowrap outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
     (theme === "dark"
-      ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+      ? "border-white/15 bg-white/5 text-white/90 hover:bg-white/10"
       : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]");
 
   const uploadBoxCls =
@@ -994,35 +994,7 @@ export default function LettersPage() {
 
                       <div className="space-y-2">
                         {returnToIds.map((v, idx) => (
-                          <div key={idx} className="flex items-center gap-2 flex-wrap">
-                            <select
-                              value={v}
-                              onChange={(e) => {
-                                const nv = e.target.value;
-                                setReturnToIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
-                              }}
-                              className={inputCls + " flex-1 min-w-[220px]"}
-                            >
-                              <option value=""></option>
-                              {myLetters.map((l) => (
-                                <option key={l.id} value={String(l.id)}>
-                                  {String(l.letter_no || "")}
-                                </option>
-                              ))}
-                            </select>
-
-                            {idx === 0 && (
-                              <button
-                                type="button"
-                                onClick={() => openUpload("incoming")}
-                                className={attachBtnCls}
-                                aria-label="آپلود و الصاق فایل‌ها"
-                                title="آپلود و الصاق فایل‌ها"
-                              >
-                                آپلود و الصاق فایل‌ها
-                              </button>
-                            )}
-
+                          <div key={idx} className="flex items-center gap-2">
                             {idx === returnToIds.length - 1 && (
                               <button
                                 type="button"
@@ -1037,6 +1009,37 @@ export default function LettersPage() {
                                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                                   <path d="M12 5v14M5 12h14" />
                                 </svg>
+                              </button>
+                            )}
+
+                            <div className="w-[220px] md:w-[260px]">
+                              <select
+                                value={v}
+                                onChange={(e) => {
+                                  const nv = e.target.value;
+                                  setReturnToIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
+                                }}
+                                className={inputCls}
+                              >
+                                <option value=""></option>
+                                {myLetters.map((l) => (
+                                  <option key={l.id} value={String(l.id)}>
+                                    {String(l.letter_no || "")}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {idx === 0 && (
+                              <button
+                                type="button"
+                                onClick={() => openUpload("incoming")}
+                                className={uploadTriggerCls + " flex-1"}
+                                aria-label="آپلود و الصاق فایل ها"
+                                title="آپلود و الصاق فایل ها"
+                              >
+                                <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
+                                <span className="text-sm font-normal">آپلود و الصاق فایل ها</span>
                               </button>
                             )}
                           </div>
@@ -1287,35 +1290,7 @@ export default function LettersPage() {
 
                       <div className="space-y-2">
                         {returnToIds.map((v, idx) => (
-                          <div key={idx} className="flex items-center gap-2 flex-wrap">
-                            <select
-                              value={v}
-                              onChange={(e) => {
-                                const nv = e.target.value;
-                                setReturnToIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
-                              }}
-                              className={inputCls + " flex-1 min-w-[220px]"}
-                            >
-                              <option value=""></option>
-                              {myLetters.map((l) => (
-                                <option key={l.id} value={String(l.id)}>
-                                  {String(l.letter_no || "")}
-                                </option>
-                              ))}
-                            </select>
-
-                            {idx === 0 && (
-                              <button
-                                type="button"
-                                onClick={() => openUpload("outgoing")}
-                                className={attachBtnCls}
-                                aria-label="آپلود و الصاق فایل‌ها"
-                                title="آپلود و الصاق فایل‌ها"
-                              >
-                                آپلود و الصاق فایل‌ها
-                              </button>
-                            )}
-
+                          <div key={idx} className="flex items-center gap-2">
                             {idx === returnToIds.length - 1 && (
                               <button
                                 type="button"
@@ -1330,6 +1305,37 @@ export default function LettersPage() {
                                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                                   <path d="M12 5v14M5 12h14" />
                                 </svg>
+                              </button>
+                            )}
+
+                            <div className="w-[220px] md:w-[260px]">
+                              <select
+                                value={v}
+                                onChange={(e) => {
+                                  const nv = e.target.value;
+                                  setReturnToIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
+                                }}
+                                className={inputCls}
+                              >
+                                <option value=""></option>
+                                {myLetters.map((l) => (
+                                  <option key={l.id} value={String(l.id)}>
+                                    {String(l.letter_no || "")}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {idx === 0 && (
+                              <button
+                                type="button"
+                                onClick={() => openUpload("outgoing")}
+                                className={uploadTriggerCls + " flex-1"}
+                                aria-label="آپلود و الصاق فایل ها"
+                                title="آپلود و الصاق فایل ها"
+                              >
+                                <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
+                                <span className="text-sm font-normal">آپلود و الصاق فایل ها</span>
                               </button>
                             )}
                           </div>
@@ -1481,7 +1487,7 @@ export default function LettersPage() {
 
                 <div className="p-4">
                   <div className={uploadBoxCls} onDragOver={onDragOverUpload} onDrop={onDropUpload}>
-                    <div className="text-sm font-semibold">فایل را اینجا رها کن</div>
+                    <div className="text-sm">فایل را اینجا رها کن</div>
                     <div className={theme === "dark" ? "text-white/60 text-xs mt-1" : "text-neutral-600 text-xs mt-1"}>
                       تصویر یا PDF تا ۴۰۰KB
                     </div>
