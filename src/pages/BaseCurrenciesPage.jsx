@@ -212,9 +212,7 @@ function BaseCurrenciesPage() {
     // اگر temp-row است، فقط لوکالی آپدیت کن
     if (typeof editRow.id === "string" && editRow.id.startsWith("tmp-")) {
       if (editRow.kind === "type") {
-        setTypes((prev) =>
-          prev.map((r) => (r.id === editRow.id ? { ...r, title: editRow.title } : r))
-        );
+        setTypes((prev) => prev.map((r) => (r.id === editRow.id ? { ...r, title: editRow.title } : r)));
       } else {
         setSources((prev) =>
           prev.map((r) => (r.id === editRow.id ? { ...r, title: editRow.title } : r))
@@ -236,9 +234,7 @@ function BaseCurrenciesPage() {
       });
 
       if (editRow.kind === "type") {
-        setTypes((prev) =>
-          prev.map((r) => (r.id === editRow.id ? { ...r, title: editRow.title } : r))
-        );
+        setTypes((prev) => prev.map((r) => (r.id === editRow.id ? { ...r, title: editRow.title } : r)));
       } else {
         setSources((prev) =>
           prev.map((r) => (r.id === editRow.id ? { ...r, title: editRow.title } : r))
@@ -256,10 +252,7 @@ function BaseCurrenciesPage() {
     arr.sort((a, b) => {
       const at = String(a.title || a.name || "");
       const bt = String(b.title || b.name || "");
-      const cmp = at.localeCompare(bt, "fa", {
-        numeric: true,
-        sensitivity: "base",
-      });
+      const cmp = at.localeCompare(bt, "fa", { numeric: true, sensitivity: "base" });
       return typeSortDir === "asc" ? cmp : -cmp;
     });
     return arr;
@@ -270,10 +263,7 @@ function BaseCurrenciesPage() {
     arr.sort((a, b) => {
       const at = String(a.title || a.name || "");
       const bt = String(b.title || b.name || "");
-      const cmp = at.localeCompare(bt, "fa", {
-        numeric: true,
-        sensitivity: "base",
-      });
+      const cmp = at.localeCompare(bt, "fa", { numeric: true, sensitivity: "base" });
       return srcSortDir === "asc" ? cmp : -cmp;
     });
     return arr;
@@ -422,7 +412,15 @@ function BaseCurrenciesPage() {
                             aria-label="انصراف"
                             title="انصراف"
                           >
-                            <img src="/images/icons/bastan.svg" alt="" className="w-[18px] h-[18px] dark:invert" />
+                            <img
+                              src="/images/icons/bastan.svg"
+                              alt=""
+                              className="w-[16px] h-[16px]"
+                              style={{
+                                filter:
+                                  "brightness(0) saturate(100%) invert(17%) sepia(96%) saturate(5345%) hue-rotate(353deg) brightness(97%) contrast(115%)",
+                              }}
+                            />
                           </button>
                         </div>
                       ) : (
