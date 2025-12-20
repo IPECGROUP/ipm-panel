@@ -360,6 +360,7 @@ function UnitsPage() {
                          dark:bg-neutral-800 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-400"
             />
             <button
+              type="button"
               disabled={!isAdmin || saving}
               onClick={addUnit}
               className="h-10 w-10 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50
@@ -381,7 +382,7 @@ function UnitsPage() {
         <TableWrap>
           <div className="bg-white text-black rounded-2xl border border-black/10 overflow-hidden dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
             <table
-              className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-1 [&_td]:py-1"
+              className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-1 [&_td]:py-0.5"
               dir="rtl"
             >
               <THead>
@@ -393,20 +394,21 @@ function UnitsPage() {
                   <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100">
                     <div className="flex items-center justify-center gap-2">
                       <span>نام واحد</span>
+
+                      {/* Sort icon (grey, smaller, no bg) */}
                       <button
                         type="button"
                         onClick={() =>
                           setNameSortDir((d) => (d === "asc" ? "desc" : "asc"))
                         }
-                        className="h-8 w-8 inline-grid place-items-center rounded-lg bg-transparent ring-1 ring-black/15
-                                   hover:bg-black/5 active:bg-black/10 transition
-                                   text-black/70 dark:text-neutral-100
-                                   dark:ring-neutral-800 dark:hover:bg-white/10 dark:active:bg-white/15"
+                        className="h-7 w-7 inline-grid place-items-center bg-transparent p-0
+                                   text-neutral-400 hover:text-neutral-500 active:text-neutral-600
+                                   dark:text-neutral-400 dark:hover:text-neutral-300"
                         title="مرتب‌سازی نام"
                         aria-label="مرتب‌سازی نام"
                       >
                         <svg
-                          className={`w-5 h-5 transition-transform ${
+                          className={`w-4 h-4 transition-transform ${
                             nameSortDir === "asc" ? "rotate-180" : ""
                           }`}
                           focusable="false"
@@ -425,7 +427,12 @@ function UnitsPage() {
                 </tr>
               </THead>
 
-              <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100">
+              {/* zebra striping (robust) */}
+              <tbody
+                className="[&_td]:text-black dark:[&_td]:text-neutral-100
+                           [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-100
+                           dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/70"
+              >
                 {(sortedList || []).length === 0 ? (
                   <TR className="bg-white dark:bg-transparent">
                     <TD
@@ -443,16 +450,13 @@ function UnitsPage() {
                       : "border-b border-neutral-300 dark:border-neutral-700";
 
                     return (
-                      <TR
-                        key={u.id}
-                        className="odd:bg-white even:bg-neutral-100 dark:odd:bg-neutral-900 dark:even:bg-neutral-800/70"
-                      >
+                      <TR key={u.id}>
                         <TD className={`px-3 ${tdBorder}`}>{idx + 1}</TD>
 
                         <TD className={`px-3 ${tdBorder}`}>
                           {editId === u.id ? (
                             <input
-                              className="w-full max-w-xs rounded-xl px-2 py-1 text-center
+                              className="w-full max-w-xs rounded-xl px-2 py-0.5 text-center
                                      border border-black/15 dark:border-neutral-700
                                      bg-white text-black placeholder-black/40
                                      dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400"
@@ -468,6 +472,7 @@ function UnitsPage() {
                           {editId === u.id ? (
                             <div className="inline-flex items-center gap-2">
                               <PrimaryBtn
+                                type="button"
                                 onClick={saveEdit}
                                 className="!h-10 !px-4 !rounded-xl !bg-neutral-900 !text-white !ring-1 !ring-black/15 hover:!bg-black
                                        dark:!bg-neutral-100 dark:!text-neutral-900 dark:!ring-neutral-700 dark:hover:!bg-neutral-200"
@@ -475,6 +480,7 @@ function UnitsPage() {
                                 ذخیره
                               </PrimaryBtn>
                               <Btn
+                                type="button"
                                 onClick={() => {
                                   setEditId(null);
                                   setEditName("");
@@ -488,7 +494,12 @@ function UnitsPage() {
                           ) : (
                             <div className="inline-flex items-center gap-2">
                               <button
-                                onClick={() => openAccess(u)}
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  openAccess(u);
+                                }}
                                 disabled={!isAdmin}
                                 className="h-10 w-10 grid place-items-center bg-transparent disabled:opacity-50 hover:opacity-80 active:opacity-70 transition"
                                 aria-label="سطح دسترسی"
@@ -497,12 +508,17 @@ function UnitsPage() {
                                 <img
                                   src="/images/icons/sath.svg"
                                   alt=""
-                                  className="w-5 h-5 dark:invert"
+                                  className="w-[18px] h-[18px] dark:invert"
                                 />
                               </button>
 
                               <Btn
-                                onClick={() => startEdit(u)}
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  startEdit(u);
+                                }}
                                 className="!h-10 !w-10 !p-0 !rounded-xl !bg-transparent !bg-none !ring-0 !border-0 !shadow-none
                                            hover:!bg-transparent active:!bg-transparent focus:!bg-transparent
                                            hover:opacity-80 active:opacity-70 disabled:opacity-50"
@@ -513,12 +529,17 @@ function UnitsPage() {
                                 <img
                                   src="/images/icons/pencil.svg"
                                   alt=""
-                                  className="w-5 h-5 dark:invert"
+                                  className="w-[18px] h-[18px] dark:invert"
                                 />
                               </Btn>
 
                               <DangerBtn
-                                onClick={() => del(u)}
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  del(u);
+                                }}
                                 className="!h-10 !w-10 !p-0 !rounded-xl !bg-transparent !bg-none !ring-0 !border-0 !shadow-none
                                            hover:!bg-transparent active:!bg-transparent focus:!bg-transparent
                                            hover:opacity-80 active:opacity-70 disabled:opacity-50"
@@ -529,7 +550,11 @@ function UnitsPage() {
                                 <img
                                   src="/images/icons/hazf.svg"
                                   alt=""
-                                  className="w-5 h-5 dark:invert"
+                                  className="w-[18px] h-[18px]"
+                                  style={{
+                                    filter:
+                                      "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
+                                  }}
                                 />
                               </DangerBtn>
                             </div>
@@ -555,6 +580,7 @@ function UnitsPage() {
                 </h2>
                 <div className="flex items-center gap-2">
                   <button
+                    type="button"
                     onClick={closeAccess}
                     className="px-3 h-9 rounded-lg border border-black/15 hover:bg-black/5 transition dark:border-neutral-700 dark:hover:bg-white/10"
                   >
@@ -661,6 +687,7 @@ function UnitsPage() {
 
               <div className="mt-4 flex items-center justify-end gap-2">
                 <PrimaryBtn
+                  type="button"
                   onClick={saveUnitAccess}
                   disabled={!isAdmin || accessSaving || accessLoading}
                 >
