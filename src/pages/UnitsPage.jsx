@@ -438,96 +438,108 @@ function UnitsPage() {
                     </TD>
                   </TR>
                 ) : (
-                  sortedList.map((u, idx) => (
-                    <TR
-                      key={u.id}
-                      className="odd:bg-white even:bg-neutral-100 border-b border-neutral-300 last:border-b-0
-                               dark:odd:bg-neutral-900 dark:even:bg-neutral-800/70 dark:border-neutral-700"
-                    >
-                      <TD className="px-3">{idx + 1}</TD>
-                      <TD className="px-3">
-                        {editId === u.id ? (
-                          <input
-                            className="w-full max-w-xs rounded-xl px-2 py-1.5 text-center
+                  sortedList.map((u, idx) => {
+                    const isLast = idx === sortedList.length - 1;
+                    const tdBorder = isLast
+                      ? ""
+                      : "border-b border-neutral-300 dark:border-neutral-700";
+
+                    return (
+                      <TR
+                        key={u.id}
+                        className="odd:bg-white even:bg-neutral-100 dark:odd:bg-neutral-900 dark:even:bg-neutral-800/70"
+                      >
+                        <TD className={`px-3 ${tdBorder}`}>{idx + 1}</TD>
+
+                        <TD className={`px-3 ${tdBorder}`}>
+                          {editId === u.id ? (
+                            <input
+                              className="w-full max-w-xs rounded-xl px-2 py-1.5 text-center
                                      border border-black/15 dark:border-neutral-700
                                      bg-white text-black placeholder-black/40
                                      dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400"
-                            value={editName}
-                            onChange={(e) => setEditName(e.target.value)}
-                          />
-                        ) : (
-                          u.name || "—"
-                        )}
-                      </TD>
-                      <TD className="px-3">
-                        {editId === u.id ? (
-                          <div className="inline-flex items-center gap-2">
-                            <PrimaryBtn
-                              onClick={saveEdit}
-                              className="!h-10 !px-4 !rounded-xl !bg-neutral-900 !text-white !ring-1 !ring-black/15 hover:!bg-black
+                              value={editName}
+                              onChange={(e) => setEditName(e.target.value)}
+                            />
+                          ) : (
+                            u.name || "—"
+                          )}
+                        </TD>
+
+                        <TD className={`px-3 ${tdBorder}`}>
+                          {editId === u.id ? (
+                            <div className="inline-flex items-center gap-2">
+                              <PrimaryBtn
+                                onClick={saveEdit}
+                                className="!h-10 !px-4 !rounded-xl !bg-neutral-900 !text-white !ring-1 !ring-black/15 hover:!bg-black
                                        dark:!bg-neutral-100 dark:!text-neutral-900 dark:!ring-neutral-700 dark:hover:!bg-neutral-200"
-                            >
-                              ذخیره
-                            </PrimaryBtn>
-                            <Btn
-                              onClick={() => {
-                                setEditId(null);
-                                setEditName("");
-                              }}
-                              className="!h-10 !px-4 !rounded-xl !bg-white !text-neutral-900 !ring-1 !ring-neutral-300 hover:!bg-neutral-100
+                              >
+                                ذخیره
+                              </PrimaryBtn>
+                              <Btn
+                                onClick={() => {
+                                  setEditId(null);
+                                  setEditName("");
+                                }}
+                                className="!h-10 !px-4 !rounded-xl !bg-white !text-neutral-900 !ring-1 !ring-neutral-300 hover:!bg-neutral-100
                                        dark:!bg-transparent dark:!text-neutral-100 dark:!ring-neutral-700 dark:hover:!bg:white/10"
-                            >
-                              انصراف
-                            </Btn>
-                          </div>
-                        ) : (
-                          <div className="inline-flex items-center gap-2">
-                            <button
-                              onClick={() => openAccess(u)}
-                              disabled={!isAdmin}
-                              className="h-10 w-10 grid place-items-center bg-transparent disabled:opacity-50 hover:opacity-80 active:opacity-70 transition"
-                              aria-label="سطح دسترسی"
-                              title="سطح دسترسی"
-                            >
-                              <img
-                                src="/images/icons/sath.svg"
-                                alt=""
-                                className="w-5 h-5 dark:invert"
-                              />
-                            </button>
+                              >
+                                انصراف
+                              </Btn>
+                            </div>
+                          ) : (
+                            <div className="inline-flex items-center gap-2">
+                              <button
+                                onClick={() => openAccess(u)}
+                                disabled={!isAdmin}
+                                className="h-10 w-10 grid place-items-center bg-transparent disabled:opacity-50 hover:opacity-80 active:opacity-70 transition"
+                                aria-label="سطح دسترسی"
+                                title="سطح دسترسی"
+                              >
+                                <img
+                                  src="/images/icons/sath.svg"
+                                  alt=""
+                                  className="w-5 h-5 dark:invert"
+                                />
+                              </button>
 
-                            <Btn
-                              onClick={() => startEdit(u)}
-                              className="!h-10 !w-10 !p-0 !rounded-xl !bg-transparent !ring-0 !shadow-none hover:!bg-transparent active:!bg-transparent hover:opacity-80 active:opacity-70 disabled:opacity-50"
-                              disabled={!isAdmin}
-                              aria-label="ویرایش"
-                              title="ویرایش"
-                            >
-                              <img
-                                src="/images/icons/pencil.svg"
-                                alt=""
-                                className="w-5 h-5 dark:invert"
-                              />
-                            </Btn>
+                              <Btn
+                                onClick={() => startEdit(u)}
+                                className="!h-10 !w-10 !p-0 !rounded-xl !bg-transparent !bg-none !ring-0 !border-0 !shadow-none
+                                           hover:!bg-transparent active:!bg-transparent focus:!bg-transparent
+                                           hover:opacity-80 active:opacity-70 disabled:opacity-50"
+                                disabled={!isAdmin}
+                                aria-label="ویرایش"
+                                title="ویرایش"
+                              >
+                                <img
+                                  src="/images/icons/pencil.svg"
+                                  alt=""
+                                  className="w-5 h-5 dark:invert"
+                                />
+                              </Btn>
 
-                            <DangerBtn
-                              onClick={() => del(u)}
-                              className="!h-10 !w-10 !p-0 !rounded-xl !bg-transparent !ring-0 !shadow-none hover:!bg-transparent active:!bg-transparent hover:opacity-80 active:opacity-70 disabled:opacity-50"
-                              disabled={!isAdmin}
-                              aria-label="حذف"
-                              title="حذف"
-                            >
-                              <img
-                                src="/images/icons/hazf.svg"
-                                alt=""
-                                className="w-5 h-5 dark:invert"
-                              />
-                            </DangerBtn>
-                          </div>
-                        )}
-                      </TD>
-                    </TR>
-                  ))
+                              <DangerBtn
+                                onClick={() => del(u)}
+                                className="!h-10 !w-10 !p-0 !rounded-xl !bg-transparent !bg-none !ring-0 !border-0 !shadow-none
+                                           hover:!bg-transparent active:!bg-transparent focus:!bg-transparent
+                                           hover:opacity-80 active:opacity-70 disabled:opacity-50"
+                                disabled={!isAdmin}
+                                aria-label="حذف"
+                                title="حذف"
+                              >
+                                <img
+                                  src="/images/icons/hazf.svg"
+                                  alt=""
+                                  className="w-5 h-5 dark:invert"
+                                />
+                              </DangerBtn>
+                            </div>
+                          )}
+                        </TD>
+                      </TR>
+                    );
+                  })
                 )}
               </tbody>
             </table>
