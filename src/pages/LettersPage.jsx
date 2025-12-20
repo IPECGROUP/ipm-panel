@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
+import Folder from "../components/ui/Folder.jsx";
 
 const TABS = [
   { id: "incoming", label: "وارده" },
@@ -346,112 +347,6 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
   );
 }
 
-function FolderUploadTile({ theme, onClick }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="w-full text-right group"
-      aria-label="بارگذاری نامه"
-      title="بارگذاری نامه"
-    >
-      <div
-        className={
-          "relative w-full h-[92px] rounded-2xl border overflow-hidden transition " +
-          (theme === "dark"
-            ? "border-white/10 bg-white/5 hover:bg-white/10"
-            : "border-black/10 bg-black/[0.02] hover:bg-black/[0.04]")
-        }
-      >
-        <div className="absolute inset-0 pointer-events-none">
-          <div
-            className={
-              "absolute top-3 left-6 w-48 h-14 rounded-2xl border transition-transform duration-300 " +
-              (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
-            }
-            style={{ transform: "translateY(10px) rotate(-2deg)" }}
-          />
-          <div
-            className={
-              "absolute top-2 left-8 w-52 h-16 rounded-2xl border transition-transform duration-300 " +
-              (theme === "dark" ? "border-white/10 bg-white/10" : "border-black/10 bg-white")
-            }
-            style={{ transform: "translateY(6px) rotate(1.5deg)" }}
-          />
-        </div>
-
-        <div
-          className={
-            "absolute bottom-0 left-0 right-0 h-[62px] rounded-b-2xl border-t transition " +
-            (theme === "dark"
-              ? "border-white/10 bg-white/10"
-              : "border-black/10 bg-white")
-          }
-        />
-
-        <div
-          className={
-            "absolute bottom-[38px] left-0 right-0 h-[44px] transition-transform duration-300 " +
-            (theme === "dark" ? "bg-white/10" : "bg-white")
-          }
-          style={{
-            clipPath: "polygon(0% 100%, 0% 35%, 26% 35%, 32% 0%, 100% 0%, 100% 100%)",
-            transformOrigin: "right bottom",
-          }}
-        />
-
-        <div
-          className="absolute bottom-[38px] left-0 right-0 h-[44px] border-t"
-          style={{
-            clipPath: "polygon(0% 100%, 0% 35%, 26% 35%, 32% 0%, 100% 0%, 100% 100%)",
-            borderColor: theme === "dark" ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)",
-          }}
-        />
-
-        <div className="relative h-full px-4 flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className={theme === "dark" ? "text-white font-semibold text-sm" : "text-neutral-900 font-semibold text-sm"}>
-              انتخاب فایل نامه
-            </div>
-            <div className={theme === "dark" ? "text-white/60 text-xs mt-1" : "text-neutral-500 text-xs mt-1"}>
-              برای باز شدن پنجره آپلود کلیک کنید
-            </div>
-          </div>
-
-          <div
-            className={
-              "h-10 w-10 rounded-xl border flex items-center justify-center transition " +
-              (theme === "dark"
-                ? "border-white/10 bg-white/10 group-hover:bg-white/15"
-                : "border-black/10 bg-black/[0.03] group-hover:bg-black/[0.06]")
-            }
-          >
-            <svg
-              viewBox="0 0 24 24"
-              className={"w-5 h-5 " + (theme === "dark" ? "text-white" : "text-neutral-900")}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M12 3v12" />
-              <path d="M8 7l4-4 4 4" />
-              <path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" />
-            </svg>
-          </div>
-        </div>
-
-        <div
-          className={
-            "absolute inset-x-0 bottom-0 h-px " + (theme === "dark" ? "bg-white/10" : "bg-black/10")
-          }
-        />
-      </div>
-    </button>
-  );
-}
-
 export default function LettersPage() {
   const API_BASE = (window.API_URL || "/api").replace(/\/+$/, "");
   async function api(path, opt = {}) {
@@ -481,6 +376,18 @@ export default function LettersPage() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [tab, setTab] = useState("incoming");
+
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadFor, setUploadFor] = useState("incoming");
+
+  useEffect(() => {
+    if (!uploadOpen) return;
+    const onEsc = (e) => {
+      if (e.key === "Escape") setUploadOpen(false);
+    };
+    document.addEventListener("keydown", onEsc);
+    return () => document.removeEventListener("keydown", onEsc);
+  }, [uploadOpen]);
 
   const [category, setCategory] = useState("");
   const [projectId, setProjectId] = useState("");
@@ -514,10 +421,6 @@ export default function LettersPage() {
   const [outgoingSecretariatNo, setOutgoingSecretariatNo] = useState("");
   const [incomingReceiverName, setIncomingReceiverName] = useState("");
   const [outgoingReceiverName, setOutgoingReceiverName] = useState("");
-
-  const [uploadOpen, setUploadOpen] = useState(false);
-  const [uploadTab, setUploadTab] = useState("incoming");
-  const fileRef = useRef(null);
 
   useEffect(() => {
     let mounted = true;
@@ -660,6 +563,17 @@ export default function LettersPage() {
     if (!ymd) return "";
     return todayJalaliLong || "";
   };
+
+  const openUpload = (which) => {
+    setUploadFor(which);
+    setUploadOpen(true);
+  };
+
+  const folderWrapCls =
+    "w-full rounded-2xl border flex items-center justify-center relative overflow-hidden cursor-pointer transition " +
+    (theme === "dark"
+      ? "border-white/15 bg-white/5 hover:bg-white/10"
+      : "border-black/10 bg-white hover:bg-black/[0.02]");
 
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
@@ -870,13 +784,20 @@ export default function LettersPage() {
 
                 <div className="mt-4">
                   <div className={labelCls}>بارگذاری نامه</div>
-                  <FolderUploadTile
-                    theme={theme}
-                    onClick={() => {
-                      setUploadTab("incoming");
-                      setUploadOpen(true);
+
+                  <div
+                    className={folderWrapCls + " h-[210px]"}
+                    onClick={() => openUpload("incoming")}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") openUpload("incoming");
                     }}
-                  />
+                  >
+                    <div className="relative" style={{ height: "180px", width: "180px" }}>
+                      <Folder size={1.7} color="#4895ef" className="" />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="mt-3">
@@ -1162,13 +1083,20 @@ export default function LettersPage() {
 
                 <div className="mt-4">
                   <div className={labelCls}>بارگذاری نامه</div>
-                  <FolderUploadTile
-                    theme={theme}
-                    onClick={() => {
-                      setUploadTab("outgoing");
-                      setUploadOpen(true);
+
+                  <div
+                    className={folderWrapCls + " h-[210px]"}
+                    onClick={() => openUpload("outgoing")}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") openUpload("outgoing");
                     }}
-                  />
+                  >
+                    <div className="relative" style={{ height: "180px", width: "180px" }}>
+                      <Folder size={1.7} color="#1a7431" className="" />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="mt-3">
@@ -1267,92 +1195,72 @@ export default function LettersPage() {
 
       {uploadOpen &&
         createPortal(
-          <div
-            className="fixed inset-0 z-[9998] flex items-center justify-center p-3"
-            onMouseDown={() => setUploadOpen(false)}
-          >
-            <div className={"absolute inset-0 " + (theme === "dark" ? "bg-black/60" : "bg-black/40")} />
+          <div className="fixed inset-0 z-[9999]">
             <div
-              className={
-                "relative w-[min(640px,calc(100vw-24px))] rounded-2xl border shadow-xl overflow-hidden " +
-                (theme === "dark"
-                  ? "border-white/10 bg-neutral-900 text-white"
-                  : "border-black/10 bg-white text-neutral-900")
-              }
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <div className={"px-4 py-3 flex items-center justify-between " + (theme === "dark" ? "border-b border-white/10" : "border-b border-black/10")}>
-                <div className="font-bold text-sm">
-                  بارگذاری نامه ({uploadTab === "incoming" ? "وارده" : "صادره"})
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setUploadOpen(false)}
-                  className={
-                    "h-10 w-10 rounded-xl border flex items-center justify-center transition " +
-                    (theme === "dark"
-                      ? "border-white/10 hover:bg-white/10"
-                      : "border-black/10 hover:bg-black/[0.04]")
-                  }
-                  aria-label="بستن"
-                  title="بستن"
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={() => setUploadOpen(false)}
+            />
+            <div className="absolute inset-0 flex items-center justify-center p-4">
+              <div
+                className={
+                  "w-[min(560px,calc(100vw-24px))] rounded-2xl border shadow-xl overflow-hidden " +
+                  (theme === "dark"
+                    ? "border-white/10 bg-neutral-900 text-white"
+                    : "border-black/10 bg-white text-neutral-900")
+                }
+              >
+                <div className="p-4 flex items-center justify-between">
+                  <div className="font-bold text-sm">
+                    بارگذاری نامه ({uploadFor === "incoming" ? "وارده" : "صادره"})
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setUploadOpen(false)}
+                    className={
+                      "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
+                      (theme === "dark"
+                        ? "ring-neutral-800 hover:bg-white/10 text-white"
+                        : "ring-black/15 hover:bg-black/90 bg-black text-white")
+                    }
+                    aria-label="بستن"
+                    title="بستن"
                   >
-                    <path d="M18 6 6 18M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              <div className="p-4">
-                <div
-                  className={
-                    "rounded-2xl border p-4 transition " +
-                    (theme === "dark"
-                      ? "border-white/10 bg-white/5"
-                      : "border-black/10 bg-black/[0.02]")
-                  }
-                >
-                  <div className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>
-                    فعلا فقط پنجره آپلود باز میشه. مرحله بعدی انتخاب/ارسال فایل رو اضافه میکنیم.
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => fileRef.current && fileRef.current.click()}
-                      className={
-                        "h-10 px-4 rounded-xl transition " +
-                        (theme === "dark"
-                          ? "bg-white text-black hover:bg-white/90"
-                          : "bg-black text-white hover:bg-black/90")
-                      }
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="20"
+                      height="20"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     >
-                      انتخاب فایل
-                    </button>
+                      <path d="M18 6 6 18M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
 
-                    <input ref={fileRef} type="file" className="hidden" />
+                <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
 
-                    <button
-                      type="button"
-                      onClick={() => setUploadOpen(false)}
-                      className={
-                        "h-10 px-4 rounded-xl border transition " +
-                        (theme === "dark"
-                          ? "border-white/15 hover:bg-white/10"
-                          : "border-black/10 hover:bg-black/[0.04]")
-                      }
-                    >
-                      بستن
-                    </button>
+                <div className="p-4">
+                  <div className={theme === "dark" ? "text-white/70 text-sm" : "text-neutral-700 text-sm"}>
+                    فعلاً فقط برای تست کلیک و باز شدن پاپ‌آپه. مرحله بعد اینجا آپلود واقعی رو اضافه می‌کنیم.
                   </div>
+                </div>
+
+                <div className="p-4 pt-0 flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setUploadOpen(false)}
+                    className={
+                      "h-10 px-4 rounded-xl border transition " +
+                      (theme === "dark"
+                        ? "border-white/15 hover:bg-white/10"
+                        : "border-black/10 hover:bg-black/[0.04]")
+                    }
+                  >
+                    بستن
+                  </button>
                 </div>
               </div>
             </div>
