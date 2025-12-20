@@ -569,11 +569,11 @@ export default function LettersPage() {
     setUploadOpen(true);
   };
 
-  const folderWrapCls =
-    "w-full rounded-2xl border flex items-center justify-center relative overflow-hidden cursor-pointer transition " +
+  const folderIconBtnCls =
+    "inline-flex items-center justify-center rounded-2xl border p-2 transition cursor-pointer select-none " +
     (theme === "dark"
       ? "border-white/15 bg-white/5 hover:bg-white/10"
-      : "border-black/10 bg-white hover:bg-black/[0.02]");
+      : "border-black/10 bg-white hover:bg-black/[0.04]");
 
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
@@ -782,23 +782,24 @@ export default function LettersPage() {
                   )}
                 </div>
 
-                <div className="mt-4">
-                  <div className={labelCls}>بارگذاری نامه</div>
-
-                  <div
-                    className={folderWrapCls + " h-[210px]"}
-                    onClick={() => openUpload("incoming")}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") openUpload("incoming");
-                    }}
-                  >
-                    <div className="relative" style={{ height: "180px", width: "180px" }}>
-                      <Folder size={1.7} color="#4895ef" className="" />
+                {hasAttachment && (
+                  <div className="mt-4">
+                    <div className={labelCls}>بارگذاری نامه</div>
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => openUpload("incoming")}
+                        className={folderIconBtnCls}
+                        aria-label="بارگذاری نامه"
+                        title="بارگذاری نامه"
+                      >
+                        <div className="relative" style={{ height: "72px", width: "72px" }}>
+                          <Folder size={0.9} color="#4895ef" className="" />
+                        </div>
+                      </button>
                     </div>
                   </div>
-                </div>
+                )}
 
                 <div className="mt-3">
                   <div className={labelCls}>برچسب ها</div>
@@ -1081,23 +1082,24 @@ export default function LettersPage() {
                   )}
                 </div>
 
-                <div className="mt-4">
-                  <div className={labelCls}>بارگذاری نامه</div>
-
-                  <div
-                    className={folderWrapCls + " h-[210px]"}
-                    onClick={() => openUpload("outgoing")}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") openUpload("outgoing");
-                    }}
-                  >
-                    <div className="relative" style={{ height: "180px", width: "180px" }}>
-                      <Folder size={1.7} color="#1a7431" className="" />
+                {hasAttachment && (
+                  <div className="mt-4">
+                    <div className={labelCls}>بارگذاری نامه</div>
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => openUpload("outgoing")}
+                        className={folderIconBtnCls}
+                        aria-label="بارگذاری نامه"
+                        title="بارگذاری نامه"
+                      >
+                        <div className="relative" style={{ height: "72px", width: "72px" }}>
+                          <Folder size={0.9} color="#1a7431" className="" />
+                        </div>
+                      </button>
                     </div>
                   </div>
-                </div>
+                )}
 
                 <div className="mt-3">
                   <div className={labelCls}>برچسب ها</div>
