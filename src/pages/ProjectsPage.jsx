@@ -356,24 +356,27 @@ function ProjectsPage() {
                         <TR key={r.id}>
                           <TD className={`px-3 ${tdBorder}`}>{start + idx + 1}</TD>
 
-                          <TD className={`px-3 font-mono ltr ${tdBorder}`}>
-                            {editId === r.id ? (
-                              <input
-                                dir="ltr"
-                                maxLength={3}
-                                className="w-full max-w-[140px] rounded-xl px-2 py-0.5 text-center
-                                           border border-black/15 dark:border-neutral-700
-                                           bg-white text-black placeholder-black/40
-                                           dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400"
-                                value={editCode}
-                                onChange={onEditCodeChange}
-                                placeholder="123"
-                                autoFocus
-                              />
-                            ) : (
-                              r.code || "—"
-                            )}
-                          </TD>
+                          <TD className={`px-3 font-mono text-center ${tdBorder}`}>
+  {editId === r.id ? (
+    <input
+      dir="ltr"
+      maxLength={3}
+      className="w-full max-w-[140px] rounded-xl px-2 py-0.5 text-center
+               border border-black/15 dark:border-neutral-700
+               bg-white text-black placeholder-black/40
+               dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400"
+      value={editCode}
+      onChange={onEditCodeChange}
+      placeholder="123"
+      autoFocus
+    />
+  ) : (
+    <span className="inline-flex w-full justify-center" dir="ltr">
+      {r.code || "—"}
+    </span>
+  )}
+</TD>
+
 
                           <TD className={`px-3 ${tdBorder}`}>
                             {editId === r.id ? (
