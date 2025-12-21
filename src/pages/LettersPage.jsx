@@ -441,6 +441,28 @@ export default function LettersPage() {
   const [incomingReceiverName, setIncomingReceiverName] = useState("");
   const [outgoingReceiverName, setOutgoingReceiverName] = useState("");
 
+  // ===== View modal (details + preview) =====
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewLetter, setViewLetter] = useState(null);
+  const [viewAttIdx, setViewAttIdx] = useState(0);
+
+  const closeView = () => setViewOpen(false);
+  const openView = (l) => {
+    setViewLetter(l || null);
+    setViewAttIdx(0);
+    setViewOpen(true);
+  };
+
+  useEffect(() => {
+    if (!viewOpen) return;
+    const onEsc = (e) => {
+      if (e.key === "Escape") closeView();
+    };
+    document.addEventListener("keydown", onEsc);
+    return () => document.removeEventListener("keydown", onEsc);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewOpen]);
+
   // ===== Filters (page-level) =====
   const [filterCategory, setFilterCategory] = useState("");
   const [filterProjectId, setFilterProjectId] = useState("");
@@ -779,6 +801,7 @@ export default function LettersPage() {
   const sendIconCls = "w-5 h-5 " + (theme === "dark" ? "invert-0" : "invert");
 
   const findTag = (id) => tags.find((t) => String(t?.id) === String(id));
+  const findProject = (id) => projects.find((p) => String(p?.id) === String(id));
 
   const removeTag = (which, id) => {
     const sid = String(id || "");
@@ -882,6 +905,63 @@ export default function LettersPage() {
   const orgOf = (l) => String(l?.org_name ?? l?.org ?? l?.organization ?? l?.company ?? "");
   const subjectOf = (l) => String(l?.subject ?? l?.title ?? "");
   const categoryOf = (l) => String(l?.category ?? l?.category_name ?? l?.categoryTitle ?? "");
+
+  const categoryLabelOf = (l) => {
+    const c = String(categoryOf(l) || "");
+    if (c === "project") return "پروژه‌ها";
+    return c || "—";
+  };
+  const categoryLabel = (c) => {
+    const v = String(c || "");
+    if (v === "project") return "پروژه‌ها";
+    return v || "";
+  };
+
+  const attachmentsOf = (l) => {
+    const raw =
+      l?.attachments ??
+      l?.attachment ??
+      l?.files ??
+      l?.files_json ??
+      l?.attachments_json ??
+      l?.attachment_json ??
+      l?.attachmentsJson;
+
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+
+    if (typeof raw === "string") {
+      try {
+        const j = JSON.parse(raw);
+        return Array.isArray(j) ? j : [];
+      } catch {
+        return [];
+      }
+    }
+
+    if (typeof raw === "object") {
+      const arr = raw?.items;
+      if (Array.isArray(arr)) return arr;
+    }
+
+    return [];
+  };
+
+  const attachmentUrlOf = (a) => {
+    const u = a?.url ?? a?.href ?? a?.path ?? a?.public_url ?? a?.publicUrl ?? a?.file_url ?? a?.fileUrl;
+    return String(u || "");
+  };
+
+  const attachmentNameOf = (a) => {
+    const n = a?.name ?? a?.filename ?? a?.file_name ?? a?.fileName ?? a?.original_name ?? a?.originalName;
+    return String(n || "");
+  };
+
+  const isPdfUrl = (url) => String(url || "").toLowerCase().includes(".pdf");
+  const isImageUrl = (url) => {
+    const u = String(url || "").toLowerCase();
+    return u.includes(".png") || u.includes(".jpg") || u.includes(".jpeg") || u.includes(".webp") || u.includes(".gif");
+  };
 
   const normalizeYmd = (s) => {
     const v = String(s || "").trim();
@@ -1032,10 +1112,7 @@ export default function LettersPage() {
     "bg-neutral-200 text-black border-b border-neutral-300 " +
     "dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700";
 
-  const tbodyCls =
-    "[&_td]:text-black dark:[&_td]:text-neutral-100 " +
-    "[&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50 " +
-    "dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50";
+  const tbodyCls = "[&_td]:text-black dark:[&_td]:text-neutral-100";
 
   const rowDividerCls = "border-b border-neutral-300 dark:border-neutral-700";
 
@@ -1168,6 +1245,34 @@ export default function LettersPage() {
     });
   };
 
+  const InfoRow = ({ label, value }) => (
+    <div className="grid grid-cols-12 gap-2 py-2">
+      <div className={"col-span-4 text-xs font-semibold " + (theme === "dark" ? "text-white/70" : "text-neutral-600")}>
+        {label}
+      </div>
+      <div className={"col-span-8 text-sm " + (theme === "dark" ? "text-white" : "text-neutral-900")}>
+        {value || "—"}
+      </div>
+    </div>
+  );
+
+  const viewAttachments = useMemo(() => attachmentsOf(viewLetter), [viewLetter]); // eslint-disable-line react-hooks/exhaustive-deps
+  const currentViewAttachment = useMemo(() => {
+    const arr = Array.isArray(viewAttachments) ? viewAttachments : [];
+    const a = arr[viewAttIdx] || arr[0] || null;
+    return a;
+  }, [viewAttachments, viewAttIdx]);
+
+  const currentViewUrl = useMemo(() => attachmentUrlOf(currentViewAttachment), [currentViewAttachment]); // eslint-disable-line react-hooks/exhaustive-deps
+  const currentViewName = useMemo(() => attachmentNameOf(currentViewAttachment), [currentViewAttachment]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const viewHasAttachment = useMemo(() => {
+    if (!viewLetter) return false;
+    if (viewAttachments.length > 0) return true;
+    const ha = viewLetter?.has_attachment ?? viewLetter?.hasAttachment;
+    return !!ha;
+  }, [viewLetter, viewAttachments]);
+
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
       <div className="flex items-center justify-between gap-3 mb-4">
@@ -1198,7 +1303,7 @@ export default function LettersPage() {
         }
       >
         <div className="p-3 md:p-4">
-          {/* Tabs + category/project (closer) */}
+          {/* Tabs + Filters (filters hidden while formOpen) */}
           <div className="flex flex-col lg:flex-row lg:items-end gap-3">
             <div className="flex items-center gap-2">
               {TABS.map((t) => {
@@ -1229,180 +1334,184 @@ export default function LettersPage() {
               })}
             </div>
 
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
-              <div className="w-full sm:w-[260px]">
-                <div className={labelCls}>دسته بندی</div>
-                <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className={inputCls}>
-                  <option value=""></option>
-                  <option value="project">پروژه</option>
-                </select>
-              </div>
-
-              <div className="w-full sm:w-[260px]">
-                <div className={labelCls}>پروژه</div>
-                <select
-                  value={filterProjectId}
-                  onChange={(e) => setFilterProjectId(e.target.value)}
-                  className={inputCls}
-                >
-                  <option value=""></option>
-                  {projects.map((p) => (
-                    <option key={p.id} value={String(p.id)}>
-                      {String(p.code || "")} {p.name ? `- ${p.name}` : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick range chips + date range */}
-          <div className="mt-3 rounded-2xl border border-black/10 dark:border-white/10 p-3">
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-wrap items-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setFilterQuick("week")}
-                  className={
-                    (filterQuick === "week"
-                      ? theme === "dark"
-                        ? chipBase + " border-white/15 bg-white text-black"
-                        : chipBase + " border-black/15 bg-black text-white"
-                      : chipCls) + " h-10"
-                  }
-                >
-                  هفته قبل
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFilterQuick("2w")}
-                  className={
-                    (filterQuick === "2w"
-                      ? theme === "dark"
-                        ? chipBase + " border-white/15 bg-white text-black"
-                        : chipBase + " border-black/15 bg-black text-white"
-                      : chipCls) + " h-10"
-                  }
-                >
-                  2 هفته قبل
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFilterQuick("1m")}
-                  className={
-                    (filterQuick === "1m"
-                      ? theme === "dark"
-                        ? chipBase + " border-white/15 bg-white text-black"
-                        : chipBase + " border-black/15 bg-black text-white"
-                      : chipCls) + " h-10"
-                  }
-                >
-                  ماه قبل
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFilterQuick("3m")}
-                  className={
-                    (filterQuick === "3m"
-                      ? theme === "dark"
-                        ? chipBase + " border-white/15 bg-white text-black"
-                        : chipBase + " border-black/15 bg-black text-white"
-                      : chipCls) + " h-10"
-                  }
-                >
-                  3 ماه قبل
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFilterQuick("6m")}
-                  className={
-                    (filterQuick === "6m"
-                      ? theme === "dark"
-                        ? chipBase + " border-white/15 bg-white text-black"
-                        : chipBase + " border-black/15 bg-black text-white"
-                      : chipCls) + " h-10"
-                  }
-                >
-                  6 ماه قبل
-                </button>
-
-                <div className="w-full sm:w-auto sm:min-w-[520px] grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div>
-                    <div className={labelCls}>از</div>
-                    <JalaliPopupDatePicker value={filterFromDate} onChange={setFilterFromDate} theme={theme} />
-                  </div>
-                  <div>
-                    <div className={labelCls}>تا</div>
-                    <JalaliPopupDatePicker value={filterToDate} onChange={setFilterToDate} theme={theme} />
-                  </div>
+            {!formOpen && (
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
+                <div className="w-full sm:w-[260px]">
+                  <div className={labelCls}>دسته بندی</div>
+                  <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className={inputCls}>
+                    <option value=""></option>
+                    <option value="project">پروژه‌ها</option>
+                  </select>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <div className={labelCls}>موضوع</div>
-                  <input
-                    value={filterSubject}
-                    onChange={(e) => setFilterSubject(e.target.value)}
-                    className={inputCls}
-                    type="text"
-                    placeholder="جستجو بر اساس موضوع"
-                  />
-                </div>
-                <div>
-                  <div className={labelCls}>شرکت/سازمان</div>
-                  <input
-                    value={filterOrg}
-                    onChange={(e) => setFilterOrg(e.target.value)}
-                    className={inputCls}
-                    type="text"
-                    placeholder="جستجو بر اساس شرکت/سازمان"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div className={labelCls}>برچسب ها</div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {filterTagIds.map((id) => {
-                    const t = findTag(id);
-                    const label = String(t?.name || t?.title || t?.label || id || "");
-                    return (
-                      <button
-                        key={String(id)}
-                        type="button"
-                        onClick={() => removeFilterTag(id)}
-                        className={chipCls}
-                        title="حذف"
-                        aria-label="حذف"
-                      >
-                        <span className="truncate max-w-[180px]">{label}</span>
-                        <span className={theme === "dark" ? "text-white/70" : "text-neutral-600"}>×</span>
-                      </button>
-                    );
-                  })}
-
+                <div className="w-full sm:w-[260px]">
+                  <div className={labelCls}>پروژه</div>
                   <select
-                    value={filterTagPick}
-                    onChange={(e) => addFilterTag(e.target.value)}
-                    className={
-                      "h-11 px-3 rounded-xl border outline-none transition text-right min-w-[220px] w-[220px] " +
-                      (theme === "dark"
-                        ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
-                        : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
-                    }
+                    value={filterProjectId}
+                    onChange={(e) => setFilterProjectId(e.target.value)}
+                    className={inputCls}
                   >
-                    <option value="">انتخاب برچسب</option>
-                    {tags.map((t) => (
-                      <option key={String(t?.id)} value={String(t?.id)}>
-                        {String(t?.name || t?.title || t?.label || "")}
+                    <option value=""></option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={String(p.id)}>
+                        {String(p.code || "")} {p.name ? `- ${p.name}` : ""}
                       </option>
                     ))}
                   </select>
                 </div>
               </div>
-            </div>
+            )}
           </div>
+
+          {/* Quick range chips + date range + text/tag filters (hidden while formOpen) */}
+          {!formOpen && (
+            <div className="mt-3 rounded-2xl border border-black/10 dark:border-white/10 p-3">
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-wrap items-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFilterQuick("week")}
+                    className={
+                      (filterQuick === "week"
+                        ? theme === "dark"
+                          ? chipBase + " border-white/15 bg-white text-black"
+                          : chipBase + " border-black/15 bg-black text-white"
+                        : chipCls) + " h-10"
+                    }
+                  >
+                    هفته قبل
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilterQuick("2w")}
+                    className={
+                      (filterQuick === "2w"
+                        ? theme === "dark"
+                          ? chipBase + " border-white/15 bg-white text-black"
+                          : chipBase + " border-black/15 bg-black text-white"
+                        : chipCls) + " h-10"
+                    }
+                  >
+                    2 هفته قبل
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilterQuick("1m")}
+                    className={
+                      (filterQuick === "1m"
+                        ? theme === "dark"
+                          ? chipBase + " border-white/15 bg-white text-black"
+                          : chipBase + " border-black/15 bg-black text-white"
+                        : chipCls) + " h-10"
+                    }
+                  >
+                    ماه قبل
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilterQuick("3m")}
+                    className={
+                      (filterQuick === "3m"
+                        ? theme === "dark"
+                          ? chipBase + " border-white/15 bg-white text-black"
+                          : chipBase + " border-black/15 bg-black text-white"
+                        : chipCls) + " h-10"
+                    }
+                  >
+                    3 ماه قبل
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilterQuick("6m")}
+                    className={
+                      (filterQuick === "6m"
+                        ? theme === "dark"
+                          ? chipBase + " border-white/15 bg-white text-black"
+                          : chipBase + " border-black/15 bg-black text-white"
+                        : chipCls) + " h-10"
+                    }
+                  >
+                    6 ماه قبل
+                  </button>
+
+                  <div className="w-full sm:w-auto sm:min-w-[520px] grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <div className={labelCls}>از</div>
+                      <JalaliPopupDatePicker value={filterFromDate} onChange={setFilterFromDate} theme={theme} />
+                    </div>
+                    <div>
+                      <div className={labelCls}>تا</div>
+                      <JalaliPopupDatePicker value={filterToDate} onChange={setFilterToDate} theme={theme} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <div className={labelCls}>موضوع</div>
+                    <input
+                      value={filterSubject}
+                      onChange={(e) => setFilterSubject(e.target.value)}
+                      className={inputCls}
+                      type="text"
+                      placeholder="جستجو بر اساس موضوع"
+                    />
+                  </div>
+                  <div>
+                    <div className={labelCls}>شرکت/سازمان</div>
+                    <input
+                      value={filterOrg}
+                      onChange={(e) => setFilterOrg(e.target.value)}
+                      className={inputCls}
+                      type="text"
+                      placeholder="جستجو بر اساس شرکت/سازمان"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className={labelCls}>برچسب ها</div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {filterTagIds.map((id) => {
+                      const t = findTag(id);
+                      const label = String(t?.name || t?.title || t?.label || id || "");
+                      return (
+                        <button
+                          key={String(id)}
+                          type="button"
+                          onClick={() => removeFilterTag(id)}
+                          className={chipCls}
+                          title="حذف"
+                          aria-label="حذف"
+                        >
+                          <span className="truncate max-w-[180px]">{label}</span>
+                          <span className={theme === "dark" ? "text-white/70" : "text-neutral-600"}>×</span>
+                        </button>
+                      );
+                    })}
+
+                    <select
+                      value={filterTagPick}
+                      onChange={(e) => addFilterTag(e.target.value)}
+                      className={
+                        "h-11 px-3 rounded-xl border outline-none transition text-right min-w-[220px] w-[220px] " +
+                        (theme === "dark"
+                          ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                          : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
+                      }
+                    >
+                      <option value="">انتخاب برچسب</option>
+                      {tags.map((t) => (
+                        <option key={String(t?.id)} value={String(t?.id)}>
+                          {String(t?.name || t?.title || t?.label || "")}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Create form */}
           <div className="mt-4">
@@ -1421,7 +1530,7 @@ export default function LettersPage() {
                       className={inputCls}
                     >
                       <option value=""></option>
-                      <option value="project">پروژه</option>
+                      <option value="project">پروژه‌ها</option>
                     </select>
                   </div>
 
@@ -1682,7 +1791,7 @@ export default function LettersPage() {
                       className={inputCls}
                     >
                       <option value=""></option>
-                      <option value="project">پروژه</option>
+                      <option value="project">پروژه‌ها</option>
                     </select>
                   </div>
 
@@ -2014,12 +2123,20 @@ export default function LettersPage() {
                         const id = String(letterIdOf(l));
                         const kind = letterKindOf(l);
                         const isOutgoing = kind === "outgoing";
-                        const accent = isOutgoing ? "border-r-4 border-[#1a7431]" : "border-r-4 border-[#4895ef]";
                         const isLast = idx === pageItems.length - 1;
                         const divider = isLast ? "" : rowDividerCls;
 
+                        const rowBg =
+                          isOutgoing
+                            ? theme === "dark"
+                              ? "bg-[#1a7431]/15 hover:bg-[#1a7431]/20"
+                              : "bg-[#1a7431]/[0.06] hover:bg-[#1a7431]/[0.09]"
+                            : theme === "dark"
+                            ? "bg-[#4895ef]/15 hover:bg-[#4895ef]/20"
+                            : "bg-[#4895ef]/[0.06] hover:bg-[#4895ef]/[0.09]";
+
                         return (
-                          <tr key={id} className={accent}>
+                          <tr key={id} className={rowBg + " transition-colors"}>
                             <td className={"px-3 " + divider}>
                               <input
                                 type="checkbox"
@@ -2037,18 +2154,32 @@ export default function LettersPage() {
                                   "inline-flex items-center gap-2 px-3 h-8 rounded-full text-xs font-semibold border " +
                                   (isOutgoing
                                     ? theme === "dark"
-                                      ? "border-[#1a7431]/60 bg-[#1a7431]/20 text-white"
-                                      : "border-[#1a7431]/50 bg-[#1a7431]/10 text-[#0e4c1e]"
+                                      ? "border-[#1a7431]/60 bg-[#1a7431]/25 text-white"
+                                      : "border-[#1a7431]/40 bg-white/70 text-[#0e4c1e]"
                                     : theme === "dark"
-                                    ? "border-[#4895ef]/60 bg-[#4895ef]/20 text-white"
-                                    : "border-[#4895ef]/50 bg-[#4895ef]/10 text-[#1b4f9b]")
+                                    ? "border-[#4895ef]/60 bg-[#4895ef]/25 text-white"
+                                    : "border-[#4895ef]/40 bg-white/70 text-[#1b4f9b]")
                                 }
                               >
-                                {categoryOf(l) || (isOutgoing ? "صادره" : "وارده")}
+                                {categoryLabelOf(l)}
                               </span>
                             </td>
 
-                            <td className={"px-3 " + divider}>{letterNoOf(l) || "—"}</td>
+                            <td className={"px-3 " + divider}>
+                              <button
+                                type="button"
+                                onClick={() => openView(l)}
+                                className={
+                                  "mx-auto inline-flex items-center justify-center gap-2 font-semibold underline-offset-4 hover:underline transition " +
+                                  (theme === "dark" ? "text-white" : "text-neutral-900")
+                                }
+                                title="نمایش"
+                                aria-label="نمایش"
+                              >
+                                {letterNoOf(l) || "—"}
+                              </button>
+                            </td>
+
                             <td className={"px-3 " + divider}>{letterDateOf(l) ? toFaDigits(letterDateOf(l)) : "—"}</td>
                             <td className={"px-3 " + divider}>{fromToOf(l)}</td>
                             <td className={"px-3 " + divider}>{orgOf(l) || "—"}</td>
@@ -2080,8 +2211,14 @@ export default function LettersPage() {
                                   />
                                 </button>
 
-                                <button type="button" className={iconBtnCls} aria-label="نمایش" title="نمایش">
-                                  <img src="/images/icons/marakez.svg" alt="" className="w-5 h-5 dark:invert" />
+                                <button
+                                  type="button"
+                                  onClick={() => openView(l)}
+                                  className={iconBtnCls}
+                                  aria-label="نمایش"
+                                  title="نمایش"
+                                >
+                                  <img src="/images/icons/namayesh.svg" alt="" className="w-5 h-5 dark:invert" />
                                 </button>
                               </div>
                             </td>
@@ -2169,6 +2306,341 @@ export default function LettersPage() {
 
         </div>
       </Card>
+
+      {/* View modal: Right = fields, Left = preview + close + download */}
+      {viewOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999]">
+            <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={closeView} />
+            <div className="absolute inset-0 p-3 md:p-6 flex items-center justify-center">
+              <div
+                className={
+                  "w-[min(1200px,calc(100vw-20px))] h-[min(82vh,780px)] rounded-2xl border shadow-2xl overflow-hidden " +
+                  (theme === "dark"
+                    ? "border-white/10 bg-neutral-900 text-white"
+                    : "border-black/10 bg-white text-neutral-900")
+                }
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="h-full flex flex-col">
+                  <div className="px-4 py-3 flex items-center justify-between gap-3 border-b border-black/10 dark:border-white/10">
+                    <div className="font-bold text-sm">
+                      نمایش نامه
+                      {viewLetter ? (
+                        <span className={theme === "dark" ? "text-white/60 font-normal" : "text-neutral-600 font-normal"}>
+                          {" "}
+                          — {toFaDigits(letterNoOf(viewLetter) || "")}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={closeView}
+                      className={
+                        "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
+                        (theme === "dark"
+                          ? "ring-neutral-800 hover:bg-white/10 text-white"
+                          : "ring-black/15 hover:bg-black/90 bg-black text-white")
+                      }
+                      aria-label="بستن"
+                      title="بستن"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="20"
+                        height="20"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M18 6 6 18M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div className="flex-1 overflow-hidden">
+                    <div className="h-full flex flex-col lg:flex-row">
+                      {/* RIGHT: details */}
+                      <div className="lg:w-[56%] h-full overflow-auto p-4">
+                        <div
+                          className={
+                            "rounded-2xl border overflow-hidden " +
+                            (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")
+                          }
+                        >
+                          <div
+                            className={
+                              "px-4 py-3 text-sm font-semibold border-b " +
+                              (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
+                            }
+                          >
+                            مشخصات نامه
+                          </div>
+
+                          <div className="px-4 divide-y divide-black/10 dark:divide-white/10">
+                            <InfoRow label="نوع" value={viewLetter ? (letterKindOf(viewLetter) === "outgoing" ? "صادره" : "وارده") : ""} />
+                            <InfoRow label="دسته بندی" value={viewLetter ? categoryLabel(categoryOf(viewLetter)) : ""} />
+
+                            <InfoRow
+                              label="پروژه"
+                              value={
+                                viewLetter && (viewLetter?.project_id ?? viewLetter?.projectId)
+                                  ? (() => {
+                                      const pid = String(viewLetter?.project_id ?? viewLetter?.projectId);
+                                      const p = findProject(pid);
+                                      if (!p) return pid;
+                                      return `${String(p.code || "")}${p.name ? ` - ${p.name}` : ""}`.trim();
+                                    })()
+                                  : "—"
+                              }
+                            />
+
+                            <InfoRow label="شماره نامه" value={viewLetter ? toFaDigits(letterNoOf(viewLetter) || "") : ""} />
+                            <InfoRow label="تاریخ نامه" value={viewLetter ? toFaDigits(letterDateOf(viewLetter) || "") : ""} />
+                            <InfoRow label="از" value={viewLetter ? String(viewLetter?.from_name ?? viewLetter?.fromName ?? viewLetter?.from ?? "") : ""} />
+                            <InfoRow label="به" value={viewLetter ? String(viewLetter?.to_name ?? viewLetter?.toName ?? viewLetter?.to ?? "") : ""} />
+                            <InfoRow label="شرکت/سازمان" value={viewLetter ? String(viewLetter?.org_name ?? viewLetter?.orgName ?? viewLetter?.org ?? "") : ""} />
+                            <InfoRow label="موضوع" value={viewLetter ? String(subjectOf(viewLetter) || "") : ""} />
+
+                            <InfoRow label="ضمیمه" value={viewHasAttachment ? "دارد" : "ندارد"} />
+                            <InfoRow
+                              label="عنوان ضمیمه"
+                              value={
+                                viewLetter
+                                  ? String(viewLetter?.attachment_title ?? viewLetter?.attachmentTitle ?? "")
+                                  : ""
+                              }
+                            />
+
+                            <InfoRow
+                              label="بازگشت به"
+                              value={
+                                viewLetter
+                                  ? (() => {
+                                      const ids = Array.isArray(viewLetter?.return_to_ids)
+                                        ? viewLetter.return_to_ids
+                                        : Array.isArray(viewLetter?.returnToIds)
+                                        ? viewLetter.returnToIds
+                                        : [];
+                                      if (!ids.length) return "—";
+                                      const map = new Map((Array.isArray(myLetters) ? myLetters : []).map((x) => [String(letterIdOf(x)), x]));
+                                      const labels = ids
+                                        .map((x) => String(x))
+                                        .filter(Boolean)
+                                        .map((sid) => {
+                                          const it = map.get(sid);
+                                          return it ? String(it?.letter_no || sid) : sid;
+                                        });
+                                      return labels.join("، ");
+                                    })()
+                                  : ""
+                              }
+                            />
+
+                            <InfoRow
+                              label="پیرو"
+                              value={
+                                viewLetter
+                                  ? (() => {
+                                      const ids = Array.isArray(viewLetter?.piro_ids)
+                                        ? viewLetter.piro_ids
+                                        : Array.isArray(viewLetter?.piroIds)
+                                        ? viewLetter.piroIds
+                                        : [];
+                                      if (!ids.length) return "—";
+                                      const map = new Map((Array.isArray(myLetters) ? myLetters : []).map((x) => [String(letterIdOf(x)), x]));
+                                      const labels = ids
+                                        .map((x) => String(x))
+                                        .filter(Boolean)
+                                        .map((sid) => {
+                                          const it = map.get(sid);
+                                          return it ? String(it?.letter_no || sid) : sid;
+                                        });
+                                      return labels.join("، ");
+                                    })()
+                                  : ""
+                              }
+                            />
+
+                            <InfoRow
+                              label="برچسب ها"
+                              value={
+                                viewLetter
+                                  ? (() => {
+                                      const ids = Array.isArray(viewLetter?.tag_ids)
+                                        ? viewLetter.tag_ids
+                                        : Array.isArray(viewLetter?.tagIds)
+                                        ? viewLetter.tagIds
+                                        : [];
+                                      if (!ids.length) return "—";
+                                      const labels = ids
+                                        .map((x) => String(x))
+                                        .filter(Boolean)
+                                        .map((sid) => {
+                                          const t = findTag(sid);
+                                          return t ? String(t?.name || t?.title || t?.label || sid) : sid;
+                                        });
+                                      return labels.join("، ");
+                                    })()
+                                  : ""
+                              }
+                            />
+
+                            <InfoRow
+                              label="تاریخ ثبت دبیرخانه"
+                              value={
+                                viewLetter
+                                  ? toFaDigits(String(viewLetter?.secretariat_date ?? viewLetter?.secretariatDate ?? ""))
+                                  : ""
+                              }
+                            />
+                            <InfoRow
+                              label="شماره ثبت دبیرخانه"
+                              value={viewLetter ? String(viewLetter?.secretariat_no ?? viewLetter?.secretariatNo ?? "") : ""}
+                            />
+                            <InfoRow
+                              label="نام تحویل گیرنده"
+                              value={viewLetter ? String(viewLetter?.receiver_name ?? viewLetter?.receiverName ?? "") : ""}
+                            />
+                          </div>
+                        </div>
+
+                        {viewAttachments.length > 1 && (
+                          <div className="mt-3">
+                            <div className={labelCls}>فایل‌ها</div>
+                            <div className="flex flex-wrap gap-2">
+                              {viewAttachments.map((a, i) => {
+                                const u = attachmentUrlOf(a);
+                                const n = attachmentNameOf(a) || `فایل ${i + 1}`;
+                                const active = (viewAttIdx || 0) === i;
+                                return (
+                                  <button
+                                    key={String(i)}
+                                    type="button"
+                                    onClick={() => setViewAttIdx(i)}
+                                    className={
+                                      "h-10 px-3 rounded-xl border transition text-sm " +
+                                      (active
+                                        ? theme === "dark"
+                                          ? "border-white/15 bg-white text-black"
+                                          : "border-black/15 bg-black text-white"
+                                        : theme === "dark"
+                                        ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                                        : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
+                                    }
+                                    title={u || ""}
+                                  >
+                                    {n}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* LEFT: preview */}
+                      <div className="lg:w-[44%] h-full border-t lg:border-t-0 lg:border-r border-black/10 dark:border-white/10 overflow-hidden">
+                        <div className="h-full flex flex-col">
+                          <div className="px-4 py-3 flex items-center justify-between gap-2 border-b border-black/10 dark:border-white/10">
+                            <div className="text-sm font-semibold">پیش نمایش</div>
+
+                            <button
+                              type="button"
+                              onClick={closeView}
+                              className={
+                                "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
+                                (theme === "dark"
+                                  ? "ring-neutral-800 hover:bg-white/10"
+                                  : "ring-black/15 hover:bg-black/5")
+                              }
+                              aria-label="بستن"
+                              title="بستن"
+                            >
+                              <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
+                            </button>
+                          </div>
+
+                          <div className="flex-1 p-3 overflow-auto">
+                            <div
+                              className={
+                                "h-full rounded-2xl border overflow-hidden " +
+                                (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")
+                              }
+                            >
+                              {currentViewUrl ? (
+                                isPdfUrl(currentViewUrl) ? (
+                                  <iframe
+                                    title="preview"
+                                    src={currentViewUrl}
+                                    className="w-full h-full"
+                                  />
+                                ) : isImageUrl(currentViewUrl) ? (
+                                  <img
+                                    src={currentViewUrl}
+                                    alt=""
+                                    className="w-full h-full object-contain bg-transparent"
+                                  />
+                                ) : (
+                                  <div className="h-full w-full grid place-items-center p-6">
+                                    <div className={theme === "dark" ? "text-white/70 text-sm" : "text-neutral-700 text-sm"}>
+                                      امکان پیش نمایش این نوع فایل نیست.
+                                    </div>
+                                  </div>
+                                )
+                              ) : (
+                                <div className="h-full w-full grid place-items-center p-6">
+                                  <div className={theme === "dark" ? "text-white/60 text-sm" : "text-neutral-600 text-sm"}>
+                                    فایلی برای پیش نمایش موجود نیست.
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="mt-3 flex flex-col gap-2">
+                              <a
+                                href={currentViewUrl || "#"}
+                                target="_blank"
+                                rel="noreferrer"
+                                download
+                                className={
+                                  "h-11 rounded-xl inline-flex items-center justify-center gap-2 transition " +
+                                  (currentViewUrl
+                                    ? theme === "dark"
+                                      ? "bg-white text-black hover:bg-white/90"
+                                      : "bg-black text-white hover:bg-black/90"
+                                    : theme === "dark"
+                                    ? "bg-white/10 text-white/40 pointer-events-none"
+                                    : "bg-black/10 text-black/40 pointer-events-none")
+                                }
+                                title="دانلود فایل"
+                                aria-label="دانلود فایل"
+                              >
+                                <img src="/images/icons/download.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")} />
+                                <span className="text-sm font-semibold">دانلود فایل</span>
+                              </a>
+
+                              {currentViewName ? (
+                                <div className={theme === "dark" ? "text-xs text-white/60 text-center" : "text-xs text-neutral-600 text-center"}>
+                                  {currentViewName}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      {/* /preview */}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {uploadOpen &&
         createPortal(
