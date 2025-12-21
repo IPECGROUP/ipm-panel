@@ -2,6 +2,7 @@
 import React from "react";
 import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TR, TD, TH } from "../components/ui/Table.jsx";
+import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 
 function ProjectsPage() {
   // ===== helper API =====
@@ -38,11 +39,18 @@ function ProjectsPage() {
   // مرتب‌سازی ستون «کد»
   const [codeSortDir, setCodeSortDir] = React.useState("asc"); // asc | desc
 
+  // صفحه‌بندی
+  const [pageSize, setPageSize] = React.useState(10);
+  const [pageIndex, setPageIndex] = React.useState(0);
+
   // تبدیل ارقام فارسی/عربی به لاتین
   const toEnDigits = (s) =>
     String(s || "")
       .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d))
       .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
+
+  const toFaDigits = (s) =>
+    String(s ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
 
   // ✅ فقط پروژه‌های اصلی (کد دقیقاً ۳ رقم) باید در این صفحه نمایش داده شوند
   const isTopProjectCode = (code) => {
@@ -99,6 +107,7 @@ function ProjectsPage() {
       }
       setCodeInput("");
       setNameInput("");
+      setPageIndex(0);
     } catch (ex) {
       console.error(ex);
       setErr(ex.message || "خطا در ثبت پروژه");
@@ -180,17 +189,30 @@ function ProjectsPage() {
     return arr;
   }, [rows, codeSortDir]);
 
-  // کنترل ورودی کد (افزودن)
+  // کنترل ورودی کد (افزودن) — حداکثر ۳ رقم
   const onAddCodeChange = (e) => {
-    const v = toEnDigits(e.target.value).replace(/[^\d]/g, "");
+    const v = toEnDigits(e.target.value).replace(/[^\d]/g, "").slice(0, 3);
     setCodeInput(v);
   };
 
-  // کنترل ورودی کد (ویرایش درون‌ردیفی)
+  // کنترل ورودی کد (ویرایش درون‌ردیفی) — حداکثر ۳ رقم
   const onEditCodeChange = (e) => {
-    const v = toEnDigits(e.target.value).replace(/[^\d]/g, "");
+    const v = toEnDigits(e.target.value).replace(/[^\d]/g, "").slice(0, 3);
     setEditCode(v);
   };
+
+  // ===== pagination computed =====
+  const total = sortedRows.length;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const safePageIndex = Math.min(pageIndex, pageCount - 1);
+  const start = safePageIndex * pageSize;
+  const end = Math.min(start + pageSize, total);
+  const pageRows = sortedRows.slice(start, end);
+
+  React.useEffect(() => {
+    if (safePageIndex !== pageIndex) setPageIndex(safePageIndex);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageCount]);
 
   return (
     <Card
@@ -229,6 +251,7 @@ function ProjectsPage() {
             <label className="text-sm text-black/70 dark:text-neutral-300">کد پروژه</label>
             <input
               dir="ltr"
+              maxLength={3}
               className="h-10 w-full rounded-xl px-3 bg-white text-black placeholder-black/40 
                          border border-black/15 outline-none font-mono
                          dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
@@ -241,13 +264,13 @@ function ProjectsPage() {
           <div className="justify-self-start">
             <button
               type="submit"
-              className="h-10 w-10 grid place-items-center rounded-xl 
-                         bg-black text-white disabled:opacity-50
-                         dark:bg-neutral-100 dark:text-neutral-900"
+              className="h-10 w-10 grid place-items-center rounded-xl
+                         bg-white text-black border border-black/15 hover:bg-black/5 transition disabled:opacity-50
+                         dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-200/20"
               aria-label="افزودن"
               title="افزودن"
             >
-              <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert dark:invert" />
+              <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -257,198 +280,204 @@ function ProjectsPage() {
 
       {/* جدول */}
       <TableWrap>
-        <div className="bg-white text-black rounded-2xl border border-black/10 overflow-hidden dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-          <table
-            className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
-            dir="rtl"
-          >
-            <THead>
-              <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
-                <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                  #
-                </TH>
+        <div className="px-[15px] pb-4">
+          <div className="rounded-2xl border border-black/10 overflow-hidden bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+            {/* اسکرول فقط داخل جدول */}
+            <div className="max-h-[420px] overflow-y-auto">
+              <table
+                className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
+                dir="rtl"
+              >
+                <THead>
+                  <tr className="sticky top-0 z-10 bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
+                    <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                      #
+                    </TH>
 
-                <TH className="w-44 sm:w-56 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                  <div className="flex items-center justify-center gap-2">
-                    <span>کد</span>
-                    <button
-                      type="button"
-                      onClick={() => setCodeSortDir((d) => (d === "asc" ? "desc" : "asc"))}
-                      className="h-7 w-7 inline-grid place-items-center bg-transparent p-0
-                                 text-neutral-500 hover:text-neutral-600 active:text-neutral-700
-                                 dark:text-neutral-400 dark:hover:text-neutral-300"
-                      title="مرتب‌سازی کد"
-                      aria-label="مرتب‌سازی کد"
-                    >
-                      <svg
-                        className={`w-[14px] h-[14px] transition-transform ${
-                          codeSortDir === "asc" ? "rotate-180" : ""
-                        }`}
-                        focusable="false"
-                        aria-hidden="true"
-                        viewBox="0 0 24 24"
-                      >
-                        <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"></path>
-                      </svg>
-                    </button>
-                  </div>
-                </TH>
+                    <TH className="w-44 sm:w-56 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                      <div className="flex items-center justify-center gap-2">
+                        <span>کد</span>
+                        <button
+                          type="button"
+                          onClick={() => setCodeSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+                          className="h-7 w-7 inline-grid place-items-center bg-transparent p-0
+                                     text-neutral-500 hover:text-neutral-600 active:text-neutral-700
+                                     dark:text-neutral-400 dark:hover:text-neutral-300"
+                          title="مرتب‌سازی کد"
+                          aria-label="مرتب‌سازی کد"
+                        >
+                          <svg
+                            className={`w-[14px] h-[14px] transition-transform ${
+                              codeSortDir === "asc" ? "rotate-180" : ""
+                            }`}
+                            focusable="false"
+                            aria-hidden="true"
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"></path>
+                          </svg>
+                        </button>
+                      </div>
+                    </TH>
 
-                <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                  نام پروژه
-                </TH>
+                    <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                      نام پروژه
+                    </TH>
 
-                <TH className="w-44 sm:w-72 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                  اقدامات
-                </TH>
-              </tr>
-            </THead>
+                    <TH className="w-44 sm:w-72 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                      اقدامات
+                    </TH>
+                  </tr>
+                </THead>
 
-            <tbody
-              className="[&_td]:text-black dark:[&_td]:text-neutral-100
-                         [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50
-                         dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50"
-            >
-              {loading ? (
-                <TR className="bg-white dark:bg-transparent">
-                  <TD colSpan={4} className="text-center text-black/60 dark:text-neutral-400 py-4">
-                    در حال بارگذاری…
-                  </TD>
-                </TR>
-              ) : sortedRows.length === 0 ? (
-                <TR className="bg-white dark:bg-transparent">
-                  <TD colSpan={4} className="text-center text-black/60 dark:text-neutral-400 py-4">
-                    موردی ثبت نشده.
-                  </TD>
-                </TR>
-              ) : (
-                sortedRows.map((r, idx) => {
-                  const isLast = idx === sortedRows.length - 1;
-                  const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
-
-                  return (
-                    <TR key={r.id}>
-                      <TD className={`px-3 ${tdBorder}`}>{idx + 1}</TD>
-
-                      <TD className={`px-3 font-mono ltr ${tdBorder}`}>
-                        {editId === r.id ? (
-                          <input
-                            dir="ltr"
-                            className="w-full max-w-[140px] rounded-xl px-2 py-0.5 text-center
-                                       border border-black/15 dark:border-neutral-700
-                                       bg-white text-black placeholder-black/40
-                                       dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400"
-                            value={editCode}
-                            onChange={onEditCodeChange}
-                            placeholder="123"
-                            autoFocus
-                          />
-                        ) : (
-                          r.code || "—"
-                        )}
-                      </TD>
-
-                      <TD className={`px-3 ${tdBorder}`}>
-                        {editId === r.id ? (
-                          <input
-                            className="w-full max-w-[260px] rounded-xl px-2 py-0.5 text-center
-                                       border border-black/15 dark:border-neutral-700
-                                       bg-white text-black placeholder-black/40
-                                       dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400"
-                            value={editName}
-                            onChange={(e) => setEditName(e.target.value)}
-                            placeholder="نام…"
-                          />
-                        ) : (
-                          r.name || "—"
-                        )}
-                      </TD>
-
-                      <TD className={`px-3 ${tdBorder}`}>
-                        {editId === r.id ? (
-                          <div className="inline-flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                saveInline();
-                              }}
-                              className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
-                              aria-label="ذخیره"
-                              title="ذخیره"
-                            >
-                              <img src="/images/icons/check.svg" alt="" className="w-[18px] h-[18px] dark:invert" />
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                cancelEdit();
-                              }}
-                              className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
-                              aria-label="انصراف"
-                              title="انصراف"
-                            >
-                              <img
-                                src="/images/icons/bastan.svg"
-                                alt=""
-                                className="w-[16px] h-[16px] dark:invert"
-                                style={{
-                                  filter:
-                                    "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
-                                }}
-                              />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="inline-flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                beginEdit(r);
-                              }}
-                              className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
-                              aria-label="ویرایش"
-                              title="ویرایش"
-                            >
-                              <img src="/images/icons/pencil.svg" alt="" className="w-[18px] h-[18px] dark:invert" />
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                del(r);
-                              }}
-                              className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
-                              aria-label="حذف"
-                              title="حذف"
-                            >
-                              <img
-                                src="/images/icons/hazf.svg"
-                                alt=""
-                                className="w-[19px] h-[19px]"
-                                style={{
-                                  filter:
-                                    "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
-                                }}
-                              />
-                            </button>
-                          </div>
-                        )}
+                <tbody
+                  className="[&_td]:text-black dark:[&_td]:text-neutral-100
+                             [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50
+                             dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50"
+                >
+                  {loading ? (
+                    <TR className="bg-white dark:bg-transparent">
+                      <TD colSpan={4} className="text-center text-black/60 dark:text-neutral-400 py-4">
+                        در حال بارگذاری…
                       </TD>
                     </TR>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                  ) : pageRows.length === 0 ? (
+                    <TR className="bg-white dark:bg-transparent">
+                      <TD colSpan={4} className="text-center text-black/60 dark:text-neutral-400 py-4">
+                        موردی ثبت نشده.
+                      </TD>
+                    </TR>
+                  ) : (
+                    pageRows.map((r, idx) => {
+                      const isLast = idx === pageRows.length - 1;
+                      const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
+
+                      return (
+                        <TR key={r.id}>
+                          <TD className={`px-3 ${tdBorder}`}>{start + idx + 1}</TD>
+
+                          <TD className={`px-3 font-mono ltr ${tdBorder}`}>
+                            {editId === r.id ? (
+                              <input
+                                dir="ltr"
+                                maxLength={3}
+                                className="w-full max-w-[140px] rounded-xl px-2 py-0.5 text-center
+                                           border border-black/15 dark:border-neutral-700
+                                           bg-white text-black placeholder-black/40
+                                           dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400"
+                                value={editCode}
+                                onChange={onEditCodeChange}
+                                placeholder="123"
+                                autoFocus
+                              />
+                            ) : (
+                              r.code || "—"
+                            )}
+                          </TD>
+
+                          <TD className={`px-3 ${tdBorder}`}>
+                            {editId === r.id ? (
+                              <input
+                                className="w-full max-w-[260px] rounded-xl px-2 py-0.5 text-center
+                                           border border-black/15 dark:border-neutral-700
+                                           bg-white text-black placeholder-black/40
+                                           dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400"
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                                placeholder="نام…"
+                              />
+                            ) : (
+                              r.name || "—"
+                            )}
+                          </TD>
+
+                          <TD className={`px-3 ${tdBorder}`}>
+                            {editId === r.id ? (
+                              <div className="flex items-center justify-center gap-2">
+                                <RowActionIconBtn action="save" onClick={saveInline} size={36} iconSize={16} />
+                                <RowActionIconBtn action="cancel" onClick={cancelEdit} size={36} iconSize={15} />
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-center gap-2">
+                                <RowActionIconBtn action="edit" onClick={() => beginEdit(r)} size={36} iconSize={16} />
+                                <RowActionIconBtn
+                                  action="delete"
+                                  onClick={() => del(r)}
+                                  size={36}
+                                  iconSize={17}
+                                />
+                              </div>
+                            )}
+                          </TD>
+                        </TR>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination bar */}
+            <div className="border-t border-black/10 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-3 py-2">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-black/70 dark:text-neutral-300">تعداد در هر صفحه:</span>
+                  <select
+                    className="h-9 rounded-xl px-3 bg-white text-black border border-black/15
+                               dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 outline-none"
+                    value={pageSize}
+                    onChange={(e) => {
+                      const v = Number(e.target.value) || 10;
+                      setPageSize(v);
+                      setPageIndex(0);
+                    }}
+                  >
+                    {[10, 20, 50].map((n) => (
+                      <option key={n} value={n}>
+                        {toFaDigits(n)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-black/70 dark:text-neutral-300">
+                    {toFaDigits(total === 0 ? 0 : start + 1)}–{toFaDigits(end)} از {toFaDigits(total)}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+                    disabled={safePageIndex <= 0}
+                    className="h-9 w-9 rounded-xl grid place-items-center border border-black/15 bg-white text-black
+                               hover:bg-black/5 disabled:opacity-40 disabled:cursor-not-allowed
+                               dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-white/10"
+                    aria-label="صفحه قبل"
+                    title="صفحه قبل"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" strokeWidth="2" />
+                    </svg>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPageIndex((p) => Math.min(pageCount - 1, p + 1))}
+                    disabled={safePageIndex >= pageCount - 1}
+                    className="h-9 w-9 rounded-xl grid place-items-center border border-black/15 bg-white text-black
+                               hover:bg-black/5 disabled:opacity-40 disabled:cursor-not-allowed
+                               dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-white/10"
+                    aria-label="صفحه بعد"
+                    title="صفحه بعد"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </TableWrap>
     </Card>

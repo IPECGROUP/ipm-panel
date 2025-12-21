@@ -285,7 +285,8 @@ function BaseCurrenciesPage() {
   const SimpleTable = ({ rows, kind, sortDir, onToggleSort }) => (
     <TableWrap>
       <div className="bg-white text-black overflow-hidden dark:bg-neutral-900 dark:text-neutral-100">
-        <div className="px-4 pb-4">
+        <div className="px-[15px] pb-4">
+
           {/* ✅ ریدیوس و بوردر برگشت تا با فیلد بالا هماهنگ بشه */}
           <div className="rounded-2xl border border-black/10 overflow-hidden bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
             <table
