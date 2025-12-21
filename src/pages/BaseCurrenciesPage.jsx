@@ -5,6 +5,7 @@ import Shell from "../components/layout/Shell.jsx";
 import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
 import { Btn, PrimaryBtn, DangerBtn } from "../components/ui/Button.jsx";
+import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 
 function BaseCurrenciesPage() {
   const [types, setTypes] = React.useState([]);
@@ -269,8 +270,8 @@ function BaseCurrenciesPage() {
     return arr;
   }, [sources, srcSortDir]);
 
-  // فرم عمومی (در یک ردیف و هم‌ارتفاع با دکمه + آیکن ۲۰px)
-  const FormRow = ({ placeholder, value, onChange, onSubmit, inputRef, error }) => (
+  // فرم عمومی (در یک ردیف و هم‌ارتفاع با دکمه +)
+  const FormRow = ({ placeholder, value, onChange, onSubmit, inputRef, error, adding }) => (
     <form onSubmit={onSubmit} dir="rtl" className="grid grid-cols-[1fr_auto] gap-3 items-center">
       <input
         ref={inputRef}
@@ -288,23 +289,28 @@ function BaseCurrenciesPage() {
       <div className="justify-self-start">
         <button
           type="submit"
+          disabled={adding}
           className="h-10 w-10 grid place-items-center rounded-xl
-                     bg-black text-white hover:opacity-90 transition disabled:opacity-50
-                     dark:bg-neutral-100 dark:text-neutral-900"
+                     bg-white text-black border border-black/15 hover:bg-black/5 transition disabled:opacity-50
+                     dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-200/20"
           aria-label="افزودن"
+          title="افزودن"
         >
-          <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
+          <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5" />
         </button>
       </div>
       {!!error && <div className="col-span-2 text-sm text-red-600 dark:text-red-400">{error}</div>}
     </form>
   );
 
-  // جدول (هم‌استایل با جدول UnitsPage)
+  // جدول (هم‌استایل با جدول UnitsPage) + ردیف‌ها کمی کوچک‌تر + اکشن‌ها وسط
   const SimpleTable = ({ rows, kind, sortDir, onToggleSort }) => (
     <TableWrap>
-      <div className="bg-white text-black rounded-2xl border border-black/10 overflow-hidden dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-        <table className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5" dir="rtl">
+      <div className="bg-white text-black overflow-hidden dark:bg-neutral-900 dark:text-neutral-100">
+        <table
+          className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
+          dir="rtl"
+        >
           <THead>
             <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
               <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
@@ -348,13 +354,13 @@ function BaseCurrenciesPage() {
           >
             {loading ? (
               <TR className="bg-white dark:bg-transparent">
-                <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-4">
+                <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-3">
                   در حال بارگذاری…
                 </TD>
               </TR>
             ) : (rows || []).length === 0 ? (
               <TR className="bg-white dark:bg-transparent">
-                <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-4">
+                <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-3">
                   موردی ثبت نشده.
                 </TD>
               </TR>
@@ -390,70 +396,19 @@ function BaseCurrenciesPage() {
 
                     <TD className={`px-3 ${tdBorder}`}>
                       {editRow.kind === kind && editRow.id === r.id ? (
-                        <div className="inline-flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={saveEdit}
-                            className="!h-10 !w-10 !p-0 !rounded-xl !bg-transparent !bg-none !ring-0 !border-0 !shadow-none
-                                       hover:!bg-transparent active:!bg-transparent focus:!bg-transparent
-                                       hover:opacity-80 active:opacity-70 disabled:opacity-50 grid place-items-center"
-                            aria-label="ذخیره"
-                            title="ذخیره"
-                          >
-                            <img src="/images/icons/check.svg" alt="" className="w-[18px] h-[18px] dark:invert" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={cancelEdit}
-                            className="!h-10 !w-10 !p-0 !rounded-xl !bg-transparent !bg-none !ring-0 !border-0 !shadow-none
-                                       hover:!bg-transparent active:!bg-transparent focus:!bg-transparent
-                                       hover:opacity-80 active:opacity-70 disabled:opacity-50 grid place-items-center"
-                            aria-label="انصراف"
-                            title="انصراف"
-                          >
-                            <img
-                              src="/images/icons/bastan.svg"
-                              alt=""
-                              className="w-[16px] h-[16px]"
-                              style={{
-                                filter:
-                                  "brightness(0) saturate(100%) invert(17%) sepia(96%) saturate(5345%) hue-rotate(353deg) brightness(97%) contrast(115%)",
-                              }}
-                            />
-                          </button>
+                        <div className="flex items-center justify-center gap-2">
+                          <RowActionIconBtn action="save" onClick={saveEdit} size={36} iconSize={16} />
+                          <RowActionIconBtn action="cancel" onClick={cancelEdit} size={36} iconSize={15} />
                         </div>
                       ) : (
-                        <div className="inline-flex items-center gap-2">
-                          <Btn
-                            onClick={() => startEdit(kind, r)}
-                            className="!h-10 !w-10 !p-0 !rounded-xl !bg-transparent !bg-none !ring-0 !border-0 !shadow-none
-                                       hover:!bg-transparent active:!bg-transparent focus:!bg-transparent
-                                       hover:opacity-80 active:opacity-70 disabled:opacity-50"
-                            aria-label="ویرایش"
-                            title="ویرایش"
-                          >
-                            <img src="/images/icons/pencil.svg" alt="" className="w-[18px] h-[18px] dark:invert" />
-                          </Btn>
-
-                          <DangerBtn
+                        <div className="flex items-center justify-center gap-2">
+                          <RowActionIconBtn action="edit" onClick={() => startEdit(kind, r)} size={36} iconSize={16} />
+                          <RowActionIconBtn
+                            action="delete"
                             onClick={() => removeRow(kind, r.id)}
-                            className="!h-10 !w-10 !p-0 !rounded-xl !bg-transparent !bg-none !ring-0 !border-0 !shadow-none
-                                       hover:!bg-transparent active:!bg-transparent focus:!bg-transparent
-                                       hover:opacity-80 active:opacity-70 disabled:opacity-50"
-                            aria-label="حذف"
-                            title="حذف"
-                          >
-                            <img
-                              src="/images/icons/hazf.svg"
-                              alt=""
-                              className="w-[19px] h-[19px]"
-                              style={{
-                                filter:
-                                  "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
-                              }}
-                            />
-                          </DangerBtn>
+                            size={36}
+                            iconSize={17}
+                          />
                         </div>
                       )}
                     </TD>
@@ -467,6 +422,24 @@ function BaseCurrenciesPage() {
     </TableWrap>
   );
 
+  // باکس یکپارچه: فرم + جدول (بدون جدا شدن)
+  const Section = ({ title, form, table }) => (
+    <div
+      className="rounded-2xl border border-black/10 bg-white overflow-hidden
+                 dark:bg-neutral-900 dark:border-neutral-800"
+      dir="rtl"
+    >
+      <div className="p-4">
+        <div className="mb-3 font-medium text-black dark:text-neutral-200">{title}</div>
+        {form}
+      </div>
+
+      <div className="border-t border-neutral-200 dark:border-neutral-800">
+        {table}
+      </div>
+    </div>
+  );
+
   return (
     <>
       <Card className="rounded-2xl border bg-white text-black border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
@@ -477,52 +450,54 @@ function BaseCurrenciesPage() {
           <span className="font-semibold text-black dark:text-neutral-100">ارزها</span>
         </div>
 
-        {/* نوع ارز */}
-        <div
-          className="rounded-2xl p-4 mb-6 border border-black/10 bg-white
-                        dark:bg-neutral-900 dark:border-neutral-800"
-          dir="rtl"
-        >
-          <div className="mb-3 font-medium text-black dark:text-neutral-200">نوع ارز</div>
-          <FormRow
-            placeholder="نوع ارز…"
-            value={typeTitle}
-            onChange={setTypeTitle}
-            onSubmit={addType}
-            inputRef={typeInputRef}
-            error={errType}
+        {/* نوع ارز (یکپارچه با جدول خودش) */}
+        <div className="mb-6">
+          <Section
+            title="نوع ارز"
+            form={
+              <FormRow
+                placeholder="نوع ارز…"
+                value={typeTitle}
+                onChange={setTypeTitle}
+                onSubmit={addType}
+                inputRef={typeInputRef}
+                error={errType}
+                adding={savingType}
+              />
+            }
+            table={
+              <SimpleTable
+                rows={sortedTypes}
+                kind="type"
+                sortDir={typeSortDir}
+                onToggleSort={() => setTypeSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+              />
+            }
           />
         </div>
 
-        <SimpleTable
-          rows={sortedTypes}
-          kind="type"
-          sortDir={typeSortDir}
-          onToggleSort={() => setTypeSortDir((d) => (d === "asc" ? "desc" : "asc"))}
-        />
-
-        {/* منشأ ارز */}
-        <div
-          className="rounded-2xl p-4 mt-8 mb-6 border border-black/10 bg-white
-                        dark:bg-neutral-900 dark:border-neutral-800"
-          dir="rtl"
-        >
-          <div className="mb-3 font-medium text-black dark:text-neutral-200">منشأ ارز</div>
-          <FormRow
-            placeholder="منشأ ارز…"
-            value={srcTitle}
-            onChange={setSrcTitle}
-            onSubmit={addSource}
-            inputRef={srcInputRef}
-            error={errSrc}
-          />
-        </div>
-
-        <SimpleTable
-          rows={sortedSources}
-          kind="source"
-          sortDir={srcSortDir}
-          onToggleSort={() => setSrcSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+        {/* منشأ ارز (یکپارچه با جدول خودش) */}
+        <Section
+          title="منشأ ارز"
+          form={
+            <FormRow
+              placeholder="منشأ ارز…"
+              value={srcTitle}
+              onChange={setSrcTitle}
+              onSubmit={addSource}
+              inputRef={srcInputRef}
+              error={errSrc}
+              adding={savingSrc}
+            />
+          }
+          table={
+            <SimpleTable
+              rows={sortedSources}
+              kind="source"
+              sortDir={srcSortDir}
+              onToggleSort={() => setSrcSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+            />
+          }
         />
       </Card>
     </>
