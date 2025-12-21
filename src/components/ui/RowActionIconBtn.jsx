@@ -15,7 +15,7 @@ export default function RowActionIconBtn({
   disabled,
 
   size = 36, // اندازه دکمه (کوچیک‌تر از قبلی)
-  iconSize = 16, // اندازه آیکن
+  iconSize = 16, // اندازه آیکن (پایه)
   variant, // 'default' | 'danger' | 'neutral' (اختیاری)
   className = "",
   imgClassName = "",
@@ -31,7 +31,6 @@ export default function RowActionIconBtn({
     "hover:!bg-transparent active:!bg-transparent focus:!bg-transparent " +
     "hover:opacity-80 active:opacity-70 disabled:opacity-50 disabled:cursor-not-allowed";
 
-  // رنگ قرمز برای حذف و انصراف (مثل قبل)
   const dangerFilter =
     "brightness(0) saturate(100%) invert(17%) sepia(96%) saturate(5345%) hue-rotate(353deg) brightness(97%) contrast(115%)";
 
@@ -46,6 +45,13 @@ export default function RowActionIconBtn({
       : action === "cancel"
       ? "انصراف"
       : "");
+
+  const finalIconSize =
+    action === "edit"
+      ? iconSize + 2
+      : action === "cancel"
+      ? Math.max(10, iconSize - 2)
+      : iconSize;
 
   return (
     <button
@@ -64,8 +70,8 @@ export default function RowActionIconBtn({
           finalVariant === "default" ? "dark:invert" : ""
         }`}
         style={{
-          width: iconSize,
-          height: iconSize,
+          width: finalIconSize,
+          height: finalIconSize,
           ...(finalVariant === "danger" ? { filter: dangerFilter } : {}),
           ...(imgStyle || {}),
         }}

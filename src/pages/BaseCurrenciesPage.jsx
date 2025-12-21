@@ -174,17 +174,13 @@ function BaseCurrenciesPage() {
     }
   };
 
-  // حذف ردیف (با id در body، مشابه TagsPage)
+  // حذف ردیف
   const removeRow = async (kind, id) => {
     if (!confirm("حذف این ردیف؟")) return;
 
-    // اگر هنوز temp هست (tmp-...)، فقط لوکالی حذف کن
     if (typeof id === "string" && id.startsWith("tmp-")) {
-      if (kind === "type") {
-        setTypes((prev) => prev.filter((r) => r.id !== id));
-      } else {
-        setSources((prev) => prev.filter((r) => r.id !== id));
-      }
+      if (kind === "type") setTypes((prev) => prev.filter((r) => r.id !== id));
+      else setSources((prev) => prev.filter((r) => r.id !== id));
       return;
     }
 
@@ -203,21 +199,16 @@ function BaseCurrenciesPage() {
   };
 
   const startEdit = (kind, row) => setEditRow({ kind, id: row.id, title: row.title || "" });
-
   const cancelEdit = () => setEditRow({ kind: null, id: null, title: "" });
 
-  // ویرایش با id داخل body (نه در URL)
   const saveEdit = async () => {
     if (!editRow.id || !editRow.kind) return;
 
-    // اگر temp-row است، فقط لوکالی آپدیت کن
     if (typeof editRow.id === "string" && editRow.id.startsWith("tmp-")) {
       if (editRow.kind === "type") {
         setTypes((prev) => prev.map((r) => (r.id === editRow.id ? { ...r, title: editRow.title } : r)));
       } else {
-        setSources((prev) =>
-          prev.map((r) => (r.id === editRow.id ? { ...r, title: editRow.title } : r))
-        );
+        setSources((prev) => prev.map((r) => (r.id === editRow.id ? { ...r, title: editRow.title } : r)));
       }
       cancelEdit();
       return;
@@ -237,9 +228,7 @@ function BaseCurrenciesPage() {
       if (editRow.kind === "type") {
         setTypes((prev) => prev.map((r) => (r.id === editRow.id ? { ...r, title: editRow.title } : r)));
       } else {
-        setSources((prev) =>
-          prev.map((r) => (r.id === editRow.id ? { ...r, title: editRow.title } : r))
-        );
+        setSources((prev) => prev.map((r) => (r.id === editRow.id ? { ...r, title: editRow.title } : r)));
       }
       cancelEdit();
     } catch (ex) {
@@ -247,7 +236,6 @@ function BaseCurrenciesPage() {
     }
   };
 
-  // لیست‌های مرتب‌شده
   const sortedTypes = React.useMemo(() => {
     const arr = Array.isArray(types) ? [...types] : [];
     arr.sort((a, b) => {
@@ -270,7 +258,6 @@ function BaseCurrenciesPage() {
     return arr;
   }, [sources, srcSortDir]);
 
-  // فرم عمومی (در یک ردیف و هم‌ارتفاع با دکمه +)
   const FormRow = ({ placeholder, value, onChange, onSubmit, inputRef, error, adding }) => (
     <form onSubmit={onSubmit} dir="rtl" className="grid grid-cols-[1fr_auto] gap-3 items-center">
       <input
@@ -303,14 +290,10 @@ function BaseCurrenciesPage() {
     </form>
   );
 
-  // جدول (هم‌استایل با جدول UnitsPage) + ردیف‌ها کمی کوچک‌تر + اکشن‌ها وسط
   const SimpleTable = ({ rows, kind, sortDir, onToggleSort }) => (
     <TableWrap>
       <div className="bg-white text-black overflow-hidden dark:bg-neutral-900 dark:text-neutral-100">
-        <table
-          className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
-          dir="rtl"
-        >
+        <table className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5" dir="rtl">
           <THead>
             <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
               <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
@@ -403,12 +386,7 @@ function BaseCurrenciesPage() {
                       ) : (
                         <div className="flex items-center justify-center gap-2">
                           <RowActionIconBtn action="edit" onClick={() => startEdit(kind, r)} size={36} iconSize={16} />
-                          <RowActionIconBtn
-                            action="delete"
-                            onClick={() => removeRow(kind, r.id)}
-                            size={36}
-                            iconSize={17}
-                          />
+                          <RowActionIconBtn action="delete" onClick={() => removeRow(kind, r.id)} size={36} iconSize={17} />
                         </div>
                       )}
                     </TD>
@@ -422,7 +400,7 @@ function BaseCurrenciesPage() {
     </TableWrap>
   );
 
-  // باکس یکپارچه: فرم + جدول (بدون جدا شدن)
+  // باکس یکپارچه: فرم + جدول (بدون خط جداکننده/بوردر پایین فرم)
   const Section = ({ title, form, table }) => (
     <div
       className="rounded-2xl border border-black/10 bg-white overflow-hidden
@@ -434,23 +412,20 @@ function BaseCurrenciesPage() {
         {form}
       </div>
 
-      <div className="border-t border-neutral-200 dark:border-neutral-800">
-        {table}
-      </div>
+      {/* اینجا قبلاً border-t داشت؛ حذف شد تا بوردر پایین فرم دیده نشه */}
+      {table}
     </div>
   );
 
   return (
     <>
       <Card className="rounded-2xl border bg-white text-black border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-        {/* نوار مسیر */}
         <div className="mb-4 text-base md:text-lg">
           <span className="text-black/70 dark:text-neutral-300">اطلاعات پایه</span>
           <span className="mx-2 text-black/50 dark:text-neutral-400">›</span>
           <span className="font-semibold text-black dark:text-neutral-100">ارزها</span>
         </div>
 
-        {/* نوع ارز (یکپارچه با جدول خودش) */}
         <div className="mb-6">
           <Section
             title="نوع ارز"
@@ -476,7 +451,6 @@ function BaseCurrenciesPage() {
           />
         </div>
 
-        {/* منشأ ارز (یکپارچه با جدول خودش) */}
         <Section
           title="منشأ ارز"
           form={
