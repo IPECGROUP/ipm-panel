@@ -15,17 +15,16 @@ export default function LoginPage() {
   const [password, setPassword] = useState(""); // عمداً خالی
   const [err, setErr] = useState("");
 
-  // فایل‌ها از public/images
-  const LOGO_SRC = "/images/light.png";
-  const slides = ["/images/1.webp", "/images/2.webp", "/images/3.webp"];
+  // ✅ تصاویر جدید اسلایدر (سمت چپ)
+  const slides = ["/images/back1.webp", "/images/back2.webp"];
+
+  // ✅ هدر جدید فرم (جایگزین متن و لوگو)
+  const HEADER_IMG = "/images/login_page_header.png";
 
   const [idx, setIdx] = useState(0);
   useEffect(() => {
     if (slides.length <= 1) return;
-    const id = setInterval(
-      () => setIdx((i) => (i + 1) % slides.length),
-      4000
-    );
+    const id = setInterval(() => setIdx((i) => (i + 1) % slides.length), 4000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -54,21 +53,13 @@ export default function LoginPage() {
                        dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800"
             dir="rtl"
           >
-            {/* لوگو و تیتر — راست‌چین */}
+            {/* ✅ هدر تصویر (جایگزین لوگو و متن) */}
             <div className="mb-6 w-full text-right">
               <img
-                src={LOGO_SRC}
-                alt="IDE Poyan Energy"
-                className="h-12 mb-3 object-contain inline-block"
+                src={HEADER_IMG}
+                alt="header"
+                className="h-14 md:h-16 object-contain inline-block"
               />
-              <div
-                className="text-xl md:text-2xl font-extrabold leading-snug
-                              text-neutral-900
-                              dark:bg-clip-text dark:text-transparent dark:bg-gradient-to-tr dark:from-amber-200 dark:via-white dark:to-purple-200"
-              >
-                <div>مدیریت یکپارچه فرآیندها</div>
-                <div>شرکت ایده پویان انرژی</div>
-              </div>
             </div>
 
             {/* تیتر ورود (راست‌چین) */}
@@ -146,7 +137,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* ستون اسلایدر */}
+        {/* ستون اسلایدر (سمت چپ) */}
         <div className="lg:col-span-5 relative overflow-hidden">
           {slides.map((src, i) => (
             <div
