@@ -12,28 +12,24 @@ function BaseCurrenciesPage() {
   const [sources, setSources] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
 
-  // فرم "نوع ارز"
   const [typeTitle, setTypeTitle] = React.useState("");
   const [savingType, setSavingType] = React.useState(false);
   const [errType, setErrType] = React.useState("");
   const typeInputRef = React.useRef(null);
 
-  // فرم "منشأ ارز"
   const [srcTitle, setSrcTitle] = React.useState("");
   const [savingSrc, setSavingSrc] = React.useState(false);
   const [errSrc, setErrSrc] = React.useState("");
   const srcInputRef = React.useRef(null);
 
-  // ادیت
   const [editRow, setEditRow] = React.useState({
     kind: null,
     id: null,
     title: "",
   });
 
-  // مرتب‌سازی ستون «عنوان»
-  const [typeSortDir, setTypeSortDir] = React.useState("asc"); // asc | desc
-  const [srcSortDir, setSrcSortDir] = React.useState("asc"); // asc | desc
+  const [typeSortDir, setTypeSortDir] = React.useState("asc");
+  const [srcSortDir, setSrcSortDir] = React.useState("asc");
 
   const api = async (path, opt = {}) => {
     const res = await fetch("/api" + path, {
@@ -289,124 +285,116 @@ function BaseCurrenciesPage() {
   const SimpleTable = ({ rows, kind, sortDir, onToggleSort }) => (
     <TableWrap>
       <div className="bg-white text-black overflow-hidden dark:bg-neutral-900 dark:text-neutral-100">
-        {/* ✅ برای هم‌راستا شدن با فرم (p-4) */}
         <div className="px-4 pb-4">
-          <table
-            className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
-            dir="rtl"
-          >
-            <THead>
-              <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
-                <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                  #
-                </TH>
-
-                <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                  <div className="flex items-center justify-center gap-2">
-                    <span>عنوان</span>
-                    <button
-                      type="button"
-                      onClick={onToggleSort}
-                      className="h-7 w-7 inline-grid place-items-center bg-transparent p-0
-                                 text-neutral-500 hover:text-neutral-600 active:text-neutral-700
-                                 dark:text-neutral-400 dark:hover:text-neutral-300"
-                      title="مرتب‌سازی عنوان"
-                      aria-label="مرتب‌سازی عنوان"
-                    >
-                      <svg
-                        className={`w-[14px] h-[14px] transition-transform ${sortDir === "asc" ? "rotate-180" : ""}`}
-                        focusable="false"
-                        aria-hidden="true"
-                        viewBox="0 0 24 24"
-                      >
-                        <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"></path>
-                      </svg>
-                    </button>
-                  </div>
-                </TH>
-
-                <TH className="w-44 sm:w-72 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                  اقدامات
-                </TH>
-              </tr>
-            </THead>
-
-            <tbody
-              className="[&_td]:text-black dark:[&_td]:text-neutral-100
-                         [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50
-                         dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50"
+          {/* ✅ ریدیوس و بوردر برگشت تا با فیلد بالا هماهنگ بشه */}
+          <div className="rounded-2xl border border-black/10 overflow-hidden bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+            <table
+              className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
+              dir="rtl"
             >
-              {loading ? (
-                <TR className="bg-white dark:bg-transparent">
-                  <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-3">
-                    در حال بارگذاری…
-                  </TD>
-                </TR>
-              ) : (rows || []).length === 0 ? (
-                <TR className="bg-white dark:bg-transparent">
-                  <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-3">
-                    موردی ثبت نشده.
-                  </TD>
-                </TR>
-              ) : (
-                rows.map((r, idx) => {
-                  const isLast = idx === rows.length - 1;
-                  const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
+              <THead>
+                <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
+                  <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                    #
+                  </TH>
 
-                  return (
-                    <TR key={`${kind}-${r.id}`}>
-                      <TD className={`px-3 ${tdBorder}`}>{idx + 1}</TD>
+                  <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                    <div className="flex items-center justify-center gap-2">
+                      <span>عنوان</span>
+                      <button
+                        type="button"
+                        onClick={onToggleSort}
+                        className="h-7 w-7 inline-grid place-items-center bg-transparent p-0
+                                   text-neutral-500 hover:text-neutral-600 active:text-neutral-700
+                                   dark:text-neutral-400 dark:hover:text-neutral-300"
+                        title="مرتب‌سازی عنوان"
+                        aria-label="مرتب‌سازی عنوان"
+                      >
+                        <svg
+                          className={`w-[14px] h-[14px] transition-transform ${sortDir === "asc" ? "rotate-180" : ""}`}
+                          focusable="false"
+                          aria-hidden="true"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"></path>
+                        </svg>
+                      </button>
+                    </div>
+                  </TH>
 
-                      <TD className={`px-3 ${tdBorder}`}>
-                        {editRow.kind === kind && editRow.id === r.id ? (
-                          <input
-                            className="w-full max-w-md rounded-xl px-2 py-0.5 text-center
-                                       border border-black/15 dark:border-neutral-700
-                                       bg-white text-black placeholder-black/40
-                                       dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400"
-                            value={editRow.title}
-                            onChange={(e) =>
-                              setEditRow({
-                                ...editRow,
-                                title: e.target.value,
-                              })
-                            }
-                            autoFocus
-                          />
-                        ) : (
-                          r.title || "—"
-                        )}
-                      </TD>
+                  <TH className="w-44 sm:w-72 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                    اقدامات
+                  </TH>
+                </tr>
+              </THead>
 
-                      <TD className={`px-3 ${tdBorder}`}>
-                        {editRow.kind === kind && editRow.id === r.id ? (
-                          <div className="flex items-center justify-center gap-2">
-                            <RowActionIconBtn action="save" onClick={saveEdit} size={36} iconSize={16} />
-                            <RowActionIconBtn action="cancel" onClick={cancelEdit} size={36} iconSize={15} />
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-center gap-2">
-                            <RowActionIconBtn
-                              action="edit"
-                              onClick={() => startEdit(kind, r)}
-                              size={36}
-                              iconSize={16}
+              <tbody
+                className="[&_td]:text-black dark:[&_td]:text-neutral-100
+                           [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50
+                           dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50"
+              >
+                {loading ? (
+                  <TR className="bg-white dark:bg-transparent">
+                    <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-3">
+                      در حال بارگذاری…
+                    </TD>
+                  </TR>
+                ) : (rows || []).length === 0 ? (
+                  <TR className="bg-white dark:bg-transparent">
+                    <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-3">
+                      موردی ثبت نشده.
+                    </TD>
+                  </TR>
+                ) : (
+                  rows.map((r, idx) => {
+                    const isLast = idx === rows.length - 1;
+                    const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
+
+                    return (
+                      <TR key={`${kind}-${r.id}`}>
+                        <TD className={`px-3 ${tdBorder}`}>{idx + 1}</TD>
+
+                        <TD className={`px-3 ${tdBorder}`}>
+                          {editRow.kind === kind && editRow.id === r.id ? (
+                            <input
+                              className="w-full max-w-md rounded-xl px-2 py-0.5 text-center
+                                         border border-black/15 dark:border-neutral-700
+                                         bg-white text-black placeholder-black/40
+                                         dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400"
+                              value={editRow.title}
+                              onChange={(e) =>
+                                setEditRow({
+                                  ...editRow,
+                                  title: e.target.value,
+                                })
+                              }
+                              autoFocus
                             />
-                            <RowActionIconBtn
-                              action="delete"
-                              onClick={() => removeRow(kind, r.id)}
-                              size={36}
-                              iconSize={17}
-                            />
-                          </div>
-                        )}
-                      </TD>
-                    </TR>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                          ) : (
+                            r.title || "—"
+                          )}
+                        </TD>
+
+                        <TD className={`px-3 ${tdBorder}`}>
+                          {editRow.kind === kind && editRow.id === r.id ? (
+                            <div className="flex items-center justify-center gap-2">
+                              <RowActionIconBtn action="save" onClick={saveEdit} size={36} iconSize={16} />
+                              <RowActionIconBtn action="cancel" onClick={cancelEdit} size={36} iconSize={15} />
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center gap-2">
+                              <RowActionIconBtn action="edit" onClick={() => startEdit(kind, r)} size={36} iconSize={16} />
+                              <RowActionIconBtn action="delete" onClick={() => removeRow(kind, r.id)} size={36} iconSize={17} />
+                            </div>
+                          )}
+                        </TD>
+                      </TR>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </TableWrap>
