@@ -380,10 +380,12 @@ export default function LettersPage() {
     document.documentElement.classList.contains("dark") ? "dark" : "light"
   );
   useEffect(() => {
-    const tick = () =>
-      setTheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
-    const id = setInterval(tick, 500);
-    return () => clearInterval(id);
+    const el = document.documentElement;
+    const apply = () => setTheme(el.classList.contains("dark") ? "dark" : "light");
+    apply();
+    const obs = new MutationObserver(() => apply());
+    obs.observe(el, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
   }, []);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -533,14 +535,15 @@ export default function LettersPage() {
     throw new Error("حجم فایل PDF بیشتر از ۴۰۰ کیلوبایت است؛ لطفاً قبل از آپلود آن را کوچک کنید.");
   };
 
-  const uploadFileToServer = (file, onProgress) => {
+  const uploadFileToLetter = (file, letterId, onProgress) => {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open("POST", API_BASE + "/upload/payment-doc");
+      xhr.open("POST", API_BASE + "/uploads/letters");
       xhr.withCredentials = true;
 
       const fd = new FormData();
       fd.append("file", file);
+      fd.append("letter_id", String(letterId));
 
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable && typeof onProgress === "function") {
@@ -598,6 +601,8 @@ export default function LettersPage() {
           serverId: null,
           url: null,
           previewUrl,
+          file: rawFile,
+          optimizedFile: null,
         },
       ]);
 
@@ -607,24 +612,13 @@ export default function LettersPage() {
         setDocFilesFor(which, (prev) =>
           prev.map((f) =>
             f.id === id
-              ? { ...f, size: optimized.size, status: "uploading", progress: 0, error: "" }
-              : f
-          )
-        );
-
-        const res = await uploadFileToServer(optimized, (p) => {
-          setDocFilesFor(which, (prev) => prev.map((f) => (f.id === id ? { ...f, progress: p } : f)));
-        });
-
-        setDocFilesFor(which, (prev) =>
-          prev.map((f) =>
-            f.id === id
               ? {
                   ...f,
-                  status: "done",
-                  progress: 100,
-                  serverId: res?.id ?? res?.fileId ?? null,
-                  url: res?.url ?? res?.path ?? null,
+                  size: optimized.size,
+                  status: "ready",
+                  progress: 0,
+                  error: "",
+                  optimizedFile: optimized,
                 }
               : f
           )
@@ -633,7 +627,7 @@ export default function LettersPage() {
         setDocFilesFor(which, (prev) =>
           prev.map((f) =>
             f.id === id
-              ? { ...f, status: "error", error: e?.message || "خطا در آماده‌سازی یا آپلود فایل." }
+              ? { ...f, status: "error", error: e?.message || "خطا در آماده‌سازی فایل." }
               : f
           )
         );
@@ -669,6 +663,12 @@ export default function LettersPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const refetchLetters = async () => {
+    const r = await api("/letters/mine");
+    const items = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
+    setMyLetters(items);
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -883,12 +883,51 @@ export default function LettersPage() {
   const subjectOf = (l) => String(l?.subject ?? l?.title ?? "");
   const categoryOf = (l) => String(l?.category ?? l?.category_name ?? l?.categoryTitle ?? "");
 
+  const normalizeYmd = (s) => {
+    const v = String(s || "").trim();
+    const m = v.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+    if (!m) return "";
+    return `${m[1]}/${pad2(m[2])}/${pad2(m[3])}`;
+  };
+
+  const applyQuickRange = (key) => {
+    const now = new Date();
+    const end = now;
+    const start = new Date(now.getTime());
+
+    if (key === "week") start.setDate(start.getDate() - 7);
+    if (key === "2w") start.setDate(start.getDate() - 14);
+    if (key === "1m") start.setMonth(start.getMonth() - 1);
+    if (key === "3m") start.setMonth(start.getMonth() - 3);
+    if (key === "6m") start.setMonth(start.getMonth() - 6);
+
+    const ps = getJalaliPartsFromDate(start);
+    const pe = getJalaliPartsFromDate(end);
+
+    const from = `${ps.jy}/${pad2(ps.jm)}/${pad2(ps.jd)}`;
+    const to = `${pe.jy}/${pad2(pe.jm)}/${pad2(pe.jd)}`;
+
+    setFilterFromDate(from);
+    setFilterToDate(to);
+  };
+
+  useEffect(() => {
+    if (!filterQuick) return;
+    applyQuickRange(filterQuick);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterQuick]);
+
   const filteredLetters = useMemo(() => {
     const arr = Array.isArray(myLetters) ? myLetters : [];
     const sSub = String(filterSubject || "").trim().toLowerCase();
     const sOrg = String(filterOrg || "").trim().toLowerCase();
+    const fromY = normalizeYmd(filterFromDate);
+    const toY = normalizeYmd(filterToDate);
 
     return arr.filter((l) => {
+      const kind = letterKindOf(l);
+      if (kind !== tab) return false;
+
       if (filterCategory && String(categoryOf(l) || "") !== String(filterCategory)) return false;
       if (filterProjectId && String(l?.project_id ?? l?.projectId ?? "") !== String(filterProjectId)) return false;
 
@@ -900,14 +939,47 @@ export default function LettersPage() {
         const x = String(orgOf(l) || "").toLowerCase();
         if (!x.includes(sOrg)) return false;
       }
+
+      if (filterTagIds.length > 0) {
+        const letterTags = Array.isArray(l?.tag_ids) ? l.tag_ids : Array.isArray(l?.tagIds) ? l.tagIds : [];
+        const set = new Set(letterTags.map((x) => String(x)));
+        const ok = filterTagIds.every((x) => set.has(String(x)));
+        if (!ok) return false;
+      }
+
+      const d = normalizeYmd(letterDateOf(l));
+      if (fromY && d && d < fromY) return false;
+      if (toY && d && d > toY) return false;
+
       return true;
     });
-  }, [myLetters, filterSubject, filterOrg, filterCategory, filterProjectId]);
+  }, [
+    myLetters,
+    tab,
+    filterSubject,
+    filterOrg,
+    filterCategory,
+    filterProjectId,
+    filterTagIds,
+    filterFromDate,
+    filterToDate,
+  ]);
 
   useEffect(() => {
     setSelectedIds(new Set());
     setPage(0);
-  }, [rowsPerPage]);
+  }, [
+    tab,
+    rowsPerPage,
+    filterCategory,
+    filterProjectId,
+    filterQuick,
+    filterFromDate,
+    filterToDate,
+    filterTagIds,
+    filterSubject,
+    filterOrg,
+  ]);
 
   const total = filteredLetters.length;
   const pageCount = Math.max(1, Math.ceil(total / Math.max(1, rowsPerPage)));
@@ -966,6 +1038,135 @@ export default function LettersPage() {
     "dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50";
 
   const rowDividerCls = "border-b border-neutral-300 dark:border-neutral-700";
+
+  const resetForm = () => {
+    setCategory("");
+    setProjectId("");
+    setLetterNo("");
+    setLetterDate("");
+    setFromName("");
+    setOrgName("");
+    setToName("");
+    setSubject("");
+
+    setHasAttachment(false);
+    setIncomingAttachmentTitle("");
+    setOutgoingAttachmentTitle("");
+
+    setReturnToIds([""]);
+    setPiroIds([""]);
+
+    setIncomingTagPick("");
+    setOutgoingTagPick("");
+    setIncomingTagIds([]);
+    setOutgoingTagIds([]);
+
+    setIncomingSecretariatDate(todayJalaliYmd || "");
+    setOutgoingSecretariatDate(todayJalaliYmd || "");
+    setIncomingSecretariatNo("");
+    setOutgoingSecretariatNo("");
+    setIncomingReceiverName("");
+    setOutgoingReceiverName("");
+
+    setDocFilesByType({ incoming: [], outgoing: [] });
+  };
+
+  const submitLetter = async (kind) => {
+    const isIncoming = kind === "incoming";
+    const attachmentTitle = isIncoming ? incomingAttachmentTitle : outgoingAttachmentTitle;
+    const tagIds = isIncoming ? incomingTagIds : outgoingTagIds;
+    const secretariatDate = isIncoming ? incomingSecretariatDate : outgoingSecretariatDate;
+    const secretariatNo = isIncoming ? incomingSecretariatNo : outgoingSecretariatNo;
+    const receiverName = isIncoming ? incomingReceiverName : outgoingReceiverName;
+
+    const pId = projectId ? Number(projectId) : null;
+
+    const payload = {
+      kind,
+      category: category || "",
+      projectId: pId && Number.isFinite(pId) ? pId : null,
+      letterNo: letterNo || "",
+      letterDate: letterDate || "",
+      fromName: fromName || "",
+      toName: toName || "",
+      orgName: orgName || "",
+      subject: subject || "",
+      hasAttachment: !!hasAttachment,
+      attachmentTitle: hasAttachment ? attachmentTitle || "" : "",
+      returnToIds: (Array.isArray(returnToIds) ? returnToIds : []).map(String).filter((x) => x && x.trim()),
+      piroIds: (Array.isArray(piroIds) ? piroIds : []).map(String).filter((x) => x && x.trim()),
+      tagIds: (Array.isArray(tagIds) ? tagIds : []).map(String).filter((x) => x && x.trim()),
+      secretariatDate: secretariatDate || "",
+      secretariatNo: secretariatNo || "",
+      receiverName: receiverName || "",
+      attachments: [],
+    };
+
+    const created = await api("/letters", { method: "POST", body: JSON.stringify(payload) });
+    const item = created?.item || created;
+    const newId = item?.id ?? item?.letter_id ?? item?.letterId;
+    if (!newId) throw new Error("create_failed");
+
+    const letterId = Number(newId);
+
+    if (hasAttachment) {
+      const files = Array.isArray(docFilesByType?.[kind]) ? docFilesByType[kind] : [];
+      const queue = files.filter((f) => f && f.status !== "error" && (f.optimizedFile || f.file));
+
+      for (const f of queue) {
+        const fileToSend = f.optimizedFile || f.file;
+        setDocFilesFor(kind, (prev) =>
+          prev.map((x) => (x.id === f.id ? { ...x, status: "uploading", progress: 0, error: "" } : x))
+        );
+
+        try {
+          const res = await uploadFileToLetter(fileToSend, letterId, (p) => {
+            setDocFilesFor(kind, (prev) =>
+              prev.map((x) => (x.id === f.id ? { ...x, progress: p } : x))
+            );
+          });
+
+          setDocFilesFor(kind, (prev) =>
+            prev.map((x) =>
+              x.id === f.id
+                ? {
+                    ...x,
+                    status: "done",
+                    progress: 100,
+                    serverId: res?.item?.id ?? res?.id ?? x.serverId,
+                    url: res?.item?.url ?? res?.url ?? x.url,
+                  }
+                : x
+            )
+          );
+        } catch (e) {
+          setDocFilesFor(kind, (prev) =>
+            prev.map((x) =>
+              x.id === f.id
+                ? { ...x, status: "error", error: e?.message || "خطا در آپلود فایل." }
+                : x
+            )
+          );
+        }
+      }
+    }
+
+    await refetchLetters();
+    resetForm();
+    setFormOpen(false);
+  };
+
+  const deleteLetter = async (id) => {
+    const ok = window.confirm("حذف شود؟");
+    if (!ok) return;
+    await api(`/letters/${id}`, { method: "DELETE" });
+    await refetchLetters();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(String(id));
+      return next;
+    });
+  };
 
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
@@ -1033,6 +1234,7 @@ export default function LettersPage() {
                 <div className={labelCls}>دسته بندی</div>
                 <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className={inputCls}>
                   <option value=""></option>
+                  <option value="project">پروژه</option>
                 </select>
               </div>
 
@@ -1054,7 +1256,7 @@ export default function LettersPage() {
             </div>
           </div>
 
-          {/* Quick range chips + date range (aligned and close) */}
+          {/* Quick range chips + date range */}
           <div className="mt-3 rounded-2xl border border-black/10 dark:border-white/10 p-3">
             <div className="flex flex-col gap-3">
               <div className="flex flex-wrap items-end gap-2">
@@ -1136,7 +1338,6 @@ export default function LettersPage() {
                 </div>
               </div>
 
-              {/* New search fields (equal width) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <div className={labelCls}>موضوع</div>
@@ -1160,7 +1361,6 @@ export default function LettersPage() {
                 </div>
               </div>
 
-              {/* Tags filter */}
               <div>
                 <div className={labelCls}>برچسب ها</div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -1453,7 +1653,13 @@ export default function LettersPage() {
                   </div>
 
                   <div className="flex items-center justify-end pt-2">
-                    <button type="button" onClick={() => {}} className={sendBtnCls} title="ارسال" aria-label="ارسال">
+                    <button
+                      type="button"
+                      onClick={() => submitLetter("incoming")}
+                      className={sendBtnCls}
+                      title="ارسال"
+                      aria-label="ارسال"
+                    >
                       <img src="/images/icons/check.svg" alt="" className={sendIconCls} />
                     </button>
                   </div>
@@ -1751,7 +1957,13 @@ export default function LettersPage() {
                   </div>
 
                   <div className="flex items-center justify-end pt-2">
-                    <button type="button" onClick={() => {}} className={sendBtnCls} title="ارسال" aria-label="ارسال">
+                    <button
+                      type="button"
+                      onClick={() => submitLetter("outgoing")}
+                      className={sendBtnCls}
+                      title="ارسال"
+                      aria-label="ارسال"
+                    >
                       <img src="/images/icons/check.svg" alt="" className={sendIconCls} />
                     </button>
                   </div>
@@ -1850,7 +2062,13 @@ export default function LettersPage() {
                                   <img src="/images/icons/pencil.svg" alt="" className="w-5 h-5 dark:invert" />
                                 </button>
 
-                                <button type="button" className={iconBtnCls} aria-label="حذف" title="حذف">
+                                <button
+                                  type="button"
+                                  onClick={() => deleteLetter(id)}
+                                  className={iconBtnCls}
+                                  aria-label="حذف"
+                                  title="حذف"
+                                >
                                   <img
                                     src="/images/icons/hazf.svg"
                                     alt=""
@@ -2096,7 +2314,9 @@ export default function LettersPage() {
                                           ? "100%"
                                           : f.status === "error"
                                           ? "100%"
-                                          : `${Math.max(0, Math.min(100, f.progress || 0))}%`,
+                                          : f.status === "uploading"
+                                          ? `${Math.max(0, Math.min(100, f.progress || 0))}%`
+                                          : "0%",
                                       opacity: f.status === "error" ? 0.35 : 1,
                                     }}
                                   />
@@ -2105,6 +2325,8 @@ export default function LettersPage() {
                                 <div className="text-[11px] whitespace-nowrap">
                                   {f.status === "optimizing"
                                     ? "آماده‌سازی…"
+                                    : f.status === "ready"
+                                    ? "آماده ارسال"
                                     : f.status === "uploading"
                                     ? `${toFaDigits(f.progress || 0)}%`
                                     : f.status === "done"
@@ -2115,7 +2337,7 @@ export default function LettersPage() {
 
                               {f.status === "error" && (
                                 <div className="mt-1 text-[11px] text-red-600 dark:text-red-400">
-                                  {f.error || "خطا در آپلود"}
+                                  {f.error || "خطا"}
                                 </div>
                               )}
                             </div>
