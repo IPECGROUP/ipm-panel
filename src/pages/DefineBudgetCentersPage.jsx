@@ -209,25 +209,9 @@ function DefineBudgetCentersPage() {
           }
         }
 
-        let list = (raw || [])
+        const list = (raw || [])
           .map((x, i) => normalizeProject(x, i))
           .filter((x) => x && x.id != null && String(x.code || "").trim());
-
-        if (!list.length) {
-          try {
-            const c = await api("/centers/projects");
-            const items = extractArray(c);
-            const bases = new Map();
-            (items || []).forEach((it) => {
-              const suf = String(it?.suffix || "").trim();
-              if (!suf) return;
-              const base = suf.split(".")[0];
-              if (!base) return;
-              if (!bases.has(base)) bases.set(base, { id: base, code: base, name: "" });
-            });
-            list = Array.from(bases.values());
-          } catch {}
-        }
 
         if (!alive) return;
         setProjects(list);
