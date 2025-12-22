@@ -209,9 +209,35 @@ function DefineBudgetCentersPage() {
           }
         }
 
-        const list = (raw || [])
+        const flat = (raw || [])
           .map((x, i) => normalizeProject(x, i))
           .filter((x) => x && x.id != null && String(x.code || "").trim());
+
+        // فقط پروژه‌های ریشه (قبل از '.') نمایش داده شود (مثل 159 نه 159.1.1)
+        const groups = new Map();
+        for (const p of flat) {
+          const en = toEnDigits(String(p.code || "")).trim();
+          if (!en) continue;
+          const base = en.split(".")[0].replace(/[^0-9]/g, "");
+          if (!base) continue;
+
+          if (!groups.has(base)) groups.set(base, { base, exact: null, any: null });
+          const g = groups.get(base);
+          if (!g.any) g.any = p;
+
+          const enPure = en.replace(/[^0-9.]/g, "");
+          if (enPure === base) g.exact = p;
+        }
+
+        const list = Array.from(groups.values()).map((g) => {
+          const pick = g.exact || g.any || {};
+          return {
+            ...pick,
+            id: g.exact?.id ?? g.base,
+            code: g.base,
+            name: g.exact?.name ?? "",
+          };
+        });
 
         if (!alive) return;
         setProjects(list);
