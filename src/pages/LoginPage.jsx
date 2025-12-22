@@ -54,7 +54,7 @@ export default function LoginPage() {
             dir="rtl"
           >
             {/* ✅ هدر تصویر (جایگزین لوگو و متن) */}
-            <div className="mb-6 w-full text-right">
+            <div className="mb-6 w-full h-8 text-right">
               <img
                 src={HEADER_IMG}
                 alt="header"
