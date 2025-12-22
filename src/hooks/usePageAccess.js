@@ -1,5 +1,4 @@
-// src/hooks/usePageAccess.js
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 
 export function usePageAccess(pageKey, allTabs) {
   const API_BASE = useMemo(() => (window.API_URL || "/api").replace(/\/+$/, ""), []);
@@ -9,16 +8,38 @@ export function usePageAccess(pageKey, allTabs) {
   const [allowedTabs, setAllowedTabs] = useState(null);
   const [canAccessPage, setCanAccessPage] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  const allowedTabsSet = useMemo(() => new Set((allowedTabs || []).map(String)), [allowedTabs]);
+
+  const refresh = useCallback(() => setRefreshTick((x) => x + 1), []);
+
+  useEffect(() => {
+    const onFocus = () => refresh();
+    const onVis = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVis);
+
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [refresh]);
 
   useEffect(() => {
     let alive = true;
+    const ac = typeof AbortController !== "undefined" ? new AbortController() : null;
 
     const api = async (path, opt = {}) => {
       const res = await fetch(API_BASE + path, {
         credentials: "include",
+        signal: ac ? ac.signal : undefined,
         ...opt,
         headers: { "Content-Type": "application/json", ...(opt.headers || {}) },
       });
+
       const txt = await res.text();
       let data = {};
       try {
@@ -26,10 +47,9 @@ export function usePageAccess(pageKey, allTabs) {
       } catch {
         data = {};
       }
+
       if (!res.ok) {
-        throw Object.assign(new Error(data?.error || data?.message || "request_failed"), {
-          status: res.status,
-        });
+        throw Object.assign(new Error(data?.error || data?.message || "request_failed"), { status: res.status });
       }
       return data;
     };
@@ -39,7 +59,6 @@ export function usePageAccess(pageKey, allTabs) {
       try {
         const m = await api("/auth/me");
         if (!alive) return;
-
         const user = m?.user || m || null;
         setMe(user);
 
@@ -53,81 +72,43 @@ export function usePageAccess(pageKey, allTabs) {
         const a = await api("/access/my");
         if (!alive) return;
 
-        const pages = a?.pages || {};
+        const rule = a?.pages?.[pageKey] ?? null;
 
-        // ✅ اگر کلید صفحه اصلاً وجود ندارد => یعنی هیچ دسترسی‌ای برای این صفحه ثبت نشده
-        if (!Object.prototype.hasOwnProperty.call(pages, pageKey)) {
+        if (!rule || rule === null || rule?.permitted === 0 || rule?.permitted === false || rule?.permitted === "0") {
           setAllowedTabs([]);
           setCanAccessPage(false);
           setLoading(false);
           return;
         }
 
-        const rule = pages[pageKey]; // می‌تواند null یا object یا array باشد
-
-        // ✅ null یعنی دسترسی کامل صفحه (همه تب‌ها)
-        if (rule === null) {
-          setAllowedTabs(allTabIds);
-          setCanAccessPage(allTabIds.length > 0);
+        // اگر این صفحه اصلاً تب ندارد
+        if (!allTabIds.length) {
+          setAllowedTabs([]);
+          setCanAccessPage(true);
           setLoading(false);
           return;
         }
 
-        // اگر آرایه بود => همان‌ها
-        if (Array.isArray(rule)) {
-          const okTabs = allTabIds.filter((id) => rule.includes(id));
+        // tabs=null => همه تب‌ها
+        if (rule?.tabs === null) {
+          setAllowedTabs(allTabIds);
+          setCanAccessPage(true);
+          setLoading(false);
+          return;
+        }
+
+        // tabs=object => فقط همان‌ها
+        if (rule?.tabs && typeof rule.tabs === "object") {
+          const okTabs = allTabIds.filter((id) => {
+            const v = rule.tabs[id];
+            return v === 1 || v === true || v === "1";
+          });
           setAllowedTabs(okTabs);
           setCanAccessPage(okTabs.length > 0);
           setLoading(false);
           return;
         }
 
-        // اگر آبجکت بود => شکل جدید: { permitted, tabs }
-        if (rule && typeof rule === "object") {
-          const permitted =
-            rule.permitted === undefined
-              ? true
-              : rule.permitted === 1 || rule.permitted === true || rule.permitted === "1" || rule.permitted === "true";
-
-          if (!permitted) {
-            setAllowedTabs([]);
-            setCanAccessPage(false);
-            setLoading(false);
-            return;
-          }
-
-          // tabs === null => همه تب‌ها
-          if (rule.tabs === null || rule.tabs === undefined) {
-            setAllowedTabs(allTabIds);
-            setCanAccessPage(allTabIds.length > 0);
-            setLoading(false);
-            return;
-          }
-
-          // tabs آبجکت => فقط همان‌ها
-          if (rule.tabs && typeof rule.tabs === "object") {
-            const okTabs = allTabIds.filter((id) => {
-              const v = rule.tabs[id];
-              return v === 1 || v === true || v === "1" || v === "true";
-            });
-
-            // اگر permitted هست ولی tabs خالیه، منطقی‌ترین حالت: همه تب‌ها
-            const finalTabs = okTabs.length ? okTabs : allTabIds;
-
-            setAllowedTabs(finalTabs);
-            setCanAccessPage(finalTabs.length > 0);
-            setLoading(false);
-            return;
-          }
-
-          // اگر tabs چیز دیگری بود => امن: همه تب‌ها (چون permitted داریم)
-          setAllowedTabs(allTabIds);
-          setCanAccessPage(allTabIds.length > 0);
-          setLoading(false);
-          return;
-        }
-
-        // fallback ایمن => بدون دسترسی
         setAllowedTabs([]);
         setCanAccessPage(false);
         setLoading(false);
@@ -142,8 +123,9 @@ export function usePageAccess(pageKey, allTabs) {
 
     return () => {
       alive = false;
+      if (ac) ac.abort();
     };
-  }, [API_BASE, pageKey, allTabIds]);
+  }, [API_BASE, pageKey, allTabIds, refreshTick]);
 
-  return { me, allowedTabs, canAccessPage, loading };
+  return { me, allowedTabs, allowedTabsSet, canAccessPage, loading, refresh };
 }

@@ -53,12 +53,13 @@ function DefineBudgetCentersPage() {
     [API_BASE]
   );
 
-  const { me, loading: accessLoading, canAccessPage, allowedTabs } = usePageAccess(PAGE_KEY, ALL_TABS);
+  const { me, loading: accessLoading, canAccessPage, allowedTabsSet } = usePageAccess(PAGE_KEY, ALL_TABS);
+
 
   const tabs = useMemo(() => {
-    if (!Array.isArray(allowedTabs)) return [];
-    return ALL_TABS.filter((t) => allowedTabs.includes(String(t.id)));
-  }, [allowedTabs]);
+  return ALL_TABS.filter((t) => allowedTabsSet?.has(String(t.id)));
+}, [allowedTabsSet]);
+
 
   const prefixOf = useCallback((kind) => tabs.find((t) => t.id === kind)?.prefix || "", [tabs]);
 
