@@ -1,5 +1,5 @@
 // src/pages/DefineBudgetCentersPage.jsx
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
 import { usePageAccess } from "../hooks/usePageAccess";
@@ -56,8 +56,8 @@ function DefineBudgetCentersPage() {
   const { me, loading: accessLoading, canAccessPage, allowedTabs } = usePageAccess(PAGE_KEY, ALL_TABS);
 
   const tabs = useMemo(() => {
-    if (!allowedTabs) return [];
-    return ALL_TABS.filter((t) => allowedTabs.includes(t.id));
+    if (!Array.isArray(allowedTabs)) return [];
+    return ALL_TABS.filter((t) => allowedTabs.includes(String(t.id)));
   }, [allowedTabs]);
 
   const prefixOf = useCallback((kind) => tabs.find((t) => t.id === kind)?.prefix || "", [tabs]);
@@ -104,12 +104,21 @@ function DefineBudgetCentersPage() {
     [prefixOf]
   );
 
-  const [active, setActive] = useState("office");
+  // ✅ تغییر 1: active از null شروع میشه تا قبل از دسترسی/تب‌ها چیزی اجرا نشه
+  const [active, setActive] = useState(null);
 
   useEffect(() => {
     if (!tabs.length) return;
-    if (!tabs.some((t) => t.id === active)) setActive(tabs[0].id);
+    if (!active || !tabs.some((t) => t.id === active)) {
+      setActive(tabs[0].id);
+    }
   }, [tabs, active]);
+
+  const canAccessActiveTab = useMemo(() => {
+    if (!active) return false;
+    if (!Array.isArray(allowedTabs)) return false;
+    return allowedTabs.includes(String(active));
+  }, [active, allowedTabs]);
 
   const extractArray = useCallback((r) => {
     if (!r) return [];
@@ -172,6 +181,7 @@ function DefineBudgetCentersPage() {
 
   useEffect(() => {
     if (canAccessPage !== true) return;
+    if (!Array.isArray(allowedTabs) || !allowedTabs.includes("projects")) return;
 
     let alive = true;
     (async () => {
@@ -224,7 +234,7 @@ function DefineBudgetCentersPage() {
     return () => {
       alive = false;
     };
-  }, [canAccessPage, api, extractArray, normalizeProject]);
+  }, [canAccessPage, allowedTabs, api, extractArray, normalizeProject]);
 
   const sortedProjects = useMemo(() => {
     return (projects || [])
@@ -265,19 +275,25 @@ function DefineBudgetCentersPage() {
     [prefixOf]
   );
 
+  // ✅ تغییر 3: جلوگیری از race condition
+  const requestSeqRef = useRef(0);
+
   const loadCenters = useCallback(
     async (kind) => {
       if (!kind) {
         setRows([]);
         return;
       }
+
+      const seq = ++requestSeqRef.current;
+
       setLoading(true);
       setErr("");
       try {
         let items = [];
         if (kind === "projects") {
           if (!projectId) {
-            setRows([]);
+            if (seq === requestSeqRef.current) setRows([]);
             return;
           }
           const list = await api("/centers/projects").catch(() => ({ items: [] }));
@@ -297,17 +313,22 @@ function DefineBudgetCentersPage() {
             sensitivity: "base",
           })
         );
+
+        if (seq !== requestSeqRef.current) return;
         setRows(sorted);
       } catch (e) {
+        if (seq !== requestSeqRef.current) return;
         setErr(e.message || "خطا در دریافت لیست");
         setRows([]);
       } finally {
+        if (seq !== requestSeqRef.current) return;
         setLoading(false);
       }
     },
     [api, projectId, selectedProject, codeTextOf]
   );
 
+  // ✅ تغییر 2: فقط اگر active واقعاً مجاز بود loadCenters اجرا بشه
   useEffect(() => {
     setErr("");
     setNewSuffix("");
@@ -315,13 +336,14 @@ function DefineBudgetCentersPage() {
     setEditId(null);
     setEditSuffix("");
     setEditDesc("");
-    if (active !== "projects") setProjectId("");
-    if (canAccessPage === true) loadCenters(active);
-  }, [active, canAccessPage, loadCenters]);
+    if (active && active !== "projects") setProjectId("");
+    if (active && canAccessPage === true && canAccessActiveTab) loadCenters(active);
+  }, [active, canAccessPage, canAccessActiveTab, loadCenters]);
 
   useEffect(() => {
-    if (active === "projects" && canAccessPage === true) loadCenters(active);
-  }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!active) return;
+    if (active === "projects" && canAccessPage === true && canAccessActiveTab) loadCenters(active);
+  }, [projectId, active, canAccessPage, canAccessActiveTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setOpenCodes({});
@@ -534,6 +556,19 @@ function DefineBudgetCentersPage() {
         <div className="p-6 rounded-2xl ring-1 ring-neutral-200 bg-white text-center text-red-600 dark:bg-neutral-900 dark:ring-neutral-800 dark:text-red-400">
           شما سطح دسترسی لازم را ندارید.
         </div>
+      </Card>
+    );
+  }
+
+  if (!active || !tabs.length) {
+    return (
+      <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+        <div className="mb-4 text-base md:text-lg">
+          <span className="text-neutral-700 dark:text-neutral-300">بودجه‌بندی</span>
+          <span className="mx-2 text-neutral-500 dark:text-neutral-400">›</span>
+          <span className="font-semibold text-neutral-900 dark:text-neutral-100">تعریف مراکز بودجه</span>
+        </div>
+        <div className="p-6 text-center text-neutral-600 dark:text-neutral-400">در حال آماده‌سازی…</div>
       </Card>
     );
   }
