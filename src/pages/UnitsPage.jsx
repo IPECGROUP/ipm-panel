@@ -359,34 +359,35 @@ function OrgStructurePage() {
     <>
       <Card className="rounded-2xl border bg-white text-black border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
         {/* تب‌ها */}
-        <div className="w-full" dir="rtl">
-          <div className="flex w-full">
-            <button
-              type="button"
-              onClick={() => setActiveTab("units")}
-              className={`flex-1 h-14 sm:h-16 text-center rounded-t-[28px] sm:rounded-t-[34px]
-                          transition select-none
+        <div className="w-full isolate" dir="rtl">
+          <div className="w-full rounded-t-3xl bg-neutral-300 dark:bg-neutral-800 p-2">
+            <div className="flex w-full gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab("units")}
+                className={`flex-1 h-12 sm:h-14 text-center rounded-2xl transition select-none relative
                           ${
                             activeTab === "units"
-                              ? "bg-black text-white"
-                              : "bg-neutral-300 text-white"
+                              ? "bg-black text-white z-20 shadow-[0_10px_30px_-18px_rgba(0,0,0,0.6)]"
+                              : "bg-neutral-300 text-white/95 z-10 hover:bg-neutral-400 dark:bg-neutral-800 dark:hover:bg-neutral-700"
                           }`}
-            >
-              واحد ها
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("roles")}
-              className={`flex-1 h-14 sm:h-16 text-center rounded-t-[28px] sm:rounded-t-[34px]
-                          transition select-none
+              >
+                واحد ها
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("roles")}
+                className={`flex-1 h-12 sm:h-14 text-center rounded-2xl transition select-none relative
                           ${
                             activeTab === "roles"
-                              ? "bg-black text-white"
-                              : "bg-neutral-300 text-white"
+                              ? "bg-black text-white z-20 shadow-[0_10px_30px_-18px_rgba(0,0,0,0.6)]"
+                              : "bg-neutral-300 text-white/95 z-10 hover:bg-neutral-400 dark:bg-neutral-800 dark:hover:bg-neutral-700"
                           }`}
-            >
-              نقش ها
-            </button>
+              >
+                نقش ها
+              </button>
+            </div>
           </div>
         </div>
 
@@ -403,7 +404,6 @@ function OrgStructurePage() {
             <div className="rounded-2xl border border-black/10 bg-white overflow-hidden dark:bg-neutral-900 dark:border-neutral-800">
               {/* فرم افزودن */}
               <div className="p-4">
-                {/* در RTL: با flex-row، ترتیب طبیعی می‌شود: input (راست) و دکمه (چپ) */}
                 <div className="flex flex-col sm:flex-row sm:items-end items-stretch gap-2">
                   <input
                     disabled={!isAdmin}
@@ -525,11 +525,7 @@ function OrgStructurePage() {
                                           aria-label="ذخیره"
                                           title="ذخیره"
                                         >
-                                          <img
-                                            src="/images/icons/check.svg"
-                                            alt=""
-                                            className="w-[18px] h-[18px] dark:invert"
-                                          />
+                                          <img src="/images/icons/check.svg" alt="" className="w-[18px] h-[18px] dark:invert" />
                                         </button>
 
                                         <button
@@ -761,6 +757,16 @@ function OrgStructurePage() {
                 </div>
               </div>
             )}
+          </>
+        )}
+
+        {activeTab === "roles" && (
+          <>
+            <div className="mt-4 mb-3 text-base md:text-lg">
+              <span className="text-black/70 dark:text-neutral-300">اطلاعات پایه</span>
+              <span className="mx-2 text-black/50 dark:text-neutral-400">›</span>
+              <span className="font-semibold text-black dark:text-neutral-100">ساختار سازمانی</span>
+            </div>
           </>
         )}
       </Card>
