@@ -795,15 +795,17 @@ function UsersPage() {
               {addErr && <div className="text-sm text-red-600 dark:text-red-400 mt-3">{addErr}</div>}
 
               <div className="mt-4 flex items-center gap-2">
-                <AddPlusBtn title="افزودن" disabled={addSaving} onClick={() => {}} className="pointer-events-none" />
                 <button
                   type="submit"
                   disabled={addSaving}
-                  className="h-10 rounded-2xl px-4 text-sm font-medium bg-neutral-900 text-white hover:opacity-90 transition disabled:opacity-50
+                  className="h-10 w-10 grid place-items-center rounded-xl bg-neutral-900 text-white hover:opacity-90 transition disabled:opacity-50
                              dark:bg-neutral-100 dark:text-neutral-900"
+                  aria-label="ثبت"
+                  title="ثبت"
                 >
-                  ثبت
+                  <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
                 </button>
+
                 <Btn type="button" onClick={() => setAddOpen(false)}>
                   بستن
                 </Btn>
@@ -930,7 +932,11 @@ function UsersPage() {
                                     aria-label="ویرایش"
                                     title="ویرایش"
                                   >
-                                    <img src="/images/icons/pencil.svg" alt="" className="w-[18px] h-[18px] dark:invert" />
+                                    <img
+                                      src="/images/icons/pencil.svg"
+                                      alt=""
+                                      className="w-[18px] h-[18px] dark:invert"
+                                    />
                                   </button>
 
                                   <button

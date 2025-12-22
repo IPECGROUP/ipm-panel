@@ -601,24 +601,25 @@ function UnitsPage() {
             <div
               className="w-full max-w-[820px] max-h-[90vh] overflow-auto
                          rounded-3xl shadow-2xl ring-1 ring-black/10 dark:ring-neutral-800
-                         p-4 sm:p-6 bg-white text-black dark:bg-neutral-900 dark:text-neutral-100"
+                         p-3 sm:p-4 bg-white text-black dark:bg-neutral-900 dark:text-neutral-100"
               dir="rtl"
             >
-              <div className="flex items-center justify-between mb-4 gap-2">
-                <h2 className="text-lg md:text-xl font-bold">
+              <div className="flex items-center justify-between mb-3 gap-2">
+                <h2 className="text-base md:text-lg font-bold">
                   سطح دسترسی {accessUnit ? `— ${accessUnit.name}` : ""}
                 </h2>
 
                 <button
                   type="button"
                   onClick={closeAccess}
-                  className="h-10 w-10 grid place-items-center rounded-xl
+                  className="h-9 w-9 grid place-items-center rounded-xl
                              ring-1 ring-black/15 hover:bg-black/5 transition
                              dark:ring-neutral-800 dark:hover:bg-white/10"
                   aria-label="بستن"
                   title="بستن"
                 >
-                  <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
+                  {/* آیکن در پاپ‌آپ باید مشکی باشه (لایت) */}
+                  <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5 dark:invert" />
                 </button>
               </div>
 
@@ -626,17 +627,17 @@ function UnitsPage() {
                 <table className="w-full text-sm">
                   <thead className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
                     <tr>
-                      <th className="py-3 px-4 text-center !font-semibold">صفحه</th>
+                      <th className="py-2 px-4 text-center !font-semibold">صفحه</th>
                     </tr>
                   </thead>
 
                   <tbody>
                     <tr className="border-t border-black/10 dark:border-neutral-800">
-                      <td className="py-3 px-3 sm:px-4">
+                      <td className="py-2 px-3 sm:px-4">
                         {accessLoading ? (
-                          <div className="text-center text-black/60 dark:text-neutral-400 py-6">در حال بارگذاری…</div>
+                          <div className="text-center text-black/60 dark:text-neutral-400 py-5">در حال بارگذاری…</div>
                         ) : (
-                          <div className="grid gap-2">
+                          <div className="grid gap-1.5">
                             {pageOptions.map((opt) => {
                               const isOpen = !!openPages[opt.key];
                               const pageTabs = checkedTabsByPage[opt.key] || {};
@@ -651,20 +652,20 @@ function UnitsPage() {
                                   key={opt.key}
                                   className="rounded-2xl border border-black/10 dark:border-neutral-800 overflow-hidden"
                                 >
-                                  <div className="flex items-center justify-between gap-3 px-3 py-2 hover:bg-black/[0.04] dark:hover:bg-white/10">
-                                    <div className="flex items-center gap-3">
+                                  <div className="flex items-center justify-between gap-3 px-3 py-1.5 hover:bg-black/[0.04] dark:hover:bg-white/10">
+                                    <div className="flex items-center gap-2.5">
                                       <button
                                         type="button"
                                         onClick={() => togglePageOpen(opt.key)}
-                                        className="h-10 w-10 grid place-items-center rounded-xl
+                                        className="h-9 w-9 grid place-items-center rounded-xl
                                                    bg-transparent hover:opacity-80 active:opacity-70 transition
                                                    ring-1 ring-black/15 dark:ring-neutral-800"
                                         aria-label="باز/بستن"
                                         title="باز/بستن"
                                       >
-                                        <span className="text-lg leading-none">{isOpen ? "−" : "+"}</span>
+                                        <span className="text-base leading-none">{isOpen ? "−" : "+"}</span>
                                       </button>
-                                      <span className="font-medium">{opt.label}</span>
+                                      <span className="font-medium text-sm md:text-[15px]">{opt.label}</span>
                                     </div>
 
                                     <input
@@ -679,20 +680,20 @@ function UnitsPage() {
                                   </div>
 
                                   {isOpen && (
-                                    <div className="px-3 py-3 bg-black/[0.02] dark:bg-white/5">
-                                      <div className="text-xs text-black/60 dark:text-neutral-400 mb-2 text-center">
+                                    <div className="px-3 py-2 bg-black/[0.02] dark:bg-white/5">
+                                      <div className="text-[11px] text-black/60 dark:text-neutral-400 mb-2 text-center">
                                         تب‌ها
                                       </div>
 
-                                      <div className="grid sm:grid-cols-2 gap-2">
+                                      <div className="grid sm:grid-cols-2 gap-1.5">
                                         {tabOptions.map((t) => (
                                           <label
                                             key={t.key}
                                             className="flex items-center justify-between gap-3 rounded-xl
-                                                       border border-black/10 px-3 py-2 hover:bg-black/[0.04]
+                                                       border border-black/10 px-3 py-1.5 hover:bg-black/[0.04]
                                                        dark:border-neutral-800 dark:hover:bg-white/10"
                                           >
-                                            <span>{t.label}</span>
+                                            <span className="text-sm">{t.label}</span>
                                             <input
                                               type="checkbox"
                                               className="w-4 h-4 accent-black dark:accent-neutral-200"
@@ -721,12 +722,12 @@ function UnitsPage() {
                 </div>
               )}
 
-              <div className="mt-4 flex items-center justify-end gap-2">
+              <div className="mt-3 flex items-center justify-end gap-2">
                 <PrimaryBtn
                   type="button"
                   onClick={saveUnitAccess}
                   disabled={!isAdmin || accessSaving || accessLoading}
-                  className="!bg-neutral-900 !text-white dark:!bg-neutral-100 dark:!text-neutral-900"
+                  className="!bg-neutral-900 !text-white dark:!bg-neutral-100 dark:!text-neutral-900 !h-10"
                 >
                   {accessSaving ? "..." : "ذخیره"}
                 </PrimaryBtn>
