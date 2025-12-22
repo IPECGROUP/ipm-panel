@@ -1,7 +1,7 @@
 // src/pages/UserRolesPage.jsx
 import React from "react";
 import Card from "../components/ui/Card.jsx";
-import { Btn, PrimaryBtn, DangerBtn } from "../components/ui/Button.jsx";
+import { TableWrap } from "../components/ui/Table.jsx";
 
 const api = async (path, opt = {}) => {
   const res = await fetch("/api" + path, {
@@ -119,175 +119,197 @@ function UserRolesPage() {
 
   return (
     <Card
-      className="rounded-2xl border bg-white text-black border-black/10
-                 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800"
+      className="rounded-2xl border bg-white text-black border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800"
       dir="rtl"
     >
       {/* breadcrumb */}
       <div className="mb-3 text-base md:text-lg">
         <span className="text-black/70 dark:text-neutral-300">اطلاعات پایه</span>
         <span className="mx-2 text-black/50 dark:text-neutral-400">›</span>
-        <span className="font-semibold text-black dark:text-neutral-100">
-          نقش‌های کاربری
-        </span>
+        <span className="font-semibold text-black dark:text-neutral-100">نقش‌های کاربری</span>
       </div>
 
-      {/* فرم افزودن نقش */}
-      <form onSubmit={addRole} className="flex items-center gap-3 mb-4 flex-row-reverse">
-        <button
-          type="submit"
-          className="h-10 w-14 grid place-items-center rounded-xl
-                     bg-neutral-900 text-white hover:opacity-90 transition
-                     dark:bg-neutral-100 dark:text-neutral-900"
-          aria-label="افزودن نقش"
-          title="افزودن نقش"
+      {/* Section (form + table) */}
+      <div className="rounded-2xl border border-black/10 bg-white overflow-hidden dark:bg-neutral-900 dark:border-neutral-800">
+        {/* فرم افزودن نقش */}
+        <form
+          onSubmit={addRole}
+          className="p-4 flex items-center gap-3 flex-row-reverse"
         >
-          <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
-        </button>
-
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="نام نقش..."
-          className="flex-1 h-10 rounded-xl px-3
-                     bg-white text-black placeholder-black/40
-                     border border-black/15 outline-none
-                     focus:ring-2 focus:ring-black/10
-                     dark:bg-neutral-800 dark:text-neutral-100
-                     dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
-        />
-      </form>
-
-      {(err || loading) && (
-        <div className="text-sm -mt-2 mb-3">
-          {loading ? (
-            <span className="text-black/60 dark:text-neutral-400">در حال بارگذاری…</span>
-          ) : (
-            <span className="text-red-600 dark:text-red-400">{err}</span>
-          )}
-        </div>
-      )}
-
-      {/* جدول نقش‌ها */}
-      <div className="rounded-2xl overflow-hidden bg-white text-black border border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-        <table className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5" dir="rtl">
-          <thead>
-            <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
-              <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold w-20 sm:w-24">#</th>
-              <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold">نام نقش</th>
-              <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold w-44 sm:w-72">
-                اقدامات
-              </th>
-            </tr>
-          </thead>
-
-          <tbody
-            className="[&_td]:text-black dark:[&_td]:text-neutral-100
-                       [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50
-                       dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50"
+          <button
+            type="submit"
+            className="h-10 w-10 grid place-items-center rounded-xl bg-white text-black border border-black/15 hover:bg-black/5
+                       dark:bg-neutral-100 dark:text-neutral-900"
+            aria-label="افزودن نقش"
+            title="افزودن نقش"
           >
-            {list.length === 0 && !loading ? (
-              <tr>
-                <td colSpan={3} className="py-4 text-black/60 dark:text-neutral-400 bg-transparent">
-                  آیتمی ثبت نشده است.
-                </td>
-              </tr>
+            <img
+              src="/images/icons/afzodan.svg"
+              alt=""
+              className="w-5 h-5 invert dark:invert-0"
+            />
+          </button>
+
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="نام نقش..."
+            className="flex-1 h-10 rounded-xl px-3 bg-white text-black placeholder-black/40 border border-black/15 outline-none
+                       focus:ring-2 focus:ring-black/10
+                       dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
+          />
+        </form>
+
+        {(err || loading) && (
+          <div className="px-4 pb-2 text-sm -mt-2">
+            {loading ? (
+              <span className="text-black/60 dark:text-neutral-400">در حال بارگذاری…</span>
             ) : (
-              list.map((it, idx) => {
-                const isLast = idx === list.length - 1;
-                const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
-
-                return (
-                  <tr key={it.id}>
-                    <td className={`px-3 ${tdBorder}`}>{idx + 1}</td>
-
-                    <td className={`px-3 ${tdBorder}`}>
-                      {editingId === it.id ? (
-                        <input
-                          value={editingName}
-                          onChange={(e) => setEditingName(e.target.value)}
-                          className="w-full rounded-xl px-3 py-2
-                                     bg-white text-black placeholder-black/40
-                                     border border-black/15 outline-none
-                                     focus:ring-2 focus:ring-black/10
-                                     dark:bg-neutral-800 dark:text-neutral-100
-                                     dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
-                          autoFocus
-                        />
-                      ) : (
-                        it.name
-                      )}
-                    </td>
-
-                    <td className={`px-3 ${tdBorder}`}>
-                      {editingId === it.id ? (
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            type="button"
-                            onClick={saveEdit}
-                            className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
-                            aria-label="ذخیره"
-                            title="ذخیره"
-                          >
-                            <img src="/images/icons/check.svg" alt="" className="w-[18px] h-[18px] dark:invert" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={cancelEdit}
-                            className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
-                            aria-label="انصراف"
-                            title="انصراف"
-                          >
-                            <img
-                              src="/images/icons/bastan.svg"
-                              alt=""
-                              className="w-[16px] h-[16px] dark:invert"
-                              style={{
-                                filter:
-                                  "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
-                              }}
-                            />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => startEdit(it)}
-                            className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
-                            aria-label="ویرایش"
-                            title="ویرایش"
-                          >
-                            <img src="/images/icons/pencil.svg" alt="" className="w-[18px] h-[18px] dark:invert" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => del(it)}
-                            className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
-                            aria-label="حذف"
-                            title="حذف"
-                          >
-                            <img
-                              src="/images/icons/hazf.svg"
-                              alt=""
-                              className="w-[19px] h-[19px]"
-                              style={{
-                                filter:
-                                  "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
-                              }}
-                            />
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })
+              <span className="text-red-600 dark:text-red-400">{err}</span>
             )}
-          </tbody>
-        </table>
+          </div>
+        )}
+
+        {/* جدول نقش‌ها */}
+        <TableWrap>
+          <div className="px-[15px] pb-4">
+            <div className="rounded-2xl border border-black/10 overflow-hidden bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+              <table
+                className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
+                dir="rtl"
+              >
+                <thead>
+                  <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
+                    <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold w-20 sm:w-24">
+                      #
+                    </th>
+                    <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold">
+                      نام نقش
+                    </th>
+                    <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold w-44 sm:w-72">
+                      اقدامات
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody
+                  className="[&_td]:text-black dark:[&_td]:text-neutral-100
+                             [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50
+                             dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50"
+                >
+                  {list.length === 0 && !loading ? (
+                    <tr>
+                      <td
+                        colSpan={3}
+                        className="py-4 text-black/60 dark:text-neutral-400 bg-transparent"
+                      >
+                        آیتمی ثبت نشده است.
+                      </td>
+                    </tr>
+                  ) : (
+                    list.map((it, idx) => {
+                      const isLast = idx === list.length - 1;
+                      const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
+
+                      return (
+                        <tr key={it.id}>
+                          <td className={`px-3 ${tdBorder}`}>{idx + 1}</td>
+
+                          <td className={`px-3 ${tdBorder}`}>
+                            {editingId === it.id ? (
+                              <input
+                                value={editingName}
+                                onChange={(e) => setEditingName(e.target.value)}
+                                className="w-full rounded-xl px-3 py-2 bg-white text-black placeholder-black/40 border border-black/15 outline-none
+                                           focus:ring-2 focus:ring-black/10
+                                           dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
+                                autoFocus
+                              />
+                            ) : (
+                              it.name
+                            )}
+                          </td>
+
+                          <td className={`px-3 ${tdBorder}`}>
+                            {editingId === it.id ? (
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={saveEdit}
+                                  className="h-10 w-10 grid place-items-center !bg-transparent !ring-0 !border-0 !shadow-none hover:opacity-80 active:opacity-70 transition"
+                                  aria-label="ذخیره"
+                                  title="ذخیره"
+                                >
+                                  <img
+                                    src="/images/icons/check.svg"
+                                    alt=""
+                                    className="w-[18px] h-[18px] dark:invert"
+                                  />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={cancelEdit}
+                                  className="h-10 w-10 grid place-items-center !bg-transparent !ring-0 !border-0 !shadow-none hover:opacity-80 active:opacity-70 transition"
+                                  aria-label="انصراف"
+                                  title="انصراف"
+                                >
+                                  <img
+                                    src="/images/icons/bastan.svg"
+                                    alt=""
+                                    className="w-[16px] h-[16px] dark:invert"
+                                    style={{
+                                      filter:
+                                        "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
+                                    }}
+                                  />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => startEdit(it)}
+                                  className="h-10 w-10 grid place-items-center !bg-transparent !ring-0 !border-0 !shadow-none hover:opacity-80 active:opacity-70 transition"
+                                  aria-label="ویرایش"
+                                  title="ویرایش"
+                                >
+                                  <img
+                                    src="/images/icons/pencil.svg"
+                                    alt=""
+                                    className="w-[18px] h-[18px] dark:invert"
+                                  />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => del(it)}
+                                  className="h-10 w-10 grid place-items-center !bg-transparent !ring-0 !border-0 !shadow-none hover:opacity-80 active:opacity-70 transition"
+                                  aria-label="حذف"
+                                  title="حذف"
+                                >
+                                  <img
+                                    src="/images/icons/hazf.svg"
+                                    alt=""
+                                    className="w-[19px] h-[19px]"
+                                    style={{
+                                      filter:
+                                        "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
+                                    }}
+                                  />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </TableWrap>
       </div>
     </Card>
   );

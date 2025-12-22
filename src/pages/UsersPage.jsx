@@ -816,144 +816,151 @@ function UsersPage() {
           </form>
         )}
 
-        {/* جدول کاربران */}
+        {/* جدول کاربران (✅ اعمال دقیق استایل ذخیره‌شده) */}
         <TableWrap>
-          <div className="bg-white text-black rounded-2xl border border-black/10 overflow-hidden dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-            <table className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5" dir="rtl">
-              <THead>
-                <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
-                  <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                    #
-                  </TH>
+          <div className="bg-white text-black overflow-hidden dark:bg-neutral-900 dark:text-neutral-100">
+            <div className="px-[15px] pb-4">
+              <div className="rounded-2xl border border-black/10 overflow-hidden bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+                <table
+                  className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
+                  dir="rtl"
+                >
+                  <THead>
+                    <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
+                      <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                        #
+                      </TH>
 
-                  <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                    <div className="flex items-center justify-center gap-2">
-                      <span>نام</span>
-                      <button
-                        type="button"
-                        onClick={() => toggleSort("name")}
-                        className="h-7 w-7 inline-grid place-items-center bg-transparent p-0
-                                   text-neutral-500 hover:text-neutral-600 active:text-neutral-700
-                                   dark:text-neutral-400 dark:hover:text-neutral-300"
-                        title="مرتب‌سازی نام"
-                        aria-label="مرتب‌سازی نام"
-                      >
-                        <svg
-                          className={`w-[14px] h-[14px] transition-transform ${
-                            sortKey === "name" ? (sortDir === "asc" ? "rotate-180" : "") : ""
-                          }`}
-                          focusable="false"
-                          aria-hidden="true"
-                          viewBox="0 0 24 24"
-                        >
-                          <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </TH>
-
-                  <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                    <div className="flex items-center justify-center gap-2">
-                      <span>واحد</span>
-                      <button
-                        type="button"
-                        onClick={() => toggleSort("department")}
-                        className="h-7 w-7 inline-grid place-items-center bg-transparent p-0
-                                   text-neutral-500 hover:text-neutral-600 active:text-neutral-700
-                                   dark:text-neutral-400 dark:hover:text-neutral-300"
-                        title="مرتب‌سازی واحد"
-                        aria-label="مرتب‌سازی واحد"
-                      >
-                        <svg
-                          className={`w-[14px] h-[14px] transition-transform ${
-                            sortKey === "department" ? (sortDir === "asc" ? "rotate-180" : "") : ""
-                          }`}
-                          focusable="false"
-                          aria-hidden="true"
-                          viewBox="0 0 24 24"
-                        >
-                          <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </TH>
-
-                  <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                    سطح دسترسی‌ها
-                  </TH>
-
-                  <TH className="w-44 sm:w-72 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                    اقدامات
-                  </TH>
-                </tr>
-              </THead>
-
-              <tbody
-                className="[&_td]:text-black dark:[&_td]:text-neutral-100
-                           [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50
-                           dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50"
-              >
-                {loading ? (
-                  <TR className="bg-white dark:bg-transparent">
-                    <TD colSpan={5} className="text-center text-black/60 dark:text-neutral-400 py-4">
-                      در حال بارگذاری...
-                    </TD>
-                  </TR>
-                ) : (sortedList || []).length === 0 ? (
-                  <TR className="bg-white dark:bg-transparent">
-                    <TD colSpan={5} className="text-center text-black/60 dark:text-neutral-400 py-4">
-                      کاربری ثبت نشده است.
-                    </TD>
-                  </TR>
-                ) : (
-                  (sortedList || []).map((u, idx) => {
-                    const isLast = idx === (sortedList || []).length - 1;
-                    const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
-
-                    return (
-                      <TR key={u.id}>
-                        <TD className={`px-3 ${tdBorder}`}>{idx + 1}</TD>
-                        <TD className={`px-3 ${tdBorder}`}>{u.name || u.username || "—"}</TD>
-                        <TD className={`px-3 ${tdBorder}`}>{u.department || "—"}</TD>
-                        <TD className={`px-3 ${tdBorder} text-black/80 dark:text-neutral-300`}>{renderAccessText(u)}</TD>
-
-                        <TD className={`px-3 ${tdBorder}`}>
-                          <div className="inline-flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => startEdit(u)}
-                              className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
-                              aria-label="ویرایش"
-                              title="ویرایش"
+                      <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                        <div className="flex items-center justify-center gap-2">
+                          <span>نام</span>
+                          <button
+                            type="button"
+                            onClick={() => toggleSort("name")}
+                            className="h-7 w-7 inline-grid place-items-center bg-transparent p-0
+                                       text-neutral-500 hover:text-neutral-600 active:text-neutral-700
+                                       dark:text-neutral-400 dark:hover:text-neutral-300"
+                            title="مرتب‌سازی نام"
+                            aria-label="مرتب‌سازی نام"
+                          >
+                            <svg
+                              className={`w-[14px] h-[14px] transition-transform ${
+                                sortKey === "name" && sortDir === "asc" ? "rotate-180" : ""
+                              }`}
+                              focusable="false"
+                              aria-hidden="true"
+                              viewBox="0 0 24 24"
                             >
-                              <img src="/images/icons/pencil.svg" alt="" className="w-[18px] h-[18px] dark:invert" />
-                            </button>
+                              <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"></path>
+                            </svg>
+                          </button>
+                        </div>
+                      </TH>
 
-                            <button
-                              type="button"
-                              onClick={() => del(u)}
-                              className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
-                              aria-label="حذف"
-                              title="حذف"
+                      <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                        <div className="flex items-center justify-center gap-2">
+                          <span>واحد</span>
+                          <button
+                            type="button"
+                            onClick={() => toggleSort("department")}
+                            className="h-7 w-7 inline-grid place-items-center bg-transparent p-0
+                                       text-neutral-500 hover:text-neutral-600 active:text-neutral-700
+                                       dark:text-neutral-400 dark:hover:text-neutral-300"
+                            title="مرتب‌سازی واحد"
+                            aria-label="مرتب‌سازی واحد"
+                          >
+                            <svg
+                              className={`w-[14px] h-[14px] transition-transform ${
+                                sortKey === "department" && sortDir === "asc" ? "rotate-180" : ""
+                              }`}
+                              focusable="false"
+                              aria-hidden="true"
+                              viewBox="0 0 24 24"
                             >
-                              <img
-                                src="/images/icons/hazf.svg"
-                                alt=""
-                                className="w-[19px] h-[19px]"
-                                style={{
-                                  filter:
-                                    "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
-                                }}
-                              />
-                            </button>
-                          </div>
+                              <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"></path>
+                            </svg>
+                          </button>
+                        </div>
+                      </TH>
+
+                      <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                        سطح دسترسی‌ها
+                      </TH>
+
+                      <TH className="w-44 sm:w-72 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                        اقدامات
+                      </TH>
+                    </tr>
+                  </THead>
+
+                  <tbody
+                    className="[&_td]:text-black dark:[&_td]:text-neutral-100
+                               [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50
+                               dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50"
+                  >
+                    {loading ? (
+                      <TR className="bg-white dark:bg-transparent">
+                        <TD colSpan={5} className="text-center text-black/60 dark:text-neutral-400 py-4">
+                          در حال بارگذاری...
                         </TD>
                       </TR>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+                    ) : (sortedList || []).length === 0 ? (
+                      <TR className="bg-white dark:bg-transparent">
+                        <TD colSpan={5} className="text-center text-black/60 dark:text-neutral-400 py-4">
+                          کاربری ثبت نشده است.
+                        </TD>
+                      </TR>
+                    ) : (
+                      (sortedList || []).map((u, idx) => {
+                        const isLast = idx === (sortedList || []).length - 1;
+                        const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
+
+                        return (
+                          <TR key={u.id}>
+                            <TD className={`px-3 ${tdBorder}`}>{idx + 1}</TD>
+                            <TD className={`px-3 ${tdBorder}`}>{u.name || u.username || "—"}</TD>
+                            <TD className={`px-3 ${tdBorder}`}>{u.department || "—"}</TD>
+                            <TD className={`px-3 ${tdBorder} text-black/80 dark:text-neutral-300`}>{renderAccessText(u)}</TD>
+
+                            <TD className={`px-3 ${tdBorder}`}>
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => startEdit(u)}
+                                  className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
+                                  aria-label="ویرایش"
+                                  title="ویرایش"
+                                >
+                                  <img src="/images/icons/pencil.svg" alt="" className="w-[18px] h-[18px] dark:invert" />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => del(u)}
+                                  className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
+                                  aria-label="حذف"
+                                  title="حذف"
+                                >
+                                  <img
+                                    src="/images/icons/hazf.svg"
+                                    alt=""
+                                    className="w-[19px] h-[19px]"
+                                    style={{
+                                      filter:
+                                        "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
+                                    }}
+                                  />
+                                </button>
+                              </div>
+                            </TD>
+                          </TR>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </TableWrap>
       </Card>
