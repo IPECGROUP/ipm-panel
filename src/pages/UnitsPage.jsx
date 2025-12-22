@@ -605,7 +605,7 @@ function UnitsPage() {
                   aria-label="بستن"
                   title="بستن"
                 >
-                  <img src="/images/icons/bastan.svg" alt="" className="w-4 h-4 invert dark:invert-0" />
+                  <img src="/images/icons/bastan.svg" alt="" className="w-4 h-4 dark:invert" />
                 </button>
               </div>
 
