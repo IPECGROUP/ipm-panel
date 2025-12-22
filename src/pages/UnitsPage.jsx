@@ -122,16 +122,11 @@ function UnitsPage() {
     try {
       const unitId = accessUnit.id;
 
-      const cur = await api(`/admin/unit-access?unit_id=${unitId}`, {
+      // ✅ تغییر اصلی: حذف یک‌جای همه رول‌های قبلی تا چیزی ته‌مانده نمونه
+      await api(`/admin/unit-access?unit_id=${unitId}`, {
+        method: "DELETE",
         credentials: "include",
       });
-      const old = Array.isArray(cur?.items) ? cur.items : [];
-      for (const row of old) {
-        await api(`/admin/unit-access/${row.id}`, {
-          method: "DELETE",
-          credentials: "include",
-        });
-      }
 
       for (const p of pageOptions) {
         const pageTabsMap = checkedTabsByPage[p.key] || {};
@@ -618,7 +613,6 @@ function UnitsPage() {
                   aria-label="بستن"
                   title="بستن"
                 >
-                  {/* آیکن در پاپ‌آپ باید مشکی باشه (لایت) */}
                   <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5 dark:invert" />
                 </button>
               </div>
