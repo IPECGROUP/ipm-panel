@@ -429,8 +429,6 @@ export default function LettersPage() {
   const [myLetters, setMyLetters] = useState([]);
 
   const [tags, setTags] = useState([]);
-  const [incomingTagPick, setIncomingTagPick] = useState("");
-  const [outgoingTagPick, setOutgoingTagPick] = useState("");
   const [incomingTagIds, setIncomingTagIds] = useState([]);
   const [outgoingTagIds, setOutgoingTagIds] = useState([]);
 
@@ -469,10 +467,13 @@ export default function LettersPage() {
   const [filterQuick, setFilterQuick] = useState(""); // week|2w|1m|3m|6m
   const [filterFromDate, setFilterFromDate] = useState("");
   const [filterToDate, setFilterToDate] = useState("");
-  const [filterTagPick, setFilterTagPick] = useState("");
   const [filterTagIds, setFilterTagIds] = useState([]);
   const [filterSubject, setFilterSubject] = useState("");
   const [filterOrg, setFilterOrg] = useState("");
+
+  useEffect(() => {
+    if (filterCategory !== "project" && filterProjectId) setFilterProjectId("");
+  }, [filterCategory, filterProjectId]);
 
   // ===== Table selection + pagination =====
   const [selectedIds, setSelectedIds] = useState(() => new Set());
@@ -598,8 +599,7 @@ export default function LettersPage() {
     if (!list.length) return;
 
     for (const rawFile of list) {
-      const isPdf =
-        rawFile.type === "application/pdf" || rawFile.name.toLowerCase().endsWith(".pdf");
+      const isPdf = rawFile.type === "application/pdf" || rawFile.name.toLowerCase().endsWith(".pdf");
       const isImg = rawFile.type && rawFile.type.startsWith("image/");
 
       if (!isImg && !isPdf) {
@@ -648,9 +648,7 @@ export default function LettersPage() {
       } catch (e) {
         setDocFilesFor(which, (prev) =>
           prev.map((f) =>
-            f.id === id
-              ? { ...f, status: "error", error: e?.message || "خطا در آماده‌سازی فایل." }
-              : f
+            f.id === id ? { ...f, status: "error", error: e?.message || "خطا در آماده‌سازی فایل." } : f
           )
         );
       }
@@ -792,6 +790,8 @@ export default function LettersPage() {
       ? chipBase + " border-white/15 bg-white/5 text-white hover:bg-white/10"
       : chipBase + " border-black/10 bg-black/[0.03] text-neutral-900 hover:bg-black/[0.06]";
 
+  const selectedTagChipCls = chipBase + " border-black bg-black text-white";
+
   const sendBtnCls =
     "h-11 w-11 rounded-xl flex items-center justify-center transition ring-1 " +
     (theme === "dark"
@@ -803,37 +803,50 @@ export default function LettersPage() {
   const findTag = (id) => tags.find((t) => String(t?.id) === String(id));
   const findProject = (id) => projects.find((p) => String(p?.id) === String(id));
 
-  const removeTag = (which, id) => {
-    const sid = String(id || "");
-    if (!sid) return;
-    if (which === "incoming") setIncomingTagIds((arr) => arr.filter((x) => String(x) !== sid));
-    if (which === "outgoing") setOutgoingTagIds((arr) => arr.filter((x) => String(x) !== sid));
-  };
-
-  const addTag = (which, id) => {
+  const toggleTag = (which, id) => {
     const sid = String(id || "");
     if (!sid) return;
     if (which === "incoming") {
-      setIncomingTagIds((arr) => (arr.some((x) => String(x) === sid) ? arr : [...arr, sid]));
-      setIncomingTagPick("");
+      setIncomingTagIds((arr) => (arr.some((x) => String(x) === sid) ? arr.filter((x) => String(x) !== sid) : [...arr, sid]));
     }
     if (which === "outgoing") {
-      setOutgoingTagIds((arr) => (arr.some((x) => String(x) === sid) ? arr : [...arr, sid]));
-      setOutgoingTagPick("");
+      setOutgoingTagIds((arr) => (arr.some((x) => String(x) === sid) ? arr.filter((x) => String(x) !== sid) : [...arr, sid]));
     }
   };
 
-  const removeFilterTag = (id) => {
+  const toggleFilterTag = (id) => {
     const sid = String(id || "");
     if (!sid) return;
-    setFilterTagIds((arr) => arr.filter((x) => String(x) !== sid));
+    setFilterTagIds((arr) => (arr.some((x) => String(x) === sid) ? arr.filter((x) => String(x) !== sid) : [...arr, sid]));
   };
 
-  const addFilterTag = (id) => {
-    const sid = String(id || "");
-    if (!sid) return;
-    setFilterTagIds((arr) => (arr.some((x) => String(x) === sid) ? arr : [...arr, sid]));
-    setFilterTagPick("");
+  const latestTags = useMemo(() => {
+    const arr = Array.isArray(tags) ? tags.slice() : [];
+    arr.sort((a, b) => {
+      const ai = Number(a?.id);
+      const bi = Number(b?.id);
+      if (Number.isFinite(ai) && Number.isFinite(bi)) return bi - ai;
+      const as = String(a?.id ?? "");
+      const bs = String(b?.id ?? "");
+      return bs.localeCompare(as);
+    });
+    return arr.slice(0, 14);
+  }, [tags]);
+
+  const tagCapsFor = (selectedIds) => {
+    const sel = Array.isArray(selectedIds) ? selectedIds.map(String) : [];
+    const selSet = new Set(sel);
+    const selectedObjs = (Array.isArray(tags) ? tags : []).filter((t) => selSet.has(String(t?.id)));
+    const latestObjs = (Array.isArray(latestTags) ? latestTags : []).filter((t) => !selSet.has(String(t?.id)));
+    const merged = [...selectedObjs, ...latestObjs];
+    const seen = new Set();
+    return merged.filter((t) => {
+      const id = String(t?.id ?? "");
+      if (!id) return false;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
   };
 
   const secretariatPickerBtnCls = (val) =>
@@ -1074,8 +1087,7 @@ export default function LettersPage() {
   }, [safePage]);
 
   const visibleIds = useMemo(() => pageItems.map((l) => String(letterIdOf(l))), [pageItems]);
-  const allVisibleSelected =
-    visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(String(id)));
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(String(id)));
   const someVisibleSelected = visibleIds.some((id) => selectedIds.has(String(id))) && !allVisibleSelected;
 
   const toggleSelectAllVisible = () => {
@@ -1133,8 +1145,6 @@ export default function LettersPage() {
     setReturnToIds([""]);
     setPiroIds([""]);
 
-    setIncomingTagPick("");
-    setOutgoingTagPick("");
     setIncomingTagIds([]);
     setOutgoingTagIds([]);
 
@@ -1158,6 +1168,10 @@ export default function LettersPage() {
 
     const pId = projectId ? Number(projectId) : null;
 
+    const files = Array.isArray(docFilesByType?.[kind]) ? docFilesByType[kind] : [];
+    const queue = files.filter((f) => f && f.status !== "error" && (f.optimizedFile || f.file));
+    const computedHasAttachment = !!hasAttachment || !!String(attachmentTitle || "").trim() || queue.length > 0;
+
     const payload = {
       kind,
       category: category || "",
@@ -1168,8 +1182,8 @@ export default function LettersPage() {
       toName: toName || "",
       orgName: orgName || "",
       subject: subject || "",
-      hasAttachment: !!hasAttachment,
-      attachmentTitle: hasAttachment ? attachmentTitle || "" : "",
+      hasAttachment: computedHasAttachment,
+      attachmentTitle: attachmentTitle || "",
       returnToIds: (Array.isArray(returnToIds) ? returnToIds : []).map(String).filter((x) => x && x.trim()),
       piroIds: (Array.isArray(piroIds) ? piroIds : []).map(String).filter((x) => x && x.trim()),
       tagIds: (Array.isArray(tagIds) ? tagIds : []).map(String).filter((x) => x && x.trim()),
@@ -1186,10 +1200,7 @@ export default function LettersPage() {
 
     const letterId = Number(newId);
 
-    if (hasAttachment) {
-      const files = Array.isArray(docFilesByType?.[kind]) ? docFilesByType[kind] : [];
-      const queue = files.filter((f) => f && f.status !== "error" && (f.optimizedFile || f.file));
-
+    if (queue.length > 0) {
       for (const f of queue) {
         const fileToSend = f.optimizedFile || f.file;
         setDocFilesFor(kind, (prev) =>
@@ -1198,9 +1209,7 @@ export default function LettersPage() {
 
         try {
           const res = await uploadFileToLetter(fileToSend, letterId, (p) => {
-            setDocFilesFor(kind, (prev) =>
-              prev.map((x) => (x.id === f.id ? { ...x, progress: p } : x))
-            );
+            setDocFilesFor(kind, (prev) => prev.map((x) => (x.id === f.id ? { ...x, progress: p } : x)));
           });
 
           setDocFilesFor(kind, (prev) =>
@@ -1218,11 +1227,7 @@ export default function LettersPage() {
           );
         } catch (e) {
           setDocFilesFor(kind, (prev) =>
-            prev.map((x) =>
-              x.id === f.id
-                ? { ...x, status: "error", error: e?.message || "خطا در آپلود فایل." }
-                : x
-            )
+            prev.map((x) => (x.id === f.id ? { ...x, status: "error", error: e?.message || "خطا در آپلود فایل." } : x))
           );
         }
       }
@@ -1344,21 +1349,23 @@ export default function LettersPage() {
                 </select>
               </div>
 
-              <div>
-                <div className={labelCls}>پروژه</div>
-                <select
-                  value={filterProjectId}
-                  onChange={(e) => setFilterProjectId(e.target.value)}
-                  className={inputCls}
-                >
-                  <option value=""></option>
-                  {projects.map((p) => (
-                    <option key={p.id} value={String(p.id)}>
-                      {String(p.code || "")} {p.name ? `- ${p.name}` : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {filterCategory === "project" && (
+                <div>
+                  <div className={labelCls}>پروژه</div>
+                  <select
+                    value={filterProjectId}
+                    onChange={(e) => setFilterProjectId(e.target.value)}
+                    className={inputCls}
+                  >
+                    <option value=""></option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={String(p.id)}>
+                        {String(p.code || "")} {p.name ? `- ${p.name}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div>
                 <div className={labelCls}>موضوع</div>
@@ -1470,41 +1477,23 @@ export default function LettersPage() {
                 <div>
                   <div className={labelCls}>برچسب ها</div>
                   <div className="flex flex-wrap items-center gap-2">
-                    {filterTagIds.map((id) => {
-                      const t = findTag(id);
+                    {tagCapsFor(filterTagIds).map((t) => {
+                      const id = String(t?.id);
                       const label = String(t?.name || t?.title || t?.label || id || "");
+                      const active = filterTagIds.some((x) => String(x) === id);
                       return (
                         <button
-                          key={String(id)}
+                          key={id}
                           type="button"
-                          onClick={() => removeFilterTag(id)}
-                          className={chipCls}
-                          title="حذف"
-                          aria-label="حذف"
+                          onClick={() => toggleFilterTag(id)}
+                          className={active ? selectedTagChipCls : chipCls}
+                          title={label}
+                          aria-label={label}
                         >
-                          <span className="truncate max-w-[180px]">{label}</span>
-                          <span className={theme === "dark" ? "text-white/70" : "text-neutral-600"}>×</span>
+                          <span className="truncate max-w-[200px]">{label}</span>
                         </button>
                       );
                     })}
-
-                    <select
-                      value={filterTagPick}
-                      onChange={(e) => addFilterTag(e.target.value)}
-                      className={
-                        "h-11 px-3 rounded-xl border outline-none transition text-right min-w-[220px] w-[220px] " +
-                        (theme === "dark"
-                          ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
-                          : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
-                      }
-                    >
-                      <option value="">انتخاب برچسب</option>
-                      {tags.map((t) => (
-                        <option key={String(t?.id)} value={String(t?.id)}>
-                          {String(t?.name || t?.title || t?.label || "")}
-                        </option>
-                      ))}
-                    </select>
                   </div>
                 </div>
               </div>
@@ -1515,7 +1504,7 @@ export default function LettersPage() {
           <div className="mt-4">
             {formOpen && tab === "incoming" && (
               <div>
-                {/* دسته بندی + پروژه + شماره + تاریخ (یک ردیف) */}
+                {/* دسته بندی + پروژه(شرطی) + شماره + تاریخ */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <div>
                     <div className={labelCls}>دسته بندی نامه</div>
@@ -1533,22 +1522,19 @@ export default function LettersPage() {
                     </select>
                   </div>
 
-                  <div>
-                    <div className={labelCls}>پروژه</div>
-                    <select
-                      value={projectId}
-                      onChange={(e) => setProjectId(e.target.value)}
-                      className={inputCls}
-                      disabled={category !== "project"}
-                    >
-                      <option value=""></option>
-                      {projects.map((p) => (
-                        <option key={p.id} value={String(p.id)}>
-                          {String(p.code || "")} {p.name ? `- ${p.name}` : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {category === "project" && (
+                    <div>
+                      <div className={labelCls}>پروژه</div>
+                      <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={inputCls}>
+                        <option value=""></option>
+                        {projects.map((p) => (
+                          <option key={p.id} value={String(p.id)}>
+                            {String(p.code || "")} {p.name ? `- ${p.name}` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   <div>
                     <div className={labelCls}>شماره نامه</div>
@@ -1561,7 +1547,7 @@ export default function LettersPage() {
                   </div>
                 </div>
 
-                {/* از + شرکت/سازمان + به (یک ردیف) */}
+                {/* از + شرکت/سازمان + به */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
                   <div>
                     <div className={labelCls}>از</div>
@@ -1603,10 +1589,9 @@ export default function LettersPage() {
                         <input
                           value={incomingAttachmentTitle}
                           onChange={(e) => setIncomingAttachmentTitle(e.target.value)}
-                          className={inputCls + (!hasAttachment ? " opacity-60" : "")}
+                          className={inputCls}
                           type="text"
                           placeholder="عنوان ضمیمه"
-                          disabled={!hasAttachment}
                         />
                       </div>
                     </div>
@@ -1637,20 +1622,6 @@ export default function LettersPage() {
                             ))}
                           </select>
 
-                          {idx === 0 ? (
-                            <button
-                              type="button"
-                              onClick={() => hasAttachment && openUpload("incoming")}
-                              disabled={!hasAttachment}
-                              className={uploadTriggerCls + " min-w-[240px] w-[240px]" + (!hasAttachment ? " opacity-60 pointer-events-none" : "")}
-                              aria-label="آپلود و الصاق فایل ها"
-                              title="آپلود و الصاق فایل ها"
-                            >
-                              <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
-                              <span className="text-sm font-normal">آپلود و الصاق فایل ها</span>
-                            </button>
-                          ) : null}
-
                           {idx === returnToIds.length - 1 && (
                             <button
                               type="button"
@@ -1667,6 +1638,19 @@ export default function LettersPage() {
                               </svg>
                             </button>
                           )}
+
+                          {idx === 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => openUpload("incoming")}
+                              className={uploadTriggerCls + " min-w-[240px] w-[240px]"}
+                              aria-label="آپلود و الصاق فایل ها"
+                              title="آپلود و الصاق فایل ها"
+                            >
+                              <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
+                              <span className="text-sm font-normal">آپلود و الصاق فایل ها</span>
+                            </button>
+                          ) : null}
                         </div>
                       ))}
                     </div>
@@ -1675,43 +1659,24 @@ export default function LettersPage() {
 
                 <div className="mt-3">
                   <div className={labelCls}>برچسب ها</div>
-
                   <div className="flex flex-wrap items-center gap-2">
-                    {incomingTagIds.map((id) => {
-                      const t = findTag(id);
+                    {tagCapsFor(incomingTagIds).map((t) => {
+                      const id = String(t?.id);
                       const label = String(t?.name || t?.title || t?.label || id || "");
+                      const active = incomingTagIds.some((x) => String(x) === id);
                       return (
                         <button
-                          key={String(id)}
+                          key={id}
                           type="button"
-                          onClick={() => removeTag("incoming", id)}
-                          className={chipCls}
-                          title="حذف"
-                          aria-label="حذف"
+                          onClick={() => toggleTag("incoming", id)}
+                          className={active ? selectedTagChipCls : chipCls}
+                          title={label}
+                          aria-label={label}
                         >
-                          <span className="truncate max-w-[180px]">{label}</span>
-                          <span className={theme === "dark" ? "text-white/70" : "text-neutral-600"}>×</span>
+                          <span className="truncate max-w-[220px]">{label}</span>
                         </button>
                       );
                     })}
-
-                    <select
-                      value={incomingTagPick}
-                      onChange={(e) => addTag("incoming", e.target.value)}
-                      className={
-                        "h-11 px-3 rounded-xl border outline-none transition text-right min-w-[220px] w-[220px] " +
-                        (theme === "dark"
-                          ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
-                          : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
-                      }
-                    >
-                      <option value="">انتخاب برچسب</option>
-                      {tags.map((t) => (
-                        <option key={String(t?.id)} value={String(t?.id)}>
-                          {String(t?.name || t?.title || t?.label || "")}
-                        </option>
-                      ))}
-                    </select>
                   </div>
                 </div>
 
@@ -1736,33 +1701,17 @@ export default function LettersPage() {
 
                     <div>
                       <div className={labelCls}>شماره ثبت دبیرخانه</div>
-                      <input
-                        value={incomingSecretariatNo}
-                        onChange={(e) => setIncomingSecretariatNo(e.target.value)}
-                        className={inputCls}
-                        type="text"
-                      />
+                      <input value={incomingSecretariatNo} onChange={(e) => setIncomingSecretariatNo(e.target.value)} className={inputCls} type="text" />
                     </div>
 
                     <div>
                       <div className={labelCls}>نام تحویل گیرنده</div>
-                      <input
-                        value={incomingReceiverName}
-                        onChange={(e) => setIncomingReceiverName(e.target.value)}
-                        className={inputCls}
-                        type="text"
-                      />
+                      <input value={incomingReceiverName} onChange={(e) => setIncomingReceiverName(e.target.value)} className={inputCls} type="text" />
                     </div>
                   </div>
 
                   <div className="flex items-center justify-end pt-2">
-                    <button
-                      type="button"
-                      onClick={() => submitLetter("incoming")}
-                      className={sendBtnCls}
-                      title="ارسال"
-                      aria-label="ارسال"
-                    >
+                    <button type="button" onClick={() => submitLetter("incoming")} className={sendBtnCls} title="ارسال" aria-label="ارسال">
                       <img src="/images/icons/check.svg" alt="" className={sendIconCls} />
                     </button>
                   </div>
@@ -1772,7 +1721,7 @@ export default function LettersPage() {
 
             {formOpen && tab === "outgoing" && (
               <div>
-                {/* دسته بندی + پروژه + شماره + تاریخ (یک ردیف) */}
+                {/* دسته بندی + پروژه(شرطی) + شماره + تاریخ */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <div>
                     <div className={labelCls}>دسته بندی نامه</div>
@@ -1790,22 +1739,19 @@ export default function LettersPage() {
                     </select>
                   </div>
 
-                  <div>
-                    <div className={labelCls}>پروژه</div>
-                    <select
-                      value={projectId}
-                      onChange={(e) => setProjectId(e.target.value)}
-                      className={inputCls}
-                      disabled={category !== "project"}
-                    >
-                      <option value=""></option>
-                      {projects.map((p) => (
-                        <option key={p.id} value={String(p.id)}>
-                          {String(p.code || "")} {p.name ? `- ${p.name}` : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {category === "project" && (
+                    <div>
+                      <div className={labelCls}>پروژه</div>
+                      <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={inputCls}>
+                        <option value=""></option>
+                        {projects.map((p) => (
+                          <option key={p.id} value={String(p.id)}>
+                            {String(p.code || "")} {p.name ? `- ${p.name}` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   <div>
                     <div className={labelCls}>شماره نامه</div>
@@ -1818,7 +1764,7 @@ export default function LettersPage() {
                   </div>
                 </div>
 
-                {/* از + شرکت/سازمان + به (یک ردیف) */}
+                {/* از + شرکت/سازمان + به */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
                   <div>
                     <div className={labelCls}>از</div>
@@ -1860,16 +1806,15 @@ export default function LettersPage() {
                         <input
                           value={outgoingAttachmentTitle}
                           onChange={(e) => setOutgoingAttachmentTitle(e.target.value)}
-                          className={inputCls + (!hasAttachment ? " opacity-60" : "")}
+                          className={inputCls}
                           type="text"
                           placeholder="عنوان ضمیمه"
-                          disabled={!hasAttachment}
                         />
                       </div>
                     </div>
                   </div>
 
-                  {/* پیرو (نمایش همیشه + افزودن در ادامه همان ردیف) */}
+                  {/* پیرو */}
                   <div className="mt-3">
                     <div className="flex items-center gap-2 mb-2">
                       <div className={labelCls.replace("mb-1", "mb-0")}>پیرو</div>
@@ -1914,7 +1859,7 @@ export default function LettersPage() {
                       ))}
                     </div>
 
-                    {/* بازگشت به (نمایش همیشه + افزودن در ادامه همان ردیف) */}
+                    {/* بازگشت به */}
                     <div className="flex items-center gap-2 mt-4 mb-2">
                       <div className={labelCls.replace("mb-1", "mb-0")}>بازگشت به</div>
                     </div>
@@ -1938,20 +1883,6 @@ export default function LettersPage() {
                             ))}
                           </select>
 
-                          {idx === 0 ? (
-                            <button
-                              type="button"
-                              onClick={() => hasAttachment && openUpload("outgoing")}
-                              disabled={!hasAttachment}
-                              className={uploadTriggerCls + " min-w-[240px] w-[240px]" + (!hasAttachment ? " opacity-60 pointer-events-none" : "")}
-                              aria-label="آپلود و الصاق فایل ها"
-                              title="آپلود و الصاق فایل ها"
-                            >
-                              <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
-                              <span className="text-sm font-normal">آپلود و الصاق فایل ها</span>
-                            </button>
-                          ) : null}
-
                           {idx === returnToIds.length - 1 && (
                             <button
                               type="button"
@@ -1968,6 +1899,19 @@ export default function LettersPage() {
                               </svg>
                             </button>
                           )}
+
+                          {idx === 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => openUpload("outgoing")}
+                              className={uploadTriggerCls + " min-w-[240px] w-[240px]"}
+                              aria-label="آپلود و الصاق فایل ها"
+                              title="آپلود و الصاق فایل ها"
+                            >
+                              <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
+                              <span className="text-sm font-normal">آپلود و الصاق فایل ها</span>
+                            </button>
+                          ) : null}
                         </div>
                       ))}
                     </div>
@@ -1976,43 +1920,24 @@ export default function LettersPage() {
 
                 <div className="mt-3">
                   <div className={labelCls}>برچسب ها</div>
-
                   <div className="flex flex-wrap items-center gap-2">
-                    {outgoingTagIds.map((id) => {
-                      const t = findTag(id);
+                    {tagCapsFor(outgoingTagIds).map((t) => {
+                      const id = String(t?.id);
                       const label = String(t?.name || t?.title || t?.label || id || "");
+                      const active = outgoingTagIds.some((x) => String(x) === id);
                       return (
                         <button
-                          key={String(id)}
+                          key={id}
                           type="button"
-                          onClick={() => removeTag("outgoing", id)}
-                          className={chipCls}
-                          title="حذف"
-                          aria-label="حذف"
+                          onClick={() => toggleTag("outgoing", id)}
+                          className={active ? selectedTagChipCls : chipCls}
+                          title={label}
+                          aria-label={label}
                         >
-                          <span className="truncate max-w-[180px]">{label}</span>
-                          <span className={theme === "dark" ? "text-white/70" : "text-neutral-600"}>×</span>
+                          <span className="truncate max-w-[220px]">{label}</span>
                         </button>
                       );
                     })}
-
-                    <select
-                      value={outgoingTagPick}
-                      onChange={(e) => addTag("outgoing", e.target.value)}
-                      className={
-                        "h-11 px-3 rounded-xl border outline-none transition text-right min-w-[220px] w-[220px] " +
-                        (theme === "dark"
-                          ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
-                          : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
-                      }
-                    >
-                      <option value="">انتخاب برچسب</option>
-                      {tags.map((t) => (
-                        <option key={String(t?.id)} value={String(t?.id)}>
-                          {String(t?.name || t?.title || t?.label || "")}
-                        </option>
-                      ))}
-                    </select>
                   </div>
                 </div>
 
@@ -2037,33 +1962,17 @@ export default function LettersPage() {
 
                     <div>
                       <div className={labelCls}>شماره ثبت دبیرخانه</div>
-                      <input
-                        value={outgoingSecretariatNo}
-                        onChange={(e) => setOutgoingSecretariatNo(e.target.value)}
-                        className={inputCls}
-                        type="text"
-                      />
+                      <input value={outgoingSecretariatNo} onChange={(e) => setOutgoingSecretariatNo(e.target.value)} className={inputCls} type="text" />
                     </div>
 
                     <div>
                       <div className={labelCls}>نام تحویل گیرنده</div>
-                      <input
-                        value={outgoingReceiverName}
-                        onChange={(e) => setOutgoingReceiverName(e.target.value)}
-                        className={inputCls}
-                        type="text"
-                      />
+                      <input value={outgoingReceiverName} onChange={(e) => setOutgoingReceiverName(e.target.value)} className={inputCls} type="text" />
                     </div>
                   </div>
 
                   <div className="flex items-center justify-end pt-2">
-                    <button
-                      type="button"
-                      onClick={() => submitLetter("outgoing")}
-                      className={sendBtnCls}
-                      title="ارسال"
-                      aria-label="ارسال"
-                    >
+                    <button type="button" onClick={() => submitLetter("outgoing")} className={sendBtnCls} title="ارسال" aria-label="ارسال">
                       <img src="/images/icons/check.svg" alt="" className={sendIconCls} />
                     </button>
                   </div>
@@ -2184,13 +2093,7 @@ export default function LettersPage() {
                                   <img src="/images/icons/pencil.svg" alt="" className="w-5 h-5 dark:invert" />
                                 </button>
 
-                                <button
-                                  type="button"
-                                  onClick={() => deleteLetter(id)}
-                                  className={iconBtnCls}
-                                  aria-label="حذف"
-                                  title="حذف"
-                                >
+                                <button type="button" onClick={() => deleteLetter(id)} className={iconBtnCls} aria-label="حذف" title="حذف">
                                   <img
                                     src="/images/icons/hazf.svg"
                                     alt=""
@@ -2202,13 +2105,7 @@ export default function LettersPage() {
                                   />
                                 </button>
 
-                                <button
-                                  type="button"
-                                  onClick={() => openView(l)}
-                                  className={iconBtnCls}
-                                  aria-label="نمایش"
-                                  title="نمایش"
-                                >
+                                <button type="button" onClick={() => openView(l)} className={iconBtnCls} aria-label="نمایش" title="نمایش">
                                   <img src="/images/icons/namayesh.svg" alt="" className="w-5 h-5 dark:invert" />
                                 </button>
                               </div>
@@ -2221,7 +2118,7 @@ export default function LettersPage() {
                 </table>
               </div>
 
-              {/* Pagination footer (Persian + controls on right) */}
+              {/* Pagination footer */}
               <div className="border-t border-neutral-300 dark:border-neutral-800 px-3 py-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2 text-sm">
@@ -2231,9 +2128,7 @@ export default function LettersPage() {
                       disabled={safePage <= 0}
                       className={
                         "h-9 w-9 rounded-xl grid place-items-center transition ring-1 " +
-                        (theme === "dark"
-                          ? "ring-neutral-800 hover:bg-white/10"
-                          : "ring-black/15 hover:bg-black/5")
+                        (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
                       }
                       aria-label="صفحه قبل"
                       title="صفحه قبل"
@@ -2249,9 +2144,7 @@ export default function LettersPage() {
                       disabled={safePage >= pageCount - 1}
                       className={
                         "h-9 w-9 rounded-xl grid place-items-center transition ring-1 " +
-                        (theme === "dark"
-                          ? "ring-neutral-800 hover:bg-white/10"
-                          : "ring-black/15 hover:bg-black/5")
+                        (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
                       }
                       aria-label="صفحه بعد"
                       title="صفحه بعد"
@@ -2262,9 +2155,7 @@ export default function LettersPage() {
                     </button>
 
                     <div className="text-black/70 dark:text-neutral-400 whitespace-nowrap">
-                      {total === 0
-                        ? "۰ از ۰"
-                        : `${toFaDigits(startIdx + 1)}–${toFaDigits(endIdx)} از ${toFaDigits(total)}`}
+                      {total === 0 ? "۰ از ۰" : `${toFaDigits(startIdx + 1)}–${toFaDigits(endIdx)} از ${toFaDigits(total)}`}
                     </div>
                   </div>
 
@@ -2278,9 +2169,7 @@ export default function LettersPage() {
                       }}
                       className={
                         "h-9 px-2 rounded-lg border outline-none " +
-                        (theme === "dark"
-                          ? "border-white/15 bg-white/5 text-white"
-                          : "border-black/10 bg-white text-black")
+                        (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-black")
                       }
                     >
                       {[10, 25, 100].map((n) => (
@@ -2294,7 +2183,6 @@ export default function LettersPage() {
               </div>
             </div>
           </div>
-
         </div>
       </Card>
 
@@ -2307,9 +2195,7 @@ export default function LettersPage() {
               <div
                 className={
                   "w-[min(1200px,calc(100vw-20px))] h-[min(82vh,780px)] rounded-2xl border shadow-2xl overflow-hidden " +
-                  (theme === "dark"
-                    ? "border-white/10 bg-neutral-900 text-white"
-                    : "border-black/10 bg-white text-neutral-900")
+                  (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
                 }
                 onClick={(e) => e.stopPropagation()}
               >
@@ -2330,23 +2216,12 @@ export default function LettersPage() {
                       onClick={closeView}
                       className={
                         "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
-                        (theme === "dark"
-                          ? "ring-neutral-800 hover:bg-white/10 text-white"
-                          : "ring-black/15 hover:bg-black/90 bg-black text-white")
+                        (theme === "dark" ? "ring-neutral-800 hover:bg-white/10 text-white" : "ring-black/15 hover:bg-black/90 bg-black text-white")
                       }
                       aria-label="بستن"
                       title="بستن"
                     >
-                      <svg
-                        viewBox="0 0 24 24"
-                        width="20"
-                        height="20"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M18 6 6 18M6 6l12 12" />
                       </svg>
                     </button>
@@ -2356,18 +2231,8 @@ export default function LettersPage() {
                     <div className="h-full flex flex-col lg:flex-row">
                       {/* RIGHT: details */}
                       <div className="lg:w-[56%] h-full overflow-auto p-4">
-                        <div
-                          className={
-                            "rounded-2xl border overflow-hidden " +
-                            (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")
-                          }
-                        >
-                          <div
-                            className={
-                              "px-4 py-3 text-sm font-semibold border-b " +
-                              (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
-                            }
-                          >
+                        <div className={"rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")}>
+                          <div className={"px-4 py-3 text-sm font-semibold border-b " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
                             مشخصات نامه
                           </div>
 
@@ -2397,14 +2262,7 @@ export default function LettersPage() {
                             <InfoRow label="موضوع" value={viewLetter ? String(subjectOf(viewLetter) || "") : ""} />
 
                             <InfoRow label="ضمیمه" value={viewHasAttachment ? "دارد" : "ندارد"} />
-                            <InfoRow
-                              label="عنوان ضمیمه"
-                              value={
-                                viewLetter
-                                  ? String(viewLetter?.attachment_title ?? viewLetter?.attachmentTitle ?? "")
-                                  : ""
-                              }
-                            />
+                            <InfoRow label="عنوان ضمیمه" value={viewLetter ? String(viewLetter?.attachment_title ?? viewLetter?.attachmentTitle ?? "") : ""} />
 
                             <InfoRow
                               label="بازگشت به"
@@ -2480,22 +2338,9 @@ export default function LettersPage() {
                               }
                             />
 
-                            <InfoRow
-                              label="تاریخ ثبت دبیرخانه"
-                              value={
-                                viewLetter
-                                  ? toFaDigits(String(viewLetter?.secretariat_date ?? viewLetter?.secretariatDate ?? ""))
-                                  : ""
-                              }
-                            />
-                            <InfoRow
-                              label="شماره ثبت دبیرخانه"
-                              value={viewLetter ? String(viewLetter?.secretariat_no ?? viewLetter?.secretariatNo ?? "") : ""}
-                            />
-                            <InfoRow
-                              label="نام تحویل گیرنده"
-                              value={viewLetter ? String(viewLetter?.receiver_name ?? viewLetter?.receiverName ?? "") : ""}
-                            />
+                            <InfoRow label="تاریخ ثبت دبیرخانه" value={viewLetter ? toFaDigits(String(viewLetter?.secretariat_date ?? viewLetter?.secretariatDate ?? "")) : ""} />
+                            <InfoRow label="شماره ثبت دبیرخانه" value={viewLetter ? String(viewLetter?.secretariat_no ?? viewLetter?.secretariatNo ?? "") : ""} />
+                            <InfoRow label="نام تحویل گیرنده" value={viewLetter ? String(viewLetter?.receiver_name ?? viewLetter?.receiverName ?? "") : ""} />
                           </div>
                         </div>
 
@@ -2544,9 +2389,7 @@ export default function LettersPage() {
                               onClick={closeView}
                               className={
                                 "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
-                                (theme === "dark"
-                                  ? "ring-neutral-800 hover:bg-white/10"
-                                  : "ring-black/15 hover:bg-black/5")
+                                (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
                               }
                               aria-label="بستن"
                               title="بستن"
@@ -2556,12 +2399,7 @@ export default function LettersPage() {
                           </div>
 
                           <div className="flex-1 p-3 overflow-auto">
-                            <div
-                              className={
-                                "h-full rounded-2xl border overflow-hidden " +
-                                (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")
-                              }
-                            >
+                            <div className={"h-full rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")}>
                               {currentViewUrl ? (
                                 isPdfUrl(currentViewUrl) ? (
                                   <iframe title="preview" src={currentViewUrl} className="w-full h-full" />
@@ -2569,16 +2407,12 @@ export default function LettersPage() {
                                   <img src={currentViewUrl} alt="" className="w-full h-full object-contain bg-transparent" />
                                 ) : (
                                   <div className="h-full w-full grid place-items-center p-6">
-                                    <div className={theme === "dark" ? "text-white/70 text-sm" : "text-neutral-700 text-sm"}>
-                                      امکان پیش نمایش این نوع فایل نیست.
-                                    </div>
+                                    <div className={theme === "dark" ? "text-white/70 text-sm" : "text-neutral-700 text-sm"}>امکان پیش نمایش این نوع فایل نیست.</div>
                                   </div>
                                 )
                               ) : (
                                 <div className="h-full w-full grid place-items-center p-6">
-                                  <div className={theme === "dark" ? "text-white/60 text-sm" : "text-neutral-600 text-sm"}>
-                                    فایلی برای پیش نمایش موجود نیست.
-                                  </div>
+                                  <div className={theme === "dark" ? "text-white/60 text-sm" : "text-neutral-600 text-sm"}>فایلی برای پیش نمایش موجود نیست.</div>
                                 </div>
                               )}
                             </div>
@@ -2633,37 +2467,22 @@ export default function LettersPage() {
               <div
                 className={
                   "w-[min(560px,calc(100vw-24px))] rounded-2xl border shadow-xl overflow-hidden " +
-                  (theme === "dark"
-                    ? "border-white/10 bg-neutral-900 text-white"
-                    : "border-black/10 bg-white text-neutral-900")
+                  (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
                 }
               >
                 <div className="p-4 flex items-center justify-between">
-                  <div className="font-bold text-sm">
-                    بارگذاری نامه ({uploadFor === "incoming" ? "وارده" : "صادره"})
-                  </div>
+                  <div className="font-bold text-sm">بارگذاری نامه ({uploadFor === "incoming" ? "وارده" : "صادره"})</div>
                   <button
                     type="button"
                     onClick={closeUpload}
                     className={
                       "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
-                      (theme === "dark"
-                        ? "ring-neutral-800 hover:bg-white/10 text-white"
-                        : "ring-black/15 hover:bg-black/90 bg-black text-white")
+                      (theme === "dark" ? "ring-neutral-800 hover:bg-white/10 text-white" : "ring-black/15 hover:bg-black/90 bg-black text-white")
                     }
                     aria-label="بستن"
                     title="بستن"
                   >
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="20"
-                      height="20"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M18 6 6 18M6 6l12 12" />
                     </svg>
                   </button>
@@ -2674,9 +2493,7 @@ export default function LettersPage() {
                 <div className="p-4">
                   <div className={uploadBoxCls} onDragOver={onDragOverUpload} onDrop={onDropUpload}>
                     <div className="text-sm">فایل را اینجا رها کن</div>
-                    <div className={theme === "dark" ? "text-white/60 text-xs mt-1" : "text-neutral-600 text-xs mt-1"}>
-                      تصویر یا PDF تا ۴۰۰KB
-                    </div>
+                    <div className={theme === "dark" ? "text-white/60 text-xs mt-1" : "text-neutral-600 text-xs mt-1"}>تصویر یا PDF تا ۴۰۰KB</div>
 
                     <div className="mt-3 flex items-center justify-center gap-2">
                       <input
@@ -2697,9 +2514,7 @@ export default function LettersPage() {
                         onClick={() => uploadInputRef.current && uploadInputRef.current.click()}
                         className={
                           "h-10 px-4 rounded-xl transition outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
-                          (theme === "dark"
-                            ? "bg-white text-black hover:bg-white/90"
-                            : "bg-black text-white hover:bg-black/90")
+                          (theme === "dark" ? "bg-white text-black hover:bg-white/90" : "bg-black text-white hover:bg-black/90")
                         }
                       >
                         انتخاب فایل
@@ -2710,9 +2525,7 @@ export default function LettersPage() {
                         onClick={closeUpload}
                         className={
                           "h-10 px-4 rounded-xl border transition outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
-                          (theme === "dark"
-                            ? "border-white/15 hover:bg-white/10"
-                            : "border-black/10 hover:bg-black/[0.04]")
+                          (theme === "dark" ? "border-white/15 hover:bg-white/10" : "border-black/10 hover:bg-black/[0.04]")
                         }
                       >
                         بستن
@@ -2721,34 +2534,14 @@ export default function LettersPage() {
                   </div>
 
                   {currentDocFiles.length > 0 && (
-                    <div
-                      className={
-                        "mt-4 rounded-2xl border overflow-hidden " +
-                        (theme === "dark"
-                          ? "border-white/10 bg-white/5"
-                          : "border-black/10 bg-black/[0.02]")
-                      }
-                    >
-                      <div
-                        className={
-                          "px-3 py-2 text-xs font-semibold border-b " +
-                          (theme === "dark"
-                            ? "border-white/10 text-white/80"
-                            : "border-black/10 text-neutral-700")
-                        }
-                      >
+                    <div className={"mt-4 rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")}>
+                      <div className={"px-3 py-2 text-xs font-semibold border-b " + (theme === "dark" ? "border-white/10 text-white/80" : "border-black/10 text-neutral-700")}>
                         فایل‌های انتخاب شده
                       </div>
 
                       <div className="p-3 space-y-2">
                         {currentDocFiles.map((f) => (
-                          <div
-                            key={f.id}
-                            className={
-                              "rounded-xl border px-3 py-2 " +
-                              (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
-                            }
-                          >
+                          <div key={f.id} className={"rounded-xl border px-3 py-2 " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
                             <div className="flex items-center justify-between gap-2">
                               <div className="min-w-0">
                                 <div className={"text-sm font-semibold truncate " + (theme === "dark" ? "text-white" : "text-neutral-900")}>
@@ -2759,13 +2552,7 @@ export default function LettersPage() {
                                 </div>
                               </div>
 
-                              <button
-                                type="button"
-                                onClick={() => removeDocFile(uploadFor, f.id)}
-                                className={iconBtnCls}
-                                aria-label="حذف فایل"
-                                title="حذف فایل"
-                              >
+                              <button type="button" onClick={() => removeDocFile(uploadFor, f.id)} className={iconBtnCls} aria-label="حذف فایل" title="حذف فایل">
                                 <img
                                   src="/images/icons/hazf.svg"
                                   alt=""
@@ -2781,10 +2568,7 @@ export default function LettersPage() {
                             {f.status === "uploading" ? (
                               <div className="mt-2">
                                 <div className="h-2 rounded-full overflow-hidden bg-black/10 dark:bg-white/10">
-                                  <div
-                                    className="h-full bg-black/70 dark:bg-white/70"
-                                    style={{ width: `${Math.max(0, Math.min(100, Number(f.progress || 0)))}%` }}
-                                  />
+                                  <div className="h-full bg-black/70 dark:bg-white/70" style={{ width: `${Math.max(0, Math.min(100, Number(f.progress || 0)))}%` }} />
                                 </div>
                                 <div className={theme === "dark" ? "text-[11px] text-white/60 mt-1" : "text-[11px] text-neutral-600 mt-1"}>
                                   در حال آپلود: {toFaDigits(String(Math.max(0, Math.min(100, Number(f.progress || 0))))) }٪
@@ -2803,7 +2587,6 @@ export default function LettersPage() {
                     </div>
                   )}
                 </div>
-
               </div>
             </div>
           </div>,
