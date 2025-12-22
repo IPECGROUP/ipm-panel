@@ -50,15 +50,15 @@ export default function LoginPage() {
         <div className="lg:col-span-7 flex flex-col items-center justify-center p-6">
           <Card
             className="w-full max-w-md rounded-2xl border bg-white text-neutral-900 border-black/10
-                       dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800"
+                        dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800"
             dir="rtl"
           >
             {/* ✅ هدر تصویر (جایگزین لوگو و متن) */}
-            <div className="mb-6 w-full h-8 text-right">
+            <div className="mb-6 w-full text-right">
               <img
                 src={HEADER_IMG}
                 alt="header"
-                className="h-14 md:h-16 object-contain inline-block"
+                className="h-32 object-contain inline-block"
               />
             </div>
 
@@ -82,9 +82,9 @@ export default function LoginPage() {
                   placeholder="username"
                   dir="ltr"
                   className="w-full rounded-2xl border px-3 py-2 text-left
-                             bg-white text-neutral-900 placeholder-neutral-400 border-black/10
-                             focus:ring-2 focus:ring-neutral-300 outline-none
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-700"
+                              bg-white text-neutral-900 placeholder-neutral-400 border-black/10
+                              focus:ring-2 focus:ring-neutral-300 outline-none
+                              dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-700"
                 />
               </div>
 
@@ -102,9 +102,9 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   dir="ltr"
                   className="w-full rounded-2xl border px-3 py-2 text-left
-                             bg-white text-neutral-900 placeholder-neutral-400 border-black/10
-                             focus:ring-2 focus:ring-neutral-300 outline-none
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-700"
+                              bg-white text-neutral-900 placeholder-neutral-400 border-black/10
+                              focus:ring-2 focus:ring-neutral-300 outline-none
+                              dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-700"
                 />
               </div>
 
@@ -117,7 +117,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 className="w-full h-10 rounded-2xl bg-neutral-900 text-white hover:bg-neutral-900 focus:bg-neutral-900 disabled:opacity-50
-                           dark:bg-white dark:text-zinc-900 dark:hover:bg-white"
+                            dark:bg-white dark:text-zinc-900 dark:hover:bg-white"
               >
                 ورود
               </button>
