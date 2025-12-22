@@ -116,10 +116,9 @@ function DefineBudgetCentersPage() {
   }, [tabs, active]);
 
   const canAccessActiveTab = useMemo(() => {
-    if (!active) return false;
-    if (!Array.isArray(allowedTabs)) return false;
-    return allowedTabs.includes(String(active));
-  }, [active, allowedTabs]);
+  if (!active) return false;
+  return !!allowedTabsSet?.has(String(active));
+}, [active, allowedTabsSet]);
 
   const extractArray = useCallback((r) => {
     if (!r) return [];
@@ -181,61 +180,62 @@ function DefineBudgetCentersPage() {
   );
 
   useEffect(() => {
-    if (canAccessPage !== true) return;
-    if (!Array.isArray(allowedTabs) || !allowedTabs.includes("projects")) return;
+  if (canAccessPage !== true) return;
+  if (!allowedTabsSet?.has("projects")) return;
 
-    let alive = true;
-    (async () => {
-      setProjectsLoading(true);
-      try {
-        const candidates = ["/projects", "/projects/list", "/projects/all", "/meta/projects"];
-        let raw = [];
-        for (const path of candidates) {
-          try {
-            const r = await api(path);
-            raw = extractArray(r);
-            if (raw.length) break;
-          } catch (e) {
-            if (e?.status === 404) continue;
-            if (e?.status === 401 || e?.status === 403) break;
-          }
+  let alive = true;
+  (async () => {
+    setProjectsLoading(true);
+    try {
+      const candidates = ["/projects", "/projects/list", "/projects/all", "/meta/projects"];
+      let raw = [];
+      for (const path of candidates) {
+        try {
+          const r = await api(path);
+          raw = extractArray(r);
+          if (raw.length) break;
+        } catch (e) {
+          if (e?.status === 404) continue;
+          if (e?.status === 401 || e?.status === 403) break;
         }
-
-        let list = (raw || [])
-          .map((x, i) => normalizeProject(x, i))
-          .filter((x) => x && x.id != null && String(x.code || "").trim());
-
-        if (!list.length) {
-          try {
-            const c = await api("/centers/projects");
-            const items = extractArray(c);
-            const bases = new Map();
-            (items || []).forEach((it) => {
-              const suf = String(it?.suffix || "").trim();
-              if (!suf) return;
-              const base = suf.split(".")[0];
-              if (!base) return;
-              if (!bases.has(base)) bases.set(base, { id: base, code: base, name: "" });
-            });
-            list = Array.from(bases.values());
-          } catch {}
-        }
-
-        if (!alive) return;
-        setProjects(list);
-      } catch {
-        if (!alive) return;
-        setProjects([]);
-      } finally {
-        if (!alive) return;
-        setProjectsLoading(false);
       }
-    })();
 
-    return () => {
-      alive = false;
-    };
-  }, [canAccessPage, allowedTabs, api, extractArray, normalizeProject]);
+      let list = (raw || [])
+        .map((x, i) => normalizeProject(x, i))
+        .filter((x) => x && x.id != null && String(x.code || "").trim());
+
+      if (!list.length) {
+        try {
+          const c = await api("/centers/projects");
+          const items = extractArray(c);
+          const bases = new Map();
+          (items || []).forEach((it) => {
+            const suf = String(it?.suffix || "").trim();
+            if (!suf) return;
+            const base = suf.split(".")[0];
+            if (!base) return;
+            if (!bases.has(base)) bases.set(base, { id: base, code: base, name: "" });
+          });
+          list = Array.from(bases.values());
+        } catch {}
+      }
+
+      if (!alive) return;
+      setProjects(list);
+    } catch {
+      if (!alive) return;
+      setProjects([]);
+    } finally {
+      if (!alive) return;
+      setProjectsLoading(false);
+    }
+  })();
+
+  return () => {
+    alive = false;
+  };
+}, [canAccessPage, allowedTabsSet, api, extractArray, normalizeProject]);
+
 
   const sortedProjects = useMemo(() => {
     return (projects || [])
