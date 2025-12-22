@@ -32,19 +32,13 @@ function UsersPage() {
   if (!isAdmin) {
     return (
       <>
-        <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+        <Card className="rounded-2xl border bg-white text-black border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
           <div className="mb-3 text-base md:text-lg">
-            <span className="text-neutral-700 dark:text-neutral-300">
-              اطلاعات پایه
-            </span>
-            <span className="mx-2 text-neutral-500 dark:text-neutral-400">
-              ›
-            </span>
-            <span className="font-semibold text-neutral-900 dark:text-neutral-100">
-              کاربران
-            </span>
+            <span className="text-black/70 dark:text-neutral-300">اطلاعات پایه</span>
+            <span className="mx-2 text-black/50 dark:text-neutral-400">›</span>
+            <span className="font-semibold text-black dark:text-neutral-100">کاربران</span>
           </div>
-          <div className="p-6 rounded-2xl border border-neutral-200 bg-white text-center text-neutral-800 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
+          <div className="p-6 rounded-2xl border border-black/10 bg-white text-center text-black/80 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
             دسترسی به این بخش فقط برای مدیر سیستم مجاز است.
           </div>
         </Card>
@@ -247,13 +241,7 @@ function UsersPage() {
   };
 
   const loadUnits = async () => {
-    const candidates = [
-      "/basic/units",
-      "/basic/units/list",
-      "/basic/units/all",
-      "/units",
-      "/base/units",
-    ];
+    const candidates = ["/basic/units", "/basic/units/list", "/basic/units/all", "/units", "/base/units"];
     for (const path of candidates) {
       try {
         const r = await api(path);
@@ -352,19 +340,11 @@ function UsersPage() {
 
   // ===== edit (modal) =====
   const startEdit = (u) => {
-    const acc = Array.isArray(u.access_labels)
-      ? u.access_labels
-      : Array.isArray(u.access)
-      ? u.access
-      : [];
+    const acc = Array.isArray(u.access_labels) ? u.access_labels : Array.isArray(u.access) ? u.access : [];
     const contracts = acc.find((x) => String(x).startsWith("contracts:")) || "contracts:nonfinancial";
 
     // u.positions یا u.roles را به اسلاگ نقش تبدیل کن
-    const rawPos = Array.isArray(u.positions)
-      ? u.positions
-      : Array.isArray(u.roles)
-      ? u.roles
-      : [];
+    const rawPos = Array.isArray(u.positions) ? u.positions : Array.isArray(u.roles) ? u.roles : [];
     const positionsNorm = rawPos
       .map((p) => {
         if (typeof p === "string") {
@@ -549,429 +529,449 @@ function UsersPage() {
   // فقط اگر جایی نیاز شد
   const roleNames = roleItems.map((r) => r.name);
 
+  // ✅ دکمه + طبق استاندارد ذخیره‌شده: بک‌گراند سفید و آیکن مشکی (بدون invert در لایت)
+  // اگر فایل آیکن سفید بود: className را به "w-5 h-5 invert dark:invert-0" تغییر بده.
+  const AddPlusBtn = ({ onClick, title = "افزودن", disabled = false, className = "" }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={
+        "h-10 w-10 grid place-items-center rounded-xl bg-white text-black border border-black/15 hover:bg-black/5 transition disabled:opacity-50 " +
+        "dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-200/20 " +
+        className
+      }
+      aria-label={title}
+      title={title}
+    >
+      <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5" />
+    </button>
+  );
+
   return (
     <>
       <Card className="rounded-2xl border bg-white text-black border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
         {/* Header + Add button */}
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex items-center justify-between gap-3">
           <div className="text-base md:text-lg">
             <span className="text-black/70 dark:text-neutral-300">اطلاعات پایه</span>
             <span className="mx-2 text-black/50 dark:text-neutral-400">›</span>
             <span className="font-semibold text-black dark:text-neutral-100">کاربران</span>
           </div>
 
-          <button
-            onClick={() => setAddOpen((s) => !s)}
-            className="h-10 w-14 grid place-items-center rounded-xl bg-neutral-900 text-white hover:opacity-90 transition
-                       dark:bg-neutral-100 dark:text-neutral-900"
-            aria-label="افزودن کاربر"
-            title="افزودن کاربر"
-          >
-            <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
-          </button>
+          <AddPlusBtn onClick={() => setAddOpen((s) => !s)} title="افزودن کاربر" />
         </div>
 
-        {/* Add form */}
+        {/* Add form (ریسپانسیو + دارک/لایت) */}
         {addOpen && (
           <form
             onSubmit={submitAdd}
-            className="mb-4 rounded-2xl p-4 border border-black/10 bg-white text-black
+            className="mb-4 rounded-2xl border border-black/10 bg-white text-black overflow-hidden
                        dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800"
+            dir="rtl"
           >
-            <div className="grid md:grid-cols-2 gap-4" dir="rtl">
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-black/70 dark:text-neutral-300">نام</label>
-                <input
-                  className="rounded-xl px-3 py-2 bg-white text-black placeholder-black/40
-                             border border-black/15 outline-none focus:ring-2 focus:ring-black/10
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
-                  value={addForm.name}
-                  onChange={(e) => setAddForm((s) => ({ ...s, name: e.target.value }))}
-                />
-              </div>
+            <div className="p-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm text-black/70 dark:text-neutral-300">نام</label>
+                  <input
+                    className="h-10 rounded-2xl px-3 bg-white text-black placeholder-black/40 border border-black/15
+                               outline-none focus:ring-2 focus:ring-black/10
+                               dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                    value={addForm.name}
+                    onChange={(e) => setAddForm((s) => ({ ...s, name: e.target.value }))}
+                  />
+                </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-black/70 dark:text-neutral-300 text-left">Email</label>
-                <input
-                  type="email"
-                  className="rounded-xl px-3 py-2 bg-white text-black placeholder-black/40
-                             border border-black/15 outline-none text-left focus:ring-2 focus:ring-black/10
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
-                  dir="ltr"
-                  value={addForm.email}
-                  onChange={(e) => setAddForm((s) => ({ ...s, email: e.target.value }))}
-                />
-              </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm text-black/70 dark:text-neutral-300 text-left">Email</label>
+                  <input
+                    type="email"
+                    className="h-10 rounded-2xl px-3 bg-white text-black placeholder-black/40 border border-black/15
+                               outline-none text-left focus:ring-2 focus:ring-black/10
+                               dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                    dir="ltr"
+                    value={addForm.email}
+                    onChange={(e) => setAddForm((s) => ({ ...s, email: e.target.value }))}
+                  />
+                </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-black/70 dark:text-neutral-300 text-left">Username*</label>
-                <input
-                  className="rounded-xl px-3 py-2 bg-white text-black placeholder-black/40
-                             border border-black/15 outline-none text-left focus:ring-2 focus:ring-black/10
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
-                  dir="ltr"
-                  required
-                  value={addForm.username}
-                  onChange={(e) => setAddForm((s) => ({ ...s, username: e.target.value }))}
-                />
-              </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm text-black/70 dark:text-neutral-300 text-left">Username*</label>
+                  <input
+                    className="h-10 rounded-2xl px-3 bg-white text-black placeholder-black/40 border border-black/15
+                               outline-none text-left focus:ring-2 focus:ring-black/10
+                               dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                    dir="ltr"
+                    required
+                    value={addForm.username}
+                    onChange={(e) => setAddForm((s) => ({ ...s, username: e.target.value }))}
+                  />
+                </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-black/70 dark:text-neutral-300 text-left">Password* (حداکثر ۸)</label>
-                <input
-                  type="password"
-                  maxLength={8}
-                  className="rounded-xl px-3 py-2 bg-white text-black placeholder-black/40
-                             border border-black/15 outline-none text-left focus:ring-2 focus:ring-black/10
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
-                  dir="ltr"
-                  required
-                  value={addForm.password}
-                  onChange={(e) => setAddForm((s) => ({ ...s, password: e.target.value.slice(0, 8) }))}
-                />
-              </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm text-black/70 dark:text-neutral-300 text-left">Password* (حداکثر ۸)</label>
+                  <input
+                    type="password"
+                    maxLength={8}
+                    className="h-10 rounded-2xl px-3 bg-white text-black placeholder-black/40 border border-black/15
+                               outline-none text-left focus:ring-2 focus:ring-black/10
+                               dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                    dir="ltr"
+                    required
+                    value={addForm.password}
+                    onChange={(e) => setAddForm((s) => ({ ...s, password: e.target.value.slice(0, 8) }))}
+                  />
+                </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-black/70 dark:text-neutral-300">واحد</label>
-                <select
-                  className="rounded-xl px-3 py-2 bg-white text-black border border-black/15 outline-none
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                  value={addForm.department}
-                  onChange={(e) => setAddForm((s) => ({ ...s, department: e.target.value }))}
-                >
-                  <option value="">— انتخاب کنید —</option>
-                  {(units || []).map((u) => (
-                    <option key={u.id} value={u.name}>
-                      {u.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-black/70 dark:text-neutral-300">نوع</label>
-                <select
-                  className="rounded-xl px-3 py-2 bg-white text-black border border-black/15 outline-none
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                  value={addForm.role}
-                  onChange={(e) => setAddForm((s) => ({ ...s, role: e.target.value }))}
-                >
-                  <option value="user">user</option>
-                  <option value="admin">admin</option>
-                </select>
-              </div>
-            </div>
-
-            {/* نقش کاربری */}
-            <div className="mt-4 text-black dark:text-neutral-100" dir="rtl">
-              <label className="block mb-2 text-sm text-black/70 dark:text-neutral-300">نقش کاربری</label>
-
-              <div className="flex flex-wrap gap-2 mb-2">
-                {(addForm.positions || []).map((slug) => (
-                  <span
-                    key={slug}
-                    className="inline-flex items-center gap-2 px-3 py-1 rounded-full
-                               bg-neutral-100 text-black border border-black/10
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm text-black/70 dark:text-neutral-300">واحد</label>
+                  <select
+                    className="h-10 rounded-2xl px-3 bg-white text-black border border-black/15 outline-none
                                dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
+                    value={addForm.department}
+                    onChange={(e) => setAddForm((s) => ({ ...s, department: e.target.value }))}
                   >
-                    {slugToLabel[slug] || slug}
-                    <button
-                      type="button"
-                      onClick={() => removePositionFromAdd(slug)}
-                      className="text-black/50 hover:text-black dark:text-neutral-400 dark:hover:text-neutral-200"
+                    <option value="">— انتخاب کنید —</option>
+                    {(units || []).map((u) => (
+                      <option key={u.id} value={u.name}>
+                        {u.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm text-black/70 dark:text-neutral-300">نوع</label>
+                  <select
+                    className="h-10 rounded-2xl px-3 bg-white text-black border border-black/15 outline-none
+                               dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
+                    value={addForm.role}
+                    onChange={(e) => setAddForm((s) => ({ ...s, role: e.target.value }))}
+                  >
+                    <option value="user">user</option>
+                    <option value="admin">admin</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* نقش کاربری */}
+              <div className="mt-4 text-black dark:text-neutral-100">
+                <label className="block mb-2 text-sm text-black/70 dark:text-neutral-300">نقش کاربری</label>
+
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {(addForm.positions || []).map((slug) => (
+                    <span
+                      key={slug}
+                      className="inline-flex items-center gap-2 px-3 py-1 rounded-full
+                                 bg-neutral-100 text-black border border-black/10
+                                 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
                     >
-                      ×
-                    </button>
-                  </span>
-                ))}
-                {(!addForm.positions || addForm.positions.length === 0) && (
-                  <span className="text-sm text-black/50 dark:text-neutral-400">نقشی انتخاب نشده است</span>
-                )}
+                      {slugToLabel[slug] || slug}
+                      <button
+                        type="button"
+                        onClick={() => removePositionFromAdd(slug)}
+                        className="text-black/50 hover:text-black dark:text-neutral-400 dark:hover:text-neutral-200"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                  {(!addForm.positions || addForm.positions.length === 0) && (
+                    <span className="text-sm text-black/50 dark:text-neutral-400">نقشی انتخاب نشده است</span>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setAddRolesOpen((s) => !s)}
+                    className="w-full h-10 text-right rounded-2xl px-3 bg-white text-black border border-black/15 outline-none
+                               hover:bg-black/[0.02]
+                               dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-white/10"
+                  >
+                    {rolesLoading ? "در حال بارگذاری نقش‌ها…" : "انتخاب از نقش‌های کاربری"}
+                  </button>
+
+                  {addRolesOpen && (
+                    <div className="absolute z-20 mt-2 w-full max-h-56 overflow-auto rounded-xl border border-black/10 bg-white shadow
+                                    text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+                      {roleItems.length === 0 ? (
+                        <div className="px-3 py-2 text-sm text-black/50 dark:text-neutral-400">نقشی ثبت نشده است.</div>
+                      ) : (
+                        roleItems.map((r) => (
+                          <button
+                            type="button"
+                            key={r.name}
+                            onClick={() => {
+                              addPositionToAdd(r.name);
+                            }}
+                            className={`w-full text-right px-3 py-2 text-sm hover:bg-black/[0.04] dark:hover:bg-white/10
+                                      ${(addForm.positions || []).includes(r.name) ? "bg-black/[0.02] dark:bg-white/10" : ""}`}
+                          >
+                            {r.label || r.name}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setAddRolesOpen((s) => !s)}
-                  className="w-full h-10 text-right rounded-xl px-3 bg-white text-black border border-black/15 outline-none
-                             hover:bg-black/[0.02]
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-white/10"
-                >
-                  {rolesLoading ? "در حال بارگذاری نقش‌ها…" : "انتخاب از نقش‌های کاربری"}
-                </button>
-
-                {addRolesOpen && (
-                  <div className="absolute z-20 mt-2 w-full max-h-56 overflow-auto rounded-xl border border-black/10 bg-white shadow
-                                  text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-                    {roleItems.length === 0 ? (
-                      <div className="px-3 py-2 text-sm text-black/50 dark:text-neutral-400">نقشی ثبت نشده است.</div>
-                    ) : (
-                      roleItems.map((r) => (
-                        <button
-                          type="button"
-                          key={r.name}
-                          onClick={() => {
-                            addPositionToAdd(r.name);
-                          }}
-                          className={`w-full text-right px-3 py-2 text-sm hover:bg-black/[0.04] dark:hover:bg-white/10
-                                    ${(addForm.positions || []).includes(r.name) ? "bg-black/[0.02] dark:bg-white/10" : ""}`}
-                        >
-                          {r.label || r.name}
-                        </button>
-                      ))
-                    )}
+              {/* دسترسی‌های بودجه و قرارداد */}
+              <div
+                className={`mt-4 grid md:grid-cols-2 gap-6 ${addForm.role === "admin" ? "opacity-50 pointer-events-none" : ""}`}
+              >
+                <div className="rounded-2xl p-3 border border-black/10 bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+                  <div className="font-medium mb-2">بودجه‌بندی</div>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      ["budget:projects", "پروژه‌ها"],
+                      ["budget:office", "دفتر مرکزی"],
+                      ["budget:site", "سایت"],
+                      ["budget:finance", "مالی"],
+                      ["budget:cash", "نقدی"],
+                      ["budget:capex", "سرمایه‌ای"],
+                    ].map(([key, label]) => (
+                      <label
+                        key={key}
+                        className="inline-flex items-center gap-2 rounded-full px-3 py-1 cursor-pointer select-none
+                                   ring-1 ring-black/15 hover:bg-black/5
+                                   dark:ring-neutral-800 dark:hover:bg-white/10"
+                      >
+                        <input
+                          type="checkbox"
+                          className="accent-neutral-900 dark:accent-neutral-200"
+                          checked={!!addForm.accessBudget[key]}
+                          onChange={() =>
+                            setAddForm((s) => ({
+                              ...s,
+                              accessBudget: { ...s.accessBudget, [key]: !s.accessBudget[key] },
+                            }))
+                          }
+                        />
+                        <span className="text-black dark:text-neutral-200">{label}</span>
+                      </label>
+                    ))}
                   </div>
-                )}
-              </div>
-            </div>
+                </div>
 
-            {/* دسترسی‌های بودجه و قرارداد */}
-            <div
-              className={`mt-4 grid md:grid-cols-2 gap-6 ${addForm.role === "admin" ? "opacity-50 pointer-events-none" : ""}`}
-              dir="rtl"
-            >
-              <div className="rounded-xl p-3 border border-black/10 bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-                <div className="font-medium mb-2 text-black dark:text-neutral-100">بودجه‌بندی</div>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    ["budget:projects", "پروژه‌ها"],
-                    ["budget:office", "دفتر مرکزی"],
-                    ["budget:site", "سایت"],
-                    ["budget:finance", "مالی"],
-                    ["budget:cash", "نقدی"],
-                    ["budget:capex", "سرمایه‌ای"],
-                  ].map(([key, label]) => (
+                <div className="rounded-2xl p-3 border border-black/10 bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+                  <div className="font-medium mb-2">قراردادها</div>
+                  <div className="flex flex-wrap gap-3">
                     <label
-                      key={key}
                       className="inline-flex items-center gap-2 rounded-full px-3 py-1 cursor-pointer select-none
                                  ring-1 ring-black/15 hover:bg-black/5
                                  dark:ring-neutral-800 dark:hover:bg-white/10"
                     >
                       <input
-                        type="checkbox"
+                        type="radio"
+                        name="contracts-add"
                         className="accent-neutral-900 dark:accent-neutral-200"
-                        checked={!!addForm.accessBudget[key]}
-                        onChange={() =>
-                          setAddForm((s) => ({
-                            ...s,
-                            accessBudget: { ...s.accessBudget, [key]: !s.accessBudget[key] },
-                          }))
-                        }
+                        checked={addForm.contracts === "contracts:all"}
+                        onChange={() => setAddForm((s) => ({ ...s, contracts: "contracts:all" }))}
                       />
-                      <span className="text-black dark:text-neutral-200">{label}</span>
+                      <span className="text-black dark:text-neutral-200">همه اطلاعات</span>
                     </label>
-                  ))}
+
+                    <label
+                      className="inline-flex items-center gap-2 rounded-full px-3 py-1 cursor-pointer select-none
+                                 ring-1 ring-black/15 hover:bg-black/5
+                                 dark:ring-neutral-800 dark:hover:bg-white/10"
+                    >
+                      <input
+                        type="radio"
+                        name="contracts-add"
+                        className="accent-neutral-900 dark:accent-neutral-200"
+                        checked={addForm.contracts === "contracts:nonfinancial"}
+                        onChange={() => setAddForm((s) => ({ ...s, contracts: "contracts:nonfinancial" }))}
+                      />
+                      <span className="text-black dark:text-neutral-200">صرفاً اطلاعات غیرمالی</span>
+                    </label>
+                  </div>
                 </div>
               </div>
 
-              <div className="rounded-xl p-3 border border-black/10 bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-                <div className="font-medium mb-2">قراردادها</div>
-                <div className="flex flex-wrap gap-3">
-                  <label className="inline-flex items-center gap-2 rounded-full px-3 py-1 cursor-pointer select-none
-                                    ring-1 ring-black/15 hover:bg-black/5
-                                    dark:ring-neutral-800 dark:hover:bg-white/10">
-                    <input
-                      type="radio"
-                      name="contracts-add"
-                      className="accent-neutral-900 dark:accent-neutral-200"
-                      checked={addForm.contracts === "contracts:all"}
-                      onChange={() => setAddForm((s) => ({ ...s, contracts: "contracts:all" }))}
-                    />
-                    <span className="text-black dark:text-neutral-200">همه اطلاعات</span>
-                  </label>
+              {addErr && <div className="text-sm text-red-600 dark:text-red-400 mt-3">{addErr}</div>}
 
-                  <label className="inline-flex items-center gap-2 rounded-full px-3 py-1 cursor-pointer select-none
-                                    ring-1 ring-black/15 hover:bg-black/5
-                                    dark:ring-neutral-800 dark:hover:bg-white/10">
-                    <input
-                      type="radio"
-                      name="contracts-add"
-                      className="accent-neutral-900 dark:accent-neutral-200"
-                      checked={addForm.contracts === "contracts:nonfinancial"}
-                      onChange={() => setAddForm((s) => ({ ...s, contracts: "contracts:nonfinancial" }))}
-                    />
-                    <span className="text-black dark:text-neutral-200">صرفاً اطلاعات غیرمالی</span>
-                  </label>
-                </div>
+              <div className="mt-4 flex items-center gap-2">
+                <AddPlusBtn title="افزودن" disabled={addSaving} onClick={() => {}} className="pointer-events-none" />
+                <button
+                  type="submit"
+                  disabled={addSaving}
+                  className="h-10 rounded-2xl px-4 text-sm font-medium bg-neutral-900 text-white hover:opacity-90 transition disabled:opacity-50
+                             dark:bg-neutral-100 dark:text-neutral-900"
+                >
+                  ثبت
+                </button>
+                <Btn type="button" onClick={() => setAddOpen(false)}>
+                  بستن
+                </Btn>
               </div>
-            </div>
-
-            {addErr && <div className="text-sm text-red-600 dark:text-red-400 mt-3">{addErr}</div>}
-
-            <div className="mt-4 flex items-center gap-2">
-              <button
-                type="submit"
-                disabled={addSaving}
-                className="h-10 w-10 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50
-                           dark:bg-neutral-100 dark:text-neutral-900"
-                aria-label="افزودن"
-                title="افزودن"
-              >
-                <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
-              </button>
-              <Btn type="button" onClick={() => setAddOpen(false)}>
-                بستن
-              </Btn>
             </div>
           </form>
         )}
 
-        {/* جدول کاربران (✅ اعمال دقیق استایل ذخیره‌شده) */}
+        {/* جدول کاربران (✅ استاندارد BaseCurrenciesPage + ریسپانسیو با اسکرول افقی) */}
         <TableWrap>
           <div className="bg-white text-black overflow-hidden dark:bg-neutral-900 dark:text-neutral-100">
             <div className="px-[15px] pb-4">
               <div className="rounded-2xl border border-black/10 overflow-hidden bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-                <table
-                  className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
-                  dir="rtl"
-                >
-                  <THead>
-                    <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
-                      <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                        #
-                      </TH>
-
-                      <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                        <div className="flex items-center justify-center gap-2">
-                          <span>نام</span>
-                          <button
-                            type="button"
-                            onClick={() => toggleSort("name")}
-                            className="h-7 w-7 inline-grid place-items-center bg-transparent p-0
-                                       text-neutral-500 hover:text-neutral-600 active:text-neutral-700
-                                       dark:text-neutral-400 dark:hover:text-neutral-300"
-                            title="مرتب‌سازی نام"
-                            aria-label="مرتب‌سازی نام"
-                          >
-                            <svg
-                              className={`w-[14px] h-[14px] transition-transform ${
-                                sortKey === "name" && sortDir === "asc" ? "rotate-180" : ""
-                              }`}
-                              focusable="false"
-                              aria-hidden="true"
-                              viewBox="0 0 24 24"
-                            >
-                              <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"></path>
-                            </svg>
-                          </button>
-                        </div>
-                      </TH>
-
-                      <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                        <div className="flex items-center justify-center gap-2">
-                          <span>واحد</span>
-                          <button
-                            type="button"
-                            onClick={() => toggleSort("department")}
-                            className="h-7 w-7 inline-grid place-items-center bg-transparent p-0
-                                       text-neutral-500 hover:text-neutral-600 active:text-neutral-700
-                                       dark:text-neutral-400 dark:hover:text-neutral-300"
-                            title="مرتب‌سازی واحد"
-                            aria-label="مرتب‌سازی واحد"
-                          >
-                            <svg
-                              className={`w-[14px] h-[14px] transition-transform ${
-                                sortKey === "department" && sortDir === "asc" ? "rotate-180" : ""
-                              }`}
-                              focusable="false"
-                              aria-hidden="true"
-                              viewBox="0 0 24 24"
-                            >
-                              <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"></path>
-                            </svg>
-                          </button>
-                        </div>
-                      </TH>
-
-                      <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                        سطح دسترسی‌ها
-                      </TH>
-
-                      <TH className="w-44 sm:w-72 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                        اقدامات
-                      </TH>
-                    </tr>
-                  </THead>
-
-                  <tbody
-                    className="[&_td]:text-black dark:[&_td]:text-neutral-100
-                               [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50
-                               dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50"
+                <div className="w-full overflow-x-auto">
+                  <table
+                    className="w-full min-w-[860px] text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
+                    dir="rtl"
                   >
-                    {loading ? (
-                      <TR className="bg-white dark:bg-transparent">
-                        <TD colSpan={5} className="text-center text-black/60 dark:text-neutral-400 py-4">
-                          در حال بارگذاری...
-                        </TD>
-                      </TR>
-                    ) : (sortedList || []).length === 0 ? (
-                      <TR className="bg-white dark:bg-transparent">
-                        <TD colSpan={5} className="text-center text-black/60 dark:text-neutral-400 py-4">
-                          کاربری ثبت نشده است.
-                        </TD>
-                      </TR>
-                    ) : (
-                      (sortedList || []).map((u, idx) => {
-                        const isLast = idx === (sortedList || []).length - 1;
-                        const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
+                    <THead>
+                      <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
+                        <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                          #
+                        </TH>
 
-                        return (
-                          <TR key={u.id}>
-                            <TD className={`px-3 ${tdBorder}`}>{idx + 1}</TD>
-                            <TD className={`px-3 ${tdBorder}`}>{u.name || u.username || "—"}</TD>
-                            <TD className={`px-3 ${tdBorder}`}>{u.department || "—"}</TD>
-                            <TD className={`px-3 ${tdBorder} text-black/80 dark:text-neutral-300`}>{renderAccessText(u)}</TD>
+                        <TH className="min-w-[180px] !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                          <div className="flex items-center justify-center gap-2">
+                            <span>نام</span>
+                            <button
+                              type="button"
+                              onClick={() => toggleSort("name")}
+                              className="h-7 w-7 inline-grid place-items-center bg-transparent p-0
+                                         text-neutral-500 hover:text-neutral-600 active:text-neutral-700
+                                         dark:text-neutral-400 dark:hover:text-neutral-300"
+                              title="مرتب‌سازی نام"
+                              aria-label="مرتب‌سازی نام"
+                            >
+                              <svg
+                                className={`w-[14px] h-[14px] transition-transform ${
+                                  sortKey === "name" && sortDir === "asc" ? "rotate-180" : ""
+                                }`}
+                                focusable="false"
+                                aria-hidden="true"
+                                viewBox="0 0 24 24"
+                              >
+                                <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"></path>
+                              </svg>
+                            </button>
+                          </div>
+                        </TH>
 
-                            <TD className={`px-3 ${tdBorder}`}>
-                              <div className="flex items-center justify-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => startEdit(u)}
-                                  className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
-                                  aria-label="ویرایش"
-                                  title="ویرایش"
-                                >
-                                  <img src="/images/icons/pencil.svg" alt="" className="w-[18px] h-[18px] dark:invert" />
-                                </button>
+                        <TH className="min-w-[160px] !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                          <div className="flex items-center justify-center gap-2">
+                            <span>واحد</span>
+                            <button
+                              type="button"
+                              onClick={() => toggleSort("department")}
+                              className="h-7 w-7 inline-grid place-items-center bg-transparent p-0
+                                         text-neutral-500 hover:text-neutral-600 active:text-neutral-700
+                                         dark:text-neutral-400 dark:hover:text-neutral-300"
+                              title="مرتب‌سازی واحد"
+                              aria-label="مرتب‌سازی واحد"
+                            >
+                              <svg
+                                className={`w-[14px] h-[14px] transition-transform ${
+                                  sortKey === "department" && sortDir === "asc" ? "rotate-180" : ""
+                                }`}
+                                focusable="false"
+                                aria-hidden="true"
+                                viewBox="0 0 24 24"
+                              >
+                                <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"></path>
+                              </svg>
+                            </button>
+                          </div>
+                        </TH>
 
-                                <button
-                                  type="button"
-                                  onClick={() => del(u)}
-                                  className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
-                                  aria-label="حذف"
-                                  title="حذف"
-                                >
-                                  <img
-                                    src="/images/icons/hazf.svg"
-                                    alt=""
-                                    className="w-[19px] h-[19px]"
-                                    style={{
-                                      filter:
-                                        "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
-                                    }}
-                                  />
-                                </button>
-                              </div>
-                            </TD>
-                          </TR>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+                        <TH className="min-w-[320px] !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                          سطح دسترسی‌ها
+                        </TH>
+
+                        <TH className="w-44 sm:w-72 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                          اقدامات
+                        </TH>
+                      </tr>
+                    </THead>
+
+                    <tbody
+                      className="[&_td]:text-black dark:[&_td]:text-neutral-100
+                                 [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50
+                                 dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50"
+                    >
+                      {loading ? (
+                        <TR className="bg-white dark:bg-transparent">
+                          <TD colSpan={5} className="text-center text-black/60 dark:text-neutral-400 py-4">
+                            در حال بارگذاری...
+                          </TD>
+                        </TR>
+                      ) : (sortedList || []).length === 0 ? (
+                        <TR className="bg-white dark:bg-transparent">
+                          <TD colSpan={5} className="text-center text-black/60 dark:text-neutral-400 py-4">
+                            کاربری ثبت نشده است.
+                          </TD>
+                        </TR>
+                      ) : (
+                        (sortedList || []).map((u, idx) => {
+                          const isLast = idx === (sortedList || []).length - 1;
+                          const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
+
+                          return (
+                            <TR key={u.id}>
+                              <TD className={`px-3 ${tdBorder}`}>{idx + 1}</TD>
+                              <TD className={`px-3 ${tdBorder}`}>{u.name || u.username || "—"}</TD>
+                              <TD className={`px-3 ${tdBorder}`}>{u.department || "—"}</TD>
+                              <TD className={`px-3 ${tdBorder} text-black/80 dark:text-neutral-300`}>
+                                {renderAccessText(u)}
+                              </TD>
+
+                              <TD className={`px-3 ${tdBorder}`}>
+                                <div className="flex items-center justify-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => startEdit(u)}
+                                    className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
+                                    aria-label="ویرایش"
+                                    title="ویرایش"
+                                  >
+                                    <img src="/images/icons/pencil.svg" alt="" className="w-[18px] h-[18px] dark:invert" />
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => del(u)}
+                                    className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
+                                    aria-label="حذف"
+                                    title="حذف"
+                                  >
+                                    <img
+                                      src="/images/icons/hazf.svg"
+                                      alt=""
+                                      className="w-[19px] h-[19px]"
+                                      style={{
+                                        filter:
+                                          "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
+                                      }}
+                                    />
+                                  </button>
+                                </div>
+                              </TD>
+                            </TR>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
         </TableWrap>
       </Card>
 
-      {/* ===== Edit Modal ===== */}
+      {/* ===== Edit Modal (دارک/لایت + ریسپانسیو) ===== */}
       {editOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={cancelEdit} />
 
-          <div className="relative w-[96%] max-w-3xl rounded-2xl shadow-2xl p-5 bg-white text-black border border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-            <div className="mb-3 flex items-center justify-between">
+          <div className="relative w-full max-w-3xl rounded-2xl shadow-2xl p-5 bg-white text-black border border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+            <div className="mb-3 flex items-center justify-between gap-3">
               <h3 className="text-lg md:text-xl font-bold">ویرایش کاربر</h3>
 
               <button
@@ -990,8 +990,8 @@ function UsersPage() {
                 <input
                   value={form.name}
                   onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
-                  className="rounded-xl px-3 py-2 bg-white text-black placeholder-black/40
-                             border border-black/15 outline-none focus:ring-2 focus:ring-black/10
+                  className="h-10 rounded-2xl px-3 bg-white text-black placeholder-black/40 border border-black/15 outline-none
+                             focus:ring-2 focus:ring-black/10
                              dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
                 />
               </div>
@@ -999,7 +999,7 @@ function UsersPage() {
               <div className="flex flex-col gap-1">
                 <label className="text-sm text-black/70 dark:text-neutral-300">واحد</label>
                 <select
-                  className="rounded-xl px-3 py-2 bg-white text-black border border-black/15 outline-none
+                  className="h-10 rounded-2xl px-3 bg-white text-black border border-black/15 outline-none
                              dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
                   value={form.department}
                   onChange={(e) => setForm((s) => ({ ...s, department: e.target.value }))}
@@ -1019,8 +1019,8 @@ function UsersPage() {
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
-                  className="rounded-xl px-3 py-2 bg-white text-black placeholder-black/40
-                             border border-black/15 outline-none text-left focus:ring-2 focus:ring-black/10
+                  className="h-10 rounded-2xl px-3 bg-white text-black placeholder-black/40 border border-black/15 outline-none text-left
+                             focus:ring-2 focus:ring-black/10
                              dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
                   dir="ltr"
                 />
@@ -1031,8 +1031,8 @@ function UsersPage() {
                 <input
                   value={form.username}
                   onChange={(e) => setForm((s) => ({ ...s, username: e.target.value }))}
-                  className="rounded-xl px-3 py-2 bg-white text-black placeholder-black/40
-                             border border-black/15 outline-none text-left focus:ring-2 focus:ring-black/10
+                  className="h-10 rounded-2xl px-3 bg-white text-black placeholder-black/40 border border-black/15 outline-none text-left
+                             focus:ring-2 focus:ring-black/10
                              dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
                   dir="ltr"
                 />
@@ -1043,7 +1043,7 @@ function UsersPage() {
                 <select
                   value={form.role}
                   onChange={(e) => setForm((s) => ({ ...s, role: e.target.value }))}
-                  className="rounded-xl px-3 py-2 bg-white text-black border border-black/15 outline-none
+                  className="h-10 rounded-2xl px-3 bg-white text-black border border-black/15 outline-none
                              dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
                 >
                   <option value="user">user</option>
@@ -1056,8 +1056,8 @@ function UsersPage() {
                 <input
                   value={form.password}
                   onChange={(e) => setForm((s) => ({ ...s, password: e.target.value.slice(0, 8) }))}
-                  className="rounded-xl px-3 py-2 bg-white text-black placeholder-black/40
-                             border border-black/15 outline-none text-left focus:ring-2 focus:ring-black/10
+                  className="h-10 rounded-2xl px-3 bg-white text-black placeholder-black/40 border border-black/15 outline-none text-left
+                             focus:ring-2 focus:ring-black/10
                              dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
                   dir="ltr"
                   type="password"
@@ -1097,7 +1097,7 @@ function UsersPage() {
                 <button
                   type="button"
                   onClick={() => setEditRolesOpen((s) => !s)}
-                  className="w-full h-10 text-right rounded-xl px-3 bg-white text-black border border-black/15 outline-none
+                  className="w-full h-10 text-right rounded-2xl px-3 bg-white text-black border border-black/15 outline-none
                              hover:bg-black/[0.02]
                              dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-white/10"
                 >
@@ -1134,7 +1134,7 @@ function UsersPage() {
               className={`mt-5 grid md:grid-cols-2 gap-6 ${form.role === "admin" ? "opacity-50 pointer-events-none" : ""}`}
               dir="rtl"
             >
-              <div className="rounded-xl p-3 border border-black/10 bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+              <div className="rounded-2xl p-3 border border-black/10 bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
                 <div className="font-medium mb-2">بودجه‌بندی</div>
                 <div className="flex flex-wrap gap-2">
                   {[
@@ -1163,12 +1163,14 @@ function UsersPage() {
                 </div>
               </div>
 
-              <div className="rounded-xl p-3 border border-black/10 bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+              <div className="rounded-2xl p-3 border border-black/10 bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
                 <div className="font-medium mb-2">قراردادها</div>
                 <div className="flex flex-wrap gap-3">
-                  <label className="inline-flex items-center gap-2 rounded-full px-3 py-1 cursor-pointer select-none
-                                    ring-1 ring-black/15 hover:bg-black/5
-                                    dark:ring-neutral-800 dark:hover:bg-white/10">
+                  <label
+                    className="inline-flex items-center gap-2 rounded-full px-3 py-1 cursor-pointer select-none
+                               ring-1 ring-black/15 hover:bg-black/5
+                               dark:ring-neutral-800 dark:hover:bg-white/10"
+                  >
                     <input
                       type="radio"
                       name={`contracts-${editId}`}
@@ -1179,9 +1181,11 @@ function UsersPage() {
                     <span className="text-black dark:text-neutral-200">همه اطلاعات</span>
                   </label>
 
-                  <label className="inline-flex items-center gap-2 rounded-full px-3 py-1 cursor-pointer select-none
-                                    ring-1 ring-black/15 hover:bg-black/5
-                                    dark:ring-neutral-800 dark:hover:bg-white/10">
+                  <label
+                    className="inline-flex items-center gap-2 rounded-full px-3 py-1 cursor-pointer select-none
+                               ring-1 ring-black/15 hover:bg-black/5
+                               dark:ring-neutral-800 dark:hover:bg-white/10"
+                  >
                     <input
                       type="radio"
                       name={`contracts-${editId}`}
@@ -1195,7 +1199,7 @@ function UsersPage() {
               </div>
             </div>
 
-            <div className="mt-4 flex items-center justify-between gap-2">
+            <div className="mt-4 flex items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={cancelEdit}
@@ -1206,7 +1210,7 @@ function UsersPage() {
                 <img
                   src="/images/icons/bastan.svg"
                   alt=""
-                  className="w-[16px] h-[16px] dark:invert"
+                  className="w-[16px] h-[16px]"
                   style={{
                     filter:
                       "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
