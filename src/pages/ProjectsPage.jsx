@@ -248,18 +248,6 @@ function ProjectsPage() {
         <form onSubmit={submitAdd} className="px-[15px] py-4">
           <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] items-end gap-3">
             <div className="flex-1 min-w-[220px] flex flex-col gap-1">
-              <label className="text-sm text-black/70 dark:text-neutral-300">نام پروژه</label>
-              <input
-                className="h-10 w-full rounded-2xl px-3 bg-white text-black placeholder-black/40
-                           border border-black/15 outline-none focus:ring-2 focus:ring-black/10
-                           dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-                value={nameInput}
-                onChange={(e) => setNameInput(e.target.value)}
-                placeholder="نام…"
-              />
-            </div>
-
-            <div className="flex-1 min-w-[220px] flex flex-col gap-1">
               <label className="text-sm text-black/70 dark:text-neutral-300">کد پروژه</label>
               <input
                 dir="ltr"
@@ -271,6 +259,18 @@ function ProjectsPage() {
                 value={codeInput}
                 onChange={onAddCodeChange}
                 placeholder="123"
+              />
+            </div>
+
+            <div className="flex-1 min-w-[220px] flex flex-col gap-1">
+              <label className="text-sm text-black/70 dark:text-neutral-300">نام پروژه</label>
+              <input
+                className="h-10 w-full rounded-2xl px-3 bg-white text-black placeholder-black/40
+                           border border-black/15 outline-none focus:ring-2 focus:ring-black/10
+                           dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                placeholder="نام…"
               />
             </div>
 
