@@ -1303,67 +1303,88 @@ export default function LettersPage() {
         }
       >
         <div className="p-3 md:p-4">
-          {/* Tabs + Filters (filters hidden while formOpen) */}
-          <div className="flex flex-col lg:flex-row lg:items-end gap-3">
-            <div className="flex items-center gap-2">
-              {TABS.map((t) => {
-                const active = tab === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => setTab(t.id)}
-                    className={
-                      "h-10 px-5 rounded-xl border transition text-sm font-semibold " +
-                      (t.id === "outgoing"
-                        ? active
-                          ? "bg-[#1a7431] text-white border-[#1a7431]"
-                          : theme === "dark"
-                          ? "bg-transparent text-white border-[#1a7431] hover:bg-white/5"
-                          : "bg-white text-neutral-900 border-[#1a7431] hover:bg-black/[0.02]"
-                        : active
-                        ? "bg-[#4895ef] text-white border-[#4895ef]"
+          {/* Tabs */}
+          <div className="flex items-center gap-2">
+            {TABS.map((t) => {
+              const active = tab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTab(t.id)}
+                  className={
+                    "h-10 px-5 rounded-xl border transition text-sm font-semibold " +
+                    (t.id === "outgoing"
+                      ? active
+                        ? "bg-[#1a7431] text-white border-[#1a7431]"
                         : theme === "dark"
-                        ? "bg-transparent text-white border-[#4895ef] hover:bg-white/5"
-                        : "bg-white text-neutral-900 border-[#4895ef] hover:bg-black/[0.02]")
-                    }
-                  >
-                    {t.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {!formOpen && (
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3">
-                <div className="w-full sm:w-[260px]">
-                  <div className={labelCls}>دسته بندی</div>
-                  <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className={inputCls}>
-                    <option value=""></option>
-                    <option value="project">پروژه‌ها</option>
-                  </select>
-                </div>
-
-                <div className="w-full sm:w-[260px]">
-                  <div className={labelCls}>پروژه</div>
-                  <select
-                    value={filterProjectId}
-                    onChange={(e) => setFilterProjectId(e.target.value)}
-                    className={inputCls}
-                  >
-                    <option value=""></option>
-                    {projects.map((p) => (
-                      <option key={p.id} value={String(p.id)}>
-                        {String(p.code || "")} {p.name ? `- ${p.name}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            )}
+                        ? "bg-transparent text-white border-[#1a7431] hover:bg-white/5"
+                        : "bg-white text-neutral-900 border-[#1a7431] hover:bg-black/[0.02]"
+                      : active
+                      ? "bg-[#4895ef] text-white border-[#4895ef]"
+                      : theme === "dark"
+                      ? "bg-transparent text-white border-[#4895ef] hover:bg-white/5"
+                      : "bg-white text-neutral-900 border-[#4895ef] hover:bg-black/[0.02]")
+                  }
+                >
+                  {t.label}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Quick range chips + date range + text/tag filters (hidden while formOpen) */}
+          {/* Filters row under tabs (hidden while formOpen) */}
+          {!formOpen && (
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div>
+                <div className={labelCls}>دسته بندی</div>
+                <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className={inputCls}>
+                  <option value=""></option>
+                  <option value="project">پروژه‌ها</option>
+                </select>
+              </div>
+
+              <div>
+                <div className={labelCls}>پروژه</div>
+                <select
+                  value={filterProjectId}
+                  onChange={(e) => setFilterProjectId(e.target.value)}
+                  className={inputCls}
+                >
+                  <option value=""></option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={String(p.id)}>
+                      {String(p.code || "")} {p.name ? `- ${p.name}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <div className={labelCls}>موضوع</div>
+                <input
+                  value={filterSubject}
+                  onChange={(e) => setFilterSubject(e.target.value)}
+                  className={inputCls}
+                  type="text"
+                  placeholder="جستجو بر اساس موضوع"
+                />
+              </div>
+
+              <div>
+                <div className={labelCls}>شرکت/سازمان</div>
+                <input
+                  value={filterOrg}
+                  onChange={(e) => setFilterOrg(e.target.value)}
+                  className={inputCls}
+                  type="text"
+                  placeholder="جستجو بر اساس شرکت/سازمان"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Quick range chips + date range + tags (hidden while formOpen) */}
           {!formOpen && (
             <div className="mt-3 rounded-2xl border border-black/10 dark:border-white/10 p-3">
               <div className="flex flex-col gap-3">
@@ -1446,29 +1467,6 @@ export default function LettersPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <div className={labelCls}>موضوع</div>
-                    <input
-                      value={filterSubject}
-                      onChange={(e) => setFilterSubject(e.target.value)}
-                      className={inputCls}
-                      type="text"
-                      placeholder="جستجو بر اساس موضوع"
-                    />
-                  </div>
-                  <div>
-                    <div className={labelCls}>شرکت/سازمان</div>
-                    <input
-                      value={filterOrg}
-                      onChange={(e) => setFilterOrg(e.target.value)}
-                      className={inputCls}
-                      type="text"
-                      placeholder="جستجو بر اساس شرکت/سازمان"
-                    />
-                  </div>
-                </div>
-
                 <div>
                   <div className={labelCls}>برچسب ها</div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -1517,7 +1515,8 @@ export default function LettersPage() {
           <div className="mt-4">
             {formOpen && tab === "incoming" && (
               <div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* دسته بندی + پروژه + شماره + تاریخ (یک ردیف) */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <div>
                     <div className={labelCls}>دسته بندی نامه</div>
                     <select
@@ -1534,24 +1533,23 @@ export default function LettersPage() {
                     </select>
                   </div>
 
-                  {category === "project" ? (
-                    <div>
-                      <div className={labelCls}>پروژه</div>
-                      <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={inputCls}>
-                        <option value=""></option>
-                        {projects.map((p) => (
-                          <option key={p.id} value={String(p.id)}>
-                            {String(p.code || "")} {p.name ? `- ${p.name}` : ""}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : (
-                    <div />
-                  )}
-                </div>
+                  <div>
+                    <div className={labelCls}>پروژه</div>
+                    <select
+                      value={projectId}
+                      onChange={(e) => setProjectId(e.target.value)}
+                      className={inputCls}
+                      disabled={category !== "project"}
+                    >
+                      <option value=""></option>
+                      {projects.map((p) => (
+                        <option key={p.id} value={String(p.id)}>
+                          {String(p.code || "")} {p.name ? `- ${p.name}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
                   <div>
                     <div className={labelCls}>شماره نامه</div>
                     <input value={letterNo} onChange={(e) => setLetterNo(e.target.value)} className={inputCls} type="text" />
@@ -1563,7 +1561,8 @@ export default function LettersPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                {/* از + شرکت/سازمان + به (یک ردیف) */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
                   <div>
                     <div className={labelCls}>از</div>
                     <input value={fromName} onChange={(e) => setFromName(e.target.value)} className={inputCls} type="text" />
@@ -1573,11 +1572,11 @@ export default function LettersPage() {
                     <div className={labelCls}>شرکت/سازمان</div>
                     <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputCls} type="text" />
                   </div>
-                </div>
 
-                <div className="mt-3">
-                  <div className={labelCls}>به</div>
-                  <input value={toName} onChange={(e) => setToName(e.target.value)} className={inputCls} type="text" />
+                  <div>
+                    <div className={labelCls}>به</div>
+                    <input value={toName} onChange={(e) => setToName(e.target.value)} className={inputCls} type="text" />
+                  </div>
                 </div>
 
                 <div className="mt-3">
@@ -1600,83 +1599,78 @@ export default function LettersPage() {
                         <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-700 text-sm"}>دارد</span>
                       </label>
 
-                      {hasAttachment && (
-                        <div className="min-w-[260px]">
-                          <input
-                            value={incomingAttachmentTitle}
-                            onChange={(e) => setIncomingAttachmentTitle(e.target.value)}
-                            className={inputCls}
-                            type="text"
-                            placeholder="عنوان ضمیمه"
-                          />
-                        </div>
-                      )}
+                      <div className="min-w-[260px]">
+                        <input
+                          value={incomingAttachmentTitle}
+                          onChange={(e) => setIncomingAttachmentTitle(e.target.value)}
+                          className={inputCls + (!hasAttachment ? " opacity-60" : "")}
+                          type="text"
+                          placeholder="عنوان ضمیمه"
+                          disabled={!hasAttachment}
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  {hasAttachment && (
-                    <div className="mt-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className={labelCls.replace("mb-1", "mb-0")}>بازگشت به</div>
-                      </div>
-
-                      <div className="space-y-2">
-                        {returnToIds.map((v, idx) => (
-                          <div key={idx} className="flex items-center gap-2">
-                            {idx === returnToIds.length - 1 && (
-                              <button
-                                type="button"
-                                onClick={() => setReturnToIds((arr) => [...arr, ""])}
-                                className={
-                                  "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
-                                  (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
-                                }
-                                aria-label="افزودن"
-                                title="افزودن"
-                              >
-                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M12 5v14M5 12h14" />
-                                </svg>
-                              </button>
-                            )}
-
-                            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
-                              <select
-                                value={v}
-                                onChange={(e) => {
-                                  const nv = e.target.value;
-                                  setReturnToIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
-                                }}
-                                className={inputCls + " md:col-span-1"}
-                              >
-                                <option value=""></option>
-                                {myLetters.map((l) => (
-                                  <option key={l.id} value={String(l.id)}>
-                                    {String(l.letter_no || "")}
-                                  </option>
-                                ))}
-                              </select>
-
-                              {idx === 0 ? (
-                                <button
-                                  type="button"
-                                  onClick={() => openUpload("incoming")}
-                                  className={uploadTriggerCls + " md:col-span-1"}
-                                  aria-label="آپلود و الصاق فایل ها"
-                                  title="آپلود و الصاق فایل ها"
-                                >
-                                  <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
-                                  <span className="text-sm font-normal">آپلود و الصاق فایل ها</span>
-                                </button>
-                              ) : (
-                                <div className="hidden md:block md:col-span-1" />
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                  {/* بازگشت به (نمایش همیشه) */}
+                  <div className="mt-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={labelCls.replace("mb-1", "mb-0")}>بازگشت به</div>
                     </div>
-                  )}
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      {returnToIds.map((v, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <select
+                            value={v}
+                            onChange={(e) => {
+                              const nv = e.target.value;
+                              setReturnToIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
+                            }}
+                            className={inputCls + " min-w-[240px] w-[240px]"}
+                          >
+                            <option value=""></option>
+                            {myLetters.map((l) => (
+                              <option key={l.id} value={String(l.id)}>
+                                {String(l.letter_no || "")}
+                              </option>
+                            ))}
+                          </select>
+
+                          {idx === 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => hasAttachment && openUpload("incoming")}
+                              disabled={!hasAttachment}
+                              className={uploadTriggerCls + " min-w-[240px] w-[240px]" + (!hasAttachment ? " opacity-60 pointer-events-none" : "")}
+                              aria-label="آپلود و الصاق فایل ها"
+                              title="آپلود و الصاق فایل ها"
+                            >
+                              <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
+                              <span className="text-sm font-normal">آپلود و الصاق فایل ها</span>
+                            </button>
+                          ) : null}
+
+                          {idx === returnToIds.length - 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setReturnToIds((arr) => [...arr, ""])}
+                              className={
+                                "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
+                                (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
+                              }
+                              aria-label="افزودن"
+                              title="افزودن"
+                            >
+                              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 5v14M5 12h14" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="mt-3">
@@ -1778,7 +1772,8 @@ export default function LettersPage() {
 
             {formOpen && tab === "outgoing" && (
               <div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* دسته بندی + پروژه + شماره + تاریخ (یک ردیف) */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <div>
                     <div className={labelCls}>دسته بندی نامه</div>
                     <select
@@ -1795,24 +1790,23 @@ export default function LettersPage() {
                     </select>
                   </div>
 
-                  {category === "project" ? (
-                    <div>
-                      <div className={labelCls}>پروژه</div>
-                      <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={inputCls}>
-                        <option value=""></option>
-                        {projects.map((p) => (
-                          <option key={p.id} value={String(p.id)}>
-                            {String(p.code || "")} {p.name ? `- ${p.name}` : ""}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : (
-                    <div />
-                  )}
-                </div>
+                  <div>
+                    <div className={labelCls}>پروژه</div>
+                    <select
+                      value={projectId}
+                      onChange={(e) => setProjectId(e.target.value)}
+                      className={inputCls}
+                      disabled={category !== "project"}
+                    >
+                      <option value=""></option>
+                      {projects.map((p) => (
+                        <option key={p.id} value={String(p.id)}>
+                          {String(p.code || "")} {p.name ? `- ${p.name}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
                   <div>
                     <div className={labelCls}>شماره نامه</div>
                     <input value={letterNo} onChange={(e) => setLetterNo(e.target.value)} className={inputCls} type="text" />
@@ -1824,20 +1818,21 @@ export default function LettersPage() {
                   </div>
                 </div>
 
-                <div className="mt-3">
-                  <div className={labelCls}>از</div>
-                  <input value={fromName} onChange={(e) => setFromName(e.target.value)} className={inputCls} type="text" />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                {/* از + شرکت/سازمان + به (یک ردیف) */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
                   <div>
-                    <div className={labelCls}>به</div>
-                    <input value={toName} onChange={(e) => setToName(e.target.value)} className={inputCls} type="text" />
+                    <div className={labelCls}>از</div>
+                    <input value={fromName} onChange={(e) => setFromName(e.target.value)} className={inputCls} type="text" />
                   </div>
 
                   <div>
                     <div className={labelCls}>شرکت/سازمان</div>
                     <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputCls} type="text" />
+                  </div>
+
+                  <div>
+                    <div className={labelCls}>به</div>
+                    <input value={toName} onChange={(e) => setToName(e.target.value)} className={inputCls} type="text" />
                   </div>
                 </div>
 
@@ -1861,126 +1856,122 @@ export default function LettersPage() {
                         <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-700 text-sm"}>دارد</span>
                       </label>
 
-                      {hasAttachment && (
-                        <div className="min-w-[260px]">
-                          <input
-                            value={outgoingAttachmentTitle}
-                            onChange={(e) => setOutgoingAttachmentTitle(e.target.value)}
-                            className={inputCls}
-                            type="text"
-                            placeholder="عنوان ضمیمه"
-                          />
-                        </div>
-                      )}
+                      <div className="min-w-[260px]">
+                        <input
+                          value={outgoingAttachmentTitle}
+                          onChange={(e) => setOutgoingAttachmentTitle(e.target.value)}
+                          className={inputCls + (!hasAttachment ? " opacity-60" : "")}
+                          type="text"
+                          placeholder="عنوان ضمیمه"
+                          disabled={!hasAttachment}
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  {hasAttachment && (
-                    <div className="mt-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className={labelCls.replace("mb-1", "mb-0")}>پیرو</div>
-                      </div>
-
-                      <div className="space-y-2">
-                        {piroIds.map((v, idx) => (
-                          <div key={idx} className="flex items-center gap-2">
-                            <select
-                              value={v}
-                              onChange={(e) => {
-                                const nv = e.target.value;
-                                setPiroIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
-                              }}
-                              className={inputCls}
-                            >
-                              <option value=""></option>
-                              {myLetters.map((l) => (
-                                <option key={l.id} value={String(l.id)}>
-                                  {String(l.letter_no || "")}
-                                </option>
-                              ))}
-                            </select>
-
-                            {idx === piroIds.length - 1 && (
-                              <button
-                                type="button"
-                                onClick={() => setPiroIds((arr) => [...arr, ""])}
-                                className={
-                                  "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
-                                  (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
-                                }
-                                aria-label="افزودن"
-                                title="افزودن"
-                              >
-                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M12 5v14M5 12h14" />
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="flex items-center gap-2 mt-4 mb-2">
-                        <div className={labelCls.replace("mb-1", "mb-0")}>بازگشت به</div>
-                      </div>
-
-                      <div className="space-y-2">
-                        {returnToIds.map((v, idx) => (
-                          <div key={idx} className="flex items-center gap-2">
-                            {idx === returnToIds.length - 1 && (
-                              <button
-                                type="button"
-                                onClick={() => setReturnToIds((arr) => [...arr, ""])}
-                                className={
-                                  "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
-                                  (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
-                                }
-                                aria-label="افزودن"
-                                title="افزودن"
-                              >
-                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M12 5v14M5 12h14" />
-                                </svg>
-                              </button>
-                            )}
-
-                            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
-                              <select
-                                value={v}
-                                onChange={(e) => {
-                                  const nv = e.target.value;
-                                  setReturnToIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
-                                }}
-                                className={inputCls + " md:col-span-1"}
-                              >
-                                <option value=""></option>
-                                {myLetters.map((l) => (
-                                  <option key={l.id} value={String(l.id)}>
-                                    {String(l.letter_no || "")}
-                                  </option>
-                                ))}
-                              </select>
-
-                              {idx === 0 ? (
-                                <button
-                                  type="button"
-                                  onClick={() => openUpload("outgoing")}
-                                  className={uploadTriggerCls + " md:col-span-1"}
-                                  aria-label="آپلود و الصاق فایل ها"
-                                  title="آپلود و الصاق فایل ها"
-                                >
-                                  <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
-                                  <span className="text-sm font-normal">آپلود و الصاق فایل ها</span>
-                                </button>
-                              ) : (
-                                <div className="hidden md:block md:col-span-1" />
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                  {/* پیرو (نمایش همیشه + افزودن در ادامه همان ردیف) */}
+                  <div className="mt-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={labelCls.replace("mb-1", "mb-0")}>پیرو</div>
                     </div>
-                  )}
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      {piroIds.map((v, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <select
+                            value={v}
+                            onChange={(e) => {
+                              const nv = e.target.value;
+                              setPiroIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
+                            }}
+                            className={inputCls + " min-w-[240px] w-[240px]"}
+                          >
+                            <option value=""></option>
+                            {myLetters.map((l) => (
+                              <option key={l.id} value={String(l.id)}>
+                                {String(l.letter_no || "")}
+                              </option>
+                            ))}
+                          </select>
+
+                          {idx === piroIds.length - 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setPiroIds((arr) => [...arr, ""])}
+                              className={
+                                "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
+                                (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
+                              }
+                              aria-label="افزودن"
+                              title="افزودن"
+                            >
+                              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 5v14M5 12h14" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* بازگشت به (نمایش همیشه + افزودن در ادامه همان ردیف) */}
+                    <div className="flex items-center gap-2 mt-4 mb-2">
+                      <div className={labelCls.replace("mb-1", "mb-0")}>بازگشت به</div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      {returnToIds.map((v, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <select
+                            value={v}
+                            onChange={(e) => {
+                              const nv = e.target.value;
+                              setReturnToIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
+                            }}
+                            className={inputCls + " min-w-[240px] w-[240px]"}
+                          >
+                            <option value=""></option>
+                            {myLetters.map((l) => (
+                              <option key={l.id} value={String(l.id)}>
+                                {String(l.letter_no || "")}
+                              </option>
+                            ))}
+                          </select>
+
+                          {idx === 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => hasAttachment && openUpload("outgoing")}
+                              disabled={!hasAttachment}
+                              className={uploadTriggerCls + " min-w-[240px] w-[240px]" + (!hasAttachment ? " opacity-60 pointer-events-none" : "")}
+                              aria-label="آپلود و الصاق فایل ها"
+                              title="آپلود و الصاق فایل ها"
+                            >
+                              <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
+                              <span className="text-sm font-normal">آپلود و الصاق فایل ها</span>
+                            </button>
+                          ) : null}
+
+                          {idx === returnToIds.length - 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setReturnToIds((arr) => [...arr, ""])}
+                              className={
+                                "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
+                                (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
+                              }
+                              aria-label="افزودن"
+                              title="افزودن"
+                            >
+                              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 5v14M5 12h14" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="mt-3">
@@ -2307,7 +2298,7 @@ export default function LettersPage() {
         </div>
       </Card>
 
-      {/* View modal: Right = fields, Left = preview + close + download */}
+      {/* View modal */}
       {viewOpen &&
         createPortal(
           <div className="fixed inset-0 z-[9999]">
@@ -2573,17 +2564,9 @@ export default function LettersPage() {
                             >
                               {currentViewUrl ? (
                                 isPdfUrl(currentViewUrl) ? (
-                                  <iframe
-                                    title="preview"
-                                    src={currentViewUrl}
-                                    className="w-full h-full"
-                                  />
+                                  <iframe title="preview" src={currentViewUrl} className="w-full h-full" />
                                 ) : isImageUrl(currentViewUrl) ? (
-                                  <img
-                                    src={currentViewUrl}
-                                    alt=""
-                                    className="w-full h-full object-contain bg-transparent"
-                                  />
+                                  <img src={currentViewUrl} alt="" className="w-full h-full object-contain bg-transparent" />
                                 ) : (
                                   <div className="h-full w-full grid place-items-center p-6">
                                     <div className={theme === "dark" ? "text-white/70 text-sm" : "text-neutral-700 text-sm"}>
@@ -2750,99 +2733,70 @@ export default function LettersPage() {
                         className={
                           "px-3 py-2 text-xs font-semibold border-b " +
                           (theme === "dark"
-                            ? "border-white/10 text-white/80 bg-white/5"
-                            : "border-black/10 text-neutral-700 bg-white")
+                            ? "border-white/10 text-white/80"
+                            : "border-black/10 text-neutral-700")
                         }
                       >
-                        فایل‌های انتخاب‌شده
+                        فایل‌های انتخاب شده
                       </div>
 
-                      <div className={theme === "dark" ? "divide-y divide-white/10" : "divide-y divide-black/10"}>
+                      <div className="p-3 space-y-2">
                         {currentDocFiles.map((f) => (
-                          <div key={f.id} className="px-3 py-2 flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-xl overflow-hidden bg-black/5 dark:bg-white/10 grid place-items-center">
-                              {f.previewUrl ? (
-                                <img src={f.previewUrl} alt="" className="h-full w-full object-cover" />
-                              ) : (
-                                <span className="text-[11px] font-semibold">PDF</span>
-                              )}
-                            </div>
-
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="truncate text-[13px] font-medium">{f.name}</div>
-                                <div className={theme === "dark" ? "text-[11px] text-white/60" : "text-[11px] text-neutral-600"}>
-                                  {formatBytes(f.size)}
+                          <div
+                            key={f.id}
+                            className={
+                              "rounded-xl border px-3 py-2 " +
+                              (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
+                            }
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="min-w-0">
+                                <div className={"text-sm font-semibold truncate " + (theme === "dark" ? "text-white" : "text-neutral-900")}>
+                                  {f.name}
+                                </div>
+                                <div className={theme === "dark" ? "text-xs text-white/60" : "text-xs text-neutral-600"}>
+                                  {formatBytes(f.size)} {f.status === "error" ? "— خطا" : f.status === "done" ? "— آماده" : ""}
                                 </div>
                               </div>
 
-                              <div className="mt-1 flex items-center gap-2">
-                                <div className={theme === "dark" ? "h-1.5 flex-1 rounded-full bg-white/10 overflow-hidden" : "h-1.5 flex-1 rounded-full bg-black/10 overflow-hidden"}>
+                              <button
+                                type="button"
+                                onClick={() => removeDocFile(uploadFor, f.id)}
+                                className={iconBtnCls}
+                                aria-label="حذف فایل"
+                                title="حذف فایل"
+                              >
+                                <img
+                                  src="/images/icons/hazf.svg"
+                                  alt=""
+                                  className="w-5 h-5"
+                                  style={{
+                                    filter:
+                                      "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
+                                  }}
+                                />
+                              </button>
+                            </div>
+
+                            {f.status === "uploading" ? (
+                              <div className="mt-2">
+                                <div className="h-2 rounded-full overflow-hidden bg-black/10 dark:bg-white/10">
                                   <div
-                                    className={theme === "dark" ? "h-full bg-white/70 transition-[width]" : "h-full bg-black/70 transition-[width]"}
-                                    style={{
-                                      width:
-                                        f.status === "done"
-                                          ? "100%"
-                                          : f.status === "error"
-                                          ? "100%"
-                                          : f.status === "uploading"
-                                          ? `${Math.max(0, Math.min(100, f.progress || 0))}%`
-                                          : "0%",
-                                      opacity: f.status === "error" ? 0.35 : 1,
-                                    }}
+                                    className="h-full bg-black/70 dark:bg-white/70"
+                                    style={{ width: `${Math.max(0, Math.min(100, Number(f.progress || 0)))}%` }}
                                   />
                                 </div>
-
-                                <div className="text-[11px] whitespace-nowrap">
-                                  {f.status === "optimizing"
-                                    ? "آماده‌سازی…"
-                                    : f.status === "ready"
-                                    ? "آماده ارسال"
-                                    : f.status === "uploading"
-                                    ? `${toFaDigits(f.progress || 0)}%`
-                                    : f.status === "done"
-                                    ? "انجام شد"
-                                    : "خطا"}
+                                <div className={theme === "dark" ? "text-[11px] text-white/60 mt-1" : "text-[11px] text-neutral-600 mt-1"}>
+                                  در حال آپلود: {toFaDigits(String(Math.max(0, Math.min(100, Number(f.progress || 0))))) }٪
                                 </div>
                               </div>
+                            ) : null}
 
-                              {f.status === "error" && (
-                                <div className="mt-1 text-[11px] text-red-600 dark:text-red-400">
-                                  {f.error || "خطا"}
-                                </div>
-                              )}
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => removeDocFile(uploadFor, f.id)}
-                              className={
-                                "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
-                                (theme === "dark"
-                                  ? "ring-neutral-800 hover:bg-white/10"
-                                  : "ring-black/15 hover:bg-black/5")
-                              }
-                              title="حذف"
-                              aria-label="حذف"
-                            >
-                              <svg
-                                viewBox="0 0 24 24"
-                                width="20"
-                                height="20"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="1.8"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M6 7H18" />
-                                <path d="M10 11V17" />
-                                <path d="M14 11V17" />
-                                <path d="M9 7L10 5H14L15 7" />
-                                <path d="M7 7L8 19H16L17 7" />
-                              </svg>
-                            </button>
+                            {f.status === "error" && f.error ? (
+                              <div className={theme === "dark" ? "text-xs text-red-300 mt-2" : "text-xs text-red-600 mt-2"}>
+                                {f.error}
+                              </div>
+                            ) : null}
                           </div>
                         ))}
                       </div>
@@ -2850,20 +2804,6 @@ export default function LettersPage() {
                   )}
                 </div>
 
-                <div className="p-4 pt-0 flex items-center justify-end">
-                  <button
-                    type="button"
-                    onClick={closeUpload}
-                    className={
-                      "h-10 px-4 rounded-xl border transition outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
-                      (theme === "dark"
-                        ? "border-white/15 hover:bg-white/10"
-                        : "border-black/10 hover:bg-black/[0.04]")
-                    }
-                  >
-                    بستن
-                  </button>
-                </div>
               </div>
             </div>
           </div>,
