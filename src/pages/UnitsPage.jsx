@@ -372,7 +372,8 @@ function UnitsPage() {
         <div className="rounded-2xl border border-black/10 bg-white overflow-hidden dark:bg-neutral-900 dark:border-neutral-800">
           {/* فرم افزودن */}
           <div className="p-4">
-            <div className="flex flex-col sm:flex-row-reverse sm:items-end items-stretch gap-2">
+            {/* در RTL: با flex-row، ترتیب طبیعی می‌شود: input (راست) و دکمه (چپ) */}
+            <div className="flex flex-col sm:flex-row sm:items-end items-stretch gap-2">
               <input
                 disabled={!isAdmin}
                 value={adding}
