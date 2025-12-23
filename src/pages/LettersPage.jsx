@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 
 const TABS = [
+  { id: "all", label: "همه" },
   { id: "incoming", label: "وارده" },
   { id: "outgoing", label: "صادره" },
 ];
@@ -202,9 +203,7 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
             ref={popRef}
             className={
               "fixed z-[9999] w-[min(420px,calc(100vw-24px))] rounded-2xl border shadow-lg p-4 " +
-              (theme === "dark"
-                ? "border-white/10 bg-neutral-900 text-white"
-                : "border-black/10 bg-white text-neutral-900")
+              (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
             }
             style={{ top: pos.top, right: pos.right }}
           >
@@ -215,9 +214,7 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
                 onClick={() => setOpen(false)}
                 className={
                   "h-9 w-9 rounded-xl border flex items-center justify-center transition " +
-                  (theme === "dark"
-                    ? "border-white/10 hover:bg-white/10"
-                    : "border-black/10 hover:bg-black/[0.04]")
+                  (theme === "dark" ? "border-white/10 hover:bg-white/10" : "border-black/10 hover:bg-black/[0.04]")
                 }
                 aria-label="بستن"
                 title="بستن"
@@ -239,17 +236,13 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
 
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>
-                  سال
-                </div>
+                <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>سال</div>
                 <select
                   value={jy}
                   onChange={(e) => setJy(Number(e.target.value))}
                   className={
                     "w-full h-11 px-3 rounded-xl border outline-none " +
-                    (theme === "dark"
-                      ? "border-white/15 bg-white/5 text-white"
-                      : "border-black/10 bg-white text-neutral-900")
+                    (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-neutral-900")
                   }
                 >
                   {years.map((y) => (
@@ -261,17 +254,13 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
               </div>
 
               <div>
-                <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>
-                  ماه
-                </div>
+                <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>ماه</div>
                 <select
                   value={jm}
                   onChange={(e) => setJm(Number(e.target.value))}
                   className={
                     "w-full h-11 px-3 rounded-xl border outline-none " +
-                    (theme === "dark"
-                      ? "border-white/15 bg-white/5 text-white"
-                      : "border-black/10 bg-white text-neutral-900")
+                    (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-neutral-900")
                   }
                 >
                   {PERSIAN_MONTHS.map((name, idx) => (
@@ -283,17 +272,13 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
               </div>
 
               <div>
-                <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>
-                  روز
-                </div>
+                <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>روز</div>
                 <select
                   value={jd}
                   onChange={(e) => setJd(Number(e.target.value))}
                   className={
                     "w-full h-11 px-3 rounded-xl border outline-none " +
-                    (theme === "dark"
-                      ? "border-white/15 bg-white/5 text-white"
-                      : "border-black/10 bg-white text-neutral-900")
+                    (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-neutral-900")
                   }
                 >
                   {days.map((d) => (
@@ -318,9 +303,7 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
                   }}
                   className={
                     "h-10 px-4 rounded-xl transition " +
-                    (theme === "dark"
-                      ? "bg-white text-black hover:bg-white/90"
-                      : "bg-black text-white hover:bg-black/90")
+                    (theme === "dark" ? "bg-white text-black hover:bg-white/90" : "bg-black text-white hover:bg-black/90")
                   }
                 >
                   تایید
@@ -330,9 +313,7 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
                   onClick={() => setOpen(false)}
                   className={
                     "h-10 px-4 rounded-xl border transition " +
-                    (theme === "dark"
-                      ? "border-white/15 hover:bg-white/10"
-                      : "border-black/10 hover:bg-black/[0.04]")
+                    (theme === "dark" ? "border-white/15 hover:bg-white/10" : "border-black/10 hover:bg-black/[0.04]")
                   }
                 >
                   بستن
@@ -389,7 +370,7 @@ export default function LettersPage() {
   }, []);
 
   const [formOpen, setFormOpen] = useState(false);
-  const [tab, setTab] = useState("incoming");
+  const [tab, setTab] = useState("all");
 
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFor, setUploadFor] = useState("incoming");
@@ -462,18 +443,13 @@ export default function LettersPage() {
   }, [viewOpen]);
 
   // ===== Filters (page-level) =====
-  const [filterCategory, setFilterCategory] = useState("");
-  const [filterProjectId, setFilterProjectId] = useState("");
   const [filterQuick, setFilterQuick] = useState(""); // week|2w|1m|3m|6m
   const [filterFromDate, setFilterFromDate] = useState("");
   const [filterToDate, setFilterToDate] = useState("");
   const [filterTagIds, setFilterTagIds] = useState([]);
   const [filterSubject, setFilterSubject] = useState("");
   const [filterOrg, setFilterOrg] = useState("");
-
-  useEffect(() => {
-    if (filterCategory !== "project" && filterProjectId) setFilterProjectId("");
-  }, [filterCategory, filterProjectId]);
+  const [filterLetterNo, setFilterLetterNo] = useState("");
 
   // ===== Table selection + pagination =====
   const [selectedIds, setSelectedIds] = useState(() => new Set());
@@ -647,9 +623,7 @@ export default function LettersPage() {
         );
       } catch (e) {
         setDocFilesFor(which, (prev) =>
-          prev.map((f) =>
-            f.id === id ? { ...f, status: "error", error: e?.message || "خطا در آماده‌سازی فایل." } : f
-          )
+          prev.map((f) => (f.id === id ? { ...f, status: "error", error: e?.message || "خطا در آماده‌سازی فایل." } : f))
         );
       }
     }
@@ -807,10 +781,14 @@ export default function LettersPage() {
     const sid = String(id || "");
     if (!sid) return;
     if (which === "incoming") {
-      setIncomingTagIds((arr) => (arr.some((x) => String(x) === sid) ? arr.filter((x) => String(x) !== sid) : [...arr, sid]));
+      setIncomingTagIds((arr) =>
+        arr.some((x) => String(x) === sid) ? arr.filter((x) => String(x) !== sid) : [...arr, sid]
+      );
     }
     if (which === "outgoing") {
-      setOutgoingTagIds((arr) => (arr.some((x) => String(x) === sid) ? arr.filter((x) => String(x) !== sid) : [...arr, sid]));
+      setOutgoingTagIds((arr) =>
+        arr.some((x) => String(x) === sid) ? arr.filter((x) => String(x) !== sid) : [...arr, sid]
+      );
     }
   };
 
@@ -856,8 +834,7 @@ export default function LettersPage() {
       : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]") +
     (val ? "" : theme === "dark" ? " text-white/50" : " text-neutral-400");
 
-  const secretariatLongText = (ymd) => {
-    if (!ymd) return "";
+  const secretariatLongText = (_ymd) => {
     return todayJalaliLong || "";
   };
 
@@ -917,8 +894,8 @@ export default function LettersPage() {
   };
   const orgOf = (l) => String(l?.org_name ?? l?.org ?? l?.organization ?? l?.company ?? "");
   const subjectOf = (l) => String(l?.subject ?? l?.title ?? "");
-  const categoryOf = (l) => String(l?.category ?? l?.category_name ?? l?.categoryTitle ?? "");
 
+  const categoryOf = (l) => String(l?.category ?? l?.category_name ?? l?.categoryTitle ?? "");
   const categoryLabelOf = (l) => {
     const c = String(categoryOf(l) || "");
     if (c === "project") return "پروژه‌ها";
@@ -1014,23 +991,30 @@ export default function LettersPage() {
     const arr = Array.isArray(myLetters) ? myLetters : [];
     const sSub = String(filterSubject || "").trim().toLowerCase();
     const sOrg = String(filterOrg || "").trim().toLowerCase();
+    const sNo = String(filterLetterNo || "").trim().toLowerCase();
     const fromY = normalizeYmd(filterFromDate);
     const toY = normalizeYmd(filterToDate);
 
     return arr.filter((l) => {
       const kind = letterKindOf(l);
-      if (kind !== tab) return false;
 
-      if (filterCategory && String(categoryOf(l) || "") !== String(filterCategory)) return false;
-      if (filterProjectId && String(l?.project_id ?? l?.projectId ?? "") !== String(filterProjectId)) return false;
+      if (tab !== "all") {
+        if (kind !== tab) return false;
+      }
 
       if (sSub) {
         const x = String(subjectOf(l) || "").toLowerCase();
         if (!x.includes(sSub)) return false;
       }
+
       if (sOrg) {
         const x = String(orgOf(l) || "").toLowerCase();
         if (!x.includes(sOrg)) return false;
+      }
+
+      if (sNo) {
+        const x = String(letterNoOf(l) || "").toLowerCase();
+        if (!x.includes(sNo)) return false;
       }
 
       if (filterTagIds.length > 0) {
@@ -1046,33 +1030,12 @@ export default function LettersPage() {
 
       return true;
     });
-  }, [
-    myLetters,
-    tab,
-    filterSubject,
-    filterOrg,
-    filterCategory,
-    filterProjectId,
-    filterTagIds,
-    filterFromDate,
-    filterToDate,
-  ]);
+  }, [myLetters, tab, filterSubject, filterOrg, filterLetterNo, filterTagIds, filterFromDate, filterToDate]);
 
   useEffect(() => {
     setSelectedIds(new Set());
     setPage(0);
-  }, [
-    tab,
-    rowsPerPage,
-    filterCategory,
-    filterProjectId,
-    filterQuick,
-    filterFromDate,
-    filterToDate,
-    filterTagIds,
-    filterSubject,
-    filterOrg,
-  ]);
+  }, [tab, rowsPerPage, filterQuick, filterFromDate, filterToDate, filterTagIds, filterSubject, filterOrg, filterLetterNo]);
 
   const total = filteredLetters.length;
   const pageCount = Math.max(1, Math.ceil(total / Math.max(1, rowsPerPage)));
@@ -1203,9 +1166,7 @@ export default function LettersPage() {
     if (queue.length > 0) {
       for (const f of queue) {
         const fileToSend = f.optimizedFile || f.file;
-        setDocFilesFor(kind, (prev) =>
-          prev.map((x) => (x.id === f.id ? { ...x, status: "uploading", progress: 0, error: "" } : x))
-        );
+        setDocFilesFor(kind, (prev) => prev.map((x) => (x.id === f.id ? { ...x, status: "uploading", progress: 0, error: "" } : x)));
 
         try {
           const res = await uploadFileToLetter(fileToSend, letterId, (p) => {
@@ -1255,9 +1216,7 @@ export default function LettersPage() {
       <div className={"col-span-4 text-xs font-semibold " + (theme === "dark" ? "text-white/70" : "text-neutral-600")}>
         {label}
       </div>
-      <div className={"col-span-8 text-sm " + (theme === "dark" ? "text-white" : "text-neutral-900")}>
-        {value || "—"}
-      </div>
+      <div className={"col-span-8 text-sm " + (theme === "dark" ? "text-white" : "text-neutral-900")}>{value || "—"}</div>
     </div>
   );
 
@@ -1278,123 +1237,132 @@ export default function LettersPage() {
     return !!ha;
   }, [viewLetter, viewAttachments]);
 
+  const paginationIconBtnCls =
+    "h-9 w-9 rounded-lg grid place-items-center transition !bg-transparent !ring-0 !border-0 !shadow-none " +
+    (theme === "dark" ? "hover:bg-white/10" : "hover:bg-black/5") +
+    " disabled:opacity-40 disabled:cursor-not-allowed";
+
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <div className="text-lg md:text-xl font-bold">نامه ها</div>
-
-        <button
-          type="button"
-          onClick={() => setFormOpen((v) => !v)}
-          className={
-            "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
-            (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
-          }
-          title={formOpen ? "بستن" : "افزودن"}
-          aria-label={formOpen ? "بستن" : "افزودن"}
-        >
-          <img
-            src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"}
-            alt=""
-            className="w-5 h-5 dark:invert"
-          />
-        </button>
-      </div>
-
       <Card
         className={
-          "rounded-2xl border overflow-hidden " +
-          (theme === "dark" ? "border-white/10 bg-neutral-900" : "border-black/10 bg-white")
+          "rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-neutral-900" : "border-black/10 bg-white")
         }
       >
         <div className="p-3 md:p-4">
-          {/* Tabs */}
-          <div className="flex items-center gap-2">
-            {TABS.map((t) => {
-              const active = tab === t.id;
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setTab(t.id)}
-                  className={
-                    "h-10 px-5 rounded-xl border transition text-sm font-semibold " +
-                    (t.id === "outgoing"
-                      ? active
-                        ? "bg-[#1a7431] text-white border-[#1a7431]"
-                        : theme === "dark"
-                        ? "bg-transparent text-white border-[#1a7431] hover:bg-white/5"
-                        : "bg-white text-neutral-900 border-[#1a7431] hover:bg-black/[0.02]"
-                      : active
-                      ? "bg-[#4895ef] text-white border-[#4895ef]"
-                      : theme === "dark"
-                      ? "bg-transparent text-white border-[#4895ef] hover:bg-white/5"
-                      : "bg-white text-neutral-900 border-[#4895ef] hover:bg-black/[0.02]")
-                  }
-                >
-                  {t.label}
-                </button>
-              );
-            })}
+          {/* Header INSIDE card */}
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="text-lg md:text-xl font-bold">نامه ها</div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setFormOpen((v) => {
+                  const next = !v;
+                  if (next && tab === "all") setTab("incoming");
+                  return next;
+                });
+              }}
+              className={
+                "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
+                (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
+              }
+              title={formOpen ? "بستن" : "افزودن"}
+              aria-label={formOpen ? "بستن" : "افزودن"}
+            >
+              <img
+                src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"}
+                alt=""
+                className="w-5 h-5 dark:invert"
+              />
+            </button>
           </div>
 
-          {/* Filters row under tabs (hidden while formOpen) */}
+          {/* Compact filters (hidden while formOpen) */}
           {!formOpen && (
-            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div>
-                <div className={labelCls}>دسته بندی</div>
-                <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className={inputCls}>
-                  <option value=""></option>
-                  <option value="project">پروژه‌ها</option>
-                </select>
-              </div>
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-end gap-2">
+                {/* Tabs first */}
+                <div className="flex items-center gap-2">
+                  {TABS.map((t) => {
+                    const active = tab === t.id;
+                    const isAll = t.id === "all";
+                    const isOutgoing = t.id === "outgoing";
+                    const isIncoming = t.id === "incoming";
 
-              {filterCategory === "project" && (
-                <div>
-                  <div className={labelCls}>پروژه</div>
-                  <select
-                    value={filterProjectId}
-                    onChange={(e) => setFilterProjectId(e.target.value)}
-                    className={inputCls}
-                  >
-                    <option value=""></option>
-                    {projects.map((p) => (
-                      <option key={p.id} value={String(p.id)}>
-                        {String(p.code || "")} {p.name ? `- ${p.name}` : ""}
-                      </option>
-                    ))}
-                  </select>
+                    const cls =
+                      "h-10 px-5 rounded-xl border transition text-sm font-semibold " +
+                      (isAll
+                        ? active
+                          ? "bg-black text-white border-black"
+                          : theme === "dark"
+                          ? "bg-transparent text-white border-white/15 hover:bg-white/5"
+                          : "bg-white text-neutral-900 border-black/15 hover:bg-black/[0.02]"
+                        : isOutgoing
+                        ? active
+                          ? "bg-[#1a7431] text-white border-[#1a7431]"
+                          : theme === "dark"
+                          ? "bg-transparent text-white border-[#1a7431] hover:bg-white/5"
+                          : "bg-white text-neutral-900 border-[#1a7431] hover:bg-black/[0.02]"
+                        : isIncoming
+                        ? active
+                          ? "bg-[#4895ef] text-white border-[#4895ef]"
+                          : theme === "dark"
+                          ? "bg-transparent text-white border-[#4895ef] hover:bg-white/5"
+                          : "bg-white text-neutral-900 border-[#4895ef] hover:bg-black/[0.02]"
+                        : "");
+
+                    return (
+                      <button key={t.id} type="button" onClick={() => setTab(t.id)} className={cls}>
+                        {t.label}
+                      </button>
+                    );
+                  })}
                 </div>
-              )}
 
-              <div>
-                <div className={labelCls}>موضوع</div>
-                <input
-                  value={filterSubject}
-                  onChange={(e) => setFilterSubject(e.target.value)}
-                  className={inputCls}
-                  type="text"
-                  placeholder="جستجو بر اساس موضوع"
-                />
-              </div>
+                <div className="min-w-[220px] flex-1">
+                  <div className={labelCls}>موضوع</div>
+                  <input
+                    value={filterSubject}
+                    onChange={(e) => setFilterSubject(e.target.value)}
+                    className={inputCls}
+                    type="text"
+                    placeholder="جستجو بر اساس موضوع"
+                  />
+                </div>
 
-              <div>
-                <div className={labelCls}>شرکت/سازمان</div>
-                <input
-                  value={filterOrg}
-                  onChange={(e) => setFilterOrg(e.target.value)}
-                  className={inputCls}
-                  type="text"
-                  placeholder="جستجو بر اساس شرکت/سازمان"
-                />
-              </div>
-            </div>
-          )}
+                <div className="min-w-[220px] flex-1">
+                  <div className={labelCls}>شرکت/سازمان</div>
+                  <input
+                    value={filterOrg}
+                    onChange={(e) => setFilterOrg(e.target.value)}
+                    className={inputCls}
+                    type="text"
+                    placeholder="جستجو بر اساس شرکت/سازمان"
+                  />
+                </div>
 
-          {/* Quick range chips + date range + tags (hidden while formOpen) */}
-          {!formOpen && (
-            <div className="mt-3 rounded-2xl border border-black/10 dark:border-white/10 p-3">
-              <div className="flex flex-col gap-3">
+                <div className="min-w-[200px]">
+                  <div className={labelCls}>شماره نامه</div>
+                  <input
+                    value={filterLetterNo}
+                    onChange={(e) => setFilterLetterNo(e.target.value)}
+                    className={inputCls}
+                    type="text"
+                    placeholder="جستجو بر اساس شماره"
+                  />
+                </div>
+
+                <div className="min-w-[170px]">
+                  <div className={labelCls}>از</div>
+                  <JalaliPopupDatePicker value={filterFromDate} onChange={setFilterFromDate} theme={theme} />
+                </div>
+
+                <div className="min-w-[170px]">
+                  <div className={labelCls}>تا</div>
+                  <JalaliPopupDatePicker value={filterToDate} onChange={setFilterToDate} theme={theme} />
+                </div>
+
                 <div className="flex flex-wrap items-end gap-2">
                   <button
                     type="button"
@@ -1461,40 +1429,30 @@ export default function LettersPage() {
                   >
                     6 ماه قبل
                   </button>
-
-                  <div className="w-full sm:w-auto sm:min-w-[520px] grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div>
-                      <div className={labelCls}>از</div>
-                      <JalaliPopupDatePicker value={filterFromDate} onChange={setFilterFromDate} theme={theme} />
-                    </div>
-                    <div>
-                      <div className={labelCls}>تا</div>
-                      <JalaliPopupDatePicker value={filterToDate} onChange={setFilterToDate} theme={theme} />
-                    </div>
-                  </div>
                 </div>
+              </div>
 
-                <div>
-                  <div className={labelCls}>برچسب ها</div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {tagCapsFor(filterTagIds).map((t) => {
-                      const id = String(t?.id);
-                      const label = String(t?.name || t?.title || t?.label || id || "");
-                      const active = filterTagIds.some((x) => String(x) === id);
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          onClick={() => toggleFilterTag(id)}
-                          className={active ? selectedTagChipCls : chipCls}
-                          title={label}
-                          aria-label={label}
-                        >
-                          <span className="truncate max-w-[200px]">{label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+              {/* Tags under filters */}
+              <div>
+                <div className={labelCls}>برچسب ها</div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {tagCapsFor(filterTagIds).map((t) => {
+                    const id = String(t?.id);
+                    const label = String(t?.name || t?.title || t?.label || id || "");
+                    const active = filterTagIds.some((x) => String(x) === id);
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => toggleFilterTag(id)}
+                        className={active ? selectedTagChipCls : chipCls}
+                        title={label}
+                        aria-label={label}
+                      >
+                        <span className="truncate max-w-[200px]">{label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -1504,7 +1462,6 @@ export default function LettersPage() {
           <div className="mt-4">
             {formOpen && tab === "incoming" && (
               <div>
-                {/* دسته بندی + پروژه(شرطی) + شماره + تاریخ */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <div>
                     <div className={labelCls}>دسته بندی نامه</div>
@@ -1547,7 +1504,6 @@ export default function LettersPage() {
                   </div>
                 </div>
 
-                {/* از + شرکت/سازمان + به */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
                   <div>
                     <div className={labelCls}>از</div>
@@ -1597,7 +1553,6 @@ export default function LettersPage() {
                     </div>
                   </div>
 
-                  {/* بازگشت به (نمایش همیشه) */}
                   <div className="mt-3">
                     <div className="flex items-center gap-2 mb-2">
                       <div className={labelCls.replace("mb-1", "mb-0")}>بازگشت به</div>
@@ -1721,7 +1676,6 @@ export default function LettersPage() {
 
             {formOpen && tab === "outgoing" && (
               <div>
-                {/* دسته بندی + پروژه(شرطی) + شماره + تاریخ */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <div>
                     <div className={labelCls}>دسته بندی نامه</div>
@@ -1764,7 +1718,6 @@ export default function LettersPage() {
                   </div>
                 </div>
 
-                {/* از + شرکت/سازمان + به */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
                   <div>
                     <div className={labelCls}>از</div>
@@ -1814,7 +1767,6 @@ export default function LettersPage() {
                     </div>
                   </div>
 
-                  {/* پیرو */}
                   <div className="mt-3">
                     <div className="flex items-center gap-2 mb-2">
                       <div className={labelCls.replace("mb-1", "mb-0")}>پیرو</div>
@@ -1859,7 +1811,6 @@ export default function LettersPage() {
                       ))}
                     </div>
 
-                    {/* بازگشت به */}
                     <div className="flex items-center gap-2 mt-4 mb-2">
                       <div className={labelCls.replace("mb-1", "mb-0")}>بازگشت به</div>
                     </div>
@@ -2089,6 +2040,11 @@ export default function LettersPage() {
 
                             <td className={"px-3 " + divider}>
                               <div className="inline-flex items-center justify-center gap-2">
+                                {/* right-to-left: view, edit, delete */}
+                                <button type="button" onClick={() => openView(l)} className={iconBtnCls} aria-label="نمایش" title="نمایش">
+                                  <img src="/images/icons/namayesh.svg" alt="" className="w-5 h-5 dark:invert" />
+                                </button>
+
                                 <button type="button" className={iconBtnCls} aria-label="ویرایش" title="ویرایش">
                                   <img src="/images/icons/pencil.svg" alt="" className="w-5 h-5 dark:invert" />
                                 </button>
@@ -2103,10 +2059,6 @@ export default function LettersPage() {
                                         "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
                                     }}
                                   />
-                                </button>
-
-                                <button type="button" onClick={() => openView(l)} className={iconBtnCls} aria-label="نمایش" title="نمایش">
-                                  <img src="/images/icons/namayesh.svg" alt="" className="w-5 h-5 dark:invert" />
                                 </button>
                               </div>
                             </td>
@@ -2126,10 +2078,7 @@ export default function LettersPage() {
                       type="button"
                       onClick={() => setPage((p) => Math.max(0, p - 1))}
                       disabled={safePage <= 0}
-                      className={
-                        "h-9 w-9 rounded-xl grid place-items-center transition ring-1 " +
-                        (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
-                      }
+                      className={paginationIconBtnCls}
                       aria-label="صفحه قبل"
                       title="صفحه قبل"
                     >
@@ -2142,10 +2091,7 @@ export default function LettersPage() {
                       type="button"
                       onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
                       disabled={safePage >= pageCount - 1}
-                      className={
-                        "h-9 w-9 rounded-xl grid place-items-center transition ring-1 " +
-                        (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
-                      }
+                      className={paginationIconBtnCls}
                       aria-label="صفحه بعد"
                       title="صفحه بعد"
                     >
@@ -2229,7 +2175,6 @@ export default function LettersPage() {
 
                   <div className="flex-1 overflow-hidden">
                     <div className="h-full flex flex-col lg:flex-row">
-                      {/* RIGHT: details */}
                       <div className="lg:w-[56%] h-full overflow-auto p-4">
                         <div className={"rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")}>
                           <div className={"px-4 py-3 text-sm font-semibold border-b " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
@@ -2378,7 +2323,6 @@ export default function LettersPage() {
                         )}
                       </div>
 
-                      {/* LEFT: preview */}
                       <div className="lg:w-[44%] h-full border-t lg:border-t-0 lg:border-r border-black/10 dark:border-white/10 overflow-hidden">
                         <div className="h-full flex flex-col">
                           <div className="px-4 py-3 flex items-center justify-between gap-2 border-b border-black/10 dark:border-white/10">
@@ -2540,19 +2484,46 @@ export default function LettersPage() {
                       </div>
 
                       <div className="p-3 space-y-2">
-                        {currentDocFiles.map((f) => (
-                          <div key={f.id} className={"rounded-xl border px-3 py-2 " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
-                            <div className="flex items-center justify-between gap-2">
+                        {currentDocFiles.map((f) => {
+                          const isErr = f.status === "error";
+                          const isUploading = f.status === "uploading";
+                          const isDone = f.status === "done";
+                          const isReady = f.status === "ready";
+                          const isOptimizing = f.status === "optimizing";
+
+                          return (
+                            <div
+                              key={f.id}
+                              className={
+                                "rounded-xl border p-3 flex items-start justify-between gap-3 " +
+                                (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
+                              }
+                            >
                               <div className="min-w-0">
-                                <div className={"text-sm font-semibold truncate " + (theme === "dark" ? "text-white" : "text-neutral-900")}>
-                                  {f.name}
+                                <div className="text-sm font-semibold truncate">{f.name}</div>
+                                <div className={theme === "dark" ? "text-white/60 text-xs mt-1" : "text-neutral-600 text-xs mt-1"}>
+                                  {formatBytes(f.size)}{" "}
+                                  {isOptimizing ? "— در حال آماده سازی" : isReady ? "— آماده" : isUploading ? `— در حال آپلود (${toFaDigits(f.progress || 0)}٪)` : isDone ? "— آپلود شد" : isErr ? "— خطا" : ""}
                                 </div>
-                                <div className={theme === "dark" ? "text-xs text-white/60" : "text-xs text-neutral-600"}>
-                                  {formatBytes(f.size)} {f.status === "error" ? "— خطا" : f.status === "done" ? "— آماده" : ""}
-                                </div>
+
+                                {isUploading && (
+                                  <div className={"mt-2 h-2 rounded-full overflow-hidden " + (theme === "dark" ? "bg-white/10" : "bg-black/10")}>
+                                    <div className="h-full bg-black dark:bg-white" style={{ width: `${Math.min(100, Math.max(0, Number(f.progress || 0)))}%` }} />
+                                  </div>
+                                )}
+
+                                {isErr && f.error ? (
+                                  <div className="mt-2 text-xs text-red-600 dark:text-red-400">{f.error}</div>
+                                ) : null}
                               </div>
 
-                              <button type="button" onClick={() => removeDocFile(uploadFor, f.id)} className={iconBtnCls} aria-label="حذف فایل" title="حذف فایل">
+                              <button
+                                type="button"
+                                onClick={() => removeDocFile(uploadFor, f.id)}
+                                className={iconBtnCls}
+                                aria-label="حذف فایل"
+                                title="حذف فایل"
+                              >
                                 <img
                                   src="/images/icons/hazf.svg"
                                   alt=""
@@ -2564,25 +2535,8 @@ export default function LettersPage() {
                                 />
                               </button>
                             </div>
-
-                            {f.status === "uploading" ? (
-                              <div className="mt-2">
-                                <div className="h-2 rounded-full overflow-hidden bg-black/10 dark:bg-white/10">
-                                  <div className="h-full bg-black/70 dark:bg-white/70" style={{ width: `${Math.max(0, Math.min(100, Number(f.progress || 0)))}%` }} />
-                                </div>
-                                <div className={theme === "dark" ? "text-[11px] text-white/60 mt-1" : "text-[11px] text-neutral-600 mt-1"}>
-                                  در حال آپلود: {toFaDigits(String(Math.max(0, Math.min(100, Number(f.progress || 0))))) }٪
-                                </div>
-                              </div>
-                            ) : null}
-
-                            {f.status === "error" && f.error ? (
-                              <div className={theme === "dark" ? "text-xs text-red-300 mt-2" : "text-xs text-red-600 mt-2"}>
-                                {f.error}
-                              </div>
-                            ) : null}
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}

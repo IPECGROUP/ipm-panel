@@ -327,7 +327,7 @@ function RightNav() {
 
           {open.base && (
             <div className="ms-2 mt-2 flex flex-col items-stretch gap-2">
-              <div onMouseEnter={(e) => showTip("واحدها", e)} onMouseLeave={hideTip}>
+              <div onMouseEnter={(e) => showTip("ساختار سازمانی", e)} onMouseLeave={hideTip}>
                 <LinkBtn to="/base/units" className={railBtn(isActive("/base/units"))}>
                   <img src="/images/icons/unit.svg" className={icImgCls} alt="" />
                 </LinkBtn>
