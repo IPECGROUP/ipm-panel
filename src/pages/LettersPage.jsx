@@ -1166,7 +1166,9 @@ export default function LettersPage() {
     if (queue.length > 0) {
       for (const f of queue) {
         const fileToSend = f.optimizedFile || f.file;
-        setDocFilesFor(kind, (prev) => prev.map((x) => (x.id === f.id ? { ...x, status: "uploading", progress: 0, error: "" } : x)));
+        setDocFilesFor(kind, (prev) =>
+          prev.map((x) => (x.id === f.id ? { ...x, status: "uploading", progress: 0, error: "" } : x))
+        );
 
         try {
           const res = await uploadFileToLetter(fileToSend, letterId, (p) => {
@@ -1241,6 +1243,12 @@ export default function LettersPage() {
     "h-9 w-9 rounded-lg grid place-items-center transition !bg-transparent !ring-0 !border-0 !shadow-none " +
     (theme === "dark" ? "hover:bg-white/10" : "hover:bg-black/5") +
     " disabled:opacity-40 disabled:cursor-not-allowed";
+
+  const addIconBtnCls =
+    "h-11 w-11 rounded-xl flex items-center justify-center transition ring-1 p-2 " +
+    (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5");
+
+  const addIconImgCls = "w-5 h-5 " + (theme === "dark" ? "dark:invert" : "");
 
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
@@ -1581,33 +1589,26 @@ export default function LettersPage() {
                             <button
                               type="button"
                               onClick={() => setReturnToIds((arr) => [...arr, ""])}
-                              className={
-                                "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
-                                (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
-                              }
+                              className={addIconBtnCls}
                               aria-label="افزودن"
                               title="افزودن"
                             >
-                              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M12 5v14M5 12h14" />
-                              </svg>
+                              <img src="/images/icons/afzodan.svg" alt="" className={addIconImgCls + " dark:invert"} />
                             </button>
                           )}
-
-                          {idx === 0 ? (
-                            <button
-                              type="button"
-                              onClick={() => openUpload("incoming")}
-                              className={uploadTriggerCls + " min-w-[240px] w-[240px]"}
-                              aria-label="آپلود و الصاق فایل ها"
-                              title="آپلود و الصاق فایل ها"
-                            >
-                              <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
-                              <span className="text-sm font-normal">آپلود و الصاق فایل ها</span>
-                            </button>
-                          ) : null}
                         </div>
                       ))}
+
+                      <button
+                        type="button"
+                        onClick={() => openUpload("incoming")}
+                        className={uploadTriggerCls + " min-w-[240px] w-[240px] flex-shrink-0"}
+                        aria-label="آپلود و الصاق فایل ها"
+                        title="آپلود و الصاق فایل ها"
+                      >
+                        <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
+                        <span className="text-sm font-normal">آپلود و الصاق فایل ها</span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1795,16 +1796,11 @@ export default function LettersPage() {
                             <button
                               type="button"
                               onClick={() => setPiroIds((arr) => [...arr, ""])}
-                              className={
-                                "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
-                                (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
-                              }
+                              className={addIconBtnCls}
                               aria-label="افزودن"
                               title="افزودن"
                             >
-                              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M12 5v14M5 12h14" />
-                              </svg>
+                              <img src="/images/icons/afzodan.svg" alt="" className={addIconImgCls + " dark:invert"} />
                             </button>
                           )}
                         </div>
@@ -1838,33 +1834,26 @@ export default function LettersPage() {
                             <button
                               type="button"
                               onClick={() => setReturnToIds((arr) => [...arr, ""])}
-                              className={
-                                "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
-                                (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
-                              }
+                              className={addIconBtnCls}
                               aria-label="افزودن"
                               title="افزودن"
                             >
-                              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M12 5v14M5 12h14" />
-                              </svg>
+                              <img src="/images/icons/afzodan.svg" alt="" className={addIconImgCls + " dark:invert"} />
                             </button>
                           )}
-
-                          {idx === 0 ? (
-                            <button
-                              type="button"
-                              onClick={() => openUpload("outgoing")}
-                              className={uploadTriggerCls + " min-w-[240px] w-[240px]"}
-                              aria-label="آپلود و الصاق فایل ها"
-                              title="آپلود و الصاق فایل ها"
-                            >
-                              <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
-                              <span className="text-sm font-normal">آپلود و الصاق فایل ها</span>
-                            </button>
-                          ) : null}
                         </div>
                       ))}
+
+                      <button
+                        type="button"
+                        onClick={() => openUpload("outgoing")}
+                        className={uploadTriggerCls + " min-w-[240px] w-[240px] flex-shrink-0"}
+                        aria-label="آپلود و الصاق فایل ها"
+                        title="آپلود و الصاق فایل ها"
+                      >
+                        <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
+                        <span className="text-sm font-normal">آپلود و الصاق فایل ها</span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1937,9 +1926,9 @@ export default function LettersPage() {
             <div className={tableWrapCls}>
               <div className="max-h-[55vh] overflow-auto">
                 <table className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5" dir="rtl">
-                  <thead>
-                    <tr className={theadRowCls}>
-                      <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold">
+                  <thead className="sticky top-0 z-20">
+                    <tr className={theadRowCls + " sticky top-0 z-20"}>
+                      <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-20">
                         <input
                           type="checkbox"
                           className="w-4 h-4 accent-black dark:accent-neutral-200"
@@ -1952,13 +1941,13 @@ export default function LettersPage() {
                           title="انتخاب همه"
                         />
                       </th>
-                      <th className="w-44 !py-2 !text-[14px] md:!text-[15px] !font-semibold">دسته بندی</th>
-                      <th className="w-44 !py-2 !text-[14px] md:!text-[15px] !font-semibold">شماره</th>
-                      <th className="w-40 !py-2 !text-[14px] md:!text-[15px] !font-semibold">تاریخ</th>
-                      <th className="w-[280px] !py-2 !text-[14px] md:!text-[15px] !font-semibold">از/به</th>
-                      <th className="w-[220px] !py-2 !text-[14px] md:!text-[15px] !font-semibold">شرکت/سازمان</th>
-                      <th className="min-w-[260px] !py-2 !text-[14px] md:!text-[15px] !font-semibold">موضوع</th>
-                      <th className="w-44 !py-2 !text-[14px] md:!text-[15px] !font-semibold">اقدامات</th>
+                      <th className="w-44 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-20">دسته بندی</th>
+                      <th className="w-44 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-20">شماره</th>
+                      <th className="w-40 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-20">تاریخ</th>
+                      <th className="w-[280px] !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-20">از/به</th>
+                      <th className="w-[220px] !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-20">شرکت/سازمان</th>
+                      <th className="min-w-[260px] !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-20">موضوع</th>
+                      <th className="w-44 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-20">اقدامات</th>
                     </tr>
                   </thead>
 
@@ -2040,7 +2029,6 @@ export default function LettersPage() {
 
                             <td className={"px-3 " + divider}>
                               <div className="inline-flex items-center justify-center gap-2">
-                                {/* right-to-left: view, edit, delete */}
                                 <button type="button" onClick={() => openView(l)} className={iconBtnCls} aria-label="نمایش" title="نمایش">
                                   <img src="/images/icons/namayesh.svg" alt="" className="w-5 h-5 dark:invert" />
                                 </button>
@@ -2199,10 +2187,41 @@ export default function LettersPage() {
                               }
                             />
 
-                            <InfoRow label="شماره نامه" value={viewLetter ? toFaDigits(letterNoOf(viewLetter) || "") : ""} />
-                            <InfoRow label="تاریخ نامه" value={viewLetter ? toFaDigits(letterDateOf(viewLetter) || "") : ""} />
-                            <InfoRow label="از" value={viewLetter ? String(viewLetter?.from_name ?? viewLetter?.fromName ?? viewLetter?.from ?? "") : ""} />
-                            <InfoRow label="به" value={viewLetter ? String(viewLetter?.to_name ?? viewLetter?.toName ?? viewLetter?.to ?? "") : ""} />
+                            <div className="py-2">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="grid grid-cols-12 gap-2">
+                                  <div className={"col-span-4 text-xs font-semibold " + (theme === "dark" ? "text-white/70" : "text-neutral-600")}>
+                                    شماره
+                                  </div>
+                                  <div className={"col-span-8 text-sm " + (theme === "dark" ? "text-white" : "text-neutral-900")}>
+                                    {viewLetter ? toFaDigits(letterNoOf(viewLetter) || "") : "—"}
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-12 gap-2">
+                                  <div className={"col-span-4 text-xs font-semibold " + (theme === "dark" ? "text-white/70" : "text-neutral-600")}>
+                                    تاریخ
+                                  </div>
+                                  <div className={"col-span-8 text-sm " + (theme === "dark" ? "text-white" : "text-neutral-900")}>
+                                    {viewLetter ? toFaDigits(letterDateOf(viewLetter) || "") : "—"}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <InfoRow
+                              label="از / به"
+                              value={
+                                viewLetter
+                                  ? (() => {
+                                      const a = String(viewLetter?.from_name ?? viewLetter?.fromName ?? viewLetter?.from ?? "").trim();
+                                      const b = String(viewLetter?.to_name ?? viewLetter?.toName ?? viewLetter?.to ?? "").trim();
+                                      const s = `${a}${a && b ? " / " : ""}${b}`.trim();
+                                      return s || "—";
+                                    })()
+                                  : "—"
+                              }
+                            />
                             <InfoRow label="شرکت/سازمان" value={viewLetter ? String(viewLetter?.org_name ?? viewLetter?.orgName ?? viewLetter?.org ?? "") : ""} />
                             <InfoRow label="موضوع" value={viewLetter ? String(subjectOf(viewLetter) || "") : ""} />
 
@@ -2259,30 +2278,6 @@ export default function LettersPage() {
                               }
                             />
 
-                            <InfoRow
-                              label="برچسب ها"
-                              value={
-                                viewLetter
-                                  ? (() => {
-                                      const ids = Array.isArray(viewLetter?.tag_ids)
-                                        ? viewLetter.tag_ids
-                                        : Array.isArray(viewLetter?.tagIds)
-                                        ? viewLetter.tagIds
-                                        : [];
-                                      if (!ids.length) return "—";
-                                      const labels = ids
-                                        .map((x) => String(x))
-                                        .filter(Boolean)
-                                        .map((sid) => {
-                                          const t = findTag(sid);
-                                          return t ? String(t?.name || t?.title || t?.label || sid) : sid;
-                                        });
-                                      return labels.join("، ");
-                                    })()
-                                  : ""
-                              }
-                            />
-
                             <InfoRow label="تاریخ ثبت دبیرخانه" value={viewLetter ? toFaDigits(String(viewLetter?.secretariat_date ?? viewLetter?.secretariatDate ?? "")) : ""} />
                             <InfoRow label="شماره ثبت دبیرخانه" value={viewLetter ? String(viewLetter?.secretariat_no ?? viewLetter?.secretariatNo ?? "") : ""} />
                             <InfoRow label="نام تحویل گیرنده" value={viewLetter ? String(viewLetter?.receiver_name ?? viewLetter?.receiverName ?? "") : ""} />
@@ -2327,23 +2322,10 @@ export default function LettersPage() {
                         <div className="h-full flex flex-col">
                           <div className="px-4 py-3 flex items-center justify-between gap-2 border-b border-black/10 dark:border-white/10">
                             <div className="text-sm font-semibold">پیش نمایش</div>
-
-                            <button
-                              type="button"
-                              onClick={closeView}
-                              className={
-                                "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
-                                (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
-                              }
-                              aria-label="بستن"
-                              title="بستن"
-                            >
-                              <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
-                            </button>
                           </div>
 
-                          <div className="flex-1 p-3 overflow-auto">
-                            <div className={"h-full rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")}>
+                          <div className="flex-1 p-3 overflow-hidden flex flex-col">
+                            <div className={"flex-1 rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")}>
                               {currentViewUrl ? (
                                 isPdfUrl(currentViewUrl) ? (
                                   <iframe title="preview" src={currentViewUrl} className="w-full h-full" />
@@ -2361,7 +2343,7 @@ export default function LettersPage() {
                               )}
                             </div>
 
-                            <div className="mt-3 flex flex-col gap-2">
+                            <div className="mt-2 flex flex-col gap-1">
                               <a
                                 href={currentViewUrl || "#"}
                                 target="_blank"
@@ -2380,12 +2362,16 @@ export default function LettersPage() {
                                 title="دانلود فایل"
                                 aria-label="دانلود فایل"
                               >
-                                <img src="/images/icons/download.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")} />
+                                <img
+                                  src="/images/icons/download.svg"
+                                  alt=""
+                                  className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")}
+                                />
                                 <span className="text-sm font-semibold">دانلود فایل</span>
                               </a>
 
                               {currentViewName ? (
-                                <div className={theme === "dark" ? "text-xs text-white/60 text-center" : "text-xs text-neutral-600 text-center"}>
+                                <div className={theme === "dark" ? "text-[11px] text-white/60 text-center" : "text-[11px] text-neutral-600 text-center"}>
                                   {currentViewName}
                                 </div>
                               ) : null}
@@ -2491,6 +2477,18 @@ export default function LettersPage() {
                           const isReady = f.status === "ready";
                           const isOptimizing = f.status === "optimizing";
 
+                          const statusText = isOptimizing
+                            ? "در حال آماده‌سازی..."
+                            : isReady
+                            ? "آماده"
+                            : isUploading
+                            ? `در حال آپلود ${toFaDigits(f.progress || 0)}٪`
+                            : isDone
+                            ? "آپلود شد"
+                            : isErr
+                            ? "خطا"
+                            : "";
+
                           return (
                             <div
                               key={f.id}
@@ -2499,30 +2497,35 @@ export default function LettersPage() {
                                 (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
                               }
                             >
-                              <div className="min-w-0">
+                              <div className="min-w-0 flex-1">
                                 <div className="text-sm font-semibold truncate">{f.name}</div>
                                 <div className={theme === "dark" ? "text-white/60 text-xs mt-1" : "text-neutral-600 text-xs mt-1"}>
                                   {formatBytes(f.size)}{" "}
-                                  {isOptimizing ? "— در حال آماده سازی" : isReady ? "— آماده" : isUploading ? `— در حال آپلود (${toFaDigits(f.progress || 0)}٪)` : isDone ? "— آپلود شد" : isErr ? "— خطا" : ""}
+                                  <span className={isErr ? (theme === "dark" ? "text-red-300" : "text-red-600") : ""}>— {statusText}</span>
                                 </div>
 
-                                {isUploading && (
-                                  <div className={"mt-2 h-2 rounded-full overflow-hidden " + (theme === "dark" ? "bg-white/10" : "bg-black/10")}>
-                                    <div className="h-full bg-black dark:bg-white" style={{ width: `${Math.min(100, Math.max(0, Number(f.progress || 0)))}%` }} />
+                                {isUploading || isDone ? (
+                                  <div className="mt-2">
+                                    <div className={"h-2 rounded-full overflow-hidden " + (theme === "dark" ? "bg-white/10" : "bg-black/10")}>
+                                      <div
+                                        className={theme === "dark" ? "h-full bg-white/70" : "h-full bg-black/70"}
+                                        style={{ width: `${Math.max(0, Math.min(100, Number(f.progress || 0)))}%` }}
+                                      />
+                                    </div>
                                   </div>
-                                )}
+                                ) : null}
 
                                 {isErr && f.error ? (
-                                  <div className="mt-2 text-xs text-red-600 dark:text-red-400">{f.error}</div>
+                                  <div className={theme === "dark" ? "text-red-300 text-xs mt-2" : "text-red-600 text-xs mt-2"}>{f.error}</div>
                                 ) : null}
                               </div>
 
                               <button
                                 type="button"
                                 onClick={() => removeDocFile(uploadFor, f.id)}
-                                className={iconBtnCls}
-                                aria-label="حذف فایل"
-                                title="حذف فایل"
+                                className="h-10 w-10 rounded-xl grid place-items-center transition !bg-transparent !ring-0 !border-0 !shadow-none hover:opacity-80 active:opacity-70"
+                                aria-label="حذف"
+                                title="حذف"
                               >
                                 <img
                                   src="/images/icons/hazf.svg"
