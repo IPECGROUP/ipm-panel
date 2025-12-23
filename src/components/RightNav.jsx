@@ -232,11 +232,7 @@ function RightNav() {
               </div>
 
               <div onMouseEnter={(e) => showTip("گزارش‌ها", e)} onMouseLeave={hideTip}>
-                <LinkBtn
-                  to="/projects/reports"
-                  className={railBtn(isActive("/projects/reports"))}
-                  aria-label="گزارش‌ها"
-                >
+                <LinkBtn to="/projects/reports" className={railBtn(isActive("/projects/reports"))} aria-label="گزارش‌ها">
                   <img src="/images/icons/gozareshrozane.svg" className={icImgCls} alt="" />
                 </LinkBtn>
               </div>
@@ -252,31 +248,19 @@ function RightNav() {
               </div>
 
               <div onMouseEnter={(e) => showTip("دریافتی‌ها", e)} onMouseLeave={hideTip}>
-                <LinkBtn
-                  to="/projects/receipts"
-                  className={railBtn(isActive("/projects/receipts"))}
-                  aria-label="دریافتی‌ها"
-                >
+                <LinkBtn to="/projects/receipts" className={railBtn(isActive("/projects/receipts"))} aria-label="دریافتی‌ها">
                   <IcReceipt />
                 </LinkBtn>
               </div>
 
               <div onMouseEnter={(e) => showTip("ترازمالی پروژه", e)} onMouseLeave={hideTip}>
-                <LinkBtn
-                  to="/projects/balance"
-                  className={railBtn(isActive("/projects/balance"))}
-                  aria-label="ترازمالی پروژه"
-                >
+                <LinkBtn to="/projects/balance" className={railBtn(isActive("/projects/balance"))} aria-label="ترازمالی پروژه">
                   <IcBalance />
                 </LinkBtn>
               </div>
 
               <div onMouseEnter={(e) => showTip("روزنگار پروژه", e)} onMouseLeave={hideTip}>
-                <LinkBtn
-                  to="/projects/daily-log"
-                  className={railBtn(isActive("/projects/daily-log"))}
-                  aria-label="روزنگار پروژه"
-                >
+                <LinkBtn to="/projects/daily-log" className={railBtn(isActive("/projects/daily-log"))} aria-label="روزنگار پروژه">
                   <IcDaily />
                 </LinkBtn>
               </div>
@@ -346,12 +330,6 @@ function RightNav() {
               <div onMouseEnter={(e) => showTip("واحدها", e)} onMouseLeave={hideTip}>
                 <LinkBtn to="/base/units" className={railBtn(isActive("/base/units"))}>
                   <img src="/images/icons/unit.svg" className={icImgCls} alt="" />
-                </LinkBtn>
-              </div>
-
-              <div onMouseEnter={(e) => showTip("نقش‌های کاربری", e)} onMouseLeave={hideTip}>
-                <LinkBtn to="/base/user-roles" className={railBtn(isActive("/base/user-roles"))}>
-                  <img src="/images/icons/role.svg" className={icImgCls} alt="" />
                 </LinkBtn>
               </div>
 

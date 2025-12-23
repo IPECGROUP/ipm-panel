@@ -303,7 +303,7 @@ function ProjectsPage() {
                     dir="rtl"
                   >
                     <THead>
-                      <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
+                      <tr className="sticky top-0 z-20 bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
                         <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
                           #
                         </TH>
