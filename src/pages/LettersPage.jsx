@@ -457,7 +457,6 @@ export default function LettersPage() {
   const [page, setPage] = useState(0);
 
   // ===== Uploader state (incoming/outgoing) =====
-  const MAX_DOC_SIZE = 400 * 1024;
   const uploadInputRef = useRef(null);
 
   const [docFilesByType, setDocFilesByType] = useState({ incoming: [], outgoing: [] });
@@ -473,66 +472,6 @@ export default function LettersPage() {
   const currentDocFiles = useMemo(() => {
     return Array.isArray(docFilesByType?.[uploadFor]) ? docFilesByType[uploadFor] : [];
   }, [docFilesByType, uploadFor]);
-
-  const readFileAsDataURL = (file) =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-
-  const loadImage = (src) =>
-    new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = reject;
-      img.src = src;
-    });
-
-  const canvasToBlob = (canvas, mimeType, quality) =>
-    new Promise((resolve) => {
-      canvas.toBlob((blob) => resolve(blob), mimeType, quality);
-    });
-
-  const compressImageFile = async (file, maxSizeBytes = MAX_DOC_SIZE) => {
-    const dataUrl = await readFileAsDataURL(file);
-    const img = await loadImage(dataUrl);
-
-    const MAX_WIDTH = 1600;
-    const scale = img.width > MAX_WIDTH ? MAX_WIDTH / img.width : 1;
-    const width = Math.max(1, Math.round(img.width * scale));
-    const height = Math.max(1, Math.round(img.height * scale));
-
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(img, 0, 0, width, height);
-
-    let quality = 0.88;
-    let blob = await canvasToBlob(canvas, "image/jpeg", quality);
-
-    while (blob && blob.size > maxSizeBytes && quality > 0.5) {
-      quality -= 0.08;
-      blob = await canvasToBlob(canvas, "image/jpeg", quality);
-    }
-
-    if (!blob || blob.size > maxSizeBytes) {
-      throw new Error("امکان فشرده‌سازی تصویر تا ۴۰۰ کیلوبایت نیست، لطفاً تصویر را کوچک‌تر کنید.");
-    }
-
-    return new File([blob], file.name, { type: "image/jpeg" });
-  };
-
-  const ensureFileSizeUnderLimit = async (file) => {
-    if (file.size <= MAX_DOC_SIZE) return file;
-
-    const isImg = file.type && file.type.startsWith("image/");
-    if (isImg) return await compressImageFile(file, MAX_DOC_SIZE);
-
-    throw new Error("حجم فایل PDF بیشتر از ۴۰۰ کیلوبایت است؛ لطفاً قبل از آپلود آن را کوچک کنید.");
-  };
 
   const uploadFileToLetter = (file, letterId, onProgress) => {
     return new Promise((resolve, reject) => {
@@ -593,39 +532,16 @@ export default function LettersPage() {
           name: rawFile.name,
           size: rawFile.size,
           type: rawFile.type,
-          status: "optimizing",
+          status: "ready",
           progress: 0,
           error: "",
           serverId: null,
           url: null,
           previewUrl,
           file: rawFile,
-          optimizedFile: null,
+          optimizedFile: rawFile,
         },
       ]);
-
-      try {
-        const optimized = await ensureFileSizeUnderLimit(rawFile);
-
-        setDocFilesFor(which, (prev) =>
-          prev.map((f) =>
-            f.id === id
-              ? {
-                  ...f,
-                  size: optimized.size,
-                  status: "ready",
-                  progress: 0,
-                  error: "",
-                  optimizedFile: optimized,
-                }
-              : f
-          )
-        );
-      } catch (e) {
-        setDocFilesFor(which, (prev) =>
-          prev.map((f) => (f.id === id ? { ...f, status: "error", error: e?.message || "خطا در آماده‌سازی فایل." } : f))
-        );
-      }
     }
   };
 
@@ -947,6 +863,13 @@ export default function LettersPage() {
     return String(n || "");
   };
 
+  const attachmentTypeOf = (a) => String(a?.type ?? a?.mime ?? a?.mime_type ?? a?.mimeType ?? "");
+  const attachmentSizeOf = (a) => {
+    const v = a?.size ?? a?.bytes ?? a?.file_size ?? a?.fileSize;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+
   const isPdfUrl = (url) => String(url || "").toLowerCase().includes(".pdf");
   const isImageUrl = (url) => {
     const u = String(url || "").toLowerCase();
@@ -1121,6 +1044,20 @@ export default function LettersPage() {
     setDocFilesByType({ incoming: [], outgoing: [] });
   };
 
+  const normalizeAttachmentForPayload = (x) => {
+    const url = String(x?.url || "");
+    if (!url) return null;
+    const name = String(x?.name || "");
+    const type = String(x?.type || "");
+    const size = Number(x?.size || 0) || 0;
+    const out = {};
+    if (name) out.name = name;
+    if (url) out.url = url;
+    if (type) out.type = type;
+    if (size) out.size = size;
+    return Object.keys(out).length ? out : null;
+  };
+
   const submitLetter = async (kind) => {
     const isIncoming = kind === "incoming";
     const attachmentTitle = isIncoming ? incomingAttachmentTitle : outgoingAttachmentTitle;
@@ -1132,8 +1069,24 @@ export default function LettersPage() {
     const pId = projectId ? Number(projectId) : null;
 
     const files = Array.isArray(docFilesByType?.[kind]) ? docFilesByType[kind] : [];
-    const queue = files.filter((f) => f && f.status !== "error" && (f.optimizedFile || f.file));
-    const computedHasAttachment = !!hasAttachment || !!String(attachmentTitle || "").trim() || queue.length > 0;
+
+    // ✅ فایل‌های قبلاً آپلودشده (برای استفاده مجدد) -> فقط به payload.attachments اضافه می‌شوند
+    const reused = files
+      .filter((f) => f && f.status === "done" && !!f.url && !f.file && !f.optimizedFile)
+      .map((f) =>
+        normalizeAttachmentForPayload({
+          name: f.name,
+          url: f.url,
+          type: f.type,
+          size: f.size,
+        })
+      )
+      .filter(Boolean);
+
+    // ✅ فایل‌های جدید که باید آپلود شوند
+    const queue = files.filter((f) => f && f.status !== "error" && (f.optimizedFile || f.file) && !f.url);
+
+    const computedHasAttachment = !!hasAttachment || !!String(attachmentTitle || "").trim() || queue.length > 0 || reused.length > 0;
 
     const payload = {
       kind,
@@ -1153,7 +1106,7 @@ export default function LettersPage() {
       secretariatDate: secretariatDate || "",
       secretariatNo: secretariatNo || "",
       receiverName: receiverName || "",
-      attachments: [],
+      attachments: reused,
     };
 
     const created = await api("/letters", { method: "POST", body: JSON.stringify(payload) });
@@ -1249,6 +1202,104 @@ export default function LettersPage() {
     (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5");
 
   const addIconImgCls = "w-5 h-5 " + (theme === "dark" ? "dark:invert" : "");
+
+  // ===== Reuse uploaded files (pick a letter in upload modal) =====
+  const [pickLetterId, setPickLetterId] = useState("");
+  const [pickLetterAttachments, setPickLetterAttachments] = useState([]);
+  const [pickLoading, setPickLoading] = useState(false);
+
+  const myLettersSorted = useMemo(() => {
+    const arr = Array.isArray(myLetters) ? myLetters.slice() : [];
+    arr.sort((a, b) => {
+      const ai = Number(letterIdOf(a));
+      const bi = Number(letterIdOf(b));
+      if (Number.isFinite(ai) && Number.isFinite(bi)) return bi - ai;
+      return String(letterIdOf(b)).localeCompare(String(letterIdOf(a)));
+    });
+    return arr;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myLetters]);
+
+  useEffect(() => {
+    if (!uploadOpen) {
+      setPickLetterId("");
+      setPickLetterAttachments([]);
+      setPickLoading(false);
+      return;
+    }
+    // وقتی پاپ‌اپ باز میشه، پیش‌فرض چیزی انتخاب نشه
+    setPickLetterId("");
+    setPickLetterAttachments([]);
+    setPickLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uploadOpen, uploadFor]);
+
+  const fetchLetterAttachments = async (id) => {
+    const sid = String(id || "");
+    if (!sid) return [];
+    setPickLoading(true);
+    try {
+      const r = await api(`/letters/${sid}`);
+      const it = r?.item || r;
+      const atts = attachmentsOf(it);
+      return Array.isArray(atts) ? atts : [];
+    } catch {
+      return [];
+    } finally {
+      setPickLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!pickLetterId) {
+        setPickLetterAttachments([]);
+        return;
+      }
+      const atts = await fetchLetterAttachments(pickLetterId);
+      if (!alive) return;
+      setPickLetterAttachments(atts);
+    })();
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pickLetterId]);
+
+  const addExistingAttachmentToCurrent = (which, att) => {
+    const url = attachmentUrlOf(att);
+    if (!url) return;
+
+    const name = attachmentNameOf(att) || "فایل";
+    const type = attachmentTypeOf(att) || (isPdfUrl(url) ? "application/pdf" : "");
+    const size = attachmentSizeOf(att);
+
+    // جلوگیری از تکراری
+    setDocFilesFor(which, (prev) => {
+      const exists = prev.some((x) => String(x?.url || "") === String(url));
+      if (exists) return prev;
+
+      const id = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+      return [
+        ...prev,
+        {
+          id,
+          name,
+          size,
+          type,
+          status: "done",
+          progress: 100,
+          error: "",
+          serverId: null,
+          url,
+          previewUrl: null,
+          file: null,
+          optimizedFile: null,
+        },
+      ];
+    });
+  };
 
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
@@ -2421,9 +2472,108 @@ export default function LettersPage() {
                 <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
 
                 <div className="p-4">
+                  {/* ✅ NEW: pick a letter to reuse uploaded files */}
+                  <div className="mb-3">
+                    <div className={labelCls}>انتخاب نامه (برای استفاده از فایل‌های آپلود شده قبلی)</div>
+                    <select
+                      value={pickLetterId}
+                      onChange={(e) => setPickLetterId(e.target.value)}
+                      className={inputCls}
+                    >
+                      <option value=""></option>
+                      {myLettersSorted.map((l) => (
+                        <option key={String(letterIdOf(l))} value={String(letterIdOf(l))}>
+                          {String(l?.letter_no || letterNoOf(l) || "")}
+                        </option>
+                      ))}
+                    </select>
+
+                    {pickLetterId && (
+                      <div className={theme === "dark" ? "text-white/60 text-[11px] mt-1" : "text-neutral-600 text-[11px] mt-1"}>
+                        {pickLoading ? "در حال دریافت فایل‌های نامه..." : "با زدن «افزودن»، فایل به همین نامه جدید شما الصاق می‌شود (بدون آپلود دوباره)."}
+                      </div>
+                    )}
+
+                    {pickLetterId && !pickLoading && (
+                      <div className={"mt-2 rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")}>
+                        <div className={"px-3 py-2 text-xs font-semibold border-b " + (theme === "dark" ? "border-white/10 text-white/80" : "border-black/10 text-neutral-700")}>
+                          فایل‌های قبلی این نامه
+                        </div>
+                        <div className="p-3 space-y-2">
+                          {Array.isArray(pickLetterAttachments) && pickLetterAttachments.length > 0 ? (
+                            pickLetterAttachments.map((a, i) => {
+                              const url = attachmentUrlOf(a);
+                              const name = attachmentNameOf(a) || `فایل ${i + 1}`;
+                              const already = currentDocFiles.some((x) => String(x?.url || "") === String(url));
+                              return (
+                                <div
+                                  key={String(i) + "_" + String(url)}
+                                  className={
+                                    "rounded-xl border p-3 flex items-center justify-between gap-3 " +
+                                    (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
+                                  }
+                                >
+                                  <div className="min-w-0 flex-1">
+                                    <div className="text-sm font-semibold truncate">{name}</div>
+                                    <div className={theme === "dark" ? "text-white/60 text-xs mt-1" : "text-neutral-600 text-xs mt-1"}>
+                                      {url ? "آدرس فایل موجود است" : "—"}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <a
+                                      href={url || "#"}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className={
+                                        "h-10 px-3 rounded-xl border transition text-sm " +
+                                        (url
+                                          ? theme === "dark"
+                                            ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                                            : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]"
+                                          : theme === "dark"
+                                          ? "border-white/10 bg-white/5 text-white/40 pointer-events-none"
+                                          : "border-black/10 bg-white text-black/40 pointer-events-none")
+                                      }
+                                      title="باز کردن"
+                                    >
+                                      باز کردن
+                                    </a>
+
+                                    <button
+                                      type="button"
+                                      disabled={!url || already}
+                                      onClick={() => addExistingAttachmentToCurrent(uploadFor, a)}
+                                      className={
+                                        "h-10 px-3 rounded-xl transition text-sm font-semibold " +
+                                        (!url || already
+                                          ? theme === "dark"
+                                            ? "bg-white/10 text-white/40 cursor-not-allowed"
+                                            : "bg-black/10 text-black/40 cursor-not-allowed"
+                                          : theme === "dark"
+                                          ? "bg-white text-black hover:bg-white/90"
+                                          : "bg-black text-white hover:bg-black/90")
+                                      }
+                                      title={already ? "قبلاً اضافه شده" : "افزودن"}
+                                    >
+                                      {already ? "اضافه شد" : "افزودن"}
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <div className={theme === "dark" ? "text-white/60 text-sm text-center py-2" : "text-neutral-600 text-sm text-center py-2"}>
+                              فایلی برای این نامه ثبت نشده است.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <div className={uploadBoxCls} onDragOver={onDragOverUpload} onDrop={onDropUpload}>
                     <div className="text-sm">فایل را اینجا رها کن</div>
-                    <div className={theme === "dark" ? "text-white/60 text-xs mt-1" : "text-neutral-600 text-xs mt-1"}>تصویر یا PDF تا ۴۰۰KB</div>
 
                     <div className="mt-3 flex items-center justify-center gap-2">
                       <input
@@ -2475,16 +2625,13 @@ export default function LettersPage() {
                           const isUploading = f.status === "uploading";
                           const isDone = f.status === "done";
                           const isReady = f.status === "ready";
-                          const isOptimizing = f.status === "optimizing";
 
-                          const statusText = isOptimizing
-                            ? "در حال آماده‌سازی..."
-                            : isReady
+                          const statusText = isReady
                             ? "آماده"
                             : isUploading
                             ? `در حال آپلود ${toFaDigits(f.progress || 0)}٪`
                             : isDone
-                            ? "آپلود شد"
+                            ? "آماده (بدون آپلود مجدد)"
                             : isErr
                             ? "خطا"
                             : "";
@@ -2504,7 +2651,7 @@ export default function LettersPage() {
                                   <span className={isErr ? (theme === "dark" ? "text-red-300" : "text-red-600") : ""}>— {statusText}</span>
                                 </div>
 
-                                {isUploading || isDone ? (
+                                {isUploading ? (
                                   <div className="mt-2">
                                     <div className={"h-2 rounded-full overflow-hidden " + (theme === "dark" ? "bg-white/10" : "bg-black/10")}>
                                       <div
