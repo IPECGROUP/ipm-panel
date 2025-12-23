@@ -6,7 +6,6 @@ import PaymentRequestPage from "./pages/PaymentRequestPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import { useAuth } from "./components/AuthProvider.jsx";
 import ContractInfoPage from "./pages/ContractInfoPage.jsx";
-import UserRolesPage from "./pages/UserRolesPage.jsx";
 import RequestDetailPage from "./pages/RequestDetailPage.jsx";
 import Projects2Page from "./pages/Projects2Page.jsx";
 import ProjectsPage from "./pages/ProjectsPage.jsx";
@@ -98,7 +97,6 @@ export default function App() {
         <Route path="/base/units" element={<UnitsPage />} />
         <Route path="/base/currencies" element={<BaseCurrenciesPage />} />
         <Route path="/base/tags" element={<TagsPage />} />
-        <Route path="/base/user-roles" element={<UserRolesPage />} />
         <Route
           path="/base/budget-codes"
           element={
