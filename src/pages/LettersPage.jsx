@@ -673,12 +673,13 @@ export default function LettersPage() {
 
   const labelCls = theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1";
 
+  // ✅ UPDATED: tag chips style (pill like screenshot) + white background
   const chipBase =
-    "inline-flex items-center gap-2 px-3 h-10 rounded-full border text-xs font-semibold whitespace-nowrap transition";
+    "inline-flex items-center justify-center gap-2 px-4 h-9 rounded-full border text-xs font-semibold whitespace-nowrap transition";
   const chipCls =
     theme === "dark"
       ? chipBase + " border-white/15 bg-white/5 text-white hover:bg-white/10"
-      : chipBase + " border-black/10 bg-black/[0.03] text-neutral-900 hover:bg-black/[0.06]";
+      : chipBase + " border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]";
 
   const selectedTagChipCls = chipBase + " border-black bg-black text-white";
 
@@ -2494,7 +2495,7 @@ export default function LettersPage() {
                       placeholder="جستجو بر اساس نام فایل..."
                     />
 
-                    <div className={"mt-2 rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")}>
+                    <div className={"mt-2 rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
                       <div className={"px-3 py-2 text-xs font-semibold border-b " + (theme === "dark" ? "border-white/10 text-white/80" : "border-black/10 text-neutral-700")}>
                         همه فایل‌ها (برای استفاده مجدد)
                       </div>
@@ -2509,25 +2510,27 @@ export default function LettersPage() {
                               <div
                                 key={String(i) + "_" + String(url)}
                                 className={
-                                  "rounded-xl border p-3 flex items-center justify-between gap-3 " +
+                                  // ✅ smaller
+                                  "rounded-xl border px-3 py-2 flex items-center justify-between gap-3 " +
                                   (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
                                 }
                               >
                                 <div className="min-w-0 flex-1">
-                                  <div className="text-sm font-semibold truncate">{name}</div>
-                                  <div className={theme === "dark" ? "text-white/60 text-xs mt-1" : "text-neutral-600 text-xs mt-1"}>
+                                  <div className="text-[13px] font-semibold truncate">{name}</div>
+                                  <div className={theme === "dark" ? "text-white/60 text-[11px] mt-1" : "text-neutral-600 text-[11px] mt-1"}>
                                     {url ? "آدرس فایل موجود است" : "—"}
                                     {hintNo ? <span> — نامه: {toFaDigits(hintNo)}</span> : null}
                                   </div>
                                 </div>
 
                                 <div className="flex items-center gap-2">
+                                  {/* ✅ UPDATED: center text inside button */}
                                   <a
                                     href={url || "#"}
                                     target="_blank"
                                     rel="noreferrer"
                                     className={
-                                      "h-10 px-3 rounded-xl border transition text-sm " +
+                                      "h-9 px-3 rounded-xl border transition text-sm inline-flex items-center justify-center " +
                                       (url
                                         ? theme === "dark"
                                           ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
@@ -2546,7 +2549,7 @@ export default function LettersPage() {
                                     disabled={!url || already}
                                     onClick={() => addExistingAttachmentToCurrent(uploadFor, a)}
                                     className={
-                                      "h-10 px-3 rounded-xl transition text-sm font-semibold " +
+                                      "h-9 px-3 rounded-xl transition text-sm font-semibold inline-flex items-center justify-center " +
                                       (!url || already
                                         ? theme === "dark"
                                           ? "bg-white/10 text-white/40 cursor-not-allowed"
@@ -2614,7 +2617,7 @@ export default function LettersPage() {
                   </div>
 
                   {currentDocFiles.length > 0 && (
-                    <div className={"mt-4 rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")}>
+                    <div className={"mt-4 rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
                       <div className={"px-3 py-2 text-xs font-semibold border-b " + (theme === "dark" ? "border-white/10 text-white/80" : "border-black/10 text-neutral-700")}>
                         فایل‌های انتخاب شده
                       </div>
@@ -2640,13 +2643,14 @@ export default function LettersPage() {
                             <div
                               key={f.id}
                               className={
-                                "rounded-xl border p-3 flex items-start justify-between gap-3 " +
+                                // ✅ smaller
+                                "rounded-xl border px-3 py-2 flex items-start justify-between gap-3 " +
                                 (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
                               }
                             >
                               <div className="min-w-0 flex-1">
-                                <div className="text-sm font-semibold truncate">{f.name}</div>
-                                <div className={theme === "dark" ? "text-white/60 text-xs mt-1" : "text-neutral-600 text-xs mt-1"}>
+                                <div className="text-[13px] font-semibold truncate">{f.name}</div>
+                                <div className={theme === "dark" ? "text-white/60 text-[11px] mt-1" : "text-neutral-600 text-[11px] mt-1"}>
                                   {formatBytes(f.size)}{" "}
                                   <span className={isErr ? (theme === "dark" ? "text-red-300" : "text-red-600") : ""}>— {statusText}</span>
                                 </div>
@@ -2670,7 +2674,7 @@ export default function LettersPage() {
                               <button
                                 type="button"
                                 onClick={() => removeDocFile(uploadFor, f.id)}
-                                className="h-10 w-10 rounded-xl grid place-items-center transition !bg-transparent !ring-0 !border-0 !shadow-none hover:opacity-80 active:opacity-70"
+                                className="h-9 w-9 rounded-xl grid place-items-center transition !bg-transparent !ring-0 !border-0 !shadow-none hover:opacity-80 active:opacity-70"
                                 aria-label="حذف"
                                 title="حذف"
                               >
