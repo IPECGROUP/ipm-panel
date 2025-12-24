@@ -429,6 +429,25 @@ export default function EstimatesPage() {
     const byCore = new Map();
     nodes.forEach((n) => n.core && byCore.set(n.core, n));
 
+    // ✅ اگر پدر مستقیم وجود نداشت (مثلاً 162.1 نیست)، نزدیک‌ترین پدر موجود را پیدا کن (مثلاً 162)
+    nodes.forEach((n) => {
+      if (!n.core) return;
+      const parts = n.core.split(".").filter(Boolean);
+      if (parts.length <= 1) {
+        n.parentCore = null;
+        return;
+      }
+      let found = null;
+      for (let i = parts.length - 1; i >= 1; i--) {
+        const candidate = parts.slice(0, i).join(".");
+        if (byCore.has(candidate)) {
+          found = candidate;
+          break;
+        }
+      }
+      n.parentCore = found;
+    });
+
     const childrenMap = new Map();
     nodes.forEach((n) => {
       if (!n.parentCore) return;
@@ -491,7 +510,14 @@ export default function EstimatesPage() {
     return grand;
   }, [rowsToRender, hierarchyMaps, finalPreviewOf]);
 
-  const [monthModal, setMonthModal] = useState({ open: false, code: null, monthKey: "", label: "", name: "", value: "" });
+  const [monthModal, setMonthModal] = useState({
+    open: false,
+    code: null,
+    monthKey: "",
+    label: "",
+    name: "",
+    value: "",
+  });
   const monthInputRef = useRef(null);
 
   const openMonthModal = (row, month) => {
