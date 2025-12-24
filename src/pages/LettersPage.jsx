@@ -372,6 +372,9 @@ export default function LettersPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [tab, setTab] = useState("all");
 
+  // ✅ NEW: edit state
+  const [editingId, setEditingId] = useState(null);
+
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFor, setUploadFor] = useState("incoming");
 
@@ -673,7 +676,6 @@ export default function LettersPage() {
 
   const labelCls = theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1";
 
-  // ✅ UPDATED: tag chips style (pill like screenshot) + white background
   const chipBase =
     "inline-flex items-center justify-center gap-2 px-4 h-9 rounded-full border text-xs font-semibold whitespace-nowrap transition";
   const chipCls =
@@ -1042,6 +1044,9 @@ export default function LettersPage() {
     setOutgoingReceiverName("");
 
     setDocFilesByType({ incoming: [], outgoing: [] });
+
+    // ✅ NEW
+    setEditingId(null);
   };
 
   const normalizeAttachmentForPayload = (x) => {
@@ -1058,6 +1063,93 @@ export default function LettersPage() {
     return Object.keys(out).length ? out : null;
   };
 
+  // ✅ NEW: start edit (prefill all fields + load attachments)
+  const startEdit = (l) => {
+    const kind = letterKindOf(l);
+    const id = String(letterIdOf(l));
+
+    setEditingId(id);
+    setFormOpen(true);
+    setTab(kind);
+
+    setCategory(String(l?.category ?? l?.category_name ?? l?.categoryTitle ?? ""));
+    const pid = l?.project_id ?? l?.projectId ?? l?.projectID ?? null;
+    setProjectId(pid ? String(pid) : "");
+
+    setLetterNo(String(l?.letter_no ?? l?.letterNo ?? l?.no ?? l?.number ?? ""));
+    setLetterDate(String(l?.letter_date ?? l?.letterDate ?? l?.date ?? ""));
+
+    setFromName(String(l?.from_name ?? l?.fromName ?? l?.from ?? ""));
+    setToName(String(l?.to_name ?? l?.toName ?? l?.to ?? ""));
+    setOrgName(String(l?.org_name ?? l?.orgName ?? l?.org ?? l?.organization ?? l?.company ?? ""));
+    setSubject(String(l?.subject ?? l?.title ?? ""));
+
+    const ha = l?.has_attachment ?? l?.hasAttachment ?? false;
+    setHasAttachment(!!ha);
+
+    const atTitle = String(l?.attachment_title ?? l?.attachmentTitle ?? "");
+    if (kind === "incoming") setIncomingAttachmentTitle(atTitle);
+    else setOutgoingAttachmentTitle(atTitle);
+
+    const rids = Array.isArray(l?.return_to_ids) ? l.return_to_ids : Array.isArray(l?.returnToIds) ? l.returnToIds : [];
+    setReturnToIds(rids.length ? rids.map((x) => String(x)) : [""]);
+
+    const pids = Array.isArray(l?.piro_ids) ? l.piro_ids : Array.isArray(l?.piroIds) ? l.piroIds : [];
+    setPiroIds(pids.length ? pids.map((x) => String(x)) : [""]);
+
+    const tids = Array.isArray(l?.tag_ids) ? l.tag_ids : Array.isArray(l?.tagIds) ? l.tagIds : [];
+    if (kind === "incoming") setIncomingTagIds(tids.map((x) => String(x)));
+    else setOutgoingTagIds(tids.map((x) => String(x)));
+
+    const sDate = String(l?.secretariat_date ?? l?.secretariatDate ?? "");
+    const sNo = String(l?.secretariat_no ?? l?.secretariatNo ?? "");
+    const rName = String(l?.receiver_name ?? l?.receiverName ?? "");
+    if (kind === "incoming") {
+      setIncomingSecretariatDate(sDate || todayJalaliYmd || "");
+      setIncomingSecretariatNo(sNo || "");
+      setIncomingReceiverName(rName || "");
+    } else {
+      setOutgoingSecretariatDate(sDate || todayJalaliYmd || "");
+      setOutgoingSecretariatNo(sNo || "");
+      setOutgoingReceiverName(rName || "");
+    }
+
+    const atts = attachmentsOf(l);
+    const mapped = (Array.isArray(atts) ? atts : []).map((a, i) => {
+      const url = attachmentUrlOf(a);
+      const nameRaw = attachmentNameOf(a);
+      const name =
+        String(nameRaw || "").trim() ||
+        (() => {
+          try {
+            const u = String(url);
+            const parts = u.split("?")[0].split("/");
+            return parts[parts.length - 1] || "فایل";
+          } catch {
+            return "فایل";
+          }
+        })();
+      const type = attachmentTypeOf(a) || (isPdfUrl(url) ? "application/pdf" : "");
+      const size = attachmentSizeOf(a);
+      return {
+        id: `att_${id}_${i}`,
+        name,
+        size,
+        type,
+        status: "done",
+        progress: 100,
+        error: "",
+        serverId: a?.id ?? a?.file_id ?? null,
+        url: url || null,
+        previewUrl: null,
+        file: null,
+        optimizedFile: null,
+      };
+    });
+
+    setDocFilesByType((prev) => ({ ...prev, [kind]: mapped }));
+  };
+
   const submitLetter = async (kind) => {
     const isIncoming = kind === "incoming";
     const attachmentTitle = isIncoming ? incomingAttachmentTitle : outgoingAttachmentTitle;
@@ -1070,7 +1162,6 @@ export default function LettersPage() {
 
     const files = Array.isArray(docFilesByType?.[kind]) ? docFilesByType[kind] : [];
 
-    // ✅ فایل‌های قبلاً آپلودشده (برای استفاده مجدد) -> فقط به payload.attachments اضافه می‌شوند
     const reused = files
       .filter((f) => f && f.status === "done" && !!f.url && !f.file && !f.optimizedFile)
       .map((f) =>
@@ -1083,10 +1174,10 @@ export default function LettersPage() {
       )
       .filter(Boolean);
 
-    // ✅ فایل‌های جدید که باید آپلود شوند
     const queue = files.filter((f) => f && f.status !== "error" && (f.optimizedFile || f.file) && !f.url);
 
-    const computedHasAttachment = !!hasAttachment || !!String(attachmentTitle || "").trim() || queue.length > 0 || reused.length > 0;
+    const computedHasAttachment =
+      !!hasAttachment || !!String(attachmentTitle || "").trim() || queue.length > 0 || reused.length > 0;
 
     const payload = {
       kind,
@@ -1109,12 +1200,27 @@ export default function LettersPage() {
       attachments: reused,
     };
 
-    const created = await api("/letters", { method: "POST", body: JSON.stringify(payload) });
-    const item = created?.item || created;
-    const newId = item?.id ?? item?.letter_id ?? item?.letterId;
-    if (!newId) throw new Error("create_failed");
+    // ✅ UPDATED: create OR update
+    let saved;
+    let newId = null;
 
-    const letterId = Number(newId);
+    if (editingId) {
+      // try /letters/:id then fallback to /letters?id=
+      try {
+        saved = await api(`/letters/${editingId}`, { method: "PATCH", body: JSON.stringify(payload) });
+      } catch (e) {
+        saved = await api(`/letters?id=${encodeURIComponent(String(editingId))}`, { method: "PATCH", body: JSON.stringify(payload) });
+      }
+      newId = editingId;
+    } else {
+      saved = await api("/letters", { method: "POST", body: JSON.stringify(payload) });
+      const item = saved?.item || saved;
+      newId = item?.id ?? item?.letter_id ?? item?.letterId;
+    }
+
+    if (!newId) throw new Error("save_failed");
+
+    const letterId = Number(newId) || newId;
 
     if (queue.length > 0) {
       for (const f of queue) {
@@ -1157,7 +1263,14 @@ export default function LettersPage() {
   const deleteLetter = async (id) => {
     const ok = window.confirm("حذف شود؟");
     if (!ok) return;
-    await api(`/letters/${id}`, { method: "DELETE" });
+
+    // ✅ UPDATED: robust delete (path OR query param)
+    try {
+      await api(`/letters/${encodeURIComponent(String(id))}`, { method: "DELETE" });
+    } catch (_e) {
+      await api(`/letters?id=${encodeURIComponent(String(id))}`, { method: "DELETE" });
+    }
+
     await refetchLetters();
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -1252,14 +1365,19 @@ export default function LettersPage() {
         const type = attachmentTypeOf(a) || (isPdfUrl(url) ? "application/pdf" : "");
         const size = attachmentSizeOf(a);
 
-        // dedupe by url
         if (!map.has(String(url))) {
           map.set(String(url), { ...a, url, name, type, size, _letterNo: letterNo });
         } else {
-          // اگر قبلاً بوده و این یکی اسم بهتر دارد، جایگزین کن
           const prev = map.get(String(url));
           if (prev && (!prev.name || prev.name === "فایل") && name) {
-            map.set(String(url), { ...prev, url, name, type: prev.type || type, size: prev.size || size, _letterNo: prev._letterNo || letterNo });
+            map.set(String(url), {
+              ...prev,
+              url,
+              name,
+              type: prev.type || type,
+              size: prev.size || size,
+              _letterNo: prev._letterNo || letterNo,
+            });
           }
         }
       }
@@ -1290,7 +1408,6 @@ export default function LettersPage() {
     const type = attachmentTypeOf(att) || att?.type || (isPdfUrl(url) ? "application/pdf" : "");
     const size = attachmentSizeOf(att) || Number(att?.size || 0) || 0;
 
-    // جلوگیری از تکراری
     setDocFilesFor(which, (prev) => {
       const exists = prev.some((x) => String(x?.url || "") === String(url));
       if (exists) return prev;
@@ -1333,7 +1450,13 @@ export default function LettersPage() {
               onClick={() => {
                 setFormOpen((v) => {
                   const next = !v;
-                  if (next && tab === "all") setTab("incoming");
+                  if (next) {
+                    if (tab === "all") setTab("incoming");
+                    // اگر حالت ویرایش بود و کاربر دوباره افزودن زد، همون فرم باز می‌مونه
+                  } else {
+                    // بستن فرم
+                    setEditingId(null);
+                  }
                   return next;
                 });
               }}
@@ -1387,7 +1510,15 @@ export default function LettersPage() {
                         : "");
 
                     return (
-                      <button key={t.id} type="button" onClick={() => setTab(t.id)} className={cls}>
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => {
+                          setTab(t.id);
+                          setEditingId(null);
+                        }}
+                        className={cls}
+                      >
                         {t.label}
                       </button>
                     );
@@ -1438,71 +1569,28 @@ export default function LettersPage() {
                 </div>
 
                 <div className="flex flex-wrap items-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFilterQuick("week")}
-                    className={
-                      (filterQuick === "week"
-                        ? theme === "dark"
-                          ? chipBase + " border-white/15 bg-white text-black"
-                          : chipBase + " border-black/15 bg-black text-white"
-                        : chipCls) + " h-10"
-                    }
-                  >
-                    هفته قبل
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFilterQuick("2w")}
-                    className={
-                      (filterQuick === "2w"
-                        ? theme === "dark"
-                          ? chipBase + " border-white/15 bg-white text-black"
-                          : chipBase + " border-black/15 bg-black text-white"
-                        : chipCls) + " h-10"
-                    }
-                  >
-                    2 هفته قبل
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFilterQuick("1m")}
-                    className={
-                      (filterQuick === "1m"
-                        ? theme === "dark"
-                          ? chipBase + " border-white/15 bg-white text-black"
-                          : chipBase + " border-black/15 bg-black text-white"
-                        : chipCls) + " h-10"
-                    }
-                  >
-                    ماه قبل
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFilterQuick("3m")}
-                    className={
-                      (filterQuick === "3m"
-                        ? theme === "dark"
-                          ? chipBase + " border-white/15 bg-white text-black"
-                          : chipBase + " border-black/15 bg-black text-white"
-                        : chipCls) + " h-10"
-                    }
-                  >
-                    3 ماه قبل
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFilterQuick("6m")}
-                    className={
-                      (filterQuick === "6m"
-                        ? theme === "dark"
-                          ? chipBase + " border-white/15 bg-white text-black"
-                          : chipBase + " border-black/15 bg-black text-white"
-                        : chipCls) + " h-10"
-                    }
-                  >
-                    6 ماه قبل
-                  </button>
+                  {[
+                    ["week", "هفته قبل"],
+                    ["2w", "2 هفته قبل"],
+                    ["1m", "ماه قبل"],
+                    ["3m", "3 ماه قبل"],
+                    ["6m", "6 ماه قبل"],
+                  ].map(([k, lab]) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setFilterQuick(k)}
+                      className={
+                        (filterQuick === k
+                          ? theme === "dark"
+                            ? chipBase + " border-white/15 bg-white text-black"
+                            : chipBase + " border-black/15 bg-black text-white"
+                          : chipCls) + " h-10"
+                      }
+                    >
+                      {lab}
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -1532,7 +1620,7 @@ export default function LettersPage() {
             </div>
           )}
 
-          {/* Create form */}
+          {/* Create/Edit form */}
           <div className="mt-4">
             {formOpen && tab === "incoming" && (
               <div>
@@ -2099,7 +2187,8 @@ export default function LettersPage() {
                                   <img src="/images/icons/namayesh.svg" alt="" className="w-5 h-5 dark:invert" />
                                 </button>
 
-                                <button type="button" className={iconBtnCls} aria-label="ویرایش" title="ویرایش">
+                                {/* ✅ UPDATED: edit works */}
+                                <button type="button" onClick={() => startEdit(l)} className={iconBtnCls} aria-label="ویرایش" title="ویرایش">
                                   <img src="/images/icons/pencil.svg" alt="" className="w-5 h-5 dark:invert" />
                                 </button>
 
@@ -2483,7 +2572,7 @@ export default function LettersPage() {
                 <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
 
                 <div className="p-4">
-                  {/* ✅ UPDATED: show ALL uploaded files (not letters) */}
+                  {/* show ALL uploaded files */}
                   <div className="mb-3">
                     <div className={labelCls}>فایل‌های آپلود شده</div>
 
@@ -2510,7 +2599,6 @@ export default function LettersPage() {
                               <div
                                 key={String(i) + "_" + String(url)}
                                 className={
-                                  // ✅ smaller
                                   "rounded-xl border px-3 py-2 flex items-center justify-between gap-3 " +
                                   (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
                                 }
@@ -2524,7 +2612,6 @@ export default function LettersPage() {
                                 </div>
 
                                 <div className="flex items-center gap-2">
-                                  {/* ✅ UPDATED: center text inside button */}
                                   <a
                                     href={url || "#"}
                                     target="_blank"
@@ -2643,7 +2730,6 @@ export default function LettersPage() {
                             <div
                               key={f.id}
                               className={
-                                // ✅ smaller
                                 "rounded-xl border px-3 py-2 flex items-start justify-between gap-3 " +
                                 (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
                               }
