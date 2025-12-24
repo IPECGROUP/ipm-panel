@@ -343,11 +343,31 @@ function formatBytes(n) {
 export default function LettersPage() {
   const API_BASE = (window.API_URL || "/api").replace(/\/+$/, "");
   async function api(path, opt = {}) {
-    const res = await fetch(API_BASE + path, {
-      credentials: "include",
-      ...opt,
-      headers: { "Content-Type": "application/json", ...(opt.headers || {}) },
-    });
+  const headers = { ...(opt.headers || {}) };
+
+  // فقط وقتی body داریم Content-Type بذار (برای DELETE بدون body مشکل‌ساز میشه)
+  const hasBody = opt.body !== undefined && opt.body !== null;
+  const isForm = typeof FormData !== "undefined" && opt.body instanceof FormData;
+
+  if (hasBody && !isForm && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const res = await fetch(API_BASE + path, {
+    credentials: "include",
+    ...opt,
+    headers,
+  });
+
+  const txt = await res.text();
+  let data = {};
+  try {
+    data = txt ? JSON.parse(txt) : {};
+  } catch {}
+  if (!res.ok) throw new Error(data?.error || data?.message || "request_failed");
+  return data;
+}
+
     const txt = await res.text();
     let data = {};
     try {
@@ -1261,23 +1281,43 @@ export default function LettersPage() {
   };
 
   const deleteLetter = async (id) => {
-    const ok = window.confirm("حذف شود؟");
-    if (!ok) return;
+  const sid = String(id || "");
+  if (!sid) return;
 
-    // ✅ UPDATED: robust delete (path OR query param)
+  const ok = window.confirm("حذف شود؟");
+  if (!ok) return;
+
+  // ✅ حذف فوری از UI (optimistic)
+  setMyLetters((prev) => (Array.isArray(prev) ? prev.filter((x) => String(letterIdOf(x)) !== sid) : prev));
+  setSelectedIds((prev) => {
+    const next = new Set(prev);
+    next.delete(sid);
+    return next;
+  });
+
+  try {
+    // 1) /letters/:id
     try {
-      await api(`/letters/${encodeURIComponent(String(id))}`, { method: "DELETE" });
-    } catch (_e) {
-      await api(`/letters?id=${encodeURIComponent(String(id))}`, { method: "DELETE" });
+      await api(`/letters/${encodeURIComponent(sid)}`, { method: "DELETE" });
+    } catch (e1) {
+      // 2) /letters?id=
+      try {
+        await api(`/letters?id=${encodeURIComponent(sid)}`, { method: "DELETE" });
+      } catch (e2) {
+        // 3) بعضی بک‌اندها id رو توی body می‌خوان
+        await api(`/letters`, { method: "DELETE", body: JSON.stringify({ id: sid }) });
+      }
     }
 
+    // برای اطمینان از sync با DB
     await refetchLetters();
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.delete(String(id));
-      return next;
-    });
-  };
+  } catch (e) {
+    // اگر حذف واقعی fail شد، برگردون از سرور
+    await refetchLetters();
+    alert(e?.message || "خطا در حذف نامه");
+  }
+};
+
 
   const InfoRow = ({ label, value }) => (
     <div className="grid grid-cols-12 gap-2 py-2">
