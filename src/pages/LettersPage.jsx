@@ -2078,11 +2078,13 @@ export default function LettersPage() {
           {/* Table */}
           <div className="mt-5">
             <div className={tableWrapCls}>
-              <div className="max-h-[55vh] overflow-auto">
+              <div className="relative max-h-[55vh] overflow-y-auto overflow-x-auto">
+
                 <table className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5" dir="rtl">
-                  <thead className="sticky top-0 z-20">
+                  <thead>
                     <tr className={theadRowCls + " sticky top-0 z-20"}>
-                      <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-20">
+                      <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+
                         <input
                           type="checkbox"
                           className="w-4 h-4 accent-black dark:accent-neutral-200"
@@ -2095,13 +2097,13 @@ export default function LettersPage() {
                           title="انتخاب همه"
                         />
                       </th>
-                      <th className="w-44 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-20">دسته بندی</th>
-                      <th className="w-44 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-20">شماره</th>
-                      <th className="w-40 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-20">تاریخ</th>
-                      <th className="w-[280px] !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-20">از/به</th>
-                      <th className="w-[220px] !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-20">شرکت/سازمان</th>
-                      <th className="min-w-[260px] !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-20">موضوع</th>
-                      <th className="w-44 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-20">اقدامات</th>
+                      <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">دسته بندی</th>
+                      <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">شماره</th>
+                      <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">تاریخ</th>
+                      <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">از/به</th>
+                      <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">شرکت/سازمان</th>
+                      <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">موضوع</th>
+                      <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">اقدامات</th>
                     </tr>
                   </thead>
 
