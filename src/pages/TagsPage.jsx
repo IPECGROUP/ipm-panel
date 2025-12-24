@@ -113,7 +113,6 @@ const CategoryCombobox = React.memo(function CategoryCombobox({
         }}
         onFocus={() => setOpen(true)}
         onBlur={() => {
-          // close a tick later so clicks on options don't steal focus
           window.setTimeout(() => setOpen(false), 120);
         }}
         disabled={disabled}
@@ -142,18 +141,17 @@ const CategoryCombobox = React.memo(function CategoryCombobox({
                 <button
                   key={c?.id ?? c?.label}
                   type="button"
-                  onMouseDown={(e) => e.preventDefault()} // keep focus on input
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     onSelect(c?.id);
                     onValueChange(c?.label || "");
                     setOpen(false);
                   }}
-                  className={`w-full text-right px-3 py-2 text-sm transition
-                              ${
-                                isSel
-                                  ? "bg-black text-white"
-                                  : "text-black hover:bg-black/5 dark:text-neutral-100 dark:hover:bg-white/10"
-                              }`}
+                  className={`w-full text-right px-3 py-2 text-sm transition ${
+                    isSel
+                      ? "bg-black text-white"
+                      : "text-black hover:bg-black/5 dark:text-neutral-100 dark:hover:bg-white/10"
+                  }`}
                 >
                   {c?.label || "—"}
                 </button>
@@ -314,7 +312,6 @@ function TagsPage() {
       .sort((a, b) => String(a?.label || "").localeCompare(String(b?.label || ""), "fa", { numeric: true }));
   }, [categories]);
 
-  // اگر کاربر دقیقاً نام دسته‌بندی را تایپ کرد، انتخاب هم انجام شود (بدون خروج از فوکوس)
   useEffect(() => {
     const v = String(catQuery || "").trim();
     if (!v) {
@@ -466,30 +463,12 @@ function TagsPage() {
           </div>
         </form>
 
-        {/* دسته‌بندی‌ها + برچسب جدید (یک بوردر مشترک و کنار هم) */}
+        {/* برچسب جدید + دسته‌بندی‌ها (یک بوردر مشترک و کنار هم) */}
         <div className="md:col-span-2 rounded-2xl border border-black/10 bg-white p-3 dark:bg-neutral-900 dark:border-neutral-800">
-          <div className="flex flex-col md:flex-row-reverse md:divide-x md:divide-x-reverse md:divide-black/10 dark:md:divide-neutral-800 gap-3 md:gap-0">
-            {/* دسته‌بندی‌ها (همین فیلد تایپ/فیلتر هم هست) */}
-            <div className="md:flex-1 md:ps-3">
-              <FieldLabel>دسته‌بندی‌ها</FieldLabel>
-              <CategoryCombobox
-                categories={categoriesSorted}
-                value={catQuery}
-                onValueChange={setCatQuery}
-                selectedId={selectedCategoryId}
-                onSelect={(id) => setSelectedCategoryId(id)}
-                inputRef={catComboRef}
-                disabled={lettersSaving}
-              />
-              {!selectedCategoryId && String(catQuery || "").trim() ? (
-                <div className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">
-                  یک دسته‌بندی معتبر انتخاب کنید.
-                </div>
-              ) : null}
-            </div>
-
-            {/* برچسب جدید */}
-            <form onSubmit={addLetterTag} className="md:flex-1 md:pe-3">
+          {/* ✅ remove extra inner divider border, keep responsive layout */}
+          <div className="flex flex-col md:flex-row-reverse gap-3">
+            {/* ✅ برچسب جدید (جاش با دسته‌بندی‌ها عوض شد) */}
+            <form onSubmit={addLetterTag} className="md:flex-1">
               <FieldLabel>برچسب جدید</FieldLabel>
               <div className="flex items-center gap-2 flex-row-reverse">
                 <AddIconBtn title="افزودن برچسب" disabled={lettersSaving || !selectedCategoryId} />
@@ -504,6 +483,23 @@ function TagsPage() {
                 />
               </div>
             </form>
+
+            {/* دسته‌بندی‌ها (کامبوباکس تایپی) */}
+            <div className="md:flex-1">
+              <FieldLabel>دسته‌بندی‌ها</FieldLabel>
+              <CategoryCombobox
+                categories={categoriesSorted}
+                value={catQuery}
+                onValueChange={setCatQuery}
+                selectedId={selectedCategoryId}
+                onSelect={(id) => setSelectedCategoryId(id)}
+                inputRef={catComboRef}
+                disabled={lettersSaving}
+              />
+              {!selectedCategoryId && String(catQuery || "").trim() ? (
+                <div className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">یک دسته‌بندی معتبر انتخاب کنید.</div>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>
@@ -558,90 +554,78 @@ function TagsPage() {
     </>
   );
 
-  const LettersTab = (
-    <>
-      {CategoriesBar}
-
-      <div className="mt-3">
-        <TableShell>
-          <thead>
-            <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
-              <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold w-44">دسته‌بندی</th>
-              <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold">برچسب‌ها</th>
-            </tr>
-          </thead>
-
-          <tbody
-            className="border-t border-neutral-300 dark:border-neutral-700
-                       [&>tr:nth-child(odd)]:bg-white [&>tr:nth-child(even)]:bg-neutral-50
-                       dark:[&>tr:nth-child(odd)]:bg-neutral-900 dark:[&>tr:nth-child(even)]:bg-neutral-800/50
-                       [&>tr]:border-b [&>tr]:border-neutral-300 dark:[&>tr]:border-neutral-700"
-          >
-            {lettersLoading ? (
-              <tr>
-                <td colSpan={2} className="py-4 text-neutral-600 dark:text-neutral-400">
-                  در حال بارگذاری…
-                </td>
-              </tr>
-            ) : (categoriesSorted || []).length === 0 ? (
-              <tr>
-                <td colSpan={2} className="py-4 text-neutral-600 dark:text-neutral-400">
-                  دسته‌بندی‌ای ثبت نشده است.
-                </td>
-              </tr>
-            ) : (
-              (categoriesSorted || []).map((c) => {
-                const catId = c?.id;
-                const list = tagsByCategory.get(String(catId)) || [];
-                return (
-                  <tr key={catId ?? c?.label}>
-                    <td className="px-3 py-3 font-semibold">{c?.label || "—"}</td>
-                    <td className="px-3 py-3">
-                      {list.length ? (
-                        <div className="flex flex-wrap items-center justify-start gap-2">
-                          {list.map((t) => (
-                            <Chip
-                              key={t?.id ?? t?.label}
-                              label={t?.label || "—"}
-                              disabled={lettersSaving}
-                              onRemove={() => deleteLetterTag(t)}
-                            />
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-neutral-500 dark:text-neutral-400">—</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </TableShell>
-      </div>
-    </>
-  );
-
-  const ExecutionTab = (
-    <>
-      {CategoriesBar}
-
+  const CategoriesTagsTable = (
+    <div className="mt-3">
       <TableShell>
         <thead>
           <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
-            <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold">اجرای پروژه‌ها</th>
+            <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold w-44">دسته‌بندی</th>
+            <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold">برچسب‌ها</th>
           </tr>
         </thead>
+
         <tbody
           className="border-t border-neutral-300 dark:border-neutral-700
                      [&>tr:nth-child(odd)]:bg-white [&>tr:nth-child(even)]:bg-neutral-50
-                     dark:[&>tr:nth-child(odd)]:bg-neutral-900 dark:[&>tr:nth-child(even)]:bg-neutral-800/50"
+                     dark:[&>tr:nth-child(odd)]:bg-neutral-900 dark:[&>tr:nth-child(even)]:bg-neutral-800/50
+                     [&>tr]:border-b [&>tr]:border-neutral-300 dark:[&>tr]:border-neutral-700"
         >
-          <tr className="border-b border-neutral-300 dark:border-neutral-700">
-            <td className="px-3 py-4 text-neutral-600 dark:text-neutral-400">—</td>
-          </tr>
+          {lettersLoading ? (
+            <tr>
+              <td colSpan={2} className="py-4 text-neutral-600 dark:text-neutral-400">
+                در حال بارگذاری…
+              </td>
+            </tr>
+          ) : (categoriesSorted || []).length === 0 ? (
+            <tr>
+              <td colSpan={2} className="py-4 text-neutral-600 dark:text-neutral-400">
+                دسته‌بندی‌ای ثبت نشده است.
+              </td>
+            </tr>
+          ) : (
+            (categoriesSorted || []).map((c) => {
+              const catId = c?.id;
+              const list = tagsByCategory.get(String(catId)) || [];
+              return (
+                <tr key={catId ?? c?.label}>
+                  <td className="px-3 py-3 font-semibold">{c?.label || "—"}</td>
+                  <td className="px-3 py-3">
+                    {list.length ? (
+                      <div className="flex flex-wrap items-center justify-start gap-2">
+                        {list.map((t) => (
+                          <Chip
+                            key={t?.id ?? t?.label}
+                            label={t?.label || "—"}
+                            disabled={lettersSaving}
+                            onRemove={() => deleteLetterTag(t)}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-neutral-500 dark:text-neutral-400">—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })
+          )}
         </tbody>
       </TableShell>
+    </div>
+  );
+
+  const LettersTab = (
+    <>
+      {CategoriesBar}
+      {CategoriesTagsTable}
+    </>
+  );
+
+  // ✅ execution table exactly like letters/documents
+  const ExecutionTab = (
+    <>
+      {CategoriesBar}
+      {CategoriesTagsTable}
     </>
   );
 
