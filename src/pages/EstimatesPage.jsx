@@ -137,18 +137,26 @@ export default function EstimatesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canAccessPage, canUseProjectsTab]);
 
+  // ✅ فقط پروژه‌های اصلی (مثل 159) — زیرمجموعه‌ها (مثل 159.1) نمایش داده نشوند
+  const topLevelProjects = useMemo(() => {
+    return (projects || []).filter((p) => {
+      const c = coreOf(p?.code);
+      return c && !String(c).includes(".");
+    });
+  }, [projects, coreOf]);
+
   const selectedProject = useMemo(
-    () => (projects || []).find((p) => String(p.id) === String(projectId)),
-    [projects, projectId],
+    () => (topLevelProjects || []).find((p) => String(p.id) === String(projectId)),
+    [topLevelProjects, projectId],
   );
 
   const sortedProjects = useMemo(() => {
-    return (projects || [])
+    return (topLevelProjects || [])
       .slice()
       .sort((a, b) =>
         String(a?.code || "").localeCompare(String(b?.code || ""), "fa", { numeric: true, sensitivity: "base" }),
       );
-  }, [projects]);
+  }, [topLevelProjects]);
 
   // months
   const monthNames = useMemo(

@@ -2078,12 +2078,14 @@ export default function LettersPage() {
           {/* Table */}
           <div className="mt-5">
             <div className={tableWrapCls}>
-              <div className="relative max-h-[55vh] overflow-y-auto overflow-x-auto">
+              <div className="relative h-[55vh] overflow-auto">
+
 
                 <table className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5" dir="rtl">
                   <thead>
-                    <tr className={theadRowCls + " sticky top-0 z-20"}>
-                      <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+                    <tr className={theadRowCls}>
+                      <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-40 bg-neutral-200 dark:bg-white/10">
+
 
                         <input
                           type="checkbox"
