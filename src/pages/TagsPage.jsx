@@ -5,29 +5,32 @@ import Card from "../components/ui/Card.jsx";
 function TagsPage() {
   const API_BASE = (window.API_URL || "/api").replace(/\/+$/, "");
 
-  const api = useCallback(async (path, opt = {}) => {
-    const res = await fetch(API_BASE + path, {
-      credentials: "include",
-      cache: "no-store",
-      ...opt,
-      headers: {
-        "Content-Type": "application/json",
-        ...(opt.headers || {}),
-      },
-    });
+  const api = useCallback(
+    async (path, opt = {}) => {
+      const res = await fetch(API_BASE + path, {
+        credentials: "include",
+        cache: "no-store",
+        ...opt,
+        headers: {
+          "Content-Type": "application/json",
+          ...(opt.headers || {}),
+        },
+      });
 
-    const txt = await res.text();
-    let data = {};
-    try {
-      data = txt ? JSON.parse(txt) : {};
-    } catch (_e) {
-      const snippet = String(txt || "").slice(0, 300);
-      throw new Error(`bad_json_response: ${res.status} ${res.statusText} :: ${snippet}`);
-    }
+      const txt = await res.text();
+      let data = {};
+      try {
+        data = txt ? JSON.parse(txt) : {};
+      } catch (_e) {
+        const snippet = String(txt || "").slice(0, 300);
+        throw new Error(`bad_json_response: ${res.status} ${res.statusText} :: ${snippet}`);
+      }
 
-    if (!res.ok) throw new Error(data?.error || data?.message || "request_failed");
-    return data;
-  }, [API_BASE]);
+      if (!res.ok) throw new Error(data?.error || data?.message || "request_failed");
+      return data;
+    },
+    [API_BASE],
+  );
 
   const TABS = useMemo(
     () => [
@@ -40,7 +43,7 @@ function TagsPage() {
 
   const [activeTab, setActiveTab] = useState("projects");
 
-  // ====== Projects (read from Projects page) ======
+  // ====== Projects ======
   const [projects, setProjects] = useState([]);
   const [projLoading, setProjLoading] = useState(false);
   const [projErr, setProjErr] = useState("");
@@ -91,7 +94,7 @@ function TagsPage() {
     }
   };
 
-  // ====== Letters & Documents (categories + tags) ======
+  // ====== Letters/Execution categories + tags ======
   const [lettersLoading, setLettersLoading] = useState(false);
   const [lettersErr, setLettersErr] = useState("");
 
@@ -105,8 +108,9 @@ function TagsPage() {
   const [newTag, setNewTag] = useState("");
   const [lettersSaving, setLettersSaving] = useState(false);
 
-  const catDatalistId = "tags-categories-datalist";
   const catInputRef = useRef(null);
+  const catQueryRef = useRef(null);
+  const newTagRef = useRef(null);
 
   const loadLettersTags = useCallback(async () => {
     setLettersLoading(true);
@@ -119,7 +123,6 @@ function TagsPage() {
         setCategories(Array.isArray(cats) ? cats : []);
         setTags(Array.isArray(tgs) ? tgs : []);
       } else {
-        // fallback: اگر بک‌اند فعلاً فقط items بده
         const items = r.items || [];
         setCategories(Array.isArray(items) ? items.filter((x) => x?.type === "category") : []);
         setTags(Array.isArray(items) ? items.filter((x) => x?.type !== "category") : []);
@@ -134,16 +137,19 @@ function TagsPage() {
   }, [api]);
 
   useEffect(() => {
-    if (activeTab !== "letters") return;
+    if (activeTab !== "letters" && activeTab !== "execution") return;
     loadLettersTags().catch(() => {});
   }, [activeTab, loadLettersTags]);
 
   const categoriesSorted = useMemo(() => {
     return (categories || [])
       .slice()
-      .sort((a, b) => String(a?.label || "").localeCompare(String(b?.label || ""), "fa", { numeric: true }));
+      .sort((a, b) =>
+        String(a?.label || "").localeCompare(String(b?.label || ""), "fa", { numeric: true }),
+      );
   }, [categories]);
 
+  // انتخاب دسته‌بندی: هم با تایپ هم با انتخاب از دراپ‌داون
   useEffect(() => {
     const v = String(catQuery || "").trim();
     if (!v) {
@@ -165,7 +171,9 @@ function TagsPage() {
       map.get(key).push(t);
     });
     for (const [k, arr] of map.entries()) {
-      arr.sort((a, b) => String(a?.label || "").localeCompare(String(b?.label || ""), "fa", { numeric: true }));
+      arr.sort((a, b) =>
+        String(a?.label || "").localeCompare(String(b?.label || ""), "fa", { numeric: true }),
+      );
       map.set(k, arr);
     }
     return map;
@@ -197,7 +205,7 @@ function TagsPage() {
         setNewCategory("");
         setCatQuery(item.label || v);
         setSelectedCategoryId(item.id);
-        setTimeout(() => catInputRef.current?.focus?.(), 50);
+        requestAnimationFrame(() => catQueryRef.current?.focus?.());
       } else {
         await loadLettersTags();
         setNewCategory("");
@@ -240,6 +248,7 @@ function TagsPage() {
       if (item?.id) {
         setTags((prev) => [...(prev || []), item]);
         setNewTag("");
+        requestAnimationFrame(() => newTagRef.current?.focus?.());
       } else {
         await loadLettersTags();
         setNewTag("");
@@ -300,11 +309,15 @@ function TagsPage() {
           type="button"
           onClick={onRemove}
           disabled={disabled}
-          className="h-5 w-5 grid place-items-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-50"
+          className="h-4 w-4 grid place-items-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-50"
           aria-label="حذف"
           title="حذف"
         >
-          <img src="/images/icons/bastan.svg" alt="" className="w-3.5 h-3.5 opacity-70 hover:opacity-100 dark:invert" />
+          <img
+            src="/images/icons/bastan.svg"
+            alt=""
+            className="w-3 h-3 opacity-70 hover:opacity-100 dark:invert"
+          />
         </button>
       )}
     </span>
@@ -320,9 +333,124 @@ function TagsPage() {
     </div>
   );
 
+  const FieldLabel = ({ children }) => (
+    <label className="block text-[11px] md:text-xs text-neutral-600 dark:text-neutral-300 mb-1">{children}</label>
+  );
+
+  const AddIconBtn = ({ title, disabled }) => (
+    <button
+      type="submit"
+      disabled={disabled}
+      className="h-10 w-10 rounded-xl bg-white text-black border border-black/15 hover:bg-black/5
+                 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-800 dark:hover:bg-neutral-200
+                 disabled:opacity-50 grid place-items-center shrink-0"
+      aria-label={title}
+      title={title}
+    >
+      <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5" />
+    </button>
+  );
+
+  // نوار سه‌فیلدی (کنار هم) + باکس‌های جدا
+  const CategoriesBar = () => (
+    <div className="px-[15px]">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* باکس دسته‌بندی جدید */}
+        <form
+          onSubmit={addCategory}
+          className="rounded-2xl border border-black/10 bg-white p-3 dark:bg-neutral-900 dark:border-neutral-800"
+        >
+          <FieldLabel>دسته‌بندی جدید</FieldLabel>
+          <div className="flex items-center gap-2 flex-row-reverse">
+            <AddIconBtn title="افزودن دسته‌بندی" disabled={lettersSaving} />
+            <input
+              ref={catInputRef}
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value)}
+              placeholder="نام دسته‌بندی..."
+              className="flex-1 h-10 rounded-xl px-3 bg-white text-black placeholder-neutral-400
+                         border border-black/15 outline-none focus:ring-2 focus:ring-black/10
+                         dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+            />
+          </div>
+        </form>
+
+        {/* باکس دسته‌بندی‌ها */}
+        <div className="rounded-2xl border border-black/10 bg-white p-3 dark:bg-neutral-900 dark:border-neutral-800">
+          <FieldLabel>دسته‌بندی‌ها</FieldLabel>
+
+          <div className="relative">
+            <select
+              value={selectedCategoryId ? String(selectedCategoryId) : ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                setSelectedCategoryId(v ? Number(v) : null);
+                const found = (categoriesSorted || []).find((c) => String(c?.id) === String(v));
+                setCatQuery(found?.label || "");
+                requestAnimationFrame(() => catQueryRef.current?.focus?.());
+              }}
+              className="appearance-none w-full h-10 rounded-xl px-3 pe-10 bg-white text-black
+                         border border-black/15 outline-none focus:ring-2 focus:ring-black/10
+                         dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+              aria-label="انتخاب دسته‌بندی"
+            >
+              <option value="">انتخاب کنید…</option>
+              {(categoriesSorted || []).map((c) => (
+                <option key={c?.id ?? c?.label} value={c?.id}>
+                  {c?.label || ""}
+                </option>
+              ))}
+            </select>
+
+            {/* آیکن دراپ‌داون (مثل بقیه دراپ‌داون‌ها) */}
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
+              <img src="/images/icons/dropdown.svg" alt="" className="w-4 h-4 opacity-70 dark:invert" />
+            </span>
+          </div>
+
+          {/* تایپ برای فیلتر/جستجو (فیچر کمکی) */}
+          <input
+            ref={catQueryRef}
+            value={catQuery}
+            onChange={(e) => setCatQuery(e.target.value)}
+            placeholder="برای فیلتر سریع تایپ کنید…"
+            className="mt-2 w-full h-10 rounded-xl px-3 bg-white text-black placeholder-neutral-400
+                       border border-black/15 outline-none focus:ring-2 focus:ring-black/10
+                       dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+          />
+          {!selectedCategoryId && String(catQuery || "").trim() ? (
+            <div className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">یک دسته‌بندی معتبر انتخاب کنید.</div>
+          ) : null}
+        </div>
+
+        {/* باکس برچسب جدید */}
+        <form
+          onSubmit={addLetterTag}
+          className="rounded-2xl border border-black/10 bg-white p-3 dark:bg-neutral-900 dark:border-neutral-800"
+        >
+          <FieldLabel>برچسب جدید</FieldLabel>
+          <div className="flex items-center gap-2 flex-row-reverse">
+            <AddIconBtn title="افزودن برچسب" disabled={lettersSaving || !selectedCategoryId} />
+            <input
+              ref={newTagRef}
+              value={newTag}
+              onChange={(e) => setNewTag(e.target.value)}
+              placeholder="نام برچسب..."
+              className="flex-1 h-10 rounded-xl px-3 bg-white text-black placeholder-neutral-400
+                         border border-black/15 outline-none focus:ring-2 focus:ring-black/10
+                         dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+            />
+          </div>
+        </form>
+      </div>
+
+      {lettersErr && <div className="mt-2 text-sm text-red-600 dark:text-red-400">{lettersErr}</div>}
+    </div>
+  );
+
   const ProjectsTab = () => (
     <>
-      {projErr && <div className="text-sm text-red-600 dark:text-red-400 mb-3">{projErr}</div>}
+      {projErr && <div className="text-sm text-red-600 dark:text-red-400 mb-3 px-[15px]">{projErr}</div>}
 
       <TableShell>
         <thead>
@@ -368,87 +496,7 @@ function TagsPage() {
 
   const LettersTab = () => (
     <>
-      <div className="space-y-3 px-[15px]">
-        {/* دسته‌بندی جدید */}
-        <form onSubmit={addCategory} className="flex items-center gap-2 flex-row-reverse">
-          <button
-            type="submit"
-            disabled={lettersSaving}
-            className="h-10 w-10 rounded-xl bg-white text-black border border-black/15 hover:bg-black/5
-                       dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-800 dark:hover:bg-neutral-200
-                       disabled:opacity-50 grid place-items-center"
-            aria-label="افزودن دسته‌بندی"
-            title="افزودن دسته‌بندی"
-          >
-            <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5" />
-          </button>
-
-          <div className="flex-1">
-            <label className="block text-xs text-neutral-600 dark:text-neutral-300 mb-1">دسته‌بندی جدید</label>
-            <input
-              value={newCategory}
-              onChange={(e) => setNewCategory(e.target.value)}
-              placeholder="نام دسته‌بندی..."
-              className="w-full h-10 rounded-xl px-3 bg-white text-black placeholder-neutral-400
-                         border border-black/15 outline-none focus:ring-2 focus:ring-black/10
-                         dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-            />
-          </div>
-        </form>
-
-        {/* انتخاب دسته‌بندی + برچسب جدید */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs text-neutral-600 dark:text-neutral-300 mb-1">دسته‌بندی‌ها</label>
-            <input
-              ref={catInputRef}
-              list={catDatalistId}
-              value={catQuery}
-              onChange={(e) => setCatQuery(e.target.value)}
-              placeholder="برای جستجو تایپ کنید…"
-              className="w-full h-10 rounded-xl px-3 bg-white text-black placeholder-neutral-400
-                         border border-black/15 outline-none focus:ring-2 focus:ring-black/10
-                         dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-            />
-            <datalist id={catDatalistId}>
-              {(categoriesSorted || []).map((c) => (
-                <option key={c?.id ?? c?.label} value={c?.label || ""} />
-              ))}
-            </datalist>
-            {!selectedCategoryId && String(catQuery || "").trim() ? (
-              <div className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">یک دسته‌بندی معتبر انتخاب کنید.</div>
-            ) : null}
-          </div>
-
-          <form onSubmit={addLetterTag} className="flex items-end gap-2 flex-row-reverse">
-            <button
-              type="submit"
-              disabled={lettersSaving || !selectedCategoryId}
-              className="h-10 w-10 rounded-xl bg-white text-black border border-black/15 hover:bg-black/5
-                         dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-800 dark:hover:bg-neutral-200
-                         disabled:opacity-50 grid place-items-center"
-              aria-label="افزودن برچسب"
-              title="افزودن برچسب"
-            >
-              <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5" />
-            </button>
-
-            <div className="flex-1">
-              <label className="block text-xs text-neutral-600 dark:text-neutral-300 mb-1">برچسب جدید</label>
-              <input
-                value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-                placeholder="نام برچسب..."
-                className="w-full h-10 rounded-xl px-3 bg-white text-black placeholder-neutral-400
-                           border border-black/15 outline-none focus:ring-2 focus:ring-black/10
-                           dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-              />
-            </div>
-          </form>
-        </div>
-
-        {lettersErr && <div className="text-sm text-red-600 dark:text-red-400">{lettersErr}</div>}
-      </div>
+      <CategoriesBar />
 
       <div className="mt-3">
         <TableShell>
@@ -511,22 +559,26 @@ function TagsPage() {
   );
 
   const ExecutionTab = () => (
-    <TableShell>
-      <thead>
-        <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
-          <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold">اجرای پروژه‌ها</th>
-        </tr>
-      </thead>
-      <tbody
-        className="border-t border-neutral-300 dark:border-neutral-700
-                   [&>tr:nth-child(odd)]:bg-white [&>tr:nth-child(even)]:bg-neutral-50
-                   dark:[&>tr:nth-child(odd)]:bg-neutral-900 dark:[&>tr:nth-child(even)]:bg-neutral-800/50"
-      >
-        <tr className="border-b border-neutral-300 dark:border-neutral-700">
-          <td className="px-3 py-4 text-neutral-600 dark:text-neutral-400">—</td>
-        </tr>
-      </tbody>
-    </TableShell>
+    <>
+      <CategoriesBar />
+
+      <TableShell>
+        <thead>
+          <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
+            <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold">اجرای پروژه‌ها</th>
+          </tr>
+        </thead>
+        <tbody
+          className="border-t border-neutral-300 dark:border-neutral-700
+                     [&>tr:nth-child(odd)]:bg-white [&>tr:nth-child(even)]:bg-neutral-50
+                     dark:[&>tr:nth-child(odd)]:bg-neutral-900 dark:[&>tr:nth-child(even)]:bg-neutral-800/50"
+        >
+          <tr className="border-b border-neutral-300 dark:border-neutral-700">
+            <td className="px-3 py-4 text-neutral-600 dark:text-neutral-400">—</td>
+          </tr>
+        </tbody>
+      </TableShell>
+    </>
   );
 
   return (
@@ -544,7 +596,6 @@ function TagsPage() {
 
       <div className="space-y-4">
         <TabButtons />
-
         {activeTab === "projects" ? <ProjectsTab /> : null}
         {activeTab === "letters" ? <LettersTab /> : null}
         {activeTab === "execution" ? <ExecutionTab /> : null}
