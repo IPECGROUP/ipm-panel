@@ -49,11 +49,15 @@ const TabButtons = React.memo(function TabButtons({ tabs, activeId, onChange }) 
   );
 });
 
+// ✅ Table style aligned to BaseCurrenciesPage (standard)
 const TableShell = React.memo(function TableShell({ children }) {
   return (
     <div className="px-[15px] pb-4">
       <div className="rounded-2xl border border-black/10 overflow-hidden bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-        <table className="w-full text-sm [&_th]:text-center [&_td]:text-center" dir="rtl">
+        <table
+          className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
+          dir="rtl"
+        >
           {children}
         </table>
       </div>
@@ -672,7 +676,7 @@ function TagsPage() {
           </thead>
 
           <tbody
-            className="border-t border-neutral-300 dark:border-neutral-700
+            className="[&_td]:text-black dark:[&_td]:text-neutral-100
                        [&>tr:nth-child(odd)]:bg-white [&>tr:nth-child(even)]:bg-neutral-50
                        dark:[&>tr:nth-child(odd)]:bg-neutral-900 dark:[&>tr:nth-child(even)]:bg-neutral-800/50
                        [&>tr]:border-b [&>tr]:border-neutral-300 dark:[&>tr]:border-neutral-700"
@@ -716,7 +720,7 @@ function TagsPage() {
         </thead>
 
         <tbody
-          className="border-t border-neutral-300 dark:border-neutral-700
+          className="[&_td]:text-black dark:[&_td]:text-neutral-100
                      [&>tr:nth-child(odd)]:bg-white [&>tr:nth-child(even)]:bg-neutral-50
                      dark:[&>tr:nth-child(odd)]:bg-neutral-900 dark:[&>tr:nth-child(even)]:bg-neutral-800/50
                      [&>tr]:border-b [&>tr]:border-neutral-300 dark:[&>tr]:border-neutral-700"
