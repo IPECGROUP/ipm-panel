@@ -302,6 +302,7 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
               <div className={theme === "dark" ? "text-white/70 text-xs" : "text-neutral-600 text-xs"}>
                 پیش نمایش: <span className="font-semibold">{toFaDigits(preview)}</span>
               </div>
+
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -1576,6 +1577,15 @@ const allTags = useMemo(() => {
   ];
 }, [tagsByScope]);
 
+const filterSelectedTags = useMemo(() => {
+  const ids = (Array.isArray(filterTagIds) ? filterTagIds : []).map(String);
+  const map = new Map((allTags || []).map((t) => [String(t?.id), t]));
+  return ids
+    .map((id) => map.get(id) || { id, label: id })
+    .filter(Boolean);
+}, [filterTagIds, allTags]);
+
+
 const openTagPicker = async (forWhat) => {
   setTagPickFor(forWhat);
 
@@ -1898,16 +1908,16 @@ const ensureTagsForKind = async (kind) => {
                     <img src="/images/icons/afzodan.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "dark:invert" : "")} />
                   </button>
 
-                  {tagCapsFor(filterTagIds).map((t) => {
+                 {filterSelectedTags.map((t) => {
                     const id = String(t?.id);
                     const label = tagLabelOf(t);
-                    const active = filterTagIds.some((x) => String(x) === id);
+
                     return (
                       <button
                         key={id}
                         type="button"
-                        onClick={() => toggleFilterTag(id)}
-                        className={active ? selectedTagChipCls : chipCls}
+                        onClick={() => openTagPicker("filter")}   // ✅ کلیک حذف نکنه؛ فقط پاپ‌اپ انتخاب باز شه
+                        className={selectedTagChipCls}            // ✅ همیشه حالت انتخاب‌شده
                         title={label}
                         aria-label={label}
                       >
