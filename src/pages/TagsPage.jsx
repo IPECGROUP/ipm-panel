@@ -704,8 +704,8 @@ function TagsPage() {
             <TR>
               <TD className="px-3 font-semibold">پروژه‌ها</TD>
 
-              {/* ✅ فاصله خیلی کم بالا/پایین برای تگ‌ها */}
-              <TD className="px-3 py-2">
+              {/* ✅ دقیقاً 6px فاصله بالا/پایین */}
+              <TD className="px-3 !py-[6px]">
                 {lettersLoading ? (
                   <span className="text-neutral-600 dark:text-neutral-400">در حال بارگذاری…</span>
                 ) : (projectTagsList || []).length === 0 ? (
@@ -783,8 +783,8 @@ function TagsPage() {
                 <TR key={catId ?? c?.label}>
                   <TD className={`px-3 font-semibold ${tdBorder}`}>{c?.label || "—"}</TD>
 
-                  {/* ✅ فاصله خیلی کم بالا/پایین برای تگ‌ها (هر سه تب: letters/execution هم از همین استفاده می‌کنن) */}
-                  <TD className={`px-3 py-2 ${tdBorder}`}>
+                  {/* ✅ دقیقاً 6px فاصله بالا/پایین (برای تب اجرای پروژه‌ها هم همین جدول استفاده میشه) */}
+                  <TD className={`px-3 !py-[6px] ${tdBorder}`}>
                     {list.length ? (
                       <div className="flex flex-wrap items-center justify-start gap-2">
                         {list.map((t) => (
