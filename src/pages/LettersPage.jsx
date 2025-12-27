@@ -472,7 +472,76 @@ const [formKind, setFormKind] = useState("incoming"); // نوع نامه داخ�
   const [filterSubject, setFilterSubject] = useState("");
   const [filterOrg, setFilterOrg] = useState("");
   const [filterLetterNo, setFilterLetterNo] = useState("");
-const [filterTagRecentIds, setFilterTagRecentIds] = useState([]);
+const [filterTagPinnedIds, setFilterTagPinnedIds] = useState([]); // ✅ برچسب‌های سنجاق‌شده برای همین کاربر)
+
+
+
+// ===== Per-user pinned tags for filter (NO localStorage) =====
+const TAG_PREFS_SCOPE = "letters_filter"; // اسم کلید برای بک‌اند (بعداً هم همینو استفاده می‌کنیم)
+const TAG_PREFS_LIMIT = 24;
+
+const normalizeIdList = (arr) => {
+  const a = Array.isArray(arr) ? arr : [];
+  const out = [];
+  const seen = new Set();
+  for (const x of a) {
+    const s = String(x || "").trim();
+    if (!s || seen.has(s)) continue;
+    seen.add(s);
+    out.push(s);
+  }
+  return out;
+};
+
+const savePinnedFilterTags = async (ids) => {
+  // بک‌اند بعداً پیاده میشه. فعلاً اگر نبود، نباید چیزی خراب بشه.
+  try {
+    await api(`/tag-prefs?scope=${encodeURIComponent(TAG_PREFS_SCOPE)}`, {
+      method: "PUT",
+      body: JSON.stringify({ scope: TAG_PREFS_SCOPE, ids }),
+    });
+  } catch {}
+};
+
+const loadPinnedFilterTags = async () => {
+  try {
+    const r = await api(`/tag-prefs?scope=${encodeURIComponent(TAG_PREFS_SCOPE)}`);
+    const ids = normalizeIdList(r?.ids || r?.items || r?.data?.ids || []);
+    setFilterTagPinnedIds(ids.slice(0, TAG_PREFS_LIMIT));
+  } catch {
+    // اگر بک‌اند هنوز نداره => پیش‌فرض خالی (فقط quick chips + افزودن نمایش داده میشه)
+    setFilterTagPinnedIds([]);
+  }
+};
+
+useEffect(() => {
+  loadPinnedFilterTags();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
+
+// اضافه کردن/بردن به اول لیست (و ذخیره در بک‌اند)
+const bumpPinnedFilterTag = (id) => {
+  const sid = String(id || "").trim();
+  if (!sid) return;
+
+  setFilterTagPinnedIds((prev) => {
+    const next = normalizeIdList([sid, ...(prev || [])]).slice(0, TAG_PREFS_LIMIT);
+    // fire & forget
+    savePinnedFilterTags(next);
+    return next;
+  });
+};
+
+// وقتی چندتا برچسب از picker انتخاب شد
+const mergePinnedFilterTags = (ids) => {
+  const arr = normalizeIdList(ids);
+  setFilterTagPinnedIds((prev) => {
+    const next = normalizeIdList([...arr, ...(prev || [])]).slice(0, TAG_PREFS_LIMIT);
+    savePinnedFilterTags(next);
+    return next;
+  });
+};
+
 
 
   const resetAllFilters = () => {
@@ -484,28 +553,6 @@ const [filterTagRecentIds, setFilterTagRecentIds] = useState([]);
   setFilterOrg("");
   setFilterLetterNo("");
 };
-
-useEffect(() => {
-  setFilterTagRecentIds((prev) => {
-    const next = [];
-    const pushUnique = (x) => {
-      const s = String(x || "");
-      if (!s) return;
-      if (!next.includes(s)) next.push(s);
-    };
-
-    // اول انتخاب‌شده‌ها
-    (filterTagIds || []).forEach(pushUnique);
-    // بعد قبلی‌ها
-    (prev || []).forEach(pushUnique);
-
-    // سقف
-    return next.slice(0, 24);
-  });
-}, [filterTagIds]);
-
-
-
   // ===== Table selection + pagination =====
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -1611,32 +1658,22 @@ const latestAllTags = useMemo(() => {
 }, [allTags]);
 
 const filterTagCaps = useMemo(() => {
-  const ids = [
-    ...(Array.isArray(filterTagIds) ? filterTagIds.map(String) : []),
-    ...(Array.isArray(filterTagRecentIds) ? filterTagRecentIds.map(String) : []),
-  ];
-
   const map = new Map((Array.isArray(allTags) ? allTags : []).map((t) => [String(t?.id), t]));
   const out = [];
   const seen = new Set();
 
-  const pushId = (id) => {
-    const sid = String(id || "");
+  (Array.isArray(filterTagPinnedIds) ? filterTagPinnedIds : []).forEach((id) => {
+    const sid = String(id || "").trim();
     if (!sid || seen.has(sid)) return;
     const t = map.get(sid);
     if (!t) return;
     out.push(t);
     seen.add(sid);
-  };
-
-  // اول: selected + recent
-  ids.forEach(pushId);
-
-  // بعد: latest
-  (latestAllTags || []).forEach((t) => pushId(t?.id));
+  });
 
   return out;
-}, [filterTagIds, filterTagRecentIds, allTags, latestAllTags]);
+}, [filterTagPinnedIds, allTags]);
+
 
 
 
@@ -1681,12 +1718,16 @@ const applyPickedTags = () => {
   const ids = (tagPickDraftIds || []).map(String);
 
   if (tagPickFor === "filter") {
-    setFilterTagIds(ids);
-  } else {
-    if (tagPickKind === "letters") setIncomingTagIds(ids);
-    else if (tagPickKind === "projects") setOutgoingTagIds(ids);
-    else setInternalTagIds(ids); // execution
-  }
+  setFilterTagIds(ids);
+
+  // ✅ هرچی انتخاب شد، بیاد قبل "افزودن" (یعنی وارد pinned ها بشه)
+  mergePinnedFilterTags(ids);
+} else {
+  if (tagPickKind === "letters") setIncomingTagIds(ids);
+  else if (tagPickKind === "projects") setOutgoingTagIds(ids);
+  else setInternalTagIds(ids);
+}
+
 
   setTagPickOpen(false);
 };
@@ -1912,6 +1953,10 @@ const ensureTagsForKind = async (kind) => {
                 </div>
               </div>
 
+
+
+
+
               {/* Tags + Quick chips (moved here) */}
               <div>
                 <div className={labelCls}>برچسب ها</div>
@@ -1922,14 +1967,14 @@ const ensureTagsForKind = async (kind) => {
                       key={k}
                       type="button"
                       onClick={() => {
-  if (filterQuick === k) {
-    setFilterQuick("");
-    setFilterFromDate("");
-    setFilterToDate("");
-  } else {
-    setFilterQuick(k);
-  }
-}}
+                          if (filterQuick === k) {
+                            setFilterQuick("");
+                            setFilterFromDate("");
+                            setFilterToDate("");
+                          } else {
+                            setFilterQuick(k);
+                          }
+                        }}
 
                       className={
                         (filterQuick === k
@@ -1995,6 +2040,84 @@ const ensureTagsForKind = async (kind) => {
               </div>
             </div>
           )}
+
+<div className="flex flex-wrap items-center gap-2">
+  {/* 1) Quick chips */}
+  {QUICK_CHIPS.map(([k, lab]) => (
+    <button
+      key={k}
+      type="button"
+      onClick={() => {
+        if (filterQuick === k) {
+          setFilterQuick("");
+          setFilterFromDate("");
+          setFilterToDate("");
+        } else {
+          setFilterQuick(k);
+        }
+      }}
+      className={
+        (filterQuick === k
+          ? theme === "dark"
+            ? chipBase + " border-white/15 bg-white text-black"
+            : chipBase + " border-black/15 bg-black text-white"
+          : chipCls) + " h-10"
+      }
+      title={lab}
+      aria-label={lab}
+    >
+      {lab}
+    </button>
+  ))}
+
+  {/* 2) Pinned user tags (قبل از افزودن) */}
+  {filterTagCaps.map((t) => {
+    const id = String(t?.id);
+    const label = tagLabelOf(t);
+    const active = (filterTagIds || []).some((x) => String(x) === id);
+
+    return (
+      <button
+        key={id}
+        type="button"
+        onClick={() => {
+          // ✅ این برچسب برای همین کاربر سنجاق میشه و میاد جلو
+          bumpPinnedFilterTag(id);
+          toggleFilterTag(id);
+        }}
+        className={(active ? selectedTagChipCls : chipCls) + " h-10"}
+        title={label}
+        aria-label={label}
+      >
+        <span className="truncate max-w-[200px]">{label}</span>
+      </button>
+    );
+  })}
+
+  {/* 3) Add button (همیشه آخر) */}
+  <button
+    type="button"
+    onClick={() => openTagPicker("filter")}
+    className={
+      "h-10 px-4 rounded-full border text-xs font-semibold transition inline-flex items-center gap-2 " +
+      (theme === "dark"
+        ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+        : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
+    }
+    aria-label="افزودن برچسب"
+    title="افزودن برچسب"
+  >
+    <span>افزودن</span>
+    <img
+      src="/images/icons/afzodan.svg"
+      alt=""
+      className={"w-5 h-5 " + (theme === "dark" ? "dark:invert" : "")}
+    />
+  </button>
+</div>
+
+
+
 
           {/* Create/Edit form */}
           <div className="mt-4">
