@@ -5,9 +5,9 @@ import Card from "../components/ui/Card.jsx";
 
 
 const TAB_ACTIVE_BG = {
-  incoming: "#A3CCDA",
-  outgoing: "#BDE3C3",
-  internal: "#F8F7BA",
+  incoming: "#0046FF",
+  outgoing: "#8BAE66",
+  internal: "#FF8040",
 };
 
 const TABS = [
@@ -1751,7 +1751,7 @@ const ensureTagsForKind = async (kind) => {
       ? "bg-transparent text-white border-white/15 hover:bg-white/5"
       : "bg-white text-neutral-900 border-black/15 hover:bg-black/[0.02]"
     : active
-    ? "text-neutral-900"
+     ? "text-white"
     : theme === "dark"
     ? "bg-transparent text-white hover:bg-white/5"
     : "bg-white text-neutral-900 hover:bg-black/[0.02]");
@@ -1916,7 +1916,8 @@ const ensureTagsForKind = async (kind) => {
                       <button
                         key={id}
                         type="button"
-                        onClick={() => openTagPicker("filter")}   // ✅ کلیک حذف نکنه؛ فقط پاپ‌اپ انتخاب باز شه
+                        onClick={() => toggleFilterTag(id)}
+   // ✅ کلیک حذف نکنه؛ فقط پاپ‌اپ انتخاب باز شه
                         className={selectedTagChipCls}            // ✅ همیشه حالت انتخاب‌شده
                         title={label}
                         aria-label={label}
@@ -2284,19 +2285,20 @@ else setInternalAttachmentTitle(v);
 
                         const rowBg = isOutgoing
                           ? theme === "dark"
-                            ? "bg-[#1a7431]/15 hover:bg-[#1a7431]/20"
-                            : "bg-[#1a7431]/[0.06] hover:bg-[#1a7431]/[0.09]"
+                            ? "bg-[#8BAE66]/15 hover:bg-[#8BAE66]/20"
+                            : "bg-[#8BAE66]/[0.06] hover:bg-[#8BAE66]/[0.09]"
                           : isIncoming
                           ? theme === "dark"
-                            ? "bg-[#4895ef]/15 hover:bg-[#4895ef]/20"
-                            : "bg-[#4895ef]/[0.06] hover:bg-[#4895ef]/[0.09]"
+                            ? "bg-[#0046FF]/15 hover:bg-[#0046FF]/20"
+                            : "bg-[#0046FF]/[0.06] hover:bg-[#0046FF]/[0.09]"
                           : isInternal
                           ? theme === "dark"
-                            ? "bg-[#f48224]/15 hover:bg-[#f48224]/20"
-                            : "bg-[#f48224]/[0.07] hover:bg-[#f48224]/[0.10]"
+                            ? "bg-[#FF8040]/15 hover:bg-[#FF8040]/20"
+                            : "bg-[#FF8040]/[0.07] hover:bg-[#FF8040]/[0.10]"
                           : theme === "dark"
                           ? "bg-white/5 hover:bg-white/10"
                           : "bg-black/[0.02] hover:bg-black/[0.04]";
+
 
                         return (
                           <tr key={id} className={rowBg + " transition-colors"}>
@@ -2732,7 +2734,7 @@ else setInternalAttachmentTitle(v);
 
 {tagPickOpen &&
   createPortal(
-    <div className="fixed inset-0 z-[9999]">
+    <div className="fixed inset-0 z-[9999]" dir="rtl">
       <div
         className="absolute inset-0 bg-black/55 backdrop-blur-sm"
         onClick={() => setTagPickOpen(false)}
