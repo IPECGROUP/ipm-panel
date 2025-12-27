@@ -217,7 +217,9 @@ function TagsPage() {
   const [projects, setProjects] = useState([]);
   const [projLoading, setProjLoading] = useState(false);
   const [projErr, setProjErr] = useState("");
-  const [projDeletingId, setProjDeletingId] = useState(null);
+
+  const [projPickId, setProjPickId] = useState("");
+  const [projectTagIds, setProjectTagIds] = useState([]);
 
   useEffect(() => {
     if (activeTab !== "projects") return;
@@ -245,20 +247,38 @@ function TagsPage() {
     };
   }, [activeTab, api]);
 
-  const removeProject = async (p) => {
-    const id = p?.id;
+  const projectsSorted = useMemo(() => {
+    return (projects || [])
+      .slice()
+      .sort((a, b) => String(a?.code || "").localeCompare(String(b?.code || ""), "fa", { numeric: true }));
+  }, [projects]);
+
+  const projectTagItems = useMemo(() => {
+    const byId = new Map((projectsSorted || []).map((p) => [String(p?.id), p]));
+    return (projectTagIds || [])
+      .map((id) => byId.get(String(id)))
+      .filter(Boolean);
+  }, [projectTagIds, projectsSorted]);
+
+  const addProjectTag = async (e) => {
+    e?.preventDefault();
+    const id = String(projPickId || "").trim();
     if (!id) return;
 
-    setProjDeletingId(id);
-    setProjErr("");
-    try {
-      await api("/projects", { method: "DELETE", body: JSON.stringify({ id }) });
-      setProjects((prev) => (prev || []).filter((x) => String(x?.id) !== String(id)));
-    } catch (e) {
-      setProjErr(e.message || "خطا در حذف پروژه");
-    } finally {
-      setProjDeletingId(null);
+    const exists = (projectTagIds || []).some((x) => String(x) === id);
+    if (exists) {
+      setProjPickId("");
+      return;
     }
+
+    setProjectTagIds((prev) => [...(prev || []), id]);
+    setProjPickId("");
+  };
+
+  const removeProjectTag = async (p) => {
+    const id = p?.id;
+    if (!id) return;
+    setProjectTagIds((prev) => (prev || []).filter((x) => String(x) !== String(id)));
   };
 
   // ====== Letters/Execution categories + tags ======
@@ -559,49 +579,82 @@ function TagsPage() {
     </div>
   );
 
+  const ProjectsBar = (
+    <div className="px-[15px]">
+      <form
+        onSubmit={addProjectTag}
+        className="rounded-2xl border border-black/10 bg-white p-3 dark:bg-neutral-900 dark:border-neutral-800"
+      >
+        <FieldLabel>افزودن پروژه به برچسب‌ها</FieldLabel>
+        <div className="flex items-center gap-2 flex-row-reverse">
+          <AddIconBtn title="افزودن پروژه" disabled={projLoading || !String(projPickId || "").trim()} />
+          <select
+            value={projPickId}
+            onChange={(e) => setProjPickId(e.target.value)}
+            className="flex-1 h-10 rounded-xl px-3 bg-white text-black
+                       border border-black/15 outline-none focus:ring-2 focus:ring-black/10
+                       dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50
+                       disabled:opacity-60"
+            disabled={projLoading}
+            aria-label="انتخاب پروژه"
+          >
+            <option value="">انتخاب پروژه…</option>
+            {(projectsSorted || []).map((p) => {
+              const label = `${p?.code || "—"} - ${p?.name || ""}`.trim();
+              return (
+                <option key={p?.id ?? label} value={p?.id ?? ""}>
+                  {label}
+                </option>
+              );
+            })}
+          </select>
+        </div>
+      </form>
+    </div>
+  );
+
   const ProjectsTab = (
     <>
       {projErr && <div className="text-sm text-red-600 dark:text-red-400 mb-3 px-[15px]">{projErr}</div>}
 
-      <TableShell>
-        <thead>
-          <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
-            <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold w-44">عنوان</th>
-            <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold">برچسب‌ها</th>
-          </tr>
-        </thead>
+      {ProjectsBar}
 
-        <tbody
-          className="border-t border-neutral-300 dark:border-neutral-700
-                     [&>tr:nth-child(odd)]:bg-white [&>tr:nth-child(even)]:bg-neutral-50
-                     dark:[&>tr:nth-child(odd)]:bg-neutral-900 dark:[&>tr:nth-child(even)]:bg-neutral-800/50"
-        >
-          <tr className="[&_td]:py-3 border-b border-neutral-300 dark:border-neutral-700">
-            <td className="px-3 font-semibold">پروژه‌ها</td>
-            <td className="px-3">
-              {projLoading ? (
-                <span className="text-neutral-600 dark:text-neutral-400">در حال بارگذاری…</span>
-              ) : (projects || []).length === 0 ? (
-                <span className="text-neutral-600 dark:text-neutral-400">پروژه‌ای یافت نشد.</span>
-              ) : (
-                <div className="flex flex-wrap items-center justify-start gap-2">
-                  {(projects || []).map((p) => {
-                    const label = `${p?.code || "—"} - ${p?.name || ""}`.trim();
-                    return (
-                      <Chip
-                        key={p?.id ?? label}
-                        label={label}
-                        disabled={projDeletingId === p?.id}
-                        onRemove={() => removeProject(p)}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-            </td>
-          </tr>
-        </tbody>
-      </TableShell>
+      <div className="mt-3">
+        <TableShell>
+          <thead>
+            <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
+              <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold w-44">عنوان</th>
+              <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold">برچسب‌ها</th>
+            </tr>
+          </thead>
+
+          <tbody
+            className="border-t border-neutral-300 dark:border-neutral-700
+                       [&>tr:nth-child(odd)]:bg-white [&>tr:nth-child(even)]:bg-neutral-50
+                       dark:[&>tr:nth-child(odd)]:bg-neutral-900 dark:[&>tr:nth-child(even)]:bg-neutral-800/50"
+          >
+            <tr className="[&_td]:py-3 border-b border-neutral-300 dark:border-neutral-700">
+              <td className="px-3 font-semibold">پروژه‌ها</td>
+              <td className="px-3">
+                {projLoading ? (
+                  <span className="text-neutral-600 dark:text-neutral-400">در حال بارگذاری…</span>
+                ) : (projectsSorted || []).length === 0 ? (
+                  <span className="text-neutral-600 dark:text-neutral-400">پروژه‌ای یافت نشد.</span>
+                ) : (projectTagItems || []).length === 0 ? (
+                  <span className="text-neutral-600 dark:text-neutral-400">پروژه‌ای به برچسب‌ها اضافه نشده است.</span>
+                ) : (
+                  <div className="flex flex-wrap items-center justify-start gap-2">
+                    {(projectTagItems || []).map((p) => {
+                      const label = `${p?.code || "—"} - ${p?.name || ""}`.trim();
+                      return <Chip key={p?.id ?? label} label={label} onRemove={() => removeProjectTag(p)} />;
+                    })}
+                  </div>
+                )}
+              </td>
+            </tr>
+          </tbody>
+        </TableShell>
+      </div>
     </>
   );
 
