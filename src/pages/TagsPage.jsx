@@ -678,7 +678,7 @@ function TagsPage() {
               </TH>
               {/* ✅ فقط برای یک‌دست شدن با بقیه (کاملاً غیرقابل استفاده) */}
               <TH className="w-28 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                اقدامات
+                  <span className="invisible">اقدامات</span>
               </TH>
             </tr>
           </THead>
