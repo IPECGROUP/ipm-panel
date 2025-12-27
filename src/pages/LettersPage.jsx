@@ -10,14 +10,6 @@ const TABS = [
   { id: "internal", label: "داخلی", icon: "/images/icons/dakheli.svg" },
 ];
 
-const QUICK_CHIPS = [
-  ["week", "هفته قبل"],
-  ["2w", "2 هفته قبل"],
-  ["1m", "ماه قبل"],
-  ["3m", "3 ماه قبل"],
-  ["6m", "6 ماه قبل"],
-];
-
 const PERSIAN_MONTHS = [
   "فروردین",
   "اردیبهشت",
@@ -336,6 +328,19 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
   );
 }
 
+function formatBytes(n) {
+  const num = Number(n || 0);
+  if (!num) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  let v = num;
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i += 1;
+  }
+  return `${Math.round(v * 10) / 10} ${units[i]}`;
+}
+
 export default function LettersPage() {
   const API_BASE = (window.API_URL || "/api").replace(/\/+$/, "");
   async function api(path, opt = {}) {
@@ -353,7 +358,9 @@ export default function LettersPage() {
     return data;
   }
 
-  const [theme, setTheme] = useState(() => (document.documentElement.classList.contains("dark") ? "dark" : "light"));
+  const [theme, setTheme] = useState(() =>
+    document.documentElement.classList.contains("dark") ? "dark" : "light"
+  );
   useEffect(() => {
     const el = document.documentElement;
     const apply = () => setTheme(el.classList.contains("dark") ? "dark" : "light");
@@ -363,20 +370,18 @@ export default function LettersPage() {
     return () => obs.disconnect();
   }, []);
 
-  // ===== list filter tab (ONLY filter) =====
-  const [tab, setTab] = useState("all");
-
-  // ===== form open + kind (kind is NOT tied to tab) =====
   const [formOpen, setFormOpen] = useState(false);
-  const [formKind, setFormKind] = useState("incoming"); // incoming|outgoing|internal
+  const [tab, setTab] = useState("all");
 
   // ✅ edit state
   const [editingId, setEditingId] = useState(null);
 
-  // ===== upload modal =====
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFor, setUploadFor] = useState("incoming");
-  const closeUpload = () => setUploadOpen(false);
+
+  const closeUpload = () => {
+    setUploadOpen(false);
+  };
 
   useEffect(() => {
     if (!uploadOpen) return;
@@ -388,7 +393,6 @@ export default function LettersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uploadOpen, uploadFor]);
 
-  // ===== fields =====
   const [category, setCategory] = useState("");
   const [projectId, setProjectId] = useState("");
   const [projects, setProjects] = useState([]);
@@ -410,10 +414,9 @@ export default function LettersPage() {
   const [piroIds, setPiroIds] = useState([""]);
   const [myLetters, setMyLetters] = useState([]);
 
-  // tags (support multiple possible /tags responses)
-  const [tags, setTags] = useState([]);
+  // tags
   const [tagCategories, setTagCategories] = useState([]);
-
+  const [tags, setTags] = useState([]);
   const [incomingTagIds, setIncomingTagIds] = useState([]);
   const [outgoingTagIds, setOutgoingTagIds] = useState([]);
   const [internalTagIds, setInternalTagIds] = useState([]);
@@ -430,10 +433,11 @@ export default function LettersPage() {
   const [outgoingReceiverName, setOutgoingReceiverName] = useState("");
   const [internalReceiverName, setInternalReceiverName] = useState("");
 
-  // ===== View modal =====
+  // ===== View modal (details + preview) =====
   const [viewOpen, setViewOpen] = useState(false);
   const [viewLetter, setViewLetter] = useState(null);
   const [viewAttIdx, setViewAttIdx] = useState(0);
+
   const closeView = () => setViewOpen(false);
   const openView = (l) => {
     setViewLetter(l || null);
@@ -451,8 +455,8 @@ export default function LettersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewOpen]);
 
-  // ===== Filters (ALL in one border) =====
-  const [filterQuick, setFilterQuick] = useState("");
+  // ===== Filters (page-level) =====
+  const [filterQuick, setFilterQuick] = useState(""); // week|2w|1m|3m|6m
   const [filterFromDate, setFilterFromDate] = useState("");
   const [filterToDate, setFilterToDate] = useState("");
   const [filterTagIds, setFilterTagIds] = useState([]);
@@ -466,6 +470,8 @@ export default function LettersPage() {
   const [page, setPage] = useState(0);
 
   // ===== Uploader state (incoming/outgoing/internal) =====
+  const uploadInputRef = useRef(null);
+
   const [docFilesByType, setDocFilesByType] = useState({ incoming: [], outgoing: [], internal: [] });
 
   const setDocFilesFor = (which, updater) => {
@@ -630,30 +636,27 @@ export default function LettersPage() {
     let mounted = true;
     (async () => {
       try {
-        // try newer API first
-        let r;
-        try {
-          r = await api("/tags?scope=letters");
-        } catch {
-          r = await api("/tags");
-        }
-
-        const cats = Array.isArray(r?.categories) ? r.categories : Array.isArray(r?.cats) ? r.cats : [];
-        const ts = Array.isArray(r?.tags)
-          ? r.tags
-          : Array.isArray(r?.items)
-          ? r.items
-          : Array.isArray(r)
-          ? r
-          : [];
-
+        // اول تلاش با ساختار جدید
+        const r = await api("/tags?scope=letters");
         if (!mounted) return;
+
+        const cats = Array.isArray(r?.categories) ? r.categories : [];
+        const tgs = Array.isArray(r?.tags) ? r.tags : Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
+
         setTagCategories(cats);
-        setTags(ts);
+        setTags(tgs);
       } catch {
-        if (!mounted) return;
-        setTagCategories([]);
-        setTags([]);
+        try {
+          const r2 = await api("/tags");
+          if (!mounted) return;
+          const items = Array.isArray(r2?.items) ? r2.items : Array.isArray(r2) ? r2 : [];
+          setTagCategories([]);
+          setTags(items);
+        } catch {
+          if (!mounted) return;
+          setTagCategories([]);
+          setTags([]);
+        }
       }
     })();
     return () => {
@@ -705,6 +708,7 @@ export default function LettersPage() {
     theme === "dark"
       ? chipBase + " border-white/15 bg-white/5 text-white hover:bg-white/10"
       : chipBase + " border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]";
+
   const selectedTagChipCls = chipBase + " border-black bg-black text-white";
 
   const sendBtnCls =
@@ -712,9 +716,110 @@ export default function LettersPage() {
     (theme === "dark"
       ? "bg-white text-black ring-white/15 hover:bg-white/90"
       : "bg-black text-white ring-black/15 hover:bg-black/90");
+
   const sendIconCls = "w-5 h-5 " + (theme === "dark" ? "invert-0" : "invert");
 
   const findProject = (id) => projects.find((p) => String(p?.id) === String(id));
+
+  const toggleTag = (which, id) => {
+    const sid = String(id || "");
+    if (!sid) return;
+
+    if (which === "incoming") {
+      setIncomingTagIds((arr) =>
+        arr.some((x) => String(x) === sid) ? arr.filter((x) => String(x) !== sid) : [...arr, sid]
+      );
+    }
+    if (which === "outgoing") {
+      setOutgoingTagIds((arr) =>
+        arr.some((x) => String(x) === sid) ? arr.filter((x) => String(x) !== sid) : [...arr, sid]
+      );
+    }
+    if (which === "internal") {
+      setInternalTagIds((arr) =>
+        arr.some((x) => String(x) === sid) ? arr.filter((x) => String(x) !== sid) : [...arr, sid]
+      );
+    }
+  };
+
+  const toggleFilterTag = (id) => {
+    const sid = String(id || "");
+    if (!sid) return;
+    setFilterTagIds((arr) => (arr.some((x) => String(x) === sid) ? arr.filter((x) => String(x) !== sid) : [...arr, sid]));
+  };
+
+  const latestTags = useMemo(() => {
+    const arr = Array.isArray(tags) ? tags.slice() : [];
+    arr.sort((a, b) => {
+      const ai = Number(a?.id);
+      const bi = Number(b?.id);
+      if (Number.isFinite(ai) && Number.isFinite(bi)) return bi - ai;
+      const as = String(a?.id ?? "");
+      const bs = String(b?.id ?? "");
+      return bs.localeCompare(as);
+    });
+    return arr.slice(0, 14);
+  }, [tags]);
+
+  const tagLabelOf = (t) => String(t?.name || t?.title || t?.label || t?.text || t?.tag || t?.id || "");
+
+  const tagCapsFor = (selectedIds) => {
+    const sel = Array.isArray(selectedIds) ? selectedIds.map(String) : [];
+    const selSet = new Set(sel);
+    const selectedObjs = (Array.isArray(tags) ? tags : []).filter((t) => selSet.has(String(t?.id)));
+    const latestObjs = (Array.isArray(latestTags) ? latestTags : []).filter((t) => !selSet.has(String(t?.id)));
+    const merged = [...selectedObjs, ...latestObjs];
+    const seen = new Set();
+    return merged.filter((t) => {
+      const id = String(t?.id ?? "");
+      if (!id) return false;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  };
+
+  const secretariatPickerBtnCls = (val) =>
+    "w-full h-11 px-3 rounded-xl border flex items-center justify-between gap-2 transition text-right " +
+    (theme === "dark"
+      ? "border-white/15 bg-white/5 text-white/90 hover:bg-white/10"
+      : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]") +
+    (val ? "" : theme === "dark" ? " text-white/50" : " text-neutral-400");
+
+  const secretariatLongText = (_ymd) => {
+    return todayJalaliLong || "";
+  };
+
+  const openUpload = (which) => {
+    setUploadFor(which);
+    setUploadOpen(true);
+  };
+
+  const uploadTriggerCls =
+    "h-11 px-3 rounded-xl border transition flex items-center justify-center gap-2 whitespace-nowrap outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
+    (theme === "dark"
+      ? "border-white/15 bg-white/5 text-white/90 hover:bg-white/10"
+      : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]");
+
+  const uploadBoxCls =
+    "rounded-2xl border border-dashed p-4 text-center transition " +
+    (theme === "dark"
+      ? "border-white/15 bg-white/5 hover:bg-white/10"
+      : "border-black/15 bg-black/[0.02] hover:bg-black/[0.04]");
+
+  const onDropUpload = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const fl = e.dataTransfer?.files;
+    if (fl && fl.length) {
+      await addFilesToUpload(uploadFor, fl);
+    }
+  };
+
+  const onDragOverUpload = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
 
   const letterIdOf = (l) => {
     const raw = l?.id ?? l?.letter_id ?? l?.letterId ?? l?._id;
@@ -723,15 +828,12 @@ export default function LettersPage() {
   };
 
   const letterKindOf = (l) => {
-    const v = String(l?.kind || l?.type || l?.direction || l?.io || l?.tab || l?.letter_type || "")
-      .toLowerCase()
-      .trim();
+    const v = String(l?.kind || l?.type || l?.direction || l?.io || l?.tab || l?.letter_type || "").toLowerCase();
+    if (v.includes("internal") || v.includes("dakheli") || v === "d" || v === "internal") return "internal";
     if (v.includes("out")) return "outgoing";
-    if (v.includes("in") && !v.includes("int")) return "incoming";
-    if (v.includes("internal") || v.includes("inside") || v.includes("dakheli") || v.includes("int")) return "internal";
+    if (v.includes("in")) return "incoming";
     if (v === "o" || v === "outgoing") return "outgoing";
     if (v === "i" || v === "incoming") return "incoming";
-    if (v === "internal") return "internal";
     return "incoming";
   };
 
@@ -845,75 +947,6 @@ export default function LettersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterQuick]);
 
-  const clearAllFilters = () => {
-    setFilterQuick("");
-    setFilterFromDate("");
-    setFilterToDate("");
-    setFilterTagIds([]);
-    setFilterSubject("");
-    setFilterOrg("");
-    setFilterLetterNo("");
-  };
-
-  const toggleQuickChip = (k) => {
-    setFilterQuick((prev) => {
-      const next = prev === k ? "" : k;
-      if (prev === k) {
-        setFilterFromDate("");
-        setFilterToDate("");
-      }
-      return next;
-    });
-  };
-
-  const toggleFilterTag = (id) => {
-    const sid = String(id || "");
-    if (!sid) return;
-    setFilterTagIds((arr) => (arr.some((x) => String(x) === sid) ? arr.filter((x) => String(x) !== sid) : [...arr, sid]));
-  };
-
-  const toggleTagForKind = (kind, id) => {
-    const sid = String(id || "");
-    if (!sid) return;
-
-    if (kind === "incoming") {
-      setIncomingTagIds((arr) => (arr.some((x) => String(x) === sid) ? arr.filter((x) => String(x) !== sid) : [...arr, sid]));
-    } else if (kind === "outgoing") {
-      setOutgoingTagIds((arr) => (arr.some((x) => String(x) === sid) ? arr.filter((x) => String(x) !== sid) : [...arr, sid]));
-    } else {
-      setInternalTagIds((arr) => (arr.some((x) => String(x) === sid) ? arr.filter((x) => String(x) !== sid) : [...arr, sid]));
-    }
-  };
-
-  const latestTags = useMemo(() => {
-    const arr = Array.isArray(tags) ? tags.slice() : [];
-    arr.sort((a, b) => {
-      const ai = Number(a?.id);
-      const bi = Number(b?.id);
-      if (Number.isFinite(ai) && Number.isFinite(bi)) return bi - ai;
-      const as = String(a?.id ?? "");
-      const bs = String(b?.id ?? "");
-      return bs.localeCompare(as);
-    });
-    return arr.slice(0, 14);
-  }, [tags]);
-
-  const tagCapsFor = (selectedIds) => {
-    const sel = Array.isArray(selectedIds) ? selectedIds.map(String) : [];
-    const selSet = new Set(sel);
-    const selectedObjs = (Array.isArray(tags) ? tags : []).filter((t) => selSet.has(String(t?.id)));
-    const latestObjs = (Array.isArray(latestTags) ? latestTags : []).filter((t) => !selSet.has(String(t?.id)));
-    const merged = [...selectedObjs, ...latestObjs];
-    const seen = new Set();
-    return merged.filter((t) => {
-      const id = String(t?.id ?? "");
-      if (!id) return false;
-      if (seen.has(id)) return false;
-      seen.add(id);
-      return true;
-    });
-  };
-
   const filteredLetters = useMemo(() => {
     const arr = Array.isArray(myLetters) ? myLetters : [];
     const sSub = String(filterSubject || "").trim().toLowerCase();
@@ -1015,43 +1048,8 @@ export default function LettersPage() {
     "dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700";
 
   const tbodyCls = "[&_td]:text-black dark:[&_td]:text-neutral-100";
+
   const rowDividerCls = "border-b border-neutral-300 dark:border-neutral-700";
-
-  const secretariatPickerBtnCls = (val) =>
-    "w-full h-11 px-3 rounded-xl border flex items-center justify-between gap-2 transition text-right " +
-    (theme === "dark"
-      ? "border-white/15 bg-white/5 text-white/90 hover:bg-white/10"
-      : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]") +
-    (val ? "" : theme === "dark" ? " text-white/50" : " text-neutral-400");
-
-  const secretariatLongText = (_ymd) => {
-    return todayJalaliLong || "";
-  };
-
-  const openUpload = (which) => {
-    setUploadFor(which);
-    setUploadOpen(true);
-  };
-
-  const uploadTriggerCls =
-    "h-11 px-3 rounded-xl border transition flex items-center justify-center gap-2 whitespace-nowrap outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
-    (theme === "dark"
-      ? "border-white/15 bg-white/5 text-white/90 hover:bg-white/10"
-      : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]");
-
-  const normalizeAttachmentForPayload = (x) => {
-    const url = String(x?.url || "");
-    if (!url) return null;
-    const name = String(x?.name || "");
-    const type = String(x?.type || "");
-    const size = Number(x?.size || 0) || 0;
-    const out = {};
-    if (name) out.name = name;
-    if (url) out.url = url;
-    if (type) out.type = type;
-    if (size) out.size = size;
-    return Object.keys(out).length ? out : null;
-  };
 
   const resetForm = () => {
     setCategory("");
@@ -1078,11 +1076,9 @@ export default function LettersPage() {
     setIncomingSecretariatDate(todayJalaliYmd || "");
     setOutgoingSecretariatDate(todayJalaliYmd || "");
     setInternalSecretariatDate(todayJalaliYmd || "");
-
     setIncomingSecretariatNo("");
     setOutgoingSecretariatNo("");
     setInternalSecretariatNo("");
-
     setIncomingReceiverName("");
     setOutgoingReceiverName("");
     setInternalReceiverName("");
@@ -1090,7 +1086,20 @@ export default function LettersPage() {
     setDocFilesByType({ incoming: [], outgoing: [], internal: [] });
 
     setEditingId(null);
-    setFormKind("incoming");
+  };
+
+  const normalizeAttachmentForPayload = (x) => {
+    const url = String(x?.url || "");
+    if (!url) return null;
+    const name = String(x?.name || "");
+    const type = String(x?.type || "");
+    const size = Number(x?.size || 0) || 0;
+    const out = {};
+    if (name) out.name = name;
+    if (url) out.url = url;
+    if (type) out.type = type;
+    if (size) out.size = size;
+    return Object.keys(out).length ? out : null;
   };
 
   const startEdit = (l) => {
@@ -1099,7 +1108,7 @@ export default function LettersPage() {
 
     setEditingId(id);
     setFormOpen(true);
-    setFormKind(kind);
+    setTab(kind);
 
     setCategory(String(l?.category ?? l?.category_name ?? l?.categoryTitle ?? ""));
     const pid = l?.project_id ?? l?.projectId ?? l?.projectID ?? null;
@@ -1185,13 +1194,12 @@ export default function LettersPage() {
     setDocFilesByType((prev) => ({ ...prev, [kind]: mapped }));
   };
 
-  const submitLetter = async () => {
-    const kind = formKind;
-
+  const submitLetter = async (kind) => {
     const attachmentTitle =
       kind === "incoming" ? incomingAttachmentTitle : kind === "outgoing" ? outgoingAttachmentTitle : internalAttachmentTitle;
 
-    const tagIds = kind === "incoming" ? incomingTagIds : kind === "outgoing" ? outgoingTagIds : internalTagIds;
+    const tagIds =
+      kind === "incoming" ? incomingTagIds : kind === "outgoing" ? outgoingTagIds : internalTagIds;
 
     const secretariatDate =
       kind === "incoming" ? incomingSecretariatDate : kind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate;
@@ -1203,6 +1211,7 @@ export default function LettersPage() {
       kind === "incoming" ? incomingReceiverName : kind === "outgoing" ? outgoingReceiverName : internalReceiverName;
 
     const pId = projectId ? Number(projectId) : null;
+
     const files = Array.isArray(docFilesByType?.[kind]) ? docFilesByType[kind] : [];
 
     const reused = files
@@ -1249,11 +1258,8 @@ export default function LettersPage() {
     if (editingId) {
       try {
         saved = await api(`/letters/${editingId}`, { method: "PATCH", body: JSON.stringify(payload) });
-      } catch (_e) {
-        saved = await api(`/letters?id=${encodeURIComponent(String(editingId))}`, {
-          method: "PATCH",
-          body: JSON.stringify(payload),
-        });
+      } catch (e) {
+        saved = await api(`/letters?id=${encodeURIComponent(String(editingId))}`, { method: "PATCH", body: JSON.stringify(payload) });
       }
       newId = editingId;
     } else {
@@ -1263,12 +1269,15 @@ export default function LettersPage() {
     }
 
     if (!newId) throw new Error("save_failed");
+
     const letterId = Number(newId) || newId;
 
     if (queue.length > 0) {
       for (const f of queue) {
         const fileToSend = f.optimizedFile || f.file;
-        setDocFilesFor(kind, (prev) => prev.map((x) => (x.id === f.id ? { ...x, status: "uploading", progress: 0, error: "" } : x)));
+        setDocFilesFor(kind, (prev) =>
+          prev.map((x) => (x.id === f.id ? { ...x, status: "uploading", progress: 0, error: "" } : x))
+        );
 
         try {
           const res = await uploadFileToLetter(fileToSend, letterId, (p) => {
@@ -1321,7 +1330,9 @@ export default function LettersPage() {
 
   const InfoRow = ({ label, value }) => (
     <div className="grid grid-cols-12 gap-2 py-2">
-      <div className={"col-span-4 text-xs font-semibold " + (theme === "dark" ? "text-white/70" : "text-neutral-600")}>{label}</div>
+      <div className={"col-span-4 text-xs font-semibold " + (theme === "dark" ? "text-white/70" : "text-neutral-600")}>
+        {label}
+      </div>
       <div className={"col-span-8 text-sm " + (theme === "dark" ? "text-white" : "text-neutral-900")}>{value || "—"}</div>
     </div>
   );
@@ -1354,61 +1365,7 @@ export default function LettersPage() {
 
   const addIconImgCls = "w-5 h-5 " + (theme === "dark" ? "dark:invert" : "");
 
-  // ===== tag picker modal (for FILTER tags) =====
-  const [tagPickOpen, setTagPickOpen] = useState(false);
-  const [tagPickTab, setTagPickTab] = useState("letters");
-  const [tagPickTemp, setTagPickTemp] = useState([]);
-
-  const scopes = useMemo(() => {
-    const ts = Array.isArray(tags) ? tags : [];
-    const set = new Set();
-    ts.forEach((t) => {
-      const s = String(t?.scope || "").trim();
-      if (s) set.add(s);
-    });
-
-    const hasLetters = set.has("letters");
-    const hasExecution = set.has("execution");
-
-    return [
-      { id: "letters", label: "نامه‌ها و مستندات", scope: hasLetters ? "letters" : "" },
-      { id: "execution", label: "اجرای پروژه‌ها", scope: hasExecution ? "execution" : "" },
-      { id: "other", label: "سایر", scope: "" },
-    ];
-  }, [tags]);
-
-  const openTagPicker = () => {
-    setTagPickTemp((Array.isArray(filterTagIds) ? filterTagIds : []).map(String));
-    setTagPickTab("letters");
-    setTagPickOpen(true);
-  };
-
-  const closeTagPicker = () => setTagPickOpen(false);
-
-  const toggleTempTag = (id) => {
-    const sid = String(id || "");
-    if (!sid) return;
-    setTagPickTemp((arr) => (arr.some((x) => String(x) === sid) ? arr.filter((x) => String(x) !== sid) : [...arr, sid]));
-  };
-
-  const pickListForTab = useMemo(() => {
-    const ts = Array.isArray(tags) ? tags : [];
-    const current = scopes.find((x) => x.id === tagPickTab) || scopes[0];
-
-    if (tagPickTab === "other") {
-      // anything not letters/execution (or no scope)
-      return ts.filter((t) => {
-        const s = String(t?.scope || "").trim();
-        return s !== "letters" && s !== "execution";
-      });
-    }
-
-    const scope = String(current?.scope || "").trim();
-    if (!scope) return ts;
-    return ts.filter((t) => String(t?.scope || "").trim() === scope);
-  }, [tags, tagPickTab, scopes]);
-
-  // ===== reuse uploaded files =====
+  // ===== Reuse uploaded files (show ALL uploaded files; no letter selection) =====
   const [pickSearch, setPickSearch] = useState("");
 
   const myLettersSorted = useMemo(() => {
@@ -1436,12 +1393,11 @@ export default function LettersPage() {
     const arr = Array.isArray(myLettersSorted) ? myLettersSorted : [];
     const map = new Map(); // key=url
     for (const l of arr) {
-      const ln = String(l?.letter_no || letterNoOf(l) || "").trim();
+      const letterNo = String(l?.letter_no || letterNoOf(l) || "").trim();
       const atts = attachmentsOf(l);
       for (const a of Array.isArray(atts) ? atts : []) {
         const url = attachmentUrlOf(a);
         if (!url) continue;
-
         const nameRaw = attachmentNameOf(a);
         const name =
           String(nameRaw || "").trim() ||
@@ -1455,12 +1411,23 @@ export default function LettersPage() {
               return "فایل";
             }
           })();
-
         const type = attachmentTypeOf(a) || (isPdfUrl(url) ? "application/pdf" : "");
         const size = attachmentSizeOf(a);
 
         if (!map.has(String(url))) {
-          map.set(String(url), { ...a, url, name, type, size, _letterNo: ln });
+          map.set(String(url), { ...a, url, name, type, size, _letterNo: letterNo });
+        } else {
+          const prev = map.get(String(url));
+          if (prev && (!prev.name || prev.name === "فایل") && name) {
+            map.set(String(url), {
+              ...prev,
+              url,
+              name,
+              type: prev.type || type,
+              size: prev.size || size,
+              _letterNo: prev._letterNo || letterNo,
+            });
+          }
         }
       }
     }
@@ -1515,31 +1482,83 @@ export default function LettersPage() {
     });
   };
 
-  const onDropUpload = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const fl = e.dataTransfer?.files;
-    if (fl && fl.length) {
-      await addFilesToUpload(uploadFor, fl);
+  // ===== NEW: quick chips integrated into tags area =====
+  const QUICK_CHIPS = useMemo(
+    () => [
+      ["week", "هفته قبل"],
+      ["2w", "2 هفته قبل"],
+      ["1m", "ماه قبل"],
+      ["3m", "3 ماه قبل"],
+      ["6m", "6 ماه قبل"],
+    ],
+    []
+  );
+
+  // ===== NEW: add-tag modal =====
+  const [addTagOpen, setAddTagOpen] = useState(false);
+  const [newTagLabel, setNewTagLabel] = useState("");
+  const [newTagCategoryId, setNewTagCategoryId] = useState("");
+
+  const refreshTags = async () => {
+    try {
+      const r = await api("/tags?scope=letters");
+      const cats = Array.isArray(r?.categories) ? r.categories : [];
+      const tgs = Array.isArray(r?.tags) ? r.tags : Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
+      setTagCategories(cats);
+      setTags(tgs);
+    } catch {
+      try {
+        const r2 = await api("/tags");
+        const items = Array.isArray(r2?.items) ? r2.items : Array.isArray(r2) ? r2 : [];
+        setTagCategories([]);
+        setTags(items);
+      } catch {
+        setTagCategories([]);
+        setTags([]);
+      }
     }
   };
 
-  const onDragOverUpload = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const createTag = async () => {
+    const label = String(newTagLabel || "").trim();
+    if (!label) return;
+
+    try {
+      await api("/tags", {
+        method: "POST",
+        body: JSON.stringify({
+          scope: "letters",
+          type: "tag",
+          label,
+          category_id: newTagCategoryId ? Number(newTagCategoryId) : undefined,
+        }),
+      });
+    } catch (_e) {
+      // fallback قدیمی
+      await api("/tags", {
+        method: "POST",
+        body: JSON.stringify({
+          label,
+          category_id: newTagCategoryId ? Number(newTagCategoryId) : undefined,
+        }),
+      });
+    }
+
+    setAddTagOpen(false);
+    setNewTagLabel("");
+    setNewTagCategoryId("");
+    await refreshTags();
   };
-
-  const filtersBoxCls =
-    "rounded-2xl border p-3 md:p-4 " +
-    (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]");
-
-  const kindLabel = (k) => (k === "outgoing" ? "صادره" : k === "internal" ? "داخلی" : "وارده");
 
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
-      <Card className={"rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-neutral-900" : "border-black/10 bg-white")}>
+      <Card
+        className={
+          "rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-neutral-900" : "border-black/10 bg-white")
+        }
+      >
         <div className="p-3 md:p-4">
-          {/* Header */}
+          {/* Header INSIDE card */}
           <div className="flex items-center justify-between gap-3 mb-3">
             <div className="text-lg md:text-xl font-bold">نامه ها</div>
 
@@ -1549,10 +1568,7 @@ export default function LettersPage() {
                 setFormOpen((v) => {
                   const next = !v;
                   if (next) {
-                    setEditingId(null);
-                    const def = tab !== "all" ? tab : "incoming";
-                    setFormKind(def);
-                    setUploadFor(def);
+                    if (tab === "all") setTab("incoming");
                   } else {
                     setEditingId(null);
                   }
@@ -1566,15 +1582,19 @@ export default function LettersPage() {
               title={formOpen ? "بستن" : "افزودن"}
               aria-label={formOpen ? "بستن" : "افزودن"}
             >
-              <img src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="w-5 h-5 dark:invert" />
+              <img
+                src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"}
+                alt=""
+                className="w-5 h-5 dark:invert"
+              />
             </button>
           </div>
 
-          {/* Filters (ALL inside one bordered box) */}
+          {/* Compact filters (hidden while formOpen) */}
           {!formOpen && (
-            <div className={filtersBoxCls}>
+            <div className="space-y-2">
               <div className="flex flex-wrap items-end gap-2">
-                {/* Tabs (filter only) + icons */}
+                {/* Tabs first */}
                 <div className="flex items-center gap-2">
                   {TABS.map((t) => {
                     const active = tab === t.id;
@@ -1584,7 +1604,7 @@ export default function LettersPage() {
                     const isInternal = t.id === "internal";
 
                     const cls =
-                      "h-10 px-5 rounded-xl border transition text-sm font-semibold " +
+                      "h-10 px-5 rounded-xl border transition text-sm font-semibold inline-flex items-center gap-2 " +
                       (isAll
                         ? active
                           ? "bg-black text-white border-black"
@@ -1605,10 +1625,10 @@ export default function LettersPage() {
                           : "bg-white text-neutral-900 border-[#4895ef] hover:bg-black/[0.02]"
                         : isInternal
                         ? active
-                          ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-black dark:border-white"
+                          ? "bg-[#f48224] text-white border-[#f48224]"
                           : theme === "dark"
-                          ? "bg-transparent text-white border-white/15 hover:bg-white/5"
-                          : "bg-white text-neutral-900 border-black/15 hover:bg-black/[0.02]"
+                          ? "bg-transparent text-white border-[#f48224] hover:bg-white/5"
+                          : "bg-white text-neutral-900 border-[#f48224] hover:bg-black/[0.02]"
                         : "");
 
                     return (
@@ -1618,18 +1638,22 @@ export default function LettersPage() {
                         onClick={() => {
                           setTab(t.id);
                           setEditingId(null);
-                          if (t.id === "all") clearAllFilters();
                         }}
                         className={cls}
                       >
+                        <span>{t.label}</span>
                         {t.icon ? (
-                          <span className="inline-flex items-center gap-2">
-                            <span>{t.label}</span>
-                            <img src={t.icon} alt="" className="w-5 h-5 dark:invert" />
-                          </span>
-                        ) : (
-                          t.label
-                        )}
+                          <img
+                            src={t.icon}
+                            alt=""
+                            className={
+                              "w-5 h-5 " +
+                              (theme === "dark" ? "dark:invert" : "") +
+                              " " +
+                              (active ? "" : "")
+                            }
+                          />
+                        ) : null}
                       </button>
                     );
                   })}
@@ -1637,17 +1661,35 @@ export default function LettersPage() {
 
                 <div className="min-w-[220px] flex-1">
                   <div className={labelCls}>موضوع</div>
-                  <input value={filterSubject} onChange={(e) => setFilterSubject(e.target.value)} className={inputCls} type="text" placeholder="جستجو بر اساس موضوع" />
+                  <input
+                    value={filterSubject}
+                    onChange={(e) => setFilterSubject(e.target.value)}
+                    className={inputCls}
+                    type="text"
+                    placeholder="جستجو بر اساس موضوع"
+                  />
                 </div>
 
                 <div className="min-w-[220px] flex-1">
                   <div className={labelCls}>شرکت/سازمان</div>
-                  <input value={filterOrg} onChange={(e) => setFilterOrg(e.target.value)} className={inputCls} type="text" placeholder="جستجو بر اساس شرکت/سازمان" />
+                  <input
+                    value={filterOrg}
+                    onChange={(e) => setFilterOrg(e.target.value)}
+                    className={inputCls}
+                    type="text"
+                    placeholder="جستجو بر اساس شرکت/سازمان"
+                  />
                 </div>
 
                 <div className="min-w-[200px]">
                   <div className={labelCls}>شماره نامه</div>
-                  <input value={filterLetterNo} onChange={(e) => setFilterLetterNo(e.target.value)} className={inputCls} type="text" placeholder="جستجو بر اساس شماره" />
+                  <input
+                    value={filterLetterNo}
+                    onChange={(e) => setFilterLetterNo(e.target.value)}
+                    className={inputCls}
+                    type="text"
+                    placeholder="جستجو بر اساس شماره"
+                  />
                 </div>
 
                 <div className="min-w-[170px]">
@@ -1661,73 +1703,73 @@ export default function LettersPage() {
                 </div>
               </div>
 
-              {/* Tags line (includes quick chips + tags + add button) */}
-              <div className="mt-3">
+              {/* Tags + Quick chips (moved here) */}
+              <div>
                 <div className={labelCls}>برچسب ها</div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  {QUICK_CHIPS.map(([k, lab]) => {
-                    const active = filterQuick === k;
-                    return (
-                      <button key={k} type="button" onClick={() => toggleQuickChip(k)} className={active ? selectedTagChipCls : chipCls}>
-                        {lab}
-                      </button>
-                    );
-                  })}
-
-                  {tagCapsFor(filterTagIds).map((t) => {
-                    const id = String(t?.id);
-                    const label = String(t?.name || t?.title || t?.label || id || "");
-                    const active = filterTagIds.some((x) => String(x) === id);
-                    return (
-                      <button key={id} type="button" onClick={() => toggleFilterTag(id)} className={active ? selectedTagChipCls : chipCls} title={label} aria-label={label}>
-                        <span className="truncate max-w-[200px]">{label}</span>
-                      </button>
-                    );
-                  })}
+                  {QUICK_CHIPS.map(([k, lab]) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setFilterQuick(k)}
+                      className={
+                        (filterQuick === k
+                          ? theme === "dark"
+                            ? chipBase + " border-white/15 bg-white text-black"
+                            : chipBase + " border-black/15 bg-black text-white"
+                          : chipCls) + " h-10"
+                      }
+                      title={lab}
+                      aria-label={lab}
+                    >
+                      {lab}
+                    </button>
+                  ))}
 
                   <button
                     type="button"
-                    onClick={openTagPicker}
+                    onClick={() => setAddTagOpen(true)}
                     className={
-                      "h-10 px-4 rounded-full border text-sm font-semibold inline-flex items-center gap-2 transition " +
+                      "h-10 px-4 rounded-full border text-xs font-semibold transition inline-flex items-center gap-2 " +
                       (theme === "dark"
                         ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
                         : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
                     }
-                    aria-label="افزودن"
-                    title="افزودن"
+                    aria-label="افزودن برچسب"
+                    title="افزودن برچسب"
                   >
                     <span>افزودن</span>
-                    <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
+                    <img src="/images/icons/afzodan.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "dark:invert" : "")} />
                   </button>
+
+                  {tagCapsFor(filterTagIds).map((t) => {
+                    const id = String(t?.id);
+                    const label = tagLabelOf(t);
+                    const active = filterTagIds.some((x) => String(x) === id);
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => toggleFilterTag(id)}
+                        className={active ? selectedTagChipCls : chipCls}
+                        title={label}
+                        aria-label={label}
+                      >
+                        <span className="truncate max-w-[200px]">{label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
           )}
 
-          {/* Create/Edit form (kind selector inside form) */}
-          {formOpen && (
-            <div className="mt-4">
-              <div className={filtersBoxCls}>
+          {/* Create/Edit form */}
+          <div className="mt-4">
+            {(formOpen && tab === "incoming") || (formOpen && tab === "outgoing") || (formOpen && tab === "internal") ? (
+              <div>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <div>
-                    <div className={labelCls}>نامه</div>
-                    <select
-                      value={formKind}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setFormKind(v);
-                        setUploadFor(v);
-                      }}
-                      className={inputCls}
-                    >
-                      <option value="incoming">وارده</option>
-                      <option value="outgoing">صادره</option>
-                      <option value="internal">داخلی</option>
-                    </select>
-                  </div>
-
                   <div>
                     <div className={labelCls}>دسته بندی نامه</div>
                     <select
@@ -1808,11 +1850,11 @@ export default function LettersPage() {
 
                       <div className="min-w-[260px]">
                         <input
-                          value={formKind === "incoming" ? incomingAttachmentTitle : formKind === "outgoing" ? outgoingAttachmentTitle : internalAttachmentTitle}
+                          value={tab === "incoming" ? incomingAttachmentTitle : tab === "outgoing" ? outgoingAttachmentTitle : internalAttachmentTitle}
                           onChange={(e) => {
                             const v = e.target.value;
-                            if (formKind === "incoming") setIncomingAttachmentTitle(v);
-                            else if (formKind === "outgoing") setOutgoingAttachmentTitle(v);
+                            if (tab === "incoming") setIncomingAttachmentTitle(v);
+                            else if (tab === "outgoing") setOutgoingAttachmentTitle(v);
                             else setInternalAttachmentTitle(v);
                           }}
                           className={inputCls}
@@ -1823,46 +1865,56 @@ export default function LettersPage() {
                     </div>
                   </div>
 
-                  {formKind === "outgoing" && (
-                    <div className="mt-3">
+                  <div className="mt-3">
+                    {tab === "outgoing" ? (
+                      <>
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className={labelCls.replace("mb-1", "mb-0")}>پیرو</div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          {piroIds.map((v, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <select
+                                value={v}
+                                onChange={(e) => {
+                                  const nv = e.target.value;
+                                  setPiroIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
+                                }}
+                                className={inputCls + " min-w-[240px] w-[240px]"}
+                              >
+                                <option value=""></option>
+                                {myLetters.map((l) => (
+                                  <option key={l.id} value={String(l.id)}>
+                                    {String(l.letter_no || "")}
+                                  </option>
+                                ))}
+                              </select>
+
+                              {idx === piroIds.length - 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setPiroIds((arr) => [...arr, ""])}
+                                  className={addIconBtnCls}
+                                  aria-label="افزودن"
+                                  title="افزودن"
+                                >
+                                  <img src="/images/icons/afzodan.svg" alt="" className={addIconImgCls + " dark:invert"} />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="flex items-center gap-2 mt-4 mb-2">
+                          <div className={labelCls.replace("mb-1", "mb-0")}>بازگشت به</div>
+                        </div>
+                      </>
+                    ) : (
                       <div className="flex items-center gap-2 mb-2">
-                        <div className={labelCls.replace("mb-1", "mb-0")}>پیرو</div>
+                        <div className={labelCls.replace("mb-1", "mb-0")}>بازگشت به</div>
                       </div>
-
-                      <div className="flex flex-wrap items-center gap-2">
-                        {piroIds.map((v, idx) => (
-                          <div key={idx} className="flex items-center gap-2">
-                            <select
-                              value={v}
-                              onChange={(e) => {
-                                const nv = e.target.value;
-                                setPiroIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
-                              }}
-                              className={inputCls + " min-w-[240px] w-[240px]"}
-                            >
-                              <option value=""></option>
-                              {myLetters.map((l) => (
-                                <option key={l.id} value={String(l.id)}>
-                                  {String(l.letter_no || "")}
-                                </option>
-                              ))}
-                            </select>
-
-                            {idx === piroIds.length - 1 && (
-                              <button type="button" onClick={() => setPiroIds((arr) => [...arr, ""])} className={addIconBtnCls} aria-label="افزودن" title="افزودن">
-                                <img src="/images/icons/afzodan.svg" alt="" className={addIconImgCls + " dark:invert"} />
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="mt-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className={labelCls.replace("mb-1", "mb-0")}>بازگشت به</div>
-                    </div>
+                    )}
 
                     <div className="flex flex-wrap items-center gap-2">
                       {returnToIds.map((v, idx) => (
@@ -1884,7 +1936,13 @@ export default function LettersPage() {
                           </select>
 
                           {idx === returnToIds.length - 1 && (
-                            <button type="button" onClick={() => setReturnToIds((arr) => [...arr, ""])} className={addIconBtnCls} aria-label="افزودن" title="افزودن">
+                            <button
+                              type="button"
+                              onClick={() => setReturnToIds((arr) => [...arr, ""])}
+                              className={addIconBtnCls}
+                              aria-label="افزودن"
+                              title="افزودن"
+                            >
                               <img src="/images/icons/afzodan.svg" alt="" className={addIconImgCls + " dark:invert"} />
                             </button>
                           )}
@@ -1893,7 +1951,7 @@ export default function LettersPage() {
 
                       <button
                         type="button"
-                        onClick={() => openUpload(formKind)}
+                        onClick={() => openUpload(tab)}
                         className={uploadTriggerCls + " min-w-[240px] w-[240px] flex-shrink-0"}
                         aria-label="آپلود و الصاق فایل ها"
                         title="آپلود و الصاق فایل ها"
@@ -1908,21 +1966,16 @@ export default function LettersPage() {
                 <div className="mt-3">
                   <div className={labelCls}>برچسب ها</div>
                   <div className="flex flex-wrap items-center gap-2">
-                    {tagCapsFor(formKind === "incoming" ? incomingTagIds : formKind === "outgoing" ? outgoingTagIds : internalTagIds).map((t) => {
+                    {tagCapsFor(tab === "incoming" ? incomingTagIds : tab === "outgoing" ? outgoingTagIds : internalTagIds).map((t) => {
                       const id = String(t?.id);
-                      const label = String(t?.name || t?.title || t?.label || id || "");
-                      const active =
-                        formKind === "incoming"
-                          ? incomingTagIds.some((x) => String(x) === id)
-                          : formKind === "outgoing"
-                          ? outgoingTagIds.some((x) => String(x) === id)
-                          : internalTagIds.some((x) => String(x) === id);
-
+                      const label = tagLabelOf(t);
+                      const selectedArr = tab === "incoming" ? incomingTagIds : tab === "outgoing" ? outgoingTagIds : internalTagIds;
+                      const active = selectedArr.some((x) => String(x) === id);
                       return (
                         <button
                           key={id}
                           type="button"
-                          onClick={() => toggleTagForKind(formKind, id)}
+                          onClick={() => toggleTag(tab, id)}
                           className={active ? selectedTagChipCls : chipCls}
                           title={label}
                           aria-label={label}
@@ -1940,22 +1993,23 @@ export default function LettersPage() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
                       <div className={labelCls}>تاریخ ثبت دبیرخانه</div>
+
                       <JalaliPopupDatePicker
-                        value={formKind === "incoming" ? incomingSecretariatDate : formKind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate}
+                        value={tab === "incoming" ? incomingSecretariatDate : tab === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate}
                         onChange={(v) => {
-                          if (formKind === "incoming") setIncomingSecretariatDate(v);
-                          else if (formKind === "outgoing") setOutgoingSecretariatDate(v);
+                          if (tab === "incoming") setIncomingSecretariatDate(v);
+                          else if (tab === "outgoing") setOutgoingSecretariatDate(v);
                           else setInternalSecretariatDate(v);
                         }}
                         theme={theme}
                         hideIcon={true}
                         buttonClassName={secretariatPickerBtnCls(
-                          formKind === "incoming" ? incomingSecretariatDate : formKind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate
+                          tab === "incoming" ? incomingSecretariatDate : tab === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate
                         )}
                       />
                       <div className={theme === "dark" ? "text-white/50 text-[11px] mt-1" : "text-neutral-500 text-[11px] mt-1"}>
                         {secretariatLongText(
-                          formKind === "incoming" ? incomingSecretariatDate : formKind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate
+                          tab === "incoming" ? incomingSecretariatDate : tab === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate
                         )}
                       </div>
                     </div>
@@ -1963,11 +2017,11 @@ export default function LettersPage() {
                     <div>
                       <div className={labelCls}>شماره ثبت دبیرخانه</div>
                       <input
-                        value={formKind === "incoming" ? incomingSecretariatNo : formKind === "outgoing" ? outgoingSecretariatNo : internalSecretariatNo}
+                        value={tab === "incoming" ? incomingSecretariatNo : tab === "outgoing" ? outgoingSecretariatNo : internalSecretariatNo}
                         onChange={(e) => {
                           const v = e.target.value;
-                          if (formKind === "incoming") setIncomingSecretariatNo(v);
-                          else if (formKind === "outgoing") setOutgoingSecretariatNo(v);
+                          if (tab === "incoming") setIncomingSecretariatNo(v);
+                          else if (tab === "outgoing") setOutgoingSecretariatNo(v);
                           else setInternalSecretariatNo(v);
                         }}
                         className={inputCls}
@@ -1978,11 +2032,11 @@ export default function LettersPage() {
                     <div>
                       <div className={labelCls}>نام تحویل گیرنده</div>
                       <input
-                        value={formKind === "incoming" ? incomingReceiverName : formKind === "outgoing" ? outgoingReceiverName : internalReceiverName}
+                        value={tab === "incoming" ? incomingReceiverName : tab === "outgoing" ? outgoingReceiverName : internalReceiverName}
                         onChange={(e) => {
                           const v = e.target.value;
-                          if (formKind === "incoming") setIncomingReceiverName(v);
-                          else if (formKind === "outgoing") setOutgoingReceiverName(v);
+                          if (tab === "incoming") setIncomingReceiverName(v);
+                          else if (tab === "outgoing") setOutgoingReceiverName(v);
                           else setInternalReceiverName(v);
                         }}
                         className={inputCls}
@@ -1992,14 +2046,14 @@ export default function LettersPage() {
                   </div>
 
                   <div className="flex items-center justify-end pt-2">
-                    <button type="button" onClick={submitLetter} className={sendBtnCls} title="ارسال" aria-label="ارسال">
+                    <button type="button" onClick={() => submitLetter(tab)} className={sendBtnCls} title="ارسال" aria-label="ارسال">
                       <img src="/images/icons/check.svg" alt="" className={sendIconCls} />
                     </button>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            ) : null}
+          </div>
 
           {/* Table */}
           <div className="mt-5">
@@ -2052,13 +2106,17 @@ export default function LettersPage() {
                           ? theme === "dark"
                             ? "bg-[#1a7431]/15 hover:bg-[#1a7431]/20"
                             : "bg-[#1a7431]/[0.06] hover:bg-[#1a7431]/[0.09]"
+                          : isIncoming
+                          ? theme === "dark"
+                            ? "bg-[#4895ef]/15 hover:bg-[#4895ef]/20"
+                            : "bg-[#4895ef]/[0.06] hover:bg-[#4895ef]/[0.09]"
                           : isInternal
                           ? theme === "dark"
-                            ? "bg-white/5 hover:bg-white/10"
-                            : "bg-black/[0.03] hover:bg-black/[0.05]"
+                            ? "bg-[#f48224]/15 hover:bg-[#f48224]/20"
+                            : "bg-[#f48224]/[0.07] hover:bg-[#f48224]/[0.10]"
                           : theme === "dark"
-                          ? "bg-[#4895ef]/15 hover:bg-[#4895ef]/20"
-                          : "bg-[#4895ef]/[0.06] hover:bg-[#4895ef]/[0.09]";
+                          ? "bg-white/5 hover:bg-white/10"
+                          : "bg-black/[0.02] hover:bg-black/[0.04]";
 
                         return (
                           <tr key={id} className={rowBg + " transition-colors"}>
@@ -2081,13 +2139,17 @@ export default function LettersPage() {
                                     ? theme === "dark"
                                       ? "border-[#1a7431]/60 bg-[#1a7431]/25 text-white"
                                       : "border-[#1a7431]/40 bg-white/70 text-[#0e4c1e]"
+                                    : isIncoming
+                                    ? theme === "dark"
+                                      ? "border-[#4895ef]/60 bg-[#4895ef]/25 text-white"
+                                      : "border-[#4895ef]/40 bg-white/70 text-[#1b4f9b]"
                                     : isInternal
                                     ? theme === "dark"
-                                      ? "border-white/15 bg-white/10 text-white"
-                                      : "border-black/15 bg-white text-neutral-900"
+                                      ? "border-[#f48224]/60 bg-[#f48224]/25 text-white"
+                                      : "border-[#f48224]/50 bg-white/70 text-[#7a3b00]"
                                     : theme === "dark"
-                                    ? "border-[#4895ef]/60 bg-[#4895ef]/25 text-white"
-                                    : "border-[#4895ef]/40 bg-white/70 text-[#1b4f9b]")
+                                    ? "border-white/20 bg-white/10 text-white"
+                                    : "border-black/10 bg-white text-neutral-800")
                                 }
                               >
                                 {categoryLabelOf(l)}
@@ -2151,13 +2213,27 @@ export default function LettersPage() {
               <div className="border-t border-neutral-300 dark:border-neutral-800 px-3 py-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2 text-sm">
-                    <button type="button" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={safePage <= 0} className={paginationIconBtnCls} aria-label="صفحه قبل" title="صفحه قبل">
+                    <button
+                      type="button"
+                      onClick={() => setPage((p) => Math.max(0, p - 1))}
+                      disabled={safePage <= 0}
+                      className={paginationIconBtnCls}
+                      aria-label="صفحه قبل"
+                      title="صفحه قبل"
+                    >
                       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M9 18l6-6-6-6" />
                       </svg>
                     </button>
 
-                    <button type="button" onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))} disabled={safePage >= pageCount - 1} className={paginationIconBtnCls} aria-label="صفحه بعد" title="صفحه بعد">
+                    <button
+                      type="button"
+                      onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                      disabled={safePage >= pageCount - 1}
+                      className={paginationIconBtnCls}
+                      aria-label="صفحه بعد"
+                      title="صفحه بعد"
+                    >
                       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M15 18l-6-6 6-6" />
                       </svg>
@@ -2176,7 +2252,10 @@ export default function LettersPage() {
                         setRowsPerPage(Number(e.target.value) || 10);
                         setPage(0);
                       }}
-                      className={"h-9 px-2 rounded-lg border outline-none " + (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-black")}
+                      className={
+                        "h-9 px-2 rounded-lg border outline-none " +
+                        (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-black")
+                      }
                     >
                       {[10, 25, 100].map((n) => (
                         <option key={n} value={n}>
@@ -2191,107 +2270,6 @@ export default function LettersPage() {
           </div>
         </div>
       </Card>
-
-      {/* Tag Picker modal */}
-      {tagPickOpen &&
-        createPortal(
-          <div className="fixed inset-0 z-[9999]">
-            <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={closeTagPicker} />
-            <div className="absolute inset-0 p-3 md:p-6 flex items-center justify-center">
-              <div
-                className={
-                  "w-[min(920px,calc(100vw-20px))] h-[min(78vh,720px)] rounded-2xl border shadow-2xl overflow-hidden " +
-                  (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
-                }
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="h-full flex flex-col">
-                  <div className="px-4 py-3 flex items-center justify-between gap-3 border-b border-black/10 dark:border-white/10">
-                    <div className="font-bold text-sm">انتخاب برچسب‌ها</div>
-
-                    <button
-                      type="button"
-                      onClick={closeTagPicker}
-                      className={
-                        "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
-                        (theme === "dark" ? "ring-neutral-800 hover:bg-white/10 text-white" : "ring-black/15 hover:bg-black/90 bg-black text-white")
-                      }
-                      aria-label="بستن"
-                      title="بستن"
-                    >
-                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M18 6 6 18M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div className="px-4 py-3">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {scopes.map((t) => {
-                        const active = tagPickTab === t.id;
-                        return (
-                          <button
-                            key={t.id}
-                            type="button"
-                            onClick={() => setTagPickTab(t.id)}
-                            className={
-                              "h-10 px-5 rounded-xl border transition text-sm font-semibold " +
-                              (active
-                                ? "bg-black text-white border-black"
-                                : theme === "dark"
-                                ? "bg-transparent text-white border-white/15 hover:bg-white/5"
-                                : "bg-white text-neutral-900 border-black/15 hover:bg-black/[0.02]")
-                            }
-                          >
-                            {t.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="flex-1 overflow-auto px-4 pb-4">
-                    {pickListForTab.length === 0 ? (
-                      <div className={theme === "dark" ? "text-white/60 text-sm text-center mt-10" : "text-neutral-600 text-sm text-center mt-10"}>
-                        موردی برای نمایش نیست.
-                      </div>
-                    ) : (
-                      <div className="flex flex-wrap items-center gap-2">
-                        {pickListForTab.map((t) => {
-                          const id = String(t?.id);
-                          const label = String(t?.name || t?.title || t?.label || id || "");
-                          const active = tagPickTemp.some((x) => String(x) === id);
-                          return (
-                            <button key={id} type="button" onClick={() => toggleTempTag(id)} className={active ? selectedTagChipCls : chipCls} title={label}>
-                              <span className="truncate max-w-[240px]">{label}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="px-4 py-3 border-t border-black/10 dark:border-white/10 flex items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFilterTagIds(tagPickTemp.map(String));
-                        closeTagPicker();
-                      }}
-                      className="h-11 px-5 rounded-xl bg-black text-white inline-flex items-center gap-2"
-                      aria-label="تایید"
-                      title="تایید"
-                    >
-                      <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
-                      <span className="text-sm font-semibold">تایید</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
 
       {/* View modal */}
       {viewOpen &&
@@ -2343,7 +2321,19 @@ export default function LettersPage() {
                           </div>
 
                           <div className="px-4 divide-y divide-black/10 dark:divide-white/10">
-                            <InfoRow label="نوع" value={viewLetter ? kindLabel(letterKindOf(viewLetter)) : ""} />
+                            <InfoRow
+                              label="نوع"
+                              value={
+                                viewLetter
+                                  ? (() => {
+                                      const k = letterKindOf(viewLetter);
+                                      if (k === "outgoing") return "صادره";
+                                      if (k === "incoming") return "وارده";
+                                      return "داخلی";
+                                    })()
+                                  : ""
+                              }
+                            />
                             <InfoRow label="دسته بندی" value={viewLetter ? categoryLabel(categoryOf(viewLetter)) : ""} />
 
                             <InfoRow
@@ -2363,14 +2353,18 @@ export default function LettersPage() {
                             <div className="py-2">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div className="grid grid-cols-12 gap-2">
-                                  <div className={"col-span-4 text-xs font-semibold " + (theme === "dark" ? "text-white/70" : "text-neutral-600")}>شماره</div>
+                                  <div className={"col-span-4 text-xs font-semibold " + (theme === "dark" ? "text-white/70" : "text-neutral-600")}>
+                                    شماره
+                                  </div>
                                   <div className={"col-span-8 text-sm " + (theme === "dark" ? "text-white" : "text-neutral-900")}>
                                     {viewLetter ? toFaDigits(letterNoOf(viewLetter) || "") : "—"}
                                   </div>
                                 </div>
 
                                 <div className="grid grid-cols-12 gap-2">
-                                  <div className={"col-span-4 text-xs font-semibold " + (theme === "dark" ? "text-white/70" : "text-neutral-600")}>تاریخ</div>
+                                  <div className={"col-span-4 text-xs font-semibold " + (theme === "dark" ? "text-white/70" : "text-neutral-600")}>
+                                    تاریخ
+                                  </div>
                                   <div className={"col-span-8 text-sm " + (theme === "dark" ? "text-white" : "text-neutral-900")}>
                                     {viewLetter ? toFaDigits(letterDateOf(viewLetter) || "") : "—"}
                                   </div>
@@ -2378,12 +2372,74 @@ export default function LettersPage() {
                               </div>
                             </div>
 
-                            <InfoRow label="از / به" value={viewLetter ? fromToOf(viewLetter) : "—"} />
+                            <InfoRow
+                              label="از / به"
+                              value={
+                                viewLetter
+                                  ? (() => {
+                                      const a = String(viewLetter?.from_name ?? viewLetter?.fromName ?? viewLetter?.from ?? "").trim();
+                                      const b = String(viewLetter?.to_name ?? viewLetter?.toName ?? viewLetter?.to ?? "").trim();
+                                      const s = `${a}${a && b ? " / " : ""}${b}`.trim();
+                                      return s || "—";
+                                    })()
+                                  : "—"
+                              }
+                            />
                             <InfoRow label="شرکت/سازمان" value={viewLetter ? String(viewLetter?.org_name ?? viewLetter?.orgName ?? viewLetter?.org ?? "") : ""} />
                             <InfoRow label="موضوع" value={viewLetter ? String(subjectOf(viewLetter) || "") : ""} />
 
                             <InfoRow label="ضمیمه" value={viewHasAttachment ? "دارد" : "ندارد"} />
                             <InfoRow label="عنوان ضمیمه" value={viewLetter ? String(viewLetter?.attachment_title ?? viewLetter?.attachmentTitle ?? "") : ""} />
+
+                            <InfoRow
+                              label="بازگشت به"
+                              value={
+                                viewLetter
+                                  ? (() => {
+                                      const ids = Array.isArray(viewLetter?.return_to_ids)
+                                        ? viewLetter.return_to_ids
+                                        : Array.isArray(viewLetter?.returnToIds)
+                                        ? viewLetter.returnToIds
+                                        : [];
+                                      if (!ids.length) return "—";
+                                      const map = new Map((Array.isArray(myLetters) ? myLetters : []).map((x) => [String(letterIdOf(x)), x]));
+                                      const labels = ids
+                                        .map((x) => String(x))
+                                        .filter(Boolean)
+                                        .map((sid) => {
+                                          const it = map.get(sid);
+                                          return it ? String(it?.letter_no || sid) : sid;
+                                        });
+                                      return labels.join("، ");
+                                    })()
+                                  : ""
+                              }
+                            />
+
+                            <InfoRow
+                              label="پیرو"
+                              value={
+                                viewLetter
+                                  ? (() => {
+                                      const ids = Array.isArray(viewLetter?.piro_ids)
+                                        ? viewLetter.piro_ids
+                                        : Array.isArray(viewLetter?.piroIds)
+                                        ? viewLetter.piroIds
+                                        : [];
+                                      if (!ids.length) return "—";
+                                      const map = new Map((Array.isArray(myLetters) ? myLetters : []).map((x) => [String(letterIdOf(x)), x]));
+                                      const labels = ids
+                                        .map((x) => String(x))
+                                        .filter(Boolean)
+                                        .map((sid) => {
+                                          const it = map.get(sid);
+                                          return it ? String(it?.letter_no || sid) : sid;
+                                        });
+                                      return labels.join("، ");
+                                    })()
+                                  : ""
+                              }
+                            />
 
                             <InfoRow label="تاریخ ثبت دبیرخانه" value={viewLetter ? toFaDigits(String(viewLetter?.secretariat_date ?? viewLetter?.secretariatDate ?? "")) : ""} />
                             <InfoRow label="شماره ثبت دبیرخانه" value={viewLetter ? String(viewLetter?.secretariat_no ?? viewLetter?.secretariatNo ?? "") : ""} />
@@ -2474,7 +2530,9 @@ export default function LettersPage() {
                               </a>
 
                               {currentViewName ? (
-                                <div className={theme === "dark" ? "text-[11px] text-white/60 text-center" : "text-[11px] text-neutral-600 text-center"}>{currentViewName}</div>
+                                <div className={theme === "dark" ? "text-[11px] text-white/60 text-center" : "text-[11px] text-neutral-600 text-center"}>
+                                  {currentViewName}
+                                </div>
                               ) : null}
                             </div>
                           </div>
@@ -2498,12 +2556,16 @@ export default function LettersPage() {
             <div className="absolute inset-0 flex items-center justify-center p-4">
               <div
                 className={
-                  "w-[min(860px,calc(100vw-24px))] rounded-2xl border shadow-xl overflow-hidden " +
+                  "w-[min(720px,calc(100vw-24px))] rounded-2xl border shadow-xl overflow-hidden " +
                   (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
                 }
+                onClick={(e) => e.stopPropagation()}
               >
                 <div className="p-4 flex items-center justify-between">
-                  <div className="font-bold text-sm">بارگذاری نامه ({kindLabel(uploadFor)})</div>
+                  <div className="font-bold text-sm">
+                    بارگذاری نامه{" "}
+                    {uploadFor === "incoming" ? "(وارده)" : uploadFor === "outgoing" ? "(صادره)" : "(داخلی)"}
+                  </div>
                   <button
                     type="button"
                     onClick={closeUpload}
@@ -2523,171 +2585,312 @@ export default function LettersPage() {
                 <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
 
                 <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {/* Existing uploaded files */}
-                  <div className={"rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")}>
-                    <div className={"px-4 py-3 text-sm font-semibold border-b " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>فایل‌های آپلود شده</div>
-                    <div className="p-4">
-                      <input value={pickSearch} onChange={(e) => setPickSearch(e.target.value)} className={inputCls} type="text" placeholder="جستجو..." />
+                  {/* Left: reuse uploaded */}
+                  <div>
+                    <div className={labelCls}>فایل‌های آپلود شده</div>
 
-                      <div className="mt-3 max-h-[44vh] overflow-auto pr-1">
-                        {filteredUploadedAttachments.length === 0 ? (
-                          <div className={theme === "dark" ? "text-white/60 text-sm text-center py-8" : "text-neutral-600 text-sm text-center py-8"}>فایلی پیدا نشد.</div>
-                        ) : (
-                          <div className="space-y-2">
-                            {filteredUploadedAttachments.map((a, idx) => {
-                              const url = attachmentUrlOf(a);
-                              const name = attachmentNameOf(a) || a?.name || `فایل ${idx + 1}`;
-                              const size = attachmentSizeOf(a);
-                              const isPdf = isPdfUrl(url);
-                              const isImg = isImageUrl(url);
-                              return (
-                                <div
-                                  key={String(url || idx)}
-                                  className={
-                                    "rounded-xl border p-2 flex items-center justify-between gap-2 " +
-                                    (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
-                                  }
-                                >
-                                  <div className="min-w-0">
-                                    <div className="text-sm font-semibold truncate">{name}</div>
-                                    <div className={theme === "dark" ? "text-[11px] text-white/60" : "text-[11px] text-neutral-500"}>
-                                      {size ? `${toFaDigits(size)} بایت` : ""} {a?._letterNo ? `— نامه: ${toFaDigits(String(a._letterNo))}` : ""}
-                                    </div>
-                                  </div>
+                    <input
+                      value={pickSearch}
+                      onChange={(e) => setPickSearch(e.target.value)}
+                      className={inputCls}
+                      type="text"
+                      placeholder="جستجو بر اساس نام فایل..."
+                    />
 
-                                  <div className="flex items-center gap-2 flex-shrink-0">
-                                    <a
-                                      href={url || "#"}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className={
-                                        "h-10 px-3 rounded-xl border text-sm font-semibold transition inline-flex items-center gap-2 " +
-                                        (theme === "dark"
-                                          ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
-                                          : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
-                                      }
-                                      title="باز کردن"
-                                    >
-                                      <span>باز کردن</span>
-                                      <img src={isPdf ? "/images/icons/pdf.svg" : isImg ? "/images/icons/image.svg" : "/images/icons/namayesh.svg"} alt="" className="w-5 h-5 dark:invert" />
-                                    </a>
+                    <div className={"mt-2 rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
+                      <div className={"px-3 py-2 text-xs font-semibold border-b " + (theme === "dark" ? "border-white/10 text-white/80" : "border-black/10 text-neutral-700")}>
+                        همه فایل‌ها (برای استفاده مجدد)
+                      </div>
 
-                                    <button
-                                      type="button"
-                                      onClick={() => addExistingAttachmentToCurrent(uploadFor, a)}
-                                      className="h-10 px-3 rounded-xl bg-black text-white text-sm font-semibold inline-flex items-center gap-2"
-                                      title="افزودن"
-                                    >
-                                      <span>افزودن</span>
-                                      <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
-                                    </button>
+                      <div className="p-3 space-y-2 max-h-[360px] overflow-auto">
+                        {Array.isArray(filteredUploadedAttachments) && filteredUploadedAttachments.length > 0 ? (
+                          filteredUploadedAttachments.map((a, i) => {
+                            const url = attachmentUrlOf(a);
+                            const name = attachmentNameOf(a) || a?.name || `فایل ${i + 1}`;
+                            const already = currentDocFiles.some((x) => String(x?.url || "") === String(url));
+                            const hintNo = String(a?._letterNo || "").trim();
+
+                            return (
+                              <div
+                                key={String(i) + "_" + String(url)}
+                                className={
+                                  "rounded-xl border px-3 py-2 flex items-center justify-between gap-3 " +
+                                  (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
+                                }
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-[13px] font-semibold truncate">{name}</div>
+                                  <div className={theme === "dark" ? "text-white/60 text-[11px] mt-1" : "text-neutral-600 text-[11px] mt-1"}>
+                                    {url ? "آدرس فایل موجود است" : "—"}
+                                    {hintNo ? <span> — نامه: {toFaDigits(hintNo)}</span> : null}
                                   </div>
                                 </div>
-                              );
-                            })}
-                          </div>
+
+                                <div className="flex items-center gap-2">
+                                  <a
+                                    href={url || "#"}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className={
+                                      "h-9 px-3 rounded-xl border transition text-sm inline-flex items-center justify-center " +
+                                      (url
+                                        ? theme === "dark"
+                                          ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                                          : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]"
+                                        : theme === "dark"
+                                        ? "border-white/10 bg-white/5 text-white/40 pointer-events-none"
+                                        : "border-black/10 bg-white text-black/40 pointer-events-none")
+                                    }
+                                    title="باز کردن"
+                                  >
+                                    باز کردن
+                                  </a>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => addExistingAttachmentToCurrent(uploadFor, a)}
+                                    disabled={already}
+                                    className={
+                                      "h-9 px-3 rounded-xl border transition text-sm inline-flex items-center justify-center " +
+                                      (already
+                                        ? theme === "dark"
+                                          ? "border-white/10 bg-white/5 text-white/40 cursor-not-allowed"
+                                          : "border-black/10 bg-black/[0.03] text-black/40 cursor-not-allowed"
+                                        : theme === "dark"
+                                        ? "border-white/15 bg-white text-black hover:bg-white/90"
+                                        : "border-black/15 bg-black text-white hover:bg-black/90")
+                                    }
+                                    title={already ? "اضافه شده" : "افزودن"}
+                                  >
+                                    {already ? "اضافه شد" : "افزودن"}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="py-8 text-center text-black/60 dark:text-white/50 text-sm">فایلی یافت نشد.</div>
                         )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Upload new + current selected */}
-                  <div className={"rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")}>
-                    <div className={"px-4 py-3 text-sm font-semibold border-b " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>افزودن فایل جدید</div>
+                  {/* Right: pick new + selected list */}
+                  <div>
+                    <div className={labelCls}>فایل‌های انتخاب‌شده</div>
 
-                    <div className="p-4">
-                      <div
-                        onDrop={onDropUpload}
-                        onDragOver={onDragOverUpload}
-                        className={
-                          "rounded-2xl border border-dashed p-4 text-center transition cursor-pointer " +
-                          (theme === "dark" ? "border-white/15 bg-white/5 hover:bg-white/10" : "border-black/15 bg-black/[0.02] hover:bg-black/[0.04]")
-                        }
-                        onClick={() => {
-                          const el = document.getElementById("letters_upload_input");
-                          if (el) el.click();
-                        }}
-                      >
-                        <div className={theme === "dark" ? "text-white/80 text-sm font-semibold" : "text-neutral-800 text-sm font-semibold"}>فایل را اینجا رها کنید</div>
-                        <div className={theme === "dark" ? "text-white/60 text-xs mt-1" : "text-neutral-600 text-xs mt-1"}>یا کلیک کنید تا انتخاب شود (تصویر / PDF)</div>
+                    <div className={"rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
+                      <div className={"px-3 py-2 text-xs font-semibold border-b " + (theme === "dark" ? "border-white/10 text-white/80" : "border-black/10 text-neutral-700")}>
+                        {uploadFor === "incoming" ? "وارده" : uploadFor === "outgoing" ? "صادره" : "داخلی"}
                       </div>
 
-                      <input
-                        id="letters_upload_input"
-                        type="file"
-                        multiple
-                        className="hidden"
-                        onChange={(e) => addFilesToUpload(uploadFor, e.target.files)}
-                        accept="image/*,application/pdf"
-                      />
-
-                      <div className="mt-3">
-                        <div className={labelCls}>فایل‌های انتخاب شده</div>
-                        <div className="space-y-2">
-                          {currentDocFiles.length === 0 ? (
-                            <div className={theme === "dark" ? "text-white/60 text-sm" : "text-neutral-600 text-sm"}>فایلی انتخاب نشده است.</div>
-                          ) : (
-                            currentDocFiles.map((f) => (
-                              <div
-                                key={f.id}
-                                className={
-                                  "rounded-xl border p-2 flex items-center justify-between gap-2 " +
-                                  (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
-                                }
-                              >
-                                <div className="min-w-0">
-                                  <div className="text-sm font-semibold truncate">{f.name}</div>
-                                  <div className={theme === "dark" ? "text-[11px] text-white/60" : "text-[11px] text-neutral-500"}>
-                                    {f.size ? `${toFaDigits(f.size)} بایت` : ""}{" "}
-                                    {f.status === "uploading" ? `— در حال آپلود: ${toFaDigits(f.progress || 0)}٪` : ""}
-                                    {f.status === "done" ? "— آماده" : ""}
-                                    {f.status === "error" ? `— ${f.error || "خطا"}` : ""}
-                                  </div>
+                      <div className="p-3 space-y-2">
+                        {currentDocFiles.length === 0 ? (
+                          <div className="py-6 text-center text-black/60 dark:text-white/50 text-sm">فایلی انتخاب نشده است.</div>
+                        ) : (
+                          currentDocFiles.map((f) => (
+                            <div
+                              key={f.id}
+                              className={
+                                "rounded-xl border px-3 py-2 flex items-center justify-between gap-3 " +
+                                (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
+                              }
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="text-[13px] font-semibold truncate">{f.name}</div>
+                                <div className={theme === "dark" ? "text-white/60 text-[11px] mt-1" : "text-neutral-600 text-[11px] mt-1"}>
+                                  {formatBytes(f.size)} {f.url ? "— الصاق شده" : f.status === "uploading" ? `— ${toFaDigits(f.progress)}٪` : ""}
                                 </div>
 
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                  {f.url ? (
-                                    <a
-                                      href={f.url}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className={
-                                        "h-10 px-3 rounded-xl border text-sm font-semibold transition inline-flex items-center gap-2 " +
-                                        (theme === "dark"
-                                          ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
-                                          : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
-                                      }
-                                      title="باز کردن"
-                                    >
-                                      <span>باز کردن</span>
-                                      <img src="/images/icons/namayesh.svg" alt="" className="w-5 h-5 dark:invert" />
-                                    </a>
-                                  ) : null}
-
-                                  <button type="button" onClick={() => removeDocFile(uploadFor, f.id)} className={iconBtnCls} title="حذف" aria-label="حذف">
-                                    <img
-                                      src="/images/icons/hazf.svg"
-                                      alt=""
-                                      className="w-5 h-5"
-                                      style={{
-                                        filter:
-                                          "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
-                                      }}
-                                    />
-                                  </button>
-                                </div>
+                                {f.status === "error" && f.error ? (
+                                  <div className="text-[11px] mt-1 text-red-500">{f.error}</div>
+                                ) : null}
                               </div>
-                            ))
-                          )}
+
+                              <div className="flex items-center gap-2">
+                                {f.url ? (
+                                  <a
+                                    href={f.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className={
+                                      "h-9 px-3 rounded-xl border transition text-sm inline-flex items-center justify-center " +
+                                      (theme === "dark"
+                                        ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                                        : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
+                                    }
+                                    title="باز کردن"
+                                  >
+                                    باز کردن
+                                  </a>
+                                ) : null}
+
+                                <button
+                                  type="button"
+                                  onClick={() => removeDocFile(uploadFor, f.id)}
+                                  className={iconBtnCls}
+                                  title="حذف"
+                                  aria-label="حذف"
+                                >
+                                  <img
+                                    src="/images/icons/hazf.svg"
+                                    alt=""
+                                    className="w-5 h-5"
+                                    style={{
+                                      filter:
+                                        "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
+                                    }}
+                                  />
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+
+                        <div
+                          className={uploadBoxCls + " mt-3"}
+                          onDrop={onDropUpload}
+                          onDragOver={onDragOverUpload}
+                        >
+                          <div className={theme === "dark" ? "text-white/80 text-sm font-semibold" : "text-neutral-800 text-sm font-semibold"}>
+                            فایل را اینجا رها کنید
+                          </div>
+                          <div className={theme === "dark" ? "text-white/50 text-xs mt-1" : "text-neutral-500 text-xs mt-1"}>
+                            یا با دکمه زیر انتخاب کنید (تصویر / PDF)
+                          </div>
+
+                          <div className="mt-3 flex items-center justify-center">
+                            <button
+                              type="button"
+                              onClick={() => uploadInputRef.current?.click()}
+                              className={
+                                "h-10 px-4 rounded-xl border transition inline-flex items-center justify-center gap-2 " +
+                                (theme === "dark"
+                                  ? "border-white/15 bg-white text-black hover:bg-white/90"
+                                  : "border-black/15 bg-black text-white hover:bg-black/90")
+                              }
+                            >
+                              <img src="/images/icons/upload.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")} />
+                              انتخاب فایل
+                            </button>
+                            <input
+                              ref={uploadInputRef}
+                              type="file"
+                              multiple
+                              accept="image/*,application/pdf"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const fl = e.target.files;
+                                if (fl && fl.length) await addFilesToUpload(uploadFor, fl);
+                                e.target.value = "";
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="pt-2 flex items-center justify-end">
+                          <button
+                            type="button"
+                            onClick={closeUpload}
+                            className={
+                              "h-10 px-4 rounded-xl border transition " +
+                              (theme === "dark" ? "border-white/15 hover:bg-white/10" : "border-black/10 hover:bg-black/[0.04]")
+                            }
+                          >
+                            بستن
+                          </button>
                         </div>
                       </div>
-
-                      <div className="mt-4 flex items-center justify-end">
-                        <button type="button" onClick={closeUpload} className="h-11 px-5 rounded-xl bg-black text-white font-semibold">
-                          انجام شد
-                        </button>
-                      </div>
                     </div>
+                  </div>
+                </div>
+
+                {/* bottom divider */}
+                <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Add tag modal */}
+      {addTagOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999]">
+            <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={() => setAddTagOpen(false)} />
+            <div className="absolute inset-0 p-4 flex items-center justify-center">
+              <div
+                className={
+                  "w-[min(520px,calc(100vw-24px))] rounded-2xl border shadow-2xl overflow-hidden " +
+                  (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
+                }
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-4 flex items-center justify-between">
+                  <div className="font-bold text-sm">افزودن برچسب</div>
+                  <button
+                    type="button"
+                    onClick={() => setAddTagOpen(false)}
+                    className={
+                      "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
+                      (theme === "dark" ? "ring-neutral-800 hover:bg-white/10 text-white" : "ring-black/15 hover:bg-black/90 bg-black text-white")
+                    }
+                    aria-label="بستن"
+                    title="بستن"
+                  >
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 6 6 18M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
+
+                <div className="p-4 space-y-3">
+                  <div>
+                    <div className={labelCls}>عنوان برچسب</div>
+                    <input value={newTagLabel} onChange={(e) => setNewTagLabel(e.target.value)} className={inputCls} type="text" placeholder="مثلا: فوری" />
+                  </div>
+
+                  {Array.isArray(tagCategories) && tagCategories.length > 0 ? (
+                    <div>
+                      <div className={labelCls}>دسته‌بندی</div>
+                      <select
+                        value={newTagCategoryId}
+                        onChange={(e) => setNewTagCategoryId(e.target.value)}
+                        className={inputCls}
+                      >
+                        <option value=""></option>
+                        {tagCategories.map((c) => (
+                          <option key={c.id} value={String(c.id)}>
+                            {String(c.label || c.name || c.title || c.id)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : null}
+
+                  <div className="pt-2 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAddTagOpen(false)}
+                      className={
+                        "h-10 px-4 rounded-xl border transition " +
+                        (theme === "dark" ? "border-white/15 hover:bg-white/10" : "border-black/10 hover:bg-black/[0.04]")
+                      }
+                    >
+                      انصراف
+                    </button>
+                    <button
+                      type="button"
+                      onClick={createTag}
+                      className={
+                        "h-10 px-4 rounded-xl transition " +
+                        (theme === "dark" ? "bg-white text-black hover:bg-white/90" : "bg-black text-white hover:bg-black/90")
+                      }
+                    >
+                      ثبت
+                    </button>
                   </div>
                 </div>
               </div>
