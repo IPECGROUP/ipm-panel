@@ -1543,15 +1543,42 @@ const TAG_PICK_TABS = [
   { id: "letters", label: "نامه‌ها و مستندات" },
   { id: "execution", label: "اجرای پروژه‌ها" },
 ];
+const SCOPE_BY_KIND = {
+  letters: "letters",
+  projects: "projects",
+  execution: "execution",
+};
+const [tagCatsByScope, setTagCatsByScope] = useState({
+  letters: [],
+  projects: [],
+  execution: [],
+});
+
+const [tagsByScope, setTagsByScope] = useState({
+  letters: [],
+  projects: [],
+  execution: [],
+});
+
+const [loadedScopes, setLoadedScopes] = useState({
+  letters: false,
+  projects: false,
+  execution: false,
+});
+
 const [tagPickSearch, setTagPickSearch] = useState("");
 
+const allTags = useMemo(() => {
+  return [
+    ...(tagsByScope.letters || []),
+    ...(tagsByScope.projects || []),
+    ...(tagsByScope.execution || []),
+  ];
+}, [tagsByScope]);
 
-const openTagPicker = (forWhat) => {
+const openTagPicker = async (forWhat) => {
   setTagPickFor(forWhat);
 
-  // پیش‌فرض منطقی:
-  // - برای فیلتر: نامه‌ها و مستندات
-  // - برای فرم: بسته به نوع فرم
   const initialKind =
     forWhat === "filter"
       ? "letters"
@@ -1562,6 +1589,7 @@ const openTagPicker = (forWhat) => {
       : "letters";
 
   setTagPickKind(initialKind);
+  await ensureTagsForKind(initialKind); // ✅ اضافه کن
 
   const currentSelected =
     forWhat === "form"
@@ -1578,6 +1606,7 @@ const openTagPicker = (forWhat) => {
 };
 
 
+
 const togglePickDraft = (id) => {
   const sid = String(id || "");
   if (!sid) return;
@@ -1585,77 +1614,65 @@ const togglePickDraft = (id) => {
 };
 
 const applyPickedTags = () => {
-  const ids = (Array.isArray(tagPickDraftIds) ? tagPickDraftIds : []).map(String);
+  const ids = (tagPickDraftIds || []).map(String);
 
   if (tagPickFor === "filter") {
     setFilterTagIds(ids);
-    setTagPickOpen(false);
-    return;
+  } else {
+    if (tagPickKind === "letters") setIncomingTagIds(ids);
+    else if (tagPickKind === "projects") setOutgoingTagIds(ids);
+    else setInternalTagIds(ids); // execution
   }
-
-  if (tagPickKind === "letters") setIncomingTagIds(ids);
-else if (tagPickKind === "projects") setOutgoingTagIds(ids);
-else setInternalTagIds(ids); // execution
-
 
   setTagPickOpen(false);
 };
+
 
 
   const [addTagOpen, setAddTagOpen] = useState(false);
   const [newTagLabel, setNewTagLabel] = useState("");
   const [newTagCategoryId, setNewTagCategoryId] = useState("");
 
-  const refreshTags = async () => {
+  const refreshTags = async (scope) => {
+  const sc = scope || "letters";
+
+  try {
+    const r = await api(`/tags?scope=${encodeURIComponent(sc)}`);
+    const cats = Array.isArray(r?.categories) ? r.categories : [];
+    const tgs =
+      Array.isArray(r?.tags)
+        ? r.tags
+        : Array.isArray(r?.items)
+        ? r.items
+        : Array.isArray(r)
+        ? r
+        : [];
+
+    setTagCatsByScope((m) => ({ ...m, [sc]: cats }));
+    setTagsByScope((m) => ({ ...m, [sc]: tgs }));
+    setLoadedScopes((m) => ({ ...m, [sc]: true }));
+  } catch {
+    // fallback قدیمی
     try {
-      const r = await api("/tags?scope=letters");
-      const cats = Array.isArray(r?.categories) ? r.categories : [];
-      const tgs = Array.isArray(r?.tags) ? r.tags : Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
-      setTagCategories(cats);
-      setTags(tgs);
+      const r2 = await api("/tags");
+      const items = Array.isArray(r2?.items) ? r2.items : Array.isArray(r2) ? r2 : [];
+      setTagCatsByScope((m) => ({ ...m, [sc]: [] }));
+      setTagsByScope((m) => ({ ...m, [sc]: items }));
+      setLoadedScopes((m) => ({ ...m, [sc]: true }));
     } catch {
-      try {
-        const r2 = await api("/tags");
-        const items = Array.isArray(r2?.items) ? r2.items : Array.isArray(r2) ? r2 : [];
-        setTagCategories([]);
-        setTags(items);
-      } catch {
-        setTagCategories([]);
-        setTags([]);
-      }
+      setTagCatsByScope((m) => ({ ...m, [sc]: [] }));
+      setTagsByScope((m) => ({ ...m, [sc]: [] }));
+      setLoadedScopes((m) => ({ ...m, [sc]: true }));
     }
-  };
+  }
+};
 
-  const createTag = async () => {
-    const label = String(newTagLabel || "").trim();
-    if (!label) return;
+const ensureTagsForKind = async (kind) => {
+  const scope = SCOPE_BY_KIND[kind] || "letters";
+  if (loadedScopes[scope]) return;
+  await refreshTags(scope);
+};
 
-    try {
-      await api("/tags", {
-        method: "POST",
-        body: JSON.stringify({
-          scope: "letters",
-          type: "tag",
-          label,
-          category_id: newTagCategoryId ? Number(newTagCategoryId) : undefined,
-        }),
-      });
-    } catch (_e) {
-      // fallback قدیمی
-      await api("/tags", {
-        method: "POST",
-        body: JSON.stringify({
-          label,
-          category_id: newTagCategoryId ? Number(newTagCategoryId) : undefined,
-        }),
-      });
-    }
-
-    setAddTagOpen(false);
-    setNewTagLabel("");
-    setNewTagCategoryId("");
-    await refreshTags();
-  };
 
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
@@ -2706,275 +2723,222 @@ else setInternalAttachmentTitle(v);
 {tagPickOpen &&
   createPortal(
     <div className="fixed inset-0 z-[9999]">
-      <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={() => setTagPickOpen(false)} />
+      <div
+        className="absolute inset-0 bg-black/55 backdrop-blur-sm"
+        onClick={() => setTagPickOpen(false)}
+      />
+
       <div className="absolute inset-0 p-3 md:p-6 flex items-center justify-center">
         <div
           className={
-            "w-[min(1100px,calc(100vw-20px))] h-[min(82vh,780px)] rounded-2xl border shadow-2xl overflow-hidden " +
-            (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
+            "w-[min(980px,calc(100vw-20px))] h-[min(78vh,760px)] rounded-2xl border shadow-2xl overflow-hidden " +
+            (theme === "dark"
+              ? "border-white/10 bg-neutral-900 text-white"
+              : "border-black/10 bg-white text-neutral-900")
           }
           onClick={(e) => e.stopPropagation()}
         >
-          {/* header */}
-          <div className="px-4 py-3 flex items-center justify-between gap-3 border-b border-black/10 dark:border-white/10">
-            <div className="font-bold text-sm">اطلاعات پایه ، برچسب‌ها</div>
+          <div className="h-full flex flex-col">
+            {/* Header */}
+            <div className="px-4 py-3 flex items-center justify-between gap-3 border-b border-black/10 dark:border-white/10">
+              <div className="font-bold text-sm">انتخاب برچسب</div>
 
-            {/* ✅ بستن: آیکن مشکی */}
-            <button
-              type="button"
-              onClick={() => setTagPickOpen(false)}
-              className={
-                "h-10 w-10 rounded-xl border flex items-center justify-center transition " +
-                (theme === "dark"
-                  ? "border-white/15 bg-white text-black hover:bg-white/90"
-                  : "border-black/15 bg-white text-black hover:bg-black/[0.03]")
-              }
-              aria-label="بستن"
-              title="بستن"
-            >
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 6 6 18M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          <div className="p-4 space-y-3">
-            {/* ✅ tabs order: Projects -> Letters/Docs -> Execution */}
-            <div className="flex flex-wrap items-center gap-2">
-              {TAG_PICK_TABS.map((t) => {
-                const active = tagPickKind === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => {
-                      setTagPickKind(t.id);
-
-                      const cur =
-                        tagPickFor === "form"
-                          ? t.id === "letters"
-                            ? incomingTagIds
-                            : t.id === "projects"
-                            ? outgoingTagIds
-                            : internalTagIds
-                          : filterTagIds;
-
-                      setTagPickDraftIds((Array.isArray(cur) ? cur : []).map(String));
-                      setTagPickCategoryId("");
-                      setTagPickSearch("");
-                    }}
-                    className={
-                      "h-10 px-5 rounded-xl border transition text-sm font-semibold inline-flex items-center gap-2 " +
-                      (active
-                        ? "bg-black text-white border-black"
-                        : theme === "dark"
-                        ? "bg-transparent text-white border-white/15 hover:bg-white/5"
-                        : "bg-white text-neutral-900 border-black/15 hover:bg-black/[0.02]")
-                    }
-                  >
-                    {t.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* search + category note */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-              <div className="md:col-span-2">
-                <div className={labelCls}>جستجو در برچسب‌ها</div>
-                <input
-                  value={tagPickSearch}
-                  onChange={(e) => setTagPickSearch(e.target.value)}
-                  className={inputCls}
-                  type="text"
-                  placeholder="انتخاب / جستجو..."
-                />
-              </div>
-
-              <div className="md:col-span-1">
-                <div className={labelCls}>دسته‌بندی</div>
-
-                {tagPickKind === "projects" ? (
-                  <div className={theme === "dark" ? "text-white/60 text-sm h-11 flex items-center" : "text-neutral-600 text-sm h-11 flex items-center"}>
-                    پروژه‌ها دسته‌بندی ندارند.
-                  </div>
-                ) : (
-                  <select value={tagPickCategoryId} onChange={(e) => setTagPickCategoryId(e.target.value)} className={inputCls}>
-                    <option value="">همه دسته‌بندی‌ها</option>
-                    {tagCategories.map((c) => (
-                      <option key={c.id} value={String(c.id)}>
-                        {String(c.label || c.name || c.title || "")}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-            </div>
-
-            {/* ✅ table like screenshot */}
-            <div
-              className={
-                "rounded-2xl border overflow-hidden " +
-                (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
-              }
-            >
-              <div className={theme === "dark" ? "grid grid-cols-12 bg-white/10" : "grid grid-cols-12 bg-neutral-200"}>
-                <div className="col-span-3 px-4 py-3 text-sm font-bold">دسته‌بندی</div>
-                <div className="col-span-9 px-4 py-3 text-sm font-bold">برچسب‌ها</div>
-              </div>
-
-              <div className="max-h-[46vh] overflow-auto">
-                {(() => {
-                  const q = String(tagPickSearch || "").trim().toLowerCase();
-                  const allTags = Array.isArray(tags) ? tags : [];
-
-                  const passSearch = (t) => {
-                    if (!q) return true;
-                    const label = String(tagLabelOf(t) || "").toLowerCase();
-                    return label.includes(q);
-                  };
-
-                  // projects: بدون دسته‌بندی => همه تگ‌ها یکجا
-                  if (tagPickKind === "projects") {
-                    const list = allTags.filter(passSearch);
-                    return (
-                      <div className="grid grid-cols-12 border-t border-black/10 dark:border-white/10">
-                        <div className="col-span-3 px-4 py-4 text-sm font-semibold">پروژه</div>
-                        <div className="col-span-9 px-4 py-4">
-                          <div className="flex flex-wrap gap-2">
-                            {list.map((t) => {
-                              const id = String(t?.id);
-                              const label = tagLabelOf(t);
-                              const active = tagPickDraftIds.includes(id);
-                              return (
-                                <button
-                                  key={id}
-                                  type="button"
-                                  onClick={() => togglePickDraft(id)}
-                                  className={active ? selectedTagChipCls : chipCls}
-                                  title={label}
-                                  aria-label={label}
-                                >
-                                  <span className="truncate max-w-[240px]">{label}</span>
-                                </button>
-                              );
-                            })}
-                            {list.length === 0 ? (
-                              <div className={theme === "dark" ? "text-white/50 text-sm" : "text-neutral-600 text-sm"}>برچسبی یافت نشد.</div>
-                            ) : null}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  // letters/execution: دسته‌بندی‌ها به شکل ردیفی
-                  const cats = Array.isArray(tagCategories) ? tagCategories : [];
-                  const rows = [];
-
-                  // اگر دسته انتخاب شده، فقط همونو نشون بده
-                  const visibleCats = tagPickCategoryId ? cats.filter((c) => String(c.id) === String(tagPickCategoryId)) : cats;
-
-                  for (const c of visibleCats) {
-                    const cid = String(c?.id ?? "");
-                    const catLabel = String(c?.label || c?.name || c?.title || "—");
-                    const list = allTags
-                      .filter((t) => String(t?.category_id ?? t?.categoryId ?? "") === cid)
-                      .filter(passSearch);
-
-                    // اگر سرچ فعاله و این دسته چیزی نداره، نشون نده
-                    if (q && list.length === 0) continue;
-
-                    rows.push(
-                      <div key={cid} className="grid grid-cols-12 border-t border-black/10 dark:border-white/10">
-                        <div className="col-span-3 px-4 py-4 text-sm font-semibold">{catLabel}</div>
-                        <div className="col-span-9 px-4 py-4">
-                          <div className="flex flex-wrap gap-2">
-                            {list.map((t) => {
-                              const id = String(t?.id);
-                              const label = tagLabelOf(t);
-                              const active = tagPickDraftIds.includes(id);
-                              return (
-                                <button
-                                  key={id}
-                                  type="button"
-                                  onClick={() => togglePickDraft(id)}
-                                  className={active ? selectedTagChipCls : chipCls}
-                                  title={label}
-                                  aria-label={label}
-                                >
-                                  <span className="truncate max-w-[240px]">{label}</span>
-                                </button>
-                              );
-                            })}
-
-                            {list.length === 0 ? (
-                              <div className={theme === "dark" ? "text-white/50 text-sm" : "text-neutral-600 text-sm"}>—</div>
-                            ) : null}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  // fallback اگر اصلا دسته‌بندی نداشتیم
-                  if (rows.length === 0) {
-                    const list = allTags.filter(passSearch);
-                    return (
-                      <div className="grid grid-cols-12 border-t border-black/10 dark:border-white/10">
-                        <div className="col-span-3 px-4 py-4 text-sm font-semibold">بدون دسته‌بندی</div>
-                        <div className="col-span-9 px-4 py-4">
-                          <div className="flex flex-wrap gap-2">
-                            {list.map((t) => {
-                              const id = String(t?.id);
-                              const label = tagLabelOf(t);
-                              const active = tagPickDraftIds.includes(id);
-                              return (
-                                <button
-                                  key={id}
-                                  type="button"
-                                  onClick={() => togglePickDraft(id)}
-                                  className={active ? selectedTagChipCls : chipCls}
-                                  title={label}
-                                  aria-label={label}
-                                >
-                                  <span className="truncate max-w-[240px]">{label}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  return rows;
-                })()}
-              </div>
-            </div>
-
-            {/* footer actions */}
-            <div className="flex items-center justify-end gap-2 pt-2">
+              {/* ✅ بستن: آیکن مشکی */}
               <button
                 type="button"
                 onClick={() => setTagPickOpen(false)}
                 className={
-                  "h-10 px-4 rounded-xl border transition " +
-                  (theme === "dark" ? "border-white/15 bg-white text-black hover:bg-white/90" : "border-black/15 bg-white text-black hover:bg-black/[0.03]")
+                  "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
+                  (theme === "dark"
+                    ? "bg-white text-black ring-white/20 hover:bg-white/90"
+                    : "bg-white text-black ring-black/15 hover:bg-black/5")
                 }
+                aria-label="بستن"
+                title="بستن"
               >
-                بستن
+                <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5" />
               </button>
+            </div>
 
+            {/* Tabs */}
+            <div className="px-4 pt-3">
+              {/* ✅ مهم: flex-row-reverse نذار! */}
+              <div className="flex items-center justify-end gap-2">
+                {TAG_PICK_TABS.map((t) => {
+                  const active = tagPickKind === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={async () => {
+                        setTagPickKind(t.id);
+                        setTagPickCategoryId("");
+                        setTagPickSearch("");
+                        await ensureTagsForKind(t.id);
+                      }}
+                      className={
+                        "h-10 px-4 rounded-xl border text-sm font-semibold transition " +
+                        (active
+                          ? "bg-black text-white border-black"
+                          : theme === "dark"
+                          ? "bg-transparent text-white border-white/15 hover:bg-white/5"
+                          : "bg-white text-neutral-900 border-black/15 hover:bg-black/[0.02]")
+                      }
+                    >
+                      {t.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Category row (for letters/execution only) */}
+              {(() => {
+                const scope = SCOPE_BY_KIND[tagPickKind] || "letters";
+                const cats = Array.isArray(tagCatsByScope?.[scope]) ? tagCatsByScope[scope] : [];
+
+                // ✅ پروژه‌ها دسته‌بندی ندارند
+                if (tagPickKind === "projects") {
+                  return (
+                    <div className="mt-3 text-xs text-neutral-500 dark:text-white/50">
+                      پروژه‌ها دسته‌بندی ندارد.
+                    </div>
+                  );
+                }
+
+                if (!cats.length) return null;
+
+                return (
+                  <div className="mt-3">
+                    <div className={labelCls}>دسته‌بندی‌ها</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* همه */}
+                      <button
+                        type="button"
+                        onClick={() => setTagPickCategoryId("")}
+                        className={
+                          (tagPickCategoryId
+                            ? chipCls
+                            : theme === "dark"
+                            ? chipBase + " border-white/15 bg-white text-black"
+                            : chipBase + " border-black/15 bg-black text-white") + " h-10"
+                        }
+                      >
+                        همه
+                      </button>
+
+                      {cats.map((c) => {
+                        const cid = String(c?.id ?? "");
+                        const lab = String(c?.label ?? c?.name ?? "");
+                        const active = tagPickCategoryId === cid;
+
+                        return (
+                          <button
+                            key={cid}
+                            type="button"
+                            onClick={() => setTagPickCategoryId(active ? "" : cid)}
+                            className={(active ? selectedTagChipCls : chipCls) + " h-10"}
+                            title={lab}
+                          >
+                            <span className="truncate max-w-[220px]">{lab}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Search */}
+              <div className="mt-3">
+                <div className={labelCls}>جستجو</div>
+                <input
+                  value={tagPickSearch}
+                  onChange={(e) => setTagPickSearch(e.target.value)}
+                  className={inputCls}
+                  placeholder="جستجو در برچسب‌ها..."
+                />
+              </div>
+            </div>
+
+            {/* Tags list */}
+            <div className="px-4 py-3 flex-1 overflow-auto">
+              {(() => {
+                const scope = SCOPE_BY_KIND[tagPickKind] || "letters";
+                const all = Array.isArray(tagsByScope?.[scope]) ? tagsByScope[scope] : [];
+                const q = String(tagPickSearch || "").trim().toLowerCase();
+
+                const filtered = all.filter((t) => {
+                  const label = tagLabelOf(t).toLowerCase();
+                  const catId = String(t?.category_id ?? t?.categoryId ?? "");
+                  if (tagPickCategoryId && catId !== String(tagPickCategoryId)) return false;
+                  if (q && !label.includes(q)) return false;
+                  return true;
+                });
+
+                if (!filtered.length) {
+                  return (
+                    <div className="py-10 text-center text-sm text-neutral-500 dark:text-white/50">
+                      چیزی پیدا نشد.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="flex flex-wrap gap-2">
+                    {filtered.map((t) => {
+                      const id = String(t?.id ?? "");
+                      const label = tagLabelOf(t);
+                      const active = (tagPickDraftIds || []).some((x) => String(x) === id);
+
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => togglePickDraft(id)}
+                          className={active ? selectedTagChipCls : chipCls}
+                          title={label}
+                        >
+                          <span className="truncate max-w-[240px]">{label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Footer buttons */}
+            <div className="px-4 py-3 border-t border-black/10 dark:border-white/10 flex items-center justify-end gap-2">
               {/* ✅ تایید: آیکن سفید */}
               <button
                 type="button"
                 onClick={applyPickedTags}
-                className="h-10 w-10 rounded-xl bg-black text-white flex items-center justify-center hover:bg-black/90 transition"
-                title="تایید"
+                className={
+                  "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
+                  (theme === "dark"
+                    ? "bg-black text-white ring-white/10 hover:bg-black/90"
+                    : "bg-black text-white ring-black/15 hover:bg-black/90")
+                }
                 aria-label="تایید"
+                title="تایید"
               >
                 <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
+              </button>
+
+              {/* ✅ بستن: آیکن مشکی */}
+              <button
+                type="button"
+                onClick={() => setTagPickOpen(false)}
+                className={
+                  "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
+                  (theme === "dark"
+                    ? "bg-white text-black ring-white/20 hover:bg-white/90"
+                    : "bg-white text-black ring-black/15 hover:bg-black/5")
+                }
+                aria-label="بستن"
+                title="بستن"
+              >
+                <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -2983,6 +2947,7 @@ else setInternalAttachmentTitle(v);
     </div>,
     document.body
   )}
+
 
 
 
