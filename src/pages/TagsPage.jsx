@@ -256,10 +256,10 @@ function TagsPage() {
   }, [activeTab, api]);
 
   const projectsSorted = useMemo(() => {
-    return (projects || [])
-      .slice()
-      .sort((a, b) => String(a?.code || "").localeCompare(String(b?.code || ""), "fa", { numeric: true }));
-  }, [projects]);
+  return (projects || [])
+    .slice()
+    .sort((a, b) => String(b?.code || "").localeCompare(String(a?.code || ""), "fa", { numeric: true }));
+}, [projects]);
 
   // ====== Scoped categories + tags (letters/execution/projects) ======
   const [lettersLoading, setLettersLoading] = useState(false);
