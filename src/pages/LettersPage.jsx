@@ -371,7 +371,8 @@ export default function LettersPage() {
   }, []);
 
   const [formOpen, setFormOpen] = useState(false);
-  const [tab, setTab] = useState("all");
+  const [filterTab, setFilterTab] = useState("all"); // فقط فیلتر جدول
+const [formKind, setFormKind] = useState("incoming"); // نوع نامه داخل فرم: وارده/صادره/داخلی
 
   // ✅ edit state
   const [editingId, setEditingId] = useState(null);
@@ -463,6 +464,17 @@ export default function LettersPage() {
   const [filterSubject, setFilterSubject] = useState("");
   const [filterOrg, setFilterOrg] = useState("");
   const [filterLetterNo, setFilterLetterNo] = useState("");
+
+  const resetAllFilters = () => {
+  setFilterQuick("");
+  setFilterFromDate("");
+  setFilterToDate("");
+  setFilterTagIds([]);
+  setFilterSubject("");
+  setFilterOrg("");
+  setFilterLetterNo("");
+};
+
 
   // ===== Table selection + pagination =====
   const [selectedIds, setSelectedIds] = useState(() => new Set());
@@ -958,9 +970,10 @@ export default function LettersPage() {
     return arr.filter((l) => {
       const kind = letterKindOf(l);
 
-      if (tab !== "all") {
-        if (kind !== tab) return false;
-      }
+      if (filterTab !== "all") {
+  if (kind !== filterTab) return false;
+}
+
 
       if (sSub) {
         const x = String(subjectOf(l) || "").toLowerCase();
@@ -995,7 +1008,7 @@ export default function LettersPage() {
   useEffect(() => {
     setSelectedIds(new Set());
     setPage(0);
-  }, [tab, rowsPerPage, filterQuick, filterFromDate, filterToDate, filterTagIds, filterSubject, filterOrg, filterLetterNo]);
+  }, [filterTab, rowsPerPage, filterQuick, filterFromDate, filterToDate, filterTagIds, filterSubject, filterOrg, filterLetterNo]);
 
   const total = filteredLetters.length;
   const pageCount = Math.max(1, Math.ceil(total / Math.max(1, rowsPerPage)));
@@ -1495,6 +1508,63 @@ export default function LettersPage() {
   );
 
   // ===== NEW: add-tag modal =====
+
+
+const [tagPickOpen, setTagPickOpen] = useState(false);
+const [tagPickFor, setTagPickFor] = useState("filter"); // "filter" | "form"
+const [tagPickKind, setTagPickKind] = useState("incoming"); // incoming/outgoing/internal
+const [tagPickCategoryId, setTagPickCategoryId] = useState("");
+const [tagPickDraftIds, setTagPickDraftIds] = useState([]);
+
+const openTagPicker = (forWhat) => {
+  setTagPickFor(forWhat);
+
+  const initialKind =
+    forWhat === "form"
+      ? formKind
+      : filterTab !== "all"
+      ? filterTab
+      : "incoming";
+
+  setTagPickKind(initialKind);
+
+  const currentSelected =
+    forWhat === "form"
+      ? initialKind === "incoming"
+        ? incomingTagIds
+        : initialKind === "outgoing"
+        ? outgoingTagIds
+        : internalTagIds
+      : filterTagIds;
+
+  setTagPickDraftIds((Array.isArray(currentSelected) ? currentSelected : []).map(String));
+  setTagPickCategoryId(""); // از همه دسته‌ها شروع کن
+  setTagPickOpen(true);
+};
+
+const togglePickDraft = (id) => {
+  const sid = String(id || "");
+  if (!sid) return;
+  setTagPickDraftIds((arr) => (arr.includes(sid) ? arr.filter((x) => x !== sid) : [...arr, sid]));
+};
+
+const applyPickedTags = () => {
+  const ids = (Array.isArray(tagPickDraftIds) ? tagPickDraftIds : []).map(String);
+
+  if (tagPickFor === "filter") {
+    setFilterTagIds(ids);
+    setTagPickOpen(false);
+    return;
+  }
+
+  if (tagPickKind === "incoming") setIncomingTagIds(ids);
+  else if (tagPickKind === "outgoing") setOutgoingTagIds(ids);
+  else setInternalTagIds(ids);
+
+  setTagPickOpen(false);
+};
+
+
   const [addTagOpen, setAddTagOpen] = useState(false);
   const [newTagLabel, setNewTagLabel] = useState("");
   const [newTagCategoryId, setNewTagCategoryId] = useState("");
@@ -1592,12 +1662,18 @@ export default function LettersPage() {
 
           {/* Compact filters (hidden while formOpen) */}
           {!formOpen && (
-            <div className="space-y-2">
+            <div
+  className={
+    "space-y-2 rounded-2xl border p-3 " +
+    (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")
+  }
+>
+
               <div className="flex flex-wrap items-end gap-2">
                 {/* Tabs first */}
                 <div className="flex items-center gap-2">
                   {TABS.map((t) => {
-                    const active = tab === t.id;
+                    const active = filterTab === t.id;
                     const isAll = t.id === "all";
                     const isOutgoing = t.id === "outgoing";
                     const isIncoming = t.id === "incoming";
@@ -1636,9 +1712,16 @@ export default function LettersPage() {
                         key={t.id}
                         type="button"
                         onClick={() => {
-                          setTab(t.id);
-                          setEditingId(null);
-                        }}
+  setEditingId(null);
+
+  if (t.id === "all") {
+    setFilterTab("all");
+    resetAllFilters();   // ✅ همه فیلترها پاک
+    return;
+  }
+
+  setFilterTab(t.id);   // ✅ فقط فیلتر
+}}
                         className={cls}
                       >
                         <span>{t.label}</span>
@@ -1712,7 +1795,16 @@ export default function LettersPage() {
                     <button
                       key={k}
                       type="button"
-                      onClick={() => setFilterQuick(k)}
+                      onClick={() => {
+  if (filterQuick === k) {
+    setFilterQuick("");
+    setFilterFromDate("");
+    setFilterToDate("");
+  } else {
+    setFilterQuick(k);
+  }
+}}
+
                       className={
                         (filterQuick === k
                           ? theme === "dark"
@@ -1729,7 +1821,8 @@ export default function LettersPage() {
 
                   <button
                     type="button"
-                    onClick={() => setAddTagOpen(true)}
+                    onClick={() => openTagPicker("filter")}
+
                     className={
                       "h-10 px-4 rounded-full border text-xs font-semibold transition inline-flex items-center gap-2 " +
                       (theme === "dark"
@@ -1767,9 +1860,22 @@ export default function LettersPage() {
 
           {/* Create/Edit form */}
           <div className="mt-4">
-            {(formOpen && tab === "incoming") || (formOpen && tab === "outgoing") || (formOpen && tab === "internal") ? (
+            {formOpen ? (
               <div>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div>
+  <div className={labelCls}>نامه</div>
+  <select
+    value={formKind}
+    onChange={(e) => setFormKind(e.target.value)}
+    className={inputCls}
+  >
+    <option value="incoming">وارده</option>
+    <option value="outgoing">صادره</option>
+    <option value="internal">داخلی</option>
+  </select>
+</div>
+
                   <div>
                     <div className={labelCls}>دسته بندی نامه</div>
                     <select
@@ -1850,10 +1956,10 @@ export default function LettersPage() {
 
                       <div className="min-w-[260px]">
                         <input
-                          value={tab === "incoming" ? incomingAttachmentTitle : tab === "outgoing" ? outgoingAttachmentTitle : internalAttachmentTitle}
+                          value={formKind === "incoming" ? incomingAttachmentTitle : formKind === "outgoing" ? outgoingAttachmentTitle : internalAttachmentTitle}
                           onChange={(e) => {
                             const v = e.target.value;
-                            if (tab === "incoming") setIncomingAttachmentTitle(v);
+                            if (formKind === "incoming") setIncomingAttachmentTitle(v);
                             else if (tab === "outgoing") setOutgoingAttachmentTitle(v);
                             else setInternalAttachmentTitle(v);
                           }}
@@ -1866,7 +1972,7 @@ export default function LettersPage() {
                   </div>
 
                   <div className="mt-3">
-                    {tab === "outgoing" ? (
+                    {formKind === "outgoing" ? (
                       <>
                         <div className="flex items-center gap-2 mb-2">
                           <div className={labelCls.replace("mb-1", "mb-0")}>پیرو</div>
@@ -1951,7 +2057,8 @@ export default function LettersPage() {
 
                       <button
                         type="button"
-                        onClick={() => openUpload(tab)}
+                        onClick={() => openUpload(formKind)}
+
                         className={uploadTriggerCls + " min-w-[240px] w-[240px] flex-shrink-0"}
                         aria-label="آپلود و الصاق فایل ها"
                         title="آپلود و الصاق فایل ها"
@@ -1966,16 +2073,16 @@ export default function LettersPage() {
                 <div className="mt-3">
                   <div className={labelCls}>برچسب ها</div>
                   <div className="flex flex-wrap items-center gap-2">
-                    {tagCapsFor(tab === "incoming" ? incomingTagIds : tab === "outgoing" ? outgoingTagIds : internalTagIds).map((t) => {
+                    {tagCapsFor(formKind === "incoming" ? incomingTagIds : formKind === "outgoing" ? outgoingTagIds : internalTagIds).map((t) => {
                       const id = String(t?.id);
                       const label = tagLabelOf(t);
-                      const selectedArr = tab === "incoming" ? incomingTagIds : tab === "outgoing" ? outgoingTagIds : internalTagIds;
+                      const selectedArr = formKind === "incoming" ? incomingTagIds : tab === "outgoing" ? outgoingTagIds : internalTagIds;
                       const active = selectedArr.some((x) => String(x) === id);
                       return (
                         <button
                           key={id}
                           type="button"
-                          onClick={() => toggleTag(tab, id)}
+                          onClick={() =>toggleTag(formKind, id)}
                           className={active ? selectedTagChipCls : chipCls}
                           title={label}
                           aria-label={label}
@@ -1995,21 +2102,21 @@ export default function LettersPage() {
                       <div className={labelCls}>تاریخ ثبت دبیرخانه</div>
 
                       <JalaliPopupDatePicker
-                        value={tab === "incoming" ? incomingSecretariatDate : tab === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate}
+                        value={formKind === "incoming" ? incomingSecretariatDate : tab === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate}
                         onChange={(v) => {
-                          if (tab === "incoming") setIncomingSecretariatDate(v);
+                          if (formKind === "incoming") setIncomingSecretariatDate(v);
                           else if (tab === "outgoing") setOutgoingSecretariatDate(v);
                           else setInternalSecretariatDate(v);
                         }}
                         theme={theme}
                         hideIcon={true}
                         buttonClassName={secretariatPickerBtnCls(
-                          tab === "incoming" ? incomingSecretariatDate : tab === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate
+                          formKind === "incoming" ? incomingSecretariatDate : tab === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate
                         )}
                       />
                       <div className={theme === "dark" ? "text-white/50 text-[11px] mt-1" : "text-neutral-500 text-[11px] mt-1"}>
                         {secretariatLongText(
-                          tab === "incoming" ? incomingSecretariatDate : tab === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate
+                          formKind === "incoming" ? incomingSecretariatDate : tab === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate
                         )}
                       </div>
                     </div>
@@ -2017,10 +2124,10 @@ export default function LettersPage() {
                     <div>
                       <div className={labelCls}>شماره ثبت دبیرخانه</div>
                       <input
-                        value={tab === "incoming" ? incomingSecretariatNo : tab === "outgoing" ? outgoingSecretariatNo : internalSecretariatNo}
+                        value={formKind === "incoming" ? incomingSecretariatNo : tab === "outgoing" ? outgoingSecretariatNo : internalSecretariatNo}
                         onChange={(e) => {
                           const v = e.target.value;
-                          if (tab === "incoming") setIncomingSecretariatNo(v);
+                          if (formKind === "incoming") setIncomingSecretariatNo(v);
                           else if (tab === "outgoing") setOutgoingSecretariatNo(v);
                           else setInternalSecretariatNo(v);
                         }}
@@ -2032,10 +2139,10 @@ export default function LettersPage() {
                     <div>
                       <div className={labelCls}>نام تحویل گیرنده</div>
                       <input
-                        value={tab === "incoming" ? incomingReceiverName : tab === "outgoing" ? outgoingReceiverName : internalReceiverName}
+                        value={formKind === "incoming" ? incomingReceiverName : tab === "outgoing" ? outgoingReceiverName : internalReceiverName}
                         onChange={(e) => {
                           const v = e.target.value;
-                          if (tab === "incoming") setIncomingReceiverName(v);
+                          if (formKind === "incoming") setIncomingReceiverName(v);
                           else if (tab === "outgoing") setOutgoingReceiverName(v);
                           else setInternalReceiverName(v);
                         }}
@@ -2046,7 +2153,7 @@ export default function LettersPage() {
                   </div>
 
                   <div className="flex items-center justify-end pt-2">
-                    <button type="button" onClick={() => submitLetter(tab)} className={sendBtnCls} title="ارسال" aria-label="ارسال">
+                    <button type="button" onClick={() => submitLetter(formKind)} className={sendBtnCls} title="ارسال" aria-label="ارسال">
                       <img src="/images/icons/check.svg" alt="" className={sendIconCls} />
                     </button>
                   </div>
@@ -2549,6 +2656,155 @@ export default function LettersPage() {
         )}
 
       {/* Upload modal */}
+
+{tagPickOpen &&
+  createPortal(
+    <div className="fixed inset-0 z-[9999]">
+      <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={() => setTagPickOpen(false)} />
+      <div className="absolute inset-0 p-3 md:p-6 flex items-center justify-center">
+        <div
+          className={
+            "w-[min(980px,calc(100vw-20px))] h-[min(78vh,720px)] rounded-2xl border shadow-2xl overflow-hidden " +
+            (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
+          }
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* header */}
+          <div className="px-4 py-3 flex items-center justify-between gap-3 border-b border-black/10 dark:border-white/10">
+            <div className="font-bold text-sm">انتخاب برچسب‌ها</div>
+
+            <button
+              type="button"
+              onClick={() => setTagPickOpen(false)}
+              className={
+                "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
+                (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
+              }
+              aria-label="بستن"
+              title="بستن"
+            >
+              <img src="/images/icons/bastan.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "dark:invert" : "invert")} />
+            </button>
+          </div>
+
+          <div className="p-4 space-y-3">
+            {/* 3 tabs like tags page (incoming/outgoing/internal) */}
+            <div className="flex flex-wrap items-center gap-2">
+              {["incoming", "outgoing", "internal"].map((k) => {
+                const t = TABS.find((x) => x.id === k);
+                const active = tagPickKind === k;
+                return (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => {
+                      setTagPickKind(k);
+                      const cur =
+                        tagPickFor === "form"
+                          ? k === "incoming"
+                            ? incomingTagIds
+                            : k === "outgoing"
+                            ? outgoingTagIds
+                            : internalTagIds
+                          : filterTagIds;
+
+                      setTagPickDraftIds((Array.isArray(cur) ? cur : []).map(String));
+                      setTagPickCategoryId("");
+                    }}
+                    className={
+                      "h-10 px-5 rounded-xl border transition text-sm font-semibold inline-flex items-center gap-2 " +
+                      (active
+                        ? "bg-black text-white border-black"
+                        : theme === "dark"
+                        ? "bg-transparent text-white border-white/15 hover:bg-white/5"
+                        : "bg-white text-neutral-900 border-black/15 hover:bg-black/[0.02]")
+                    }
+                  >
+                    <span>{t?.label || k}</span>
+                    {t?.icon ? <img src={t.icon} alt="" className={"w-5 h-5 " + (theme === "dark" ? "dark:invert" : "")} /> : null}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* category select */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="md:col-span-1">
+                <div className={labelCls}>دسته‌بندی</div>
+                <select
+                  value={tagPickCategoryId}
+                  onChange={(e) => setTagPickCategoryId(e.target.value)}
+                  className={inputCls}
+                >
+                  <option value="">همه دسته‌بندی‌ها</option>
+                  {tagCategories.map((c) => (
+                    <option key={c.id} value={String(c.id)}>
+                      {String(c.label || "")}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="md:col-span-2">
+                <div className={labelCls}>برچسب‌ها</div>
+
+                <div
+                  className={
+                    "rounded-2xl border p-3 max-h-[44vh] overflow-auto " +
+                    (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")
+                  }
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    {(Array.isArray(tags) ? tags : [])
+                      .filter((t) => {
+                        if (!tagPickCategoryId) return true;
+                        const cid = t?.category_id ?? t?.categoryId;
+                        return String(cid || "") === String(tagPickCategoryId);
+                      })
+                      .map((t) => {
+                        const id = String(t?.id);
+                        const label = tagLabelOf(t);
+                        const active = tagPickDraftIds.includes(id);
+                        return (
+                          <button
+                            key={id}
+                            type="button"
+                            onClick={() => togglePickDraft(id)}
+                            className={active ? selectedTagChipCls : chipCls}
+                            title={label}
+                            aria-label={label}
+                          >
+                            <span className="truncate max-w-[220px]">{label}</span>
+                          </button>
+                        );
+                      })}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* footer actions */}
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={applyPickedTags}
+                className={
+                  "h-11 w-11 rounded-xl flex items-center justify-center transition ring-1 bg-black text-white ring-black/15 hover:bg-black/90"
+                }
+                title="تایید"
+                aria-label="تایید"
+              >
+                <img src="/images/icons/check.svg" alt="" className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )}
+
+
       {uploadOpen &&
         createPortal(
           <div className="fixed inset-0 z-[9999]">
