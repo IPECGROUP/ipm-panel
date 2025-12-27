@@ -472,6 +472,8 @@ const [formKind, setFormKind] = useState("incoming"); // نوع نامه داخ�
   const [filterSubject, setFilterSubject] = useState("");
   const [filterOrg, setFilterOrg] = useState("");
   const [filterLetterNo, setFilterLetterNo] = useState("");
+const [filterTagRecentIds, setFilterTagRecentIds] = useState([]);
+
 
   const resetAllFilters = () => {
   setFilterQuick("");
@@ -482,6 +484,26 @@ const [formKind, setFormKind] = useState("incoming"); // نوع نامه داخ�
   setFilterOrg("");
   setFilterLetterNo("");
 };
+
+useEffect(() => {
+  setFilterTagRecentIds((prev) => {
+    const next = [];
+    const pushUnique = (x) => {
+      const s = String(x || "");
+      if (!s) return;
+      if (!next.includes(s)) next.push(s);
+    };
+
+    // اول انتخاب‌شده‌ها
+    (filterTagIds || []).forEach(pushUnique);
+    // بعد قبلی‌ها
+    (prev || []).forEach(pushUnique);
+
+    // سقف
+    return next.slice(0, 24);
+  });
+}, [filterTagIds]);
+
 
 
   // ===== Table selection + pagination =====
@@ -1577,13 +1599,45 @@ const allTags = useMemo(() => {
   ];
 }, [tagsByScope]);
 
-const filterSelectedTags = useMemo(() => {
-  const ids = (Array.isArray(filterTagIds) ? filterTagIds : []).map(String);
-  const map = new Map((allTags || []).map((t) => [String(t?.id), t]));
-  return ids
-    .map((id) => map.get(id) || { id, label: id })
-    .filter(Boolean);
-}, [filterTagIds, allTags]);
+const latestAllTags = useMemo(() => {
+  const arr = Array.isArray(allTags) ? allTags.slice() : [];
+  arr.sort((a, b) => {
+    const ai = Number(a?.id);
+    const bi = Number(b?.id);
+    if (Number.isFinite(ai) && Number.isFinite(bi)) return bi - ai;
+    return String(b?.id ?? "").localeCompare(String(a?.id ?? ""));
+  });
+  return arr.slice(0, 14);
+}, [allTags]);
+
+const filterTagCaps = useMemo(() => {
+  const ids = [
+    ...(Array.isArray(filterTagIds) ? filterTagIds.map(String) : []),
+    ...(Array.isArray(filterTagRecentIds) ? filterTagRecentIds.map(String) : []),
+  ];
+
+  const map = new Map((Array.isArray(allTags) ? allTags : []).map((t) => [String(t?.id), t]));
+  const out = [];
+  const seen = new Set();
+
+  const pushId = (id) => {
+    const sid = String(id || "");
+    if (!sid || seen.has(sid)) return;
+    const t = map.get(sid);
+    if (!t) return;
+    out.push(t);
+    seen.add(sid);
+  };
+
+  // اول: selected + recent
+  ids.forEach(pushId);
+
+  // بعد: latest
+  (latestAllTags || []).forEach((t) => pushId(t?.id));
+
+  return out;
+}, [filterTagIds, filterTagRecentIds, allTags, latestAllTags]);
+
 
 
 const openTagPicker = async (forWhat) => {
@@ -1735,7 +1789,7 @@ const ensureTagsForKind = async (kind) => {
 
               <div className="flex flex-wrap items-end gap-2">
                 {/* Tabs first */}
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 justify-start">
                   {TABS.map((t) => {
                     const active = filterTab === t.id;
                     const isAll = t.id === "all";
@@ -1908,17 +1962,28 @@ const ensureTagsForKind = async (kind) => {
                     <img src="/images/icons/afzodan.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "dark:invert" : "")} />
                   </button>
 
-                 {filterSelectedTags.map((t) => {
+                 {filterTagCaps.map((t) => {
                     const id = String(t?.id);
                     const label = tagLabelOf(t);
+                    const active = (filterTagIds || []).some((x) => String(x) === id);
 
                     return (
                       <button
                         key={id}
                         type="button"
-                        onClick={() => toggleFilterTag(id)}
-   // ✅ کلیک حذف نکنه؛ فقط پاپ‌اپ انتخاب باز شه
-                        className={selectedTagChipCls}            // ✅ همیشه حالت انتخاب‌شده
+                        onClick={() => {
+                          // تو recent هم نگهش دار
+                          setFilterTagRecentIds((prev) => {
+                            const sid = String(id || "");
+                            if (!sid) return prev;
+                            const next = [sid, ...(prev || []).map(String).filter((x) => x !== sid)];
+                            return next.slice(0, 24);
+                          });
+
+                          // فقط انتخاب/عدم انتخاب
+                          toggleFilterTag(id);
+                        }}
+                        className={(active ? selectedTagChipCls : chipCls) + " h-10"}
                         title={label}
                         aria-label={label}
                       >
@@ -2768,39 +2833,58 @@ else setInternalAttachmentTitle(v);
                 aria-label="بستن"
                 title="بستن"
               >
-                <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5" />
+                <img
+                  src="/images/icons/bastan.svg"
+                  alt=""
+                  className="w-5 h-5 brightness-0"
+                />
               </button>
             </div>
 
             {/* Tabs */}
             <div className="px-4 pt-3">
-              {/* ✅ مهم: flex-row-reverse نذار! */}
-              <div className="flex items-center justify-end gap-2">
-                {TAG_PICK_TABS.map((t) => {
-                  const active = tagPickKind === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={async () => {
-                        setTagPickKind(t.id);
-                        setTagPickCategoryId("");
-                        setTagPickSearch("");
-                        await ensureTagsForKind(t.id);
-                      }}
-                      className={
-                        "h-10 px-4 rounded-xl border text-sm font-semibold transition " +
-                        (active
-                          ? "bg-black text-white border-black"
-                          : theme === "dark"
-                          ? "bg-transparent text-white border-white/15 hover:bg-white/5"
-                          : "bg-white text-neutral-900 border-black/15 hover:bg-black/[0.02]")
-                      }
-                    >
-                      {t.label}
-                    </button>
-                  );
-                })}
+              {/* ✅ سه تب حتما سمت راست + ترتیب: پروژه‌ها، نامه‌ها و مستندات، اجرای پروژه‌ها */}
+              <div className="flex items-center justify-start gap-2">
+                {(() => {
+                  const order = ["projects", "letters", "execution"];
+                  const ordered =
+                    Array.isArray(TAG_PICK_TABS) && TAG_PICK_TABS.length
+                      ? [
+                          ...order
+                            .map((id) => TAG_PICK_TABS.find((x) => x?.id === id))
+                            .filter(Boolean),
+                          ...TAG_PICK_TABS.filter((x) => !order.includes(x?.id)),
+                        ]
+                      : [];
+
+                  const tabsToRender = ordered.length ? ordered : TAG_PICK_TABS;
+
+                  return tabsToRender.map((t) => {
+                    const active = tagPickKind === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={async () => {
+                          setTagPickKind(t.id);
+                          setTagPickCategoryId("");
+                          setTagPickSearch("");
+                          await ensureTagsForKind(t.id);
+                        }}
+                        className={
+                          "h-10 px-4 rounded-xl border text-sm font-semibold transition " +
+                          (active
+                            ? "bg-black text-white border-black"
+                            : theme === "dark"
+                            ? "bg-transparent text-white border-white/15 hover:bg-white/5"
+                            : "bg-white text-neutral-900 border-black/15 hover:bg-black/[0.02]")
+                        }
+                      >
+                        {t.label}
+                      </button>
+                    );
+                  });
+                })()}
               </div>
 
               {/* Category row (for letters/execution only) */}
@@ -2907,7 +2991,7 @@ else setInternalAttachmentTitle(v);
                           key={id}
                           type="button"
                           onClick={() => togglePickDraft(id)}
-                          className={active ? selectedTagChipCls : chipCls}
+                          className={(active ? selectedTagChipCls : chipCls) + " h-10"}
                           title={label}
                         >
                           <span className="truncate max-w-[240px]">{label}</span>
@@ -2936,8 +3020,6 @@ else setInternalAttachmentTitle(v);
               >
                 <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
               </button>
-
-              
             </div>
           </div>
         </div>
@@ -2946,131 +3028,132 @@ else setInternalAttachmentTitle(v);
     document.body
   )}
 
-      {uploadOpen &&
-        createPortal(
-          <div className="fixed inset-0 z-[9999]">
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeUpload} />
-            <div className="absolute inset-0 flex items-center justify-center p-4">
-              <div
-                className={
-                  "w-[min(720px,calc(100vw-24px))] rounded-2xl border shadow-xl overflow-hidden " +
-                  (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
-                }
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="p-4 flex items-center justify-between">
-                  <div className="font-bold text-sm">
-                    بارگذاری نامه{" "}
-                    {uploadFor === "incoming" ? "(وارده)" : uploadFor === "outgoing" ? "(صادره)" : "(داخلی)"}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={closeUpload}
-                    className={
-                      "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
-                      (theme === "dark" ? "ring-neutral-800 hover:bg-white/10 text-white" : "ring-black/15 hover:bg-black/90 bg-black text-white")
-                    }
-                    aria-label="بستن"
-                    title="بستن"
-                  >
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M18 6 6 18M6 6l12 12" />
-                    </svg>
-                  </button>
+{uploadOpen &&
+  createPortal(
+    <div className="fixed inset-0 z-[9999]">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeUpload} />
+      <div className="absolute inset-0 flex items-center justify-center p-4">
+        <div
+          className={
+            "w-[min(720px,calc(100vw-24px))] rounded-2xl border shadow-xl overflow-hidden " +
+            (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
+          }
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="p-4 flex items-center justify-between">
+            <div className="font-bold text-sm">
+              بارگذاری نامه{" "}
+              {uploadFor === "incoming" ? "(وارده)" : uploadFor === "outgoing" ? "(صادره)" : "(داخلی)"}
+            </div>
+            <button
+              type="button"
+              onClick={closeUpload}
+              className={
+                "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
+                (theme === "dark" ? "ring-neutral-800 hover:bg-white/10 text-white" : "ring-black/15 hover:bg-black/90 bg-black text-white")
+              }
+              aria-label="بستن"
+              title="بستن"
+            >
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
+
+          <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Left: reuse uploaded */}
+            <div>
+              <div className={labelCls}>فایل‌های آپلود شده</div>
+
+              <input
+                value={pickSearch}
+                onChange={(e) => setPickSearch(e.target.value)}
+                className={inputCls}
+                type="text"
+                placeholder="جستجو بر اساس نام فایل..."
+              />
+
+              <div className={"mt-2 rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
+                <div className={"px-3 py-2 text-xs font-semibold border-b " + (theme === "dark" ? "border-white/10 text-white/80" : "border-black/10 text-neutral-700")}>
+                  همه فایل‌ها (برای استفاده مجدد)
                 </div>
 
-                <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
+                <div className="p-3 space-y-2 max-h-[360px] overflow-auto">
+                  {Array.isArray(filteredUploadedAttachments) && filteredUploadedAttachments.length > 0 ? (
+                    filteredUploadedAttachments.map((a, i) => {
+                      const url = attachmentUrlOf(a);
+                      const name = attachmentNameOf(a) || a?.name || `فایل ${i + 1}`;
+                      const already = currentDocFiles.some((x) => String(x?.url || "") === String(url));
+                      const hintNo = String(a?._letterNo || "").trim();
 
-                <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {/* Left: reuse uploaded */}
-                  <div>
-                    <div className={labelCls}>فایل‌های آپلود شده</div>
+                      return (
+                        <div
+                          key={String(i) + "_" + String(url)}
+                          className={
+                            "rounded-xl border px-3 py-2 flex items-center justify-between gap-3 " +
+                            (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
+                          }
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[13px] font-semibold truncate">{name}</div>
+                            <div className={theme === "dark" ? "text-white/60 text-[11px] mt-1" : "text-neutral-600 text-[11px] mt-1"}>
+                              {url ? "آدرس فایل موجود است" : "—"}
+                              {hintNo ? <span> — نامه: {toFaDigits(hintNo)}</span> : null}
+                            </div>
+                          </div>
 
-                    <input
-                      value={pickSearch}
-                      onChange={(e) => setPickSearch(e.target.value)}
-                      className={inputCls}
-                      type="text"
-                      placeholder="جستجو بر اساس نام فایل..."
-                    />
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={url || "#"}
+                              target="_blank"
+                              rel="noreferrer"
+                              className={
+                                "h-9 px-3 rounded-xl border transition text-sm inline-flex items-center justify-center " +
+                                (url
+                                  ? theme === "dark"
+                                    ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                                    : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]"
+                                  : theme === "dark"
+                                  ? "border-white/10 bg-white/5 text-white/40 pointer-events-none"
+                                  : "border-black/10 bg-white text-black/40 pointer-events-none")
+                              }
+                              title="باز کردن"
+                            >
+                              باز کردن
+                            </a>
 
-                    <div className={"mt-2 rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
-                      <div className={"px-3 py-2 text-xs font-semibold border-b " + (theme === "dark" ? "border-white/10 text-white/80" : "border-black/10 text-neutral-700")}>
-                        همه فایل‌ها (برای استفاده مجدد)
-                      </div>
+                            <button
+                              type="button"
+                              onClick={() => addExistingAttachmentToCurrent(uploadFor, a)}
+                              disabled={already}
+                              className={
+                                "h-9 px-3 rounded-xl border transition text-sm inline-flex items-center justify-center " +
+                                (already
+                                  ? theme === "dark"
+                                    ? "border-white/10 bg-white/5 text-white/40 cursor-not-allowed"
+                                    : "border-black/10 bg-black/[0.03] text-black/40 cursor-not-allowed"
+                                  : theme === "dark"
+                                  ? "border-white/15 bg-white text-black hover:bg-white/90"
+                                  : "border-black/15 bg-black text-white hover:bg-black/90")
+                              }
+                              title={already ? "اضافه شده" : "افزودن"}
+                            >
+                              {already ? "اضافه شد" : "افزودن"}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="py-8 text-center text-black/60 dark:text-white/50 text-sm">فایلی یافت نشد.</div>
+                  )}
+                </div>
+              </div>
+            </div>
 
-                      <div className="p-3 space-y-2 max-h-[360px] overflow-auto">
-                        {Array.isArray(filteredUploadedAttachments) && filteredUploadedAttachments.length > 0 ? (
-                          filteredUploadedAttachments.map((a, i) => {
-                            const url = attachmentUrlOf(a);
-                            const name = attachmentNameOf(a) || a?.name || `فایل ${i + 1}`;
-                            const already = currentDocFiles.some((x) => String(x?.url || "") === String(url));
-                            const hintNo = String(a?._letterNo || "").trim();
-
-                            return (
-                              <div
-                                key={String(i) + "_" + String(url)}
-                                className={
-                                  "rounded-xl border px-3 py-2 flex items-center justify-between gap-3 " +
-                                  (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
-                                }
-                              >
-                                <div className="min-w-0 flex-1">
-                                  <div className="text-[13px] font-semibold truncate">{name}</div>
-                                  <div className={theme === "dark" ? "text-white/60 text-[11px] mt-1" : "text-neutral-600 text-[11px] mt-1"}>
-                                    {url ? "آدرس فایل موجود است" : "—"}
-                                    {hintNo ? <span> — نامه: {toFaDigits(hintNo)}</span> : null}
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                  <a
-                                    href={url || "#"}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className={
-                                      "h-9 px-3 rounded-xl border transition text-sm inline-flex items-center justify-center " +
-                                      (url
-                                        ? theme === "dark"
-                                          ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
-                                          : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]"
-                                        : theme === "dark"
-                                        ? "border-white/10 bg-white/5 text-white/40 pointer-events-none"
-                                        : "border-black/10 bg-white text-black/40 pointer-events-none")
-                                    }
-                                    title="باز کردن"
-                                  >
-                                    باز کردن
-                                  </a>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => addExistingAttachmentToCurrent(uploadFor, a)}
-                                    disabled={already}
-                                    className={
-                                      "h-9 px-3 rounded-xl border transition text-sm inline-flex items-center justify-center " +
-                                      (already
-                                        ? theme === "dark"
-                                          ? "border-white/10 bg-white/5 text-white/40 cursor-not-allowed"
-                                          : "border-black/10 bg-black/[0.03] text-black/40 cursor-not-allowed"
-                                        : theme === "dark"
-                                        ? "border-white/15 bg-white text-black hover:bg-white/90"
-                                        : "border-black/15 bg-black text-white hover:bg-black/90")
-                                    }
-                                    title={already ? "اضافه شده" : "افزودن"}
-                                  >
-                                    {already ? "اضافه شد" : "افزودن"}
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })
-                        ) : (
-                          <div className="py-8 text-center text-black/60 dark:text-white/50 text-sm">فایلی یافت نشد.</div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
 
                   {/* Right: pick new + selected list */}
                   <div>
