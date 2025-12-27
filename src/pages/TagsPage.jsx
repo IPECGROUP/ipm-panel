@@ -256,10 +256,10 @@ function TagsPage() {
   }, [activeTab, api]);
 
   const projectsSorted = useMemo(() => {
-  return (projects || [])
-    .slice()
-    .sort((a, b) => String(b?.code || "").localeCompare(String(a?.code || ""), "fa", { numeric: true }));
-}, [projects]);
+    return (projects || [])
+      .slice()
+      .sort((a, b) => String(b?.code || "").localeCompare(String(a?.code || ""), "fa", { numeric: true }));
+  }, [projects]);
 
   // ====== Scoped categories + tags (letters/execution/projects) ======
   const [lettersLoading, setLettersLoading] = useState(false);
@@ -667,6 +667,7 @@ function TagsPage() {
       {ProjectsBar}
 
       <div className="mt-3">
+        {/* ✅ جدول پروژه‌ها دقیقاً هم‌استایلِ جدول Letters/Execution */}
         <TableShell>
           <THead>
             <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
@@ -676,9 +677,8 @@ function TagsPage() {
               <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
                 برچسب‌ها
               </TH>
-              {/* ✅ فقط برای یک‌دست شدن با بقیه (کاملاً غیرقابل استفاده) */}
               <TH className="w-28 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                  <span className="invisible">اقدامات</span>
+                اقدامات
               </TH>
             </tr>
           </THead>
@@ -710,7 +710,6 @@ function TagsPage() {
                 )}
               </TD>
 
-              {/* ✅ پنهان + غیرقابل کلیک (فقط برای استایل) */}
               <TD className="px-3">
                 <div className="flex items-center justify-center gap-2 pointer-events-none">
                   <span className="invisible">
