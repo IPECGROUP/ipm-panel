@@ -208,18 +208,16 @@ function TagsPage() {
   const [activeTab, setActiveTab] = useState("projects");
 
   const activeScope = useMemo(() => {
+    if (activeTab === "projects") return "projects";
     if (activeTab === "letters") return "letters";
     if (activeTab === "execution") return "execution";
     return null;
   }, [activeTab]);
 
-  // ====== Projects ======
+  // ====== Projects list for dropdown ======
   const [projects, setProjects] = useState([]);
   const [projLoading, setProjLoading] = useState(false);
   const [projErr, setProjErr] = useState("");
-
-  const [projPickId, setProjPickId] = useState("");
-  const [projectTagIds, setProjectTagIds] = useState([]);
 
   useEffect(() => {
     if (activeTab !== "projects") return;
@@ -253,35 +251,7 @@ function TagsPage() {
       .sort((a, b) => String(a?.code || "").localeCompare(String(b?.code || ""), "fa", { numeric: true }));
   }, [projects]);
 
-  const projectTagItems = useMemo(() => {
-    const byId = new Map((projectsSorted || []).map((p) => [String(p?.id), p]));
-    return (projectTagIds || [])
-      .map((id) => byId.get(String(id)))
-      .filter(Boolean);
-  }, [projectTagIds, projectsSorted]);
-
-  const addProjectTag = async (e) => {
-    e?.preventDefault();
-    const id = String(projPickId || "").trim();
-    if (!id) return;
-
-    const exists = (projectTagIds || []).some((x) => String(x) === id);
-    if (exists) {
-      setProjPickId("");
-      return;
-    }
-
-    setProjectTagIds((prev) => [...(prev || []), id]);
-    setProjPickId("");
-  };
-
-  const removeProjectTag = async (p) => {
-    const id = p?.id;
-    if (!id) return;
-    setProjectTagIds((prev) => (prev || []).filter((x) => String(x) !== String(id)));
-  };
-
-  // ====== Letters/Execution categories + tags ======
+  // ====== Scoped categories + tags (letters/execution/projects) ======
   const [lettersLoading, setLettersLoading] = useState(false);
   const [lettersErr, setLettersErr] = useState("");
 
@@ -330,7 +300,7 @@ function TagsPage() {
   );
 
   useEffect(() => {
-    if (activeTab !== "letters" && activeTab !== "execution") return;
+    if (!activeScope) return;
 
     setCatQuery("");
     setSelectedCategoryId(null);
@@ -373,6 +343,7 @@ function TagsPage() {
     return map;
   }, [tags, categoriesSorted]);
 
+  // ====== Letters/Execution create category/tag ======
   const addCategory = async (e) => {
     e?.preventDefault();
     const v = String(newCategory || "").trim();
@@ -413,6 +384,34 @@ function TagsPage() {
     }
   };
 
+  const addScopedTag = async ({ scope, categoryId, label }) => {
+    const v = String(label || "").trim();
+    const cid = Number(categoryId);
+
+    if (!scope) return null;
+    if (!cid || !Number.isFinite(cid)) return null;
+    if (!v) return null;
+
+    const exists = (tags || []).some(
+      (t) => String(t?.category_id) === String(cid) && String(t?.label || "").trim() === v,
+    );
+    if (exists) return null;
+
+    const r = await api("/tags", {
+      method: "POST",
+      body: JSON.stringify({ scope, type: "tag", category_id: cid, label: v }),
+    });
+
+    const item = r.item || { id: r.id, label: v, category_id: cid };
+    if (item?.id) {
+      setTags((prev) => [...(prev || []), item]);
+      return item;
+    }
+
+    await loadScopedTags(scope);
+    return null;
+  };
+
   const addLetterTag = async (e) => {
     e?.preventDefault();
     const v = String(newTag || "").trim();
@@ -427,30 +426,12 @@ function TagsPage() {
       return;
     }
 
-    const exists = (tags || []).some(
-      (t) => String(t?.category_id) === String(selectedCategoryId) && String(t?.label || "").trim() === v,
-    );
-    if (exists) {
-      setLettersErr("این برچسب قبلاً در همین دسته‌بندی ثبت شده است");
-      return;
-    }
-
     setLettersSaving(true);
     setLettersErr("");
     try {
-      const r = await api("/tags", {
-        method: "POST",
-        body: JSON.stringify({ scope: activeScope, type: "tag", category_id: selectedCategoryId, label: v }),
-      });
-      const item = r.item || { id: r.id, label: v, category_id: selectedCategoryId };
-      if (item?.id) {
-        setTags((prev) => [...(prev || []), item]);
-        setNewTag("");
-        requestAnimationFrame(() => newTagRef.current?.focus?.());
-      } else {
-        await loadScopedTags(activeScope);
-        setNewTag("");
-      }
+      await addScopedTag({ scope: activeScope, categoryId: selectedCategoryId, label: v });
+      setNewTag("");
+      requestAnimationFrame(() => newTagRef.current?.focus?.());
     } catch (e2) {
       setLettersErr(e2.message || "خطا در ثبت برچسب");
     } finally {
@@ -458,7 +439,7 @@ function TagsPage() {
     }
   };
 
-  const deleteLetterTag = async (t) => {
+  const deleteScopedTag = async (t) => {
     const id = t?.id;
     if (!id) return;
 
@@ -509,6 +490,68 @@ function TagsPage() {
     }
   };
 
+  // ====== Projects tab: persist selected projects as tags in scope="projects" ======
+  const [projPickId, setProjPickId] = useState("");
+  const [projectCategoryId, setProjectCategoryId] = useState(null);
+
+  useEffect(() => {
+    if (activeScope !== "projects") return;
+    const found = (categoriesSorted || []).find((c) => String(c?.label || "").trim() === "پروژه‌ها");
+    setProjectCategoryId(found?.id ?? null);
+  }, [activeScope, categoriesSorted]);
+
+  const ensureProjectsCategory = useCallback(async () => {
+    if (activeScope !== "projects") return null;
+
+    const found = (categoriesSorted || []).find((c) => String(c?.label || "").trim() === "پروژه‌ها");
+    if (found?.id) return found.id;
+
+    const r = await api("/tags", {
+      method: "POST",
+      body: JSON.stringify({ scope: "projects", type: "category", label: "پروژه‌ها" }),
+    });
+
+    const item = r.item || { id: r.id, label: "پروژه‌ها", scope: "projects" };
+    if (item?.id) {
+      setCategories((prev) => [...(prev || []), item]);
+      return item.id;
+    }
+
+    await loadScopedTags("projects");
+    const after = (categoriesSorted || []).find((c) => String(c?.label || "").trim() === "پروژه‌ها");
+    return after?.id ?? null;
+  }, [activeScope, api, categoriesSorted, loadScopedTags]);
+
+  const addProjectTag = async (e) => {
+    e?.preventDefault();
+    const id = String(projPickId || "").trim();
+    if (!id) return;
+
+    setLettersSaving(true);
+    setLettersErr("");
+    try {
+      const catId = projectCategoryId || (await ensureProjectsCategory());
+      if (!catId) throw new Error("category_id_required");
+
+      const p = (projectsSorted || []).find((x) => String(x?.id) === id);
+      const label = `${p?.code || "—"} - ${p?.name || ""}`.trim();
+
+      await addScopedTag({ scope: "projects", categoryId: catId, label });
+
+      setProjPickId("");
+    } catch (e2) {
+      setLettersErr(e2.message || "خطا در افزودن پروژه");
+    } finally {
+      setLettersSaving(false);
+    }
+  };
+
+  const projectTagsList = useMemo(() => {
+    const cid = projectCategoryId;
+    if (!cid) return [];
+    return tagsByCategory.get(String(cid)) || [];
+  }, [projectCategoryId, tagsByCategory]);
+
   /* ===================== Sections ===================== */
 
   const CategoriesBar = (
@@ -536,9 +579,8 @@ function TagsPage() {
 
         {/* برچسب جدید + دسته‌بندی‌ها (یک بوردر مشترک و کنار هم) */}
         <div className="md:col-span-2 rounded-2xl border border-black/10 bg-white p-3 dark:bg-neutral-900 dark:border-neutral-800">
-          {/* ✅ remove extra inner divider border, keep responsive layout */}
           <div className="flex flex-col md:flex-row-reverse gap-3">
-            {/* ✅ برچسب جدید (جاش با دسته‌بندی‌ها عوض شد) */}
+            {/* برچسب جدید */}
             <form onSubmit={addLetterTag} className="md:flex-1">
               <FieldLabel>برچسب جدید</FieldLabel>
               <div className="flex items-center gap-2 flex-row-reverse">
@@ -555,7 +597,7 @@ function TagsPage() {
               </div>
             </form>
 
-            {/* دسته‌بندی‌ها (کامبوباکس تایپی) */}
+            {/* دسته‌بندی‌ها */}
             <div className="md:flex-1">
               <FieldLabel>دسته‌بندی‌ها</FieldLabel>
               <CategoryCombobox
@@ -587,7 +629,7 @@ function TagsPage() {
       >
         <FieldLabel>افزودن پروژه به برچسب‌ها</FieldLabel>
         <div className="flex items-center gap-2 flex-row-reverse">
-          <AddIconBtn title="افزودن پروژه" disabled={projLoading || !String(projPickId || "").trim()} />
+          <AddIconBtn title="افزودن پروژه" disabled={lettersSaving || projLoading || !String(projPickId || "").trim()} />
           <select
             value={projPickId}
             onChange={(e) => setProjPickId(e.target.value)}
@@ -595,7 +637,7 @@ function TagsPage() {
                        border border-black/15 outline-none focus:ring-2 focus:ring-black/10
                        dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50
                        disabled:opacity-60"
-            disabled={projLoading}
+            disabled={projLoading || lettersSaving}
             aria-label="انتخاب پروژه"
           >
             <option value="">انتخاب پروژه…</option>
@@ -610,13 +652,14 @@ function TagsPage() {
           </select>
         </div>
       </form>
+
+      {projErr && <div className="mt-2 text-sm text-red-600 dark:text-red-400">{projErr}</div>}
+      {lettersErr && <div className="mt-2 text-sm text-red-600 dark:text-red-400">{lettersErr}</div>}
     </div>
   );
 
   const ProjectsTab = (
     <>
-      {projErr && <div className="text-sm text-red-600 dark:text-red-400 mb-3 px-[15px]">{projErr}</div>}
-
       {ProjectsBar}
 
       <div className="mt-3">
@@ -631,23 +674,26 @@ function TagsPage() {
           <tbody
             className="border-t border-neutral-300 dark:border-neutral-700
                        [&>tr:nth-child(odd)]:bg-white [&>tr:nth-child(even)]:bg-neutral-50
-                       dark:[&>tr:nth-child(odd)]:bg-neutral-900 dark:[&>tr:nth-child(even)]:bg-neutral-800/50"
+                       dark:[&>tr:nth-child(odd)]:bg-neutral-900 dark:[&>tr:nth-child(even)]:bg-neutral-800/50
+                       [&>tr]:border-b [&>tr]:border-neutral-300 dark:[&>tr]:border-neutral-700"
           >
-            <tr className="[&_td]:py-3 border-b border-neutral-300 dark:border-neutral-700">
-              <td className="px-3 font-semibold">پروژه‌ها</td>
-              <td className="px-3">
-                {projLoading ? (
+            <tr>
+              <td className="px-3 py-3 font-semibold">پروژه‌ها</td>
+              <td className="px-3 py-3">
+                {lettersLoading ? (
                   <span className="text-neutral-600 dark:text-neutral-400">در حال بارگذاری…</span>
-                ) : (projectsSorted || []).length === 0 ? (
-                  <span className="text-neutral-600 dark:text-neutral-400">پروژه‌ای یافت نشد.</span>
-                ) : (projectTagItems || []).length === 0 ? (
+                ) : (projectTagsList || []).length === 0 ? (
                   <span className="text-neutral-600 dark:text-neutral-400">پروژه‌ای به برچسب‌ها اضافه نشده است.</span>
                 ) : (
                   <div className="flex flex-wrap items-center justify-start gap-2">
-                    {(projectTagItems || []).map((p) => {
-                      const label = `${p?.code || "—"} - ${p?.name || ""}`.trim();
-                      return <Chip key={p?.id ?? label} label={label} onRemove={() => removeProjectTag(p)} />;
-                    })}
+                    {(projectTagsList || []).map((t) => (
+                      <Chip
+                        key={t?.id ?? t?.label}
+                        label={t?.label || "—"}
+                        disabled={lettersSaving}
+                        onRemove={() => deleteScopedTag(t)}
+                      />
+                    ))}
                   </div>
                 )}
               </td>
@@ -702,7 +748,7 @@ function TagsPage() {
                             key={t?.id ?? t?.label}
                             label={t?.label || "—"}
                             disabled={lettersSaving}
-                            onRemove={() => deleteLetterTag(t)}
+                            onRemove={() => deleteScopedTag(t)}
                           />
                         ))}
                       </div>
@@ -740,7 +786,6 @@ function TagsPage() {
     </>
   );
 
-  // ✅ execution table exactly like letters/documents
   const ExecutionTab = (
     <>
       {CategoriesBar}
