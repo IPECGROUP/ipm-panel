@@ -1690,7 +1690,7 @@ const openTagPicker = async (forWhat) => {
       : "letters";
 
   setTagPickKind(initialKind);
-  await ensureTagsForKind(initialKind); // ✅ اضافه کن
+  await ensureTagsForKind(initialKind);
 
   const currentSelected =
     forWhat === "form"
@@ -1699,12 +1699,13 @@ const openTagPicker = async (forWhat) => {
         : initialKind === "projects"
         ? outgoingTagIds
         : internalTagIds
-      : filterTagIds;
+      : filterTagPinnedIds; // ✅ اینجا تغییر کرد (پین‌ها)
 
   setTagPickDraftIds((Array.isArray(currentSelected) ? currentSelected : []).map(String));
   setTagPickCategoryId("");
   setTagPickOpen(true);
 };
+
 
 
 
@@ -1715,22 +1716,24 @@ const togglePickDraft = (id) => {
 };
 
 const applyPickedTags = () => {
-  const ids = (tagPickDraftIds || []).map(String);
+  const ids = normalizeIdList(tagPickDraftIds).slice(0, TAG_PREFS_LIMIT);
 
   if (tagPickFor === "filter") {
-  setFilterTagIds(ids);
+    // ✅ این پاپ‌آپ فقط “مدیریت برچسب‌های نوار فیلترها (Pinned)” است
+    setFilterTagPinnedIds(ids);
+    savePinnedFilterTags(ids);
 
-  // ✅ هرچی انتخاب شد، بیاد قبل "افزودن" (یعنی وارد pinned ها بشه)
-  mergePinnedFilterTags(ids);
-} else {
-  if (tagPickKind === "letters") setIncomingTagIds(ids);
-  else if (tagPickKind === "projects") setOutgoingTagIds(ids);
-  else setInternalTagIds(ids);
-}
-
+    // ✅ اگر برچسبی از نوار حذف شد، از فیلتر فعال هم حذف شود تا فیلتر مخفی نماند
+    setFilterTagIds((prev) => (Array.isArray(prev) ? prev.map(String) : []).filter((x) => ids.includes(String(x))));
+  } else {
+    if (tagPickKind === "letters") setIncomingTagIds(ids);
+    else if (tagPickKind === "projects") setOutgoingTagIds(ids);
+    else setInternalTagIds(ids);
+  }
 
   setTagPickOpen(false);
 };
+
 
 
 
@@ -1960,83 +1963,6 @@ const ensureTagsForKind = async (kind) => {
               {/* Tags + Quick chips (moved here) */}
               <div>
                 <div className={labelCls}>برچسب ها</div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  {QUICK_CHIPS.map(([k, lab]) => (
-                    <button
-                      key={k}
-                      type="button"
-                      onClick={() => {
-                          if (filterQuick === k) {
-                            setFilterQuick("");
-                            setFilterFromDate("");
-                            setFilterToDate("");
-                          } else {
-                            setFilterQuick(k);
-                          }
-                        }}
-
-                      className={
-                        (filterQuick === k
-                          ? theme === "dark"
-                            ? chipBase + " border-white/15 bg-white text-black"
-                            : chipBase + " border-black/15 bg-black text-white"
-                          : chipCls) + " h-10"
-                      }
-                      title={lab}
-                      aria-label={lab}
-                    >
-                      {lab}
-                    </button>
-                  ))}
-
-                  <button
-                    type="button"
-                    onClick={() => openTagPicker("filter")}
-
-                    className={
-                      "h-10 px-4 rounded-full border text-xs font-semibold transition inline-flex items-center gap-2 " +
-                      (theme === "dark"
-                        ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
-                        : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
-                    }
-                    aria-label="افزودن برچسب"
-                    title="افزودن برچسب"
-                  >
-                    <span>افزودن</span>
-                    <img src="/images/icons/afzodan.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "dark:invert" : "")} />
-                  </button>
-
-                 {filterTagCaps.map((t) => {
-                    const id = String(t?.id);
-                    const label = tagLabelOf(t);
-                    const active = (filterTagIds || []).some((x) => String(x) === id);
-
-                    return (
-                      <button
-                        key={id}
-                        type="button"
-                        onClick={() => {
-                          // تو recent هم نگهش دار
-                          setFilterTagRecentIds((prev) => {
-                            const sid = String(id || "");
-                            if (!sid) return prev;
-                            const next = [sid, ...(prev || []).map(String).filter((x) => x !== sid)];
-                            return next.slice(0, 24);
-                          });
-
-                          // فقط انتخاب/عدم انتخاب
-                          toggleFilterTag(id);
-                        }}
-                        className={(active ? selectedTagChipCls : chipCls) + " h-10"}
-                        title={label}
-                        aria-label={label}
-                      >
-                        <span className="truncate max-w-[200px]">{label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
             </div>
           )}
@@ -2072,27 +1998,28 @@ const ensureTagsForKind = async (kind) => {
 
   {/* 2) Pinned user tags (قبل از افزودن) */}
   {filterTagCaps.map((t) => {
-    const id = String(t?.id);
-    const label = tagLabelOf(t);
-    const active = (filterTagIds || []).some((x) => String(x) === id);
+  const id = String(t?.id);
+  const label = tagLabelOf(t);
+  const active = (filterTagIds || []).some((x) => String(x) === id);
 
-    return (
-      <button
-        key={id}
-        type="button"
-        onClick={() => {
-          // ✅ این برچسب برای همین کاربر سنجاق میشه و میاد جلو
-          bumpPinnedFilterTag(id);
-          toggleFilterTag(id);
-        }}
-        className={(active ? selectedTagChipCls : chipCls) + " h-10"}
-        title={label}
-        aria-label={label}
-      >
-        <span className="truncate max-w-[200px]">{label}</span>
-      </button>
-    );
-  })}
+  return (
+    <button
+      key={id}
+      type="button"
+      onClick={() => {
+        // ✅ برچسب همیشه می‌مونه، فقط فیلتر روشن/خاموش میشه
+        bumpPinnedFilterTag(id);   // اختیاری ولی خوبه: میاره جلو
+        toggleFilterTag(id);       // ✅ فقط فعال/غیرفعال کردن فیلتر
+      }}
+      className={(active ? selectedTagChipCls : chipCls) + " h-10"}
+      title={label}
+      aria-label={label}
+    >
+      <span className="truncate max-w-[200px]">{label}</span>
+    </button>
+  );
+})}
+
 
   {/* 3) Add button (همیشه آخر) */}
   <button
