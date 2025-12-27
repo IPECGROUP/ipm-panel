@@ -1,6 +1,8 @@
 // src/pages/TagsPage.jsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Card from "../components/ui/Card.jsx";
+import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
+import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 
 /* ===================== UI helpers (OUTSIDE main component to avoid remount/focus loss) ===================== */
 
@@ -49,19 +51,23 @@ const TabButtons = React.memo(function TabButtons({ tabs, activeId, onChange }) 
   );
 });
 
-// ✅ Table style aligned to BaseCurrenciesPage (standard)
+// ✅ دقیقا مثل BaseCurrenciesPage
 const TableShell = React.memo(function TableShell({ children }) {
   return (
-    <div className="px-[15px] pb-4">
-      <div className="rounded-2xl border border-black/10 overflow-hidden bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-        <table
-          className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
-          dir="rtl"
-        >
-          {children}
-        </table>
+    <TableWrap>
+      <div className="bg-white text-black overflow-hidden dark:bg-neutral-900 dark:text-neutral-100">
+        <div className="px-[15px] pb-4">
+          <div className="rounded-2xl border border-black/10 overflow-hidden bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+            <table
+              className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
+              dir="rtl"
+            >
+              {children}
+            </table>
+          </div>
+        </div>
       </div>
-    </div>
+    </TableWrap>
   );
 });
 
@@ -668,22 +674,25 @@ function TagsPage() {
 
       <div className="mt-3">
         <TableShell>
-          <thead>
+          <THead>
             <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
-              <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold w-44">عنوان</th>
-              <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold">برچسب‌ها</th>
+              <TH className="w-44 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                عنوان
+              </TH>
+              <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                برچسب‌ها
+              </TH>
             </tr>
-          </thead>
+          </THead>
 
           <tbody
             className="[&_td]:text-black dark:[&_td]:text-neutral-100
-                       [&>tr:nth-child(odd)]:bg-white [&>tr:nth-child(even)]:bg-neutral-50
-                       dark:[&>tr:nth-child(odd)]:bg-neutral-900 dark:[&>tr:nth-child(even)]:bg-neutral-800/50
-                       [&>tr]:border-b [&>tr]:border-neutral-300 dark:[&>tr]:border-neutral-700"
+                       [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50
+                       dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50"
           >
-            <tr>
-              <td className="px-3 py-3 font-semibold">پروژه‌ها</td>
-              <td className="px-3 py-3">
+            <TR>
+              <TD className="px-3 font-semibold">پروژه‌ها</TD>
+              <TD className="px-3">
                 {lettersLoading ? (
                   <span className="text-neutral-600 dark:text-neutral-400">در حال بارگذاری…</span>
                 ) : (projectTagsList || []).length === 0 ? (
@@ -700,8 +709,8 @@ function TagsPage() {
                     ))}
                   </div>
                 )}
-              </td>
-            </tr>
+              </TD>
+            </TR>
           </tbody>
         </TableShell>
       </div>
@@ -711,40 +720,49 @@ function TagsPage() {
   const CategoriesTagsTable = (
     <div className="mt-3">
       <TableShell>
-        <thead>
+        <THead>
           <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
-            <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold w-44">دسته‌بندی</th>
-            <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold">برچسب‌ها</th>
-            <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold w-28">اقدامات</th>
+            <TH className="w-44 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+              دسته‌بندی
+            </TH>
+            <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+              برچسب‌ها
+            </TH>
+            <TH className="w-28 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+              اقدامات
+            </TH>
           </tr>
-        </thead>
+        </THead>
 
         <tbody
           className="[&_td]:text-black dark:[&_td]:text-neutral-100
-                     [&>tr:nth-child(odd)]:bg-white [&>tr:nth-child(even)]:bg-neutral-50
-                     dark:[&>tr:nth-child(odd)]:bg-neutral-900 dark:[&>tr:nth-child(even)]:bg-neutral-800/50
-                     [&>tr]:border-b [&>tr]:border-neutral-300 dark:[&>tr]:border-neutral-700"
+                     [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50
+                     dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50"
         >
           {lettersLoading ? (
-            <tr>
-              <td colSpan={3} className="py-4 text-neutral-600 dark:text-neutral-400">
+            <TR className="bg-white dark:bg-transparent">
+              <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-3">
                 در حال بارگذاری…
-              </td>
-            </tr>
+              </TD>
+            </TR>
           ) : (categoriesSorted || []).length === 0 ? (
-            <tr>
-              <td colSpan={3} className="py-4 text-neutral-600 dark:text-neutral-400">
+            <TR className="bg-white dark:bg-transparent">
+              <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-3">
                 دسته‌بندی‌ای ثبت نشده است.
-              </td>
-            </tr>
+              </TD>
+            </TR>
           ) : (
-            (categoriesSorted || []).map((c) => {
+            (categoriesSorted || []).map((c, idx) => {
               const catId = c?.id;
               const list = tagsByCategory.get(String(catId)) || [];
+              const isLast = idx === categoriesSorted.length - 1;
+              const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
+
               return (
-                <tr key={catId ?? c?.label}>
-                  <td className="px-3 py-3 font-semibold">{c?.label || "—"}</td>
-                  <td className="px-3 py-3">
+                <TR key={catId ?? c?.label}>
+                  <TD className={`px-3 font-semibold ${tdBorder}`}>{c?.label || "—"}</TD>
+
+                  <TD className={`px-3 ${tdBorder}`}>
                     {list.length ? (
                       <div className="flex flex-wrap items-center justify-start gap-2">
                         {list.map((t) => (
@@ -759,22 +777,21 @@ function TagsPage() {
                     ) : (
                       <span className="text-neutral-500 dark:text-neutral-400">—</span>
                     )}
-                  </td>
-                  <td className="px-3 py-3">
-                    <div className="flex items-center justify-center">
-                      <button
-                        type="button"
+                  </TD>
+
+                  <TD className={`px-3 ${tdBorder}`}>
+                    <div className="flex items-center justify-center gap-2">
+                      {/* ✅ فقط آیکن حذف از RowActionIconBtn طبق کدی که دادی */}
+                      <RowActionIconBtn
+                        action="delete"
                         onClick={() => deleteCategory(c)}
                         disabled={lettersSaving}
-                        className="h-10 w-10 grid place-items-center rounded-xl hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-50"
-                        aria-label="حذف دسته‌بندی"
-                        title="حذف دسته‌بندی"
-                      >
-                        <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5 dark:invert" />
-                      </button>
+                        size={36}
+                        iconSize={17}
+                      />
                     </div>
-                  </td>
-                </tr>
+                  </TD>
+                </TR>
               );
             })
           )}
