@@ -354,6 +354,15 @@ function RightNav() {
                 </LinkBtn>
               </div>
 
+              {/* ✅ تست (فقط ادمین اصلی) */}
+              {isMainAdmin && (
+                <div onMouseEnter={(e) => showTip("تست", e)} onMouseLeave={hideTip}>
+                  <LinkBtn to="/base/test" className={railBtn(isActive("/base/test"))}>
+                    <img src="/images/icons/dashbaord.svg" className={icImgCls} alt="" />
+                  </LinkBtn>
+                </div>
+              )}
+
               {/* ✅ برچسب‌ها (آخرین مورد اطلاعات پایه) */}
               <div onMouseEnter={(e) => showTip("برچسب‌ها", e)} onMouseLeave={hideTip}>
                 <LinkBtn to="/base/tags" className={railBtn(isActive("/base/tags"))}>
