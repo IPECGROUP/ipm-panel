@@ -303,7 +303,7 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
                 پیش نمایش: <span className="font-semibold">{toFaDigits(preview)}</span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 justify-end w-full">
                 <button
                   type="button"
                   onClick={() => {
@@ -2935,21 +2935,7 @@ else setInternalAttachmentTitle(v);
                 <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
               </button>
 
-              {/* ✅ بستن: آیکن مشکی */}
-              <button
-                type="button"
-                onClick={() => setTagPickOpen(false)}
-                className={
-                  "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
-                  (theme === "dark"
-                    ? "bg-white text-black ring-white/20 hover:bg-white/90"
-                    : "bg-white text-black ring-black/15 hover:bg-black/5")
-                }
-                aria-label="بستن"
-                title="بستن"
-              >
-                <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5" />
-              </button>
+              
             </div>
           </div>
         </div>
@@ -2957,9 +2943,6 @@ else setInternalAttachmentTitle(v);
     </div>,
     document.body
   )}
-
-
-
 
       {uploadOpen &&
         createPortal(
