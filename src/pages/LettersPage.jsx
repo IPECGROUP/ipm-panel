@@ -3,6 +3,13 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 
+
+const TAB_ACTIVE_BG = {
+  incoming: "#A3CCDA",
+  outgoing: "#BDE3C3",
+  internal: "#F8F7BA",
+};
+
 const TABS = [
   { id: "all", label: "همه" },
   { id: "incoming", label: "وارده", icon: "/images/icons/varede.svg" },
@@ -850,7 +857,16 @@ const [formKind, setFormKind] = useState("incoming"); // نوع نامه داخ�
   };
 
   const letterNoOf = (l) => String(l?.letter_no ?? l?.no ?? l?.number ?? l?.letterNo ?? "");
-  const letterDateOf = (l) => String(l?.letter_date ?? l?.date ?? l?.letterDate ?? "");
+  const letterDateOf = (l) =>
+  String(
+    l?.letter_date ??
+      l?.letterDate ??
+      l?.secretariat_date ??
+      l?.secretariatDate ??
+      l?.date ??
+      ""
+  );
+
   const fromToOf = (l) => {
     const a = String(l?.from_name ?? l?.from ?? "");
     const b = String(l?.to_name ?? l?.to ?? "");
@@ -926,11 +942,15 @@ const [formKind, setFormKind] = useState("incoming"); // نوع نامه داخ�
   };
 
   const normalizeYmd = (s) => {
-    const v = String(s || "").trim();
-    const m = v.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
-    if (!m) return "";
-    return `${m[1]}/${pad2(m[2])}/${pad2(m[3])}`;
-  };
+  const raw = String(s || "").trim();
+  const v = toEnDigits(raw); // ✅ تبدیل ارقام فارسی/عربی به انگلیسی
+
+  // اجازه / یا - 
+  const m = v.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if (!m) return "";
+  return `${m[1]}/${pad2(m[2])}/${pad2(m[3])}`;
+};
+
 
   const applyQuickRange = (key) => {
     const now = new Date();
@@ -998,8 +1018,13 @@ const [formKind, setFormKind] = useState("incoming"); // نوع نامه داخ�
       }
 
       const d = normalizeYmd(letterDateOf(l));
-      if (fromY && d && d < fromY) return false;
-      if (toY && d && d > toY) return false;
+
+// اگر فیلتر تاریخ فعال است ولی این رکورد تاریخ معتبر ندارد => نمایش نده
+if ((fromY || toY) && !d) return false;
+
+if (fromY && d < fromY) return false;
+if (toY && d > toY) return false;
+
 
       return true;
     });
@@ -1508,34 +1533,29 @@ const [formKind, setFormKind] = useState("incoming"); // نوع نامه داخ�
   );
 
   // ===== NEW: add-tag modal =====
-
-
 const [tagPickOpen, setTagPickOpen] = useState(false);
 const [tagPickFor, setTagPickFor] = useState("filter"); // "filter" | "form"
-const [tagPickKind, setTagPickKind] = useState("incoming"); // incoming/outgoing/internal
+const [tagPickKind, setTagPickKind] = useState("letters"); // letters/projects/execution
 const [tagPickCategoryId, setTagPickCategoryId] = useState("");
 const [tagPickDraftIds, setTagPickDraftIds] = useState([]);
 
 const openTagPicker = (forWhat) => {
   setTagPickFor(forWhat);
 
-  const initialKind =
-    forWhat === "form"
-      ? formKind
-      : filterTab !== "all"
-      ? filterTab
-      : "incoming";
+  const initialKind = "letters";
+
 
   setTagPickKind(initialKind);
 
   const currentSelected =
-    forWhat === "form"
-      ? initialKind === "incoming"
-        ? incomingTagIds
-        : initialKind === "outgoing"
-        ? outgoingTagIds
-        : internalTagIds
-      : filterTagIds;
+  forWhat === "form"
+    ? initialKind === "letters"
+      ? incomingTagIds
+      : initialKind === "projects"
+      ? outgoingTagIds
+      : internalTagIds
+    : filterTagIds;
+
 
   setTagPickDraftIds((Array.isArray(currentSelected) ? currentSelected : []).map(String));
   setTagPickCategoryId(""); // از همه دسته‌ها شروع کن
@@ -1557,9 +1577,10 @@ const applyPickedTags = () => {
     return;
   }
 
-  if (tagPickKind === "incoming") setIncomingTagIds(ids);
-  else if (tagPickKind === "outgoing") setOutgoingTagIds(ids);
-  else setInternalTagIds(ids);
+  if (tagPickKind === "letters") setIncomingTagIds(ids);
+else if (tagPickKind === "projects") setOutgoingTagIds(ids);
+else setInternalTagIds(ids); // execution
+
 
   setTagPickOpen(false);
 };
@@ -1664,7 +1685,8 @@ const applyPickedTags = () => {
             <div
   className={
     "space-y-2 rounded-2xl border p-3 " +
-    (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")
+    (theme === "dark" ? "border-white/10 bg-transparent" : "border-black/10 bg-white")
+
   }
 >
 
@@ -1674,69 +1696,63 @@ const applyPickedTags = () => {
                   {TABS.map((t) => {
                     const active = filterTab === t.id;
                     const isAll = t.id === "all";
-                    const isOutgoing = t.id === "outgoing";
-                    const isIncoming = t.id === "incoming";
-                    const isInternal = t.id === "internal";
+                    const isKind = t.id === "incoming" || t.id === "outgoing" || t.id === "internal";
+  const activeColor = isKind ? TAB_ACTIVE_BG[t.id] : null;
 
                     const cls =
-                      "h-10 px-5 rounded-xl border transition text-sm font-semibold inline-flex items-center gap-2 " +
-                      (isAll
-                        ? active
-                          ? "bg-black text-white border-black"
-                          : theme === "dark"
-                          ? "bg-transparent text-white border-white/15 hover:bg-white/5"
-                          : "bg-white text-neutral-900 border-black/15 hover:bg-black/[0.02]"
-                        : isOutgoing
-                        ? active
-                          ? "bg-[#1a7431] text-white border-[#1a7431]"
-                          : theme === "dark"
-                          ? "bg-transparent text-white border-[#1a7431] hover:bg-white/5"
-                          : "bg-white text-neutral-900 border-[#1a7431] hover:bg-black/[0.02]"
-                        : isIncoming
-                        ? active
-                          ? "bg-[#4895ef] text-white border-[#4895ef]"
-                          : theme === "dark"
-                          ? "bg-transparent text-white border-[#4895ef] hover:bg-white/5"
-                          : "bg-white text-neutral-900 border-[#4895ef] hover:bg-black/[0.02]"
-                        : isInternal
-                        ? active
-                          ? "bg-[#f48224] text-white border-[#f48224]"
-                          : theme === "dark"
-                          ? "bg-transparent text-white border-[#f48224] hover:bg-white/5"
-                          : "bg-white text-neutral-900 border-[#f48224] hover:bg-black/[0.02]"
-                        : "");
+  "h-10 px-5 rounded-xl border transition text-sm font-semibold inline-flex items-center gap-2 " +
+  (isAll
+    ? active
+      ? "bg-black text-white border-black"
+      : theme === "dark"
+      ? "bg-transparent text-white border-white/15 hover:bg-white/5"
+      : "bg-white text-neutral-900 border-black/15 hover:bg-black/[0.02]"
+    : active
+    ? "text-neutral-900"
+    : theme === "dark"
+    ? "bg-transparent text-white hover:bg-white/5"
+    : "bg-white text-neutral-900 hover:bg-black/[0.02]");
 
                     return (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => {
-  setEditingId(null);
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => {
+    setEditingId(null);
 
-  if (t.id === "all") {
-    setFilterTab("all");
-    resetAllFilters();   // ✅ همه فیلترها پاک
-    return;
+    if (t.id === "all") {
+      setFilterTab("all");
+      resetAllFilters();   // ✅ همه فیلترها پاک
+      return;
+    }
+
+    setFilterTab(t.id);   // ✅ فقط فیلتر
+  }}
+                           className={cls}
+  style={
+    !isAll && isKind
+      ? active
+        ? { backgroundColor: activeColor, borderColor: activeColor }
+        : { borderColor: activeColor }
+      : undefined
   }
-
-  setFilterTab(t.id);   // ✅ فقط فیلتر
-}}
-                        className={cls}
-                      >
-                        <span>{t.label}</span>
-                        {t.icon ? (
-                          <img
-                            src={t.icon}
-                            alt=""
-                            className={
-                              "w-5 h-5 " +
-                              (theme === "dark" ? "dark:invert" : "") +
-                              " " +
-                              (active ? "" : "")
-                            }
-                          />
-                        ) : null}
-                      </button>
+>
+                          <span>{t.label}</span>
+                          {t.icon ? (
+                            <img
+                              src={t.icon}
+                              alt=""
+                              className="w-5 h-5"
+                              style={{
+                                filter: active
+                                  ? "brightness(0) invert(1)"            // ✅ وقتی تب انتخاب شد: آیکن سفید
+                                  : theme === "dark"
+                                  ? "brightness(0) invert(1)"            // ✅ دارک: آیکن سفید
+                                  : "none",                               // ✅ لایت و غیر فعال: رنگ اصلی فایل
+                              }}
+                            />
+                          ) : null}
+                        </button>
                     );
                   })}
                 </div>
@@ -1776,12 +1792,26 @@ const applyPickedTags = () => {
 
                 <div className="min-w-[170px]">
                   <div className={labelCls}>از</div>
-                  <JalaliPopupDatePicker value={filterFromDate} onChange={setFilterFromDate} theme={theme} />
+                  <JalaliPopupDatePicker
+                    value={filterFromDate}
+                    onChange={(v) => {
+                      setFilterFromDate(v);
+                      setFilterQuick(""); // ✅
+                    }}
+                    theme={theme}
+                  />
                 </div>
 
                 <div className="min-w-[170px]">
                   <div className={labelCls}>تا</div>
-                  <JalaliPopupDatePicker value={filterToDate} onChange={setFilterToDate} theme={theme} />
+                  <JalaliPopupDatePicker
+                    value={filterToDate}
+                    onChange={(v) => {
+                      setFilterToDate(v);
+                      setFilterQuick(""); // ✅
+                    }}
+                    theme={theme}
+                  />
                 </div>
               </div>
 
@@ -2690,8 +2720,13 @@ else setInternalAttachmentTitle(v);
           <div className="p-4 space-y-3">
             {/* 3 tabs like tags page (incoming/outgoing/internal) */}
             <div className="flex flex-wrap items-center gap-2">
-              {["incoming", "outgoing", "internal"].map((k) => {
-                const t = TABS.find((x) => x.id === k);
+              {["letters", "projects", "execution"].map((k) => {
+                const t =
+                  k === "letters"
+                    ? { label: "نامه‌ها" }
+                    : k === "projects"
+                    ? { label: "پروژه‌ها" }
+                    : { label: "اجرای پروژه" };
                 const active = tagPickKind === k;
                 return (
                   <button
@@ -2701,13 +2736,12 @@ else setInternalAttachmentTitle(v);
                       setTagPickKind(k);
                       const cur =
                         tagPickFor === "form"
-                          ? k === "incoming"
+                          ? k === "letters"
                             ? incomingTagIds
-                            : k === "outgoing"
+                            : k === "projects"
                             ? outgoingTagIds
                             : internalTagIds
                           : filterTagIds;
-
                       setTagPickDraftIds((Array.isArray(cur) ? cur : []).map(String));
                       setTagPickCategoryId("");
                     }}
