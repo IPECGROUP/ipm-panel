@@ -474,13 +474,11 @@ function TagsPage() {
     try {
       const related = (tagsByCategory.get(String(catId)) || []).slice();
 
-      // remove tags under this category first (best-effort)
       for (const t of related) {
         if (!t?.id) continue;
         await api("/tags", { method: "DELETE", body: JSON.stringify({ id: t.id }) });
       }
 
-      // then try to remove the category itself
       await api("/tags", { method: "DELETE", body: JSON.stringify({ id: catId, type: "category" }) });
 
       setTags((prev) => (prev || []).filter((t) => String(t?.category_id) !== String(catId)));
@@ -567,7 +565,6 @@ function TagsPage() {
   const CategoriesBar = (
     <div className="px-[15px]">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {/* دسته‌بندی جدید (باکس جدا) */}
         <form
           onSubmit={addCategory}
           className="rounded-2xl border border-black/10 bg-white p-3 dark:bg-neutral-900 dark:border-neutral-800"
@@ -587,10 +584,8 @@ function TagsPage() {
           </div>
         </form>
 
-        {/* برچسب جدید + دسته‌بندی‌ها (یک بوردر مشترک و کنار هم) */}
         <div className="md:col-span-2 rounded-2xl border border-black/10 bg-white p-3 dark:bg-neutral-900 dark:border-neutral-800">
           <div className="flex flex-col md:flex-row-reverse gap-3">
-            {/* برچسب جدید */}
             <form onSubmit={addLetterTag} className="md:flex-1">
               <FieldLabel>برچسب جدید</FieldLabel>
               <div className="flex items-center gap-2 flex-row-reverse">
@@ -607,7 +602,6 @@ function TagsPage() {
               </div>
             </form>
 
-            {/* دسته‌بندی‌ها */}
             <div className="md:flex-1">
               <FieldLabel>دسته‌بندی‌ها</FieldLabel>
               <CategoryCombobox
@@ -677,10 +671,14 @@ function TagsPage() {
           <THead>
             <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
               <TH className="w-44 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                عنوان
+                دسته‌بندی
               </TH>
               <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
                 برچسب‌ها
+              </TH>
+              {/* ✅ فقط برای یک‌دست شدن با بقیه (کاملاً غیرقابل استفاده) */}
+              <TH className="w-28 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                اقدامات
               </TH>
             </tr>
           </THead>
@@ -692,6 +690,7 @@ function TagsPage() {
           >
             <TR>
               <TD className="px-3 font-semibold">پروژه‌ها</TD>
+
               <TD className="px-3">
                 {lettersLoading ? (
                   <span className="text-neutral-600 dark:text-neutral-400">در حال بارگذاری…</span>
@@ -709,6 +708,15 @@ function TagsPage() {
                     ))}
                   </div>
                 )}
+              </TD>
+
+              {/* ✅ پنهان + غیرقابل کلیک (فقط برای استایل) */}
+              <TD className="px-3">
+                <div className="flex items-center justify-center gap-2 pointer-events-none">
+                  <span className="invisible">
+                    <RowActionIconBtn action="delete" onClick={() => {}} size={36} iconSize={17} />
+                  </span>
+                </div>
               </TD>
             </TR>
           </tbody>
@@ -781,7 +789,6 @@ function TagsPage() {
 
                   <TD className={`px-3 ${tdBorder}`}>
                     <div className="flex items-center justify-center gap-2">
-                      {/* ✅ فقط آیکن حذف از RowActionIconBtn طبق کدی که دادی */}
                       <RowActionIconBtn
                         action="delete"
                         onClick={() => deleteCategory(c)}
@@ -820,7 +827,6 @@ function TagsPage() {
                  dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800"
       dir="rtl"
     >
-      {/* breadcrumb */}
       <div className="mb-3 text-base md:text-lg">
         <span className="text-neutral-700 dark:text-neutral-300">اطلاعات پایه</span>
         <span className="mx-2 text-neutral-500 dark:text-neutral-400">›</span>
