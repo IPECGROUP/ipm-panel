@@ -207,6 +207,12 @@ function TagsPage() {
 
   const [activeTab, setActiveTab] = useState("projects");
 
+  const activeScope = useMemo(() => {
+    if (activeTab === "letters") return "letters";
+    if (activeTab === "execution") return "execution";
+    return null;
+  }, [activeTab]);
+
   // ====== Projects ======
   const [projects, setProjects] = useState([]);
   const [projLoading, setProjLoading] = useState(false);
@@ -242,9 +248,6 @@ function TagsPage() {
   const removeProject = async (p) => {
     const id = p?.id;
     if (!id) return;
-    const label = `${p?.code || ""}${p?.name ? ` - ${p.name}` : ""}`.trim() || "پروژه";
-    const ok = window.confirm(`حذف «${label}»؟`);
-    if (!ok) return;
 
     setProjDeletingId(id);
     setProjErr("");
@@ -277,34 +280,45 @@ function TagsPage() {
   const catComboRef = useRef(null);
   const newTagRef = useRef(null);
 
-  const loadLettersTags = useCallback(async () => {
-    setLettersLoading(true);
-    setLettersErr("");
-    try {
-      const r = await api("/tags?scope=letters");
-      const cats = r.categories || r.cats || [];
-      const tgs = r.tags || [];
-      if (Array.isArray(cats) || Array.isArray(tgs)) {
-        setCategories(Array.isArray(cats) ? cats : []);
-        setTags(Array.isArray(tgs) ? tgs : []);
-      } else {
-        const items = r.items || [];
-        setCategories(Array.isArray(items) ? items.filter((x) => x?.type === "category") : []);
-        setTags(Array.isArray(items) ? items.filter((x) => x?.type !== "category") : []);
+  const loadScopedTags = useCallback(
+    async (scope) => {
+      if (!scope) return;
+
+      setLettersLoading(true);
+      setLettersErr("");
+      try {
+        const r = await api(`/tags?scope=${encodeURIComponent(scope)}`);
+        const cats = r.categories || r.cats || [];
+        const tgs = r.tags || [];
+        if (Array.isArray(cats) || Array.isArray(tgs)) {
+          setCategories(Array.isArray(cats) ? cats : []);
+          setTags(Array.isArray(tgs) ? tgs : []);
+        } else {
+          const items = r.items || [];
+          setCategories(Array.isArray(items) ? items.filter((x) => x?.type === "category") : []);
+          setTags(Array.isArray(items) ? items.filter((x) => x?.type !== "category") : []);
+        }
+      } catch (e) {
+        setCategories([]);
+        setTags([]);
+        setLettersErr(e.message || "خطا در دریافت دسته‌بندی/برچسب‌ها");
+      } finally {
+        setLettersLoading(false);
       }
-    } catch (e) {
-      setCategories([]);
-      setTags([]);
-      setLettersErr(e.message || "خطا در دریافت دسته‌بندی/برچسب‌ها");
-    } finally {
-      setLettersLoading(false);
-    }
-  }, [api]);
+    },
+    [api],
+  );
 
   useEffect(() => {
     if (activeTab !== "letters" && activeTab !== "execution") return;
-    loadLettersTags().catch(() => {});
-  }, [activeTab, loadLettersTags]);
+
+    setCatQuery("");
+    setSelectedCategoryId(null);
+    setNewTag("");
+    setLettersErr("");
+
+    loadScopedTags(activeScope).catch(() => {});
+  }, [activeTab, activeScope, loadScopedTags]);
 
   const categoriesSorted = useMemo(() => {
     return (categories || [])
@@ -342,6 +356,8 @@ function TagsPage() {
   const addCategory = async (e) => {
     e?.preventDefault();
     const v = String(newCategory || "").trim();
+    if (!activeScope) return;
+
     if (!v) {
       setLettersErr("نام دسته‌بندی را وارد کنید");
       return;
@@ -357,7 +373,7 @@ function TagsPage() {
     try {
       const r = await api("/tags", {
         method: "POST",
-        body: JSON.stringify({ scope: "letters", type: "category", label: v }),
+        body: JSON.stringify({ scope: activeScope, type: "category", label: v }),
       });
       const item = r.item || { id: r.id, label: v };
       if (item?.id) {
@@ -367,7 +383,7 @@ function TagsPage() {
         setSelectedCategoryId(item.id);
         requestAnimationFrame(() => catComboRef.current?.focus?.());
       } else {
-        await loadLettersTags();
+        await loadScopedTags(activeScope);
         setNewCategory("");
       }
     } catch (e2) {
@@ -380,6 +396,8 @@ function TagsPage() {
   const addLetterTag = async (e) => {
     e?.preventDefault();
     const v = String(newTag || "").trim();
+    if (!activeScope) return;
+
     if (!selectedCategoryId) {
       setLettersErr("ابتدا یک دسته‌بندی را انتخاب کنید");
       return;
@@ -402,7 +420,7 @@ function TagsPage() {
     try {
       const r = await api("/tags", {
         method: "POST",
-        body: JSON.stringify({ scope: "letters", type: "tag", category_id: selectedCategoryId, label: v }),
+        body: JSON.stringify({ scope: activeScope, type: "tag", category_id: selectedCategoryId, label: v }),
       });
       const item = r.item || { id: r.id, label: v, category_id: selectedCategoryId };
       if (item?.id) {
@@ -410,7 +428,7 @@ function TagsPage() {
         setNewTag("");
         requestAnimationFrame(() => newTagRef.current?.focus?.());
       } else {
-        await loadLettersTags();
+        await loadScopedTags(activeScope);
         setNewTag("");
       }
     } catch (e2) {
@@ -423,8 +441,6 @@ function TagsPage() {
   const deleteLetterTag = async (t) => {
     const id = t?.id;
     if (!id) return;
-    const ok = window.confirm(`حذف برچسب «${t?.label || ""}»؟`);
-    if (!ok) return;
 
     setLettersSaving(true);
     setLettersErr("");
