@@ -1003,7 +1003,7 @@ const [formKind, setFormKind] = useState("incoming"); // نوع نامه داخ�
 
       return true;
     });
-  }, [myLetters, tab, filterSubject, filterOrg, filterLetterNo, filterTagIds, filterFromDate, filterToDate]);
+  }, [myLetters, filterTab, filterSubject, filterOrg, filterLetterNo, filterTagIds, filterFromDate, filterToDate]);
 
   useEffect(() => {
     setSelectedIds(new Set());
@@ -1121,7 +1121,7 @@ const [formKind, setFormKind] = useState("incoming"); // نوع نامه داخ�
 
     setEditingId(id);
     setFormOpen(true);
-    setTab(kind);
+    setFormKind(kind);
 
     setCategory(String(l?.category ?? l?.category_name ?? l?.categoryTitle ?? ""));
     const pid = l?.project_id ?? l?.projectId ?? l?.projectID ?? null;
@@ -1638,7 +1638,6 @@ const applyPickedTags = () => {
                 setFormOpen((v) => {
                   const next = !v;
                   if (next) {
-                    if (tab === "all") setTab("incoming");
                   } else {
                     setEditingId(null);
                   }
@@ -1960,8 +1959,9 @@ const applyPickedTags = () => {
                           onChange={(e) => {
                             const v = e.target.value;
                             if (formKind === "incoming") setIncomingAttachmentTitle(v);
-                            else if (tab === "outgoing") setOutgoingAttachmentTitle(v);
-                            else setInternalAttachmentTitle(v);
+else if (formKind === "outgoing") setOutgoingAttachmentTitle(v);
+else setInternalAttachmentTitle(v);
+
                           }}
                           className={inputCls}
                           type="text"
@@ -2076,7 +2076,7 @@ const applyPickedTags = () => {
                     {tagCapsFor(formKind === "incoming" ? incomingTagIds : formKind === "outgoing" ? outgoingTagIds : internalTagIds).map((t) => {
                       const id = String(t?.id);
                       const label = tagLabelOf(t);
-                      const selectedArr = formKind === "incoming" ? incomingTagIds : tab === "outgoing" ? outgoingTagIds : internalTagIds;
+                      const selectedArr = formKind === "incoming" ? incomingTagIds : formKind === "outgoing" ? outgoingTagIds : internalTagIds;
                       const active = selectedArr.some((x) => String(x) === id);
                       return (
                         <button
@@ -2102,21 +2102,21 @@ const applyPickedTags = () => {
                       <div className={labelCls}>تاریخ ثبت دبیرخانه</div>
 
                       <JalaliPopupDatePicker
-                        value={formKind === "incoming" ? incomingSecretariatDate : tab === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate}
+                        value={formKind === "incoming" ? incomingSecretariatDate : formKind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate}
                         onChange={(v) => {
                           if (formKind === "incoming") setIncomingSecretariatDate(v);
-                          else if (tab === "outgoing") setOutgoingSecretariatDate(v);
+                          else if (formKind === "outgoing") setOutgoingSecretariatDate(v);
                           else setInternalSecretariatDate(v);
                         }}
                         theme={theme}
                         hideIcon={true}
                         buttonClassName={secretariatPickerBtnCls(
-                          formKind === "incoming" ? incomingSecretariatDate : tab === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate
+                          formKind === "incoming" ? incomingSecretariatDate : formKind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate
                         )}
                       />
                       <div className={theme === "dark" ? "text-white/50 text-[11px] mt-1" : "text-neutral-500 text-[11px] mt-1"}>
                         {secretariatLongText(
-                          formKind === "incoming" ? incomingSecretariatDate : tab === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate
+                          formKind === "incoming" ? incomingSecretariatDate : formKind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate
                         )}
                       </div>
                     </div>
@@ -2124,11 +2124,11 @@ const applyPickedTags = () => {
                     <div>
                       <div className={labelCls}>شماره ثبت دبیرخانه</div>
                       <input
-                        value={formKind === "incoming" ? incomingSecretariatNo : tab === "outgoing" ? outgoingSecretariatNo : internalSecretariatNo}
+                        value={formKind === "incoming" ? incomingSecretariatNo : formKind === "outgoing" ? outgoingSecretariatNo : internalSecretariatNo}
                         onChange={(e) => {
                           const v = e.target.value;
                           if (formKind === "incoming") setIncomingSecretariatNo(v);
-                          else if (tab === "outgoing") setOutgoingSecretariatNo(v);
+                          else if (formKind === "outgoing") setOutgoingSecretariatNo(v);
                           else setInternalSecretariatNo(v);
                         }}
                         className={inputCls}
@@ -2139,11 +2139,11 @@ const applyPickedTags = () => {
                     <div>
                       <div className={labelCls}>نام تحویل گیرنده</div>
                       <input
-                        value={formKind === "incoming" ? incomingReceiverName : tab === "outgoing" ? outgoingReceiverName : internalReceiverName}
+                        value={formKind === "incoming" ? incomingReceiverName : formKind === "outgoing" ? outgoingReceiverName : internalReceiverName}
                         onChange={(e) => {
                           const v = e.target.value;
                           if (formKind === "incoming") setIncomingReceiverName(v);
-                          else if (tab === "outgoing") setOutgoingReceiverName(v);
+                          else if (formKind === "outgoing") setOutgoingReceiverName(v);
                           else setInternalReceiverName(v);
                         }}
                         className={inputCls}
