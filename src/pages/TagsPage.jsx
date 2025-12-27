@@ -454,6 +454,41 @@ function TagsPage() {
     }
   };
 
+  const deleteCategory = async (c) => {
+    const catId = c?.id;
+    if (!catId) return;
+
+    setLettersSaving(true);
+    setLettersErr("");
+    try {
+      const related = (tagsByCategory.get(String(catId)) || []).slice();
+
+      // remove tags under this category first (best-effort)
+      for (const t of related) {
+        if (!t?.id) continue;
+        await api("/tags", { method: "DELETE", body: JSON.stringify({ id: t.id }) });
+      }
+
+      // then try to remove the category itself
+      await api("/tags", { method: "DELETE", body: JSON.stringify({ id: catId, type: "category" }) });
+
+      setTags((prev) => (prev || []).filter((t) => String(t?.category_id) !== String(catId)));
+      setCategories((prev) => (prev || []).filter((x) => String(x?.id) !== String(catId)));
+
+      if (String(selectedCategoryId || "") === String(catId)) {
+        setSelectedCategoryId(null);
+        setCatQuery("");
+      } else if (String(catQuery || "").trim() === String(c?.label || "").trim()) {
+        setSelectedCategoryId(null);
+        setCatQuery("");
+      }
+    } catch (e) {
+      setLettersErr(e.message || "خطا در حذف دسته‌بندی");
+    } finally {
+      setLettersSaving(false);
+    }
+  };
+
   /* ===================== Sections ===================== */
 
   const CategoriesBar = (
@@ -577,6 +612,7 @@ function TagsPage() {
           <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
             <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold w-44">دسته‌بندی</th>
             <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold">برچسب‌ها</th>
+            <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold w-28">اقدامات</th>
           </tr>
         </thead>
 
@@ -588,13 +624,13 @@ function TagsPage() {
         >
           {lettersLoading ? (
             <tr>
-              <td colSpan={2} className="py-4 text-neutral-600 dark:text-neutral-400">
+              <td colSpan={3} className="py-4 text-neutral-600 dark:text-neutral-400">
                 در حال بارگذاری…
               </td>
             </tr>
           ) : (categoriesSorted || []).length === 0 ? (
             <tr>
-              <td colSpan={2} className="py-4 text-neutral-600 dark:text-neutral-400">
+              <td colSpan={3} className="py-4 text-neutral-600 dark:text-neutral-400">
                 دسته‌بندی‌ای ثبت نشده است.
               </td>
             </tr>
@@ -620,6 +656,20 @@ function TagsPage() {
                     ) : (
                       <span className="text-neutral-500 dark:text-neutral-400">—</span>
                     )}
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="flex items-center justify-center">
+                      <button
+                        type="button"
+                        onClick={() => deleteCategory(c)}
+                        disabled={lettersSaving}
+                        className="h-10 w-10 grid place-items-center rounded-xl hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-50"
+                        aria-label="حذف دسته‌بندی"
+                        title="حذف دسته‌بندی"
+                      >
+                        <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5 dark:invert" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
