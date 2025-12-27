@@ -261,6 +261,15 @@ function TagsPage() {
       .sort((a, b) => String(b?.code || "").localeCompare(String(a?.code || ""), "fa", { numeric: true }));
   }, [projects]);
 
+  // ✅ فقط پروژه‌های سطح اول (مثل 159) - شبیه صفحه پروژه‌ها
+  const projectsTopLevel = useMemo(() => {
+    return (projectsSorted || []).filter((p) => {
+      const code = String(p?.code || "").trim();
+      if (!code) return false;
+      return !code.includes(".");
+    });
+  }, [projectsSorted]);
+
   // ====== Scoped categories + tags (letters/execution/projects) ======
   const [lettersLoading, setLettersLoading] = useState(false);
   const [lettersErr, setLettersErr] = useState("");
@@ -541,7 +550,10 @@ function TagsPage() {
       const catId = projectCategoryId || (await ensureProjectsCategory());
       if (!catId) throw new Error("category_id_required");
 
-      const p = (projectsSorted || []).find((x) => String(x?.id) === id);
+      const p =
+        (projectsTopLevel || []).find((x) => String(x?.id) === id) ||
+        (projectsSorted || []).find((x) => String(x?.id) === id);
+
       const label = `${p?.code || "—"} - ${p?.name || ""}`.trim();
 
       await addScopedTag({ scope: "projects", categoryId: catId, label });
@@ -614,7 +626,9 @@ function TagsPage() {
                 disabled={lettersSaving}
               />
               {!selectedCategoryId && String(catQuery || "").trim() ? (
-                <div className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">یک دسته‌بندی معتبر انتخاب کنید.</div>
+                <div className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">
+                  یک دسته‌بندی معتبر انتخاب کنید.
+                </div>
               ) : null}
             </div>
           </div>
@@ -645,7 +659,7 @@ function TagsPage() {
             aria-label="انتخاب پروژه"
           >
             <option value="">انتخاب پروژه…</option>
-            {(projectsSorted || []).map((p) => {
+            {(projectsTopLevel || []).map((p) => {
               const label = `${p?.code || "—"} - ${p?.name || ""}`.trim();
               return (
                 <option key={p?.id ?? label} value={p?.id ?? ""}>
@@ -667,7 +681,6 @@ function TagsPage() {
       {ProjectsBar}
 
       <div className="mt-3">
-        {/* ✅ جدول پروژه‌ها دقیقاً هم‌استایلِ جدول Letters/Execution */}
         <TableShell>
           <THead>
             <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
@@ -691,7 +704,8 @@ function TagsPage() {
             <TR>
               <TD className="px-3 font-semibold">پروژه‌ها</TD>
 
-              <TD className="px-3">
+              {/* ✅ فاصله خیلی کم بالا/پایین برای تگ‌ها */}
+              <TD className="px-3 py-2">
                 {lettersLoading ? (
                   <span className="text-neutral-600 dark:text-neutral-400">در حال بارگذاری…</span>
                 ) : (projectTagsList || []).length === 0 ? (
@@ -769,7 +783,8 @@ function TagsPage() {
                 <TR key={catId ?? c?.label}>
                   <TD className={`px-3 font-semibold ${tdBorder}`}>{c?.label || "—"}</TD>
 
-                  <TD className={`px-3 ${tdBorder}`}>
+                  {/* ✅ فاصله خیلی کم بالا/پایین برای تگ‌ها (هر سه تب: letters/execution هم از همین استفاده می‌کنن) */}
+                  <TD className={`px-3 py-2 ${tdBorder}`}>
                     {list.length ? (
                       <div className="flex flex-wrap items-center justify-start gap-2">
                         {list.map((t) => (
