@@ -1963,11 +1963,7 @@ const ensureTagsForKind = async (kind) => {
               {/* Tags + Quick chips (moved here) */}
               <div>
                 <div className={labelCls}>برچسب ها</div>
-              </div>
-            </div>
-          )}
-
-<div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
   {/* 1) Quick chips */}
   {QUICK_CHIPS.map(([k, lab]) => (
     <button
@@ -2042,10 +2038,9 @@ const ensureTagsForKind = async (kind) => {
     />
   </button>
 </div>
-
-
-
-
+              </div>
+            </div>
+          )}
           {/* Create/Edit form */}
           <div className="mt-4">
             {formOpen ? (
