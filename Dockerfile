@@ -2,7 +2,9 @@ FROM node:22-alpine AS build
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci
+
+# ✅ مهم: برای Alpine باید optional deps هم نصب بشن تا rolldown binding (musl) بیاد
+RUN npm ci --include=optional
 
 COPY . .
 RUN npm run build
