@@ -4,8 +4,9 @@ import Card from "../components/ui/Card.jsx";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
-import { TextStyle } from "@tiptap/extension-text-style";
-import FontFamily from "@tiptap/extension-font-family";
+import { TextStyle, FontFamily } from "@tiptap/extension-text-style";
+
+
 import FontSize from "@tiptap/extension-font-size";
 import { TableKit } from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
