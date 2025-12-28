@@ -1,18 +1,56 @@
-    // src/pages/TestEditorPage.jsx
+// src/pages/TestEditorPage.jsx
 import React, { useMemo, useState } from "react";
 import Card from "../components/ui/Card.jsx";
 import { useEditor, EditorContent } from "@tiptap/react";
+import { Extension } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import { TextStyle, FontFamily } from "@tiptap/extension-text-style";
-
-
-import FontSize from "@tiptap/extension-font-size";
 import { TableKit } from "@tiptap/extension-table";
-import TableRow from "@tiptap/extension-table-row";
-import TableHeader from "@tiptap/extension-table-header";
-import TableCell from "@tiptap/extension-table-cell";
 import Placeholder from "@tiptap/extension-placeholder";
+
+// ✅ FontSize: چون پکیج رسمی @tiptap/extension-font-size وجود نداره/نصب نیست
+// این اکستنشن روی textStyle attribute می‌ذاره و commandهای setFontSize/unsetFontSize می‌دهد.
+const FontSize = Extension.create({
+  name: "fontSize",
+
+  addGlobalAttributes() {
+    return [
+      {
+        types: ["textStyle"],
+        attributes: {
+          fontSize: {
+            default: null,
+            parseHTML: (element) => element.style.fontSize?.replace(/['"]/g, "") || null,
+            renderHTML: (attrs) => {
+              if (!attrs.fontSize) return {};
+              return { style: `font-size: ${attrs.fontSize}` };
+            },
+          },
+        },
+      },
+    ];
+  },
+
+  addCommands() {
+    return {
+      setFontSize:
+        (fontSize) =>
+        ({ chain }) => {
+          return chain().setMark("textStyle", { fontSize }).run();
+        },
+
+      unsetFontSize:
+        () =>
+        ({ chain }) => {
+          return chain()
+            .setMark("textStyle", { fontSize: null })
+            .removeEmptyTextStyle()
+            .run();
+        },
+    };
+  },
+});
 
 function IconBtn({ active, disabled, onClick, children, title }) {
   return (
@@ -70,7 +108,7 @@ function PrimaryBtn({ onClick, children, disabled }) {
 }
 
 export default function TestEditorPage() {
-  // فونت‌های مجاز (همونایی که تو می‌خوای)
+  // فونت‌های مجاز
   const FONTS = useMemo(
     () => [
       { label: "Vazirmatn", value: "Vazirmatn, sans-serif" },
@@ -83,7 +121,6 @@ export default function TestEditorPage() {
   const SIZES = useMemo(() => ["12px", "14px", "16px", "18px", "20px", "24px"], []);
 
   // --- قالب‌ها (Template) ---
-  // همه چیز داخل ادیتور قابل ادیت هست: کاربر می‌تونه حذف/تغییر بده
   const TEMPLATES = useMemo(() => {
     const header = `
       <div style="border:1px solid rgba(0,0,0,.12); border-radius:16px; padding:12px; margin-bottom:12px;">
@@ -177,20 +214,20 @@ export default function TestEditorPage() {
 
   const [tplId, setTplId] = useState("official");
   const [blockId, setBlockId] = useState("signature");
-  const [previewHtml, setPreviewHtml] = useState("");
+  const [previewHtml, setPreviewHtml] = useState(TEMPLATES.find((t) => t.id === "official")?.html || "");
 
   const editor = useEditor({
     extensions: [
       StarterKit,
       Underline,
       TextStyle,
-      FontFamily,
+      FontFamily.configure({ types: ["textStyle"] }),
       FontSize,
       Placeholder.configure({ placeholder: "اینجا شروع به نوشتن کنید…" }),
-      Table.configure({ resizable: true }),
-      TableRow,
-      TableHeader,
-      TableCell,
+      // ✅ جدول: فقط TableKit کافی است
+      TableKit.configure({
+        table: { resizable: true },
+      }),
     ],
     content: TEMPLATES.find((t) => t.id === "official")?.html || "",
     editorProps: {
@@ -223,11 +260,7 @@ export default function TestEditorPage() {
 
   const insertTable3x3 = () => {
     if (!editor) return;
-    editor
-      .chain()
-      .focus()
-      .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
-      .run();
+    editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
   };
 
   const saveTest = () => {
@@ -386,7 +419,6 @@ export default function TestEditorPage() {
         {/* Editor */}
         <div
           className={[
-            // جدول‌ها داخل ادیتور
             "[&_table]:w-full [&_table]:border-collapse [&_table]:my-3",
             "[&_td]:border [&_th]:border [&_td]:border-black/20 [&_th]:border-black/20",
             "dark:[&_td]:border-neutral-700 dark:[&_th]:border-neutral-700",
@@ -401,9 +433,7 @@ export default function TestEditorPage() {
 
       {/* Preview (برای خودت تو تست) */}
       <div className="mt-4 rounded-2xl border border-black/10 bg-white p-4 dark:bg-neutral-950 dark:border-neutral-800">
-        <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">
-          پیش‌نمایش خروجی (HTML)
-        </div>
+        <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">پیش‌نمایش خروجی (HTML)</div>
         <div className="prose max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: previewHtml }} />
       </div>
     </div>
