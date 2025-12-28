@@ -21,6 +21,7 @@ import FinancialWorksheetPage from "./pages/FinancialWorksheetPage.jsx";
 import BudgetAllocationPage from "./pages/BudgetAllocationPage.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
 import LettersPage from "./pages/LettersPage.jsx";
+import TestEditorPage from "./pages/TestEditorPage.jsx";
 
 import BudgetCodesPage, {
   OfficePage,
@@ -85,6 +86,8 @@ export default function App() {
           element={<FinancialWorksheetPage />}
         />
         <Route path="/letters" element={<LettersPage />} />
+
+        <Route path="/test/editor" element={<TestEditorPage />} />
 
         {/* بودجه‌بندی */}
         <Route path="/budget/centers" element={<DefineBudgetCentersPage />} />

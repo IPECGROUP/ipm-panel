@@ -357,7 +357,7 @@ function RightNav() {
               {/* ✅ تست (فقط ادمین اصلی) */}
               {isMainAdmin && (
                 <div onMouseEnter={(e) => showTip("تست", e)} onMouseLeave={hideTip}>
-                  <LinkBtn to="/base/test" className={railBtn(isActive("/base/test"))}>
+                  <LinkBtn to="/test/editor" className={railBtn(isActive("/test/editor"))}>
                     <img src="/images/icons/dashbaord.svg" className={icImgCls} alt="" />
                   </LinkBtn>
                 </div>
