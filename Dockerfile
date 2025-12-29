@@ -6,10 +6,15 @@ COPY package*.json ./
 # ✅ نصب وابستگی‌ها
 RUN npm install --include=optional --no-audit --no-fund
 
-# ✅ فیکس رول‌داون: binding نیتیو لینوکس دقیقاً هم‌نسخه‌ی rolldown نصب می‌شود
+# ✅ فیکس rolldown native binding
 RUN set -eux; \
   ROLLDOWN_VER="$(node -p "require('rolldown/package.json').version")"; \
   npm install --no-save "@rolldown/binding-linux-x64-gnu@${ROLLDOWN_VER}" --no-audit --no-fund
+
+# ✅ فیکس lightningcss native binding
+RUN set -eux; \
+  LCSS_VER="$(node -p "require('lightningcss/package.json').version")"; \
+  npm install --no-save "lightningcss-linux-x64-gnu@${LCSS_VER}" --no-audit --no-fund
 
 COPY . .
 RUN npm run build
