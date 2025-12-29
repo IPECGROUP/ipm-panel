@@ -2,11 +2,8 @@ FROM node:22-bookworm-slim AS build
 WORKDIR /app
 
 COPY package*.json ./
-
-# ✅ نصب وابستگی‌ها
 RUN npm install --include=optional --no-audit --no-fund
 
-# ✅ فیکس rolldown + lightningcss native bindings (یکجا تا npm prune نکنه)
 RUN set -eux; \
   ARCH="$(node -p "process.arch")"; \
   LIBC="$(node -p "process.report?.getReport()?.header?.glibcVersionRuntime ? 'gnu' : 'musl'")"; \

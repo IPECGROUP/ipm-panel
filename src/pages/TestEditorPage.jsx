@@ -1,5 +1,5 @@
 // src/pages/TestEditorPage.jsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Card from "../components/ui/Card.jsx";
 import { useEditor, EditorContent } from "@tiptap/react";
 import { Extension } from "@tiptap/core";
@@ -43,7 +43,7 @@ const FontSize = Extension.create({
   },
 });
 
-function IconBtn({ active, disabled, onClick, children, title }) {
+function IconBtn({ active, disabled, onClick, children, title, className = "" }) {
   return (
     <button
       type="button"
@@ -55,6 +55,7 @@ function IconBtn({ active, disabled, onClick, children, title }) {
         "disabled:opacity-40 disabled:hover:bg-white",
         "dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-white/10",
         active ? "ring-2 ring-black/30 dark:ring-white/20" : "",
+        className,
       ].join(" ")}
     >
       {children}
@@ -80,17 +81,18 @@ function SmallBtn({ onClick, children, disabled }) {
   );
 }
 
-function PrimaryBtn({ onClick, children, disabled }) {
+function MiniIconBtn({ disabled, onClick, children, title }) {
   return (
     <button
       type="button"
+      title={title}
       disabled={disabled}
       onClick={onClick}
       className={[
-        "h-10 px-4 rounded-xl bg-black text-white hover:bg-black/90",
-        "disabled:opacity-40",
-        "dark:bg-white dark:text-black dark:hover:bg-white/90",
-        "text-sm",
+        "h-8 w-8 rounded-lg border border-black/10 bg-white text-black hover:bg-black/5",
+        "disabled:opacity-40 disabled:hover:bg-white",
+        "dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-white/10",
+        "grid place-items-center",
       ].join(" ")}
     >
       {children}
@@ -111,12 +113,11 @@ export default function TestEditorPage() {
 
   const SIZES = useMemo(() => ["12px", "14px", "16px", "18px", "20px", "24px"], []);
 
-  const [previewHtml, setPreviewHtml] = useState("");
+  const editorWrapRef = useRef(null);
+  const [tableUi, setTableUi] = useState({ open: false, left: 0, top: 0 });
 
   const editor = useEditor({
     extensions: [
-      // ✅ برای اینکه bullet/ordered درست کار کنن، listها رو از StarterKit فعال نگه می‌داریم
-      // و تنظیماتش رو واضح می‌کنیم. (تو RTL معمولاً مشکلی از CSS/dir میاد؛ اینجا dir=rtl داریم)
       StarterKit.configure({
         bulletList: { keepMarks: true, keepAttributes: false },
         orderedList: { keepMarks: true, keepAttributes: false },
@@ -130,11 +131,8 @@ export default function TestEditorPage() {
         table: { resizable: true },
       }),
     ],
-    content: `
-      <p><strong>دمو ادیتور</strong></p>
-      <p>این صفحه فقط برای تست است. می‌توانید لیست‌ها، جدول و قالب‌بندی را امتحان کنید.</p>
-      <p>• برای تست، چند خط بنویسید و سپس Bullet/Ordered List را بزنید.</p>
-    `,
+    // ✅ همه متن‌های دمو/تست حذف شد
+    content: ``,
     editorProps: {
       attributes: {
         dir: "rtl",
@@ -146,8 +144,48 @@ export default function TestEditorPage() {
         ].join(" "),
       },
     },
-    onUpdate: ({ editor }) => setPreviewHtml(editor.getHTML()),
   });
+
+  // ✅ نمایش کنترل‌های جدول وقتی داخل جدول هستیم (دکمه‌های + / - برای سطر/ستون)
+  useEffect(() => {
+    if (!editor) return;
+
+    const updateTableUi = () => {
+      const isInTable = editor.isActive("table");
+      if (!isInTable) {
+        setTableUi((p) => (p.open ? { ...p, open: false } : p));
+        return;
+      }
+
+      const wrap = editorWrapRef.current;
+      if (!wrap) return;
+
+      // موقعیت نسبت به wrapper ادیتور
+      const selFrom = editor.state.selection?.from ?? 0;
+      const c = editor.view.coordsAtPos(selFrom);
+      const r = wrap.getBoundingClientRect();
+
+      // نزدیک کرسر؛ طوری که داخل ادیتور/روی جدول حس شود
+      const left = Math.max(8, Math.min(c.left - r.left - 10, r.width - 160));
+      const top = Math.max(8, Math.min(c.top - r.top - 44, r.height - 56));
+
+      setTableUi({ open: true, left, top });
+    };
+
+    updateTableUi();
+
+    editor.on("selectionUpdate", updateTableUi);
+    editor.on("transaction", updateTableUi);
+    editor.on("focus", updateTableUi);
+    editor.on("blur", () => setTableUi((p) => (p.open ? { ...p, open: false } : p)));
+
+    return () => {
+      editor.off("selectionUpdate", updateTableUi);
+      editor.off("transaction", updateTableUi);
+      editor.off("focus", updateTableUi);
+      editor.off("blur", () => {});
+    };
+  }, [editor]);
 
   const currentFont = editor?.getAttributes("textStyle")?.fontFamily || FONTS[0].value;
   const currentSize = editor?.getAttributes("textStyle")?.fontSize || "14px";
@@ -157,14 +195,10 @@ export default function TestEditorPage() {
     editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
   };
 
-  const saveTest = () => {
-    if (!editor) return;
-    const html = editor.getHTML();
-    const json = editor.getJSON();
-    console.log("LETTER_HTML:", html);
-    console.log("LETTER_JSON:", json);
-    alert("ذخیره تستی انجام شد (خروجی داخل console.log).");
-  };
+  const tableAddRow = () => editor?.chain().focus().addRowAfter().run();
+  const tableDelRow = () => editor?.chain().focus().deleteRow().run();
+  const tableAddCol = () => editor?.chain().focus().addColumnAfter().run();
+  const tableDelCol = () => editor?.chain().focus().deleteColumn().run();
 
   return (
     <div className="p-4 md:p-6">
@@ -178,23 +212,11 @@ export default function TestEditorPage() {
                 alt="سربرگ"
                 className="h-12 md:h-14 object-contain"
               />
-              <div className="hidden md:block">
-                <div className="text-sm font-semibold text-black dark:text-neutral-100">دمو ادیتور</div>
-                <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                  فقط برای تست UI (بدون ذخیره واقعی)
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <PrimaryBtn onClick={saveTest} disabled={!editor}>
-                ذخیره تستی
-              </PrimaryBtn>
             </div>
           </div>
         </div>
 
-        {/* Top Controls (حذف قالب + حذف افزودن بلوک) */}
+        {/* Top Controls */}
         <div className="p-4 border-b border-black/10 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900">
           <div className="flex flex-wrap items-center gap-2">
             <SmallBtn onClick={insertTable3x3} disabled={!editor}>
@@ -285,13 +307,14 @@ export default function TestEditorPage() {
           </IconBtn>
 
           <div className="flex-1" />
-
-          {/* اگر دوست داشتی میشه اینجا alignment هم اضافه کرد، ولی گفتی تغییر اضافه ندم */}
         </div>
 
         {/* Editor */}
         <div
+          ref={editorWrapRef}
           className={[
+            "relative",
+
             // جدول‌ها
             "[&_table]:w-full [&_table]:border-collapse [&_table]:my-3",
             "[&_td]:border [&_th]:border [&_td]:border-black/20 [&_th]:border-black/20",
@@ -299,22 +322,46 @@ export default function TestEditorPage() {
             "[&_th]:bg-black/5 dark:[&_th]:bg-white/10",
             "[&_td]:p-2 [&_th]:p-2",
 
-            // ✅ لیست‌ها: کمک می‌کنه نمایش bullet/ordered تو RTL درست و واضح باشه
+            // لیست‌ها
             "[&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pr-6 [&_.ProseMirror_ul]:my-2",
             "[&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pr-6 [&_.ProseMirror_ol]:my-2",
             "[&_.ProseMirror_li]:my-1",
           ].join(" ")}
           style={{ fontFamily: "Vazirmatn, sans-serif" }}
         >
+          {/* ✅ کنترل استاندارد جدول: اضافه/حذف سطر و ستون */}
+          {tableUi.open && (
+            <div
+              className={[
+                "absolute z-20",
+                "rounded-xl border border-black/10 bg-white/95 backdrop-blur px-2 py-2 shadow-sm",
+                "dark:bg-neutral-950/90 dark:border-neutral-800",
+              ].join(" ")}
+              style={{ left: tableUi.left, top: tableUi.top }}
+            >
+              <div className="flex items-center gap-2">
+                <MiniIconBtn disabled={!editor} onClick={tableAddRow} title="Row +">
+                  +
+                </MiniIconBtn>
+                <MiniIconBtn disabled={!editor} onClick={tableDelRow} title="Row -">
+                  −
+                </MiniIconBtn>
+
+                <div className="h-6 w-px bg-black/10 dark:bg-white/10 mx-1" />
+
+                <MiniIconBtn disabled={!editor} onClick={tableAddCol} title="Col +">
+                  +
+                </MiniIconBtn>
+                <MiniIconBtn disabled={!editor} onClick={tableDelCol} title="Col -">
+                  −
+                </MiniIconBtn>
+              </div>
+            </div>
+          )}
+
           <EditorContent editor={editor} />
         </div>
       </Card>
-
-      {/* Preview (برای خودت تو تست) */}
-      <div className="mt-4 rounded-2xl border border-black/10 bg-white p-4 dark:bg-neutral-950 dark:border-neutral-800">
-        <div className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">پیش‌نمایش خروجی (HTML)</div>
-        <div className="prose max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: previewHtml }} />
-      </div>
     </div>
   );
 }
