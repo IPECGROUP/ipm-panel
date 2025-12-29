@@ -1,15 +1,15 @@
-FROM node:22-alpine AS build
+FROM node:22-bookworm-slim AS build
 WORKDIR /app
 
 COPY package*.json ./
 
-# ✅ مهم: برای Alpine باید optional deps هم نصب بشن تا rolldown binding (musl) بیاد
+# ✅ مهم: برای deps های native/optional روی لینوکس پایدارتره (glibc)
 RUN npm ci --include=optional
 
 COPY . .
 RUN npm run build
 
-FROM node:22-alpine
+FROM node:22-bookworm-slim
 WORKDIR /app
 
 RUN npm i -g serve@14
