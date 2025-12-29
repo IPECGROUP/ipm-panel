@@ -3,8 +3,13 @@ WORKDIR /app
 
 COPY package*.json ./
 
-# ✅ به جای npm ci (که این باگ optional deps رو می‌زند)، از npm install استفاده می‌کنیم
+# ✅ نصب وابستگی‌ها
 RUN npm install --include=optional --no-audit --no-fund
+
+# ✅ فیکس رول‌داون: binding نیتیو لینوکس دقیقاً هم‌نسخه‌ی rolldown نصب می‌شود
+RUN set -eux; \
+  ROLLDOWN_VER="$(node -p "require('rolldown/package.json').version")"; \
+  npm install --no-save "@rolldown/binding-linux-x64-gnu@${ROLLDOWN_VER}" --no-audit --no-fund
 
 COPY . .
 RUN npm run build
