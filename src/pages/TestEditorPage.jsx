@@ -81,18 +81,23 @@ function SmallBtn({ onClick, children, disabled }) {
   );
 }
 
-function MiniIconBtn({ disabled, onClick, children, title }) {
+// ✅ مینیمال: دکمه‌های + / − گرد
+function MiniPMBtn({ disabled, onClick, children, title }) {
   return (
     <button
       type="button"
       title={title}
       disabled={disabled}
+      onMouseDown={(e) => {
+        // خیلی مهم: نذاریم selection از جدول/ادیتور خارج بشه
+        e.preventDefault();
+      }}
       onClick={onClick}
       className={[
-        "h-8 w-8 rounded-lg border border-black/10 bg-white text-black hover:bg-black/5",
-        "disabled:opacity-40 disabled:hover:bg-white",
-        "dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-white/10",
-        "grid place-items-center",
+        "h-7 w-7 rounded-full border border-black/10 bg-white/95 text-black hover:bg-black/5",
+        "disabled:opacity-40",
+        "dark:bg-neutral-900/90 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-white/10",
+        "grid place-items-center text-sm leading-none",
       ].join(" ")}
     >
       {children}
@@ -100,7 +105,32 @@ function MiniIconBtn({ disabled, onClick, children, title }) {
   );
 }
 
+function PageFrame({ templateUrl, children, className = "" }) {
+  return (
+    <div
+      className={[
+        "mx-auto w-full max-w-[860px]",
+        "aspect-[210/297]", // A4
+        "rounded-2xl border border-black/10 overflow-hidden",
+        "bg-white dark:bg-neutral-950 dark:border-neutral-800",
+        className,
+      ].join(" ")}
+      style={{
+        backgroundImage: `url(${templateUrl})`,
+        backgroundRepeat: "no-repeat",
+        backgroundPosition: "center",
+        backgroundSize: "100% 100%",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 export default function TestEditorPage() {
+  // ✅ تمپلیت شما (این فایل را در public/images/letter-template.png قرار بده)
+  const TEMPLATE_URL = "/images/letter-template.png";
+
   // فونت‌های مجاز
   const FONTS = useMemo(
     () => [
@@ -114,7 +144,13 @@ export default function TestEditorPage() {
   const SIZES = useMemo(() => ["12px", "14px", "16px", "18px", "20px", "24px"], []);
 
   const editorWrapRef = useRef(null);
+
+  // ✅ پیش‌نمایش خروجی
+  const [previewHtml, setPreviewHtml] = useState("");
+
+  // ✅ کنترل جدول
   const [tableUi, setTableUi] = useState({ open: false, left: 0, top: 0 });
+  const [tablePad, setTablePad] = useState(8); // برای کوچک/بزرگ کردن ردیف‌ها (padding)
 
   const editor = useEditor({
     extensions: [
@@ -131,43 +167,60 @@ export default function TestEditorPage() {
         table: { resizable: true },
       }),
     ],
-    // ✅ همه متن‌های دمو/تست حذف شد
     content: ``,
     editorProps: {
       attributes: {
         dir: "rtl",
         class: [
-          "min-h-[420px] p-4 outline-none",
+          "outline-none",
           "text-[14px] leading-7",
-          "bg-white text-black",
-          "dark:bg-neutral-900 dark:text-neutral-100",
+          "text-black dark:text-neutral-100",
         ].join(" "),
       },
     },
+    onUpdate: ({ editor }) => {
+      setPreviewHtml(editor.getHTML());
+    },
   });
 
-  // ✅ نمایش کنترل‌های جدول وقتی داخل جدول هستیم (دکمه‌های + / - برای سطر/ستون)
+  // ✅ جای‌گذاری کنترل‌ها روی خود جدول (گوشه‌ی بالا-راستِ جدول)
   useEffect(() => {
     if (!editor) return;
 
+    const findClosestTableEl = () => {
+      try {
+        const { from } = editor.state.selection;
+        const domAt = editor.view.domAtPos(from);
+        let el = domAt?.node;
+        if (!el) return null;
+        if (el.nodeType === 3) el = el.parentElement; // متن → والد
+        if (!el) return null;
+        return el.closest?.("table") || null;
+      } catch {
+        return null;
+      }
+    };
+
     const updateTableUi = () => {
-      const isInTable = editor.isActive("table");
-      if (!isInTable) {
+      const wrap = editorWrapRef.current;
+      if (!wrap) return;
+
+      const tableEl = editor.isActive("table") ? findClosestTableEl() : null;
+      if (!tableEl) {
         setTableUi((p) => (p.open ? { ...p, open: false } : p));
         return;
       }
 
-      const wrap = editorWrapRef.current;
-      if (!wrap) return;
+      const wrapRect = wrap.getBoundingClientRect();
+      const tRect = tableEl.getBoundingClientRect();
 
-      // موقعیت نسبت به wrapper ادیتور
-      const selFrom = editor.state.selection?.from ?? 0;
-      const c = editor.view.coordsAtPos(selFrom);
-      const r = wrap.getBoundingClientRect();
+      // کنترل‌ها: گوشه‌ی بالا-راست جدول (RTL-friendly)
+      const CONTROL_W = 210; // تقریبی
+      const leftRaw = tRect.right - wrapRect.left - CONTROL_W - 10;
+      const topRaw = tRect.top - wrapRect.top + 10;
 
-      // نزدیک کرسر؛ طوری که داخل ادیتور/روی جدول حس شود
-      const left = Math.max(8, Math.min(c.left - r.left - 10, r.width - 160));
-      const top = Math.max(8, Math.min(c.top - r.top - 44, r.height - 56));
+      const left = Math.max(10, Math.min(leftRaw, wrapRect.width - CONTROL_W - 10));
+      const top = Math.max(10, Math.min(topRaw, wrapRect.height - 60));
 
       setTableUi({ open: true, left, top });
     };
@@ -200,22 +253,12 @@ export default function TestEditorPage() {
   const tableAddCol = () => editor?.chain().focus().addColumnAfter().run();
   const tableDelCol = () => editor?.chain().focus().deleteColumn().run();
 
+  const rowBigger = () => setTablePad((p) => Math.min(18, p + 2));
+  const rowSmaller = () => setTablePad((p) => Math.max(4, p - 2));
+
   return (
     <div className="p-4 md:p-6">
       <Card className="rounded-2xl border border-black/10 bg-white overflow-hidden dark:bg-neutral-950 dark:border-neutral-800">
-        {/* Header (Logo) */}
-        <div className="p-4 border-b border-black/10 dark:border-neutral-800 bg-white dark:bg-neutral-950">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <img
-                src="/images/login_page_header.png"
-                alt="سربرگ"
-                className="h-12 md:h-14 object-contain"
-              />
-            </div>
-          </div>
-        </div>
-
         {/* Top Controls */}
         <div className="p-4 border-b border-black/10 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900">
           <div className="flex flex-wrap items-center gap-2">
@@ -309,59 +352,110 @@ export default function TestEditorPage() {
           <div className="flex-1" />
         </div>
 
-        {/* Editor */}
-        <div
-          ref={editorWrapRef}
-          className={[
-            "relative",
+        {/* Editor Area */}
+        <div className="p-4 md:p-6 bg-neutral-50 dark:bg-neutral-900">
+          <div
+            ref={editorWrapRef}
+            className={[
+              "relative",
+              // جدول‌ها
+              "[&_table]:w-full [&_table]:border-collapse [&_table]:my-3",
+              "[&_td]:border [&_th]:border [&_td]:border-black/20 [&_th]:border-black/20",
+              "dark:[&_td]:border-neutral-700 dark:[&_th]:border-neutral-700",
+              "[&_th]:bg-black/5 dark:[&_th]:bg-white/10",
+              // padding جدول با CSS var
+              "[&_td]:p-[var(--table-pad)] [&_th]:p-[var(--table-pad)]",
+              // لیست‌ها
+              "[&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pr-6 [&_.ProseMirror_ul]:my-2",
+              "[&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pr-6 [&_.ProseMirror_ol]:my-2",
+              "[&_.ProseMirror_li]:my-1",
+            ].join(" ")}
+            style={{
+              fontFamily: "Vazirmatn, sans-serif",
+              ["--table-pad"]: `${tablePad}px`,
+            }}
+          >
+            {/* ✅ صفحه A4 با تمپلیت */}
+            <PageFrame templateUrl={TEMPLATE_URL}>
+              {/* ناحیه‌ی متن: کمی فاصله از سربرگ/پاورقی تمپلیت */}
+              <div className="h-full w-full pt-[120px] pb-[80px] px-[70px]">
+                {/* ✅ کنترل مینیمال داخل خود جدول */}
+                {tableUi.open && (
+                  <div
+                    className={[
+                      "absolute z-20",
+                      "rounded-xl border border-black/10 bg-white/90 backdrop-blur px-2 py-2 shadow-sm",
+                      "dark:bg-neutral-950/85 dark:border-neutral-800",
+                    ].join(" ")}
+                    style={{ left: tableUi.left, top: tableUi.top }}
+                  >
+                    <div className="flex items-center gap-2">
+                      {/* ستون‌ها */}
+                      <div className="flex items-center gap-1">
+                        <MiniPMBtn disabled={!editor} onClick={tableAddCol} title="ستون +">
+                          +
+                        </MiniPMBtn>
+                        <MiniPMBtn disabled={!editor} onClick={tableDelCol} title="ستون −">
+                          −
+                        </MiniPMBtn>
+                      </div>
 
-            // جدول‌ها
-            "[&_table]:w-full [&_table]:border-collapse [&_table]:my-3",
-            "[&_td]:border [&_th]:border [&_td]:border-black/20 [&_th]:border-black/20",
-            "dark:[&_td]:border-neutral-700 dark:[&_th]:border-neutral-700",
-            "[&_th]:bg-black/5 dark:[&_th]:bg-white/10",
-            "[&_td]:p-2 [&_th]:p-2",
+                      <div className="h-6 w-px bg-black/10 dark:bg-white/10 mx-1" />
 
-            // لیست‌ها
-            "[&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pr-6 [&_.ProseMirror_ul]:my-2",
-            "[&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pr-6 [&_.ProseMirror_ol]:my-2",
-            "[&_.ProseMirror_li]:my-1",
-          ].join(" ")}
-          style={{ fontFamily: "Vazirmatn, sans-serif" }}
-        >
-          {/* ✅ کنترل استاندارد جدول: اضافه/حذف سطر و ستون */}
-          {tableUi.open && (
-            <div
-              className={[
-                "absolute z-20",
-                "rounded-xl border border-black/10 bg-white/95 backdrop-blur px-2 py-2 shadow-sm",
-                "dark:bg-neutral-950/90 dark:border-neutral-800",
-              ].join(" ")}
-              style={{ left: tableUi.left, top: tableUi.top }}
-            >
-              <div className="flex items-center gap-2">
-                <MiniIconBtn disabled={!editor} onClick={tableAddRow} title="Row +">
-                  +
-                </MiniIconBtn>
-                <MiniIconBtn disabled={!editor} onClick={tableDelRow} title="Row -">
-                  −
-                </MiniIconBtn>
+                      {/* سطرها */}
+                      <div className="flex items-center gap-1">
+                        <MiniPMBtn disabled={!editor} onClick={tableAddRow} title="سطر +">
+                          +
+                        </MiniPMBtn>
+                        <MiniPMBtn disabled={!editor} onClick={tableDelRow} title="سطر −">
+                          −
+                        </MiniPMBtn>
+                      </div>
 
-                <div className="h-6 w-px bg-black/10 dark:bg-white/10 mx-1" />
+                      <div className="h-6 w-px bg-black/10 dark:bg-white/10 mx-1" />
 
-                <MiniIconBtn disabled={!editor} onClick={tableAddCol} title="Col +">
-                  +
-                </MiniIconBtn>
-                <MiniIconBtn disabled={!editor} onClick={tableDelCol} title="Col -">
-                  −
-                </MiniIconBtn>
+                      {/* کوچک/بزرگ کردن ردیف‌ها */}
+                      <div className="flex items-center gap-1">
+                        <MiniPMBtn disabled={!editor} onClick={rowBigger} title="درشت‌تر">
+                          +
+                        </MiniPMBtn>
+                        <MiniPMBtn disabled={!editor} onClick={rowSmaller} title="ریزتر">
+                          −
+                        </MiniPMBtn>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="h-full w-full">
+                  <EditorContent editor={editor} />
+                </div>
               </div>
-            </div>
-          )}
-
-          <EditorContent editor={editor} />
+            </PageFrame>
+          </div>
         </div>
       </Card>
+
+      {/* ✅ پیش‌نمایش خروجی زیر ادیتور */}
+      <div className="mt-4">
+        <Card className="rounded-2xl border border-black/10 bg-white overflow-hidden dark:bg-neutral-950 dark:border-neutral-800">
+          <div className="p-4 border-b border-black/10 dark:border-neutral-800 bg-white dark:bg-neutral-950">
+            <div className="text-sm font-semibold text-black dark:text-neutral-100">پیش‌نمایش خروجی</div>
+          </div>
+
+          <div className="p-4 md:p-6 bg-neutral-50 dark:bg-neutral-900">
+            <PageFrame templateUrl={TEMPLATE_URL}>
+              <div className="h-full w-full pt-[120px] pb-[80px] px-[70px]">
+                <div
+                  className="h-full w-full"
+                  style={{ fontFamily: "Vazirmatn, sans-serif" }}
+                  dangerouslySetInnerHTML={{ __html: previewHtml }}
+                />
+              </div>
+            </PageFrame>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }
