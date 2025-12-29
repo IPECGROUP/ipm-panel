@@ -8,9 +8,8 @@ import Underline from "@tiptap/extension-underline";
 import { TextStyle, FontFamily } from "@tiptap/extension-text-style";
 import { TableKit } from "@tiptap/extension-table";
 import Placeholder from "@tiptap/extension-placeholder";
-import { TextSelection } from "prosemirror-state";
 
-// ✅ FontSize (بدون پکیج جدا)
+// ✅ FontSize (بدون پکیج رسمی)
 const FontSize = Extension.create({
   name: "fontSize",
   addGlobalAttributes() {
@@ -44,7 +43,7 @@ const FontSize = Extension.create({
   },
 });
 
-// ✅ Align بدون پکیج اضافی
+// ✅ Align بدون پکیج
 const SimpleTextAlign = Extension.create({
   name: "simpleTextAlign",
   addGlobalAttributes() {
@@ -71,11 +70,13 @@ const SimpleTextAlign = Extension.create({
         ({ state, dispatch }) => {
           const { tr, selection } = state;
           const { from, to } = selection;
+
           state.doc.nodesBetween(from, to, (node, pos) => {
             if (node.type.name === "paragraph" || node.type.name === "heading") {
               tr.setNodeMarkup(pos, undefined, { ...node.attrs, textAlign: align });
             }
           });
+
           if (dispatch) dispatch(tr);
           return true;
         },
@@ -84,6 +85,7 @@ const SimpleTextAlign = Extension.create({
         ({ state, dispatch }) => {
           const { tr, selection } = state;
           const { from, to } = selection;
+
           state.doc.nodesBetween(from, to, (node, pos) => {
             if (node.type.name === "paragraph" || node.type.name === "heading") {
               const nextAttrs = { ...node.attrs };
@@ -91,6 +93,7 @@ const SimpleTextAlign = Extension.create({
               tr.setNodeMarkup(pos, undefined, nextAttrs);
             }
           });
+
           if (dispatch) dispatch(tr);
           return true;
         },
@@ -98,9 +101,9 @@ const SimpleTextAlign = Extension.create({
   },
 });
 
-// ✅ ارتفاع ردیف (برای هر ردیف جداگانه)
-const TableRowHeight = Extension.create({
-  name: "tableRowHeight",
+// ✅ Row Height: ارتفاع هر ردیف جداگانه (برای row-resize اکسل‌طور)
+const RowHeight = Extension.create({
+  name: "rowHeight",
   addGlobalAttributes() {
     return [
       {
@@ -109,10 +112,9 @@ const TableRowHeight = Extension.create({
           rowHeight: {
             default: null,
             parseHTML: (el) => {
-              const h = el.style?.height;
-              if (!h) return null;
-              const n = parseInt(String(h).replace("px", ""), 10);
-              return Number.isFinite(n) ? n : null;
+              const h = el?.style?.height || "";
+              const m = String(h).match(/(\d+)\s*px/);
+              return m ? Number(m[1]) : null;
             },
             renderHTML: (attrs) => {
               if (!attrs.rowHeight) return {};
@@ -124,64 +126,28 @@ const TableRowHeight = Extension.create({
     ];
   },
   addCommands() {
-    const findRowPos = (state) => {
-      const { $from } = state.selection;
-      for (let d = $from.depth; d >= 0; d--) {
-        const n = $from.node(d);
-        if (n?.type?.name === "tableRow") {
-          const pos = $from.before(d);
-          return { pos, node: n };
-        }
-      }
-      return null;
-    };
-
     return {
-      incRowHeight:
-        () =>
+      setActiveRowHeight:
+        (heightPx) =>
         ({ state, dispatch }) => {
-          const found = findRowPos(state);
-          if (!found) return false;
+          const { selection } = state;
+          const $from = selection.$from;
 
-          const cur = found.node.attrs?.rowHeight ?? 32;
-          const next = Math.min(120, cur + 6);
+          let rowDepth = -1;
+          for (let d = $from.depth; d > 0; d--) {
+            if ($from.node(d).type.name === "tableRow") {
+              rowDepth = d;
+              break;
+            }
+          }
+          if (rowDepth === -1) return false;
 
-          const tr = state.tr.setNodeMarkup(found.pos, undefined, {
-            ...found.node.attrs,
-            rowHeight: next,
-          });
+          const rowPos = $from.before(rowDepth);
+          const rowNode = state.doc.nodeAt(rowPos);
+          if (!rowNode) return false;
 
-          if (dispatch) dispatch(tr);
-          return true;
-        },
-      decRowHeight:
-        () =>
-        ({ state, dispatch }) => {
-          const found = findRowPos(state);
-          if (!found) return false;
-
-          const cur = found.node.attrs?.rowHeight ?? 32;
-          const next = Math.max(18, cur - 6);
-
-          const tr = state.tr.setNodeMarkup(found.pos, undefined, {
-            ...found.node.attrs,
-            rowHeight: next,
-          });
-
-          if (dispatch) dispatch(tr);
-          return true;
-        },
-      resetRowHeight:
-        () =>
-        ({ state, dispatch }) => {
-          const found = findRowPos(state);
-          if (!found) return false;
-
-          const tr = state.tr.setNodeMarkup(found.pos, undefined, {
-            ...found.node.attrs,
-            rowHeight: null,
-          });
-
+          const nextAttrs = { ...rowNode.attrs, rowHeight: Math.max(18, Math.min(240, heightPx)) };
+          const tr = state.tr.setNodeMarkup(rowPos, undefined, nextAttrs);
           if (dispatch) dispatch(tr);
           return true;
         },
@@ -246,23 +212,25 @@ function PrimaryBtn({ onClick, children, disabled }) {
   );
 }
 
-function MiniPMBtn({ disabled, onClick, children, title }) {
+function PageFrame({ templateUrl, children, className = "" }) {
   return (
-    <button
-      type="button"
-      title={title}
-      disabled={disabled}
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={onClick}
+    <div
       className={[
-        "h-7 w-7 rounded-full border border-black/10 bg-white/95 text-black hover:bg-black/5",
-        "disabled:opacity-40",
-        "dark:bg-neutral-900/90 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-white/10",
-        "grid place-items-center text-sm leading-none",
+        "mx-auto w-full max-w-[560px]",
+        "aspect-[210/297]",
+        "rounded-2xl border border-black/10 overflow-hidden",
+        "bg-white dark:bg-neutral-950 dark:border-neutral-800",
+        className,
       ].join(" ")}
+      style={{
+        backgroundImage: `url(${templateUrl})`,
+        backgroundRepeat: "no-repeat",
+        backgroundPosition: "center",
+        backgroundSize: "100% 100%",
+      }}
     >
       {children}
-    </button>
+    </div>
   );
 }
 
@@ -303,10 +271,8 @@ function Modal({ open, onClose, children }) {
 }
 
 export default function TestEditorPage() {
-  // ✅ تمپلیت نامه (همون عکسی که فرستادی)
+  // ✅ تمپلیت شما (عکس ارسال‌شده را بذار: public/images/letter-template.png)
   const TEMPLATE_URL = "/images/letter-template.png";
-  // ✅ لوگو (داخل A4)
-  const LOGO_URL = "/images/login_page_header.png";
 
   const FONTS = useMemo(
     () => [
@@ -316,22 +282,20 @@ export default function TestEditorPage() {
     ],
     []
   );
+
   const SIZES = useMemo(() => ["12px", "14px", "16px", "18px", "20px", "24px"], []);
 
-  const scrollRef = useRef(null);
-  const pagesRef = useRef(null);
-  const pmRef = useRef(null);
-
+  const editorWrapRef = useRef(null);
   const [previewHtml, setPreviewHtml] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  const [tableUi, setTableUi] = useState({ open: false, left: 0, top: 0 });
-
-  // ✅ برای پس‌زمینه چندصفحه‌ای: ارتفاع هر صفحه را از عرض محاسبه می‌کنیم
-  const [pageH, setPageH] = useState(0);
-
-  // ✅ تعداد صفحات برای گذاشتن لوگو روی هر صفحه (اختیاری ولی قشنگ و دقیق)
-  const [pageCount, setPageCount] = useState(1);
+  // ✅ Excel-like Row Resize state
+  const rowResizeRef = useRef({
+    active: false,
+    rowEl: null,
+    startY: 0,
+    startH: 0,
+  });
 
   const editor = useEditor({
     extensions: [
@@ -344,10 +308,10 @@ export default function TestEditorPage() {
       FontFamily.configure({ types: ["textStyle"] }),
       FontSize,
       SimpleTextAlign,
-      TableRowHeight,
+      RowHeight, // ✅ ارتفاع مستقل هر ردیف
       Placeholder.configure({ placeholder: "اینجا شروع به نوشتن کنید…" }),
       TableKit.configure({
-        table: { resizable: true }, // ✅ ستون‌ها جداگانه با موس
+        table: { resizable: true }, // ✅ تغییر اندازه ستون‌ها با موس (ستون مستقل)
       }),
     ],
     content: ``,
@@ -360,162 +324,149 @@ export default function TestEditorPage() {
     onUpdate: ({ editor }) => setPreviewHtml(editor.getHTML()),
   });
 
-  // ✅ محاسبه ارتفاع A4 با توجه به عرض واقعی (210x297)
-  useEffect(() => {
-    const el = pagesRef.current;
-    if (!el) return;
-
-    const calc = () => {
-      const w = el.getBoundingClientRect().width || 0;
-      const h = Math.round(w * (297 / 210));
-      setPageH(h);
-    };
-
-    calc();
-    const ro = new ResizeObserver(calc);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  // ✅ تعداد صفحات = ارتفاع محتوای ProseMirror / ارتفاع صفحه
-  useEffect(() => {
-    const el = pmRef.current;
-    if (!el || !pageH) return;
-
-    const calc = () => {
-      const h = el.scrollHeight || el.getBoundingClientRect().height || 0;
-      const c = Math.max(1, Math.ceil(h / pageH));
-      setPageCount(c);
-    };
-
-    calc();
-    const ro = new ResizeObserver(calc);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [pageH]);
-
-  // ✅ کنترل‌های جدول (گوشه جدول)
-  useEffect(() => {
-    if (!editor) return;
-
-    const findClosestTableEl = () => {
-      try {
-        const { from } = editor.state.selection;
-        const domAt = editor.view.domAtPos(from);
-        let el = domAt?.node;
-        if (!el) return null;
-        if (el.nodeType === 3) el = el.parentElement;
-        if (!el) return null;
-        return el.closest?.("table") || null;
-      } catch {
-        return null;
-      }
-    };
-
-    const updateTableUi = () => {
-      const wrap = scrollRef.current;
-      if (!wrap) return;
-
-      const tableEl = editor.isActive("table") ? findClosestTableEl() : null;
-      if (!tableEl) {
-        setTableUi((p) => (p.open ? { ...p, open: false } : p));
-        return;
-      }
-
-      const wrapRect = wrap.getBoundingClientRect();
-      const tRect = tableEl.getBoundingClientRect();
-
-      const CONTROL_W = 300;
-      const leftRaw = tRect.right - wrapRect.left - CONTROL_W - 10;
-      const topRaw = tRect.top - wrapRect.top + 10;
-
-      const left = Math.max(10, Math.min(leftRaw, wrapRect.width - CONTROL_W - 10));
-      const top = Math.max(10, Math.min(topRaw, wrapRect.height - 60));
-
-      setTableUi({ open: true, left, top });
-    };
-
-    updateTableUi();
-    editor.on("selectionUpdate", updateTableUi);
-    editor.on("transaction", updateTableUi);
-    editor.on("focus", updateTableUi);
-    editor.on("blur", () => setTableUi((p) => (p.open ? { ...p, open: false } : p)));
-
-    return () => {
-      editor.off("selectionUpdate", updateTableUi);
-      editor.off("transaction", updateTableUi);
-      editor.off("focus", updateTableUi);
-      editor.off("blur", () => {});
-    };
-  }, [editor]);
-
-  // ✅ کلیک روی هر جای صفحه => فوکوس + آوردن کرسر همانجا
-  const focusAtClick = (e) => {
-    if (!editor) return;
-
-    // اگر روی دکمه/سلکت کلیک شد مزاحم نشو
-    const t = e.target;
-    if (t?.closest?.("button,select,option,input,textarea,a,[role='button']")) return;
-
-    // مهم: نذاریم اسکرول/selection خراب شود
-    e.preventDefault();
-
-    editor.commands.focus();
-
-    // اگر مختصات داخل view بود، کرسر همانجا
-    const coords = { left: e.clientX, top: e.clientY };
-    const pos = editor.view.posAtCoords(coords);
-
-    if (pos?.pos != null) {
-      const tr = editor.state.tr.setSelection(TextSelection.create(editor.state.doc, pos.pos));
-      editor.view.dispatch(tr);
-      editor.view.focus();
-      return;
-    }
-
-    // در غیر این صورت برو انتهای متن
-    editor.commands.focus("end");
-  };
-
   const currentFont = editor?.getAttributes("textStyle")?.fontFamily || FONTS[0].value;
   const currentSize = editor?.getAttributes("textStyle")?.fontSize || "14px";
 
   const insertTable3x3 = () => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
-
-  const tableAddRow = () => editor?.chain().focus().addRowAfter().run();
-  const tableDelRow = () => editor?.chain().focus().deleteRow().run();
-  const tableAddCol = () => editor?.chain().focus().addColumnAfter().run();
-  const tableDelCol = () => editor?.chain().focus().deleteColumn().run();
-
-  const rowHInc = () => editor?.chain().focus().incRowHeight().run();
-  const rowHDec = () => editor?.chain().focus().decRowHeight().run();
-  const rowHReset = () => editor?.chain().focus().resetRowHeight().run();
 
   const alignRight = () => editor?.chain().focus().setTextAlign("right").run();
   const alignCenter = () => editor?.chain().focus().setTextAlign("center").run();
   const alignLeft = () => editor?.chain().focus().setTextAlign("left").run();
   const alignJustify = () => editor?.chain().focus().setTextAlign("justify").run();
 
+  // ✅ کلیک هرجای صفحه → کرسر همانجا + focus
+  const handlePageMouseDown = (e) => {
+    if (!editor) return;
+
+    // اگر روی خود ProseMirror کلیک شد، بذار خودش هندل کنه
+    const pm = editorWrapRef.current?.querySelector?.(".ProseMirror");
+    if (pm && pm.contains(e.target)) return;
+
+    // در ناحیه صفحه کلیک شده: selection را نزدیک همان نقطه قرار بده
+    try {
+      const pos = editor.view.posAtCoords({ left: e.clientX, top: e.clientY });
+      if (pos?.pos != null) {
+        editor.commands.focus();
+        editor.commands.setTextSelection(pos.pos);
+      } else {
+        editor.commands.focus("end");
+      }
+    } catch {
+      editor.commands.focus("end");
+    }
+  };
+
+  // ✅ Row resize (Excel-like): موس نزدیک مرز پایین TR → drag ارتفاع همان ردیف
+  useEffect(() => {
+    if (!editor) return;
+
+    const wrap = editorWrapRef.current;
+    if (!wrap) return;
+
+    const isNearBottomEdge = (rect, y, threshold = 4) => Math.abs(y - rect.bottom) <= threshold;
+
+    const onMove = (e) => {
+      if (!wrap) return;
+
+      // Drag فعال
+      if (rowResizeRef.current.active) {
+        const dy = e.clientY - rowResizeRef.current.startY;
+        const nextH = Math.max(18, Math.min(240, rowResizeRef.current.startH + dy));
+        // ارتفاع را روی همان TR به صورت attribute ذخیره کن
+        // (برای اینکه node درست پیدا شود، selection را داخل همان row نگه می‌داریم)
+        editor.commands.setActiveRowHeight(nextH);
+        e.preventDefault();
+        return;
+      }
+
+      // Drag غیرفعال: فقط cursor را مثل اکسل تغییر بده
+      const pm = wrap.querySelector(".ProseMirror");
+      if (!pm) return;
+
+      const t = e.target;
+      const tr = t?.closest?.("tr");
+      if (!tr) {
+        pm.classList.remove("resize-row-cursor");
+        return;
+      }
+
+      const rect = tr.getBoundingClientRect();
+      if (isNearBottomEdge(rect, e.clientY)) {
+        pm.classList.add("resize-row-cursor");
+      } else {
+        pm.classList.remove("resize-row-cursor");
+      }
+    };
+
+    const onDown = (e) => {
+      if (!wrap) return;
+      const pm = wrap.querySelector(".ProseMirror");
+      if (!pm) return;
+
+      const tr = e.target?.closest?.("tr");
+      if (!tr) return;
+
+      const rect = tr.getBoundingClientRect();
+      if (!isNearBottomEdge(rect, e.clientY)) return;
+
+      // شروع drag
+      rowResizeRef.current.active = true;
+      rowResizeRef.current.rowEl = tr;
+      rowResizeRef.current.startY = e.clientY;
+      rowResizeRef.current.startH = rect.height;
+
+      document.body.style.userSelect = "none";
+      document.body.style.cursor = "row-resize";
+
+      e.preventDefault();
+    };
+
+    const onUp = () => {
+      if (!rowResizeRef.current.active) return;
+      rowResizeRef.current.active = false;
+      rowResizeRef.current.rowEl = null;
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+    };
+
+    wrap.addEventListener("mousemove", onMove, { passive: false });
+    wrap.addEventListener("mousedown", onDown);
+    window.addEventListener("mouseup", onUp);
+
+    return () => {
+      wrap.removeEventListener("mousemove", onMove);
+      wrap.removeEventListener("mousedown", onDown);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [editor]);
+
   return (
     <div className="p-4 md:p-6">
-      {/* ✅ ستون‌ها (Excel-like) */}
       <style>{`
+        /* Column resize handle (واضح‌تر) */
         .ProseMirror table { position: relative; }
-        .ProseMirror .column-resize-handle{
-          position:absolute; top:-2px; right:-2px; bottom:-2px; width:6px;
-          background: rgba(0,0,0,0.10);
-          pointer-events:none;
-          opacity:0;
+        .ProseMirror .column-resize-handle {
+          position: absolute;
+          top: -2px;
+          right: -2px;
+          bottom: -2px;
+          width: 6px;
+          background: rgba(0,0,0,0.08);
+          pointer-events: none;
+          opacity: 0;
           transition: opacity .12s ease;
         }
         .ProseMirror table:hover .column-resize-handle { opacity: 1; }
         .ProseMirror.resize-cursor { cursor: col-resize; }
         .dark .ProseMirror .column-resize-handle { background: rgba(255,255,255,0.14); }
+
+        /* Row resize cursor */
+        .ProseMirror.resize-row-cursor { cursor: row-resize; }
       `}</style>
 
       <Card className="rounded-2xl border border-black/10 bg-white overflow-hidden dark:bg-neutral-950 dark:border-neutral-800">
         {/* Top Controls */}
-        <div className="p-4 border-b border-black/10 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900">
+        <div className="p-3 md:p-4 border-b border-black/10 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900">
           <div className="flex flex-wrap items-center gap-2">
             <SmallBtn onClick={insertTable3x3} disabled={!editor}>
               افزودن جدول
@@ -604,136 +555,34 @@ export default function TestEditorPage() {
         {/* Editor Area */}
         <div className="p-4 md:p-5 bg-neutral-50 dark:bg-neutral-900">
           <div
-            ref={scrollRef}
+            ref={editorWrapRef}
             className={[
               "relative",
               "mx-auto w-full max-w-[560px]",
-              "max-h-[700px] overflow-auto rounded-2xl",
-              "border border-black/10 dark:border-neutral-800",
-              "bg-white dark:bg-neutral-950",
+              "max-h-[640px] overflow-auto rounded-2xl",
+              "border border-black/10 bg-white dark:bg-neutral-950 dark:border-neutral-800",
+
+              // جدول‌ها
+              "[&_table]:w-full [&_table]:border-collapse [&_table]:my-3",
+              "[&_td]:border [&_th]:border [&_td]:border-black/20 [&_th]:border-black/20",
+              "dark:[&_td]:border-neutral-700 dark:[&_th]:border-neutral-700",
+              "[&_th]:bg-black/5 dark:[&_th]:bg-white/10",
+              "[&_td]:p-2 [&_th]:p-2",
+
+              // لیست‌ها
+              "[&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pr-6 [&_.ProseMirror_ul]:my-2",
+              "[&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pr-6 [&_.ProseMirror_ol]:my-2",
+              "[&_.ProseMirror_li]:my-1",
             ].join(" ")}
+            style={{ fontFamily: "Vazirmatn, sans-serif" }}
+            onMouseDownCapture={handlePageMouseDown}
           >
-            {/* ✅ لایه‌ی صفحات: پس‌زمینه A4 پشت سر هم */}
-            <div
-              ref={pagesRef}
-              onMouseDown={focusAtClick}
-              className="relative w-full"
-              style={{
-                // اگر pageH محاسبه شد، پس‌زمینه را دقیق تکرار کن
-                backgroundImage: `url(${TEMPLATE_URL})`,
-                backgroundRepeat: "repeat-y",
-                backgroundPosition: "center top",
-                backgroundSize: pageH ? `100% ${pageH}px` : "100% 100%",
-                minHeight: pageH ? `${pageH}px` : "700px",
-              }}
-            >
-              {/* ✅ لوگو داخل A4 (روی هر صفحه) */}
-              {pageH > 0 &&
-                Array.from({ length: pageCount }).map((_, i) => (
-                  <img
-                    key={i}
-                    src={LOGO_URL}
-                    alt="لوگو"
-                    className="pointer-events-none select-none absolute object-contain"
-                    style={{
-                      top: i * pageH + 18,
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      height: 56,
-                      opacity: 1,
-                    }}
-                  />
-                ))}
-
-              {/* ✅ ناحیه‌ی تایپ: با padding ثابت برای سربرگ/پاورقی */}
-              <div
-                className="relative"
-                style={{
-                  paddingTop: 110,
-                  paddingBottom: 70,
-                  paddingLeft: 56,
-                  paddingRight: 56,
-                }}
-              >
-                {/* ✅ کنترل مینیمال جدول */}
-                {tableUi.open && (
-                  <div
-                    className={[
-                      "absolute z-20",
-                      "rounded-xl border border-black/10 bg-white/90 backdrop-blur px-2 py-2 shadow-sm",
-                      "dark:bg-neutral-950/85 dark:border-neutral-800",
-                    ].join(" ")}
-                    style={{ left: tableUi.left, top: tableUi.top }}
-                    onMouseDown={(e) => e.preventDefault()}
-                  >
-                    <div className="flex items-center gap-2">
-                      {/* ستون‌ها */}
-                      <div className="flex items-center gap-1">
-                        <MiniPMBtn disabled={!editor} onClick={tableAddCol} title="ستون +">
-                          +
-                        </MiniPMBtn>
-                        <MiniPMBtn disabled={!editor} onClick={tableDelCol} title="ستون −">
-                          −
-                        </MiniPMBtn>
-                      </div>
-
-                      <div className="h-6 w-px bg-black/10 dark:bg-white/10 mx-1" />
-
-                      {/* سطرها */}
-                      <div className="flex items-center gap-1">
-                        <MiniPMBtn disabled={!editor} onClick={tableAddRow} title="سطر +">
-                          +
-                        </MiniPMBtn>
-                        <MiniPMBtn disabled={!editor} onClick={tableDelRow} title="سطر −">
-                          −
-                        </MiniPMBtn>
-                      </div>
-
-                      <div className="h-6 w-px bg-black/10 dark:bg-white/10 mx-1" />
-
-                      {/* ✅ ارتفاع همان ردیف (نه همه) */}
-                      <div className="flex items-center gap-1">
-                        <MiniPMBtn disabled={!editor} onClick={rowHInc} title="ارتفاع ردیف +">
-                          ↕+
-                        </MiniPMBtn>
-                        <MiniPMBtn disabled={!editor} onClick={rowHDec} title="ارتفاع ردیف −">
-                          ↕−
-                        </MiniPMBtn>
-                        <MiniPMBtn disabled={!editor} onClick={rowHReset} title="ریست ارتفاع">
-                          ↺
-                        </MiniPMBtn>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* ✅ خود ادیتور */}
-                <div
-                  ref={pmRef}
-                  className={[
-                    "ProseMirror",
-                    // جدول‌ها
-                    "[&_table]:w-full [&_table]:border-collapse [&_table]:my-3",
-                    "[&_td]:border [&_th]:border [&_td]:border-black/20 [&_th]:border-black/20",
-                    "dark:[&_td]:border-neutral-700 dark:[&_th]:border-neutral-700",
-                    "[&_th]:bg-black/5 dark:[&_th]:bg-white/10",
-                    "[&_td]:p-2 [&_th]:p-2",
-                    // لیست‌ها
-                    "[&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pr-6 [&_.ProseMirror_ul]:my-2",
-                    "[&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pr-6 [&_.ProseMirror_ol]:my-2",
-                    "[&_.ProseMirror_li]:my-1",
-                  ].join(" ")}
-                  style={{ fontFamily: "Vazirmatn, sans-serif" }}
-                  onMouseDown={(e) => {
-                    // وقتی دقیقاً روی فضای خالی کلیک شد
-                    // posAtCoords معمولاً کار می‌کند، ولی این کمک اضافه است
-                    if (e.target === pmRef.current) focusAtClick(e);
-                  }}
-                >
-                  <EditorContent editor={editor} />
-                </div>
+            <PageFrame templateUrl={TEMPLATE_URL}>
+              {/* ناحیه متن: مطابق سربرگ/پاورقی این تمپلیت تنظیم شده */}
+              <div className="h-full w-full pt-[110px] pb-[70px] px-[56px]">
+                <EditorContent editor={editor} />
               </div>
-            </div>
+            </PageFrame>
           </div>
 
           <div className="mt-4 flex justify-center">
@@ -744,41 +593,12 @@ export default function TestEditorPage() {
         </div>
       </Card>
 
-      {/* Preview Modal */}
       <Modal open={previewOpen} onClose={() => setPreviewOpen(false)}>
-        <div className="mx-auto w-full max-w-[560px]">
-          <div
-            className="rounded-2xl border border-black/10 dark:border-neutral-800 bg-white dark:bg-neutral-950 overflow-hidden"
-            style={{
-              backgroundImage: `url(${TEMPLATE_URL})`,
-              backgroundRepeat: "repeat-y",
-              backgroundPosition: "center top",
-              backgroundSize: pageH ? `100% ${pageH}px` : "100% 100%",
-              minHeight: pageH ? `${Math.max(pageH, pageCount * pageH)}px` : "900px",
-            }}
-          >
-            {/* لوگو روی صفحات */}
-            {pageH > 0 &&
-              Array.from({ length: pageCount }).map((_, i) => (
-                <img
-                  key={i}
-                  src={LOGO_URL}
-                  alt="لوگو"
-                  className="pointer-events-none select-none absolute object-contain"
-                  style={{
-                    top: i * pageH + 18,
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    height: 56,
-                  }}
-                />
-              ))}
-
-            <div style={{ paddingTop: 110, paddingBottom: 70, paddingLeft: 56, paddingRight: 56 }}>
-              <div style={{ fontFamily: "Vazirmatn, sans-serif" }} dangerouslySetInnerHTML={{ __html: previewHtml }} />
-            </div>
+        <PageFrame templateUrl={TEMPLATE_URL} className="max-w-[760px]">
+          <div className="h-full w-full pt-[110px] pb-[70px] px-[56px]">
+            <div style={{ fontFamily: "Vazirmatn, sans-serif" }} dangerouslySetInnerHTML={{ __html: previewHtml }} />
           </div>
-        </div>
+        </PageFrame>
       </Modal>
     </div>
   );
