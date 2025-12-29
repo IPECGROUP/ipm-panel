@@ -8,7 +8,6 @@ import Underline from "@tiptap/extension-underline";
 import { TextStyle, FontFamily } from "@tiptap/extension-text-style";
 import { TableKit } from "@tiptap/extension-table";
 import Placeholder from "@tiptap/extension-placeholder";
-import TextAlign from "@tiptap/extension-text-align";
 
 // ✅ FontSize: چون پکیج رسمی @tiptap/extension-font-size وجود نداره/نصب نیست
 const FontSize = Extension.create({
@@ -40,6 +39,64 @@ const FontSize = Extension.create({
         () =>
         ({ chain }) =>
           chain().setMark("textStyle", { fontSize: null }).removeEmptyTextStyle().run(),
+    };
+  },
+});
+
+// ✅ جایگزین TextAlign (بدون نیاز به پکیج): align روی پاراگراف/هدر با attribute
+const SimpleTextAlign = Extension.create({
+  name: "simpleTextAlign",
+  addGlobalAttributes() {
+    return [
+      {
+        types: ["paragraph", "heading"],
+        attributes: {
+          textAlign: {
+            default: null,
+            parseHTML: (el) => el.style.textAlign || null,
+            renderHTML: (attrs) => {
+              if (!attrs.textAlign) return {};
+              return { style: `text-align: ${attrs.textAlign}` };
+            },
+          },
+        },
+      },
+    ];
+  },
+  addCommands() {
+    return {
+      setTextAlign:
+        (align) =>
+        ({ state, dispatch }) => {
+          const { tr, selection } = state;
+          const { from, to } = selection;
+
+          state.doc.nodesBetween(from, to, (node, pos) => {
+            if (node.type.name === "paragraph" || node.type.name === "heading") {
+              tr.setNodeMarkup(pos, undefined, { ...node.attrs, textAlign: align });
+            }
+          });
+
+          if (dispatch) dispatch(tr);
+          return true;
+        },
+      unsetTextAlign:
+        () =>
+        ({ state, dispatch }) => {
+          const { tr, selection } = state;
+          const { from, to } = selection;
+
+          state.doc.nodesBetween(from, to, (node, pos) => {
+            if (node.type.name === "paragraph" || node.type.name === "heading") {
+              const nextAttrs = { ...node.attrs };
+              delete nextAttrs.textAlign;
+              tr.setNodeMarkup(pos, undefined, nextAttrs);
+            }
+          });
+
+          if (dispatch) dispatch(tr);
+          return true;
+        },
     };
   },
 });
@@ -101,7 +158,6 @@ function PrimaryBtn({ onClick, children, disabled }) {
   );
 }
 
-// ✅ مینیمال دکمه‌های + / −
 function MiniPMBtn({ disabled, onClick, children, title }) {
   return (
     <button
@@ -122,7 +178,6 @@ function MiniPMBtn({ disabled, onClick, children, title }) {
   );
 }
 
-// ✅ هندل درگ برای ردیف‌ها (حس اکسل) — این یکی padding ردیف‌ها رو تغییر می‌ده
 function DragHandleY({ onDown }) {
   return (
     <button
@@ -145,7 +200,7 @@ function PageFrame({ templateUrl, children, className = "" }) {
   return (
     <div
       className={[
-        "mx-auto w-full max-w-[560px]", // ✅ کوچیک‌تر
+        "mx-auto w-full max-w-[560px]",
         "aspect-[210/297]",
         "rounded-2xl border border-black/10 overflow-hidden",
         "bg-white dark:bg-neutral-950 dark:border-neutral-800",
@@ -167,11 +222,7 @@ function Modal({ open, onClose, children }) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[1000]">
-      <div
-        className="absolute inset-0 bg-black/40"
-        onMouseDown={onClose}
-        role="presentation"
-      />
+      <div className="absolute inset-0 bg-black/40" onMouseDown={onClose} role="presentation" />
       <div className="absolute inset-0 p-4 md:p-8 overflow-auto">
         <div
           className={[
@@ -226,7 +277,6 @@ export default function TestEditorPage() {
   const [tableUi, setTableUi] = useState({ open: false, left: 0, top: 0 });
   const [tablePad, setTablePad] = useState(8);
 
-  // درگ ارتفاع ردیف‌ها
   const dragRef = useRef({ dragging: false, startY: 0, startPad: 8 });
 
   const editor = useEditor({
@@ -239,30 +289,23 @@ export default function TestEditorPage() {
       TextStyle,
       FontFamily.configure({ types: ["textStyle"] }),
       FontSize,
-      TextAlign.configure({
-        types: ["heading", "paragraph"],
-        defaultAlignment: "right",
-      }),
+      SimpleTextAlign, // ✅ بدون پکیج اضافی
       Placeholder.configure({ placeholder: "اینجا شروع به نوشتن کنید…" }),
       TableKit.configure({
-        table: { resizable: true }, // ✅ ستون‌ها مثل اکسل (درگ مرز ستون)
+        table: { resizable: true }, // ✅ تغییر اندازه ستون با موس
       }),
     ],
     content: ``,
     editorProps: {
       attributes: {
         dir: "rtl",
-        class: [
-          "outline-none",
-          "text-[14px] leading-7",
-          "text-black dark:text-neutral-100",
-        ].join(" "),
+        class: ["outline-none", "text-[14px] leading-7", "text-black dark:text-neutral-100"].join(" "),
       },
     },
     onUpdate: ({ editor }) => setPreviewHtml(editor.getHTML()),
   });
 
-  // ✅ جای‌گذاری کنترل‌ها روی جدول
+  // ✅ کنترل‌های جدول (در گوشه جدول)
   useEffect(() => {
     if (!editor) return;
 
@@ -318,7 +361,7 @@ export default function TestEditorPage() {
     };
   }, [editor]);
 
-  // ✅ درگ برای تغییر tablePad (حس اکسل برای ارتفاع)
+  // ✅ درگ ارتفاع (padding)
   useEffect(() => {
     const onMove = (e) => {
       if (!dragRef.current.dragging) return;
@@ -356,7 +399,7 @@ export default function TestEditorPage() {
 
   return (
     <div className="p-4 md:p-6">
-      {/* CSS لازم برای هندل تغییر اندازه ستون‌ها (مثل اکسل) */}
+      {/* ✅ هندل تغییر اندازه ستون‌ها (مشابه اکسل) */}
       <style>{`
         .ProseMirror table { position: relative; }
         .ProseMirror .column-resize-handle {
@@ -434,16 +477,16 @@ export default function TestEditorPage() {
 
           <div className="h-6 w-px bg-black/10 dark:bg-white/10 mx-1" />
 
-          <IconBtn title="راست‌چین" active={editor?.isActive({ textAlign: "right" })} disabled={!editor} onClick={alignRight}>
+          <IconBtn title="راست‌چین" disabled={!editor} onClick={alignRight}>
             ↦
           </IconBtn>
-          <IconBtn title="وسط‌چین" active={editor?.isActive({ textAlign: "center" })} disabled={!editor} onClick={alignCenter}>
+          <IconBtn title="وسط‌چین" disabled={!editor} onClick={alignCenter}>
             ║
           </IconBtn>
-          <IconBtn title="چپ‌چین" active={editor?.isActive({ textAlign: "left" })} disabled={!editor} onClick={alignLeft}>
+          <IconBtn title="چپ‌چین" disabled={!editor} onClick={alignLeft}>
             ↤
           </IconBtn>
-          <IconBtn title="Justify" active={editor?.isActive({ textAlign: "justify" })} disabled={!editor} onClick={alignJustify}>
+          <IconBtn title="Justify" disabled={!editor} onClick={alignJustify}>
             ☰
           </IconBtn>
 
@@ -458,7 +501,6 @@ export default function TestEditorPage() {
 
           <div className="flex-1" />
 
-          {/* ✅ دکمه پیش‌نمایش */}
           <PrimaryBtn disabled={!editor} onClick={() => setPreviewOpen(true)}>
             پیش‌نمایش
           </PrimaryBtn>
@@ -466,7 +508,6 @@ export default function TestEditorPage() {
 
         {/* Editor Area */}
         <div className="p-4 md:p-5 bg-neutral-50 dark:bg-neutral-900">
-          {/* ✅ لوگو بالای تمپلیت */}
           <div className="mx-auto w-full max-w-[560px] mb-3">
             <img src={TOP_LOGO_URL} alt="لوگو" className="h-12 md:h-14 object-contain" />
           </div>
@@ -476,18 +517,14 @@ export default function TestEditorPage() {
             className={[
               "relative",
               "mx-auto w-full max-w-[560px]",
-
-              // ✅ ارتفاع باکس محدودتر تا اسکرول صفحه زیاد نشه
               "max-h-[620px] overflow-auto rounded-2xl",
 
-              // جدول‌ها
               "[&_table]:w-full [&_table]:border-collapse [&_table]:my-3",
               "[&_td]:border [&_th]:border [&_td]:border-black/20 [&_th]:border-black/20",
               "dark:[&_td]:border-neutral-700 dark:[&_th]:border-neutral-700",
               "[&_th]:bg-black/5 dark:[&_th]:bg-white/10",
               "[&_td]:p-[var(--table-pad)] [&_th]:p-[var(--table-pad)]",
 
-              // لیست‌ها
               "[&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pr-6 [&_.ProseMirror_ul]:my-2",
               "[&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pr-6 [&_.ProseMirror_ol]:my-2",
               "[&_.ProseMirror_li]:my-1",
@@ -499,7 +536,6 @@ export default function TestEditorPage() {
           >
             <PageFrame templateUrl={TEMPLATE_URL}>
               <div className="h-full w-full pt-[110px] pb-[70px] px-[56px]">
-                {/* ✅ کنترل جدول */}
                 {tableUi.open && (
                   <div
                     className={[
@@ -510,7 +546,6 @@ export default function TestEditorPage() {
                     style={{ left: tableUi.left, top: tableUi.top }}
                   >
                     <div className="flex items-center gap-2">
-                      {/* ستون‌ها */}
                       <div className="flex items-center gap-1">
                         <MiniPMBtn disabled={!editor} onClick={tableAddCol} title="ستون +">
                           +
@@ -522,7 +557,6 @@ export default function TestEditorPage() {
 
                       <div className="h-6 w-px bg-black/10 dark:bg-white/10 mx-1" />
 
-                      {/* سطرها */}
                       <div className="flex items-center gap-1">
                         <MiniPMBtn disabled={!editor} onClick={tableAddRow} title="سطر +">
                           +
@@ -534,7 +568,6 @@ export default function TestEditorPage() {
 
                       <div className="h-6 w-px bg-black/10 dark:bg-white/10 mx-1" />
 
-                      {/* حس اکسل برای ارتفاع */}
                       <DragHandleY
                         onDown={(e) => {
                           e.preventDefault();
@@ -554,7 +587,6 @@ export default function TestEditorPage() {
             </PageFrame>
           </div>
 
-          {/* ✅ دکمه پیش‌نمایش پایین صفحه (طبق خواسته‌ات) */}
           <div className="mt-4 flex justify-center">
             <PrimaryBtn disabled={!editor} onClick={() => setPreviewOpen(true)}>
               پیش‌نمایش
@@ -563,7 +595,6 @@ export default function TestEditorPage() {
         </div>
       </Card>
 
-      {/* ✅ Preview Modal */}
       <Modal open={previewOpen} onClose={() => setPreviewOpen(false)}>
         <div className="mx-auto w-full max-w-[560px] mb-3">
           <img src={TOP_LOGO_URL} alt="لوگو" className="h-12 md:h-14 object-contain" />
@@ -571,10 +602,7 @@ export default function TestEditorPage() {
 
         <PageFrame templateUrl={TEMPLATE_URL} className="max-w-[760px]">
           <div className="h-full w-full pt-[110px] pb-[70px] px-[56px]">
-            <div
-              style={{ fontFamily: "Vazirmatn, sans-serif" }}
-              dangerouslySetInnerHTML={{ __html: previewHtml }}
-            />
+            <div style={{ fontFamily: "Vazirmatn, sans-serif" }} dangerouslySetInnerHTML={{ __html: previewHtml }} />
           </div>
         </PageFrame>
       </Modal>
