@@ -13,7 +13,7 @@ RUN set -eux; \
 
 # ✅ فیکس lightningcss native binding (خواندن ورژن از package-lock چون exports بسته است)
 RUN set -eux; \
-  LCSS_VER="$(node -p "const lock=require('./package-lock.json'); const v=(lock.packages?.['node_modules/lightningcss']?.version)||(lock.dependencies?.lightningcss?.version)||''; process.stdout.write(v);")"; \
+  LCSS_VER="$(node -e "const lock=require('./package-lock.json'); const v=(lock.packages?.['node_modules/lightningcss']?.version)||(lock.dependencies?.lightningcss?.version)||''; process.stdout.write(String(v||''));")"; \
   if [ -n "$LCSS_VER" ]; then \
     npm install --no-save "lightningcss-linux-x64-gnu@${LCSS_VER}" --no-audit --no-fund; \
   else \
