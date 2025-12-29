@@ -6,19 +6,15 @@ COPY package*.json ./
 # ✅ نصب وابستگی‌ها
 RUN npm install --include=optional --no-audit --no-fund
 
-# ✅ فیکس rolldown native binding
+# ✅ فیکس rolldown + lightningcss native bindings (یکجا تا npm prune نکنه)
 RUN set -eux; \
+  ARCH="$(node -p "process.arch")"; \
+  LIBC="$(node -p "process.report?.getReport()?.header?.glibcVersionRuntime ? 'gnu' : 'musl'")"; \
   ROLLDOWN_VER="$(node -p "require('rolldown/package.json').version")"; \
-  npm install --no-save "@rolldown/binding-linux-x64-gnu@${ROLLDOWN_VER}" --no-audit --no-fund
-
-# ✅ فیکس lightningcss native binding (خواندن ورژن از package-lock چون exports بسته است)
-RUN set -eux; \
   LCSS_VER="$(node -e "const lock=require('./package-lock.json'); const v=(lock.packages?.['node_modules/lightningcss']?.version)||(lock.dependencies?.lightningcss?.version)||''; process.stdout.write(String(v||''));")"; \
-  if [ -n "$LCSS_VER" ]; then \
-    npm install --no-save "lightningcss-linux-x64-gnu@${LCSS_VER}" --no-audit --no-fund; \
-  else \
-    echo "lightningcss not found in package-lock.json; skipping native binding install"; \
-  fi
+  PKGS="@rolldown/binding-linux-${ARCH}-${LIBC}@${ROLLDOWN_VER}"; \
+  if [ -n "$LCSS_VER" ]; then PKGS="$PKGS lightningcss-linux-${ARCH}-${LIBC}@${LCSS_VER}"; fi; \
+  npm install --no-save $PKGS --no-audit --no-fund
 
 COPY . .
 RUN npm run build
