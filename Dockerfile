@@ -3,8 +3,8 @@ WORKDIR /app
 
 COPY package*.json ./
 
-# ✅ مهم: برای deps های native/optional روی لینوکس پایدارتره (glibc)
-RUN npm ci --include=optional
+# ✅ به جای npm ci (که این باگ optional deps رو می‌زند)، از npm install استفاده می‌کنیم
+RUN npm install --include=optional --no-audit --no-fund
 
 COPY . .
 RUN npm run build
