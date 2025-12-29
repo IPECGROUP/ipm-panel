@@ -11,9 +11,9 @@ RUN set -eux; \
   ROLLDOWN_VER="$(node -p "require('rolldown/package.json').version")"; \
   npm install --no-save "@rolldown/binding-linux-x64-gnu@${ROLLDOWN_VER}" --no-audit --no-fund
 
-# ✅ فیکس lightningcss native binding
+# ✅ فیکس lightningcss native binding (بدون require(package.json) چون exports بسته است)
 RUN set -eux; \
-  LCSS_VER="$(node -p "require('lightningcss/package.json').version")"; \
+  LCSS_VER="$(node -p "const fs=require('fs'); const path=require('path'); const r=require.resolve('lightningcss/node'); const pkg=JSON.parse(fs.readFileSync(path.join(path.dirname(r),'..','package.json'),'utf8')); process.stdout.write(pkg.version);")"; \
   npm install --no-save "lightningcss-linux-x64-gnu@${LCSS_VER}" --no-audit --no-fund
 
 COPY . .
