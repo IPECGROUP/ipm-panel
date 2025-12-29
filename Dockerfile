@@ -11,10 +11,14 @@ RUN set -eux; \
   ROLLDOWN_VER="$(node -p "require('rolldown/package.json').version")"; \
   npm install --no-save "@rolldown/binding-linux-x64-gnu@${ROLLDOWN_VER}" --no-audit --no-fund
 
-# ✅ فیکس lightningcss native binding (بدون require(package.json) چون exports بسته است)
+# ✅ فیکس lightningcss native binding (خواندن ورژن از package-lock چون exports بسته است)
 RUN set -eux; \
-  LCSS_VER="$(node -p "const fs=require('fs'); const path=require('path'); const r=require.resolve('lightningcss/node'); const pkg=JSON.parse(fs.readFileSync(path.join(path.dirname(r),'..','package.json'),'utf8')); process.stdout.write(pkg.version);")"; \
-  npm install --no-save "lightningcss-linux-x64-gnu@${LCSS_VER}" --no-audit --no-fund
+  LCSS_VER="$(node -p "const lock=require('./package-lock.json'); const v=(lock.packages?.['node_modules/lightningcss']?.version)||(lock.dependencies?.lightningcss?.version)||''; process.stdout.write(v);")"; \
+  if [ -n "$LCSS_VER" ]; then \
+    npm install --no-save "lightningcss-linux-x64-gnu@${LCSS_VER}" --no-audit --no-fund; \
+  else \
+    echo "lightningcss not found in package-lock.json; skipping native binding install"; \
+  fi
 
 COPY . .
 RUN npm run build
