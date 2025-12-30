@@ -844,7 +844,19 @@ const mergePinnedFilterTags = (ids) => {
   const sendIconCls = "w-5 h-5 " + (theme === "dark" ? "invert-0" : "invert");
 
   const findProject = (id) => projects.find((p) => String(p?.id) === String(id));
-  const projectsTopOnly = useMemo(() => {
+
+const projectsDesc = useMemo(() => {
+  const arr = Array.isArray(projects) ? projects.slice() : [];
+  arr.sort((a, b) => {
+    const ai = Number(a?.id);
+    const bi = Number(b?.id);
+    if (Number.isFinite(ai) && Number.isFinite(bi)) return bi - ai;
+    return String(b?.id ?? "").localeCompare(String(a?.id ?? ""));
+  });
+  return arr;
+}, [projects]);
+
+const projectsTopOnly = useMemo(() => {
   const arr = Array.isArray(projectsDesc) ? projectsDesc : [];
   const out = [];
   const seen = new Set();
@@ -869,16 +881,6 @@ const mergePinnedFilterTags = (ids) => {
   return out;
 }, [projectsDesc]);
 
-  const projectsDesc = useMemo(() => {
-  const arr = Array.isArray(projects) ? projects.slice() : [];
-  arr.sort((a, b) => {
-    const ai = Number(a?.id);
-    const bi = Number(b?.id);
-    if (Number.isFinite(ai) && Number.isFinite(bi)) return bi - ai;
-    return String(b?.id ?? "").localeCompare(String(a?.id ?? ""));
-  });
-  return arr;
-}, [projects]);
 
 
   const toggleTag = (which, id) => {
