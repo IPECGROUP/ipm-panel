@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
+import { useAuth } from "../components/AuthProvider";
 
 
 const TAB_ACTIVE_BG = {
@@ -173,6 +174,23 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  const { user } = useAuth();
+
+  const loggedInUserName = useMemo(() => {
+    const u = user || {};
+    return String(
+      u?.username ||
+        u?.user_name ||
+        u?.name ||
+        u?.full_name ||
+        u?.displayName ||
+        u?.login ||
+        ""
+    ).trim();
+  }, [user]);
+
+
 
   return (
     <div className="relative">
@@ -783,19 +801,25 @@ const mergePinnedFilterTags = (ids) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [todayJalaliYmd]);
 
-  const inputBase = "w-full h-11 px-3 rounded-xl border outline-none transition text-right";
+    const inputBase = "w-full h-10 px-3 rounded-xl border outline-none transition text-right";
+
   const inputCls =
     theme === "dark"
       ? inputBase + " border-white/15 bg-white/5 text-white placeholder:text-white/40 focus:bg-white/10"
       : inputBase + " border-black/10 bg-white text-neutral-900 placeholder:text-neutral-400 focus:bg-black/[0.02]";
-      const labelCls = theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1";
+
+  const labelCls = theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1";
 
 
-      const fieldWrapCls =
-  "rounded-2xl border p-2 " +
-  (theme === "dark"
-    ? "border-white/10 bg-white/5"
-    : "border-black/10 bg-black/[0.02]");
+  const formGridWrapCls =
+    "rounded-2xl overflow-hidden border " +
+    (theme === "dark" ? "border-white/10" : "border-black/10");
+
+  const formGridCls =
+    "grid gap-px " + (theme === "dark" ? "bg-white/10" : "bg-black/10");
+
+  const formCellCls = "p-2 " + (theme === "dark" ? "bg-neutral-900" : "bg-white");
+
 
   const chipBase =
     "inline-flex items-center justify-center gap-2 px-4 h-9 rounded-full border text-xs font-semibold whitespace-nowrap transition";
@@ -1193,9 +1217,10 @@ if (toY && d > toY) return false;
     setIncomingSecretariatNo("");
     setOutgoingSecretariatNo("");
     setInternalSecretariatNo("");
-    setIncomingReceiverName("");
-    setOutgoingReceiverName("");
-    setInternalReceiverName("");
+    setIncomingReceiverName(loggedInUserName || "");
+    setOutgoingReceiverName(loggedInUserName || "");
+    setInternalReceiverName(loggedInUserName || "");
+
 
     setDocFilesByType({ incoming: [], outgoing: [], internal: [] });
 
@@ -1321,8 +1346,10 @@ if (toY && d > toY) return false;
     const secretariatNo =
       kind === "incoming" ? incomingSecretariatNo : kind === "outgoing" ? outgoingSecretariatNo : internalSecretariatNo;
 
-    const receiverName =
-      kind === "incoming" ? incomingReceiverName : kind === "outgoing" ? outgoingReceiverName : internalReceiverName;
+        const receiverName =
+      (loggedInUserName || "").trim() ||
+      (kind === "incoming" ? incomingReceiverName : kind === "outgoing" ? outgoingReceiverName : internalReceiverName);
+
 
     const pId = projectId ? Number(projectId) : null;
 
@@ -1837,9 +1864,10 @@ const ensureTagsForKind = async (kind) => {
   }
 >
 
-              <div className="flex flex-nowrap items-end gap-2 overflow-x-auto pb-1">
+              <div className="flex flex-wrap items-end gap-2">
                 {/* Tabs first */}
-                <div className="flex flex-wrap items-center gap-2 justify-start">
+                <div className="flex flex-wrap items-center gap-1 justify-start">
+
                   {TABS.map((t) => {
                     const active = filterTab === t.id;
                     const isAll = t.id === "all";
@@ -1904,8 +1932,7 @@ const ensureTagsForKind = async (kind) => {
                   })}
                 </div>
 
-                <div className="w-[220px] flex-shrink-0">
-
+                <div className="min-w-[220px] flex-1">
                   <div className={labelCls}>موضوع</div>
                   <input
                     value={filterSubject}
@@ -1916,8 +1943,7 @@ const ensureTagsForKind = async (kind) => {
                   />
                 </div>
 
-                <div className="w-[220px] flex-shrink-0">
-
+                <div className="min-w-[220px] flex-1">
                   <div className={labelCls}>شرکت/سازمان</div>
                   <input
                     value={filterOrg}
@@ -1928,8 +1954,7 @@ const ensureTagsForKind = async (kind) => {
                   />
                 </div>
 
-                <div className="w-[150px] flex-shrink-0">
-
+                <div className="min-w-[150px]">
                   <div className={labelCls}>شماره نامه</div>
                   <input
                     value={filterLetterNo}
@@ -1952,8 +1977,7 @@ const ensureTagsForKind = async (kind) => {
                   />
                 </div>
 
-                <div className="w-[150px] flex-shrink-0">
-
+                <div className="min-w-[170px]">
                   <div className={labelCls}>تا</div>
                   <JalaliPopupDatePicker
                     value={filterToDate}
@@ -2055,11 +2079,12 @@ const ensureTagsForKind = async (kind) => {
           <div className="mt-4">
             {formOpen ? (
               <div>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
 
                   <div>
-  <div className={labelCls}>نوع نامه</div>
-  <div className="flex items-center gap-1.5">
+                  <div className={labelCls}>نوع نامه</div>
+                  <div className="flex items-center gap-1">
+
     {[
       { id: "incoming", label: "وارده", color: TAB_ACTIVE_BG.incoming },
       { id: "outgoing", label: "صادره", color: TAB_ACTIVE_BG.outgoing },
@@ -2122,8 +2147,7 @@ const ensureTagsForKind = async (kind) => {
                     </div>
                   )}
 
-                  <div className={fieldWrapCls}>
-
+                  <div>
                     <div className={labelCls}>شماره نامه</div>
                     <input value={letterNo} onChange={(e) => setLetterNo(e.target.value)} className={inputCls} type="text" />
                   </div>
@@ -2134,22 +2158,43 @@ const ensureTagsForKind = async (kind) => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
-                  <div>
-                    <div className={labelCls}>از</div>
-                    <input value={fromName} onChange={(e) => setFromName(e.target.value)} className={inputCls} type="text" />
-                  </div>
+                {formKind !== "internal" && (
+                  <div className={formGridWrapCls + " mt-3"}>
+                    <div className={formGridCls + " grid-cols-1 md:grid-cols-12"}>
+                      <div className={formCellCls + " md:col-span-4"}>
+                        <div className={labelCls}>از</div>
+                        <input value={fromName} onChange={(e) => setFromName(e.target.value)} className={inputCls} type="text" />
+                      </div>
 
-                  <div>
-                    <div className={labelCls}>شرکت/سازمان</div>
-                    <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputCls} type="text" />
-                  </div>
+                      {formKind === "outgoing" ? (
+                        <>
+                          <div className={formCellCls + " md:col-span-4"}>
+                            <div className={labelCls}>به</div>
+                            <input value={toName} onChange={(e) => setToName(e.target.value)} className={inputCls} type="text" />
+                          </div>
 
-                  <div>
-                    <div className={labelCls}>به</div>
-                    <input value={toName} onChange={(e) => setToName(e.target.value)} className={inputCls} type="text" />
+                          <div className={formCellCls + " md:col-span-4"}>
+                            <div className={labelCls}>شرکت/سازمان</div>
+                            <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputCls} type="text" />
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className={formCellCls + " md:col-span-4"}>
+                            <div className={labelCls}>شرکت/سازمان</div>
+                            <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputCls} type="text" />
+                          </div>
+
+                          <div className={formCellCls + " md:col-span-4"}>
+                            <div className={labelCls}>به</div>
+                            <input value={toName} onChange={(e) => setToName(e.target.value)} className={inputCls} type="text" />
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
+
 
                 <div className="mt-3">
                   <div className={labelCls}>موضوع</div>
@@ -2282,7 +2327,7 @@ else setInternalAttachmentTitle(v);
                         title="بارگذاری نامه و الصاق فایل ها"
                       >
                         <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
-                        <span className="text-sm font-normal">بارگذاری نامه و الصاق فایل ها  </span>
+                        <span className="text-sm font-normal"> بارگذاری نامه و الصاق فایل ها </span>
                       </button>
                     </div>
                   </div>
@@ -2356,17 +2401,12 @@ else setInternalAttachmentTitle(v);
 
                     <div>
                       <div className={labelCls}>نام تحویل گیرنده</div>
-                      <input
-                        value={formKind === "incoming" ? incomingReceiverName : formKind === "outgoing" ? outgoingReceiverName : internalReceiverName}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          if (formKind === "incoming") setIncomingReceiverName(v);
-                          else if (formKind === "outgoing") setOutgoingReceiverName(v);
-                          else setInternalReceiverName(v);
-                        }}
-                        className={inputCls}
-                        type="text"
-                      />
+                        <input
+                          value={loggedInUserName || ""}
+                          readOnly
+                          className={inputCls + " opacity-90"}
+                          type="text"
+                        />
                     </div>
                   </div>
 
@@ -2479,16 +2519,20 @@ else setInternalAttachmentTitle(v);
                             </td>
 
                             <td className={"px-3 " + divider}>{letterDateOf(l) ? toFaDigits(letterDateOf(l)) : "—"}</td>
-                            <td className={"px-3 " + divider}>{fromToOf(l)}</td>
-                            <td className={"px-3 " + divider}>{orgOf(l) || "—"}</td>
+
                             <td className={"px-3 " + divider}>
                               <span className="block truncate max-w-[520px] mx-auto">{subjectOf(l) || "—"}</span>
                             </td>
 
+                            <td className={"px-3 " + divider}>{fromToOf(l)}</td>
+                            <td className={"px-3 " + divider}>{orgOf(l) || "—"}</td>
+
+
                             <td className={"px-3 " + divider}>
                               <div className="inline-flex items-center justify-center gap-2">
                                 <button type="button" onClick={() => openView(l)} className={iconBtnCls} aria-label="نمایش" title="نمایش">
-                                  <img src="/images/icons/namayeshname.svg" alt="" className="w-5 h-5 dark:invert" />
+                                 <img src="/images/icons/namayeshname.svg" alt="" className="w-5 h-5 dark:invert" />
+
                                 </button>
 
                                 <button type="button" onClick={() => startEdit(l)} className={iconBtnCls} aria-label="ویرایش" title="ویرایش">
@@ -3165,7 +3209,8 @@ else setInternalAttachmentTitle(v);
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
+
                             <a
                               href={url || "#"}
                               target="_blank"
