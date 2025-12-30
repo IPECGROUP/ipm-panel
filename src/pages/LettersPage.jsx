@@ -845,6 +845,14 @@ const mergePinnedFilterTags = (ids) => {
 
   const findProject = (id) => projects.find((p) => String(p?.id) === String(id));
 
+
+  const projectOptionLabel = (p) => {
+  const code = String(p?.__baseCode ?? p?.code ?? "").trim();
+  const name = String(p?.name ?? p?.title ?? p?.label ?? "").trim();
+  return `${toFaDigits(code)}${name ? " - " + name : ""}`.trim();
+};
+
+
 const projectsDesc = useMemo(() => {
   const arr = Array.isArray(projects) ? projects.slice() : [];
   arr.sort((a, b) => {
@@ -2249,10 +2257,11 @@ const ensureTagsForKind = async (kind) => {
     <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={inputCls}>
       <option value=""></option>
       {projectsTopOnly.map((p) => (
-        <option key={p.id} value={String(p.id)}>
-          {toFaDigits(p.__baseCode || "")}
-        </option>
-      ))}
+  <option key={p.id} value={String(p.id)}>
+    {projectOptionLabel(p)}
+  </option>
+))}
+
     </select>
   </div>
 )}
@@ -2310,17 +2319,32 @@ const ensureTagsForKind = async (kind) => {
       <div className={labelCls}>موضوع</div>
       <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputCls} type="text" />
     </div>
+    {/* ضمیمه: دارد/ندارد + عنوان ضمیمه (فقط وقتی دارد) */}
+<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+  <div className="md:col-span-1">
+    <div className={labelCls}>ضمیمه</div>
+    <select
+      value={hasAttachment ? "1" : "0"}
+      onChange={(e) => {
+        const v = e.target.value === "1";
+        setHasAttachment(v);
 
-    {/* Attachment block (title + returnTo/piro + upload) */}
-<div
-  className={
-    "rounded-2xl border p-3 " +
-    (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")
-  }
->
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-    {/* ستون اول: عنوان ضمیمه */}
-    <div>
+        // اگر "ندارد" شد عنوان ضمیمه رو هم خالی کن
+        if (!v) {
+          if (formKind === "incoming") setIncomingAttachmentTitle("");
+          else if (formKind === "outgoing") setOutgoingAttachmentTitle("");
+          else setInternalAttachmentTitle("");
+        }
+      }}
+      className={inputCls}
+    >
+      <option value="0">ندارد</option>
+      <option value="1">دارد</option>
+    </select>
+  </div>
+
+  {hasAttachment && (
+    <div className="md:col-span-2">
       <div className={labelCls}>عنوان ضمیمه</div>
       <input
         value={
@@ -2338,167 +2362,226 @@ const ensureTagsForKind = async (kind) => {
         }}
         className={inputCls}
         type="text"
-        placeholder="اختیاری"
       />
     </div>
+  )}
+</div>
 
-    {/* ستون دوم: پیرو/بازگشت به + آپلود */}
-    <div className="space-y-3">
-      {/* پیرو (فقط برای صادره) */}
-      {formKind === "outgoing" && (
+
+    {/* Attachment block (title + returnTo/piro + upload) */}
+{/* Attachment block (بازگشت/پیرو + بارگذاری) */}
+{hasAttachment && (
+  <div
+    className={
+      "rounded-2xl border p-3 " +
+      (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")
+    }
+  >
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {/* راست: بازگشت/پیرو */}
+      <div className="space-y-3">
+        {/* بازگشت به (برای هر سه تب) */}
         <div>
-          <div className={labelCls}>پیرو</div>
+          <div className={labelCls}>بازگشت به</div>
 
           <div className="space-y-2">
-            {(Array.isArray(piroIds) ? piroIds : [""]).map((val, idx) => (
-              <select
-                key={`piro_${idx}`}
-                value={val}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setPiroIds((prev) => {
-                    const arr = Array.isArray(prev) ? [...prev] : [""];
-                    arr[idx] = v;
-                    return arr;
-                  });
-                }}
-                className={inputCls}
-              >
-                <option value=""></option>
-                {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
-                  const id = String(letterIdOf(l));
-                  const no = String(letterNoOf(l) || "").trim();
-                  const sub = String(subjectOf(l) || "").trim();
-                  const lab = `${no ? toFaDigits(no) : "—"}${sub ? " — " + sub : ""}`;
-                  return (
-                    <option key={`piro_opt_${id}`} value={id}>
-                      {lab}
-                    </option>
-                  );
-                })}
-              </select>
-            ))}
+            {(Array.isArray(returnToIds) ? returnToIds : [""]).map((val, idx) => {
+              const isLast = idx === (returnToIds?.length || 1) - 1;
 
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() => setPiroIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
-                className={addIconBtnCls}
-                title="افزودن"
-                aria-label="افزودن"
-              >
-                <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
-              </button>
-            </div>
+              return (
+                <div key={`ret_${idx}`} className="flex items-center gap-2">
+                  <select
+                    value={val}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setReturnToIds((prev) => {
+                        const arr = Array.isArray(prev) ? [...prev] : [""];
+                        arr[idx] = v;
+                        return arr;
+                      });
+                    }}
+                    className={inputCls + " flex-1"}
+                  >
+                    <option value=""></option>
+                    {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
+                      const id = String(letterIdOf(l));
+                      const no = String(letterNoOf(l) || "").trim();
+                      const sub = String(subjectOf(l) || "").trim();
+                      const lab = `${no ? toFaDigits(no) : "—"}${sub ? " — " + sub : ""}`;
+                      return (
+                        <option key={`ret_opt_${id}`} value={id}>
+                          {lab}
+                        </option>
+                      );
+                    })}
+                  </select>
+
+                  {idx > 0 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setReturnToIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))
+                      }
+                      className={addIconBtnCls}
+                      aria-label="حذف"
+                      title="حذف"
+                    >
+                      <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
+                    </button>
+                  )}
+
+                  {isLast && (
+                    <button
+                      type="button"
+                      onClick={() => setReturnToIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
+                      className={addIconBtnCls}
+                      aria-label="افزودن"
+                      title="افزودن"
+                    >
+                      <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
-      )}
 
-      {/* بازگشت به (برای هر سه تب) */}
-      <div>
-        <div className={labelCls}>بازگشت به</div>
+        {/* پیرو (فقط برای صادره) */}
+        {formKind === "outgoing" && (
+          <div>
+            <div className={labelCls}>پیرو</div>
 
-        <div className="space-y-2">
-          {(Array.isArray(returnToIds) ? returnToIds : [""]).map((val, idx) => (
-            <select
-              key={`ret_${idx}`}
-              value={val}
-              onChange={(e) => {
-                const v = e.target.value;
-                setReturnToIds((prev) => {
-                  const arr = Array.isArray(prev) ? [...prev] : [""];
-                  arr[idx] = v;
-                  return arr;
-                });
-              }}
-              className={inputCls}
-            >
-              <option value=""></option>
-              {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
-                const id = String(letterIdOf(l));
-                const no = String(letterNoOf(l) || "").trim();
-                const sub = String(subjectOf(l) || "").trim();
-                const lab = `${no ? toFaDigits(no) : "—"}${sub ? " — " + sub : ""}`;
+            <div className="space-y-2">
+              {(Array.isArray(piroIds) ? piroIds : [""]).map((val, idx) => {
+                const isLast = idx === (piroIds?.length || 1) - 1;
+
                 return (
-                  <option key={`ret_opt_${id}`} value={id}>
-                    {lab}
-                  </option>
+                  <div key={`piro_${idx}`} className="flex items-center gap-2">
+                    <select
+                      value={val}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setPiroIds((prev) => {
+                          const arr = Array.isArray(prev) ? [...prev] : [""];
+                          arr[idx] = v;
+                          return arr;
+                        });
+                      }}
+                      className={inputCls + " flex-1"}
+                    >
+                      <option value=""></option>
+                      {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
+                        const id = String(letterIdOf(l));
+                        const no = String(letterNoOf(l) || "").trim();
+                        const sub = String(subjectOf(l) || "").trim();
+                        const lab = `${no ? toFaDigits(no) : "—"}${sub ? " — " + sub : ""}`;
+                        return (
+                          <option key={`piro_opt_${id}`} value={id}>
+                            {lab}
+                          </option>
+                        );
+                      })}
+                    </select>
+
+                    {idx > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPiroIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))
+                        }
+                        className={addIconBtnCls}
+                        aria-label="حذف"
+                        title="حذف"
+                      >
+                        <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
+                      </button>
+                    )}
+
+                    {isLast && (
+                      <button
+                        type="button"
+                        onClick={() => setPiroIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
+                        className={addIconBtnCls}
+                        aria-label="افزودن"
+                        title="افزودن"
+                      >
+                        <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
+                      </button>
+                    )}
+                  </div>
                 );
               })}
-            </select>
-          ))}
-
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={() => setReturnToIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
-              className={addIconBtnCls}
-              title="افزودن"
-              aria-label="افزودن"
-            >
-              <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* آپلود */}
-      <div>
-        <div className={labelCls}>آپلود و الصاق فایل‌ها</div>
-        <button type="button" onClick={() => openUpload(formKind)} className={uploadTriggerCls}>
-          انتخاب / آپلود فایل
-        </button>
-      </div>
-    </div>
-  </div>
-
-  {/* لیست فایل‌ها (همون قبلی) */}
-  <div className="mt-3 space-y-2">
-    {(Array.isArray(docFilesByType?.[formKind]) ? docFilesByType[formKind] : []).length === 0 ? (
-      <div className={theme === "dark" ? "text-white/50 text-xs" : "text-neutral-500 text-xs"}>فایلی انتخاب نشده است.</div>
-    ) : (
-      (Array.isArray(docFilesByType?.[formKind]) ? docFilesByType[formKind] : []).map((f) => (
-        <div
-          key={f.id}
-          className={
-            "flex items-center justify-between gap-2 rounded-xl border px-3 py-2 " +
-            (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
-          }
-        >
-          <div className="min-w-0">
-            <div className="text-sm font-semibold truncate">{f.name}</div>
-            <div className={theme === "dark" ? "text-white/50 text-xs" : "text-neutral-500 text-xs"}>
-              {formatBytes(f.size)} •{" "}
-              {f.status === "uploading"
-                ? `در حال آپلود ${toFaDigits(f.progress || 0)}%`
-                : f.status === "done"
-                ? "آماده"
-                : f.status}
             </div>
           </div>
+        )}
 
+        {/* بارگذاری نامه و الصاق فایل ها (استایل مثل عکس) */}
+        <div>
           <button
             type="button"
-            onClick={() => removeDocFile(formKind, f.id)}
-            className={iconBtnCls}
-            aria-label="حذف"
-            title="حذف"
+            onClick={() => openUpload(formKind)}
+            className={
+              "w-full h-11 px-4 rounded-2xl border transition flex items-center justify-between gap-3 " +
+              (theme === "dark"
+                ? "border-white/15 bg-white/5 text-white/90 hover:bg-white/10"
+                : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
+            }
           >
+            <span className="font-semibold">بارگذاری نامه و الصاق فایل ها</span>
             <img
-              src="/images/icons/hazf.svg"
+              src="/images/icons/upload.svg"
               alt=""
-              className="w-5 h-5"
-              style={{
-                filter:
-                  "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
-              }}
+              className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
             />
           </button>
         </div>
-      ))
-    )}
+      </div>
+
+      {/* چپ: لیست فایل‌ها (همون قبلی خودت، بدون تغییر اساسی) */}
+      <div className="space-y-2">
+        {(Array.isArray(docFilesByType?.[formKind]) ? docFilesByType[formKind] : []).length === 0 ? (
+          <div className={theme === "dark" ? "text-white/50 text-xs" : "text-neutral-500 text-xs"}>
+            فایلی انتخاب نشده است.
+          </div>
+        ) : (
+          (Array.isArray(docFilesByType?.[formKind]) ? docFilesByType[formKind] : []).map((f) => (
+            <div
+              key={f.id}
+              className={
+                "flex items-center justify-between gap-2 rounded-xl border px-3 py-2 " +
+                (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
+              }
+            >
+              <div className="min-w-0">
+                <div className="text-sm font-semibold truncate">{f.name}</div>
+                <div className={theme === "dark" ? "text-white/50 text-xs" : "text-neutral-500 text-xs"}>
+                  {formatBytes(f.size)} •{" "}
+                  {f.status === "uploading"
+                    ? `در حال آپلود ${toFaDigits(f.progress || 0)}%`
+                    : f.status === "done"
+                    ? "آماده"
+                    : f.status}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => removeDocFile(formKind, f.id)}
+                className={iconBtnCls}
+                aria-label="حذف"
+                title="حذف"
+              >
+                <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
   </div>
-</div>
+)}
+
 
 
 
