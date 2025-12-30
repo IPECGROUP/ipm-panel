@@ -837,6 +837,17 @@ const mergePinnedFilterTags = (ids) => {
   const sendIconCls = "w-5 h-5 " + (theme === "dark" ? "invert-0" : "invert");
 
   const findProject = (id) => projects.find((p) => String(p?.id) === String(id));
+  const projectsDesc = useMemo(() => {
+  const arr = Array.isArray(projects) ? projects.slice() : [];
+  arr.sort((a, b) => {
+    const ai = Number(a?.id);
+    const bi = Number(b?.id);
+    if (Number.isFinite(ai) && Number.isFinite(bi)) return bi - ai;
+    return String(b?.id ?? "").localeCompare(String(a?.id ?? ""));
+  });
+  return arr;
+}, [projects]);
+
 
   const toggleTag = (which, id) => {
     const sid = String(id || "");
@@ -903,9 +914,74 @@ const mergePinnedFilterTags = (ids) => {
       : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]") +
     (val ? "" : theme === "dark" ? " text-white/50" : " text-neutral-400");
 
-  const secretariatLongText = (_ymd) => {
-    return todayJalaliLong || "";
-  };
+  const jalaliToGregorian = (jy, jm, jd) => {
+  jy = Number(jy); jm = Number(jm); jd = Number(jd);
+  const jy2 = jy - 979;
+  const jm2 = jm - 1;
+  const jd2 = jd - 1;
+
+  let jDayNo =
+    365 * jy2 +
+    Math.floor(jy2 / 33) * 8 +
+    Math.floor(((jy2 % 33) + 3) / 4);
+
+  for (let i = 0; i < jm2; i++) jDayNo += i < 6 ? 31 : 30;
+  jDayNo += jd2;
+
+  let gDayNo = jDayNo + 79;
+
+  let gy = 1600 + 400 * Math.floor(gDayNo / 146097);
+  gDayNo %= 146097;
+
+  let leap = true;
+  if (gDayNo >= 36525) {
+    gDayNo--;
+    gy += 100 * Math.floor(gDayNo / 36524);
+    gDayNo %= 36524;
+
+    if (gDayNo >= 365) gDayNo++;
+    else leap = false;
+  }
+
+  gy += 4 * Math.floor(gDayNo / 1461);
+  gDayNo %= 1461;
+
+  if (gDayNo >= 366) {
+    leap = false;
+    gDayNo--;
+    gy += Math.floor(gDayNo / 365);
+    gDayNo %= 365;
+  }
+
+  const mdays = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  let gm = 0;
+  while (gm < 12 && gDayNo >= mdays[gm]) {
+    gDayNo -= mdays[gm];
+    gm++;
+  }
+  const gd = gDayNo + 1;
+  return { gy, gm: gm + 1, gd };
+};
+
+const secretariatLongText = (ymd) => {
+  const raw = String(ymd || "").trim();
+  const m = raw.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+  if (!m) return "";
+
+  const jy = Number(toEnDigits(m[1]));
+  const jm = Number(toEnDigits(m[2]));
+  const jd = Number(toEnDigits(m[3]));
+  if (!jy || !jm || !jd) return "";
+
+  const g = jalaliToGregorian(jy, jm, jd);
+  const d = new Date(g.gy, g.gm - 1, g.gd);
+
+  const weekdayFa = new Intl.DateTimeFormat("fa-IR", { weekday: "long" }).format(d);
+  const gregYmd = `${g.gy}/${pad2(g.gm)}/${pad2(g.gd)}`;
+
+  return `${weekdayFa} — ${gregYmd}`;
+};
+
 
   const openUpload = (which) => {
     setUploadFor(which);
@@ -1930,7 +2006,8 @@ const ensureTagsForKind = async (kind) => {
                   })}
                 </div>
 
-                <div className="min-w-[220px] flex-1">
+                <div className="min-w-[180px] flex-1">
+
                   <div className={labelCls}>موضوع</div>
                   <input
                     value={filterSubject}
@@ -1941,7 +2018,8 @@ const ensureTagsForKind = async (kind) => {
                   />
                 </div>
 
-                <div className="min-w-[220px] flex-1">
+                <div className="min-w-[180px] flex-1">
+
                   <div className={labelCls}>شرکت/سازمان</div>
                   <input
                     value={filterOrg}
@@ -1952,7 +2030,9 @@ const ensureTagsForKind = async (kind) => {
                   />
                 </div>
 
-                <div className="min-w-[150px]">
+                <div className="min-w-[120px]">
+
+
                   <div className={labelCls}>شماره نامه</div>
                   <input
                     value={filterLetterNo}
@@ -1963,7 +2043,8 @@ const ensureTagsForKind = async (kind) => {
                   />
                 </div>
 
-                <div className="min-w-[150px]">
+                <div className="min-w-[140px]">
+
                   <div className={labelCls}>از</div>
                   <JalaliPopupDatePicker
                     value={filterFromDate}
@@ -1975,7 +2056,7 @@ const ensureTagsForKind = async (kind) => {
                   />
                 </div>
 
-                <div className="min-w-[170px]">
+                <div className="min-w-[140px]">
                   <div className={labelCls}>تا</div>
                   <JalaliPopupDatePicker
                     value={filterToDate}
@@ -2077,8 +2158,7 @@ const ensureTagsForKind = async (kind) => {
           <div className="mt-4">
             {formOpen ? (
               <div>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
                   <div>
                   <div className={labelCls}>نوع نامه</div>
                   <div className="flex items-center gap-1">
@@ -2136,7 +2216,7 @@ const ensureTagsForKind = async (kind) => {
                       <div className={labelCls}>پروژه</div>
                       <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={inputCls}>
                         <option value=""></option>
-                        {projects.map((p) => (
+                        {projectsDesc.map((p) => (
                           <option key={p.id} value={String(p.id)}>
                             {String(p.code || "")} {p.name ? `- ${p.name}` : ""}
                           </option>
@@ -2151,7 +2231,7 @@ const ensureTagsForKind = async (kind) => {
                   </div>
 
                   <div>
-                    <div className={labelCls}>تاریخ نامه</div>
+                    <div className={labelCls}>{formKind === "internal" ? "تاریخ سند" : "تاریخ نامه"}</div>
                     <JalaliPopupDatePicker value={letterDate} onChange={setLetterDate} theme={theme} />
                   </div>
                 </div>
