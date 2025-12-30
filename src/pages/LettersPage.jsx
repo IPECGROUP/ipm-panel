@@ -834,6 +834,13 @@ const mergePinnedFilterTags = (ids) => {
       ? "bg-white text-black ring-white/15 hover:bg-white/90"
       : "bg-black text-white ring-black/15 hover:bg-black/90");
 
+
+        // ✅ Outer border box for the whole form (like filters box)
+  const formOuterBoxCls =
+    "space-y-3 rounded-2xl border p-3 " +
+    (theme === "dark" ? "border-white/10 bg-transparent" : "border-black/10 bg-white");
+
+
   const sendIconCls = "w-5 h-5 " + (theme === "dark" ? "invert-0" : "invert");
 
   const findProject = (id) => projects.find((p) => String(p?.id) === String(id));
@@ -2132,24 +2139,24 @@ const ensureTagsForKind = async (kind) => {
 
   {/* 3) Add button (همیشه آخر) */}
   <button
-    type="button"
-    onClick={() => openTagPicker("filter")}
-    className={
-      "h-10 px-4 rounded-full border text-xs font-semibold transition inline-flex items-center gap-2 " +
-      (theme === "dark"
-        ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
-        : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
-    }
-    aria-label="افزودن برچسب"
-    title="افزودن برچسب"
-  >
-    <span>افزودن</span>
-    <img
-      src="/images/icons/afzodan.svg"
-      alt=""
-      className={"w-5 h-5 " + (theme === "dark" ? "dark:invert" : "")}
-    />
-  </button>
+  type="button"
+  onClick={() => openTagPicker("filter")}
+  className={
+    "h-10 w-10 rounded-full border transition inline-flex items-center justify-center " +
+    (theme === "dark"
+      ? "border-white/15 bg-white/5 hover:bg-white/10"
+      : "border-black/10 bg-white hover:bg-black/[0.02]")
+  }
+  aria-label="افزودن برچسب"
+  title="افزودن برچسب"
+>
+  <img
+    src="/images/icons/sayer.svg"
+    alt=""
+    className={"w-5 h-5 " + (theme === "dark" ? "dark:invert" : "")}
+  />
+</button>
+
 </div>
               </div>
             </div>
@@ -2157,345 +2164,217 @@ const ensureTagsForKind = async (kind) => {
           {/* Create/Edit form */}
           <div className="mt-4">
             {formOpen ? (
-              <div>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
-                  <div>
-                  <div className={labelCls}>نوع نامه</div>
-                  <div className="flex items-center gap-1">
+  <div className={formOuterBoxCls}>
+    <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+      <div>
+        <div className={labelCls}>نوع نامه</div>
+        <div className="flex items-center gap-1">
+          {[
+            { id: "incoming", label: "وارده", color: TAB_ACTIVE_BG.incoming },
+            { id: "outgoing", label: "صادره", color: TAB_ACTIVE_BG.outgoing },
+            { id: "internal", label: "داخلی", color: TAB_ACTIVE_BG.internal },
+          ].map((t) => {
+            const active = formKind === t.id;
 
-    {[
-      { id: "incoming", label: "وارده", color: TAB_ACTIVE_BG.incoming },
-      { id: "outgoing", label: "صادره", color: TAB_ACTIVE_BG.outgoing },
-      { id: "internal", label: "داخلی", color: TAB_ACTIVE_BG.internal },
-    ].map((t) => {
-      const active = formKind === t.id;
+            const base =
+              "h-10 px-3 rounded-xl border transition text-sm font-semibold inline-flex items-center justify-center whitespace-nowrap";
 
-      const base =
-          "h-10 px-3 rounded-xl border transition text-sm font-semibold inline-flex items-center justify-center whitespace-nowrap";
+            const cls = active
+              ? base + " text-white"
+              : theme === "dark"
+              ? base + " bg-transparent text-white hover:bg-white/5"
+              : base + " bg-white text-neutral-900 hover:bg-black/[0.02]";
 
-      const cls = active
-        ? base + " text-white"
-        : theme === "dark"
-        ? base + " bg-transparent text-white hover:bg-white/5"
-        : base + " bg-white text-neutral-900 hover:bg-black/[0.02]";
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setFormKind(t.id)}
+                className={cls}
+                style={active ? { backgroundColor: t.color, borderColor: t.color } : { borderColor: t.color }}
+              >
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-      return (
-        <button
-          key={t.id}
-          type="button"
-          onClick={() => setFormKind(t.id)}
-          className={cls}
-          style={active ? { backgroundColor: t.color, borderColor: t.color } : { borderColor: t.color }}
+      <div>
+        <div className={labelCls}>دسته بندی نامه</div>
+        <select
+          value={category}
+          onChange={(e) => {
+            const v = e.target.value;
+            setCategory(v);
+            if (v !== "project") setProjectId("");
+          }}
+          className={inputCls}
         >
-          {t.label}
-        </button>
-      );
-    })}
-  </div>
-</div>
+          <option value=""></option>
+          <option value="project">پروژه‌ها</option>
+        </select>
+      </div>
 
+      {category === "project" && (
+        <div>
+          <div className={labelCls}>پروژه</div>
+          <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={inputCls}>
+            <option value=""></option>
+            {projectsDesc.map((p) => (
+              <option key={p.id} value={String(p.id)}>
+                {String(p.code || "")} {p.name ? `- ${p.name}` : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
-                  <div>
-                    <div className={labelCls}>دسته بندی نامه</div>
-                    <select
-                      value={category}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setCategory(v);
-                        if (v !== "project") setProjectId("");
-                      }}
-                      className={inputCls}
-                    >
-                      <option value=""></option>
-                      <option value="project">پروژه‌ها</option>
-                    </select>
-                  </div>
+      <div>
+        <div className={labelCls}>شماره نامه</div>
+        <input value={letterNo} onChange={(e) => setLetterNo(e.target.value)} className={inputCls} type="text" />
+      </div>
 
-                  {category === "project" && (
-                    <div>
-                      <div className={labelCls}>پروژه</div>
-                      <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={inputCls}>
-                        <option value=""></option>
-                        {projectsDesc.map((p) => (
-                          <option key={p.id} value={String(p.id)}>
-                            {String(p.code || "")} {p.name ? `- ${p.name}` : ""}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
+      <div>
+        <div className={labelCls}>{formKind === "internal" ? "تاریخ سند" : "تاریخ نامه"}</div>
+        <JalaliPopupDatePicker value={letterDate} onChange={setLetterDate} theme={theme} />
+      </div>
+    </div>
 
-                  <div>
-                    <div className={labelCls}>شماره نامه</div>
-                    <input value={letterNo} onChange={(e) => setLetterNo(e.target.value)} className={inputCls} type="text" />
-                  </div>
+    {formKind !== "internal" && (
+      <div className={formGridWrapCls}>
+        <div className={formGridCls + " grid-cols-1 md:grid-cols-12"}>
+          <div className={formCellCls + " md:col-span-4"}>
+            <div className={labelCls}>از</div>
+            <input value={fromName} onChange={(e) => setFromName(e.target.value)} className={inputCls} type="text" />
+          </div>
 
-                  <div>
-                    <div className={labelCls}>{formKind === "internal" ? "تاریخ سند" : "تاریخ نامه"}</div>
-                    <JalaliPopupDatePicker value={letterDate} onChange={setLetterDate} theme={theme} />
-                  </div>
-                </div>
-
-                {formKind !== "internal" && (
-                  <div className={formGridWrapCls + " mt-3"}>
-                    <div className={formGridCls + " grid-cols-1 md:grid-cols-12"}>
-                      <div className={formCellCls + " md:col-span-4"}>
-                        <div className={labelCls}>از</div>
-                        <input value={fromName} onChange={(e) => setFromName(e.target.value)} className={inputCls} type="text" />
-                      </div>
-
-                      {formKind === "outgoing" ? (
-                        <>
-                          <div className={formCellCls + " md:col-span-4"}>
-                            <div className={labelCls}>به</div>
-                            <input value={toName} onChange={(e) => setToName(e.target.value)} className={inputCls} type="text" />
-                          </div>
-
-                          <div className={formCellCls + " md:col-span-4"}>
-                            <div className={labelCls}>شرکت/سازمان</div>
-                            <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputCls} type="text" />
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className={formCellCls + " md:col-span-4"}>
-                            <div className={labelCls}>شرکت/سازمان</div>
-                            <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputCls} type="text" />
-                          </div>
-
-                          <div className={formCellCls + " md:col-span-4"}>
-                            <div className={labelCls}>به</div>
-                            <input value={toName} onChange={(e) => setToName(e.target.value)} className={inputCls} type="text" />
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-
-                <div className="mt-3">
-                  <div className={labelCls}>موضوع</div>
-                  <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputCls} type="text" />
-                </div>
-
-                <div className="mt-4">
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <div className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>ضمیمه:</div>
-
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="hasAttachment" checked={!hasAttachment} onChange={() => setHasAttachment(false)} />
-                        <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-700 text-sm"}>ندارد</span>
-                      </label>
-
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="hasAttachment" checked={hasAttachment} onChange={() => setHasAttachment(true)} />
-                        <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-700 text-sm"}>دارد</span>
-                      </label>
-
-                      <div className="min-w-[260px]">
-                        <input
-                          value={formKind === "incoming" ? incomingAttachmentTitle : formKind === "outgoing" ? outgoingAttachmentTitle : internalAttachmentTitle}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            if (formKind === "incoming") setIncomingAttachmentTitle(v);
-else if (formKind === "outgoing") setOutgoingAttachmentTitle(v);
-else setInternalAttachmentTitle(v);
-
-                          }}
-                          className={inputCls}
-                          type="text"
-                          placeholder="عنوان ضمیمه"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-3">
-                    {formKind === "outgoing" ? (
-                      <>
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className={labelCls.replace("mb-1", "mb-0")}>پیرو</div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-2">
-                          {piroIds.map((v, idx) => (
-                            <div key={idx} className="flex items-center gap-2">
-                              <select
-                                value={v}
-                                onChange={(e) => {
-                                  const nv = e.target.value;
-                                  setPiroIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
-                                }}
-                                className={inputCls + " min-w-[240px] w-[240px]"}
-                              >
-                                <option value=""></option>
-                                {myLetters.map((l) => (
-                                  <option key={l.id} value={String(l.id)}>
-                                    {String(l.letter_no || "")}
-                                  </option>
-                                ))}
-                              </select>
-
-                              {idx === piroIds.length - 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => setPiroIds((arr) => [...arr, ""])}
-                                  className={addIconBtnCls}
-                                  aria-label="افزودن"
-                                  title="افزودن"
-                                >
-                                  <img src="/images/icons/afzodan.svg" alt="" className={addIconImgCls + " dark:invert"} />
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="flex items-center gap-2 mt-4 mb-2">
-                          <div className={labelCls.replace("mb-1", "mb-0")}>بازگشت به</div>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className={labelCls.replace("mb-1", "mb-0")}>بازگشت به</div>
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      {returnToIds.map((v, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <select
-                            value={v}
-                            onChange={(e) => {
-                              const nv = e.target.value;
-                              setReturnToIds((arr) => arr.map((x, i) => (i === idx ? nv : x)));
-                            }}
-                            className={inputCls + " min-w-[240px] w-[240px]"}
-                          >
-                            <option value=""></option>
-                            {myLetters.map((l) => (
-                              <option key={l.id} value={String(l.id)}>
-                                {String(l.letter_no || "")}
-                              </option>
-                            ))}
-                          </select>
-
-                          {idx === returnToIds.length - 1 && (
-                            <button
-                              type="button"
-                              onClick={() => setReturnToIds((arr) => [...arr, ""])}
-                              className={addIconBtnCls}
-                              aria-label="افزودن"
-                              title="افزودن"
-                            >
-                              <img src="/images/icons/afzodan.svg" alt="" className={addIconImgCls + " dark:invert"} />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-
-                      <button
-                        type="button"
-                        onClick={() => openUpload(formKind)}
-
-                        className={uploadTriggerCls + " min-w-[240px] w-[240px] flex-shrink-0"}
-                        aria-label="بارگذاری نامه و الصاق فایل ها"
-                        title="بارگذاری نامه و الصاق فایل ها"
-                      >
-                        <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
-                        <span className="text-sm font-normal"> بارگذاری نامه و الصاق فایل ها </span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-3">
-                  <div className={labelCls}>برچسب ها</div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {tagCapsFor(formKind === "incoming" ? incomingTagIds : formKind === "outgoing" ? outgoingTagIds : internalTagIds).map((t) => {
-                      const id = String(t?.id);
-                      const label = tagLabelOf(t);
-                      const selectedArr = formKind === "incoming" ? incomingTagIds : formKind === "outgoing" ? outgoingTagIds : internalTagIds;
-                      const active = selectedArr.some((x) => String(x) === id);
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          onClick={() =>toggleTag(formKind, id)}
-                          className={active ? selectedTagChipCls : chipCls}
-                          title={label}
-                          aria-label={label}
-                        >
-                          <span className="truncate max-w-[220px]">{label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className={theme === "dark" ? "my-5 h-px bg-white/10" : "my-5 h-px bg-black/10"} />
-
-                <div className="space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div>
-                      <div className={labelCls}>تاریخ ثبت دبیرخانه</div>
-
-                      <JalaliPopupDatePicker
-                        value={formKind === "incoming" ? incomingSecretariatDate : formKind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate}
-                        onChange={(v) => {
-                          if (formKind === "incoming") setIncomingSecretariatDate(v);
-                          else if (formKind === "outgoing") setOutgoingSecretariatDate(v);
-                          else setInternalSecretariatDate(v);
-                        }}
-                        theme={theme}
-                        hideIcon={true}
-                        buttonClassName={secretariatPickerBtnCls(
-                          formKind === "incoming" ? incomingSecretariatDate : formKind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate
-                        )}
-                      />
-                      <div className={theme === "dark" ? "text-white/50 text-[11px] mt-1" : "text-neutral-500 text-[11px] mt-1"}>
-                        {secretariatLongText(
-                          formKind === "incoming" ? incomingSecretariatDate : formKind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate
-                        )}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className={labelCls}>شماره ثبت دبیرخانه</div>
-                      <input
-                        value={formKind === "incoming" ? incomingSecretariatNo : formKind === "outgoing" ? outgoingSecretariatNo : internalSecretariatNo}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          if (formKind === "incoming") setIncomingSecretariatNo(v);
-                          else if (formKind === "outgoing") setOutgoingSecretariatNo(v);
-                          else setInternalSecretariatNo(v);
-                        }}
-                        className={inputCls}
-                        type="text"
-                      />
-                    </div>
-
-                    <div>
-                      <div className={labelCls}>نام تحویل گیرنده</div>
-                        <input
-                          value={loggedInUserName || ""}
-                          readOnly
-                          className={inputCls + " opacity-90"}
-                          type="text"
-                        />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-end pt-2">
-                    <button type="button" onClick={() => submitLetter(formKind)} className={sendBtnCls} title="ارسال" aria-label="ارسال">
-                      <img src="/images/icons/check.svg" alt="" className={sendIconCls} />
-                    </button>
-                  </div>
-                </div>
+          {formKind === "outgoing" ? (
+            <>
+              <div className={formCellCls + " md:col-span-4"}>
+                <div className={labelCls}>به</div>
+                <input value={toName} onChange={(e) => setToName(e.target.value)} className={inputCls} type="text" />
               </div>
-            ) : null}
+
+              <div className={formCellCls + " md:col-span-4"}>
+                <div className={labelCls}>شرکت/سازمان</div>
+                <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputCls} type="text" />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className={formCellCls + " md:col-span-4"}>
+                <div className={labelCls}>شرکت/سازمان</div>
+                <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputCls} type="text" />
+              </div>
+
+              <div className={formCellCls + " md:col-span-4"}>
+                <div className={labelCls}>به</div>
+                <input value={toName} onChange={(e) => setToName(e.target.value)} className={inputCls} type="text" />
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    )}
+
+    <div>
+      <div className={labelCls}>موضوع</div>
+      <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputCls} type="text" />
+    </div>
+
+    {/* همون Attachment block خودت */}
+    <div
+      className={
+        "rounded-2xl border p-3 " +
+        (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")
+      }
+    >
+      {/* ... کل محتوای همون Attachment block بدون تغییر ... */}
+      {/* (منطق و JSX داخلش رو همونی که داری نگه دار) */}
+    </div>
+
+    <div>
+      <div className={labelCls}>برچسب ها</div>
+      <div className="flex flex-wrap items-center gap-2">
+        {tagCapsFor(formKind === "incoming" ? incomingTagIds : formKind === "outgoing" ? outgoingTagIds : internalTagIds).map((t) => {
+          const id = String(t?.id);
+          const label = tagLabelOf(t);
+          const selectedArr = formKind === "incoming" ? incomingTagIds : formKind === "outgoing" ? outgoingTagIds : internalTagIds;
+          const active = selectedArr.some((x) => String(x) === id);
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => toggleTag(formKind, id)}
+              className={active ? selectedTagChipCls : chipCls}
+              title={label}
+              aria-label={label}
+            >
+              <span className="truncate max-w-[220px]">{label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+
+    <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
+
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div>
+          <div className={labelCls}>تاریخ ثبت دبیرخانه</div>
+          <JalaliPopupDatePicker
+            value={formKind === "incoming" ? incomingSecretariatDate : formKind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate}
+            onChange={(v) => {
+              if (formKind === "incoming") setIncomingSecretariatDate(v);
+              else if (formKind === "outgoing") setOutgoingSecretariatDate(v);
+              else setInternalSecretariatDate(v);
+            }}
+            theme={theme}
+            hideIcon={true}
+            buttonClassName={secretariatPickerBtnCls(
+              formKind === "incoming" ? incomingSecretariatDate : formKind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate
+            )}
+          />
+          <div className={theme === "dark" ? "text-white/50 text-[11px] mt-1" : "text-neutral-500 text-[11px] mt-1"}>
+            {secretariatLongText(
+              formKind === "incoming" ? incomingSecretariatDate : formKind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate
+            )}
+          </div>
+        </div>
+
+        <div>
+          <div className={labelCls}>شماره ثبت دبیرخانه</div>
+          <input
+            value={formKind === "incoming" ? incomingSecretariatNo : formKind === "outgoing" ? outgoingSecretariatNo : internalSecretariatNo}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (formKind === "incoming") setIncomingSecretariatNo(v);
+              else if (formKind === "outgoing") setOutgoingSecretariatNo(v);
+              else setInternalSecretariatNo(v);
+            }}
+            className={inputCls}
+            type="text"
+          />
+        </div>
+
+        <div>
+          <div className={labelCls}>نام تحویل گیرنده</div>
+          <input value={loggedInUserName || ""} readOnly className={inputCls + " opacity-90"} type="text" />
+        </div>
+      </div>
+
+      {/* ✅ دکمه ارسال هم داخل همین کادر قرار گرفت */}
+      <div className="flex items-center justify-end pt-2">
+        <button type="button" onClick={() => submitLetter(formKind)} className={sendBtnCls} title="ارسال" aria-label="ارسال">
+          <img src="/images/icons/check.svg" alt="" className={sendIconCls} />
+        </button>
+      </div>
+    </div>
+  </div>
+) : null}
+
           </div>
 
           {/* Table */}
