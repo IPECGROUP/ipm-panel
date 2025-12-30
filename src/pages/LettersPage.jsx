@@ -788,8 +788,14 @@ const mergePinnedFilterTags = (ids) => {
     theme === "dark"
       ? inputBase + " border-white/15 bg-white/5 text-white placeholder:text-white/40 focus:bg-white/10"
       : inputBase + " border-black/10 bg-white text-neutral-900 placeholder:text-neutral-400 focus:bg-black/[0.02]";
+      const labelCls = theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1";
 
-  const labelCls = theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1";
+
+      const fieldWrapCls =
+  "rounded-2xl border p-2 " +
+  (theme === "dark"
+    ? "border-white/10 bg-white/5"
+    : "border-black/10 bg-black/[0.02]");
 
   const chipBase =
     "inline-flex items-center justify-center gap-2 px-4 h-9 rounded-full border text-xs font-semibold whitespace-nowrap transition";
@@ -1831,7 +1837,7 @@ const ensureTagsForKind = async (kind) => {
   }
 >
 
-              <div className="flex flex-wrap items-end gap-2">
+              <div className="flex flex-nowrap items-end gap-2 overflow-x-auto pb-1">
                 {/* Tabs first */}
                 <div className="flex flex-wrap items-center gap-2 justify-start">
                   {TABS.map((t) => {
@@ -1898,7 +1904,8 @@ const ensureTagsForKind = async (kind) => {
                   })}
                 </div>
 
-                <div className="min-w-[220px] flex-1">
+                <div className="w-[220px] flex-shrink-0">
+
                   <div className={labelCls}>موضوع</div>
                   <input
                     value={filterSubject}
@@ -1909,7 +1916,8 @@ const ensureTagsForKind = async (kind) => {
                   />
                 </div>
 
-                <div className="min-w-[220px] flex-1">
+                <div className="w-[220px] flex-shrink-0">
+
                   <div className={labelCls}>شرکت/سازمان</div>
                   <input
                     value={filterOrg}
@@ -1920,7 +1928,8 @@ const ensureTagsForKind = async (kind) => {
                   />
                 </div>
 
-                <div className="min-w-[150px]">
+                <div className="w-[150px] flex-shrink-0">
+
                   <div className={labelCls}>شماره نامه</div>
                   <input
                     value={filterLetterNo}
@@ -1943,7 +1952,8 @@ const ensureTagsForKind = async (kind) => {
                   />
                 </div>
 
-                <div className="min-w-[170px]">
+                <div className="w-[150px] flex-shrink-0">
+
                   <div className={labelCls}>تا</div>
                   <JalaliPopupDatePicker
                     value={filterToDate}
@@ -2045,11 +2055,11 @@ const ensureTagsForKind = async (kind) => {
           <div className="mt-4">
             {formOpen ? (
               <div>
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
 
                   <div>
   <div className={labelCls}>نوع نامه</div>
-  <div className="flex items-center gap-2">
+  <div className="flex items-center gap-1.5">
     {[
       { id: "incoming", label: "وارده", color: TAB_ACTIVE_BG.incoming },
       { id: "outgoing", label: "صادره", color: TAB_ACTIVE_BG.outgoing },
@@ -2058,7 +2068,7 @@ const ensureTagsForKind = async (kind) => {
       const active = formKind === t.id;
 
       const base =
-        "h-11 px-4 rounded-xl border transition text-sm font-semibold inline-flex items-center justify-center whitespace-nowrap";
+          "h-10 px-3 rounded-xl border transition text-sm font-semibold inline-flex items-center justify-center whitespace-nowrap";
 
       const cls = active
         ? base + " text-white"
@@ -2112,7 +2122,8 @@ const ensureTagsForKind = async (kind) => {
                     </div>
                   )}
 
-                  <div>
+                  <div className={fieldWrapCls}>
+
                     <div className={labelCls}>شماره نامه</div>
                     <input value={letterNo} onChange={(e) => setLetterNo(e.target.value)} className={inputCls} type="text" />
                   </div>
@@ -2392,9 +2403,9 @@ else setInternalAttachmentTitle(v);
                       <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">دسته بندی</th>
                       <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">شماره</th>
                       <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">تاریخ</th>
+                      <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">موضوع</th>
                       <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">از/به</th>
                       <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">شرکت/سازمان</th>
-                      <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">موضوع</th>
                       <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">اقدامات</th>
                     </tr>
                   </thead>
@@ -2477,7 +2488,7 @@ else setInternalAttachmentTitle(v);
                             <td className={"px-3 " + divider}>
                               <div className="inline-flex items-center justify-center gap-2">
                                 <button type="button" onClick={() => openView(l)} className={iconBtnCls} aria-label="نمایش" title="نمایش">
-                                  <img src="/images/icons/namayesh.svg" alt="" className="w-5 h-5 dark:invert" />
+                                  <img src="/images/icons/namayeshname.svg" alt="" className="w-5 h-5 dark:invert" />
                                 </button>
 
                                 <button type="button" onClick={() => startEdit(l)} className={iconBtnCls} aria-label="ویرایش" title="ویرایش">
