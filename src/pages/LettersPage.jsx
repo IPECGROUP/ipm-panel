@@ -244,18 +244,18 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
 
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>سال</div>
+                <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>روز</div>
                 <select
-                  value={jy}
-                  onChange={(e) => setJy(Number(e.target.value))}
+                  value={jd}
+                  onChange={(e) => setJd(Number(e.target.value))}
                   className={
                     "w-full h-11 px-3 rounded-xl border outline-none " +
                     (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-neutral-900")
                   }
                 >
-                  {years.map((y) => (
-                    <option key={y} value={y}>
-                      {toFaDigits(y)}
+                  {days.map((d) => (
+                    <option key={d} value={d}>
+                      {toFaDigits(d)}
                     </option>
                   ))}
                 </select>
@@ -278,25 +278,25 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
                   ))}
                 </select>
               </div>
-
               <div>
-                <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>روز</div>
+                <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>سال</div>
                 <select
-                  value={jd}
-                  onChange={(e) => setJd(Number(e.target.value))}
+                  value={jy}
+                  onChange={(e) => setJy(Number(e.target.value))}
                   className={
                     "w-full h-11 px-3 rounded-xl border outline-none " +
                     (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-neutral-900")
                   }
                 >
-                  {days.map((d) => (
-                    <option key={d} value={d}>
-                      {toFaDigits(d)}
+                  {years.map((y) => (
+                    <option key={y} value={y}>
+                      {toFaDigits(y)}
                     </option>
                   ))}
                 </select>
               </div>
             </div>
+
 
             <div className="mt-3 flex items-center justify-between gap-3">
               <div className={theme === "dark" ? "text-white/70 text-xs" : "text-neutral-600 text-xs"}>
@@ -1920,7 +1920,7 @@ const ensureTagsForKind = async (kind) => {
                   />
                 </div>
 
-                <div className="min-w-[200px]">
+                <div className="min-w-[150px]">
                   <div className={labelCls}>شماره نامه</div>
                   <input
                     value={filterLetterNo}
@@ -1931,7 +1931,7 @@ const ensureTagsForKind = async (kind) => {
                   />
                 </div>
 
-                <div className="min-w-[170px]">
+                <div className="min-w-[150px]">
                   <div className={labelCls}>از</div>
                   <JalaliPopupDatePicker
                     value={filterFromDate}
@@ -2045,19 +2045,42 @@ const ensureTagsForKind = async (kind) => {
           <div className="mt-4">
             {formOpen ? (
               <div>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+
                   <div>
-  <div className={labelCls}>نامه</div>
-  <select
-    value={formKind}
-    onChange={(e) => setFormKind(e.target.value)}
-    className={inputCls}
-  >
-    <option value="incoming">وارده</option>
-    <option value="outgoing">صادره</option>
-    <option value="internal">داخلی</option>
-  </select>
+  <div className={labelCls}>نوع نامه</div>
+  <div className="flex items-center gap-2">
+    {[
+      { id: "incoming", label: "وارده", color: TAB_ACTIVE_BG.incoming },
+      { id: "outgoing", label: "صادره", color: TAB_ACTIVE_BG.outgoing },
+      { id: "internal", label: "داخلی", color: TAB_ACTIVE_BG.internal },
+    ].map((t) => {
+      const active = formKind === t.id;
+
+      const base =
+        "h-11 px-4 rounded-xl border transition text-sm font-semibold inline-flex items-center justify-center whitespace-nowrap";
+
+      const cls = active
+        ? base + " text-white"
+        : theme === "dark"
+        ? base + " bg-transparent text-white hover:bg-white/5"
+        : base + " bg-white text-neutral-900 hover:bg-black/[0.02]";
+
+      return (
+        <button
+          key={t.id}
+          type="button"
+          onClick={() => setFormKind(t.id)}
+          className={cls}
+          style={active ? { backgroundColor: t.color, borderColor: t.color } : { borderColor: t.color }}
+        >
+          {t.label}
+        </button>
+      );
+    })}
+  </div>
 </div>
+
 
                   <div>
                     <div className={labelCls}>دسته بندی نامه</div>
@@ -2244,11 +2267,11 @@ else setInternalAttachmentTitle(v);
                         onClick={() => openUpload(formKind)}
 
                         className={uploadTriggerCls + " min-w-[240px] w-[240px] flex-shrink-0"}
-                        aria-label="آپلود و الصاق فایل ها"
-                        title="آپلود و الصاق فایل ها"
+                        aria-label="بارگذاری نامه و الصاق فایل ها"
+                        title="بارگذاری نامه و الصاق فایل ها"
                       >
                         <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
-                        <span className="text-sm font-normal">آپلود و الصاق فایل ها</span>
+                        <span className="text-sm font-normal">بارگذاری نامه و الصاق فایل ها  </span>
                       </button>
                     </div>
                   </div>
@@ -2424,26 +2447,7 @@ else setInternalAttachmentTitle(v);
                             </td>
 
                             <td className={"px-3 " + divider}>
-                              <span
-                                className={
-                                  "inline-flex items-center gap-2 px-3 h-8 rounded-full text-xs font-semibold border " +
-                                  (isOutgoing
-                                    ? theme === "dark"
-                                      ? "border-[#1a7431]/60 bg-[#1a7431]/25 text-white"
-                                      : "border-[#1a7431]/40 bg-white/70 text-[#0e4c1e]"
-                                    : isIncoming
-                                    ? theme === "dark"
-                                      ? "border-[#4895ef]/60 bg-[#4895ef]/25 text-white"
-                                      : "border-[#4895ef]/40 bg-white/70 text-[#1b4f9b]"
-                                    : isInternal
-                                    ? theme === "dark"
-                                      ? "border-[#f48224]/60 bg-[#f48224]/25 text-white"
-                                      : "border-[#f48224]/50 bg-white/70 text-[#7a3b00]"
-                                    : theme === "dark"
-                                    ? "border-white/20 bg-white/10 text-white"
-                                    : "border-black/10 bg-white text-neutral-800")
-                                }
-                              >
+                              <span className={"font-semibold " + (theme === "dark" ? "text-white" : "text-neutral-900")}>
                                 {categoryLabelOf(l)}
                               </span>
                             </td>
