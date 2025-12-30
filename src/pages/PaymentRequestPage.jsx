@@ -227,13 +227,15 @@ export default function PaymentRequestPage() {
     }
 
     // ۲) اگر current_role نبود یا مپ نشد، از history آخرین to_role رو بگیر
-    if (row.actions && row.actions.length > 0) {
-      const lastAction = row.actions[row.actions.length - 1];
-      if (lastAction && lastAction.to_role) {
-        const fromHistory = roleToStepKey(lastAction.to_role);
-        if (fromHistory) return fromHistory;
-      }
-    }
+    const lastMove = [...row.actions].reverse().find(a => {
+  const t = (a.action || a.type || '').toString().toLowerCase();
+  return t === 'status' || t === 'approve' || t === 'approved' || t === 'reject' || t === 'rejected' || t === 'returned' || t === 'return';
+});
+if (lastMove && lastMove.to_role) {
+  const fromHistory = roleToStepKey(lastMove.to_role);
+  if (fromHistory) return fromHistory;
+}
+
 
     // ۳) فقط اگر هیچی نبود، به روش‌های قدیمی فال‌بک کن
     const steps = getWorkflowStepsForScope(row.scope || 'office');
@@ -429,34 +431,37 @@ React.useEffect(() => {
     try {
       const r = await api('/auth/me');
       const user = r.user || null;
+      React.useEffect(() => {
+  (async () => {
+    try {
+      const r = await api('/auth/me');
+      const user = r.user || null;
+
       if (user) {
+        // نقش‌ها را فقط از فیلدهای نقش بخوان (واقعی)
+        const roleCandidates = []
+          .concat(user.current_role || user.currentRole || [])
+          .concat(user.role || [])
+          .concat(user.roles || [])
+          .concat(user.user_roles || [])
+          .concat(user.permissions || [])
+          .flat()
+          .filter(Boolean);
+
         let detected = null;
-        const lowerName = (user.name || user.username || '').toString().toLowerCase();
-        const lowerDept = (user.department || '').toString().toLowerCase();
-
-        // مدیر مالی
-        if (lowerName.includes('مدیر مالی') || lowerDept.includes('مالی')) {
-          detected = 'finance_manager';
-        }
-        // کنترل پروژه
-        else if (lowerName.includes('کنترل پروژه')) {
-          detected = 'project_control';
-        }
-        // مدیر پروژه — این خط رو حتماً اضافه کن!
-        else if (lowerName.includes('مدیر پروژه')) {
-          detected = 'project_manager';
-        }
-        // کارشناس حسابداری
-        else if (lowerName.includes('کارشناس حسابداری')) {
-          detected = 'accounting_specialist';
-        }
-        // مدیریت / دستور پرداخت
-        else if (lowerName.includes('مدیریت') || lowerName.includes('دستور پرداخت')) {
-          detected = 'payment_order';
+        for (const x of roleCandidates) {
+          const k = roleToStepKey(x);
+          if (k) { detected = k; break; }
         }
 
-        user.detectedRole = detected;
+        user.detectedRole = detected; // مثل: 'finance_manager'، 'project_control'، ...
       }
+
+      setMe(user);
+    } catch {}
+  })();
+}, []);
+
       setMe(user);
     } catch {}
   })();
@@ -1335,7 +1340,9 @@ const createRequestWithFiles = async (payload) => {
     }
     if (cashNum > amountNum) { setErr('مبلغ نقدی نمی‌تواند از مبلغ درخواست بیشتر باشد.'); return; }
 
-    const serial = editId ? (items.find(x => x.id === editId)?.serial || previewSerial) : consumeSerialPR();
+    const serial = editId
+  ? (items.find(x => x.id === editId)?.serial || previewSerial)
+  : previewSerial;
     const nowIso = new Date().toISOString();
 
     const baseRow = {
@@ -1413,6 +1420,8 @@ const createRequestWithFiles = async (payload) => {
         beneficiary_name: baseRow.beneficiaryName || null,
         createdById: baseRow.createdById,
         createdByName: baseRow.createdByName,
+        doc_files: doneFilesForMeta,
+
         // doc_files عمداً اینجا ست نمی‌شود؛ بک‌اند در حالت multipart با توجه به $_FILES آن را پر می‌کند
       };
 
@@ -1482,6 +1491,8 @@ const createRequestWithFiles = async (payload) => {
       assignedRole: serverRow?.current_role ?? baseRow.assignedRole ?? null,
     };
 
+    
+
     setItems(prev => (editId ? prev.map(x => x.id === editId ? finalRow : x) : [finalRow, ...prev]));
     if (!editId) setPreviewSerial(getNextSerialPR());
     setEditId(null);
@@ -1504,6 +1515,11 @@ const createRequestWithFiles = async (payload) => {
     setSelectedCurrencySourceId(null);
     setCurrencySourceLabel('');
     setBeneficiaryName('');
+    (docFiles || []).forEach(f => {
+  if (f.previewUrl) {
+    try { URL.revokeObjectURL(f.previewUrl); } catch {}
+  }
+});
     setDocFiles([]); // بعد از ثبت موفق، فایل‌ها را هم خالی کن
   };
 
@@ -1625,10 +1641,6 @@ const createRequestWithFiles = async (payload) => {
     push(me?.roles);
     push(me?.user_roles);
     push(me?.detectedRole);        // این خط جدید
-    push(me?.name);
-    push(me?.username);
-    push(me?.department);
-
     return Array.from(set);
   }, [me]);
 
@@ -1679,7 +1691,15 @@ const isRowForMe = React.useCallback((row) => {
     return false;
   }
 
-  const currentStepKey = getCurrentStepKeyForRow(row);
+ const directRole =
+  row.current_role ||
+  row.currentRole ||
+  row.assigned_user_role ||
+  row.assignedUserRole ||
+  '';
+
+const currentStepKey = roleToStepKey(directRole) || getCurrentStepKeyForRow(row);
+
   if (!currentStepKey) return false;
 
   // اگر به کاربر مشخصی assign شده، فقط همان کاربر ببیند
