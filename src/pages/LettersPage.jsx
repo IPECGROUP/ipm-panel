@@ -174,24 +174,6 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
-
-  const { user } = useAuth();
-
-  const loggedInUserName = useMemo(() => {
-    const u = user || {};
-    return String(
-      u?.username ||
-        u?.user_name ||
-        u?.name ||
-        u?.full_name ||
-        u?.displayName ||
-        u?.login ||
-        ""
-    ).trim();
-  }, [user]);
-
-
-
   return (
     <div className="relative">
       <button
@@ -409,6 +391,22 @@ const [formKind, setFormKind] = useState("incoming"); // نوع نامه داخ�
   const closeUpload = () => {
     setUploadOpen(false);
   };
+
+    const { user } = useAuth();
+
+  const loggedInUserName = useMemo(() => {
+    const u = user || {};
+    return String(
+      u?.username ||
+        u?.user_name ||
+        u?.name ||
+        u?.full_name ||
+        u?.displayName ||
+        u?.login ||
+        ""
+    ).trim();
+  }, [user]);
+
 
   useEffect(() => {
     if (!uploadOpen) return;
