@@ -2369,218 +2369,288 @@ const ensureTagsForKind = async (kind) => {
 
 
     {/* Attachment block (title + returnTo/piro + upload) */}
-{/* Attachment block (بازگشت/پیرو + بارگذاری) */}
-{hasAttachment && (
-  <div
-    className={
-      "rounded-2xl border p-3 " +
-      (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")
-    }
-  >
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-      {/* راست: بازگشت/پیرو */}
-      <div className="space-y-3">
-        {/* بازگشت به (برای هر سه تب) */}
-        <div>
-          <div className={labelCls}>بازگشت به</div>
+{/* ضمیمه (چک‌باکس) + عنوان ضمیمه + بازگشت/پیرو کنار عنوان */}
+<div className="space-y-3">
+  {/* ضمیمه: checkbox */}
+  <div className="flex items-center gap-2">
+    <input
+      id="hasAttachmentChk"
+      type="checkbox"
+      checked={!!hasAttachment}
+      onChange={(e) => {
+        const v = !!e.target.checked;
+        setHasAttachment(v);
 
-          <div className="space-y-2">
-            {(Array.isArray(returnToIds) ? returnToIds : [""]).map((val, idx) => {
-              const isLast = idx === (returnToIds?.length || 1) - 1;
+        // اگر "ندارد" شد عنوان ضمیمه رو خالی کن
+        if (!v) {
+          if (formKind === "incoming") setIncomingAttachmentTitle("");
+          else if (formKind === "outgoing") setOutgoingAttachmentTitle("");
+          else setInternalAttachmentTitle("");
+        }
+      }}
+      className={
+        "h-5 w-5 rounded border " +
+        (theme === "dark"
+          ? "border-white/20 bg-white/10 accent-white"
+          : "border-black/20 bg-white accent-black")
+      }
+    />
+    <label
+      htmlFor="hasAttachmentChk"
+      className={theme === "dark" ? "text-white/80 text-sm font-semibold" : "text-neutral-800 text-sm font-semibold"}
+    >
+      ضمیمه دارد
+    </label>
+  </div>
 
-              return (
-                <div key={`ret_${idx}`} className="flex items-center gap-2">
-                  <select
-                    value={val}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setReturnToIds((prev) => {
-                        const arr = Array.isArray(prev) ? [...prev] : [""];
-                        arr[idx] = v;
-                        return arr;
-                      });
-                    }}
-                    className={inputCls + " flex-1"}
-                  >
-                    <option value=""></option>
-                    {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
-                      const id = String(letterIdOf(l));
-                      const no = String(letterNoOf(l) || "").trim();
-                      const sub = String(subjectOf(l) || "").trim();
-                      const lab = `${no ? toFaDigits(no) : "—"}${sub ? " — " + sub : ""}`;
-                      return (
-                        <option key={`ret_opt_${id}`} value={id}>
-                          {lab}
-                        </option>
-                      );
-                    })}
-                  </select>
-
-                  {idx > 0 && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setReturnToIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))
-                      }
-                      className={addIconBtnCls}
-                      aria-label="حذف"
-                      title="حذف"
-                    >
-                      <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
-                    </button>
-                  )}
-
-                  {isLast && (
-                    <button
-                      type="button"
-                      onClick={() => setReturnToIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
-                      className={addIconBtnCls}
-                      aria-label="افزودن"
-                      title="افزودن"
-                    >
-                      <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* پیرو (فقط برای صادره) */}
-        {formKind === "outgoing" && (
-          <div>
-            <div className={labelCls}>پیرو</div>
-
-            <div className="space-y-2">
-              {(Array.isArray(piroIds) ? piroIds : [""]).map((val, idx) => {
-                const isLast = idx === (piroIds?.length || 1) - 1;
-
-                return (
-                  <div key={`piro_${idx}`} className="flex items-center gap-2">
-                    <select
-                      value={val}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setPiroIds((prev) => {
-                          const arr = Array.isArray(prev) ? [...prev] : [""];
-                          arr[idx] = v;
-                          return arr;
-                        });
-                      }}
-                      className={inputCls + " flex-1"}
-                    >
-                      <option value=""></option>
-                      {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
-                        const id = String(letterIdOf(l));
-                        const no = String(letterNoOf(l) || "").trim();
-                        const sub = String(subjectOf(l) || "").trim();
-                        const lab = `${no ? toFaDigits(no) : "—"}${sub ? " — " + sub : ""}`;
-                        return (
-                          <option key={`piro_opt_${id}`} value={id}>
-                            {lab}
-                          </option>
-                        );
-                      })}
-                    </select>
-
-                    {idx > 0 && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setPiroIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))
-                        }
-                        className={addIconBtnCls}
-                        aria-label="حذف"
-                        title="حذف"
-                      >
-                        <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
-                      </button>
-                    )}
-
-                    {isLast && (
-                      <button
-                        type="button"
-                        onClick={() => setPiroIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
-                        className={addIconBtnCls}
-                        aria-label="افزودن"
-                        title="افزودن"
-                      >
-                        <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* بارگذاری نامه و الصاق فایل ها (استایل مثل عکس) */}
-        <div>
-          <button
-            type="button"
-            onClick={() => openUpload(formKind)}
+  {/* Attachment block (بازگشت/پیرو + بارگذاری) */}
+  {hasAttachment && (
+    <div
+      className={
+        "rounded-2xl border p-3 " +
+        (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")
+      }
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {/* راست: عنوان ضمیمه + بازگشت/پیرو + دکمه بارگذاری */}
+        <div className="space-y-3">
+          {/* ردیف کنارهم: عنوان ضمیمه + بازگشت به (+ پیرو در صادره) */}
+          <div
             className={
-              "w-full h-11 px-4 rounded-2xl border transition flex items-center justify-between gap-3 " +
-              (theme === "dark"
-                ? "border-white/15 bg-white/5 text-white/90 hover:bg-white/10"
-                : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
+              "grid gap-3 items-start " +
+              (formKind === "outgoing" ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1 md:grid-cols-2")
             }
           >
-            <span className="font-semibold">بارگذاری نامه و الصاق فایل ها</span>
-            <img
-              src="/images/icons/upload.svg"
-              alt=""
-              className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
-            />
-          </button>
-        </div>
-      </div>
+            {/* عنوان ضمیمه (کوچک‌تر) */}
+            <div>
+              <div className={labelCls}>عنوان ضمیمه</div>
+              <input
+                value={
+                  formKind === "incoming"
+                    ? incomingAttachmentTitle
+                    : formKind === "outgoing"
+                    ? outgoingAttachmentTitle
+                    : internalAttachmentTitle
+                }
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (formKind === "incoming") setIncomingAttachmentTitle(v);
+                  else if (formKind === "outgoing") setOutgoingAttachmentTitle(v);
+                  else setInternalAttachmentTitle(v);
+                }}
+                className={inputCls + " h-10 text-sm"}
+                type="text"
+              />
+            </div>
 
-      {/* چپ: لیست فایل‌ها (همون قبلی خودت، بدون تغییر اساسی) */}
-      <div className="space-y-2">
-        {(Array.isArray(docFilesByType?.[formKind]) ? docFilesByType[formKind] : []).length === 0 ? (
-          <div className={theme === "dark" ? "text-white/50 text-xs" : "text-neutral-500 text-xs"}>
-            فایلی انتخاب نشده است.
-          </div>
-        ) : (
-          (Array.isArray(docFilesByType?.[formKind]) ? docFilesByType[formKind] : []).map((f) => (
-            <div
-              key={f.id}
-              className={
-                "flex items-center justify-between gap-2 rounded-xl border px-3 py-2 " +
-                (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
-              }
-            >
-              <div className="min-w-0">
-                <div className="text-sm font-semibold truncate">{f.name}</div>
-                <div className={theme === "dark" ? "text-white/50 text-xs" : "text-neutral-500 text-xs"}>
-                  {formatBytes(f.size)} •{" "}
-                  {f.status === "uploading"
-                    ? `در حال آپلود ${toFaDigits(f.progress || 0)}%`
-                    : f.status === "done"
-                    ? "آماده"
-                    : f.status}
+            {/* بازگشت به (در هر سه تب) */}
+            <div>
+              <div className={labelCls}>بازگشت به</div>
+
+              <div className="space-y-2">
+                {(Array.isArray(returnToIds) ? returnToIds : [""]).map((val, idx) => {
+                  const isLast = idx === (returnToIds?.length || 1) - 1;
+
+                  return (
+                    <div key={`ret_${idx}`} className="flex items-center gap-2">
+                      <select
+                        value={val}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setReturnToIds((prev) => {
+                            const arr = Array.isArray(prev) ? [...prev] : [""];
+                            arr[idx] = v;
+                            return arr;
+                          });
+                        }}
+                        className={inputCls + " h-10 text-sm flex-1"}
+                      >
+                        <option value=""></option>
+                        {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
+                          const id = String(letterIdOf(l));
+                          const no = String(letterNoOf(l) || "").trim();
+                          const sub = String(subjectOf(l) || "").trim();
+                          const lab = `${no ? toFaDigits(no) : "—"}${sub ? " — " + sub : ""}`;
+                          return (
+                            <option key={`ret_opt_${id}`} value={id}>
+                              {lab}
+                            </option>
+                          );
+                        })}
+                      </select>
+
+                      {idx > 0 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setReturnToIds((prev) =>
+                              Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]
+                            )
+                          }
+                          className={addIconBtnCls + " h-10 w-10"}
+                          aria-label="حذف"
+                          title="حذف"
+                        >
+                          <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
+                        </button>
+                      )}
+
+                      {isLast && (
+                        <button
+                          type="button"
+                          onClick={() => setReturnToIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
+                          className={addIconBtnCls + " h-10 w-10"}
+                          aria-label="افزودن"
+                          title="افزودن"
+                        >
+                          <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* پیرو (فقط صادره) */}
+            {formKind === "outgoing" && (
+              <div>
+                <div className={labelCls}>پیرو</div>
+
+                <div className="space-y-2">
+                  {(Array.isArray(piroIds) ? piroIds : [""]).map((val, idx) => {
+                    const isLast = idx === (piroIds?.length || 1) - 1;
+
+                    return (
+                      <div key={`piro_${idx}`} className="flex items-center gap-2">
+                        <select
+                          value={val}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setPiroIds((prev) => {
+                              const arr = Array.isArray(prev) ? [...prev] : [""];
+                              arr[idx] = v;
+                              return arr;
+                            });
+                          }}
+                          className={inputCls + " h-10 text-sm flex-1"}
+                        >
+                          <option value=""></option>
+                          {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
+                            const id = String(letterIdOf(l));
+                            const no = String(letterNoOf(l) || "").trim();
+                            const sub = String(subjectOf(l) || "").trim();
+                            const lab = `${no ? toFaDigits(no) : "—"}${sub ? " — " + sub : ""}`;
+                            return (
+                              <option key={`piro_opt_${id}`} value={id}>
+                                {lab}
+                              </option>
+                            );
+                          })}
+                        </select>
+
+                        {idx > 0 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPiroIds((prev) =>
+                                Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]
+                              )
+                            }
+                            className={addIconBtnCls + " h-10 w-10"}
+                            aria-label="حذف"
+                            title="حذف"
+                          >
+                            <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
+                          </button>
+                        )}
+
+                        {isLast && (
+                          <button
+                            type="button"
+                            onClick={() => setPiroIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
+                            className={addIconBtnCls + " h-10 w-10"}
+                            aria-label="افزودن"
+                            title="افزودن"
+                          >
+                            <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
+            )}
+          </div>
 
-              <button
-                type="button"
-                onClick={() => removeDocFile(formKind, f.id)}
-                className={iconBtnCls}
-                aria-label="حذف"
-                title="حذف"
-              >
-                <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
-              </button>
+          {/* بارگذاری نامه و الصاق فایل ها (کوچک‌تر + آیکن چسبیده به متن) */}
+          <div>
+            <button
+              type="button"
+              onClick={() => openUpload(formKind)}
+              className={
+                "inline-flex items-center gap-2 h-10 px-3 rounded-xl border transition text-sm font-semibold " +
+                (theme === "dark"
+                  ? "border-white/15 bg-white/5 text-white/90 hover:bg-white/10"
+                  : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
+              }
+            >
+              <img
+                src="/images/icons/upload.svg"
+                alt=""
+                className={"w-4 h-4 " + (theme === "dark" ? "invert" : "")}
+              />
+              <span>بارگذاری نامه و الصاق فایل ها</span>
+            </button>
+          </div>
+        </div>
+
+        {/* چپ: لیست فایل‌ها */}
+        <div className="space-y-2">
+          {(Array.isArray(docFilesByType?.[formKind]) ? docFilesByType[formKind] : []).length === 0 ? (
+            <div className={theme === "dark" ? "text-white/50 text-xs" : "text-neutral-500 text-xs"}>
+              فایلی انتخاب نشده است.
             </div>
-          ))
-        )}
+          ) : (
+            (Array.isArray(docFilesByType?.[formKind]) ? docFilesByType[formKind] : []).map((f) => (
+              <div
+                key={f.id}
+                className={
+                  "flex items-center justify-between gap-2 rounded-xl border px-3 py-2 " +
+                  (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
+                }
+              >
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold truncate">{f.name}</div>
+                  <div className={theme === "dark" ? "text-white/50 text-xs" : "text-neutral-500 text-xs"}>
+                    {formatBytes(f.size)} •{" "}
+                    {f.status === "uploading"
+                      ? `در حال آپلود ${toFaDigits(f.progress || 0)}%`
+                      : f.status === "done"
+                      ? "آماده"
+                      : f.status}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => removeDocFile(formKind, f.id)}
+                  className={iconBtnCls}
+                  aria-label="حذف"
+                  title="حذف"
+                >
+                  <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
-  </div>
-)}
+  )}
+</div>
+
 
 
 
