@@ -2311,18 +2311,25 @@ const ensureTagsForKind = async (kind) => {
       <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputCls} type="text" />
     </div>
 
-    {/* همون Attachment block خودت */}
-    <div
+    {/* Attachment block (title + returnTo/piro + upload) */}
+<div
   className={
     "rounded-2xl border p-3 " +
     (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")
   }
 >
   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+    {/* ستون اول: عنوان ضمیمه */}
     <div>
       <div className={labelCls}>عنوان ضمیمه</div>
       <input
-        value={formKind === "incoming" ? incomingAttachmentTitle : formKind === "outgoing" ? outgoingAttachmentTitle : internalAttachmentTitle}
+        value={
+          formKind === "incoming"
+            ? incomingAttachmentTitle
+            : formKind === "outgoing"
+            ? outgoingAttachmentTitle
+            : internalAttachmentTitle
+        }
         onChange={(e) => {
           const v = e.target.value;
           if (formKind === "incoming") setIncomingAttachmentTitle(v);
@@ -2335,14 +2342,117 @@ const ensureTagsForKind = async (kind) => {
       />
     </div>
 
-    <div>
-      <div className={labelCls}>آپلود و الصاق فایل‌ها</div>
-      <button type="button" onClick={() => openUpload(formKind)} className={uploadTriggerCls}>
-        انتخاب / آپلود فایل
-      </button>
+    {/* ستون دوم: پیرو/بازگشت به + آپلود */}
+    <div className="space-y-3">
+      {/* پیرو (فقط برای صادره) */}
+      {formKind === "outgoing" && (
+        <div>
+          <div className={labelCls}>پیرو</div>
+
+          <div className="space-y-2">
+            {(Array.isArray(piroIds) ? piroIds : [""]).map((val, idx) => (
+              <select
+                key={`piro_${idx}`}
+                value={val}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setPiroIds((prev) => {
+                    const arr = Array.isArray(prev) ? [...prev] : [""];
+                    arr[idx] = v;
+                    return arr;
+                  });
+                }}
+                className={inputCls}
+              >
+                <option value=""></option>
+                {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
+                  const id = String(letterIdOf(l));
+                  const no = String(letterNoOf(l) || "").trim();
+                  const sub = String(subjectOf(l) || "").trim();
+                  const lab = `${no ? toFaDigits(no) : "—"}${sub ? " — " + sub : ""}`;
+                  return (
+                    <option key={`piro_opt_${id}`} value={id}>
+                      {lab}
+                    </option>
+                  );
+                })}
+              </select>
+            ))}
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setPiroIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
+                className={addIconBtnCls}
+                title="افزودن"
+                aria-label="افزودن"
+              >
+                <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* بازگشت به (برای هر سه تب) */}
+      <div>
+        <div className={labelCls}>بازگشت به</div>
+
+        <div className="space-y-2">
+          {(Array.isArray(returnToIds) ? returnToIds : [""]).map((val, idx) => (
+            <select
+              key={`ret_${idx}`}
+              value={val}
+              onChange={(e) => {
+                const v = e.target.value;
+                setReturnToIds((prev) => {
+                  const arr = Array.isArray(prev) ? [...prev] : [""];
+                  arr[idx] = v;
+                  return arr;
+                });
+              }}
+              className={inputCls}
+            >
+              <option value=""></option>
+              {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
+                const id = String(letterIdOf(l));
+                const no = String(letterNoOf(l) || "").trim();
+                const sub = String(subjectOf(l) || "").trim();
+                const lab = `${no ? toFaDigits(no) : "—"}${sub ? " — " + sub : ""}`;
+                return (
+                  <option key={`ret_opt_${id}`} value={id}>
+                    {lab}
+                  </option>
+                );
+              })}
+            </select>
+          ))}
+
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setReturnToIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
+              className={addIconBtnCls}
+              title="افزودن"
+              aria-label="افزودن"
+            >
+              <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* آپلود */}
+      <div>
+        <div className={labelCls}>آپلود و الصاق فایل‌ها</div>
+        <button type="button" onClick={() => openUpload(formKind)} className={uploadTriggerCls}>
+          انتخاب / آپلود فایل
+        </button>
+      </div>
     </div>
   </div>
 
+  {/* لیست فایل‌ها (همون قبلی) */}
   <div className="mt-3 space-y-2">
     {(Array.isArray(docFilesByType?.[formKind]) ? docFilesByType[formKind] : []).length === 0 ? (
       <div className={theme === "dark" ? "text-white/50 text-xs" : "text-neutral-500 text-xs"}>فایلی انتخاب نشده است.</div>
@@ -2358,11 +2468,22 @@ const ensureTagsForKind = async (kind) => {
           <div className="min-w-0">
             <div className="text-sm font-semibold truncate">{f.name}</div>
             <div className={theme === "dark" ? "text-white/50 text-xs" : "text-neutral-500 text-xs"}>
-              {formatBytes(f.size)} • {f.status === "uploading" ? `در حال آپلود ${toFaDigits(f.progress || 0)}%` : f.status === "done" ? "آماده" : f.status}
+              {formatBytes(f.size)} •{" "}
+              {f.status === "uploading"
+                ? `در حال آپلود ${toFaDigits(f.progress || 0)}%`
+                : f.status === "done"
+                ? "آماده"
+                : f.status}
             </div>
           </div>
 
-          <button type="button" onClick={() => removeDocFile(formKind, f.id)} className={iconBtnCls} aria-label="حذف" title="حذف">
+          <button
+            type="button"
+            onClick={() => removeDocFile(formKind, f.id)}
+            className={iconBtnCls}
+            aria-label="حذف"
+            title="حذف"
+          >
             <img
               src="/images/icons/hazf.svg"
               alt=""
@@ -2378,6 +2499,7 @@ const ensureTagsForKind = async (kind) => {
     )}
   </div>
 </div>
+
 
 
     <div>
