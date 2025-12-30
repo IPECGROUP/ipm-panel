@@ -844,6 +844,31 @@ const mergePinnedFilterTags = (ids) => {
   const sendIconCls = "w-5 h-5 " + (theme === "dark" ? "invert-0" : "invert");
 
   const findProject = (id) => projects.find((p) => String(p?.id) === String(id));
+  const projectsTopOnly = useMemo(() => {
+  const arr = Array.isArray(projectsDesc) ? projectsDesc : [];
+  const out = [];
+  const seen = new Set();
+
+  for (const p of arr) {
+    const raw = String(p?.code ?? "").trim(); // مثال: 159 یا 159.1.1
+    const base = raw.split(".")[0].trim();   // میشه 159
+
+    // فقط کد ۳ رقمی
+    if (!/^\d{3}$/.test(base)) continue;
+
+    // زیرپروژه‌ها حذف (هرچی نقطه داره)
+    if (raw.includes(".")) continue;
+
+    // تکراری‌ها حذف
+    if (seen.has(base)) continue;
+    seen.add(base);
+
+    out.push({ ...p, __baseCode: base });
+  }
+
+  return out;
+}, [projectsDesc]);
+
   const projectsDesc = useMemo(() => {
   const arr = Array.isArray(projects) ? projects.slice() : [];
   arr.sort((a, b) => {
@@ -2217,18 +2242,19 @@ const ensureTagsForKind = async (kind) => {
       </div>
 
       {category === "project" && (
-        <div>
-          <div className={labelCls}>پروژه</div>
-          <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={inputCls}>
-            <option value=""></option>
-            {projectsDesc.map((p) => (
-              <option key={p.id} value={String(p.id)}>
-                {String(p.code || "")} {p.name ? `- ${p.name}` : ""}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
+  <div>
+    <div className={labelCls}>پروژه</div>
+    <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={inputCls}>
+      <option value=""></option>
+      {projectsTopOnly.map((p) => (
+        <option key={p.id} value={String(p.id)}>
+          {toFaDigits(p.__baseCode || "")}
+        </option>
+      ))}
+    </select>
+  </div>
+)}
+
 
       <div>
         <div className={labelCls}>شماره نامه</div>
@@ -2285,14 +2311,72 @@ const ensureTagsForKind = async (kind) => {
 
     {/* همون Attachment block خودت */}
     <div
-      className={
-        "rounded-2xl border p-3 " +
-        (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")
-      }
-    >
-      {/* ... کل محتوای همون Attachment block بدون تغییر ... */}
-      {/* (منطق و JSX داخلش رو همونی که داری نگه دار) */}
+  className={
+    "rounded-2xl border p-3 " +
+    (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")
+  }
+>
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div>
+      <div className={labelCls}>عنوان ضمیمه</div>
+      <input
+        value={formKind === "incoming" ? incomingAttachmentTitle : formKind === "outgoing" ? outgoingAttachmentTitle : internalAttachmentTitle}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (formKind === "incoming") setIncomingAttachmentTitle(v);
+          else if (formKind === "outgoing") setOutgoingAttachmentTitle(v);
+          else setInternalAttachmentTitle(v);
+        }}
+        className={inputCls}
+        type="text"
+        placeholder="اختیاری"
+      />
     </div>
+
+    <div>
+      <div className={labelCls}>آپلود و الصاق فایل‌ها</div>
+      <button type="button" onClick={() => openUpload(formKind)} className={uploadTriggerCls}>
+        انتخاب / آپلود فایل
+      </button>
+    </div>
+  </div>
+
+  <div className="mt-3 space-y-2">
+    {(Array.isArray(docFilesByType?.[formKind]) ? docFilesByType[formKind] : []).length === 0 ? (
+      <div className={theme === "dark" ? "text-white/50 text-xs" : "text-neutral-500 text-xs"}>فایلی انتخاب نشده است.</div>
+    ) : (
+      (Array.isArray(docFilesByType?.[formKind]) ? docFilesByType[formKind] : []).map((f) => (
+        <div
+          key={f.id}
+          className={
+            "flex items-center justify-between gap-2 rounded-xl border px-3 py-2 " +
+            (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
+          }
+        >
+          <div className="min-w-0">
+            <div className="text-sm font-semibold truncate">{f.name}</div>
+            <div className={theme === "dark" ? "text-white/50 text-xs" : "text-neutral-500 text-xs"}>
+              {formatBytes(f.size)} • {f.status === "uploading" ? `در حال آپلود ${toFaDigits(f.progress || 0)}%` : f.status === "done" ? "آماده" : f.status}
+            </div>
+          </div>
+
+          <button type="button" onClick={() => removeDocFile(formKind, f.id)} className={iconBtnCls} aria-label="حذف" title="حذف">
+            <img
+              src="/images/icons/hazf.svg"
+              alt=""
+              className="w-5 h-5"
+              style={{
+                filter:
+                  "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
+              }}
+            />
+          </button>
+        </div>
+      ))
+    )}
+  </div>
+</div>
+
 
     <div>
       <div className={labelCls}>برچسب ها</div>
@@ -2660,24 +2744,117 @@ const ensureTagsForKind = async (kind) => {
 
                             <div className="py-2">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div className="grid grid-cols-12 gap-2">
-                                  <div className={"col-span-4 text-xs font-semibold " + (theme === "dark" ? "text-white/70" : "text-neutral-600")}>
-                                    شماره
-                                  </div>
-                                  <div className={"col-span-8 text-sm " + (theme === "dark" ? "text-white" : "text-neutral-900")}>
-                                    {viewLetter ? toFaDigits(letterNoOf(viewLetter) || "") : "—"}
-                                  </div>
-                                </div>
+  <div>
+    <div className={labelCls}>بازگشت</div>
+    <div className="space-y-2">
+      {(Array.isArray(returnToIds) ? returnToIds : [""]).map((val, idx) => (
+        <div key={idx} className="flex items-center gap-2">
+          <input
+            value={val}
+            onChange={(e) => {
+              const v = e.target.value;
+              setReturnToIds((prev) => {
+                const arr = Array.isArray(prev) ? [...prev] : [""];
+                arr[idx] = v;
+                return arr;
+              });
+            }}
+            className={inputCls}
+            type="text"
+            placeholder="شماره/کد بازگشت"
+          />
 
-                                <div className="grid grid-cols-12 gap-2">
-                                  <div className={"col-span-4 text-xs font-semibold " + (theme === "dark" ? "text-white/70" : "text-neutral-600")}>
-                                    تاریخ
-                                  </div>
-                                  <div className={"col-span-8 text-sm " + (theme === "dark" ? "text-white" : "text-neutral-900")}>
-                                    {viewLetter ? toFaDigits(letterDateOf(viewLetter) || "") : "—"}
-                                  </div>
-                                </div>
-                              </div>
+          <button
+            type="button"
+            onClick={() => setReturnToIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
+            className={iconBtnCls}
+            aria-label="افزودن"
+            title="افزودن"
+          >
+            <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
+          </button>
+
+          {idx > 0 && (
+            <button
+              type="button"
+              onClick={() =>
+                setReturnToIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))
+              }
+              className={iconBtnCls}
+              aria-label="حذف"
+              title="حذف"
+            >
+              <img
+                src="/images/icons/hazf.svg"
+                alt=""
+                className="w-5 h-5"
+                style={{
+                  filter:
+                    "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
+                }}
+              />
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  </div>
+
+  <div>
+    <div className={labelCls}>پیرو</div>
+    <div className="space-y-2">
+      {(Array.isArray(piroIds) ? piroIds : [""]).map((val, idx) => (
+        <div key={idx} className="flex items-center gap-2">
+          <input
+            value={val}
+            onChange={(e) => {
+              const v = e.target.value;
+              setPiroIds((prev) => {
+                const arr = Array.isArray(prev) ? [...prev] : [""];
+                arr[idx] = v;
+                return arr;
+              });
+            }}
+            className={inputCls}
+            type="text"
+            placeholder="شماره/کد پیرو"
+          />
+
+          <button
+            type="button"
+            onClick={() => setPiroIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
+            className={iconBtnCls}
+            aria-label="افزودن"
+            title="افزودن"
+          >
+            <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
+          </button>
+
+          {idx > 0 && (
+            <button
+              type="button"
+              onClick={() => setPiroIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))}
+              className={iconBtnCls}
+              aria-label="حذف"
+              title="حذف"
+            >
+              <img
+                src="/images/icons/hazf.svg"
+                alt=""
+                className="w-5 h-5"
+                style={{
+                  filter:
+                    "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
+                }}
+              />
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  </div>
+</div>
+
                             </div>
 
                             <InfoRow
