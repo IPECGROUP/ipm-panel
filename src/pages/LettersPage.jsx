@@ -2315,95 +2315,12 @@ const ensureTagsForKind = async (kind) => {
       </div>
     )}
 
-    <div>
-      <div className={labelCls}>موضوع</div>
-      <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputCls} type="text" />
-    </div>
-    {/* ضمیمه: دارد/ندارد + عنوان ضمیمه (فقط وقتی دارد) */}
-<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-  <div className="md:col-span-1">
-    <div className={labelCls}>ضمیمه</div>
-    <select
-      value={hasAttachment ? "1" : "0"}
-      onChange={(e) => {
-        const v = e.target.value === "1";
-        setHasAttachment(v);
-
-        // اگر "ندارد" شد عنوان ضمیمه رو هم خالی کن
-        if (!v) {
-          if (formKind === "incoming") setIncomingAttachmentTitle("");
-          else if (formKind === "outgoing") setOutgoingAttachmentTitle("");
-          else setInternalAttachmentTitle("");
-        }
-      }}
-      className={inputCls}
-    >
-      <option value="0">ندارد</option>
-      <option value="1">دارد</option>
-    </select>
-  </div>
-
-  {hasAttachment && (
-    <div className="md:col-span-2">
-      <div className={labelCls}>عنوان ضمیمه</div>
-      <input
-        value={
-          formKind === "incoming"
-            ? incomingAttachmentTitle
-            : formKind === "outgoing"
-            ? outgoingAttachmentTitle
-            : internalAttachmentTitle
-        }
-        onChange={(e) => {
-          const v = e.target.value;
-          if (formKind === "incoming") setIncomingAttachmentTitle(v);
-          else if (formKind === "outgoing") setOutgoingAttachmentTitle(v);
-          else setInternalAttachmentTitle(v);
-        }}
-        className={inputCls}
-        type="text"
-      />
-    </div>
-  )}
+   <div>
+  <div className={labelCls}>موضوع</div>
+  <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputCls} type="text" />
 </div>
 
-
-    {/* Attachment block (title + returnTo/piro + upload) */}
-{/* ضمیمه (چک‌باکس) + عنوان ضمیمه + بازگشت/پیرو کنار عنوان */}
-<div className="space-y-3">
-  {/* ضمیمه: checkbox */}
-  <div className="flex items-center gap-2">
-    <input
-      id="hasAttachmentChk"
-      type="checkbox"
-      checked={!!hasAttachment}
-      onChange={(e) => {
-        const v = !!e.target.checked;
-        setHasAttachment(v);
-
-        // اگر "ندارد" شد عنوان ضمیمه رو خالی کن
-        if (!v) {
-          if (formKind === "incoming") setIncomingAttachmentTitle("");
-          else if (formKind === "outgoing") setOutgoingAttachmentTitle("");
-          else setInternalAttachmentTitle("");
-        }
-      }}
-      className={
-        "h-5 w-5 rounded border " +
-        (theme === "dark"
-          ? "border-white/20 bg-white/10 accent-white"
-          : "border-black/20 bg-white accent-black")
-      }
-    />
-    <label
-      htmlFor="hasAttachmentChk"
-      className={theme === "dark" ? "text-white/80 text-sm font-semibold" : "text-neutral-800 text-sm font-semibold"}
-    >
-      ضمیمه دارد
-    </label>
-  </div>
-
-  {/* Attachment block (ضمیمه + عنوان ضمیمه + بازگشت/پیرو + بارگذاری) — بدون شرط نمایش */}
+{/* ضمیمه (رادیویی دارد/ندارد) + عنوان ضمیمه + بازگشت/پیرو کنار عنوان — بدون شرط نمایش */}
 <div
   className={
     "rounded-2xl border p-3 " +
@@ -2417,50 +2334,38 @@ const ensureTagsForKind = async (kind) => {
       <div
         className={
           "grid gap-3 items-start " +
-          (formKind === "outgoing"
-            ? "grid-cols-1 md:grid-cols-4"
-            : "grid-cols-1 md:grid-cols-3")
+          (formKind === "outgoing" ? "grid-cols-1 md:grid-cols-4" : "grid-cols-1 md:grid-cols-3")
         }
       >
-        {/* ضمیمه: دو گزینه دایره‌ای (دارد/ندارد) */}
+        {/* ضمیمه: دو گزینه دایره‌ای (دارد/ندارد) — بدون دراپ‌داون */}
         <div>
           <div className={labelCls}>ضمیمه</div>
           <div className="flex items-center gap-4 mt-1">
-            <label className="inline-flex items-center gap-2 cursor-pointer">
+            <label className="inline-flex items-center gap-2 cursor-pointer select-none">
               <input
                 type="radio"
                 name="hasAttachmentRadio"
                 checked={!!hasAttachment}
                 onChange={() => setHasAttachment(true)}
-                className={
-                  "h-4 w-4 " +
-                  (theme === "dark"
-                    ? "accent-white"
-                    : "accent-black")
-                }
+                className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
               />
               <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>دارد</span>
             </label>
 
-            <label className="inline-flex items-center gap-2 cursor-pointer">
+            <label className="inline-flex items-center gap-2 cursor-pointer select-none">
               <input
                 type="radio"
                 name="hasAttachmentRadio"
                 checked={!hasAttachment}
                 onChange={() => setHasAttachment(false)}
-                className={
-                  "h-4 w-4 " +
-                  (theme === "dark"
-                    ? "accent-white"
-                    : "accent-black")
-                }
+                className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
               />
               <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>ندارد</span>
             </label>
           </div>
         </div>
 
-        {/* عنوان ضمیمه (کوچک‌تر) */}
+        {/* عنوان ضمیمه — همیشه نمایش داده می‌شود */}
         <div>
           <div className={labelCls}>عنوان ضمیمه</div>
           <input
@@ -2522,9 +2427,7 @@ const ensureTagsForKind = async (kind) => {
                     <button
                       type="button"
                       onClick={() =>
-                        setReturnToIds((prev) =>
-                          Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]
-                        )
+                        setReturnToIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))
                       }
                       className={addIconBtnCls + " h-10 w-10"}
                       aria-label="حذف"
@@ -2592,9 +2495,7 @@ const ensureTagsForKind = async (kind) => {
                       <button
                         type="button"
                         onClick={() =>
-                          setPiroIds((prev) =>
-                            Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]
-                          )
+                          setPiroIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))
                         }
                         className={addIconBtnCls + " h-10 w-10"}
                         aria-label="حذف"
@@ -2623,7 +2524,7 @@ const ensureTagsForKind = async (kind) => {
         )}
       </div>
 
-      {/* بارگذاری نامه و الصاق فایل ها (کوچک‌تر + آیکن چسبیده به متن) */}
+      {/* بارگذاری نامه و الصاق فایل ها */}
       <div>
         <button
           type="button"
