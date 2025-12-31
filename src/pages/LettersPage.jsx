@@ -2576,7 +2576,6 @@ const ensureTagsForKind = async (kind) => {
   </div>
 </div>
 
-
     <div>
       <div className={labelCls}>برچسب ها</div>
       <div className="flex flex-wrap items-center gap-2">
