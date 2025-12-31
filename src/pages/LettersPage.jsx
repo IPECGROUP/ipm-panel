@@ -2388,9 +2388,21 @@ const ensureTagsForKind = async (kind) => {
         <div>
           <div className={labelCls}>بازگشت به</div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 justify-start">
+            {/* دکمه افزودن سمت چپ (از نظر RTL) */}
+            <button
+              type="button"
+              onClick={() => setReturnToIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
+              className={addIconBtnCls + " h-10 w-10 order-1"}
+              aria-label="افزودن"
+              title="افزودن"
+            >
+              <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
+            </button>
+
+            {/* فیلدها از راست به چپ، جدیدها میرن سمت چپ چون آخر آرایه‌ان */}
             {(Array.isArray(returnToIds) ? returnToIds : [""]).map((val, idx) => (
-              <div key={`ret_${idx}`} className="flex items-center gap-2">
+              <div key={`ret_${idx}`} className="flex items-center gap-2 order-2">
                 <select
                   value={val}
                   onChange={(e) => {
@@ -2432,16 +2444,6 @@ const ensureTagsForKind = async (kind) => {
                 )}
               </div>
             ))}
-
-            <button
-              type="button"
-              onClick={() => setReturnToIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
-              className={addIconBtnCls + " h-10 w-10"}
-              aria-label="افزودن"
-              title="افزودن"
-            >
-              <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
-            </button>
           </div>
         </div>
 
@@ -2450,9 +2452,21 @@ const ensureTagsForKind = async (kind) => {
           <div>
             <div className={labelCls}>پیرو</div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 justify-start">
+              {/* دکمه افزودن سمت چپ (از نظر RTL) */}
+              <button
+                type="button"
+                onClick={() => setPiroIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
+                className={addIconBtnCls + " h-10 w-10 order-1"}
+                aria-label="افزودن"
+                title="افزودن"
+              >
+                <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
+              </button>
+
+              {/* فیلدها از راست به چپ، جدیدها میرن سمت چپ */}
               {(Array.isArray(piroIds) ? piroIds : [""]).map((val, idx) => (
-                <div key={`piro_${idx}`} className="flex items-center gap-2">
+                <div key={`piro_${idx}`} className="flex items-center gap-2 order-2">
                   <select
                     value={val}
                     onChange={(e) => {
@@ -2494,16 +2508,6 @@ const ensureTagsForKind = async (kind) => {
                   )}
                 </div>
               ))}
-
-              <button
-                type="button"
-                onClick={() => setPiroIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
-                className={addIconBtnCls + " h-10 w-10"}
-                aria-label="افزودن"
-                title="افزودن"
-              >
-                <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
-              </button>
             </div>
           </div>
         )}
@@ -2573,7 +2577,6 @@ const ensureTagsForKind = async (kind) => {
     </div>
   </div>
 </div>
-
 
 
 
