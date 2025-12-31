@@ -2324,7 +2324,7 @@ const ensureTagsForKind = async (kind) => {
 
 {/* ضمیمه (رادیویی دارد/ندارد) + عنوان ضمیمه + بازگشت/پیرو کنار عنوان — بدون شرط نمایش */}
 <div>
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
     {/* راست: ضمیمه + عنوان ضمیمه + بازگشت/پیرو + دکمه بارگذاری */}
     <div className="space-y-3">
       {/* ردیف کنارهم: ضمیمه(دارد/ندارد) + عنوان ضمیمه + بازگشت به (+ پیرو در صادره) */}
