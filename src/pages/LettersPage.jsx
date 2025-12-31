@@ -808,9 +808,11 @@ const mergePinnedFilterTags = (ids) => {
 
 // ✅ فقط برای بعضی فیلدها (بدون border)
 const inputNoBorderCls =
-  theme === "dark"
-    ? "w-full h-10 px-3 rounded-xl outline-none transition text-right bg-white/5 text-white placeholder:text-white/40 focus:bg-white/10"
-    : "w-full h-10 px-3 rounded-xl outline-none transition text-right bg-white text-neutral-900 placeholder:text-neutral-400 focus:bg-black/[0.02]";
+  "w-full h-10 px-3 rounded-xl !border-0 outline-none ring-0 focus:ring-0 focus:outline-none focus-visible:outline-none transition text-right " +
+  (theme === "dark"
+    ? "bg-white/5 text-white placeholder:text-white/40 focus:bg-white/10"
+    : "bg-white text-neutral-900 placeholder:text-neutral-400 focus:bg-black/[0.02]");
+
 
 // ✅ دکمه‌ی دیت‌پیکر فیلترها بدون border
 const filterDateBtnNoBorderCls =
@@ -2076,7 +2078,7 @@ const ensureTagsForKind = async (kind) => {
 
                 <div className="min-w-[180px] flex-1">
 
-                  <div className={inputNoBorderCls}>شرکت/سازمان</div>
+                  <div className={labelCls}>شرکت/سازمان</div>
                   <input
                     value={filterOrg}
                     onChange={(e) => setFilterOrg(e.target.value)}
@@ -2103,25 +2105,23 @@ const ensureTagsForKind = async (kind) => {
 
                   <div className={labelCls}>از</div>
                   <JalaliPopupDatePicker
-                    value={filterFromDate}
-                    onChange={(v) => {
-                      setFilterFromDate(v);
-                      setFilterQuick(""); // ✅
-                    }}
-                    theme={theme}
-                  />
+  value={filterFromDate}
+  onChange={(v) => { setFilterFromDate(v); setFilterQuick(""); }}
+  theme={theme}
+  buttonClassName={filterDateBtnNoBorderCls}
+/>
+
                 </div>
 
                 <div className="min-w-[140px]">
                   <div className={labelCls}>تا</div>
                   <JalaliPopupDatePicker
-                    value={filterToDate}
-                    onChange={(v) => {
-                      setFilterToDate(v);
-                      setFilterQuick(""); // ✅
-                    }}
-                    theme={theme}
-                  />
+  value={filterToDate}
+  onChange={(v) => { setFilterToDate(v); setFilterQuick(""); }}
+  theme={theme}
+  buttonClassName={filterDateBtnNoBorderCls}
+/>
+
                 </div>
               </div>
 
@@ -2297,19 +2297,20 @@ const ensureTagsForKind = async (kind) => {
         <div className={formGridCls + " grid-cols-1 md:grid-cols-12"}>
           <div className={formCellCls + " md:col-span-4"}>
             <div className={labelCls}>از</div>
-            <input value={fromName} onChange={(e) => setFromName(e.target.value)} className={inputCls} type="text" />
+            <input value={fromName} onChange={(e) => setFromName(e.target.value)} className={inputNoBorderCls} type="text" />
           </div>
 
           {formKind === "outgoing" ? (
             <>
               <div className={formCellCls + " md:col-span-4"}>
                 <div className={labelCls}>به</div>
-                <input value={toName} onChange={(e) => setToName(e.target.value)} className={inputCls} type="text" />
+                <input value={toName} onChange={(e) => setToName(e.target.value)} className={inputNoBorderCls} type="text" />
               </div>
 
               <div className={formCellCls + " md:col-span-4"}>
                 <div className={labelCls}>شرکت/سازمان</div>
-                <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputCls} type="text" />
+                <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputNoBorderCls} type="text" />
+
               </div>
             </>
           ) : (
