@@ -806,22 +806,6 @@ const mergePinnedFilterTags = (ids) => {
       ? inputBase + " border-white/15 bg-white/5 text-white placeholder:text-white/40 focus:bg-white/10"
       : inputBase + " border-black/10 bg-white text-neutral-900 placeholder:text-neutral-400 focus:bg-black/[0.02]";
 
-// ✅ فقط برای بعضی فیلدها (بدون border)
-const inputNoBorderCls =
-  "w-full h-10 px-3 rounded-xl !border-0 outline-none ring-0 focus:ring-0 focus:outline-none focus-visible:outline-none transition text-right " +
-  (theme === "dark"
-    ? "bg-white/5 text-white placeholder:text-white/40 focus:bg-white/10"
-    : "bg-white text-neutral-900 placeholder:text-neutral-400 focus:bg-black/[0.02]");
-
-
-// ✅ دکمه‌ی دیت‌پیکر فیلترها بدون border
-const filterDateBtnNoBorderCls =
-  "w-full h-11 px-3 rounded-xl text-right flex items-center justify-between gap-2 transition " +
-  (theme === "dark"
-    ? "bg-white/5 text-white/90 hover:bg-white/10"
-    : "bg-white text-neutral-900 hover:bg-black/[0.02]");
-
-
   const labelCls = theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1";
 
 
@@ -2105,23 +2089,25 @@ const ensureTagsForKind = async (kind) => {
 
                   <div className={labelCls}>از</div>
                   <JalaliPopupDatePicker
-  value={filterFromDate}
-  onChange={(v) => { setFilterFromDate(v); setFilterQuick(""); }}
-  theme={theme}
-  buttonClassName={filterDateBtnNoBorderCls}
-/>
-
+                    value={filterFromDate}
+                    onChange={(v) => {
+                      setFilterFromDate(v);
+                      setFilterQuick(""); // ✅
+                    }}
+                    theme={theme}
+                  />
                 </div>
 
                 <div className="min-w-[140px]">
                   <div className={labelCls}>تا</div>
                   <JalaliPopupDatePicker
-  value={filterToDate}
-  onChange={(v) => { setFilterToDate(v); setFilterQuick(""); }}
-  theme={theme}
-  buttonClassName={filterDateBtnNoBorderCls}
-/>
-
+                    value={filterToDate}
+                    onChange={(v) => {
+                      setFilterToDate(v);
+                      setFilterQuick(""); // ✅
+                    }}
+                    theme={theme}
+                  />
                 </div>
               </div>
 
@@ -2297,20 +2283,19 @@ const ensureTagsForKind = async (kind) => {
         <div className={formGridCls + " grid-cols-1 md:grid-cols-12"}>
           <div className={formCellCls + " md:col-span-4"}>
             <div className={labelCls}>از</div>
-            <input value={fromName} onChange={(e) => setFromName(e.target.value)} className={inputNoBorderCls} type="text" />
+            <input value={fromName} onChange={(e) => setFromName(e.target.value)} className={inputCls} type="text" />
           </div>
 
           {formKind === "outgoing" ? (
             <>
               <div className={formCellCls + " md:col-span-4"}>
                 <div className={labelCls}>به</div>
-                <input value={toName} onChange={(e) => setToName(e.target.value)} className={inputNoBorderCls} type="text" />
+                <input value={toName} onChange={(e) => setToName(e.target.value)} className={inputCls} type="text" />
               </div>
 
               <div className={formCellCls + " md:col-span-4"}>
                 <div className={labelCls}>شرکت/سازمان</div>
-                <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputNoBorderCls} type="text" />
-
+                <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputCls} type="text" />
               </div>
             </>
           ) : (
@@ -2340,6 +2325,7 @@ const ensureTagsForKind = async (kind) => {
 {/* ضمیمه (رادیویی دارد/ندارد) + عنوان ضمیمه + بازگشت/پیرو کنار عنوان — بدون شرط نمایش */}
 <div>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+
     {/* راست: ضمیمه + عنوان ضمیمه + بازگشت/پیرو + دکمه بارگذاری */}
     <div className="space-y-3">
       {/* ردیف کنارهم: ضمیمه(دارد/ندارد) + عنوان ضمیمه + بازگشت به (+ پیرو در صادره) */}
