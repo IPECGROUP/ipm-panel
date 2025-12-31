@@ -2286,7 +2286,8 @@ const ensureTagsForKind = async (kind) => {
         <input
           value={fromName}
           onChange={(e) => setFromName(e.target.value)}
-          className={inputCls + " border-0 bg-transparent focus:bg-transparent"}
+          className={inputCls}
+
           type="text"
         />
       </div>
@@ -2298,7 +2299,7 @@ const ensureTagsForKind = async (kind) => {
             <input
               value={toName}
               onChange={(e) => setToName(e.target.value)}
-              className={inputCls + " border-0 bg-transparent focus:bg-transparent"}
+              className={inputCls}
               type="text"
             />
           </div>
@@ -2308,7 +2309,7 @@ const ensureTagsForKind = async (kind) => {
             <input
               value={orgName}
               onChange={(e) => setOrgName(e.target.value)}
-              className={inputCls + " border-0 bg-transparent focus:bg-transparent"}
+              className={inputCls}
               type="text"
             />
           </div>
@@ -2320,7 +2321,7 @@ const ensureTagsForKind = async (kind) => {
             <input
               value={orgName}
               onChange={(e) => setOrgName(e.target.value)}
-              className={inputCls + " border-0 bg-transparent focus:bg-transparent"}
+              className={inputCls}
               type="text"
             />
           </div>
@@ -2330,7 +2331,7 @@ const ensureTagsForKind = async (kind) => {
             <input
               value={toName}
               onChange={(e) => setToName(e.target.value)}
-              className={inputCls + " border-0 bg-transparent focus:bg-transparent"}
+              className={inputCls}
               type="text"
             />
           </div>
