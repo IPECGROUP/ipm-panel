@@ -2388,21 +2388,10 @@ const ensureTagsForKind = async (kind) => {
         <div>
           <div className={labelCls}>بازگشت به</div>
 
-          <div className="flex flex-wrap items-center gap-2 justify-start">
-            {/* دکمه افزودن سمت چپ (از نظر RTL) */}
-            <button
-              type="button"
-              onClick={() => setReturnToIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
-              className={addIconBtnCls + " h-10 w-10 order-1"}
-              aria-label="افزودن"
-              title="افزودن"
-            >
-              <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
-            </button>
-
-            {/* فیلدها از راست به چپ، جدیدها میرن سمت چپ چون آخر آرایه‌ان */}
+          {/* nowrap + اسکرول افقی: دکمه کنار فیلد می‌ماند و فیلد جدید سمت چپ اضافه می‌شود */}
+          <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">
             {(Array.isArray(returnToIds) ? returnToIds : [""]).map((val, idx) => (
-              <div key={`ret_${idx}`} className="flex items-center gap-2 order-2">
+              <div key={`ret_${idx}`} className="flex items-center gap-2 shrink-0">
                 <select
                   value={val}
                   onChange={(e) => {
@@ -2413,7 +2402,7 @@ const ensureTagsForKind = async (kind) => {
                       return arr;
                     });
                   }}
-                  className={inputCls + " h-10 text-sm w-[240px]"}
+                  className={inputCls + " h-10 text-sm w-[240px] shrink-0"}
                 >
                   <option value=""></option>
                   {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
@@ -2435,7 +2424,7 @@ const ensureTagsForKind = async (kind) => {
                     onClick={() =>
                       setReturnToIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))
                     }
-                    className={addIconBtnCls + " h-10 w-10"}
+                    className={addIconBtnCls + " h-10 w-10 shrink-0"}
                     aria-label="حذف"
                     title="حذف"
                   >
@@ -2444,6 +2433,17 @@ const ensureTagsForKind = async (kind) => {
                 )}
               </div>
             ))}
+
+            {/* دکمه افزودن: آخر لیست => در RTL می‌رود سمت چپ؛ کوچک‌تر هم شد */}
+            <button
+              type="button"
+              onClick={() => setReturnToIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
+              className={addIconBtnCls + " h-9 w-9 shrink-0"}
+              aria-label="افزودن"
+              title="افزودن"
+            >
+              <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
+            </button>
           </div>
         </div>
 
@@ -2452,21 +2452,10 @@ const ensureTagsForKind = async (kind) => {
           <div>
             <div className={labelCls}>پیرو</div>
 
-            <div className="flex flex-wrap items-center gap-2 justify-start">
-              {/* دکمه افزودن سمت چپ (از نظر RTL) */}
-              <button
-                type="button"
-                onClick={() => setPiroIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
-                className={addIconBtnCls + " h-10 w-10 order-1"}
-                aria-label="افزودن"
-                title="افزودن"
-              >
-                <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
-              </button>
-
-              {/* فیلدها از راست به چپ، جدیدها میرن سمت چپ */}
+            {/* nowrap + اسکرول افقی: دکمه کنار فیلد می‌ماند و فیلد جدید سمت چپ اضافه می‌شود */}
+            <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">
               {(Array.isArray(piroIds) ? piroIds : [""]).map((val, idx) => (
-                <div key={`piro_${idx}`} className="flex items-center gap-2 order-2">
+                <div key={`piro_${idx}`} className="flex items-center gap-2 shrink-0">
                   <select
                     value={val}
                     onChange={(e) => {
@@ -2477,7 +2466,7 @@ const ensureTagsForKind = async (kind) => {
                         return arr;
                       });
                     }}
-                    className={inputCls + " h-10 text-sm w-[240px]"}
+                    className={inputCls + " h-10 text-sm w-[240px] shrink-0"}
                   >
                     <option value=""></option>
                     {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
@@ -2499,7 +2488,7 @@ const ensureTagsForKind = async (kind) => {
                       onClick={() =>
                         setPiroIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))
                       }
-                      className={addIconBtnCls + " h-10 w-10"}
+                      className={addIconBtnCls + " h-10 w-10 shrink-0"}
                       aria-label="حذف"
                       title="حذف"
                     >
@@ -2508,6 +2497,17 @@ const ensureTagsForKind = async (kind) => {
                   )}
                 </div>
               ))}
+
+              {/* دکمه افزودن: آخر لیست => در RTL می‌رود سمت چپ؛ کوچک‌تر هم شد */}
+              <button
+                type="button"
+                onClick={() => setPiroIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
+                className={addIconBtnCls + " h-9 w-9 shrink-0"}
+                aria-label="افزودن"
+                title="افزودن"
+              >
+                <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
+              </button>
             </div>
           </div>
         )}
