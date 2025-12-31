@@ -806,6 +806,20 @@ const mergePinnedFilterTags = (ids) => {
       ? inputBase + " border-white/15 bg-white/5 text-white placeholder:text-white/40 focus:bg-white/10"
       : inputBase + " border-black/10 bg-white text-neutral-900 placeholder:text-neutral-400 focus:bg-black/[0.02]";
 
+// ✅ فقط برای بعضی فیلدها (بدون border)
+const inputNoBorderCls =
+  theme === "dark"
+    ? "w-full h-10 px-3 rounded-xl outline-none transition text-right bg-white/5 text-white placeholder:text-white/40 focus:bg-white/10"
+    : "w-full h-10 px-3 rounded-xl outline-none transition text-right bg-white text-neutral-900 placeholder:text-neutral-400 focus:bg-black/[0.02]";
+
+// ✅ دکمه‌ی دیت‌پیکر فیلترها بدون border
+const filterDateBtnNoBorderCls =
+  "w-full h-11 px-3 rounded-xl text-right flex items-center justify-between gap-2 transition " +
+  (theme === "dark"
+    ? "bg-white/5 text-white/90 hover:bg-white/10"
+    : "bg-white text-neutral-900 hover:bg-black/[0.02]");
+
+
   const labelCls = theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1";
 
 
@@ -2062,7 +2076,7 @@ const ensureTagsForKind = async (kind) => {
 
                 <div className="min-w-[180px] flex-1">
 
-                  <div className={labelCls}>شرکت/سازمان</div>
+                  <div className={inputNoBorderCls}>شرکت/سازمان</div>
                   <input
                     value={filterOrg}
                     onChange={(e) => setFilterOrg(e.target.value)}
