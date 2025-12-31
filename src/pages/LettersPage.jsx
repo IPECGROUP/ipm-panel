@@ -2279,7 +2279,7 @@ const ensureTagsForKind = async (kind) => {
     </div>
 
     {formKind !== "internal" && (
-  <div className={formGridWrapCls + " p-2"}>
+  <div className={formGridWrapCls + " p-2 border-0"}>
     <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
       <div className="md:col-span-4">
         <div className={labelCls}>از</div>
