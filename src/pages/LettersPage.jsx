@@ -2319,14 +2319,8 @@ const ensureTagsForKind = async (kind) => {
   <div className={labelCls}>موضوع</div>
   <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputCls} type="text" />
 </div>
-
 {/* ضمیمه (رادیویی دارد/ندارد) + عنوان ضمیمه + بازگشت/پیرو کنار عنوان — بدون شرط نمایش */}
-<div
-  className={
-    "rounded-2xl border p-3 " +
-    (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")
-  }
->
+<div>
   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
     {/* راست: ضمیمه + عنوان ضمیمه + بازگشت/پیرو + دکمه بارگذاری */}
     <div className="space-y-3">
@@ -2524,8 +2518,8 @@ const ensureTagsForKind = async (kind) => {
         )}
       </div>
 
-      {/* بارگذاری نامه و الصاق فایل ها */}
-      <div>
+      {/* بارگذاری نامه و الصاق فایل ها + متن "فایلی انتخاب نشده است." کنار دکمه */}
+      <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={() => openUpload(formKind)}
@@ -2543,51 +2537,52 @@ const ensureTagsForKind = async (kind) => {
           />
           <span>بارگذاری نامه و الصاق فایل ها</span>
         </button>
+
+        {(Array.isArray(docFilesByType?.[formKind]) ? docFilesByType[formKind] : []).length === 0 && (
+          <div className={theme === "dark" ? "text-white/50 text-xs" : "text-neutral-500 text-xs"}>
+            فایلی انتخاب نشده است.
+          </div>
+        )}
       </div>
     </div>
 
     {/* چپ: لیست فایل‌ها */}
     <div className="space-y-2">
-      {(Array.isArray(docFilesByType?.[formKind]) ? docFilesByType[formKind] : []).length === 0 ? (
-        <div className={theme === "dark" ? "text-white/50 text-xs" : "text-neutral-500 text-xs"}>
-          فایلی انتخاب نشده است.
-        </div>
-      ) : (
-        (Array.isArray(docFilesByType?.[formKind]) ? docFilesByType[formKind] : []).map((f) => (
-          <div
-            key={f.id}
-            className={
-              "flex items-center justify-between gap-2 rounded-xl border px-3 py-2 " +
-              (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
-            }
-          >
-            <div className="min-w-0">
-              <div className="text-sm font-semibold truncate">{f.name}</div>
-              <div className={theme === "dark" ? "text-white/50 text-xs" : "text-neutral-500 text-xs"}>
-                {formatBytes(f.size)} •{" "}
-                {f.status === "uploading"
-                  ? `در حال آپلود ${toFaDigits(f.progress || 0)}%`
-                  : f.status === "done"
-                  ? "آماده"
-                  : f.status}
-              </div>
+      {(Array.isArray(docFilesByType?.[formKind]) ? docFilesByType[formKind] : []).map((f) => (
+        <div
+          key={f.id}
+          className={
+            "flex items-center justify-between gap-2 rounded-xl border px-3 py-2 " +
+            (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
+          }
+        >
+          <div className="min-w-0">
+            <div className="text-sm font-semibold truncate">{f.name}</div>
+            <div className={theme === "dark" ? "text-white/50 text-xs" : "text-neutral-500 text-xs"}>
+              {formatBytes(f.size)} •{" "}
+              {f.status === "uploading"
+                ? `در حال آپلود ${toFaDigits(f.progress || 0)}%`
+                : f.status === "done"
+                ? "آماده"
+                : f.status}
             </div>
-
-            <button
-              type="button"
-              onClick={() => removeDocFile(formKind, f.id)}
-              className={iconBtnCls}
-              aria-label="حذف"
-              title="حذف"
-            >
-              <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
-            </button>
           </div>
-        ))
-      )}
+
+          <button
+            type="button"
+            onClick={() => removeDocFile(formKind, f.id)}
+            className={iconBtnCls}
+            aria-label="حذف"
+            title="حذف"
+          >
+            <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
+          </button>
+        </div>
+      ))}
     </div>
   </div>
 </div>
+
 
 
 
