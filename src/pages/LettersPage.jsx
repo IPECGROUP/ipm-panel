@@ -2388,10 +2388,10 @@ const ensureTagsForKind = async (kind) => {
         <div>
           <div className={labelCls}>بازگشت به</div>
 
-          {/* flex-wrap: ابتدا فیلدها، سپس دکمه افزودن در انتها */}
-          <div className="flex flex-wrap items-start gap-2">
+          {/* بدون wrap - همه کنار هم با اسکرول افقی */}
+          <div className="flex items-center gap-2 overflow-x-auto">
             {(Array.isArray(returnToIds) ? returnToIds : [""]).map((val, idx) => (
-              <div key={`ret_${idx}`} className="flex items-center gap-2">
+              <div key={`ret_${idx}`} className="flex items-center gap-2 shrink-0">
                 <select
                   value={val}
                   onChange={(e) => {
@@ -2402,7 +2402,7 @@ const ensureTagsForKind = async (kind) => {
                       return arr;
                     });
                   }}
-                  className={inputCls + " h-10 text-sm w-[220px] min-w-[180px] max-w-full"}
+                  className={inputCls + " h-10 text-sm w-[220px]"}
                 >
                   <option value=""></option>
                   {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
@@ -2424,7 +2424,7 @@ const ensureTagsForKind = async (kind) => {
                     onClick={() =>
                       setReturnToIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))
                     }
-                    className={addIconBtnCls + " h-10 w-10"}
+                    className={addIconBtnCls + " h-10 w-10 shrink-0"}
                     aria-label="حذف"
                     title="حذف"
                   >
@@ -2437,7 +2437,7 @@ const ensureTagsForKind = async (kind) => {
             <button
               type="button"
               onClick={() => setReturnToIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
-              className={addIconBtnCls + " h-10 w-10"}
+              className={addIconBtnCls + " h-10 w-10 shrink-0"}
               aria-label="افزودن"
               title="افزودن"
             >
@@ -2451,10 +2451,10 @@ const ensureTagsForKind = async (kind) => {
           <div>
             <div className={labelCls}>پیرو</div>
 
-            {/* flex-wrap: ابتدا فیلدها، سپس دکمه افزودن در انتها */}
-            <div className="flex flex-wrap items-start gap-2">
+            {/* بدون wrap - همه کنار هم با اسکرول افقی */}
+            <div className="flex items-center gap-2 overflow-x-auto">
               {(Array.isArray(piroIds) ? piroIds : [""]).map((val, idx) => (
-                <div key={`piro_${idx}`} className="flex items-center gap-2">
+                <div key={`piro_${idx}`} className="flex items-center gap-2 shrink-0">
                   <select
                     value={val}
                     onChange={(e) => {
@@ -2465,7 +2465,7 @@ const ensureTagsForKind = async (kind) => {
                         return arr;
                       });
                     }}
-                    className={inputCls + " h-10 text-sm w-[220px] min-w-[180px] max-w-full"}
+                    className={inputCls + " h-10 text-sm w-[220px]"}
                   >
                     <option value=""></option>
                     {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
@@ -2487,7 +2487,7 @@ const ensureTagsForKind = async (kind) => {
                       onClick={() =>
                         setPiroIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))
                       }
-                      className={addIconBtnCls + " h-10 w-10"}
+                      className={addIconBtnCls + " h-10 w-10 shrink-0"}
                       aria-label="حذف"
                       title="حذف"
                     >
@@ -2500,7 +2500,7 @@ const ensureTagsForKind = async (kind) => {
               <button
                 type="button"
                 onClick={() => setPiroIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
-                className={addIconBtnCls + " h-10 w-10"}
+                className={addIconBtnCls + " h-10 w-10 shrink-0"}
                 aria-label="افزودن"
                 title="افزودن"
               >
@@ -2575,6 +2575,7 @@ const ensureTagsForKind = async (kind) => {
     </div>
   </div>
 </div>
+
 
     <div>
       <div className={labelCls}>برچسب ها</div>
