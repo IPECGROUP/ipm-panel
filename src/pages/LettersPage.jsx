@@ -2389,10 +2389,9 @@ const ensureTagsForKind = async (kind) => {
           <div className={labelCls}>بازگشت به</div>
 
           {/* بدون wrap - همه کنار هم با اسکرول افقی */}
-          <div className="flex flex-nowrap items-center gap-2 overflow-x-auto">
-
+          <div className="flex flex-wrap items-center gap-2">
             {(Array.isArray(returnToIds) ? returnToIds : [""]).map((val, idx) => (
-              <div key={`ret_${idx}`} className="flex items-center gap-2 shrink-0">
+              <div key={`ret_${idx}`} className="flex items-center gap-2">
                 <select
                   value={val}
                   onChange={(e) => {
@@ -2453,9 +2452,9 @@ const ensureTagsForKind = async (kind) => {
             <div className={labelCls}>پیرو</div>
 
             {/* بدون wrap - همه کنار هم با اسکرول افقی */}
-           <div className="flex flex-nowrap items-center gap-2 overflow-x-auto">
+           <div className="flex flex-wrap items-center gap-2">
               {(Array.isArray(piroIds) ? piroIds : [""]).map((val, idx) => (
-                <div key={`piro_${idx}`} className="flex items-center gap-2 shrink-0">
+                <div key={`piro_${idx}`} className="flex items-center gap-2">
                   <select
                     value={val}
                     onChange={(e) => {
@@ -2579,8 +2578,7 @@ const ensureTagsForKind = async (kind) => {
 
     <div>
       <div className={labelCls}>برچسب ها</div>
-      <div className="flex flex-nowrap items-center gap-2 overflow-x-auto">
-
+      <div className="flex flex-wrap items-center gap-2">
         {tagCapsFor(formKind === "incoming" ? incomingTagIds : formKind === "outgoing" ? outgoingTagIds : internalTagIds).map((t) => {
           const id = String(t?.id);
           const label = tagLabelOf(t);
