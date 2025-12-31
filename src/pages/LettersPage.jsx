@@ -2388,10 +2388,10 @@ const ensureTagsForKind = async (kind) => {
         <div>
           <div className={labelCls}>بازگشت به</div>
 
-          {/* nowrap + اسکرول افقی: دکمه کنار فیلد می‌ماند و فیلد جدید سمت چپ اضافه می‌شود */}
-          <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">
+          {/* بدون اسکرول؛ تا وقتی جا هست کنار هم می‌چینیم و جدیدها سمت چپ اضافه می‌شن */}
+          <div className="flex flex-wrap items-center gap-2">
             {(Array.isArray(returnToIds) ? returnToIds : [""]).map((val, idx) => (
-              <div key={`ret_${idx}`} className="flex items-center gap-2 shrink-0">
+              <div key={`ret_${idx}`} className="flex items-center gap-2">
                 <select
                   value={val}
                   onChange={(e) => {
@@ -2402,7 +2402,7 @@ const ensureTagsForKind = async (kind) => {
                       return arr;
                     });
                   }}
-                  className={inputCls + " h-10 text-sm w-[240px] shrink-0"}
+                  className={inputCls + " h-10 text-sm w-[220px] min-w-[180px] max-w-full"}
                 >
                   <option value=""></option>
                   {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
@@ -2424,7 +2424,7 @@ const ensureTagsForKind = async (kind) => {
                     onClick={() =>
                       setReturnToIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))
                     }
-                    className={addIconBtnCls + " h-10 w-10 shrink-0"}
+                    className={addIconBtnCls + " h-10 w-10"}
                     aria-label="حذف"
                     title="حذف"
                   >
@@ -2434,11 +2434,11 @@ const ensureTagsForKind = async (kind) => {
               </div>
             ))}
 
-            {/* دکمه افزودن: آخر لیست => در RTL می‌رود سمت چپ؛ کوچک‌تر هم شد */}
+            {/* دکمه افزودن: در DOM آخره => در RTL میاد سمت چپ فیلدها؛ کوچک‌تر هم شد */}
             <button
               type="button"
               onClick={() => setReturnToIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
-              className={addIconBtnCls + " h-9 w-9 shrink-0"}
+              className={addIconBtnCls + " h-9 w-9"}
               aria-label="افزودن"
               title="افزودن"
             >
@@ -2452,10 +2452,10 @@ const ensureTagsForKind = async (kind) => {
           <div>
             <div className={labelCls}>پیرو</div>
 
-            {/* nowrap + اسکرول افقی: دکمه کنار فیلد می‌ماند و فیلد جدید سمت چپ اضافه می‌شود */}
-            <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">
+            {/* بدون اسکرول؛ تا وقتی جا هست کنار هم می‌چینیم و جدیدها سمت چپ اضافه می‌شن */}
+            <div className="flex flex-wrap items-center gap-2">
               {(Array.isArray(piroIds) ? piroIds : [""]).map((val, idx) => (
-                <div key={`piro_${idx}`} className="flex items-center gap-2 shrink-0">
+                <div key={`piro_${idx}`} className="flex items-center gap-2">
                   <select
                     value={val}
                     onChange={(e) => {
@@ -2466,7 +2466,7 @@ const ensureTagsForKind = async (kind) => {
                         return arr;
                       });
                     }}
-                    className={inputCls + " h-10 text-sm w-[240px] shrink-0"}
+                    className={inputCls + " h-10 text-sm w-[220px] min-w-[180px] max-w-full"}
                   >
                     <option value=""></option>
                     {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
@@ -2488,7 +2488,7 @@ const ensureTagsForKind = async (kind) => {
                       onClick={() =>
                         setPiroIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))
                       }
-                      className={addIconBtnCls + " h-10 w-10 shrink-0"}
+                      className={addIconBtnCls + " h-10 w-10"}
                       aria-label="حذف"
                       title="حذف"
                     >
@@ -2498,11 +2498,11 @@ const ensureTagsForKind = async (kind) => {
                 </div>
               ))}
 
-              {/* دکمه افزودن: آخر لیست => در RTL می‌رود سمت چپ؛ کوچک‌تر هم شد */}
+              {/* دکمه افزودن: در DOM آخره => در RTL میاد سمت چپ فیلدها؛ کوچک‌تر هم شد */}
               <button
                 type="button"
                 onClick={() => setPiroIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
-                className={addIconBtnCls + " h-9 w-9 shrink-0"}
+                className={addIconBtnCls + " h-9 w-9"}
                 aria-label="افزودن"
                 title="افزودن"
               >
@@ -2577,6 +2577,7 @@ const ensureTagsForKind = async (kind) => {
     </div>
   </div>
 </div>
+
 
 
 
