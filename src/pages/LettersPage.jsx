@@ -2319,6 +2319,9 @@ const ensureTagsForKind = async (kind) => {
   <div className={labelCls}>موضوع</div>
   <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputCls} type="text" />
 </div>
+
+
+
 {/* ضمیمه (رادیویی دارد/ندارد) + عنوان ضمیمه + بازگشت/پیرو کنار عنوان — بدون شرط نمایش */}
 <div>
   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -2385,23 +2388,82 @@ const ensureTagsForKind = async (kind) => {
         <div>
           <div className={labelCls}>بازگشت به</div>
 
-          <div className="space-y-2">
-            {(Array.isArray(returnToIds) ? returnToIds : [""]).map((val, idx) => {
-              const isLast = idx === (returnToIds?.length || 1) - 1;
+          <div className="flex flex-wrap items-center gap-2">
+            {(Array.isArray(returnToIds) ? returnToIds : [""]).map((val, idx) => (
+              <div key={`ret_${idx}`} className="flex items-center gap-2">
+                <select
+                  value={val}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setReturnToIds((prev) => {
+                      const arr = Array.isArray(prev) ? [...prev] : [""];
+                      arr[idx] = v;
+                      return arr;
+                    });
+                  }}
+                  className={inputCls + " h-10 text-sm w-[240px]"}
+                >
+                  <option value=""></option>
+                  {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
+                    const id = String(letterIdOf(l));
+                    const no = String(letterNoOf(l) || "").trim();
+                    const sub = String(subjectOf(l) || "").trim();
+                    const lab = `${no ? toFaDigits(no) : "—"}${sub ? " — " + sub : ""}`;
+                    return (
+                      <option key={`ret_opt_${id}`} value={id}>
+                        {lab}
+                      </option>
+                    );
+                  })}
+                </select>
 
-              return (
-                <div key={`ret_${idx}`} className="flex items-center gap-2">
+                {idx > 0 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setReturnToIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))
+                    }
+                    className={addIconBtnCls + " h-10 w-10"}
+                    aria-label="حذف"
+                    title="حذف"
+                  >
+                    <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => setReturnToIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
+              className={addIconBtnCls + " h-10 w-10"}
+              aria-label="افزودن"
+              title="افزودن"
+            >
+              <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
+            </button>
+          </div>
+        </div>
+
+        {/* پیرو (فقط صادره) */}
+        {formKind === "outgoing" && (
+          <div>
+            <div className={labelCls}>پیرو</div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {(Array.isArray(piroIds) ? piroIds : [""]).map((val, idx) => (
+                <div key={`piro_${idx}`} className="flex items-center gap-2">
                   <select
                     value={val}
                     onChange={(e) => {
                       const v = e.target.value;
-                      setReturnToIds((prev) => {
+                      setPiroIds((prev) => {
                         const arr = Array.isArray(prev) ? [...prev] : [""];
                         arr[idx] = v;
                         return arr;
                       });
                     }}
-                    className={inputCls + " h-10 text-sm flex-1"}
+                    className={inputCls + " h-10 text-sm w-[240px]"}
                   >
                     <option value=""></option>
                     {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
@@ -2410,7 +2472,7 @@ const ensureTagsForKind = async (kind) => {
                       const sub = String(subjectOf(l) || "").trim();
                       const lab = `${no ? toFaDigits(no) : "—"}${sub ? " — " + sub : ""}`;
                       return (
-                        <option key={`ret_opt_${id}`} value={id}>
+                        <option key={`piro_opt_${id}`} value={id}>
                           {lab}
                         </option>
                       );
@@ -2421,7 +2483,7 @@ const ensureTagsForKind = async (kind) => {
                     <button
                       type="button"
                       onClick={() =>
-                        setReturnToIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))
+                        setPiroIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))
                       }
                       className={addIconBtnCls + " h-10 w-10"}
                       aria-label="حذف"
@@ -2430,89 +2492,18 @@ const ensureTagsForKind = async (kind) => {
                       <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
                     </button>
                   )}
-
-                  {isLast && (
-                    <button
-                      type="button"
-                      onClick={() => setReturnToIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
-                      className={addIconBtnCls + " h-10 w-10"}
-                      aria-label="افزودن"
-                      title="افزودن"
-                    >
-                      <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
-                    </button>
-                  )}
                 </div>
-              );
-            })}
-          </div>
-        </div>
+              ))}
 
-        {/* پیرو (فقط صادره) */}
-        {formKind === "outgoing" && (
-          <div>
-            <div className={labelCls}>پیرو</div>
-
-            <div className="space-y-2">
-              {(Array.isArray(piroIds) ? piroIds : [""]).map((val, idx) => {
-                const isLast = idx === (piroIds?.length || 1) - 1;
-
-                return (
-                  <div key={`piro_${idx}`} className="flex items-center gap-2">
-                    <select
-                      value={val}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setPiroIds((prev) => {
-                          const arr = Array.isArray(prev) ? [...prev] : [""];
-                          arr[idx] = v;
-                          return arr;
-                        });
-                      }}
-                      className={inputCls + " h-10 text-sm flex-1"}
-                    >
-                      <option value=""></option>
-                      {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
-                        const id = String(letterIdOf(l));
-                        const no = String(letterNoOf(l) || "").trim();
-                        const sub = String(subjectOf(l) || "").trim();
-                        const lab = `${no ? toFaDigits(no) : "—"}${sub ? " — " + sub : ""}`;
-                        return (
-                          <option key={`piro_opt_${id}`} value={id}>
-                            {lab}
-                          </option>
-                        );
-                      })}
-                    </select>
-
-                    {idx > 0 && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setPiroIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))
-                        }
-                        className={addIconBtnCls + " h-10 w-10"}
-                        aria-label="حذف"
-                        title="حذف"
-                      >
-                        <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
-                      </button>
-                    )}
-
-                    {isLast && (
-                      <button
-                        type="button"
-                        onClick={() => setPiroIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
-                        className={addIconBtnCls + " h-10 w-10"}
-                        aria-label="افزودن"
-                        title="افزودن"
-                      >
-                        <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
+              <button
+                type="button"
+                onClick={() => setPiroIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
+                className={addIconBtnCls + " h-10 w-10"}
+                aria-label="افزودن"
+                title="افزودن"
+              >
+                <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
+              </button>
             </div>
           </div>
         )}
@@ -2582,7 +2573,6 @@ const ensureTagsForKind = async (kind) => {
     </div>
   </div>
 </div>
-
 
 
 
