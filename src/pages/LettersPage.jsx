@@ -2279,41 +2279,67 @@ const ensureTagsForKind = async (kind) => {
     </div>
 
     {formKind !== "internal" && (
-      <div className={formGridWrapCls}>
-        <div className={formGridCls + " grid-cols-1 md:grid-cols-12"}>
-          <div className={formCellCls + " md:col-span-4"}>
-            <div className={labelCls}>از</div>
-            <input value={fromName} onChange={(e) => setFromName(e.target.value)} className={inputCls} type="text" />
+  <div className={formGridWrapCls + " p-2"}>
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
+      <div className="md:col-span-4">
+        <div className={labelCls}>از</div>
+        <input
+          value={fromName}
+          onChange={(e) => setFromName(e.target.value)}
+          className={inputCls + " border-0 bg-transparent focus:bg-transparent"}
+          type="text"
+        />
+      </div>
+
+      {formKind === "outgoing" ? (
+        <>
+          <div className="md:col-span-4">
+            <div className={labelCls}>به</div>
+            <input
+              value={toName}
+              onChange={(e) => setToName(e.target.value)}
+              className={inputCls + " border-0 bg-transparent focus:bg-transparent"}
+              type="text"
+            />
           </div>
 
-          {formKind === "outgoing" ? (
-            <>
-              <div className={formCellCls + " md:col-span-4"}>
-                <div className={labelCls}>به</div>
-                <input value={toName} onChange={(e) => setToName(e.target.value)} className={inputCls} type="text" />
-              </div>
+          <div className="md:col-span-4">
+            <div className={labelCls}>شرکت/سازمان</div>
+            <input
+              value={orgName}
+              onChange={(e) => setOrgName(e.target.value)}
+              className={inputCls + " border-0 bg-transparent focus:bg-transparent"}
+              type="text"
+            />
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="md:col-span-4">
+            <div className={labelCls}>شرکت/سازمان</div>
+            <input
+              value={orgName}
+              onChange={(e) => setOrgName(e.target.value)}
+              className={inputCls + " border-0 bg-transparent focus:bg-transparent"}
+              type="text"
+            />
+          </div>
 
-              <div className={formCellCls + " md:col-span-4"}>
-                <div className={labelCls}>شرکت/سازمان</div>
-                <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputCls} type="text" />
-              </div>
-            </>
-          ) : (
-            <>
-              <div className={formCellCls + " md:col-span-4"}>
-                <div className={labelCls}>شرکت/سازمان</div>
-                <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputCls} type="text" />
-              </div>
+          <div className="md:col-span-4">
+            <div className={labelCls}>به</div>
+            <input
+              value={toName}
+              onChange={(e) => setToName(e.target.value)}
+              className={inputCls + " border-0 bg-transparent focus:bg-transparent"}
+              type="text"
+            />
+          </div>
+        </>
+      )}
+    </div>
+  </div>
+)}
 
-              <div className={formCellCls + " md:col-span-4"}>
-                <div className={labelCls}>به</div>
-                <input value={toName} onChange={(e) => setToName(e.target.value)} className={inputCls} type="text" />
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    )}
 
    <div>
   <div className={labelCls}>موضوع</div>
