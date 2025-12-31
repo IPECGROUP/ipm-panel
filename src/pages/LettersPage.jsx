@@ -2389,7 +2389,7 @@ const ensureTagsForKind = async (kind) => {
           <div className={labelCls}>بازگشت به</div>
 
           {/* بدون wrap - همه کنار هم با اسکرول افقی */}
-          <div className="flex items-center gap-2 overflow-x-auto">
+          <div className="flex flex-wrap items-center gap-2">
             {(Array.isArray(returnToIds) ? returnToIds : [""]).map((val, idx) => (
               <div key={`ret_${idx}`} className="flex items-center gap-2 shrink-0">
                 <select
@@ -2402,7 +2402,7 @@ const ensureTagsForKind = async (kind) => {
                       return arr;
                     });
                   }}
-                  className={inputCls + " h-10 text-sm w-[220px]"}
+                  className={inputCls + " h-10 text-sm w-full sm:w-[220px]"}
                 >
                   <option value=""></option>
                   {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
@@ -2452,7 +2452,7 @@ const ensureTagsForKind = async (kind) => {
             <div className={labelCls}>پیرو</div>
 
             {/* بدون wrap - همه کنار هم با اسکرول افقی */}
-            <div className="flex items-center gap-2 overflow-x-auto">
+           <div className="flex flex-wrap items-center gap-2">(formKind === "outgoing" ? "grid-c
               {(Array.isArray(piroIds) ? piroIds : [""]).map((val, idx) => (
                 <div key={`piro_${idx}`} className="flex items-center gap-2 shrink-0">
                   <select
