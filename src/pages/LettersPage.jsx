@@ -11,6 +11,9 @@ const TAB_ACTIVE_BG = {
   internal: "#FF8040",
 };
 
+const LETTERS_CACHE_KEY = "letters_mine_cache_v1";
+const LETTERS_CACHE_TTL = 1000 * 60 * 10; // 10 دقیقه
+
 const TABS = [
   { id: "all", label: "همه" },
   { id: "incoming", label: "وارده", icon: "/images/icons/varede.svg" },
@@ -694,10 +697,19 @@ const mergePinnedFilterTags = (ids) => {
   }, []);
 
   const refetchLetters = async () => {
-    const r = await api("/letters/mine");
-    const items = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
-    setMyLetters(items);
-  };
+  const r = await api("/letters/mine");
+  const items = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
+  setMyLetters(items);
+
+  // ✅ cache
+  try {
+    sessionStorage.setItem(
+      LETTERS_CACHE_KEY,
+      JSON.stringify({ t: Date.now(), items })
+    );
+  } catch {}
+};
+
 
   useEffect(() => {
     let mounted = true;
@@ -718,24 +730,58 @@ const mergePinnedFilterTags = (ids) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
+ useEffect(() => {
+  let mounted = true;
+
+  // 1) سریع از کش نشون بده
+  try {
+    const raw = sessionStorage.getItem(LETTERS_CACHE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const t = Number(parsed?.t || 0);
+      const cached = Array.isArray(parsed?.items) ? parsed.items : [];
+
+      if (cached.length && Date.now() - t < LETTERS_CACHE_TTL) {
+        setMyLetters(cached);
+      }
+    }
+  } catch {}
+
+  // 2) بعدش در پس‌زمینه از سرور آپدیت کن
+  (async () => {
+    try {
+      const r = await api("/letters/mine");
+      const items = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
+      if (!mounted) return;
+
+      setMyLetters(items);
+
+      // آپدیت کش
       try {
-        const r = await api("/letters/mine");
-        const items = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
-        if (!mounted) return;
-        setMyLetters(items);
+        sessionStorage.setItem(LETTERS_CACHE_KEY, JSON.stringify({ t: Date.now(), items }));
+      } catch {}
+    } catch {
+      // اگر کش داشتی، اینجا لازم نیست خالی کنی
+      if (!mounted) return;
+
+      // فقط وقتی کش نداشتیم خالی کن (اختیاری ولی بهتر برای UX)
+      try {
+        const raw = sessionStorage.getItem(LETTERS_CACHE_KEY);
+        const parsed = raw ? JSON.parse(raw) : null;
+        const cached = Array.isArray(parsed?.items) ? parsed.items : [];
+        if (!cached.length) setMyLetters([]);
       } catch {
-        if (!mounted) return;
         setMyLetters([]);
       }
-    })();
-    return () => {
-      mounted = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    }
+  })();
+
+  return () => {
+    mounted = false;
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
+
 
   useEffect(() => {
     let mounted = true;
@@ -1647,52 +1693,60 @@ if (toY && d > toY) return false;
   }, [uploadOpen, uploadFor]);
 
   const allUploadedAttachments = useMemo(() => {
-    const arr = Array.isArray(myLettersSorted) ? myLettersSorted : [];
-    const map = new Map(); // key=url
-    for (const l of arr) {
-      const letterNo = String(l?.letter_no || letterNoOf(l) || "").trim();
-      const atts = attachmentsOf(l);
-      for (const a of Array.isArray(atts) ? atts : []) {
-        const url = attachmentUrlOf(a);
-        if (!url) continue;
-        const nameRaw = attachmentNameOf(a);
-        const name =
-          String(nameRaw || "").trim() ||
-          (() => {
-            try {
-              const u = String(url);
-              const parts = u.split("?")[0].split("/");
-              const base = parts[parts.length - 1] || "فایل";
-              return base;
-            } catch {
-              return "فایل";
-            }
-          })();
-        const type = attachmentTypeOf(a) || (isPdfUrl(url) ? "application/pdf" : "");
-        const size = attachmentSizeOf(a);
+  // ✅ وقتی مودال آپلود بسته است، اصلاً محاسبه نکن
+  if (!uploadOpen) return [];
 
-        if (!map.has(String(url))) {
-          map.set(String(url), { ...a, url, name, type, size, _letterNo: letterNo });
-        } else {
-          const prev = map.get(String(url));
-          if (prev && (!prev.name || prev.name === "فایل") && name) {
-            map.set(String(url), {
-              ...prev,
-              url,
-              name,
-              type: prev.type || type,
-              size: prev.size || size,
-              _letterNo: prev._letterNo || letterNo,
-            });
+  const arr = Array.isArray(myLettersSorted) ? myLettersSorted : [];
+  const map = new Map(); // key=url
+
+  for (const l of arr) {
+    const letterNo = String(l?.letter_no || letterNoOf(l) || "").trim();
+    const atts = attachmentsOf(l);
+
+    for (const a of Array.isArray(atts) ? atts : []) {
+      const url = attachmentUrlOf(a);
+      if (!url) continue;
+
+      const nameRaw = attachmentNameOf(a);
+      const name =
+        String(nameRaw || "").trim() ||
+        (() => {
+          try {
+            const u = String(url);
+            const parts = u.split("?")[0].split("/");
+            return parts[parts.length - 1] || "فایل";
+          } catch {
+            return "فایل";
           }
+        })();
+
+      const type = attachmentTypeOf(a) || (isPdfUrl(url) ? "application/pdf" : "");
+      const size = attachmentSizeOf(a);
+
+      if (!map.has(String(url))) {
+        map.set(String(url), { ...a, url, name, type, size, _letterNo: letterNo });
+      } else {
+        const prev = map.get(String(url));
+        if (prev && (!prev.name || prev.name === "فایل") && name) {
+          map.set(String(url), {
+            ...prev,
+            url,
+            name,
+            type: prev.type || type,
+            size: prev.size || size,
+            _letterNo: prev._letterNo || letterNo,
+          });
         }
       }
     }
-    const out = Array.from(map.values());
-    out.sort((a, b) => String(b?.name || "").localeCompare(String(a?.name || "")));
-    return out;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myLettersSorted]);
+  }
+
+  const out = Array.from(map.values());
+  out.sort((a, b) => String(b?.name || "").localeCompare(String(a?.name || "")));
+  return out;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [uploadOpen, myLettersSorted]);
+
 
   const filteredUploadedAttachments = useMemo(() => {
     const q = String(pickSearch || "").trim().toLowerCase();
