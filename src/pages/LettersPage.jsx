@@ -2464,69 +2464,66 @@ const ensureTagsForKind = async (kind) => {
   </div>
 
   {/* بازگشت به */}
-  <div className={formKind === "outgoing" ? "md:col-span-4" : "md:col-span-7"}>
-    <div className={labelCls}>بازگشت به</div>
+<div className={(formKind === "outgoing" ? "md:col-span-4" : "md:col-span-7") + " min-w-0"}>
+  <div className={labelCls}>بازگشت به</div>
 
-    {/* مهم: NO wrap + اسکرول افقی */}
-    <div
-      dir="rtl"
-      className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1
-                 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-    >
-      {(Array.isArray(returnToIds) ? returnToIds : [""]).map((val, idx) => (
-        <div key={`ret_${idx}`} className="flex items-center gap-2 shrink-0">
-          <select
-            value={val}
-            onChange={(e) => {
-              const v = e.target.value;
-              setReturnToIds((prev) => {
-                const arr = Array.isArray(prev) ? [...prev] : [""];
-                arr[idx] = v;
-                return arr;
-              });
-            }}
-            className={inputCls + " h-10 text-sm w-[min(220px,70vw)] shrink-0"}
+  <div className="min-w-0 w-full flex flex-wrap items-center gap-2">
+    {(Array.isArray(returnToIds) ? returnToIds : [""]).map((val, idx) => (
+      <div key={`ret_${idx}`} className="flex items-center gap-2 flex-1 min-w-[260px]">
+        <select
+          value={val}
+          onChange={(e) => {
+            const v = e.target.value;
+            setReturnToIds((prev) => {
+              const arr = Array.isArray(prev) ? [...prev] : [""];
+              arr[idx] = v;
+              return arr;
+            });
+          }}
+          className={inputCls + " h-10 text-sm flex-1 min-w-0"}  // ✅ کش میاد، ولی اگه جا نبود wrap میشه
+        >
+          <option value=""></option>
+          {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
+            const id = String(letterIdOf(l));
+            const no = String(letterNoOf(l) || "").trim();
+            const sub = String(subjectOf(l) || "").trim();
+            const lab = `${no ? toFaDigits(no) : "—"}${sub ? " — " + sub : ""}`;
+            return (
+              <option key={`ret_opt_${id}`} value={id}>
+                {lab}
+              </option>
+            );
+          })}
+        </select>
+
+        {idx > 0 && (
+          <button
+            type="button"
+            onClick={() =>
+              setReturnToIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))
+            }
+            className={addIconBtnCls + " h-10 w-10 shrink-0"}
+            aria-label="حذف"
+            title="حذف"
           >
-            <option value=""></option>
-            {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
-              const id = String(letterIdOf(l));
-              const no = String(letterNoOf(l) || "").trim();
-              const sub = String(subjectOf(l) || "").trim();
-              const lab = `${no ? toFaDigits(no) : "—"}${sub ? " — " + sub : ""}`;
-              return (
-                <option key={`ret_opt_${id}`} value={id}>
-                  {lab}
-                </option>
-              );
-            })}
-          </select>
+            <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+    ))}
 
-          {idx > 0 && (
-            <button
-              type="button"
-              onClick={() => setReturnToIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))}
-              className={addIconBtnCls + " h-10 w-10 shrink-0"}
-              aria-label="حذف"
-              title="حذف"
-            >
-              <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
-            </button>
-          )}
-        </div>
-      ))}
-
-      {/* دکمه افزودن: چون آخر لیست است، در RTL سمت چپ می‌نشیند */}
-      <button
-        type="button"
-        onClick={() => setReturnToIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
-        className={addIconBtnCls + " h-10 w-10 shrink-0"}
-        aria-label="افزودن"
-        title="افزودن"
-      >
-        <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={() => setReturnToIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
+      className={addIconBtnCls + " h-10 w-10 shrink-0"}
+      aria-label="افزودن"
+      title="افزودن"
+    >
+      <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
+    </button>
   </div>
+</div>
+
 
   {/* پیرو - فقط صادره */}
   {formKind === "outgoing" && (
