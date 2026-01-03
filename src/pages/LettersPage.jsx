@@ -2463,13 +2463,16 @@ const ensureTagsForKind = async (kind) => {
     />
   </div>
 
-  {/* بازگشت به */}
+{/* بازگشت به */}
 <div className={(formKind === "outgoing" ? "md:col-span-4" : "md:col-span-7") + " min-w-0"}>
   <div className={labelCls}>بازگشت به</div>
 
-  <div className="min-w-0 w-full flex flex-wrap items-center gap-2">
+  <div className="w-full min-w-0 flex flex-wrap items-center gap-2">
     {(Array.isArray(returnToIds) ? returnToIds : [""]).map((val, idx) => (
-      <div key={`ret_${idx}`} className="flex items-center gap-2 flex-1 min-w-[260px]">
+      <div
+        key={`ret_${idx}`}
+        className="flex items-center gap-2 w-full sm:w-[280px] flex-none min-w-0"
+      >
         <select
           value={val}
           onChange={(e) => {
@@ -2480,7 +2483,7 @@ const ensureTagsForKind = async (kind) => {
               return arr;
             });
           }}
-          className={inputCls + " h-10 text-sm flex-1 min-w-0"}  // ✅ کش میاد، ولی اگه جا نبود wrap میشه
+          className={inputCls + " h-10 text-sm w-full min-w-0"}   // ✅ دیگه کش نمیاد کل فضا رو بگیره
         >
           <option value=""></option>
           {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
@@ -2525,70 +2528,77 @@ const ensureTagsForKind = async (kind) => {
 </div>
 
 
+
   {/* پیرو - فقط صادره */}
-  {formKind === "outgoing" && (
-    <div className="md:col-span-3">
-      <div className={labelCls}>پیرو</div>
+{formKind === "outgoing" && (
+  <div className="md:col-span-3 min-w-0">
+    <div className={labelCls}>پیرو</div>
 
-      <div
-        dir="rtl"
-        className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1
-                   [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        {(Array.isArray(piroIds) ? piroIds : [""]).map((val, idx) => (
-          <div key={`piro_${idx}`} className="flex items-center gap-2 shrink-0">
-            <select
-              value={val}
-              onChange={(e) => {
-                const v = e.target.value;
-                setPiroIds((prev) => {
-                  const arr = Array.isArray(prev) ? [...prev] : [""];
-                  arr[idx] = v;
-                  return arr;
-                });
-              }}
-              className={inputCls + " h-10 text-sm w-[min(220px,70vw)] shrink-0"}
-            >
-              <option value=""></option>
-              {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
-                const id = String(letterIdOf(l));
-                const no = String(letterNoOf(l) || "").trim();
-                const sub = String(subjectOf(l) || "").trim();
-                const lab = `${no ? toFaDigits(no) : "—"}${sub ? " — " + sub : ""}`;
-                return (
-                  <option key={`piro_opt_${id}`} value={id}>
-                    {lab}
-                  </option>
-                );
-              })}
-            </select>
-
-            {idx > 0 && (
-              <button
-                type="button"
-                onClick={() => setPiroIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))}
-                className={addIconBtnCls + " h-10 w-10 shrink-0"}
-                aria-label="حذف"
-                title="حذف"
-              >
-                <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
-              </button>
-            )}
-          </div>
-        ))}
-
-        <button
-          type="button"
-          onClick={() => setPiroIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
-          className={addIconBtnCls + " h-10 w-10 shrink-0"}
-          aria-label="افزودن"
-          title="افزودن"
+    {/* ✅ موبایل: اسکرول افقی | دسکتاپ: wrap استاندارد */}
+    <div
+      dir="rtl"
+      className="w-full min-w-0 flex flex-nowrap md:flex-wrap items-center gap-2
+                 overflow-x-auto md:overflow-visible pb-1
+                 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+      {(Array.isArray(piroIds) ? piroIds : [""]).map((val, idx) => (
+        <div
+          key={`piro_${idx}`}
+          className="flex items-center gap-2 w-[min(240px,80vw)] md:w-[240px] flex-none min-w-0"
         >
-          <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
-        </button>
-      </div>
+          <select
+            value={val}
+            onChange={(e) => {
+              const v = e.target.value;
+              setPiroIds((prev) => {
+                const arr = Array.isArray(prev) ? [...prev] : [""];
+                arr[idx] = v;
+                return arr;
+              });
+            }}
+            className={inputCls + " h-10 text-sm w-full min-w-0"}  // ✅ استاندارد + عدم بیرون‌زدگی
+          >
+            <option value=""></option>
+            {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
+              const id = String(letterIdOf(l));
+              const no = String(letterNoOf(l) || "").trim();
+              const sub = String(subjectOf(l) || "").trim();
+              const lab = `${no ? toFaDigits(no) : "—"}${sub ? " — " + sub : ""}`;
+              return (
+                <option key={`piro_opt_${id}`} value={id}>
+                  {lab}
+                </option>
+              );
+            })}
+          </select>
+
+          {idx > 0 && (
+            <button
+              type="button"
+              onClick={() => setPiroIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))}
+              className={addIconBtnCls + " h-10 w-10 shrink-0"}
+              aria-label="حذف"
+              title="حذف"
+            >
+              <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+      ))}
+
+      <button
+        type="button"
+        onClick={() => setPiroIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
+        className={addIconBtnCls + " h-10 w-10 shrink-0"}
+        aria-label="افزودن"
+        title="افزودن"
+      >
+        <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
+      </button>
     </div>
-  )}
+  </div>
+)}
+
 </div>
 
 </div>
