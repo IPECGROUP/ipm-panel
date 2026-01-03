@@ -1531,8 +1531,9 @@ if (toY && d > toY) return false;
 
     const queue = files.filter((f) => f && f.status !== "error" && (f.optimizedFile || f.file) && !f.url);
 
-    const computedHasAttachment =
-      !!hasAttachment || !!String(attachmentTitle || "").trim() || queue.length > 0 || reused.length > 0;
+    const computedHasAttachment = !!hasAttachment
+  ? (!!String(attachmentTitle || "").trim() || queue.length > 0 || reused.length > 0)
+  : false;
 
     const payload = {
       kind,
@@ -2405,258 +2406,194 @@ const ensureTagsForKind = async (kind) => {
 
 {/* ضمیمه (رادیویی دارد/ندارد) + عنوان ضمیمه + بازگشت/پیرو کنار عنوان — بدون شرط نمایش */}
 <div>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+    {/* ردیف کنارهم: ضمیمه + عنوان ضمیمه + بازگشت به (+ پیرو در صادره) */}
+<div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+  {/* ضمیمه */}
+  <div className="md:col-span-2">
+    <div className={labelCls}>ضمیمه</div>
 
-    {/* راست: ضمیمه + عنوان ضمیمه + بازگشت/پیرو + دکمه بارگذاری */}
-    <div className="space-y-3">
-      {/* ردیف کنارهم: ضمیمه(دارد/ندارد) + عنوان ضمیمه + بازگشت به (+ پیرو در صادره) */}
-      <div
-        className={
-          "grid gap-3 items-start " +
-          (formKind === "outgoing" ? "grid-cols-1 md:grid-cols-4" : "grid-cols-1 md:grid-cols-3")
-        }
-      >
-        {/* ضمیمه: دو گزینه دایره‌ای (دارد/ندارد) — بدون دراپ‌داون */}
-        <div>
-          <div className={labelCls}>ضمیمه</div>
-          <div className="flex items-center gap-4 mt-1">
-            <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="radio"
-                name="hasAttachmentRadio"
-                checked={!!hasAttachment}
-                onChange={() => setHasAttachment(true)}
-                className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
-              />
-              <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>دارد</span>
-            </label>
+    {/* دو گزینه مثل چک‌باکس ولی فقط یکی انتخاب شود */}
+    <div className="flex items-center gap-4 mt-1">
+      <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={!!hasAttachment}
+          onChange={(e) => {
+            // فقط اجازه "روشن شدن"؛ خاموش شدنش با گزینه "ندارد"
+            if (e.target.checked) setHasAttachment(true);
+          }}
+          className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
+        />
+        <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>دارد</span>
+      </label>
 
-            <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="radio"
-                name="hasAttachmentRadio"
-                checked={!hasAttachment}
-                onChange={() => setHasAttachment(false)}
-                className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
-              />
-              <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>ندارد</span>
-            </label>
-          </div>
-        </div>
-
-        {/* عنوان ضمیمه — همیشه نمایش داده می‌شود */}
-        <div>
-          <div className={labelCls}>عنوان ضمیمه</div>
-          <input
-            value={
-              formKind === "incoming"
-                ? incomingAttachmentTitle
-                : formKind === "outgoing"
-                ? outgoingAttachmentTitle
-                : internalAttachmentTitle
-            }
-            onChange={(e) => {
-              const v = e.target.value;
-              if (formKind === "incoming") setIncomingAttachmentTitle(v);
-              else if (formKind === "outgoing") setOutgoingAttachmentTitle(v);
-              else setInternalAttachmentTitle(v);
-            }}
-            className={inputCls + " h-10 text-sm"}
-            type="text"
-          />
-        </div>
-
-        {/* بازگشت به (در هر سه تب) */}
-        <div>
-          <div className={labelCls}>بازگشت به</div>
-
-          {/* بدون wrap - همه کنار هم با اسکرول افقی */}
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {(Array.isArray(returnToIds) ? returnToIds : [""]).map((val, idx) => (
-              <div key={`ret_${idx}`} className="flex items-center gap-2 shrink-0">
-                <select
-                  value={val}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setReturnToIds((prev) => {
-                      const arr = Array.isArray(prev) ? [...prev] : [""];
-                      arr[idx] = v;
-                      return arr;
-                    });
-                  }}
-                  className={inputCls + " h-10 text-sm w-[220px] max-w-full shrink-0"}
-                >
-                  <option value=""></option>
-                  {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
-                    const id = String(letterIdOf(l));
-                    const no = String(letterNoOf(l) || "").trim();
-                    const sub = String(subjectOf(l) || "").trim();
-                    const lab = `${no ? toFaDigits(no) : "—"}${sub ? " — " + sub : ""}`;
-                    return (
-                      <option key={`ret_opt_${id}`} value={id}>
-                        {lab}
-                      </option>
-                    );
-                  })}
-                </select>
-
-                {idx > 0 && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setReturnToIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))
-                    }
-                    className={addIconBtnCls + " h-10 w-10 shrink-0"}
-                    aria-label="حذف"
-                    title="حذف"
-                  >
-                    <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
-                  </button>
-                )}
-              </div>
-            ))}
-
-            <button
-              type="button"
-              onClick={() => setReturnToIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
-              className={addIconBtnCls + " h-10 w-10 shrink-0"}
-              aria-label="افزودن"
-              title="افزودن"
-            >
-              <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
-            </button>
-          </div>
-        </div>
-
-        {/* پیرو (فقط صادره) */}
-        {formKind === "outgoing" && (
-          <div>
-            <div className={labelCls}>پیرو</div>
-
-            {/* بدون wrap - همه کنار هم با اسکرول افقی */}
-           <div className="flex flex-wrap items-center justify-end gap-2">
-
-              {(Array.isArray(piroIds) ? piroIds : [""]).map((val, idx) => (
-                <div key={`piro_${idx}`} className="flex items-center gap-2 shrink-0">
-                  <select
-                    value={val}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setPiroIds((prev) => {
-                        const arr = Array.isArray(prev) ? [...prev] : [""];
-                        arr[idx] = v;
-                        return arr;
-                      });
-                    }}
-                    className={inputCls + " h-10 text-sm w-[220px] max-w-full shrink-0"}
-                  >
-                    <option value=""></option>
-                    {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
-                      const id = String(letterIdOf(l));
-                      const no = String(letterNoOf(l) || "").trim();
-                      const sub = String(subjectOf(l) || "").trim();
-                      const lab = `${no ? toFaDigits(no) : "—"}${sub ? " — " + sub : ""}`;
-                      return (
-                        <option key={`piro_opt_${id}`} value={id}>
-                          {lab}
-                        </option>
-                      );
-                    })}
-                  </select>
-
-                  {idx > 0 && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setPiroIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))
-                      }
-                      className={addIconBtnCls + " h-10 w-10 shrink-0"}
-                      aria-label="حذف"
-                      title="حذف"
-                    >
-                      <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
-                    </button>
-                  )}
-                </div>
-              ))}
-
-              <button
-                type="button"
-                onClick={() => setPiroIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
-                className={addIconBtnCls + " h-10 w-10 shrink-0"}
-                aria-label="افزودن"
-                title="افزودن"
-              >
-                <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* بارگذاری نامه و الصاق فایل ها + متن "فایلی انتخاب نشده است." کنار دکمه */}
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => openUpload(formKind)}
-          className={
-            "inline-flex items-center gap-2 h-10 px-3 rounded-xl border transition text-sm font-semibold " +
-            (theme === "dark"
-              ? "border-white/15 bg-white/5 text-white/90 hover:bg-white/10"
-              : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
-          }
-        >
-          <img
-            src="/images/icons/upload.svg"
-            alt=""
-            className={"w-4 h-4 " + (theme === "dark" ? "invert" : "")}
-          />
-          <span>بارگذاری نامه و الصاق فایل ها</span>
-        </button>
-
-        {(Array.isArray(docFilesByType?.[formKind]) ? docFilesByType[formKind] : []).length === 0 && (
-          <div className={theme === "dark" ? "text-white/50 text-xs" : "text-neutral-500 text-xs"}>
-            فایلی انتخاب نشده است.
-          </div>
-        )}
-      </div>
-    </div>
-
-    {/* چپ: لیست فایل‌ها */}
-    <div className="space-y-2">
-      {(Array.isArray(docFilesByType?.[formKind]) ? docFilesByType[formKind] : []).map((f) => (
-        <div
-          key={f.id}
-          className={
-            "flex items-center justify-between gap-2 rounded-xl border px-3 py-2 " +
-            (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
-          }
-        >
-          <div className="min-w-0">
-            <div className="text-sm font-semibold truncate">{f.name}</div>
-            <div className={theme === "dark" ? "text-white/50 text-xs" : "text-neutral-500 text-xs"}>
-              {formatBytes(f.size)} •{" "}
-              {f.status === "uploading"
-                ? `در حال آپلود ${toFaDigits(f.progress || 0)}%`
-                : f.status === "done"
-                ? "آماده"
-                : f.status}
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => removeDocFile(formKind, f.id)}
-            className={iconBtnCls}
-            aria-label="حذف"
-            title="حذف"
-          >
-            <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
-          </button>
-        </div>
-      ))}
+      <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={!hasAttachment}
+          onChange={(e) => {
+            if (e.target.checked) setHasAttachment(false);
+          }}
+          className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
+        />
+        <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>ندارد</span>
+      </label>
     </div>
   </div>
+
+  {/* عنوان ضمیمه */}
+  <div className="md:col-span-3">
+    <div className={labelCls}>عنوان ضمیمه</div>
+    <input
+      value={
+        formKind === "incoming"
+          ? incomingAttachmentTitle
+          : formKind === "outgoing"
+          ? outgoingAttachmentTitle
+          : internalAttachmentTitle
+      }
+      onChange={(e) => {
+        const v = e.target.value;
+        if (formKind === "incoming") setIncomingAttachmentTitle(v);
+        else if (formKind === "outgoing") setOutgoingAttachmentTitle(v);
+        else setInternalAttachmentTitle(v);
+      }}
+      className={inputCls + " h-10 text-sm"}
+      type="text"
+    />
+  </div>
+
+  {/* بازگشت به */}
+  <div className={formKind === "outgoing" ? "md:col-span-4" : "md:col-span-7"}>
+    <div className={labelCls}>بازگشت به</div>
+
+    {/* مهم: NO wrap + اسکرول افقی */}
+    <div
+      dir="rtl"
+      className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1
+                 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+      {(Array.isArray(returnToIds) ? returnToIds : [""]).map((val, idx) => (
+        <div key={`ret_${idx}`} className="flex items-center gap-2 shrink-0">
+          <select
+            value={val}
+            onChange={(e) => {
+              const v = e.target.value;
+              setReturnToIds((prev) => {
+                const arr = Array.isArray(prev) ? [...prev] : [""];
+                arr[idx] = v;
+                return arr;
+              });
+            }}
+            className={inputCls + " h-10 text-sm w-[min(220px,70vw)] shrink-0"}
+          >
+            <option value=""></option>
+            {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
+              const id = String(letterIdOf(l));
+              const no = String(letterNoOf(l) || "").trim();
+              const sub = String(subjectOf(l) || "").trim();
+              const lab = `${no ? toFaDigits(no) : "—"}${sub ? " — " + sub : ""}`;
+              return (
+                <option key={`ret_opt_${id}`} value={id}>
+                  {lab}
+                </option>
+              );
+            })}
+          </select>
+
+          {idx > 0 && (
+            <button
+              type="button"
+              onClick={() => setReturnToIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))}
+              className={addIconBtnCls + " h-10 w-10 shrink-0"}
+              aria-label="حذف"
+              title="حذف"
+            >
+              <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+      ))}
+
+      {/* دکمه افزودن: چون آخر لیست است، در RTL سمت چپ می‌نشیند */}
+      <button
+        type="button"
+        onClick={() => setReturnToIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
+        className={addIconBtnCls + " h-10 w-10 shrink-0"}
+        aria-label="افزودن"
+        title="افزودن"
+      >
+        <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
+      </button>
+    </div>
+  </div>
+
+  {/* پیرو - فقط صادره */}
+  {formKind === "outgoing" && (
+    <div className="md:col-span-3">
+      <div className={labelCls}>پیرو</div>
+
+      <div
+        dir="rtl"
+        className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1
+                   [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {(Array.isArray(piroIds) ? piroIds : [""]).map((val, idx) => (
+          <div key={`piro_${idx}`} className="flex items-center gap-2 shrink-0">
+            <select
+              value={val}
+              onChange={(e) => {
+                const v = e.target.value;
+                setPiroIds((prev) => {
+                  const arr = Array.isArray(prev) ? [...prev] : [""];
+                  arr[idx] = v;
+                  return arr;
+                });
+              }}
+              className={inputCls + " h-10 text-sm w-[min(220px,70vw)] shrink-0"}
+            >
+              <option value=""></option>
+              {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
+                const id = String(letterIdOf(l));
+                const no = String(letterNoOf(l) || "").trim();
+                const sub = String(subjectOf(l) || "").trim();
+                const lab = `${no ? toFaDigits(no) : "—"}${sub ? " — " + sub : ""}`;
+                return (
+                  <option key={`piro_opt_${id}`} value={id}>
+                    {lab}
+                  </option>
+                );
+              })}
+            </select>
+
+            {idx > 0 && (
+              <button
+                type="button"
+                onClick={() => setPiroIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))}
+                className={addIconBtnCls + " h-10 w-10 shrink-0"}
+                aria-label="حذف"
+                title="حذف"
+              >
+                <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+        ))}
+
+        <button
+          type="button"
+          onClick={() => setPiroIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
+          className={addIconBtnCls + " h-10 w-10 shrink-0"}
+          aria-label="افزودن"
+          title="افزودن"
+        >
+          <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
+        </button>
+      </div>
+    </div>
+  )}
+</div>
+
 </div>
 
     <div>
