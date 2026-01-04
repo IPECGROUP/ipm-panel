@@ -518,8 +518,16 @@ const letterById = useMemo(() => {
 }, [myLettersSorted]);
 
 // کنار بقیه useRef ها
+// کنار بقیه useRef ها
 const relatedWrapRef = useRef(null);
 const relatedInputRef = useRef(null);
+
+// ✅ اول این باید بیاد (قبل از relatedDisplayValue)
+const relatedSelectedIds = useMemo(() => {
+  return (Array.isArray(returnToIds) ? returnToIds : [])
+    .map((x) => String(x || "").trim())
+    .filter(Boolean);
+}, [returnToIds]);
 
 // متن نمایشی شماره‌های انتخاب شده (وقتی dropdown بسته است)
 const relatedDisplayValue = useMemo(() => {
@@ -529,7 +537,8 @@ const relatedDisplayValue = useMemo(() => {
     return toFaDigits(no);
   });
   return parts.join(" و ");
-}, [relatedSelectedIds, letterById]); // eslint-disable-line react-hooks/exhaustive-deps
+}, [relatedSelectedIds, letterById]);
+
 
 // بستن با کلیک بیرون
 useEffect(() => {
@@ -556,13 +565,6 @@ useEffect(() => {
     document.removeEventListener("keydown", onEsc);
   };
 }, [relatedOpen]);
-
-
-const relatedSelectedIds = useMemo(() => {
-  return (Array.isArray(returnToIds) ? returnToIds : [])
-    .map((x) => String(x || "").trim())
-    .filter(Boolean);
-}, [returnToIds]);
 
 const relatedOptions = useMemo(() => {
   const q = toEnDigits(String(relatedQuery || "").trim());
