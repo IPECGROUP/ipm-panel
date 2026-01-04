@@ -517,6 +517,47 @@ const letterById = useMemo(() => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [myLettersSorted]);
 
+// کنار بقیه useRef ها
+const relatedWrapRef = useRef(null);
+const relatedInputRef = useRef(null);
+
+// متن نمایشی شماره‌های انتخاب شده (وقتی dropdown بسته است)
+const relatedDisplayValue = useMemo(() => {
+  const parts = (Array.isArray(relatedSelectedIds) ? relatedSelectedIds : []).map((id) => {
+    const l = letterById.get(String(id));
+    const no = String(letterNoOf(l) || "").trim() || String(id);
+    return toFaDigits(no);
+  });
+  return parts.join(" و ");
+}, [relatedSelectedIds, letterById]); // eslint-disable-line react-hooks/exhaustive-deps
+
+// بستن با کلیک بیرون
+useEffect(() => {
+  if (!relatedOpen) return;
+
+  const onDown = (e) => {
+    const t = e.target;
+    if (relatedWrapRef.current && relatedWrapRef.current.contains(t)) return;
+    setRelatedOpen(false);
+    setRelatedQuery(""); // پاک کردن حالت سرچ
+  };
+
+  const onEsc = (e) => {
+    if (e.key === "Escape") {
+      setRelatedOpen(false);
+      setRelatedQuery("");
+    }
+  };
+
+  document.addEventListener("mousedown", onDown);
+  document.addEventListener("keydown", onEsc);
+  return () => {
+    document.removeEventListener("mousedown", onDown);
+    document.removeEventListener("keydown", onEsc);
+  };
+}, [relatedOpen]);
+
+
 const relatedSelectedIds = useMemo(() => {
   return (Array.isArray(returnToIds) ? returnToIds : [])
     .map((x) => String(x || "").trim())
@@ -2469,20 +2510,18 @@ const ensureTagsForKind = async (kind) => {
 <div>
     {/* ردیف کنارهم: ضمیمه + عنوان ضمیمه + بازگشت به (+ پیرو در صادره) */}
 <div className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-1 items-start">
-  {/* ضمیمه */}
+  {/* 1) ضمیمه */}
   <div className="md:col-span-2">
     <div className={labelCls}>ضمیمه</div>
 
-    {/* دو گزینه مثل چک‌باکس ولی فقط یکی انتخاب شود */}
+    {/* پیشنهاد: رادیو (به جای چک‌باکس دوتایی) */}
     <div className="flex items-center gap-4 mt-0">
       <label className="inline-flex items-center gap-2 cursor-pointer select-none">
         <input
-          type="checkbox"
-          checked={!!hasAttachment}
-          onChange={(e) => {
-            // فقط اجازه "روشن شدن"؛ خاموش شدنش با گزینه "ندارد"
-            if (e.target.checked) setHasAttachment(true);
-          }}
+          type="radio"
+          name="hasAttachment"
+          checked={hasAttachment === true}
+          onChange={() => setHasAttachment(true)}
           className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
         />
         <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>دارد</span>
@@ -2490,11 +2529,10 @@ const ensureTagsForKind = async (kind) => {
 
       <label className="inline-flex items-center gap-2 cursor-pointer select-none">
         <input
-          type="checkbox"
-          checked={!hasAttachment}
-          onChange={(e) => {
-            if (e.target.checked) setHasAttachment(false);
-          }}
+          type="radio"
+          name="hasAttachment"
+          checked={hasAttachment === false}
+          onChange={() => setHasAttachment(false)}
           className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
         />
         <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>ندارد</span>
@@ -2502,32 +2540,7 @@ const ensureTagsForKind = async (kind) => {
     </div>
   </div>
 
-{formKind === "incoming" && (
-  <div className="mt-2">
-    <button
-      type="button"
-      onClick={() => {
-        setHasAttachment(true);
-        openUpload("incoming");
-      }}
-      className={uploadTriggerCls}
-    >
-      <img
-        src="/images/icons/upload.svg"
-        alt=""
-        className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
-      />
-      <span className="text-sm font-semibold">بارگذاری نامه وارده</span>
-    </button>
-
-    <div className={theme === "dark" ? "text-white/60 text-xs mt-1" : "text-neutral-600 text-xs mt-1"}>
-      {toFaDigits((Array.isArray(docFilesByType?.incoming) ? docFilesByType.incoming : []).length)} فایل انتخاب شده
-    </div>
-  </div>
-)}
-
-
-  {/* عنوان ضمیمه */}
+  {/* 2) عنوان ضمیمه */}
   <div className="md:col-span-3">
     <div className={labelCls}>عنوان ضمیمه</div>
     <input
@@ -2553,14 +2566,21 @@ const ensureTagsForKind = async (kind) => {
 <div className={(formKind === "outgoing" ? "md:col-span-4" : "md:col-span-7") + " min-w-0"}>
   <div className={labelCls}>نامه های مرتبط</div>
 
-  <div className="relative min-w-0">
+  <div ref={relatedWrapRef} className="relative min-w-0">
     <input
-      value={relatedQuery}
-      onChange={(e) => {
-        setRelatedQuery(e.target.value);
-        if (!relatedOpen) setRelatedOpen(true);
+      ref={relatedInputRef}
+      value={relatedOpen ? relatedQuery : relatedDisplayValue}
+      readOnly={!relatedOpen}                 // وقتی بسته است فقط نمایش بده
+      onClick={() => {
+        setRelatedOpen(true);                 // با کلیک باز شود
+        setRelatedQuery("");                  // شروع سرچ از صفر
       }}
-      onFocus={() => setRelatedOpen(true)}
+      onFocus={() => {
+        setRelatedOpen(true);
+      }}
+      onChange={(e) => {
+        setRelatedQuery(e.target.value);      // فقط وقتی open هست تایپ معنی دارد
+      }}
       className={inputCls + " h-10 text-sm"}
       type="text"
       placeholder="جستجو/انتخاب شماره نامه..."
@@ -2591,7 +2611,6 @@ const ensureTagsForKind = async (kind) => {
                   type="button"
                   disabled={disabled}
                   onClick={() => {
-                    setHasAttachment((v) => v); // بدون تغییر (فقط برای جلوگیری از lint های بی‌مورد)
                     setReturnToIds((prev) => {
                       const base = (Array.isArray(prev) ? prev : [])
                         .map((x) => String(x || "").trim())
@@ -2601,23 +2620,28 @@ const ensureTagsForKind = async (kind) => {
                       return [...base, id];
                     });
 
-                    setRelatedQuery("");
-                    // باز بمونه تا چندتا راحت انتخاب شه
-                    setRelatedOpen(true);
+                    setRelatedQuery(""); // بعد از انتخاب، سرچ خالی شود تا انتخاب‌های بعدی راحت‌تر شود
+
+                    // فوکوس برگردد به input
+                    setTimeout(() => relatedInputRef.current?.focus(), 0);
                   }}
                   className={
                     "w-full text-right px-3 py-2 rounded-xl transition flex items-center justify-between gap-2 " +
                     (disabled
-                      ? theme === "dark"
-                        ? "opacity-40 cursor-not-allowed"
-                        : "opacity-40 cursor-not-allowed"
+                      ? "opacity-40 cursor-not-allowed"
                       : theme === "dark"
                       ? "hover:bg-white/10"
                       : "hover:bg-black/[0.04]")
                   }
                 >
                   <span className="font-semibold">{toFaDigits(no)}</span>
-                  <span className={theme === "dark" ? "text-white/60 text-xs truncate max-w-[70%]" : "text-neutral-600 text-xs truncate max-w-[70%]"}>
+                  <span
+                    className={
+                      theme === "dark"
+                        ? "text-white/60 text-xs truncate max-w-[70%]"
+                        : "text-neutral-600 text-xs truncate max-w-[70%]"
+                    }
+                  >
                     {sub || "—"}
                   </span>
                 </button>
@@ -2630,7 +2654,10 @@ const ensureTagsForKind = async (kind) => {
 
         <button
           type="button"
-          onClick={() => setRelatedOpen(false)}
+          onClick={() => {
+            setRelatedOpen(false);
+            setRelatedQuery("");
+          }}
           className={
             "w-full px-3 py-2 text-sm font-semibold " +
             (theme === "dark" ? "hover:bg-white/10" : "hover:bg-black/[0.04]")
@@ -2642,23 +2669,21 @@ const ensureTagsForKind = async (kind) => {
     )}
   </div>
 
-
-
   {/* نمایش انتخاب‌ها: با "و" جدا + کلیک برای پیش‌نمایش */}
   {relatedSelectedIds.length > 0 && (
     <div className="mt-2 flex flex-wrap items-center gap-1 text-sm">
       {relatedSelectedIds.map((id, i) => {
-        const l = letterById.get(id);
-        const no = String(letterNoOf(l) || "").trim() || id;
+        const l = letterById.get(String(id));
+        const no = String(letterNoOf(l) || "").trim() || String(id);
 
         return (
-          <span key={id} className="inline-flex items-center gap-1">
+          <span key={String(id)} className="inline-flex items-center gap-1">
             {i > 0 && <span className={theme === "dark" ? "text-white/60" : "text-neutral-600"}>و</span>}
 
             <button
               type="button"
               onClick={() => {
-                if (l) openView(l);
+                if (l) openView(l); // ✅ پیش‌نمایش
               }}
               className={
                 "underline underline-offset-4 font-semibold " +
@@ -2669,11 +2694,12 @@ const ensureTagsForKind = async (kind) => {
               {toFaDigits(no)}
             </button>
 
-            {/* حذف انتخاب (اختیاری ولی خیلی کاربردی) */}
             <button
               type="button"
               onClick={() => {
-                setReturnToIds((prev) => (Array.isArray(prev) ? prev.filter((x) => String(x) !== String(id)) : []));
+                setReturnToIds((prev) =>
+                  (Array.isArray(prev) ? prev : []).filter((x) => String(x) !== String(id))
+                );
               }}
               className={
                 "h-6 w-6 rounded-lg inline-grid place-items-center border text-xs " +
@@ -2690,7 +2716,6 @@ const ensureTagsForKind = async (kind) => {
     </div>
   )}
 </div>
-
 
 
 
