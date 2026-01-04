@@ -2697,21 +2697,22 @@ const ensureTagsForKind = async (kind) => {
             </button>
 
             <button
-              type="button"
-              onClick={() => {
-                setReturnToIds((prev) =>
-                  (Array.isArray(prev) ? prev : []).filter((x) => String(x) !== String(id))
-                );
-              }}
-              className={
-                "h-6 w-6 rounded-lg inline-grid place-items-center border text-xs " +
-                (theme === "dark" ? "border-white/15 hover:bg-white/10" : "border-black/10 hover:bg-black/[0.04]")
-              }
-              aria-label="حذف"
-              title="حذف"
-            >
-              ×
-            </button>
+  type="button"
+  onClick={() => {
+    setReturnToIds((prev) =>
+      (Array.isArray(prev) ? prev : []).filter((x) => String(x) !== String(id))
+    );
+  }}
+  className={
+    "h-6 w-6 inline-grid place-items-center bg-transparent border-0 shadow-none p-0 text-lg leading-none transition " +
+    (theme === "dark" ? "text-white/60 hover:text-white" : "text-neutral-500 hover:text-neutral-900")
+  }
+  aria-label="حذف"
+  title="حذف"
+>
+  ×
+</button>
+
           </span>
         );
       })}
@@ -2792,6 +2793,41 @@ const ensureTagsForKind = async (kind) => {
 )}
 
 </div>
+
+
+{/* ✅ بارگذاری فایل (فقط برای وارده) - دقیقاً زیر ضمیمه */}
+{formKind === "incoming" && (
+  <div className="mt-2">
+    <button
+      type="button"
+      onClick={() => openUpload("incoming")}
+      disabled={!hasAttachment}
+      className={
+        uploadTriggerCls +
+        " w-full md:w-auto " +
+        (!hasAttachment ? " opacity-50 cursor-not-allowed" : "")
+      }
+      title={!hasAttachment ? "ابتدا ضمیمه را روی «دارد» بگذارید" : "بارگذاری فایل‌های نامه وارده"}
+    >
+      بارگذاری نامه وارده
+      {/* نمایش شمارنده انتخاب‌شده‌ها */}
+      {Array.isArray(docFilesByType?.incoming) && docFilesByType.incoming.length > 0 ? (
+        <span className="mr-2 text-xs opacity-80">
+          ({toFaDigits(docFilesByType.incoming.length)})
+        </span>
+      ) : null}
+    </button>
+
+    {/* زیر دکمه: نمایش خلاصه فایل‌های انتخاب‌شده (هم آپلودهای قبلی، هم جدیدها) */}
+    {Array.isArray(docFilesByType?.incoming) && docFilesByType.incoming.length > 0 && (
+      <div className={theme === "dark" ? "mt-2 text-xs text-white/60" : "mt-2 text-xs text-neutral-600"}>
+        {docFilesByType.incoming.slice(0, 3).map((f) => f?.name).filter(Boolean).join("، ")}
+        {docFilesByType.incoming.length > 3 ? " ..." : ""}
+      </div>
+    )}
+  </div>
+)}
+
 
 </div>
 
