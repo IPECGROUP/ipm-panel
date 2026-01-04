@@ -463,6 +463,14 @@ const [relatedQuery, setRelatedQuery] = useState("");
 
   const letterNoOf = (l) => String(l?.letter_no ?? l?.no ?? l?.number ?? l?.letterNo ?? "");
   const letterDateOf = (l) =>
+  String(
+    l?.letter_date ??
+      l?.letterDate ??
+      l?.secretariat_date ??
+      l?.secretariatDate ??
+      l?.date ??
+      ""
+  ).trim();
 
 const myLettersSorted = useMemo(() => {
     const arr = Array.isArray(myLetters) ? myLetters.slice() : [];
@@ -1169,15 +1177,6 @@ const secretariatLongText = (ymd) => {
     e.preventDefault();
     e.stopPropagation();
   };
-
-  String(
-    l?.letter_date ??
-      l?.letterDate ??
-      l?.secretariat_date ??
-      l?.secretariatDate ??
-      l?.date ??
-      ""
-  );
 
   const fromToOf = (l) => {
     const a = String(l?.from_name ?? l?.from ?? "");
