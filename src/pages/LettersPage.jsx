@@ -444,6 +444,36 @@ const [formKind, setFormKind] = useState("incoming"); // نوع نامه داخ�
 
   const [relatedOpen, setRelatedOpen] = useState(false);
 const [relatedQuery, setRelatedQuery] = useState("");
+  // ===== helpers: باید قبل از useMemoهایی که ازشون استفاده می‌کنن تعریف بشن =====
+  const letterIdOf = (l) => {
+    const raw = l?.id ?? l?.letter_id ?? l?.letterId ?? l?._id;
+    const id = Number(raw);
+    return id && Number.isFinite(id) ? id : String(raw || "");
+  };
+
+  const letterKindOf = (l) => {
+    const v = String(l?.kind || l?.type || l?.direction || l?.io || l?.tab || l?.letter_type || "").toLowerCase();
+    if (v.includes("internal") || v.includes("dakheli") || v === "d" || v === "internal") return "internal";
+    if (v.includes("out")) return "outgoing";
+    if (v.includes("in")) return "incoming";
+    if (v === "o" || v === "outgoing") return "outgoing";
+    if (v === "i" || v === "incoming") return "incoming";
+    return "incoming";
+  };
+
+  const letterNoOf = (l) => String(l?.letter_no ?? l?.no ?? l?.number ?? l?.letterNo ?? "");
+  const letterDateOf = (l) =>
+    String(
+      l?.letter_date ??
+        l?.letterDate ??
+        l?.secretariat_date ??
+        l?.secretariatDate ??
+        l?.date ??
+        ""
+    );
+
+  const orgOf = (l) => String(l?.org_name ?? l?.org ?? l?.organization ?? l?.company ?? "");
+  const subjectOf = (l) => String(l?.subject ?? l?.title ?? "");
 
 const letterById = useMemo(() => {
   const m = new Map();
@@ -1135,24 +1165,6 @@ const secretariatLongText = (ymd) => {
     e.stopPropagation();
   };
 
-  const letterIdOf = (l) => {
-    const raw = l?.id ?? l?.letter_id ?? l?.letterId ?? l?._id;
-    const id = Number(raw);
-    return id && Number.isFinite(id) ? id : String(raw || "");
-  };
-
-  const letterKindOf = (l) => {
-    const v = String(l?.kind || l?.type || l?.direction || l?.io || l?.tab || l?.letter_type || "").toLowerCase();
-    if (v.includes("internal") || v.includes("dakheli") || v === "d" || v === "internal") return "internal";
-    if (v.includes("out")) return "outgoing";
-    if (v.includes("in")) return "incoming";
-    if (v === "o" || v === "outgoing") return "outgoing";
-    if (v === "i" || v === "incoming") return "incoming";
-    return "incoming";
-  };
-
-  const letterNoOf = (l) => String(l?.letter_no ?? l?.no ?? l?.number ?? l?.letterNo ?? "");
-  const letterDateOf = (l) =>
   String(
     l?.letter_date ??
       l?.letterDate ??
@@ -1168,8 +1180,7 @@ const secretariatLongText = (ymd) => {
     const s = `${a}${a && b ? " / " : ""}${b}`.trim();
     return s || "—";
   };
-  const orgOf = (l) => String(l?.org_name ?? l?.org ?? l?.organization ?? l?.company ?? "");
-  const subjectOf = (l) => String(l?.subject ?? l?.title ?? "");
+
 
   const categoryOf = (l) => String(l?.category ?? l?.category_name ?? l?.categoryTitle ?? "");
   const categoryLabelOf = (l) => {
