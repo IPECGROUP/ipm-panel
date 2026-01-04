@@ -463,14 +463,6 @@ const [relatedQuery, setRelatedQuery] = useState("");
 
   const letterNoOf = (l) => String(l?.letter_no ?? l?.no ?? l?.number ?? l?.letterNo ?? "");
   const letterDateOf = (l) =>
-    String(
-      l?.letter_date ??
-        l?.letterDate ??
-        l?.secretariat_date ??
-        l?.secretariatDate ??
-        l?.date ??
-        ""
-    );
 
 const myLettersSorted = useMemo(() => {
     const arr = Array.isArray(myLetters) ? myLetters.slice() : [];
