@@ -400,14 +400,14 @@ const [formKind, setFormKind] = useState("incoming"); // نوع نامه داخ�
   const loggedInUserName = useMemo(() => {
     const u = user || {};
     return String(
-      u?.username ||
-        u?.user_name ||
-        u?.name ||
-        u?.full_name ||
-        u?.displayName ||
-        u?.login ||
-        ""
-    ).trim();
+  u?.name ||
+    u?.full_name ||
+    u?.displayName ||
+    u?.user_name ||
+    u?.username ||
+    u?.login ||
+    ""
+).trim();
   }, [user]);
 
 
@@ -473,16 +473,36 @@ const [relatedQuery, setRelatedQuery] = useState("");
   ).trim();
 
 const myLettersSorted = useMemo(() => {
-    const arr = Array.isArray(myLetters) ? myLetters.slice() : [];
-    arr.sort((a, b) => {
-      const ai = Number(letterIdOf(a));
-      const bi = Number(letterIdOf(b));
-      if (Number.isFinite(ai) && Number.isFinite(bi)) return bi - ai;
-      return String(letterIdOf(b)).localeCompare(String(letterIdOf(a)));
-    });
-    return arr;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myLetters]);
+  const arr = Array.isArray(myLetters) ? myLetters.slice() : [];
+
+  const normYmd = (s) => {
+    const raw = String(s || "").trim();
+    const v = toEnDigits(raw);
+    const m = v.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    if (!m) return "";
+    return `${m[1]}/${pad2(m[2])}/${pad2(m[3])}`;
+  };
+
+  const dateKeyOf = (l) =>
+    normYmd(letterDateOf(l)) ||
+    normYmd(l?.secretariat_date ?? l?.secretariatDate ?? "");
+
+  arr.sort((a, b) => {
+    const ad = dateKeyOf(a);
+    const bd = dateKeyOf(b);
+    if (ad && bd && ad !== bd) return bd.localeCompare(ad); // جدیدتر اول
+    if (ad && !bd) return -1;
+    if (!ad && bd) return 1;
+
+    const ai = Number(letterIdOf(a));
+    const bi = Number(letterIdOf(b));
+    if (Number.isFinite(ai) && Number.isFinite(bi)) return bi - ai;
+    return String(letterIdOf(b)).localeCompare(String(letterIdOf(a)));
+  });
+
+  return arr;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [myLetters]);
 
   const orgOf = (l) => String(l?.org_name ?? l?.org ?? l?.organization ?? l?.company ?? "");
   const subjectOf = (l) => String(l?.subject ?? l?.title ?? "");
@@ -2448,7 +2468,7 @@ const ensureTagsForKind = async (kind) => {
 {/* ضمیمه (رادیویی دارد/ندارد) + عنوان ضمیمه + بازگشت/پیرو کنار عنوان — بدون شرط نمایش */}
 <div>
     {/* ردیف کنارهم: ضمیمه + عنوان ضمیمه + بازگشت به (+ پیرو در صادره) */}
-<div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start">
+<div className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-1 items-start">
   {/* ضمیمه */}
   <div className="md:col-span-2">
     <div className={labelCls}>ضمیمه</div>
@@ -2481,6 +2501,31 @@ const ensureTagsForKind = async (kind) => {
       </label>
     </div>
   </div>
+
+{formKind === "incoming" && (
+  <div className="mt-2">
+    <button
+      type="button"
+      onClick={() => {
+        setHasAttachment(true);
+        openUpload("incoming");
+      }}
+      className={uploadTriggerCls}
+    >
+      <img
+        src="/images/icons/upload.svg"
+        alt=""
+        className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
+      />
+      <span className="text-sm font-semibold">بارگذاری نامه وارده</span>
+    </button>
+
+    <div className={theme === "dark" ? "text-white/60 text-xs mt-1" : "text-neutral-600 text-xs mt-1"}>
+      {toFaDigits((Array.isArray(docFilesByType?.incoming) ? docFilesByType.incoming : []).length)} فایل انتخاب شده
+    </div>
+  </div>
+)}
+
 
   {/* عنوان ضمیمه */}
   <div className="md:col-span-3">
@@ -2596,31 +2641,6 @@ const ensureTagsForKind = async (kind) => {
       </div>
     )}
   </div>
-
-
-{formKind === "incoming" && (
-  <div>
-    <div className={labelCls}>بارگذاری نامه وارده</div>
-
-    <div className="flex flex-wrap items-center gap-2">
-      <button
-        type="button"
-        onClick={() => {
-          setHasAttachment(true);     // ✅ وقتی رفت سمت آپلود، ضمیمه هم منطقیه روشن شه
-          openUpload("incoming");
-        }}
-        className={uploadTriggerCls}
-      >
-        <img src="/images/icons/upload.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")} />
-        <span className="text-sm font-semibold">مدیریت فایل‌ها</span>
-      </button>
-
-      <div className={theme === "dark" ? "text-white/60 text-xs" : "text-neutral-600 text-xs"}>
-        {toFaDigits((Array.isArray(docFilesByType?.incoming) ? docFilesByType.incoming : []).length)} فایل انتخاب شده
-      </div>
-    </div>
-  </div>
-)}
 
 
 
