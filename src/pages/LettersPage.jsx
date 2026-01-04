@@ -442,6 +442,39 @@ const [formKind, setFormKind] = useState("incoming"); // نوع نامه داخ�
   const [piroIds, setPiroIds] = useState([""]);
   const [myLetters, setMyLetters] = useState([]);
 
+  const [relatedOpen, setRelatedOpen] = useState(false);
+const [relatedQuery, setRelatedQuery] = useState("");
+
+const letterById = useMemo(() => {
+  const m = new Map();
+  (Array.isArray(myLettersSorted) ? myLettersSorted : []).forEach((l) => {
+    m.set(String(letterIdOf(l)), l);
+  });
+  return m;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [myLettersSorted]);
+
+const relatedSelectedIds = useMemo(() => {
+  return (Array.isArray(returnToIds) ? returnToIds : [])
+    .map((x) => String(x || "").trim())
+    .filter(Boolean);
+}, [returnToIds]);
+
+const relatedOptions = useMemo(() => {
+  const q = toEnDigits(String(relatedQuery || "").trim());
+  const arr = Array.isArray(myLettersSorted) ? myLettersSorted : [];
+
+  if (!q) return arr;
+
+  return arr.filter((l) => {
+    const no = toEnDigits(String(letterNoOf(l) || "").trim());
+    const id = toEnDigits(String(letterIdOf(l) || "").trim());
+    return no.includes(q) || id.includes(q);
+  });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [relatedQuery, myLettersSorted]);
+
+
   // tags
   const [tagCategories, setTagCategories] = useState([]);
   const [tags, setTags] = useState([]);
@@ -1242,55 +1275,53 @@ const secretariatLongText = (ymd) => {
   }, [filterQuick]);
 
   const filteredLetters = useMemo(() => {
-    const arr = Array.isArray(myLetters) ? myLetters : [];
-    const sSub = String(filterSubject || "").trim().toLowerCase();
-    const sOrg = String(filterOrg || "").trim().toLowerCase();
-    const sNo = String(filterLetterNo || "").trim().toLowerCase();
-    const fromY = normalizeYmd(filterFromDate);
-    const toY = normalizeYmd(filterToDate);
+  // ✅ همیشه جدیدترین نامه‌ها اول
+  const arr = Array.isArray(myLettersSorted) ? myLettersSorted : [];
 
-    return arr.filter((l) => {
-      const kind = letterKindOf(l);
+  const sSub = String(filterSubject || "").trim().toLowerCase();
+  const sOrg = String(filterOrg || "").trim().toLowerCase();
+  const sNo = String(filterLetterNo || "").trim().toLowerCase();
+  const fromY = normalizeYmd(filterFromDate);
+  const toY = normalizeYmd(filterToDate);
 
-      if (filterTab !== "all") {
-  if (kind !== filterTab) return false;
-}
+  return arr.filter((l) => {
+    const kind = letterKindOf(l);
 
+    if (filterTab !== "all") {
+      if (kind !== filterTab) return false;
+    }
 
-      if (sSub) {
-        const x = String(subjectOf(l) || "").toLowerCase();
-        if (!x.includes(sSub)) return false;
-      }
+    if (sSub) {
+      const x = String(subjectOf(l) || "").toLowerCase();
+      if (!x.includes(sSub)) return false;
+    }
 
-      if (sOrg) {
-        const x = String(orgOf(l) || "").toLowerCase();
-        if (!x.includes(sOrg)) return false;
-      }
+    if (sOrg) {
+      const x = String(orgOf(l) || "").toLowerCase();
+      if (!x.includes(sOrg)) return false;
+    }
 
-      if (sNo) {
-        const x = String(letterNoOf(l) || "").toLowerCase();
-        if (!x.includes(sNo)) return false;
-      }
+    if (sNo) {
+      const x = String(letterNoOf(l) || "").toLowerCase();
+      if (!x.includes(sNo)) return false;
+    }
 
-      if (filterTagIds.length > 0) {
-        const letterTags = Array.isArray(l?.tag_ids) ? l.tag_ids : Array.isArray(l?.tagIds) ? l.tagIds : [];
-        const set = new Set(letterTags.map((x) => String(x)));
-        const ok = filterTagIds.every((x) => set.has(String(x)));
-        if (!ok) return false;
-      }
+    if (filterTagIds.length > 0) {
+      const letterTags = Array.isArray(l?.tag_ids) ? l.tag_ids : Array.isArray(l?.tagIds) ? l.tagIds : [];
+      const set = new Set(letterTags.map((x) => String(x)));
+      const ok = filterTagIds.every((x) => set.has(String(x)));
+      if (!ok) return false;
+    }
 
-      const d = normalizeYmd(letterDateOf(l));
+    const d = normalizeYmd(letterDateOf(l));
+    if ((fromY || toY) && !d) return false;
+    if (fromY && d < fromY) return false;
+    if (toY && d > toY) return false;
 
-// اگر فیلتر تاریخ فعال است ولی این رکورد تاریخ معتبر ندارد => نمایش نده
-if ((fromY || toY) && !d) return false;
+    return true;
+  });
+}, [myLettersSorted, filterTab, filterSubject, filterOrg, filterLetterNo, filterTagIds, filterFromDate, filterToDate]);
 
-if (fromY && d < fromY) return false;
-if (toY && d > toY) return false;
-
-
-      return true;
-    });
-  }, [myLetters, filterTab, filterSubject, filterOrg, filterLetterNo, filterTagIds, filterFromDate, filterToDate]);
 
   useEffect(() => {
     setSelectedIds(new Set());
@@ -2347,51 +2378,57 @@ const ensureTagsForKind = async (kind) => {
         />
       </div>
 
-      {formKind === "outgoing" ? (
-        <>
-          <div className="md:col-span-4">
-            <div className={labelCls}>به</div>
-            <input
-              value={toName}
-              onChange={(e) => setToName(e.target.value)}
-              className={inputCls}
-              type="text"
-            />
-          </div>
+      {/* فقط وارده: شرکت/سازمان کوچکتر + آیکن بینش با "به" */}
+{formKind !== "outgoing" ? (
+  <>
+    <div className="md:col-span-3">
+      <div className={labelCls}>شرکت/سازمان</div>
+      <input
+        value={orgName}
+        onChange={(e) => setOrgName(e.target.value)}
+        className={inputCls}
+        type="text"
+      />
+    </div>
 
-          <div className="md:col-span-4">
-            <div className={labelCls}>شرکت/سازمان</div>
-            <input
-              value={orgName}
-              onChange={(e) => setOrgName(e.target.value)}
-              className={inputCls}
-              type="text"
-            />
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="md:col-span-4">
-            <div className={labelCls}>شرکت/سازمان</div>
-            <input
-              value={orgName}
-              onChange={(e) => setOrgName(e.target.value)}
-              className={inputCls}
-              type="text"
-            />
-          </div>
+    {/* آیکن وسط */}
+    <div className="md:col-span-1 flex flex-col items-center">
+      {/* برای هم‌تراز شدن با لیبل */}
+      <div className={labelCls + " opacity-0 select-none"}>_</div>
+      <div className="h-10 flex items-center justify-center">
+        <img
+          src="/images/icons/arrow-left.svg"
+          alt=""
+          className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
+        />
+      </div>
+    </div>
 
-          <div className="md:col-span-4">
-            <div className={labelCls}>به</div>
-            <input
-              value={toName}
-              onChange={(e) => setToName(e.target.value)}
-              className={inputCls}
-              type="text"
-            />
-          </div>
-        </>
-      )}
+    <div className="md:col-span-4">
+      <div className={labelCls}>به</div>
+      <input
+        value={toName}
+        onChange={(e) => setToName(e.target.value)}
+        className={inputCls}
+        type="text"
+      />
+    </div>
+  </>
+) : (
+  /* صادره همون قبلی بمونه */
+  <>
+    <div className="md:col-span-4">
+      <div className={labelCls}>به</div>
+      <input value={toName} onChange={(e) => setToName(e.target.value)} className={inputCls} type="text" />
+    </div>
+
+    <div className="md:col-span-4">
+      <div className={labelCls}>شرکت/سازمان</div>
+      <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputCls} type="text" />
+    </div>
+  </>
+)}
+
     </div>
   </div>
 )}
@@ -2407,13 +2444,13 @@ const ensureTagsForKind = async (kind) => {
 {/* ضمیمه (رادیویی دارد/ندارد) + عنوان ضمیمه + بازگشت/پیرو کنار عنوان — بدون شرط نمایش */}
 <div>
     {/* ردیف کنارهم: ضمیمه + عنوان ضمیمه + بازگشت به (+ پیرو در صادره) */}
-<div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+<div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start">
   {/* ضمیمه */}
   <div className="md:col-span-2">
     <div className={labelCls}>ضمیمه</div>
 
     {/* دو گزینه مثل چک‌باکس ولی فقط یکی انتخاب شود */}
-    <div className="flex items-center gap-4 mt-1">
+    <div className="flex items-center gap-4 mt-0">
       <label className="inline-flex items-center gap-2 cursor-pointer select-none">
         <input
           type="checkbox"
@@ -2463,69 +2500,173 @@ const ensureTagsForKind = async (kind) => {
     />
   </div>
 
-{/* بازگشت به */}
+{/* نامه‌های مرتبط (کمبوباکس چندانتخابی) */}
 <div className={(formKind === "outgoing" ? "md:col-span-4" : "md:col-span-7") + " min-w-0"}>
-  <div className={labelCls}>بازگشت به</div>
+  <div className={labelCls}>نامه های مرتبط</div>
 
-  <div className="w-full min-w-0 flex flex-wrap items-center gap-2">
-    {(Array.isArray(returnToIds) ? returnToIds : [""]).map((val, idx) => (
+  <div className="relative min-w-0">
+    <input
+      value={relatedQuery}
+      onChange={(e) => {
+        setRelatedQuery(e.target.value);
+        if (!relatedOpen) setRelatedOpen(true);
+      }}
+      onFocus={() => setRelatedOpen(true)}
+      className={inputCls + " h-10 text-sm"}
+      type="text"
+      placeholder="جستجو/انتخاب شماره نامه..."
+    />
+
+    {relatedOpen && (
       <div
-        key={`ret_${idx}`}
-        className="flex items-center gap-2 w-full sm:w-[280px] flex-none min-w-0"
+        className={
+          "absolute z-50 mt-2 w-full max-h-64 overflow-auto rounded-2xl border shadow-lg " +
+          (theme === "dark" ? "border-white/10 bg-neutral-900" : "border-black/10 bg-white")
+        }
       >
-        <select
-          value={val}
-          onChange={(e) => {
-            const v = e.target.value;
-            setReturnToIds((prev) => {
-              const arr = Array.isArray(prev) ? [...prev] : [""];
-              arr[idx] = v;
-              return arr;
-            });
-          }}
-          className={inputCls + " h-10 text-sm w-full min-w-0"}   // ✅ دیگه کش نمیاد کل فضا رو بگیره
+        <div className="p-2">
+          {relatedOptions.length === 0 ? (
+            <div className={theme === "dark" ? "text-white/60 text-sm p-2" : "text-neutral-600 text-sm p-2"}>
+              موردی پیدا نشد.
+            </div>
+          ) : (
+            relatedOptions.map((l) => {
+              const id = String(letterIdOf(l));
+              const no = String(letterNoOf(l) || "").trim() || id;
+              const sub = String(subjectOf(l) || "").trim();
+              const disabled = relatedSelectedIds.includes(id);
+
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => {
+                    setHasAttachment((v) => v); // بدون تغییر (فقط برای جلوگیری از lint های بی‌مورد)
+                    setReturnToIds((prev) => {
+                      const base = (Array.isArray(prev) ? prev : [])
+                        .map((x) => String(x || "").trim())
+                        .filter(Boolean);
+
+                      if (base.includes(id)) return base;
+                      return [...base, id];
+                    });
+
+                    setRelatedQuery("");
+                    // باز بمونه تا چندتا راحت انتخاب شه
+                    setRelatedOpen(true);
+                  }}
+                  className={
+                    "w-full text-right px-3 py-2 rounded-xl transition flex items-center justify-between gap-2 " +
+                    (disabled
+                      ? theme === "dark"
+                        ? "opacity-40 cursor-not-allowed"
+                        : "opacity-40 cursor-not-allowed"
+                      : theme === "dark"
+                      ? "hover:bg-white/10"
+                      : "hover:bg-black/[0.04]")
+                  }
+                >
+                  <span className="font-semibold">{toFaDigits(no)}</span>
+                  <span className={theme === "dark" ? "text-white/60 text-xs truncate max-w-[70%]" : "text-neutral-600 text-xs truncate max-w-[70%]"}>
+                    {sub || "—"}
+                  </span>
+                </button>
+              );
+            })
+          )}
+        </div>
+
+        <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
+
+        <button
+          type="button"
+          onClick={() => setRelatedOpen(false)}
+          className={
+            "w-full px-3 py-2 text-sm font-semibold " +
+            (theme === "dark" ? "hover:bg-white/10" : "hover:bg-black/[0.04]")
+          }
         >
-          <option value=""></option>
-          {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
-            const id = String(letterIdOf(l));
-            const no = String(letterNoOf(l) || "").trim();
-            const sub = String(subjectOf(l) || "").trim();
-            const lab = `${no ? toFaDigits(no) : "—"}${sub ? " — " + sub : ""}`;
-            return (
-              <option key={`ret_opt_${id}`} value={id}>
-                {lab}
-              </option>
-            );
-          })}
-        </select>
-
-        {idx > 0 && (
-          <button
-            type="button"
-            onClick={() =>
-              setReturnToIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))
-            }
-            className={addIconBtnCls + " h-10 w-10 shrink-0"}
-            aria-label="حذف"
-            title="حذف"
-          >
-            <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
-          </button>
-        )}
+          بستن
+        </button>
       </div>
-    ))}
-
-    <button
-      type="button"
-      onClick={() => setReturnToIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
-      className={addIconBtnCls + " h-10 w-10 shrink-0"}
-      aria-label="افزودن"
-      title="افزودن"
-    >
-      <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
-    </button>
+    )}
   </div>
+
+
+{formKind === "incoming" && (
+  <div>
+    <div className={labelCls}>بارگذاری نامه وارده</div>
+
+    <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={() => {
+          setHasAttachment(true);     // ✅ وقتی رفت سمت آپلود، ضمیمه هم منطقیه روشن شه
+          openUpload("incoming");
+        }}
+        className={uploadTriggerCls}
+      >
+        <img src="/images/icons/upload.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")} />
+        <span className="text-sm font-semibold">مدیریت فایل‌ها</span>
+      </button>
+
+      <div className={theme === "dark" ? "text-white/60 text-xs" : "text-neutral-600 text-xs"}>
+        {toFaDigits((Array.isArray(docFilesByType?.incoming) ? docFilesByType.incoming : []).length)} فایل انتخاب شده
+      </div>
+    </div>
+  </div>
+)}
+
+
+
+  {/* نمایش انتخاب‌ها: با "و" جدا + کلیک برای پیش‌نمایش */}
+  {relatedSelectedIds.length > 0 && (
+    <div className="mt-2 flex flex-wrap items-center gap-1 text-sm">
+      {relatedSelectedIds.map((id, i) => {
+        const l = letterById.get(id);
+        const no = String(letterNoOf(l) || "").trim() || id;
+
+        return (
+          <span key={id} className="inline-flex items-center gap-1">
+            {i > 0 && <span className={theme === "dark" ? "text-white/60" : "text-neutral-600"}>و</span>}
+
+            <button
+              type="button"
+              onClick={() => {
+                if (l) openView(l);
+              }}
+              className={
+                "underline underline-offset-4 font-semibold " +
+                (theme === "dark" ? "text-white hover:text-white/90" : "text-neutral-900 hover:text-black")
+              }
+              title="پیش نمایش"
+            >
+              {toFaDigits(no)}
+            </button>
+
+            {/* حذف انتخاب (اختیاری ولی خیلی کاربردی) */}
+            <button
+              type="button"
+              onClick={() => {
+                setReturnToIds((prev) => (Array.isArray(prev) ? prev.filter((x) => String(x) !== String(id)) : []));
+              }}
+              className={
+                "h-6 w-6 rounded-lg inline-grid place-items-center border text-xs " +
+                (theme === "dark" ? "border-white/15 hover:bg-white/10" : "border-black/10 hover:bg-black/[0.04]")
+              }
+              aria-label="حذف"
+              title="حذف"
+            >
+              ×
+            </button>
+          </span>
+        );
+      })}
+    </div>
+  )}
 </div>
+
 
 
 
@@ -2641,7 +2782,6 @@ const ensureTagsForKind = async (kind) => {
               else setInternalSecretariatDate(v);
             }}
             theme={theme}
-            hideIcon={true}
             buttonClassName={secretariatPickerBtnCls(
               formKind === "incoming" ? incomingSecretariatDate : formKind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate
             )}
@@ -2669,7 +2809,7 @@ const ensureTagsForKind = async (kind) => {
         </div>
 
         <div>
-          <div className={labelCls}>نام تحویل گیرنده</div>
+          <div className={labelCls}>مسئول دبیرخانه</div>
           <input value={loggedInUserName || ""} readOnly className={inputCls + " opacity-90"} type="text" />
         </div>
       </div>
@@ -3153,7 +3293,7 @@ const ensureTagsForKind = async (kind) => {
 
                             <InfoRow label="تاریخ ثبت دبیرخانه" value={viewLetter ? toFaDigits(String(viewLetter?.secretariat_date ?? viewLetter?.secretariatDate ?? "")) : ""} />
                             <InfoRow label="شماره ثبت دبیرخانه" value={viewLetter ? String(viewLetter?.secretariat_no ?? viewLetter?.secretariatNo ?? "") : ""} />
-                            <InfoRow label="نام تحویل گیرنده" value={viewLetter ? String(viewLetter?.receiver_name ?? viewLetter?.receiverName ?? "") : ""} />
+                            <InfoRow label="مسئول دبیرخانه" value={viewLetter ? String(viewLetter?.receiver_name ?? viewLetter?.receiverName ?? "") : ""} />
                           </div>
                         </div>
 
