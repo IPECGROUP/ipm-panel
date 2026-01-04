@@ -472,8 +472,21 @@ const [relatedQuery, setRelatedQuery] = useState("");
         ""
     );
 
+const myLettersSorted = useMemo(() => {
+    const arr = Array.isArray(myLetters) ? myLetters.slice() : [];
+    arr.sort((a, b) => {
+      const ai = Number(letterIdOf(a));
+      const bi = Number(letterIdOf(b));
+      if (Number.isFinite(ai) && Number.isFinite(bi)) return bi - ai;
+      return String(letterIdOf(b)).localeCompare(String(letterIdOf(a)));
+    });
+    return arr;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myLetters]);
+
   const orgOf = (l) => String(l?.org_name ?? l?.org ?? l?.organization ?? l?.company ?? "");
   const subjectOf = (l) => String(l?.subject ?? l?.title ?? "");
+
 
 const letterById = useMemo(() => {
   const m = new Map();
@@ -1714,17 +1727,6 @@ const secretariatLongText = (ymd) => {
   // ===== Reuse uploaded files (show ALL uploaded files; no letter selection) =====
   const [pickSearch, setPickSearch] = useState("");
 
-  const myLettersSorted = useMemo(() => {
-    const arr = Array.isArray(myLetters) ? myLetters.slice() : [];
-    arr.sort((a, b) => {
-      const ai = Number(letterIdOf(a));
-      const bi = Number(letterIdOf(b));
-      if (Number.isFinite(ai) && Number.isFinite(bi)) return bi - ai;
-      return String(letterIdOf(b)).localeCompare(String(letterIdOf(a)));
-    });
-    return arr;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myLetters]);
 
   useEffect(() => {
     if (!uploadOpen) {
