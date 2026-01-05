@@ -3142,13 +3142,9 @@ const ensureTagsForKind = async (kind) => {
           <div className="mt-5">
             <div className={tableWrapCls}>
               <div className="relative h-[55vh] overflow-auto">
-                <table
-  className="w-full table-fixed text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
-  dir="rtl"
->
+                <table className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5" dir="rtl">
   <thead>
     <tr className={theadRowCls}>
-      {/* checkbox */}
       <th className="w-12 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-40 bg-neutral-200 dark:bg-white/10">
         <input
           type="checkbox"
@@ -3163,32 +3159,26 @@ const ensureTagsForKind = async (kind) => {
         />
       </th>
 
-      {/* شماره */}
-      <th className="w-28 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+      <th className="w-24 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
         شماره
       </th>
 
-      {/* تاریخ */}
-      <th className="w-28 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+      <th className="w-24 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
         تاریخ
       </th>
 
-      {/* موضوع (ستون اصلی/کشسان) */}
       <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
         موضوع
       </th>
 
-      {/* از/به */}
-      <th className="w-44 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+      <th className="w-36 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
         از/به
       </th>
 
-      {/* شرکت/سازمان */}
-      <th className="w-52 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+      <th className="w-44 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
         شرکت/سازمان
       </th>
 
-      {/* اقدامات */}
       <th className="w-28 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
         اقدامات
       </th>
@@ -3230,7 +3220,6 @@ const ensureTagsForKind = async (kind) => {
 
         return (
           <tr key={id} className={rowBg + " transition-colors"}>
-            {/* checkbox */}
             <td className={"px-3 " + divider}>
               <input
                 type="checkbox"
@@ -3242,7 +3231,6 @@ const ensureTagsForKind = async (kind) => {
               />
             </td>
 
-            {/* شماره */}
             <td className={"px-3 " + divider}>
               <button
                 type="button"
@@ -3258,25 +3246,20 @@ const ensureTagsForKind = async (kind) => {
               </button>
             </td>
 
-            {/* تاریخ */}
             <td className={"px-3 " + divider}>{letterDateOf(l) ? toFaDigits(letterDateOf(l)) : "—"}</td>
 
-            {/* موضوع */}
             <td className={"px-3 " + divider}>
-              <span className="block w-full truncate mx-auto">{subjectOf(l) || "—"}</span>
+              <span className="block truncate mx-auto">{subjectOf(l) || "—"}</span>
             </td>
 
-            {/* از/به */}
             <td className={"px-3 " + divider}>
-              <span className="block w-full truncate mx-auto">{fromToOf(l)}</span>
+              <span className="block truncate mx-auto">{fromToOf(l)}</span>
             </td>
 
-            {/* شرکت/سازمان */}
             <td className={"px-3 " + divider}>
-              <span className="block w-full truncate mx-auto">{orgOf(l) || "—"}</span>
+              <span className="block truncate mx-auto">{orgOf(l) || "—"}</span>
             </td>
 
-            {/* اقدامات */}
             <td className={"px-3 " + divider}>
               <div className="inline-flex items-center justify-center gap-2">
                 <button type="button" onClick={() => openView(l)} className={iconBtnCls} aria-label="نمایش" title="نمایش">
