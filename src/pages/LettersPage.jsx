@@ -2528,26 +2528,6 @@ const ensureTagsForKind = async (kind) => {
     </div>
   </div>
 )}
-
-  /* صادره همون قبلی بمونه */
-  <>
-    <div className="md:col-span-4">
-      <div className={labelCls}>به</div>
-      <input value={toName} onChange={(e) => setToName(e.target.value)} className={inputCls} type="text" />
-    </div>
-
-    <div className="md:col-span-4">
-      <div className={labelCls}>شرکت/سازمان</div>
-      <input value={orgName} onChange={(e) => setOrgName(e.target.value)} className={inputCls} type="text" />
-    </div>
-  </>
-)}
-
-    </div>
-  </div>
-)}
-
-
    <div>
   <div className={labelCls}>موضوع</div>
   <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputCls} type="text" />
