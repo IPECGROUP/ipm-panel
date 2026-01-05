@@ -1088,6 +1088,23 @@ const mergePinnedFilterTags = (ids) => {
   const labelCls = theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1";
 
 
+  // compact versions (for one-line top row)
+const inputSmCls = inputCls
+  .replace("h-10", "h-9")
+  .replace("px-3", "px-2") + " text-[13px] rounded-lg";
+
+const labelSmCls = (theme === "dark"
+  ? "text-white/70 text-[11px] mb-1"
+  : "text-neutral-600 text-[11px] mb-1");
+
+const tabSmCls = (active) =>
+  "h-9 px-3 rounded-lg border transition text-[12px] font-semibold inline-flex items-center gap-1 whitespace-nowrap " +
+  (active
+    ? "text-white"
+    : theme === "dark"
+    ? "bg-transparent text-white hover:bg-white/5"
+    : "bg-white text-neutral-900 hover:bg-black/[0.02]");
+
   const formGridWrapCls =
     "rounded-2xl overflow-hidden border " +
     (theme === "dark" ? "border-white/10" : "border-black/10");
@@ -2466,138 +2483,131 @@ const ensureTagsForKind = async (kind) => {
           <div className="mt-4">
             {formOpen ? (
   <div className={formOuterBoxCls}>
-    <div className="grid grid-cols-1 md:grid-cols-6 gap-2">
-      <div>
-        <div className={labelCls}>نوع نامه</div>
-        <div className="flex items-center gap-1">
-         {TABS.filter((x) => x.id !== "all").map((t) => {
-  const active = formKind === t.id;
-  const activeColor = TAB_ACTIVE_BG[t.id];
+    <div
+  className="
+    flex items-end gap-2
+    overflow-x-auto md:overflow-visible
+    flex-nowrap
+    pb-1
+  "
+>
+  {/* نوع نامه */}
+  <div className="shrink-0 w-[320px]">
+    <div className={labelSmCls}>نوع نامه</div>
+    <div className="flex items-center gap-1">
+      {TABS.filter((x) => x.id !== "all").map((t) => {
+        const active = formKind === t.id;
+        const activeColor = TAB_ACTIVE_BG[t.id];
 
-  const cls =
-    "h-10 px-5 rounded-xl border transition text-sm font-semibold inline-flex items-center gap-2 " +
-    (active
-      ? "text-white"
-      : theme === "dark"
-      ? "bg-transparent text-white hover:bg-white/5"
-      : "bg-white text-neutral-900 hover:bg-black/[0.02]");
+        return (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setFormKind(t.id)}
+            className={tabSmCls(active)}
+            style={
+              active
+                ? { backgroundColor: activeColor, borderColor: activeColor }
+                : { borderColor: activeColor }
+            }
+          >
+            <span>{t.label}</span>
+            {t.icon ? (
+              <img
+                src={t.icon}
+                alt=""
+                className="w-4 h-4"
+                style={{
+                  filter: active
+                    ? "brightness(0) invert(1)"
+                    : theme === "dark"
+                    ? "brightness(0) invert(1)"
+                    : "none",
+                }}
+              />
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  </div>
 
-  return (
-    <button
-      key={t.id}
-      type="button"
-      onClick={() => setFormKind(t.id)}
-      className={cls}
-      style={
-        active
-          ? { backgroundColor: activeColor, borderColor: activeColor }
-          : { borderColor: activeColor }
-      }
+  {/* کلاس سند */}
+  <div className="shrink-0 w-[190px]">
+    <div className={labelSmCls}>کلاس سند</div>
+    <select
+      value={category}
+      onChange={(e) => {
+        const v = e.target.value;
+        if (v === "__other__") {
+          setDocClassOtherText("");
+          setDocClassOtherOpen(true);
+          return;
+        }
+        setCategory(v);
+      }}
+      className={inputSmCls}
     >
-      <span>{t.label}</span>
-      {t.icon ? (
-        <img
-          src={t.icon}
-          alt=""
-          className="w-5 h-5"
-          style={{
-            filter: active
-              ? "brightness(0) invert(1)"
-              : theme === "dark"
-              ? "brightness(0) invert(1)"
-              : "none",
-          }}
-        />
-      ) : null}
-    </button>
-  );
-})}
-
-        </div>
-      </div>
-
-      {/* کلاس سند */}
-<div>
-  <div className={labelCls}>کلاس سند</div>
-  <select
-    value={category}
-    onChange={(e) => {
-      const v = e.target.value;
-
-      // سایر → پاپ‌آپ
-      if (v === "__other__") {
-        setDocClassOtherText("");
-        setDocClassOtherOpen(true);
-        return;
-      }
-
-      setCategory(v);
-    }}
-    className={inputCls}
-  >
-    {([...DOC_CLASS_BASE, ...(Array.isArray(docClassExtras) ? docClassExtras : [])]).map((lab) => (
-      <option key={lab} value={lab}>
-        {lab}
-      </option>
-    ))}
-    <option value="__other__">سایر</option>
-  </select>
-</div>
-
-{/* طبقه بندی */}
-<div>
-  <div className={labelCls}>طبقه بندی</div>
-  <select
-    value={classification}
-    onChange={(e) => setClassification(e.target.value)}
-    className={inputCls}
-  >
-    <option value="عادی">عادی</option>
-    <option value="محرمانه">محرمانه</option>
-  </select>
-</div>
-
-{/* مرکز/پروژه (همیشه نمایش داده شود) */}
-<div>
-  <div className={labelCls}>مرکز/پروژه</div>
-  <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={inputCls}>
-    <option value=""></option>
-    {projectsTopOnly.map((p) => (
-      <option key={p.id} value={String(p.id)}>
-        {projectOptionLabel(p)}
-      </option>
-    ))}
-  </select>
-</div>
-
-
-      {category === "project" && (
-  <div>
-    <div className={labelCls}>پروژه</div>
-    <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={inputCls}>
-      <option value=""></option>
-      {projectsTopOnly.map((p) => (
-  <option key={p.id} value={String(p.id)}>
-    {projectOptionLabel(p)}
-  </option>
-))}
-
+      {([...DOC_CLASS_BASE, ...(Array.isArray(docClassExtras) ? docClassExtras : [])]).map((lab) => (
+        <option key={lab} value={lab}>{lab}</option>
+      ))}
+      <option value="__other__">سایر</option>
     </select>
   </div>
-)}
 
+  {/* طبقه بندی */}
+  <div className="shrink-0 w-[140px]">
+    <div className={labelSmCls}>طبقه بندی</div>
+    <select
+      value={classification}
+      onChange={(e) => setClassification(e.target.value)}
+      className={inputSmCls}
+    >
+      <option value="عادی">عادی</option>
+      <option value="محرمانه">محرمانه</option>
+    </select>
+  </div>
 
-    <div>
-        <div className={labelCls}>{formKind === "internal" ? "شماره سند" : "شماره نامه"}</div>
-        <input value={letterNo} onChange={(e) => setLetterNo(e.target.value)} className={inputCls} type="text" />
-    </div>
+  {/* مرکز/پروژه */}
+  <div className="shrink-0 w-[220px]">
+    <div className={labelSmCls}>مرکز/پروژه</div>
+    <select
+      value={projectId}
+      onChange={(e) => setProjectId(e.target.value)}
+      className={inputSmCls}
+    >
+      <option value=""></option>
+      {projectsTopOnly.map((p) => (
+        <option key={p.id} value={String(p.id)}>
+          {projectOptionLabel(p)}
+        </option>
+      ))}
+    </select>
+  </div>
 
+  {/* شماره */}
+  <div className="shrink-0 w-[170px]">
+    <div className={labelSmCls}>{formKind === "internal" ? "شماره سند" : "شماره نامه"}</div>
+    <input
+      value={letterNo}
+      onChange={(e) => setLetterNo(e.target.value)}
+      className={inputSmCls}
+      type="text"
+    />
+  </div>
 
-      <div>
-        <div className={labelCls}>{formKind === "internal" ? "تاریخ سند" : "تاریخ نامه"}</div>
-        <JalaliPopupDatePicker value={letterDate} onChange={setLetterDate} theme={theme} />
-      </div>
-    </div>
+  {/* تاریخ */}
+  <div className="shrink-0 w-[170px]">
+    <div className={labelSmCls}>{formKind === "internal" ? "تاریخ سند" : "تاریخ نامه"}</div>
+    <JalaliPopupDatePicker
+      value={letterDate}
+      onChange={setLetterDate}
+      theme={theme}
+      buttonClassName={inputSmCls + " flex items-center justify-between"}
+    />
+  </div>
+</div>
+
 {formKind !== "internal" && (
   <div className={formGridWrapCls + " p-2 border-0"}>
     <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
