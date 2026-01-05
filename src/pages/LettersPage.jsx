@@ -2482,7 +2482,7 @@ const ensureTagsForKind = async (kind) => {
         </>
       ) : (
         <>
-          {/* وارده/داخلی مثل قبل */}
+          {/* وارده (مثل قبل) */}
           <div className="md:col-span-4">
             <div className={labelCls}>از</div>
             <input
@@ -2521,10 +2521,14 @@ const ensureTagsForKind = async (kind) => {
               onChange={(e) => setToName(e.target.value)}
               className={inputCls}
               type="text"
-      />
+            />
+          </div>
+        </>
+      )}
     </div>
-  </>
-) : (
+  </div>
+)}
+
   /* صادره همون قبلی بمونه */
   <>
     <div className="md:col-span-4">
