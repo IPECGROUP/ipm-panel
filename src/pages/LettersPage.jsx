@@ -21,6 +21,8 @@ const TABS = [
   { id: "internal", label: "داخلی", icon: "/images/icons/dakheli.svg" },
 ];
 
+const FILTER_ACTIVE_SCOPE = "letters_filter_active";
+
 const PERSIAN_MONTHS = [
   "فروردین",
   "اردیبهشت",
@@ -480,6 +482,12 @@ useEffect(() => {
 
 
   useEffect(() => {
+  loadActiveFilterTags();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
+
+
+  useEffect(() => {
     if (!uploadOpen) return;
     const onEsc = (e) => {
       if (e.key === "Escape") closeUpload();
@@ -804,6 +812,26 @@ const savePinnedFilterTags = async (ids) => {
   } catch {}
 };
 
+const saveActiveFilterTags = async (ids) => {
+  try {
+    await api(`/tag-prefs?scope=${encodeURIComponent(FILTER_ACTIVE_SCOPE)}`, {
+      method: "PUT",
+      body: JSON.stringify({ scope: FILTER_ACTIVE_SCOPE, ids }),
+    });
+  } catch {}
+};
+
+const loadActiveFilterTags = async () => {
+  try {
+    const r = await api(`/tag-prefs?scope=${encodeURIComponent(FILTER_ACTIVE_SCOPE)}`);
+    const ids = normalizeIdList(r?.ids || r?.items || r?.data?.ids || []).slice(0, TAG_PREFS_LIMIT);
+    setFilterTagIds(ids);
+  } catch {
+    setFilterTagIds([]);
+  }
+};
+
+
 const loadPinnedFilterTags = async () => {
   try {
     const r = await api(`/tag-prefs?scope=${encodeURIComponent(TAG_PREFS_SCOPE)}`);
@@ -874,17 +902,17 @@ const mergePinnedFilterTags = (ids) => {
   });
 };
 
-
-
   const resetAllFilters = () => {
   setFilterQuick("");
   setFilterFromDate("");
   setFilterToDate("");
   setFilterTagIds([]);
+  saveActiveFilterTags([]); // ✅
   setFilterSubject("");
   setFilterOrg("");
   setFilterLetterNo("");
 };
+
   // ===== Table selection + pagination =====
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -1272,28 +1300,35 @@ if (pin) {
 
 
 
-  const toggleTag = (which, id) => {
+ const toggleTag = (which, id) => {
   const sid = String(id || "").trim();
   if (!sid) return;
 
-  const upd = (prev) => {
-    const cur = Array.isArray(prev) ? prev.map(String) : [];
-    const next = cur.includes(sid) ? cur.filter((x) => x !== sid) : [...cur, sid];
-    setFormTagsAndPersist(which, next); // ✅ ذخیره per-user
-    return next;
-  };
+  const cur =
+    which === "incoming" ? incomingTagIds :
+    which === "outgoing" ? outgoingTagIds :
+    internalTagIds;
 
-  if (which === "incoming") setIncomingTagIds(upd);
-  else if (which === "outgoing") setOutgoingTagIds(upd);
-  else setInternalTagIds(upd);
+  const base = Array.isArray(cur) ? cur.map(String) : [];
+  const next = base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
+
+  setFormTagsAndPersist(which, next); // ✅ هم set هم save
 };
 
 
-  const toggleFilterTag = (id) => {
-    const sid = String(id || "");
-    if (!sid) return;
-    setFilterTagIds((arr) => (arr.some((x) => String(x) === sid) ? arr.filter((x) => String(x) !== sid) : [...arr, sid]));
-  };
+
+const toggleFilterTag = (id) => {
+  const sid = String(id || "").trim();
+  if (!sid) return;
+
+  setFilterTagIds((prev) => {
+    const cur = Array.isArray(prev) ? prev.map(String) : [];
+    const next = cur.includes(sid) ? cur.filter((x) => x !== sid) : [...cur, sid];
+    saveActiveFilterTags(next); 
+    return next;
+  });
+};
+
 
   const latestTags = useMemo(() => {
     const arr = Array.isArray(tags) ? tags.slice() : [];
@@ -2202,6 +2237,19 @@ const openTagPicker = async (forWhat) => {
   setTagPickKind(initialKind);
   await ensureTagsForKind(initialKind);
 
+useEffect(() => {
+  if (!formOpen) return;
+
+  const k =
+    formKind === "outgoing" ? "projects" :
+    formKind === "internal" ? "execution" :
+    "letters";
+
+  ensureTagsForKind(k);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [formOpen, formKind]);
+
+
   const currentSelected =
     forWhat === "form"
       ? initialKind === "letters"
@@ -2814,87 +2862,6 @@ const ensureTagsForKind = async (kind) => {
   </div>
 )}
 
-
-{/* برچسب‌ها (برای فرم) */}
-<div>
-  <div className={labelCls}>برچسب ها</div>
-
-  <div className="flex flex-wrap items-center gap-2">
-    {(() => {
-      const scope =
-        formKind === "outgoing" ? "projects" :
-        formKind === "internal" ? "execution" :
-        "letters";
-
-      const selectedIds =
-        formKind === "outgoing" ? outgoingTagIds :
-        formKind === "internal" ? internalTagIds :
-        incomingTagIds;
-
-      const pool = Array.isArray(tagsByScope?.[scope]) ? tagsByScope[scope] : [];
-      const selSet = new Set((Array.isArray(selectedIds) ? selectedIds : []).map(String));
-
-      // selected first, then latest
-      const selectedObjs = pool.filter((t) => selSet.has(String(t?.id)));
-      const latest = pool
-        .slice()
-        .sort((a, b) => Number(b?.id) - Number(a?.id))
-        .filter((t) => !selSet.has(String(t?.id)))
-        .slice(0, 14);
-
-      const merged = [...selectedObjs, ...latest];
-      const seen = new Set();
-
-      return merged
-        .filter((t) => {
-          const id = String(t?.id ?? "").trim();
-          if (!id || seen.has(id)) return false;
-          seen.add(id);
-          return true;
-        })
-        .map((t) => {
-          const id = String(t?.id);
-          const label = tagLabelOf(t);
-          const active = selSet.has(id);
-
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => toggleTag(formKind, id)}   // ✅ toggle + persist
-              className={(active ? selectedTagChipCls : chipCls) + " h-10"}
-              title={label}
-              aria-label={label}
-            >
-              <span className="truncate max-w-[220px]">{label}</span>
-            </button>
-          );
-        });
-    })()}
-
-    {/* افزودن برچسب */}
-    <button
-      type="button"
-      onClick={() => openTagPicker("form")}
-      className={
-        "h-10 w-10 rounded-full border transition inline-flex items-center justify-center " +
-        (theme === "dark"
-          ? "border-white/15 bg-white/5 hover:bg-white/10"
-          : "border-black/10 bg-white hover:bg-black/[0.02]")
-      }
-      aria-label="افزودن برچسب"
-      title="افزودن برچسب"
-    >
-      <img
-        src="/images/icons/sayer.svg"
-        alt=""
-        className={"w-5 h-5 " + (theme === "dark" ? "dark:invert" : "")}
-      />
-    </button>
-  </div>
-</div>
-
-
 {/* ضمیمه (رادیویی دارد/ندارد) + عنوان ضمیمه + بازگشت/پیرو کنار عنوان — بدون شرط نمایش */}
 <div>
     {/* ردیف کنارهم: ضمیمه + عنوان ضمیمه + بازگشت به (+ پیرو در صادره) */}
@@ -3132,34 +3099,89 @@ const ensureTagsForKind = async (kind) => {
   </button>
 </div>
 
+{/* برچسب‌ها (برای فرم) */}
+<div>
+  <div className={labelCls}>برچسب ها</div>
 
+  <div className="flex flex-wrap items-center gap-2">
+    {(() => {
+      const scope =
+        formKind === "outgoing" ? "projects" :
+        formKind === "internal" ? "execution" :
+        "letters";
 
-</div>
-</div>
+      const selectedIds =
+        formKind === "outgoing" ? outgoingTagIds :
+        formKind === "internal" ? internalTagIds :
+        incomingTagIds;
 
-    <div>
-      <div className={labelCls}>برچسب ها</div>
-      <div className="flex flex-wrap items-center gap-2">
-        {tagCapsFor(formKind === "incoming" ? incomingTagIds : formKind === "outgoing" ? outgoingTagIds : internalTagIds).map((t) => {
+      const pool = Array.isArray(tagsByScope?.[scope]) ? tagsByScope[scope] : [];
+      const selSet = new Set((Array.isArray(selectedIds) ? selectedIds : []).map(String));
+
+      // selected first, then latest
+      const selectedObjs = pool.filter((t) => selSet.has(String(t?.id)));
+      const latest = pool
+        .slice()
+        .sort((a, b) => Number(b?.id) - Number(a?.id))
+        .filter((t) => !selSet.has(String(t?.id)))
+        .slice(0, 14);
+
+      const merged = [...selectedObjs, ...latest];
+      const seen = new Set();
+
+      return merged
+        .filter((t) => {
+          const id = String(t?.id ?? "").trim();
+          if (!id || seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        })
+        .map((t) => {
           const id = String(t?.id);
           const label = tagLabelOf(t);
-          const selectedArr = formKind === "incoming" ? incomingTagIds : formKind === "outgoing" ? outgoingTagIds : internalTagIds;
-          const active = selectedArr.some((x) => String(x) === id);
+          const active = selSet.has(id);
+
           return (
             <button
               key={id}
               type="button"
-              onClick={() => toggleTag(formKind, id)}
-              className={active ? selectedTagChipCls : chipCls}
+              onClick={() => toggleTag(formKind, id)}   // ✅ toggle + persist
+              className={(active ? selectedTagChipCls : chipCls) + " h-10"}
               title={label}
               aria-label={label}
             >
               <span className="truncate max-w-[220px]">{label}</span>
             </button>
           );
-        })}
-      </div>
-    </div>
+        });
+    })()}
+
+    {/* افزودن برچسب */}
+    <button
+      type="button"
+      onClick={() => openTagPicker("form")}
+      className={
+        "h-10 w-10 rounded-full border transition inline-flex items-center justify-center " +
+        (theme === "dark"
+          ? "border-white/15 bg-white/5 hover:bg-white/10"
+          : "border-black/10 bg-white hover:bg-black/[0.02]")
+      }
+      aria-label="افزودن برچسب"
+      title="افزودن برچسب"
+    >
+      <img
+        src="/images/icons/sayer.svg"
+        alt=""
+        className={"w-5 h-5 " + (theme === "dark" ? "dark:invert" : "")}
+      />
+    </button>
+  </div>
+</div>
+
+</div>
+</div>
+
+
 
     <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
 
