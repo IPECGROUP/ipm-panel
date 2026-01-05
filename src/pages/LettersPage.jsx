@@ -421,6 +421,32 @@ const [formKind, setFormKind] = useState("incoming"); // نوع نامه داخ�
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uploadOpen, uploadFor]);
 
+
+// کلاس سند (گزینه‌های ثابت)
+const DOC_CLASS_BASE = [
+  "نامه",
+  "ترنسمیتال",
+  "مستندات داخلی",
+  "قرارداد",
+  "پیشنهاد (فنی - مالی)",
+  "اسناد فنی و مهندسی",
+  "اسناد خرید و بازرگانی",
+  "اسناد پروژه ای",
+  "اسناد مالی",
+  "اسناد ثبتی و حقوقی",
+];
+
+// گزینه‌های سفارشی (وقتی کاربر «سایر» می‌زند)
+const [docClassExtras, setDocClassExtras] = useState([]);
+
+// پاپ‌آپ «سایر»
+const [docClassOtherOpen, setDocClassOtherOpen] = useState(false);
+const [docClassOtherText, setDocClassOtherText] = useState("");
+
+// طبقه بندی (عادی/محرمانه)
+const [classification, setClassification] = useState("عادی");
+
+
   const [category, setCategory] = useState("");
   const [projectId, setProjectId] = useState("");
   const [projects, setProjects] = useState([]);
@@ -1070,6 +1096,12 @@ const projectsTopOnly = useMemo(() => {
 
     out.push({ ...p, __baseCode: base });
   }
+// ✅ پین پروژه 100 همیشه اول
+const pin = out.find((p) => String(p?.__baseCode ?? p?.code ?? "").trim() === "100");
+if (pin) {
+  const rest = out.filter((p) => p !== pin);
+  return [pin, ...rest];
+}
 
   return out;
 }, [projectsDesc]);
@@ -1461,7 +1493,8 @@ const secretariatLongText = (ymd) => {
   const rowDividerCls = "border-b border-neutral-300 dark:border-neutral-700";
 
   const resetForm = () => {
-    setCategory("");
+    setCategory("نامه");
+    setClassification("عادی");
     setProjectId("");
     setLetterNo("");
     setLetterDate("");
@@ -1520,7 +1553,17 @@ const secretariatLongText = (ymd) => {
     setFormOpen(true);
     setFormKind(kind);
 
-    setCategory(String(l?.category ?? l?.category_name ?? l?.categoryTitle ?? ""));
+    const rawCat = String(l?.category ?? l?.category_name ?? l?.categoryTitle ?? "").trim();
+
+// سازگاری با دیتاهای قدیمی شما که category="project" بوده
+    const mappedCat = rawCat === "project" ? "اسناد پروژه ای" : (rawCat || "نامه");
+    setCategory(mappedCat);
+
+    // طبقه بندی (اگر از بک‌اند اومد، وگرنه پیش‌فرض)
+    const rawClass =
+      String(l?.classification ?? l?.doc_classification ?? l?.confidentiality ?? "").trim();
+    setClassification(rawClass || "عادی");
+
     const pid = l?.project_id ?? l?.projectId ?? l?.projectID ?? null;
     setProjectId(pid ? String(pid) : "");
 
@@ -2353,7 +2396,7 @@ const ensureTagsForKind = async (kind) => {
           <div className="mt-4">
             {formOpen ? (
   <div className={formOuterBoxCls}>
-    <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+    <div className="grid grid-cols-1 md:grid-cols-6 gap-2">
       <div>
         <div className={labelCls}>نوع نامه</div>
         <div className="flex items-center gap-1">
@@ -2388,21 +2431,60 @@ const ensureTagsForKind = async (kind) => {
         </div>
       </div>
 
-      <div>
-        <div className={labelCls}>دسته بندی نامه</div>
-        <select
-          value={category}
-          onChange={(e) => {
-            const v = e.target.value;
-            setCategory(v);
-            if (v !== "project") setProjectId("");
-          }}
-          className={inputCls}
-        >
-          <option value=""></option>
-          <option value="project">پروژه‌ها</option>
-        </select>
-      </div>
+      {/* کلاس سند */}
+<div>
+  <div className={labelCls}>کلاس سند</div>
+  <select
+    value={category}
+    onChange={(e) => {
+      const v = e.target.value;
+
+      // سایر → پاپ‌آپ
+      if (v === "__other__") {
+        setDocClassOtherText("");
+        setDocClassOtherOpen(true);
+        return;
+      }
+
+      setCategory(v);
+    }}
+    className={inputCls}
+  >
+    {([...DOC_CLASS_BASE, ...(Array.isArray(docClassExtras) ? docClassExtras : [])]).map((lab) => (
+      <option key={lab} value={lab}>
+        {lab}
+      </option>
+    ))}
+    <option value="__other__">سایر</option>
+  </select>
+</div>
+
+{/* طبقه بندی */}
+<div>
+  <div className={labelCls}>طبقه بندی</div>
+  <select
+    value={classification}
+    onChange={(e) => setClassification(e.target.value)}
+    className={inputCls}
+  >
+    <option value="عادی">عادی</option>
+    <option value="محرمانه">محرمانه</option>
+  </select>
+</div>
+
+{/* مرکز/پروژه (همیشه نمایش داده شود) */}
+<div>
+  <div className={labelCls}>مرکز/پروژه</div>
+  <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={inputCls}>
+    <option value=""></option>
+    {projectsTopOnly.map((p) => (
+      <option key={p.id} value={String(p.id)}>
+        {projectOptionLabel(p)}
+      </option>
+    ))}
+  </select>
+</div>
+
 
       {category === "project" && (
   <div>
@@ -2856,6 +2938,91 @@ const ensureTagsForKind = async (kind) => {
 ) : null}
 
           </div>
+
+{docClassOtherOpen &&
+  createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/50"
+        onClick={() => setDocClassOtherOpen(false)}
+      />
+      <div
+        className={
+          "relative w-full max-w-md rounded-2xl border p-4 shadow-xl " +
+          (theme === "dark"
+            ? "border-white/10 bg-neutral-900 text-white"
+            : "border-black/10 bg-white text-neutral-900")
+        }
+      >
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="font-semibold text-sm">افزودن مورد جدید (سایر)</div>
+
+          <button
+            type="button"
+            onClick={() => setDocClassOtherOpen(false)}
+            className={
+              "h-9 w-9 rounded-xl border flex items-center justify-center transition " +
+              (theme === "dark"
+                ? "border-white/10 hover:bg-white/10"
+                : "border-black/10 hover:bg-black/[0.04]")
+            }
+            aria-label="بستن"
+            title="بستن"
+          >
+            <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
+          </button>
+        </div>
+
+        <div className={labelCls}>عنوان</div>
+        <input
+          value={docClassOtherText}
+          onChange={(e) => setDocClassOtherText(e.target.value)}
+          className={inputCls}
+          type="text"
+          placeholder="مثلاً: گزارش بازدید کارگاهی"
+          autoFocus
+        />
+
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setDocClassOtherOpen(false)}
+            className={
+              "h-10 px-4 rounded-xl border transition " +
+              (theme === "dark" ? "border-white/15 hover:bg-white/10" : "border-black/10 hover:bg-black/[0.04]")
+            }
+          >
+            انصراف
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              const v = String(docClassOtherText || "").trim();
+              if (!v) return;
+
+              setDocClassExtras((prev) => {
+                const arr = Array.isArray(prev) ? prev : [];
+                if (arr.some((x) => String(x).trim() === v)) return arr;
+                return [v, ...arr]; // جدیدها بالا
+              });
+
+              setCategory(v);
+              setDocClassOtherOpen(false);
+            }}
+            className={
+              "h-10 px-4 rounded-xl transition " +
+              (theme === "dark" ? "bg-white text-black hover:bg-white/90" : "bg-black text-white hover:bg-black/90")
+            }
+          >
+            افزودن
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )}
+
 
           {/* Table */}
           <div className="mt-5">
