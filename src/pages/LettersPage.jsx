@@ -20,6 +20,38 @@ const TABS = [
   { id: "outgoing", label: "صادره", icon: "/images/icons/sadere.svg" },
   { id: "internal", label: "داخلی", icon: "/images/icons/dakheli.svg" },
 ];
+const [unitsAll, setUnitsAll] = useState([]);
+const [internalUnitId, setInternalUnitId] = useState("");
+
+const unitIdOf = (u) => String(u?.id ?? u?.unit_id ?? "");
+const unitLabelOf = (u) => String(u?.name ?? u?.title ?? u?.label ?? u?.unit_name ?? "").trim();
+
+const myUnitsFromUser = useMemo(() => {
+  const u = user || {};
+  const arr =
+    Array.isArray(u?.units) ? u.units :
+    Array.isArray(u?.user_units) ? u.user_units :
+    Array.isArray(u?.unit_ids) ? u.unit_ids.map((id) => ({ id })) :
+    [];
+  return arr;
+}, [user]);
+
+const unitOptions = useMemo(() => {
+  const map = new Map();
+  (Array.isArray(unitsAll) ? unitsAll : []).forEach((x) => {
+    const id = unitIdOf(x);
+    if (id) map.set(id, x);
+  });
+  (Array.isArray(myUnitsFromUser) ? myUnitsFromUser : []).forEach((x) => {
+    const id = unitIdOf(x);
+    if (id && !map.has(id)) map.set(id, x);
+  });
+  return Array.from(map.entries()).map(([id, obj]) => ({
+    id,
+    label: unitLabelOf(obj) || id,
+  }));
+}, [unitsAll, myUnitsFromUser]);
+
 
 const PERSIAN_MONTHS = [
   "فروردین",
@@ -95,6 +127,28 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
+
+
+useEffect(() => {
+  let mounted = true;
+  (async () => {
+    try {
+      const r = await api("/base/units");
+      const items = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
+      if (!mounted) return;
+      setUnitsAll(items);
+    } catch {
+      if (!mounted) return;
+      setUnitsAll([]);
+    }
+  })();
+  return () => {
+    mounted = false;
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
+
+
 
   useEffect(() => {
     if (!open) return;
@@ -1502,6 +1556,7 @@ const secretariatLongText = (ymd) => {
     setOrgName("");
     setToName("");
     setSubject("");
+    setInternalUnitId("");
 
     setHasAttachment(false);
     setIncomingAttachmentTitle("");
@@ -1683,9 +1738,11 @@ const secretariatLongText = (ymd) => {
 
     const queue = files.filter((f) => f && f.status !== "error" && (f.optimizedFile || f.file) && !f.url);
 
-    const computedHasAttachment = !!hasAttachment
-  ? (!!String(attachmentTitle || "").trim() || queue.length > 0 || reused.length > 0)
-  : false;
+   const computedHasAttachment =
+  queue.length > 0 || reused.length > 0 || !!String(attachmentTitle || "").trim()
+    ? true
+    : !!hasAttachment;
+
 
     const payload = {
       kind,
@@ -1706,6 +1763,7 @@ const secretariatLongText = (ymd) => {
       secretariatNo: secretariatNo || "",
       receiverName: receiverName || "",
       attachments: reused,
+      unitId: kind === "internal" ? (internalUnitId ? Number(internalUnitId) || internalUnitId : null) : null,
     };
 
     let saved;
@@ -2269,16 +2327,8 @@ const ensureTagsForKind = async (kind) => {
                 </div>
 
                 <div className="min-w-[120px]">
-
-
-                  <div className={labelCls}>شماره نامه</div>
-                  <input
-                    value={filterLetterNo}
-                    onChange={(e) => setFilterLetterNo(e.target.value)}
-                    className={inputCls}
-                    type="text"
-                    placeholder="جستجو بر اساس شماره"
-                  />
+                  <div className={labelCls}>{formKind === "internal" ? "شماره سند" : "شماره نامه"}</div>
+                  <input value={letterNo} onChange={(e) => setLetterNo(e.target.value)} className={inputCls} type="text" />
                 </div>
 
                 <div className="min-w-[140px]">
@@ -2610,11 +2660,33 @@ const ensureTagsForKind = async (kind) => {
     </div>
   </div>
 )}
-   <div>
-  <div className={labelCls}>موضوع</div>
-  <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputCls} type="text" />
-</div>
+   {formKind === "internal" ? (
+  <div className="grid grid-cols-1 md:grid-cols-10 gap-2">
+    {/* موضوع 70% */}
+    <div className="md:col-span-7">
+      <div className={labelCls}>موضوع</div>
+      <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputCls} type="text" />
+    </div>
 
+    {/* واحد 30% */}
+    <div className="md:col-span-3">
+      <div className={labelCls}>واحد</div>
+      <select value={internalUnitId} onChange={(e) => setInternalUnitId(e.target.value)} className={inputCls}>
+        <option value=""></option>
+        {unitOptions.map((u) => (
+          <option key={u.id} value={u.id}>
+            {u.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  </div>
+) : (
+  <div>
+    <div className={labelCls}>موضوع</div>
+    <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputCls} type="text" />
+  </div>
+)}
 
 
 {/* ضمیمه (رادیویی دارد/ندارد) + عنوان ضمیمه + بازگشت/پیرو کنار عنوان — بدون شرط نمایش */}
@@ -2829,29 +2901,31 @@ const ensureTagsForKind = async (kind) => {
   )}
 </div>
 
-{/* ✅ بارگذاری نامه وارده (برای وارده و صادره) — دقیقاً بعدِ نامه‌های مرتبط و زیر ضمیمه */}
-{(formKind === "incoming" || formKind === "outgoing") && (
-  <div className="md:col-span-12">
-    <button
-      type="button"
-      onClick={() => openUpload(formKind)}
-      disabled={!hasAttachment}
-      className={
-        uploadTriggerCls +
-        " w-full md:w-auto " +
-        (!hasAttachment ? " opacity-50 cursor-not-allowed" : "")
-      }
-      title={!hasAttachment ? "ابتدا ضمیمه را روی «دارد» بگذارید" : "بارگذاری نامه وارده"}
-    >
-      بارگذاری نامه وارده
-      {Array.isArray(docFilesByType?.[formKind]) && docFilesByType[formKind].length > 0 ? (
-        <span className="mr-2 text-xs opacity-80">
-          ({toFaDigits(docFilesByType[formKind].length)})
-        </span>
-      ) : null}
-    </button>
-  </div>
-)}
+{/* ✅ بارگذاری فایل (برای هر سه تب) — مستقل از ضمیمه */}
+<div className="md:col-span-12">
+  <button
+    type="button"
+    onClick={() => openUpload(formKind)}
+    className={uploadTriggerCls + " w-full md:w-auto"}
+    title={formKind === "internal" ? "بارگذاری سند" : formKind === "outgoing" ? "بارگذاری نامه صادره" : "بارگذاری نامه وارده"}
+  >
+    <img
+      src="/images/icons/upload.svg"
+      alt=""
+      className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
+    />
+    <span>
+      {formKind === "internal" ? "بارگذاری سند" : formKind === "outgoing" ? "بارگذاری نامه صادره" : "بارگذاری نامه وارده"}
+    </span>
+
+    {Array.isArray(docFilesByType?.[formKind]) && docFilesByType[formKind].length > 0 ? (
+      <span className="mr-2 text-xs opacity-80">
+        ({toFaDigits(docFilesByType[formKind].length)})
+      </span>
+    ) : null}
+  </button>
+</div>
+
 
 
 </div>
@@ -2886,7 +2960,9 @@ const ensureTagsForKind = async (kind) => {
     <div className="space-y-3">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div>
-          <div className={labelCls}>تاریخ ثبت دبیرخانه</div>
+          <div className={labelCls}
+          >  {formKind === "outgoing" ? "تاریخ ثبت دبیرخانه گیرنده" : "تاریخ ثبت دبیرخانه"}
+          </div>
           <JalaliPopupDatePicker
             value={formKind === "incoming" ? incomingSecretariatDate : formKind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate}
             onChange={(v) => {
@@ -2907,7 +2983,9 @@ const ensureTagsForKind = async (kind) => {
         </div>
 
         <div>
-          <div className={labelCls}>شماره ثبت دبیرخانه</div>
+          <div className={labelCls}
+          >  {formKind === "outgoing" ? "شماره ثبت دبیرخانه گیرنده" : "شماره ثبت دبیرخانه"}
+          </div>
           <input
             value={formKind === "incoming" ? incomingSecretariatNo : formKind === "outgoing" ? outgoingSecretariatNo : internalSecretariatNo}
             onChange={(e) => {
