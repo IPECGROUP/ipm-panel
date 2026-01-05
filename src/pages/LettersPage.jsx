@@ -3142,140 +3142,171 @@ const ensureTagsForKind = async (kind) => {
           <div className="mt-5">
             <div className={tableWrapCls}>
               <div className="relative h-[55vh] overflow-auto">
-                <table className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5" dir="rtl">
-                  <thead>
-                    <tr className={theadRowCls}>
-                      <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-40 bg-neutral-200 dark:bg-white/10">
-                        <input
-                          type="checkbox"
-                          className="w-4 h-4 accent-black dark:accent-neutral-200"
-                          checked={allVisibleSelected}
-                          ref={(el) => {
-                            if (el) el.indeterminate = someVisibleSelected;
-                          }}
-                          onChange={toggleSelectAllVisible}
-                          aria-label="انتخاب همه"
-                          title="انتخاب همه"
-                        />
-                      </th>
-                      <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">دسته بندی</th>
-                      <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">شماره</th>
-                      <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">تاریخ</th>
-                      <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">موضوع</th>
-                      <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">از/به</th>
-                      <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">شرکت/سازمان</th>
-                      <th className="w-14 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">اقدامات</th>
-                    </tr>
-                  </thead>
+                <table
+  className="w-full table-fixed text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
+  dir="rtl"
+>
+  <thead>
+    <tr className={theadRowCls}>
+      {/* checkbox */}
+      <th className="w-12 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-40 bg-neutral-200 dark:bg-white/10">
+        <input
+          type="checkbox"
+          className="w-4 h-4 accent-black dark:accent-neutral-200"
+          checked={allVisibleSelected}
+          ref={(el) => {
+            if (el) el.indeterminate = someVisibleSelected;
+          }}
+          onChange={toggleSelectAllVisible}
+          aria-label="انتخاب همه"
+          title="انتخاب همه"
+        />
+      </th>
 
-                  <tbody className={tbodyCls}>
-                    {pageItems.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} className="py-6 text-black/60 dark:text-neutral-400">
-                          آیتمی ثبت نشده است.
-                        </td>
-                      </tr>
-                    ) : (
-                      pageItems.map((l, idx) => {
-                        const id = String(letterIdOf(l));
-                        const kind = letterKindOf(l);
-                        const isOutgoing = kind === "outgoing";
-                        const isIncoming = kind === "incoming";
-                        const isInternal = kind === "internal";
-                        const isLast = idx === pageItems.length - 1;
-                        const divider = isLast ? "" : rowDividerCls;
+      {/* شماره */}
+      <th className="w-28 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+        شماره
+      </th>
 
-                        const rowBg = isOutgoing
-                          ? theme === "dark"
-                            ? "bg-[#8BAE66]/15 hover:bg-[#8BAE66]/20"
-                            : "bg-[#8BAE66]/[0.06] hover:bg-[#8BAE66]/[0.09]"
-                          : isIncoming
-                          ? theme === "dark"
-                            ? "bg-[#0046FF]/15 hover:bg-[#0046FF]/20"
-                            : "bg-[#0046FF]/[0.06] hover:bg-[#0046FF]/[0.09]"
-                          : isInternal
-                          ? theme === "dark"
-                            ? "bg-[#FF8040]/15 hover:bg-[#FF8040]/20"
-                            : "bg-[#FF8040]/[0.07] hover:bg-[#FF8040]/[0.10]"
-                          : theme === "dark"
-                          ? "bg-white/5 hover:bg-white/10"
-                          : "bg-black/[0.02] hover:bg-black/[0.04]";
+      {/* تاریخ */}
+      <th className="w-28 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+        تاریخ
+      </th>
 
+      {/* موضوع (ستون اصلی/کشسان) */}
+      <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+        موضوع
+      </th>
 
-                        return (
-                          <tr key={id} className={rowBg + " transition-colors"}>
-                            <td className={"px-3 " + divider}>
-                              <input
-                                type="checkbox"
-                                className="w-4 h-4 accent-black dark:accent-neutral-200"
-                                checked={selectedIds.has(id)}
-                                onChange={() => toggleRowSelect(id)}
-                                aria-label="انتخاب"
-                                title="انتخاب"
-                              />
-                            </td>
+      {/* از/به */}
+      <th className="w-44 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+        از/به
+      </th>
 
-                            <td className={"px-3 " + divider}>
-                              <span className={"font-semibold " + (theme === "dark" ? "text-white" : "text-neutral-900")}>
-                                {categoryLabelOf(l)}
-                              </span>
-                            </td>
+      {/* شرکت/سازمان */}
+      <th className="w-52 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+        شرکت/سازمان
+      </th>
 
-                            <td className={"px-3 " + divider}>
-                              <button
-                                type="button"
-                                onClick={() => openView(l)}
-                                className={
-                                  "mx-auto inline-flex items-center justify-center gap-2 font-semibold underline-offset-4 hover:underline transition " +
-                                  (theme === "dark" ? "text-white" : "text-neutral-900")
-                                }
-                                title="نمایش"
-                                aria-label="نمایش"
-                              >
-                                {letterNoOf(l) || "—"}
-                              </button>
-                            </td>
+      {/* اقدامات */}
+      <th className="w-28 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+        اقدامات
+      </th>
+    </tr>
+  </thead>
 
-                            <td className={"px-3 " + divider}>{letterDateOf(l) ? toFaDigits(letterDateOf(l)) : "—"}</td>
+  <tbody className={tbodyCls}>
+    {pageItems.length === 0 ? (
+      <tr>
+        <td colSpan={7} className="py-6 text-black/60 dark:text-neutral-400">
+          آیتمی ثبت نشده است.
+        </td>
+      </tr>
+    ) : (
+      pageItems.map((l, idx) => {
+        const id = String(letterIdOf(l));
+        const kind = letterKindOf(l);
+        const isOutgoing = kind === "outgoing";
+        const isIncoming = kind === "incoming";
+        const isInternal = kind === "internal";
+        const isLast = idx === pageItems.length - 1;
+        const divider = isLast ? "" : rowDividerCls;
 
-                            <td className={"px-3 " + divider}>
-                              <span className="block truncate max-w-[520px] mx-auto">{subjectOf(l) || "—"}</span>
-                            </td>
+        const rowBg = isOutgoing
+          ? theme === "dark"
+            ? "bg-[#8BAE66]/15 hover:bg-[#8BAE66]/20"
+            : "bg-[#8BAE66]/[0.06] hover:bg-[#8BAE66]/[0.09]"
+          : isIncoming
+          ? theme === "dark"
+            ? "bg-[#0046FF]/15 hover:bg-[#0046FF]/20"
+            : "bg-[#0046FF]/[0.06] hover:bg-[#0046FF]/[0.09]"
+          : isInternal
+          ? theme === "dark"
+            ? "bg-[#FF8040]/15 hover:bg-[#FF8040]/20"
+            : "bg-[#FF8040]/[0.07] hover:bg-[#FF8040]/[0.10]"
+          : theme === "dark"
+          ? "bg-white/5 hover:bg-white/10"
+          : "bg-black/[0.02] hover:bg-black/[0.04]";
 
-                            <td className={"px-3 " + divider}>{fromToOf(l)}</td>
-                            <td className={"px-3 " + divider}>{orgOf(l) || "—"}</td>
+        return (
+          <tr key={id} className={rowBg + " transition-colors"}>
+            {/* checkbox */}
+            <td className={"px-3 " + divider}>
+              <input
+                type="checkbox"
+                className="w-4 h-4 accent-black dark:accent-neutral-200"
+                checked={selectedIds.has(id)}
+                onChange={() => toggleRowSelect(id)}
+                aria-label="انتخاب"
+                title="انتخاب"
+              />
+            </td>
 
+            {/* شماره */}
+            <td className={"px-3 " + divider}>
+              <button
+                type="button"
+                onClick={() => openView(l)}
+                className={
+                  "mx-auto inline-flex items-center justify-center gap-2 font-semibold underline-offset-4 hover:underline transition " +
+                  (theme === "dark" ? "text-white" : "text-neutral-900")
+                }
+                title="نمایش"
+                aria-label="نمایش"
+              >
+                {letterNoOf(l) || "—"}
+              </button>
+            </td>
 
-                            <td className={"px-3 " + divider}>
-                              <div className="inline-flex items-center justify-center gap-2">
-                                <button type="button" onClick={() => openView(l)} className={iconBtnCls} aria-label="نمایش" title="نمایش">
-                                 <img src="/images/icons/namayeshname.svg" alt="" className="w-5 h-5 dark:invert" />
+            {/* تاریخ */}
+            <td className={"px-3 " + divider}>{letterDateOf(l) ? toFaDigits(letterDateOf(l)) : "—"}</td>
 
-                                </button>
+            {/* موضوع */}
+            <td className={"px-3 " + divider}>
+              <span className="block w-full truncate mx-auto">{subjectOf(l) || "—"}</span>
+            </td>
 
-                                <button type="button" onClick={() => startEdit(l)} className={iconBtnCls} aria-label="ویرایش" title="ویرایش">
-                                  <img src="/images/icons/pencil.svg" alt="" className="w-5 h-5 dark:invert" />
-                                </button>
+            {/* از/به */}
+            <td className={"px-3 " + divider}>
+              <span className="block w-full truncate mx-auto">{fromToOf(l)}</span>
+            </td>
 
-                                <button type="button" onClick={() => deleteLetter(id)} className={iconBtnCls} aria-label="حذف" title="حذف">
-                                  <img
-                                    src="/images/icons/hazf.svg"
-                                    alt=""
-                                    className="w-5 h-5"
-                                    style={{
-                                      filter:
-                                        "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
-                                    }}
-                                  />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+            {/* شرکت/سازمان */}
+            <td className={"px-3 " + divider}>
+              <span className="block w-full truncate mx-auto">{orgOf(l) || "—"}</span>
+            </td>
+
+            {/* اقدامات */}
+            <td className={"px-3 " + divider}>
+              <div className="inline-flex items-center justify-center gap-2">
+                <button type="button" onClick={() => openView(l)} className={iconBtnCls} aria-label="نمایش" title="نمایش">
+                  <img src="/images/icons/namayeshname.svg" alt="" className="w-5 h-5 dark:invert" />
+                </button>
+
+                <button type="button" onClick={() => startEdit(l)} className={iconBtnCls} aria-label="ویرایش" title="ویرایش">
+                  <img src="/images/icons/pencil.svg" alt="" className="w-5 h-5 dark:invert" />
+                </button>
+
+                <button type="button" onClick={() => deleteLetter(id)} className={iconBtnCls} aria-label="حذف" title="حذف">
+                  <img
+                    src="/images/icons/hazf.svg"
+                    alt=""
+                    className="w-5 h-5"
+                    style={{
+                      filter:
+                        "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
+                    }}
+                  />
+                </button>
+              </div>
+            </td>
+          </tr>
+        );
+      })
+    )}
+  </tbody>
+</table>
+
               </div>
 
               {/* Pagination footer */}
