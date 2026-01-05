@@ -1078,7 +1078,7 @@ const mergePinnedFilterTags = (ids) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [todayJalaliYmd]);
 
-    const inputBase = "w-full h-10 px-3 rounded-xl border outline-none transition text-right";
+    const inputBase = "w-full h-11 px-4 rounded-xl border outline-none transition text-right text-[14px]";
 
   const inputCls =
     theme === "dark"
@@ -1090,15 +1090,15 @@ const mergePinnedFilterTags = (ids) => {
 
   // compact versions (for one-line top row)
 const inputSmCls = inputCls
-  .replace("h-10", "h-9")
-  .replace("px-3", "px-2") + " text-[13px] rounded-lg";
+  .replace("h-11", "h-10")
+  .replace("px-4", "px-3") + " text-[14px] rounded-xl";
 
 const labelSmCls = (theme === "dark"
   ? "text-white/70 text-[11px] mb-1"
   : "text-neutral-600 text-[11px] mb-1");
 
 const tabSmCls = (active) =>
-  "h-9 px-3 rounded-lg border transition text-[12px] font-semibold inline-flex items-center gap-1 whitespace-nowrap " +
+  "h-10 px-4 rounded-xl border transition text-[13px] font-semibold inline-flex items-center gap-2 whitespace-nowrap " +
   (active
     ? "text-white"
     : theme === "dark"
@@ -1125,11 +1125,10 @@ const tabSmCls = (active) =>
   const selectedTagChipCls = chipBase + " border-black bg-black text-white";
 
   const sendBtnCls =
-    "h-11 w-11 rounded-xl flex items-center justify-center transition ring-1 " +
-    (theme === "dark"
-      ? "bg-white text-black ring-white/15 hover:bg-white/90"
-      : "bg-black text-white ring-black/15 hover:bg-black/90");
-
+  "h-12 w-12 rounded-xl flex items-center justify-center transition ring-1 " +
+  (theme === "dark"
+    ? "bg-white text-black ring-white/15 hover:bg-white/90"
+    : "bg-black text-white ring-black/15 hover:bg-black/90");
 
         // ✅ Outer border box for the whole form (like filters box)
   const formOuterBoxCls =
@@ -2516,7 +2515,7 @@ const ensureTagsForKind = async (kind) => {
               <img
                 src={t.icon}
                 alt=""
-                className="w-4 h-4"
+                className="w-5 h-5"
                 style={{
                   filter: active
                     ? "brightness(0) invert(1)"
