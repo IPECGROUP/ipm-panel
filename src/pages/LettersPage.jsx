@@ -20,38 +20,6 @@ const TABS = [
   { id: "outgoing", label: "صادره", icon: "/images/icons/sadere.svg" },
   { id: "internal", label: "داخلی", icon: "/images/icons/dakheli.svg" },
 ];
-const [unitsAll, setUnitsAll] = useState([]);
-const [internalUnitId, setInternalUnitId] = useState("");
-
-const unitIdOf = (u) => String(u?.id ?? u?.unit_id ?? "");
-const unitLabelOf = (u) => String(u?.name ?? u?.title ?? u?.label ?? u?.unit_name ?? "").trim();
-
-const myUnitsFromUser = useMemo(() => {
-  const u = user || {};
-  const arr =
-    Array.isArray(u?.units) ? u.units :
-    Array.isArray(u?.user_units) ? u.user_units :
-    Array.isArray(u?.unit_ids) ? u.unit_ids.map((id) => ({ id })) :
-    [];
-  return arr;
-}, [user]);
-
-const unitOptions = useMemo(() => {
-  const map = new Map();
-  (Array.isArray(unitsAll) ? unitsAll : []).forEach((x) => {
-    const id = unitIdOf(x);
-    if (id) map.set(id, x);
-  });
-  (Array.isArray(myUnitsFromUser) ? myUnitsFromUser : []).forEach((x) => {
-    const id = unitIdOf(x);
-    if (id && !map.has(id)) map.set(id, x);
-  });
-  return Array.from(map.entries()).map(([id, obj]) => ({
-    id,
-    label: unitLabelOf(obj) || id,
-  }));
-}, [unitsAll, myUnitsFromUser]);
-
 
 const PERSIAN_MONTHS = [
   "فروردین",
@@ -127,28 +95,6 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
-
-
-useEffect(() => {
-  let mounted = true;
-  (async () => {
-    try {
-      const r = await api("/base/units");
-      const items = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
-      if (!mounted) return;
-      setUnitsAll(items);
-    } catch {
-      if (!mounted) return;
-      setUnitsAll([]);
-    }
-  })();
-  return () => {
-    mounted = false;
-  };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, []);
-
-
 
   useEffect(() => {
     if (!open) return;
@@ -450,6 +396,60 @@ const [formKind, setFormKind] = useState("incoming"); // نوع نامه داخ�
   };
 
     const { user } = useAuth();
+    // ===== Units (for internal letters) =====
+const [unitsAll, setUnitsAll] = useState([]);
+const [internalUnitId, setInternalUnitId] = useState("");
+
+const unitIdOf = (u) => String(u?.id ?? u?.unit_id ?? "");
+const unitLabelOf = (u) => String(u?.name ?? u?.title ?? u?.label ?? u?.unit_name ?? "").trim();
+
+const myUnitsFromUser = useMemo(() => {
+  const u = user || {};
+  const arr =
+    Array.isArray(u?.units) ? u.units :
+    Array.isArray(u?.user_units) ? u.user_units :
+    Array.isArray(u?.unit_ids) ? u.unit_ids.map((id) => ({ id })) :
+    [];
+  return arr;
+}, [user]);
+
+const unitOptions = useMemo(() => {
+  const map = new Map();
+
+  (Array.isArray(unitsAll) ? unitsAll : []).forEach((x) => {
+    const id = unitIdOf(x);
+    if (id) map.set(id, x);
+  });
+
+  (Array.isArray(myUnitsFromUser) ? myUnitsFromUser : []).forEach((x) => {
+    const id = unitIdOf(x);
+    if (id && !map.has(id)) map.set(id, x);
+  });
+
+  return Array.from(map.entries()).map(([id, obj]) => ({
+    id,
+    label: unitLabelOf(obj) || id,
+  }));
+}, [unitsAll, myUnitsFromUser]);
+
+useEffect(() => {
+  let mounted = true;
+  (async () => {
+    try {
+      const r = await api("/base/units");
+      const items = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
+      if (!mounted) return;
+      setUnitsAll(items);
+    } catch {
+      if (!mounted) return;
+      setUnitsAll([]);
+    }
+  })();
+
+  return () => { mounted = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
+
 
   const loggedInUserName = useMemo(() => {
     const u = user || {};
