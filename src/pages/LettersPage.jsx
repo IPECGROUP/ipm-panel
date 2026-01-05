@@ -480,7 +480,14 @@ useEffect(() => {
 ).trim();
   }, [user]);
 
-
+// ===== Filters (page-level) =====
+  const [filterQuick, setFilterQuick] = useState(""); // week|2w|1m|3m|6m
+  const [filterFromDate, setFilterFromDate] = useState("");
+  const [filterToDate, setFilterToDate] = useState("");
+  const [filterTagIds, setFilterTagIds] = useState([]);
+  const [filterSubject, setFilterSubject] = useState("");
+  const [filterOrg, setFilterOrg] = useState("");
+  const [filterLetterNo, setFilterLetterNo] = useState("");
   const filterActiveHydratedRef = useRef(false);
 
 useEffect(() => {
@@ -736,15 +743,6 @@ const relatedOptions = useMemo(() => {
     return () => document.removeEventListener("keydown", onEsc);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewOpen]);
-
-  // ===== Filters (page-level) =====
-  const [filterQuick, setFilterQuick] = useState(""); // week|2w|1m|3m|6m
-  const [filterFromDate, setFilterFromDate] = useState("");
-  const [filterToDate, setFilterToDate] = useState("");
-  const [filterTagIds, setFilterTagIds] = useState([]);
-  const [filterSubject, setFilterSubject] = useState("");
-  const [filterOrg, setFilterOrg] = useState("");
-  const [filterLetterNo, setFilterLetterNo] = useState("");
 const [filterTagPinnedIds, setFilterTagPinnedIds] = useState([]); // ✅ برچسب‌های سنجاق‌شده برای همین کاربر)
 
 
