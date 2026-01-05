@@ -432,8 +432,23 @@ const unitOptions = useMemo(() => {
   }));
 }, [unitsAll, myUnitsFromUser]);
 
+const ORG_UNITS_CACHE_KEY = "org_structure_my_units_v1";
+
 useEffect(() => {
   let mounted = true;
+
+  // 1) اول از کشی که OrgStructurePage می‌سازه بخون
+  try {
+    const raw = sessionStorage.getItem(ORG_UNITS_CACHE_KEY) || localStorage.getItem(ORG_UNITS_CACHE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    const cached = Array.isArray(parsed?.items) ? parsed.items : Array.isArray(parsed) ? parsed : [];
+    if (mounted && cached.length) {
+      setUnitsAll(cached);
+      return () => { mounted = false; };
+    }
+  } catch {}
+
+  // 2) fallback: اگر کش نبود، از API قبلی بخون (فعلاً)
   (async () => {
     try {
       const r = await api("/base/units");
@@ -449,7 +464,6 @@ useEffect(() => {
   return () => { mounted = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, []);
-
 
   const loggedInUserName = useMemo(() => {
     const u = user || {};
@@ -2195,8 +2209,7 @@ const ensureTagsForKind = async (kind) => {
         <div className="p-3 md:p-4">
           {/* Header INSIDE card */}
           <div className="flex items-center justify-between gap-3 mb-3">
-            <div className="text-lg md:text-xl font-bold">نامه ها</div>
-
+            <div className="text-lg md:text-xl font-bold">اسناد و نامه ها</div>
             <button
               type="button"
               onClick={() => {
@@ -2327,9 +2340,16 @@ const ensureTagsForKind = async (kind) => {
                 </div>
 
                 <div className="min-w-[120px]">
-                  <div className={labelCls}>{formKind === "internal" ? "شماره سند" : "شماره نامه"}</div>
-                  <input value={letterNo} onChange={(e) => setLetterNo(e.target.value)} className={inputCls} type="text" />
+                  <div className={labelCls}>{filterTab === "internal" ? "شماره سند" : "شماره نامه"}</div>
+                  <input
+                    value={filterLetterNo}
+                    onChange={(e) => setFilterLetterNo(e.target.value)}
+                    className={inputCls}
+                    type="text"
+                    placeholder={filterTab === "internal" ? "جستجو شماره سند" : "جستجو شماره نامه"}
+                  />
                 </div>
+
 
                 <div className="min-w-[140px]">
 
@@ -2450,34 +2470,49 @@ const ensureTagsForKind = async (kind) => {
       <div>
         <div className={labelCls}>نوع نامه</div>
         <div className="flex items-center gap-1">
-          {[
-            { id: "incoming", label: "وارده", color: TAB_ACTIVE_BG.incoming },
-            { id: "outgoing", label: "صادره", color: TAB_ACTIVE_BG.outgoing },
-            { id: "internal", label: "داخلی", color: TAB_ACTIVE_BG.internal },
-          ].map((t) => {
-            const active = formKind === t.id;
+         {TABS.filter((x) => x.id !== "all").map((t) => {
+  const active = formKind === t.id;
+  const activeColor = TAB_ACTIVE_BG[t.id];
 
-            const base =
-              "h-10 px-3 rounded-xl border transition text-sm font-semibold inline-flex items-center justify-center whitespace-nowrap";
+  const cls =
+    "h-10 px-5 rounded-xl border transition text-sm font-semibold inline-flex items-center gap-2 " +
+    (active
+      ? "text-white"
+      : theme === "dark"
+      ? "bg-transparent text-white hover:bg-white/5"
+      : "bg-white text-neutral-900 hover:bg-black/[0.02]");
 
-            const cls = active
-              ? base + " text-white"
+  return (
+    <button
+      key={t.id}
+      type="button"
+      onClick={() => setFormKind(t.id)}
+      className={cls}
+      style={
+        active
+          ? { backgroundColor: activeColor, borderColor: activeColor }
+          : { borderColor: activeColor }
+      }
+    >
+      <span>{t.label}</span>
+      {t.icon ? (
+        <img
+          src={t.icon}
+          alt=""
+          className="w-5 h-5"
+          style={{
+            filter: active
+              ? "brightness(0) invert(1)"
               : theme === "dark"
-              ? base + " bg-transparent text-white hover:bg-white/5"
-              : base + " bg-white text-neutral-900 hover:bg-black/[0.02]";
+              ? "brightness(0) invert(1)"
+              : "none",
+          }}
+        />
+      ) : null}
+    </button>
+  );
+})}
 
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setFormKind(t.id)}
-                className={cls}
-                style={active ? { backgroundColor: t.color, borderColor: t.color } : { borderColor: t.color }}
-              >
-                {t.label}
-              </button>
-            );
-          })}
         </div>
       </div>
 
@@ -2552,10 +2587,11 @@ const ensureTagsForKind = async (kind) => {
 )}
 
 
-      <div>
-        <div className={labelCls}>شماره نامه</div>
+    <div>
+        <div className={labelCls}>{formKind === "internal" ? "شماره سند" : "شماره نامه"}</div>
         <input value={letterNo} onChange={(e) => setLetterNo(e.target.value)} className={inputCls} type="text" />
-      </div>
+    </div>
+
 
       <div>
         <div className={labelCls}>{formKind === "internal" ? "تاریخ سند" : "تاریخ نامه"}</div>
