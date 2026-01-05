@@ -2430,54 +2430,97 @@ const ensureTagsForKind = async (kind) => {
         <JalaliPopupDatePicker value={letterDate} onChange={setLetterDate} theme={theme} />
       </div>
     </div>
-
-    {formKind !== "internal" && (
+{formKind !== "internal" && (
   <div className={formGridWrapCls + " p-2 border-0"}>
     <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
-      <div className="md:col-span-4">
-        <div className={labelCls}>از</div>
-        <input
-          value={fromName}
-          onChange={(e) => setFromName(e.target.value)}
-          className={inputCls}
+      {formKind === "outgoing" ? (
+        <>
+          {/* از (کمی کوچکتر) */}
+          <div className="md:col-span-3">
+            <div className={labelCls}>از</div>
+            <input
+              value={fromName}
+              onChange={(e) => setFromName(e.target.value)}
+              className={inputCls}
+              type="text"
+            />
+          </div>
 
-          type="text"
-        />
-      </div>
+          {/* آیکن وسط */}
+          <div className="md:col-span-1 flex flex-col items-center">
+            <div className={labelCls + " opacity-0 select-none"}>_</div>
+            <div className="h-10 flex items-center justify-center">
+              <img
+                src="/images/icons/arrow-left.svg"
+                alt=""
+                className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
+              />
+            </div>
+          </div>
 
-      {/* فقط وارده: شرکت/سازمان کوچکتر + آیکن بینش با "به" */}
-{formKind !== "outgoing" ? (
-  <>
-    <div className="md:col-span-3">
-      <div className={labelCls}>شرکت/سازمان</div>
-      <input
-        value={orgName}
-        onChange={(e) => setOrgName(e.target.value)}
-        className={inputCls}
-        type="text"
-      />
-    </div>
+          {/* به (کمی کوچکتر) */}
+          <div className="md:col-span-3">
+            <div className={labelCls}>به</div>
+            <input
+              value={toName}
+              onChange={(e) => setToName(e.target.value)}
+              className={inputCls}
+              type="text"
+            />
+          </div>
 
-    {/* آیکن وسط */}
-    <div className="md:col-span-1 flex flex-col items-center">
-      {/* برای هم‌تراز شدن با لیبل */}
-      <div className={labelCls + " opacity-0 select-none"}>_</div>
-      <div className="h-10 flex items-center justify-center">
-        <img
-          src="/images/icons/arrow-left.svg"
-          alt=""
-          className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
-        />
-      </div>
-    </div>
+          {/* شرکت/سازمان (باقی فضا) */}
+          <div className="md:col-span-5">
+            <div className={labelCls}>شرکت/سازمان</div>
+            <input
+              value={orgName}
+              onChange={(e) => setOrgName(e.target.value)}
+              className={inputCls}
+              type="text"
+            />
+          </div>
+        </>
+      ) : (
+        <>
+          {/* وارده/داخلی مثل قبل */}
+          <div className="md:col-span-4">
+            <div className={labelCls}>از</div>
+            <input
+              value={fromName}
+              onChange={(e) => setFromName(e.target.value)}
+              className={inputCls}
+              type="text"
+            />
+          </div>
 
-    <div className="md:col-span-4">
-      <div className={labelCls}>به</div>
-      <input
-        value={toName}
-        onChange={(e) => setToName(e.target.value)}
-        className={inputCls}
-        type="text"
+          <div className="md:col-span-3">
+            <div className={labelCls}>شرکت/سازمان</div>
+            <input
+              value={orgName}
+              onChange={(e) => setOrgName(e.target.value)}
+              className={inputCls}
+              type="text"
+            />
+          </div>
+
+          <div className="md:col-span-1 flex flex-col items-center">
+            <div className={labelCls + " opacity-0 select-none"}>_</div>
+            <div className="h-10 flex items-center justify-center">
+              <img
+                src="/images/icons/arrow-left.svg"
+                alt=""
+                className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
+              />
+            </div>
+          </div>
+
+          <div className="md:col-span-4">
+            <div className={labelCls}>به</div>
+            <input
+              value={toName}
+              onChange={(e) => setToName(e.target.value)}
+              className={inputCls}
+              type="text"
       />
     </div>
   </>
@@ -2720,115 +2763,32 @@ const ensureTagsForKind = async (kind) => {
   )}
 </div>
 
-
-
-  {/* پیرو - فقط صادره */}
-{formKind === "outgoing" && (
-  <div className="md:col-span-3 min-w-0">
-    <div className={labelCls}>پیرو</div>
-
-    {/* ✅ موبایل: اسکرول افقی | دسکتاپ: wrap استاندارد */}
-    <div
-      dir="rtl"
-      className="w-full min-w-0 flex flex-nowrap md:flex-wrap items-center gap-2
-                 overflow-x-auto md:overflow-visible pb-1
-                 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-    >
-      {(Array.isArray(piroIds) ? piroIds : [""]).map((val, idx) => (
-        <div
-          key={`piro_${idx}`}
-          className="flex items-center gap-2 w-[min(240px,80vw)] md:w-[240px] flex-none min-w-0"
-        >
-          <select
-            value={val}
-            onChange={(e) => {
-              const v = e.target.value;
-              setPiroIds((prev) => {
-                const arr = Array.isArray(prev) ? [...prev] : [""];
-                arr[idx] = v;
-                return arr;
-              });
-            }}
-            className={inputCls + " h-10 text-sm w-full min-w-0"}  // ✅ استاندارد + عدم بیرون‌زدگی
-          >
-            <option value=""></option>
-            {(Array.isArray(myLettersSorted) ? myLettersSorted : []).map((l) => {
-              const id = String(letterIdOf(l));
-              const no = String(letterNoOf(l) || "").trim();
-              const sub = String(subjectOf(l) || "").trim();
-              const lab = `${no ? toFaDigits(no) : "—"}${sub ? " — " + sub : ""}`;
-              return (
-                <option key={`piro_opt_${id}`} value={id}>
-                  {lab}
-                </option>
-              );
-            })}
-          </select>
-
-          {idx > 0 && (
-            <button
-              type="button"
-              onClick={() => setPiroIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))}
-              className={addIconBtnCls + " h-10 w-10 shrink-0"}
-              aria-label="حذف"
-              title="حذف"
-            >
-              <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" />
-            </button>
-          )}
-        </div>
-      ))}
-
-      <button
-        type="button"
-        onClick={() => setPiroIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
-        className={addIconBtnCls + " h-10 w-10 shrink-0"}
-        aria-label="افزودن"
-        title="افزودن"
-      >
-        <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
-      </button>
-    </div>
-  </div>
-)}
-
-</div>
-
-
-{/* ✅ بارگذاری فایل (فقط برای وارده) - دقیقاً زیر ضمیمه */}
-{formKind === "incoming" && (
-  <div className="mt-2">
+{/* ✅ بارگذاری نامه وارده (برای وارده و صادره) — دقیقاً بعدِ نامه‌های مرتبط و زیر ضمیمه */}
+{(formKind === "incoming" || formKind === "outgoing") && (
+  <div className="md:col-span-12">
     <button
       type="button"
-      onClick={() => openUpload("incoming")}
+      onClick={() => openUpload(formKind)}
       disabled={!hasAttachment}
       className={
         uploadTriggerCls +
         " w-full md:w-auto " +
         (!hasAttachment ? " opacity-50 cursor-not-allowed" : "")
       }
-      title={!hasAttachment ? "ابتدا ضمیمه را روی «دارد» بگذارید" : "بارگذاری فایل‌های نامه وارده"}
+      title={!hasAttachment ? "ابتدا ضمیمه را روی «دارد» بگذارید" : "بارگذاری نامه وارده"}
     >
       بارگذاری نامه وارده
-      {/* نمایش شمارنده انتخاب‌شده‌ها */}
-      {Array.isArray(docFilesByType?.incoming) && docFilesByType.incoming.length > 0 ? (
+      {Array.isArray(docFilesByType?.[formKind]) && docFilesByType[formKind].length > 0 ? (
         <span className="mr-2 text-xs opacity-80">
-          ({toFaDigits(docFilesByType.incoming.length)})
+          ({toFaDigits(docFilesByType[formKind].length)})
         </span>
       ) : null}
     </button>
-
-    {/* زیر دکمه: نمایش خلاصه فایل‌های انتخاب‌شده (هم آپلودهای قبلی، هم جدیدها) */}
-    {Array.isArray(docFilesByType?.incoming) && docFilesByType.incoming.length > 0 && (
-      <div className={theme === "dark" ? "mt-2 text-xs text-white/60" : "mt-2 text-xs text-neutral-600"}>
-        {docFilesByType.incoming.slice(0, 3).map((f) => f?.name).filter(Boolean).join("، ")}
-        {docFilesByType.incoming.length > 3 ? " ..." : ""}
-      </div>
-    )}
   </div>
 )}
 
 
+</div>
 </div>
 
     <div>
