@@ -2237,19 +2237,6 @@ const openTagPicker = async (forWhat) => {
   setTagPickKind(initialKind);
   await ensureTagsForKind(initialKind);
 
-useEffect(() => {
-  if (!formOpen) return;
-
-  const k =
-    formKind === "outgoing" ? "projects" :
-    formKind === "internal" ? "execution" :
-    "letters";
-
-  ensureTagsForKind(k);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [formOpen, formKind]);
-
-
   const currentSelected =
     forWhat === "form"
       ? initialKind === "letters"
@@ -2257,14 +2244,13 @@ useEffect(() => {
         : initialKind === "projects"
         ? outgoingTagIds
         : internalTagIds
-      : filterTagPinnedIds; // ✅ اینجا تغییر کرد (پین‌ها)
+      : filterTagPinnedIds; // پین‌ها
 
   setTagPickDraftIds((Array.isArray(currentSelected) ? currentSelected : []).map(String));
   setTagPickCategoryId("");
+  setTagPickSearch("");
   setTagPickOpen(true);
 };
-
-
 
 
 const togglePickDraft = (id) => {
@@ -2342,6 +2328,20 @@ const ensureTagsForKind = async (kind) => {
   if (loadedScopes[scope]) return;
   await refreshTags(scope);
 };
+
+useEffect(() => {
+  if (!formOpen) return;
+
+  const k =
+    formKind === "outgoing"
+      ? "projects"
+      : formKind === "internal"
+      ? "execution"
+      : "letters";
+
+  ensureTagsForKind(k);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [formOpen, formKind]);
 
 
   return (
@@ -2549,7 +2549,7 @@ const ensureTagsForKind = async (kind) => {
           ? theme === "dark"
             ? chipBase + " border-white/15 bg-white text-black"
             : chipBase + " border-black/15 bg-black text-white"
-          : chipCls) + " h-10"
+          : chipCls) + " h-10 shrink-0"
       }
       title={lab}
       aria-label={lab}
@@ -2573,7 +2573,7 @@ const ensureTagsForKind = async (kind) => {
         bumpPinnedFilterTag(id);   // اختیاری ولی خوبه: میاره جلو
         toggleFilterTag(id);       // ✅ فقط فعال/غیرفعال کردن فیلتر
       }}
-      className={(active ? selectedTagChipCls : chipCls) + " h-10"}
+      className={(active ? selectedTagChipCls : chipCls) + " h-10 shrink-0"}
       title={label}
       aria-label={label}
     >
@@ -2588,7 +2588,7 @@ const ensureTagsForKind = async (kind) => {
   type="button"
   onClick={() => openTagPicker("filter")}
   className={
-    "h-10 w-10 rounded-full border transition inline-flex items-center justify-center " +
+    "h-10 w-10  shrink-0 rounded-full border transition inline-flex items-center justify-center " +
     (theme === "dark"
       ? "border-white/15 bg-white/5 hover:bg-white/10"
       : "border-black/10 bg-white hover:bg-black/[0.02]")
@@ -3103,7 +3103,15 @@ const ensureTagsForKind = async (kind) => {
 <div>
   <div className={labelCls}>برچسب ها</div>
 
-  <div className="flex flex-wrap items-center gap-2">
+  <div
+  className="
+    flex items-center gap-2
+    overflow-x-auto flex-nowrap whitespace-nowrap
+    pb-1 -mx-1 px-1
+    [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden
+  "
+>
+
     {(() => {
       const scope =
         formKind === "outgoing" ? "projects" :
@@ -3161,7 +3169,7 @@ const ensureTagsForKind = async (kind) => {
       type="button"
       onClick={() => openTagPicker("form")}
       className={
-        "h-10 w-10 rounded-full border transition inline-flex items-center justify-center " +
+        "h-10 w-10 shrink-0 rounded-full border transition inline-flex items-center justify-center " +
         (theme === "dark"
           ? "border-white/15 bg-white/5 hover:bg-white/10"
           : "border-black/10 bg-white hover:bg-black/[0.02]")
