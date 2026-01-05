@@ -21,8 +21,6 @@ const TABS = [
   { id: "internal", label: "داخلی", icon: "/images/icons/dakheli.svg" },
 ];
 
-const filterActiveHydratedRef = useRef(false);
-
 const FILTER_ACTIVE_SCOPE = "letters_filter_active";
 
 const PERSIAN_MONTHS = [
