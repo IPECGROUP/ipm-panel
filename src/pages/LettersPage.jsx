@@ -21,6 +21,8 @@ const TABS = [
   { id: "internal", label: "داخلی", icon: "/images/icons/dakheli.svg" },
 ];
 
+const filterActiveHydratedRef = useRef(false);
+
 const FILTER_ACTIVE_SCOPE = "letters_filter_active";
 
 const PERSIAN_MONTHS = [
@@ -481,10 +483,23 @@ useEffect(() => {
   }, [user]);
 
 
-  useEffect(() => {
-  loadActiveFilterTags();
+  const filterActiveHydratedRef = useRef(false);
+
+useEffect(() => {
+  if (!user?.id) return;
+
+  (async () => {
+    await loadActiveFilterTags();
+    filterActiveHydratedRef.current = true;
+  })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-}, []);
+}, [user?.id]);
+
+useEffect(() => {
+  if (!filterActiveHydratedRef.current) return;
+  saveActiveFilterTags(filterTagIds);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [filterTagIds]);
 
 
   useEffect(() => {
@@ -793,8 +808,26 @@ const normalizeIdList = (arr) => {
   const a = Array.isArray(arr) ? arr : [];
   const out = [];
   const seen = new Set();
+
+  const pickId = (x) => {
+    if (x == null) return "";
+    if (typeof x === "object") {
+      // ساپورت چند مدل رایج
+      return (
+        x.id ??
+        x.tag_id ??
+        x.tagId ??
+        x.value ??
+        x.key ??
+        x._id ??
+        ""
+      );
+    }
+    return x;
+  };
+
   for (const x of a) {
-    const s = String(x || "").trim();
+    const s = String(pickId(x) || "").trim();
     if (!s || seen.has(s)) continue;
     seen.add(s);
     out.push(s);
@@ -1323,9 +1356,7 @@ const toggleFilterTag = (id) => {
 
   setFilterTagIds((prev) => {
     const cur = Array.isArray(prev) ? prev.map(String) : [];
-    const next = cur.includes(sid) ? cur.filter((x) => x !== sid) : [...cur, sid];
-    saveActiveFilterTags(next); 
-    return next;
+    return cur.includes(sid) ? cur.filter((x) => x !== sid) : [...cur, sid];
   });
 };
 
@@ -3154,7 +3185,7 @@ useEffect(() => {
               key={id}
               type="button"
               onClick={() => toggleTag(formKind, id)}   // ✅ toggle + persist
-              className={(active ? selectedTagChipCls : chipCls) + " h-10"}
+              className={(active ? selectedTagChipCls : chipCls) + " h-10 shrink-0"}
               title={label}
               aria-label={label}
             >
