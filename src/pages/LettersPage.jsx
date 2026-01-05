@@ -732,6 +732,55 @@ const [filterTagPinnedIds, setFilterTagPinnedIds] = useState([]); // ✅ برچ�
 const TAG_PREFS_SCOPE = "letters_filter"; // اسم کلید برای بک‌اند (بعداً هم همینو استفاده می‌کنیم)
 const TAG_PREFS_LIMIT = 24;
 
+// ===== Per-user selected tags for FORM (incoming/outgoing/internal) — stored in backend (/tag-prefs) =====
+const FORM_TAG_PREFS_SCOPE = {
+  incoming: "letters_form_incoming",
+  outgoing: "letters_form_outgoing",
+  internal: "letters_form_internal",
+};
+
+const [formTagPrefs, setFormTagPrefs] = useState({ incoming: [], outgoing: [], internal: [] });
+const formTagsHydratedRef = useRef({ incoming: false, outgoing: false, internal: false });
+
+const saveFormTagPrefs = async (which, ids) => {
+  try {
+    const scope = FORM_TAG_PREFS_SCOPE[which];
+    if (!scope) return;
+    await api(`/tag-prefs?scope=${encodeURIComponent(scope)}`, {
+      method: "PUT",
+      body: JSON.stringify({ scope, ids }),
+    });
+  } catch {}
+};
+
+const loadFormTagPrefs = async (which) => {
+  try {
+    const scope = FORM_TAG_PREFS_SCOPE[which];
+    if (!scope) return;
+    const r = await api(`/tag-prefs?scope=${encodeURIComponent(scope)}`);
+    const ids = normalizeIdList(r?.ids || r?.items || r?.data?.ids || []).slice(0, TAG_PREFS_LIMIT);
+
+    setFormTagPrefs((p) => ({ ...p, [which]: ids }));
+    return ids;
+  } catch {
+    setFormTagPrefs((p) => ({ ...p, [which]: [] }));
+    return [];
+  }
+};
+
+// یک helper واحد برای set + persist
+const setFormTagsAndPersist = (which, ids) => {
+  const next = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
+
+  if (which === "incoming") setIncomingTagIds(next);
+  else if (which === "outgoing") setOutgoingTagIds(next);
+  else setInternalTagIds(next);
+
+  setFormTagPrefs((p) => ({ ...p, [which]: next }));
+  saveFormTagPrefs(which, next);
+};
+
+
 const normalizeIdList = (arr) => {
   const a = Array.isArray(arr) ? arr : [];
   const out = [];
@@ -770,6 +819,37 @@ useEffect(() => {
   loadPinnedFilterTags();
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, []);
+
+useEffect(() => {
+  // prefs فرم برای هر سه نوع
+  loadFormTagPrefs("incoming");
+  loadFormTagPrefs("outgoing");
+  loadFormTagPrefs("internal");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
+
+useEffect(() => {
+  // فقط در حالت Create (نه Edit)
+  if (!formOpen || editingId) return;
+
+  const which = formKind; // incoming|outgoing|internal
+  if (!which) return;
+
+  // جلوگیری از overwrite وقتی کاربر دستی تغییر داده
+  if (formTagsHydratedRef.current[which]) return;
+
+  const pref = Array.isArray(formTagPrefs?.[which]) ? formTagPrefs[which] : [];
+  setFormTagsAndPersist(which, pref); // set state (و دوباره save هم مشکلی نداره)
+
+  formTagsHydratedRef.current[which] = true;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [formOpen, formKind, editingId, formTagPrefs]);
+
+
+useEffect(() => {
+  if (formOpen) return;
+  formTagsHydratedRef.current = { incoming: false, outgoing: false, internal: false };
+}, [formOpen]);
 
 // اضافه کردن/بردن به اول لیست (و ذخیره در بک‌اند)
 const bumpPinnedFilterTag = (id) => {
@@ -1193,25 +1273,21 @@ if (pin) {
 
 
   const toggleTag = (which, id) => {
-    const sid = String(id || "");
-    if (!sid) return;
+  const sid = String(id || "").trim();
+  if (!sid) return;
 
-    if (which === "incoming") {
-      setIncomingTagIds((arr) =>
-        arr.some((x) => String(x) === sid) ? arr.filter((x) => String(x) !== sid) : [...arr, sid]
-      );
-    }
-    if (which === "outgoing") {
-      setOutgoingTagIds((arr) =>
-        arr.some((x) => String(x) === sid) ? arr.filter((x) => String(x) !== sid) : [...arr, sid]
-      );
-    }
-    if (which === "internal") {
-      setInternalTagIds((arr) =>
-        arr.some((x) => String(x) === sid) ? arr.filter((x) => String(x) !== sid) : [...arr, sid]
-      );
-    }
+  const upd = (prev) => {
+    const cur = Array.isArray(prev) ? prev.map(String) : [];
+    const next = cur.includes(sid) ? cur.filter((x) => x !== sid) : [...cur, sid];
+    setFormTagsAndPersist(which, next); // ✅ ذخیره per-user
+    return next;
   };
+
+  if (which === "incoming") setIncomingTagIds(upd);
+  else if (which === "outgoing") setOutgoingTagIds(upd);
+  else setInternalTagIds(upd);
+};
+
 
   const toggleFilterTag = (id) => {
     const sid = String(id || "");
@@ -1777,6 +1853,7 @@ const secretariatLongText = (ymd) => {
     const payload = {
       kind,
       category: category || "",
+        classification: classification || "عادی", // ✅ اضافه شود
       projectId: pId && Number.isFinite(pId) ? pId : null,
       letterNo: letterNo || "",
       letterDate: letterDate || "",
@@ -2158,11 +2235,15 @@ const applyPickedTags = () => {
 
     // ✅ اگر برچسبی از نوار حذف شد، از فیلتر فعال هم حذف شود تا فیلتر مخفی نماند
     setFilterTagIds((prev) => (Array.isArray(prev) ? prev.map(String) : []).filter((x) => ids.includes(String(x))));
-  } else {
-    if (tagPickKind === "letters") setIncomingTagIds(ids);
-    else if (tagPickKind === "projects") setOutgoingTagIds(ids);
-    else setInternalTagIds(ids);
+   } else {
+    const which =
+      tagPickKind === "letters" ? "incoming" :
+      tagPickKind === "projects" ? "outgoing" :
+      "internal";
+
+    setFormTagsAndPersist(which, ids); // ✅ ذخیره per-user
   }
+
 
   setTagPickOpen(false);
 };
@@ -2732,6 +2813,86 @@ const ensureTagsForKind = async (kind) => {
     <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputCls} type="text" />
   </div>
 )}
+
+
+{/* برچسب‌ها (برای فرم) */}
+<div>
+  <div className={labelCls}>برچسب ها</div>
+
+  <div className="flex flex-wrap items-center gap-2">
+    {(() => {
+      const scope =
+        formKind === "outgoing" ? "projects" :
+        formKind === "internal" ? "execution" :
+        "letters";
+
+      const selectedIds =
+        formKind === "outgoing" ? outgoingTagIds :
+        formKind === "internal" ? internalTagIds :
+        incomingTagIds;
+
+      const pool = Array.isArray(tagsByScope?.[scope]) ? tagsByScope[scope] : [];
+      const selSet = new Set((Array.isArray(selectedIds) ? selectedIds : []).map(String));
+
+      // selected first, then latest
+      const selectedObjs = pool.filter((t) => selSet.has(String(t?.id)));
+      const latest = pool
+        .slice()
+        .sort((a, b) => Number(b?.id) - Number(a?.id))
+        .filter((t) => !selSet.has(String(t?.id)))
+        .slice(0, 14);
+
+      const merged = [...selectedObjs, ...latest];
+      const seen = new Set();
+
+      return merged
+        .filter((t) => {
+          const id = String(t?.id ?? "").trim();
+          if (!id || seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        })
+        .map((t) => {
+          const id = String(t?.id);
+          const label = tagLabelOf(t);
+          const active = selSet.has(id);
+
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => toggleTag(formKind, id)}   // ✅ toggle + persist
+              className={(active ? selectedTagChipCls : chipCls) + " h-10"}
+              title={label}
+              aria-label={label}
+            >
+              <span className="truncate max-w-[220px]">{label}</span>
+            </button>
+          );
+        });
+    })()}
+
+    {/* افزودن برچسب */}
+    <button
+      type="button"
+      onClick={() => openTagPicker("form")}
+      className={
+        "h-10 w-10 rounded-full border transition inline-flex items-center justify-center " +
+        (theme === "dark"
+          ? "border-white/15 bg-white/5 hover:bg-white/10"
+          : "border-black/10 bg-white hover:bg-black/[0.02]")
+      }
+      aria-label="افزودن برچسب"
+      title="افزودن برچسب"
+    >
+      <img
+        src="/images/icons/sayer.svg"
+        alt=""
+        className={"w-5 h-5 " + (theme === "dark" ? "dark:invert" : "")}
+      />
+    </button>
+  </div>
+</div>
 
 
 {/* ضمیمه (رادیویی دارد/ندارد) + عنوان ضمیمه + بازگشت/پیرو کنار عنوان — بدون شرط نمایش */}
