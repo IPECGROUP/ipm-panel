@@ -1792,7 +1792,7 @@ const secretariatLongText = (ymd) => {
     "dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700";
 
   const tbodyCls = "[&_td]:text-black dark:[&_td]:text-neutral-100";
-
+  const confidentialTdCls = " !text-red-600 dark:!text-red-400 font-semibold";
   const rowDividerCls = "border-b border-neutral-300 dark:border-neutral-700";
 
   const resetForm = () => {
@@ -1870,6 +1870,9 @@ const secretariatLongText = (ymd) => {
 
     const pid = l?.project_id ?? l?.projectId ?? l?.projectID ?? null;
     setProjectId(pid ? String(pid) : "");
+// ✅ برای نامه‌های داخلی: پر کردن واحد در حالت Edit
+const uid = l?.unit_id ?? l?.unitId ?? l?.unit ?? l?.internal_unit_id ?? "";
+setInternalUnitId(uid ? String(uid) : "");
 
     setLetterNo(String(l?.letter_no ?? l?.letterNo ?? l?.no ?? l?.number ?? ""));
     setLetterDate(String(l?.letter_date ?? l?.letterDate ?? l?.date ?? ""));
@@ -3552,7 +3555,7 @@ useEffect(() => {
               rowBg +
               " transition-colors" +
               (isConf
-                ? " [&_td]:!text-red-600 dark:[&_td]:!text-red-400 [&_button]:!text-red-600 dark:[&_button]:!text-red-400"
+                ? " font-semibold ![&_td]:text-red-600 dark:![&_td]:text-red-400"
                 : "")
             }
           >
