@@ -3130,15 +3130,8 @@ useEffect(() => {
 <div className="md:col-span-12 min-w-0">
   <div className={labelCls}>برچسب ها</div>
 
-  <div
-    className="
-      w-full min-w-0
-      flex items-center gap-2
-      overflow-x-auto flex-nowrap whitespace-nowrap
-      pb-1 -mx-1 px-1
-      [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden
-    "
-  >
+  <div className="w-full min-w-0 flex flex-wrap items-center gap-2">
+
     {(() => {
       const scope =
         formKind === "outgoing" ? "projects" :
