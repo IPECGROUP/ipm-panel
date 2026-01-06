@@ -1362,14 +1362,16 @@ const tabSmCls = (active) =>
   const formCellCls = "p-2 " + (theme === "dark" ? "bg-neutral-900" : "bg-white");
 
 
-  const chipBase =
-    "inline-flex items-center justify-center gap-2 px-4 h-9 rounded-full border text-xs font-semibold whitespace-nowrap transition";
-  const chipCls =
-    theme === "dark"
-      ? chipBase + " border-white/15 bg-white/5 text-white hover:bg-white/10"
-      : chipBase + " border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]";
+ // ✅ Chip style (مثل TagsPage)
+const chipBase =
+  "inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3 py-1 text-xs text-neutral-900 shadow-sm transition";
+const chipCls =
+  chipBase + " dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 hover:bg-black/5 dark:hover:bg-white/10";
 
-  const selectedTagChipCls = chipBase + " border-black bg-black text-white";
+// حالت انتخاب‌شده (برای وقتی tag فعال است)
+const selectedTagChipCls =
+  chipBase +
+  " bg-black text-white border-black hover:bg-black/90 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-200";
 
   const sendBtnCls =
   "h-12 w-12 rounded-xl flex items-center justify-center transition ring-1 " +
@@ -2733,7 +2735,7 @@ useEffect(() => {
           ? theme === "dark"
             ? chipBase + " border-white/15 bg-white text-black"
             : chipBase + " border-black/15 bg-black text-white"
-          : chipCls) + " h-10 shrink-0"
+          : chipCls) + "shrink-0"
       }
       title={lab}
       aria-label={lab}
@@ -2757,7 +2759,7 @@ useEffect(() => {
         bumpPinnedFilterTag(id);   // اختیاری ولی خوبه: میاره جلو
         toggleFilterTag(id);       // ✅ فقط فعال/غیرفعال کردن فیلتر
       }}
-      className={(active ? selectedTagChipCls : chipCls) + " h-10 shrink-0"}
+      className={(active ? selectedTagChipCls : chipCls) + "shrink-0"}
       title={label}
       aria-label={label}
     >
@@ -3330,7 +3332,7 @@ useEffect(() => {
               key={id}
               type="button"
               onClick={() => toggleTag(formKind, id)}
-              className={(active ? selectedTagChipCls : chipCls) + " h-10 shrink-0"}
+              className={(active ? selectedTagChipCls : chipCls) + "shrink-0"}
               title={label}
               aria-label={label}
             >
