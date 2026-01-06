@@ -1794,6 +1794,7 @@ const secretariatLongText = (ymd) => {
   const tbodyCls = "[&_td]:text-black dark:[&_td]:text-neutral-100";
   const confidentialTdCls = " !text-red-600 dark:!text-red-400 font-semibold";
   const rowDividerCls = "border-b border-neutral-300 dark:border-neutral-700";
+  const confidentialRowCls = "[&_td]:!text-red-600 dark:[&_td]:!text-red-400 font-semibold";
 
   const resetForm = () => {
     setCategory("نامه");
@@ -3567,10 +3568,11 @@ useEffect(() => {
               rowBg +
               " transition-colors" +
               (isConf
-                ? " font-semibold ![&_td]:text-red-600 dark:![&_td]:text-red-400"
+                ? " font-semibold [&_td]:!text-red-600 dark:[&_td]:!text-red-400"
                 : "")
             }
           >
+
             <td className={"px-3 " + divider}>
               <input
                 type="checkbox"
