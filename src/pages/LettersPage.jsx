@@ -467,6 +467,21 @@ useEffect(() => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, []);
 
+
+const resolveFileUrl = (u) => {
+  const url = String(u || "").trim();
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) return url;
+  if (url.startsWith("//")) return window.location.protocol + url;
+  if (url.startsWith("/")) return url;
+
+  // اگر بک‌اند "public/..." داد
+  if (url.startsWith("public/")) return "/" + url.replace(/^public\//, "");
+
+  return "/" + url;
+};
+
+
   const loggedInUserName = useMemo(() => {
     const u = user || {};
     return String(
@@ -1362,17 +1377,23 @@ const projectsTopOnly = useMemo(() => {
 
     out.push({ ...p, __baseCode: base });
   }
-// ✅ پین پروژه 100 همیشه اول
-const pin = out.find((p) => String(p?.__baseCode ?? p?.code ?? "").trim() === "100");
-if (pin) {
-  const rest = out.filter((p) => p !== pin);
-  return [pin, ...rest];
-}
+
+  // ✅ مرتب‌سازی عددی نزولی: 165,164,...,101
+  out.sort((a, b) => {
+    const an = Number(String(a?.__baseCode ?? "").trim()) || 0;
+    const bn = Number(String(b?.__baseCode ?? "").trim()) || 0;
+    return bn - an;
+  });
+
+  // ✅ پین پروژه 100 همیشه اول
+  const pinIdx = out.findIndex((p) => String(p?.__baseCode ?? p?.code ?? "").trim() === "100");
+  if (pinIdx >= 0) {
+    const [pin] = out.splice(pinIdx, 1);
+    out.unshift(pin);
+  }
 
   return out;
 }, [projectsDesc]);
-
-
 
  const toggleTag = (which, id) => {
   const sid = String(id || "").trim();
@@ -2079,8 +2100,26 @@ const secretariatLongText = (ymd) => {
     return a;
   }, [viewAttachments, viewAttIdx]);
 
-  const currentViewUrl = useMemo(() => attachmentUrlOf(currentViewAttachment), [currentViewAttachment]); // eslint-disable-line react-hooks/exhaustive-deps
+ const currentViewUrl = useMemo(
+  () => resolveFileUrl(attachmentUrlOf(currentViewAttachment)),
+  [currentViewAttachment]
+);  // eslint-disable-line react-hooks/exhaustive-deps
   const currentViewName = useMemo(() => attachmentNameOf(currentViewAttachment), [currentViewAttachment]); // eslint-disable-line react-hooks/exhaustive-deps
+  const currentViewType = useMemo(
+  () => String(attachmentTypeOf(currentViewAttachment) || "").toLowerCase(),
+  [currentViewAttachment]
+);
+
+const isPdfView = useMemo(() => {
+  if (currentViewType.includes("pdf")) return true;
+  return isPdfUrl(currentViewUrl);
+}, [currentViewType, currentViewUrl]);
+
+const isImageView = useMemo(() => {
+  if (currentViewType.startsWith("image/")) return true;
+  return isImageUrl(currentViewUrl);
+}, [currentViewType, currentViewUrl]);
+
 
   const viewHasAttachment = useMemo(() => {
     if (!viewLetter) return false;
@@ -3937,10 +3976,10 @@ useEffect(() => {
                           <div className="flex-1 p-3 overflow-hidden flex flex-col">
                             <div className={"flex-1 rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")}>
                               {currentViewUrl ? (
-                                isPdfUrl(currentViewUrl) ? (
-                                  <iframe title="preview" src={currentViewUrl} className="w-full h-full" />
-                                ) : isImageUrl(currentViewUrl) ? (
-                                  <img src={currentViewUrl} alt="" className="w-full h-full object-contain bg-transparent" />
+                                isPdfView ? (
+                                  <iframe key={currentViewUrl} title="preview" src={currentViewUrl} className="w-full h-full" />
+                                ) : isImageView ? (
+                                  <img key={currentViewUrl} src={currentViewUrl} alt="" className="w-full h-full object-contain bg-transparent" />
                                 ) : (
                                   <div className="h-full w-full grid place-items-center p-6">
                                     <div className={theme === "dark" ? "text-white/70 text-sm" : "text-neutral-700 text-sm"}>امکان پیش نمایش این نوع فایل نیست.</div>
