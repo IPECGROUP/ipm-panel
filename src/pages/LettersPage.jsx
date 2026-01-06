@@ -3127,18 +3127,18 @@ useEffect(() => {
 </div>
 
 {/* برچسب‌ها (برای فرم) */}
-<div>
+<div className="md:col-span-12 min-w-0">
   <div className={labelCls}>برچسب ها</div>
 
   <div
-  className="
-    flex items-center gap-2
-    overflow-x-auto flex-nowrap whitespace-nowrap
-    pb-1 -mx-1 px-1
-    [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden
-  "
->
-
+    className="
+      w-full min-w-0
+      flex items-center gap-2
+      overflow-x-auto flex-nowrap whitespace-nowrap
+      pb-1 -mx-1 px-1
+      [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden
+    "
+  >
     {(() => {
       const scope =
         formKind === "outgoing" ? "projects" :
@@ -3153,7 +3153,6 @@ useEffect(() => {
       const pool = Array.isArray(tagsByScope?.[scope]) ? tagsByScope[scope] : [];
       const selSet = new Set((Array.isArray(selectedIds) ? selectedIds : []).map(String));
 
-      // selected first, then latest
       const selectedObjs = pool.filter((t) => selSet.has(String(t?.id)));
       const latest = pool
         .slice()
@@ -3180,7 +3179,7 @@ useEffect(() => {
             <button
               key={id}
               type="button"
-              onClick={() => toggleTag(formKind, id)}   // ✅ toggle + persist
+              onClick={() => toggleTag(formKind, id)}
               className={(active ? selectedTagChipCls : chipCls) + " h-10 shrink-0"}
               title={label}
               aria-label={label}
