@@ -201,19 +201,66 @@ function ProjectsPage() {
     setEditCode(v);
   };
 
-  const exportCurrentPageCsv = () => {
-    const items = Array.isArray(pageRows) ? pageRows : [];
-    const header = "پروژه";
-    const lines = items.map((r) => `${String(r?.code ?? "").trim()} - ${String(r?.name ?? "").trim()}`);
+  const escapeHtml = (s) =>
+    String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
 
-    // UTF-8 BOM for Excel (Persian friendly)
-    const csv = "\uFEFF" + [header, ...lines].join("\r\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const exportProjectsExcel = () => {
+    const items = Array.isArray(sortedRows) ? sortedRows : [];
+
+    const rowsHtml = items
+      .map((r, i) => {
+        const code = String(r?.code ?? "").trim();
+        const name = String(r?.name ?? "").trim();
+        const combined = `${code} - ${name}`.trim();
+        return `
+          <tr>
+            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:center; vertical-align:middle;">${i + 1}</td>
+            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:right; direction:rtl; unicode-bidi:plaintext; vertical-align:middle;">${escapeHtml(
+              combined || "—"
+            )}</td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    const html = `<!DOCTYPE html>
+<html dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <style>
+    body { font-family: Tahoma, Arial, sans-serif; }
+    table { border-collapse: collapse; width: 100%; direction: rtl; }
+    th { background: #F2F2F2; border: 1px solid #BFBFBF; padding: 8px; font-weight: 700; text-align: center; }
+    td { font-size: 12pt; }
+  </style>
+</head>
+<body>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:70px;">ردیف</th>
+        <th>پروژه (کد - نام)</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rowsHtml}
+    </tbody>
+  </table>
+</body>
+</html>`;
+
+    const blob = new Blob(["\uFEFF", html], { type: "application/vnd.ms-excel;charset=utf-8" });
     const url = URL.createObjectURL(blob);
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = `projects-page-${page + 1}.csv`;
+    a.download = "projects.xls";
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -364,7 +411,37 @@ function ProjectsPage() {
                         </TH>
 
                         <TH className="w-44 sm:w-72 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                          اقدامات
+                          <div className="flex items-center justify-center gap-2">
+                            <span>اقدامات</span>
+
+                            {isMainAdmin && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  exportProjectsExcel();
+                                }}
+                                className="h-7 w-7 inline-grid place-items-center bg-transparent p-0
+                                           text-neutral-500 hover:text-neutral-600 active:text-neutral-700
+                                           dark:text-neutral-400 dark:hover:text-neutral-300"
+                                title="خروجی اکسل"
+                                aria-label="خروجی اکسل"
+                              >
+                                <svg
+                                  className="w-[16px] h-[16px]"
+                                  viewBox="0 0 24 24"
+                                  aria-hidden="true"
+                                  focusable="false"
+                                >
+                                  <path
+                                    fill="currentColor"
+                                    d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm0 2.5L18.5 9H14zM8 13h8v2H8zm0 4h8v2H8zM8 9h4v2H8z"
+                                  />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
                         </TH>
                       </tr>
                     </THead>
@@ -468,34 +545,6 @@ function ProjectsPage() {
                                       size={36}
                                       iconSize={18}
                                     />
-
-                                    {isMainAdmin && (
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          exportCurrentPageCsv();
-                                        }}
-                                        className="h-9 w-9 rounded-xl grid place-items-center
-                                                   bg-transparent hover:bg-black/5 active:bg-black/10
-                                                   dark:hover:bg-white/10 dark:active:bg-white/15"
-                                        aria-label="خروجی اکسل"
-                                        title="خروجی اکسل"
-                                      >
-                                        <svg
-                                          className="w-4 h-4 text-black/70 dark:text-neutral-200"
-                                          viewBox="0 0 24 24"
-                                          aria-hidden="true"
-                                        >
-                                          <path
-                                            fill="currentColor"
-                                            d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm0 2.5L18.5 9H14zM8 13h8v2H8zm0 4h8v2H8zM8 9h4v2H8z"
-                                          />
-                                        </svg>
-                                      </button>
-                                    )}
-
                                     <RowActionIconBtn
                                       action="delete"
                                       onClick={(e) => {
