@@ -2030,17 +2030,24 @@ setInternalUnitId(uid ? String(uid) : "");
     let newId = null;
 
     if (editingId) {
-      try {
-        saved = await api(`/letters/${editingId}`, { method: "PATCH", body: JSON.stringify(payload) });
-      } catch (e) {
-        saved = await api(`/letters?id=${encodeURIComponent(String(editingId))}`, { method: "PATCH", body: JSON.stringify(payload) });
-      }
-      newId = editingId;
-    } else {
-      saved = await api("/letters", { method: "POST", body: JSON.stringify(payload) });
-      const item = saved?.item || saved;
-      newId = item?.id ?? item?.letter_id ?? item?.letterId;
-    }
+  const eid = String(editingId || "").trim();
+  if (!eid) throw new Error("missing_id");
+
+  // ✅ سازگاری کامل: هم query هم body
+  const body = JSON.stringify({ ...payload, id: eid, letter_id: eid });
+
+  saved = await api(`/letters?id=${encodeURIComponent(eid)}`, {
+    method: "PATCH",
+    body,
+  });
+
+  newId = eid;
+} else {
+  saved = await api("/letters", { method: "POST", body: JSON.stringify(payload) });
+  const item = saved?.item || saved;
+  newId = item?.id ?? item?.letter_id ?? item?.letterId;
+}
+
 
     if (!newId) throw new Error("save_failed");
 
@@ -2089,10 +2096,15 @@ setInternalUnitId(uid ? String(uid) : "");
     if (!ok) return;
 
     try {
-      await api(`/letters/${encodeURIComponent(String(id))}`, { method: "DELETE" });
-    } catch (_e) {
-      await api(`/letters?id=${encodeURIComponent(String(id))}`, { method: "DELETE" });
-    }
+  await api(`/letters?id=${encodeURIComponent(String(id))}`, {
+    method: "DELETE",
+    body: JSON.stringify({ id: String(id), letter_id: String(id) }),
+  });
+} catch (_e) {
+  // اگر بک‌اند فقط path رو ساپورت می‌کرد (اختیاری)
+  await api(`/letters/${encodeURIComponent(String(id))}`, { method: "DELETE" });
+}
+
 
     await refetchLetters();
     setSelectedIds((prev) => {
