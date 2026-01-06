@@ -751,6 +751,8 @@ const [filterTagPinnedIds, setFilterTagPinnedIds] = useState([]); // ✅ برچ�
 const TAG_PREFS_SCOPE = "letters_filter"; // اسم کلید برای بک‌اند (بعداً هم همینو استفاده می‌کنیم)
 const TAG_PREFS_LIMIT = 24;
 
+const tagPrefsLsKey = (scope) => `tag_prefs_v1:${scope}:u${String(user?.id || "0")}`;
+
 // ===== Per-user selected tags for FORM (incoming/outgoing/internal) — stored in backend (/tag-prefs) =====
 const FORM_TAG_PREFS_SCOPE = {
   incoming: "letters_form_incoming",
@@ -832,14 +834,22 @@ const normalizeIdList = (arr) => {
 };
 
 const savePinnedFilterTags = async (ids) => {
-  // بک‌اند بعداً پیاده میشه. فعلاً اگر نبود، نباید چیزی خراب بشه.
+  const clean = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
+
+  // ✅ fallback local (حتی اگر بک‌اند کار نکند)
+  try {
+    localStorage.setItem(tagPrefsLsKey(TAG_PREFS_SCOPE), JSON.stringify({ t: Date.now(), ids: clean }));
+  } catch {}
+
+  // ✅ بک‌اند (اگر وجود داشت)
   try {
     await api(`/tag-prefs?scope=${encodeURIComponent(TAG_PREFS_SCOPE)}`, {
       method: "PUT",
-      body: JSON.stringify({ scope: TAG_PREFS_SCOPE, ids }),
+      body: JSON.stringify({ scope: TAG_PREFS_SCOPE, ids: clean }),
     });
   } catch {}
 };
+
 
 const saveActiveFilterTags = async (ids) => {
   try {
@@ -862,20 +872,52 @@ const loadActiveFilterTags = async () => {
 
 
 const loadPinnedFilterTags = async () => {
+  // 1) اول سریع از local بیار (برای اینکه بعد رفرش فوری دیده بشه)
+  try {
+    const raw = localStorage.getItem(tagPrefsLsKey(TAG_PREFS_SCOPE));
+    const parsed = raw ? JSON.parse(raw) : null;
+    const ids = normalizeIdList(parsed?.ids || []).slice(0, TAG_PREFS_LIMIT);
+    if (ids.length) setFilterTagPinnedIds(ids);
+  } catch {}
+
+  // 2) بعد تلاش کن از بک‌اند هم sync کنی (اگر موجود بود)
   try {
     const r = await api(`/tag-prefs?scope=${encodeURIComponent(TAG_PREFS_SCOPE)}`);
-    const ids = normalizeIdList(r?.ids || r?.items || r?.data?.ids || []);
-    setFilterTagPinnedIds(ids.slice(0, TAG_PREFS_LIMIT));
+    const ids = normalizeIdList(r?.ids || r?.items || r?.data?.ids || []).slice(0, TAG_PREFS_LIMIT);
+
+    setFilterTagPinnedIds(ids);
+
+    // همون نتیجه رو local هم آپدیت کن
+    try {
+      localStorage.setItem(tagPrefsLsKey(TAG_PREFS_SCOPE), JSON.stringify({ t: Date.now(), ids }));
+    } catch {}
   } catch {
-    // اگر بک‌اند هنوز نداره => پیش‌فرض خالی (فقط quick chips + افزودن نمایش داده میشه)
-    setFilterTagPinnedIds([]);
+    // اگر بک‌اند نبود، همون local کافیست
   }
 };
 
+
 useEffect(() => {
+  if (!user?.id) return;
   loadPinnedFilterTags();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-}, []);
+}, [user?.id]);
+
+useEffect(() => {
+  if (!user?.id) return;
+
+  (async () => {
+    // برای اینکه pinned ها از هر تب (letters/projects/execution) بعد refresh دیده بشن
+    await Promise.all([
+      refreshTags("letters"),
+      refreshTags("projects"),
+      refreshTags("execution"),
+    ]);
+  })();
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [user?.id]);
+
 
 useEffect(() => {
   // prefs فرم برای هر سه نوع
