@@ -1208,6 +1208,9 @@ const mergePinnedFilterTags = (ids) => {
 
         setTagCategories(cats);
         setTags(tgs);
+        setTagCatsByScope((m) => ({ ...m, letters: cats }));
+        setTagsByScope((m) => ({ ...m, letters: tgs }));
+        setLoadedScopes((m) => ({ ...m, letters: true }));
       } catch {
         try {
           const r2 = await api("/tags");
