@@ -355,7 +355,7 @@ function formatBytes(n) {
 }
 
 export default function LettersPage() {
-  const API_BASE = (window.API_URL || "/api").replace(/\/+$/, "");
+  const API_BASE = String(import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
   async function api(path, opt = {}) {
     const res = await fetch(API_BASE + path, {
       credentials: "include",
@@ -1913,27 +1913,34 @@ const secretariatLongText = (ymd) => {
 
 
     const payload = {
-      kind,
-      category: category || "",
-        classification: classification || "عادی", // ✅ اضافه شود
-      projectId: pId && Number.isFinite(pId) ? pId : null,
-      letterNo: letterNo || "",
-      letterDate: letterDate || "",
-      fromName: fromName || "",
-      toName: toName || "",
-      orgName: orgName || "",
-      subject: subject || "",
-      hasAttachment: computedHasAttachment,
-      attachmentTitle: attachmentTitle || "",
-      returnToIds: (Array.isArray(returnToIds) ? returnToIds : []).map(String).filter((x) => x && x.trim()),
-      piroIds: (Array.isArray(piroIds) ? piroIds : []).map(String).filter((x) => x && x.trim()),
-      tagIds: (Array.isArray(tagIds) ? tagIds : []).map(String).filter((x) => x && x.trim()),
-      secretariatDate: secretariatDate || "",
-      secretariatNo: secretariatNo || "",
-      receiverName: receiverName || "",
-      attachments: reused,
-      unitId: kind === "internal" ? (internalUnitId ? Number(internalUnitId) || internalUnitId : null) : null,
-    };
+  kind,
+  category: category || "",
+  classification: classification || "عادی",
+
+  project_id: pId && Number.isFinite(pId) ? pId : null,
+  letter_no: letterNo || "",
+  letter_date: letterDate || "",
+  from_name: fromName || "",
+  to_name: toName || "",
+  org_name: orgName || "",
+  subject: subject || "",
+
+  has_attachment: computedHasAttachment,
+  attachment_title: attachmentTitle || "",
+
+  return_to_ids: (Array.isArray(returnToIds) ? returnToIds : []).map(String).filter((x) => x && x.trim()),
+  piro_ids: (Array.isArray(piroIds) ? piroIds : []).map(String).filter((x) => x && x.trim()),
+  tag_ids: (Array.isArray(tagIds) ? tagIds : []).map(String).filter((x) => x && x.trim()),
+
+  secretariat_date: secretariatDate || "",
+  secretariat_no: secretariatNo || "",
+  receiver_name: receiverName || "",
+
+  attachments: reused,
+
+  unit_id: kind === "internal" ? (internalUnitId ? Number(internalUnitId) || internalUnitId : null) : null,
+};
+
 
     let saved;
     let newId = null;
