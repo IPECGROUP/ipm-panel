@@ -601,15 +601,50 @@ const [relatedQuery, setRelatedQuery] = useState("");
     return "incoming";
   };
 
-const isConfidentialLetter = (l) => {
-  const raw = String(
-    l?.classification ??
-      l?.doc_classification ??
-      l?.confidentiality ??
-      ""
-  ).trim();
+const normFa = (s) =>
+  String(s ?? "")
+    .trim()
+    .toLowerCase()
+    // یکسان‌سازی حروف عربی/فارسی
+    .replace(/ي/g, "ی")
+    .replace(/ك/g, "ک")
+    // حذف نیم‌فاصله و انواع فاصله‌های خاص
+    .replace(/[\u200c\u200f\u202a-\u202e]/g, "")
+    .replace(/\s+/g, " ");
 
-  return raw === "محرمانه";
+const isConfidentialLetter = (l) => {
+  // 1) اگر بک‌اند فلگ بولی بده
+  const flag =
+    l?.is_confidential ??
+    l?.isConfidential ??
+    l?.confidential ??
+    l?.is_secret ??
+    l?.isSecret;
+
+  if (flag === true) return true;
+  if (flag === 1 || flag === "1") return true;
+
+  // 2) مقدار متنی/آبجکتی
+  const raw =
+    l?.classification ??
+    l?.doc_classification ??
+    l?.confidentiality ??
+    l?.classification_label ??
+    l?.classificationName ??
+    (typeof l?.classification === "object" ? (l?.classification?.label ?? l?.classification?.name) : "") ??
+    "";
+
+  const v = normFa(raw);
+
+  // فارسی
+  if (v.includes("محرمانه")) return true;
+  if (v.includes("خیلی محرمانه")) return true;
+
+  // انگلیسی
+  if (v.includes("confidential")) return true;
+  if (v.includes("secret")) return true;
+
+  return false;
 };
 
 
