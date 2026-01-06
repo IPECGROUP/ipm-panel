@@ -415,6 +415,8 @@ const myUnitsFromUser = useMemo(() => {
   return arr;
 }, [user]);
 
+
+
 const unitOptions = useMemo(() => {
   const map = new Map();
 
@@ -435,6 +437,7 @@ const unitOptions = useMemo(() => {
 }, [unitsAll, myUnitsFromUser]);
 
 const ORG_UNITS_CACHE_KEY = "org_structure_my_units_v1";
+
 
 useEffect(() => {
   let mounted = true;
@@ -597,6 +600,18 @@ const [relatedQuery, setRelatedQuery] = useState("");
     if (v === "i" || v === "incoming") return "incoming";
     return "incoming";
   };
+
+const isConfidentialLetter = (l) => {
+  const raw = String(
+    l?.classification ??
+      l?.doc_classification ??
+      l?.confidentiality ??
+      ""
+  ).trim();
+
+  return raw === "محرمانه";
+};
+
 
   const letterNoOf = (l) => String(l?.letter_no ?? l?.no ?? l?.number ?? l?.letterNo ?? "");
   const letterDateOf = (l) =>
@@ -3512,6 +3527,8 @@ useEffect(() => {
         const isLast = idx === pageItems.length - 1;
         const divider = isLast ? "" : rowDividerCls;
 
+        const isConf = isConfidentialLetter(l);
+
         const rowBg = isOutgoing
           ? theme === "dark"
             ? "bg-[#8BAE66]/15 hover:bg-[#8BAE66]/20"
@@ -3529,7 +3546,16 @@ useEffect(() => {
           : "bg-black/[0.02] hover:bg-black/[0.04]";
 
         return (
-          <tr key={id} className={rowBg + " transition-colors"}>
+          <tr
+            key={id}
+            className={
+              rowBg +
+              " transition-colors" +
+              (isConf
+                ? " [&_td]:!text-red-600 dark:[&_td]:!text-red-400 [&_button]:!text-red-600 dark:[&_button]:!text-red-400"
+                : "")
+            }
+          >
             <td className={"px-3 " + divider}>
               <input
                 type="checkbox"
