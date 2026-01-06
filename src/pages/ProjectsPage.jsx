@@ -46,9 +46,7 @@ function ProjectsPage() {
       .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d))
       .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
 
-  const toFaDigits = (s) =>
-    String(s ?? "")
-      .replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
+  const toFaDigits = (s) => String(s ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
 
   const isTopProjectCode = (code) => {
     const c = toEnDigits(String(code || "")).trim();
@@ -219,7 +217,9 @@ function ProjectsPage() {
         const combined = `${code} - ${name}`.trim();
         return `
           <tr>
-            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:center; vertical-align:middle;">${i + 1}</td>
+            <td style="border:1px solid #BFBFBF; padding:6px 6px; text-align:center; vertical-align:middle; white-space:nowrap;">${
+              i + 1
+            }</td>
             <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:right; direction:rtl; unicode-bidi:plaintext; vertical-align:middle;">${escapeHtml(
               combined || "—"
             )}</td>
@@ -234,17 +234,24 @@ function ProjectsPage() {
   <meta charset="utf-8" />
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <style>
-    body { font-family: Tahoma, Arial, sans-serif; }
-    table { border-collapse: collapse; width: 100%; direction: rtl; }
-    th { background: #F2F2F2; border: 1px solid #BFBFBF; padding: 8px; font-weight: 700; text-align: center; }
+    body { font-family: Tahoma, Arial, sans-serif; margin: 0; padding: 10px; direction: rtl; }
+    table { border-collapse: collapse; width: auto; direction: rtl; }
+    col.rowno { width: 60px; }
+    col.proj { width: 420px; }
+    th { background: #F2F2F2; border: 1px solid #BFBFBF; padding: 8px; font-weight: 700; text-align: center; white-space: nowrap; }
     td { font-size: 12pt; }
+    tbody tr:nth-child(even) td { background: #FAFAFA; }
   </style>
 </head>
 <body>
   <table>
+    <colgroup>
+      <col class="rowno" />
+      <col class="proj" />
+    </colgroup>
     <thead>
       <tr>
-        <th style="width:70px;">ردیف</th>
+        <th>ردیف</th>
         <th>پروژه (کد - نام)</th>
       </tr>
     </thead>
@@ -279,7 +286,6 @@ function ProjectsPage() {
       aria-label={direction === "prev" ? "صفحه قبل" : "صفحه بعد"}
       title={direction === "prev" ? "صفحه قبل" : "صفحه بعد"}
     >
-      {/* RTL: prev = chevron-right, next = chevron-left */}
       {direction === "prev" ? (
         <svg className="w-5 h-5 text-black/70 dark:text-neutral-200" viewBox="0 0 24 24" aria-hidden="true">
           <path
@@ -310,13 +316,11 @@ function ProjectsPage() {
         <span className="font-semibold text-black dark:text-neutral-100">پروژه‌ها</span>
       </div>
 
-      {/* ✅ باکس یکپارچه مثل صفحه ارزها: فرم + جدول در یک قاب، بدون خط جداکننده */}
       <div
         className="rounded-2xl border border-black/10 bg-white overflow-hidden
                    dark:bg-neutral-900 dark:border-neutral-800"
         dir="rtl"
       >
-        {/* فرم (هم‌راستا با جدول: px دقیقاً 15px) */}
         <form onSubmit={submitAdd} className="px-[15px] py-4">
           <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] items-end gap-3">
             <div className="flex-1 min-w-[220px] flex flex-col gap-1">
@@ -363,17 +367,12 @@ function ProjectsPage() {
           {err && <div className="text-sm text-red-600 dark:text-red-400 mt-2">{err}</div>}
         </form>
 
-        {/* جدول */}
         <TableWrap>
           <div className="bg-white text-black dark:bg-neutral-900 dark:text-neutral-100">
             <div className="px-[15px] pb-4">
               <div className="rounded-2xl border border-black/10 overflow-hidden bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-                {/* ✅ اسکرول فقط داخل جدول */}
                 <div className="max-h-[520px] overflow-auto">
-                  <table
-                    className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
-                    dir="rtl"
-                  >
+                  <table className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5" dir="rtl">
                     <THead>
                       <tr className="sticky top-0 z-20 bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
                         <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
@@ -393,9 +392,7 @@ function ProjectsPage() {
                               aria-label="مرتب‌سازی کد"
                             >
                               <svg
-                                className={`w-[14px] h-[14px] transition-transform ${
-                                  codeSortDir === "asc" ? "rotate-180" : ""
-                                }`}
+                                className={`w-[14px] h-[14px] transition-transform ${codeSortDir === "asc" ? "rotate-180" : ""}`}
                                 focusable="false"
                                 aria-hidden="true"
                                 viewBox="0 0 24 24"
@@ -428,12 +425,7 @@ function ProjectsPage() {
                                 title="خروجی اکسل"
                                 aria-label="خروجی اکسل"
                               >
-                                <svg
-                                  className="w-[16px] h-[16px]"
-                                  viewBox="0 0 24 24"
-                                  aria-hidden="true"
-                                  focusable="false"
-                                >
+                                <svg className="w-[16px] h-[16px]" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                                   <path
                                     fill="currentColor"
                                     d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm0 2.5L18.5 9H14zM8 13h8v2H8zm0 4h8v2H8zM8 9h4v2H8z"
@@ -448,7 +440,7 @@ function ProjectsPage() {
 
                     <tbody
                       className="[&_td]:text-black dark:[&_td]:text-neutral-100
-                                 [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50
+                                 [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-100
                                  dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50"
                     >
                       {loading ? (
@@ -566,24 +558,17 @@ function ProjectsPage() {
                   </table>
                 </div>
 
-                {/* pagination bar */}
                 <div className="border-t border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900">
                   <div className="px-3 py-2 flex items-center justify-between gap-3" dir="rtl">
                     <div className="flex items-center gap-2">
-                      <PagerBtn
-                        direction="prev"
-                        disabled={page <= 0}
-                        onClick={() => setPage((p) => Math.max(0, p - 1))}
-                      />
+                      <PagerBtn direction="prev" disabled={page <= 0} onClick={() => setPage((p) => Math.max(0, p - 1))} />
                       <PagerBtn
                         direction="next"
                         disabled={page >= totalPages - 1}
                         onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                       />
                       <div className="text-sm text-black/70 dark:text-neutral-300">
-                        {total === 0
-                          ? "۰ از ۰"
-                          : `${toFaDigits(startIdx + 1)}–${toFaDigits(endIdx)} از ${toFaDigits(total)}`}
+                        {total === 0 ? "۰ از ۰" : `${toFaDigits(startIdx + 1)}–${toFaDigits(endIdx)} از ${toFaDigits(total)}`}
                       </div>
                     </div>
 
