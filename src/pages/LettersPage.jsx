@@ -3590,7 +3590,11 @@ useEffect(() => {
                 onClick={() => openView(l)}
                 className={
                   "mx-auto inline-flex items-center justify-center gap-2 font-semibold underline-offset-4 hover:underline transition " +
-                  (theme === "dark" ? "text-white" : "text-neutral-900")
+                  (isConf
+                    ? "text-red-600 dark:text-red-400"
+                    : theme === "dark"
+                    ? "text-white"
+                    : "text-neutral-900")
                 }
                 title="نمایش"
                 aria-label="نمایش"
