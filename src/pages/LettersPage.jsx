@@ -3249,7 +3249,7 @@ useEffect(() => {
     type="button"
     onClick={() => openUpload(formKind)}
     className={uploadTriggerCls + " w-full md:w-auto"}
-    title={formKind === "internal" ? "بارگذاری سند" : formKind === "outgoing" ? "بارگذاری نامه صادره" : "بارگذاری نامه وارده"}
+    title={formKind === "internal" ? "بارگذاری سند" : formKind === "outgoing" ? "بارگذاری اسناد " : "بارگذاری اسناد "}
   >
     <img
       src="/images/icons/upload.svg"
@@ -3257,7 +3257,7 @@ useEffect(() => {
       className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
     />
     <span>
-      {formKind === "internal" ? "بارگذاری سند" : formKind === "outgoing" ? "بارگذاری نامه صادره" : "بارگذاری نامه وارده"}
+      {formKind === "internal" ? "بارگذاری سند" : formKind === "outgoing" ? "بارگذاری اسناد " : "بارگذاری اسناد"}
     </span>
 
     {Array.isArray(docFilesByType?.[formKind]) && docFilesByType[formKind].length > 0 ? (
@@ -3267,6 +3267,64 @@ useEffect(() => {
     ) : null}
   </button>
 </div>
+
+
+
+</div>
+</div>
+
+
+
+    <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
+
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div>
+          <div className={labelCls}
+          >  {formKind === "outgoing" ? "تاریخ ثبت دبیرخانه " : "تاریخ ثبت دبیرخانه"}
+          </div>
+          <JalaliPopupDatePicker
+            value={formKind === "incoming" ? incomingSecretariatDate : formKind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate}
+            onChange={(v) => {
+              if (formKind === "incoming") setIncomingSecretariatDate(v);
+              else if (formKind === "outgoing") setOutgoingSecretariatDate(v);
+              else setInternalSecretariatDate(v);
+            }}
+            theme={theme}
+            buttonClassName={secretariatPickerBtnCls(
+              formKind === "incoming" ? incomingSecretariatDate : formKind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate
+            )}
+          />
+          <div className={theme === "dark" ? "text-white/50 text-[11px] mt-1" : "text-neutral-500 text-[11px] mt-1"}>
+            {secretariatLongText(
+              formKind === "incoming" ? incomingSecretariatDate : formKind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate
+            )}
+          </div>
+        </div>
+
+        <div>
+          <div className={labelCls}
+          >  {formKind === "outgoing" ? "شماره ثبت دبیرخانه " : "شماره ثبت دبیرخانه"}
+          </div>
+          <input
+            value={formKind === "incoming" ? incomingSecretariatNo : formKind === "outgoing" ? outgoingSecretariatNo : internalSecretariatNo}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (formKind === "incoming") setIncomingSecretariatNo(v);
+              else if (formKind === "outgoing") setOutgoingSecretariatNo(v);
+              else setInternalSecretariatNo(v);
+            }}
+            className={inputCls}
+            type="text"
+          />
+        </div>
+
+        <div>
+          <div className={labelCls}>مسئول دبیرخانه</div>
+          <input value={loggedInUserName || ""} readOnly className={inputCls + " opacity-90"} type="text" />
+        </div>
+      </div>
+
 
 {/* برچسب‌ها (برای فرم) */}
 <div className="md:col-span-12 min-w-0">
@@ -3337,61 +3395,6 @@ useEffect(() => {
     </button>
   </div>
 </div>
-
-</div>
-</div>
-
-
-
-    <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
-
-    <div className="space-y-3">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div>
-          <div className={labelCls}
-          >  {formKind === "outgoing" ? "تاریخ ثبت دبیرخانه " : "تاریخ ثبت دبیرخانه"}
-          </div>
-          <JalaliPopupDatePicker
-            value={formKind === "incoming" ? incomingSecretariatDate : formKind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate}
-            onChange={(v) => {
-              if (formKind === "incoming") setIncomingSecretariatDate(v);
-              else if (formKind === "outgoing") setOutgoingSecretariatDate(v);
-              else setInternalSecretariatDate(v);
-            }}
-            theme={theme}
-            buttonClassName={secretariatPickerBtnCls(
-              formKind === "incoming" ? incomingSecretariatDate : formKind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate
-            )}
-          />
-          <div className={theme === "dark" ? "text-white/50 text-[11px] mt-1" : "text-neutral-500 text-[11px] mt-1"}>
-            {secretariatLongText(
-              formKind === "incoming" ? incomingSecretariatDate : formKind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate
-            )}
-          </div>
-        </div>
-
-        <div>
-          <div className={labelCls}
-          >  {formKind === "outgoing" ? "شماره ثبت دبیرخانه " : "شماره ثبت دبیرخانه"}
-          </div>
-          <input
-            value={formKind === "incoming" ? incomingSecretariatNo : formKind === "outgoing" ? outgoingSecretariatNo : internalSecretariatNo}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (formKind === "incoming") setIncomingSecretariatNo(v);
-              else if (formKind === "outgoing") setOutgoingSecretariatNo(v);
-              else setInternalSecretariatNo(v);
-            }}
-            className={inputCls}
-            type="text"
-          />
-        </div>
-
-        <div>
-          <div className={labelCls}>مسئول دبیرخانه</div>
-          <input value={loggedInUserName || ""} readOnly className={inputCls + " opacity-90"} type="text" />
-        </div>
-      </div>
 
       {/* ✅ دکمه ارسال هم داخل همین کادر قرار گرفت */}
       <div className="flex items-center justify-end pt-2">
