@@ -398,6 +398,8 @@ const [formKind, setFormKind] = useState("incoming"); // نوع نامه داخ�
   };
 
     const { user } = useAuth();
+
+    
     // ===== Units (for internal letters) =====
 const [unitsAll, setUnitsAll] = useState([]);
 const [internalUnitId, setInternalUnitId] = useState("");
@@ -414,8 +416,6 @@ const myUnitsFromUser = useMemo(() => {
     [];
   return arr;
 }, [user]);
-
-
 
 const unitOptions = useMemo(() => {
   const map = new Map();
@@ -437,7 +437,6 @@ const unitOptions = useMemo(() => {
 }, [unitsAll, myUnitsFromUser]);
 
 const ORG_UNITS_CACHE_KEY = "org_structure_my_units_v1";
-
 
 useEffect(() => {
   let mounted = true;
@@ -507,6 +506,36 @@ const resolveFileUrl = (u) => {
   const [filterOrg, setFilterOrg] = useState("");
   const [filterLetterNo, setFilterLetterNo] = useState("");
   const filterActiveHydratedRef = useRef(false);
+
+
+useEffect(() => {
+  if (!user?.id) return;
+  let mounted = true;
+
+  (async () => {
+    const p = await fetchLetterPrefs();
+    if (!mounted) return;
+
+    // 1) pinned tags for FILTER bar  -> از all_tag_ids
+    const pinned = normalizeIdList(p?.all_tag_ids || []).slice(0, TAG_PREFS_LIMIT);
+    setFilterTagPinnedIds(pinned);
+
+    // 2) default tags for FORM (incoming/outgoing/internal)
+    setFormTagPrefs({
+      incoming: normalizeIdList(p?.incoming_tag_ids || []).slice(0, TAG_PREFS_LIMIT),
+      outgoing: normalizeIdList(p?.outgoing_tag_ids || []).slice(0, TAG_PREFS_LIMIT),
+      internal: normalizeIdList(p?.internal_tag_ids || []).slice(0, TAG_PREFS_LIMIT),
+    });
+
+    prefsHydratedRef.current = true;
+  })();
+
+  return () => {
+    mounted = false;
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [user?.id]);
+
 
 useEffect(() => {
   if (!user?.id) return;
@@ -839,25 +868,12 @@ const [formTagPrefs, setFormTagPrefs] = useState({ incoming: [], outgoing: [], i
 const formTagsHydratedRef = useRef({ incoming: false, outgoing: false, internal: false });
 
 const saveFormTagPrefs = async (which, ids) => {
-  const scope = FORM_TAG_PREFS_SCOPE[which];
-  if (!scope) return;
-
   const clean = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
 
-  // ✅ fallback local
-  try {
-    localStorage.setItem(formPrefsLsKey(which), JSON.stringify({ t: Date.now(), ids: clean }));
-  } catch {}
-
-  // ✅ backend (اگر وجود داشت)
-  try {
-    await api(`/tag-prefs?scope=${encodeURIComponent(scope)}`, {
-      method: "PUT",
-      body: JSON.stringify({ scope, ids: clean }),
-    });
-  } catch {}
+  if (which === "incoming") await patchLetterPrefs({ incoming_tag_ids: clean });
+  else if (which === "outgoing") await patchLetterPrefs({ outgoing_tag_ids: clean });
+  else await patchLetterPrefs({ internal_tag_ids: clean });
 };
-
 
 const loadFormTagPrefs = async (which) => {
   const scope = FORM_TAG_PREFS_SCOPE[which];
@@ -934,21 +950,8 @@ const normalizeIdList = (arr) => {
 
 const savePinnedFilterTags = async (ids) => {
   const clean = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
-
-  // ✅ fallback local (حتی اگر بک‌اند کار نکند)
-  try {
-    localStorage.setItem(tagPrefsLsKey(TAG_PREFS_SCOPE), JSON.stringify({ t: Date.now(), ids: clean }));
-  } catch {}
-
-  // ✅ بک‌اند (اگر وجود داشت)
-  try {
-    await api(`/tag-prefs?scope=${encodeURIComponent(TAG_PREFS_SCOPE)}`, {
-      method: "PUT",
-      body: JSON.stringify({ scope: TAG_PREFS_SCOPE, ids: clean }),
-    });
-  } catch {}
+  await patchLetterPrefs({ all_tag_ids: clean });
 };
-
 
 const saveActiveFilterTags = async (ids) => {
   try {
@@ -1368,7 +1371,6 @@ const mergePinnedFilterTags = (ids) => {
 
   const labelCls = theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1";
 
-
   // compact versions (for one-line top row)
 const inputSmCls = inputCls
   .replace("h-11", "h-10")
@@ -1427,13 +1429,11 @@ const selectedTagChipCls =
 
   const findProject = (id) => projects.find((p) => String(p?.id) === String(id));
 
-
   const projectOptionLabel = (p) => {
   const code = String(p?.__baseCode ?? p?.code ?? "").trim();
   const name = String(p?.name ?? p?.title ?? p?.label ?? "").trim();
   return `${toFaDigits(code)}${name ? " - " + name : ""}`.trim();
 };
-
 
 const projectsDesc = useMemo(() => {
   const arr = Array.isArray(projects) ? projects.slice() : [];
@@ -1467,7 +1467,6 @@ const projectsTopOnly = useMemo(() => {
 
     out.push({ ...p, __baseCode: base });
   }
-
   // ✅ مرتب‌سازی عددی نزولی: 165,164,...,101
   out.sort((a, b) => {
     const an = Number(String(a?.__baseCode ?? "").trim()) || 0;
@@ -1500,8 +1499,6 @@ const projectsTopOnly = useMemo(() => {
   setFormTagsAndPersist(which, next); // ✅ هم set هم save
 };
 
-
-
 const toggleFilterTag = (id) => {
   const sid = String(id || "").trim();
   if (!sid) return;
@@ -1514,8 +1511,6 @@ const toggleFilterTag = (id) => {
 
   const tagLabelOf = (t) =>
   String(t?.label ?? t?.name ?? t?.title ?? t?.text ?? t?.tag ?? t?.id ?? "").trim();
-
-
   // ===== NEW: add-tag modal =====
 const [tagPickOpen, setTagPickOpen] = useState(false);
 const [tagPickFor, setTagPickFor] = useState("filter"); // "filter" | "form"
@@ -1594,7 +1589,6 @@ const tagsForFormScope = useMemo(() => {
   });
 };
 
-
   const secretariatPickerBtnCls = (val) =>
     "w-full h-11 px-3 rounded-xl border flex items-center justify-between gap-2 transition text-right " +
     (theme === "dark"
@@ -1607,7 +1601,6 @@ const tagsForFormScope = useMemo(() => {
   const jy2 = jy - 979;
   const jm2 = jm - 1;
   const jd2 = jd - 1;
-
   let jDayNo =
     365 * jy2 +
     Math.floor(jy2 / 33) * 8 +
@@ -1640,7 +1633,6 @@ const tagsForFormScope = useMemo(() => {
     gy += Math.floor(gDayNo / 365);
     gDayNo %= 365;
   }
-
   const mdays = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
   let gm = 0;
   while (gm < 12 && gDayNo >= mdays[gm]) {
@@ -1650,7 +1642,6 @@ const tagsForFormScope = useMemo(() => {
   const gd = gDayNo + 1;
   return { gy, gm: gm + 1, gd };
 };
-
 const secretariatLongText = (ymd) => {
   const raw = String(ymd || "").trim();
   const m = raw.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
@@ -1669,8 +1660,6 @@ const secretariatLongText = (ymd) => {
 
   return `${weekdayFa} — ${gregYmd}`;
 };
-
-
   const openUpload = (which) => {
     setUploadFor(which);
     setUploadOpen(true);
@@ -1701,7 +1690,6 @@ const secretariatLongText = (ymd) => {
     e.preventDefault();
     e.stopPropagation();
   };
-
   const fromToOf = (l) => {
     const a = String(l?.from_name ?? l?.from ?? "");
     const b = String(l?.to_name ?? l?.to ?? "");
@@ -1785,7 +1773,6 @@ const secretariatLongText = (ymd) => {
   return `${m[1]}/${pad2(m[2])}/${pad2(m[3])}`;
 };
 
-
   const applyQuickRange = (key) => {
     const now = new Date();
     const end = now;
@@ -1861,7 +1848,6 @@ const secretariatLongText = (ymd) => {
   });
 }, [myLettersSorted, filterTab, filterSubject, filterOrg, filterLetterNo, filterTagIds, filterFromDate, filterToDate]);
 
-
   useEffect(() => {
     setSelectedIds(new Set());
     setPage(0);
@@ -1894,7 +1880,6 @@ const secretariatLongText = (ymd) => {
       return next;
     });
   };
-
   const toggleRowSelect = (id) => {
     const sid = String(id);
     setSelectedIds((prev) => {
@@ -1938,19 +1923,15 @@ const kindRowTintCls = (kind) => {
     setToName("");
     setSubject("");
     setInternalUnitId("");
-
     setHasAttachment(false);
     setIncomingAttachmentTitle("");
     setOutgoingAttachmentTitle("");
     setInternalAttachmentTitle("");
-
     setReturnToIds([""]);
     setPiroIds([""]);
-
     setIncomingTagIds([]);
     setOutgoingTagIds([]);
     setInternalTagIds([]);
-
     setIncomingSecretariatDate(todayJalaliYmd || "");
     setOutgoingSecretariatDate(todayJalaliYmd || "");
     setInternalSecretariatDate(todayJalaliYmd || "");
@@ -1960,10 +1941,7 @@ const kindRowTintCls = (kind) => {
     setIncomingReceiverName(loggedInUserName || "");
     setOutgoingReceiverName(loggedInUserName || "");
     setInternalReceiverName(loggedInUserName || "");
-
-
     setDocFilesByType({ incoming: [], outgoing: [], internal: [] });
-
     setEditingId(null);
   };
 
@@ -2091,7 +2069,6 @@ setInternalUnitId(uid ? String(uid) : "");
   alert("برای نامه داخلی انتخاب واحد الزامی است.");
   return;
 }
-
     const attachmentTitle =
       kind === "incoming" ? incomingAttachmentTitle : kind === "outgoing" ? outgoingAttachmentTitle : internalAttachmentTitle;
 
@@ -2107,7 +2084,6 @@ setInternalUnitId(uid ? String(uid) : "");
         const receiverName =
       (loggedInUserName || "").trim() ||
       (kind === "incoming" ? incomingReceiverName : kind === "outgoing" ? outgoingReceiverName : internalReceiverName);
-
 
     const pId = projectId ? Number(projectId) : null;
 
@@ -2132,7 +2108,6 @@ setInternalUnitId(uid ? String(uid) : "");
     ? true
     : !!hasAttachment;
 
-
     const payload = {
   kind,
   category: category || "",
@@ -2145,23 +2120,17 @@ setInternalUnitId(uid ? String(uid) : "");
   to_name: toName || "",
   org_name: orgName || "",
   subject: subject || "",
-
   has_attachment: computedHasAttachment,
   attachment_title: attachmentTitle || "",
-
   return_to_ids: (Array.isArray(returnToIds) ? returnToIds : []).map(String).filter((x) => x && x.trim()),
   piro_ids: (Array.isArray(piroIds) ? piroIds : []).map(String).filter((x) => x && x.trim()),
   tag_ids: (Array.isArray(tagIds) ? tagIds : []).map(String).filter((x) => x && x.trim()),
-
   secretariat_date: secretariatDate || "",
   secretariat_no: secretariatNo || "",
   receiver_name: receiverName || "",
-
   attachments: reused,
-
   unit_id: kind === "internal" ? (internalUnitId ? Number(internalUnitId) || internalUnitId : null) : null,
 };
-
 
     let saved;
     let newId = null;
@@ -2185,23 +2154,18 @@ setInternalUnitId(uid ? String(uid) : "");
   newId = item?.id ?? item?.letter_id ?? item?.letterId;
 }
 
-
     if (!newId) throw new Error("save_failed");
-
     const letterId = Number(newId) || newId;
-
     if (queue.length > 0) {
       for (const f of queue) {
         const fileToSend = f.optimizedFile || f.file;
         setDocFilesFor(kind, (prev) =>
           prev.map((x) => (x.id === f.id ? { ...x, status: "uploading", progress: 0, error: "" } : x))
         );
-
         try {
           const res = await uploadFileToLetter(fileToSend, letterId, (p) => {
             setDocFilesFor(kind, (prev) => prev.map((x) => (x.id === f.id ? { ...x, progress: p } : x)));
           });
-
           setDocFilesFor(kind, (prev) =>
             prev.map((x) =>
               x.id === f.id
@@ -2222,12 +2186,10 @@ setInternalUnitId(uid ? String(uid) : "");
         }
       }
     }
-
     await refetchLetters();
     resetForm();
     setFormOpen(false);
   };
-
   const deleteLetter = async (id) => {
     const ok = window.confirm("حذف شود؟");
     if (!ok) return;
@@ -2241,8 +2203,6 @@ setInternalUnitId(uid ? String(uid) : "");
   // اگر بک‌اند فقط path رو ساپورت می‌کرد (اختیاری)
   await api(`/letters/${encodeURIComponent(String(id))}`, { method: "DELETE" });
 }
-
-
     await refetchLetters();
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -2250,7 +2210,6 @@ setInternalUnitId(uid ? String(uid) : "");
       return next;
     });
   };
-
   const InfoRow = ({ label, value }) => (
     <div className="grid grid-cols-12 gap-2 py-2">
       <div className={"col-span-4 text-xs font-semibold " + (theme === "dark" ? "text-white/70" : "text-neutral-600")}>
@@ -2259,7 +2218,6 @@ setInternalUnitId(uid ? String(uid) : "");
       <div className={"col-span-8 text-sm " + (theme === "dark" ? "text-white" : "text-neutral-900")}>{value || "—"}</div>
     </div>
   );
-
   const viewAttachments = useMemo(() => attachmentsOf(viewLetter), [viewLetter]); // eslint-disable-line react-hooks/exhaustive-deps
   const currentViewAttachment = useMemo(() => {
     const arr = Array.isArray(viewAttachments) ? viewAttachments : [];
@@ -2286,7 +2244,6 @@ const isImageView = useMemo(() => {
   if (currentViewType.startsWith("image/")) return true;
   return isImageUrl(currentViewUrl);
 }, [currentViewType, currentViewUrl]);
-
 
   const viewHasAttachment = useMemo(() => {
     if (!viewLetter) return false;
@@ -2510,9 +2467,6 @@ const applyPickedTags = () => {
 
   setTagPickOpen(false);
 };
-
-
-
 
   const [addTagOpen, setAddTagOpen] = useState(false);
   const [newTagLabel, setNewTagLabel] = useState("");
@@ -4686,15 +4640,12 @@ useEffect(() => {
                     </svg>
                   </button>
                 </div>
-
                 <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
-
                 <div className="p-4 space-y-3">
                   <div>
                     <div className={labelCls}>عنوان برچسب</div>
                     <input value={newTagLabel} onChange={(e) => setNewTagLabel(e.target.value)} className={inputCls} type="text" placeholder="مثلا: فوری" />
                   </div>
-
                   {Array.isArray(tagCategories) && tagCategories.length > 0 ? (
                     <div>
                       <div className={labelCls}>دسته‌بندی</div>
@@ -4712,7 +4663,6 @@ useEffect(() => {
                       </select>
                     </div>
                   ) : null}
-
                   <div className="pt-2 flex items-center justify-end gap-2">
                     <button
                       type="button"
