@@ -636,12 +636,7 @@ const [classification, setClassification] = useState("عادی");
   const [orgName, setOrgName] = useState("");
   const [toName, setToName] = useState("");
   const [subject, setSubject] = useState("");
-
   const [hasAttachment, setHasAttachment] = useState(false);
-  const [incomingAttachmentTitle, setIncomingAttachmentTitle] = useState("");
-  const [outgoingAttachmentTitle, setOutgoingAttachmentTitle] = useState("");
-  const [internalAttachmentTitle, setInternalAttachmentTitle] = useState("");
-
   const [returnToIds, setReturnToIds] = useState([""]);
   const [piroIds, setPiroIds] = useState([""]);
   const [myLetters, setMyLetters] = useState([]);
@@ -1938,9 +1933,6 @@ const kindRowTintCls = (kind) => {
     setSubject("");
     setInternalUnitId("");
     setHasAttachment(false);
-    setIncomingAttachmentTitle("");
-    setOutgoingAttachmentTitle("");
-    setInternalAttachmentTitle("");
     setReturnToIds([""]);
     setPiroIds([""]);
     setIncomingTagIds([]);
@@ -2008,11 +2000,6 @@ setInternalUnitId(uid ? String(uid) : "");
 
     const ha = l?.has_attachment ?? l?.hasAttachment ?? false;
     setHasAttachment(!!ha);
-
-    const atTitle = String(l?.attachment_title ?? l?.attachmentTitle ?? "");
-    if (kind === "incoming") setIncomingAttachmentTitle(atTitle);
-    else if (kind === "outgoing") setOutgoingAttachmentTitle(atTitle);
-    else setInternalAttachmentTitle(atTitle);
 
     const rids = Array.isArray(l?.return_to_ids) ? l.return_to_ids : Array.isArray(l?.returnToIds) ? l.returnToIds : [];
     setReturnToIds(rids.length ? rids.map((x) => String(x)) : [""]);
@@ -2083,8 +2070,6 @@ setInternalUnitId(uid ? String(uid) : "");
   alert("برای نامه داخلی انتخاب واحد الزامی است.");
   return;
 }
-    const attachmentTitle =
-      kind === "incoming" ? incomingAttachmentTitle : kind === "outgoing" ? outgoingAttachmentTitle : internalAttachmentTitle;
 
     const tagIds =
       kind === "incoming" ? incomingTagIds : kind === "outgoing" ? outgoingTagIds : internalTagIds;
@@ -2117,10 +2102,7 @@ setInternalUnitId(uid ? String(uid) : "");
 
     const queue = files.filter((f) => f && f.status !== "error" && (f.optimizedFile || f.file) && !f.url);
 
-   const computedHasAttachment =
-  queue.length > 0 || reused.length > 0 || !!String(attachmentTitle || "").trim()
-    ? true
-    : !!hasAttachment;
+  const computedHasAttachment = queue.length > 0 || reused.length > 0 ? true : !!hasAttachment;
 
     const payload = {
   kind,
@@ -2135,7 +2117,6 @@ setInternalUnitId(uid ? String(uid) : "");
   org_name: orgName || "",
   subject: subject || "",
   has_attachment: computedHasAttachment,
-  attachment_title: attachmentTitle || "",
   return_to_ids: (Array.isArray(returnToIds) ? returnToIds : []).map(String).filter((x) => x && x.trim()),
   piro_ids: (Array.isArray(piroIds) ? piroIds : []).map(String).filter((x) => x && x.trim()),
   tag_ids: (Array.isArray(tagIds) ? tagIds : []).map(String).filter((x) => x && x.trim()),
@@ -2671,17 +2652,15 @@ useEffect(() => {
                 </div>
 
                 <div className="min-w-[120px]">
-                  <div className={labelCls}>{filterTab === "internal" ? "شماره سند" : "شماره نامه"}</div>
+                  <div className={labelCls}>شماره سند</div>
                   <input
                     value={filterLetterNo}
                     onChange={(e) => setFilterLetterNo(e.target.value)}
                     className={inputCls}
                     type="text"
-                    placeholder={filterTab === "internal" ? "جستجو شماره سند" : "جستجو شماره نامه"}
+                    placeholder="جستجو شماره سند"
                   />
                 </div>
-
-
                 <div className="min-w-[140px]">
 
                   <div className={labelCls}>از</div>
@@ -2806,7 +2785,7 @@ useEffect(() => {
 >
   {/* نوع نامه */}
   <div className="shrink-0 w-[320px]">
-    <div className={labelSmCls}>نوع نامه</div>
+    <div className={labelSmCls}>نوع سند</div>
     <div className="flex items-center gap-1">
       {TABS.filter((x) => x.id !== "all").map((t) => {
         const active = formKind === t.id;
@@ -2900,7 +2879,7 @@ useEffect(() => {
 
   {/* شماره */}
   <div className="shrink-0 w-[170px]">
-    <div className={labelSmCls}>{formKind === "internal" ? "شماره سند" : "شماره نامه"}</div>
+    <div className={labelSmCls}>{formKind === "internal" ? "شماره سند" : "شماره سند"}</div>
     <input
       value={letterNo}
       onChange={(e) => setLetterNo(e.target.value)}
@@ -2911,7 +2890,7 @@ useEffect(() => {
 
   {/* تاریخ */}
   <div className="shrink-0 w-[170px]">
-    <div className={labelSmCls}>{formKind === "internal" ? "تاریخ سند" : "تاریخ نامه"}</div>
+    <div className={labelSmCls}>{formKind === "internal" ? "تاریخ سند" : "تاریخ سند"}</div>
     <JalaliPopupDatePicker
       value={letterDate}
       onChange={setLetterDate}
@@ -3105,7 +3084,7 @@ useEffect(() => {
 
 {/* نامه‌های مرتبط (کمبوباکس چندانتخابی) */}
 <div className={(formKind === "outgoing" ? "md:col-span-4" : "md:col-span-7") + " min-w-0"}>
-  <div className={labelCls}>نامه های مرتبط</div>
+  <div className={labelCls}>اسناد مرتبط</div>
 
   <div ref={relatedWrapRef} className="relative min-w-0">
     <input
@@ -3124,7 +3103,7 @@ useEffect(() => {
       }}
       className={inputCls + " h-10 text-sm"}
       type="text"
-      placeholder="جستجو/انتخاب شماره نامه..."
+      placeholder="جستجو/انتخاب شماره سند..."
     />
 
     {relatedOpen && (
@@ -3365,7 +3344,7 @@ useEffect(() => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div>
           <div className={labelCls}
-          >  {formKind === "outgoing" ? "تاریخ ثبت دبیرخانه گیرنده" : "تاریخ ثبت دبیرخانه"}
+          >  {formKind === "outgoing" ? "تاریخ ثبت دبیرخانه " : "تاریخ ثبت دبیرخانه"}
           </div>
           <JalaliPopupDatePicker
             value={formKind === "incoming" ? incomingSecretariatDate : formKind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate}
@@ -3388,7 +3367,7 @@ useEffect(() => {
 
         <div>
           <div className={labelCls}
-          >  {formKind === "outgoing" ? "شماره ثبت دبیرخانه گیرنده" : "شماره ثبت دبیرخانه"}
+          >  {formKind === "outgoing" ? "شماره ثبت دبیرخانه " : "شماره ثبت دبیرخانه"}
           </div>
           <input
             value={formKind === "incoming" ? incomingSecretariatNo : formKind === "outgoing" ? outgoingSecretariatNo : internalSecretariatNo}
