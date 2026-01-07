@@ -3065,27 +3065,7 @@ useEffect(() => {
     </div>
   </div>
 
-  {/* 2) عنوان ضمیمه */}
-  <div className="md:col-span-3">
-    <div className={labelCls}>عنوان ضمیمه</div>
-    <input
-      value={
-        formKind === "incoming"
-          ? incomingAttachmentTitle
-          : formKind === "outgoing"
-          ? outgoingAttachmentTitle
-          : internalAttachmentTitle
-      }
-      onChange={(e) => {
-        const v = e.target.value;
-        if (formKind === "incoming") setIncomingAttachmentTitle(v);
-        else if (formKind === "outgoing") setOutgoingAttachmentTitle(v);
-        else setInternalAttachmentTitle(v);
-      }}
-      className={inputCls + " h-10 text-sm"}
-      type="text"
-    />
-  </div>
+  
 
 {/* نامه‌های مرتبط (کمبوباکس چندانتخابی) */}
 <div className={(formKind === "outgoing" ? "md:col-span-4" : "md:col-span-7") + " min-w-0"}>
@@ -3936,8 +3916,6 @@ useEffect(() => {
                             <InfoRow label="موضوع" value={viewLetter ? String(subjectOf(viewLetter) || "") : ""} />
 
                             <InfoRow label="ضمیمه" value={viewHasAttachment ? "دارد" : "ندارد"} />
-                            <InfoRow label="عنوان ضمیمه" value={viewLetter ? String(viewLetter?.attachment_title ?? viewLetter?.attachmentTitle ?? "") : ""} />
-
                             <InfoRow
                               label="بازگشت به"
                               value={
