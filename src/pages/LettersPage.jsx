@@ -3157,7 +3157,6 @@ useEffect(() => {
     {/* ردیف کنارهم: ضمیمه + عنوان ضمیمه + بازگشت به (+ پیرو در صادره) */}
 <div className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-1 items-start">
 
-{/* نامه‌های مرتبط (فقط آیکن) */}
 {/* اسناد مرتبط + بارگذاری اسناد (کنار هم و چسبیده) */}
 <div className="md:col-span-12 min-w-0">
   <div className="flex items-start justify-start gap-2">
@@ -3447,39 +3446,8 @@ useEffect(() => {
     document.body
   )}
 
-
-{/* ✅ بارگذاری فایل (برای هر سه تب) — مستقل از ضمیمه */}
-<div className="md:col-span-2 flex flex-col items-end">
-  <div className={labelCls}> </div> {/* برای هم‌تراز شدن با لیبل "اسناد مرتبط" */}
-  <button
-    type="button"
-    onClick={() => openUpload(formKind)}
-className={uploadTriggerCls + " w-full md:w-auto whitespace-nowrap"}
-    title={formKind === "internal" ? "بارگذاری سند" : formKind === "outgoing" ? "بارگذاری اسناد " : "بارگذاری اسناد "}
-  >
-    <img
-      src="/images/icons/upload.svg"
-      alt=""
-      className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
-    />
-    <span>
-      {formKind === "internal" ? "بارگذاری سند" : formKind === "outgoing" ? "بارگذاری اسناد " : "بارگذاری اسناد"}
-    </span>
-
-    {Array.isArray(docFilesByType?.[formKind]) && docFilesByType[formKind].length > 0 ? (
-      <span className="mr-2 text-xs opacity-80">
-        ({toFaDigits(docFilesByType[formKind].length)})
-      </span>
-    ) : null}
-  </button>
-</div>
-
-
-
 </div>
 </div>
-
-
 
     <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
 
