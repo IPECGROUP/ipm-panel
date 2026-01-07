@@ -435,8 +435,9 @@ const [formKind, setFormKind] = useState("incoming"); // نوع نامه داخ�
     const { user } = useAuth();
 
     
-    // ===== Units (for internal letters) =====
+// ===== Units (for internal letters) =====
 const [unitsAll, setUnitsAll] = useState([]);
+const [unitsLoaded, setUnitsLoaded] = useState(false);
 const [internalUnitId, setInternalUnitId] = useState("");
 
 const unitIdOf = (u) => String(u?.id ?? u?.unit_id ?? "");
@@ -478,32 +479,44 @@ useEffect(() => {
 
   // 1) اول از کشی که OrgStructurePage می‌سازه بخون
   try {
-    const raw = sessionStorage.getItem(ORG_UNITS_CACHE_KEY) || localStorage.getItem(ORG_UNITS_CACHE_KEY);
+    const raw =
+      sessionStorage.getItem(ORG_UNITS_CACHE_KEY) ||
+      localStorage.getItem(ORG_UNITS_CACHE_KEY);
+
     const parsed = raw ? JSON.parse(raw) : null;
-    const cached = Array.isArray(parsed?.items) ? parsed.items : Array.isArray(parsed) ? parsed : [];
+
+    // کش ممکنه items داشته باشه یا مستقیم آرایه باشه
+    const cached =
+      Array.isArray(parsed?.items) ? parsed.items :
+      Array.isArray(parsed?.units) ? parsed.units :
+      Array.isArray(parsed) ? parsed :
+      [];
+
     if (mounted && cached.length) {
       setUnitsAll(cached);
+      setUnitsLoaded(true);
       return () => { mounted = false; };
     }
   } catch {}
 
-  // 2) fallback: اگر کش نبود، از API قبلی بخون (فعلاً)
+  // 2) fallback: اگر کش نبود، از API بخون
   (async () => {
     try {
-      const r = await api("/base/units");
-      const items = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
+      const r = await api("/base/units");         // ✅ بک‌اندت {units} میده
+      const units = Array.isArray(r?.units) ? r.units : [];
       if (!mounted) return;
-      setUnitsAll(items);
+      setUnitsAll(units);
+      setUnitsLoaded(true);
     } catch {
       if (!mounted) return;
       setUnitsAll([]);
+      setUnitsLoaded(true);
     }
   })();
 
   return () => { mounted = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, []);
-
 
 const resolveFileUrl = (u) => {
   const url = String(u || "").trim();
@@ -757,7 +770,6 @@ const myLettersSorted = useMemo(() => {
 
   const orgOf = (l) => String(l?.org_name ?? l?.org ?? l?.organization ?? l?.company ?? "");
   const subjectOf = (l) => String(l?.subject ?? l?.title ?? "");
-
 
 const letterById = useMemo(() => {
   const m = new Map();
@@ -3066,13 +3078,20 @@ useEffect(() => {
     <div className="md:col-span-3">
       <div className={labelCls}>واحد</div>
       <select value={internalUnitId} onChange={(e) => setInternalUnitId(e.target.value)} className={inputCls}>
-        <option value=""></option>
-        {unitOptions.map((u) => (
-          <option key={u.id} value={u.id}>
-            {u.label}
-          </option>
-        ))}
-      </select>
+  <option value=""></option>
+
+  {internalUnitId && !unitOptions.some((u) => String(u.id) === String(internalUnitId)) ? (
+    <option value={internalUnitId}>
+      {unitsLoaded ? `واحد (${toFaDigits(internalUnitId)})` : "در حال دریافت واحدها..."}
+    </option>
+  ) : null}
+
+  {unitOptions.map((u) => (
+    <option key={u.id} value={u.id}>
+      {u.label}
+    </option>
+  ))}
+</select>
     </div>
   </div>
 ) : (
