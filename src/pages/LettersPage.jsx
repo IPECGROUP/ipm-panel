@@ -658,6 +658,26 @@ const [classification, setClassification] = useState("عادی");
   const [myLetters, setMyLetters] = useState([]);
   const [relatedOpen, setRelatedOpen] = useState(false);
 const [relatedQuery, setRelatedQuery] = useState("");
+
+// ===== Related picker modal =====
+const [relatedPickOpen, setRelatedPickOpen] = useState(false);
+const [relatedPickQuery, setRelatedPickQuery] = useState("");
+const [relatedPickIds, setRelatedPickIds] = useState([]); // انتخاب‌های موقت داخل پاپ‌آپ
+
+
+const openRelatedPicker = () => {
+  setRelatedPickIds(
+    (Array.isArray(relatedSelectedIds) ? relatedSelectedIds : []).map((x) => String(x))
+  );
+  setRelatedPickQuery("");
+  setRelatedPickOpen(true);
+};
+
+const closeRelatedPicker = () => {
+  setRelatedPickOpen(false);
+  setRelatedPickQuery("");
+};
+
   // ===== helpers: باید قبل از useMemoهایی که ازشون استفاده می‌کنن تعریف بشن =====
   const letterIdOf = (l) => {
     const raw = l?.id ?? l?.letter_id ?? l?.letterId ?? l?._id;
@@ -3137,111 +3157,42 @@ useEffect(() => {
     {/* ردیف کنارهم: ضمیمه + عنوان ضمیمه + بازگشت به (+ پیرو در صادره) */}
 <div className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-1 items-start">
 
-{/* نامه‌های مرتبط (کمبوباکس چندانتخابی) */}
+{/* نامه‌های مرتبط (پاپ‌آپ انتخاب) */}
 <div className={"md:col-span-10 min-w-0"}>
   <div className={labelCls}>اسناد مرتبط</div>
 
-  <div ref={relatedWrapRef} className="relative min-w-0">
-    <input
-      ref={relatedInputRef}
-      value={relatedOpen ? relatedQuery : relatedDisplayValue}
-      readOnly={!relatedOpen}                 // وقتی بسته است فقط نمایش بده
-      onClick={() => {
-        setRelatedOpen(true);                 // با کلیک باز شود
-        setRelatedQuery("");                  // شروع سرچ از صفر
-      }}
-      onFocus={() => {
-        setRelatedOpen(true);
-      }}
-      onChange={(e) => {
-        setRelatedQuery(e.target.value);      // فقط وقتی open هست تایپ معنی دارد
-      }}
-      className={inputCls + " h-10 text-sm"}
-      type="text"
-      placeholder="جستجو/انتخاب شماره سند..."
-    />
+  {/* ردیفِ نمایش + دکمه آیکنی */}
+  <div className="flex items-center gap-2 min-w-0">
+    <div
+      className={
+        inputCls +
+        " h-10 text-sm flex items-center min-w-0 cursor-default select-none"
+      }
+      title={relatedDisplayValue || ""}
+    >
+      <span className={"truncate " + (relatedDisplayValue ? "" : "opacity-60")}>
+        {relatedDisplayValue || "انتخاب اسناد مرتبط..."}
+      </span>
+    </div>
 
-    {relatedOpen && (
-      <div
-        className={
-          "absolute z-50 mt-2 w-full max-h-64 overflow-auto rounded-2xl border shadow-lg " +
-          (theme === "dark" ? "border-white/10 bg-neutral-900" : "border-black/10 bg-white")
-        }
-      >
-        <div className="p-2">
-          {relatedOptions.length === 0 ? (
-            <div className={theme === "dark" ? "text-white/60 text-sm p-2" : "text-neutral-600 text-sm p-2"}>
-              موردی پیدا نشد.
-            </div>
-          ) : (
-            relatedOptions.map((l) => {
-              const id = String(letterIdOf(l));
-              const no = String(letterNoOf(l) || "").trim() || id;
-              const sub = String(subjectOf(l) || "").trim();
-              const disabled = relatedSelectedIds.includes(id);
-
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => {
-                    setReturnToIds((prev) => {
-                      const base = (Array.isArray(prev) ? prev : [])
-                        .map((x) => String(x || "").trim())
-                        .filter(Boolean);
-
-                      if (base.includes(id)) return base;
-                      return [...base, id];
-                    });
-
-                    setRelatedQuery(""); // بعد از انتخاب، سرچ خالی شود تا انتخاب‌های بعدی راحت‌تر شود
-
-                    // فوکوس برگردد به input
-                    setTimeout(() => relatedInputRef.current?.focus(), 0);
-                  }}
-                  className={
-                    "w-full text-right px-3 py-2 rounded-xl transition flex items-center justify-between gap-2 " +
-                    (disabled
-                      ? "opacity-40 cursor-not-allowed"
-                      : theme === "dark"
-                      ? "hover:bg-white/10"
-                      : "hover:bg-black/[0.04]")
-                  }
-                >
-                  <span className="font-semibold">{toFaDigits(no)}</span>
-                  <span
-                    className={
-                      theme === "dark"
-                        ? "text-white/60 text-xs truncate max-w-[70%]"
-                        : "text-neutral-600 text-xs truncate max-w-[70%]"
-                    }
-                  >
-                    {sub || "—"}
-                  </span>
-                </button>
-              );
-            })
-          )}
-        </div>
-
-        <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
-
-        <button
-          type="button"
-          onClick={() => {
-            setRelatedOpen(false);
-            setRelatedQuery("");
-          }}
-          className={
-            "w-full px-3 py-2 text-sm font-semibold " +
-            (theme === "dark" ? "hover:bg-white/10" : "hover:bg-black/[0.04]")
-          }
-        >
-          بستن
-        </button>
-      </div>
-    )}
+    <button
+      type="button"
+      onClick={openRelatedPicker}
+      className={
+        "h-10 w-10 shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
+        (theme === "dark"
+          ? "border-white/15 bg-white/5 hover:bg-white/10"
+          : "border-black/10 bg-white hover:bg-black/[0.02]")
+      }
+      aria-label="انتخاب اسناد مرتبط"
+      title="انتخاب اسناد مرتبط"
+    >
+      <img
+        src="/images/icons/sayer.svg"
+        alt=""
+        className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
+      />
+    </button>
   </div>
 
   {/* نمایش انتخاب‌ها: با "و" جدا + کلیک برای پیش‌نمایش */}
@@ -3253,16 +3204,22 @@ useEffect(() => {
 
         return (
           <span key={String(id)} className="inline-flex items-center gap-1">
-            {i > 0 && <span className={theme === "dark" ? "text-white/60" : "text-neutral-600"}>و</span>}
+            {i > 0 && (
+              <span className={theme === "dark" ? "text-white/60" : "text-neutral-600"}>
+                و
+              </span>
+            )}
 
             <button
               type="button"
               onClick={() => {
-                if (l) openView(l); // ✅ پیش‌نمایش
+                if (l) openView(l);
               }}
               className={
                 "underline underline-offset-4 font-semibold " +
-                (theme === "dark" ? "text-white hover:text-white/90" : "text-neutral-900 hover:text-black")
+                (theme === "dark"
+                  ? "text-white hover:text-white/90"
+                  : "text-neutral-900 hover:text-black")
               }
               title="پیش نمایش"
             >
@@ -3270,28 +3227,219 @@ useEffect(() => {
             </button>
 
             <button
-  type="button"
-  onClick={() => {
-    setReturnToIds((prev) =>
-      (Array.isArray(prev) ? prev : []).filter((x) => String(x) !== String(id))
-    );
-  }}
-  className={
-    "h-6 w-6 inline-grid place-items-center bg-transparent border-0 shadow-none p-0 text-lg leading-none transition " +
-    (theme === "dark" ? "text-white/60 hover:text-white" : "text-neutral-500 hover:text-neutral-900")
-  }
-  aria-label="حذف"
-  title="حذف"
->
-  ×
-</button>
-
+              type="button"
+              onClick={() => {
+                setReturnToIds((prev) =>
+                  (Array.isArray(prev) ? prev : []).filter((x) => String(x) !== String(id))
+                );
+              }}
+              className={
+                "h-6 w-6 inline-grid place-items-center bg-transparent border-0 shadow-none p-0 text-lg leading-none transition " +
+                (theme === "dark"
+                  ? "text-white/60 hover:text-white"
+                  : "text-neutral-500 hover:text-neutral-900")
+              }
+              aria-label="حذف"
+              title="حذف"
+            >
+              ×
+            </button>
           </span>
         );
       })}
     </div>
   )}
 </div>
+
+
+{relatedPickOpen &&
+  createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={closeRelatedPicker} />
+
+      <div
+        className={
+          "relative w-full max-w-3xl rounded-2xl border shadow-xl overflow-hidden " +
+          (theme === "dark"
+            ? "border-white/10 bg-neutral-900 text-white"
+            : "border-black/10 bg-white text-neutral-900")
+        }
+      >
+        {/* header */}
+        <div className="p-4 flex items-center justify-between gap-3">
+          <div className="font-semibold text-sm">
+            انتخاب اسناد مرتبط
+            {relatedPickIds.length ? (
+              <span className={theme === "dark" ? "text-white/60 mr-2" : "text-neutral-600 mr-2"}>
+                ({toFaDigits(relatedPickIds.length)})
+              </span>
+            ) : null}
+          </div>
+
+          <button
+            type="button"
+            onClick={closeRelatedPicker}
+            className={
+              "h-9 w-9 rounded-xl border flex items-center justify-center transition " +
+              (theme === "dark"
+                ? "border-white/10 hover:bg-white/10"
+                : "border-black/10 hover:bg-black/[0.04]")
+            }
+            aria-label="بستن"
+            title="بستن"
+          >
+            <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
+          </button>
+        </div>
+
+        {/* search */}
+        <div className="px-4 pb-3">
+          <input
+            value={relatedPickQuery}
+            onChange={(e) => setRelatedPickQuery(e.target.value)}
+            className={inputCls + " h-10 text-sm"}
+            type="text"
+            placeholder="جستجو با شماره / موضوع / سازمان ..."
+            autoFocus
+          />
+        </div>
+
+        <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
+
+        {/* list */}
+        <div className="max-h-[55vh] overflow-auto p-2">
+          {(() => {
+            const qRaw = String(relatedPickQuery || "").trim();
+            const qEn = toEnDigits(qRaw);
+
+            const list = (Array.isArray(myLettersSorted) ? myLettersSorted : []).filter((l) => {
+              if (!qEn) return true;
+              const id = toEnDigits(String(letterIdOf(l) || ""));
+              const no = toEnDigits(String(letterNoOf(l) || ""));
+              const sub = toEnDigits(String(subjectOf(l) || ""));
+              const org = toEnDigits(String(orgOf(l) || ""));
+              const f2 = toEnDigits(String(fromToOf(l) || ""));
+              return (
+                id.includes(qEn) ||
+                no.includes(qEn) ||
+                sub.includes(qEn) ||
+                org.includes(qEn) ||
+                f2.includes(qEn)
+              );
+            });
+
+            if (!list.length) {
+              return (
+                <div className={theme === "dark" ? "text-white/60 text-sm p-4" : "text-neutral-600 text-sm p-4"}>
+                  موردی پیدا نشد.
+                </div>
+              );
+            }
+
+            return list.map((l) => {
+              const id = String(letterIdOf(l));
+              const no = String(letterNoOf(l) || "").trim() || id;
+              const sub = String(subjectOf(l) || "").trim();
+              const dt = String(letterDateOf(l) || "").trim();
+              const checked = relatedPickIds.includes(id);
+
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => {
+                    setRelatedPickIds((prev) => {
+                      const base = Array.isArray(prev) ? prev.map(String) : [];
+                      if (base.includes(id)) return base.filter((x) => x !== id);
+                      return [...base, id];
+                    });
+                  }}
+                  className={
+                    "w-full text-right px-3 py-2 rounded-xl transition flex items-center justify-between gap-3 " +
+                    (theme === "dark" ? "hover:bg-white/10" : "hover:bg-black/[0.04]")
+                  }
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">{toFaDigits(no)}</span>
+                      {dt ? (
+                        <span className={theme === "dark" ? "text-white/60 text-xs" : "text-neutral-600 text-xs"}>
+                          {toFaDigits(dt)}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div
+                      className={
+                        "text-xs truncate mt-0.5 " +
+                        (theme === "dark" ? "text-white/60" : "text-neutral-600")
+                      }
+                    >
+                      {sub || "—"}
+                    </div>
+                  </div>
+
+                  <div
+                    className={
+                      "h-5 w-5 rounded-md border grid place-items-center shrink-0 " +
+                      (checked
+                        ? theme === "dark"
+                          ? "bg-white text-black border-white/30"
+                          : "bg-black text-white border-black/20"
+                        : theme === "dark"
+                        ? "border-white/15"
+                        : "border-black/15")
+                    }
+                    aria-label={checked ? "انتخاب شده" : "انتخاب نشده"}
+                    title={checked ? "انتخاب شده" : "انتخاب"}
+                  >
+                    {checked ? "✓" : ""}
+                  </div>
+                </button>
+              );
+            });
+          })()}
+        </div>
+
+        <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
+
+        {/* footer */}
+        <div className="p-4 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={closeRelatedPicker}
+            className={
+              "h-10 px-4 rounded-xl border transition " +
+              (theme === "dark"
+                ? "border-white/15 hover:bg-white/10"
+                : "border-black/10 hover:bg-black/[0.04]")
+            }
+          >
+            انصراف
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              const clean = (Array.isArray(relatedPickIds) ? relatedPickIds : [])
+                .map((x) => String(x || "").trim())
+                .filter(Boolean);
+
+              setReturnToIds(clean);     // ✅ همون مدل فعلی
+              closeRelatedPicker();
+            }}
+            className={
+              "h-10 px-4 rounded-xl transition " +
+              (theme === "dark" ? "bg-white text-black hover:bg-white/90" : "bg-black text-white hover:bg-black/90")
+            }
+          >
+            تایید
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )}
+
 
 {/* ✅ بارگذاری فایل (برای هر سه تب) — مستقل از ضمیمه */}
 <div className="md:col-span-2 flex flex-col items-end">
