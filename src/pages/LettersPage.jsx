@@ -592,14 +592,17 @@ const [relatedQuery, setRelatedQuery] = useState("");
   };
 
   const letterKindOf = (l) => {
-    const v = String(l?.kind || l?.type || l?.direction || l?.io || l?.tab || l?.letter_type || "").toLowerCase();
-    if (v.includes("internal") || v.includes("dakheli") || v === "d" || v === "internal") return "internal";
-    if (v.includes("out")) return "outgoing";
-    if (v.includes("in")) return "incoming";
-    if (v === "o" || v === "outgoing") return "outgoing";
-    if (v === "i" || v === "incoming") return "incoming";
-    return "incoming";
-  };
+  const v = String(
+    l?.kind || l?.type || l?.direction || l?.io || l?.tab || l?.letter_type || l?.letter_kind || ""
+  ).toLowerCase();
+
+  if (v.includes("internal") || v.includes("dakheli") || v.includes("داخلی")) return "internal";
+  if (v.includes("out") || v.includes("صادر")) return "outgoing";
+  if (v.includes("in") || v.includes("وارده")) return "incoming";
+  if (v === "o" || v === "outgoing") return "outgoing";
+  if (v === "i" || v === "incoming") return "incoming";
+  return "incoming";
+};
 
 const normFa = (s) =>
   String(s ?? "")
@@ -854,19 +857,15 @@ const loadFormTagPrefs = async (which) => {
   }
 };
 
-const setFormTagsAndPersist = (_which, ids) => {
+const setFormTagsAndPersist = (which, ids) => {
   const next = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
 
-  // ✅ همیشه هر سه تب یکسان
-  setIncomingTagIds(next);
-  setOutgoingTagIds(next);
-  setInternalTagIds(next);
+  if (which === "incoming") setIncomingTagIds(next);
+  else if (which === "outgoing") setOutgoingTagIds(next);
+  else setInternalTagIds(next);
 
-  // prefs هم یکسان ذخیره بشن (سه‌تا scope‌ات هم sync می‌شن)
-  setFormTagPrefs((p) => ({ ...p, incoming: next, outgoing: next, internal: next }));
-  saveFormTagPrefs("incoming", next);
-  saveFormTagPrefs("outgoing", next);
-  saveFormTagPrefs("internal", next);
+  setFormTagPrefs((p) => ({ ...p, [which]: next }));
+  saveFormTagPrefs(which, next);
 };
 
 const normalizeIdList = (arr) => {
@@ -1366,14 +1365,18 @@ const tabSmCls = (active) =>
 
  // ✅ Chip style (مثل TagsPage)
 const chipBase =
-  "inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3 py-1 text-xs text-neutral-900 shadow-sm transition";
+  "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs shadow-sm transition";
+
 const chipCls =
-  chipBase + " dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 hover:bg-black/5 dark:hover:bg-white/10";
+  chipBase +
+  " border-black/10 bg-white !text-neutral-900 hover:bg-black/5 " +
+  "dark:border-neutral-800 dark:bg-neutral-900 dark:!text-neutral-100 dark:hover:bg-white/10";
 
 // حالت انتخاب‌شده (برای وقتی tag فعال است)
 const selectedTagChipCls =
   chipBase +
-  " bg-black text-white border-black hover:bg-black/90 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-200";
+  " border-black bg-black !text-white hover:bg-black/90 " +
+  "dark:border-neutral-200 dark:bg-neutral-100 dark:!text-neutral-900";
 
   const sendBtnCls =
   "h-12 w-12 rounded-xl flex items-center justify-center transition ring-1 " +
@@ -1478,35 +1481,55 @@ const toggleFilterTag = (id) => {
 
 
   const latestTags = useMemo(() => {
-    const arr = Array.isArray(tags) ? tags.slice() : [];
-    arr.sort((a, b) => {
-      const ai = Number(a?.id);
-      const bi = Number(b?.id);
-      if (Number.isFinite(ai) && Number.isFinite(bi)) return bi - ai;
-      const as = String(a?.id ?? "");
-      const bs = String(b?.id ?? "");
-      return bs.localeCompare(as);
-    });
-    return arr.slice(0, 14);
-  }, [tags]);
+  const arr = Array.isArray(tagsForFormScope) ? tagsForFormScope.slice() : [];
+  arr.sort((a, b) => {
+    const ai = Number(a?.id);
+    const bi = Number(b?.id);
+    if (Number.isFinite(ai) && Number.isFinite(bi)) return bi - ai;
+    return String(b?.id ?? "").localeCompare(String(a?.id ?? ""));
+  });
+  return arr.slice(0, 14);
+}, [tagsForFormScope]);
 
-  const tagLabelOf = (t) => String(t?.name || t?.title || t?.label || t?.text || t?.tag || t?.id || "");
+
+  const tagLabelOf = (t) =>
+  String(t?.label ?? t?.name ?? t?.title ?? t?.text ?? t?.tag ?? t?.id ?? "").trim();
+
+const formScope = useMemo(() => {
+  return formKind === "outgoing" ? "projects" : formKind === "internal" ? "execution" : "letters";
+}, [formKind]);
+
+const tagsForFormScope = useMemo(() => {
+  const arr = tagsByScope?.[formScope];
+  return Array.isArray(arr) ? arr : [];
+}, [tagsByScope, formScope]);
+
 
   const tagCapsFor = (selectedIds) => {
-    const sel = Array.isArray(selectedIds) ? selectedIds.map(String) : [];
-    const selSet = new Set(sel);
-    const selectedObjs = (Array.isArray(tags) ? tags : []).filter((t) => selSet.has(String(t?.id)));
-    const latestObjs = (Array.isArray(latestTags) ? latestTags : []).filter((t) => !selSet.has(String(t?.id)));
-    const merged = [...selectedObjs, ...latestObjs];
-    const seen = new Set();
-    return merged.filter((t) => {
-      const id = String(t?.id ?? "");
-      if (!id) return false;
-      if (seen.has(id)) return false;
-      seen.add(id);
-      return true;
-    });
-  };
+  const sel = Array.isArray(selectedIds) ? selectedIds.map(String) : [];
+  const selSet = new Set(sel);
+
+  // پایه نمایش: همون latestTags (ثابت)
+  const base = Array.isArray(latestTags) ? latestTags : [];
+
+  // اگر تگی انتخاب شده ولی تو latest نیست، آخر لیست اضافه کن (بدون دستکاری ترتیب base)
+  const map = new Map((Array.isArray(tagsForFormScope) ? tagsForFormScope : []).map((t) => [String(t?.id), t]));
+  const extra = sel
+    .filter((id) => !base.some((t) => String(t?.id) === String(id)))
+    .map((id) => map.get(String(id)))
+    .filter(Boolean);
+
+  const merged = [...base, ...extra];
+
+  const seen = new Set();
+  return merged.filter((t) => {
+    const id = String(t?.id ?? "");
+    if (!id || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+};
+
 
   const secretariatPickerBtnCls = (val) =>
     "w-full h-11 px-3 rounded-xl border flex items-center justify-between gap-2 transition text-right " +
@@ -2000,6 +2023,11 @@ setInternalUnitId(uid ? String(uid) : "");
   };
 
   const submitLetter = async (kind) => {
+    if (kind === "internal" && !String(internalUnitId || "").trim()) {
+  alert("برای نامه داخلی انتخاب واحد الزامی است.");
+  return;
+}
+
     const attachmentTitle =
       kind === "incoming" ? incomingAttachmentTitle : kind === "outgoing" ? outgoingAttachmentTitle : internalAttachmentTitle;
 
@@ -2340,6 +2368,16 @@ const isImageView = useMemo(() => {
     []
   );
 
+
+
+
+
+
+
+
+
+
+
   // ===== NEW: add-tag modal =====
 const [tagPickOpen, setTagPickOpen] = useState(false);
 const [tagPickFor, setTagPickFor] = useState("filter"); // "filter" | "form"
@@ -2418,29 +2456,32 @@ const filterTagCaps = useMemo(() => {
 const openTagPicker = async (forWhat) => {
   setTagPickFor(forWhat);
 
- const initialKind =
-  forWhat === "filter"
-    ? "letters"
-    : "letters"; // ✅ فرم همیشه از برچسب‌های letters استفاده کنه
+  const initialKind =
+    forWhat === "filter"
+      ? "letters"
+      : formKind === "outgoing"
+      ? "projects"
+      : formKind === "internal"
+      ? "execution"
+      : "letters";
 
   setTagPickKind(initialKind);
   await ensureTagsForKind(initialKind);
 
   const currentSelected =
     forWhat === "form"
-      ? initialKind === "letters"
-        ? incomingTagIds
-        : initialKind === "projects"
+      ? formKind === "outgoing"
         ? outgoingTagIds
-        : internalTagIds
-      : filterTagPinnedIds; // پین‌ها
+        : formKind === "internal"
+        ? internalTagIds
+        : incomingTagIds
+      : filterTagPinnedIds;
 
   setTagPickDraftIds((Array.isArray(currentSelected) ? currentSelected : []).map(String));
   setTagPickCategoryId("");
   setTagPickSearch("");
   setTagPickOpen(true);
 };
-
 
 const togglePickDraft = (id) => {
   const sid = String(id || "");
@@ -2738,7 +2779,7 @@ useEffect(() => {
           ? theme === "dark"
             ? chipBase + " border-white/15 bg-white text-black"
             : chipBase + " border-black/15 bg-black text-white"
-          : chipCls) + "shrink-0"
+          : chipCls) + " shrink-0"
       }
       title={lab}
       aria-label={lab}
@@ -2757,12 +2798,11 @@ useEffect(() => {
     <button
       key={id}
       type="button"
-      onClick={() => {
-        // ✅ برچسب همیشه می‌مونه، فقط فیلتر روشن/خاموش میشه
-        bumpPinnedFilterTag(id);   // اختیاری ولی خوبه: میاره جلو
-        toggleFilterTag(id);       // ✅ فقط فعال/غیرفعال کردن فیلتر
+       onClick={() => {
+        // ✅ فقط روشن/خاموش شدن فیلتر، بدون جابه‌جایی در لیست
+        toggleFilterTag(id);
       }}
-      className={(active ? selectedTagChipCls : chipCls) + "shrink-0"}
+      className={(active ? selectedTagChipCls : chipCls) + " shrink-0"}
       title={label}
       aria-label={label}
     >
@@ -3335,7 +3375,7 @@ useEffect(() => {
               key={id}
               type="button"
               onClick={() => toggleTag(formKind, id)}
-              className={(active ? selectedTagChipCls : chipCls) + "shrink-0"}
+              className={(active ? selectedTagChipCls : chipCls) + " shrink-0"}
               title={label}
               aria-label={label}
             >
