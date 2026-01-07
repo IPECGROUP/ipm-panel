@@ -3077,6 +3077,39 @@ useEffect(() => {
   </div>
 ) : (
   <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start">
+    {/* موضوع */}
+    <div className="md:col-span-10">
+      <div className={labelCls}>موضوع</div>
+      <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputCls} type="text" />
+    </div>
+
+    {/* ضمیمه (کنار موضوع) */}
+    <div className="md:col-span-2">
+      <div className={labelCls}>ضمیمه</div>
+      <div className="flex items-center gap-4 mt-0 h-10">
+        <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="radio"
+            name="hasAttachment"
+            checked={hasAttachment === true}
+            onChange={() => setHasAttachment(true)}
+            className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
+          />
+          <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>دارد</span>
+        </label>
+
+        <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="radio"
+            name="hasAttachment"
+            checked={hasAttachment === false}
+            onChange={() => setHasAttachment(false)}
+            className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
+          />
+          <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>ندارد</span>
+        </label>
+      </div>
+    </div>
   </div>
 )}
 
