@@ -828,32 +828,60 @@ const FORM_TAG_PREFS_SCOPE = {
   internal: "letters_form_internal",
 };
 
+const formPrefsLsKey = (which) => `tag_prefs_v1:${FORM_TAG_PREFS_SCOPE[which]}:u${String(user?.id || "0")}`;
+
 const [formTagPrefs, setFormTagPrefs] = useState({ incoming: [], outgoing: [], internal: [] });
 const formTagsHydratedRef = useRef({ incoming: false, outgoing: false, internal: false });
 
 const saveFormTagPrefs = async (which, ids) => {
+  const scope = FORM_TAG_PREFS_SCOPE[which];
+  if (!scope) return;
+
+  const clean = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
+
+  // ✅ fallback local
   try {
-    const scope = FORM_TAG_PREFS_SCOPE[which];
-    if (!scope) return;
+    localStorage.setItem(formPrefsLsKey(which), JSON.stringify({ t: Date.now(), ids: clean }));
+  } catch {}
+
+  // ✅ backend (اگر وجود داشت)
+  try {
     await api(`/tag-prefs?scope=${encodeURIComponent(scope)}`, {
       method: "PUT",
-      body: JSON.stringify({ scope, ids }),
+      body: JSON.stringify({ scope, ids: clean }),
     });
   } catch {}
 };
 
+
 const loadFormTagPrefs = async (which) => {
+  const scope = FORM_TAG_PREFS_SCOPE[which];
+  if (!scope) return [];
+
+  // 1) local سریع
   try {
-    const scope = FORM_TAG_PREFS_SCOPE[which];
-    if (!scope) return;
+    const raw = localStorage.getItem(formPrefsLsKey(which));
+    const parsed = raw ? JSON.parse(raw) : null;
+    const ids = normalizeIdList(parsed?.ids || []).slice(0, TAG_PREFS_LIMIT);
+    if (ids.length) setFormTagPrefs((p) => ({ ...p, [which]: ids }));
+  } catch {}
+
+  // 2) backend (اگر بود) جایگزین کن
+  try {
     const r = await api(`/tag-prefs?scope=${encodeURIComponent(scope)}`);
     const ids = normalizeIdList(r?.ids || r?.items || r?.data?.ids || []).slice(0, TAG_PREFS_LIMIT);
-
     setFormTagPrefs((p) => ({ ...p, [which]: ids }));
+
+    // sync local
+    try {
+      localStorage.setItem(formPrefsLsKey(which), JSON.stringify({ t: Date.now(), ids }));
+    } catch {}
+
     return ids;
   } catch {
-    setFormTagPrefs((p) => ({ ...p, [which]: [] }));
-    return [];
+    // اگر بک‌اند نبود، همون local رو داریم
+    const fallback = Array.isArray(formTagPrefs?.[which]) ? formTagPrefs[which] : [];
+    return fallback;
   }
 };
 
@@ -986,12 +1014,12 @@ useEffect(() => {
 
 
 useEffect(() => {
-  // prefs فرم برای هر سه نوع
+  if (!user?.id) return;
   loadFormTagPrefs("incoming");
   loadFormTagPrefs("outgoing");
   loadFormTagPrefs("internal");
   // eslint-disable-next-line react-hooks/exhaustive-deps
-}, []);
+}, [user?.id]);
 
 useEffect(() => {
   // فقط در حالت Create (نه Edit)
@@ -1517,9 +1545,8 @@ const [loadedScopes, setLoadedScopes] = useState({
   execution: false,
 });
 
-const formScope = useMemo(() => {
-  return formKind === "outgoing" ? "projects" : formKind === "internal" ? "execution" : "letters";
-}, [formKind]);
+// ✅ همه نامه‌ها (وارده/صادره/داخلی) از یک لیست تگ استفاده کنند
+const formScope = "letters";
 
 const tagsForFormScope = useMemo(() => {
   const arr = tagsByScope?.[formScope];
@@ -2444,14 +2471,7 @@ const filterTagCaps = useMemo(() => {
 const openTagPicker = async (forWhat) => {
   setTagPickFor(forWhat);
 
-  const initialKind =
-    forWhat === "filter"
-      ? "letters"
-      : formKind === "outgoing"
-      ? "projects"
-      : formKind === "internal"
-      ? "execution"
-      : "letters";
+  const initialKind = "letters";
 
   setTagPickKind(initialKind);
   await ensureTagsForKind(initialKind);
@@ -2493,7 +2513,8 @@ const applyPickedTags = () => {
       tagPickKind === "projects" ? "outgoing" :
       "internal";
 
-    setFormTagsAndPersist(which, ids); // ✅ ذخیره per-user
+    // ✅ همیشه روی همون تبِ فرم که بازه اعمال کن
+    setFormTagsAndPersist(formKind, ids);
   }
 
 
