@@ -3157,43 +3157,28 @@ useEffect(() => {
     {/* ردیف کنارهم: ضمیمه + عنوان ضمیمه + بازگشت به (+ پیرو در صادره) */}
 <div className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-1 items-start">
 
-{/* نامه‌های مرتبط (پاپ‌آپ انتخاب) */}
+{/* نامه‌های مرتبط (فقط آیکن) */}
 <div className={"md:col-span-10 min-w-0"}>
   <div className={labelCls}>اسناد مرتبط</div>
 
-  {/* ردیفِ نمایش + دکمه آیکنی */}
-  <div className="flex items-center gap-2 min-w-0">
-    <div
-      className={
-        inputCls +
-        " h-10 text-sm flex items-center min-w-0 cursor-default select-none"
-      }
-      title={relatedDisplayValue || ""}
-    >
-      <span className={"truncate " + (relatedDisplayValue ? "" : "opacity-60")}>
-        {relatedDisplayValue || "انتخاب اسناد مرتبط..."}
-      </span>
-    </div>
-
-    <button
-      type="button"
-      onClick={openRelatedPicker}
-      className={
-        "h-10 w-10 shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
-        (theme === "dark"
-          ? "border-white/15 bg-white/5 hover:bg-white/10"
-          : "border-black/10 bg-white hover:bg-black/[0.02]")
-      }
-      aria-label="انتخاب اسناد مرتبط"
-      title="انتخاب اسناد مرتبط"
-    >
-      <img
-        src="/images/icons/sayer.svg"
-        alt=""
-        className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
-      />
-    </button>
-  </div>
+  <button
+    type="button"
+    onClick={openRelatedPicker}
+    className={
+      "h-10 w-10 shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
+      (theme === "dark"
+        ? "border-white/15 bg-white/5 hover:bg-white/10"
+        : "border-black/10 bg-white hover:bg-black/[0.02]")
+    }
+    aria-label="انتخاب اسناد مرتبط"
+    title="انتخاب اسناد مرتبط"
+  >
+    <img
+      src="/images/icons/sayer.svg"
+      alt=""
+      className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
+    />
+  </button>
 
   {/* نمایش انتخاب‌ها: با "و" جدا + کلیک برای پیش‌نمایش */}
   {relatedSelectedIds.length > 0 && (
@@ -3288,7 +3273,11 @@ useEffect(() => {
             aria-label="بستن"
             title="بستن"
           >
-            <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
+            <img
+              src="/images/icons/bastan.svg"
+              alt=""
+              className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
+            />
           </button>
         </div>
 
@@ -3404,18 +3393,7 @@ useEffect(() => {
 
         {/* footer */}
         <div className="p-4 flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={closeRelatedPicker}
-            className={
-              "h-10 px-4 rounded-xl border transition " +
-              (theme === "dark"
-                ? "border-white/15 hover:bg-white/10"
-                : "border-black/10 hover:bg-black/[0.04]")
-            }
-          >
-            انصراف
-          </button>
+          
 
           <button
             type="button"
@@ -3424,15 +3402,23 @@ useEffect(() => {
                 .map((x) => String(x || "").trim())
                 .filter(Boolean);
 
-              setReturnToIds(clean);     // ✅ همون مدل فعلی
+              setReturnToIds(clean);
               closeRelatedPicker();
             }}
             className={
-              "h-10 px-4 rounded-xl transition " +
-              (theme === "dark" ? "bg-white text-black hover:bg-white/90" : "bg-black text-white hover:bg-black/90")
+              "h-10 w-10 rounded-xl border transition inline-flex items-center justify-center " +
+              (theme === "dark"
+                ? "border-white/15 bg-white text-black hover:bg-white/90"
+                : "border-black/10 bg-black text-white hover:bg-black/90")
             }
+            aria-label="تایید"
+            title="تایید"
           >
-            تایید
+            <img
+              src="/images/icons/check.svg"
+              alt=""
+              className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")}
+            />
           </button>
         </div>
       </div>
