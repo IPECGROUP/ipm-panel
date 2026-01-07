@@ -1482,6 +1482,41 @@ const toggleFilterTag = (id) => {
   const tagLabelOf = (t) =>
   String(t?.label ?? t?.name ?? t?.title ?? t?.text ?? t?.tag ?? t?.id ?? "").trim();
 
+
+  // ===== NEW: add-tag modal =====
+const [tagPickOpen, setTagPickOpen] = useState(false);
+const [tagPickFor, setTagPickFor] = useState("filter"); // "filter" | "form"
+const [tagPickKind, setTagPickKind] = useState("letters"); // letters/projects/execution
+const [tagPickCategoryId, setTagPickCategoryId] = useState("");
+const [tagPickDraftIds, setTagPickDraftIds] = useState([]);
+const TAG_PICK_TABS = [
+  { id: "projects", label: "پروژه‌ها" },
+  { id: "letters", label: "نامه‌ها و مستندات" },
+  { id: "execution", label: "اجرای پروژه‌ها" },
+];
+const SCOPE_BY_KIND = {
+  letters: "letters",
+  projects: "projects",
+  execution: "execution",
+};
+const [tagCatsByScope, setTagCatsByScope] = useState({
+  letters: [],
+  projects: [],
+  execution: [],
+});
+
+const [tagsByScope, setTagsByScope] = useState({
+  letters: [],
+  projects: [],
+  execution: [],
+});
+
+const [loadedScopes, setLoadedScopes] = useState({
+  letters: false,
+  projects: false,
+  execution: false,
+});
+
 const formScope = useMemo(() => {
   return formKind === "outgoing" ? "projects" : formKind === "internal" ? "execution" : "letters";
 }, [formKind]);
@@ -2364,50 +2399,6 @@ const isImageView = useMemo(() => {
     ],
     []
   );
-
-
-
-
-
-
-
-
-
-
-
-  // ===== NEW: add-tag modal =====
-const [tagPickOpen, setTagPickOpen] = useState(false);
-const [tagPickFor, setTagPickFor] = useState("filter"); // "filter" | "form"
-const [tagPickKind, setTagPickKind] = useState("letters"); // letters/projects/execution
-const [tagPickCategoryId, setTagPickCategoryId] = useState("");
-const [tagPickDraftIds, setTagPickDraftIds] = useState([]);
-const TAG_PICK_TABS = [
-  { id: "projects", label: "پروژه‌ها" },
-  { id: "letters", label: "نامه‌ها و مستندات" },
-  { id: "execution", label: "اجرای پروژه‌ها" },
-];
-const SCOPE_BY_KIND = {
-  letters: "letters",
-  projects: "projects",
-  execution: "execution",
-};
-const [tagCatsByScope, setTagCatsByScope] = useState({
-  letters: [],
-  projects: [],
-  execution: [],
-});
-
-const [tagsByScope, setTagsByScope] = useState({
-  letters: [],
-  projects: [],
-  execution: [],
-});
-
-const [loadedScopes, setLoadedScopes] = useState({
-  letters: false,
-  projects: false,
-  execution: false,
-});
 
 const [tagPickSearch, setTagPickSearch] = useState("");
 
