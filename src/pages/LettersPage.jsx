@@ -3041,7 +3041,7 @@ useEffect(() => {
         <label className="inline-flex items-center gap-2 cursor-pointer select-none">
           <input
             type="radio"
-            name="hasAttachment"
+            name={"hasAttachment_" + formKind}
             checked={hasAttachment === true}
             onChange={() => setHasAttachment(true)}
             className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
@@ -3052,7 +3052,7 @@ useEffect(() => {
         <label className="inline-flex items-center gap-2 cursor-pointer select-none">
           <input
             type="radio"
-            name="hasAttachment"
+            name={"hasAttachment_" + formKind}
             checked={hasAttachment === false}
             onChange={() => setHasAttachment(false)}
             className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
@@ -3117,37 +3117,6 @@ useEffect(() => {
 <div>
     {/* ردیف کنارهم: ضمیمه + عنوان ضمیمه + بازگشت به (+ پیرو در صادره) */}
 <div className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-1 items-start">
-  {/* 1) ضمیمه */}
-  <div className="md:col-span-2">
-    <div className={labelCls}>ضمیمه</div>
-
-    {/* پیشنهاد: رادیو (به جای چک‌باکس دوتایی) */}
-    <div className="flex items-center gap-4 mt-0">
-      <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-        <input
-          type="radio"
-          name="hasAttachment"
-          checked={hasAttachment === true}
-          onChange={() => setHasAttachment(true)}
-          className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
-        />
-        <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>دارد</span>
-      </label>
-
-      <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-        <input
-          type="radio"
-          name="hasAttachment"
-          checked={hasAttachment === false}
-          onChange={() => setHasAttachment(false)}
-          className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
-        />
-        <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>ندارد</span>
-      </label>
-    </div>
-  </div>
-
-  
 
 {/* نامه‌های مرتبط (کمبوباکس چندانتخابی) */}
 <div className={"md:col-span-12 min-w-0"}>
