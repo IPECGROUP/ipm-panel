@@ -3158,84 +3158,105 @@ useEffect(() => {
 <div className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-1 items-start">
 
 {/* نامه‌های مرتبط (فقط آیکن) */}
-<div className={"md:col-span-10 min-w-0"}>
-  <div className={labelCls}>اسناد مرتبط</div>
+{/* اسناد مرتبط + بارگذاری اسناد (کنار هم و چسبیده) */}
+<div className="md:col-span-12 min-w-0">
+  <div className="flex items-start justify-start gap-2">
+    {/* اسناد مرتبط */}
+    <div className="min-w-0">
+      <div className={labelCls}>اسناد مرتبط</div>
 
-  <button
-    type="button"
-    onClick={openRelatedPicker}
-    className={
-      "h-10 w-10 shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
-      (theme === "dark"
-        ? "border-white/15 bg-white/5 hover:bg-white/10"
-        : "border-black/10 bg-white hover:bg-black/[0.02]")
-    }
-    aria-label="انتخاب اسناد مرتبط"
-    title="انتخاب اسناد مرتبط"
-  >
-    <img
-      src="/images/icons/sayer.svg"
-      alt=""
-      className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
-    />
-  </button>
+      <button
+        type="button"
+        onClick={openRelatedPicker}
+        className={
+          "h-10 w-10 shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
+          (theme === "dark"
+            ? "border-white/15 bg-white/5 hover:bg-white/10"
+            : "border-black/10 bg-white hover:bg-black/[0.02]")
+        }
+        aria-label="انتخاب اسناد مرتبط"
+        title="انتخاب اسناد مرتبط"
+      >
+        <img
+          src="/images/icons/sayer.svg"
+          alt=""
+          className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
+        />
+      </button>
 
-  {/* نمایش انتخاب‌ها: با "و" جدا + کلیک برای پیش‌نمایش */}
-  {relatedSelectedIds.length > 0 && (
-    <div className="mt-2 flex flex-wrap items-center gap-1 text-sm">
-      {relatedSelectedIds.map((id, i) => {
-        const l = letterById.get(String(id));
-        const no = String(letterNoOf(l) || "").trim() || String(id);
+      {/* نمایش انتخاب‌ها */}
+      {relatedSelectedIds.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-1 text-sm">
+          {relatedSelectedIds.map((id, i) => {
+            const l = letterById.get(String(id));
+            const no = String(letterNoOf(l) || "").trim() || String(id);
 
-        return (
-          <span key={String(id)} className="inline-flex items-center gap-1">
-            {i > 0 && (
-              <span className={theme === "dark" ? "text-white/60" : "text-neutral-600"}>
-                و
+            return (
+              <span key={String(id)} className="inline-flex items-center gap-1">
+                {i > 0 && (
+                  <span className={theme === "dark" ? "text-white/60" : "text-neutral-600"}>و</span>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => { if (l) openView(l); }}
+                  className={
+                    "underline underline-offset-4 font-semibold " +
+                    (theme === "dark" ? "text-white hover:text-white/90" : "text-neutral-900 hover:text-black")
+                  }
+                  title="پیش نمایش"
+                >
+                  {toFaDigits(no)}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReturnToIds((prev) =>
+                      (Array.isArray(prev) ? prev : []).filter((x) => String(x) !== String(id))
+                    );
+                  }}
+                  className={
+                    "h-6 w-6 inline-grid place-items-center bg-transparent border-0 shadow-none p-0 text-lg leading-none transition " +
+                    (theme === "dark" ? "text-white/60 hover:text-white" : "text-neutral-500 hover:text-neutral-900")
+                  }
+                  aria-label="حذف"
+                  title="حذف"
+                >
+                  ×
+                </button>
               </span>
-            )}
-
-            <button
-              type="button"
-              onClick={() => {
-                if (l) openView(l);
-              }}
-              className={
-                "underline underline-offset-4 font-semibold " +
-                (theme === "dark"
-                  ? "text-white hover:text-white/90"
-                  : "text-neutral-900 hover:text-black")
-              }
-              title="پیش نمایش"
-            >
-              {toFaDigits(no)}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setReturnToIds((prev) =>
-                  (Array.isArray(prev) ? prev : []).filter((x) => String(x) !== String(id))
-                );
-              }}
-              className={
-                "h-6 w-6 inline-grid place-items-center bg-transparent border-0 shadow-none p-0 text-lg leading-none transition " +
-                (theme === "dark"
-                  ? "text-white/60 hover:text-white"
-                  : "text-neutral-500 hover:text-neutral-900")
-              }
-              aria-label="حذف"
-              title="حذف"
-            >
-              ×
-            </button>
-          </span>
-        );
-      })}
+            );
+          })}
+        </div>
+      )}
     </div>
-  )}
-</div>
 
+    {/* بارگذاری اسناد (چسبیده کنار اسناد مرتبط) */}
+    <div className="shrink-0">
+      <div className={labelCls}>&nbsp;</div> {/* هم‌تراز با لیبل بالا */}
+      <button
+        type="button"
+        onClick={() => openUpload(formKind)}
+        className={uploadTriggerCls + " h-10 w-auto whitespace-nowrap"}
+        title={formKind === "internal" ? "بارگذاری سند" : "بارگذاری اسناد"}
+      >
+        <img
+          src="/images/icons/upload.svg"
+          alt=""
+          className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
+        />
+        <span>{formKind === "internal" ? "بارگذاری سند" : "بارگذاری اسناد"}</span>
+
+        {Array.isArray(docFilesByType?.[formKind]) && docFilesByType[formKind].length > 0 ? (
+          <span className="mr-2 text-xs opacity-80">
+            ({toFaDigits(docFilesByType[formKind].length)})
+          </span>
+        ) : null}
+      </button>
+    </div>
+  </div>
+</div>
 
 {relatedPickOpen &&
   createPortal(
