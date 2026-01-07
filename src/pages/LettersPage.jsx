@@ -371,6 +371,41 @@ export default function LettersPage() {
     return data;
   }
 
+  // ===== Letter Tag Prefs (backend) =====
+// چند مسیر احتمالی؛ اولی که جواب بده استفاده میشه (برای سازگاری با بک‌اندهای مختلف)
+const LETTER_PREFS_ENDPOINTS = [
+  "/tag-prefs?scope=letters",
+  "/tag-prefs/letters",
+  "/letter-prefs",
+  "/letters/prefs",
+];
+
+async function fetchLetterPrefs() {
+  for (const path of LETTER_PREFS_ENDPOINTS) {
+    try {
+      const r = await api(path, { method: "GET" });
+      return r || {};
+    } catch (e) {
+      // try next
+    }
+  }
+  return {};
+}
+
+async function patchLetterPrefs(patch) {
+  const body = JSON.stringify(patch || {});
+  for (const path of LETTER_PREFS_ENDPOINTS) {
+    try {
+      const r = await api(path, { method: "PATCH", body });
+      return r || {};
+    } catch (e) {
+      // try next
+    }
+  }
+  throw new Error("prefs_save_failed");
+}
+
+
   const [theme, setTheme] = useState(() =>
     document.documentElement.classList.contains("dark") ? "dark" : "light"
   );
@@ -506,7 +541,7 @@ const resolveFileUrl = (u) => {
   const [filterOrg, setFilterOrg] = useState("");
   const [filterLetterNo, setFilterLetterNo] = useState("");
   const filterActiveHydratedRef = useRef(false);
-
+  const prefsHydratedRef = useRef(false);
 
 useEffect(() => {
   if (!user?.id) return;
@@ -889,6 +924,16 @@ const loadFormTagPrefs = async (which) => {
   setFormTagPrefs((prev) => ({ ...prev, [which]: cut }));
   return cut;
 };
+const setFormTagsOnly = (which, ids) => {
+  const next = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
+
+  if (which === "incoming") setIncomingTagIds(next);
+  else if (which === "outgoing") setOutgoingTagIds(next);
+  else setInternalTagIds(next);
+
+  setFormTagPrefs((p) => ({ ...p, [which]: next }));
+};
+
 
 const setFormTagsAndPersist = (which, ids) => {
   const next = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
@@ -994,17 +1039,22 @@ useEffect(() => {
 }, [user?.id]);
 
 useEffect(() => {
-  // فقط در حالت Create (نه Edit)
+  // فقط Create
   if (!formOpen || editingId) return;
+
+  // ✅ تا وقتی prefs از سرور نیومده، هیچ کاری نکن (نه set، نه save)
+  if (!prefsHydratedRef.current) return;
 
   const which = formKind; // incoming|outgoing|internal
   if (!which) return;
 
-  // جلوگیری از overwrite وقتی کاربر دستی تغییر داده
+  // فقط یک بار برای هر تب فرم
   if (formTagsHydratedRef.current[which]) return;
 
   const pref = Array.isArray(formTagPrefs?.[which]) ? formTagPrefs[which] : [];
-  setFormTagsAndPersist(which, pref); // set state (و دوباره save هم مشکلی نداره)
+
+  // ✅ فقط state رو از prefs پر کن، ذخیره نکن
+  setFormTagsOnly(which, pref);
 
   formTagsHydratedRef.current[which] = true;
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2385,10 +2435,7 @@ const filterTagCaps = useMemo(() => {
 const openTagPicker = async (forWhat) => {
   setTagPickFor(forWhat);
 
-  const initialKind =
-    forWhat === "form"
-      ? (formKind === "outgoing" ? "projects" : formKind === "internal" ? "execution" : "letters")
-      : "letters";
+  const initialKind = "letters";
 
   setTagPickKind(initialKind);
   await ensureTagsForKind(initialKind);
@@ -3244,16 +3291,10 @@ useEffect(() => {
   <div className="w-full min-w-0 flex flex-wrap items-center gap-2">
 
     {(() => {
-      const scope =
-        formKind === "outgoing" ? "projects" :
-        formKind === "internal" ? "execution" :
-        "letters";
-
+      const scope = "letters";
       const selectedIds = formSelectedTagIds;
-
       const pool = Array.isArray(tagsByScope?.[scope]) ? tagsByScope[scope] : [];
       const selSet = new Set((Array.isArray(selectedIds) ? selectedIds : []).map(String));
-
       const selectedObjs = pool.filter((t) => selSet.has(String(t?.id)));
       const latest = pool
         .slice()
