@@ -778,6 +778,11 @@ const relatedOptions = useMemo(() => {
   const [outgoingTagIds, setOutgoingTagIds] = useState([]);
   const [internalTagIds, setInternalTagIds] = useState([]);
 
+const formSelectedTagIds =
+  formKind === "outgoing" ? outgoingTagIds :
+  formKind === "internal" ? internalTagIds :
+  incomingTagIds;
+
   const [incomingSecretariatDate, setIncomingSecretariatDate] = useState("");
   const [outgoingSecretariatDate, setOutgoingSecretariatDate] = useState("");
   const [internalSecretariatDate, setInternalSecretariatDate] = useState("");
@@ -2450,46 +2455,36 @@ const latestAllTags = useMemo(() => {
 
 const filterTagCaps = useMemo(() => {
   const map = new Map((Array.isArray(allTags) ? allTags : []).map((t) => [String(t?.id), t]));
-  const out = [];
-  const seen = new Set();
+  const pinned = normalizeIdList(filterTagPinnedIds).slice(0, TAG_PREFS_LIMIT);
 
-  (Array.isArray(filterTagPinnedIds) ? filterTagPinnedIds : []).forEach((id) => {
-    const sid = String(id || "").trim();
-    if (!sid || seen.has(sid)) return;
-    const t = map.get(sid);
-    if (!t) return;
-    out.push(t);
-    seen.add(sid);
+  // ✅ اگر تگ هنوز تو allTags نبود، یک آبجکت placeholder می‌سازیم تا کپسول غیب نشه
+  return pinned.map((id) => {
+    const t = map.get(String(id));
+    if (t) return t;
+    return { id: String(id), label: `برچسب (${toFaDigits(id)})`, _missing: true };
   });
-
-  return out;
 }, [filterTagPinnedIds, allTags]);
-
-
-
 
 const openTagPicker = async (forWhat) => {
   setTagPickFor(forWhat);
 
-  const initialKind = "letters";
+  const initialKind =
+    forWhat === "form"
+      ? (formKind === "outgoing" ? "projects" : formKind === "internal" ? "execution" : "letters")
+      : "letters";
 
   setTagPickKind(initialKind);
   await ensureTagsForKind(initialKind);
 
   const currentSelected =
-    forWhat === "form"
-      ? formKind === "outgoing"
-        ? outgoingTagIds
-        : formKind === "internal"
-        ? internalTagIds
-        : incomingTagIds
-      : filterTagPinnedIds;
+    forWhat === "form" ? formSelectedTagIds : filterTagPinnedIds;
 
   setTagPickDraftIds((Array.isArray(currentSelected) ? currentSelected : []).map(String));
   setTagPickCategoryId("");
   setTagPickSearch("");
   setTagPickOpen(true);
 };
+
 
 const togglePickDraft = (id) => {
   const sid = String(id || "");
@@ -2508,11 +2503,6 @@ const applyPickedTags = () => {
     // ✅ اگر برچسبی از نوار حذف شد، از فیلتر فعال هم حذف شود تا فیلتر مخفی نماند
     setFilterTagIds((prev) => (Array.isArray(prev) ? prev.map(String) : []).filter((x) => ids.includes(String(x))));
    } else {
-    const which =
-      tagPickKind === "letters" ? "incoming" :
-      tagPickKind === "projects" ? "outgoing" :
-      "internal";
-
     // ✅ همیشه روی همون تبِ فرم که بازه اعمال کن
     setFormTagsAndPersist(formKind, ids);
   }
@@ -3349,10 +3339,7 @@ useEffect(() => {
         formKind === "internal" ? "execution" :
         "letters";
 
-      const selectedIds =
-        formKind === "outgoing" ? outgoingTagIds :
-        formKind === "internal" ? internalTagIds :
-        incomingTagIds;
+      const selectedIds = formSelectedTagIds;
 
       const pool = Array.isArray(tagsByScope?.[scope]) ? tagsByScope[scope] : [];
       const selSet = new Set((Array.isArray(selectedIds) ? selectedIds : []).map(String));
