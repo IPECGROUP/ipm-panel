@@ -3138,7 +3138,7 @@ useEffect(() => {
 <div className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-1 items-start">
 
 {/* نامه‌های مرتبط (کمبوباکس چندانتخابی) */}
-<div className={"md:col-span-12 min-w-0"}>
+<div className={"md:col-span-9 min-w-0"}>
   <div className={labelCls}>اسناد مرتبط</div>
 
   <div ref={relatedWrapRef} className="relative min-w-0">
@@ -3295,10 +3295,11 @@ useEffect(() => {
 
 {/* ✅ بارگذاری فایل (برای هر سه تب) — مستقل از ضمیمه */}
 <div className="md:col-span-12">
+  <div className={labelCls}> </div> {/* برای هم‌تراز شدن با لیبل "اسناد مرتبط" */}
   <button
     type="button"
     onClick={() => openUpload(formKind)}
-    className={uploadTriggerCls + " w-full md:w-auto"}
+    className={uploadTriggerCls + " w-full"}
     title={formKind === "internal" ? "بارگذاری سند" : formKind === "outgoing" ? "بارگذاری اسناد " : "بارگذاری اسناد "}
   >
     <img
