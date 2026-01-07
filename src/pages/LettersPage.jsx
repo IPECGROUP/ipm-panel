@@ -876,34 +876,18 @@ const saveFormTagPrefs = async (which, ids) => {
 };
 
 const loadFormTagPrefs = async (which) => {
-  const scope = FORM_TAG_PREFS_SCOPE[which];
-  if (!scope) return [];
+  const p = await fetchLetterPrefs();
 
-  // 1) local سریع
-  try {
-    const raw = localStorage.getItem(formPrefsLsKey(which));
-    const parsed = raw ? JSON.parse(raw) : null;
-    const ids = normalizeIdList(parsed?.ids || []).slice(0, TAG_PREFS_LIMIT);
-    if (ids.length) setFormTagPrefs((p) => ({ ...p, [which]: ids }));
-  } catch {}
+  const ids =
+    which === "incoming"
+      ? normalizeIdList(p?.incoming_tag_ids || [])
+      : which === "outgoing"
+      ? normalizeIdList(p?.outgoing_tag_ids || [])
+      : normalizeIdList(p?.internal_tag_ids || []);
 
-  // 2) backend (اگر بود) جایگزین کن
-  try {
-    const r = await api(`/tag-prefs?scope=${encodeURIComponent(scope)}`);
-    const ids = normalizeIdList(r?.ids || r?.items || r?.data?.ids || []).slice(0, TAG_PREFS_LIMIT);
-    setFormTagPrefs((p) => ({ ...p, [which]: ids }));
-
-    // sync local
-    try {
-      localStorage.setItem(formPrefsLsKey(which), JSON.stringify({ t: Date.now(), ids }));
-    } catch {}
-
-    return ids;
-  } catch {
-    // اگر بک‌اند نبود، همون local رو داریم
-    const fallback = Array.isArray(formTagPrefs?.[which]) ? formTagPrefs[which] : [];
-    return fallback;
-  }
+  const cut = ids.slice(0, TAG_PREFS_LIMIT);
+  setFormTagPrefs((prev) => ({ ...prev, [which]: cut }));
+  return cut;
 };
 
 const setFormTagsAndPersist = (which, ids) => {
@@ -953,51 +937,31 @@ const savePinnedFilterTags = async (ids) => {
   await patchLetterPrefs({ all_tag_ids: clean });
 };
 
-const saveActiveFilterTags = async (ids) => {
+const activeFilterLsKey = () => `letters_filter_active_v1:u${String(user?.id || "0")}`;
+
+const saveActiveFilterTags = (ids) => {
   try {
-    await api(`/tag-prefs?scope=${encodeURIComponent(FILTER_ACTIVE_SCOPE)}`, {
-      method: "PUT",
-      body: JSON.stringify({ scope: FILTER_ACTIVE_SCOPE, ids }),
-    });
+    const clean = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
+    localStorage.setItem(activeFilterLsKey(), JSON.stringify({ t: Date.now(), ids: clean }));
   } catch {}
 };
 
-const loadActiveFilterTags = async () => {
+const loadActiveFilterTags = () => {
   try {
-    const r = await api(`/tag-prefs?scope=${encodeURIComponent(FILTER_ACTIVE_SCOPE)}`);
-    const ids = normalizeIdList(r?.ids || r?.items || r?.data?.ids || []).slice(0, TAG_PREFS_LIMIT);
+    const raw = localStorage.getItem(activeFilterLsKey());
+    const parsed = raw ? JSON.parse(raw) : null;
+    const ids = normalizeIdList(parsed?.ids || []).slice(0, TAG_PREFS_LIMIT);
     setFilterTagIds(ids);
   } catch {
     setFilterTagIds([]);
   }
 };
 
-
 const loadPinnedFilterTags = async () => {
-  // 1) اول سریع از local بیار (برای اینکه بعد رفرش فوری دیده بشه)
-  try {
-    const raw = localStorage.getItem(tagPrefsLsKey(TAG_PREFS_SCOPE));
-    const parsed = raw ? JSON.parse(raw) : null;
-    const ids = normalizeIdList(parsed?.ids || []).slice(0, TAG_PREFS_LIMIT);
-    if (ids.length) setFilterTagPinnedIds(ids);
-  } catch {}
-
-  // 2) بعد تلاش کن از بک‌اند هم sync کنی (اگر موجود بود)
-  try {
-    const r = await api(`/tag-prefs?scope=${encodeURIComponent(TAG_PREFS_SCOPE)}`);
-    const ids = normalizeIdList(r?.ids || r?.items || r?.data?.ids || []).slice(0, TAG_PREFS_LIMIT);
-
-    setFilterTagPinnedIds(ids);
-
-    // همون نتیجه رو local هم آپدیت کن
-    try {
-      localStorage.setItem(tagPrefsLsKey(TAG_PREFS_SCOPE), JSON.stringify({ t: Date.now(), ids }));
-    } catch {}
-  } catch {
-    // اگر بک‌اند نبود، همون local کافیست
-  }
+  const p = await fetchLetterPrefs();
+  const ids = normalizeIdList(p?.all_tag_ids || []).slice(0, TAG_PREFS_LIMIT);
+  setFilterTagPinnedIds(ids);
 };
-
 
 useEffect(() => {
   if (!user?.id) return;
@@ -2331,7 +2295,6 @@ const isImageView = useMemo(() => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [uploadOpen, myLettersSorted]);
 
-
   const filteredUploadedAttachments = useMemo(() => {
     const q = String(pickSearch || "").trim().toLowerCase();
     const arr = Array.isArray(allUploadedAttachments) ? allUploadedAttachments : [];
@@ -2347,15 +2310,12 @@ const isImageView = useMemo(() => {
   const addExistingAttachmentToCurrent = (which, att) => {
     const url = attachmentUrlOf(att);
     if (!url) return;
-
     const name = attachmentNameOf(att) || att?.name || "فایل";
     const type = attachmentTypeOf(att) || att?.type || (isPdfUrl(url) ? "application/pdf" : "");
     const size = attachmentSizeOf(att) || Number(att?.size || 0) || 0;
-
     setDocFilesFor(which, (prev) => {
       const exists = prev.some((x) => String(x?.url || "") === String(url));
       if (exists) return prev;
-
       const id = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
       return [
         ...prev,
@@ -2464,14 +2424,12 @@ const applyPickedTags = () => {
     setFormTagsAndPersist(formKind, ids);
   }
 
-
   setTagPickOpen(false);
 };
 
   const [addTagOpen, setAddTagOpen] = useState(false);
   const [newTagLabel, setNewTagLabel] = useState("");
   const [newTagCategoryId, setNewTagCategoryId] = useState("");
-
   const refreshTags = async (scope) => {
   const sc = scope || "letters";
 
@@ -2526,7 +2484,6 @@ useEffect(() => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [formOpen, formKind]);
 
-
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
       <Card
@@ -2574,7 +2531,6 @@ useEffect(() => {
 
   }
 >
-
               <div className="flex flex-wrap items-end gap-2">
                 {/* Tabs first */}
                 <div className="flex flex-wrap items-center gap-1 justify-start">
@@ -2614,27 +2570,27 @@ useEffect(() => {
 
     setFilterTab(t.id);   // ✅ فقط فیلتر
   }}
-                           className={cls}
-  style={
-    !isAll && isKind
-      ? active
-        ? { backgroundColor: activeColor, borderColor: activeColor }
-        : { borderColor: activeColor }
-      : undefined
-  }
->
-                          <span>{t.label}</span>
-                          {t.icon ? (
-                            <img
-                              src={t.icon}
-                              alt=""
-                              className="w-5 h-5"
-                              style={{
-                                filter: active
-                                  ? "brightness(0) invert(1)"            // ✅ وقتی تب انتخاب شد: آیکن سفید
-                                  : theme === "dark"
-                                  ? "brightness(0) invert(1)"            // ✅ دارک: آیکن سفید
-                                  : "none",                               // ✅ لایت و غیر فعال: رنگ اصلی فایل
+  className={cls}
+    style={
+      !isAll && isKind
+        ? active
+          ? { backgroundColor: activeColor, borderColor: activeColor }
+          : { borderColor: activeColor }
+        : undefined
+    }
+  >
+    <span>{t.label}</span>
+        {t.icon ? (
+          <img
+              src={t.icon}
+                  alt=""
+                  className="w-5 h-5"
+                  style={{
+                  filter: active
+                  ? "brightness(0) invert(1)"            // ✅ وقتی تب انتخاب شد: آیکن سفید
+                  : theme === "dark"
+                  ? "brightness(0) invert(1)"            // ✅ دارک: آیکن سفید
+                  : "none",                               // ✅ لایت و غیر فعال: رنگ اصلی فایل
                               }}
                             />
                           ) : null}
