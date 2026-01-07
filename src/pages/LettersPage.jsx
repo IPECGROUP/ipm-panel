@@ -1479,19 +1479,6 @@ const toggleFilterTag = (id) => {
   });
 };
 
-
-  const latestTags = useMemo(() => {
-  const arr = Array.isArray(tagsForFormScope) ? tagsForFormScope.slice() : [];
-  arr.sort((a, b) => {
-    const ai = Number(a?.id);
-    const bi = Number(b?.id);
-    if (Number.isFinite(ai) && Number.isFinite(bi)) return bi - ai;
-    return String(b?.id ?? "").localeCompare(String(a?.id ?? ""));
-  });
-  return arr.slice(0, 14);
-}, [tagsForFormScope]);
-
-
   const tagLabelOf = (t) =>
   String(t?.label ?? t?.name ?? t?.title ?? t?.text ?? t?.tag ?? t?.id ?? "").trim();
 
@@ -1504,6 +1491,16 @@ const tagsForFormScope = useMemo(() => {
   return Array.isArray(arr) ? arr : [];
 }, [tagsByScope, formScope]);
 
+  const latestTags = useMemo(() => {
+  const arr = Array.isArray(tagsForFormScope) ? tagsForFormScope.slice() : [];
+  arr.sort((a, b) => {
+    const ai = Number(a?.id);
+    const bi = Number(b?.id);
+    if (Number.isFinite(ai) && Number.isFinite(bi)) return bi - ai;
+    return String(b?.id ?? "").localeCompare(String(a?.id ?? ""));
+  });
+  return arr.slice(0, 14);
+}, [tagsForFormScope]);
 
   const tagCapsFor = (selectedIds) => {
   const sel = Array.isArray(selectedIds) ? selectedIds.map(String) : [];
