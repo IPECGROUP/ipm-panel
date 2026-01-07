@@ -637,10 +637,12 @@ const [classification, setClassification] = useState("عادی");
   const [toName, setToName] = useState("");
   const [subject, setSubject] = useState("");
   const [hasAttachment, setHasAttachment] = useState(false);
+  const [incomingAttachmentTitle, setIncomingAttachmentTitle] = useState("");
+  const [outgoingAttachmentTitle, setOutgoingAttachmentTitle] = useState("");
+  const [internalAttachmentTitle, setInternalAttachmentTitle] = useState("");
   const [returnToIds, setReturnToIds] = useState([""]);
   const [piroIds, setPiroIds] = useState([""]);
   const [myLetters, setMyLetters] = useState([]);
-
   const [relatedOpen, setRelatedOpen] = useState(false);
 const [relatedQuery, setRelatedQuery] = useState("");
   // ===== helpers: باید قبل از useMemoهایی که ازشون استفاده می‌کنن تعریف بشن =====
@@ -1931,6 +1933,9 @@ const kindRowTintCls = (kind) => {
     setOrgName("");
     setToName("");
     setSubject("");
+    setIncomingAttachmentTitle("");
+    setOutgoingAttachmentTitle("");
+    setInternalAttachmentTitle("");
     setInternalUnitId("");
     setHasAttachment(false);
     setReturnToIds([""]);
