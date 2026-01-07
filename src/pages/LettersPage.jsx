@@ -1975,6 +1975,13 @@ const kindRowTintCls = (kind) => {
   };
 
   const startEdit = (l) => {
+
+    const sn = l?.secretariat_note ?? l?.secretariatNote ?? "";
+
+if (kind === "incoming") setIncomingSecretariatNote(sn);
+else if (kind === "outgoing") setOutgoingSecretariatNote(sn);
+else setInternalSecretariatNote(sn);
+
     const kind = letterKindOf(l);
     const id = String(letterIdOf(l));
 
@@ -2086,6 +2093,13 @@ setInternalUnitId(uid ? String(uid) : "");
     const secretariatDate =
       kind === "incoming" ? incomingSecretariatDate : kind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate;
 
+const secretariatNote =
+  kind === "incoming"
+    ? incomingSecretariatNote
+    : kind === "outgoing"
+    ? outgoingSecretariatNote
+    : internalSecretariatNote;
+
     const secretariatNo =
       kind === "incoming" ? incomingSecretariatNo : kind === "outgoing" ? outgoingSecretariatNo : internalSecretariatNo;
 
@@ -2131,6 +2145,7 @@ setInternalUnitId(uid ? String(uid) : "");
   tag_ids: (Array.isArray(tagIds) ? tagIds : []).map(String).filter((x) => x && x.trim()),
   secretariat_date: secretariatDate || "",
   secretariat_no: secretariatNo || "",
+  secretariat_note: secretariatNote || "",
   receiver_name: receiverName || "",
   attachments: reused,
   unit_id: kind === "internal" ? (internalUnitId ? Number(internalUnitId) || internalUnitId : null) : null,
@@ -3302,6 +3317,12 @@ useEffect(() => {
             type="text"
           />
         </div>
+
+        <div>
+          <div className={labelCls}>مسئول دبیرخانه</div>
+          <input value={loggedInUserName || ""} readOnly className={inputCls + " opacity-90"} type="text" />
+        </div>
+      </div>
 <div>
   <div className={labelCls}>توضیح</div>
   <input
@@ -3323,13 +3344,6 @@ useEffect(() => {
     placeholder="توضیح دبیرخانه..."
   />
 </div>
-
-        <div>
-          <div className={labelCls}>مسئول دبیرخانه</div>
-          <input value={loggedInUserName || ""} readOnly className={inputCls + " opacity-90"} type="text" />
-        </div>
-      </div>
-
 
 {/* برچسب‌ها (برای فرم) */}
 <div className="md:col-span-12 min-w-0">
