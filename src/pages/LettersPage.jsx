@@ -3693,16 +3693,9 @@ useEffect(() => {
           {/* Table */}
           <div className="mt-5">
             <div className={tableWrapCls}>
-            <div
-  className="relative h-[55vh] overflow-y-auto overflow-x-hidden overscroll-x-none [scrollbar-gutter:stable_both-edges]"
-  dir="ltr"
->
+             <div className="relative h-[55vh] overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]">
                 <table
-                  className="w-full max-w-full table-fixed text-sm
-  [&_th]:text-center [&_td]:text-center
-  [&_th]:py-0.5 [&_td]:py-0.5
-  [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap
-  [&_th]:overflow-hidden [&_td]:overflow-hidden"
+                  className="w-full max-w-full table-fixed text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
                   dir="rtl"
                 >
   <thead>
@@ -3741,9 +3734,9 @@ useEffect(() => {
         شرکت/سازمان
       </th>
 
-      <th className="w-44 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
-  اقدامات
-</th>
+      <th className="w-28 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+        اقدامات
+      </th>
     </tr>
   </thead>
 
@@ -3838,8 +3831,8 @@ useEffect(() => {
               <span className="block truncate mx-auto">{orgOf(l) || "—"}</span>
             </td>
 
-            <td className={"px-2 " + divider}>
-              <div className="flex items-center justify-center gap-1">
+            <td className={"px-3 " + divider}>
+              <div className="inline-flex items-center justify-center gap-2">
                 <button type="button" onClick={() => openView(l)} className={iconBtnCls} aria-label="نمایش" title="نمایش">
                   <img src="/images/icons/namayeshname.svg" alt="" className="w-5 h-5 dark:invert" />
                 </button>
