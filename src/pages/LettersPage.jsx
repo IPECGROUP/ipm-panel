@@ -848,6 +848,10 @@ const formSelectedTagIds =
   const [outgoingSecretariatDate, setOutgoingSecretariatDate] = useState("");
   const [internalSecretariatDate, setInternalSecretariatDate] = useState("");
 
+  const [incomingSecretariatNote, setIncomingSecretariatNote] = useState("");
+  const [outgoingSecretariatNote, setOutgoingSecretariatNote] = useState("");
+  const [internalSecretariatNote, setInternalSecretariatNote] = useState("");
+
   const [incomingSecretariatNo, setIncomingSecretariatNo] = useState("");
   const [outgoingSecretariatNo, setOutgoingSecretariatNo] = useState("");
   const [internalSecretariatNo, setInternalSecretariatNo] = useState("");
@@ -3258,7 +3262,7 @@ useEffect(() => {
     <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
 
     <div className="space-y-3">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div>
           <div className={labelCls}
           >  {formKind === "outgoing" ? "تاریخ ثبت دبیرخانه " : "تاریخ ثبت دبیرخانه"}
@@ -3298,6 +3302,27 @@ useEffect(() => {
             type="text"
           />
         </div>
+<div>
+  <div className={labelCls}>توضیح</div>
+  <input
+    value={
+      formKind === "incoming"
+        ? incomingSecretariatNote
+        : formKind === "outgoing"
+        ? outgoingSecretariatNote
+        : internalSecretariatNote
+    }
+    onChange={(e) => {
+      const v = e.target.value;
+      if (formKind === "incoming") setIncomingSecretariatNote(v);
+      else if (formKind === "outgoing") setOutgoingSecretariatNote(v);
+      else setInternalSecretariatNote(v);
+    }}
+    className={inputCls}
+    type="text"
+    placeholder="توضیح دبیرخانه..."
+  />
+</div>
 
         <div>
           <div className={labelCls}>مسئول دبیرخانه</div>
