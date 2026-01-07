@@ -854,18 +854,20 @@ const loadFormTagPrefs = async (which) => {
   }
 };
 
-// یک helper واحد برای set + persist
-const setFormTagsAndPersist = (which, ids) => {
+const setFormTagsAndPersist = (_which, ids) => {
   const next = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
 
-  if (which === "incoming") setIncomingTagIds(next);
-  else if (which === "outgoing") setOutgoingTagIds(next);
-  else setInternalTagIds(next);
+  // ✅ همیشه هر سه تب یکسان
+  setIncomingTagIds(next);
+  setOutgoingTagIds(next);
+  setInternalTagIds(next);
 
-  setFormTagPrefs((p) => ({ ...p, [which]: next }));
-  saveFormTagPrefs(which, next);
+  // prefs هم یکسان ذخیره بشن (سه‌تا scope‌ات هم sync می‌شن)
+  setFormTagPrefs((p) => ({ ...p, incoming: next, outgoing: next, internal: next }));
+  saveFormTagPrefs("incoming", next);
+  saveFormTagPrefs("outgoing", next);
+  saveFormTagPrefs("internal", next);
 };
-
 
 const normalizeIdList = (arr) => {
   const a = Array.isArray(arr) ? arr : [];
@@ -1832,6 +1834,11 @@ const secretariatLongText = (ymd) => {
   const confidentialTdCls = " !text-red-600 dark:!text-red-400 font-semibold";
   const rowDividerCls = "border-b border-neutral-300 dark:border-neutral-700";
   const confidentialRowCls = "[&_td]:!text-red-600 dark:[&_td]:!text-red-400 font-semibold";
+const kindRowTintCls = (kind) => {
+  if (kind === "incoming") return "bg-blue-50 dark:bg-blue-500/10";
+  if (kind === "outgoing") return "bg-emerald-50 dark:bg-emerald-500/10";
+  return "bg-orange-50 dark:bg-orange-500/10"; // ✅ internal
+};
 
   const resetForm = () => {
     setCategory("نامه");
@@ -2411,14 +2418,10 @@ const filterTagCaps = useMemo(() => {
 const openTagPicker = async (forWhat) => {
   setTagPickFor(forWhat);
 
-  const initialKind =
-    forWhat === "filter"
-      ? "letters"
-      : formKind === "outgoing"
-      ? "projects"
-      : formKind === "internal"
-      ? "execution"
-      : "letters";
+ const initialKind =
+  forWhat === "filter"
+    ? "letters"
+    : "letters"; // ✅ فرم همیشه از برچسب‌های letters استفاده کنه
 
   setTagPickKind(initialKind);
   await ensureTagsForKind(initialKind);
@@ -3592,13 +3595,13 @@ useEffect(() => {
             : "bg-[#0046FF]/[0.06] hover:bg-[#0046FF]/[0.09]"
           : isInternal
           ? theme === "dark"
-            ? "bg-[#FF8040]/15 hover:bg-[#FF8040]/20"
-            : "bg-[#FF8040]/[0.07] hover:bg-[#FF8040]/[0.10]"
+            ? "bg-orange-500/10 hover:bg-orange-500/15"
+            : "bg-orange-50 hover:bg-orange-100/70"
           : theme === "dark"
           ? "bg-white/5 hover:bg-white/10"
           : "bg-black/[0.02] hover:bg-black/[0.04]";
 
-        return (
+        return (  
           <tr
             key={id}
             className={
