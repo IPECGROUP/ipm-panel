@@ -3035,9 +3035,9 @@ useEffect(() => {
     </div>
 
     {/* ضمیمه (کنار موضوع) */}
-    <div className="md:col-span-2">
+    <div className="md:col-span-2 flex flex-col items-center">
       <div className={labelCls}>ضمیمه</div>
-      <div className="flex items-center gap-4 mt-0 h-10">
+      <div className="flex items-center justify-center gap-4 mt-0 h-10">
         <label className="inline-flex items-center gap-2 cursor-pointer select-none">
           <input
             type="radio"
@@ -3084,9 +3084,9 @@ useEffect(() => {
     </div>
 
     {/* ضمیمه (کنار موضوع) */}
-    <div className="md:col-span-2">
+    <div className="md:col-span-2 flex flex-col items-center">
       <div className={labelCls}>ضمیمه</div>
-      <div className="flex items-center gap-4 mt-0 h-10">
+      <div className="flex items-center justify-center gap-4 mt-0 h-10">
         <label className="inline-flex items-center gap-2 cursor-pointer select-none">
           <input
             type="radio"
