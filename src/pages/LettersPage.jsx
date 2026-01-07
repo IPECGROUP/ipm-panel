@@ -2148,7 +2148,10 @@ const secretariatNote =
   secretariat_note: secretariatNote || "",
   receiver_name: receiverName || "",
   attachments: reused,
-  unit_id: kind === "internal" ? (internalUnitId ? Number(internalUnitId) || internalUnitId : null) : null,
+internal_unit_id:
+  kind === "internal"
+    ? (internalUnitId ? Number(internalUnitId) : null)
+    : null,
 };
 
     let saved;
@@ -3322,8 +3325,7 @@ useEffect(() => {
           <div className={labelCls}>مسئول دبیرخانه</div>
           <input value={loggedInUserName || ""} readOnly className={inputCls + " opacity-90"} type="text" />
         </div>
-      </div>
-<div>
+        <div>
   <div className={labelCls}>توضیح</div>
   <input
     value={
@@ -3344,6 +3346,8 @@ useEffect(() => {
     placeholder="توضیح دبیرخانه..."
   />
 </div>
+
+      </div>
 
 {/* برچسب‌ها (برای فرم) */}
 <div className="md:col-span-12 min-w-0">
