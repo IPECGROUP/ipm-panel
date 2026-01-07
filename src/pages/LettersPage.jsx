@@ -3025,15 +3025,44 @@ useEffect(() => {
     </div>
   </div>
 )}
-   {formKind === "internal" ? (
-  <div className="grid grid-cols-1 md:grid-cols-10 gap-2">
-    {/* موضوع 70% */}
+   {/* موضوع + ضمیمه + (برای داخلی: واحد) */}
+{formKind === "internal" ? (
+  <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start">
+    {/* موضوع */}
     <div className="md:col-span-7">
       <div className={labelCls}>موضوع</div>
       <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputCls} type="text" />
     </div>
 
-    {/* واحد 30% */}
+    {/* ضمیمه (کنار موضوع) */}
+    <div className="md:col-span-2">
+      <div className={labelCls}>ضمیمه</div>
+      <div className="flex items-center gap-4 mt-0 h-10">
+        <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="radio"
+            name="hasAttachment"
+            checked={hasAttachment === true}
+            onChange={() => setHasAttachment(true)}
+            className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
+          />
+          <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>دارد</span>
+        </label>
+
+        <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="radio"
+            name="hasAttachment"
+            checked={hasAttachment === false}
+            onChange={() => setHasAttachment(false)}
+            className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
+          />
+          <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>ندارد</span>
+        </label>
+      </div>
+    </div>
+
+    {/* واحد (برای داخلی) */}
     <div className="md:col-span-3">
       <div className={labelCls}>واحد</div>
       <select value={internalUnitId} onChange={(e) => setInternalUnitId(e.target.value)} className={inputCls}>
@@ -3047,9 +3076,7 @@ useEffect(() => {
     </div>
   </div>
 ) : (
-  <div>
-    <div className={labelCls}>موضوع</div>
-    <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputCls} type="text" />
+  <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start">
   </div>
 )}
 
@@ -3090,7 +3117,7 @@ useEffect(() => {
   
 
 {/* نامه‌های مرتبط (کمبوباکس چندانتخابی) */}
-<div className={(formKind === "outgoing" ? "md:col-span-4" : "md:col-span-7") + " min-w-0"}>
+<div className={"md:col-span-12 min-w-0"}>
   <div className={labelCls}>اسناد مرتبط</div>
 
   <div ref={relatedWrapRef} className="relative min-w-0">
