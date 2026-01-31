@@ -3,7 +3,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider";
-import { useLayoutEffect } from "react";
 
 
 const TAB_ACTIVE_BG = {
@@ -434,30 +433,6 @@ const myUnitsFromUser = useMemo(() => {
     [];
   return arr;
 }, [user]);
-
-const tableScrollRef = useRef(null);
-const [hasYScroll, setHasYScroll] = useState(false);
-
-useLayoutEffect(() => {
-  const el = tableScrollRef.current;
-  if (!el) return;
-
-  const update = () => {
-    setHasYScroll(el.scrollHeight > el.clientHeight);
-  };
-
-  update();
-
-  const ro = new ResizeObserver(update);
-  ro.observe(el);
-
-  window.addEventListener("resize", update);
-  return () => {
-    ro.disconnect();
-    window.removeEventListener("resize", update);
-  };
-}, [pageItems.length]);
-
 
 const unitOptions = useMemo(() => {
   const map = new Map();
@@ -3699,15 +3674,12 @@ useEffect(() => {
           {/* Table */}
           <div className="mt-5">
             <div className={tableWrapCls}>
-            <div
-  ref={tableScrollRef}
-  className={
-    "relative max-h-[55vh] overflow-y-auto overflow-x-hidden " +
-    "pl-3 " +                      // ✅ پدینگ چپ ثابت (برای نچسبیدن آیکن‌ها)
-    (hasYScroll ? "pr-2" : "pr-0")  // ✅ فقط وقتی اسکرول هست، راست جا بگیره
-  }
+              <div
+    className="relative h-[55vh] overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]"
+
   dir="ltr"
 >
+
                <table
                
   dir="rtl"
@@ -3762,7 +3734,7 @@ useEffect(() => {
         شرکت/سازمان
       </th>
 
-      <th className="w-28 pl-5 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+      <th className="w-28 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
         اقدامات
       </th>
     </tr>
@@ -3859,7 +3831,7 @@ useEffect(() => {
               <span className="block truncate mx-auto">{orgOf(l) || "—"}</span>
             </td>
 
-            <td className={"px-3 pl-5 " + divider}>
+            <td className={"px-3 " + divider}>
               <div className="inline-flex items-center justify-center gap-2">
                 <button type="button" onClick={() => openView(l)} className={iconBtnCls} aria-label="نمایش" title="نمایش">
                   <img src="/images/icons/namayeshname.svg" alt="" className="w-5 h-5 dark:invert" />
