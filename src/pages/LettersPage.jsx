@@ -371,40 +371,21 @@ export default function LettersPage() {
     return data;
   }
 
-  // ===== Letter Tag Prefs (backend) =====
-// چند مسیر احتمالی؛ اولی که جواب بده استفاده میشه (برای سازگاری با بک‌اندهای مختلف)
-const LETTER_PREFS_ENDPOINTS = [
-  "/tag-prefs?scope=letters",
-  "/tag-prefs/letters",
-  "/letter-prefs",
-  "/letters/prefs",
-];
+ // ===== Letter Prefs (backend) =====
+// بک‌اند تو فقط این مسیر رو دارد: /api/letters/prefs
+const LETTER_PREFS_ENDPOINT = "/letters/prefs";
 
 async function fetchLetterPrefs() {
-  for (const path of LETTER_PREFS_ENDPOINTS) {
-    try {
-      const r = await api(path, { method: "GET" });
-      return r || {};
-    } catch (e) {
-      // try next
-    }
-  }
-  return {};
+  const r = await api(LETTER_PREFS_ENDPOINT, { method: "GET" });
+  // بک‌اند: { prefs: {...} }
+  return r?.prefs || {};
 }
 
 async function patchLetterPrefs(patch) {
   const body = JSON.stringify(patch || {});
-  for (const path of LETTER_PREFS_ENDPOINTS) {
-    try {
-      const r = await api(path, { method: "PATCH", body });
-      return r || {};
-    } catch (e) {
-      // try next
-    }
-  }
-  throw new Error("prefs_save_failed");
+  const r = await api(LETTER_PREFS_ENDPOINT, { method: "PATCH", body });
+  return r?.prefs || {};
 }
-
 
   const [theme, setTheme] = useState(() =>
     document.documentElement.classList.contains("dark") ? "dark" : "light"
