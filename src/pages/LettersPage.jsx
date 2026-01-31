@@ -3675,7 +3675,7 @@ useEffect(() => {
           <div className="mt-5">
             <div className={tableWrapCls}>
               <div
-  className="relative h-[55vh] overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable_both-edges]"
+    className="relative h-[55vh] overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]"
   dir="ltr"
 >
 
