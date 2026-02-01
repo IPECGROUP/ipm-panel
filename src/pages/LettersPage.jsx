@@ -353,7 +353,15 @@ function formatBytes(n) {
   return `${Math.round(v * 10) / 10} ${units[i]}`;
 }
 
+
 export default function LettersPage() {
+  const filterTagIds = filterTagIdsByTab[filterTab] || [];
+const [filterTagIdsByTab, setFilterTagIdsByTab] = useState({
+  incoming: [],
+  outgoing: [],
+  internal: [],
+  all: [],
+});
   const tableScrollRef = useRef(null);
 const [hasYScroll, setHasYScroll] = useState(false);
   const API_BASE = String(import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
@@ -457,6 +465,16 @@ const unitOptions = useMemo(() => {
 const ORG_UNITS_CACHE_KEY = "org_structure_my_units_v1";
 
 
+useEffect(() => {
+  (async () => {
+    try {
+      const r = await api("/letters/prefs");
+      const p = r?.prefs;
+      const pinned = Array.isArray(p?.all_tag_ids) ? p.all_tag_ids : [];
+      setFilterTagPinnedIds(pinned.map(String));
+    } catch {}
+  })();
+}, []);
 
 useEffect(() => {
   let mounted = true;
@@ -533,7 +551,6 @@ const resolveFileUrl = (u) => {
   const [filterQuick, setFilterQuick] = useState(""); // week|2w|1m|3m|6m
   const [filterFromDate, setFilterFromDate] = useState("");
   const [filterToDate, setFilterToDate] = useState("");
-  const [filterTagIds, setFilterTagIds] = useState([]);
   const [filterSubject, setFilterSubject] = useState("");
   const [filterOrg, setFilterOrg] = useState("");
   const [filterLetterNo, setFilterLetterNo] = useState("");
@@ -994,10 +1011,14 @@ const normalizeIdList = (arr) => {
   }
   return out;
 };
-
 const savePinnedFilterTags = async (ids) => {
-  const clean = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
-  await patchLetterPrefs({ all_tag_ids: clean });
+  try {
+    await api("/letters/prefs", {
+      method: "PATCH",
+      body: JSON.stringify({ all_tag_ids: ids }),
+      headers: { "content-type": "application/json" },
+    });
+  } catch {}
 };
 
 const activeFilterLsKey = () => `letters_filter_active_v1:u${String(user?.id || "0")}`;
@@ -1107,16 +1128,18 @@ const mergePinnedFilterTags = (ids) => {
   });
 };
 
-  const resetAllFilters = () => {
-  setFilterQuick("");
-  setFilterFromDate("");
-  setFilterToDate("");
-  setFilterTagIds([]);
-  saveActiveFilterTags([]); // ✅
+const resetAllFilters = () => {
   setFilterSubject("");
   setFilterOrg("");
   setFilterLetterNo("");
+  setFilterQuick("");
+  setFilterFromDate("");
+  setFilterToDate("");
+
+  // فقط active های همه تب‌ها پاک شود:
+  setFilterTagIdsByTab({ incoming: [], outgoing: [], internal: [], all: [] });
 };
+
 
   // ===== Table selection + pagination =====
   const [selectedIds, setSelectedIds] = useState(() => new Set());
@@ -1532,12 +1555,13 @@ const projectsTopOnly = useMemo(() => {
 };
 
 const toggleFilterTag = (id) => {
-  const sid = String(id || "").trim();
+  const sid = String(id || "");
   if (!sid) return;
 
-  setFilterTagIds((prev) => {
-    const cur = Array.isArray(prev) ? prev.map(String) : [];
-    return cur.includes(sid) ? cur.filter((x) => x !== sid) : [...cur, sid];
+  setFilterTagIdsByTab((prev) => {
+    const cur = Array.isArray(prev?.[filterTab]) ? prev[filterTab].map(String) : [];
+    const next = cur.includes(sid) ? cur.filter((x) => x !== sid) : [...cur, sid];
+    return { ...prev, [filterTab]: next };
   });
 };
 
@@ -2502,7 +2526,10 @@ const applyPickedTags = () => {
     savePinnedFilterTags(ids);
 
     // ✅ اگر برچسبی از نوار حذف شد، از فیلتر فعال هم حذف شود تا فیلتر مخفی نماند
-    setFilterTagIds((prev) => (Array.isArray(prev) ? prev.map(String) : []).filter((x) => ids.includes(String(x))));
+setFilterTagIdsByTab((prev) => {
+  const cur = Array.isArray(prev?.[filterTab]) ? prev[filterTab].map(String) : [];
+  return { ...prev, [filterTab]: cur.filter((x) => ids.includes(String(x))) };
+});
    } else {
     // ✅ همیشه روی همون تبِ فرم که بازه اعمال کن
     setFormTagsAndPersist(formKind, ids);
@@ -3525,46 +3552,36 @@ useEffect(() => {
   <div className="w-full min-w-0 flex flex-wrap items-center gap-2">
 
     {(() => {
-      const scope = "letters";
-      const selectedIds = formSelectedTagIds;
-      const pool = Array.isArray(tagsByScope?.[scope]) ? tagsByScope[scope] : [];
-      const selSet = new Set((Array.isArray(selectedIds) ? selectedIds : []).map(String));
-      const selectedObjs = pool.filter((t) => selSet.has(String(t?.id)));
-      const latest = pool
-        .slice()
-        .sort((a, b) => Number(b?.id) - Number(a?.id))
-        .filter((t) => !selSet.has(String(t?.id)))
-        .slice(0, 14);
+  const scope = "letters";
+  const selectedIds = Array.isArray(formSelectedTagIds) ? formSelectedTagIds : [];
+  const pool = Array.isArray(tagsByScope?.[scope]) ? tagsByScope[scope] : [];
 
-      const merged = [...selectedObjs, ...latest];
-      const seen = new Set();
+  const selSet = new Set(selectedIds.map(String));
 
-      return merged
-        .filter((t) => {
-          const id = String(t?.id ?? "").trim();
-          if (!id || seen.has(id)) return false;
-          seen.add(id);
-          return true;
-        })
-        .map((t) => {
-          const id = String(t?.id);
-          const label = tagLabelOf(t);
-          const active = selSet.has(id);
+  // ✅ فقط آیتم‌های انتخاب‌شده
+  const selectedObjs = pool.filter((t) => selSet.has(String(t?.id)));
 
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => toggleTag(formKind, id)}
-              className={(active ? selectedTagChipCls : chipCls) + " shrink-0"}
-              title={label}
-              aria-label={label}
-            >
-              <span className="truncate max-w-[220px]">{label}</span>
-            </button>
-          );
-        });
-    })()}
+  // ✅ اگر چیزی انتخاب نشده، هیچی نشون نده
+  if (selectedObjs.length === 0) return null;
+
+  return selectedObjs.map((t) => {
+    const id = String(t?.id);
+    const label = tagLabelOf(t);
+
+    return (
+      <button
+        key={id}
+        type="button"
+        onClick={() => toggleTag(formKind, id)} // با کلیک دوباره حذف میشه
+        className={selectedTagChipCls + " shrink-0"}
+        title={label}
+        aria-label={label}
+      >
+        <span className="truncate max-w-[220px]">{label}</span>
+      </button>
+    );
+  });
+})()}
 
     {/* افزودن برچسب */}
     <button
