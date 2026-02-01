@@ -356,16 +356,16 @@ function formatBytes(n) {
 
 export default function LettersPage() {
 
-const [filterTagIdsByTab, setFilterTagIdsByTab] = useState({
-  incoming: [],
-  outgoing: [],
-  internal: [],
-  all: [],
-});
+ const [filterTab, setFilterTab] = useState("all"); // اول این
 
-// ✅ حتماً بعد از دو state بالا
-const filterTagIds = filterTagIdsByTab[filterTab] || [];
+  const [filterTagIdsByTab, setFilterTagIdsByTab] = useState({
+    incoming: [],
+    outgoing: [],
+    internal: [],
+    all: [],
+  }); // بعد این
 
+  const filterTagIds = filterTagIdsByTab[filterTab] || []; // بعد این
   const tableScrollRef = useRef(null);
 const [hasYScroll, setHasYScroll] = useState(false);
   const API_BASE = String(import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
@@ -413,7 +413,6 @@ async function patchLetterPrefs(patch) {
   }, []);
 
   const [formOpen, setFormOpen] = useState(false);
-  const [filterTab, setFilterTab] = useState("all"); // فقط فیلتر جدول
 const [formKind, setFormKind] = useState("incoming"); // نوع نامه داخل فرم: وارده/صادره/داخلی
 
   // ✅ edit state
