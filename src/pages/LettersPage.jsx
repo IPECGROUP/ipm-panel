@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider";
+import { useLayoutEffect } from "react";
 
 
 const TAB_ACTIVE_BG = {
@@ -10,6 +11,8 @@ const TAB_ACTIVE_BG = {
   outgoing: "#8BAE66",
   internal: "#FF8040",
 };
+const tableScrollRef = useRef(null);
+const [hasYScroll, setHasYScroll] = useState(false);
 
 const LETTERS_CACHE_KEY = "letters_mine_cache_v1";
 const LETTERS_CACHE_TTL = 1000 * 60 * 10; // 10 دقیقه
@@ -454,6 +457,19 @@ const unitOptions = useMemo(() => {
 }, [unitsAll, myUnitsFromUser]);
 
 const ORG_UNITS_CACHE_KEY = "org_structure_my_units_v1";
+
+useLayoutEffect(() => {
+  const el = tableScrollRef.current;
+  if (!el) return;
+
+  const update = () => setHasYScroll(el.scrollHeight > el.clientHeight);
+
+  update();
+  const ro = new ResizeObserver(update);
+  ro.observe(el);
+
+  return () => ro.disconnect();
+}, [pageItems.length, rowsPerPage]);
 
 useEffect(() => {
   let mounted = true;
@@ -3674,10 +3690,15 @@ useEffect(() => {
           {/* Table */}
           <div className="mt-5">
             <div className={tableWrapCls}>
-              <div
-    className="relative h-[55vh] overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]"
-
+    <div
+  ref={tableScrollRef}
   dir="ltr"
+  className={
+    "relative max-h-[55vh] overflow-y-auto overflow-x-hidden " +
+    "pl-3 " +                 // ✅ همیشه از چپ کمی فاصله بده (برای آیکن‌ها)
+    (hasYScroll ? "pr-2" : "pr-0") + // ✅ فقط وقتی اسکرول هست از راست فاصله بگیره
+    " pb-0"
+  }
 >
 
                <table
@@ -3734,7 +3755,7 @@ useEffect(() => {
         شرکت/سازمان
       </th>
 
-      <th className="w-28 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+      <th className="w-28 !py-2 pl-6 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
         اقدامات
       </th>
     </tr>
@@ -3831,7 +3852,7 @@ useEffect(() => {
               <span className="block truncate mx-auto">{orgOf(l) || "—"}</span>
             </td>
 
-            <td className={"px-3 " + divider}>
+            <td className={"px-3 pl-6 " + divider}>
               <div className="inline-flex items-center justify-center gap-2">
                 <button type="button" onClick={() => openView(l)} className={iconBtnCls} aria-label="نمایش" title="نمایش">
                   <img src="/images/icons/namayeshname.svg" alt="" className="w-5 h-5 dark:invert" />
