@@ -642,18 +642,7 @@ const [classification, setClassification] = useState("عادی");
   const [myLetters, setMyLetters] = useState([]);
   const [relatedOpen, setRelatedOpen] = useState(false);
 const [relatedQuery, setRelatedQuery] = useState("");
-useLayoutEffect(() => {
-  const el = tableScrollRef.current;
-  if (!el) return;
 
-  const update = () => setHasYScroll(el.scrollHeight > el.clientHeight);
-
-  update();
-  const ro = new ResizeObserver(update);
-  ro.observe(el);
-
-  return () => ro.disconnect();
-}, [pageItems.length, rowsPerPage]);
 // ===== Related picker modal =====
 const [relatedPickOpen, setRelatedPickOpen] = useState(false);
 const [relatedPickQuery, setRelatedPickQuery] = useState("");
@@ -1903,7 +1892,18 @@ const isImageUrl = (url, name = "") =>
   const startIdx = safePage * rowsPerPage;
   const endIdx = Math.min(total, startIdx + rowsPerPage);
   const pageItems = filteredLetters.slice(startIdx, endIdx);
+useLayoutEffect(() => {
+  const el = tableScrollRef.current;
+  if (!el) return;
 
+  const update = () => setHasYScroll(el.scrollHeight > el.clientHeight);
+
+  update();
+  const ro = new ResizeObserver(update);
+  ro.observe(el);
+
+  return () => ro.disconnect();
+}, [pageItems.length, rowsPerPage]);
   useEffect(() => {
     if (page !== safePage) setPage(safePage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
