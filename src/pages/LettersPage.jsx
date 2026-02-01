@@ -3692,13 +3692,11 @@ useEffect(() => {
   ref={tableScrollRef}
   dir="ltr"
   className={
-    "relative max-h-[55vh] overflow-y-auto overflow-x-hidden " +
-    "pl-3 " +                 // ✅ همیشه از چپ کمی فاصله بده (برای آیکن‌ها)
-    (hasYScroll ? "pr-2" : "pr-0") + // ✅ فقط وقتی اسکرول هست از راست فاصله بگیره
-    " pb-0"
-  }
+  "relative max-h-[55vh] overflow-y-auto overflow-x-hidden " +
+  (hasYScroll ? "pr-2" : "pr-0") +
+  " pb-0"
+}
 >
-
                <table
                
   dir="rtl"
@@ -3753,7 +3751,7 @@ useEffect(() => {
         شرکت/سازمان
       </th>
 
-      <th className="w-28 !py-2 pl-6 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+      <th className="w-28 !py-2 pl-4 !pr-3 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
         اقدامات
       </th>
     </tr>
@@ -3850,7 +3848,7 @@ useEffect(() => {
               <span className="block truncate mx-auto">{orgOf(l) || "—"}</span>
             </td>
 
-            <td className={"px-3 pl-6 " + divider}>
+            <td className={"!pl-4 !pr-3 " + divider}>
               <div className="inline-flex items-center justify-center gap-2">
                 <button type="button" onClick={() => openView(l)} className={iconBtnCls} aria-label="نمایش" title="نمایش">
                   <img src="/images/icons/namayeshname.svg" alt="" className="w-5 h-5 dark:invert" />
