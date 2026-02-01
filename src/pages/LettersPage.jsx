@@ -381,20 +381,38 @@ const [hasYScroll, setHasYScroll] = useState(false);
     if (!res.ok) throw new Error(data?.error || data?.message || "request_failed");
     return data;
   }
+const prefsIdRef = useRef(null);
 
- // ===== Letter Prefs (backend) =====
-// بک‌اند تو فقط این مسیر رو دارد: /api/letters/prefs
+// ===== Letter Prefs (backend) =====
 const LETTER_PREFS_ENDPOINT = "/letters/prefs";
 
 async function fetchLetterPrefs() {
   const r = await api(LETTER_PREFS_ENDPOINT, { method: "GET" });
-  // بک‌اند: { prefs: {...} }
+
+  // ✅ اگر بک‌اند id بده، ذخیره کن
+  prefsIdRef.current = r?.prefs?.id ?? r?.id ?? prefsIdRef.current;
+
   return r?.prefs || {};
 }
 
 async function patchLetterPrefs(patch) {
-  const body = JSON.stringify(patch || {});
-  const r = await api(LETTER_PREFS_ENDPOINT, { method: "PATCH", body });
+  // ✅ اگر هنوز id نداریم، یک بار GET بزن
+  if (!prefsIdRef.current) {
+    try { await fetchLetterPrefs(); } catch {}
+  }
+
+  const bodyObj = prefsIdRef.current
+    ? { id: prefsIdRef.current, ...(patch || {}) }
+    : (patch || {});
+
+  const r = await api(LETTER_PREFS_ENDPOINT, {
+    method: "PATCH",
+    body: JSON.stringify(bodyObj),
+  });
+
+  // ✅ دوباره id را ذخیره کن
+  prefsIdRef.current = r?.prefs?.id ?? r?.id ?? prefsIdRef.current;
+
   return r?.prefs || {};
 }
 
@@ -464,18 +482,6 @@ const unitOptions = useMemo(() => {
 }, [unitsAll, myUnitsFromUser]);
 
 const ORG_UNITS_CACHE_KEY = "org_structure_my_units_v1";
-
-
-useEffect(() => {
-  (async () => {
-    try {
-      const r = await api("/letters/prefs");
-      const p = r?.prefs;
-      const pinned = Array.isArray(p?.all_tag_ids) ? p.all_tag_ids : [];
-      setFilterTagPinnedIds(pinned.map(String));
-    } catch {}
-  })();
-}, []);
 
 useEffect(() => {
   let mounted = true;
@@ -586,21 +592,18 @@ useEffect(() => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [user?.id]);
 
-
 useEffect(() => {
   if (!user?.id) return;
-  (async () => {
-    await loadActiveFilterTags(filterTab); // ✅
-    filterActiveHydratedRef.current = true;
-  })();
+  loadActiveFilterTags();                 // ✅ بدون پارامتر
+  filterActiveHydratedRef.current = true; // ✅
   // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [user?.id, filterTab]);
+}, [user?.id]);
 
 useEffect(() => {
   if (!filterActiveHydratedRef.current) return;
-  saveActiveFilterTags(filterTab, filterTagIds);
+  saveActiveFilterTags(filterTagIds);     // ✅ بدون پارامتر
   // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [filterTab, filterTagIds]);
+}, [filterTagIds]);
 
   useEffect(() => {
     if (!uploadOpen) return;
@@ -1012,32 +1015,38 @@ const normalizeIdList = (arr) => {
 };
 const savePinnedFilterTags = async (ids) => {
   try {
-    await api("/letters/prefs", {
-      method: "PATCH",
-      body: JSON.stringify({ all_tag_ids: ids }),
-      headers: { "content-type": "application/json" },
-    });
+    const clean = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
+    await patchLetterPrefs({ all_tag_ids: clean }); // ✅ با id
   } catch {}
 };
 
-const activeFilterLsKey = () => `letters_filter_active_v1:u${String(user?.id || "0")}`;
+const activeFilterLsKey = () =>
+  `letters_filter_active_global_v1:u${String(user?.id || "0")}`;
 
-const saveActiveFilterTags = (tab, ids) => {
+
+const saveActiveFilterTags = (ids) => {
   try {
     const clean = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
-    localStorage.setItem(activeFilterLsKey(tab), JSON.stringify({ t: Date.now(), ids: clean }));
+    localStorage.setItem(activeFilterLsKey(), JSON.stringify({ t: Date.now(), ids: clean }));
   } catch {}
 };
 
-const loadActiveFilterTags = (tab) => {
+const loadActiveFilterTags = () => {
   try {
-    const raw = localStorage.getItem(activeFilterLsKey(tab));
+    const raw = localStorage.getItem(activeFilterLsKey());
     const parsed = raw ? JSON.parse(raw) : null;
     const ids = normalizeIdList(parsed?.ids || []).slice(0, TAG_PREFS_LIMIT);
 
-    setFilterTagIdsByTab((prev) => ({ ...prev, [tab]: ids }));
+    // ✅ چون می‌خوای برای همه تب‌ها یکی باشه:
+    setFilterTagIdsByTab((prev) => ({
+      ...prev,
+      incoming: ids,
+      outgoing: ids,
+      internal: ids,
+      all: ids,
+    }));
   } catch {
-    setFilterTagIdsByTab((prev) => ({ ...prev, [tab]: [] }));
+    setFilterTagIdsByTab({ incoming: [], outgoing: [], internal: [], all: [] });
   }
 };
 
@@ -1555,13 +1564,21 @@ const projectsTopOnly = useMemo(() => {
 };
 
 const toggleFilterTag = (id) => {
-  const sid = String(id || "");
+  const sid = String(id || "").trim();
   if (!sid) return;
 
   setFilterTagIdsByTab((prev) => {
     const cur = Array.isArray(prev?.[filterTab]) ? prev[filterTab].map(String) : [];
     const next = cur.includes(sid) ? cur.filter((x) => x !== sid) : [...cur, sid];
-    return { ...prev, [filterTab]: next };
+
+    // ✅ همزمان روی همه تب‌ها اعمال کن
+    return {
+      ...prev,
+      incoming: next,
+      outgoing: next,
+      internal: next,
+      all: next,
+    };
   });
 };
 
