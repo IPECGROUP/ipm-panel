@@ -9,8 +9,6 @@ const TAB_ACTIVE_BG = {
   outgoing: "#8BAE66",
   internal: "#FF8040",
 };
-const tableScrollRef = useRef(null);
-const [hasYScroll, setHasYScroll] = useState(false);
 
 const LETTERS_CACHE_KEY = "letters_mine_cache_v1";
 const LETTERS_CACHE_TTL = 1000 * 60 * 10; // 10 دقیقه
@@ -356,6 +354,8 @@ function formatBytes(n) {
 }
 
 export default function LettersPage() {
+  const tableScrollRef = useRef(null);
+const [hasYScroll, setHasYScroll] = useState(false);
   const API_BASE = String(import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
   async function api(path, opt = {}) {
     const res = await fetch(API_BASE + path, {
