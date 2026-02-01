@@ -1,10 +1,8 @@
 // src/pages/LettersPage.jsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider";
-import { useLayoutEffect } from "react";
-
 
 const TAB_ACTIVE_BG = {
   incoming: "#0046FF",
