@@ -355,13 +355,17 @@ function formatBytes(n) {
 
 
 export default function LettersPage() {
-  const filterTagIds = filterTagIdsByTab[filterTab] || [];
+
 const [filterTagIdsByTab, setFilterTagIdsByTab] = useState({
   incoming: [],
   outgoing: [],
   internal: [],
   all: [],
 });
+
+// ✅ حتماً بعد از دو state بالا
+const filterTagIds = filterTagIdsByTab[filterTab] || [];
+
   const tableScrollRef = useRef(null);
 const [hasYScroll, setHasYScroll] = useState(false);
   const API_BASE = String(import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
