@@ -3712,7 +3712,7 @@ useEffect(() => {
   <col />                         {/* موضوع (باقی فضا) */}
   <col style={{ width: 144 }} />  {/* از/به */}
   <col style={{ width: 176 }} />  {/* شرکت/سازمان */}
-  <col style={{ width: 140 }} />  {/* اقدامات */}
+  <col style={{ width: 160 }} />  {/* اقدامات */}
 </colgroup>
 
   <thead>
@@ -3849,7 +3849,7 @@ useEffect(() => {
             </td>
 
             <td className={"!pl-6 !pr-3 " + divider}>
-              <div className="inline-flex items-center justify-center gap-2">
+              <div className="w-full flex items-center justify-start gap-2 pl-3">
                 <button type="button" onClick={() => openView(l)} className={iconBtnCls} aria-label="نمایش" title="نمایش">
                   <img src="/images/icons/namayeshname.svg" alt="" className="w-5 h-5 dark:invert" />
                 </button>
