@@ -355,9 +355,7 @@ function formatBytes(n) {
 
 
 export default function LettersPage() {
-
  const [filterTab, setFilterTab] = useState("all"); // اول این
-
   const [filterTagIdsByTab, setFilterTagIdsByTab] = useState({
     incoming: [],
     outgoing: [],
@@ -591,20 +589,18 @@ useEffect(() => {
 
 useEffect(() => {
   if (!user?.id) return;
-
   (async () => {
-    await loadActiveFilterTags();
+    await loadActiveFilterTags(filterTab); // ✅
     filterActiveHydratedRef.current = true;
   })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [user?.id]);
+}, [user?.id, filterTab]);
 
 useEffect(() => {
   if (!filterActiveHydratedRef.current) return;
-  saveActiveFilterTags(filterTagIds);
+  saveActiveFilterTags(filterTab, filterTagIds);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [filterTagIds]);
-
+}, [filterTab, filterTagIds]);
 
   useEffect(() => {
     if (!uploadOpen) return;
@@ -1026,21 +1022,22 @@ const savePinnedFilterTags = async (ids) => {
 
 const activeFilterLsKey = () => `letters_filter_active_v1:u${String(user?.id || "0")}`;
 
-const saveActiveFilterTags = (ids) => {
+const saveActiveFilterTags = (tab, ids) => {
   try {
     const clean = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
-    localStorage.setItem(activeFilterLsKey(), JSON.stringify({ t: Date.now(), ids: clean }));
+    localStorage.setItem(activeFilterLsKey(tab), JSON.stringify({ t: Date.now(), ids: clean }));
   } catch {}
 };
 
-const loadActiveFilterTags = () => {
+const loadActiveFilterTags = (tab) => {
   try {
-    const raw = localStorage.getItem(activeFilterLsKey());
+    const raw = localStorage.getItem(activeFilterLsKey(tab));
     const parsed = raw ? JSON.parse(raw) : null;
     const ids = normalizeIdList(parsed?.ids || []).slice(0, TAG_PREFS_LIMIT);
-    setFilterTagIds(ids);
+
+    setFilterTagIdsByTab((prev) => ({ ...prev, [tab]: ids }));
   } catch {
-    setFilterTagIds([]);
+    setFilterTagIdsByTab((prev) => ({ ...prev, [tab]: [] }));
   }
 };
 
