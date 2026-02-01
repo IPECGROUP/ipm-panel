@@ -456,18 +456,7 @@ const unitOptions = useMemo(() => {
 
 const ORG_UNITS_CACHE_KEY = "org_structure_my_units_v1";
 
-useLayoutEffect(() => {
-  const el = tableScrollRef.current;
-  if (!el) return;
 
-  const update = () => setHasYScroll(el.scrollHeight > el.clientHeight);
-
-  update();
-  const ro = new ResizeObserver(update);
-  ro.observe(el);
-
-  return () => ro.disconnect();
-}, [pageItems.length, rowsPerPage]);
 
 useEffect(() => {
   let mounted = true;
@@ -653,7 +642,18 @@ const [classification, setClassification] = useState("عادی");
   const [myLetters, setMyLetters] = useState([]);
   const [relatedOpen, setRelatedOpen] = useState(false);
 const [relatedQuery, setRelatedQuery] = useState("");
+useLayoutEffect(() => {
+  const el = tableScrollRef.current;
+  if (!el) return;
 
+  const update = () => setHasYScroll(el.scrollHeight > el.clientHeight);
+
+  update();
+  const ro = new ResizeObserver(update);
+  ro.observe(el);
+
+  return () => ro.disconnect();
+}, [pageItems.length, rowsPerPage]);
 // ===== Related picker modal =====
 const [relatedPickOpen, setRelatedPickOpen] = useState(false);
 const [relatedPickQuery, setRelatedPickQuery] = useState("");
