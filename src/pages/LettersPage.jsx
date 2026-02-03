@@ -3381,24 +3381,24 @@ useEffect(() => {
     <div className="shrink-0">
       <div className={labelCls}>&nbsp;</div> {/* هم‌تراز با لیبل بالا */}
       <button
-        type="button"
-        onClick={() => openUpload(formKind)}
-        className={uploadTriggerCls + " h-10 w-auto whitespace-nowrap"}
-        title={formKind === "internal" ? "بارگذاری سند" : "بارگذاری اسناد"}
-      >
-        <img
-          src="/images/icons/upload.svg"
-          alt=""
-          className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
-        />
-        <span>{formKind === "internal" ? "بارگذاری سند" : "بارگذاری اسناد"}</span>
+  type="button"
+  onClick={() => openUpload(formKind)}
+  className={uploadTriggerCls + " h-10 w-auto whitespace-nowrap"}
+  title="بارگذاری اسناد"
+>
+  <img
+    src="/images/icons/upload.svg"
+    alt=""
+    className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
+  />
+  <span>بارگذاری اسناد</span>
 
-        {Array.isArray(docFilesByType?.[formKind]) && docFilesByType[formKind].length > 0 ? (
-          <span className="mr-2 text-xs opacity-80">
-            ({toFaDigits(docFilesByType[formKind].length)})
-          </span>
-        ) : null}
-      </button>
+  {Array.isArray(docFilesByType?.[formKind]) && docFilesByType[formKind].length > 0 ? (
+    <span className="mr-2 text-xs opacity-80">
+      ({toFaDigits(docFilesByType[formKind].length)})
+    </span>
+  ) : null}
+</button>
     </div>
   </div>
 </div>
@@ -4700,120 +4700,45 @@ useEffect(() => {
         >
           <div className="p-4 flex items-center justify-between">
             <div className="font-bold text-sm">
-              بارگذاری نامه{" "}
-              {uploadFor === "incoming" ? "(وارده)" : uploadFor === "outgoing" ? "(صادره)" : "(داخلی)"}
-            </div>
+  بارگذاری اسناد{" "}
+  {uploadFor === "incoming" ? "(وارده)" : uploadFor === "outgoing" ? "(صادره)" : "(داخلی)"}
+</div>
+
             <button
-              type="button"
-              onClick={closeUpload}
-              className={
-                "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
-                (theme === "dark" ? "ring-neutral-800 hover:bg-white/10 text-white" : "ring-black/15 hover:bg-black/90 bg-black text-white")
-              }
-              aria-label="بستن"
-              title="بستن"
-            >
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 6 6 18M6 6l12 12" />
-              </svg>
-            </button>
+  type="button"
+  onClick={closeUpload}
+  className={
+    "group relative h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
+    (theme === "dark"
+      ? "ring-neutral-800 hover:bg-white/10 text-white"
+      : "ring-black/15 hover:bg-black/90 bg-black text-white")
+  }
+  aria-label="تایید"
+  title="تایید"
+>
+  {/* Tooltip روی هاور */}
+  <span
+    className={
+      "pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 " +
+      "text-[11px] px-2 py-1 rounded-lg whitespace-nowrap " +
+      (theme === "dark" ? "bg-white text-black" : "bg-black text-white")
+    }
+  >
+    تایید
+  </span>
+
+  <img
+    src="/images/icons/check.svg"
+    alt=""
+    className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")}
+  />
+</button>
+
           </div>
 
           <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
 
-          <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Left: reuse uploaded */}
-            <div>
-              <div className={labelCls}>فایل‌های آپلود شده</div>
-
-              <input
-                value={pickSearch}
-                onChange={(e) => setPickSearch(e.target.value)}
-                className={inputCls}
-                type="text"
-                placeholder="جستجو بر اساس نام فایل..."
-              />
-
-              <div className={"mt-2 rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
-                <div className={"px-3 py-2 text-xs font-semibold border-b " + (theme === "dark" ? "border-white/10 text-white/80" : "border-black/10 text-neutral-700")}>
-                  همه فایل‌ها (برای استفاده مجدد)
-                </div>
-
-                <div className="p-3 space-y-2 max-h-[360px] overflow-auto">
-                  {Array.isArray(filteredUploadedAttachments) && filteredUploadedAttachments.length > 0 ? (
-                    filteredUploadedAttachments.map((a, i) => {
-                      const url = attachmentUrlOf(a);
-                      const name = attachmentNameOf(a) || a?.name || `فایل ${i + 1}`;
-                      const already = currentDocFiles.some((x) => String(x?.url || "") === String(url));
-                      const hintNo = String(a?._letterNo || "").trim();
-
-                      return (
-                        <div
-                          key={String(i) + "_" + String(url)}
-                          className={
-                            "rounded-xl border px-3 py-2 flex items-center justify-between gap-3 " +
-                            (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
-                          }
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="text-[13px] font-semibold truncate">{name}</div>
-                            <div className={theme === "dark" ? "text-white/60 text-[11px] mt-1" : "text-neutral-600 text-[11px] mt-1"}>
-                              {url ? "آدرس فایل موجود است" : "—"}
-                              {hintNo ? <span> — نامه: {toFaDigits(hintNo)}</span> : null}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1">
-
-                            <a
-                              href={url || "#"}
-                              target="_blank"
-                              rel="noreferrer"
-                              className={
-                                "h-9 px-3 rounded-xl border transition text-sm inline-flex items-center justify-center " +
-                                (url
-                                  ? theme === "dark"
-                                    ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
-                                    : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]"
-                                  : theme === "dark"
-                                  ? "border-white/10 bg-white/5 text-white/40 pointer-events-none"
-                                  : "border-black/10 bg-white text-black/40 pointer-events-none")
-                              }
-                              title="باز کردن"
-                            >
-                              باز کردن
-                            </a>
-
-                            <button
-                              type="button"
-                              onClick={() => addExistingAttachmentToCurrent(uploadFor, a)}
-                              disabled={already}
-                              className={
-                                "h-9 px-3 rounded-xl border transition text-sm inline-flex items-center justify-center " +
-                                (already
-                                  ? theme === "dark"
-                                    ? "border-white/10 bg-white/5 text-white/40 cursor-not-allowed"
-                                    : "border-black/10 bg-black/[0.03] text-black/40 cursor-not-allowed"
-                                  : theme === "dark"
-                                  ? "border-white/15 bg-white text-black hover:bg-white/90"
-                                  : "border-black/15 bg-black text-white hover:bg-black/90")
-                              }
-                              title={already ? "اضافه شده" : "افزودن"}
-                            >
-                              {already ? "اضافه شد" : "افزودن"}
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="py-8 text-center text-black/60 dark:text-white/50 text-sm">فایلی یافت نشد.</div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-
+          <div className="p-4 grid grid-cols-1 gap-4">
                   {/* Right: pick new + selected list */}
                   <div>
                     <div className={labelCls}>فایل‌های انتخاب‌شده</div>
@@ -4836,7 +4761,9 @@ useEffect(() => {
                               }
                             >
                               <div className="min-w-0 flex-1">
-                                <div className="text-[13px] font-semibold truncate">{f.name}</div>
+                                <div className="text-[13px] font-semibold whitespace-normal break-words leading-6">
+                                  {f.name}
+                                </div>
                                 <div className={theme === "dark" ? "text-white/60 text-[11px] mt-1" : "text-neutral-600 text-[11px] mt-1"}>
                                   {formatBytes(f.size)} {f.url ? "— الصاق شده" : f.status === "uploading" ? `— ${toFaDigits(f.progress)}٪` : ""}
                                 </div>
