@@ -816,7 +816,12 @@ const isConfidentialLetter = (l) => {
 }, [myLetters]);
 const subjectOf = (l) => String(l?.subject ?? l?.title ?? "");
 const orgOf = (l) => String(l?.org_name ?? l?.org ?? l?.organization ?? l?.company ?? "");
-
+const fromToOf = (l) => {
+    const a = String(l?.from_name ?? l?.from ?? "");
+    const b = String(l?.to_name ?? l?.to ?? "");
+    const s = `${a}${a && b ? " / " : ""}${b}`.trim();
+    return s || "—";
+  };
 const relatedPickIndex = useMemo(() => {
   if (!relatedPickOpen) return [];
 
@@ -1883,12 +1888,7 @@ const secretariatLongText = (ymd) => {
     e.preventDefault();
     e.stopPropagation();
   };
-  const fromToOf = (l) => {
-    const a = String(l?.from_name ?? l?.from ?? "");
-    const b = String(l?.to_name ?? l?.to ?? "");
-    const s = `${a}${a && b ? " / " : ""}${b}`.trim();
-    return s || "—";
-  };
+  
 
 
   const categoryOf = (l) => String(l?.category ?? l?.category_name ?? l?.categoryTitle ?? "");
