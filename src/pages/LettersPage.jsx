@@ -3551,31 +3551,32 @@ useEffect(() => {
         <div className="p-4 flex items-center justify-end gap-2">
           
 
-          <button
-            type="button"
-            onClick={() => {
-              const clean = (Array.isArray(relatedPickIds) ? relatedPickIds : [])
-                .map((x) => String(x || "").trim())
-                .filter(Boolean);
+         <button
+  type="button"
+  onClick={closeUpload}
+  className={
+    "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
+    (theme === "dark"
+      ? "ring-neutral-800 hover:bg-white/10 text-white"
+      : "ring-black/15 hover:bg-black/90 bg-black text-white")
+  }
+  aria-label="بستن"
+  title="بستن"
+>
+  <svg
+    viewBox="0 0 24 24"
+    width="20"
+    height="20"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M18 6 6 18M6 6l12 12" />
+  </svg>
+</button>
 
-              setReturnToIds(clean);
-              closeRelatedPicker();
-            }}
-            className={
-              "h-10 w-10 rounded-xl border transition inline-flex items-center justify-center " +
-              (theme === "dark"
-                ? "border-white/15 bg-white text-black hover:bg-white/90"
-                : "border-black/10 bg-black text-white hover:bg-black/90")
-            }
-            aria-label="تایید"
-            title="تایید"
-          >
-            <img
-              src="/images/icons/check.svg"
-              alt=""
-              className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")}
-            />
-          </button>
         </div>
       </div>
     </div>,
@@ -4853,38 +4854,19 @@ useEffect(() => {
                             />
                           </div>
                         </div>
-<div className="pt-2 flex items-center justify-end">
-  <button
-    type="button"
-    onClick={closeUpload}
-    className={
-      "group relative h-10 w-10 rounded-xl border transition inline-flex items-center justify-center " +
-      (theme === "dark"
-        ? "border-white/15 bg-white text-black hover:bg-white/90"
-        : "border-black/10 bg-black text-white hover:bg-black/90")
-    }
-    aria-label="تایید"
-    title="تایید"
-  >
-    {/* Tooltip روی هاور */}
-    <span
-      className={
-        "pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 " +
-        "text-[11px] px-2 py-1 rounded-lg whitespace-nowrap " +
-        (theme === "dark" ? "bg-white text-black" : "bg-black text-white")
-      }
-    >
-      تایید
-    </span>
 
-    <img
-      src="/images/icons/check.svg"
-      alt=""
-      className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")}
-    />
-  </button>
-</div>
-
+                        <div className="pt-2 flex items-center justify-end">
+                          <button
+                            type="button"
+                            onClick={closeUpload}
+                            className={
+                              "h-10 px-4 rounded-xl border transition " +
+                              (theme === "dark" ? "border-white/15 hover:bg-white/10" : "border-black/10 hover:bg-black/[0.04]")
+                            }
+                          >
+                            بستن
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
