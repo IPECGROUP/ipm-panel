@@ -355,7 +355,6 @@ function formatBytes(n) {
 
 
 export default function LettersPage() {
-
   const { user } = useAuth();
 const userId = String(user?.id || "0");
  const [filterTab, setFilterTab] = useState("all"); // اول این
@@ -965,22 +964,39 @@ const saveFormTagPrefs = async (which, ids) => {
   else await patchLetterPrefs({ internal_tag_ids: clean });
 };
 
-const loadFormTagPrefs = async (which) => {
+const loadFormTagPrefs = async (_which) => {
   const p = await fetchLetterPrefs();
 
-  const ids =
-    which === "incoming"
-      ? normalizeIdList(p?.incoming_tag_ids || [])
-      : which === "outgoing"
-      ? normalizeIdList(p?.outgoing_tag_ids || [])
-      : normalizeIdList(p?.internal_tag_ids || []);
+  // ✅ یک منبع واحد برای فرم: incoming_tag_ids (یا هرکدوم که می‌خوای)
+  const ids = normalizeIdList(p?.incoming_tag_ids || []).slice(0, TAG_PREFS_LIMIT);
 
-  const cut = ids.slice(0, TAG_PREFS_LIMIT);
-  setFormTagPrefs((prev) => ({ ...prev, [which]: cut }));
-  return cut;
+  // ✅ هم UI هر سه تب یکی شود
+  setIncomingTagIds(ids);
+  setOutgoingTagIds(ids);
+  setInternalTagIds(ids);
+
+  // ✅ هم formTagPrefs هر سه کلید یکی شود (برای هیدرات شدن فرم)
+  setFormTagPrefs((prev) => ({
+    ...prev,
+    incoming: ids,
+    outgoing: ids,
+    internal: ids,
+  }));
+
+  return ids;
 };
+
 const setFormTagsOnly = (which, ids) => {
   const next = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
+
+  if (which === "all") {
+    setIncomingTagIds(next);
+    setOutgoingTagIds(next);
+    setInternalTagIds(next);
+
+    setFormTagPrefs((p) => ({ ...p, incoming: next, outgoing: next, internal: next }));
+    return;
+  }
 
   if (which === "incoming") setIncomingTagIds(next);
   else if (which === "outgoing") setOutgoingTagIds(next);
@@ -989,9 +1005,22 @@ const setFormTagsOnly = (which, ids) => {
   setFormTagPrefs((p) => ({ ...p, [which]: next }));
 };
 
-
 const setFormTagsAndPersist = (which, ids) => {
   const next = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
+
+  if (which === "all") {
+    setIncomingTagIds(next);
+    setOutgoingTagIds(next);
+    setInternalTagIds(next);
+
+    setFormTagPrefs((p) => ({ ...p, incoming: next, outgoing: next, internal: next }));
+
+    // ✅ هر سه کلید در بک‌اند ذخیره شود
+    saveFormTagPrefs("incoming", next);
+    saveFormTagPrefs("outgoing", next);
+    saveFormTagPrefs("internal", next);
+    return;
+  }
 
   if (which === "incoming") setIncomingTagIds(next);
   else if (which === "outgoing") setOutgoingTagIds(next);
@@ -1083,9 +1112,7 @@ useEffect(() => {
 
 useEffect(() => {
   if (!user?.id) return;
-  loadFormTagPrefs("incoming");
-  loadFormTagPrefs("outgoing");
-  loadFormTagPrefs("internal");
+  loadFormTagPrefs("incoming"); // ✅ فقط یک بار
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [user?.id]);
 
@@ -1102,10 +1129,8 @@ useEffect(() => {
   // فقط یک بار برای هر تب فرم
   if (formTagsHydratedRef.current[which]) return;
 
-  const pref = Array.isArray(formTagPrefs?.[which]) ? formTagPrefs[which] : [];
-
-  // ✅ فقط state رو از prefs پر کن، ذخیره نکن
-  setFormTagsOnly(which, pref);
+ const pref = Array.isArray(formTagPrefs?.incoming) ? formTagPrefs.incoming : [];
+setFormTagsOnly("all", pref);
 
   formTagsHydratedRef.current[which] = true;
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1550,19 +1575,28 @@ const projectsTopOnly = useMemo(() => {
   return out;
 }, [projectsDesc]);
 
- const toggleTag = (which, id) => {
+const setFormTagsAllAndPersist = (ids) => {
+  const next = normalizeIdList(ids);
+
+  // ✅ UI: هر سه تب فرم یکی
+  setIncomingTagIds(next);
+  setOutgoingTagIds(next);
+  setInternalTagIds(next);
+
+  // ✅ Persist: هر سه تب ذخیره شود تا بعد Refresh هم بماند
+  saveFormTagPrefs("incoming", next);
+  saveFormTagPrefs("outgoing", next);
+  saveFormTagPrefs("internal", next);
+};
+
+ const toggleTag = (_which, id) => {
   const sid = String(id || "").trim();
   if (!sid) return;
 
-  const cur =
-    which === "incoming" ? incomingTagIds :
-    which === "outgoing" ? outgoingTagIds :
-    internalTagIds;
-
-  const base = Array.isArray(cur) ? cur.map(String) : [];
+  const base = Array.isArray(formSelectedTagIds) ? formSelectedTagIds.map(String) : [];
   const next = base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
 
-  setFormTagsAndPersist(which, next); // ✅ هم set هم save
+  setFormTagsAllAndPersist(next);
 };
 
 const toggleFilterTag = (id) => {
@@ -2543,7 +2577,7 @@ setFilterTagIds((prev) => {
 });
    } else {
     // ✅ همیشه روی همون تبِ فرم که بازه اعمال کن
-    setFormTagsAndPersist(formKind, ids);
+      setFormTagsAllAndPersist(ids);
   }
 
   setTagPickOpen(false);
@@ -3583,7 +3617,7 @@ useEffect(() => {
       <button
         key={id}
         type="button"
-        onClick={() => toggleTag(formKind, id)} // با کلیک دوباره حذف میشه
+        onClick={() => toggleTag("all", id)} // با کلیک دوباره حذف میشه
         className={selectedTagChipCls + " shrink-0"}
         title={label}
         aria-label={label}
