@@ -1112,6 +1112,7 @@ const loadPinnedFilterTags = async () => {
   }
 };
 
+
 useEffect(() => {
   if (!user?.id) return;
   loadPinnedFilterTags();
