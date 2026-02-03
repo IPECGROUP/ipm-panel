@@ -355,6 +355,10 @@ function formatBytes(n) {
 
 
 export default function LettersPage() {
+// ===== Related picker modal =====
+const [relatedPickOpen, setRelatedPickOpen] = useState(false);
+const [relatedPickQuery, setRelatedPickQuery] = useState("");
+const [relatedPickIds, setRelatedPickIds] = useState([]);
 
   const [relatedPickQueryDebounced, setRelatedPickQueryDebounced] = useState("");
 
@@ -689,12 +693,6 @@ const [classification, setClassification] = useState("عادی");
   const [relatedOpen, setRelatedOpen] = useState(false);
 const [relatedQuery, setRelatedQuery] = useState("");
 
-// ===== Related picker modal =====
-const [relatedPickOpen, setRelatedPickOpen] = useState(false);
-const [relatedPickQuery, setRelatedPickQuery] = useState("");
-const [relatedPickIds, setRelatedPickIds] = useState([]); // انتخاب‌های موقت داخل پاپ‌آپ
-
-
 const openRelatedPicker = () => {
   setRelatedPickIds(
     (Array.isArray(relatedSelectedIds) ? relatedSelectedIds : []).map((x) => String(x))
@@ -785,6 +783,38 @@ const isConfidentialLetter = (l) => {
       l?.date ??
       ""
   ).trim();
+  const myLettersSorted = useMemo(() => {
+  const arr = Array.isArray(myLetters) ? myLetters.slice() : [];
+
+  const normYmd = (s) => {
+    const raw = String(s || "").trim();
+    const v = toEnDigits(raw);
+    const m = v.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    if (!m) return "";
+    return `${m[1]}/${pad2(m[2])}/${pad2(m[3])}`;
+  };
+
+  const dateKeyOf = (l) =>
+    normYmd(letterDateOf(l)) ||
+    normYmd(l?.secretariat_date ?? l?.secretariatDate ?? "");
+
+  arr.sort((a, b) => {
+    const ad = dateKeyOf(a);
+    const bd = dateKeyOf(b);
+    if (ad && bd && ad !== bd) return bd.localeCompare(ad); // جدیدتر اول
+    if (ad && !bd) return -1;
+    if (!ad && bd) return 1;
+
+    const ai = Number(letterIdOf(a));
+    const bi = Number(letterIdOf(b));
+    if (Number.isFinite(ai) && Number.isFinite(bi)) return bi - ai;
+    return String(letterIdOf(b)).localeCompare(String(letterIdOf(a)));
+  });
+
+  return arr;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [myLetters]);
+
 const relatedPickIndex = useMemo(() => {
   if (!relatedPickOpen) return [];
 
@@ -823,38 +853,6 @@ const relatedPickList = useMemo(() => {
   }
   return out;
 }, [relatedPickIndex, relatedPickQueryDebounced, relatedPickOpen]);
-
-const myLettersSorted = useMemo(() => {
-  const arr = Array.isArray(myLetters) ? myLetters.slice() : [];
-
-  const normYmd = (s) => {
-    const raw = String(s || "").trim();
-    const v = toEnDigits(raw);
-    const m = v.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
-    if (!m) return "";
-    return `${m[1]}/${pad2(m[2])}/${pad2(m[3])}`;
-  };
-
-  const dateKeyOf = (l) =>
-    normYmd(letterDateOf(l)) ||
-    normYmd(l?.secretariat_date ?? l?.secretariatDate ?? "");
-
-  arr.sort((a, b) => {
-    const ad = dateKeyOf(a);
-    const bd = dateKeyOf(b);
-    if (ad && bd && ad !== bd) return bd.localeCompare(ad); // جدیدتر اول
-    if (ad && !bd) return -1;
-    if (!ad && bd) return 1;
-
-    const ai = Number(letterIdOf(a));
-    const bi = Number(letterIdOf(b));
-    if (Number.isFinite(ai) && Number.isFinite(bi)) return bi - ai;
-    return String(letterIdOf(b)).localeCompare(String(letterIdOf(a)));
-  });
-
-  return arr;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [myLetters]);
 
   const orgOf = (l) => String(l?.org_name ?? l?.org ?? l?.organization ?? l?.company ?? "");
   const subjectOf = (l) => String(l?.subject ?? l?.title ?? "");
