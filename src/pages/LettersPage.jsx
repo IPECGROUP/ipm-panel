@@ -355,6 +355,8 @@ function formatBytes(n) {
 
 
 export default function LettersPage() {
+
+  const [filterQuery, setFilterQuery] = useState("");
   const { user } = useAuth();
 const userId = String(user?.id || "0");
  const [filterTab, setFilterTab] = useState("all"); // اول این
@@ -575,9 +577,6 @@ const resolveFileUrl = (u) => {
   const [filterQuick, setFilterQuick] = useState(""); // week|2w|1m|3m|6m
   const [filterFromDate, setFilterFromDate] = useState("");
   const [filterToDate, setFilterToDate] = useState("");
-  const [filterSubject, setFilterSubject] = useState("");
-  const [filterOrg, setFilterOrg] = useState("");
-  const [filterLetterNo, setFilterLetterNo] = useState("");
   const filterActiveHydratedRef = useRef(false);
   const prefsHydratedRef = useRef(false);
 
@@ -1216,6 +1215,7 @@ const resetAllFilters = () => {
   setFilterQuick("");
   setFilterFromDate("");
   setFilterToDate("");
+  setFilterQuery("");
   // فقط active های همه تب‌ها پاک شود:
   setFilterTagIds([]);
 };
@@ -1947,57 +1947,64 @@ const isImageUrl = (url, name = "") =>
   }, [filterQuick]);
 
   const filteredLetters = useMemo(() => {
-  // ✅ همیشه جدیدترین نامه‌ها اول
   const arr = Array.isArray(myLettersSorted) ? myLettersSorted : [];
 
-  const sSub = String(filterSubject || "").trim().toLowerCase();
-  const sOrg = String(filterOrg || "").trim().toLowerCase();
-  const sNo = String(filterLetterNo || "").trim().toLowerCase();
+  const qRaw = String(filterQuery || "").trim();
+  const q = toEnDigits(qRaw).toLowerCase();
+
   const fromY = normalizeYmd(filterFromDate);
   const toY = normalizeYmd(filterToDate);
 
   return arr.filter((l) => {
     const kind = letterKindOf(l);
 
+    // ✅ تب
     if (filterTab !== "all") {
       if (kind !== filterTab) return false;
     }
 
-    if (sSub) {
-      const x = String(subjectOf(l) || "").toLowerCase();
-      if (!x.includes(sSub)) return false;
-    }
-
-    if (sOrg) {
-      const x = String(orgOf(l) || "").toLowerCase();
-      if (!x.includes(sOrg)) return false;
-    }
-
-    if (sNo) {
-      const x = String(letterNoOf(l) || "").toLowerCase();
-      if (!x.includes(sNo)) return false;
-    }
-
+    // ✅ تگ‌ها
     if (filterTagIds.length > 0) {
-      const letterTags = Array.isArray(l?.tag_ids) ? l.tag_ids : Array.isArray(l?.tagIds) ? l.tagIds : [];
+      const letterTags = Array.isArray(l?.tag_ids)
+        ? l.tag_ids
+        : Array.isArray(l?.tagIds)
+        ? l.tagIds
+        : [];
       const set = new Set(letterTags.map((x) => String(x)));
       const ok = filterTagIds.every((x) => set.has(String(x)));
       if (!ok) return false;
     }
 
+    // ✅ تاریخ
     const d = normalizeYmd(letterDateOf(l));
     if ((fromY || toY) && !d) return false;
     if (fromY && d < fromY) return false;
     if (toY && d > toY) return false;
 
+    // ✅ سرچ یکپارچه (موضوع/سازمان/شماره/آیدی)
+    if (q) {
+      const subject = toEnDigits(String(subjectOf(l) || "")).toLowerCase();
+      const org = toEnDigits(String(orgOf(l) || "")).toLowerCase();
+      const no = toEnDigits(String(letterNoOf(l) || "")).toLowerCase();
+      const id = toEnDigits(String(letterIdOf(l) || "")).toLowerCase();
+
+      const ok =
+        subject.includes(q) ||
+        org.includes(q) ||
+        no.includes(q) ||
+        id.includes(q);
+
+      if (!ok) return false;
+    }
+
     return true;
   });
-}, [myLettersSorted, filterTab, filterSubject, filterOrg, filterLetterNo, filterTagIds, filterFromDate, filterToDate]);
+}, [myLettersSorted, filterTab, filterQuery, filterTagIds, filterFromDate, filterToDate]);
 
   useEffect(() => {
     setSelectedIds(new Set());
     setPage(0);
-  }, [filterTab, rowsPerPage, filterQuick, filterFromDate, filterToDate, filterTagIds, filterSubject, filterOrg, filterLetterNo]);
+}, [filterTab, rowsPerPage, filterQuick, filterFromDate, filterToDate, filterTagIds, filterQuery]);
 
   const total = filteredLetters.length;
   const pageCount = Math.max(1, Math.ceil(total / Math.max(1, rowsPerPage)));
@@ -2801,40 +2808,16 @@ useEffect(() => {
                   })}
                 </div>
 
-                <div className="min-w-[180px] flex-1">
-
-                  <div className={labelCls}>موضوع</div>
-                  <input
-                    value={filterSubject}
-                    onChange={(e) => setFilterSubject(e.target.value)}
-                    className={inputCls}
-                    type="text"
-                    placeholder="جستجو بر اساس موضوع"
-                  />
-                </div>
-
-                <div className="min-w-[180px] flex-1">
-
-                  <div className={labelCls}>شرکت/سازمان</div>
-                  <input
-                    value={filterOrg}
-                    onChange={(e) => setFilterOrg(e.target.value)}
-                    className={inputCls}
-                    type="text"
-                    placeholder="جستجو بر اساس شرکت/سازمان"
-                  />
-                </div>
-
-                <div className="min-w-[120px]">
-                  <div className={labelCls}>شماره سند</div>
-                  <input
-                    value={filterLetterNo}
-                    onChange={(e) => setFilterLetterNo(e.target.value)}
-                    className={inputCls}
-                    type="text"
-                    placeholder="جستجو شماره سند"
-                  />
-                </div>
+                <div className="min-w-[260px] flex-1">
+  <div className={labelCls}>جست و جو</div>
+  <input
+    value={filterQuery}
+    onChange={(e) => setFilterQuery(e.target.value)}
+    className={inputCls}
+    type="text"
+    placeholder="جستجو بر اساس موضوع / شرکت-سازمان / شماره سند ..."
+  />
+</div>
                 <div className="min-w-[140px]">
 
                   <div className={labelCls}>از</div>
