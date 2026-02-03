@@ -672,7 +672,7 @@ const [docClassOtherText, setDocClassOtherText] = useState("");
 const [classification, setClassification] = useState("عادی");
 
 
-  const [category, setCategory] = useState("");
+const [category, setCategory] = useState("نامه");
   const [projectId, setProjectId] = useState("");
   const [projects, setProjects] = useState([]);
 
@@ -2326,7 +2326,7 @@ const secretariatNote =
 
     const payload = {
   kind,
-  category: category || "",
+  category: String(category || "نامه").trim(),
   classification: classification || "عادی",
 
   project_id: pId && Number.isFinite(pId) ? pId : null,
@@ -3033,25 +3033,18 @@ useEffect(() => {
   <div className="shrink-0 w-[190px]">
     <div className={labelSmCls}>کلاس سند</div>
     <select
-      value={category}
-      onChange={(e) => {
-  const v = e.target.value;
+  value={category}
+  onChange={(e) => setCategory(e.target.value)}
+  className={inputSmCls}
+>
+  {([...DOC_CLASS_BASE, ...(Array.isArray(docClassExtras) ? docClassExtras : [])]).map((lab) => (
+    <option key={lab} value={lab}>{lab}</option>
+  ))}
 
-  // ✅ فقط "سایر" ذخیره شود، بدون پاپ‌آپ
-  if (v === "__other__") {
-    setCategory("سایر");
-    return;
-  }
+  {/* ✅ سایر واقعی */}
+  <option value="سایر">سایر</option>
+</select>
 
-  setCategory(v);
-}}
-      className={inputSmCls}
-    >
-      {([...DOC_CLASS_BASE, ...(Array.isArray(docClassExtras) ? docClassExtras : [])]).map((lab) => (
-        <option key={lab} value={lab}>{lab}</option>
-      ))}
-      <option value="__other__">سایر</option>
-    </select>
   </div>
 
   {/* طبقه بندی */}
