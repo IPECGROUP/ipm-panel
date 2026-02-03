@@ -356,6 +356,17 @@ function formatBytes(n) {
 
 export default function LettersPage() {
 
+  const [relatedPickQueryDebounced, setRelatedPickQueryDebounced] = useState("");
+
+useEffect(() => {
+  if (!relatedPickOpen) return;
+
+  const t = setTimeout(() => {
+    setRelatedPickQueryDebounced(relatedPickQuery);
+  }, 150);
+
+  return () => clearTimeout(t);
+}, [relatedPickQuery, relatedPickOpen]);
   const [filterQuery, setFilterQuery] = useState("");
   const { user } = useAuth();
 const userId = String(user?.id || "0");
@@ -774,6 +785,44 @@ const isConfidentialLetter = (l) => {
       l?.date ??
       ""
   ).trim();
+const relatedPickIndex = useMemo(() => {
+  if (!relatedPickOpen) return [];
+
+  const arr = Array.isArray(myLettersSorted) ? myLettersSorted : [];
+
+  return arr.map((l) => {
+    const id = String(letterIdOf(l) || "");
+    const no = String(letterNoOf(l) || "");
+    const sub = String(subjectOf(l) || "");
+    const org = String(orgOf(l) || "");
+    const f2 = typeof fromToOf === "function" ? String(fromToOf(l) || "") : "";
+
+    // ✅ یک رشته‌ی آماده برای سرچ
+    const hay = toEnDigits([id, no, sub, org, f2].join(" ")).toLowerCase();
+
+    return { l, id, hay };
+  });
+}, [myLettersSorted, relatedPickOpen]);
+const RELATED_PICK_LIMIT = 200;
+
+const relatedPickList = useMemo(() => {
+  if (!relatedPickOpen) return [];
+
+  const q = toEnDigits(String(relatedPickQueryDebounced || "").trim()).toLowerCase();
+
+  // ✅ اگر سرچ خالیه: فقط 200 تای اول (برای جلوگیری از فریز)
+  if (!q) {
+    return relatedPickIndex.slice(0, RELATED_PICK_LIMIT).map((x) => x.l);
+  }
+
+  // ✅ اگر سرچ داشت: فیلتر سریع روی hay
+  const out = [];
+  for (const x of relatedPickIndex) {
+    if (x.hay.includes(q)) out.push(x.l);
+    if (out.length >= 800) break; // (اختیاری) سقف نتایج برای جلوگیری از رندر سنگین
+  }
+  return out;
+}, [relatedPickIndex, relatedPickQueryDebounced, relatedPickOpen]);
 
 const myLettersSorted = useMemo(() => {
   const arr = Array.isArray(myLetters) ? myLetters.slice() : [];
@@ -3415,96 +3464,86 @@ useEffect(() => {
 
         {/* list */}
         <div className="max-h-[55vh] overflow-auto p-2">
-          {(() => {
-            const qRaw = String(relatedPickQuery || "").trim();
-            const qEn = toEnDigits(qRaw);
+           {(() => {
+    const list = relatedPickList; // ✅ لیست بهینه‌شده
 
-            const list = (Array.isArray(myLettersSorted) ? myLettersSorted : []).filter((l) => {
-              if (!qEn) return true;
-              const id = toEnDigits(String(letterIdOf(l) || ""));
-              const no = toEnDigits(String(letterNoOf(l) || ""));
-              const sub = toEnDigits(String(subjectOf(l) || ""));
-              const org = toEnDigits(String(orgOf(l) || ""));
-              const f2 = toEnDigits(String(fromToOf(l) || ""));
-              return (
-                id.includes(qEn) ||
-                no.includes(qEn) ||
-                sub.includes(qEn) ||
-                org.includes(qEn) ||
-                f2.includes(qEn)
-              );
-            });
+    if (!list.length) {
+      return (
+        <div className={theme === "dark" ? "text-white/60 text-sm p-4" : "text-neutral-600 text-sm p-4"}>
+          موردی پیدا نشد.
+        </div>
+      );
+    }
 
-            if (!list.length) {
-              return (
-                <div className={theme === "dark" ? "text-white/60 text-sm p-4" : "text-neutral-600 text-sm p-4"}>
-                  موردی پیدا نشد.
+    return (
+      <>
+        {/* اگر سرچ خالیه، فقط N مورد اول نمایش داده می‌شود */}
+        {!String(relatedPickQueryDebounced || "").trim() && (
+          <div className={theme === "dark" ? "text-white/50 text-xs px-3 pb-2" : "text-neutral-500 text-xs px-3 pb-2"}>
+            برای نمایش همه موارد، بخشی از شماره/موضوع/سازمان را جستجو کنید. (نمایش {toFaDigits(RELATED_PICK_LIMIT)} مورد اول)
+          </div>
+        )}
+
+        {list.map((l) => {
+          const id = String(letterIdOf(l));
+          const no = String(letterNoOf(l) || "").trim() || id;
+          const sub = String(subjectOf(l) || "").trim();
+          const dt = String(letterDateOf(l) || "").trim();
+          const checked = relatedPickIds.includes(id);
+
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => {
+                setRelatedPickIds((prev) => {
+                  const base = Array.isArray(prev) ? prev.map(String) : [];
+                  if (base.includes(id)) return base.filter((x) => x !== id);
+                  return [...base, id];
+                });
+              }}
+              className={
+                "w-full text-right px-3 py-2 rounded-xl transition flex items-center justify-between gap-3 " +
+                (theme === "dark" ? "hover:bg-white/10" : "hover:bg-black/[0.04]")
+              }
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">{toFaDigits(no)}</span>
+                  {dt ? (
+                    <span className={theme === "dark" ? "text-white/60 text-xs" : "text-neutral-600 text-xs"}>
+                      {toFaDigits(dt)}
+                    </span>
+                  ) : null}
                 </div>
-              );
-            }
 
-            return list.map((l) => {
-              const id = String(letterIdOf(l));
-              const no = String(letterNoOf(l) || "").trim() || id;
-              const sub = String(subjectOf(l) || "").trim();
-              const dt = String(letterDateOf(l) || "").trim();
-              const checked = relatedPickIds.includes(id);
+                <div className={"text-xs truncate mt-0.5 " + (theme === "dark" ? "text-white/60" : "text-neutral-600")}>
+                  {sub || "—"}
+                </div>
+              </div>
 
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => {
-                    setRelatedPickIds((prev) => {
-                      const base = Array.isArray(prev) ? prev.map(String) : [];
-                      if (base.includes(id)) return base.filter((x) => x !== id);
-                      return [...base, id];
-                    });
-                  }}
-                  className={
-                    "w-full text-right px-3 py-2 rounded-xl transition flex items-center justify-between gap-3 " +
-                    (theme === "dark" ? "hover:bg-white/10" : "hover:bg-black/[0.04]")
-                  }
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">{toFaDigits(no)}</span>
-                      {dt ? (
-                        <span className={theme === "dark" ? "text-white/60 text-xs" : "text-neutral-600 text-xs"}>
-                          {toFaDigits(dt)}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div
-                      className={
-                        "text-xs truncate mt-0.5 " +
-                        (theme === "dark" ? "text-white/60" : "text-neutral-600")
-                      }
-                    >
-                      {sub || "—"}
-                    </div>
-                  </div>
-
-                  <div
-                    className={
-                      "h-5 w-5 rounded-md border grid place-items-center shrink-0 " +
-                      (checked
-                        ? theme === "dark"
-                          ? "bg-white text-black border-white/30"
-                          : "bg-black text-white border-black/20"
-                        : theme === "dark"
-                        ? "border-white/15"
-                        : "border-black/15")
-                    }
-                    aria-label={checked ? "انتخاب شده" : "انتخاب نشده"}
-                    title={checked ? "انتخاب شده" : "انتخاب"}
-                  >
-                    {checked ? "✓" : ""}
-                  </div>
-                </button>
-              );
-            });
-          })()}
+              <div
+                className={
+                  "h-5 w-5 rounded-md border grid place-items-center shrink-0 " +
+                  (checked
+                    ? theme === "dark"
+                      ? "bg-white text-black border-white/30"
+                      : "bg-black text-white border-black/20"
+                    : theme === "dark"
+                    ? "border-white/15"
+                    : "border-black/15")
+                }
+                aria-label={checked ? "انتخاب شده" : "انتخاب نشده"}
+                title={checked ? "انتخاب شده" : "انتخاب"}
+              >
+                {checked ? "✓" : ""}
+              </div>
+            </button>
+          );
+        })}
+      </>
+    );
+  })()}
         </div>
 
         <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
