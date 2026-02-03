@@ -1132,12 +1132,6 @@ useEffect(() => {
   saveActiveFilterTags(user.id, filterTagIds);
 }, [user?.id, filterTagIds]);
 
-const loadPinnedFilterTags = async () => {
-  const p = await fetchLetterPrefs();
-  const ids = normalizeIdList(p?.all_tag_ids || []).slice(0, TAG_PREFS_LIMIT);
-  setFilterTagPinnedIds(ids);
-};
-
 useEffect(() => {
   if (!user?.id) return;
   loadPinnedFilterTags();
