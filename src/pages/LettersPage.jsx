@@ -356,14 +356,7 @@ function formatBytes(n) {
 
 export default function LettersPage() {
  const [filterTab, setFilterTab] = useState("all"); // اول این
-  const [filterTagIdsByTab, setFilterTagIdsByTab] = useState({
-    incoming: [],
-    outgoing: [],
-    internal: [],
-    all: [],
-  }); // بعد این
-
-  const filterTagIds = filterTagIdsByTab[filterTab] || []; // بعد این
+ const [filterTagIds, setFilterTagIds] = useState([]); // ✅ global
   const tableScrollRef = useRef(null);
 const [hasYScroll, setHasYScroll] = useState(false);
   const API_BASE = String(import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
@@ -419,6 +412,31 @@ async function patchLetterPrefs(patch) {
   const [theme, setTheme] = useState(() =>
     document.documentElement.classList.contains("dark") ? "dark" : "light"
   );
+
+  useEffect(() => {
+  if (!user?.id) return;
+
+  try {
+    const raw = localStorage.getItem(activeFilterLsKey());
+    const parsed = raw ? JSON.parse(raw) : null;
+    const ids = normalizeIdList(parsed?.ids || []).slice(0, TAG_PREFS_LIMIT);
+    setFilterTagIds(ids); // ✅
+  } catch {
+    setFilterTagIds([]);
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [user?.id]);
+
+useEffect(() => {
+  if (!user?.id) return;
+
+  try {
+    const clean = normalizeIdList(filterTagIds).slice(0, TAG_PREFS_LIMIT);
+    localStorage.setItem(activeFilterLsKey(), JSON.stringify({ t: Date.now(), ids: clean }));
+  } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [user?.id, filterTagIds]);
+
   useEffect(() => {
     const el = document.documentElement;
     const apply = () => setTheme(el.classList.contains("dark") ? "dark" : "light");
@@ -1144,7 +1162,7 @@ const resetAllFilters = () => {
   setFilterQuick("");
   setFilterFromDate("");
   setFilterToDate("");
-
+setFilterTagIds([]);  
   // فقط active های همه تب‌ها پاک شود:
   setFilterTagIdsByTab({ incoming: [], outgoing: [], internal: [], all: [] });
 };
@@ -1567,18 +1585,10 @@ const toggleFilterTag = (id) => {
   const sid = String(id || "").trim();
   if (!sid) return;
 
-  setFilterTagIdsByTab((prev) => {
-    const cur = Array.isArray(prev?.[filterTab]) ? prev[filterTab].map(String) : [];
+  setFilterTagIds((prev) => {
+    const cur = Array.isArray(prev) ? prev.map(String) : [];
     const next = cur.includes(sid) ? cur.filter((x) => x !== sid) : [...cur, sid];
-
-    // ✅ همزمان روی همه تب‌ها اعمال کن
-    return {
-      ...prev,
-      incoming: next,
-      outgoing: next,
-      internal: next,
-      all: next,
-    };
+    return next;
   });
 };
 
