@@ -1047,15 +1047,9 @@ const loadActiveFilterTags = () => {
     const ids = normalizeIdList(parsed?.ids || []).slice(0, TAG_PREFS_LIMIT);
 
     // ✅ چون می‌خوای برای همه تب‌ها یکی باشه:
-    setFilterTagIdsByTab((prev) => ({
-      ...prev,
-      incoming: ids,
-      outgoing: ids,
-      internal: ids,
-      all: ids,
-    }));
+    setFilterTagIds(ids);
   } catch {
-    setFilterTagIdsByTab({ incoming: [], outgoing: [], internal: [], all: [] });
+    setFilterTagIds([]);
   }
 };
 
@@ -1154,7 +1148,7 @@ const resetAllFilters = () => {
   setFilterFromDate("");
   setFilterToDate("");
   // فقط active های همه تب‌ها پاک شود:
-  setFilterTagIdsByTab({ incoming: [], outgoing: [], internal: [], all: [] });
+  setFilterTagIds([]);
 };
 
 
@@ -2543,9 +2537,9 @@ const applyPickedTags = () => {
     savePinnedFilterTags(ids);
 
     // ✅ اگر برچسبی از نوار حذف شد، از فیلتر فعال هم حذف شود تا فیلتر مخفی نماند
-setFilterTagIdsByTab((prev) => {
-  const cur = Array.isArray(prev?.[filterTab]) ? prev[filterTab].map(String) : [];
-  return { ...prev, [filterTab]: cur.filter((x) => ids.includes(String(x))) };
+setFilterTagIds((prev) => {
+  const cur = Array.isArray(prev) ? prev.map(String) : [];
+  return cur.filter((x) => ids.includes(String(x)));
 });
    } else {
     // ✅ همیشه روی همون تبِ فرم که بازه اعمال کن
