@@ -355,6 +355,9 @@ function formatBytes(n) {
 
 
 export default function LettersPage() {
+
+  const { user } = useAuth();
+const userId = String(user?.id || "0");
  const [filterTab, setFilterTab] = useState("all"); // اول این
  const [filterTagIds, setFilterTagIds] = useState([]); // ✅ global
   const tableScrollRef = useRef(null);
@@ -458,9 +461,6 @@ const [formKind, setFormKind] = useState("incoming"); // نوع نامه داخ�
   const closeUpload = () => {
     setUploadOpen(false);
   };
-
-    const { user } = useAuth();
-
     
 // ===== Units (for internal letters) =====
 const [unitsAll, setUnitsAll] = useState([]);
@@ -1030,9 +1030,8 @@ const savePinnedFilterTags = async (ids) => {
   } catch {}
 };
 
-const activeFilterLsKey = () =>
-  `letters_filter_active_global_v1:u${String(user?.id || "0")}`;
-
+const activeFilterLsKey = (uid) =>
+  `letters_filter_active_global_v1:u${String(uid || "0")}`;
 
 const saveActiveFilterTags = (ids) => {
   try {
