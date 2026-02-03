@@ -1062,25 +1062,81 @@ const savePinnedFilterTags = async (ids) => {
 const activeFilterLsKey = (uid) =>
   `letters_filter_active_global_v1:u${String(uid || "0")}`;
 
-const saveActiveFilterTags = (ids) => {
+const saveActiveFilterTags = (uid, ids) => {
   try {
     const clean = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
-    localStorage.setItem(activeFilterLsKey(), JSON.stringify({ t: Date.now(), ids: clean }));
+    localStorage.setItem(activeFilterLsKey(uid), JSON.stringify({ t: Date.now(), ids: clean }));
   } catch {}
 };
+const pinnedLsKey = (uid) => `letters_filter_pinned_v1:u${String(uid || "0")}`;
 
-const loadActiveFilterTags = () => {
+const savePinnedFilterTags = async (ids) => {
+  const clean = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
+
+  // ✅ اول لوکال (حتی اگر سرور fail شد، بعد refresh می‌مونه)
   try {
-    const raw = localStorage.getItem(activeFilterLsKey());
+    localStorage.setItem(pinnedLsKey(user?.id), JSON.stringify({ t: Date.now(), ids: clean }));
+  } catch {}
+
+  // ✅ بعد سرور
+  try {
+    await patchLetterPrefs({ all_tag_ids: clean });
+  } catch (e) {
+    console.error("savePinnedFilterTags failed", e);
+  }
+};
+
+const loadPinnedFilterTags = async () => {
+  const uid = user?.id;
+
+  // ✅ اول لوکال سریع
+  try {
+    const raw = localStorage.getItem(pinnedLsKey(uid));
     const parsed = raw ? JSON.parse(raw) : null;
     const ids = normalizeIdList(parsed?.ids || []).slice(0, TAG_PREFS_LIMIT);
+    if (ids.length) setFilterTagPinnedIds(ids);
+  } catch {}
 
-    // ✅ چون می‌خوای برای همه تب‌ها یکی باشه:
+  // ✅ بعد سرور (اگر موجود بود override کن)
+  try {
+    const p = await fetchLetterPrefs();
+    const ids = normalizeIdList(p?.all_tag_ids || []).slice(0, TAG_PREFS_LIMIT);
+    setFilterTagPinnedIds(ids);
+
+    // sync local
+    try {
+      localStorage.setItem(pinnedLsKey(uid), JSON.stringify({ t: Date.now(), ids }));
+    } catch {}
+  } catch (e) {
+    console.error("loadPinnedFilterTags failed", e);
+  }
+};
+
+useEffect(() => {
+  if (!user?.id) return;
+  loadPinnedFilterTags();
+}, [user?.id]);
+
+const loadActiveFilterTags = (uid) => {
+  try {
+    const raw = localStorage.getItem(activeFilterLsKey(uid));
+    const parsed = raw ? JSON.parse(raw) : null;
+    const ids = normalizeIdList(parsed?.ids || []).slice(0, TAG_PREFS_LIMIT);
     setFilterTagIds(ids);
   } catch {
     setFilterTagIds([]);
   }
 };
+
+useEffect(() => {
+  if (!user?.id) return;
+  loadActiveFilterTags(user.id);
+}, [user?.id]);
+
+useEffect(() => {
+  if (!user?.id) return;
+  saveActiveFilterTags(user.id, filterTagIds);
+}, [user?.id, filterTagIds]);
 
 const loadPinnedFilterTags = async () => {
   const p = await fetchLetterPrefs();
@@ -2541,7 +2597,10 @@ const filterTagCaps = useMemo(() => {
 const openTagPicker = async (forWhat) => {
   setTagPickFor(forWhat);
 
-  const initialKind = "letters";
+  const initialKind =
+    forWhat === "form"
+      ? (formKind === "outgoing" ? "projects" : formKind === "internal" ? "execution" : "letters")
+      : "letters";
 
   setTagPickKind(initialKind);
   await ensureTagsForKind(initialKind);
@@ -2554,7 +2613,6 @@ const openTagPicker = async (forWhat) => {
   setTagPickSearch("");
   setTagPickOpen(true);
 };
-
 
 const togglePickDraft = (id) => {
   const sid = String(id || "");
@@ -3597,16 +3655,18 @@ useEffect(() => {
   <div className="w-full min-w-0 flex flex-wrap items-center gap-2">
 
     {(() => {
-  const scope = "letters";
+  // ✅ scope درست بر اساس نوع فرم
+  const scope =
+    formKind === "outgoing" ? "projects" :
+    formKind === "internal" ? "execution" :
+    "letters";
+
   const selectedIds = Array.isArray(formSelectedTagIds) ? formSelectedTagIds : [];
   const pool = Array.isArray(tagsByScope?.[scope]) ? tagsByScope[scope] : [];
 
   const selSet = new Set(selectedIds.map(String));
-
-  // ✅ فقط آیتم‌های انتخاب‌شده
   const selectedObjs = pool.filter((t) => selSet.has(String(t?.id)));
 
-  // ✅ اگر چیزی انتخاب نشده، هیچی نشون نده
   if (selectedObjs.length === 0) return null;
 
   return selectedObjs.map((t) => {
@@ -3617,7 +3677,7 @@ useEffect(() => {
       <button
         key={id}
         type="button"
-        onClick={() => toggleTag("all", id)} // با کلیک دوباره حذف میشه
+        onClick={() => toggleTag("all", id)}
         className={selectedTagChipCls + " shrink-0"}
         title={label}
         aria-label={label}
