@@ -3400,29 +3400,28 @@ useEffect(() => {
   ) : null}
 </button>
     </div>
-        {/* ✅ توضیح کنار بارگذاری اسناد */}
-    <div className="min-w-0 flex-1">
-      <div className={labelCls}>توضیح</div>
-      <input
-        value={
-          formKind === "incoming"
-            ? incomingSecretariatNote
-            : formKind === "outgoing"
-            ? outgoingSecretariatNote
-            : internalSecretariatNote
-        }
-        onChange={(e) => {
-          const v = e.target.value;
-          if (formKind === "incoming") setIncomingSecretariatNote(v);
-          else if (formKind === "outgoing") setOutgoingSecretariatNote(v);
-          else setInternalSecretariatNote(v);
-        }}
-        className={inputCls + " h-10"}
-        type="text"
-        placeholder="توضیح..."
-      />
-    </div>
-
+     {/* ✅ توضیح کنار بارگذاری اسناد */}
+<div className="min-w-0 w-full md:w-[15%]">
+  <div className={labelCls}>توضیح</div>
+  <input
+    value={
+      formKind === "incoming"
+        ? incomingSecretariatNote
+        : formKind === "outgoing"
+        ? outgoingSecretariatNote
+        : internalSecretariatNote
+    }
+    onChange={(e) => {
+      const v = e.target.value;
+      if (formKind === "incoming") setIncomingSecretariatNote(v);
+      else if (formKind === "outgoing") setOutgoingSecretariatNote(v);
+      else setInternalSecretariatNote(v);
+    }}
+    className={inputCls + " h-10"}
+    type="text"
+    placeholder="توضیح..."
+  />
+</div>
   </div>
 </div>
 
