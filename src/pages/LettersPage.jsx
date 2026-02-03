@@ -2640,16 +2640,12 @@ const filterTagCaps = useMemo(() => {
 const openTagPicker = async (forWhat) => {
   setTagPickFor(forWhat);
 
-  const initialKind =
-    forWhat === "form"
-      ? (formKind === "outgoing" ? "projects" : formKind === "internal" ? "execution" : "letters")
-      : "letters";
-
+  const initialKind = forWhat === "form" ? "letters" : "letters"; // یا ساده‌تر: "letters"
   setTagPickKind(initialKind);
+
   await ensureTagsForKind(initialKind);
 
-  const currentSelected =
-    forWhat === "form" ? formSelectedTagIds : filterTagPinnedIds;
+  const currentSelected = forWhat === "form" ? formSelectedTagIds : filterTagPinnedIds;
 
   setTagPickDraftIds((Array.isArray(currentSelected) ? currentSelected : []).map(String));
   setTagPickCategoryId("");
@@ -2729,17 +2725,9 @@ const ensureTagsForKind = async (kind) => {
 
 useEffect(() => {
   if (!formOpen) return;
-
-  const k =
-    formKind === "outgoing"
-      ? "projects"
-      : formKind === "internal"
-      ? "execution"
-      : "letters";
-
-  ensureTagsForKind(k);
+  ensureTagsForKind("letters"); // ✅ همیشه letters
   // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [formOpen, formKind]);
+}, [formOpen]);
 
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
