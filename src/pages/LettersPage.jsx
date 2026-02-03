@@ -1052,13 +1052,6 @@ function normalizeIdList(arr) {
   return out;
 }
 
-const savePinnedFilterTags = async (ids) => {
-  try {
-    const clean = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
-    await patchLetterPrefs({ all_tag_ids: clean }); // ✅ با id
-  } catch {}
-};
-
 const activeFilterLsKey = (uid) =>
   `letters_filter_active_global_v1:u${String(uid || "0")}`;
 
