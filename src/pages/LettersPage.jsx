@@ -814,6 +814,8 @@ const isConfidentialLetter = (l) => {
   return arr;
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [myLetters]);
+const subjectOf = (l) => String(l?.subject ?? l?.title ?? "");
+const orgOf = (l) => String(l?.org_name ?? l?.org ?? l?.organization ?? l?.company ?? "");
 
 const relatedPickIndex = useMemo(() => {
   if (!relatedPickOpen) return [];
@@ -854,8 +856,7 @@ const relatedPickList = useMemo(() => {
   return out;
 }, [relatedPickIndex, relatedPickQueryDebounced, relatedPickOpen]);
 
-  const orgOf = (l) => String(l?.org_name ?? l?.org ?? l?.organization ?? l?.company ?? "");
-  const subjectOf = (l) => String(l?.subject ?? l?.title ?? "");
+
 
 const letterById = useMemo(() => {
   const m = new Map();
