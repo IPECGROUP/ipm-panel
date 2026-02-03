@@ -4729,7 +4729,7 @@ useEffect(() => {
   <img
     src="/images/icons/bastan.svg"
     alt=""
-    className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
+    className="w-4 h-4 invert opacity-95"
   />
 </button>
 
