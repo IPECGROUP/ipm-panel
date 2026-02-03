@@ -3035,14 +3035,16 @@ useEffect(() => {
     <select
       value={category}
       onChange={(e) => {
-        const v = e.target.value;
-        if (v === "__other__") {
-          setDocClassOtherText("");
-          setDocClassOtherOpen(true);
-          return;
-        }
-        setCategory(v);
-      }}
+  const v = e.target.value;
+
+  // ✅ فقط "سایر" ذخیره شود، بدون پاپ‌آپ
+  if (v === "__other__") {
+    setCategory("سایر");
+    return;
+  }
+
+  setCategory(v);
+}}
       className={inputSmCls}
     >
       {([...DOC_CLASS_BASE, ...(Array.isArray(docClassExtras) ? docClassExtras : [])]).map((lab) => (
