@@ -1001,7 +1001,7 @@ const setFormTagsAndPersist = (which, ids) => {
   saveFormTagPrefs(which, next);
 };
 
-const normalizeIdList = (arr) => {
+function normalizeIdList(arr) {
   const a = Array.isArray(arr) ? arr : [];
   const out = [];
   const seen = new Set();
@@ -1009,16 +1009,7 @@ const normalizeIdList = (arr) => {
   const pickId = (x) => {
     if (x == null) return "";
     if (typeof x === "object") {
-      // ساپورت چند مدل رایج
-      return (
-        x.id ??
-        x.tag_id ??
-        x.tagId ??
-        x.value ??
-        x.key ??
-        x._id ??
-        ""
-      );
+      return (x.id ?? x.tag_id ?? x.tagId ?? x.value ?? x.key ?? x._id ?? "");
     }
     return x;
   };
@@ -1030,7 +1021,8 @@ const normalizeIdList = (arr) => {
     out.push(s);
   }
   return out;
-};
+}
+
 const savePinnedFilterTags = async (ids) => {
   try {
     const clean = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
@@ -1162,7 +1154,6 @@ const resetAllFilters = () => {
   setFilterQuick("");
   setFilterFromDate("");
   setFilterToDate("");
-setFilterTagIds([]);  
   // فقط active های همه تب‌ها پاک شود:
   setFilterTagIdsByTab({ incoming: [], outgoing: [], internal: [], all: [] });
 };
