@@ -3551,32 +3551,31 @@ useEffect(() => {
         <div className="p-4 flex items-center justify-end gap-2">
           
 
-         <button
-  type="button"
-  onClick={closeUpload}
-  className={
-    "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
-    (theme === "dark"
-      ? "ring-neutral-800 hover:bg-white/10 text-white"
-      : "ring-black/15 hover:bg-black/90 bg-black text-white")
-  }
-  aria-label="بستن"
-  title="بستن"
->
-  <svg
-    viewBox="0 0 24 24"
-    width="20"
-    height="20"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M18 6 6 18M6 6l12 12" />
-  </svg>
-</button>
+          <button
+            type="button"
+            onClick={() => {
+              const clean = (Array.isArray(relatedPickIds) ? relatedPickIds : [])
+                .map((x) => String(x || "").trim())
+                .filter(Boolean);
 
+              setReturnToIds(clean);
+              closeRelatedPicker();
+            }}
+            className={
+              "h-10 w-10 rounded-xl border transition inline-flex items-center justify-center " +
+              (theme === "dark"
+                ? "border-white/15 bg-white text-black hover:bg-white/90"
+                : "border-black/10 bg-black text-white hover:bg-black/90")
+            }
+            aria-label="تایید"
+            title="تایید"
+          >
+            <img
+              src="/images/icons/check.svg"
+              alt=""
+              className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")}
+            />
+          </button>
         </div>
       </div>
     </div>,
@@ -4704,8 +4703,7 @@ useEffect(() => {
   بارگذاری اسناد{" "}
   {uploadFor === "incoming" ? "(وارده)" : uploadFor === "outgoing" ? "(صادره)" : "(داخلی)"}
 </div>
-
-            <button
+<button
   type="button"
   onClick={closeUpload}
   className={
@@ -4714,8 +4712,8 @@ useEffect(() => {
       ? "ring-neutral-800 hover:bg-white/10 text-white"
       : "ring-black/15 hover:bg-black/90 bg-black text-white")
   }
-  aria-label="تایید"
-  title="تایید"
+  aria-label="بستن"
+  title="بستن"
 >
   {/* Tooltip روی هاور */}
   <span
@@ -4725,13 +4723,13 @@ useEffect(() => {
       (theme === "dark" ? "bg-white text-black" : "bg-black text-white")
     }
   >
-    تایید
+    بستن
   </span>
 
   <img
-    src="/images/icons/check.svg"
+    src="/images/icons/bastan.svg"
     alt=""
-    className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")}
+    className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
   />
 </button>
 
