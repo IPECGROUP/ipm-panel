@@ -358,62 +358,79 @@ export default function LettersPage() {
 
   const [fromName, setFromName] = useState("");
 // ✅ Validation state (بهتره نزدیک بقیه state ها باشه)
-const [errors, setErrors] = useState({});
-const [submitTried, setSubmitTried] = useState(false);
+// ✅ Validation (per tab)
+const [errorsByKind, setErrorsByKind] = useState({
+  incoming: {},
+  outgoing: {},
+  internal: {},
+});
+const [submitTriedByKind, setSubmitTriedByKind] = useState({
+  incoming: false,
+  outgoing: false,
+  internal: false,
+});
 
-const fieldHasError = (key) => !!(submitTried && errors?.[key]);
+const fieldHasError = (kind, key) =>
+  !!(submitTriedByKind?.[kind] && errorsByKind?.[kind]?.[key]);
 
-const inputWithError = (baseCls, key) =>
-  baseCls + (fieldHasError(key) ? " !border-red-500 !ring-1 !ring-red-500" : "");
+const inputWithError = (baseCls, kind, key) =>
+  baseCls + (fieldHasError(kind, key) ? " !border-red-500 !ring-1 !ring-red-500" : "");
 
 // ✅ wrapper برای اینکه ارور absolute بشه و فیلد هل داده نشه
-const FieldWrap = ({ children }) => (
-  <div className="relative pb-4">{children}</div> // pb-4 جا برای ارور رزرو می‌کنه
-);
+const FieldWrap = ({ children }) => <div className="relative pb-4">{children}</div>;
 
 // ✅ ارور: زیر فیلد، ولی absolute (پس هل نمیده)
-const ErrorTextAbs = ({ k }) =>
-  fieldHasError(k) ? (
+const ErrorTextAbs = ({ kind, k }) =>
+  fieldHasError(kind, k) ? (
     <div className="absolute right-0 bottom-0 text-[10px] text-red-500 leading-3">
-      {errors[k]}
+      {errorsByKind?.[kind]?.[k]}
     </div>
   ) : null;
 
-// ✅ وقتی کاربر تایپ کرد، ارور همون فیلد پاک بشه
-const clearFieldError = (k) => {
-  if (!submitTried) return;
-  setErrors((prev) => {
-    if (!prev?.[k]) return prev;
-    const next = { ...prev };
-    delete next[k];
-    return next;
+// ✅ وقتی کاربر تایپ کرد، ارور همان فیلد در همان تب پاک شود
+const clearFieldError = (kind, k) => {
+  if (!submitTriedByKind?.[kind]) return;
+  setErrorsByKind((prev) => {
+    const cur = prev?.[kind] || {};
+    if (!cur?.[k]) return prev;
+    const nextKind = { ...cur };
+    delete nextKind[k];
+    return { ...prev, [kind]: nextKind };
   });
 };
 
 
+// ✅ اینجا تعیین کن کدوم فیلدها اجباری هستن
+
+
 const REQUIRED_MSG = "کامل کردن این فیلد ضروری است";
 
-// ✅ اینجا تعیین کن کدوم فیلدها اجباری هستن
-const getRequiredFields = (kind) => {
-  // ✅ فعلاً فقط تب وارده
-  if (kind === "incoming") {
-    return [
-      { key: "classification", label: "طبقه بندی" },
-      { key: "letterNo", label: "شماره سند" },
-      { key: "letterDate", label: "تاریخ نامه" },
-      { key: "fromName", label: "از" },
-      { key: "orgName", label: "شرکت/سازمان" },
-      { key: "subject", label: "موضوع" },
-      { key: "formTags", label: "برچسب" }, // ✅ تگ‌ها
-    ];
-  }
+// ✅ required ها دقیقاً طبق گفته‌ی تو
+const REQUIRED = {
+  internal: ["letterDate", "subject", "formTags"],
 
-  // بقیه تب‌ها بعداً
-  return [];
+  outgoing: [
+    "category",     // کلاس سند
+    "projectId",    // مرکز/پروژه
+    "letterDate",   // تاریخ سند
+    "toName",       // به
+    "orgName",      // شرکت/سازمان
+    "subject",      // موضوع
+    "formTags",     // برچسب
+  ],
+
+  incoming: [
+    "classification", // طبقه بندی
+    "letterNo",       // شماره سند
+    "letterDate",     // تاریخ سند
+    "subject",        // موضوع
+    "formTags",       // برچسب
+  ],
 };
 
 const validate = (kind) => {
-  const next = {};
+  // ✅ فقط همین تب
+  setSubmitTriedByKind((p) => ({ ...p, [kind]: true }));
 
   const isEmpty = (v) => {
     if (v === null || v === undefined) return true;
@@ -422,74 +439,42 @@ const validate = (kind) => {
     return false;
   };
 
-  // ✅ حداقل‌های مشترک همه تب‌ها
-  const requiredAlways = ["classification", "letterNo", "letterDate"];
+  // ✅ مقادیر هر تب جدا
+  const valuesByKind = {
+    incoming: {
+      classification: incomingForm.classification,
+      letterNo: incomingForm.letterNo,
+      letterDate: incomingForm.letterDate,
+      subject: incomingSubject ?? incomingForm.subject, // اگر subject جدا داری، همونو بذار
+      formTags: Array.isArray(formTagIds) ? formTagIds : [],
+    },
 
-  // ✅ فقط صادره
-  const requiredOutgoingOnly = ["category", "projectId", "toName", "orgName", "subject"];
+    outgoing: {
+      category: outgoingForm.category,
+      projectId: outgoingForm.projectId,
+      letterDate: outgoingForm.letterDate,
+      toName: outgoingForm.toName,
+      orgName: outgoingForm.orgName,
+      subject: outgoingForm.subject,
+      formTags: Array.isArray(formTagIds) ? formTagIds : [],
+    },
 
-  // ✅ اگر برای وارده هم چیزی اجباری داری اینجا اضافه کن (الان خالی گذاشتم که خراب نشه)
-  const requiredIncomingOnly = [];
+    internal: {
+      letterDate: internalForm.letterDate,
+      subject: internalForm.subject,
+      formTags: Array.isArray(formTagIds) ? formTagIds : [],
+    },
+  };
 
-  // ✅ اگر برای داخلی هم چیزی اجباری داری (به جز unit) اینجا اضافه کن
-  const requiredInternalOnly = [];
+  const values = valuesByKind[kind] || {};
+  const req = REQUIRED[kind] || [];
 
-  const required =
-    kind === "outgoing"
-      ? [...requiredAlways, ...requiredOutgoingOnly]
-      : kind === "incoming"
-      ? [...requiredAlways, ...requiredIncomingOnly]
-      : kind === "internal"
-      ? [...requiredAlways, ...requiredInternalOnly]
-      : [...requiredAlways];
-
-  // مقادیر از state
-const f = getForm(kind);
-
-const values = {
-  // shared for all kinds
-  letterDate: f.letterDate,
-  formTags: Array.isArray(formTagIds) ? formTagIds : [],
-  internalUnitId,
-
-  // incoming
-  classification: incomingForm.classification,
-  letterNo: incomingForm.letterNo,
-  fromName: incomingForm.fromName,
-  orgName: incomingForm.orgName,
-  projectId: incomingForm.projectId, // فقط اگر برای incoming لازم داری
-
-  // outgoing
-  category: outgoingForm.category,
-  projectId_out: outgoingForm.projectId,
-  toName: outgoingForm.toName,
-  orgName_out: outgoingForm.orgName,
-  subject: outgoingForm.subject,
-};
-
-// ✅ یک نگاشت ساده برای اینکه requiredها با values بخونن
-const pickValue = (key) => {
-  if (kind === "outgoing") {
-    if (key === "projectId") return values.projectId_out;
-    if (key === "orgName") return values.orgName_out;
-  }
-  return values[key];
-};
-
-for (const key of required) {
-  if (isEmpty(pickValue(key))) next[key] = REQUIRED_MSG;
-}
-
-  for (const key of required) {
+  const next = {};
+  for (const key of req) {
     if (isEmpty(values[key])) next[key] = REQUIRED_MSG;
   }
 
-  // ✅ واحد فقط برای داخلی
-  if (kind === "internal" && isEmpty(values.internalUnitId)) {
-    next.internalUnitId = "برای نامه داخلی انتخاب واحد الزامی است.";
-  }
-
-  setErrors(next);
+  setErrorsByKind((p) => ({ ...p, [kind]: next }));
   return Object.keys(next).length === 0;
 };
 
@@ -3295,10 +3280,10 @@ useEffect(() => {
       value={outgoingForm.category}
 onChange={(e) => {
   setOutgoingForm((p) => ({ ...p, category: e.target.value }));
-  if (formKind === "outgoing") clearFieldError("category");
+  if (formKind === "outgoing") clearFieldError("outgoing", "category");
 }}
-      className={formKind === "outgoing" ? inputWithError(inputSmCls, "category") : inputSmCls}
-      aria-invalid={formKind === "outgoing" ? fieldHasError("category") : undefined}
+      className={formKind === "outgoing" ? inputWithError(inputSmCls, "outgoing", "category") : inputSmCls}
+aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "category") : undefined}
     >
       {([...DOC_CLASS_BASE, ...(Array.isArray(docClassExtras) ? docClassExtras : [])]).map((lab) => (
         <option key={lab} value={lab}>{lab}</option>
@@ -3320,15 +3305,15 @@ onChange={(e) => {
       value={incomingForm.classification}
 onChange={(e) => {
   setIncomingForm((p) => ({ ...p, classification: e.target.value }));
-  clearFieldError("classification");
+  clearFieldError("incoming", "classification");
 }}
-      className={inputWithError(inputSmCls, "classification")}
-      aria-invalid={fieldHasError("classification")}
+className={inputWithError(inputSmCls, "incoming", "classification")}
+aria-invalid={fieldHasError("incoming", "classification")}
     >
       <option value="عادی">عادی</option>
       <option value="محرمانه">محرمانه</option>
     </select>
-    <ErrorTextAbs k="classification" />
+<ErrorTextAbs kind="incoming" k="classification" />
   </FieldWrap>
 </div>
 
@@ -3343,10 +3328,10 @@ onChange={(e) => {
       value={getForm(formKind).projectId || ""}
 onChange={(e) => {
   setForm(formKind, { projectId: e.target.value });
-  if (formKind === "incoming" || formKind === "outgoing") clearFieldError("projectId");
+  if (formKind === "outgoing") clearFieldError("outgoing", "projectId");
 }}
-      className={formKind === "outgoing" ? inputWithError(inputSmCls, "projectId") : inputSmCls}
-      aria-invalid={formKind === "outgoing" ? fieldHasError("projectId") : undefined}
+className={formKind === "outgoing" ? inputWithError(inputSmCls, "outgoing", "projectId") : inputSmCls}
+aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "projectId") : undefined}
     >
       <option value=""></option>
       {projectsTopOnly.map((p) => (
@@ -3369,13 +3354,13 @@ onChange={(e) => {
       value={incomingForm.letterNo}
 onChange={(e) => {
   setIncomingForm((p) => ({ ...p, letterNo: e.target.value }));
-  clearFieldError("letterNo");
+  clearFieldError("incoming", "letterNo");
 }}
-      className={inputWithError(inputSmCls, "letterNo")}
-      aria-invalid={fieldHasError("letterNo")}
+className={inputWithError(inputSmCls, "incoming", "letterNo")}
+aria-invalid={fieldHasError("incoming", "letterNo")}
       type="text"
     />
-    <ErrorTextAbs k="letterNo" />
+<ErrorTextAbs kind="incoming" k="letterNo" />
   </FieldWrap>
 </div>
 
@@ -3389,12 +3374,11 @@ onChange={(e) => {
      value={getForm(formKind).letterDate}
 onChange={(v) => {
   setForm(formKind, { letterDate: v });
-  clearFieldError("letterDate");
+  clearFieldError(formKind, "letterDate");
 }}
-      theme={theme}
-      buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between", "letterDate")}
+buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between", formKind, "letterDate")}
     />
-    <ErrorTextAbs k="letterDate" />
+<ErrorTextAbs kind={formKind} k="letterDate" />
   </FieldWrap>
 </div>
 
@@ -3431,29 +3415,38 @@ onChange={(v) => {
           {/* به (کمی کوچکتر) */}
           <div className="md:col-span-3">
             <div className={labelCls}>به</div>
-            <input
-              value={outgoingForm.toName}
-onChange={(e) => {
-  setOutgoingForm((p) => ({ ...p, toName: e.target.value }));
-  clearFieldError("toName");
-}}
-              className={inputCls}
-              type="text"
-            />
+            <FieldWrap>
+ <input
+    value={outgoingForm.toName}
+    onChange={(e) => {
+      setOutgoingForm((p) => ({ ...p, toName: e.target.value }));
+      clearFieldError("outgoing", "toName");
+    }}
+               className={inputWithError(inputCls, "outgoing", "toName")}
+    aria-invalid={fieldHasError("outgoing", "toName")}
+    type="text"
+  />
+    <ErrorTextAbs kind="outgoing" k="toName" />
+</FieldWrap>
+
           </div>
 
           {/* شرکت/سازمان (باقی فضا) */}
           <div className="md:col-span-5">
             <div className={labelCls}>شرکت/سازمان</div>
-            <input
-             value={outgoingForm.orgName}
-onChange={(e) => {
-  setOutgoingForm((p) => ({ ...p, orgName: e.target.value }));
-  clearFieldError("orgName");
-}}
-              className={inputCls}
-              type="text"
-            />
+     <FieldWrap>
+  <input
+    value={outgoingForm.orgName}
+    onChange={(e) => {
+      setOutgoingForm((p) => ({ ...p, orgName: e.target.value }));
+      clearFieldError("outgoing", "orgName");
+    }}
+    className={inputWithError(inputCls, "outgoing", "orgName")}
+    aria-invalid={fieldHasError("outgoing", "orgName")}
+    type="text"
+  />
+  <ErrorTextAbs kind="outgoing" k="orgName" />
+</FieldWrap>
           </div>
         </>
       ) : (
@@ -3462,20 +3455,13 @@ onChange={(e) => {
           <div className="md:col-span-4">
   <div className={labelCls}>از</div>
 
-  <FieldWrap>
-    <input
-      value={incomingForm.fromName}
-onChange={(e) => {
-  setIncomingForm((p) => ({ ...p, fromName: e.target.value }));
-  clearFieldError("fromName");
-}}
+  <input
+  value={incomingForm.fromName}
+  onChange={(e) => setIncomingForm((p) => ({ ...p, fromName: e.target.value }))}
+  className={inputCls}
+  type="text"
+/>
 
-      className={inputWithError(inputCls, "fromName")}
-      aria-invalid={fieldHasError("fromName")}
-      type="text"
-    />
-    <ErrorTextAbs k="fromName" />
-  </FieldWrap>
 </div>
 
 
@@ -3483,7 +3469,6 @@ onChange={(e) => {
 <div className="md:col-span-5">
   <div className={labelCls}>شرکت/سازمان</div>
 
-  <FieldWrap>
     <input
       value={incomingForm.orgName}
 onChange={(e) => {
@@ -3495,7 +3480,6 @@ onChange={(e) => {
       type="text"
     />
     <ErrorTextAbs k="orgName" />
-  </FieldWrap>
 </div>
 
 
@@ -3515,7 +3499,6 @@ onChange={(e) => {
 <div className="md:col-span-3">
   <div className={labelCls}>به</div>
 
-  <FieldWrap>
     <input
   value={incomingForm.toName}
   onChange={(e) => {
@@ -3528,7 +3511,6 @@ onChange={(e) => {
 />
 
     <ErrorTextAbs k="toName" />
-  </FieldWrap>
 </div>
 
         </>
@@ -3551,8 +3533,8 @@ onChange={(e) => {
   clearFieldError("subject");
 }}
 
-      className={inputWithError(inputCls, "subject")}
-      aria-invalid={fieldHasError("subject")}
+className={inputWithError(inputCls, "internal", "subject")}
+aria-invalid={fieldHasError("internal", "subject")}
       type="text"
     />
     <ErrorTextAbs k="subject" />
@@ -3618,13 +3600,13 @@ onChange={(e) => {
   value={getForm(formKind).subject || ""}
   onChange={(e) => {
     setForm(formKind, { subject: e.target.value });
-    clearFieldError("subject");
+clearFieldError(formKind, "subject");
   }}
-  className={inputWithError(inputCls, "subject")}
-  aria-invalid={fieldHasError("subject")}
+  className={inputWithError(inputCls, formKind, "subject")}
+aria-invalid={fieldHasError(formKind, "subject")}
   type="text"
 />
-    <ErrorTextAbs k="subject" />
+<ErrorTextAbs kind={formKind} k="subject" />
   </FieldWrap>
 </div>
 
@@ -4108,7 +4090,7 @@ onChange={(e) => {
       </button>
     </div>
 
-    <ErrorTextAbs k="formTags" />
+<ErrorTextAbs kind={formKind} k="formTags" />
   </FieldWrap>
 </div>
 
