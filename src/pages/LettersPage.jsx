@@ -2308,14 +2308,16 @@ const kindRowTintCls = (kind) => {
 };
 
  const resetForm = () => {
-  setIncomingForm({
-    classification: "عادی",
-    projectId: "",
-    letterNo: "",
-    letterDate: "",
-    fromName: "",
-    orgName: "",
-  });
+ setIncomingForm({
+  classification: "عادی",
+  projectId: "",
+  letterNo: "",
+  letterDate: "",
+  fromName: "",
+  toName: "",
+  orgName: "",
+  subject: "",
+});
 
   setOutgoingForm({
     category: "نامه",
@@ -2419,7 +2421,16 @@ if (kind === "incoming") {
   setOutgoingForm((p) => ({ ...p, toName: toVal }));
 }
     setOrgName(String(l?.org_name ?? l?.orgName ?? l?.org ?? l?.organization ?? l?.company ?? ""));
-    setSubject(String(l?.subject ?? l?.title ?? ""));
+const subVal = String(l?.subject ?? l?.title ?? "");
+
+if (kind === "incoming") {
+  setIncomingForm((p) => ({ ...p, subject: subVal }));
+} else if (kind === "outgoing") {
+  setOutgoingForm((p) => ({ ...p, subject: subVal }));
+} else {
+  setInternalForm((p) => ({ ...p, subject: subVal }));
+}
+
 
     const ha = l?.has_attachment ?? l?.hasAttachment ?? false;
     setHasAttachment(!!ha);
@@ -2576,10 +2587,9 @@ to_name:
     : "",
 
 subject:
-  kind === "incoming" ? (incomingForm.subject || subject || "")
+  kind === "incoming" ? (incomingForm.subject || "")
   : kind === "outgoing" ? (outgoingForm.subject || "")
   : (internalForm.subject || ""),
-
 
   has_attachment: computedHasAttachment,
   return_to_ids: (Array.isArray(returnToIds) ? returnToIds : []).map(String).filter((x) => x && x.trim()),
@@ -3593,12 +3603,15 @@ onChange={(e) => {
 
   <FieldWrap>
     <input
-      value={subject}
-      onChange={(e) => { setSubject(e.target.value); clearFieldError("subject"); }}
-      className={inputWithError(inputCls, "subject")}
-      aria-invalid={fieldHasError("subject")}
-      type="text"
-    />
+  value={getForm(formKind).subject || ""}
+  onChange={(e) => {
+    setForm(formKind, { subject: e.target.value });
+    clearFieldError("subject");
+  }}
+  className={inputWithError(inputCls, "subject")}
+  aria-invalid={fieldHasError("subject")}
+  type="text"
+/>
     <ErrorTextAbs k="subject" />
   </FieldWrap>
 </div>
