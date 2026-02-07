@@ -2546,7 +2546,7 @@ const payload = {
     return n && Number.isFinite(n) ? n : null;
   })(),
 
-  letter_no: kind === "incoming" ? (incomingForm.letterNo || "") : "",
+letter_no: String(f.letterNo || "").trim(),
   letter_date: f.letterDate || "",
 
   from_name:
@@ -3342,25 +3342,34 @@ aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "projectId") :
   </FieldWrap>
 </div>
 
-  {/* شماره */}
-  <div className="shrink-0 w-[170px]">
-  <div className={labelSmCls}>شماره سند</div>
+ {/* شماره سند (فقط در وارده اجباری) */}
+<div className="shrink-0 w-[170px]">
+  <div className={labelSmCls}>
+    شماره سند {formKind === "incoming" ? <span className="text-red-500">*</span> : null}
+  </div>
 
   <FieldWrap>
     <input
-      value={incomingForm.letterNo}
-onChange={(e) => {
-  setIncomingForm((p) => ({ ...p, letterNo: e.target.value }));
-  clearFieldError("incoming", "letterNo");
-}}
-className={inputWithError(inputSmCls, "incoming", "letterNo")}
-aria-invalid={fieldHasError("incoming", "letterNo")}
+      value={getForm(formKind).letterNo || ""}
+      onChange={(e) => {
+        setForm(formKind, { letterNo: e.target.value });
+
+        // فقط اگر وارده است خطا پاک شود
+        if (formKind === "incoming") clearFieldError("incoming", "letterNo");
+      }}
+      className={
+        formKind === "incoming"
+          ? inputWithError(inputSmCls, "incoming", "letterNo")
+          : inputSmCls
+      }
+      aria-invalid={formKind === "incoming" ? fieldHasError("incoming", "letterNo") : undefined}
+      required={formKind === "incoming"}
       type="text"
     />
-<ErrorTextAbs kind="incoming" k="letterNo" />
+
+    {formKind === "incoming" ? <ErrorTextAbs kind="incoming" k="letterNo" /> : null}
   </FieldWrap>
 </div>
-
 
   {/* تاریخ */}
   <div className="shrink-0 w-[170px]">
