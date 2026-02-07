@@ -24,6 +24,10 @@ function ProjectsPage() {
     return data;
   };
 
+  // ✅ آدرس پیشنهادی برای بک/پریسما:
+  // PATCH /api/projects  body: { id, code, name, is_active }
+  // (یا اگر خواستی جداش کنی: PATCH /api/projects/status  body: { id, is_active })
+
   const [rows, setRows] = React.useState([]);
   const [err, setErr] = React.useState("");
   const [loading, setLoading] = React.useState(false);
@@ -34,6 +38,7 @@ function ProjectsPage() {
   const [editId, setEditId] = React.useState(null);
   const [editCode, setEditCode] = React.useState("");
   const [editName, setEditName] = React.useState("");
+  const [editIsActive, setEditIsActive] = React.useState(true);
 
   const [codeSortDir, setCodeSortDir] = React.useState("asc");
 
@@ -92,11 +97,12 @@ function ProjectsPage() {
     try {
       const resp = await api("/projects", {
         method: "POST",
-        body: JSON.stringify({ code, name }),
+        body: JSON.stringify({ code, name, is_active: true }), // ✅ پروژه جدید: پیش‌فرض فعال
       });
       const newItem = resp?.item || null;
       if (newItem) {
-        setRows((prev) => [...prev, newItem].filter((r) => isTopProjectCode(r?.code)));
+        const ensured = { ...newItem, is_active: newItem?.is_active ?? true };
+        setRows((prev) => [...prev, ensured].filter((r) => isTopProjectCode(r?.code)));
       } else {
         await loadAll();
       }
@@ -113,6 +119,7 @@ function ProjectsPage() {
     setEditId(r.id);
     setEditCode(String(r.code || ""));
     setEditName(String(r.name || ""));
+    setEditIsActive(Boolean(r?.is_active ?? true)); // ✅ اگر فیلد نیومده بود، فعال در نظر بگیر
     setErr("");
   };
 
@@ -120,6 +127,7 @@ function ProjectsPage() {
     setEditId(null);
     setEditCode("");
     setEditName("");
+    setEditIsActive(true);
   };
 
   const saveInline = async () => {
@@ -139,12 +147,12 @@ function ProjectsPage() {
     try {
       await api("/projects", {
         method: "PATCH",
-        body: JSON.stringify({ id: editId, code, name }),
+        body: JSON.stringify({ id: editId, code, name, is_active: !!editIsActive }),
       });
 
       setRows((prev) =>
         prev
-          .map((r) => (r.id === editId ? { ...r, code, name } : r))
+          .map((r) => (r.id === editId ? { ...r, code, name, is_active: !!editIsActive } : r))
           .filter((r) => isTopProjectCode(r?.code))
       );
       cancelEdit();
@@ -410,6 +418,11 @@ function ProjectsPage() {
                           نام پروژه
                         </TH>
 
+                        {/* ✅ ستون وضعیت */}
+                        <TH className="w-24 sm:w-28 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                          وضعیت
+                        </TH>
+
                         <TH className="w-44 sm:w-72 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
                           <div className="flex items-center justify-center gap-2">
                             <span>اقدامات</span>
@@ -453,13 +466,13 @@ function ProjectsPage() {
                     >
                       {loading ? (
                         <TR className="bg-white dark:bg-transparent">
-                          <TD colSpan={4} className="text-center text-black/60 dark:text-neutral-400 py-4">
+                          <TD colSpan={5} className="text-center text-black/60 dark:text-neutral-400 py-4">
                             در حال بارگذاری…
                           </TD>
                         </TR>
                       ) : pageRows.length === 0 ? (
                         <TR className="bg-white dark:bg-transparent">
-                          <TD colSpan={4} className="text-center text-black/60 dark:text-neutral-400 py-4">
+                          <TD colSpan={5} className="text-center text-black/60 dark:text-neutral-400 py-4">
                             موردی ثبت نشده.
                           </TD>
                         </TR>
@@ -468,12 +481,30 @@ function ProjectsPage() {
                           const isLast = idx === pageRows.length - 1;
                           const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
 
+                          const rowIsEditing = editId === r.id;
+                          const rowIsActive = Boolean(r?.is_active ?? true);
+
+                          const boxBase =
+                            "h-5 w-5 rounded-[6px] border inline-grid place-items-center text-[12px] leading-none select-none";
+
+                          const boxOn =
+                            "bg-black text-white border-black dark:bg-white dark:text-black dark:border-white";
+
+                          const boxOff =
+                            "bg-transparent text-transparent border-black/25 dark:border-white/25";
+
+                          const boxDisabled =
+                            "opacity-60 cursor-not-allowed";
+
+                          const boxEnabled =
+                            "cursor-pointer hover:opacity-90 active:opacity-80";
+
                           return (
                             <TR key={r.id}>
                               <TD className={`px-3 ${tdBorder}`}>{startIdx + idx + 1}</TD>
 
                               <TD className={`px-3 font-mono ${tdBorder}`}>
-                                {editId === r.id ? (
+                                {rowIsEditing ? (
                                   <input
                                     dir="ltr"
                                     inputMode="numeric"
@@ -494,7 +525,7 @@ function ProjectsPage() {
                               </TD>
 
                               <TD className={`px-3 ${tdBorder}`}>
-                                {editId === r.id ? (
+                                {rowIsEditing ? (
                                   <input
                                     className="w-full max-w-[260px] rounded-xl px-2 py-0.5 text-center
                                                border border-black/15 dark:border-neutral-700
@@ -509,8 +540,35 @@ function ProjectsPage() {
                                 )}
                               </TD>
 
+                              {/* ✅ وضعیت: فقط در حالت ویرایش قابل تغییر */}
                               <TD className={`px-3 ${tdBorder}`}>
-                                {editId === r.id ? (
+                                {rowIsEditing ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      setEditIsActive((v) => !v);
+                                    }}
+                                    className={`${boxBase} ${editIsActive ? boxOn : boxOff} ${boxEnabled}`}
+                                    aria-label={editIsActive ? "فعال" : "غیرفعال"}
+                                    title={editIsActive ? "فعال" : "غیرفعال"}
+                                  >
+                                    {editIsActive ? "✓" : "✓"}
+                                  </button>
+                                ) : (
+                                  <div
+                                    className={`${boxBase} ${rowIsActive ? boxOn : boxOff} ${boxDisabled}`}
+                                    aria-label={rowIsActive ? "فعال" : "غیرفعال"}
+                                    title="برای تغییر، ابتدا ویرایش را بزنید"
+                                  >
+                                    {rowIsActive ? "✓" : "✓"}
+                                  </div>
+                                )}
+                              </TD>
+
+                              <TD className={`px-3 ${tdBorder}`}>
+                                {rowIsEditing ? (
                                   <div className="flex items-center justify-center gap-2">
                                     <RowActionIconBtn
                                       action="save"
