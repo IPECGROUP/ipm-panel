@@ -412,10 +412,10 @@ const computeNextAutoCode = ({ kind, projectId, letters, projectsTopOnly }) => {
 // ✅ fallback: اگر فقط 10700 ذخیره شده بود یا آخرش 5 رقم داشت
 if (!parsed) {
   const v = toEnDigits(String(rawNo ?? "")).trim();
-  const m5 = v.match(/(\d{5})$/); // آخر رشته 5 رقم
-  if (m5) {
-    parsed = { yy, pcode: String(pcode), seq: Number(m5[1]) };
-  }
+  const m = v.match(/^(\d{2})\/(\d{3})\/(\d{5})$/);
+if (m) {
+  parsed = { yy: m[1], pcode: m[2], seq: Number(m[3]) };
+}
 }
 
 if (!parsed) continue;
@@ -427,8 +427,9 @@ if (!parsed) continue;
     }
   });
 
-  const nextSeq = maxSeq ? (maxSeq + 1) : startByYear;
-  return `${yy}/${pcode}/${pad5(nextSeq)}`;
+ const nextSeq = maxSeq >= startByYear ? (maxSeq + 1) : startByYear;
+return `${yy}/${pcode}/${pad5(nextSeq)}`;
+
 };
 
 export default function LettersPage() {
