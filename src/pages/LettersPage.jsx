@@ -2522,7 +2522,6 @@ const secretariatNote =
       (loggedInUserName || "").trim() ||
       (kind === "incoming" ? incomingReceiverName : kind === "outgoing" ? outgoingReceiverName : internalReceiverName);
 
-    const pId = projectId ? Number(projectId) : null;
 
     const files = Array.isArray(docFilesByType?.[kind]) ? docFilesByType[kind] : [];
 
@@ -4059,10 +4058,26 @@ aria-invalid={fieldHasError(formKind, "subject")}
               onClick={() => {
   const sid = String(id || "").trim();
   if (!sid) return;
-  setFormTagIds((prev) => {
-    const base = Array.isArray(prev) ? prev.map(String) : [];
-    return base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
-  });
+ const toggleFormTag = (sid) => {
+  if (formKind === "incoming") {
+    setIncomingTagIds((prev) => {
+      const base = Array.isArray(prev) ? prev.map(String) : [];
+      return base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
+    });
+  } else if (formKind === "outgoing") {
+    setOutgoingTagIds((prev) => {
+      const base = Array.isArray(prev) ? prev.map(String) : [];
+      return base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
+    });
+  } else {
+    setInternalTagIds((prev) => {
+      const base = Array.isArray(prev) ? prev.map(String) : [];
+      return base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
+    });
+  }
+  clearFieldError("formTags");
+};
+
   clearFieldError("formTags");
 }}
 
