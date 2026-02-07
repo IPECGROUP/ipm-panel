@@ -407,8 +407,18 @@ const computeNextAutoCode = ({ kind, projectId, letters, projectsTopOnly }) => {
     if (!rawCandidates.length) return;
 
     for (const rawNo of rawCandidates) {
-      const parsed = parseAutoCode(rawNo);
-      if (!parsed) continue;
+     let parsed = parseAutoCode(rawNo);
+
+// ✅ fallback: اگر فقط 10700 ذخیره شده بود یا آخرش 5 رقم داشت
+if (!parsed) {
+  const v = toEnDigits(String(rawNo ?? "")).trim();
+  const m5 = v.match(/(\d{5})$/); // آخر رشته 5 رقم
+  if (m5) {
+    parsed = { yy, pcode: String(pcode), seq: Number(m5[1]) };
+  }
+}
+
+if (!parsed) continue;
 
       if (parsed.yy !== yy) continue;
       if (String(parsed.pcode) !== String(pcode)) continue;
