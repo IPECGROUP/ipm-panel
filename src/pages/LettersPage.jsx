@@ -899,36 +899,7 @@ const [docClassOtherText, setDocClassOtherText] = useState("");
   const [relatedOpen, setRelatedOpen] = useState(false);
 const [relatedQuery, setRelatedQuery] = useState("");
 
-// ===== Auto code injection (Create only) =====
-const currentProjectId = getForm(formKind).projectId || "";
 
-useEffect(() => {
-  if (!formOpen) return;
-  if (editingId) return; // ادیت → کد جدید نساز
-
-  const code = computeNextAutoCode({
-    kind: formKind,
-    projectId: currentProjectId,
-    letters: myLetters,
-    projectsTopOnly,
-  });
-
-  if (!code) return;
-
-  // وارده: شماره ثبت دبیرخانه
-  if (formKind === "incoming") {
-    setIncomingSecretariatNo(code);
-  }
-  // صادره: شماره سند
-  else if (formKind === "outgoing") {
-    setOutgoingForm((p) => ({ ...p, letterNo: code }));
-  }
-  // داخلی: شماره سند
-  else {
-    setInternalForm((p) => ({ ...p, letterNo: code }));
-  }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [formOpen, formKind, editingId, currentProjectId, myLetters, projectsTopOnly]);
 
 const openRelatedPicker = () => {
   setRelatedPickIds(
@@ -1909,6 +1880,36 @@ const projectsTopOnly = useMemo(() => {
   return out;
 }, [projectsDesc]);
 
+// ===== Auto code injection (Create only) =====
+const currentProjectId = getForm(formKind).projectId || "";
+
+useEffect(() => {
+  if (!formOpen) return;
+  if (editingId) return; // ادیت → کد جدید نساز
+
+  const code = computeNextAutoCode({
+    kind: formKind,
+    projectId: currentProjectId,
+    letters: myLetters,
+    projectsTopOnly,
+  });
+
+  if (!code) return;
+
+  // وارده: شماره ثبت دبیرخانه
+  if (formKind === "incoming") {
+    setIncomingSecretariatNo(code);
+  }
+  // صادره: شماره سند
+  else if (formKind === "outgoing") {
+    setOutgoingForm((p) => ({ ...p, letterNo: code }));
+  }
+  // داخلی: شماره سند
+  else {
+    setInternalForm((p) => ({ ...p, letterNo: code }));
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [formOpen, formKind, editingId, currentProjectId, myLetters, projectsTopOnly]);
 const setFormTagsAllAndPersist = (ids) => {
   const next = normalizeIdList(ids);
 
