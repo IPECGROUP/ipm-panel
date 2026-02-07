@@ -363,7 +363,6 @@ const toEnDigits = (s) =>
     .replace(/[۰-۹]/g, (d) => "0123456789"["۰۱۲۳۴۵۶۷۸۹".indexOf(d)])
     .replace(/[٠-٩]/g, (d) => "0123456789"["٠١٢٣٤٥٦٧٨٩".indexOf(d)]);
 
-const pad2 = (n) => String(n ?? "").padStart(2, "0");
 const pad5 = (n) => String(Number(n) || 0).padStart(5, "0");
 
 // گرفتن ۲ رقم آخر سال شمسی (مثلاً 1404 -> "04")
