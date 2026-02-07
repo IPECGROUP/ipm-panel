@@ -395,18 +395,26 @@ const computeNextAutoCode = ({ kind, projectId, letters, projectsTopOnly }) => {
   let maxSeq = 0;
 
   (Array.isArray(letters) ? letters : []).forEach((l) => {
-    const rawNo =
-      kind === "incoming"
-        ? (l?.secretariat_no ?? l?.secretariatNo ?? "")
-        : (l?.letter_no ?? l?.letterNo ?? "");
+    // ✅ شماره مشترک بین همه تب‌ها:
+    // هم letter_no و هم secretariat_no رو بررسی کن
+    const rawCandidates = [
+      l?.letter_no,
+      l?.letterNo,
+      l?.secretariat_no,
+      l?.secretariatNo,
+    ].filter((x) => String(x ?? "").trim());
 
-    const parsed = parseAutoCode(rawNo);
-    if (!parsed) return;
+    if (!rawCandidates.length) return;
 
-    if (parsed.yy !== yy) return;
-    if (String(parsed.pcode) !== String(pcode)) return;
+    for (const rawNo of rawCandidates) {
+      const parsed = parseAutoCode(rawNo);
+      if (!parsed) continue;
 
-    if (Number.isFinite(parsed.seq) && parsed.seq > maxSeq) maxSeq = parsed.seq;
+      if (parsed.yy !== yy) continue;
+      if (String(parsed.pcode) !== String(pcode)) continue;
+
+      if (Number.isFinite(parsed.seq) && parsed.seq > maxSeq) maxSeq = parsed.seq;
+    }
   });
 
   const nextSeq = maxSeq ? (maxSeq + 1) : startByYear;
