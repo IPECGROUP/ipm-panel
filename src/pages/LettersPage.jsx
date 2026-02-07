@@ -430,6 +430,88 @@ const computeNextAutoCode = ({ kind, projectId, letters, projectsTopOnly }) => {
 const nextSeq = maxSeq >= startByYear ? (maxSeq + 1) : startByYear;
 return `${yy}/${pcode}/${pad5(nextSeq)}`;
 };
+function makeProgressUpdater(setDocFilesFor, kind, fileId) {
+  let lastP = -1;
+  let lastT = 0;
+
+  return (p) => {
+    const now = Date.now();
+    // فقط وقتی تغییر معنی‌دار داشت یا زمان کافی گذشته بود
+    if (p === 0 || p === 100 || (p - lastP >= 5 && now - lastT >= 120)) {
+      lastP = p;
+      lastT = now;
+      setDocFilesFor(kind, (prev) =>
+        prev.map((x) => (x.id === fileId ? { ...x, progress: p } : x))
+      );
+    }
+  };
+}
+
+async function runWithLimit(tasks, limit = 2) {
+  const executing = new Set();
+  const results = [];
+
+  for (const task of tasks) {
+    const p = Promise.resolve().then(task);
+    results.push(p);
+    executing.add(p);
+    p.finally(() => executing.delete(p));
+
+    if (executing.size >= limit) {
+      await Promise.race(executing);
+    }
+  }
+  return Promise.allSettled(results);
+}
+
+async function uploadQueueInBackground({
+  kind,
+  queue,
+  letterId,
+  uploadFileToLetter,
+  setDocFilesFor,
+}) {
+  const tasks = queue.map((f) => async () => {
+    const fileToSend = f.optimizedFile || f.file;
+
+    setDocFilesFor(kind, (prev) =>
+      prev.map((x) =>
+        x.id === f.id ? { ...x, status: "uploading", progress: 0, error: "" } : x
+      )
+    );
+
+    try {
+      const onProg = makeProgressUpdater(setDocFilesFor, kind, f.id);
+
+      const res = await uploadFileToLetter(fileToSend, letterId, onProg);
+
+      setDocFilesFor(kind, (prev) =>
+        prev.map((x) =>
+          x.id === f.id
+            ? {
+                ...x,
+                status: "done",
+                progress: 100,
+                serverId: res?.item?.id ?? res?.id ?? x.serverId,
+                url: res?.item?.url ?? res?.url ?? x.url,
+              }
+            : x
+        )
+      );
+    } catch (e) {
+      setDocFilesFor(kind, (prev) =>
+        prev.map((x) =>
+          x.id === f.id
+            ? { ...x, status: "error", error: e?.message || "خطا در آپلود فایل." }
+            : x
+        )
+      );
+    }
+  });
+
+  // همزمانی 2 تا (می‌تونی 3 هم بذاری)
+  await runWithLimit(tasks, 2);
+}
 
 export default function LettersPage() {
 
@@ -2631,6 +2713,81 @@ if (kind === "incoming") {
 
     setDocFilesByType((prev) => ({ ...prev, [kind]: mapped }));
   };
+const runWithLimit = async (tasks, limit = 2) => {
+  const executing = new Set();
+  const results = [];
+
+  for (const task of tasks) {
+    const p = Promise.resolve().then(task);
+    results.push(p);
+    executing.add(p);
+    p.finally(() => executing.delete(p));
+
+    if (executing.size >= limit) {
+      await Promise.race(executing);
+    }
+  }
+
+  return Promise.allSettled(results);
+};
+
+const makeProgressUpdater = (kind, fileId) => {
+  let lastP = -1;
+  let lastT = 0;
+
+  return (p) => {
+    const now = Date.now();
+    // هر 120ms یا هر 5% یکبار آپدیت
+    if (p === 0 || p === 100 || (p - lastP >= 5 && now - lastT >= 120)) {
+      lastP = p;
+      lastT = now;
+      setDocFilesFor(kind, (prev) =>
+        prev.map((x) => (x.id === fileId ? { ...x, progress: p } : x))
+      );
+    }
+  };
+};
+
+const uploadQueueInBackground = async (kind, queue, letterId) => {
+  const tasks = queue.map((f) => async () => {
+    const fileToSend = f.optimizedFile || f.file;
+
+    setDocFilesFor(kind, (prev) =>
+      prev.map((x) =>
+        x.id === f.id ? { ...x, status: "uploading", progress: 0, error: "" } : x
+      )
+    );
+
+    try {
+      const onProg = makeProgressUpdater(kind, f.id);
+      const res = await uploadFileToLetter(fileToSend, letterId, onProg);
+
+      setDocFilesFor(kind, (prev) =>
+        prev.map((x) =>
+          x.id === f.id
+            ? {
+                ...x,
+                status: "done",
+                progress: 100,
+                serverId: res?.item?.id ?? res?.id ?? x.serverId,
+                url: res?.item?.url ?? res?.url ?? x.url,
+              }
+            : x
+        )
+      );
+    } catch (e) {
+      setDocFilesFor(kind, (prev) =>
+        prev.map((x) =>
+          x.id === f.id
+            ? { ...x, status: "error", error: e?.message || "خطا در آپلود فایل." }
+            : x
+        )
+      );
+    }
+  });
+
+  await runWithLimit(tasks, 2); // 2 تا همزمان
+};
 
   const submitLetter = async (kind) => {
 
