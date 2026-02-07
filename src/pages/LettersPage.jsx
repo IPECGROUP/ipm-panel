@@ -2411,7 +2411,13 @@ setInternalUnitId(uid ? String(uid) : "");
     setLetterDate(String(l?.letter_date ?? l?.letterDate ?? l?.date ?? ""));
 
     setFromName(String(l?.from_name ?? l?.fromName ?? l?.from ?? ""));
-    setToName(String(l?.to_name ?? l?.toName ?? l?.to ?? ""));
+const toVal = String(l?.to_name ?? l?.toName ?? l?.to ?? "");
+
+if (kind === "incoming") {
+  setIncomingForm((p) => ({ ...p, toName: toVal }));
+} else if (kind === "outgoing") {
+  setOutgoingForm((p) => ({ ...p, toName: toVal }));
+}
     setOrgName(String(l?.org_name ?? l?.orgName ?? l?.org ?? l?.organization ?? l?.company ?? ""));
     setSubject(String(l?.subject ?? l?.title ?? ""));
 
@@ -2559,7 +2565,10 @@ const payload = {
   letter_date: f.letterDate || "",
 
   from_name: kind === "incoming" ? (incomingForm.fromName || "") : "",
-  to_name: kind === "outgoing" ? (outgoingForm.toName || "") : "",
+to_name:
+  kind === "incoming" ? (incomingForm.toName || "")
+  : kind === "outgoing" ? (outgoingForm.toName || "")
+  : "",
 
   org_name:
     kind === "outgoing" ? (outgoingForm.orgName || "")
@@ -3486,15 +3495,16 @@ onChange={(e) => {
 
   <FieldWrap>
     <input
-      value={toName}
-      onChange={(e) => {
-        setToName(e.target.value);
-        clearFieldError("toName");
-      }}
-      className={inputWithError(inputCls, "toName")}
-      aria-invalid={fieldHasError("toName")}
-      type="text"
-    />
+  value={incomingForm.toName}
+  onChange={(e) => {
+    setIncomingForm((p) => ({ ...p, toName: e.target.value }));
+    clearFieldError("toName");
+  }}
+  className={inputWithError(inputCls, "toName")}
+  aria-invalid={fieldHasError("toName")}
+  type="text"
+/>
+
     <ErrorTextAbs k="toName" />
   </FieldWrap>
 </div>
