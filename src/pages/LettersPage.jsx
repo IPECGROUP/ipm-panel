@@ -355,6 +355,8 @@ function formatBytes(n) {
 
 
 export default function LettersPage() {
+
+  const isAdmin = String(loggedInUserName || "").trim().toLowerCase() === "marandi1234";
 // ===== Related picker modal =====
 const [relatedPickOpen, setRelatedPickOpen] = useState(false);
 const [relatedPickQuery, setRelatedPickQuery] = useState("");
@@ -2004,6 +2006,10 @@ const isImageUrl = (url, name = "") =>
   const toY = normalizeYmd(filterToDate);
 
   return arr.filter((l) => {
+    // ✅ فقط ادمین محرمانه‌ها را ببیند
+    const isConf = isConfidentialLetter(l); // همونی که خودت داری
+    if (isConf && !isAdmin) return false;
+
     const kind = letterKindOf(l);
 
     // ✅ تب
@@ -2029,25 +2035,28 @@ const isImageUrl = (url, name = "") =>
     if (fromY && d < fromY) return false;
     if (toY && d > toY) return false;
 
-    // ✅ سرچ یکپارچه (موضوع/سازمان/شماره/آیدی)
+    // ✅ سرچ
     if (q) {
       const subject = toEnDigits(String(subjectOf(l) || "")).toLowerCase();
       const org = toEnDigits(String(orgOf(l) || "")).toLowerCase();
       const no = toEnDigits(String(letterNoOf(l) || "")).toLowerCase();
       const id = toEnDigits(String(letterIdOf(l) || "")).toLowerCase();
 
-      const ok =
-        subject.includes(q) ||
-        org.includes(q) ||
-        no.includes(q) ||
-        id.includes(q);
-
+      const ok = subject.includes(q) || org.includes(q) || no.includes(q) || id.includes(q);
       if (!ok) return false;
     }
 
     return true;
   });
-}, [myLettersSorted, filterTab, filterQuery, filterTagIds, filterFromDate, filterToDate]);
+}, [
+  myLettersSorted,
+  filterTab,
+  filterQuery,
+  filterTagIds,
+  filterFromDate,
+  filterToDate,
+  isAdmin, // ✅ اضافه شد
+]);
 
   useEffect(() => {
     setSelectedIds(new Set());
@@ -3826,34 +3835,36 @@ useEffect(() => {
 
         const isConf = isConfidentialLetter(l);
 
-        const rowBg = isOutgoing
-          ? theme === "dark"
-            ? "bg-[#8BAE66]/15 hover:bg-[#8BAE66]/20"
-            : "bg-[#8BAE66]/[0.06] hover:bg-[#8BAE66]/[0.09]"
-          : isIncoming
-          ? theme === "dark"
-            ? "bg-[#0046FF]/15 hover:bg-[#0046FF]/20"
-            : "bg-[#0046FF]/[0.06] hover:bg-[#0046FF]/[0.09]"
-          : isInternal
-          ? theme === "dark"
-            ? "bg-orange-500/10 hover:bg-orange-500/15"
-            : "bg-orange-50 hover:bg-orange-100/70"
-          : theme === "dark"
-          ? "bg-white/5 hover:bg-white/10"
-          : "bg-black/[0.02] hover:bg-black/[0.04]";
+const normalRowBg = isOutgoing
+  ? theme === "dark"
+    ? "bg-[#8BAE66]/15 hover:bg-[#8BAE66]/20"
+    : "bg-[#8BAE66]/[0.06] hover:bg-[#8BAE66]/[0.09]"
+  : isIncoming
+  ? theme === "dark"
+    ? "bg-[#0046FF]/15 hover:bg-[#0046FF]/20"
+    : "bg-[#0046FF]/[0.06] hover:bg-[#0046FF]/[0.09]"
+  : isInternal
+  ? theme === "dark"
+    ? "bg-orange-500/10 hover:bg-orange-500/15"
+    : "bg-orange-50 hover:bg-orange-100/70"
+  : theme === "dark"
+  ? "bg-white/5 hover:bg-white/10"
+  : "bg-black/[0.02] hover:bg-black/[0.04]";
+
+// ✅ محرمانه: بک‌گراند ثابت با رنگ مدنظر
+const confRowBg = "bg-[#F75270] hover:bg-[#F75270]";
+
+const rowBg = isConf ? confRowBg : normalRowBg;
 
         return (  
-          <tr
-            key={id}
-            className={
-              rowBg +
-              " transition-colors" +
-              (isConf
-                ? " font-semibold [&_td]:!text-red-600 dark:[&_td]:!text-red-400"
-                : "")
-            }
-          >
-
+         <tr
+          key={id}
+          className={
+            rowBg +
+            " transition-colors" +
+            (isConf ? " font-semibold [&_td]:!text-white" : "")
+          }
+        >
             <td className={"px-3 " + divider}>
               <input
                 type="checkbox"
