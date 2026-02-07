@@ -515,38 +515,20 @@ const [hasYScroll, setHasYScroll] = useState(false);
     if (!res.ok) throw new Error(data?.error || data?.message || "request_failed");
     return data;
   }
-const prefsIdRef = useRef(null);
-
 // ===== Letter Prefs (backend) =====
 const LETTER_PREFS_ENDPOINT = "/letters/prefs";
 
 async function fetchLetterPrefs() {
   const r = await api(LETTER_PREFS_ENDPOINT, { method: "GET" });
-
-  // ✅ اگر بک‌اند id بده، ذخیره کن
-  prefsIdRef.current = r?.prefs?.id ?? r?.id ?? prefsIdRef.current;
-
   return r?.prefs || {};
 }
 
+// ✅ مهم: برای جلوگیری از missing_id به جای PATCH از POST استفاده کن (upsert)
 async function patchLetterPrefs(patch) {
-  // ✅ اگر هنوز id نداریم، یک بار GET بزن
-  if (!prefsIdRef.current) {
-    try { await fetchLetterPrefs(); } catch {}
-  }
-
-  const bodyObj = prefsIdRef.current
-    ? { id: prefsIdRef.current, ...(patch || {}) }
-    : (patch || {});
-
   const r = await api(LETTER_PREFS_ENDPOINT, {
-    method: "PATCH",
-    body: JSON.stringify(bodyObj),
+    method: "POST",
+    body: JSON.stringify(patch || {}),
   });
-
-  // ✅ دوباره id را ذخیره کن
-  prefsIdRef.current = r?.prefs?.id ?? r?.id ?? prefsIdRef.current;
-
   return r?.prefs || {};
 }
 
