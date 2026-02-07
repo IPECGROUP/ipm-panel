@@ -2383,6 +2383,7 @@ const kindRowTintCls = (kind) => {
   setOutgoingForm({
     category: "نامه",
     projectId: "",
+    letterNo: "",
     letterDate: "",
     toName: "",
     orgName: "",
@@ -2390,6 +2391,8 @@ const kindRowTintCls = (kind) => {
   });
 
   setInternalForm({
+     projectId: "",      
+  letterNo: "",  
     letterDate: "",
     subject: "",
   });
