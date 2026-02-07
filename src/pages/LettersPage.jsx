@@ -356,7 +356,6 @@ function formatBytes(n) {
 
 export default function LettersPage() {
 
-// ✅ Validation state (بهتره نزدیک بقیه state ها باشه)
 // ✅ Validation (per tab)
 const [errorsByKind, setErrorsByKind] = useState({
   incoming: {},
@@ -470,7 +469,7 @@ const validate = (kind) => {
 
   const next = {};
   for (const key of req) {
-  if (isEmpty(pickValue(key))) next[key] = REQUIRED_MSG;
+  if (isEmpty(values[key])) next[key] = REQUIRED_MSG;
   }
 
   setErrorsByKind((p) => ({ ...p, [kind]: next }));
@@ -2493,7 +2492,6 @@ if (kind === "incoming") {
   };
 
   const submitLetter = async (kind) => {
-    setSubmitTried(true);
 
   const ok = validate(kind);
   if (!ok) return; // ✅ جلو ارسال را می‌گیرد
