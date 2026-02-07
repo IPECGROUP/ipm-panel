@@ -356,7 +356,7 @@ function formatBytes(n) {
 
 export default function LettersPage() {
 
-  
+  const [fromName, setFromName] = useState("");
 // ✅ Validation state (بهتره نزدیک بقیه state ها باشه)
 const [errors, setErrors] = useState({});
 const [submitTried, setSubmitTried] = useState(false);
@@ -2412,7 +2412,15 @@ setInternalUnitId(uid ? String(uid) : "");
     setLetterNo(String(l?.letter_no ?? l?.letterNo ?? l?.no ?? l?.number ?? ""));
     setLetterDate(String(l?.letter_date ?? l?.letterDate ?? l?.date ?? ""));
 
-    setFromName(String(l?.from_name ?? l?.fromName ?? l?.from ?? ""));
+const fromVal = String(l?.from_name ?? l?.fromName ?? l?.from ?? "");
+if (kind === "outgoing") {
+  setOutgoingForm((p) => ({ ...p, fromName: fromVal }));
+} else if (kind === "incoming") {
+  setIncomingForm((p) => ({ ...p, fromName: fromVal }));
+} else {
+  setInternalForm((p) => ({ ...p, fromName: fromVal }));
+}
+
 const toVal = String(l?.to_name ?? l?.toName ?? l?.to ?? "");
 
 if (kind === "incoming") {
@@ -2575,7 +2583,11 @@ const payload = {
   letter_no: kind === "incoming" ? (incomingForm.letterNo || "") : "",
   letter_date: f.letterDate || "",
 
-  from_name: kind === "incoming" ? (incomingForm.fromName || "") : "",
+  from_name:
+  kind === "incoming" ? (incomingForm.fromName || "")
+  : kind === "outgoing" ? (outgoingForm.fromName || "")
+  : "",
+
 to_name:
   kind === "incoming" ? (incomingForm.toName || "")
   : kind === "outgoing" ? (outgoingForm.toName || "")
