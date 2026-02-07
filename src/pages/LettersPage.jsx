@@ -2566,7 +2566,11 @@ const payload = {
     : kind === "incoming" ? (incomingForm.orgName || "")
     : "",
 
-  subject: kind === "outgoing" ? (outgoingForm.subject || "") : (internalForm.subject || ""),
+subject:
+  kind === "incoming" ? (incomingForm.subject || subject || "")
+  : kind === "outgoing" ? (outgoingForm.subject || "")
+  : (internalForm.subject || ""),
+
 
   has_attachment: computedHasAttachment,
   return_to_ids: (Array.isArray(returnToIds) ? returnToIds : []).map(String).filter((x) => x && x.trim()),
