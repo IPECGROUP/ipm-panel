@@ -356,7 +356,6 @@ function formatBytes(n) {
 
 export default function LettersPage() {
 
-  const isAdmin = String(loggedInUserName || "").trim().toLowerCase() === "marandi1234";
 // ===== Related picker modal =====
 const [relatedPickOpen, setRelatedPickOpen] = useState(false);
 const [relatedPickQuery, setRelatedPickQuery] = useState("");
@@ -590,6 +589,18 @@ const resolveFileUrl = (u) => {
 ).trim();
   }, [user]);
 
+  // ✅ فقط این دو نفر + نقش admin دسترسی محرمانه دارند
+const PRIV_USERS = new Set(["marandi1234", "rastegar"]);
+
+const canSeeConfidential = useMemo(() => {
+  const uname = String(loggedInUserName || "").trim().toLowerCase();
+  const role = String(user?.role || "").trim().toLowerCase(); // اگر role داری
+  return role === "admin" || PRIV_USERS.has(uname);
+}, [loggedInUserName, user?.role]);
+
+// اگر جاهای دیگه از isAdmin استفاده می‌کنی:
+const isAdmin = canSeeConfidential;
+
 // ===== Filters (page-level) =====
   const [filterQuick, setFilterQuick] = useState(""); // week|2w|1m|3m|6m
   const [filterFromDate, setFilterFromDate] = useState("");
@@ -627,14 +638,15 @@ useEffect(() => {
 
 useEffect(() => {
   if (!user?.id) return;
-  loadActiveFilterTags();                 // ✅ بدون پارامتر
+ loadActiveFilterTags(user.id);            // ✅ بدون پارامتر
   filterActiveHydratedRef.current = true; // ✅
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [user?.id]);
 
 useEffect(() => {
   if (!filterActiveHydratedRef.current) return;
-  saveActiveFilterTags(filterTagIds);     // ✅ بدون پارامتر
+  saveActiveFilterTags(user.id, filterTagIds);
+    // ✅ بدون پارامتر
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [filterTagIds]);
 
@@ -2008,7 +2020,7 @@ const isImageUrl = (url, name = "") =>
   return arr.filter((l) => {
     // ✅ فقط ادمین محرمانه‌ها را ببیند
     const isConf = isConfidentialLetter(l); // همونی که خودت داری
-    if (isConf && !isAdmin) return false;
+    if (isConf && !canSeeConfidential) return false;
 
     const kind = letterKindOf(l);
 
@@ -2055,7 +2067,7 @@ const isImageUrl = (url, name = "") =>
   filterTagIds,
   filterFromDate,
   filterToDate,
-  isAdmin, // ✅ اضافه شد
+  canSeeConfidential, // ✅ اضافه شد
 ]);
 
   useEffect(() => {
