@@ -444,31 +444,41 @@ const validate = (kind) => {
       : [...requiredAlways];
 
   // مقادیر از state
-  const f = getForm(kind);
+const f = getForm(kind);
 
 const values = {
+  // shared for all kinds
+  letterDate: f.letterDate,
+  formTags: Array.isArray(formTagIds) ? formTagIds : [],
+  internalUnitId,
+
   // incoming
   classification: incomingForm.classification,
   letterNo: incomingForm.letterNo,
   fromName: incomingForm.fromName,
   orgName: incomingForm.orgName,
-  projectId: incomingForm.projectId,
+  projectId: incomingForm.projectId, // فقط اگر برای incoming لازم داری
 
   // outgoing
   category: outgoingForm.category,
+  projectId_out: outgoingForm.projectId,
   toName: outgoingForm.toName,
+  orgName_out: outgoingForm.orgName,
   subject: outgoingForm.subject,
-  projectId_out: outgoingForm.projectId, // اگر جدا لازم داری
-
-  // shared per kind
-  letterDate: f.letterDate,
-
-  // tags مشترک
-  formTags: Array.isArray(formTagIds) ? formTagIds : [],
-
-  internalUnitId,
 };
 
+// ✅ یک نگاشت ساده برای اینکه requiredها با values بخونن
+const pickValue = (key) => {
+  if (kind === "outgoing") {
+    if (key === "projectId") return values.projectId_out;
+    if (key === "orgName") return values.orgName_out;
+  }
+  return values[key];
+};
+
+for (const key of required) {
+  if (isEmpty(pickValue(key))) next[key] = REQUIRED_MSG;
+}
 
   for (const key of required) {
     if (isEmpty(values[key])) next[key] = REQUIRED_MSG;
@@ -2297,38 +2307,59 @@ const kindRowTintCls = (kind) => {
   return "bg-orange-50 dark:bg-orange-500/10"; // ✅ internal
 };
 
-  const resetForm = () => {
-    setCategory("نامه");
-    setClassification("عادی");
-    setProjectId("");
-    setLetterNo("");
-    setLetterDate("");
-    setFromName("");
-    setOrgName("");
-    setToName("");
-    setSubject("");
-    setIncomingAttachmentTitle("");
-    setOutgoingAttachmentTitle("");
-    setInternalAttachmentTitle("");
-    setInternalUnitId("");
-    setHasAttachment(false);
-    setReturnToIds([""]);
-    setPiroIds([""]);
-    setIncomingTagIds([]);
-    setOutgoingTagIds([]);
-    setInternalTagIds([]);
-    setIncomingSecretariatDate(todayJalaliYmd || "");
-    setOutgoingSecretariatDate(todayJalaliYmd || "");
-    setInternalSecretariatDate(todayJalaliYmd || "");
-    setIncomingSecretariatNo("");
-    setOutgoingSecretariatNo("");
-    setInternalSecretariatNo("");
-    setIncomingReceiverName(loggedInUserName || "");
-    setOutgoingReceiverName(loggedInUserName || "");
-    setInternalReceiverName(loggedInUserName || "");
-    setDocFilesByType({ incoming: [], outgoing: [], internal: [] });
-    setEditingId(null);
-  };
+ const resetForm = () => {
+  setIncomingForm({
+    classification: "عادی",
+    projectId: "",
+    letterNo: "",
+    letterDate: "",
+    fromName: "",
+    orgName: "",
+  });
+
+  setOutgoingForm({
+    category: "نامه",
+    projectId: "",
+    letterDate: "",
+    toName: "",
+    orgName: "",
+    subject: "",
+  });
+
+  setInternalForm({
+    letterDate: "",
+    subject: "",
+  });
+
+  setFormTagIds([]);
+
+  setIncomingAttachmentTitle("");
+  setOutgoingAttachmentTitle("");
+  setInternalAttachmentTitle("");
+  setInternalUnitId("");
+  setHasAttachment(false);
+  setReturnToIds([""]);
+  setPiroIds([""]);
+
+  setIncomingTagIds([]);
+  setOutgoingTagIds([]);
+  setInternalTagIds([]);
+
+  setIncomingSecretariatDate(todayJalaliYmd || "");
+  setOutgoingSecretariatDate(todayJalaliYmd || "");
+  setInternalSecretariatDate(todayJalaliYmd || "");
+
+  setIncomingSecretariatNo("");
+  setOutgoingSecretariatNo("");
+  setInternalSecretariatNo("");
+
+  setIncomingReceiverName(loggedInUserName || "");
+  setOutgoingReceiverName(loggedInUserName || "");
+  setInternalReceiverName(loggedInUserName || "");
+
+  setDocFilesByType({ incoming: [], outgoing: [], internal: [] });
+  setEditingId(null);
+};
 
   const normalizeAttachmentForPayload = (x) => {
     const url = String(x?.url || "");
@@ -2501,18 +2532,42 @@ const secretariatNote =
 
   const computedHasAttachment = queue.length > 0 || reused.length > 0 ? true : !!hasAttachment;
 
-    const payload = {
-  kind,
-  category: String(category || "نامه").trim(),
-  classification: classification || "عادی",
+const f = getForm(kind);
 
-  project_id: pId && Number.isFinite(pId) ? pId : null,
-  letter_no: letterNo || "",
-  letter_date: letterDate || "",
-  from_name: fromName || "",
-  to_name: toName || "",
-  org_name: orgName || "",
-  subject: subject || "",
+const payload = {
+  kind,
+
+  // ✅ category + classification از فرم درست
+  category:
+    kind === "outgoing" ? String(outgoingForm.category || "نامه").trim()
+    : "نامه",
+
+  classification:
+    kind === "incoming" ? (incomingForm.classification || "عادی")
+    : "عادی",
+
+  project_id: (() => {
+    const pid =
+      kind === "outgoing" ? outgoingForm.projectId :
+      kind === "incoming" ? incomingForm.projectId :
+      null;
+    const n = pid ? Number(pid) : null;
+    return n && Number.isFinite(n) ? n : null;
+  })(),
+
+  letter_no: kind === "incoming" ? (incomingForm.letterNo || "") : "",
+  letter_date: f.letterDate || "",
+
+  from_name: kind === "incoming" ? (incomingForm.fromName || "") : "",
+  to_name: kind === "outgoing" ? (outgoingForm.toName || "") : "",
+
+  org_name:
+    kind === "outgoing" ? (outgoingForm.orgName || "")
+    : kind === "incoming" ? (incomingForm.orgName || "")
+    : "",
+
+  subject: kind === "outgoing" ? (outgoingForm.subject || "") : (internalForm.subject || ""),
+
   has_attachment: computedHasAttachment,
   return_to_ids: (Array.isArray(returnToIds) ? returnToIds : []).map(String).filter((x) => x && x.trim()),
   piro_ids: (Array.isArray(piroIds) ? piroIds : []).map(String).filter((x) => x && x.trim()),
@@ -2522,11 +2577,13 @@ const secretariatNote =
   secretariat_note: secretariatNote || "",
   receiver_name: receiverName || "",
   attachments: reused,
-internal_unit_id:
-  kind === "internal"
-    ? (internalUnitId ? Number(internalUnitId) : null)
-    : null,
+
+  internal_unit_id:
+    kind === "internal"
+      ? (internalUnitId ? Number(internalUnitId) : null)
+      : null,
 };
+
 
     let saved;
     let newId = null;
