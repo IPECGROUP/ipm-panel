@@ -3888,6 +3888,7 @@ useEffect(() => {
   </FieldWrap>
 </div>
 
+
       {/* ✅ دکمه ارسال هم داخل همین کادر قرار گرفت */}
       <div className="flex items-center justify-end pt-2">
         <button type="button" onClick={() => submitLetter(formKind)} className={sendBtnCls} title="ارسال" aria-label="ارسال">
