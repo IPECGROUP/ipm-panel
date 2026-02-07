@@ -353,30 +353,9 @@ function formatBytes(n) {
   return `${Math.round(v * 10) / 10} ${units[i]}`;
 }
 
-const getJalaliYY = () => {
-  const y = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric" }).format(new Date());
-  const en = toEnDigits(y);
-  return en.slice(-2);
-};
-
-const pad5 = (n) => String(Number(n) || 0).padStart(5, "0");
-
-const parseAutoCode = (s) => {
-  const m = String(s || "").trim().match(/^(\d{2})\/([^/]+)\/(\d{5})$/);
-  if (!m) return null;
-  return { yy: m[1], pcode: m[2], seq: Number(m[3]) };
-};
-
-const getProjectCode = (pid, projects) => {
-  const id = String(pid || "").trim();
-  if (!id) return "";
-  const p = (Array.isArray(projects) ? projects : []).find((x) => String(x?.id) === id);
-  return String(p?.__baseCode ?? p?.code ?? "").trim(); // چون تو projectsTopOnly __baseCode داری
-};
 
 export default function LettersPage() {
 
-  
   // تبدیل رقم فارسی/عربی به انگلیسی
 const toEnDigits = (s) =>
   String(s ?? "")
@@ -666,29 +645,6 @@ const setForm = (kind, patch) => {
   else if (kind === "internal") setInternalForm((p) => ({ ...p, ...patch }));
   else setIncomingForm((p) => ({ ...p, ...patch }));
 };
-
-useEffect(() => {
-  if (!formOpen) return;     // ✅ فقط وقتی فرم بازه
-  if (editingId) return;     // ✅ موقع ادیت کد جدید نساز
-
-  const pid = getForm(formKind).projectId || "";
-  const code = computeNextAutoCode({
-    kind: formKind,
-    projectId: pid,
-    letters: myLetters,
-  });
-
-  if (!code) return;
-
-  if (formKind === "incoming") {
-    setIncomingSecretariatNo(code);
-  } else if (formKind === "outgoing") {
-    setOutgoingForm((p) => ({ ...p, letterNo: code }));
-  } else if (formKind === "internal") {
-    setInternalForm((p) => ({ ...p, letterNo: code }));
-  }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [formOpen, formKind, editingId, getForm(formKind).projectId, myLetters, projectsTopOnly]);
 
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFor, setUploadFor] = useState("incoming");
@@ -1891,40 +1847,6 @@ const projectsTopOnly = useMemo(() => {
 
   return out;
 }, [projectsDesc]);
-
-const computeNextAutoCode = ({ kind, projectId, letters }) => {
-  const yy = getJalaliYY();
-  const pcode = getProjectCode(projectId, projectsTopOnly);
-  if (!pcode) return "";
-
-  const list = Array.isArray(letters) ? letters : [];
-  let maxSeq = null;
-
-  for (const l of list) {
-    const lk = String(letterKindOf(l) || "").trim();
-    if (lk !== kind) continue;
-
-    const raw =
-      kind === "incoming"
-        ? (l?.secretariat_no ?? l?.secretariatNo ?? "")
-        : (l?.letter_no ?? l?.letterNo ?? "");
-
-    const parsed = parseAutoCode(raw);
-    if (!parsed) continue;
-
-    if (parsed.yy !== yy) continue;
-    if (String(parsed.pcode) !== String(pcode)) continue;
-
-    if (maxSeq == null || parsed.seq > maxSeq) maxSeq = parsed.seq;
-  }
-
-  const fullYear = Number("14" + yy);
-  const startSeq = fullYear === 1404 ? 10700 : 10000;
-
-  const nextSeq = maxSeq == null ? startSeq : maxSeq + 1;
-  return `${yy}/${pcode}/${pad5(nextSeq)}`;
-};
-
 
 const setFormTagsAllAndPersist = (ids) => {
   const next = normalizeIdList(ids);
@@ -4100,30 +4022,16 @@ aria-invalid={fieldHasError(formKind, "subject")}
           >  {formKind === "outgoing" ? "شماره ثبت دبیرخانه " : "شماره ثبت دبیرخانه"}
           </div>
           <input
-  value={
-    formKind === "incoming"
-      ? incomingSecretariatNo
-      : formKind === "outgoing"
-      ? outgoingSecretariatNo
-      : internalSecretariatNo
-  }
-  readOnly={formKind === "incoming"} // ✅ فقط وارده قفل
-  onChange={(e) => {
-    const v = e.target.value;
-
-    // ✅ وارده اتومات است
-    if (formKind === "incoming") return;
-
-    if (formKind === "outgoing") setOutgoingSecretariatNo(v);
-    else setInternalSecretariatNo(v);
-  }}
-  className={
-    inputCls +
-    (formKind === "incoming" ? " bg-black/5 dark:bg-white/10 cursor-not-allowed" : "")
-  }
-  type="text"
-/>
-
+            value={formKind === "incoming" ? incomingSecretariatNo : formKind === "outgoing" ? outgoingSecretariatNo : internalSecretariatNo}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (formKind === "incoming") setIncomingSecretariatNo(v);
+              else if (formKind === "outgoing") setOutgoingSecretariatNo(v);
+              else setInternalSecretariatNo(v);
+            }}
+            className={inputCls}
+            type="text"
+          />
         </div>
 
         <div>
