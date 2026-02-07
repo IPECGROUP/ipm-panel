@@ -356,7 +356,6 @@ function formatBytes(n) {
 
 export default function LettersPage() {
 
-  const [fromName, setFromName] = useState("");
 // ✅ Validation state (بهتره نزدیک بقیه state ها باشه)
 // ✅ Validation (per tab)
 const [errorsByKind, setErrorsByKind] = useState({
@@ -471,7 +470,7 @@ const validate = (kind) => {
 
   const next = {};
   for (const key of req) {
-    if (isEmpty(values[key])) next[key] = REQUIRED_MSG;
+  if (isEmpty(pickValue(key))) next[key] = REQUIRED_MSG;
   }
 
   setErrorsByKind((p) => ({ ...p, [kind]: next }));
@@ -611,6 +610,7 @@ const [outgoingForm, setOutgoingForm] = useState({
 category: "نامه",
   projectId: "",
   letterDate: "",
+    fromName: "",      
   toName: "",
   orgName: "",
   subject: "",
@@ -3393,11 +3393,13 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
           <div className="md:col-span-3">
             <div className={labelCls}>از</div>
             <input
-              value={fromName}
-              onChange={(e) => setFromName(e.target.value)}
-              className={inputCls}
-              type="text"
-            />
+  value={outgoingForm.fromName}
+  onChange={(e) =>
+    setOutgoingForm((p) => ({ ...p, fromName: e.target.value }))
+  }
+  className={inputCls}
+  type="text"
+/>
           </div>
 
           {/* آیکن وسط */}
