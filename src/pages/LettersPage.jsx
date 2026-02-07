@@ -444,21 +444,31 @@ const validate = (kind) => {
       : [...requiredAlways];
 
   // مقادیر از state
-  const values = {
-    classification,
-    letterNo,
-    letterDate,
+  const f = getForm(kind);
 
-    category,
-    projectId,
-    toName,
-    orgName,
-    subject,
+const values = {
+  // incoming
+  classification: incomingForm.classification,
+  letterNo: incomingForm.letterNo,
+  fromName: incomingForm.fromName,
+  orgName: incomingForm.orgName,
+  projectId: incomingForm.projectId,
 
-    fromName, // اگر لازم داشتی برای incoming/internal
-    formTags: Array.isArray(formSelectedTagIds) ? formSelectedTagIds : [],
-    internalUnitId,
-  };
+  // outgoing
+  category: outgoingForm.category,
+  toName: outgoingForm.toName,
+  subject: outgoingForm.subject,
+  projectId_out: outgoingForm.projectId, // اگر جدا لازم داری
+
+  // shared per kind
+  letterDate: f.letterDate,
+
+  // tags مشترک
+  formTags: Array.isArray(formTagIds) ? formTagIds : [],
+
+  internalUnitId,
+};
+
 
   for (const key of required) {
     if (isEmpty(values[key])) next[key] = REQUIRED_MSG;
@@ -589,6 +599,42 @@ const [formKind, setFormKind] = useState("incoming"); // نوع نامه داخ�
 
   // ✅ edit state
   const [editingId, setEditingId] = useState(null);
+// ✅ برچسب‌ها (تنها چیز مشترک بین هر سه تب)
+const [formTagIds, setFormTagIds] = useState([]);
+
+// ✅ فرم‌ها جدا (برای جلوگیری از قاطی شدن بین تب‌ها)
+const [incomingForm, setIncomingForm] = useState({
+  classification: "عادی",
+  projectId: "",
+  letterNo: "",
+  letterDate: "",
+  fromName: "",
+  orgName: "",
+});
+
+const [outgoingForm, setOutgoingForm] = useState({
+category: "نامه",
+  projectId: "",
+  letterDate: "",
+  toName: "",
+  orgName: "",
+  subject: "",
+});
+
+const [internalForm, setInternalForm] = useState({
+  letterDate: "",
+  subject: "",
+});
+
+// ✅ helpers
+const getForm = (kind) =>
+  kind === "outgoing" ? outgoingForm : kind === "internal" ? internalForm : incomingForm;
+
+const setForm = (kind, patch) => {
+  if (kind === "outgoing") setOutgoingForm((p) => ({ ...p, ...patch }));
+  else if (kind === "internal") setInternalForm((p) => ({ ...p, ...patch }));
+  else setIncomingForm((p) => ({ ...p, ...patch }));
+};
 
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFor, setUploadFor] = useState("incoming");
@@ -801,20 +847,8 @@ const [docClassOtherOpen, setDocClassOtherOpen] = useState(false);
 const [docClassOtherText, setDocClassOtherText] = useState("");
 
 // طبقه بندی (عادی/محرمانه)
-const [classification, setClassification] = useState("عادی");
 
-
-const [category, setCategory] = useState("نامه");
-  const [projectId, setProjectId] = useState("");
   const [projects, setProjects] = useState([]);
-
-  const [letterNo, setLetterNo] = useState("");
-  const [letterDate, setLetterDate] = useState("");
-
-  const [fromName, setFromName] = useState("");
-  const [orgName, setOrgName] = useState("");
-  const [toName, setToName] = useState("");
-  const [subject, setSubject] = useState("");
   const [hasAttachment, setHasAttachment] = useState(false);
   const [incomingAttachmentTitle, setIncomingAttachmentTitle] = useState("");
   const [outgoingAttachmentTitle, setOutgoingAttachmentTitle] = useState("");
@@ -3161,17 +3195,16 @@ useEffect(() => {
   </div>
 
   {/* کلاس سند */}
-  {/* کلاس سند */}
 <div className="shrink-0 w-[190px]">
   <div className={labelSmCls}>کلاس سند</div>
 
   <FieldWrap>
     <select
-      value={category}
-      onChange={(e) => {
-        setCategory(e.target.value);
-        if (formKind === "outgoing") clearFieldError("category");
-      }}
+      value={outgoingForm.category}
+onChange={(e) => {
+  setOutgoingForm((p) => ({ ...p, category: e.target.value }));
+  if (formKind === "outgoing") clearFieldError("category");
+}}
       className={formKind === "outgoing" ? inputWithError(inputSmCls, "category") : inputSmCls}
       aria-invalid={formKind === "outgoing" ? fieldHasError("category") : undefined}
     >
@@ -3192,8 +3225,11 @@ useEffect(() => {
 
   <FieldWrap>
     <select
-      value={classification}
-      onChange={(e) => { setClassification(e.target.value); clearFieldError("classification"); }}
+      value={incomingForm.classification}
+onChange={(e) => {
+  setIncomingForm((p) => ({ ...p, classification: e.target.value }));
+  clearFieldError("classification");
+}}
       className={inputWithError(inputSmCls, "classification")}
       aria-invalid={fieldHasError("classification")}
     >
@@ -3212,11 +3248,11 @@ useEffect(() => {
 
   <FieldWrap>
     <select
-      value={projectId}
-      onChange={(e) => {
-        setProjectId(e.target.value);
-        if (formKind === "outgoing") clearFieldError("projectId");
-      }}
+      value={getForm(formKind).projectId || ""}
+onChange={(e) => {
+  setForm(formKind, { projectId: e.target.value });
+  if (formKind === "incoming" || formKind === "outgoing") clearFieldError("projectId");
+}}
       className={formKind === "outgoing" ? inputWithError(inputSmCls, "projectId") : inputSmCls}
       aria-invalid={formKind === "outgoing" ? fieldHasError("projectId") : undefined}
     >
@@ -3238,8 +3274,11 @@ useEffect(() => {
 
   <FieldWrap>
     <input
-      value={letterNo}
-      onChange={(e) => { setLetterNo(e.target.value); clearFieldError("letterNo"); }}
+      value={incomingForm.letterNo}
+onChange={(e) => {
+  setIncomingForm((p) => ({ ...p, letterNo: e.target.value }));
+  clearFieldError("letterNo");
+}}
       className={inputWithError(inputSmCls, "letterNo")}
       aria-invalid={fieldHasError("letterNo")}
       type="text"
@@ -3255,8 +3294,11 @@ useEffect(() => {
 
   <FieldWrap>
     <JalaliPopupDatePicker
-      value={letterDate}
-      onChange={(v) => { setLetterDate(v); clearFieldError("letterDate"); }}
+     value={getForm(formKind).letterDate}
+onChange={(v) => {
+  setForm(formKind, { letterDate: v });
+  clearFieldError("letterDate");
+}}
       theme={theme}
       buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between", "letterDate")}
     />
@@ -3298,8 +3340,11 @@ useEffect(() => {
           <div className="md:col-span-3">
             <div className={labelCls}>به</div>
             <input
-              value={toName}
-              onChange={(e) => setToName(e.target.value)}
+              value={outgoingForm.toName}
+onChange={(e) => {
+  setOutgoingForm((p) => ({ ...p, toName: e.target.value }));
+  clearFieldError("toName");
+}}
               className={inputCls}
               type="text"
             />
@@ -3309,8 +3354,11 @@ useEffect(() => {
           <div className="md:col-span-5">
             <div className={labelCls}>شرکت/سازمان</div>
             <input
-              value={orgName}
-              onChange={(e) => setOrgName(e.target.value)}
+             value={outgoingForm.orgName}
+onChange={(e) => {
+  setOutgoingForm((p) => ({ ...p, orgName: e.target.value }));
+  clearFieldError("orgName");
+}}
               className={inputCls}
               type="text"
             />
@@ -3324,8 +3372,12 @@ useEffect(() => {
 
   <FieldWrap>
     <input
-      value={fromName}
-      onChange={(e) => { setFromName(e.target.value); clearFieldError("fromName"); }}
+      value={incomingForm.fromName}
+onChange={(e) => {
+  setIncomingForm((p) => ({ ...p, fromName: e.target.value }));
+  clearFieldError("fromName");
+}}
+
       className={inputWithError(inputCls, "fromName")}
       aria-invalid={fieldHasError("fromName")}
       type="text"
@@ -3341,11 +3393,11 @@ useEffect(() => {
 
   <FieldWrap>
     <input
-      value={orgName}
-      onChange={(e) => {
-        setOrgName(e.target.value);
-        clearFieldError("orgName");
-      }}
+      value={incomingForm.orgName}
+onChange={(e) => {
+  setIncomingForm((p) => ({ ...p, orgName: e.target.value }));
+  clearFieldError("orgName");
+}}
       className={inputWithError(inputCls, "orgName")}
       aria-invalid={fieldHasError("orgName")}
       type="text"
@@ -3400,8 +3452,12 @@ useEffect(() => {
 
   <FieldWrap>
     <input
-      value={subject}
-      onChange={(e) => { setSubject(e.target.value); clearFieldError("subject"); }}
+      value={internalForm.subject}
+onChange={(e) => {
+  setInternalForm((p) => ({ ...p, subject: e.target.value }));
+  clearFieldError("subject");
+}}
+
       className={inputWithError(inputCls, "subject")}
       aria-invalid={fieldHasError("subject")}
       type="text"
@@ -3900,7 +3956,7 @@ useEffect(() => {
           formKind === "internal" ? "execution" :
           "letters";
 
-        const selectedIds = Array.isArray(formSelectedTagIds) ? formSelectedTagIds : [];
+        const selectedIds = Array.isArray(formTagIds) ? formTagIds : [];
         const pool = Array.isArray(tagsByScope?.[scope]) ? tagsByScope[scope] : [];
 
         const selSet = new Set(selectedIds.map(String));
@@ -3916,7 +3972,16 @@ useEffect(() => {
             <button
               key={id}
               type="button"
-              onClick={() => { toggleTag("all", id); clearFieldError("formTags"); }}
+              onClick={() => {
+  const sid = String(id || "").trim();
+  if (!sid) return;
+  setFormTagIds((prev) => {
+    const base = Array.isArray(prev) ? prev.map(String) : [];
+    return base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
+  });
+  clearFieldError("formTags");
+}}
+
               className={selectedTagChipCls + " shrink-0"}
               title={label}
               aria-label={label}
