@@ -415,29 +415,6 @@ const computeNextAutoCode = ({ kind, projectId, letters, projectsTopOnly }) => {
 
 export default function LettersPage() {
 
-// گرفتن ۲ رقم آخر سال شمسی (مثلاً 1404 -> "04")
-const getJalaliYY = () => {
-  const y = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric" }).format(new Date());
-  const en = toEnDigits(y); // ممکنه فارسی برگرده
-  return en.slice(-2); // "04"
-};
-
-// پیدا کردن کد پروژه از لیست پروژه‌ها
-const getProjectCode = (pid, projects) => {
-  const id = String(pid || "").trim();
-  if (!id) return "";
-  const p = (Array.isArray(projects) ? projects : []).find((x) => String(x?.id) === id);
-  // فرض: کد پروژه توی p.code هست (مثل 156)
-  return String(p?.code || "").trim() || id;
-};
-
-// پارس کردن کد به فرمت 04/156/10403
-const parseAutoCode = (s) => {
-  const m = String(s || "").trim().match(/^(\d{2})\/([^/]+)\/(\d{5})$/);
-  if (!m) return null;
-  return { yy: m[1], pcode: m[2], seq: Number(m[3]) };
-};
-
 // ✅ Validation (per tab)
 const [errorsByKind, setErrorsByKind] = useState({
   incoming: {},
