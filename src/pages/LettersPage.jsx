@@ -356,48 +356,60 @@ function formatBytes(n) {
 
 export default function LettersPage() {
 
-const fieldHasError = (key) => submitTried && !!errors?.[key];
+  
+// ✅ Validation state (بهتره نزدیک بقیه state ها باشه)
+const [errors, setErrors] = useState({});
+const [submitTried, setSubmitTried] = useState(false);
+
+const fieldHasError = (key) => !!(submitTried && errors?.[key]);
 
 const inputWithError = (baseCls, key) =>
   baseCls + (fieldHasError(key) ? " !border-red-500 !ring-1 !ring-red-500" : "");
 
-const ErrorText = ({ k }) =>
+// ✅ wrapper برای اینکه ارور absolute بشه و فیلد هل داده نشه
+const FieldWrap = ({ children }) => (
+  <div className="relative pb-4">{children}</div> // pb-4 جا برای ارور رزرو می‌کنه
+);
+
+// ✅ ارور: زیر فیلد، ولی absolute (پس هل نمیده)
+const ErrorTextAbs = ({ k }) =>
   fieldHasError(k) ? (
-    <div className="mt-1 text-[10px] text-red-500 leading-3">{errors[k]}</div>
+    <div className="absolute right-0 bottom-0 text-[10px] text-red-500 leading-3">
+      {errors[k]}
+    </div>
   ) : null;
 
-  const [errors, setErrors] = useState({}); 
-const [submitTried, setSubmitTried] = useState(false);
+// ✅ وقتی کاربر تایپ کرد، ارور همون فیلد پاک بشه
+const clearFieldError = (k) => {
+  if (!submitTried) return;
+  setErrors((prev) => {
+    if (!prev?.[k]) return prev;
+    const next = { ...prev };
+    delete next[k];
+    return next;
+  });
+};
+
 
 const REQUIRED_MSG = "کامل کردن این فیلد ضروری است";
 
 // ✅ اینجا تعیین کن کدوم فیلدها اجباری هستن
 const getRequiredFields = (kind) => {
-  // هر فیلد: { key, label, when? }
-  const base = [
-    { key: "projectId", label: "مرکز/پروژه" },
-    { key: "letterNo", label: "شماره سند" },
-    { key: "letterDate", label: "تاریخ سند" },
-    { key: "subject", label: "موضوع" },
-  ];
-
-  if (kind === "outgoing" || kind === "incoming") {
-    base.push(
+  // ✅ فعلاً فقط تب وارده
+  if (kind === "incoming") {
+    return [
+      { key: "classification", label: "طبقه بندی" },
+      { key: "letterNo", label: "شماره سند" },
+      { key: "letterDate", label: "تاریخ نامه" },
       { key: "fromName", label: "از" },
-      { key: "toName", label: "به" },
       { key: "orgName", label: "شرکت/سازمان" },
-    );
+      { key: "subject", label: "موضوع" },
+      { key: "formTags", label: "برچسب" }, // ✅ تگ‌ها
+    ];
   }
 
-  if (kind === "internal") {
-    base.push({ key: "internalUnitId", label: "واحد" });
-  }
-
-  // اگر کلاس سند و طبقه‌بندی هم اجباریه اضافه کن
-  // base.push({ key: "category", label: "کلاس سند" });
-  // base.push({ key: "classification", label: "طبقه بندی" });
-
-  return base;
+  // بقیه تب‌ها بعداً
+  return [];
 };
 
 const validate = (kind) => {
@@ -413,17 +425,16 @@ const validate = (kind) => {
 
   // مقادیر فیلدها رو از state های خودت می‌گیریم
   const values = {
-    category,
-    classification,
-    projectId,
-    letterNo,
-    letterDate,
-    subject,
-    fromName,
-    toName,
-    orgName,
-    internalUnitId,
-  };
+  classification,
+  letterNo,
+  letterDate,
+  subject,
+  fromName,
+  orgName,
+
+  // ✅ برچسب‌های فرم (incoming/outgoing/internal) ولی فعلاً فقط incoming چک میشه
+  formTags: Array.isArray(formSelectedTagIds) ? formSelectedTagIds : [],
+};
 
   req.forEach(({ key }) => {
     if (isEmpty(values[key])) next[key] = REQUIRED_MSG;
@@ -3139,26 +3150,31 @@ useEffect(() => {
 
   {/* طبقه بندی */}
   <div className="shrink-0 w-[140px]">
-    <div className={labelSmCls}>طبقه بندی</div>
+  <div className={labelSmCls}>طبقه بندی</div>
+
+  <FieldWrap>
     <select
       value={classification}
-      onChange={(e) => setClassification(e.target.value)}
-      className={inputSmCls}
+      onChange={(e) => { setClassification(e.target.value); clearFieldError("classification"); }}
+      className={inputWithError(inputSmCls, "classification")}
+      aria-invalid={fieldHasError("classification")}
     >
       <option value="عادی">عادی</option>
       <option value="محرمانه">محرمانه</option>
     </select>
-  </div>
+    <ErrorTextAbs k="classification" />
+  </FieldWrap>
+</div>
+
 
   {/* مرکز/پروژه */}
   <div className="shrink-0 w-[220px]">
     <div className={labelSmCls}>مرکز/پروژه</div>
     <select
-      value={projectId}
-      onChange={(e) => setProjectId(e.target.value)}
-  className={inputWithError(inputSmCls, "projectId")}
-    aria-invalid={fieldHasError("projectId")}
-    >
+  value={projectId}
+  onChange={(e) => setProjectId(e.target.value)}
+  className={inputSmCls}
+>
       <option value=""></option>
       {projectsTopOnly.map((p) => (
         <option key={p.id} value={String(p.id)}>
@@ -3170,28 +3186,36 @@ useEffect(() => {
 
   {/* شماره */}
   <div className="shrink-0 w-[170px]">
-    <div className={labelSmCls}>{formKind === "internal" ? "شماره سند" : "شماره سند"}</div>
+  <div className={labelSmCls}>شماره سند</div>
+
+  <FieldWrap>
     <input
       value={letterNo}
-      onChange={(e) => setLetterNo(e.target.value)}
-        className={inputWithError(inputSmCls, "letterNo")}
-  aria-invalid={fieldHasError("letterNo")}
-
+      onChange={(e) => { setLetterNo(e.target.value); clearFieldError("letterNo"); }}
+      className={inputWithError(inputSmCls, "letterNo")}
+      aria-invalid={fieldHasError("letterNo")}
       type="text"
     />
-  </div>
+    <ErrorTextAbs k="letterNo" />
+  </FieldWrap>
+</div>
+
 
   {/* تاریخ */}
   <div className="shrink-0 w-[170px]">
-    <div className={labelSmCls}>{formKind === "internal" ? "تاریخ سند" : "تاریخ سند"}</div>
+  <div className={labelSmCls}>تاریخ سند</div>
+
+  <FieldWrap>
     <JalaliPopupDatePicker
       value={letterDate}
-      onChange={setLetterDate}
+      onChange={(v) => { setLetterDate(v); clearFieldError("letterDate"); }}
       theme={theme}
-  buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between", "letterDate")}
+      buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between", "letterDate")}
     />
-    <ErrorText k="letterDate" />
-  </div>
+    <ErrorTextAbs k="letterDate" />
+  </FieldWrap>
+</div>
+
 </div>
 
 {formKind !== "internal" && (
@@ -3248,24 +3272,36 @@ useEffect(() => {
         <>
           {/* وارده (مثل قبل) */}
           <div className="md:col-span-4">
-            <div className={labelCls}>از</div>
-            <input
-              value={fromName}
-              onChange={(e) => setFromName(e.target.value)}
-              className={inputCls}
-              type="text"
-            />
-          </div>
+  <div className={labelCls}>از</div>
+
+  <FieldWrap>
+    <input
+      value={fromName}
+      onChange={(e) => { setFromName(e.target.value); clearFieldError("fromName"); }}
+      className={inputWithError(inputCls, "fromName")}
+      aria-invalid={fieldHasError("fromName")}
+      type="text"
+    />
+    <ErrorTextAbs k="fromName" />
+  </FieldWrap>
+</div>
+
 
           <div className="md:col-span-3">
-            <div className={labelCls}>شرکت/سازمان</div>
-            <input
-              value={orgName}
-              onChange={(e) => setOrgName(e.target.value)}
-              className={inputCls}
-              type="text"
-            />
-          </div>
+  <div className={labelCls}>شرکت/سازمان</div>
+
+  <FieldWrap>
+    <input
+      value={orgName}
+      onChange={(e) => { setOrgName(e.target.value); clearFieldError("orgName"); }}
+      className={inputWithError(inputCls, "orgName")}
+      aria-invalid={fieldHasError("orgName")}
+      type="text"
+    />
+    <ErrorTextAbs k="orgName" />
+  </FieldWrap>
+</div>
+
 
           <div className="md:col-span-1 flex flex-col items-center">
             <div className={labelCls + " opacity-0 select-none"}>_</div>
@@ -3296,10 +3332,20 @@ useEffect(() => {
 {formKind === "internal" ? (
   <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start">
     {/* موضوع */}
-    <div className="md:col-span-7">
-      <div className={labelCls}>موضوع</div>
-      <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputCls} type="text" />
-    </div>
+    <div className="md:col-span-10">
+  <div className={labelCls}>موضوع</div>
+
+  <FieldWrap>
+    <input
+      value={subject}
+      onChange={(e) => { setSubject(e.target.value); clearFieldError("subject"); }}
+      className={inputWithError(inputCls, "subject")}
+      aria-invalid={fieldHasError("subject")}
+      type="text"
+    />
+    <ErrorTextAbs k="subject" />
+  </FieldWrap>
+</div>
 
     {/* ضمیمه (کنار موضوع) */}
     <div className="md:col-span-2 flex flex-col items-center">
@@ -3352,10 +3398,21 @@ useEffect(() => {
 ) : (
   <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start">
     {/* موضوع */}
-    <div className="md:col-span-10">
-      <div className={labelCls}>موضوع</div>
-      <input value={subject} onChange={(e) => setSubject(e.target.value)} className={inputCls} type="text" />
-    </div>
+   <div className="md:col-span-10">
+  <div className={labelCls}>موضوع</div>
+
+  <FieldWrap>
+    <input
+      value={subject}
+      onChange={(e) => { setSubject(e.target.value); clearFieldError("subject"); }}
+      className={inputWithError(inputCls, "subject")}
+      aria-invalid={fieldHasError("subject")}
+      type="text"
+    />
+    <ErrorTextAbs k="subject" />
+  </FieldWrap>
+</div>
+
 
     {/* ضمیمه (کنار موضوع) */}
     <div className="md:col-span-2 flex flex-col items-center">
@@ -3772,62 +3829,63 @@ useEffect(() => {
 <div className="md:col-span-12 min-w-0">
   <div className={labelCls}>برچسب ها</div>
 
-  <div className="w-full min-w-0 flex flex-wrap items-center gap-2">
+  <FieldWrap>
+    <div className="w-full min-w-0 flex flex-wrap items-center gap-2">
+      {(() => {
+        const scope =
+          formKind === "outgoing" ? "projects" :
+          formKind === "internal" ? "execution" :
+          "letters";
 
-    {(() => {
-  // ✅ scope درست بر اساس نوع فرم
-  const scope =
-    formKind === "outgoing" ? "projects" :
-    formKind === "internal" ? "execution" :
-    "letters";
+        const selectedIds = Array.isArray(formSelectedTagIds) ? formSelectedTagIds : [];
+        const pool = Array.isArray(tagsByScope?.[scope]) ? tagsByScope[scope] : [];
 
-  const selectedIds = Array.isArray(formSelectedTagIds) ? formSelectedTagIds : [];
-  const pool = Array.isArray(tagsByScope?.[scope]) ? tagsByScope[scope] : [];
+        const selSet = new Set(selectedIds.map(String));
+        const selectedObjs = pool.filter((t) => selSet.has(String(t?.id)));
 
-  const selSet = new Set(selectedIds.map(String));
-  const selectedObjs = pool.filter((t) => selSet.has(String(t?.id)));
+        if (selectedObjs.length === 0) return null;
 
-  if (selectedObjs.length === 0) return null;
+        return selectedObjs.map((t) => {
+          const id = String(t?.id);
+          const label = tagLabelOf(t);
 
-  return selectedObjs.map((t) => {
-    const id = String(t?.id);
-    const label = tagLabelOf(t);
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => { toggleTag("all", id); clearFieldError("formTags"); }}
+              className={selectedTagChipCls + " shrink-0"}
+              title={label}
+              aria-label={label}
+            >
+              <span className="truncate max-w-[220px]">{label}</span>
+            </button>
+          );
+        });
+      })()}
 
-    return (
       <button
-        key={id}
         type="button"
-        onClick={() => toggleTag("all", id)}
-        className={selectedTagChipCls + " shrink-0"}
-        title={label}
-        aria-label={label}
+        onClick={() => { openTagPicker("form"); clearFieldError("formTags"); }}
+        className={
+          "h-10 w-10 shrink-0 rounded-full border transition inline-flex items-center justify-center " +
+          (theme === "dark"
+            ? "border-white/15 bg-white/5 hover:bg-white/10"
+            : "border-black/10 bg-white hover:bg-black/[0.02]")
+        }
+        aria-label="افزودن برچسب"
+        title="افزودن برچسب"
       >
-        <span className="truncate max-w-[220px]">{label}</span>
+        <img
+          src="/images/icons/sayer.svg"
+          alt=""
+          className={"w-5 h-5 " + (theme === "dark" ? "dark:invert" : "")}
+        />
       </button>
-    );
-  });
-})()}
+    </div>
 
-    {/* افزودن برچسب */}
-    <button
-      type="button"
-      onClick={() => openTagPicker("form")}
-      className={
-        "h-10 w-10 shrink-0 rounded-full border transition inline-flex items-center justify-center " +
-        (theme === "dark"
-          ? "border-white/15 bg-white/5 hover:bg-white/10"
-          : "border-black/10 bg-white hover:bg-black/[0.02]")
-      }
-      aria-label="افزودن برچسب"
-      title="افزودن برچسب"
-    >
-      <img
-        src="/images/icons/sayer.svg"
-        alt=""
-        className={"w-5 h-5 " + (theme === "dark" ? "dark:invert" : "")}
-      />
-    </button>
-  </div>
+    <ErrorTextAbs k="formTags" />
+  </FieldWrap>
 </div>
 
       {/* ✅ دکمه ارسال هم داخل همین کادر قرار گرفت */}
