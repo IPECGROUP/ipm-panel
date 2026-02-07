@@ -2181,15 +2181,15 @@ const kindRowTintCls = (kind) => {
   };
 
   const startEdit = (l) => {
-
+const kind = letterKindOf(l);
+    const id = String(letterIdOf(l));
     const sn = l?.secretariat_note ?? l?.secretariatNote ?? "";
 
 if (kind === "incoming") setIncomingSecretariatNote(sn);
 else if (kind === "outgoing") setOutgoingSecretariatNote(sn);
 else setInternalSecretariatNote(sn);
 
-    const kind = letterKindOf(l);
-    const id = String(letterIdOf(l));
+    
 
     setEditingId(id);
     setFormOpen(true);
