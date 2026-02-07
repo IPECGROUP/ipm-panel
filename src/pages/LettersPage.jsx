@@ -443,7 +443,7 @@ const validate = (kind) => {
       classification: incomingForm.classification,
       letterNo: incomingForm.letterNo,
       letterDate: incomingForm.letterDate,
-      subject: incomingSubject ?? incomingForm.subject, // اگر subject جدا داری، همونو بذار
+subject: incomingForm.subject,
       formTags: Array.isArray(formTagIds) ? formTagIds : [],
     },
 
@@ -603,6 +603,8 @@ const [incomingForm, setIncomingForm] = useState({
   letterDate: "",
   fromName: "",
   orgName: "",
+  subject: "",
+  toName: "",
 });
 
 const [outgoingForm, setOutgoingForm] = useState({
