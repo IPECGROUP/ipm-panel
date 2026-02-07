@@ -394,42 +394,43 @@ const computeNextAutoCode = ({ kind, projectId, letters, projectsTopOnly }) => {
 
   let maxSeq = 0;
 
-  (Array.isArray(letters) ? letters : []).forEach((l) => {
-    // ✅ شماره مشترک بین همه تب‌ها:
-    // هم letter_no و هم secretariat_no رو بررسی کن
-    const rawCandidates = [
-      l?.letter_no,
-      l?.letterNo,
-      l?.secretariat_no,
-      l?.secretariatNo,
-    ].filter((x) => String(x ?? "").trim());
+// ✅ این تکه جدید: جایگزین forEach قبلی
+(Array.isArray(letters) ? letters : []).forEach((l) => {
+  // ✅ شماره مشترک بین همه تب‌ها:
+  // هم letter_no و هم secretariat_no رو بررسی کن
+  const rawCandidates = [
+    l?.letter_no,
+    l?.letterNo,
+    l?.secretariat_no,
+    l?.secretariatNo,
+  ].filter((x) => String(x ?? "").trim());
 
-    if (!rawCandidates.length) return;
+  if (!rawCandidates.length) return;
 
-    for (const rawNo of rawCandidates) {
-     let parsed = parseAutoCode(rawNo);
+  for (const rawNo of rawCandidates) {
+    let parsed = parseAutoCode(rawNo);
 
-// ✅ fallback: اگر فقط 10700 ذخیره شده بود یا آخرش 5 رقم داشت
-if (!parsed) {
-  const v = toEnDigits(String(rawNo ?? "")).trim();
-  const m = v.match(/^(\d{2})\/(\d{3})\/(\d{5})$/);
-if (m) {
-  parsed = { yy: m[1], pcode: m[2], seq: Number(m[3]) };
-}
-}
-
-if (!parsed) continue;
-
-      if (parsed.yy !== yy) continue;
-      if (String(parsed.pcode) !== String(pcode)) continue;
-
-      if (Number.isFinite(parsed.seq) && parsed.seq > maxSeq) maxSeq = parsed.seq;
+    // ✅ fallback: اگر فقط 10700 ذخیره شده بود یا آخرش 5 رقم داشت
+    if (!parsed) {
+      const v = toEnDigits(String(rawNo ?? "")).trim();
+      const m = v.match(/^(\d{2})\/(\d{3})\/(\d{5})$/);
+      if (m) {
+        parsed = { yy: m[1], pcode: m[2], seq: Number(m[3]) };
+      }
     }
-  });
 
- const nextSeq = maxSeq >= startByYear ? (maxSeq + 1) : startByYear;
+    if (!parsed) continue;
+
+    if (parsed.yy !== yy) continue;
+    if (String(parsed.pcode) !== String(pcode)) continue;
+
+    if (Number.isFinite(parsed.seq) && parsed.seq > maxSeq) maxSeq = parsed.seq;
+  }
+});
+
+// ✅ این خط پایین هم باید همون پایینِ computeNextAutoCode باشه
+const nextSeq = maxSeq >= startByYear ? (maxSeq + 1) : startByYear;
 return `${yy}/${pcode}/${pad5(nextSeq)}`;
-
 };
 
 export default function LettersPage() {
