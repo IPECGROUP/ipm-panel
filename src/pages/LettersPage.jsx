@@ -413,7 +413,6 @@ const getRequiredFields = (kind) => {
 };
 
 const validate = (kind) => {
-  const req = getRequiredFields(kind);
   const next = {};
 
   const isEmpty = (v) => {
@@ -423,26 +422,57 @@ const validate = (kind) => {
     return false;
   };
 
-  // مقادیر فیلدها رو از state های خودت می‌گیریم
+  // ✅ حداقل‌های مشترک همه تب‌ها
+  const requiredAlways = ["classification", "letterNo", "letterDate"];
+
+  // ✅ فقط صادره
+  const requiredOutgoingOnly = ["category", "projectId", "toName", "orgName", "subject"];
+
+  // ✅ اگر برای وارده هم چیزی اجباری داری اینجا اضافه کن (الان خالی گذاشتم که خراب نشه)
+  const requiredIncomingOnly = [];
+
+  // ✅ اگر برای داخلی هم چیزی اجباری داری (به جز unit) اینجا اضافه کن
+  const requiredInternalOnly = [];
+
+  const required =
+    kind === "outgoing"
+      ? [...requiredAlways, ...requiredOutgoingOnly]
+      : kind === "incoming"
+      ? [...requiredAlways, ...requiredIncomingOnly]
+      : kind === "internal"
+      ? [...requiredAlways, ...requiredInternalOnly]
+      : [...requiredAlways];
+
+  // مقادیر از state
   const values = {
-  classification,
-  letterNo,
-  letterDate,
-  subject,
-  fromName,
-  orgName,
+    classification,
+    letterNo,
+    letterDate,
 
-  // ✅ برچسب‌های فرم (incoming/outgoing/internal) ولی فعلاً فقط incoming چک میشه
-  formTags: Array.isArray(formSelectedTagIds) ? formSelectedTagIds : [],
-};
+    category,
+    projectId,
+    toName,
+    orgName,
+    subject,
 
-  req.forEach(({ key }) => {
+    fromName, // اگر لازم داشتی برای incoming/internal
+    formTags: Array.isArray(formSelectedTagIds) ? formSelectedTagIds : [],
+    internalUnitId,
+  };
+
+  for (const key of required) {
     if (isEmpty(values[key])) next[key] = REQUIRED_MSG;
-  });
+  }
+
+  // ✅ واحد فقط برای داخلی
+  if (kind === "internal" && isEmpty(values.internalUnitId)) {
+    next.internalUnitId = "برای نامه داخلی انتخاب واحد الزامی است.";
+  }
 
   setErrors(next);
   return Object.keys(next).length === 0;
 };
+
 
 // ===== Related picker modal =====
 const [relatedPickOpen, setRelatedPickOpen] = useState(false);
@@ -3131,22 +3161,30 @@ useEffect(() => {
   </div>
 
   {/* کلاس سند */}
-  <div className="shrink-0 w-[190px]">
-    <div className={labelSmCls}>کلاس سند</div>
+  {/* کلاس سند */}
+<div className="shrink-0 w-[190px]">
+  <div className={labelSmCls}>کلاس سند</div>
+
+  <FieldWrap>
     <select
-  value={category}
-  onChange={(e) => setCategory(e.target.value)}
-  className={inputSmCls}
->
-  {([...DOC_CLASS_BASE, ...(Array.isArray(docClassExtras) ? docClassExtras : [])]).map((lab) => (
-    <option key={lab} value={lab}>{lab}</option>
-  ))}
+      value={category}
+      onChange={(e) => {
+        setCategory(e.target.value);
+        if (formKind === "outgoing") clearFieldError("category");
+      }}
+      className={formKind === "outgoing" ? inputWithError(inputSmCls, "category") : inputSmCls}
+      aria-invalid={formKind === "outgoing" ? fieldHasError("category") : undefined}
+    >
+      {([...DOC_CLASS_BASE, ...(Array.isArray(docClassExtras) ? docClassExtras : [])]).map((lab) => (
+        <option key={lab} value={lab}>{lab}</option>
+      ))}
+      <option value="سایر">سایر</option>
+    </select>
 
-  {/* ✅ سایر واقعی */}
-  <option value="سایر">سایر</option>
-</select>
+    {formKind === "outgoing" ? <ErrorTextAbs k="category" /> : null}
+  </FieldWrap>
+</div>
 
-  </div>
 
   {/* طبقه بندی */}
   <div className="shrink-0 w-[140px]">
@@ -3168,13 +3206,20 @@ useEffect(() => {
 
 
   {/* مرکز/پروژه */}
-  <div className="shrink-0 w-[220px]">
-    <div className={labelSmCls}>مرکز/پروژه</div>
+  {/* مرکز/پروژه */}
+<div className="shrink-0 w-[220px]">
+  <div className={labelSmCls}>مرکز/پروژه</div>
+
+  <FieldWrap>
     <select
-  value={projectId}
-  onChange={(e) => setProjectId(e.target.value)}
-  className={inputSmCls}
->
+      value={projectId}
+      onChange={(e) => {
+        setProjectId(e.target.value);
+        if (formKind === "outgoing") clearFieldError("projectId");
+      }}
+      className={formKind === "outgoing" ? inputWithError(inputSmCls, "projectId") : inputSmCls}
+      aria-invalid={formKind === "outgoing" ? fieldHasError("projectId") : undefined}
+    >
       <option value=""></option>
       {projectsTopOnly.map((p) => (
         <option key={p.id} value={String(p.id)}>
@@ -3182,7 +3227,10 @@ useEffect(() => {
         </option>
       ))}
     </select>
-  </div>
+
+    {formKind === "outgoing" ? <ErrorTextAbs k="projectId" /> : null}
+  </FieldWrap>
+</div>
 
   {/* شماره */}
   <div className="shrink-0 w-[170px]">
@@ -3287,13 +3335,17 @@ useEffect(() => {
 </div>
 
 
-          <div className="md:col-span-3">
+          {/* شرکت/سازمان (باقی فضا) */}
+<div className="md:col-span-5">
   <div className={labelCls}>شرکت/سازمان</div>
 
   <FieldWrap>
     <input
       value={orgName}
-      onChange={(e) => { setOrgName(e.target.value); clearFieldError("orgName"); }}
+      onChange={(e) => {
+        setOrgName(e.target.value);
+        clearFieldError("orgName");
+      }}
       className={inputWithError(inputCls, "orgName")}
       aria-invalid={fieldHasError("orgName")}
       type="text"
@@ -3301,6 +3353,7 @@ useEffect(() => {
     <ErrorTextAbs k="orgName" />
   </FieldWrap>
 </div>
+
 
 
           <div className="md:col-span-1 flex flex-col items-center">
@@ -3314,15 +3367,25 @@ useEffect(() => {
             </div>
           </div>
 
-          <div className="md:col-span-4">
-            <div className={labelCls}>به</div>
-            <input
-              value={toName}
-              onChange={(e) => setToName(e.target.value)}
-              className={inputCls}
-              type="text"
-            />
-          </div>
+          {/* به (کمی کوچکتر) */}
+<div className="md:col-span-3">
+  <div className={labelCls}>به</div>
+
+  <FieldWrap>
+    <input
+      value={toName}
+      onChange={(e) => {
+        setToName(e.target.value);
+        clearFieldError("toName");
+      }}
+      className={inputWithError(inputCls, "toName")}
+      aria-invalid={fieldHasError("toName")}
+      type="text"
+    />
+    <ErrorTextAbs k="toName" />
+  </FieldWrap>
+</div>
+
         </>
       )}
     </div>
