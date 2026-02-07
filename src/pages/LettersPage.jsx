@@ -444,7 +444,7 @@ const validate = (kind) => {
       letterNo: incomingForm.letterNo,
       letterDate: incomingForm.letterDate,
 subject: incomingForm.subject,
-      formTags: Array.isArray(formTagIds) ? formTagIds : [],
+      formTags: Array.isArray(incomingTagIds) ? incomingTagIds : [],
     },
 
     outgoing: {
@@ -454,13 +454,13 @@ subject: incomingForm.subject,
       toName: outgoingForm.toName,
       orgName: outgoingForm.orgName,
       subject: outgoingForm.subject,
-      formTags: Array.isArray(formTagIds) ? formTagIds : [],
+      formTags: Array.isArray(outgoingTagIds) ? outgoingTagIds : [],
     },
 
     internal: {
       letterDate: internalForm.letterDate,
       subject: internalForm.subject,
-      formTags: Array.isArray(formTagIds) ? formTagIds : [],
+      formTags: Array.isArray(internalTagIds) ? internalTagIds : [],
     },
   };
 
@@ -4036,7 +4036,11 @@ aria-invalid={fieldHasError(formKind, "subject")}
           formKind === "internal" ? "execution" :
           "letters";
 
-        const selectedIds = Array.isArray(formTagIds) ? formTagIds : [];
+       const selectedIds =
+  formKind === "outgoing" ? (Array.isArray(outgoingTagIds) ? outgoingTagIds : [])
+  : formKind === "internal" ? (Array.isArray(internalTagIds) ? internalTagIds : [])
+  : (Array.isArray(incomingTagIds) ? incomingTagIds : []);
+
         const pool = Array.isArray(tagsByScope?.[scope]) ? tagsByScope[scope] : [];
 
         const selSet = new Set(selectedIds.map(String));
