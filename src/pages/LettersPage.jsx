@@ -356,6 +356,83 @@ function formatBytes(n) {
 
 export default function LettersPage() {
 
+const fieldHasError = (key) => submitTried && !!errors?.[key];
+
+const inputWithError = (baseCls, key) =>
+  baseCls + (fieldHasError(key) ? " !border-red-500 !ring-1 !ring-red-500" : "");
+
+const ErrorText = ({ k }) =>
+  fieldHasError(k) ? (
+    <div className="mt-1 text-[10px] text-red-500 leading-3">{errors[k]}</div>
+  ) : null;
+
+  const [errors, setErrors] = useState({}); 
+const [submitTried, setSubmitTried] = useState(false);
+
+const REQUIRED_MSG = "کامل کردن این فیلد ضروری است";
+
+// ✅ اینجا تعیین کن کدوم فیلدها اجباری هستن
+const getRequiredFields = (kind) => {
+  // هر فیلد: { key, label, when? }
+  const base = [
+    { key: "projectId", label: "مرکز/پروژه" },
+    { key: "letterNo", label: "شماره سند" },
+    { key: "letterDate", label: "تاریخ سند" },
+    { key: "subject", label: "موضوع" },
+  ];
+
+  if (kind === "outgoing" || kind === "incoming") {
+    base.push(
+      { key: "fromName", label: "از" },
+      { key: "toName", label: "به" },
+      { key: "orgName", label: "شرکت/سازمان" },
+    );
+  }
+
+  if (kind === "internal") {
+    base.push({ key: "internalUnitId", label: "واحد" });
+  }
+
+  // اگر کلاس سند و طبقه‌بندی هم اجباریه اضافه کن
+  // base.push({ key: "category", label: "کلاس سند" });
+  // base.push({ key: "classification", label: "طبقه بندی" });
+
+  return base;
+};
+
+const validate = (kind) => {
+  const req = getRequiredFields(kind);
+  const next = {};
+
+  const isEmpty = (v) => {
+    if (v === null || v === undefined) return true;
+    if (typeof v === "string") return v.trim() === "";
+    if (Array.isArray(v)) return v.length === 0;
+    return false;
+  };
+
+  // مقادیر فیلدها رو از state های خودت می‌گیریم
+  const values = {
+    category,
+    classification,
+    projectId,
+    letterNo,
+    letterDate,
+    subject,
+    fromName,
+    toName,
+    orgName,
+    internalUnitId,
+  };
+
+  req.forEach(({ key }) => {
+    if (isEmpty(values[key])) next[key] = REQUIRED_MSG;
+  });
+
+  setErrors(next);
+  return Object.keys(next).length === 0;
+};
+
 // ===== Related picker modal =====
 const [relatedPickOpen, setRelatedPickOpen] = useState(false);
 const [relatedPickQuery, setRelatedPickQuery] = useState("");
@@ -2300,6 +2377,10 @@ setInternalUnitId(uid ? String(uid) : "");
   };
 
   const submitLetter = async (kind) => {
+    setSubmitTried(true);
+
+  const ok = validate(kind);
+  if (!ok) return; // ✅ جلو ارسال را می‌گیرد
     if (kind === "internal" && !String(internalUnitId || "").trim()) {
   alert("برای نامه داخلی انتخاب واحد الزامی است.");
   return;
@@ -3075,7 +3156,8 @@ useEffect(() => {
     <select
       value={projectId}
       onChange={(e) => setProjectId(e.target.value)}
-      className={inputSmCls}
+  className={inputWithError(inputSmCls, "projectId")}
+    aria-invalid={fieldHasError("projectId")}
     >
       <option value=""></option>
       {projectsTopOnly.map((p) => (
@@ -3092,7 +3174,9 @@ useEffect(() => {
     <input
       value={letterNo}
       onChange={(e) => setLetterNo(e.target.value)}
-      className={inputSmCls}
+        className={inputWithError(inputSmCls, "letterNo")}
+  aria-invalid={fieldHasError("letterNo")}
+
       type="text"
     />
   </div>
@@ -3104,8 +3188,9 @@ useEffect(() => {
       value={letterDate}
       onChange={setLetterDate}
       theme={theme}
-      buttonClassName={inputSmCls + " flex items-center justify-between"}
+  buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between", "letterDate")}
     />
+    <ErrorText k="letterDate" />
   </div>
 </div>
 
