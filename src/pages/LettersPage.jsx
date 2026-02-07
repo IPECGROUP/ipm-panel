@@ -353,14 +353,73 @@ function formatBytes(n) {
   return `${Math.round(v * 10) / 10} ${units[i]}`;
 }
 
+// =====================
+// Auto Code Helpers (TOP OF FILE) — خارج از کامپوننت
+// =====================
 
-export default function LettersPage() {
-
-  // تبدیل رقم فارسی/عربی به انگلیسی
+// تبدیل رقم فارسی/عربی به انگلیسی
 const toEnDigits = (s) =>
   String(s ?? "")
     .replace(/[۰-۹]/g, (d) => "0123456789"["۰۱۲۳۴۵۶۷۸۹".indexOf(d)])
     .replace(/[٠-٩]/g, (d) => "0123456789"["٠١٢٣٤٥٦٧٨٩".indexOf(d)]);
+
+const pad2 = (n) => String(n ?? "").padStart(2, "0");
+const pad5 = (n) => String(Number(n) || 0).padStart(5, "0");
+
+// گرفتن ۲ رقم آخر سال شمسی (مثلاً 1404 -> "04")
+const getJalaliYY = (date = new Date()) => {
+  const y = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric" }).format(date);
+  const en = toEnDigits(y);
+  return en.slice(-2);
+};
+
+// پیدا کردن کد پروژه (اول __baseCode بعد code)
+const getProjectCode = (projectId, projectsTopOnly) => {
+  const pid = String(projectId || "").trim();
+  if (!pid) return "";
+  const p = (Array.isArray(projectsTopOnly) ? projectsTopOnly : []).find((x) => String(x?.id) === pid);
+  return String(p?.__baseCode ?? p?.code ?? "").trim();
+};
+
+// پارس کردن کد 04/156/10403
+const parseAutoCode = (s) => {
+  const m = String(s || "").trim().match(/^(\d{2})\/([^/]+)\/(\d{5})$/);
+  if (!m) return null;
+  return { yy: m[1], pcode: m[2], seq: Number(m[3]) };
+};
+
+// =====================
+// Auto Code Generator — خارج از کامپوننت
+// =====================
+const computeNextAutoCode = ({ kind, projectId, letters, projectsTopOnly }) => {
+  const yy = getJalaliYY(new Date());
+  const pcode = getProjectCode(projectId, projectsTopOnly);
+  if (!pcode) return ""; // تا پروژه انتخاب نشده، کد نساز
+
+  const startByYear = (yy === "04" ? 10700 : 10000);
+
+  let maxSeq = 0;
+
+  (Array.isArray(letters) ? letters : []).forEach((l) => {
+    const rawNo =
+      kind === "incoming"
+        ? (l?.secretariat_no ?? l?.secretariatNo ?? "")
+        : (l?.letter_no ?? l?.letterNo ?? "");
+
+    const parsed = parseAutoCode(rawNo);
+    if (!parsed) return;
+
+    if (parsed.yy !== yy) return;
+    if (String(parsed.pcode) !== String(pcode)) return;
+
+    if (Number.isFinite(parsed.seq) && parsed.seq > maxSeq) maxSeq = parsed.seq;
+  });
+
+  const nextSeq = maxSeq ? (maxSeq + 1) : startByYear;
+  return `${yy}/${pcode}/${pad5(nextSeq)}`;
+};
+
+export default function LettersPage() {
 
 // گرفتن ۲ رقم آخر سال شمسی (مثلاً 1404 -> "04")
 const getJalaliYY = () => {
@@ -377,9 +436,6 @@ const getProjectCode = (pid, projects) => {
   // فرض: کد پروژه توی p.code هست (مثل 156)
   return String(p?.code || "").trim() || id;
 };
-
-// پد 5 رقمی
-const pad5 = (n) => String(Number(n) || 0).padStart(5, "0");
 
 // پارس کردن کد به فرمت 04/156/10403
 const parseAutoCode = (s) => {
@@ -624,6 +680,7 @@ const [incomingForm, setIncomingForm] = useState({
 const [outgoingForm, setOutgoingForm] = useState({
 category: "نامه",
   projectId: "",
+    letterNo: "",
   letterDate: "",
     fromName: "",      
   toName: "",
@@ -632,6 +689,8 @@ category: "نامه",
 });
 
 const [internalForm, setInternalForm] = useState({
+  projectId: "",     
+  letterNo: "",      
   letterDate: "",
   subject: "",
 });
@@ -868,6 +927,37 @@ const [docClassOtherText, setDocClassOtherText] = useState("");
   const [myLetters, setMyLetters] = useState([]);
   const [relatedOpen, setRelatedOpen] = useState(false);
 const [relatedQuery, setRelatedQuery] = useState("");
+
+// ===== Auto code injection (Create only) =====
+const currentProjectId = getForm(formKind).projectId || "";
+
+useEffect(() => {
+  if (!formOpen) return;
+  if (editingId) return; // ادیت → کد جدید نساز
+
+  const code = computeNextAutoCode({
+    kind: formKind,
+    projectId: currentProjectId,
+    letters: myLetters,
+    projectsTopOnly,
+  });
+
+  if (!code) return;
+
+  // وارده: شماره ثبت دبیرخانه
+  if (formKind === "incoming") {
+    setIncomingSecretariatNo(code);
+  }
+  // صادره: شماره سند
+  else if (formKind === "outgoing") {
+    setOutgoingForm((p) => ({ ...p, letterNo: code }));
+  }
+  // داخلی: شماره سند
+  else {
+    setInternalForm((p) => ({ ...p, letterNo: code }));
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [formOpen, formKind, editingId, currentProjectId, myLetters, projectsTopOnly]);
 
 const openRelatedPicker = () => {
   setRelatedPickIds(
@@ -4022,16 +4112,29 @@ aria-invalid={fieldHasError(formKind, "subject")}
           >  {formKind === "outgoing" ? "شماره ثبت دبیرخانه " : "شماره ثبت دبیرخانه"}
           </div>
           <input
-            value={formKind === "incoming" ? incomingSecretariatNo : formKind === "outgoing" ? outgoingSecretariatNo : internalSecretariatNo}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (formKind === "incoming") setIncomingSecretariatNo(v);
-              else if (formKind === "outgoing") setOutgoingSecretariatNo(v);
-              else setInternalSecretariatNo(v);
-            }}
-            className={inputCls}
-            type="text"
-          />
+  value={
+    formKind === "incoming"
+      ? incomingSecretariatNo
+      : formKind === "outgoing"
+      ? outgoingSecretariatNo
+      : internalSecretariatNo
+  }
+  readOnly={formKind === "incoming"}  // ✅ وارده قفل
+  onChange={(e) => {
+    if (formKind === "incoming") return; // ✅ نذار تغییر کنه
+    const v = e.target.value;
+    if (formKind === "outgoing") setOutgoingSecretariatNo(v);
+    else setInternalSecretariatNo(v);
+  }}
+  className={
+    inputCls +
+    (formKind === "incoming"
+      ? " bg-black/5 dark:bg-white/10 cursor-not-allowed"
+      : "")
+  }
+  type="text"
+/>
+
         </div>
 
         <div>
