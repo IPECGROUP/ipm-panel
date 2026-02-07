@@ -37,11 +37,6 @@ const PERSIAN_MONTHS = [
   "اسفند",
 ];
 
-function toEnDigits(s) {
-  return String(s || "")
-    .replace(/[۰-۹]/g, (d) => "0123456789"["۰۱۲۳۴۵۶۷۸۹".indexOf(d)])
-    .replace(/[٠-٩]/g, (d) => "0123456789"["٠١٢٣٤٥٦٧٨٩".indexOf(d)]);
-}
 function toFaDigits(s) {
   return String(s || "").replace(/[0-9]/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
 }
