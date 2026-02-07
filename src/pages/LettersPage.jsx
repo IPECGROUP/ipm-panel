@@ -2644,26 +2644,42 @@ subject:
     resetForm();
     setFormOpen(false);
   };
-  const deleteLetter = async (id) => {
-    const ok = window.confirm("حذف شود؟");
-    if (!ok) return;
+ const deleteLetter = async (id) => {
+  const ok = window.confirm("حذف شود؟");
+  if (!ok) return;
 
-    try {
-  await api(`/letters?id=${encodeURIComponent(String(id))}`, {
-    method: "DELETE",
-    body: JSON.stringify({ id: String(id), letter_id: String(id) }),
+  const sid = String(id || "").trim();
+  if (!sid) return;
+
+  // ✅ 1) سریع از UI حذف کن (Optimistic) تا طول نکشه
+  setMyLetters((prev) => (Array.isArray(prev) ? prev.filter((x) => String(letterIdOf(x)) !== sid) : prev));
+
+  // ✅ 2) از انتخاب‌ها هم حذف کن
+  setSelectedIds((prev) => {
+    const next = new Set(prev);
+    next.delete(sid);
+    return next;
   });
-} catch (_e) {
-  // اگر بک‌اند فقط path رو ساپورت می‌کرد (اختیاری)
-  await api(`/letters/${encodeURIComponent(String(id))}`, { method: "DELETE" });
-}
-    await refetchLetters();
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.delete(String(id));
-      return next;
+
+  try {
+    // ✅ 3) فقط یک endpoint بزن (همون که قبلاً کار می‌کرد)
+    await api(`/letters?id=${encodeURIComponent(sid)}`, {
+      method: "DELETE",
+      body: JSON.stringify({ id: sid, letter_id: sid }),
     });
-  };
+
+    // ✅ 4) refetch کامل نزن (اصلی‌ترین علت کندی همین بود)
+    // اگر خیلی لازم داری، اینو بدون await بزن:
+    // refetchLetters();
+
+  } catch (e) {
+    // ✅ اگر حذف سرور fail شد، لیست رو از سرور دوباره درست کن
+    console.error("delete failed", e);
+    await refetchLetters();
+    throw e;
+  }
+};
+
   const InfoRow = ({ label, value }) => (
     <div className="grid grid-cols-12 gap-2 py-2">
       <div className={"col-span-4 text-xs font-semibold " + (theme === "dark" ? "text-white/70" : "text-neutral-600")}>
