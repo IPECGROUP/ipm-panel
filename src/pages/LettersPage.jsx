@@ -353,12 +353,6 @@ function formatBytes(n) {
   return `${Math.round(v * 10) / 10} ${units[i]}`;
 }
 
-// ✅ Helpers (OUTSIDE component) — بالای فایل
-const toEnDigits = (s) =>
-  String(s ?? "")
-    .replace(/[۰-۹]/g, (d) => "0123456789"["۰۱۲۳۴۵۶۷۸۹".indexOf(d)])
-    .replace(/[٠-٩]/g, (d) => "0123456789"["٠١٢٣٤٥٦٧٨٩".indexOf(d)]);
-
 const getJalaliYY = () => {
   const y = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric" }).format(new Date());
   const en = toEnDigits(y);
