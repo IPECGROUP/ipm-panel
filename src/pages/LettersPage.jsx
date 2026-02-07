@@ -422,8 +422,6 @@ const computeNextAutoCode = ({ kind, projectId, letters, projectsTopOnly }) => {
     if (!parsed) continue;
 
     if (parsed.yy !== yy) continue;
-    if (String(parsed.pcode) !== String(pcode)) continue;
-
     if (Number.isFinite(parsed.seq) && parsed.seq > maxSeq) maxSeq = parsed.seq;
   }
 });
