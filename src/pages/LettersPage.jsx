@@ -445,6 +445,8 @@ const [submitTriedByKind, setSubmitTriedByKind] = useState({
   internal: false,
 });
 
+const [isSubmitting, setIsSubmitting] = useState(false);
+
 const fieldHasError = (kind, key) =>
   !!(submitTriedByKind?.[kind] && errorsByKind?.[kind]?.[key]);
 
@@ -1558,6 +1560,46 @@ const resetAllFilters = () => {
     });
   };
 
+  const uploadQueuedFiles = async (kind, letterId) => {
+  const files = Array.isArray(docFilesByType?.[kind]) ? docFilesByType[kind] : [];
+  const queue = files.filter((f) => f && f.status !== "error" && (f.optimizedFile || f.file) && !f.url);
+
+  if (!queue.length) return;
+
+  const runOne = async (f) => {
+    const fileToSend = f.optimizedFile || f.file;
+
+    setDocFilesFor(kind, (prev) =>
+      prev.map((x) => (x.id === f.id ? { ...x, status: "uploading", progress: 0, error: "" } : x))
+    );
+
+    try {
+      const res = await uploadFileToLetter(fileToSend, letterId, (p) => {
+        setDocFilesFor(kind, (prev) => prev.map((x) => (x.id === f.id ? { ...x, progress: p } : x)));
+      });
+
+      setDocFilesFor(kind, (prev) =>
+        prev.map((x) =>
+          x.id === f.id
+            ? {
+                ...x,
+                status: "done",
+                progress: 100,
+                serverId: res?.item?.id ?? res?.id ?? x.serverId,
+                url: res?.item?.url ?? res?.url ?? x.url,
+              }
+            : x
+        )
+      );
+    } catch (e) {
+      setDocFilesFor(kind, (prev) =>
+        prev.map((x) => (x.id === f.id ? { ...x, status: "error", error: e?.message || "خطا در آپلود فایل." } : x))
+      );
+    }
+  };
+
+  await Promise.allSettled(queue.map(runOne));
+};
   const addFilesToUpload = async (which, fileList) => {
     const list = Array.from(fileList || []);
     if (!list.length) return;
@@ -2759,6 +2801,7 @@ subject:
     resetForm();
     setFormOpen(false);
   };
+
  const deleteLetter = async (id) => {
   const ok = window.confirm("حذف شود؟");
   if (!ok) return;
@@ -4253,9 +4296,17 @@ aria-invalid={fieldHasError(formKind, "subject")}
 
       {/* ✅ دکمه ارسال هم داخل همین کادر قرار گرفت */}
       <div className="flex items-center justify-end pt-2">
-        <button type="button" onClick={() => submitLetter(formKind)} className={sendBtnCls} title="ارسال" aria-label="ارسال">
-          <img src="/images/icons/check.svg" alt="" className={sendIconCls} />
-        </button>
+        <button
+  type="button"
+  disabled={isSubmitting}
+  onClick={() => submitLetter(formKind)}
+  className={sendBtnCls + (isSubmitting ? " opacity-50 cursor-not-allowed" : "")}
+  title="ارسال"
+  aria-label="ارسال"
+>
+  <img src="/images/icons/check.svg" alt="" className={sendIconCls} />
+</button>
+
       </div>
     </div>
   </div>
