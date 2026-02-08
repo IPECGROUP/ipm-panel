@@ -1,5 +1,4 @@
 // برآورد هزینه
-// src/pages/EstimatesPage.jsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
@@ -137,13 +136,16 @@ export default function EstimatesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canAccessPage, canUseProjectsTab]);
 
-  // ✅ فقط پروژه‌های اصلی (مثل 159) — زیرمجموعه‌ها (مثل 159.1) نمایش داده نشوند
-  const topLevelProjects = useMemo(() => {
-    return (projects || []).filter((p) => {
-      const c = coreOf(p?.code);
-      return c && !String(c).includes(".");
-    });
-  }, [projects, coreOf]);
+ // ✅ فقط پروژه‌های اصلی (مثل 159) — زیرمجموعه‌ها (مثل 159.1) نمایش داده نشوند
+// ✅ فقط پروژه‌های فعال نمایش داده شوند
+const topLevelProjects = useMemo(() => {
+  return (projects || []).filter((p) => {
+    if (p?.isActive !== true) return false;  // ✅ فقط فعال‌ها
+    const c = coreOf(p?.code);
+    return c && !String(c).includes(".");
+  });
+}, [projects, coreOf]);
+
 
   const selectedProject = useMemo(
     () => (topLevelProjects || []).find((p) => String(p.id) === String(projectId)),
