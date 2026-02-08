@@ -648,6 +648,7 @@ function BudgetAllocationPage() {
     );
   };
 
+  
   // ===== UI states for access =====
   if (accessLoading) {
     return (
