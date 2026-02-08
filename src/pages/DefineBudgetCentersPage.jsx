@@ -85,20 +85,20 @@ function DefineBudgetCentersPage() {
   const onlyDigitsDot = (s = "") => toEnDigits(s).replace(/[^0-9.]/g, "");
 
   // ✅ فقط ۳ رقم پروژه (بدون زیرمجموعه مثل 156.1.1)
-const normalizeProjectCode3 = (code) => {
-  const s = toEnDigits(String(code ?? "")).trim();
+  const normalizeProjectCode3 = (code) => {
+    const s = toEnDigits(String(code ?? "")).trim();
 
-  // فقط بخش قبل از نقطه (156.1.1 -> 156)
-  const head = s.split(".")[0];
+    // فقط بخش قبل از نقطه (156.1.1 -> 156)
+    const head = s.split(".")[0];
 
-  // فقط اعداد
-  const digits = head.replace(/[^\d]/g, "");
+    // فقط اعداد
+    const digits = head.replace(/[^\d]/g, "");
 
-  // فقط 3 رقم اول
-  return digits.slice(0, 3);
-};
+    // فقط 3 رقم اول
+    return digits.slice(0, 3);
+  };
 
-const isValidProjectCode3 = (code3) => /^\d{3}$/.test(String(code3 || ""));
+  const isValidProjectCode3 = (code3) => /^\d{3}$/.test(String(code3 || ""));
 
   const canonForCompare = useCallback(
     (kind, rawSuffix) => {
@@ -153,7 +153,6 @@ const isValidProjectCode3 = (code3) => /^\d{3}$/.test(String(code3 || ""));
 
     // ✅ STRICT: اگر وضعیت نیامده/نامشخص بود => نشان نده
     if (v == null) return false;
-
     if (v === true) return true;
     if (v === false) return false;
     if (v === 1) return true;
@@ -220,66 +219,70 @@ const isValidProjectCode3 = (code3) => /^\d{3}$/.test(String(code3 || ""));
     [projects, projectId]
   );
 
- useEffect(() => {
-  if (canAccessPage !== true) return;
-  if (allowedTabsSet !== null && !allowedTabsSet.has("projects")) return;
+  const PROJECTS_ENDPOINT = "/api/projects?isActive=true";
 
-  let alive = true;
+  useEffect(() => {
+    if (canAccessPage !== true) return;
+    if (allowedTabsSet !== null && !allowedTabsSet.has("projects")) return;
 
-  (async () => {
-    setProjectsLoading(true);
-    try {
-      // ✅ فقط و فقط از همان پروژه‌ها (ذخیره‌شده در /api/projects)
-      // ✅ بدون هیچ fallback یا مسیر دیگر
-      const r = await api("/projects?isActive=true");
+    let alive = true;
 
-      // فقط شکل پاسخ را باز می‌کنیم (این fallback نیست، فقط parse است)
-      const raw =
-        Array.isArray(r) ? r :
-        Array.isArray(r?.items) ? r.items :
-        [];
+    (async () => {
+      setProjectsLoading(true);
+      try {
+        const res = await fetch(PROJECTS_ENDPOINT, { credentials: "include" });
+        const txt = await res.text();
+        let r = {};
+        try {
+          r = txt ? JSON.parse(txt) : {};
+        } catch {
+          r = {};
+        }
+        if (!res.ok) throw new Error(r?.error || r?.message || "request_failed");
 
-      // ✅ فقط پروژه‌هایی که دقیقاً isActive === true دارند
-      const clean = (raw || [])
-        .filter((p) => p && typeof p === "object" && !Array.isArray(p))
-        .map((p) => {
-  const code3 = normalizeProjectCode3(p?.code);
-  return {
-    id: p?.id == null ? null : String(p.id),
-    code: code3, // ✅ فقط ۳ رقم
-    name: p?.name == null ? "" : String(p.name).trim(),
-    isActive: p?.isActive === true,
-  };
-})
-        .filter((p) => p.id != null)
-        .filter((p) => p.isActive === true)
-.filter((p) => isValidProjectCode3(p.code));
+        // فقط شکل پاسخ را باز می‌کنیم (این fallback نیست، فقط parse است)
+        const raw = Array.isArray(r) ? r : Array.isArray(r?.items) ? r.items : [];
 
-      // حذف تکراری‌ها بر اساس code (اختیاری ولی مفید)
-      const byCode = new Map();
-      for (const p of clean) {
-        const k = String(p.code);
-        if (!byCode.has(k)) byCode.set(k, p);
+        // ✅ فقط پروژه‌هایی که دقیقاً isActive === true دارند
+        const clean = (raw || [])
+          .filter((p) => p && typeof p === "object" && !Array.isArray(p))
+          .map((p) => {
+            const code3 = normalizeProjectCode3(p?.code);
+            return {
+              id: p?.id == null ? null : String(p.id),
+              code: code3, // ✅ فقط ۳ رقم
+              name: p?.name == null ? "" : String(p.name).trim(),
+              isActive: p?.isActive === true,
+            };
+          })
+          .filter((p) => p.id != null)
+          .filter((p) => p.isActive === true)
+          .filter((p) => isValidProjectCode3(p.code));
+
+        // حذف تکراری‌ها بر اساس code (اختیاری ولی مفید)
+        const byCode = new Map();
+        for (const p of clean) {
+          const k = String(p.code);
+          if (!byCode.has(k)) byCode.set(k, p);
+        }
+
+        const list = Array.from(byCode.values());
+
+        if (!alive) return;
+        setProjects(list);
+      } catch {
+        if (!alive) return;
+        setProjects([]);
+      } finally {
+        if (!alive) return;
+        setProjectsLoading(false);
       }
+    })();
 
-      const list = Array.from(byCode.values());
-
-      if (!alive) return;
-      setProjects(list);
-    } catch {
-      if (!alive) return;
-      setProjects([]);
-    } finally {
-      if (!alive) return;
-      setProjectsLoading(false);
-    }
-  })();
-
-  return () => {
-    alive = false;
-  };
-}, [canAccessPage, allowedTabsSet, api]);
-
+    return () => {
+      alive = false;
+    };
+  }, [canAccessPage, allowedTabsSet]);
 
   // ✅ اگر پروژه انتخاب‌شده جزو لیست «فقط فعال‌ها» نبود، انتخاب را پاک کن
   useEffect(() => {
