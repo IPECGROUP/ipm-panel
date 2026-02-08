@@ -84,21 +84,16 @@ function DefineBudgetCentersPage() {
 
   const onlyDigitsDot = (s = "") => toEnDigits(s).replace(/[^0-9.]/g, "");
 
-  // ✅ فقط ۳ رقم پروژه (بدون زیرمجموعه مثل 156.1.1)
-  const normalizeProjectCode3 = (code) => {
-    const s = toEnDigits(String(code ?? "")).trim();
+// ✅ دقیقاً مثل صفحه پروژه‌ها:
+// - فقط پروژه‌های اصلی: کد فقط عدد و بدون نقطه (مثل 156)
+// - فقط پروژه‌های فعال: isActive !== false
+const isTopProjectCode = (code) => {
+  const c = toEnDigits(String(code ?? "")).trim();
+  if (!c) return false;
+  if (c.includes(".")) return false;
+  return /^\d+$/.test(c);
+};
 
-    // فقط بخش قبل از نقطه (156.1.1 -> 156)
-    const head = s.split(".")[0];
-
-    // فقط اعداد
-    const digits = head.replace(/[^\d]/g, "");
-
-    // فقط 3 رقم اول
-    return digits.slice(0, 3);
-  };
-
-  const isValidProjectCode3 = (code3) => /^\d{3}$/.test(String(code3 || ""));
 
   const canonForCompare = useCallback(
     (kind, rawSuffix) => {
@@ -141,75 +136,6 @@ function DefineBudgetCentersPage() {
     return allowedTabsSet.has(String(active));
   }, [active, allowedTabsSet]);
 
-  // ✅ کمک‌تابع STRICT برای تشخیص فعال بودن
-  const isActiveProject = useCallback((p) => {
-    let v;
-    if (p && Object.prototype.hasOwnProperty.call(p, "isActive")) v = p.isActive;
-    else if (p && Object.prototype.hasOwnProperty.call(p, "is_active")) v = p.is_active;
-    else if (p && Object.prototype.hasOwnProperty.call(p, "active")) v = p.active;
-    else if (p && Object.prototype.hasOwnProperty.call(p, "enabled")) v = p.enabled;
-    else if (p && Object.prototype.hasOwnProperty.call(p, "status")) v = p.status;
-    else if (p && Object.prototype.hasOwnProperty.call(p, "state")) v = p.state;
-
-    // ✅ STRICT: اگر وضعیت نیامده/نامشخص بود => نشان نده
-    if (v == null) return false;
-    if (v === true) return true;
-    if (v === false) return false;
-    if (v === 1) return true;
-    if (v === 0) return false;
-
-    const s = String(v).trim().toLowerCase();
-
-    // اول غیرفعال‌ها
-    if (
-      ["0", "false", "no", "n", "inactive", "disabled", "disable", "off", "deactive", "deactivated"].includes(s) ||
-      s.includes("inactive") ||
-      s.includes("disable") ||
-      s.includes("deactive") ||
-      s.includes("غیرفعال")
-    )
-      return false;
-
-    // بعد فعال‌ها
-    if (
-      ["1", "true", "yes", "y", "active", "enabled", "enable", "on"].includes(s) ||
-      s.includes("active") ||
-      s.includes("enable") ||
-      s.includes("فعال")
-    )
-      return true;
-
-    return false;
-  }, []);
-
-  // ✅ فقط از فیلدهای واقعی پروژه + ساخت isActive استاندارد
-  const normalizeProject = useCallback(
-    (p) => {
-      const code =
-        p?.code ??
-        p?.project_code ??
-        p?.projectCode ??
-        p?.projectCodeText ??
-        p?.project_no ??
-        p?.projectNo ??
-        "";
-
-      const name = p?.name ?? p?.project_name ?? p?.projectName ?? p?.title ?? p?.label ?? "";
-
-      const id = p?.id ?? p?.project_id ?? p?.projectId ?? p?.pid ?? p?.ProjectID ?? null;
-
-      return {
-        ...p,
-        id: id == null ? null : String(id),
-        code: code == null ? "" : String(code).trim(),
-        name: name == null ? "" : String(name).trim(),
-        // ✅ یکدست‌سازی وضعیت
-        isActive: isActiveProject(p),
-      };
-    },
-    [isActiveProject]
-  );
-
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState("");
   const [projectsLoading, setProjectsLoading] = useState(false);
@@ -219,70 +145,60 @@ function DefineBudgetCentersPage() {
     [projects, projectId]
   );
 
-  const PROJECTS_ENDPOINT = "/api/projects?isActive=true";
+const PROJECTS_ENDPOINT = "/projects";
 
   useEffect(() => {
-    if (canAccessPage !== true) return;
-    if (allowedTabsSet !== null && !allowedTabsSet.has("projects")) return;
+  if (canAccessPage !== true) return;
+  if (allowedTabsSet !== null && !allowedTabsSet.has("projects")) return;
 
-    let alive = true;
+  let alive = true;
 
-    (async () => {
-      setProjectsLoading(true);
-      try {
-        const res = await fetch(PROJECTS_ENDPOINT, { credentials: "include" });
-        const txt = await res.text();
-        let r = {};
-        try {
-          r = txt ? JSON.parse(txt) : {};
-        } catch {
-          r = {};
-        }
-        if (!res.ok) throw new Error(r?.error || r?.message || "request_failed");
+  (async () => {
+    setProjectsLoading(true);
+    try {
+      const r = await api(PROJECTS_ENDPOINT);
 
-        // فقط شکل پاسخ را باز می‌کنیم (این fallback نیست، فقط parse است)
-        const raw = Array.isArray(r) ? r : Array.isArray(r?.items) ? r.items : [];
+      // شکل پاسخ‌ها
+      const raw = Array.isArray(r) ? r : Array.isArray(r?.projects) ? r.projects : Array.isArray(r?.items) ? r.items : [];
 
-        // ✅ فقط پروژه‌هایی که دقیقاً isActive === true دارند
-        const clean = (raw || [])
-          .filter((p) => p && typeof p === "object" && !Array.isArray(p))
-          .map((p) => {
-            const code3 = normalizeProjectCode3(p?.code);
-            return {
-              id: p?.id == null ? null : String(p.id),
-              code: code3, // ✅ فقط ۳ رقم
-              name: p?.name == null ? "" : String(p.name).trim(),
-              isActive: p?.isActive === true,
-            };
-          })
-          .filter((p) => p.id != null)
-          .filter((p) => p.isActive === true)
-          .filter((p) => isValidProjectCode3(p.code));
+      // ✅ دقیقاً مثل صفحه پروژه‌ها
+      const clean = (raw || [])
+        .filter((p) => p && typeof p === "object" && !Array.isArray(p))
+        .map((p) => ({
+          id: p?.id == null ? null : String(p.id),
+          code: p?.code == null ? "" : String(p.code).trim(),
+          name: p?.name == null ? "" : String(p.name).trim(),
+          // ✅ مثل صفحه پروژه‌ها: اگر false باشد حذف، اگر نیامده باشد هم نمایش داده شود
+          isActive: p?.isActive !== false,
+        }))
+        .filter((p) => p.id != null)
+        .filter((p) => p.isActive === true)
+        .filter((p) => isTopProjectCode(p.code));
 
-        // حذف تکراری‌ها بر اساس code (اختیاری ولی مفید)
-        const byCode = new Map();
-        for (const p of clean) {
-          const k = String(p.code);
-          if (!byCode.has(k)) byCode.set(k, p);
-        }
-
-        const list = Array.from(byCode.values());
-
-        if (!alive) return;
-        setProjects(list);
-      } catch {
-        if (!alive) return;
-        setProjects([]);
-      } finally {
-        if (!alive) return;
-        setProjectsLoading(false);
+      // حذف تکراری‌ها بر اساس code (اولین مورد نگه داشته می‌شود)
+      const byCode = new Map();
+      for (const p of clean) {
+        const k = toEnDigits(p.code);
+        if (!byCode.has(k)) byCode.set(k, p);
       }
-    })();
 
-    return () => {
-      alive = false;
-    };
-  }, [canAccessPage, allowedTabsSet]);
+      const list = Array.from(byCode.values());
+
+      if (!alive) return;
+      setProjects(list);
+    } catch {
+      if (!alive) return;
+      setProjects([]);
+    } finally {
+      if (!alive) return;
+      setProjectsLoading(false);
+    }
+  })();
+
+  return () => {
+    alive = false;
+  };
+}, [canAccessPage, allowedTabsSet, api, PROJECTS_ENDPOINT, toEnDigits]);
 
   // ✅ اگر پروژه انتخاب‌شده جزو لیست «فقط فعال‌ها» نبود، انتخاب را پاک کن
   useEffect(() => {
@@ -291,16 +207,16 @@ function DefineBudgetCentersPage() {
     if (!exists) setProjectId("");
   }, [projects, projectId]);
 
-  const sortedProjects = useMemo(() => {
-    return (projects || [])
-      .slice()
-      .sort((a, b) =>
-        String(a.code || "").localeCompare(String(b.code || ""), "fa", {
-          numeric: true,
-          sensitivity: "base",
-        })
-      );
-  }, [projects]);
+const sortedProjects = useMemo(() => {
+  return (projects || [])
+    .slice()
+    .sort((a, b) =>
+      String(b.code || "").localeCompare(String(a.code || ""), "fa", {
+        numeric: true,
+        sensitivity: "base",
+      })
+    );
+}, [projects]);
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
