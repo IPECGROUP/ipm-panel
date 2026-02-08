@@ -252,37 +252,39 @@ const normalizeProject = useCallback((p) => {
 
         const normalizeCode = (code) => toEnDigits(String(code || "")).replace(/[^0-9.]/g, "").trim();
 
-     const flat = (raw || [])
+     // ... همون بالاها (hasActivityField / isActiveProject / normalizeCode) بمونه
+
+const isValidProjectCode = (code) => {
+  // فقط عدد، بدون نقطه، و نه 0/00/000...
+  if (!code) return false;
+  if (!/^\d+$/.test(code)) return false;
+  if (/^0+$/.test(code)) return false;
+  return true;
+};
+
+const flat = (raw || [])
   .filter((x) => x && typeof x === "object" && !Array.isArray(x))
   .map((x) => normalizeProject(x))
-  .filter((p) => p.id != null)          // ✅ خیلی مهم
+  .filter((p) => p.id != null)
   .map((p) => ({ ...p, code: normalizeCode(p.code) }))
-  .filter((p) => p.code !== "" && /^\d+(\.\d+)*$/.test(p.code))
+  .filter((p) => isValidProjectCode(p.code))            // ✅ فقط کدهای واقعی پروژه
   .filter((p) => (p.name || "").trim().length > 0)
   .filter((p) => (hasActivityField ? isActiveProject(p) : true));
 
-        // ✅ فقط پروژه‌های ریشه دقیق را نمایش بده (کدهای مثل 159 نه 159.1.1)
-        const byExactRoot = new Map();
-        for (const p of flat) {
-          const en = toEnDigits(String(p.code || "")).trim();
-          if (!en) continue;
+// ✅ یکتا بر اساس code (نه base و نه root)
+const byCode = new Map();
+for (const p of flat) {
+  const k = String(p.code);
+  if (!byCode.has(k)) byCode.set(k, p);
+}
 
-          const base = en.split(".")[0].replace(/[^0-9]/g, "");
-          if (base === "") continue;
+const list = Array.from(byCode.values()).map((p) => ({
+  ...p,
+  code: String(p.code),
+  name: p?.name ?? "",
+}));
 
-          const enPure = en.replace(/[^0-9.]/g, "");
-          if (enPure === base) {
-            if (!byExactRoot.has(base)) byExactRoot.set(base, p);
-          }
-        }
-
-        const list = Array.from(byExactRoot.entries())
-  .map(([base, p]) => ({
-    ...p,
-    code: base,
-    name: p?.name ?? "",
-  }))
-  .filter((p) => p.id != null);
+setProjects(list);
 
 
         if (!alive) return;
