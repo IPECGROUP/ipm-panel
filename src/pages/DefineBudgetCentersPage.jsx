@@ -277,6 +277,13 @@ function DefineBudgetCentersPage() {
     };
   }, [canAccessPage, allowedTabsSet, api, extractArray, normalizeProject]);
 
+  // ✅ اگر پروژه انتخاب‌شده جزو لیست «فقط فعال‌ها» نبود، انتخاب را پاک کن
+  useEffect(() => {
+    if (!projectId) return;
+    const exists = (projects || []).some((p) => String(p.id) === String(projectId));
+    if (!exists) setProjectId("");
+  }, [projects, projectId]);
+
   const sortedProjects = useMemo(() => {
     return (projects || [])
       .slice()
