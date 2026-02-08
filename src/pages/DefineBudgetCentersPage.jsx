@@ -83,23 +83,26 @@ return data;
     [prefixOf]
   );
 
-  const toEnDigits = (s = "") =>
+const toEnDigits = useCallback(
+  (s = "") =>
     String(s)
       .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d))
-      .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
+      .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d)),
+  []
+);
 
-  const onlyDigitsDot = (s = "") => toEnDigits(s).replace(/[^0-9.]/g, "");
+const onlyDigitsDot = useCallback((s = "") => toEnDigits(s).replace(/[^0-9.]/g, ""), [toEnDigits]);
 
-// ✅ دقیقاً مثل صفحه پروژه‌ها:
-// - فقط پروژه‌های اصلی: کد فقط عدد و بدون نقطه (مثل 156)
-// - فقط پروژه‌های فعال: isActive !== false
-const isTopProjectCode = (code) => {
-  const c = toEnDigits(String(code ?? "")).trim();
-  if (!c) return false;
-  if (c.includes(".")) return false;
-  return /^\d+$/.test(c);
-};
-
+// ✅ دقیقاً مثل صفحه پروژه‌ها: فقط کدهای اصلی (عدد بدون نقطه)
+const isTopProjectCode = useCallback(
+  (code) => {
+    const c = toEnDigits(String(code ?? "")).trim();
+    if (!c) return false;
+    if (c.includes(".")) return false;
+    return /^\d+$/.test(c);
+  },
+  [toEnDigits]
+);
 
   const canonForCompare = useCallback(
     (kind, rawSuffix) => {
@@ -204,7 +207,7 @@ const PROJECTS_ENDPOINT = "/projects";
   return () => {
     alive = false;
   };
-}, [canAccessPage, allowedTabsSet, api, PROJECTS_ENDPOINT, toEnDigits]);
+}, [canAccessPage, allowedTabsSet, api, isTopProjectCode, toEnDigits]);
 
   // ✅ اگر پروژه انتخاب‌شده جزو لیست «فقط فعال‌ها» نبود، انتخاب را پاک کن
   useEffect(() => {
