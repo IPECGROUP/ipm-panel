@@ -140,6 +140,34 @@ function RevenueEstimatesPage() {
     });
     return m;
   }, [projects]);
+  const allowedProjectIds = useMemo(() => {
+  // فقط آی‌دی‌هایی که از دیتای ذخیره‌شده (poolProjectIds) آمده
+  return new Set((poolProjectIds || []).map((x) => String(x)).filter(Boolean));
+}, [poolProjectIds]);
+
+const projectsForPicker = useMemo(() => {
+  // اگر چیزی ذخیره نشده، dropdown خالی باشد (طبق خواسته شما)
+  if (!allowedProjectIds.size) return [];
+
+  return (projects || [])
+    .filter((p) => allowedProjectIds.has(String(p?.id ?? '')))
+    .filter((p) => p?.isActive === true) // اگر می‌خوای فقط فعال‌ها
+    .slice()
+    .sort((a, b) => {
+      const ca = getProjectCode(a);
+      const cb = getProjectCode(b);
+      if (ca && !cb) return -1;
+      if (!ca && cb) return 1;
+      const cmpCode = cb.localeCompare(ca, 'fa', { numeric: true, sensitivity: 'base' });
+      if (cmpCode !== 0) return cmpCode;
+      return String(b?.name ?? b?.title ?? '').localeCompare(
+        String(a?.name ?? a?.title ?? ''),
+        'fa',
+        { numeric: true, sensitivity: 'base' }
+      );
+    });
+}, [projects, allowedProjectIds, getProjectCode]);
+
 const getProjectCode = useCallback((p) => {
   // همه حالت‌های ممکن را پوشش می‌دهد
   return String(
@@ -688,8 +716,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     if (!pid) return;
 
     if (pid === '__ALL__') {
-     const all = (projects || [])
-  .filter((p) => p?.isActive === true)
+    const all = (projectsForPicker || [])
   .map((p) => String(p?.id ?? ''))
   .filter(Boolean);
 
@@ -1363,37 +1390,15 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                 <option value="">پروژه را انتخاب کنید...</option>
                 <option value="__ALL__">انتخاب همه موارد</option>
 
-                {(projects || [])
-  .filter((p) => p?.isActive === true) // ✅ فقط پروژه‌های فعال
-  .slice()
-  .sort((a, b) => {
-    const ca = getProjectCode(a);
-    const cb = getProjectCode(b);
-
-    // اول کدهای غیرخالی
-    if (ca && !cb) return -1;
-    if (!ca && cb) return 1;
-
-    // از آخر به اول (کد بزرگ‌تر اول بیاید)
-    const cmpCode = cb.localeCompare(ca, 'fa', { numeric: true, sensitivity: 'base' });
-    if (cmpCode !== 0) return cmpCode;
-
-    // اگر کد برابر بود، با نام مرتب کن که پایدار باشد
-    return String(b?.name ?? b?.title ?? '').localeCompare(
-      String(a?.name ?? a?.title ?? ''),
-      'fa',
-      { numeric: true, sensitivity: 'base' }
-    );
-  })
-  .map((p) => {
-    const pid = String(p?.id ?? '');
-    if (!pid) return null;
-    return (
-      <option key={pid} value={pid}>
-        {getProjectLabel(p)}
-      </option>
-    );
-  })}
+                {projectsForPicker.map((p) => {
+  const pid = String(p?.id ?? '');
+  if (!pid) return null;
+  return (
+    <option key={pid} value={pid}>
+      {getProjectLabel(p)}
+    </option>
+  );
+})}
 
               </select>
               <button
