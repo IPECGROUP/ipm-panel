@@ -180,7 +180,6 @@ function DefineBudgetCentersPage() {
       try {
         let raw = [];
 
-        // ✅ اول تلاش برای فقط فعال‌ها (با چند حالت)
         const tryFetch = async (url) => {
           try {
             const r = await api(url).catch(() => null);
@@ -191,24 +190,12 @@ function DefineBudgetCentersPage() {
           }
         };
 
+        // ✅ فقط پروژه‌های فعال (اگر بک‌اند فیلتر را ساپورت کند بهتر)
         raw = await tryFetch("/projects?isActive=1");
         if (!raw.length) raw = await tryFetch("/projects?isActive=true");
-        if (!raw.length) raw = await tryFetch("/projects");
+        if (!raw.length) raw = await tryFetch("/projects"); // fallback ولی باز هم پایین Strict فیلتر می‌کنیم
 
-        // ✅ اگر هیچ فیلد وضعیت در دیتا نبود، فیلتر فعال/غیرفعال اعمال نشود
-        const hasActivityField = (raw || []).some((p) => {
-          if (!p || typeof p !== "object") return false;
-          return (
-            Object.prototype.hasOwnProperty.call(p, "isActive") ||
-            Object.prototype.hasOwnProperty.call(p, "is_active") ||
-            Object.prototype.hasOwnProperty.call(p, "active") ||
-            Object.prototype.hasOwnProperty.call(p, "enabled") ||
-            Object.prototype.hasOwnProperty.call(p, "status") ||
-            Object.prototype.hasOwnProperty.call(p, "state")
-          );
-        });
-
-        // ✅ تشخیص فعال/غیرفعال (با پیش‌فرض true چون در DB default true است)
+        // ✅ فقط فعال‌ها نمایش داده شوند (STRICT: اگر فیلد وضعیت نبود => نمایش نده)
         const isActiveProject = (p) => {
           let v;
           if (p && Object.prototype.hasOwnProperty.call(p, "isActive")) v = p.isActive;
@@ -218,8 +205,8 @@ function DefineBudgetCentersPage() {
           else if (p && Object.prototype.hasOwnProperty.call(p, "status")) v = p.status;
           else if (p && Object.prototype.hasOwnProperty.call(p, "state")) v = p.state;
 
-          // ✅ اگر فیلد وضعیت هست ولی مقدارش null/undefined بود => پیش‌فرض true
-          if (v == null) return true;
+          // ✅ اگر وضعیت نیامده/نامشخص بود => اصلاً نشان نده
+          if (v == null) return false;
 
           if (v === true) return true;
           if (v === false) return false;
@@ -240,18 +227,16 @@ function DefineBudgetCentersPage() {
           if (s.includes("غیرفعال")) return false;
           if (s.includes("فعال")) return true;
 
-          // ✅ نامشخص => پیش‌فرض true
-          return true;
+          return false;
         };
 
-        // ✅ کد پروژه باید فقط عدد باشد (بدون نقطه)
         const normalizeCode = (code) => toEnDigits(String(code || "")).replace(/[^0-9]/g, "").trim();
 
-        // ✅ پروژه‌های شما سه رقمی هستند
+        // ✅ پروژه‌ها: دقیقاً 3 رقم و بدون صفر ابتدای عدد (066 حذف می‌شود)
         const isValidProjectCode = (code) => {
           if (!code) return false;
           if (!/^\d{3}$/.test(code)) return false;
-          if (/^0{3}$/.test(code)) return false;
+          if (code[0] === "0") return false; // ✅ 0xx مثل 066 حذف شود
           return true;
         };
 
@@ -262,9 +247,8 @@ function DefineBudgetCentersPage() {
           .map((p) => ({ ...p, code: normalizeCode(p.code) }))
           .filter((p) => isValidProjectCode(p.code))
           .filter((p) => (p.name || "").trim().length > 0)
-          .filter((p) => (hasActivityField ? isActiveProject(p) : true));
+          .filter((p) => isActiveProject(p)); // ✅ فقط فعال‌ها
 
-        // ✅ یکتا بر اساس code
         const byCode = new Map();
         for (const p of flat) {
           const k = String(p.code);
@@ -342,7 +326,6 @@ function DefineBudgetCentersPage() {
         return;
       }
 
-      // ✅ اگر پروژه‌هاست ولی پروژه انتخاب نشده، نباید loading گیر کند
       if (kind === "projects" && !projectId) {
         requestSeqRef.current += 1;
         setRows([]);
