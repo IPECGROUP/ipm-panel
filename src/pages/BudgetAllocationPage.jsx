@@ -97,7 +97,8 @@ function BudgetAllocationPage() {
     id: p?.id == null ? null : String(p.id),
     code: code3, // ✅ فقط ۳ رقم
     name,
-    isActive: p?.isActive === true, // ✅ فقط مقدار واقعی
+    isActive: p?.isActive !== false
+ // ✅ فقط مقدار واقعی
   };
 };
 
@@ -246,7 +247,7 @@ const isValidProjectCode3 = (code3) => /^\d{3}$/.test(String(code3 || ""));
   useEffect(() => {
     if (canAccessPage !== true) return;
     if (active === "projects" && !projectId) return;
-
+if (active === "projects" && !selectedProject) return;
     let abort = false;
     (async () => {
       setErr("");
@@ -258,31 +259,46 @@ const isValidProjectCode3 = (code3) => /^\d{3}$/.test(String(code3 || ""));
           qs1.set("project_id", String(projectId));
         qs1.set("_", String(Date.now()));
 
-        let items = [];
-        try {
-          const est = await api("/budget-estimates?" + qs1.toString());
-          items = Array.isArray(est?.items) ? est.items.slice() : [];
-        } catch {
-          items = [];
-        }
+       let items = [];
 
-        if (items.length === 0) {
-          try {
-            const centers = await api(`/centers/${active}`);
-            const raw =
-              centers?.items || centers?.centers || centers?.data || [];
-            const list = Array.isArray(raw) ? raw : [];
-            items = list
-              .map((c) => ({
-                code: c?.code || c?.center_code || c?.suffix || "",
-                center_desc: c?.center_desc || c?.description || c?.name || "",
-                last_amount: Number(c?.last_amount || 0),
-              }))
-              .filter((x) => String(x.code || "").trim());
-          } catch {
-            items = [];
-          }
-        }
+if (active === "projects") {
+  // ✅ فقط پروژه‌ها؛ هیچ API دیگری وارد نشود
+  const p = selectedProject;
+  items = p
+    ? [
+        {
+          code: String(p.code || "").trim(),          // همین ۳رقمی
+          center_desc: String(p.name || "").trim(),   // نام پروژه
+          last_amount: 0,                              // اگر آخرین برآورد پروژه ندارید
+        },
+      ]
+    : [];
+} else {
+  // حالت‌های غیر پروژه مثل قبل
+  try {
+    const est = await api("/budget-estimates?" + qs1.toString());
+    items = Array.isArray(est?.items) ? est.items.slice() : [];
+  } catch {
+    items = [];
+  }
+
+  if (items.length === 0) {
+    try {
+      const centers = await api(`/centers/${active}`);
+      const raw = centers?.items || centers?.centers || centers?.data || [];
+      const list = Array.isArray(raw) ? raw : [];
+      items = list
+        .map((c) => ({
+          code: c?.code || c?.center_code || c?.suffix || "",
+          center_desc: c?.center_desc || c?.description || c?.name || "",
+          last_amount: Number(c?.last_amount || 0),
+        }))
+        .filter((x) => String(x.code || "").trim());
+    } catch {
+      items = [];
+    }
+  }
+}
 
         const qs2 = new URLSearchParams();
         qs2.set("kind", active);
