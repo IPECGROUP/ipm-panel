@@ -1324,17 +1324,19 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
               >
                 <option value="">پروژه را انتخاب کنید...</option>
                 <option value="__ALL__">انتخاب همه موارد</option>
-                {projects.map((p) => {
-                  const pid = String(p?.id ?? '');
-                  if (!pid) return null;
-                  return (
-                    <option key={pid} value={pid}>
-                      {getProjectLabel(p)}
-                    </option>
-                  );
-                })}
-              </select>
 
+                {(projects || [])
+                  .filter((p) => p?.isActive === true)   // ✅ فقط پروژه‌های فعال
+                  .map((p) => {
+                    const pid = String(p?.id ?? "");
+                    if (!pid) return null;
+                    return (
+                      <option key={pid} value={pid}>
+                        {getProjectLabel(p)}
+                      </option>
+                    );
+                  })}
+              </select>
               <button
                 type="button"
                 onClick={addPickedProject}
