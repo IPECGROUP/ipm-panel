@@ -136,15 +136,21 @@ export default function EstimatesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canAccessPage, canUseProjectsTab]);
 
- // ✅ فقط پروژه‌های اصلی (مثل 159) — زیرمجموعه‌ها (مثل 159.1) نمایش داده نشوند
-// ✅ فقط پروژه‌های فعال نمایش داده شوند
+// ✅ دقیقاً مثل صفحه پروژه‌ها:
+// - فقط پروژه‌های اصلی: کد فقط عدد و بدون نقطه (مثل 156)
+// - فقط پروژه‌های فعال: isActive !== false
+const isTopProjectCode = (code) => {
+  const c = toEnDigits(String(code ?? "")).trim();
+  if (!c) return false;
+  if (c.includes(".")) return false;
+  return /^\d+$/.test(c);
+};
+
 const topLevelProjects = useMemo(() => {
-  return (projects || []).filter((p) => {
-    if (p?.isActive !== true) return false;  // ✅ فقط فعال‌ها
-    const c = coreOf(p?.code);
-    return c && !String(c).includes(".");
-  });
-}, [projects, coreOf]);
+  return (projects || [])
+    .filter((p) => p?.isActive !== false)     // ✅ فعال‌ها (مثل صفحه پروژه‌ها)
+    .filter((p) => isTopProjectCode(p?.code)); // ✅ فقط کدهای اصلی عددی و بدون نقطه
+}, [projects, toEnDigits]);
 
 
   const selectedProject = useMemo(
@@ -152,13 +158,16 @@ const topLevelProjects = useMemo(() => {
     [topLevelProjects, projectId],
   );
 
-  const sortedProjects = useMemo(() => {
-    return (topLevelProjects || [])
-      .slice()
-      .sort((a, b) =>
-        String(a?.code || "").localeCompare(String(b?.code || ""), "fa", { numeric: true, sensitivity: "base" }),
-      );
-  }, [topLevelProjects]);
+const sortedProjects = useMemo(() => {
+  return (topLevelProjects || [])
+    .slice()
+    .sort((a, b) =>
+      String(b?.code || "").localeCompare(String(a?.code || ""), "fa", {
+        numeric: true,
+        sensitivity: "base",
+      }),
+    );
+}, [topLevelProjects]);
 
   // months
   const monthNames = useMemo(
