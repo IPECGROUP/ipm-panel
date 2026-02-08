@@ -590,7 +590,7 @@ function DefineBudgetCentersPage() {
         <div className="mb-4 text-base md:text-lg">
           <span className="text-neutral-700 dark:text-neutral-300">بودجه‌بندی</span>
           <span className="mx-2 text-neutral-500 dark:text-neutral-400">›</span>
-          <span className="font-semibold text-neutral-900 dark:text-neutral-100">تعریف مراکززز بودجه</span>
+          <span className="font-semibold text-neutral-900 dark:text-neutral-100">تعریف مراکز بودجه</span>
         </div>
         <div className="p-6 text-center text-neutral-600 dark:text-neutral-400">در حال بررسی دسترسی…</div>
       </Card>
@@ -616,7 +616,7 @@ function DefineBudgetCentersPage() {
         <div className="mb-4 text-base md:text-lg">
           <span className="text-neutral-700 dark:text-neutral-300">بودجه‌بندی</span>
           <span className="mx-2 text-neutral-500 dark:text-neutral-400">›</span>
-          <span className="font-semibold text-neutral-900 dark:text-neutral-100">تعریف مراکز بودجه</span>
+          <span className="font-semibold text-neutral-900 dark:text-neutral-100">تعریف مراکزccc بودجه</span>
         </div>
         <div className="p-6 rounded-2xl ring-1 ring-neutral-200 bg-white text-center text-red-600 dark:bg-neutral-900 dark:ring-neutral-800 dark:text-red-400">
           شما سطح دسترسی لازم را ندارید.
