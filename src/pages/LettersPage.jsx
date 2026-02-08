@@ -3775,7 +3775,7 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
       ) : (
         <>
           {/* وارده (مثل قبل) */}
-          <div className="md:col-span-4 md:col-start-9">
+          <div className="md:col-span-4 md:col-start-1">
   <div className={labelCls}>از</div>
 
   <input
@@ -3806,7 +3806,7 @@ onChange={(e) => {
 
 
 
-          <div className="md:col-span-1 md:col-start-4 flex flex-col items-center">
+         <div className="md:col-span-1 md:col-start-9 flex flex-col items-center">
             <div className={labelCls + " opacity-0 select-none"}>_</div>
             <div className="h-10 flex items-center justify-center">
               <img
@@ -3818,7 +3818,7 @@ onChange={(e) => {
           </div>
 
           {/* به (کمی کوچکتر) */}
-<div className="md:col-span-3 md:col-start-1">
+<div className="md:col-span-3 md:col-start-10">
   <div className={labelCls}>به</div>
 
     <input
