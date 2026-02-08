@@ -3844,27 +3844,50 @@ onChange={(e) => {
 {formKind === "internal" ? (
   <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start">
     {/* موضوع */}
-    <div className="md:col-span-10">
-  <div className={labelCls}>موضوع</div>
+    <div className="md:col-span-7 md:col-start-1">
+      <div className={labelCls}>موضوع</div>
 
-  <FieldWrap>
-    <input
-      value={internalForm.subject}
-onChange={(e) => {
-  setInternalForm((p) => ({ ...p, subject: e.target.value }));
-  clearFieldError("subject");
-}}
+      <FieldWrap>
+        <input
+          value={internalForm.subject}
+          onChange={(e) => {
+            setInternalForm((p) => ({ ...p, subject: e.target.value }));
+            clearFieldError("subject");
+          }}
+          className={inputWithError(inputCls, "internal", "subject")}
+          aria-invalid={fieldHasError("internal", "subject")}
+          type="text"
+        />
+        <ErrorTextAbs k="subject" />
+      </FieldWrap>
+    </div>
 
-className={inputWithError(inputCls, "internal", "subject")}
-aria-invalid={fieldHasError("internal", "subject")}
-      type="text"
-    />
-    <ErrorTextAbs k="subject" />
-  </FieldWrap>
-</div>
+    {/* واحد (کنار ضمیمه) */}
+    <div className="md:col-span-3 md:col-start-8">
+      <div className={labelCls}>واحد</div>
+      <select
+        value={internalUnitId}
+        onChange={(e) => setInternalUnitId(e.target.value)}
+        className={inputCls}
+      >
+        <option value=""></option>
 
-    {/* ضمیمه (کنار موضوع) */}
-    <div className="md:col-span-2 flex flex-col items-center">
+        {internalUnitId && !unitOptions.some((u) => String(u.id) === String(internalUnitId)) ? (
+          <option value={internalUnitId}>
+            {unitsLoaded ? `واحد (${toFaDigits(internalUnitId)})` : "در حال دریافت واحدها..."}
+          </option>
+        ) : null}
+
+        {unitOptions.map((u) => (
+          <option key={u.id} value={u.id}>
+            {u.label}
+          </option>
+        ))}
+      </select>
+    </div>
+
+    {/* ضمیمه (کنار واحد و در همان خط) */}
+    <div className="md:col-span-2 md:col-start-11 flex flex-col items-center">
       <div className={labelCls}>ضمیمه</div>
       <div className="flex items-center justify-center gap-4 mt-0 h-10">
         <label className="inline-flex items-center gap-2 cursor-pointer select-none">
@@ -3890,28 +3913,9 @@ aria-invalid={fieldHasError("internal", "subject")}
         </label>
       </div>
     </div>
-
-    {/* واحد (برای داخلی) */}
-    <div className="md:col-span-3">
-      <div className={labelCls}>واحد</div>
-      <select value={internalUnitId} onChange={(e) => setInternalUnitId(e.target.value)} className={inputCls}>
-  <option value=""></option>
-
-  {internalUnitId && !unitOptions.some((u) => String(u.id) === String(internalUnitId)) ? (
-    <option value={internalUnitId}>
-      {unitsLoaded ? `واحد (${toFaDigits(internalUnitId)})` : "در حال دریافت واحدها..."}
-    </option>
-  ) : null}
-
-  {unitOptions.map((u) => (
-    <option key={u.id} value={u.id}>
-      {u.label}
-    </option>
-  ))}
-</select>
-    </div>
   </div>
 ) : (
+
   <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start">
     {/* موضوع */}
    <div className="md:col-span-10">
