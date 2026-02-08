@@ -565,7 +565,7 @@ function BudgetAllocationPage() {
     </div>
   );
 
-  const ProjectsControls = () => {
+    const ProjectsControls = () => {
     if (active !== "projects") return null;
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -588,15 +588,49 @@ function BudgetAllocationPage() {
             >
               انتخاب کنید
             </option>
-            {(sortedProjects || []).map((p) => (
-              <option
-                className="bg-white text-black dark:bg-neutral-900 dark:text-neutral-100"
-                key={p.id}
-                value={p.id}
-              >
-                {toFaDigits(p.code || "—")} {p?.name ? `— ${p.name}` : ""}
-              </option>
-            ))}
+            {(sortedProjects || [])
+              .filter((p) => {
+                let v;
+                if (p && Object.prototype.hasOwnProperty.call(p, "isActive")) v = p.isActive;
+                else if (p && Object.prototype.hasOwnProperty.call(p, "is_active")) v = p.is_active;
+                else if (p && Object.prototype.hasOwnProperty.call(p, "active")) v = p.active;
+                else if (p && Object.prototype.hasOwnProperty.call(p, "enabled")) v = p.enabled;
+                else if (p && Object.prototype.hasOwnProperty.call(p, "status")) v = p.status;
+                else if (p && Object.prototype.hasOwnProperty.call(p, "state")) v = p.state;
+
+                // STRICT: اگر وضعیت نیومده/نامشخص بود => نشان نده
+                if (v == null) return false;
+
+                if (v === true) return true;
+                if (v === false) return false;
+                if (v === 1) return true;
+                if (v === 0) return false;
+
+                const s = String(v).trim().toLowerCase();
+
+                if (["1", "true", "yes", "y", "active", "enabled", "enable", "on"].includes(s)) return true;
+                if (
+                  ["0", "false", "no", "n", "inactive", "disabled", "disable", "off", "deactive", "deactivated"].includes(s)
+                )
+                  return false;
+
+                if (s.includes("inactive") || s.includes("disable") || s.includes("deactive")) return false;
+                if (s.includes("active") || s.includes("enable")) return true;
+
+                if (s.includes("غیرفعال")) return false;
+                if (s.includes("فعال")) return true;
+
+                return false;
+              })
+              .map((p) => (
+                <option
+                  className="bg-white text-black dark:bg-neutral-900 dark:text-neutral-100"
+                  key={p.id}
+                  value={p.id}
+                >
+                  {toFaDigits(p.code || "—")} {p?.name ? `— ${p.name}` : ""}
+                </option>
+              ))}
           </select>
         </div>
         <div className="flex flex-col gap-1">
