@@ -92,15 +92,11 @@ function DefineBudgetCentersPage() {
       };
 
       if (kind === "projects") {
+        // ✅ حفظ صفرهای ابتدای هر بخش (0 و 00 متفاوت باشند)
         const en = toEnDigits(String(rawSuffix || "")).replace(/[^0-9.]/g, "");
-        const segments = en.split(".").filter(Boolean);
+        const segments = en.split(".").filter((x) => x !== "");
         if (segments.length === 0) return "";
-        return segments
-          .map((s) => {
-            const n = parseInt(s, 10);
-            return isNaN(n) ? s : String(n);
-          })
-          .join(".");
+        return segments.join(".");
       }
 
       const pref = prefixOf(kind);
@@ -208,10 +204,24 @@ function DefineBudgetCentersPage() {
           raw = extractArray(r2);
         }
 
-        // ✅ فقط آیتم‌های معتبر (آبجکت) + کد معتبر + فقط فعال‌ها
+        // ✅ تشخیص فعال/غیرفعال با پوشش انواع مقدار
         const isActiveProject = (p) => {
-          const v = p?.isActive ?? p?.is_active ?? p?.active;
-          return v === true || v === 1 || v === "1";
+          let v;
+          if (p && Object.prototype.hasOwnProperty.call(p, "isActive")) v = p.isActive;
+          else if (p && Object.prototype.hasOwnProperty.call(p, "is_active")) v = p.is_active;
+          else if (p && Object.prototype.hasOwnProperty.call(p, "active")) v = p.active;
+          else if (p && Object.prototype.hasOwnProperty.call(p, "status")) v = p.status;
+          else if (p && Object.prototype.hasOwnProperty.call(p, "state")) v = p.state;
+          else if (p && Object.prototype.hasOwnProperty.call(p, "enabled")) v = p.enabled;
+
+          if (v == null) return true; // اگر فیلد نبود، پیش‌فرض فعال (برای سازگاری)
+          if (v === true || v === 1) return true;
+
+          const s = String(v).trim().toLowerCase();
+          if (s === "1" || s === "true" || s === "yes" || s === "active" || s === "enabled") return true;
+          if (s === "0" || s === "false" || s === "no" || s === "inactive" || s === "disabled") return false;
+
+          return Boolean(v);
         };
 
         const normalizeCode = (code) => toEnDigits(String(code || "")).replace(/[^0-9.]/g, "").trim();
@@ -220,16 +230,17 @@ function DefineBudgetCentersPage() {
           .filter((x) => x && typeof x === "object" && !Array.isArray(x))
           .map((x, i) => normalizeProject(x, i))
           .map((p) => ({ ...p, code: normalizeCode(p.code) }))
-          .filter((p) => p.code && /^\d+(\.\d+)*$/.test(p.code))
-          .filter((p) => isActiveProject(p));
+          .filter((p) => p.code !== "" && /^\d+(\.\d+)*$/.test(p.code)) // ✅ 0 و 00 هم مجاز
+          .filter((p) => isActiveProject(p)); // ✅ فقط فعال‌ها
 
         // فقط پروژه‌های ریشه (قبل از '.') نمایش داده شود (مثل 159 نه 159.1.1)
         const groups = new Map();
         for (const p of flat) {
           const en = toEnDigits(String(p.code || "")).trim();
           if (!en) continue;
+
           const base = en.split(".")[0].replace(/[^0-9]/g, "");
-          if (!base) continue;
+          if (base === "") continue; // ✅ فقط خالی حذف شود، "0" حذف نشود
 
           if (!groups.has(base)) groups.set(base, { base, exact: null, any: null });
           const g = groups.get(base);
