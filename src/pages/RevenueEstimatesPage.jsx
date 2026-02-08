@@ -146,7 +146,17 @@ function RevenueEstimatesPage() {
   // فقط آی‌دی‌هایی که از دیتای ذخیره‌شده (poolProjectIds) آمده
   return new Set((poolProjectIds || []).map((x) => String(x)).filter(Boolean));
 }, [poolProjectIds]);
-
+const getProjectCode = useCallback((p) => {
+  // همه حالت‌های ممکن را پوشش می‌دهد
+  return String(
+    p?.code ??
+      p?.project_code ??
+      p?.projectCode ??
+      p?.project_code_str ??
+      p?.projectCodeStr ??
+      ''
+  ).trim();
+}, []);
 const projectsForPicker = useMemo(() => {
   // اگر چیزی ذخیره نشده، dropdown خالی باشد (طبق خواسته شما)
   if (!allowedProjectIds.size) return [];
@@ -170,17 +180,7 @@ const projectsForPicker = useMemo(() => {
     });
 }, [projects, allowedProjectIds, getProjectCode]);
 
-const getProjectCode = useCallback((p) => {
-  // همه حالت‌های ممکن را پوشش می‌دهد
-  return String(
-    p?.code ??
-      p?.project_code ??
-      p?.projectCode ??
-      p?.project_code_str ??
-      p?.projectCodeStr ??
-      ''
-  ).trim();
-}, []);
+
 
   const getProjectLabel = useCallback((p) => {
     const code = String(p?.code ?? p?.project_code ?? p?.projectCode ?? '').trim();
