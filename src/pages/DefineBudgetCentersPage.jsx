@@ -192,17 +192,68 @@ function DefineBudgetCentersPage() {
     (async () => {
       setProjectsLoading(true);
       try {
-        // ✅ فقط فعال‌ها (اگر ساپورت نشد/خالی بود => چیزی نشان نده تا بک‌اند درست شود)
+        // ✅ فقط از endpoint پروژه‌ها بخون (اول فعال‌ها، اگر ساپورت نشد، همه)
         let raw = [];
-        const r1 = await api("/projects?isActive=1").catch(() => null);
-        raw = extractArray(r1);
+        try {
+          const r1 = await api("/projects?isActive=1").catch(() => null);
+          raw = extractArray(r1);
+        } catch {}
 
         if (!raw.length) {
-          if (!alive) return;
-          setProjects([]);
-          setProjectsLoading(false);
-          return;
+          const r2 = await api("/projects").catch(() => null);
+          raw = extractArray(r2);
         }
+
+        // ✅ اگر هیچ فیلد وضعیت در دیتا نبود، فیلتر فعال/غیرفعال اعمال نشود
+        const hasActivityField = (raw || []).some((p) => {
+          if (!p || typeof p !== "object") return false;
+          return (
+            Object.prototype.hasOwnProperty.call(p, "isActive") ||
+            Object.prototype.hasOwnProperty.call(p, "is_active") ||
+            Object.prototype.hasOwnProperty.call(p, "active") ||
+            Object.prototype.hasOwnProperty.call(p, "enabled") ||
+            Object.prototype.hasOwnProperty.call(p, "status") ||
+            Object.prototype.hasOwnProperty.call(p, "state")
+          );
+        });
+
+        // ✅ تشخیص فعال/غیرفعال (STRICT)
+        const isActiveProject = (p) => {
+          // اولویت با فیلدهای صریح
+          let v;
+          if (p && Object.prototype.hasOwnProperty.call(p, "isActive")) v = p.isActive;
+          else if (p && Object.prototype.hasOwnProperty.call(p, "is_active")) v = p.is_active;
+          else if (p && Object.prototype.hasOwnProperty.call(p, "active")) v = p.active;
+          else if (p && Object.prototype.hasOwnProperty.call(p, "enabled")) v = p.enabled;
+          else if (p && Object.prototype.hasOwnProperty.call(p, "status")) v = p.status;
+          else if (p && Object.prototype.hasOwnProperty.call(p, "state")) v = p.state;
+
+          // ✅ اگر اصلاً فیلد وضعیت نبود یا مقدارش null/undefined بود => نمایش نده
+          if (v == null) return false;
+
+          if (v === true) return true;
+          if (v === false) return false;
+          if (v === 1) return true;
+          if (v === 0) return false;
+
+          const s = String(v).trim().toLowerCase();
+
+          // انگلیسی
+          if (["1", "true", "yes", "y", "active", "enabled", "enable", "on"].includes(s)) return true;
+          if (["0", "false", "no", "n", "inactive", "disabled", "disable", "off", "deactive", "deactivated"].includes(s))
+            return false;
+
+          // حالت‌های ترکیبی
+          if (s.includes("inactive") || s.includes("disable") || s.includes("deactive")) return false;
+          if (s.includes("active") || s.includes("enable")) return true;
+
+          // فارسی
+          if (s.includes("غیرفعال")) return false;
+          if (s.includes("فعال")) return true;
+
+          // ✅ نامشخص => نمایش نده
+          return false;
+        };
 
         const normalizeCode = (code) => toEnDigits(String(code || "")).replace(/[^0-9.]/g, "").trim();
 
@@ -211,7 +262,8 @@ function DefineBudgetCentersPage() {
           .map((x, i) => normalizeProject(x, i))
           .map((p) => ({ ...p, code: normalizeCode(p.code) }))
           .filter((p) => p.code !== "" && /^\d+(\.\d+)*$/.test(p.code))
-          .filter((p) => (p.name || "").trim().length > 0); // ✅ حذف آیتم‌های بدون نام (0/00/06/…)
+          .filter((p) => (p.name || "").trim().length > 0)
+          .filter((p) => (hasActivityField ? isActiveProject(p) : true));
 
         // ✅ فقط پروژه‌های ریشه دقیق را نمایش بده (کدهای مثل 159 نه 159.1.1)
         const byExactRoot = new Map();
