@@ -1196,7 +1196,8 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
       }
     };
 
-    (visibleRoots || []).forEach((r, i) => walk(r, 0, [i + 1]));
+   (visibleRoots || []).slice().reverse().forEach((r, i) => walk(r, 0, [i + 1]));
+
     return out;
   }, [visibleRoots]);
 
