@@ -204,65 +204,63 @@ function DefineBudgetCentersPage() {
     [projects, projectId]
   );
 
-  useEffect(() => {
-    if (canAccessPage !== true) return;
-    if (allowedTabsSet !== null && !allowedTabsSet.has("projects")) return;
+ useEffect(() => {
+  if (canAccessPage !== true) return;
+  if (allowedTabsSet !== null && !allowedTabsSet.has("projects")) return;
 
-    let alive = true;
-    (async () => {
-      setProjectsLoading(true);
-      try {
-        // ✅ فقط و فقط از /projects می‌گیریم
-        const r = await api("/projects");
-        const raw = Array.isArray(r?.items) ? r.items : [];
+  let alive = true;
 
-        const normalizeCode = (code) => toEnDigits(String(code || "")).replace(/[^0-9]/g, "").trim();
+  (async () => {
+    setProjectsLoading(true);
+    try {
+      // ✅ فقط و فقط از همان پروژه‌ها (ذخیره‌شده در /api/projects)
+      // ✅ بدون هیچ fallback یا مسیر دیگر
+      const r = await api("/projects?isActive=true");
 
-        // ✅ پروژه‌ها: دقیقاً 3 رقم و بدون صفر ابتدای عدد (066 حذف می‌شود)
-        const isValidProjectCode = (code) => {
-          if (!code) return false;
-          if (!/^\d{3}$/.test(code)) return false;
-          if (code[0] === "0") return false;
-          return true;
-        };
+      // فقط شکل پاسخ را باز می‌کنیم (این fallback نیست، فقط parse است)
+      const raw =
+        Array.isArray(r) ? r :
+        Array.isArray(r?.items) ? r.items :
+        [];
 
-        // ✅ STRICT: فقط پروژه‌هایی که isActive === true هستند
-        const flat = (raw || [])
-          .filter((x) => x && typeof x === "object" && !Array.isArray(x))
-          .map((x) => normalizeProject(x))
-          .filter((p) => p.id != null)
-          .map((p) => ({ ...p, code: normalizeCode(p.code) }))
-          .filter((p) => isValidProjectCode(p.code))
-          .filter((p) => (p.name || "").trim().length > 0)
-          .filter((p) => p.isActive === true);
+      // ✅ فقط پروژه‌هایی که دقیقاً isActive === true دارند
+      const clean = (raw || [])
+        .filter((p) => p && typeof p === "object" && !Array.isArray(p))
+        .map((p) => ({
+          id: p?.id == null ? null : String(p.id),
+          code: p?.code == null ? "" : String(p.code).trim(),
+          name: p?.name == null ? "" : String(p.name).trim(),
+          isActive: p?.isActive === true, // فقط همین!
+        }))
+        .filter((p) => p.id != null)
+        .filter((p) => p.isActive === true)
+        .filter((p) => p.code.length > 0);
 
-        const byCode = new Map();
-        for (const p of flat) {
-          const k = String(p.code);
-          if (!byCode.has(k)) byCode.set(k, p);
-        }
-
-        const list = Array.from(byCode.values()).map((p) => ({
-          ...p,
-          code: String(p.code),
-          name: p?.name ?? "",
-        }));
-
-        if (!alive) return;
-        setProjects(list);
-      } catch {
-        if (!alive) return;
-        setProjects([]);
-      } finally {
-        if (!alive) return;
-        setProjectsLoading(false);
+      // حذف تکراری‌ها بر اساس code (اختیاری ولی مفید)
+      const byCode = new Map();
+      for (const p of clean) {
+        const k = String(p.code);
+        if (!byCode.has(k)) byCode.set(k, p);
       }
-    })();
 
-    return () => {
-      alive = false;
-    };
-  }, [canAccessPage, allowedTabsSet, api, normalizeProject, toEnDigits]);
+      const list = Array.from(byCode.values());
+
+      if (!alive) return;
+      setProjects(list);
+    } catch {
+      if (!alive) return;
+      setProjects([]);
+    } finally {
+      if (!alive) return;
+      setProjectsLoading(false);
+    }
+  })();
+
+  return () => {
+    alive = false;
+  };
+}, [canAccessPage, allowedTabsSet, api]);
+
 
   // ✅ اگر پروژه انتخاب‌شده جزو لیست «فقط فعال‌ها» نبود، انتخاب را پاک کن
   useEffect(() => {
