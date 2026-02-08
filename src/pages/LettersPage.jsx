@@ -3724,7 +3724,7 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
           </div>
 
           {/* آیکن وسط */}
-          <div className="md:col-span-1 flex flex-col items-center">
+          <div className="md:col-span-1 md:col-start-8 flex flex-col items-center">
             <div className={labelCls + " opacity-0 select-none"}>_</div>
             <div className="h-10 flex items-center justify-center">
               <img
@@ -3788,7 +3788,7 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
 </div>
 
           {/* شرکت/سازمان (باقی فضا) */}
-<div className="md:col-span-5">
+<div className="md:col-span-4 md:col-start-1">
   <div className={labelCls}>شرکت/سازمان</div>
 
     <input
@@ -3818,7 +3818,7 @@ onChange={(e) => {
           </div>
 
           {/* به (کمی کوچکتر) */}
-<div className="md:col-span-3">
+<div className="md:col-span-3 md:col-start-5">
   <div className={labelCls}>به</div>
 
     <input
