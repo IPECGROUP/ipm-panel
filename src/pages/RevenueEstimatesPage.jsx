@@ -142,45 +142,37 @@ function RevenueEstimatesPage() {
     });
     return m;
   }, [projects]);
-  const allowedProjectIds = useMemo(() => {
-  // فقط آی‌دی‌هایی که از دیتای ذخیره‌شده (poolProjectIds) آمده
-  return new Set((poolProjectIds || []).map((x) => String(x)).filter(Boolean));
-}, [poolProjectIds]);
+ 
 const getProjectCode = useCallback((p) => {
-  // همه حالت‌های ممکن را پوشش می‌دهد
-  return String(
-    p?.code ??
-      p?.project_code ??
-      p?.projectCode ??
-      p?.project_code_str ??
-      p?.projectCodeStr ??
-      ''
-  ).trim();
+  // دقیقاً مثل صفحه پروژه‌ها: کد را از همان فیلد اصلی code بردار
+  return String(p?.code ?? '').trim();
 }, []);
-const projectsForPicker = useMemo(() => {
-  // اگر چیزی ذخیره نشده، dropdown خالی باشد (طبق خواسته شما)
-  if (!allowedProjectIds.size) return [];
 
+const projectsForPicker = useMemo(() => {
   return (projects || [])
-    .filter((p) => allowedProjectIds.has(String(p?.id ?? '')))
-    .filter((p) => p?.isActive === true) // اگر می‌خوای فقط فعال‌ها
+    // اگر تو صفحه پروژه‌ها فقط فعال‌ها را نشان می‌دهی:
+    .filter((p) => p?.isActive !== false) // یعنی null/undefined هم ok، فقط false حذف میشه
     .slice()
     .sort((a, b) => {
       const ca = getProjectCode(a);
       const cb = getProjectCode(b);
+
+      // مرتب‌سازی مثل پروژه‌ها: بر اساس کد (عدد/رشته)
       if (ca && !cb) return -1;
       if (!ca && cb) return 1;
-      const cmpCode = cb.localeCompare(ca, 'fa', { numeric: true, sensitivity: 'base' });
-      if (cmpCode !== 0) return cmpCode;
-      return String(b?.name ?? b?.title ?? '').localeCompare(
-        String(a?.name ?? a?.title ?? ''),
-        'fa',
-        { numeric: true, sensitivity: 'base' }
-      );
+
+      const cmp = String(ca).localeCompare(String(cb), 'fa', {
+        numeric: true,
+        sensitivity: 'base',
+      });
+      if (cmp !== 0) return cmp;
+
+      // اگر کد برابر بود، بر اساس نام
+      const na = String(a?.name ?? a?.title ?? '').trim();
+      const nb = String(b?.name ?? b?.title ?? '').trim();
+      return na.localeCompare(nb, 'fa', { numeric: true, sensitivity: 'base' });
     });
-}, [projects, allowedProjectIds, getProjectCode]);
-
-
+}, [projects, getProjectCode]);
 
   const getProjectLabel = useCallback((p) => {
     const code = String(p?.code ?? p?.project_code ?? p?.projectCode ?? '').trim();
