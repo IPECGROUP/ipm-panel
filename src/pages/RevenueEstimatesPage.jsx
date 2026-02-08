@@ -30,6 +30,19 @@ function RevenueEstimatesPage() {
       .replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
       .replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
 
+// فقط پروژه‌های اصلی: کد بدون نقطه (مثل 156)
+// اگر خواستی دقیقاً 3 رقم باشد: /^\d{3}$/
+// ولی چون ممکنه کدها 2 یا 4 رقم هم باشند، بهتره "بدون نقطه" فیلتر کنیم
+const isTopProjectCode = (code) => {
+  const c = toEnDigits(String(code ?? '')).trim();
+  if (!c) return false;
+  // ✅ زیرمجموعه‌ها معمولاً نقطه دارند: 156.1.1
+  if (c.includes('.')) return false;
+  // ✅ فقط عدد باشد
+  return /^\d+$/.test(c);
+};
+
+
   const parseMoney = (s) => {
     if (s == null) return 0;
     const sign = /^\s*-/.test(String(s)) ? -1 : 1;
@@ -121,23 +134,31 @@ function RevenueEstimatesPage() {
   const [projects, setProjects] = useState([]);
     const [poolProjectIds, setPoolProjectIds] = useState([]); // پروژه‌هایی که به کپسول‌ها اضافه شده‌اند
   const [selectedKeysArr, setSelectedKeysArr] = useState([]); // انتخاب‌های فعال برای نمایش در جدول اصلی
-
- useEffect(() => {
+useEffect(() => {
   if (canAccessPage !== true) return;
+
   (async () => {
     try {
       const data = await api('/projects');
-      const items = Array.isArray(data.items) ? data.items : (Array.isArray(data.projects) ? data.projects : []);
+      const items =
+        Array.isArray(data.items) ? data.items :
+        (Array.isArray(data.projects) ? data.projects : []);
 
-      // ✅ فقط پروژه‌های مثل صفحه پروژه‌ها: کد دقیقاً ۳ رقم
+      // ✅ فقط پروژه‌های اصلی (بدون زیرمجموعه مثل 156.1.1)
       const topOnly = items.filter((p) => isTopProjectCode(p?.code));
 
-      // ✅ اگر می‌خوای فقط فعال‌ها هم بیاد:
+      // ✅ فقط فعال‌ها (اگر غیرفعال‌ها هم می‌خوای، این خط رو حذف کن)
       const topActive = topOnly.filter((p) => p?.isActive !== false);
 
-      setProjects(topActive);
+      // ✅ اگر با فیلتر هیچی درنیومد، حداقل پروژه‌ها را خالی نکن
+      // (برای اینکه صفحه خالی نشه و بفهمیم مشکل از فیلتره)
+      setProjects(topActive.length ? topActive : items);
+
+      console.log('projects total:', items.length);
+      console.log('projects topActive:', topActive.length);
     } catch (e) {
       console.error('load projects failed', e);
+      setProjects([]); // اینجا خالی کردن ok
     }
   })();
 }, [canAccessPage]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -158,28 +179,25 @@ const getProjectCode = useCallback((p) => {
 
 const projectsForPicker = useMemo(() => {
   return (projects || [])
-    // اگر تو صفحه پروژه‌ها فقط فعال‌ها را نشان می‌دهی:
-    .filter((p) => p?.isActive !== false) // یعنی null/undefined هم ok، فقط false حذف میشه
-    .slice()
-    .sort((a, b) => {
-      const ca = getProjectCode(a);
-      const cb = getProjectCode(b);
+  .slice()
+  .sort((a, b) => {
+    const ca = getProjectCode(a);
+    const cb = getProjectCode(b);
 
-      // مرتب‌سازی مثل پروژه‌ها: بر اساس کد (عدد/رشته)
-      if (ca && !cb) return -1;
-      if (!ca && cb) return 1;
+    if (ca && !cb) return -1;
+    if (!ca && cb) return 1;
 
-      const cmp = String(ca).localeCompare(String(cb), 'fa', {
-        numeric: true,
-        sensitivity: 'base',
-      });
-      if (cmp !== 0) return cmp;
-
-      // اگر کد برابر بود، بر اساس نام
-      const na = String(a?.name ?? a?.title ?? '').trim();
-      const nb = String(b?.name ?? b?.title ?? '').trim();
-      return na.localeCompare(nb, 'fa', { numeric: true, sensitivity: 'base' });
+    const cmp = String(ca).localeCompare(String(cb), 'fa', {
+      numeric: true,
+      sensitivity: 'base',
     });
+    if (cmp !== 0) return cmp;
+
+    const na = String(a?.name ?? a?.title ?? '').trim();
+    const nb = String(b?.name ?? b?.title ?? '').trim();
+    return na.localeCompare(nb, 'fa', { numeric: true, sensitivity: 'base' });
+  });
+
 }, [projects, getProjectCode]);
 
 const getProjectLabel = useCallback((p) => {
