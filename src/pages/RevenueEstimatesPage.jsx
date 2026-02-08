@@ -119,6 +119,8 @@ function RevenueEstimatesPage() {
   );
 
   const [projects, setProjects] = useState([]);
+    const [poolProjectIds, setPoolProjectIds] = useState([]); // پروژه‌هایی که به کپسول‌ها اضافه شده‌اند
+  const [selectedKeysArr, setSelectedKeysArr] = useState([]); // انتخاب‌های فعال برای نمایش در جدول اصلی
 
   useEffect(() => {
     if (canAccessPage !== true) return;
@@ -198,8 +200,7 @@ const getProjectCode = useCallback((p) => {
   const SEP = ' › ';
 
   // ===== انتخاب‌ها (کپسول‌ها) =====
-  const [poolProjectIds, setPoolProjectIds] = useState([]); // پروژه‌هایی که به کپسول‌ها اضافه شده‌اند
-  const [selectedKeysArr, setSelectedKeysArr] = useState([]); // انتخاب‌های فعال برای نمایش در جدول اصلی
+
   const [otherMenuOpen, setOtherMenuOpen] = useState(false);
 
   const projectKey = (pid) => `p:${String(pid)}`;
