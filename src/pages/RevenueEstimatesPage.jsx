@@ -210,7 +210,8 @@ const getProjectCode = useCallback((p) => {
   const ensureRootForProject = useCallback((pid) => {
     const spid = String(pid);
     const p = projectById.get(spid);
-    const title = p ? getProjectLabel(p) : 'پروژه';
+   const title = p ? getProjectLabel(p) : `پروژه ${String(spid)}`;
+
     return makeNode({
       id: rowIdRef.current++,
       title,
@@ -358,14 +359,36 @@ const getProjectCode = useCallback((p) => {
           if (m && m.key) monthsMap[m.key] = Number(m.amount || 0);
         });
 
-        const root = ensureRoot(parts[0], projectId, isOther);
+        // ✅ اگر پروژه دارد: ریشه باید از projectId ساخته شود (نه از title ذخیره شده)
+let root;
 
-        let node = root;
-        for (let i = 1; i < parts.length; i++) {
-          const seg = parts[i];
-          const isOtherChild = (root?.otherRoot === true);
-          node = getOrCreateChild(node, seg, isOtherChild);
-        }
+if (projectId != null) {
+  // کلید ثابت برای هر پروژه
+  const key = 'p:' + String(projectId);
+
+  if (!rootMap.has(key)) {
+    // ریشه پروژه با عنوان درست از لیست پروژه‌ها
+    rootMap.set(key, ensureRootForProject(projectId));
+  }
+
+  root = rootMap.get(key);
+
+  // ✅ اگر title قبلاً با "کد - نام" ذخیره شده بود، آن را حذف کن تا 800 یا اسم‌های اضافی نگیرد
+  // یعنی مسیر واقعی از level 1 شروع می‌شود
+  // parts[0] را نادیده می‌گیریم
+  parts = parts.slice(1);
+} else {
+  // سایر یا آیتم‌های بدون پروژه
+  root = ensureRoot(parts[0], projectId, isOther);
+  parts = parts.slice(1);
+}
+
+let node = root;
+for (let i = 0; i < parts.length; i++) {
+  const seg = parts[i];
+  const isOtherChild = (root?.otherRoot === true);
+  node = getOrCreateChild(node, seg, isOtherChild);
+}
 
         node.desc = String(it.description || '');
         node.projectId = projectId != null ? projectId : node.projectId || null;
