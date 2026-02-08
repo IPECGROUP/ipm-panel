@@ -3536,7 +3536,7 @@ useEffect(() => {
   <div className={formOuterBoxCls}>
     <div
   className="
-    flex items-end gap-2
+    flex items-start gap-2
     overflow-x-auto md:overflow-visible
     flex-nowrap
     pb-1
