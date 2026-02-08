@@ -196,24 +196,32 @@ function DefineBudgetCentersPage() {
     (async () => {
       setProjectsLoading(true);
       try {
-        const candidates = ["/projects", "/projects/list", "/projects/all", "/meta/projects"];
+        // ✅ فقط از endpoint پروژه‌ها بخون (اول فعال‌ها، اگر ساپورت نشد، همه)
         let raw = [];
-        for (const path of candidates) {
-          try {
-            const r = await api(path);
-            raw = extractArray(r);
-            if (raw.length) break;
-          } catch (e) {
-            if (e?.status === 404) continue;
-            if (e?.status === 401 || e?.status === 403) break;
-          }
+        try {
+          const r1 = await api("/projects?isActive=1").catch(() => null);
+          raw = extractArray(r1);
+        } catch {}
+
+        if (!raw.length) {
+          const r2 = await api("/projects").catch(() => null);
+          raw = extractArray(r2);
         }
 
-      const flat = (raw || [])
-  .map((x, i) => normalizeProject(x, i))
-  .filter((x) => x && x.id != null && String(x.code || "").trim())
-  .filter((x) => x?.isActive === true); // ✅ فقط پروژه‌های فعال
+        // ✅ فقط آیتم‌های معتبر (آبجکت) + کد معتبر + فقط فعال‌ها
+        const isActiveProject = (p) => {
+          const v = p?.isActive ?? p?.is_active ?? p?.active;
+          return v === true || v === 1 || v === "1";
+        };
 
+        const normalizeCode = (code) => toEnDigits(String(code || "")).replace(/[^0-9.]/g, "").trim();
+
+        const flat = (raw || [])
+          .filter((x) => x && typeof x === "object" && !Array.isArray(x))
+          .map((x, i) => normalizeProject(x, i))
+          .map((p) => ({ ...p, code: normalizeCode(p.code) }))
+          .filter((p) => p.code && /^\d+(\.\d+)*$/.test(p.code))
+          .filter((p) => isActiveProject(p));
 
         // فقط پروژه‌های ریشه (قبل از '.') نمایش داده شود (مثل 159 نه 159.1.1)
         const groups = new Map();
