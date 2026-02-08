@@ -25,8 +25,8 @@ function ProjectsPage() {
   };
 
   // ✅ آدرس پیشنهادی برای بک/پریسما:
-  // PATCH /api/projects  body: { id, code, name, is_active }
-  // (یا اگر خواستی جداش کنی: PATCH /api/projects/status  body: { id, is_active })
+  // PATCH /api/projects  body: { id, code, name, isActive }
+  // (یا اگر خواستی جداش کنی: PATCH /api/projects/status  body: { id, isActive })
 
   const [rows, setRows] = React.useState([]);
   const [err, setErr] = React.useState("");
@@ -97,11 +97,11 @@ function ProjectsPage() {
     try {
       const resp = await api("/projects", {
         method: "POST",
-        body: JSON.stringify({ code, name, is_active: true }), // ✅ پروژه جدید: پیش‌فرض فعال
+        body: JSON.stringify({ code, name, isActive: true }), // ✅ پروژه جدید: پیش‌فرض فعال
       });
       const newItem = resp?.item || null;
       if (newItem) {
-        const ensured = { ...newItem, is_active: newItem?.is_active ?? true };
+        const ensured = { ...newItem, isActive: newItem?.isActive ?? true };
         setRows((prev) => [...prev, ensured].filter((r) => isTopProjectCode(r?.code)));
       } else {
         await loadAll();
@@ -119,7 +119,7 @@ function ProjectsPage() {
     setEditId(r.id);
     setEditCode(String(r.code || ""));
     setEditName(String(r.name || ""));
-    setEditIsActive(Boolean(r?.is_active ?? true)); // ✅ اگر فیلد نیومده بود، فعال در نظر بگیر
+    setEditIsActive(Boolean(r?.isActive ?? true)); // ✅ اگر فیلد نیومده بود، فعال در نظر بگیر
     setErr("");
   };
 
@@ -147,12 +147,12 @@ function ProjectsPage() {
     try {
       await api("/projects", {
         method: "PATCH",
-        body: JSON.stringify({ id: editId, code, name, is_active: !!editIsActive }),
+        body: JSON.stringify({ id: editId, code, name, isActive: !!editIsActive }),
       });
 
       setRows((prev) =>
         prev
-          .map((r) => (r.id === editId ? { ...r, code, name, is_active: !!editIsActive } : r))
+          .map((r) => (r.id === editId ? { ...r, code, name, isActive: !!editIsActive } : r))
           .filter((r) => isTopProjectCode(r?.code))
       );
       cancelEdit();
@@ -482,7 +482,7 @@ function ProjectsPage() {
                           const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
 
                           const rowIsEditing = editId === r.id;
-                          const rowIsActive = Boolean(r?.is_active ?? true);
+                          const rowIsActive = Boolean(r?.isActive ?? true);
 
                           const boxBase =
                             "h-5 w-5 rounded-[6px] border inline-grid place-items-center text-[12px] leading-none select-none";
