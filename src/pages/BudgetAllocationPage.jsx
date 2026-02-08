@@ -90,63 +90,57 @@ function BudgetAllocationPage() {
   );
 
   const normalizeProject = (p) => {
-    const code =
-      p?.code ??
-      p?.project_code ??
-      p?.projectCode ??
-      p?.projectCodeText ??
-      p?.project_no ??
-      p?.projectNo ??
-      "";
-    const name =
-      p?.name ??
-      p?.project_name ??
-      p?.projectName ??
-      p?.title ??
-      p?.label ??
-      "";
-    return {
-      ...p,
-      id: p?.id,
-      code: code == null ? "" : String(code),
-      name: name == null ? "" : String(name),
-    };
+  const code3 = normalizeProjectCode3(p?.code);
+  const name = p?.name == null ? "" : String(p.name).trim();
+
+  return {
+    id: p?.id == null ? null : String(p.id),
+    code: code3, // ✅ فقط ۳ رقم
+    name,
+    isActive: p?.isActive === true, // ✅ فقط مقدار واقعی
   };
+};
 
   // پروژه‌ها از سرور
   useEffect(() => {
-    if (canAccessPage !== true) return;
-    let alive = true;
-    (async () => {
-      try {
-        const r = await api("/projects");
-        if (!alive) return;
+  if (canAccessPage !== true) return;
 
-        const raw = Array.isArray(r)
-          ? r
-          : Array.isArray(r?.items)
-          ? r.items
-          : Array.isArray(r?.projects)
-          ? r.projects
-          : Array.isArray(r?.data)
-          ? r.data
-          : [];
+  let alive = true;
 
-        const list = Array.isArray(raw) ? raw : [];
-        const norm = list
-          .map(normalizeProject)
-          .filter((x) => x && x.id != null && String(x.code || "").trim());
+  (async () => {
+    try {
+      // ✅ فقط از پروژه‌ها (صفحه پروژه‌ها) + فقط فعال‌ها
+      const r = await api("/projects?isActive=true");
+      if (!alive) return;
 
-        setProjects(norm);
-      } catch {
-        if (!alive) return;
-        setProjects([]);
+      // ✅ فقط parse (نه fallback به مسیرهای دیگر)
+      const raw = Array.isArray(r) ? r : Array.isArray(r?.items) ? r.items : [];
+
+      const clean = (raw || [])
+        .filter((p) => p && typeof p === "object" && !Array.isArray(p))
+        .map(normalizeProject)
+        .filter((p) => p && p.id != null)
+        .filter((p) => p.isActive === true)
+        .filter((p) => isValidProjectCode3(p.code));
+
+      // ✅ حذف تکراری بر اساس code
+      const byCode = new Map();
+      for (const p of clean) {
+        const k = String(p.code);
+        if (!byCode.has(k)) byCode.set(k, p);
       }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [canAccessPage]); // eslint-disable-line react-hooks/exhaustive-deps
+
+      setProjects(Array.from(byCode.values()));
+    } catch {
+      if (!alive) return;
+      setProjects([]);
+    }
+  })();
+
+  return () => {
+    alive = false;
+  };
+}, [canAccessPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sortedProjects = useMemo(() => {
     return (projects || [])
@@ -189,6 +183,17 @@ function BudgetAllocationPage() {
     String(s || "")
       .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d))
       .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
+
+// ✅ فقط ۳ رقم پروژه (بدون زیرمجموعه مثل 156.1.1)
+const normalizeProjectCode3 = (code) => {
+  const s = toEnDigits(String(code ?? "")).trim();
+  const head = s.split(".")[0];
+  const digits = head.replace(/[^\d]/g, "");
+  return digits.slice(0, 3);
+};
+
+const isValidProjectCode3 = (code3) => /^\d{3}$/.test(String(code3 || ""));
+
 
   const parseMoney = (s) => {
     if (s == null) return 0;
@@ -588,49 +593,16 @@ function BudgetAllocationPage() {
             >
               انتخاب کنید
             </option>
-            {(sortedProjects || [])
-              .filter((p) => {
-                let v;
-                if (p && Object.prototype.hasOwnProperty.call(p, "isActive")) v = p.isActive;
-                else if (p && Object.prototype.hasOwnProperty.call(p, "is_active")) v = p.is_active;
-                else if (p && Object.prototype.hasOwnProperty.call(p, "active")) v = p.active;
-                else if (p && Object.prototype.hasOwnProperty.call(p, "enabled")) v = p.enabled;
-                else if (p && Object.prototype.hasOwnProperty.call(p, "status")) v = p.status;
-                else if (p && Object.prototype.hasOwnProperty.call(p, "state")) v = p.state;
+            {(sortedProjects || []).map((p) => (
+  <option
+    className="bg-white text-black dark:bg-neutral-900 dark:text-neutral-100"
+    key={String(p.id)}
+    value={String(p.id)}
+  >
+    {toFaDigits(p.code || "—")} {p?.name ? `— ${p.name}` : ""}
+  </option>
+))}
 
-                // STRICT: اگر وضعیت نیومده/نامشخص بود => نشان نده
-                if (v == null) return false;
-
-                if (v === true) return true;
-                if (v === false) return false;
-                if (v === 1) return true;
-                if (v === 0) return false;
-
-                const s = String(v).trim().toLowerCase();
-
-                if (["1", "true", "yes", "y", "active", "enabled", "enable", "on"].includes(s)) return true;
-                if (
-                  ["0", "false", "no", "n", "inactive", "disabled", "disable", "off", "deactive", "deactivated"].includes(s)
-                )
-                  return false;
-
-                if (s.includes("inactive") || s.includes("disable") || s.includes("deactive")) return false;
-                if (s.includes("active") || s.includes("enable")) return true;
-
-                if (s.includes("غیرفعال")) return false;
-                if (s.includes("فعال")) return true;
-
-                return false;
-              })
-              .map((p) => (
-                <option
-                  className="bg-white text-black dark:bg-neutral-900 dark:text-neutral-100"
-                  key={p.id}
-                  value={p.id}
-                >
-                  {toFaDigits(p.code || "—")} {p?.name ? `— ${p.name}` : ""}
-                </option>
-              ))}
           </select>
         </div>
         <div className="flex flex-col gap-1">
