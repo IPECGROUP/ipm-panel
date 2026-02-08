@@ -2039,17 +2039,14 @@ useEffect(() => {
   if (!code) return;
 
   // وارده: شماره ثبت دبیرخانه
-  if (formKind === "incoming") {
-    setIncomingSecretariatNo(code);
-  }
-  // صادره: شماره سند
-  else if (formKind === "outgoing") {
-    setOutgoingForm((p) => ({ ...p, letterNo: code }));
-  }
-  // داخلی: شماره سند
-  else {
-    setInternalForm((p) => ({ ...p, letterNo: code }));
-  }
+ // ✅ در هر سه تب: کد داخل "شماره ثبت دبیرخانه" پر شود
+if (formKind === "incoming") {
+  setIncomingSecretariatNo(code);
+} else if (formKind === "outgoing") {
+  setOutgoingSecretariatNo(code);
+} else {
+  setInternalSecretariatNo(code);
+}
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [formOpen, formKind, editingId, currentProjectId, myLetters, projectsTopOnly]);
 const setFormTagsAllAndPersist = (ids) => {
@@ -4307,32 +4304,27 @@ aria-invalid={fieldHasError(formKind, "subject")}
           <div className={labelCls}
           >  {formKind === "outgoing" ? "شماره ثبت دبیرخانه " : "شماره ثبت دبیرخانه"}
           </div>
-          <input
-  value={
-    formKind === "incoming"
-      ? incomingSecretariatNo
-      : formKind === "outgoing"
-      ? outgoingSecretariatNo
-      : internalSecretariatNo
-  }
-  readOnly={formKind === "incoming"}  // ✅ وارده قفل
-  onChange={(e) => {
-    if (formKind === "incoming") return; // ✅ نذار تغییر کنه
-    const v = e.target.value;
-    if (formKind === "outgoing") setOutgoingSecretariatNo(v);
-    else setInternalSecretariatNo(v);
-  }}
-  className={
-    inputCls +
-    (formKind === "incoming"
-      ? " bg-black/5 dark:bg-white/10 cursor-not-allowed"
-      : "")
-  }
-  type="text"
-/>
-
+        <input
+          value={
+            formKind === "incoming"
+              ? incomingSecretariatNo
+              : formKind === "outgoing"
+              ? outgoingSecretariatNo
+              : internalSecretariatNo
+          }
+          onChange={(e) => {
+            const v = e.target.value;
+            if (formKind === "incoming") setIncomingSecretariatNo(v);
+            else if (formKind === "outgoing") setOutgoingSecretariatNo(v);
+            else setInternalSecretariatNo(v);
+          }}
+          className={
+            inputCls +
+            " bg-black/5 dark:bg-white/10"   // ✅ خاکستری کم‌رنگ همیشه
+          }
+          type="text"
+        />
         </div>
-
         <div>
           <div className={labelCls}>مسئول دبیرخانه</div>
           <input value={loggedInUserName || ""} readOnly className={inputCls + " opacity-90"} type="text" />
