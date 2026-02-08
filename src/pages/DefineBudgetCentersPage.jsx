@@ -209,9 +209,11 @@ function DefineBudgetCentersPage() {
           }
         }
 
-        const flat = (raw || [])
-          .map((x, i) => normalizeProject(x, i))
-          .filter((x) => x && x.id != null && String(x.code || "").trim());
+      const flat = (raw || [])
+  .map((x, i) => normalizeProject(x, i))
+  .filter((x) => x && x.id != null && String(x.code || "").trim())
+  .filter((x) => x?.isActive === true); // ✅ فقط پروژه‌های فعال
+
 
         // فقط پروژه‌های ریشه (قبل از '.') نمایش داده شود (مثل 159 نه 159.1.1)
         const groups = new Map();
