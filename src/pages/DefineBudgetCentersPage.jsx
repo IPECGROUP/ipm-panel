@@ -137,43 +137,38 @@ function DefineBudgetCentersPage() {
     if (r?.data && Array.isArray(r.data.projects)) return r.data.projects;
     return [];
   }, []);
+const normalizeProject = useCallback((p) => {
+  const code = (
+    p?.code ??
+    p?.project_code ??
+    p?.projectCode ??
+    p?.projectCodeText ??
+    p?.project_no ??
+    p?.projectNo ??
+    p?.suffix ??               // از centers/projects
+    p?.project_suffix ??
+    ""
+  );
 
-  const normalizeProject = useCallback((p, idx = 0) => {
-    const code =
-      p?.code ??
-      p?.project_code ??
-      p?.projectCode ??
-      p?.projectCodeText ??
-      p?.project_no ??
-      p?.projectNo ??
-      p?.suffix ??
-      p?.project_suffix ??
-      "";
+  const name = (
+    p?.name ??
+    p?.project_name ??
+    p?.projectName ??
+    p?.description ??          // از centers/projects
+    p?.title ??
+    p?.label ??
+    ""
+  );
 
-    const name =
-      p?.name ??
-      p?.project_name ??
-      p?.projectName ??
-      p?.description ??
-      p?.title ??
-      p?.label ??
-      "";
+  const id = p?.id ?? p?.project_id ?? p?.projectId ?? p?.pid ?? p?.ProjectID ?? null;
 
-    const id =
-      p?.id ??
-      p?.project_id ??
-      p?.projectId ??
-      p?.pid ??
-      p?.ProjectID ??
-      (code != null && String(code).trim() ? String(code).trim() : idx + 1);
-
-    return {
-      ...p,
-      id,
-      code: code == null ? "" : String(code).trim(),
-      name: name == null ? "" : String(name).trim(),
-    };
-  }, []);
+  return {
+    ...p,
+    id: id == null ? null : String(id), // فقط واقعی
+    code: code == null ? "" : String(code).trim(),
+    name: name == null ? "" : String(name).trim(),
+  };
+}, []);
 
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState("");
@@ -257,13 +252,14 @@ function DefineBudgetCentersPage() {
 
         const normalizeCode = (code) => toEnDigits(String(code || "")).replace(/[^0-9.]/g, "").trim();
 
-        const flat = (raw || [])
-          .filter((x) => x && typeof x === "object" && !Array.isArray(x))
-          .map((x, i) => normalizeProject(x, i))
-          .map((p) => ({ ...p, code: normalizeCode(p.code) }))
-          .filter((p) => p.code !== "" && /^\d+(\.\d+)*$/.test(p.code))
-          .filter((p) => (p.name || "").trim().length > 0)
-          .filter((p) => (hasActivityField ? isActiveProject(p) : true));
+     const flat = (raw || [])
+  .filter((x) => x && typeof x === "object" && !Array.isArray(x))
+  .map((x) => normalizeProject(x))
+  .filter((p) => p.id != null)          // ✅ خیلی مهم
+  .map((p) => ({ ...p, code: normalizeCode(p.code) }))
+  .filter((p) => p.code !== "" && /^\d+(\.\d+)*$/.test(p.code))
+  .filter((p) => (p.name || "").trim().length > 0)
+  .filter((p) => (hasActivityField ? isActiveProject(p) : true));
 
         // ✅ فقط پروژه‌های ریشه دقیق را نمایش بده (کدهای مثل 159 نه 159.1.1)
         const byExactRoot = new Map();
@@ -280,12 +276,14 @@ function DefineBudgetCentersPage() {
           }
         }
 
-        const list = Array.from(byExactRoot.entries()).map(([base, p]) => ({
-          ...p,
-          id: p?.id ?? base,
-          code: base,
-          name: p?.name ?? "",
-        }));
+        const list = Array.from(byExactRoot.entries())
+  .map(([base, p]) => ({
+    ...p,
+    code: base,
+    name: p?.name ?? "",
+  }))
+  .filter((p) => p.id != null);
+
 
         if (!alive) return;
         setProjects(list);
@@ -736,7 +734,7 @@ function DefineBudgetCentersPage() {
           </div>
 
           <div className="w-[260px] flex flex-col gap-1">
-            <label className="text-sm text-neutral-700 dark:text-neutral-300">کد بودafasfgagجه</label>
+            <label className="text-sm text-neutral-700 dark:text-neutral-300">کد بودجه</label>
 
             {active !== "projects" && (
               <div className="w-full flex items-center rounded-xl overflow-hidden bg-white text-neutral-900 ltr border border-neutral-200 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700">
