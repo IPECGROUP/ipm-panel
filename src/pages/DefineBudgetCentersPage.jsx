@@ -137,38 +137,29 @@ function DefineBudgetCentersPage() {
     if (r?.data && Array.isArray(r.data.projects)) return r.data.projects;
     return [];
   }, []);
-const normalizeProject = useCallback((p) => {
-  const code = (
-    p?.code ??
-    p?.project_code ??
-    p?.projectCode ??
-    p?.projectCodeText ??
-    p?.project_no ??
-    p?.projectNo ??
-    p?.suffix ??               // از centers/projects
-    p?.project_suffix ??
-    ""
-  );
 
-  const name = (
-    p?.name ??
-    p?.project_name ??
-    p?.projectName ??
-    p?.description ??          // از centers/projects
-    p?.title ??
-    p?.label ??
-    ""
-  );
+  // ✅ فقط از فیلدهای واقعی پروژه (نه suffix/description مراکز بودجه)
+  const normalizeProject = useCallback((p) => {
+    const code =
+      p?.code ??
+      p?.project_code ??
+      p?.projectCode ??
+      p?.projectCodeText ??
+      p?.project_no ??
+      p?.projectNo ??
+      "";
 
-  const id = p?.id ?? p?.project_id ?? p?.projectId ?? p?.pid ?? p?.ProjectID ?? null;
+    const name = p?.name ?? p?.project_name ?? p?.projectName ?? p?.title ?? p?.label ?? "";
 
-  return {
-    ...p,
-    id: id == null ? null : String(id), // فقط واقعی
-    code: code == null ? "" : String(code).trim(),
-    name: name == null ? "" : String(name).trim(),
-  };
-}, []);
+    const id = p?.id ?? p?.project_id ?? p?.projectId ?? p?.pid ?? p?.ProjectID ?? null;
+
+    return {
+      ...p,
+      id: id == null ? null : String(id),
+      code: code == null ? "" : String(code).trim(),
+      name: name == null ? "" : String(name).trim(),
+    };
+  }, []);
 
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState("");
@@ -187,17 +178,22 @@ const normalizeProject = useCallback((p) => {
     (async () => {
       setProjectsLoading(true);
       try {
-        // ✅ فقط از endpoint پروژه‌ها بخون (اول فعال‌ها، اگر ساپورت نشد، همه)
         let raw = [];
-        try {
-          const r1 = await api("/projects?isActive=1").catch(() => null);
-          raw = extractArray(r1);
-        } catch {}
 
-        if (!raw.length) {
-          const r2 = await api("/projects").catch(() => null);
-          raw = extractArray(r2);
-        }
+        // ✅ اول تلاش برای فقط فعال‌ها (با چند حالت)
+        const tryFetch = async (url) => {
+          try {
+            const r = await api(url).catch(() => null);
+            const arr = extractArray(r);
+            return Array.isArray(arr) ? arr : [];
+          } catch {
+            return [];
+          }
+        };
+
+        raw = await tryFetch("/projects?isActive=1");
+        if (!raw.length) raw = await tryFetch("/projects?isActive=true");
+        if (!raw.length) raw = await tryFetch("/projects");
 
         // ✅ اگر هیچ فیلد وضعیت در دیتا نبود، فیلتر فعال/غیرفعال اعمال نشود
         const hasActivityField = (raw || []).some((p) => {
@@ -212,9 +208,8 @@ const normalizeProject = useCallback((p) => {
           );
         });
 
-        // ✅ تشخیص فعال/غیرفعال (STRICT)
+        // ✅ تشخیص فعال/غیرفعال (با پیش‌فرض true چون در DB default true است)
         const isActiveProject = (p) => {
-          // اولویت با فیلدهای صریح
           let v;
           if (p && Object.prototype.hasOwnProperty.call(p, "isActive")) v = p.isActive;
           else if (p && Object.prototype.hasOwnProperty.call(p, "is_active")) v = p.is_active;
@@ -223,8 +218,8 @@ const normalizeProject = useCallback((p) => {
           else if (p && Object.prototype.hasOwnProperty.call(p, "status")) v = p.status;
           else if (p && Object.prototype.hasOwnProperty.call(p, "state")) v = p.state;
 
-          // ✅ اگر اصلاً فیلد وضعیت نبود یا مقدارش null/undefined بود => نمایش نده
-          if (v == null) return false;
+          // ✅ اگر فیلد وضعیت هست ولی مقدارش null/undefined بود => پیش‌فرض true
+          if (v == null) return true;
 
           if (v === true) return true;
           if (v === false) return false;
@@ -233,59 +228,54 @@ const normalizeProject = useCallback((p) => {
 
           const s = String(v).trim().toLowerCase();
 
-          // انگلیسی
           if (["1", "true", "yes", "y", "active", "enabled", "enable", "on"].includes(s)) return true;
-          if (["0", "false", "no", "n", "inactive", "disabled", "disable", "off", "deactive", "deactivated"].includes(s))
+          if (
+            ["0", "false", "no", "n", "inactive", "disabled", "disable", "off", "deactive", "deactivated"].includes(s)
+          )
             return false;
 
-          // حالت‌های ترکیبی
           if (s.includes("inactive") || s.includes("disable") || s.includes("deactive")) return false;
           if (s.includes("active") || s.includes("enable")) return true;
 
-          // فارسی
           if (s.includes("غیرفعال")) return false;
           if (s.includes("فعال")) return true;
 
-          // ✅ نامشخص => نمایش نده
-          return false;
+          // ✅ نامشخص => پیش‌فرض true
+          return true;
         };
 
-        const normalizeCode = (code) => toEnDigits(String(code || "")).replace(/[^0-9.]/g, "").trim();
+        // ✅ کد پروژه باید فقط عدد باشد (بدون نقطه)
+        const normalizeCode = (code) => toEnDigits(String(code || "")).replace(/[^0-9]/g, "").trim();
 
-     // ... همون بالاها (hasActivityField / isActiveProject / normalizeCode) بمونه
+        // ✅ پروژه‌های شما سه رقمی هستند
+        const isValidProjectCode = (code) => {
+          if (!code) return false;
+          if (!/^\d{3}$/.test(code)) return false;
+          if (/^0{3}$/.test(code)) return false;
+          return true;
+        };
 
-const isValidProjectCode = (code) => {
-  // فقط عدد، بدون نقطه، و نه 0/00/000...
-  if (!code) return false;
-  if (!/^\d+$/.test(code)) return false;
-  if (/^0+$/.test(code)) return false;
-  return true;
-};
+        const flat = (raw || [])
+          .filter((x) => x && typeof x === "object" && !Array.isArray(x))
+          .map((x) => normalizeProject(x))
+          .filter((p) => p.id != null)
+          .map((p) => ({ ...p, code: normalizeCode(p.code) }))
+          .filter((p) => isValidProjectCode(p.code))
+          .filter((p) => (p.name || "").trim().length > 0)
+          .filter((p) => (hasActivityField ? isActiveProject(p) : true));
 
-const flat = (raw || [])
-  .filter((x) => x && typeof x === "object" && !Array.isArray(x))
-  .map((x) => normalizeProject(x))
-  .filter((p) => p.id != null)
-  .map((p) => ({ ...p, code: normalizeCode(p.code) }))
-  .filter((p) => isValidProjectCode(p.code))            // ✅ فقط کدهای واقعی پروژه
-  .filter((p) => (p.name || "").trim().length > 0)
-  .filter((p) => (hasActivityField ? isActiveProject(p) : true));
+        // ✅ یکتا بر اساس code
+        const byCode = new Map();
+        for (const p of flat) {
+          const k = String(p.code);
+          if (!byCode.has(k)) byCode.set(k, p);
+        }
 
-// ✅ یکتا بر اساس code (نه base و نه root)
-const byCode = new Map();
-for (const p of flat) {
-  const k = String(p.code);
-  if (!byCode.has(k)) byCode.set(k, p);
-}
-
-const list = Array.from(byCode.values()).map((p) => ({
-  ...p,
-  code: String(p.code),
-  name: p?.name ?? "",
-}));
-
-setProjects(list);
-
+        const list = Array.from(byCode.values()).map((p) => ({
+          ...p,
+          code: String(p.code),
+          name: p?.name ?? "",
+        }));
 
         if (!alive) return;
         setProjects(list);
@@ -345,62 +335,62 @@ setProjects(list);
   const requestSeqRef = useRef(0);
 
   const loadCenters = useCallback(
-  async (kind) => {
-    if (!kind) {
-      setRows([]);
-      setLoading(false);
-      return;
-    }
-
-    // ✅ اگر پروژه‌هاست ولی پروژه انتخاب نشده، نباید loading گیر کند
-    if (kind === "projects" && !projectId) {
-      requestSeqRef.current += 1; // اختیاری: هر درخواست قبلی را بی‌اعتبار کن
-      setRows([]);
-      setLoading(false);
-      return;
-    }
-
-    const seq = ++requestSeqRef.current;
-
-    setLoading(true);
-    setErr("");
-
-    try {
-      let items = [];
-
-      if (kind === "projects") {
-        const list = await api("/centers/projects").catch(() => ({ items: [] }));
-        const base = String(selectedProject?.code || "").trim();
-
-        items = (list.items || []).filter((it) => {
-          const suf = String(it.suffix || "").trim();
-          return suf === base || suf.startsWith(base + ".");
-        });
-      } else {
-        const r = await api(`/centers/${kind}`);
-        items = r.items || [];
+    async (kind) => {
+      if (!kind) {
+        setRows([]);
+        setLoading(false);
+        return;
       }
 
-      const sorted = items.slice().sort((a, b) =>
-        String(codeTextOf(kind, a.suffix)).localeCompare(String(codeTextOf(kind, b.suffix)), "fa", {
-          numeric: true,
-          sensitivity: "base",
-        })
-      );
+      // ✅ اگر پروژه‌هاست ولی پروژه انتخاب نشده، نباید loading گیر کند
+      if (kind === "projects" && !projectId) {
+        requestSeqRef.current += 1;
+        setRows([]);
+        setLoading(false);
+        return;
+      }
 
-      if (seq !== requestSeqRef.current) return;
-      setRows(sorted);
-    } catch (e) {
-      if (seq !== requestSeqRef.current) return;
-      setErr(e.message || "خطا در دریافت لیست");
-      setRows([]);
-    } finally {
-      if (seq !== requestSeqRef.current) return;
-      setLoading(false);
-    }
-  },
-  [api, projectId, selectedProject, codeTextOf]
-);
+      const seq = ++requestSeqRef.current;
+
+      setLoading(true);
+      setErr("");
+
+      try {
+        let items = [];
+
+        if (kind === "projects") {
+          const list = await api("/centers/projects").catch(() => ({ items: [] }));
+          const base = String(selectedProject?.code || "").trim();
+
+          items = (list.items || []).filter((it) => {
+            const suf = String(it.suffix || "").trim();
+            return suf === base || suf.startsWith(base + ".");
+          });
+        } else {
+          const r = await api(`/centers/${kind}`);
+          items = r.items || [];
+        }
+
+        const sorted = items.slice().sort((a, b) =>
+          String(codeTextOf(kind, a.suffix)).localeCompare(String(codeTextOf(kind, b.suffix)), "fa", {
+            numeric: true,
+            sensitivity: "base",
+          })
+        );
+
+        if (seq !== requestSeqRef.current) return;
+        setRows(sorted);
+      } catch (e) {
+        if (seq !== requestSeqRef.current) return;
+        setErr(e.message || "خطا در دریافت لیست");
+        setRows([]);
+      } finally {
+        if (seq !== requestSeqRef.current) return;
+        setLoading(false);
+      }
+    },
+    [api, projectId, selectedProject, codeTextOf]
+  );
 
   useEffect(() => {
     setErr("");
