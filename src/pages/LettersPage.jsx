@@ -3736,7 +3736,7 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
           </div>
 
           {/* به (کمی کوچکتر) */}
-          <div className="md:col-span-3">
+          <div className="md:col-span-3 md:col-start-2">
             <div className={labelCls}>به</div>
             <FieldWrap>
  <input
@@ -3755,7 +3755,7 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
           </div>
 
           {/* شرکت/سازمان (باقی فضا) */}
-          <div className="md:col-span-4">
+          <div className="md:col-span-4 md:col-start-5">
             <div className={labelCls}>شرکت/سازمان</div>
      <FieldWrap>
   <input
@@ -3775,7 +3775,7 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
       ) : (
         <>
           {/* وارده (مثل قبل) */}
-          <div className="md:col-span-4">
+          <div className="md:col-span-4 md:col-start-9">
   <div className={labelCls}>از</div>
 
   <input
@@ -3786,7 +3786,6 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
 />
 
 </div>
-
 
           {/* شرکت/سازمان (باقی فضا) */}
 <div className="md:col-span-5">
