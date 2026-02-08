@@ -122,17 +122,25 @@ function RevenueEstimatesPage() {
     const [poolProjectIds, setPoolProjectIds] = useState([]); // پروژه‌هایی که به کپسول‌ها اضافه شده‌اند
   const [selectedKeysArr, setSelectedKeysArr] = useState([]); // انتخاب‌های فعال برای نمایش در جدول اصلی
 
-  useEffect(() => {
-    if (canAccessPage !== true) return;
-    (async () => {
-      try {
-        const data = await api('/projects');
-        setProjects(data.projects || data.items || []);
-      } catch (e) {
-        console.error('load projects failed', e);
-      }
-    })();
-  }, [canAccessPage]); // eslint-disable-line react-hooks/exhaustive-deps
+ useEffect(() => {
+  if (canAccessPage !== true) return;
+  (async () => {
+    try {
+      const data = await api('/projects');
+      const items = Array.isArray(data.items) ? data.items : (Array.isArray(data.projects) ? data.projects : []);
+
+      // ✅ فقط پروژه‌های مثل صفحه پروژه‌ها: کد دقیقاً ۳ رقم
+      const topOnly = items.filter((p) => isTopProjectCode(p?.code));
+
+      // ✅ اگر می‌خوای فقط فعال‌ها هم بیاد:
+      const topActive = topOnly.filter((p) => p?.isActive !== false);
+
+      setProjects(topActive);
+    } catch (e) {
+      console.error('load projects failed', e);
+    }
+  })();
+}, [canAccessPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const projectById = useMemo(() => {
     const m = new Map();
@@ -174,12 +182,12 @@ const projectsForPicker = useMemo(() => {
     });
 }, [projects, getProjectCode]);
 
-  const getProjectLabel = useCallback((p) => {
-    const code = String(p?.code ?? p?.project_code ?? p?.projectCode ?? '').trim();
-    const name = String(p?.name ?? p?.title ?? p?.project_name ?? p?.project ?? '').trim();
-    if (code && name) return `${code} - ${name}`;
-    return code || name || 'پروژه بدون نام';
-  }, []);
+const getProjectLabel = useCallback((p) => {
+  const code = String(p?.code ?? '').trim();
+  const name = String(p?.name ?? '').trim();
+  if (code && name) return `${code} - ${name}`;
+  return code || name || 'پروژه بدون نام';
+}, []);
 
   const getProjectLabelById = useCallback(
     (pid, fallback = '') => {
