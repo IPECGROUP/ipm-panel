@@ -240,24 +240,24 @@ function UsersPage() {
     return dedup;
   };
 
-  const loadUnits = async () => {
-    const candidates = ["/basic/units", "/basic/units/list", "/basic/units/all", "/units", "/base/units"];
-    for (const path of candidates) {
-      try {
-        const r = await api(path);
-        const data = r?.units ?? r?.items ?? r?.data ?? r;
-        const arr = Array.isArray(data) ? data : [];
-        const norm = normalizeUnits(arr);
-        if (norm.length) {
-          setUnits(norm);
-          return;
-        }
-      } catch {
-        /* next */
-      }
-    }
+ const loadUnits = async () => {
+  try {
+    // ✅ بک‌اند شما: /api/base/units
+    const r = await api("/base/units");
+
+    // بک‌اند شما این فرم را برمی‌گرداند:
+    // { ok: true, units: [...] }
+    const arr = Array.isArray(r?.units) ? r.units : [];
+
+    // نرمال‌سازی برای اینکه select درست کار کند
+    const norm = normalizeUnits(arr);
+
+    setUnits(norm);
+  } catch (e) {
+    // اگر 404 یا هر خطایی شد، فقط لیست را خالی کن
     setUnits([]);
-  };
+  }
+};
 
   // ترتیب درست: اول نقش‌ها، بعد کاربران (تا نگاشت آماده باشد)
   useEffect(() => {
