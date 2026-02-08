@@ -204,24 +204,43 @@ function DefineBudgetCentersPage() {
           raw = extractArray(r2);
         }
 
-        // ✅ تشخیص فعال/غیرفعال با پوشش انواع مقدار
+        // ✅ اگر هیچ فیلد وضعیت در دیتا نبود، فیلتر فعال/غیرفعال اعمال نشود
+        const hasActivityField = (raw || []).some((p) => {
+          if (!p || typeof p !== "object") return false;
+          return (
+            Object.prototype.hasOwnProperty.call(p, "isActive") ||
+            Object.prototype.hasOwnProperty.call(p, "is_active") ||
+            Object.prototype.hasOwnProperty.call(p, "active") ||
+            Object.prototype.hasOwnProperty.call(p, "enabled") ||
+            Object.prototype.hasOwnProperty.call(p, "status") ||
+            Object.prototype.hasOwnProperty.call(p, "state")
+          );
+        });
+
+        // ✅ تشخیص فعال/غیرفعال (اگر فیلد وجود دارد ولی مقدارش نامشخص بود => پیش‌فرض غیرفعال)
         const isActiveProject = (p) => {
+          if (!hasActivityField) return true;
+
           let v;
           if (p && Object.prototype.hasOwnProperty.call(p, "isActive")) v = p.isActive;
           else if (p && Object.prototype.hasOwnProperty.call(p, "is_active")) v = p.is_active;
           else if (p && Object.prototype.hasOwnProperty.call(p, "active")) v = p.active;
+          else if (p && Object.prototype.hasOwnProperty.call(p, "enabled")) v = p.enabled;
           else if (p && Object.prototype.hasOwnProperty.call(p, "status")) v = p.status;
           else if (p && Object.prototype.hasOwnProperty.call(p, "state")) v = p.state;
-          else if (p && Object.prototype.hasOwnProperty.call(p, "enabled")) v = p.enabled;
 
-          if (v == null) return true; // اگر فیلد نبود، پیش‌فرض فعال (برای سازگاری)
+          // اگر دیتاست فیلد وضعیت دارد اما این آیتم ندارد => غیرفعال
+          if (v == null) return false;
+
           if (v === true || v === 1) return true;
+          if (v === false || v === 0) return false;
 
           const s = String(v).trim().toLowerCase();
           if (s === "1" || s === "true" || s === "yes" || s === "active" || s === "enabled") return true;
           if (s === "0" || s === "false" || s === "no" || s === "inactive" || s === "disabled") return false;
 
-          return Boolean(v);
+          // مقدار نامشخص => غیرفعال
+          return false;
         };
 
         const normalizeCode = (code) => toEnDigits(String(code || "")).replace(/[^0-9.]/g, "").trim();
@@ -231,34 +250,30 @@ function DefineBudgetCentersPage() {
           .map((x, i) => normalizeProject(x, i))
           .map((p) => ({ ...p, code: normalizeCode(p.code) }))
           .filter((p) => p.code !== "" && /^\d+(\.\d+)*$/.test(p.code)) // ✅ 0 و 00 هم مجاز
-          .filter((p) => isActiveProject(p)); // ✅ فقط فعال‌ها
+          .filter((p) => isActiveProject(p)); // ✅ فقط فعال‌ها (در صورت وجود فیلد وضعیت)
 
-        // فقط پروژه‌های ریشه (قبل از '.') نمایش داده شود (مثل 159 نه 159.1.1)
-        const groups = new Map();
+        // ✅ فقط پروژه‌های ریشه (قبل از '.') نمایش داده شود
+        // ✅ مهم: اگر پروژه ریشه دقیق وجود نداشت، از زیرپروژه‌ها برای ساخت ریشه استفاده نکن (تا غیرفعال‌ها/ناخواسته‌ها بالا نیان)
+        const byExactRoot = new Map();
         for (const p of flat) {
           const en = toEnDigits(String(p.code || "")).trim();
           if (!en) continue;
 
           const base = en.split(".")[0].replace(/[^0-9]/g, "");
-          if (base === "") continue; // ✅ فقط خالی حذف شود، "0" حذف نشود
-
-          if (!groups.has(base)) groups.set(base, { base, exact: null, any: null });
-          const g = groups.get(base);
-          if (!g.any) g.any = p;
+          if (base === "") continue;
 
           const enPure = en.replace(/[^0-9.]/g, "");
-          if (enPure === base) g.exact = p;
+          if (enPure === base) {
+            if (!byExactRoot.has(base)) byExactRoot.set(base, p);
+          }
         }
 
-        const list = Array.from(groups.values()).map((g) => {
-          const pick = g.exact || g.any || {};
-          return {
-            ...pick,
-            id: g.exact?.id ?? g.base,
-            code: g.base,
-            name: g.exact?.name ?? "",
-          };
-        });
+        const list = Array.from(byExactRoot.entries()).map(([base, p]) => ({
+          ...p,
+          id: p?.id ?? base,
+          code: base,
+          name: p?.name ?? "",
+        }));
 
         if (!alive) return;
         setProjects(list);
