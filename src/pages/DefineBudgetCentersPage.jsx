@@ -343,54 +343,62 @@ const normalizeProject = useCallback((p) => {
   const requestSeqRef = useRef(0);
 
   const loadCenters = useCallback(
-    async (kind) => {
-      if (!kind) {
-        setRows([]);
-        return;
+  async (kind) => {
+    if (!kind) {
+      setRows([]);
+      setLoading(false);
+      return;
+    }
+
+    // ✅ اگر پروژه‌هاست ولی پروژه انتخاب نشده، نباید loading گیر کند
+    if (kind === "projects" && !projectId) {
+      requestSeqRef.current += 1; // اختیاری: هر درخواست قبلی را بی‌اعتبار کن
+      setRows([]);
+      setLoading(false);
+      return;
+    }
+
+    const seq = ++requestSeqRef.current;
+
+    setLoading(true);
+    setErr("");
+
+    try {
+      let items = [];
+
+      if (kind === "projects") {
+        const list = await api("/centers/projects").catch(() => ({ items: [] }));
+        const base = String(selectedProject?.code || "").trim();
+
+        items = (list.items || []).filter((it) => {
+          const suf = String(it.suffix || "").trim();
+          return suf === base || suf.startsWith(base + ".");
+        });
+      } else {
+        const r = await api(`/centers/${kind}`);
+        items = r.items || [];
       }
 
-      const seq = ++requestSeqRef.current;
+      const sorted = items.slice().sort((a, b) =>
+        String(codeTextOf(kind, a.suffix)).localeCompare(String(codeTextOf(kind, b.suffix)), "fa", {
+          numeric: true,
+          sensitivity: "base",
+        })
+      );
 
-      setLoading(true);
-      setErr("");
-      try {
-        let items = [];
-        if (kind === "projects") {
-          if (!projectId) {
-            if (seq === requestSeqRef.current) setRows([]);
-            return;
-          }
-          const list = await api("/centers/projects").catch(() => ({ items: [] }));
-          const base = String(selectedProject?.code || "").trim();
-          items = (list.items || []).filter((it) => {
-            const suf = String(it.suffix || "").trim();
-            return suf === base || suf.startsWith(base + ".");
-          });
-        } else {
-          const r = await api(`/centers/${kind}`);
-          items = r.items || [];
-        }
-
-        const sorted = items.slice().sort((a, b) =>
-          String(codeTextOf(kind, a.suffix)).localeCompare(String(codeTextOf(kind, b.suffix)), "fa", {
-            numeric: true,
-            sensitivity: "base",
-          })
-        );
-
-        if (seq !== requestSeqRef.current) return;
-        setRows(sorted);
-      } catch (e) {
-        if (seq !== requestSeqRef.current) return;
-        setErr(e.message || "خطا در دریافت لیست");
-        setRows([]);
-      } finally {
-        if (seq !== requestSeqRef.current) return;
-        setLoading(false);
-      }
-    },
-    [api, projectId, selectedProject, codeTextOf]
-  );
+      if (seq !== requestSeqRef.current) return;
+      setRows(sorted);
+    } catch (e) {
+      if (seq !== requestSeqRef.current) return;
+      setErr(e.message || "خطا در دریافت لیست");
+      setRows([]);
+    } finally {
+      if (seq !== requestSeqRef.current) return;
+      setLoading(false);
+    }
+  },
+  [api, projectId, selectedProject, codeTextOf]
+);
 
   useEffect(() => {
     setErr("");
