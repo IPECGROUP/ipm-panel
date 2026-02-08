@@ -89,18 +89,20 @@ function BudgetAllocationPage() {
     [projects, projectId]
   );
 
-  const normalizeProject = (p) => {
-  const code3 = normalizeProjectCode3(p?.code);
-  const name = p?.name == null ? "" : String(p.name).trim();
+  const isTopProjectCode = (code) => {
+  const c = toEnDigits(String(code || "")).trim();
+  return /^\d{3}$/.test(c);
+};
 
+const normalizeTopProject = (p) => {
   return {
     id: p?.id == null ? null : String(p.id),
-    code: code3, // ✅ فقط ۳ رقم
-    name,
-    isActive: p?.isActive !== false
- // ✅ فقط مقدار واقعی
+    code: toEnDigits(String(p?.code ?? "")).trim(), // ✅ کد واقعی بدون بریدن
+    name: p?.name == null ? "" : String(p.name).trim(),
+    isActive: p?.isActive !== false, // ✅ مثل صفحه پروژه‌ها
   };
 };
+
 
   // پروژه‌ها از سرور
   useEffect(() => {
@@ -117,21 +119,22 @@ function BudgetAllocationPage() {
       // ✅ فقط parse (نه fallback به مسیرهای دیگر)
       const raw = Array.isArray(r) ? r : Array.isArray(r?.items) ? r.items : [];
 
-      const clean = (raw || [])
-        .filter((p) => p && typeof p === "object" && !Array.isArray(p))
-        .map(normalizeProject)
-        .filter((p) => p && p.id != null)
-        .filter((p) => p.isActive === true)
-        .filter((p) => isValidProjectCode3(p.code));
+    const clean = (raw || [])
+  .filter((p) => p && typeof p === "object" && !Array.isArray(p))
+  .map(normalizeTopProject)
+  .filter((p) => p && p.id != null)
+  .filter((p) => p.isActive === true)
+  .filter((p) => isTopProjectCode(p.code)); // ✅ دقیقاً مثل ProjectsPage
 
-      // ✅ حذف تکراری بر اساس code
-      const byCode = new Map();
-      for (const p of clean) {
-        const k = String(p.code);
-        if (!byCode.has(k)) byCode.set(k, p);
-      }
+// ✅ حذف تکراری بر اساس id (نه code)
+const byId = new Map();
+for (const p of clean) {
+  const k = String(p.id);
+  if (!byId.has(k)) byId.set(k, p);
+}
 
-      setProjects(Array.from(byCode.values()));
+setProjects(Array.from(byId.values()));
+
     } catch {
       if (!alive) return;
       setProjects([]);
@@ -184,17 +187,6 @@ function BudgetAllocationPage() {
     String(s || "")
       .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d))
       .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
-
-// ✅ فقط ۳ رقم پروژه (بدون زیرمجموعه مثل 156.1.1)
-const normalizeProjectCode3 = (code) => {
-  const s = toEnDigits(String(code ?? "")).trim();
-  const head = s.split(".")[0];
-  const digits = head.replace(/[^\d]/g, "");
-  return digits.slice(0, 3);
-};
-
-const isValidProjectCode3 = (code3) => /^\d{3}$/.test(String(code3 || ""));
-
 
   const parseMoney = (s) => {
     if (s == null) return 0;
