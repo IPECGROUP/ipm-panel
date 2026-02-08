@@ -84,6 +84,22 @@ function DefineBudgetCentersPage() {
 
   const onlyDigitsDot = (s = "") => toEnDigits(s).replace(/[^0-9.]/g, "");
 
+  // ✅ فقط ۳ رقم پروژه (بدون زیرمجموعه مثل 156.1.1)
+const normalizeProjectCode3 = (code) => {
+  const s = toEnDigits(String(code ?? "")).trim();
+
+  // فقط بخش قبل از نقطه (156.1.1 -> 156)
+  const head = s.split(".")[0];
+
+  // فقط اعداد
+  const digits = head.replace(/[^\d]/g, "");
+
+  // فقط 3 رقم اول
+  return digits.slice(0, 3);
+};
+
+const isValidProjectCode3 = (code3) => /^\d{3}$/.test(String(code3 || ""));
+
   const canonForCompare = useCallback(
     (kind, rawSuffix) => {
       const onlyDigits = (txt) => {
@@ -226,15 +242,18 @@ function DefineBudgetCentersPage() {
       // ✅ فقط پروژه‌هایی که دقیقاً isActive === true دارند
       const clean = (raw || [])
         .filter((p) => p && typeof p === "object" && !Array.isArray(p))
-        .map((p) => ({
-          id: p?.id == null ? null : String(p.id),
-          code: p?.code == null ? "" : String(p.code).trim(),
-          name: p?.name == null ? "" : String(p.name).trim(),
-          isActive: p?.isActive === true, // فقط همین!
-        }))
+        .map((p) => {
+  const code3 = normalizeProjectCode3(p?.code);
+  return {
+    id: p?.id == null ? null : String(p.id),
+    code: code3, // ✅ فقط ۳ رقم
+    name: p?.name == null ? "" : String(p.name).trim(),
+    isActive: p?.isActive === true,
+  };
+})
         .filter((p) => p.id != null)
         .filter((p) => p.isActive === true)
-        .filter((p) => p.code.length > 0);
+.filter((p) => isValidProjectCode3(p.code));
 
       // حذف تکراری‌ها بر اساس code (اختیاری ولی مفید)
       const byCode = new Map();
