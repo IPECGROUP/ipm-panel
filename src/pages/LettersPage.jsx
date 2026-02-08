@@ -4305,25 +4305,23 @@ aria-invalid={fieldHasError(formKind, "subject")}
           >  {formKind === "outgoing" ? "شماره ثبت دبیرخانه " : "شماره ثبت دبیرخانه"}
           </div>
         <input
-          value={
-            formKind === "incoming"
-              ? incomingSecretariatNo
-              : formKind === "outgoing"
-              ? outgoingSecretariatNo
-              : internalSecretariatNo
-          }
-          onChange={(e) => {
-            const v = e.target.value;
-            if (formKind === "incoming") setIncomingSecretariatNo(v);
-            else if (formKind === "outgoing") setOutgoingSecretariatNo(v);
-            else setInternalSecretariatNo(v);
-          }}
-          className={
-            inputCls +
-            " bg-black/5 dark:bg-white/10"   // ✅ خاکستری کم‌رنگ همیشه
-          }
-          type="text"
-        />
+  value={
+    formKind === "incoming"
+      ? incomingSecretariatNo
+      : formKind === "outgoing"
+      ? outgoingSecretariatNo
+      : internalSecretariatNo
+  }
+  readOnly // ✅ قفل کامل در هر سه تب
+  tabIndex={-1} // ✅ فوکوس با Tab نگیرد (اختیاری ولی بهتر)
+  onChange={() => {}} // ✅ هیچ تغییری از تایپ اعمال نشود
+  className={
+    inputCls +
+    " bg-black/5 dark:bg-white/10 cursor-not-allowed select-none"
+  }
+  type="text"
+/>
+
         </div>
         <div>
           <div className={labelCls}>مسئول دبیرخانه</div>
