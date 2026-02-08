@@ -666,11 +666,13 @@ function DefineBudgetCentersPage() {
                 {projectsLoading ? "در حال دریافت پروژه‌ها…" : "انتخاب کنید"}
               </option>
 
-              {(sortedProjects || []).map((p) => (
-                <option className="bg-white dark:bg-neutral-900" key={String(p.id)} value={String(p.id)}>
-                  {p.code ? p.code : "—"}
-                </option>
-              ))}
+              {(sortedProjects || [])
+                .filter((p) => Boolean(p?.isActive ?? false))
+                .map((p) => (
+                  <option className="bg-white dark:bg-neutral-900" key={String(p.id)} value={String(p.id)}>
+                    {p.code ? p.code : "—"}
+                  </option>
+                ))}
             </select>
           </div>
 
