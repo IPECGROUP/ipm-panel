@@ -125,41 +125,75 @@ function DefineBudgetCentersPage() {
     return allowedTabsSet.has(String(active));
   }, [active, allowedTabsSet]);
 
-  const extractArray = useCallback((r) => {
-    if (!r) return [];
-    if (Array.isArray(r)) return r;
-    if (Array.isArray(r.items)) return r.items;
-    if (Array.isArray(r.projects)) return r.projects;
-    if (Array.isArray(r.data)) return r.data;
-    if (Array.isArray(r.rows)) return r.rows;
-    if (Array.isArray(r.result)) return r.result;
-    if (r?.data && Array.isArray(r.data.items)) return r.data.items;
-    if (r?.data && Array.isArray(r.data.projects)) return r.data.projects;
-    return [];
+  // ✅ کمک‌تابع STRICT برای تشخیص فعال بودن
+  const isActiveProject = useCallback((p) => {
+    let v;
+    if (p && Object.prototype.hasOwnProperty.call(p, "isActive")) v = p.isActive;
+    else if (p && Object.prototype.hasOwnProperty.call(p, "is_active")) v = p.is_active;
+    else if (p && Object.prototype.hasOwnProperty.call(p, "active")) v = p.active;
+    else if (p && Object.prototype.hasOwnProperty.call(p, "enabled")) v = p.enabled;
+    else if (p && Object.prototype.hasOwnProperty.call(p, "status")) v = p.status;
+    else if (p && Object.prototype.hasOwnProperty.call(p, "state")) v = p.state;
+
+    // ✅ STRICT: اگر وضعیت نیامده/نامشخص بود => نشان نده
+    if (v == null) return false;
+
+    if (v === true) return true;
+    if (v === false) return false;
+    if (v === 1) return true;
+    if (v === 0) return false;
+
+    const s = String(v).trim().toLowerCase();
+
+    // اول غیرفعال‌ها
+    if (
+      ["0", "false", "no", "n", "inactive", "disabled", "disable", "off", "deactive", "deactivated"].includes(s) ||
+      s.includes("inactive") ||
+      s.includes("disable") ||
+      s.includes("deactive") ||
+      s.includes("غیرفعال")
+    )
+      return false;
+
+    // بعد فعال‌ها
+    if (
+      ["1", "true", "yes", "y", "active", "enabled", "enable", "on"].includes(s) ||
+      s.includes("active") ||
+      s.includes("enable") ||
+      s.includes("فعال")
+    )
+      return true;
+
+    return false;
   }, []);
 
-  // ✅ فقط از فیلدهای واقعی پروژه (نه suffix/description مراکز بودجه)
-  const normalizeProject = useCallback((p) => {
-    const code =
-      p?.code ??
-      p?.project_code ??
-      p?.projectCode ??
-      p?.projectCodeText ??
-      p?.project_no ??
-      p?.projectNo ??
-      "";
+  // ✅ فقط از فیلدهای واقعی پروژه + ساخت isActive استاندارد
+  const normalizeProject = useCallback(
+    (p) => {
+      const code =
+        p?.code ??
+        p?.project_code ??
+        p?.projectCode ??
+        p?.projectCodeText ??
+        p?.project_no ??
+        p?.projectNo ??
+        "";
 
-    const name = p?.name ?? p?.project_name ?? p?.projectName ?? p?.title ?? p?.label ?? "";
+      const name = p?.name ?? p?.project_name ?? p?.projectName ?? p?.title ?? p?.label ?? "";
 
-    const id = p?.id ?? p?.project_id ?? p?.projectId ?? p?.pid ?? p?.ProjectID ?? null;
+      const id = p?.id ?? p?.project_id ?? p?.projectId ?? p?.pid ?? p?.ProjectID ?? null;
 
-    return {
-      ...p,
-      id: id == null ? null : String(id),
-      code: code == null ? "" : String(code).trim(),
-      name: name == null ? "" : String(name).trim(),
-    };
-  }, []);
+      return {
+        ...p,
+        id: id == null ? null : String(id),
+        code: code == null ? "" : String(code).trim(),
+        name: name == null ? "" : String(name).trim(),
+        // ✅ یکدست‌سازی وضعیت
+        isActive: isActiveProject(p),
+      };
+    },
+    [isActiveProject]
+  );
 
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState("");
@@ -178,57 +212,9 @@ function DefineBudgetCentersPage() {
     (async () => {
       setProjectsLoading(true);
       try {
-        let raw = [];
-
-        const tryFetch = async (url) => {
-          try {
-            const r = await api(url).catch(() => null);
-            const arr = extractArray(r);
-            return Array.isArray(arr) ? arr : [];
-          } catch {
-            return [];
-          }
-        };
-
-        // ✅ فقط پروژه‌های فعال (اگر بک‌اند فیلتر را ساپورت کند بهتر)
-        raw = await tryFetch("/projects?isActive=1");
-        if (!raw.length) raw = await tryFetch("/projects?isActive=true");
-        if (!raw.length) raw = await tryFetch("/projects"); // fallback ولی باز هم پایین Strict فیلتر می‌کنیم
-
-        // ✅ فقط فعال‌ها نمایش داده شوند (STRICT: اگر فیلد وضعیت نبود => نمایش نده)
-        const isActiveProject = (p) => {
-          let v;
-          if (p && Object.prototype.hasOwnProperty.call(p, "isActive")) v = p.isActive;
-          else if (p && Object.prototype.hasOwnProperty.call(p, "is_active")) v = p.is_active;
-          else if (p && Object.prototype.hasOwnProperty.call(p, "active")) v = p.active;
-          else if (p && Object.prototype.hasOwnProperty.call(p, "enabled")) v = p.enabled;
-          else if (p && Object.prototype.hasOwnProperty.call(p, "status")) v = p.status;
-          else if (p && Object.prototype.hasOwnProperty.call(p, "state")) v = p.state;
-
-          // ✅ اگر وضعیت نیامده/نامشخص بود => اصلاً نشان نده
-          if (v == null) return false;
-
-          if (v === true) return true;
-          if (v === false) return false;
-          if (v === 1) return true;
-          if (v === 0) return false;
-
-          const s = String(v).trim().toLowerCase();
-
-          if (["1", "true", "yes", "y", "active", "enabled", "enable", "on"].includes(s)) return true;
-          if (
-            ["0", "false", "no", "n", "inactive", "disabled", "disable", "off", "deactive", "deactivated"].includes(s)
-          )
-            return false;
-
-          if (s.includes("inactive") || s.includes("disable") || s.includes("deactive")) return false;
-          if (s.includes("active") || s.includes("enable")) return true;
-
-          if (s.includes("غیرفعال")) return false;
-          if (s.includes("فعال")) return true;
-
-          return false;
-        };
+        // ✅ فقط و فقط از /projects می‌گیریم
+        const r = await api("/projects");
+        const raw = Array.isArray(r?.items) ? r.items : [];
 
         const normalizeCode = (code) => toEnDigits(String(code || "")).replace(/[^0-9]/g, "").trim();
 
@@ -236,10 +222,11 @@ function DefineBudgetCentersPage() {
         const isValidProjectCode = (code) => {
           if (!code) return false;
           if (!/^\d{3}$/.test(code)) return false;
-          if (code[0] === "0") return false; // ✅ 0xx مثل 066 حذف شود
+          if (code[0] === "0") return false;
           return true;
         };
 
+        // ✅ STRICT: فقط پروژه‌هایی که isActive === true هستند
         const flat = (raw || [])
           .filter((x) => x && typeof x === "object" && !Array.isArray(x))
           .map((x) => normalizeProject(x))
@@ -247,7 +234,7 @@ function DefineBudgetCentersPage() {
           .map((p) => ({ ...p, code: normalizeCode(p.code) }))
           .filter((p) => isValidProjectCode(p.code))
           .filter((p) => (p.name || "").trim().length > 0)
-          .filter((p) => isActiveProject(p)); // ✅ فقط فعال‌ها
+          .filter((p) => p.isActive === true);
 
         const byCode = new Map();
         for (const p of flat) {
@@ -275,7 +262,7 @@ function DefineBudgetCentersPage() {
     return () => {
       alive = false;
     };
-  }, [canAccessPage, allowedTabsSet, api, extractArray, normalizeProject]);
+  }, [canAccessPage, allowedTabsSet, api, normalizeProject, toEnDigits]);
 
   // ✅ اگر پروژه انتخاب‌شده جزو لیست «فقط فعال‌ها» نبود، انتخاب را پاک کن
   useEffect(() => {
@@ -666,13 +653,11 @@ function DefineBudgetCentersPage() {
                 {projectsLoading ? "در حال دریافت پروژه‌ها…" : "انتخاب کنید"}
               </option>
 
-              {(sortedProjects || [])
-                .filter((p) => Boolean(p?.isActive ?? false))
-                .map((p) => (
-                  <option className="bg-white dark:bg-neutral-900" key={String(p.id)} value={String(p.id)}>
-                    {p.code ? p.code : "—"}
-                  </option>
-                ))}
+              {(sortedProjects || []).map((p) => (
+                <option className="bg-white dark:bg-neutral-900" key={String(p.id)} value={String(p.id)}>
+                  {p.code ? p.code : "—"}
+                </option>
+              ))}
             </select>
           </div>
 
