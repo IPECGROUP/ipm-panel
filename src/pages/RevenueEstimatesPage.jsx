@@ -191,7 +191,7 @@ const projectsForPicker = useMemo(() => {
       numeric: true,
       sensitivity: 'base',
     });
-    if (cmp !== 0) return cmp;
+if (cmp !== 0) return -cmp; // ✅ نزولی: 165 ... 106
 
     const na = String(a?.name ?? a?.title ?? '').trim();
     const nb = String(b?.name ?? b?.title ?? '').trim();
