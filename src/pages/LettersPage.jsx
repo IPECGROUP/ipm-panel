@@ -3755,7 +3755,7 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
           </div>
 
           {/* شرکت/سازمان (باقی فضا) */}
-          <div className="md:col-span-5">
+          <div className="md:col-span-4">
             <div className={labelCls}>شرکت/سازمان</div>
      <FieldWrap>
   <input
