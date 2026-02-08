@@ -37,18 +37,24 @@ function DefineBudgetCentersPage() {
         data = { _raw: txt };
       }
 
-      if (!res.ok) {
-        const msg =
-          data?.error ||
-          data?.message ||
-          (typeof txt === "string" && txt.includes("<!DOCTYPE") ? "api_returned_html" : "request_failed");
-        const e = new Error(msg);
-        e.status = res.status;
-        e.url = res.url;
-        e.raw = txt;
-        throw e;
-      }
-      return data;
+  if (!res.ok) {
+  // ✅ اگر این دو endpoint وجود ندارند، خطا نده تا Loop/چشمک قطع شود
+  if (res.status === 404 && typeof path === "string" && path.startsWith("/budget-allocations/")) {
+    return { items: [], data: null, _notFound: true };
+  }
+
+  const msg =
+    data?.error ||
+    data?.message ||
+    (typeof txt === "string" && txt.includes("<!DOCTYPE") ? "api_returned_html" : "request_failed");
+  const e = new Error(msg);
+  e.status = res.status;
+  e.url = res.url;
+  e.raw = txt;
+  throw e;
+}
+return data;
+
     },
     [API_BASE]
   );
