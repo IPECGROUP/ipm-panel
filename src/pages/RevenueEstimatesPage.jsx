@@ -140,6 +140,17 @@ function RevenueEstimatesPage() {
     });
     return m;
   }, [projects]);
+const getProjectCode = useCallback((p) => {
+  // همه حالت‌های ممکن را پوشش می‌دهد
+  return String(
+    p?.code ??
+      p?.project_code ??
+      p?.projectCode ??
+      p?.project_code_str ??
+      p?.projectCodeStr ??
+      ''
+  ).trim();
+}, []);
 
   const getProjectLabel = useCallback((p) => {
     const code = String(p?.code ?? p?.project_code ?? p?.projectCode ?? '').trim();
@@ -654,7 +665,11 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     if (!pid) return;
 
     if (pid === '__ALL__') {
-      const all = (projects || []).map((p) => String(p?.id ?? '')).filter(Boolean);
+     const all = (projects || [])
+  .filter((p) => p?.isActive === true)
+  .map((p) => String(p?.id ?? ''))
+  .filter(Boolean);
+
       setPoolProjectIds((prev) => {
         const next = Array.from(new Set([...(prev || []), ...all]));
         metaRef.current = {
@@ -1326,16 +1341,37 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                 <option value="__ALL__">انتخاب همه موارد</option>
 
                 {(projects || [])
-                  .filter((p) => p?.isActive === true)   // ✅ فقط پروژه‌های فعال
-                  .map((p) => {
-                    const pid = String(p?.id ?? "");
-                    if (!pid) return null;
-                    return (
-                      <option key={pid} value={pid}>
-                        {getProjectLabel(p)}
-                      </option>
-                    );
-                  })}
+  .filter((p) => p?.isActive === true) // ✅ فقط پروژه‌های فعال
+  .slice()
+  .sort((a, b) => {
+    const ca = getProjectCode(a);
+    const cb = getProjectCode(b);
+
+    // اول کدهای غیرخالی
+    if (ca && !cb) return -1;
+    if (!ca && cb) return 1;
+
+    // از آخر به اول (کد بزرگ‌تر اول بیاید)
+    const cmpCode = cb.localeCompare(ca, 'fa', { numeric: true, sensitivity: 'base' });
+    if (cmpCode !== 0) return cmpCode;
+
+    // اگر کد برابر بود، با نام مرتب کن که پایدار باشد
+    return String(b?.name ?? b?.title ?? '').localeCompare(
+      String(a?.name ?? a?.title ?? ''),
+      'fa',
+      { numeric: true, sensitivity: 'base' }
+    );
+  })
+  .map((p) => {
+    const pid = String(p?.id ?? '');
+    if (!pid) return null;
+    return (
+      <option key={pid} value={pid}>
+        {getProjectLabel(p)}
+      </option>
+    );
+  })}
+
               </select>
               <button
                 type="button"

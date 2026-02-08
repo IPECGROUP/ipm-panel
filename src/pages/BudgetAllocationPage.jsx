@@ -146,16 +146,16 @@ setProjects(Array.from(byId.values()));
   };
 }, [canAccessPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const sortedProjects = useMemo(() => {
-    return (projects || [])
-      .slice()
-      .sort((a, b) =>
-        String(a?.code || "").localeCompare(String(b?.code || ""), "fa", {
-          numeric: true,
-          sensitivity: "base",
-        })
-      );
-  }, [projects]);
+ const sortedProjects = useMemo(() => {
+  return (projects || [])
+    .slice()
+    .sort((a, b) =>
+      String(b?.code || "").localeCompare(String(a?.code || ""), "fa", {
+        numeric: true,
+        sensitivity: "base",
+      })
+    );
+}, [projects]);
 
   const [sourceItems, setSourceItems] = useState([]); // [{code,name,last_amount}]
   const [totals, setTotals] = useState({}); // { code: totalAlloc }
