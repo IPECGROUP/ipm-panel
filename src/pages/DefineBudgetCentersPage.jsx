@@ -616,7 +616,7 @@ function DefineBudgetCentersPage() {
         <div className="mb-4 text-base md:text-lg">
           <span className="text-neutral-700 dark:text-neutral-300">بودجه‌بندی</span>
           <span className="mx-2 text-neutral-500 dark:text-neutral-400">›</span>
-          <span className="font-semibold text-neutral-900 dark:text-neutral-100">تعریف مراکزccc بودجه</span>
+          <span className="font-semibold text-neutral-900 dark:text-neutral-100">تعریف مراکز بودجه</span>
         </div>
         <div className="p-6 rounded-2xl ring-1 ring-neutral-200 bg-white text-center text-red-600 dark:bg-neutral-900 dark:ring-neutral-800 dark:text-red-400">
           شما سطح دسترسی لازم را ندارید.
@@ -736,7 +736,7 @@ function DefineBudgetCentersPage() {
           </div>
 
           <div className="w-[260px] flex flex-col gap-1">
-            <label className="text-sm text-neutral-700 dark:text-neutral-300">کد بودجه</label>
+            <label className="text-sm text-neutral-700 dark:text-neutral-300">کد بودafasfgagجه</label>
 
             {active !== "projects" && (
               <div className="w-full flex items-center rounded-xl overflow-hidden bg-white text-neutral-900 ltr border border-neutral-200 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700">
