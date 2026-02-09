@@ -536,7 +536,7 @@ const REQUIRED_MSG = "کامل کردن این فیلد ضروری است";
 
 // ✅ required ها دقیقاً طبق گفته‌ی تو
 const REQUIRED = {
-  internal: ["letterDate", "subject", "formTags"],
+  internal: ["letterDate", "subject", "formTags", "unitId"],
 
   outgoing: [
     "category",     // کلاس سند
@@ -596,6 +596,7 @@ const validate = (kind) => {
       letterDate: internalForm.letterDate,
       subject: internalForm.subject,
       formTags: Array.isArray(internalTagIds) ? internalTagIds : [],
+          unitId: internalUnitId, // ✅ اضافه شد
     },
   };
 
@@ -2791,10 +2792,6 @@ const uploadQueueInBackground = async (kind, queue, letterId) => {
 
   const ok = validate(kind);
   if (!ok) return; // ✅ جلو ارسال را می‌گیرد
-    if (kind === "internal" && !String(internalUnitId || "").trim()) {
-  alert("برای نامه داخلی انتخاب واحد الزامی است.");
-  return;
-}
 
     const tagIds =
       kind === "incoming" ? incomingTagIds : kind === "outgoing" ? outgoingTagIds : internalTagIds;
@@ -3867,28 +3864,38 @@ aria-invalid={fieldHasError("incoming", "orgName")}
     </div>
 
     {/* واحد (کنار ضمیمه) */}
-    <div className="md:col-span-3 md:col-start-8">
-      <div className={labelCls}>واحد</div>
-      <select
-        value={internalUnitId}
-        onChange={(e) => setInternalUnitId(e.target.value)}
-        className={inputCls}
-      >
-        <option value=""></option>
+ {/* واحد (کنار ضمیمه) */}
+<div className="md:col-span-3 md:col-start-8">
+  <div className={labelCls}>واحد</div>
 
-        {internalUnitId && !unitOptions.some((u) => String(u.id) === String(internalUnitId)) ? (
-          <option value={internalUnitId}>
-            {unitsLoaded ? `واحد (${toFaDigits(internalUnitId)})` : "در حال دریافت واحدها..."}
-          </option>
-        ) : null}
+  <FieldWrap>
+    <select
+      value={internalUnitId}
+      onChange={(e) => {
+        setInternalUnitId(e.target.value);
+        clearFieldError("internal", "unitId"); // ✅ پاک کردن خطا مثل بقیه
+      }}
+      className={inputWithError(inputCls, "internal", "unitId")} // ✅ قرمز شدن مثل بقیه
+      aria-invalid={fieldHasError("internal", "unitId")}
+    >
+      <option value=""></option>
 
-        {unitOptions.map((u) => (
-          <option key={u.id} value={u.id}>
-            {u.label}
-          </option>
-        ))}
-      </select>
-    </div>
+      {internalUnitId && !unitOptions.some((u) => String(u.id) === String(internalUnitId)) ? (
+        <option value={internalUnitId}>
+          {unitsLoaded ? `واحد (${toFaDigits(internalUnitId)})` : "در حال دریافت واحدها..."}
+        </option>
+      ) : null}
+
+      {unitOptions.map((u) => (
+        <option key={u.id} value={u.id}>
+          {u.label}
+        </option>
+      ))}
+    </select>
+
+    <ErrorTextAbs kind="internal" k="unitId" /> {/* ✅ خطا زیر خودش */}
+  </FieldWrap>
+</div>
 
     {/* ضمیمه (کنار واحد و در همان خط) */}
     <div className="md:col-span-2 md:col-start-11 flex flex-col items-center">
