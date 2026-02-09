@@ -549,6 +549,8 @@ const REQUIRED = {
   ],
 
   incoming: [
+    "fromName",      
+    "orgName", 
     "classification", // طبقه بندی
     "letterNo",       // شماره سند
     "letterDate",     // تاریخ سند
@@ -570,13 +572,15 @@ const validate = (kind) => {
 
   // ✅ مقادیر هر تب جدا
   const valuesByKind = {
-    incoming: {
-      classification: incomingForm.classification,
-      letterNo: incomingForm.letterNo,
-      letterDate: incomingForm.letterDate,
-subject: incomingForm.subject,
-      formTags: Array.isArray(incomingTagIds) ? incomingTagIds : [],
-    },
+   incoming: {
+  classification: incomingForm.classification,
+  fromName: incomingForm.fromName,   // ✅ اضافه شود
+  orgName: incomingForm.orgName,     // ✅ اضافه شود
+  letterNo: incomingForm.letterNo,
+  letterDate: incomingForm.letterDate,
+  subject: incomingForm.subject,
+  formTags: Array.isArray(incomingTagIds) ? incomingTagIds : [],
+},
 
     outgoing: {
       category: outgoingForm.category,
@@ -3602,7 +3606,7 @@ aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "category") : 
 
   <FieldWrap>
     <select
-      value={incomingForm.classification}
+     value={incomingForm.classification || ""}
 onChange={(e) => {
   setIncomingForm((p) => ({ ...p, classification: e.target.value }));
   clearFieldError("incoming", "classification");
@@ -3610,8 +3614,9 @@ onChange={(e) => {
 className={inputWithError(inputSmCls, "incoming", "classification")}
 aria-invalid={fieldHasError("incoming", "classification")}
     >
-      <option value="عادی">عادی</option>
-      <option value="محرمانه">محرمانه</option>
+<option value=""></option>
+<option value="عادی">عادی</option>
+<option value="محرمانه">محرمانه</option>
     </select>
 <ErrorTextAbs kind="incoming" k="classification" />
   </FieldWrap>
@@ -3766,12 +3771,19 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
           <div className="md:col-span-4 md:col-start-1">
   <div className={labelCls}>از</div>
 
+<FieldWrap>
   <input
-  value={incomingForm.fromName}
-  onChange={(e) => setIncomingForm((p) => ({ ...p, fromName: e.target.value }))}
-  className={inputCls}
-  type="text"
-/>
+    value={incomingForm.fromName || ""}
+    onChange={(e) => {
+      setIncomingForm((p) => ({ ...p, fromName: e.target.value }));
+      clearFieldError("incoming", "fromName");
+    }}
+    className={inputWithError(inputCls, "incoming", "fromName")}
+    aria-invalid={fieldHasError("incoming", "fromName")}
+    type="text"
+  />
+  <ErrorTextAbs kind="incoming" k="fromName" />
+</FieldWrap>
 
 </div>
 
@@ -3783,13 +3795,13 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
       value={incomingForm.orgName}
 onChange={(e) => {
   setIncomingForm((p) => ({ ...p, orgName: e.target.value }));
-  clearFieldError("orgName");
+  clearFieldError("incoming", "orgName");
 }}
-      className={inputWithError(inputCls, "orgName")}
-      aria-invalid={fieldHasError("orgName")}
+className={inputWithError(inputCls, "incoming", "orgName")}
+aria-invalid={fieldHasError("incoming", "orgName")}
       type="text"
     />
-    <ErrorTextAbs k="orgName" />
+<ErrorTextAbs kind="incoming" k="orgName" />
 </div>
 
 
