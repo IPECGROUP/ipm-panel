@@ -929,11 +929,6 @@ const myUnitsFromUser = useMemo(() => {
   return arr;
 }, [user]);
 
-const canDeleteAllLetters = useMemo(() => {
-  const uname = String(loggedInUserName || "").trim().toLowerCase().replace(/\s+/g, "");
-  return uname === "marandi1234"; // فقط همین یوزر
-}, [loggedInUserName]);
-
 const unitOptions = useMemo(() => {
   const map = new Map();
 
