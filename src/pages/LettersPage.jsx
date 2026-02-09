@@ -682,7 +682,7 @@ useEffect(() => {
       const code = String(p.code || "").trim();
       return /^\d{3}$/.test(code); // فقط 3 رقم (مثل 165) و نه 156.1.1
     })
-    .sort((a, b) => Number(b.code) - Number(a.code)) // نزولی: 165 اول
+    .sort((a, b) => Number(a.code) - Number(b.code)) // صعودی: 100 اول
     .map((p) => ({
       id: String(p.id),
       label: `${String(p.code).trim()} - ${String(p.name || "").trim()}`.trim(),
