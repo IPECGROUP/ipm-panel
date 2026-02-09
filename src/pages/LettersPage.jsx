@@ -1558,12 +1558,6 @@ useEffect(() => {
 
 useEffect(() => {
   if (!user?.id) return;
-  loadPinnedFilterTags();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [user?.id]);
-
-useEffect(() => {
-  if (!user?.id) return;
 
   (async () => {
     // برای اینکه pinned ها از هر تب (letters/projects/execution) بعد refresh دیده بشن
