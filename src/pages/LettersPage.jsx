@@ -715,52 +715,28 @@ async function patchLetterPrefs(patch) {
 }, [user?.id]);
 
 useEffect(() => {
-  let alive = true;
+  // وقتی هنوز projects نیومده، لودینگ را روشن نگه دار
+  setProjectCentersLoading(true);
 
-  (async () => {
-    setProjectCentersLoading(true);
-    try {
-      // ✅ دقیقا از همان مواردی که در DefineBudgetCentersPage ذخیره شده:
-      const r = await api("/centers/projects");
-      const items = Array.isArray(r?.items) ? r.items : [];
+  const items = Array.isArray(projects) ? projects : [];
 
-      // ✅ فقط فعال‌ها (اگر فیلد فعال/غیرفعال وجود داشت)
-      // اگر بک‌اند فعلاً isActive ندارد، همه را می‌آورد (ولی اینجا ما فقط موارد معتبر را نگه می‌داریم)
-      const activeOnly = items
-        .filter((x) => x && typeof x === "object")
-        .filter((x) => x.isActive !== false && x.is_active !== false && x.active !== false)
-        .map((x) => {
-          const id = x.id ?? x.center_id ?? x.centerId ?? x.suffix; // fallback امن
-          const suffix = String(x.suffix ?? "").trim();
-          const desc = String(x.description ?? x.desc ?? x.title ?? "").trim();
-          return {
-            id: String(id),
-            // label نهایی داخل dropdown:
-            label: desc ? `${suffix} — ${desc}` : suffix,
-          };
-        })
-        .filter((x) => x.id && x.label);
+  // ✅ فقط فعال‌ها + فقط کد 3 رقمی + نزولی
+  const list = items
+    .filter((p) => p && typeof p === "object")
+    .filter((p) => p.isActive === true || p.is_active === true) // فقط فعال‌ها
+    .filter((p) => {
+      const code = String(p.code || "").trim();
+      return /^\d{3}$/.test(code); // فقط 3 رقم (مثل 165) و نه 156.1.1
+    })
+    .sort((a, b) => Number(b.code) - Number(a.code)) // نزولی: 165 اول
+    .map((p) => ({
+      id: String(p.id),
+      label: `${String(p.code).trim()} - ${String(p.name || "").trim()}`.trim(),
+    }));
 
-      // مرتب‌سازی
-      activeOnly.sort((a, b) =>
-        String(a.label).localeCompare(String(b.label), "fa", { numeric: true, sensitivity: "base" })
-      );
-
-      if (!alive) return;
-      setProjectCentersActive(activeOnly);
-    } catch {
-      if (!alive) return;
-      setProjectCentersActive([]);
-    } finally {
-      if (!alive) return;
-      setProjectCentersLoading(false);
-    }
-  })();
-
-  return () => {
-    alive = false;
-  };
-}, [api]);
+  setProjectCentersActive(list);
+  setProjectCentersLoading(false);
+}, [projects]);
 
 useEffect(() => {
   if (!user?.id) return;
