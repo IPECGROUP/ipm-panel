@@ -2662,136 +2662,122 @@ const kindRowTintCls = (kind) => {
     if (size) out.size = size;
     return Object.keys(out).length ? out : null;
   };
+const startEdit = (l) => {
+  if (!l) return;
 
-  const startEdit = (l) => {
-const kind = letterKindOf(l);
-    const id = String(letterIdOf(l));
-    const sn = l?.secretariat_note ?? l?.secretariatNote ?? "";
+  const kind =
+    String(l.kind ?? l.letter_kind ?? l.letterKind ?? l.doc_kind ?? "").trim() ||
+    letterKindOf(l);
 
-if (kind === "incoming") setIncomingSecretariatNote(sn);
-else if (kind === "outgoing") setOutgoingSecretariatNote(sn);
-else setInternalSecretariatNote(sn);
+  const id = String(l.id ?? l.letter_id ?? l.letterId ?? letterIdOf(l) ?? "");
+  if (!id) return;
 
-    
+  setEditingId(id);
+  setFormOpen(true);
+  setFormKind(kind);
 
-    setEditingId(id);
-    setFormOpen(true);
-    setFormKind(kind);
+  // helpers
+  const pick = (a, b) => (a !== undefined && a !== null ? a : b);
 
-    const rawCat = String(l?.category ?? l?.category_name ?? l?.categoryTitle ?? "").trim();
-
-// سازگاری با دیتاهای قدیمی شما که category="project" بوده
-    const mappedCat = rawCat === "project" ? "اسناد پروژه ای" : (rawCat || "نامه");
-    setCategory(mappedCat);
-
-    // طبقه بندی (اگر از بک‌اند اومد، وگرنه پیش‌فرض)
-    const rawClass =
-      String(l?.classification ?? l?.doc_classification ?? l?.confidentiality ?? "").trim();
-    setClassification(rawClass || "عادی");
-
-    const pid = l?.project_id ?? l?.projectId ?? l?.projectID ?? null;
-    setProjectId(pid ? String(pid) : "");
-// ✅ برای نامه‌های داخلی: پر کردن واحد در حالت Edit
-const uid = l?.unit_id ?? l?.unitId ?? l?.unit ?? l?.internal_unit_id ?? "";
-setInternalUnitId(uid ? String(uid) : "");
-
-    setLetterNo(String(l?.letter_no ?? l?.letterNo ?? l?.no ?? l?.number ?? ""));
-    setLetterDate(String(l?.letter_date ?? l?.letterDate ?? l?.date ?? ""));
-
-const fromVal = String(l?.from_name ?? l?.fromName ?? l?.from ?? "");
-if (kind === "outgoing") {
-  setOutgoingForm((p) => ({ ...p, fromName: fromVal }));
-} else if (kind === "incoming") {
-  setIncomingForm((p) => ({ ...p, fromName: fromVal }));
-} else {
-  setInternalForm((p) => ({ ...p, fromName: fromVal }));
-}
-
-const toVal = String(l?.to_name ?? l?.toName ?? l?.to ?? "");
-
-if (kind === "incoming") {
-  setIncomingForm((p) => ({ ...p, toName: toVal }));
-} else if (kind === "outgoing") {
-  setOutgoingForm((p) => ({ ...p, toName: toVal }));
-}
-    setOrgName(String(l?.org_name ?? l?.orgName ?? l?.org ?? l?.organization ?? l?.company ?? ""));
-const subVal = String(l?.subject ?? l?.title ?? "");
-
-if (kind === "incoming") {
-  setIncomingForm((p) => ({ ...p, subject: subVal }));
-} else if (kind === "outgoing") {
-  setOutgoingForm((p) => ({ ...p, subject: subVal }));
-} else {
-  setInternalForm((p) => ({ ...p, subject: subVal }));
-}
-
-
-    const ha = l?.has_attachment ?? l?.hasAttachment ?? false;
-    setHasAttachment(!!ha);
-
-    const rids = Array.isArray(l?.return_to_ids) ? l.return_to_ids : Array.isArray(l?.returnToIds) ? l.returnToIds : [];
-    setReturnToIds(rids.length ? rids.map((x) => String(x)) : [""]);
-
-    const pids = Array.isArray(l?.piro_ids) ? l.piro_ids : Array.isArray(l?.piroIds) ? l.piroIds : [];
-    setPiroIds(pids.length ? pids.map((x) => String(x)) : [""]);
-
-    const tids = Array.isArray(l?.tag_ids) ? l.tag_ids : Array.isArray(l?.tagIds) ? l.tagIds : [];
-    if (kind === "incoming") setIncomingTagIds(tids.map((x) => String(x)));
-    else if (kind === "outgoing") setOutgoingTagIds(tids.map((x) => String(x)));
-    else setInternalTagIds(tids.map((x) => String(x)));
-
-    const sDate = String(l?.secretariat_date ?? l?.secretariatDate ?? "");
-    const sNo = String(l?.secretariat_no ?? l?.secretariatNo ?? "");
-    const rName = String(l?.receiver_name ?? l?.receiverName ?? "");
-    if (kind === "incoming") {
-      setIncomingSecretariatDate(sDate || todayJalaliYmd || "");
-      setIncomingSecretariatNo(sNo || "");
-      setIncomingReceiverName(rName || "");
-    } else if (kind === "outgoing") {
-      setOutgoingSecretariatDate(sDate || todayJalaliYmd || "");
-      setOutgoingSecretariatNo(sNo || "");
-      setOutgoingReceiverName(rName || "");
-    } else {
-      setInternalSecretariatDate(sDate || todayJalaliYmd || "");
-      setInternalSecretariatNo(sNo || "");
-      setInternalReceiverName(rName || "");
-    }
-
-    const atts = attachmentsOf(l);
-    const mapped = (Array.isArray(atts) ? atts : []).map((a, i) => {
-      const url = attachmentUrlOf(a);
-      const nameRaw = attachmentNameOf(a);
-      const name =
-        String(nameRaw || "").trim() ||
-        (() => {
-          try {
-            const u = String(url);
-            const parts = u.split("?")[0].split("/");
-            return parts[parts.length - 1] || "فایل";
-          } catch {
-            return "فایل";
-          }
-        })();
-      const type = attachmentTypeOf(a) || (isPdfUrl(url) ? "application/pdf" : "");
-      const size = attachmentSizeOf(a);
-      return {
-        id: `att_${id}_${i}`,
-        name,
-        size,
-        type,
-        status: "done",
-        progress: 100,
-        error: "",
-        serverId: a?.id ?? a?.file_id ?? null,
-        url: url || null,
-        previewUrl: null,
-        file: null,
-        optimizedFile: null,
-      };
-    });
-
-    setDocFilesByType((prev) => ({ ...prev, [kind]: mapped }));
+  // ✅ فرم همون تب رو یکجا پر کن (به جای setCategory/setClassification/...)
+  const payload = {
+    category: String(pick(l.category, l.doc_class) || "").trim() || "نامه",
+    classification: String(pick(l.classification_id, l.classification) || "").trim() || "عادی",
+    projectId: String(pick(l.project_id, l.projectId) || ""),
+    letterNo: String(pick(l.letter_no, l.letterNo) || ""),
+    letterDate: String(pick(l.letter_date, l.letterDate) || ""),
+    fromName: String(pick(l.from_name, l.fromName) || ""),
+    toName: String(pick(l.to_name, l.toName) || ""),
+    orgName: String(pick(l.org_name, l.orgName) || ""),
+    subject: String(pick(l.subject, l.title) || ""),
   };
+
+  setForm(kind, payload);
+
+  // attachment
+  const ha = pick(l.has_attachment, l.hasAttachment);
+  setHasAttachment(ha === true || ha === "true" || ha === 1 || ha === "1");
+
+  // tags
+  const tagIdsRaw = pick(l.tag_ids, l.tagIds);
+  const tagIds = normalizeIdList(
+    Array.isArray(tagIdsRaw) ? tagIdsRaw : String(tagIdsRaw || "").split(",")
+  );
+
+  if (kind === "incoming") setIncomingTagIds(tagIds);
+  else if (kind === "outgoing") setOutgoingTagIds(tagIds);
+  else setInternalTagIds(tagIds);
+
+  // internal unit
+  if (kind === "internal") {
+    const uid = String(pick(l.unit_id, l.unitId) || "");
+    setInternalUnitId(uid);
+  }
+
+  // secretariat fields
+  const secDate = String(pick(l.secretariat_date, l.secretariatDate) || "");
+  const secNo = String(pick(l.secretariat_no, l.secretariatNo) || "");
+  const secNote = String(pick(l.secretariat_note, l.secretariatNote) || "");
+
+  if (kind === "incoming") {
+    setIncomingSecretariatDate(secDate || todayJalaliYmd || "");
+    setIncomingSecretariatNo(secNo || "");
+    setIncomingSecretariatNote(secNote || "");
+  } else if (kind === "outgoing") {
+    setOutgoingSecretariatDate(secDate || todayJalaliYmd || "");
+    setOutgoingSecretariatNo(secNo || "");
+    setOutgoingSecretariatNote(secNote || "");
+  } else {
+    setInternalSecretariatDate(secDate || todayJalaliYmd || "");
+    setInternalSecretariatNo(secNo || "");
+    setInternalSecretariatNote(secNote || "");
+  }
+
+  // related/returnTo
+  const returnRaw = pick(l.return_to_ids, l.returnToIds);
+  const relatedIds = normalizeIdList(
+    Array.isArray(returnRaw) ? returnRaw : String(returnRaw || "").split(",")
+  );
+  setReturnToIds(relatedIds.length ? relatedIds : [""]);
+
+  // attachments in edit (reuse your existing mapping)
+  const atts = attachmentsOf(l);
+  const mapped = (Array.isArray(atts) ? atts : []).map((a, i) => {
+    const url = attachmentUrlOf(a);
+    const nameRaw = attachmentNameOf(a);
+    const name =
+      String(nameRaw || "").trim() ||
+      (() => {
+        try {
+          const u = String(url);
+          const parts = u.split("?")[0].split("/");
+          return parts[parts.length - 1] || "فایل";
+        } catch {
+          return "فایل";
+        }
+      })();
+    const type = attachmentTypeOf(a) || (isPdfUrl(url) ? "application/pdf" : "");
+    const size = attachmentSizeOf(a);
+
+    return {
+      id: `att_${id}_${i}`,
+      name,
+      size,
+      type,
+      status: "done",
+      progress: 100,
+      error: "",
+      serverId: a?.id ?? a?.file_id ?? null,
+      url: url || null,
+      previewUrl: null,
+      file: null,
+      optimizedFile: null,
+    };
+  });
+
+  setDocFilesByType((prev) => ({ ...prev, [kind]: mapped }));
+};
+
 const runWithLimit = async (tasks, limit = 2) => {
   const executing = new Set();
   const results = [];
@@ -3659,28 +3645,27 @@ aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "category") : 
 </div>
 
 
-  {/* طبقه بندی */}
-  <div className="shrink-0 w-[140px]">
+ <div className="shrink-0 w-[140px]">
   <div className={labelSmCls}>طبقه بندی</div>
 
   <FieldWrap>
     <select
-     value={incomingForm.classification || ""}
-onChange={(e) => {
-  setIncomingForm((p) => ({ ...p, classification: e.target.value }));
-  clearFieldError("incoming", "classification");
-}}
-className={inputWithError(inputSmCls, "incoming", "classification")}
-aria-invalid={fieldHasError("incoming", "classification")}
+      value={getForm(formKind).classification || ""}
+      onChange={(e) => {
+        setForm(formKind, { classification: e.target.value });
+        clearFieldError(formKind, "classification");
+      }}
+      className={inputWithError(inputSmCls, formKind, "classification")}
+      aria-invalid={fieldHasError(formKind, "classification")}
     >
-<option value=""></option>
-<option value="عادی">عادی</option>
-<option value="محرمانه">محرمانه</option>
+      <option value=""></option>
+      <option value="عادی">عادی</option>
+      <option value="محرمانه">محرمانه</option>
     </select>
-<ErrorTextAbs kind="incoming" k="classification" />
+
+    <ErrorTextAbs kind={formKind} k="classification" />
   </FieldWrap>
 </div>
-
 
   {/* مرکز/پروژه */}
 <div className="shrink-0 w-[220px]">
@@ -3880,12 +3865,12 @@ aria-invalid={fieldHasError("incoming", "orgName")}
 
     <input
   value={incomingForm.toName}
-  onChange={(e) => {
-    setIncomingForm((p) => ({ ...p, toName: e.target.value }));
-    clearFieldError("toName");
-  }}
-  className={inputWithError(inputCls, "toName")}
-  aria-invalid={fieldHasError("toName")}
+onChange={(e) => {
+  setIncomingForm((p) => ({ ...p, toName: e.target.value }));
+  clearFieldError("incoming", "toName");
+}}
+className={inputWithError(inputCls, "incoming", "toName")}
+aria-invalid={fieldHasError("incoming", "toName")}
   type="text"
 />
 
@@ -4017,7 +4002,7 @@ aria-invalid={fieldHasError("incoming", "orgName")}
         <label className="inline-flex items-center gap-2 cursor-pointer select-none">
           <input
             type="radio"
-            name="hasAttachment"
+            name={"hasAttachment_" + formKind}
             checked={hasAttachment === true}
             onChange={() => setHasAttachment(true)}
             className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
@@ -4028,7 +4013,7 @@ aria-invalid={fieldHasError("incoming", "orgName")}
         <label className="inline-flex items-center gap-2 cursor-pointer select-none">
           <input
             type="radio"
-            name="hasAttachment"
+            name={"hasAttachment_" + formKind}
             checked={hasAttachment === false}
             onChange={() => setHasAttachment(false)}
             className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
