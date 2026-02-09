@@ -515,6 +515,15 @@ async function uploadQueueInBackground({
 
 export default function LettersPage() {
 
+  const tagById = useMemo(() => {
+  const m = new Map();
+  (Array.isArray(allTags) ? allTags : []).forEach((t) => {
+    const id = String(t?.id ?? "");
+    if (id) m.set(id, t);
+  });
+  return m;
+}, [allTags]);
+
 // ✅ Validation (per tab)
 const [errorsByKind, setErrorsByKind] = useState({
   incoming: {},
@@ -4773,19 +4782,33 @@ const rowBg = isConf ? confRowBg : normalRowBg;
 
                           <div className="px-4 divide-y divide-black/10 dark:divide-white/10">
                             <InfoRow
-                              label="نوع"
-                              value={
-                                viewLetter
-                                  ? (() => {
-                                      const k = letterKindOf(viewLetter);
-                                      if (k === "outgoing") return "صادره";
-                                      if (k === "incoming") return "وارده";
-                                      return "داخلی";
-                                    })()
-                                  : ""
-                              }
-                            />
-                            <InfoRow label="دسته بندی" value={viewLetter ? categoryLabel(categoryOf(viewLetter)) : ""} />
+  label="نوع"
+  value={
+    viewLetter
+      ? (() => {
+          const k = letterKindOf(viewLetter);
+          if (k === "outgoing") return "صادره";
+          if (k === "incoming")
+            return (
+              <span className="inline-flex items-center gap-1">
+                وارده
+                <img
+                  src="/images/icons/varede.svg"
+                  alt=""
+                  className="w-4 h-4"
+                />
+              </span>
+            );
+          return "داخلی";
+        })()
+      : ""
+  }
+/>
+
+<InfoRow
+  label={viewLetter && letterKindOf(viewLetter) === "incoming" ? "کلاس سند" : "دسته بندی"}
+  value={viewLetter ? categoryLabel(categoryOf(viewLetter)) : ""}
+/>
 
                             <InfoRow
                               label="پروژه"
@@ -4801,187 +4824,130 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                               }
                             />
 
-                            <div className="py-2">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-  <div>
-    <div className={labelCls}>بازگشت</div>
-    <div className="space-y-2">
-      {(Array.isArray(returnToIds) ? returnToIds : [""]).map((val, idx) => (
-        <div key={idx} className="flex items-center gap-2">
-          <input
-            value={val}
-            onChange={(e) => {
-              const v = e.target.value;
-              setReturnToIds((prev) => {
-                const arr = Array.isArray(prev) ? [...prev] : [""];
-                arr[idx] = v;
-                return arr;
-              });
-            }}
-            className={inputCls}
-            type="text"
-            placeholder="شماره/کد بازگشت"
-          />
+                           <InfoRow
+  label={viewLetter && letterKindOf(viewLetter) === "incoming" ? "از" : "از / به"}
+  value={
+    viewLetter
+      ? (() => {
+          const a = String(viewLetter?.from_name ?? viewLetter?.fromName ?? viewLetter?.from ?? "").trim();
+          const b = String(viewLetter?.to_name ?? viewLetter?.toName ?? viewLetter?.to ?? "").trim();
 
-          <button
-            type="button"
-            onClick={() => setReturnToIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
-            className={iconBtnCls}
-            aria-label="افزودن"
-            title="افزودن"
-          >
-            <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
-          </button>
+          if (letterKindOf(viewLetter) === "incoming") {
+            const s = `${a}${a && b ? " - " : ""}${b}`.trim();
+            return s || "—";
+          }
 
-          {idx > 0 && (
-            <button
-              type="button"
-              onClick={() =>
-                setReturnToIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))
-              }
-              className={iconBtnCls}
-              aria-label="حذف"
-              title="حذف"
-            >
-              <img
-                src="/images/icons/hazf.svg"
-                alt=""
-                className="w-5 h-5"
-                style={{
-                  filter:
-                    "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
-                }}
-              />
-            </button>
-          )}
-        </div>
-      ))}
-    </div>
-  </div>
+          const s = `${a}${a && b ? " / " : ""}${b}`.trim();
+          return s || "—";
+        })()
+      : "—"
+  }
+/>
 
-  <div>
-    <div className={labelCls}>پیرو</div>
-    <div className="space-y-2">
-      {(Array.isArray(piroIds) ? piroIds : [""]).map((val, idx) => (
-        <div key={idx} className="flex items-center gap-2">
-          <input
-            value={val}
-            onChange={(e) => {
-              const v = e.target.value;
-              setPiroIds((prev) => {
-                const arr = Array.isArray(prev) ? [...prev] : [""];
-                arr[idx] = v;
-                return arr;
-              });
-            }}
-            className={inputCls}
-            type="text"
-            placeholder="شماره/کد پیرو"
-          />
-
-          <button
-            type="button"
-            onClick={() => setPiroIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
-            className={iconBtnCls}
-            aria-label="افزودن"
-            title="افزودن"
-          >
-            <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
-          </button>
-
-          {idx > 0 && (
-            <button
-              type="button"
-              onClick={() => setPiroIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))}
-              className={iconBtnCls}
-              aria-label="حذف"
-              title="حذف"
-            >
-              <img
-                src="/images/icons/hazf.svg"
-                alt=""
-                className="w-5 h-5"
-                style={{
-                  filter:
-                    "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
-                }}
-              />
-            </button>
-          )}
-        </div>
-      ))}
-    </div>
-  </div>
-</div>
-
-                            </div>
-
-                            <InfoRow
-                              label="از / به"
-                              value={
-                                viewLetter
-                                  ? (() => {
-                                      const a = String(viewLetter?.from_name ?? viewLetter?.fromName ?? viewLetter?.from ?? "").trim();
-                                      const b = String(viewLetter?.to_name ?? viewLetter?.toName ?? viewLetter?.to ?? "").trim();
-                                      const s = `${a}${a && b ? " / " : ""}${b}`.trim();
-                                      return s || "—";
-                                    })()
-                                  : "—"
-                              }
-                            />
-                            <InfoRow label="شرکت/سازمان" value={viewLetter ? String(viewLetter?.org_name ?? viewLetter?.orgName ?? viewLetter?.org ?? "") : ""} />
+{!(viewLetter && letterKindOf(viewLetter) === "incoming") && (
+  <InfoRow
+    label="شرکت/سازمان"
+    value={viewLetter ? String(viewLetter?.org_name ?? viewLetter?.orgName ?? viewLetter?.org ?? "") : ""}
+  />
+)}
                             <InfoRow label="موضوع" value={viewLetter ? String(subjectOf(viewLetter) || "") : ""} />
+                              {viewLetter && letterKindOf(viewLetter) === "incoming" && (
+                                <InfoRow
+                                  label="برچسب"
+                                  value={(() => {
+                                    const ids = Array.isArray(viewLetter?.tag_ids)
+                                      ? viewLetter.tag_ids
+                                      : Array.isArray(viewLetter?.tagIds)
+                                      ? viewLetter.tagIds
+                                      : [];
+
+                                    const clean = ids.map((x) => String(x)).filter(Boolean);
+                                    if (!clean.length) return "—";
+
+                                    const labels = clean
+                                      .map((id) => tagById.get(id))
+                                      .filter(Boolean)
+                                      .map((t) => tagLabelOf(t));
+
+                                    return labels.length ? labels.join("، ") : "—";
+                                  })()}
+                                />
+                              )}
 
                             <InfoRow label="ضمیمه" value={viewHasAttachment ? "دارد" : "ندارد"} />
-                            <InfoRow
-                              label="بازگشت به"
-                              value={
-                                viewLetter
-                                  ? (() => {
-                                      const ids = Array.isArray(viewLetter?.return_to_ids)
-                                        ? viewLetter.return_to_ids
-                                        : Array.isArray(viewLetter?.returnToIds)
-                                        ? viewLetter.returnToIds
-                                        : [];
-                                      if (!ids.length) return "—";
-                                      const map = new Map((Array.isArray(myLetters) ? myLetters : []).map((x) => [String(letterIdOf(x)), x]));
-                                      const labels = ids
-                                        .map((x) => String(x))
-                                        .filter(Boolean)
-                                        .map((sid) => {
-                                          const it = map.get(sid);
-                                          return it ? String(it?.letter_no || sid) : sid;
-                                        });
-                                      return labels.join("، ");
-                                    })()
-                                  : ""
-                              }
-                            />
+                            {!(viewLetter && letterKindOf(viewLetter) === "incoming") && (
+                              <InfoRow
+                                label="بازگشت به"
+                                value={
+                                  viewLetter
+                                    ? (() => {
+                                        const ids = Array.isArray(viewLetter?.return_to_ids)
+                                          ? viewLetter.return_to_ids
+                                          : Array.isArray(viewLetter?.returnToIds)
+                                          ? viewLetter.returnToIds
+                                          : [];
+                                        if (!ids.length) return "—";
+                                        const map = new Map((Array.isArray(myLetters) ? myLetters : []).map((x) => [String(letterIdOf(x)), x]));
+                                        const labels = ids
+                                          .map((x) => String(x))
+                                          .filter(Boolean)
+                                          .map((sid) => {
+                                            const it = map.get(sid);
+                                            return it ? String(it?.letter_no || sid) : sid;
+                                          });
+                                        return labels.join("، ");
+                                      })()
+                                    : ""
+                                }
+                              />
+                            )}
+<InfoRow
+  label={viewLetter && letterKindOf(viewLetter) === "incoming" ? "نامه های مرتبط" : "پیرو"}
+  value={
+    viewLetter
+      ? (() => {
+          const ids = Array.isArray(viewLetter?.piro_ids)
+            ? viewLetter.piro_ids
+            : Array.isArray(viewLetter?.piroIds)
+            ? viewLetter.piroIds
+            : [];
 
-                            <InfoRow
-                              label="پیرو"
-                              value={
-                                viewLetter
-                                  ? (() => {
-                                      const ids = Array.isArray(viewLetter?.piro_ids)
-                                        ? viewLetter.piro_ids
-                                        : Array.isArray(viewLetter?.piroIds)
-                                        ? viewLetter.piroIds
-                                        : [];
-                                      if (!ids.length) return "—";
-                                      const map = new Map((Array.isArray(myLetters) ? myLetters : []).map((x) => [String(letterIdOf(x)), x]));
-                                      const labels = ids
-                                        .map((x) => String(x))
-                                        .filter(Boolean)
-                                        .map((sid) => {
-                                          const it = map.get(sid);
-                                          return it ? String(it?.letter_no || sid) : sid;
-                                        });
-                                      return labels.join("، ");
-                                    })()
-                                  : ""
-                              }
-                            />
+          const clean = ids.map((x) => String(x)).filter(Boolean);
+          if (!clean.length) return "—";
+
+          const map = new Map(
+            (Array.isArray(myLetters) ? myLetters : []).map((x) => [String(letterIdOf(x)), x])
+          );
+
+          return (
+            <div className="flex flex-wrap gap-2">
+              {clean.map((sid) => {
+                const it = map.get(sid);
+                const no = String(it?.letter_no || it?.letterNo || sid);
+
+                return (
+                  <button
+                    key={sid}
+                    type="button"
+                    onClick={() => {
+                      if (it) openView(it);
+                    }}
+                    className={
+                      "underline underline-offset-4 font-semibold " +
+                      (theme === "dark" ? "text-white hover:text-white/90" : "text-neutral-900 hover:text-black")
+                    }
+                    title="پیش نمایش"
+                  >
+                    {toFaDigits(no)}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()
+      : ""
+  }
+/>
 
                             <InfoRow label="تاریخ ثبت دبیرخانه" value={viewLetter ? toFaDigits(String(viewLetter?.secretariat_date ?? viewLetter?.secretariatDate ?? "")) : ""} />
                             <InfoRow label="شماره ثبت دبیرخانه" value={viewLetter ? String(viewLetter?.secretariat_no ?? viewLetter?.secretariatNo ?? "") : ""} />
