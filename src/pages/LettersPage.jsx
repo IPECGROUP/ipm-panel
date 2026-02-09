@@ -1757,46 +1757,6 @@ const resetAllFilters = () => {
     });
   };
 
-  const uploadQueuedFiles = async (kind, letterId) => {
-  const files = Array.isArray(docFilesByType?.[kind]) ? docFilesByType[kind] : [];
-  const queue = files.filter((f) => f && f.status !== "error" && (f.optimizedFile || f.file) && !f.url);
-
-  if (!queue.length) return;
-
-  const runOne = async (f) => {
-    const fileToSend = f.optimizedFile || f.file;
-
-    setDocFilesFor(kind, (prev) =>
-      prev.map((x) => (x.id === f.id ? { ...x, status: "uploading", progress: 0, error: "" } : x))
-    );
-
-    try {
-      const res = await uploadFileToLetter(fileToSend, letterId, (p) => {
-        setDocFilesFor(kind, (prev) => prev.map((x) => (x.id === f.id ? { ...x, progress: p } : x)));
-      });
-
-      setDocFilesFor(kind, (prev) =>
-        prev.map((x) =>
-          x.id === f.id
-            ? {
-                ...x,
-                status: "done",
-                progress: 100,
-                serverId: res?.item?.id ?? res?.id ?? x.serverId,
-                url: res?.item?.url ?? res?.url ?? x.url,
-              }
-            : x
-        )
-      );
-    } catch (e) {
-      setDocFilesFor(kind, (prev) =>
-        prev.map((x) => (x.id === f.id ? { ...x, status: "error", error: e?.message || "خطا در آپلود فایل." } : x))
-      );
-    }
-  };
-
-  await Promise.allSettled(queue.map(runOne));
-};
   const addFilesToUpload = async (which, fileList) => {
     const list = Array.from(fileList || []);
     if (!list.length) return;
@@ -3040,36 +3000,10 @@ subject:
 
     if (!newId) throw new Error("save_failed");
     const letterId = Number(newId) || newId;
-    if (queue.length > 0) {
-      for (const f of queue) {
-        const fileToSend = f.optimizedFile || f.file;
-        setDocFilesFor(kind, (prev) =>
-          prev.map((x) => (x.id === f.id ? { ...x, status: "uploading", progress: 0, error: "" } : x))
-        );
-        try {
-          const res = await uploadFileToLetter(fileToSend, letterId, (p) => {
-            setDocFilesFor(kind, (prev) => prev.map((x) => (x.id === f.id ? { ...x, progress: p } : x)));
-          });
-          setDocFilesFor(kind, (prev) =>
-            prev.map((x) =>
-              x.id === f.id
-                ? {
-                    ...x,
-                    status: "done",
-                    progress: 100,
-                    serverId: res?.item?.id ?? res?.id ?? x.serverId,
-                    url: res?.item?.url ?? res?.url ?? x.url,
-                  }
-                : x
-            )
-          );
-        } catch (e) {
-          setDocFilesFor(kind, (prev) =>
-            prev.map((x) => (x.id === f.id ? { ...x, status: "error", error: e?.message || "خطا در آپلود فایل." } : x))
-          );
-        }
-      }
-    }
+   if (queue.length > 0) {
+  await uploadQueueInBackground(kind, queue, letterId);
+}
+
     await refetchLetters();
     resetForm();
     setFormOpen(false);
