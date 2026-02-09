@@ -4782,24 +4782,31 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                           </div>
 
                           <div className="px-4 divide-y divide-black/10 dark:divide-white/10">
-                            <InfoRow
+             <InfoRow
   label="نوع"
   value={
     viewLetter
       ? (() => {
           const k = letterKindOf(viewLetter);
-          if (k === "outgoing") return "صادره";
-          if (k === "incoming")
+
+          if (k === "outgoing") {
+            return (
+              <span className="inline-flex items-center gap-1">
+                صادره
+                <img src="/images/icons/sadere.svg" alt="" className="w-4 h-4" />
+              </span>
+            );
+          }
+
+          if (k === "incoming") {
             return (
               <span className="inline-flex items-center gap-1">
                 وارده
-                <img
-                  src="/images/icons/varede.svg"
-                  alt=""
-                  className="w-4 h-4"
-                />
+                <img src="/images/icons/varede.svg" alt="" className="w-4 h-4" />
               </span>
             );
+          }
+
           return "داخلی";
         })()
       : ""
@@ -4807,35 +4814,70 @@ const rowBg = isConf ? confRowBg : normalRowBg;
 />
 
 <InfoRow
-  label={viewLetter && letterKindOf(viewLetter) === "incoming" ? "کلاس سند" : "دسته بندی"}
+  label={
+    viewLetter
+      ? (() => {
+          const k = letterKindOf(viewLetter);
+          if (k === "incoming") return "کلاس سند";
+          if (k === "outgoing") return "کلاس سند";   // ✅ فقط برای صادره هم کلاس سند
+          return "دسته بندی";                         // ✅ داخلی مثل قبل
+        })()
+      : "دسته بندی"
+  }
   value={viewLetter ? categoryLabel(categoryOf(viewLetter)) : ""}
 />
 
-                            <InfoRow
-                              label="پروژه"
-                              value={
-                                viewLetter && (viewLetter?.project_id ?? viewLetter?.projectId)
-                                  ? (() => {
-                                      const pid = String(viewLetter?.project_id ?? viewLetter?.projectId);
-                                      const p = findProject(pid);
-                                      if (!p) return pid;
-                                      return `${String(p.code || "")}${p.name ? ` - ${p.name}` : ""}`.trim();
-                                    })()
-                                  : "—"
-                              }
-                            />
 
                            <InfoRow
-  label={viewLetter && letterKindOf(viewLetter) === "incoming" ? "از" : "از / به"}
+  label={
+    viewLetter && letterKindOf(viewLetter) === "outgoing"
+      ? "مرکز/پروژه"
+      : "پروژه"
+  }
+  value={
+    viewLetter && (viewLetter?.project_id ?? viewLetter?.projectId)
+      ? (() => {
+          const pid = String(viewLetter?.project_id ?? viewLetter?.projectId);
+          const p = findProject(pid);
+          if (!p) return pid;
+          return `${String(p.code || "")}${p.name ? ` - ${p.name}` : ""}`.trim();
+        })()
+      : "—"
+  }
+/>
+
+
+<InfoRow
+  label={
+    viewLetter
+      ? (() => {
+          const k = letterKindOf(viewLetter);
+          if (k === "incoming") return "از";
+          if (k === "outgoing") return "به";     // ✅ صادره فقط به
+          return "از / به";                       // ✅ داخلی مثل قبل
+        })()
+      : "از / به"
+  }
   value={
     viewLetter
       ? (() => {
+          const k = letterKindOf(viewLetter);
           const a = String(viewLetter?.from_name ?? viewLetter?.fromName ?? viewLetter?.from ?? "").trim();
           const b = String(viewLetter?.to_name ?? viewLetter?.toName ?? viewLetter?.to ?? "").trim();
 
-          if (letterKindOf(viewLetter) === "incoming") {
+          if (k === "incoming") {
             const s = `${a}${a && b ? " - " : ""}${b}`.trim();
             return s || "—";
+          }
+
+          if (k === "outgoing") {
+            // ✅ فقط "به" + آیکن
+            return (
+              <span className="inline-flex items-center gap-2">
+                <img src="/images/icons/arrow-left.svg" alt="" className={"w-4 h-4 " + (theme === "dark" ? "invert" : "")} />
+                <span>{b || "—"}</span>
+              </span>
+            );
           }
 
           const s = `${a}${a && b ? " / " : ""}${b}`.trim();
@@ -4845,14 +4887,35 @@ const rowBg = isConf ? confRowBg : normalRowBg;
   }
 />
 
-{!(viewLetter && letterKindOf(viewLetter) === "incoming") && (
+{viewLetter && letterKindOf(viewLetter) === "internal" && (
   <InfoRow
-    label="شرکت/سازمان"
-    value={viewLetter ? String(viewLetter?.org_name ?? viewLetter?.orgName ?? viewLetter?.org ?? "") : ""}
+    label="بازگشت به"
+    value={
+      viewLetter
+        ? (() => {
+            const ids = Array.isArray(viewLetter?.return_to_ids)
+              ? viewLetter.return_to_ids
+              : Array.isArray(viewLetter?.returnToIds)
+              ? viewLetter.returnToIds
+              : [];
+            if (!ids.length) return "—";
+            const map = new Map((Array.isArray(myLetters) ? myLetters : []).map((x) => [String(letterIdOf(x)), x]));
+            const labels = ids
+              .map((x) => String(x))
+              .filter(Boolean)
+              .map((sid) => {
+                const it = map.get(sid);
+                return it ? String(it?.letter_no || sid) : sid;
+              });
+            return labels.join("، ");
+          })()
+        : ""
+    }
   />
 )}
+
                             <InfoRow label="موضوع" value={viewLetter ? String(subjectOf(viewLetter) || "") : ""} />
-                              {viewLetter && letterKindOf(viewLetter) === "incoming" && (
+                              {viewLetter && (letterKindOf(viewLetter) === "incoming" || letterKindOf(viewLetter) === "outgoing") && (
                                 <InfoRow
                                   label="برچسب"
                                   value={(() => {
@@ -4875,35 +4938,26 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                                 />
                               )}
 
+
                             <InfoRow label="ضمیمه" value={viewHasAttachment ? "دارد" : "ندارد"} />
-                            {!(viewLetter && letterKindOf(viewLetter) === "incoming") && (
-                              <InfoRow
-                                label="بازگشت به"
-                                value={
-                                  viewLetter
-                                    ? (() => {
-                                        const ids = Array.isArray(viewLetter?.return_to_ids)
-                                          ? viewLetter.return_to_ids
-                                          : Array.isArray(viewLetter?.returnToIds)
-                                          ? viewLetter.returnToIds
-                                          : [];
-                                        if (!ids.length) return "—";
-                                        const map = new Map((Array.isArray(myLetters) ? myLetters : []).map((x) => [String(letterIdOf(x)), x]));
-                                        const labels = ids
-                                          .map((x) => String(x))
-                                          .filter(Boolean)
-                                          .map((sid) => {
-                                            const it = map.get(sid);
-                                            return it ? String(it?.letter_no || sid) : sid;
-                                          });
-                                        return labels.join("، ");
-                                      })()
-                                    : ""
-                                }
-                              />
-                            )}
+                           {viewLetter && letterKindOf(viewLetter) === "internal" && (
+  <InfoRow
+    label="شرکت/سازمان"
+    value={viewLetter ? String(viewLetter?.org_name ?? viewLetter?.orgName ?? viewLetter?.org ?? "") : ""}
+  />
+)}
+
 <InfoRow
-  label={viewLetter && letterKindOf(viewLetter) === "incoming" ? "نامه های مرتبط" : "پیرو"}
+  label={
+    viewLetter
+      ? (() => {
+          const k = letterKindOf(viewLetter);
+          if (k === "incoming") return "نامه های مرتبط";
+          if (k === "outgoing") return "نامه های مرتبط"; // ✅ صادره هم
+          return "پیرو";                                   // ✅ داخلی مثل قبل
+        })()
+      : "پیرو"
+  }
   value={
     viewLetter
       ? (() => {
@@ -4930,9 +4984,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                   <button
                     key={sid}
                     type="button"
-                    onClick={() => {
-                      if (it) openView(it);
-                    }}
+                    onClick={() => { if (it) openView(it); }}
                     className={
                       "underline underline-offset-4 font-semibold " +
                       (theme === "dark" ? "text-white hover:text-white/90" : "text-neutral-900 hover:text-black")
@@ -4949,7 +5001,6 @@ const rowBg = isConf ? confRowBg : normalRowBg;
       : ""
   }
 />
-
                             <InfoRow label="تاریخ ثبت دبیرخانه" value={viewLetter ? toFaDigits(String(viewLetter?.secretariat_date ?? viewLetter?.secretariatDate ?? "")) : ""} />
                             <InfoRow label="شماره ثبت دبیرخانه" value={viewLetter ? String(viewLetter?.secretariat_no ?? viewLetter?.secretariatNo ?? "") : ""} />
                             <InfoRow label="مسئول دبیرخانه" value={viewLetter ? String(viewLetter?.receiver_name ?? viewLetter?.receiverName ?? "") : ""} />
