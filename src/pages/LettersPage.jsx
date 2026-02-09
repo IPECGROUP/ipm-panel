@@ -517,6 +517,10 @@ export default function LettersPage() {
 
   const subjectRef = useRef(null);
 const subjectSelRef = useRef({ s: 0, e: 0 });
+const currentSubject =
+  formKind === "outgoing" ? outgoingForm.subject :
+  formKind === "internal" ? internalForm.subject :
+  incomingForm.subject;
 
 // هر بار مقدار subject عوض شد، فوکوس/کرسر را برگردان (اگر همین input فوکوس داشته)
 useLayoutEffect(() => {
@@ -835,14 +839,7 @@ const [internalForm, setInternalForm] = useState({
   subject: "",
 });
 
-// ✅ helpers
-function getForm(kind, incomingForm, outgoingForm, internalForm) {
-  return kind === "outgoing"
-    ? outgoingForm
-    : kind === "internal"
-    ? internalForm
-    : incomingForm;
-}
+
 
 const setForm = (kind, patch) => {
   if (kind === "outgoing") setOutgoingForm((p) => ({ ...p, ...patch }));
@@ -2095,7 +2092,11 @@ const projectsTopOnly = useMemo(() => {
 }, [projectsDesc]);
 
 // ===== Auto code injection (Create only) =====
-const currentProjectId = getForm(formKind).projectId || "";
+const currentProjectId =
+  (formKind === "outgoing" ? outgoingForm.projectId :
+   formKind === "internal" ? internalForm.projectId :
+   incomingForm.projectId) || "";
+
 
 useEffect(() => {
   if (!formOpen) return;
