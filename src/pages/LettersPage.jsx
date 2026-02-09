@@ -447,27 +447,6 @@ function makeProgressUpdater(setDocFilesFor, kind, fileId) {
   };
 }
 
-async function runWithLimit(tasks, limit = 2) {
-  const executing = new Set();
-  const results = [];
-
-  for (const task of tasks) {
-    const p = Promise.resolve().then(task);
-    results.push(p);
-    executing.add(p);
-    p.finally(() => executing.delete(p));
-
-    if (executing.size >= limit) {
-      await Promise.race(executing);
-    }
-  }
-  return Promise.allSettled(results);
-}
-{
-
-  // همزمانی 2 تا (می‌تونی 3 هم بذاری)
-  await runWithLimit(tasks, 2);
-}
 function normalizeIdList(arr) {
   const a = Array.isArray(arr) ? arr : [];
   const out = [];
