@@ -4022,40 +4022,16 @@ onChange={(e) => {
 
   <FieldWrap>
 <input
-  ref={subjectRef}
-  value={currentSubject || ""}
+  value={getForm(formKind).subject ?? ""}
   onChange={(e) => {
-    // ✅ قبل از setState کرسر/انتخاب را ذخیره کن
-    subjectSelRef.current = {
-      s: e.target.selectionStart ?? 0,
-      e: e.target.selectionEnd ?? 0,
-    };
-
     setForm(formKind, { subject: e.target.value });
     clearFieldError(formKind, "subject");
-  }}
-  onSelect={(e) => {
-    subjectSelRef.current = {
-      s: e.target.selectionStart ?? 0,
-      e: e.target.selectionEnd ?? 0,
-    };
-  }}
-  onKeyUp={(e) => {
-    subjectSelRef.current = {
-      s: e.target.selectionStart ?? 0,
-      e: e.target.selectionEnd ?? 0,
-    };
-  }}
-  onMouseUp={(e) => {
-    subjectSelRef.current = {
-      s: e.target.selectionStart ?? 0,
-      e: e.target.selectionEnd ?? 0,
-    };
   }}
   className={inputWithError(inputCls, formKind, "subject")}
   aria-invalid={fieldHasError(formKind, "subject")}
   type="text"
 />
+
 
 
 <ErrorTextAbs kind={formKind} k="subject" />
