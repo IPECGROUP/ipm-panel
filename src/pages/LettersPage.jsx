@@ -658,7 +658,7 @@ async function patchLetterPrefs(patch) {
   if (!user?.id) return;
 
   try {
-    const raw = localStorage.getItem(activeFilterLsKey());
+    const raw = localStorage.getItem(activeFilterLsKey(user?.id));
     const parsed = raw ? JSON.parse(raw) : null;
     const ids = normalizeIdList(parsed?.ids || []).slice(0, TAG_PREFS_LIMIT);
     setFilterTagIds(ids); // ✅
@@ -697,7 +697,7 @@ useEffect(() => {
 
   try {
     const clean = normalizeIdList(filterTagIds).slice(0, TAG_PREFS_LIMIT);
-    localStorage.setItem(activeFilterLsKey(), JSON.stringify({ t: Date.now(), ids: clean }));
+   localStorage.setItem(activeFilterLsKey(user?.id), JSON.stringify({ t: Date.now(), ids: clean }));
   } catch {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [user?.id, filterTagIds]);
@@ -814,12 +814,12 @@ useLayoutEffect(() => {
   if (!el) return;
   if (document.activeElement !== el) return;
 
-  const { s, e } = subjectSelRef.current || {};
-  if (typeof s !== "number" || typeof e !== "number") return;
+  const { start, end } = subjectSelRef.current || {};
+if (typeof start !== "number" || typeof end !== "number") return;
 
-  try {
-    el.setSelectionRange(s, e);
-  } catch {}
+try {
+  el.setSelectionRange(start, end);
+} catch {}
 }, [formKind, incomingForm.subject, outgoingForm.subject, internalForm.subject]);
 
 // ✅ handler واحد برای subject
@@ -840,8 +840,8 @@ const onSubjectChange = (e) => {
     const inp = subjectRef.current;
     if (inp && document.activeElement === inp) {
       try {
-        const { s, e } = subjectSelRef.current || {};
-        inp.setSelectionRange(s ?? 0, e ?? 0);
+    const { start, end } = subjectSelRef.current || {};
+inp.setSelectionRange(start ?? 0, end ?? 0);
       } catch {}
     }
   });
@@ -1463,15 +1463,14 @@ const setFormTagsAndPersist = (which, ids) => {
 
 
 
-const activeFilterLsKey = (uid) =>
-  `letters_filter_active_global_v1:u${String(uid || "0")}`;
+function activeFilterLsKey(uid) {  `letters_filter_active_global_v1:u${String(uid || "0")}`;}
 
-const saveActiveFilterTags = (uid, ids) => {
+function saveActiveFilterTags(uid, ids) {
   try {
     const clean = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
     localStorage.setItem(activeFilterLsKey(uid), JSON.stringify({ t: Date.now(), ids: clean }));
   } catch {}
-};
+}
 const pinnedLsKey = (uid) => `letters_filter_pinned_v1:u${String(uid || "0")}`;
 
 const savePinnedFilterTags = async (ids) => {
@@ -1522,7 +1521,7 @@ useEffect(() => {
   loadPinnedFilterTags();
 }, [user?.id]);
 
-const loadActiveFilterTags = (uid) => {
+function loadActiveFilterTags(uid) {
   try {
     const raw = localStorage.getItem(activeFilterLsKey(uid));
     const parsed = raw ? JSON.parse(raw) : null;
@@ -1531,7 +1530,7 @@ const loadActiveFilterTags = (uid) => {
   } catch {
     setFilterTagIds([]);
   }
-};
+}
 
 useEffect(() => {
   if (!user?.id) return;
