@@ -515,6 +515,8 @@ async function uploadQueueInBackground({
 
 export default function LettersPage() {
 
+  const [projectCentersActive, setProjectCentersActive] = useState([]);
+const [projectCentersLoading, setProjectCentersLoading] = useState(false);
 // ✅ Validation (per tab)
 const [errorsByKind, setErrorsByKind] = useState({
   incoming: {},
@@ -710,6 +712,54 @@ async function patchLetterPrefs(patch) {
   }
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [user?.id]);
+
+useEffect(() => {
+  let alive = true;
+
+  (async () => {
+    setProjectCentersLoading(true);
+    try {
+      // ✅ دقیقا از همان مواردی که در DefineBudgetCentersPage ذخیره شده:
+      const r = await api("/centers/projects");
+      const items = Array.isArray(r?.items) ? r.items : [];
+
+      // ✅ فقط فعال‌ها (اگر فیلد فعال/غیرفعال وجود داشت)
+      // اگر بک‌اند فعلاً isActive ندارد، همه را می‌آورد (ولی اینجا ما فقط موارد معتبر را نگه می‌داریم)
+      const activeOnly = items
+        .filter((x) => x && typeof x === "object")
+        .filter((x) => x.isActive !== false && x.is_active !== false && x.active !== false)
+        .map((x) => {
+          const id = x.id ?? x.center_id ?? x.centerId ?? x.suffix; // fallback امن
+          const suffix = String(x.suffix ?? "").trim();
+          const desc = String(x.description ?? x.desc ?? x.title ?? "").trim();
+          return {
+            id: String(id),
+            // label نهایی داخل dropdown:
+            label: desc ? `${suffix} — ${desc}` : suffix,
+          };
+        })
+        .filter((x) => x.id && x.label);
+
+      // مرتب‌سازی
+      activeOnly.sort((a, b) =>
+        String(a.label).localeCompare(String(b.label), "fa", { numeric: true, sensitivity: "base" })
+      );
+
+      if (!alive) return;
+      setProjectCentersActive(activeOnly);
+    } catch {
+      if (!alive) return;
+      setProjectCentersActive([]);
+    } finally {
+      if (!alive) return;
+      setProjectCentersLoading(false);
+    }
+  })();
+
+  return () => {
+    alive = false;
+  };
+}, [api]);
 
 useEffect(() => {
   if (!user?.id) return;
@@ -3648,7 +3698,6 @@ aria-invalid={fieldHasError("incoming", "classification")}
 
 
   {/* مرکز/پروژه */}
-  {/* مرکز/پروژه */}
 <div className="shrink-0 w-[220px]">
   <div className={labelSmCls}>مرکز/پروژه</div>
 
@@ -3663,11 +3712,11 @@ className={formKind === "outgoing" ? inputWithError(inputSmCls, "outgoing", "pro
 aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "projectId") : undefined}
     >
       <option value=""></option>
-      {projectsTopOnly.map((p) => (
-        <option key={p.id} value={String(p.id)}>
-          {projectOptionLabel(p)}
-        </option>
-      ))}
+      {projectCentersActive.map((p) => (
+  <option key={String(p.id)} value={String(p.id)}>
+    {p.label}
+  </option>
+))}
     </select>
 
     {formKind === "outgoing" ? <ErrorTextAbs k="projectId" /> : null}
