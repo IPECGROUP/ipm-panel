@@ -3299,9 +3299,17 @@ const ensureTagsForKind = async (kind) => {
 
 useEffect(() => {
   if (!formOpen) return;
-  ensureTagsForKind("letters"); // ✅ همیشه letters
+
+  // ✅ برای اینکه برچسب‌ها در هر ۳ تب همیشه دیده شوند
+  Promise.all([
+    ensureTagsForKind("letters"),
+    ensureTagsForKind("projects"),
+    ensureTagsForKind("execution"),
+  ]);
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [formOpen]);
+
 
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
@@ -4371,62 +4379,62 @@ aria-invalid={fieldHasError(formKind, "subject")}
   <FieldWrap>
     <div className="w-full min-w-0 flex flex-wrap items-center gap-2">
       {(() => {
-       const scope =
-  formKind === "outgoing" ? "projects" :
-  "letters"; // ✅ داخلی هم letters
        const selectedIds =
-  formKind === "outgoing" ? (Array.isArray(outgoingTagIds) ? outgoingTagIds : [])
-  : formKind === "internal" ? (Array.isArray(internalTagIds) ? internalTagIds : [])
-  : (Array.isArray(incomingTagIds) ? incomingTagIds : []);
+  formKind === "outgoing"
+    ? (Array.isArray(outgoingTagIds) ? outgoingTagIds : [])
+    : formKind === "internal"
+    ? (Array.isArray(internalTagIds) ? internalTagIds : [])
+    : (Array.isArray(incomingTagIds) ? incomingTagIds : []);
 
-        const pool = Array.isArray(tagsByScope?.[scope]) ? tagsByScope[scope] : [];
+const ids = (Array.isArray(selectedIds) ? selectedIds : []).map((x) => String(x)).filter(Boolean);
 
-        const selSet = new Set(selectedIds.map(String));
-        const selectedObjs = pool.filter((t) => selSet.has(String(t?.id)));
+// ✅ همیشه از tagById (ترکیب هر ۳ اسکوپ) استفاده کن
+const selectedObjs = ids.map((id) => {
+  const t = tagById.get(String(id));
+  return t ? t : { id: String(id), label: `برچسب (${toFaDigits(id)})`, _missing: true };
+});
 
-        if (selectedObjs.length === 0) return null;
+if (!selectedObjs.length) return null;
 
-        return selectedObjs.map((t) => {
-          const id = String(t?.id);
-          const label = tagLabelOf(t);
+return selectedObjs.map((t) => {
+  const id = String(t?.id);
+  const label = tagLabelOf(t);
 
-          return (
-            <button
-              key={id}
-              type="button"
-           onClick={() => {
-  const sid = String(id || "").trim();
-  if (!sid) return;
+  return (
+    <button
+      key={id}
+      type="button"
+      onClick={() => {
+        const sid = String(id || "").trim();
+        if (!sid) return;
 
-  if (formKind === "incoming") {
-    setIncomingTagIds(prev => {
-      const base = Array.isArray(prev) ? prev.map(String) : [];
-      return base.includes(sid) ? base.filter(x => x !== sid) : [...base, sid];
-    });
-  } else if (formKind === "outgoing") {
-    setOutgoingTagIds(prev => {
-      const base = Array.isArray(prev) ? prev.map(String) : [];
-      return base.includes(sid) ? base.filter(x => x !== sid) : [...base, sid];
-    });
-  } else {
-    setInternalTagIds(prev => {
-      const base = Array.isArray(prev) ? prev.map(String) : [];
-      return base.includes(sid) ? base.filter(x => x !== sid) : [...base, sid];
-    });
-  }
+        if (formKind === "incoming") {
+          setIncomingTagIds((prev) => {
+            const base = Array.isArray(prev) ? prev.map(String) : [];
+            return base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
+          });
+        } else if (formKind === "outgoing") {
+          setOutgoingTagIds((prev) => {
+            const base = Array.isArray(prev) ? prev.map(String) : [];
+            return base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
+          });
+        } else {
+          setInternalTagIds((prev) => {
+            const base = Array.isArray(prev) ? prev.map(String) : [];
+            return base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
+          });
+        }
 
-  clearFieldError("formTags");
-}}
-
-
-              className={selectedTagChipCls + " shrink-0"}
-              title={label}
-              aria-label={label}
-            >
-              <span className="truncate max-w-[220px]">{label}</span>
-            </button>
-          );
-        });
+        clearFieldError("formTags");
+      }}
+      className={selectedTagChipCls + " shrink-0" + (t?._missing ? " opacity-70" : "")}
+      title={label}
+      aria-label={label}
+    >
+      <span className="truncate max-w-[220px]">{label}</span>
+    </button>
+  );
+});
       })()}
 
       <button
@@ -4863,6 +4871,37 @@ const rowBg = isConf ? confRowBg : normalRowBg;
 
 
                             <InfoRow label="موضوع" value={viewLetter ? String(subjectOf(viewLetter) || "") : ""} />
+                            <InfoRow
+  label="برچسب‌ها"
+  value={(() => {
+    const ids = normalizeIdList(viewLetter?.tag_ids ?? viewLetter?.tagIds ?? viewLetter?.tag_ids?.split?.(",") ?? []);
+    if (!ids.length) return "—";
+
+    const items = ids.map((id) => {
+      const t = tagById.get(String(id));
+      return t ? t : { id: String(id), label: `برچسب (${toFaDigits(id)})`, _missing: true };
+    });
+
+    return (
+      <div className="flex flex-wrap gap-1 justify-start">
+        {items.map((t) => (
+          <span
+            key={String(t.id)}
+            className={
+              "px-2 py-1 rounded-lg text-xs border " +
+              (theme === "dark" ? "border-white/15 bg-white/5" : "border-black/10 bg-black/[0.02]") +
+              (t._missing ? " opacity-70" : "")
+            }
+            title={tagLabelOf(t)}
+          >
+            {tagLabelOf(t)}
+          </span>
+        ))}
+      </div>
+    );
+  })()}
+/>
+
                              {viewLetter && letterKindOf(viewLetter) === "internal" ? (
   <InfoRow
     label="واحد"
