@@ -463,14 +463,7 @@ async function runWithLimit(tasks, limit = 2) {
   }
   return Promise.allSettled(results);
 }
-
-async function uploadQueueInBackground({
-  kind,
-  queue,
-  letterId,
-  uploadFileToLetter,
-  setDocFilesFor,
-}) {
+{
   const tasks = queue.map((f) => async () => {
     const fileToSend = f.optimizedFile || f.file;
 
@@ -481,7 +474,7 @@ async function uploadQueueInBackground({
     );
 
     try {
-      const onProg = makeProgressUpdater(setDocFilesFor, kind, f.id);
+     const onProg = makeProgressUpdater(kind, f.id);
 
       const res = await uploadFileToLetter(fileToSend, letterId, onProg);
 
