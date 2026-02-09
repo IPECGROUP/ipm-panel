@@ -633,7 +633,30 @@ useEffect(() => {
 }, [relatedPickQuery, relatedPickOpen]);
   const [filterQuery, setFilterQuery] = useState("");
   const { user } = useAuth();
-  
+
+const usernameNorm = (v) =>
+  String(v ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "");
+
+const canDeleteAllLetters = useMemo(() => {
+  const u = user || {};
+
+  // هر چیزی که ممکنه بک‌اند بعنوان username بده
+  const candidates = [
+    u.username,
+    u.user_name,
+    u.login,
+    u.name,
+    u.full_name,
+    u.displayName,
+  ].map(usernameNorm).filter(Boolean);
+
+  // ✅ فقط این اکانت
+  return candidates.includes("marandi") || candidates.includes("marandi1234");
+}, [user]);
+
    const loggedInUserName = useMemo(() => {
     const u = user || {};
     return String(
