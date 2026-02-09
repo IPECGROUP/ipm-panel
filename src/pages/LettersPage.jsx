@@ -390,7 +390,8 @@ const computeNextAutoCode = ({ kind, projectId, letters, projectsTopOnly }) => {
   const pcode = getProjectCode(projectId, projectsTopOnly);
   if (!pcode) return ""; // تا پروژه انتخاب نشده، کد نساز
 
-  const startByYear = (yy === "04" ? 10700 : 10000);
+const startByYear = (yy === "04" ? 10521 : 10000);
+
 
   let maxSeq = 0;
 
@@ -2095,7 +2096,6 @@ useEffect(() => {
 
   if (!code) return;
 
-  // وارده: شماره ثبت دبیرخانه
  // ✅ در هر سه تب: کد داخل "شماره ثبت دبیرخانه" پر شود
 if (formKind === "incoming") {
   setIncomingSecretariatNo(code);
