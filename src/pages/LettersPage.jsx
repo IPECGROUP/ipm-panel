@@ -473,11 +473,6 @@ const TAG_PREFS_LIMIT = 24;
 
 export default function LettersPage() {
 
-const canDeleteAllLetters = useMemo(() => {
-  const uname = String(loggedInUserName || "").trim().toLowerCase().replace(/\s+/g, "");
-  return uname === "marandi1234"; // فقط همین یوزر
-}, [loggedInUserName]);
-
   // طبقه بندی (عادی/محرمانه)
 
   const [projects, setProjects] = useState([]);
@@ -896,6 +891,11 @@ const myUnitsFromUser = useMemo(() => {
     [];
   return arr;
 }, [user]);
+
+const canDeleteAllLetters = useMemo(() => {
+  const uname = String(loggedInUserName || "").trim().toLowerCase().replace(/\s+/g, "");
+  return uname === "marandi1234"; // فقط همین یوزر
+}, [loggedInUserName]);
 
 const unitOptions = useMemo(() => {
   const map = new Map();
