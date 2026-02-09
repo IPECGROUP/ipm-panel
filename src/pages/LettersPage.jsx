@@ -836,8 +836,13 @@ const [internalForm, setInternalForm] = useState({
 });
 
 // ✅ helpers
-const getForm = (kind) =>
-  kind === "outgoing" ? outgoingForm : kind === "internal" ? internalForm : incomingForm;
+function getForm(kind, incomingForm, outgoingForm, internalForm) {
+  return kind === "outgoing"
+    ? outgoingForm
+    : kind === "internal"
+    ? internalForm
+    : incomingForm;
+}
 
 const setForm = (kind, patch) => {
   if (kind === "outgoing") setOutgoingForm((p) => ({ ...p, ...patch }));
