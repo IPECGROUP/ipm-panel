@@ -467,6 +467,8 @@ function normalizeIdList(arr) {
   }
   return out;
 }
+
+const TAG_PREFS_LIMIT = 24;
 export default function LettersPage() {
 
 
@@ -1371,7 +1373,7 @@ const [filterTagPinnedIds, setFilterTagPinnedIds] = useState([]); // ✅ برچ�
 
 // ===== Per-user pinned tags for filter (NO localStorage) =====
 const TAG_PREFS_SCOPE = "letters_filter"; // اسم کلید برای بک‌اند (بعداً هم همینو استفاده می‌کنیم)
-const TAG_PREFS_LIMIT = 24;
+
 
 const tagPrefsLsKey = (scope) => `tag_prefs_v1:${scope}:u${String(user?.id || "0")}`;
 
