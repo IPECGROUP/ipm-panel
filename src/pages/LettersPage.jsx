@@ -464,43 +464,6 @@ async function runWithLimit(tasks, limit = 2) {
   return Promise.allSettled(results);
 }
 {
-  const tasks = queue.map((f) => async () => {
-    const fileToSend = f.optimizedFile || f.file;
-
-    setDocFilesFor(kind, (prev) =>
-      prev.map((x) =>
-        x.id === f.id ? { ...x, status: "uploading", progress: 0, error: "" } : x
-      )
-    );
-
-    try {
-     const onProg = makeProgressUpdater(kind, f.id);
-
-      const res = await uploadFileToLetter(fileToSend, letterId, onProg);
-
-      setDocFilesFor(kind, (prev) =>
-        prev.map((x) =>
-          x.id === f.id
-            ? {
-                ...x,
-                status: "done",
-                progress: 100,
-                serverId: res?.item?.id ?? res?.id ?? x.serverId,
-                url: res?.item?.url ?? res?.url ?? x.url,
-              }
-            : x
-        )
-      );
-    } catch (e) {
-      setDocFilesFor(kind, (prev) =>
-        prev.map((x) =>
-          x.id === f.id
-            ? { ...x, status: "error", error: e?.message || "خطا در آپلود فایل." }
-            : x
-        )
-      );
-    }
-  });
 
   // همزمانی 2 تا (می‌تونی 3 هم بذاری)
   await runWithLimit(tasks, 2);
@@ -3666,7 +3629,7 @@ aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "category") : 
       <option value="سایر">سایر</option>
     </select>
 
-    {formKind === "outgoing" ? <ErrorTextAbs k="category" /> : null}
+   {formKind === "outgoing" ? <ErrorTextAbs kind="outgoing" k="category" /> : null}
   </FieldWrap>
 </div>
 
