@@ -3633,7 +3633,7 @@ className={formKind === "outgoing" ? inputWithError(inputSmCls, "outgoing", "pro
 aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "projectId") : undefined}
     >
       <option value=""></option>
-      {projectCentersActive.map((p) => (
+  {projectCentersActive.map((p) => (
   <option key={String(p.id)} value={String(p.id)}>
     {p.label}
   </option>
