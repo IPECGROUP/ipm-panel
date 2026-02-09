@@ -1063,7 +1063,6 @@ const [docClassOtherText, setDocClassOtherText] = useState("");
 // طبقه بندی (عادی/محرمانه)
 
   const [projects, setProjects] = useState([]);
-  const [hasAttachment, setHasAttachment] = useState(false);
   const [incomingAttachmentTitle, setIncomingAttachmentTitle] = useState("");
   const [outgoingAttachmentTitle, setOutgoingAttachmentTitle] = useState("");
   const [internalAttachmentTitle, setInternalAttachmentTitle] = useState("");
