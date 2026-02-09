@@ -515,6 +515,23 @@ async function uploadQueueInBackground({
 
 export default function LettersPage() {
 
+  const subjectRef = useRef(null);
+const subjectSelRef = useRef({ s: 0, e: 0 });
+
+// هر بار مقدار subject عوض شد، فوکوس/کرسر را برگردان (اگر همین input فوکوس داشته)
+useLayoutEffect(() => {
+  const el = subjectRef.current;
+  if (!el) return;
+
+  // فقط وقتی همین input قبلاً فوکوس داشت
+  if (document.activeElement !== el) return;
+
+  const { s, e } = subjectSelRef.current || {};
+  try {
+    el.setSelectionRange(s ?? 0, e ?? 0);
+  } catch {}
+}, [formKind, getForm(formKind).subject]); // اگر ESLint گیر داد، پایین‌تر نسخه امن‌تر نوشتم
+
   const [projectCentersActive, setProjectCentersActive] = useState([]);
 const [projectCentersLoading, setProjectCentersLoading] = useState(false);
 // ✅ Validation (per tab)
@@ -3914,20 +3931,19 @@ onChange={(e) => {
       <div className={labelCls}>موضوع</div>
 
       <FieldWrap>
-        <input
+      <input
   value={internalForm.subject}
   onChange={(e) => {
     setInternalForm((p) => ({ ...p, subject: e.target.value }));
-  }}
-  onBlur={() => {
-    clearFieldError("internal", "subject");
+    clearFieldError("internal", "subject");   // ✅ همین
   }}
   className={inputWithError(inputCls, "internal", "subject")}
   aria-invalid={fieldHasError("internal", "subject")}
   type="text"
 />
+<ErrorTextAbs kind="internal" k="subject" />
 
-        <ErrorTextAbs k="subject" />
+
       </FieldWrap>
     </div>
 
@@ -3991,18 +4007,18 @@ onChange={(e) => {
   <div className={labelCls}>موضوع</div>
 
   <FieldWrap>
-    <input
+<input
+  ref={subjectRef}
   value={getForm(formKind).subject || ""}
   onChange={(e) => {
     setForm(formKind, { subject: e.target.value });
-  }}
-  onBlur={() => {
-    clearFieldError(formKind, "subject");
+    clearFieldError(formKind, "subject"); // ✅ همینجا
   }}
   className={inputWithError(inputCls, formKind, "subject")}
   aria-invalid={fieldHasError(formKind, "subject")}
   type="text"
 />
+
 
 <ErrorTextAbs kind={formKind} k="subject" />
   </FieldWrap>
