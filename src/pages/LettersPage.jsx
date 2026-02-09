@@ -845,11 +845,15 @@ const currentSubject =
 useLayoutEffect(() => {
   const el = subjectRef.current;
   if (!el) return;
-  if (document.activeElement !== el) return;
+  if (document.activeElement !== el) return; // فقط وقتی فوکوس روی خود input است
 
   const { s, e } = subjectSelRef.current || {};
-  try { el.setSelectionRange(s ?? 0, e ?? 0); } catch {}
-}, [formKind, currentSubject]);   // ✅ فقط همین
+  if (typeof s !== "number" || typeof e !== "number") return;
+
+  try {
+    el.setSelectionRange(s, e);
+  } catch {}
+}, [formKind, incomingForm.subject, outgoingForm.subject, internalForm.subject]);
 
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFor, setUploadFor] = useState("incoming");
