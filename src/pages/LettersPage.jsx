@@ -633,6 +633,20 @@ useEffect(() => {
 }, [relatedPickQuery, relatedPickOpen]);
   const [filterQuery, setFilterQuery] = useState("");
   const { user } = useAuth();
+  
+   const loggedInUserName = useMemo(() => {
+    const u = user || {};
+    return String(
+  u?.name ||
+    u?.full_name ||
+    u?.displayName ||
+    u?.user_name ||
+    u?.username ||
+    u?.login ||
+    ""
+).trim();
+  }, [user]);
+
 const userId = String(user?.id || "0");
  const [filterTab, setFilterTab] = useState("all"); // اول این
  const [filterTagIds, setFilterTagIds] = useState([]); // ✅ global
@@ -976,19 +990,7 @@ const resolveFileUrl = (u) => {
 };
 
 
-  const loggedInUserName = useMemo(() => {
-    const u = user || {};
-    return String(
-  u?.name ||
-    u?.full_name ||
-    u?.displayName ||
-    u?.user_name ||
-    u?.username ||
-    u?.login ||
-    ""
-).trim();
-  }, [user]);
-
+ 
   // ✅ فقط این دو نفر + نقش admin دسترسی محرمانه دارند
 const PRIV_USERS = new Set(["marandi1234", "rastegar"]);
 
