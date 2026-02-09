@@ -833,6 +833,7 @@ const getForm = (kind) => {
   if (kind === "internal") return internalForm;
   return incomingForm;
 };
+
 const subjectRef = useRef(null);
 const subjectSelRef = useRef({ s: 0, e: 0 });
 
@@ -848,7 +849,7 @@ useLayoutEffect(() => {
 
   const { s, e } = subjectSelRef.current || {};
   try { el.setSelectionRange(s ?? 0, e ?? 0); } catch {}
-}, [formKind, getForm(formKind).subject]);
+}, [formKind, currentSubject]);   // ✅ فقط همین
 
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFor, setUploadFor] = useState("incoming");
@@ -4018,10 +4019,34 @@ onChange={(e) => {
   <FieldWrap>
 <input
   ref={subjectRef}
-  value={getForm(formKind).subject || ""}
+  value={currentSubject || ""}
   onChange={(e) => {
+    // ✅ قبل از setState کرسر/انتخاب را ذخیره کن
+    subjectSelRef.current = {
+      s: e.target.selectionStart ?? 0,
+      e: e.target.selectionEnd ?? 0,
+    };
+
     setForm(formKind, { subject: e.target.value });
-    clearFieldError(formKind, "subject"); // ✅ همینجا
+    clearFieldError(formKind, "subject");
+  }}
+  onSelect={(e) => {
+    subjectSelRef.current = {
+      s: e.target.selectionStart ?? 0,
+      e: e.target.selectionEnd ?? 0,
+    };
+  }}
+  onKeyUp={(e) => {
+    subjectSelRef.current = {
+      s: e.target.selectionStart ?? 0,
+      e: e.target.selectionEnd ?? 0,
+    };
+  }}
+  onMouseUp={(e) => {
+    subjectSelRef.current = {
+      s: e.target.selectionStart ?? 0,
+      e: e.target.selectionEnd ?? 0,
+    };
   }}
   className={inputWithError(inputCls, formKind, "subject")}
   aria-invalid={fieldHasError(formKind, "subject")}
