@@ -835,7 +835,8 @@ const getForm = (kind) => {
 };
 
 const subjectRef = useRef(null);
-const subjectSelRef = useRef({ s: 0, e: 0 });
+const subjectSelRef = useRef({ start: 0, end: 0 });
+const subjectFocusedRef = useRef(false);
 
 // ✅ value واحد برای input
 const currentSubject =
@@ -846,10 +847,36 @@ const currentSubject =
 // ✅ ذخیره‌ی selection قبل از setState
 const rememberSubjectSel = (el) => {
   if (!el) return;
-  const s = typeof el.selectionStart === "number" ? el.selectionStart : 0;
-  const e = typeof el.selectionEnd === "number" ? el.selectionEnd : s;
-  subjectSelRef.current = { s, e };
+  const start = typeof el.selectionStart === "number" ? el.selectionStart : 0;
+  const end = typeof el.selectionEnd === "number" ? el.selectionEnd : start;
+  subjectSelRef.current = { start, end };
 };
+
+const onSubjectFocus = () => {
+  subjectFocusedRef.current = true;
+};
+
+const onSubjectBlur = () => {
+  subjectFocusedRef.current = false;
+};
+
+
+useLayoutEffect(() => {
+  const el = subjectRef.current;
+  if (!el) return;
+
+  // فقط وقتی خودِ subject فوکوس داشته
+  if (!subjectFocusedRef.current) return;
+
+  // فوکوس و کرسر رو بعد از رندر برگردون
+  el.focus({ preventScroll: true });
+
+  const { start, end } = subjectSelRef.current || { start: 0, end: 0 };
+  try {
+    el.setSelectionRange(start, end);
+  } catch {}
+}, [currentSubject]);
+
 
 // ✅ وقتی state عوض شد و هنوز فوکوس روی همون input هست، selection برگرده
 useLayoutEffect(() => {
@@ -4061,6 +4088,8 @@ onChange={(e) => {
   ref={subjectRef}
   value={currentSubject}
   onChange={onSubjectChange}
+  onFocus={onSubjectFocus}
+  onBlur={onSubjectBlur}
   onSelect={(e) => rememberSubjectSel(e.target)}
   onKeyUp={(e) => rememberSubjectSel(e.target)}
   className={inputWithError(inputCls, formKind, "subject")}
