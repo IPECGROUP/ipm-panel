@@ -4394,31 +4394,30 @@ aria-invalid={fieldHasError(formKind, "subject")}
             <button
               key={id}
               type="button"
-              onClick={() => {
+           onClick={() => {
   const sid = String(id || "").trim();
   if (!sid) return;
- const toggleFormTag = (sid) => {
+
   if (formKind === "incoming") {
-    setIncomingTagIds((prev) => {
+    setIncomingTagIds(prev => {
       const base = Array.isArray(prev) ? prev.map(String) : [];
-      return base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
+      return base.includes(sid) ? base.filter(x => x !== sid) : [...base, sid];
     });
   } else if (formKind === "outgoing") {
-    setOutgoingTagIds((prev) => {
+    setOutgoingTagIds(prev => {
       const base = Array.isArray(prev) ? prev.map(String) : [];
-      return base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
+      return base.includes(sid) ? base.filter(x => x !== sid) : [...base, sid];
     });
   } else {
-    setInternalTagIds((prev) => {
+    setInternalTagIds(prev => {
       const base = Array.isArray(prev) ? prev.map(String) : [];
-      return base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
+      return base.includes(sid) ? base.filter(x => x !== sid) : [...base, sid];
     });
   }
-  clearFieldError("formTags");
-};
 
   clearFieldError("formTags");
 }}
+
 
               className={selectedTagChipCls + " shrink-0"}
               title={label}
@@ -4848,72 +4847,20 @@ const rowBg = isConf ? confRowBg : normalRowBg;
 />
 
 
-<InfoRow
-  label={
-    viewLetter
-      ? (() => {
-          const k = letterKindOf(viewLetter);
-          if (k === "incoming") return "از";
-          if (k === "outgoing") return "به";     // ✅ صادره فقط به
-          return "از / به";                       // ✅ داخلی مثل قبل
-        })()
-      : "از / به"
-  }
-  value={
-    viewLetter
-      ? (() => {
-          const k = letterKindOf(viewLetter);
-          const a = String(viewLetter?.from_name ?? viewLetter?.fromName ?? viewLetter?.from ?? "").trim();
-          const b = String(viewLetter?.to_name ?? viewLetter?.toName ?? viewLetter?.to ?? "").trim();
-
-          if (k === "incoming") {
-            const s = `${a}${a && b ? " - " : ""}${b}`.trim();
-            return s || "—";
-          }
-
-          if (k === "outgoing") {
-            // ✅ فقط "به" + آیکن
-            return (
-              <span className="inline-flex items-center gap-2">
-                <img src="/images/icons/arrow-left.svg" alt="" className={"w-4 h-4 " + (theme === "dark" ? "invert" : "")} />
-                <span>{b || "—"}</span>
-              </span>
-            );
-          }
-
-          const s = `${a}${a && b ? " / " : ""}${b}`.trim();
-          return s || "—";
-        })()
-      : "—"
-  }
-/>
-
-{viewLetter && letterKindOf(viewLetter) === "internal" && (
+{viewLetter && letterKindOf(viewLetter) !== "internal" && (
   <InfoRow
-    label="بازگشت به"
-    value={
-      viewLetter
-        ? (() => {
-            const ids = Array.isArray(viewLetter?.return_to_ids)
-              ? viewLetter.return_to_ids
-              : Array.isArray(viewLetter?.returnToIds)
-              ? viewLetter.returnToIds
-              : [];
-            if (!ids.length) return "—";
-            const map = new Map((Array.isArray(myLetters) ? myLetters : []).map((x) => [String(letterIdOf(x)), x]));
-            const labels = ids
-              .map((x) => String(x))
-              .filter(Boolean)
-              .map((sid) => {
-                const it = map.get(sid);
-                return it ? String(it?.letter_no || sid) : sid;
-              });
-            return labels.join("، ");
-          })()
-        : ""
-    }
+    label={letterKindOf(viewLetter) === "incoming" ? "از / به" : "به"}
+    value={(() => {
+      const k = letterKindOf(viewLetter);
+      const a = String(viewLetter?.from_name ?? viewLetter?.fromName ?? "").trim();
+      const b = String(viewLetter?.to_name ?? viewLetter?.toName ?? "").trim();
+
+      if (k === "incoming") return `${a}${a && b ? " - " : ""}${b}`.trim() || "—";
+      return b || "—"; // outgoing
+    })()}
   />
 )}
+
 
                             <InfoRow label="موضوع" value={viewLetter ? String(subjectOf(viewLetter) || "") : ""} />
                              {viewLetter && letterKindOf(viewLetter) === "internal" ? (
@@ -4963,15 +4910,50 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                             <InfoRow label="ضمیمه" value={viewHasAttachment ? "دارد" : "ندارد"} />
  <InfoRow
   label={
-    viewLetter
-      ? (() => {
-          const k = letterKindOf(viewLetter);
-          if (k === "incoming") return "نامه های مرتبط";
-          if (k === "outgoing") return "نامه های مرتبط"; // ✅ صادره هم
-          return "پیرو";                                   // ✅ داخلی مثل قبل
-        })()
-      : "پیرو"
-  }
+  {viewLetter && letterKindOf(viewLetter) !== "internal" && (
+  <InfoRow
+    label="نامه های مرتبط"
+    value={(() => {
+      const ids = Array.isArray(viewLetter?.piro_ids)
+        ? viewLetter.piro_ids
+        : Array.isArray(viewLetter?.piroIds)
+        ? viewLetter.piroIds
+        : [];
+
+      const clean = ids.map((x) => String(x)).filter(Boolean);
+      if (!clean.length) return "—";
+
+      const map = new Map(
+        (Array.isArray(myLetters) ? myLetters : []).map((x) => [String(letterIdOf(x)), x])
+      );
+
+      return (
+        <div className="flex flex-wrap gap-2">
+          {clean.map((sid) => {
+            const it = map.get(sid);
+            const no = String(it?.letter_no || it?.letterNo || sid);
+
+            return (
+              <button
+                key={sid}
+                type="button"
+                onClick={() => { if (it) openView(it); }}
+                className={
+                  "underline underline-offset-4 font-semibold " +
+                  (theme === "dark" ? "text-white hover:text-white/90" : "text-neutral-900 hover:text-black")
+                }
+                title="پیش نمایش"
+              >
+                {toFaDigits(no)}
+              </button>
+            );
+          })}
+        </div>
+      );
+    })()}
+  />
+)}
+
   value={
     viewLetter
       ? (() => {
