@@ -3915,15 +3915,18 @@ onChange={(e) => {
 
       <FieldWrap>
         <input
-          value={internalForm.subject}
-          onChange={(e) => {
-            setInternalForm((p) => ({ ...p, subject: e.target.value }));
-            clearFieldError("subject");
-          }}
-          className={inputWithError(inputCls, "internal", "subject")}
-          aria-invalid={fieldHasError("internal", "subject")}
-          type="text"
-        />
+  value={internalForm.subject}
+  onChange={(e) => {
+    setInternalForm((p) => ({ ...p, subject: e.target.value }));
+  }}
+  onBlur={() => {
+    clearFieldError("internal", "subject");
+  }}
+  className={inputWithError(inputCls, "internal", "subject")}
+  aria-invalid={fieldHasError("internal", "subject")}
+  type="text"
+/>
+
         <ErrorTextAbs k="subject" />
       </FieldWrap>
     </div>
@@ -3992,12 +3995,15 @@ onChange={(e) => {
   value={getForm(formKind).subject || ""}
   onChange={(e) => {
     setForm(formKind, { subject: e.target.value });
-clearFieldError(formKind, "subject");
+  }}
+  onBlur={() => {
+    clearFieldError(formKind, "subject");
   }}
   className={inputWithError(inputCls, formKind, "subject")}
-aria-invalid={fieldHasError(formKind, "subject")}
+  aria-invalid={fieldHasError(formKind, "subject")}
   type="text"
 />
+
 <ErrorTextAbs kind={formKind} k="subject" />
   </FieldWrap>
 </div>
