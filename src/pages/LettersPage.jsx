@@ -515,26 +515,6 @@ async function uploadQueueInBackground({
 
 export default function LettersPage() {
 
-  const subjectRef = useRef(null);
-const subjectSelRef = useRef({ s: 0, e: 0 });
-const currentSubject =
-  formKind === "outgoing" ? outgoingForm.subject :
-  formKind === "internal" ? internalForm.subject :
-  incomingForm.subject;
-
-// هر بار مقدار subject عوض شد، فوکوس/کرسر را برگردان (اگر همین input فوکوس داشته)
-useLayoutEffect(() => {
-  const el = subjectRef.current;
-  if (!el) return;
-
-  // فقط وقتی همین input قبلاً فوکوس داشت
-  if (document.activeElement !== el) return;
-
-  const { s, e } = subjectSelRef.current || {};
-  try {
-    el.setSelectionRange(s ?? 0, e ?? 0);
-  } catch {}
-}, [formKind, getForm(formKind).subject]); // اگر ESLint گیر داد، پایین‌تر نسخه امن‌تر نوشتم
 
   const [projectCentersActive, setProjectCentersActive] = useState([]);
 const [projectCentersLoading, setProjectCentersLoading] = useState(false);
@@ -846,6 +826,29 @@ const setForm = (kind, patch) => {
   else if (kind === "internal") setInternalForm((p) => ({ ...p, ...patch }));
   else setIncomingForm((p) => ({ ...p, ...patch }));
 };
+
+
+const getForm = (kind) => {
+  if (kind === "outgoing") return outgoingForm;
+  if (kind === "internal") return internalForm;
+  return incomingForm;
+};
+const subjectRef = useRef(null);
+const subjectSelRef = useRef({ s: 0, e: 0 });
+
+const currentSubject =
+  formKind === "outgoing" ? outgoingForm.subject :
+  formKind === "internal" ? internalForm.subject :
+  incomingForm.subject;
+
+useLayoutEffect(() => {
+  const el = subjectRef.current;
+  if (!el) return;
+  if (document.activeElement !== el) return;
+
+  const { s, e } = subjectSelRef.current || {};
+  try { el.setSelectionRange(s ?? 0, e ?? 0); } catch {}
+}, [formKind, getForm(formKind).subject]);
 
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFor, setUploadFor] = useState("incoming");
