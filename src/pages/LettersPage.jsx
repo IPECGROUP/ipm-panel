@@ -17,7 +17,7 @@ const TABS = [
   { id: "all", label: "همه" },
   { id: "incoming", label: "وارده", icon: "/images/icons/varede.svg" },
   { id: "outgoing", label: "صادره", icon: "/images/icons/sadere.svg" },
-  { id: "internal", label: "داخلی", icon: "/images/icons/dakheli.svg" },
+ { id: "internal", label: "داخلی", icon: "/images/icons/dakheli.svg" }
 ];
 
 const FILTER_ACTIVE_SCOPE = "letters_filter_active";
@@ -3596,10 +3596,11 @@ useEffect(() => {
 
   <FieldWrap>
     <select
-      value={outgoingForm.category}
+    value={getForm(formKind).category || ""}
 onChange={(e) => {
-  setOutgoingForm((p) => ({ ...p, category: e.target.value }));
+  setForm(formKind, { category: e.target.value });
   if (formKind === "outgoing") clearFieldError("outgoing", "category");
+  if (formKind === "internal") clearFieldError("internal", "category");
 }}
       className={formKind === "outgoing" ? inputWithError(inputSmCls, "outgoing", "category") : inputSmCls}
 aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "category") : undefined}
@@ -3980,6 +3981,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
 <div className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-1 items-start">
 
 {/* اسناد مرتبط + بارگذاری اسناد (کنار هم و چسبیده) */}
+{formKind !== "internal" && (
 <div className="md:col-span-12 min-w-0">
   <div className="flex items-start justify-start gap-2">
     {/* اسناد مرتبط */}
@@ -4100,7 +4102,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
 </div>
   </div>
 </div>
-
+)}
 {relatedPickOpen &&
   createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
@@ -4368,11 +4370,9 @@ aria-invalid={fieldHasError(formKind, "subject")}
   <FieldWrap>
     <div className="w-full min-w-0 flex flex-wrap items-center gap-2">
       {(() => {
-        const scope =
-          formKind === "outgoing" ? "projects" :
-          formKind === "internal" ? "execution" :
-          "letters";
-
+       const scope =
+  formKind === "outgoing" ? "projects" :
+  "letters"; // ✅ داخلی هم letters
        const selectedIds =
   formKind === "outgoing" ? (Array.isArray(outgoingTagIds) ? outgoingTagIds : [])
   : formKind === "internal" ? (Array.isArray(internalTagIds) ? internalTagIds : [])
@@ -4820,7 +4820,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
           const k = letterKindOf(viewLetter);
           if (k === "incoming") return "کلاس سند";
           if (k === "outgoing") return "کلاس سند";   // ✅ فقط برای صادره هم کلاس سند
-          return "دسته بندی";                         // ✅ داخلی مثل قبل
+          return "کلاس سند";
         })()
       : "دسته بندی"
   }
@@ -4830,10 +4830,10 @@ const rowBg = isConf ? confRowBg : normalRowBg;
 
                            <InfoRow
   label={
-    viewLetter && letterKindOf(viewLetter) === "outgoing"
-      ? "مرکز/پروژه"
-      : "پروژه"
-  }
+  viewLetter && (["outgoing","incoming","internal"].includes(letterKindOf(viewLetter)))
+    ? "مرکز/پروژه"
+    : "پروژه"
+}
   value={
     viewLetter && (viewLetter?.project_id ?? viewLetter?.projectId)
       ? (() => {
@@ -4915,39 +4915,52 @@ const rowBg = isConf ? confRowBg : normalRowBg;
 )}
 
                             <InfoRow label="موضوع" value={viewLetter ? String(subjectOf(viewLetter) || "") : ""} />
-                              {viewLetter && (letterKindOf(viewLetter) === "incoming" || letterKindOf(viewLetter) === "outgoing") && (
-                                <InfoRow
-                                  label="برچسب"
-                                  value={(() => {
-                                    const ids = Array.isArray(viewLetter?.tag_ids)
-                                      ? viewLetter.tag_ids
-                                      : Array.isArray(viewLetter?.tagIds)
-                                      ? viewLetter.tagIds
-                                      : [];
-
-                                    const clean = ids.map((x) => String(x)).filter(Boolean);
-                                    if (!clean.length) return "—";
-
-                                    const labels = clean
-                                      .map((id) => tagById.get(id))
-                                      .filter(Boolean)
-                                      .map((t) => tagLabelOf(t));
-
-                                    return labels.length ? labels.join("، ") : "—";
-                                  })()}
-                                />
-                              )}
-
-
-                            <InfoRow label="ضمیمه" value={viewHasAttachment ? "دارد" : "ندارد"} />
-                           {viewLetter && letterKindOf(viewLetter) === "internal" && (
+                             {viewLetter && letterKindOf(viewLetter) === "internal" ? (
   <InfoRow
-    label="شرکت/سازمان"
-    value={viewLetter ? String(viewLetter?.org_name ?? viewLetter?.orgName ?? viewLetter?.org ?? "") : ""}
+    label="واحد"
+    value={(() => {
+      // 1) اگر unit_id دارید:
+      const uid = String(viewLetter?.unit_id ?? viewLetter?.unitId ?? "").trim();
+      if (uid) {
+        const u = (Array.isArray(unitOptions) ? unitOptions : []).find(x => String(x.id) === uid);
+        return u?.label || uid;
+      }
+
+      // 2) اگر فعلاً واحد را داخل to_name ذخیره کرده‌اید:
+      const v = String(viewLetter?.to_name ?? viewLetter?.toName ?? "").trim();
+      return v || "—";
+    })()}
+  />
+) : (
+  <InfoRow
+    label={(() => {
+      const k = letterKindOf(viewLetter);
+      if (k === "incoming") return "از";
+      if (k === "outgoing") return "به";
+      return "از / به";
+    })()}
+    value={(() => {
+      const k = letterKindOf(viewLetter);
+      const a = String(viewLetter?.from_name ?? viewLetter?.fromName ?? "").trim();
+      const b = String(viewLetter?.to_name ?? viewLetter?.toName ?? "").trim();
+
+      if (k === "incoming") return `${a}${a && b ? " - " : ""}${b}`.trim() || "—";
+      if (k === "outgoing") {
+        return (
+          <span className="inline-flex items-center gap-2">
+            <img src="/images/icons/arrow-left.svg" alt="" className={"w-4 h-4 " + (theme === "dark" ? "invert" : "")} />
+            <span>{b || "—"}</span>
+          </span>
+        );
+      }
+      return `${a}${a && b ? " / " : ""}${b}`.trim() || "—";
+    })()}
   />
 )}
 
-<InfoRow
+
+                            <InfoRow label="ضمیمه" value={viewHasAttachment ? "دارد" : "ندارد"} />
+ <InfoRow
   label={
     viewLetter
       ? (() => {
