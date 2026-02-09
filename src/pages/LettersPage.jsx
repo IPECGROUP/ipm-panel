@@ -471,8 +471,18 @@ function normalizeIdList(arr) {
 const TAG_PREFS_LIMIT = 24;
 export default function LettersPage() {
 
-  const [hasAttachment, setHasAttachment] = useState(false);
+  // طبقه بندی (عادی/محرمانه)
 
+  const [projects, setProjects] = useState([]);
+  const [incomingAttachmentTitle, setIncomingAttachmentTitle] = useState("");
+  const [outgoingAttachmentTitle, setOutgoingAttachmentTitle] = useState("");
+  const [internalAttachmentTitle, setInternalAttachmentTitle] = useState("");
+  const [returnToIds, setReturnToIds] = useState([""]);
+  const [piroIds, setPiroIds] = useState([""]);
+  const [myLetters, setMyLetters] = useState([]);
+  const [relatedOpen, setRelatedOpen] = useState(false);
+const [relatedQuery, setRelatedQuery] = useState("");
+  const [hasAttachment, setHasAttachment] = useState(false);
   const [projectCentersActive, setProjectCentersActive] = useState([]);
 const [projectCentersLoading, setProjectCentersLoading] = useState(false);
 // ✅ Validation (per tab)
@@ -1060,17 +1070,6 @@ const [docClassExtras, setDocClassExtras] = useState([]);
 const [docClassOtherOpen, setDocClassOtherOpen] = useState(false);
 const [docClassOtherText, setDocClassOtherText] = useState("");
 
-// طبقه بندی (عادی/محرمانه)
-
-  const [projects, setProjects] = useState([]);
-  const [incomingAttachmentTitle, setIncomingAttachmentTitle] = useState("");
-  const [outgoingAttachmentTitle, setOutgoingAttachmentTitle] = useState("");
-  const [internalAttachmentTitle, setInternalAttachmentTitle] = useState("");
-  const [returnToIds, setReturnToIds] = useState([""]);
-  const [piroIds, setPiroIds] = useState([""]);
-  const [myLetters, setMyLetters] = useState([]);
-  const [relatedOpen, setRelatedOpen] = useState(false);
-const [relatedQuery, setRelatedQuery] = useState("");
 
 
 
