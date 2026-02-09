@@ -512,7 +512,27 @@ async function uploadQueueInBackground({
   // همزمانی 2 تا (می‌تونی 3 هم بذاری)
   await runWithLimit(tasks, 2);
 }
+function normalizeIdList(arr) {
+  const a = Array.isArray(arr) ? arr : [];
+  const out = [];
+  const seen = new Set();
 
+  const pickId = (x) => {
+    if (x == null) return "";
+    if (typeof x === "object") {
+      return (x.id ?? x.tag_id ?? x.tagId ?? x.value ?? x.key ?? x._id ?? "");
+    }
+    return x;
+  };
+
+  for (const x of a) {
+    const s = String(pickId(x) || "").trim();
+    if (!s || seen.has(s)) continue;
+    seen.add(s);
+    out.push(s);
+  }
+  return out;
+}
 export default function LettersPage() {
 
 
@@ -1507,27 +1527,7 @@ const setFormTagsAndPersist = (which, ids) => {
   saveFormTagPrefs(which, next);
 };
 
-function normalizeIdList(arr) {
-  const a = Array.isArray(arr) ? arr : [];
-  const out = [];
-  const seen = new Set();
 
-  const pickId = (x) => {
-    if (x == null) return "";
-    if (typeof x === "object") {
-      return (x.id ?? x.tag_id ?? x.tagId ?? x.value ?? x.key ?? x._id ?? "");
-    }
-    return x;
-  };
-
-  for (const x of a) {
-    const s = String(pickId(x) || "").trim();
-    if (!s || seen.has(s)) continue;
-    seen.add(s);
-    out.push(s);
-  }
-  return out;
-}
 
 const activeFilterLsKey = (uid) =>
   `letters_filter_active_global_v1:u${String(uid || "0")}`;
