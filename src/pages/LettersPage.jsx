@@ -469,6 +469,7 @@ function normalizeIdList(arr) {
 }
 
 const TAG_PREFS_LIMIT = 24;
+
 export default function LettersPage() {
 
   // طبقه بندی (عادی/محرمانه)
@@ -1778,6 +1779,42 @@ const resetAllFilters = () => {
   } catch {}
 };
 
+const [isDeletingAll, setIsDeletingAll] = useState(false);
+
+const deleteAllLetters = async () => {
+  if (isDeletingAll) return;
+
+  const ok = window.confirm("کل نامه‌ها و ضمیمه‌ها پاک می‌شوند. مطمئن هستید؟");
+  if (!ok) return;
+
+  setIsDeletingAll(true);
+  try {
+    // ✅ چون api() خودش credentials/include و base url رو درست می‌کنه
+    const r = await api("/letters/all", { method: "DELETE" }); 
+    // (اختیاری) اگر بک‌اند پیام داد:
+    // const deletedCount = r?.deleted ?? r?.count;
+
+    // ✅ UI را فوری تمیز کن
+    setMyLetters([]);
+    setSelectedIds(new Set());
+    setPage(0);
+
+    // ✅ کش را هم پاک کن تا بعد refresh برنگرده
+    try {
+      sessionStorage.removeItem(LETTERS_CACHE_KEY);
+    } catch {}
+
+    // ✅ اگر مودال/فرم باز است ببند (اختیاری ولی UX بهتر)
+    setViewOpen(false);
+    setFormOpen(false);
+
+    alert("همه نامه‌ها پاک شد.");
+  } catch (e) {
+    alert(e?.message || "خطا در حذف همه نامه‌ها");
+  } finally {
+    setIsDeletingAll(false);
+  }
+};
 
   useEffect(() => {
     let mounted = true;
@@ -4544,9 +4581,27 @@ return selectedObjs.map((t) => {
         شرکت/سازمان
       </th>
 
-      <th className="w-28 !py-2 pl-6 !pr-3 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
-        اقدامات
-      </th>
+     <th className="w-28 !py-2 pl-6 !pr-3 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+  <div className="w-full flex items-center justify-between gap-2">
+    <span>اقدامات</span>
+
+    <button
+      type="button"
+      onClick={deleteAllLetters}
+      className={
+        "h-6 w-6 rounded-full border inline-flex items-center justify-center text-[14px] leading-none transition " +
+        (theme === "dark"
+          ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+          : "border-black/15 bg-white text-neutral-900 hover:bg-black/[0.04]")
+      }
+      title="حذف همه نامه‌ها"
+      aria-label="حذف همه نامه‌ها"
+    >
+      ×
+    </button>
+  </div>
+</th>
+
     </tr>
   </thead>
 
