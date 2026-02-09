@@ -837,15 +837,25 @@ const getForm = (kind) => {
 const subjectRef = useRef(null);
 const subjectSelRef = useRef({ s: 0, e: 0 });
 
+// ✅ value واحد برای input
 const currentSubject =
   formKind === "outgoing" ? outgoingForm.subject :
   formKind === "internal" ? internalForm.subject :
   incomingForm.subject;
 
+// ✅ ذخیره‌ی selection قبل از setState
+const rememberSubjectSel = (el) => {
+  if (!el) return;
+  const s = typeof el.selectionStart === "number" ? el.selectionStart : 0;
+  const e = typeof el.selectionEnd === "number" ? el.selectionEnd : s;
+  subjectSelRef.current = { s, e };
+};
+
+// ✅ وقتی state عوض شد و هنوز فوکوس روی همون input هست، selection برگرده
 useLayoutEffect(() => {
   const el = subjectRef.current;
   if (!el) return;
-  if (document.activeElement !== el) return; // فقط وقتی فوکوس روی خود input است
+  if (document.activeElement !== el) return;
 
   const { s, e } = subjectSelRef.current || {};
   if (typeof s !== "number" || typeof e !== "number") return;
@@ -854,6 +864,31 @@ useLayoutEffect(() => {
     el.setSelectionRange(s, e);
   } catch {}
 }, [formKind, incomingForm.subject, outgoingForm.subject, internalForm.subject]);
+
+// ✅ handler واحد برای subject
+const onSubjectChange = (e) => {
+  const el = e.target;
+  rememberSubjectSel(el);
+
+  const v = el.value;
+
+  // ✅ دقیقاً مثل بقیه فیلدها: فقط state همان تب
+  setForm(formKind, { subject: v });
+
+  // ✅ خطای ولیدیشن همان فیلد پاک شود
+  clearFieldError(formKind, "subject");
+
+  // ✅ یکبار دیگر بعد از paint هم تلاش کن (برای جلوگیری از پرش/blur در بعضی مرورگرها)
+  requestAnimationFrame(() => {
+    const inp = subjectRef.current;
+    if (inp && document.activeElement === inp) {
+      try {
+        const { s, e } = subjectSelRef.current || {};
+        inp.setSelectionRange(s ?? 0, e ?? 0);
+      } catch {}
+    }
+  });
+};
 
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFor, setUploadFor] = useState("incoming");
@@ -3945,16 +3980,17 @@ onChange={(e) => {
       <div className={labelCls}>موضوع</div>
 
       <FieldWrap>
-      <input
-  value={internalForm.subject}
-  onChange={(e) => {
-    setInternalForm((p) => ({ ...p, subject: e.target.value }));
-    clearFieldError("internal", "subject");   // ✅ همین
-  }}
+<input
+  ref={subjectRef}
+  value={currentSubject}
+  onChange={onSubjectChange}
+  onSelect={(e) => rememberSubjectSel(e.target)}
+  onKeyUp={(e) => rememberSubjectSel(e.target)}
   className={inputWithError(inputCls, "internal", "subject")}
   aria-invalid={fieldHasError("internal", "subject")}
   type="text"
 />
+
 <ErrorTextAbs kind="internal" k="subject" />
 
 
@@ -4022,17 +4058,15 @@ onChange={(e) => {
 
   <FieldWrap>
 <input
-  value={getForm(formKind).subject ?? ""}
-  onChange={(e) => {
-    setForm(formKind, { subject: e.target.value });
-    clearFieldError(formKind, "subject");
-  }}
+  ref={subjectRef}
+  value={currentSubject}
+  onChange={onSubjectChange}
+  onSelect={(e) => rememberSubjectSel(e.target)}
+  onKeyUp={(e) => rememberSubjectSel(e.target)}
   className={inputWithError(inputCls, formKind, "subject")}
   aria-invalid={fieldHasError(formKind, "subject")}
   type="text"
 />
-
-
 
 <ErrorTextAbs kind={formKind} k="subject" />
   </FieldWrap>
