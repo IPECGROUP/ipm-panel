@@ -3750,7 +3750,7 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
 />
           </div>
 
-          {/* آیکن وسط */}
+        {/* آیکن وسط */}
           <div className="md:col-span-1 md:col-start-4 flex flex-col items-center">
             <div className={labelCls + " opacity-0 select-none"}>_</div>
             <div className="h-10 flex items-center justify-center">
@@ -3762,43 +3762,40 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
             </div>
           </div>
 
-          {/* به (کمی کوچکتر) */}
-          <div className="md:col-span-3 md:col-start-5">
+         {/* به */}
+          <div className="md:col-span-3 md:col-start-5 min-w-0">
             <div className={labelCls}>به</div>
             <FieldWrap>
- <input
-    value={outgoingForm.toName}
-    onChange={(e) => {
-      setOutgoingForm((p) => ({ ...p, toName: e.target.value }));
-      clearFieldError("outgoing", "toName");
-    }}
-               className={inputWithError(inputCls, "outgoing", "toName")}
-    aria-invalid={fieldHasError("outgoing", "toName")}
-    type="text"
-  />
-    <ErrorTextAbs kind="outgoing" k="toName" />
-</FieldWrap>
-
-          </div>
-
-          {/* شرکت/سازمان (باقی فضا) */}
-         <div className="md:col-span-4 md:col-start-5">
-            <div className={labelCls}>شرکت/سازمان</div>
-
-            <FieldWrap>
               <input
-                value={incomingForm.orgName || ""}
+                value={outgoingForm.toName || ""}
                 onChange={(e) => {
-                  setIncomingForm((p) => ({ ...p, orgName: e.target.value }));
-                  clearFieldError("incoming", "orgName");
+                  setOutgoingForm((p) => ({ ...p, toName: e.target.value }));
+                  clearFieldError("outgoing", "toName");
                 }}
-                className={inputWithError(inputCls, "incoming", "orgName")}
-                aria-invalid={fieldHasError("incoming", "orgName")}
+                className={inputWithError(inputCls, "outgoing", "toName")}
+                aria-invalid={fieldHasError("outgoing", "toName")}
                 type="text"
               />
-              <ErrorTextAbs kind="incoming" k="orgName" />
+              <ErrorTextAbs kind="outgoing" k="toName" />
             </FieldWrap>
           </div>
+               {/* شرکت/سازمان */}
+                <div className="md:col-span-5 md:col-start-8 min-w-0">
+                  <div className={labelCls}>شرکت/سازمان</div>
+                  <FieldWrap>
+                    <input
+                      value={outgoingForm.orgName || ""}
+                      onChange={(e) => {
+                        setOutgoingForm((p) => ({ ...p, orgName: e.target.value }));
+                        clearFieldError("outgoing", "orgName");
+                      }}
+                      className={inputWithError(inputCls, "outgoing", "orgName")}
+                      aria-invalid={fieldHasError("outgoing", "orgName")}
+                      type="text"
+                    />
+                    <ErrorTextAbs kind="outgoing" k="orgName" />
+                  </FieldWrap>
+                </div>
         </>
       ) : (
         <>
@@ -4122,7 +4119,7 @@ aria-invalid={fieldHasError("incoming", "orgName")}
 </button>
     </div>
      {/* ✅ توضیح کنار بارگذاری اسناد */} 
-<div className="min-w-0 w-full md:w-[15%]">
+<div className="min-w-0 w-full md:w-auto md:flex-1">
   <div className={labelCls}>توضیح</div>
   <input
     value={
