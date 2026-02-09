@@ -471,6 +471,7 @@ function normalizeIdList(arr) {
 const TAG_PREFS_LIMIT = 24;
 export default function LettersPage() {
 
+  const [hasAttachment, setHasAttachment] = useState(false);
 
   const [projectCentersActive, setProjectCentersActive] = useState([]);
 const [projectCentersLoading, setProjectCentersLoading] = useState(false);
@@ -1465,7 +1466,9 @@ const setFormTagsAndPersist = (which, ids) => {
 
 
 
-function activeFilterLsKey(uid) {  `letters_filter_active_global_v1:u${String(uid || "0")}`;}
+function activeFilterLsKey(uid) {
+  return `letters_filter_active_global_v1:u${String(uid || "0")}`;
+}
 
 function saveActiveFilterTags(uid, ids) {
   try {
