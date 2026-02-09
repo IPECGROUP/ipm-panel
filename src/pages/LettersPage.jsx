@@ -390,7 +390,7 @@ const computeNextAutoCode = ({ kind, projectId, letters, projectsTopOnly }) => {
   const pcode = getProjectCode(projectId, projectsTopOnly);
   if (!pcode) return ""; // تا پروژه انتخاب نشده، کد نساز
 
-const startByYear = (yy === "04" ? 10521 : 10000);
+const startByYear = (yy === "04" ? 10523 : 10000);
 
 
   let maxSeq = 0;
@@ -472,6 +472,11 @@ function normalizeIdList(arr) {
 const TAG_PREFS_LIMIT = 24;
 
 export default function LettersPage() {
+
+const canDeleteAllLetters = useMemo(() => {
+  const uname = String(loggedInUserName || "").trim().toLowerCase().replace(/\s+/g, "");
+  return uname === "marandi1234"; // فقط همین یوزر
+}, [loggedInUserName]);
 
   // طبقه بندی (عادی/محرمانه)
 
@@ -4577,27 +4582,29 @@ return selectedObjs.map((t) => {
       <th className="w-44 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
         شرکت/سازمان
       </th>
-
-     <th className="w-28 !py-2 pl-6 !pr-3 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+<th className="w-28 !py-2 pl-6 !pr-3 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
   <div className="w-full flex items-center justify-between gap-2">
     <span>اقدامات</span>
 
-    <button
-      type="button"
-      onClick={deleteAllLetters}
-      className={
-        "h-6 w-6 rounded-full border inline-flex items-center justify-center text-[14px] leading-none transition " +
-        (theme === "dark"
-          ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
-          : "border-black/15 bg-white text-neutral-900 hover:bg-black/[0.04]")
-      }
-      title="حذف همه نامه‌ها"
-      aria-label="حذف همه نامه‌ها"
-    >
-      ×
-    </button>
+    {canDeleteAllLetters && (
+      <button
+        type="button"
+        onClick={deleteAllLetters}
+        className={
+          "h-6 w-6 rounded-full border inline-flex items-center justify-center text-[14px] leading-none transition " +
+          (theme === "dark"
+            ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+            : "border-black/15 bg-white text-neutral-900 hover:bg-black/[0.04]")
+        }
+        title="حذف همه نامه‌ها"
+        aria-label="حذف همه نامه‌ها"
+      >
+        ×
+      </button>
+    )}
   </div>
 </th>
+
 
     </tr>
   </thead>
