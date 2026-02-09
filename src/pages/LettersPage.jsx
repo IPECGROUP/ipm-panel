@@ -1420,12 +1420,11 @@ const formPrefsLsKey = (which) => `tag_prefs_v1:${FORM_TAG_PREFS_SCOPE[which]}:u
 const [formTagPrefs, setFormTagPrefs] = useState({ incoming: [], outgoing: [], internal: [] });
 const formTagsHydratedRef = useRef({ incoming: false, outgoing: false, internal: false });
 
-const saveFormTagPrefs = async (which, ids) => {
+const saveFormTagPrefs = async (_which, ids) => {
   const clean = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
 
-  if (which === "incoming") await patchLetterPrefs({ incoming_tag_ids: clean });
-  else if (which === "outgoing") await patchLetterPrefs({ outgoing_tag_ids: clean });
-  else await patchLetterPrefs({ internal_tag_ids: clean });
+  // ✅ فقط یک کلید روی سرور ذخیره می‌کنیم تا 3 بار POST نخوره
+  await patchLetterPrefs({ incoming_tag_ids: clean });
 };
 
 const loadFormTagPrefs = async (_which) => {
@@ -1469,29 +1468,9 @@ const setFormTagsOnly = (which, ids) => {
   setFormTagPrefs((p) => ({ ...p, [which]: next }));
 };
 
-const setFormTagsAndPersist = (which, ids) => {
-  const next = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
-
-  if (which === "all") {
-    setIncomingTagIds(next);
-    setOutgoingTagIds(next);
-    setInternalTagIds(next);
-
-    setFormTagPrefs((p) => ({ ...p, incoming: next, outgoing: next, internal: next }));
-
-    // ✅ هر سه کلید در بک‌اند ذخیره شود
-    saveFormTagPrefs("incoming", next);
-    saveFormTagPrefs("outgoing", next);
-    saveFormTagPrefs("internal", next);
-    return;
-  }
-
-  if (which === "incoming") setIncomingTagIds(next);
-  else if (which === "outgoing") setOutgoingTagIds(next);
-  else setInternalTagIds(next);
-
-  setFormTagPrefs((p) => ({ ...p, [which]: next }));
-  saveFormTagPrefs(which, next);
+const setFormTagsAndPersist = (_which, ids) => {
+  // ✅ چون فرم‌ها یکی شده‌اند، همیشه همین را انجام بده
+  setFormTagsAllAndPersist(ids);
 };
 
 
@@ -2132,17 +2111,18 @@ if (formKind === "incoming") {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [formOpen, formKind, editingId, currentProjectId, myLetters, projectsTopOnly]);
 const setFormTagsAllAndPersist = (ids) => {
-  const next = normalizeIdList(ids);
+  const next = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
 
   // ✅ UI: هر سه تب فرم یکی
   setIncomingTagIds(next);
   setOutgoingTagIds(next);
   setInternalTagIds(next);
 
-  // ✅ Persist: هر سه تب ذخیره شود تا بعد Refresh هم بماند
+  // ✅ (اختیاری ولی بهتر) state prefs هم یکی شود
+  setFormTagPrefs((p) => ({ ...p, incoming: next, outgoing: next, internal: next }));
+
+  // ✅ Persist فقط یکبار
   saveFormTagPrefs("incoming", next);
-  saveFormTagPrefs("outgoing", next);
-  saveFormTagPrefs("internal", next);
 };
 
  const toggleTag = (_which, id) => {
