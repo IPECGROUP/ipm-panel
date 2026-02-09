@@ -436,7 +436,6 @@ function makeProgressUpdater(setDocFilesFor, kind, fileId) {
 
   return (p) => {
     const now = Date.now();
-    // فقط وقتی تغییر معنی‌دار داشت یا زمان کافی گذشته بود
     if (p === 0 || p === 100 || (p - lastP >= 5 && now - lastT >= 120)) {
       lastP = p;
       lastT = now;
@@ -2741,24 +2740,6 @@ const runWithLimit = async (tasks, limit = 2) => {
 
   return Promise.allSettled(results);
 };
-
-const makeProgressUpdater = (kind, fileId) => {
-  let lastP = -1;
-  let lastT = 0;
-
-  return (p) => {
-    const now = Date.now();
-    // هر 120ms یا هر 5% یکبار آپدیت
-    if (p === 0 || p === 100 || (p - lastP >= 5 && now - lastT >= 120)) {
-      lastP = p;
-      lastT = now;
-      setDocFilesFor(kind, (prev) =>
-        prev.map((x) => (x.id === fileId ? { ...x, progress: p } : x))
-      );
-    }
-  };
-};
-
 const uploadQueueInBackground = async (kind, queue, letterId) => {
   const tasks = queue.map((f) => async () => {
     const fileToSend = f.optimizedFile || f.file;
@@ -3657,7 +3638,8 @@ aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "projectId") :
 ))}
     </select>
 
-    {formKind === "outgoing" ? <ErrorTextAbs k="projectId" /> : null}
+   {formKind === "outgoing" ? <ErrorTextAbs kind="outgoing" k="projectId" /> : null}
+
   </FieldWrap>
 </div>
 
@@ -4080,7 +4062,7 @@ onChange={(e) => {
   ) : null}
 </button>
     </div>
-     {/* ✅ توضیح کنار بارگذاری اسناد */}
+     {/* ✅ توضیح کنار بارگذاری اسناد */} 
 <div className="min-w-0 w-full md:w-[15%]">
   <div className={labelCls}>توضیح</div>
   <input
