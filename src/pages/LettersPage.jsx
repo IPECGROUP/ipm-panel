@@ -1363,12 +1363,11 @@ const formPrefsLsKey = (which) => `tag_prefs_v1:${FORM_TAG_PREFS_SCOPE[which]}:u
 const [formTagPrefs, setFormTagPrefs] = useState({ incoming: [], outgoing: [], internal: [] });
 const formTagsHydratedRef = useRef({ incoming: false, outgoing: false, internal: false });
 
-const saveFormTagPrefs = async (which, ids) => {
+// ✅ فقط یک منبع برای برچسب‌های فرم (برای هر سه تب مشترک)
+const saveFormTagPrefs = async (_which, ids) => {
   const clean = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
-
-  if (which === "incoming") await patchLetterPrefs({ incoming_tag_ids: clean });
-  else if (which === "outgoing") await patchLetterPrefs({ outgoing_tag_ids: clean });
-  else await patchLetterPrefs({ internal_tag_ids: clean });
+  // فقط incoming_tag_ids ذخیره شود (منبع واحد)
+  return await patchLetterPrefs({ incoming_tag_ids: clean });
 };
 
 const loadFormTagPrefs = async (_which) => {
@@ -2094,28 +2093,28 @@ if (formKind === "incoming") {
 }
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [formOpen, formKind, editingId, currentProjectId, myLetters, projectsTopOnly]);
-const setFormTagsAllAndPersist = (ids) => {
-  const next = normalizeIdList(ids);
+const setFormTagsAllAndPersist = async (ids) => {
+  const next = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
 
-  // ✅ UI: هر سه تب فرم یکی
+  // ✅ UI: برچسب‌ها در هر سه تب یکی
   setIncomingTagIds(next);
   setOutgoingTagIds(next);
   setInternalTagIds(next);
 
-  // ✅ Persist: هر سه تب ذخیره شود تا بعد Refresh هم بماند
-  saveFormTagPrefs("incoming", next);
-  saveFormTagPrefs("outgoing", next);
-  saveFormTagPrefs("internal", next);
+  // ✅ فقط یک ذخیره در prefs
+  try {
+    await patchLetterPrefs({ incoming_tag_ids: next });
+  } catch {}
 };
 
- const toggleTag = (_which, id) => {
+const toggleTag = async (_which, id) => {
   const sid = String(id || "").trim();
   if (!sid) return;
 
   const base = Array.isArray(formSelectedTagIds) ? formSelectedTagIds.map(String) : [];
   const next = base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
 
-  setFormTagsAllAndPersist(next);
+  await setFormTagsAllAndPersist(next);
 };
 
 const toggleFilterTag = (id) => {
@@ -2830,6 +2829,7 @@ const uploadQueueInBackground = async (kind, queue, letterId) => {
 
   await runWithLimit(tasks, 2); // 2 تا همزمان
 };
+const submitLockRef = useRef(false);
 
   const submitLetter = async (kind) => {
 
