@@ -547,6 +547,10 @@ async function uploadQueueInBackground({
   await runWithLimit(tasks, 2);
 }
 
+function FieldWrap({ children }) {
+  return <div className="relative pb-4">{children}</div>;
+}
+
 export default function LettersPage() {
 
 // ✅ Validation (per tab)
@@ -570,7 +574,6 @@ const inputWithError = (baseCls, kind, key) =>
   baseCls + (fieldHasError(kind, key) ? " !border-red-500 !ring-1 !ring-red-500" : "");
 
 // ✅ wrapper برای اینکه ارور absolute بشه و فیلد هل داده نشه
-const FieldWrap = ({ children }) => <div className="relative pb-4">{children}</div>;
 
 // ✅ ارور: زیر فیلد، ولی absolute (پس هل نمیده)
 const ErrorTextAbs = ({ kind, k }) =>
