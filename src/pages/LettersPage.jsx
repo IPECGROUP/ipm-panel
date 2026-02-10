@@ -2583,15 +2583,17 @@ const kindRowTintCls = (kind) => {
   subject: "",
 });
 
-  setOutgoingForm({
-    category: "نامه",
-    projectId: "",
-    letterNo: "",
-    letterDate: "",
-    toName: "",
-    orgName: "",
-    subject: "",
-  });
+setOutgoingForm({
+  category: "نامه",
+  projectId: "",
+  letterNo: "",
+  letterDate: "",
+  fromName: "",  
+  toName: "",
+  orgName: "",
+  subject: "",
+});
+
 
   setInternalForm({
      projectId: "",      
@@ -3732,8 +3734,8 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
               <FieldWrap>
                 <input
                   value={outgoingForm.fromName || ""}
-                  onChange={(e) => {
-                    setOutgoingForm((p) => ({ ...p, fromName: e.target.value }));
+                 onChange={(e) => {
+                    setForm("outgoing", { fromName: e.target.value }); // ✅ یکدست با بقیه
                     clearFieldError("outgoing", "fromName");
                   }}
                   className={inputWithError(inputCls, "outgoing", "fromName")}
