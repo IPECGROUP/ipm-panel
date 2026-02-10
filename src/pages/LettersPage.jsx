@@ -515,6 +515,54 @@ async function uploadQueueInBackground({
 
 export default function LettersPage() {
 
+
+  const isMainAdmin = String(loggedInUserName || "").trim().toLowerCase() === "marandi";
+const [isDeletingAll, setIsDeletingAll] = useState(false);
+
+async function deleteAllLetters() {
+  if (!isMainAdmin) return;
+
+  // ✅ تأیید دو مرحله‌ای
+  const ok1 = window.confirm("هشدار! با این کار همه نامه‌ها برای همیشه حذف می‌شوند. ادامه می‌دهید؟");
+  if (!ok1) return;
+
+  const ok2 = window.prompt("برای تأیید، عبارت DELETE را دقیقاً وارد کنید:");
+  if (ok2 !== "DELETE") return;
+
+  try {
+    setIsDeletingAll(true);
+
+    const res = await fetch("/api/letters", {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        // ✅ فقط برای نمونه‌ی بک‌اند بالا
+        "x-username": String(loggedInUserName || ""),
+      },
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok || !data?.ok) {
+      alert(data?.error || "خطا در حذف همه نامه‌ها");
+      return;
+    }
+
+    alert(`همه نامه‌ها حذف شد: ${data.deleted}`);
+
+    // ✅ رفرش لیستت (هر چی داری)
+    // اگر تابع loadLetters / fetchLetters داری صدا بزن
+    // مثال:
+    // await fetchMyLetters();
+    // یا:
+    // setMyLetters([]);
+  } catch (e) {
+    alert(e?.message || "خطا در ارتباط با سرور");
+  } finally {
+    setIsDeletingAll(false);
+  }
+}
+
 // ✅ Validation (per tab)
 const [errorsByKind, setErrorsByKind] = useState({
   incoming: {},
@@ -4545,10 +4593,31 @@ aria-invalid={fieldHasError(formKind, "subject")}
       <th className="w-44 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
         شرکت/سازمان
       </th>
+<th className="w-28 !py-2 pl-6 !pr-3 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+  <div className="flex items-center justify-start gap-2">
+    <span>اقدامات</span>
 
-      <th className="w-28 !py-2 pl-6 !pr-3 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
-        اقدامات
-      </th>
+    {isMainAdmin && (
+      <button
+        type="button"
+        onClick={deleteAllLetters}
+        disabled={isDeletingAll}
+        className={
+          "h-6 w-6 rounded-md border inline-flex items-center justify-center text-sm font-bold " +
+          (theme === "dark"
+            ? "border-white/15 bg-white/5 hover:bg-white/10 text-white"
+            : "border-black/15 bg-white hover:bg-black/[0.04] text-black") +
+          (isDeletingAll ? " opacity-50 cursor-not-allowed" : "")
+        }
+        title="حذف همه نامه‌ها"
+        aria-label="حذف همه نامه‌ها"
+      >
+        ×
+      </button>
+    )}
+  </div>
+</th>
+
     </tr>
   </thead>
 
