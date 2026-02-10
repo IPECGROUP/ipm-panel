@@ -473,7 +473,6 @@ const TAG_PREFS_LIMIT = 24;
 
 export default function LettersPage() {
 
-  const subjectValue = getForm(formKind)?.subject ?? "";
   const [currentLetterNo, setCurrentLetterNo] = useState("");
 const [currentFromName, setCurrentFromName] = useState("");
 const [draftIncoming, setDraftIncoming] = useState({});
@@ -856,6 +855,7 @@ const getForm = (kind) => {
   if (kind === "internal") return internalForm;
   return incomingForm;
 };
+  const subjectValue = getForm(formKind)?.subject ?? "";
 
 useLayoutEffect(() => {
   const el = letterNoRef.current;
