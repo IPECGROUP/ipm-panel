@@ -475,6 +475,14 @@ export default function LettersPage() {
 
   const letterNoRef = useRef(null);
 const fromNameRef = useRef(null);
+const fromNameFocusedRef = useRef(false);
+const letterNoFocusedRef = useRef(false);
+
+const onFromNameFocus = () => { fromNameFocusedRef.current = true; };
+const onFromNameBlur  = () => { fromNameFocusedRef.current = false; };
+
+const onLetterNoFocus = () => { letterNoFocusedRef.current = true; };
+const onLetterNoBlur  = () => { letterNoFocusedRef.current = false; };
 
 const selMem = useRef({});
 
@@ -888,6 +896,19 @@ useLayoutEffect(() => {
   } catch {}
 }, [currentSubject]);
 
+useLayoutEffect(() => {
+  const el = fromNameRef.current;
+  if (!el) return;
+  if (!fromNameFocusedRef.current) return;
+  restoreSel("fromName", el);
+}, [currentFromName]);
+
+useLayoutEffect(() => {
+  const el = letterNoRef.current;
+  if (!el) return;
+  if (!letterNoFocusedRef.current) return;
+  restoreSel("letterNo", el);
+}, [currentLetterNo]);
 
 // ✅ وقتی state عوض شد و هنوز فوکوس روی همون input هست، selection برگرده
 useLayoutEffect(() => {
@@ -3713,17 +3734,29 @@ aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "projectId") :
   <div className={labelSmCls}>شماره سند</div>
 
   <FieldWrap>
-   <input
+<input
   ref={letterNoRef}
   value={formKind === "incoming" ? currentLetterNo : (getForm(formKind).letterNo || "")}
   readOnly={formKind !== "incoming"}
+  onFocus={formKind === "incoming" ? onLetterNoFocus : undefined}
+  onBlur={formKind === "incoming" ? onLetterNoBlur : undefined}
+  onSelect={formKind === "incoming" ? (e) => rememberSel("letterNo", e.target) : undefined}
+  onKeyUp={formKind === "incoming" ? (e) => rememberSel("letterNo", e.target) : undefined}
   onChange={(e) => {
     if (formKind !== "incoming") return;
 
-    const v = e.target.value;
-    setCurrentLetterNo(v);                  // ✅ مثل subject
-    setForm("incoming", { letterNo: v });   // ✅ sync با فرم
+    const el = e.target;
+    rememberSel("letterNo", el); // ✅ قبل از setState کرسر ذخیره شود
+
+    const v = el.value;
+    setCurrentLetterNo(v);                // ✅ کنترل پایدار
+    setForm("incoming", { letterNo: v }); // ✅ sync با فرم
     clearFieldError("incoming", "letterNo");
+
+    requestAnimationFrame(() => {
+      const inp = letterNoRef.current;
+      if (inp && document.activeElement === inp) restoreSel("letterNo", inp);
+    });
   }}
   className={
     formKind !== "incoming"
@@ -3733,7 +3766,6 @@ aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "projectId") :
   aria-invalid={formKind === "incoming" ? fieldHasError("incoming", "letterNo") : undefined}
   type="text"
 />
-
 
     {formKind === "incoming" ? <ErrorTextAbs kind="incoming" k="letterNo" /> : null}
   </FieldWrap>
@@ -3841,16 +3873,29 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
 <input
   ref={fromNameRef}
   value={currentFromName}
+  onFocus={onFromNameFocus}
+  onBlur={onFromNameBlur}
+  onSelect={(e) => rememberSel("fromName", e.target)}
+  onKeyUp={(e) => rememberSel("fromName", e.target)}
   onChange={(e) => {
-    const v = e.target.value;
-    setCurrentFromName(v);                 // ✅ مثل subject: کنترل پایدار
+    const el = e.target;
+    rememberSel("fromName", el); // ✅ قبل از setState کرسر ذخیره شود
+
+    const v = el.value;
+    setCurrentFromName(v);                 // ✅ کنترل پایدار
     setForm("incoming", { fromName: v });  // ✅ sync با فرم
     clearFieldError("incoming", "fromName");
+
+    requestAnimationFrame(() => {
+      const inp = fromNameRef.current;
+      if (inp && document.activeElement === inp) restoreSel("fromName", inp);
+    });
   }}
   className={inputWithError(inputCls, "incoming", "fromName")}
   aria-invalid={fieldHasError("incoming", "fromName")}
   type="text"
 />
+
 
   <ErrorTextAbs kind="incoming" k="fromName" />
 </FieldWrap>
