@@ -23,15 +23,15 @@ const basicAuthHeader = () => {
 };
 
 function askMainAdminEnable(setIsMainAdmin) {
-  const u = window.prompt("نام کاربری ادمین اصلی:");
+  const u = window.prompt("Ù†Ø§Ù… Ú©Ø§Ø±Ø¨Ø±ÛŒ Ø§Ø¯Ù…ÛŒÙ† Ø§ØµÙ„ÛŒ:");
   if (String(u || "").trim() !== MAIN_ADMIN_USER) {
-    alert("نام کاربری اشتباه است.");
+    alert("Ù†Ø§Ù… Ú©Ø§Ø±Ø¨Ø±ÛŒ Ø§Ø´ØªØ¨Ø§Ù‡ Ø§Ø³Øª.");
     return;
   }
 
-  const p = window.prompt("رمز ادمین اصلی:");
+  const p = window.prompt("Ø±Ù…Ø² Ø§Ø¯Ù…ÛŒÙ† Ø§ØµÙ„ÛŒ:");
   if (String(p || "").trim() !== MAIN_ADMIN_PASS) {
-    alert("رمز اشتباه است.");
+    alert("Ø±Ù…Ø² Ø§Ø´ØªØ¨Ø§Ù‡ Ø§Ø³Øª.");
     return;
   }
 
@@ -46,30 +46,30 @@ function disableMainAdmin(setIsMainAdmin) {
 
 
 const LETTERS_CACHE_KEY = "letters_mine_cache_v1";
-const LETTERS_CACHE_TTL = 1000 * 60 * 10; // 10 دقیقه
+const LETTERS_CACHE_TTL = 1000 * 60 * 10; // 10 Ø¯Ù‚ÛŒÙ‚Ù‡
 
 const TABS = [
-  { id: "all", label: "همه" },
-  { id: "incoming", label: "وارده", icon: "/images/icons/varede.svg" },
-  { id: "outgoing", label: "صادره", icon: "/images/icons/sadere.svg" },
-  { id: "internal", label: "داخلی", icon: "/images/icons/dakheli.svg" },
+  { id: "all", label: "Ù‡Ù…Ù‡" },
+  { id: "incoming", label: "ÙˆØ§Ø±Ø¯Ù‡", icon: "/images/icons/varede.svg" },
+  { id: "outgoing", label: "ØµØ§Ø¯Ø±Ù‡", icon: "/images/icons/sadere.svg" },
+  { id: "internal", label: "Ø¯Ø§Ø®Ù„ÛŒ", icon: "/images/icons/dakheli.svg" },
 ];
 
 const FILTER_ACTIVE_SCOPE = "letters_filter_active";
 
 const PERSIAN_MONTHS = [
-  "فروردین",
-  "اردیبهشت",
+  "ÙØ±ÙˆØ±Ø¯ÛŒÙ†",
+  "Ø§Ø±Ø¯ÛŒØ¨Ù‡Ø´Øª",
   "خرداد",
-  "تیر",
-  "مرداد",
-  "شهریور",
-  "مهر",
-  "آبان",
+  "ØªÛŒØ±",
+  "Ù…Ø±Ø¯Ø§Ø¯",
+  "Ø´Ù‡Ø±ÛŒÙˆØ±",
+  "Ù…Ù‡Ø±",
+  "Ø¢Ø¨Ø§Ù†",
   "آذر",
-  "دی",
-  "بهمن",
-  "اسفند",
+  "Ø¯ÛŒ",
+  "Ø¨Ù‡Ù…Ù†",
+  "Ø§Ø³ÙÙ†Ø¯",
 ];
 
 function toFaDigits(s) {
@@ -250,7 +250,7 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
             style={{ top: pos.top, right: pos.right }}
           >
             <div className="flex items-center justify-between mb-3">
-              <div className="font-semibold text-sm">انتخاب تاریخ</div>
+              <div className="font-semibold text-sm">Ø§Ù†ØªØ®Ø§Ø¨ ØªØ§Ø±ÛŒØ®</div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
@@ -258,8 +258,8 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
                   "h-9 w-9 rounded-xl border flex items-center justify-center transition " +
                   (theme === "dark" ? "border-white/10 hover:bg-white/10" : "border-black/10 hover:bg-black/[0.04]")
                 }
-                aria-label="بستن"
-                title="بستن"
+                aria-label="Ø¨Ø³ØªÙ†"
+                title="Ø¨Ø³ØªÙ†"
               >
                 <svg
                   viewBox="0 0 24 24"
@@ -278,7 +278,7 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
 
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>روز</div>
+                <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>Ø±ÙˆØ²</div>
                 <select
                   value={jd}
                   onChange={(e) => setJd(Number(e.target.value))}
@@ -296,7 +296,7 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
               </div>
 
               <div>
-                <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>ماه</div>
+                <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>Ù…Ø§Ù‡</div>
                 <select
                   value={jm}
                   onChange={(e) => setJm(Number(e.target.value))}
@@ -313,7 +313,7 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
                 </select>
               </div>
               <div>
-                <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>سال</div>
+                <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>Ø³Ø§Ù„</div>
                 <select
                   value={jy}
                   onChange={(e) => setJy(Number(e.target.value))}
@@ -334,7 +334,7 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
 
             <div className="mt-3 flex items-center justify-between gap-3">
               <div className={theme === "dark" ? "text-white/70 text-xs" : "text-neutral-600 text-xs"}>
-                پیش نمایش: <span className="font-semibold">{toFaDigits(preview)}</span>
+                Ù¾ÛŒØ´ Ù†Ù…Ø§ÛŒØ´: <span className="font-semibold">{toFaDigits(preview)}</span>
               </div>
 
               <div className="flex flex-wrap items-center gap-2 justify-end w-full">
@@ -349,7 +349,7 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
                     (theme === "dark" ? "bg-white text-black hover:bg-white/90" : "bg-black text-white hover:bg-black/90")
                   }
                 >
-                  تایید
+                  ØªØ§ÛŒÛŒØ¯
                 </button>
                 <button
                   type="button"
@@ -359,7 +359,7 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
                     (theme === "dark" ? "border-white/15 hover:bg-white/10" : "border-black/10 hover:bg-black/[0.04]")
                   }
                 >
-                  بستن
+                  Ø¨Ø³ØªÙ†
                 </button>
               </div>
             </div>
@@ -384,10 +384,10 @@ function formatBytes(n) {
 }
 
 // =====================
-// Auto Code Helpers (TOP OF FILE) — خارج از کامپوننت
+// Auto Code Helpers (TOP OF FILE) â€” Ø®Ø§Ø±Ø¬ Ø§Ø² Ú©Ø§Ù…Ù¾ÙˆÙ†Ù†Øª
 // =====================
 
-// تبدیل رقم فارسی/عربی به انگلیسی
+// ØªØ¨Ø¯ÛŒÙ„ Ø±Ù‚Ù… ÙØ§Ø±Ø³ÛŒ/Ø¹Ø±Ø¨ÛŒ Ø¨Ù‡ Ø§Ù†Ú¯Ù„ÛŒØ³ÛŒ
 const toEnDigits = (s) =>
   String(s ?? "")
     .replace(/[۰-۹]/g, (d) => "0123456789"["۰۱۲۳۴۵۶۷۸۹".indexOf(d)])
@@ -395,14 +395,14 @@ const toEnDigits = (s) =>
 
 const pad5 = (n) => String(Number(n) || 0).padStart(5, "0");
 
-// گرفتن ۲ رقم آخر سال شمسی (مثلاً 1404 -> "04")
+// Ú¯Ø±ÙØªÙ† Û² Ø±Ù‚Ù… Ø¢Ø®Ø± Ø³Ø§Ù„ Ø´Ù…Ø³ÛŒ (Ù…Ø«Ù„Ø§Ù‹ 1404 -> "04")
 const getJalaliYY = (date = new Date()) => {
   const y = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric" }).format(date);
   const en = toEnDigits(y);
   return en.slice(-2);
 };
 
-// پیدا کردن کد پروژه (اول __baseCode بعد code)
+// Ù¾ÛŒØ¯Ø§ Ú©Ø±Ø¯Ù† Ú©Ø¯ Ù¾Ø±ÙˆÚ˜Ù‡ (Ø§ÙˆÙ„ __baseCode Ø¨Ø¹Ø¯ code)
 const getProjectCode = (projectId, projectsTopOnly) => {
   const pid = String(projectId || "").trim();
   if (!pid) return "";
@@ -410,7 +410,7 @@ const getProjectCode = (projectId, projectsTopOnly) => {
   return String(p?.__baseCode ?? p?.code ?? "").trim();
 };
 
-// پارس کردن کد 04/156/10403
+// Ù¾Ø§Ø±Ø³ Ú©Ø±Ø¯Ù† Ú©Ø¯ 04/156/10403
 const parseAutoCode = (s) => {
   const m = String(s || "").trim().match(/^(\d{2})\/([^/]+)\/(\d{5})$/);
   if (!m) return null;
@@ -418,21 +418,21 @@ const parseAutoCode = (s) => {
 };
 
 // =====================
-// Auto Code Generator — خارج از کامپوننت
+// Auto Code Generator â€” Ø®Ø§Ø±Ø¬ Ø§Ø² Ú©Ø§Ù…Ù¾ÙˆÙ†Ù†Øª
 // =====================
 const computeNextAutoCode = ({ kind, projectId, letters, projectsTopOnly }) => {
   const yy = getJalaliYY(new Date());
   const pcode = getProjectCode(projectId, projectsTopOnly);
-  if (!pcode) return ""; // تا پروژه انتخاب نشده، کد نساز
+  if (!pcode) return ""; // ØªØ§ Ù¾Ø±ÙˆÚ˜Ù‡ Ø§Ù†ØªØ®Ø§Ø¨ Ù†Ø´Ø¯Ù‡ØŒ Ú©Ø¯ Ù†Ø³Ø§Ø²
 
   const startByYear = (yy === "04" ? 10521 : 10000);
 
   let maxSeq = 0;
 
-// ✅ این تکه جدید: جایگزین forEach قبلی
+// âœ… Ø§ÛŒÙ† ØªÚ©Ù‡ Ø¬Ø¯ÛŒØ¯: Ø¬Ø§ÛŒÚ¯Ø²ÛŒÙ† forEach Ù‚Ø¨Ù„ÛŒ
 (Array.isArray(letters) ? letters : []).forEach((l) => {
-  // ✅ شماره مشترک بین همه تب‌ها:
-  // هم letter_no و هم secretariat_no رو بررسی کن
+  // âœ… Ø´Ù…Ø§Ø±Ù‡ Ù…Ø´ØªØ±Ú© Ø¨ÛŒÙ† Ù‡Ù…Ù‡ ØªØ¨â€ŒÙ‡Ø§:
+  // Ù‡Ù… letter_no Ùˆ Ù‡Ù… secretariat_no Ø±Ùˆ Ø¨Ø±Ø±Ø³ÛŒ Ú©Ù†
   const rawCandidates = [
     l?.letter_no,
     l?.letterNo,
@@ -445,7 +445,7 @@ const computeNextAutoCode = ({ kind, projectId, letters, projectsTopOnly }) => {
   for (const rawNo of rawCandidates) {
     let parsed = parseAutoCode(rawNo);
 
-    // ✅ fallback: اگر فقط 10700 ذخیره شده بود یا آخرش 5 رقم داشت
+    // âœ… fallback: Ø§Ú¯Ø± ÙÙ‚Ø· 10700 Ø°Ø®ÛŒØ±Ù‡ Ø´Ø¯Ù‡ Ø¨ÙˆØ¯ ÛŒØ§ Ø¢Ø®Ø±Ø´ 5 Ø±Ù‚Ù… Ø¯Ø§Ø´Øª
     if (!parsed) {
       const v = toEnDigits(String(rawNo ?? "")).trim();
       const m = v.match(/^(\d{2})\/(\d{3})\/(\d{5})$/);
@@ -461,7 +461,7 @@ const computeNextAutoCode = ({ kind, projectId, letters, projectsTopOnly }) => {
   }
 });
 
-// ✅ این خط پایین هم باید همون پایینِ computeNextAutoCode باشه
+// âœ… Ø§ÛŒÙ† Ø®Ø· Ù¾Ø§ÛŒÛŒÙ† Ù‡Ù… Ø¨Ø§ÛŒØ¯ Ù‡Ù…ÙˆÙ† Ù¾Ø§ÛŒÛŒÙ†Ù computeNextAutoCode Ø¨Ø§Ø´Ù‡
 const nextSeq = maxSeq >= startByYear ? (maxSeq + 1) : startByYear;
 return `${yy}/${pcode}/${pad5(nextSeq)}`;
 };
@@ -471,7 +471,7 @@ function makeProgressUpdater(setDocFilesFor, kind, fileId) {
 
   return (p) => {
     const now = Date.now();
-    // فقط وقتی تغییر معنی‌دار داشت یا زمان کافی گذشته بود
+    // ÙÙ‚Ø· ÙˆÙ‚ØªÛŒ ØªØºÛŒÛŒØ± Ù…Ø¹Ù†ÛŒâ€ŒØ¯Ø§Ø± Ø¯Ø§Ø´Øª ÛŒØ§ Ø²Ù…Ø§Ù† Ú©Ø§ÙÛŒ Ú¯Ø°Ø´ØªÙ‡ Ø¨ÙˆØ¯
     if (p === 0 || p === 100 || (p - lastP >= 5 && now - lastT >= 120)) {
       lastP = p;
       lastT = now;
@@ -537,14 +537,14 @@ async function uploadQueueInBackground({
       setDocFilesFor(kind, (prev) =>
         prev.map((x) =>
           x.id === f.id
-            ? { ...x, status: "error", error: e?.message || "خطا در آپلود فایل." }
+            ? { ...x, status: "error", error: e?.message || "Ø®Ø·Ø§ Ø¯Ø± Ø¢Ù¾Ù„ÙˆØ¯ ÙØ§ÛŒÙ„." }
             : x
         )
       );
     }
   });
 
-  // همزمانی 2 تا (می‌تونی 3 هم بذاری)
+  // Ù‡Ù…Ø²Ù…Ø§Ù†ÛŒ 2 ØªØ§ (Ù…ÛŒâ€ŒØªÙˆÙ†ÛŒ 3 Ù‡Ù… Ø¨Ø°Ø§Ø±ÛŒ)
   await runWithLimit(tasks, 2);
 }
 
@@ -554,7 +554,7 @@ function FieldWrap({ children }) {
 
 export default function LettersPage() {
 
-// ✅ Validation (per tab)
+// âœ… Validation (per tab)
 const [errorsByKind, setErrorsByKind] = useState({
   incoming: {},
   outgoing: {},
@@ -574,9 +574,9 @@ const fieldHasError = (kind, key) =>
 const inputWithError = (baseCls, kind, key) =>
   baseCls + (fieldHasError(kind, key) ? " !border-red-500 !ring-1 !ring-red-500" : "");
 
-// ✅ wrapper برای اینکه ارور absolute بشه و فیلد هل داده نشه
+// âœ… wrapper Ø¨Ø±Ø§ÛŒ Ø§ÛŒÙ†Ú©Ù‡ Ø§Ø±ÙˆØ± absolute Ø¨Ø´Ù‡ Ùˆ ÙÛŒÙ„Ø¯ Ù‡Ù„ Ø¯Ø§Ø¯Ù‡ Ù†Ø´Ù‡
 
-// ✅ ارور: زیر فیلد، ولی absolute (پس هل نمیده)
+// âœ… Ø§Ø±ÙˆØ±: Ø²ÛŒØ± ÙÛŒÙ„Ø¯ØŒ ÙˆÙ„ÛŒ absolute (Ù¾Ø³ Ù‡Ù„ Ù†Ù…ÛŒØ¯Ù‡)
 const ErrorTextAbs = ({ kind, k }) =>
   fieldHasError(kind, k) ? (
     <div className="absolute right-0 bottom-0 text-[10px] text-red-500 leading-3">
@@ -584,7 +584,7 @@ const ErrorTextAbs = ({ kind, k }) =>
     </div>
   ) : null;
 
-// ✅ وقتی کاربر تایپ کرد، ارور همان فیلد در همان تب پاک شود
+// âœ… ÙˆÙ‚ØªÛŒ Ú©Ø§Ø±Ø¨Ø± ØªØ§ÛŒÙ¾ Ú©Ø±Ø¯ØŒ Ø§Ø±ÙˆØ± Ù‡Ù…Ø§Ù† ÙÛŒÙ„Ø¯ Ø¯Ø± Ù‡Ù…Ø§Ù† ØªØ¨ Ù¾Ø§Ú© Ø´ÙˆØ¯
 const clearFieldError = (kind, k) => {
   if (!submitTriedByKind?.[kind]) return;
   setErrorsByKind((prev) => {
@@ -597,38 +597,38 @@ const clearFieldError = (kind, k) => {
 };
 
 
-// ✅ اینجا تعیین کن کدوم فیلدها اجباری هستن
+// âœ… Ø§ÛŒÙ†Ø¬Ø§ ØªØ¹ÛŒÛŒÙ† Ú©Ù† Ú©Ø¯ÙˆÙ… ÙÛŒÙ„Ø¯Ù‡Ø§ Ø§Ø¬Ø¨Ø§Ø±ÛŒ Ù‡Ø³ØªÙ†
 
 
-const REQUIRED_MSG = "کامل کردن این فیلد ضروری است";
+const REQUIRED_MSG = "Ú©Ø§Ù…Ù„ Ú©Ø±Ø¯Ù† Ø§ÛŒÙ† ÙÛŒÙ„Ø¯ Ø¶Ø±ÙˆØ±ÛŒ Ø§Ø³Øª";
 
-// ✅ required ها دقیقاً طبق گفته‌ی تو
+// âœ… required Ù‡Ø§ Ø¯Ù‚ÛŒÙ‚Ø§Ù‹ Ø·Ø¨Ù‚ Ú¯ÙØªÙ‡â€ŒÛŒ ØªÙˆ
 const REQUIRED = {
   internal: ["letterDate", "subject", "formTags"],
 
   outgoing: [
-    "category",     // کلاس سند
-    "projectId",    // مرکز/پروژه
-    "letterDate",   // تاریخ سند
-    "toName",       // به
-    "orgName",      // شرکت/سازمان
-    "subject",      // موضوع
-    "formTags",     // برچسب
+    "category",     // Ú©Ù„Ø§Ø³ Ø³Ù†Ø¯
+    "projectId",    // Ù…Ø±Ú©Ø²/Ù¾Ø±ÙˆÚ˜Ù‡
+    "letterDate",   // ØªØ§Ø±ÛŒØ® Ø³Ù†Ø¯
+    "toName",       // Ø¨Ù‡
+    "orgName",      // Ø´Ø±Ú©Øª/Ø³Ø§Ø²Ù…Ø§Ù†
+    "subject",      // Ù…ÙˆØ¶ÙˆØ¹
+    "formTags",     // Ø¨Ø±Ú†Ø³Ø¨
   ],
 
   incoming: [
-    "classification", // طبقه بندی
-    "letterNo",       // شماره سند
-    "letterDate",     // تاریخ سند
+    "classification", // Ø·Ø¨Ù‚Ù‡ Ø¨Ù†Ø¯ÛŒ
+    "letterNo",       // Ø´Ù…Ø§Ø±Ù‡ Ø³Ù†Ø¯
+    "letterDate",     // ØªØ§Ø±ÛŒØ® Ø³Ù†Ø¯
      "fromName",      
   "orgName",
-    "subject",        // موضوع
-    "formTags",       // برچسب
+    "subject",        // Ù…ÙˆØ¶ÙˆØ¹
+    "formTags",       // Ø¨Ø±Ú†Ø³Ø¨
   ],
 };
 
 const validate = (kind) => {
-  // ✅ فقط همین تب
+  // âœ… ÙÙ‚Ø· Ù‡Ù…ÛŒÙ† ØªØ¨
   setSubmitTriedByKind((p) => ({ ...p, [kind]: true }));
 
   const isEmpty = (v) => {
@@ -638,7 +638,7 @@ const validate = (kind) => {
     return false;
   };
 
-  // ✅ مقادیر هر تب جدا
+  // âœ… Ù…Ù‚Ø§Ø¯ÛŒØ± Ù‡Ø± ØªØ¨ Ø¬Ø¯Ø§
   const valuesByKind = {
     incoming: {
       classification: incomingForm.classification,
@@ -706,8 +706,8 @@ useEffect(() => {
 }, []);
 
 const userId = String(user?.id || "0");
- const [filterTab, setFilterTab] = useState("all"); // اول این
- const [filterTagIds, setFilterTagIds] = useState([]); // ✅ global
+ const [filterTab, setFilterTab] = useState("all"); // Ø§ÙˆÙ„ Ø§ÛŒÙ†
+ const [filterTagIds, setFilterTagIds] = useState([]); // âœ… global
   const tableScrollRef = useRef(null);
 const [hasYScroll, setHasYScroll] = useState(false);
   const API_BASE = String(import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
@@ -733,7 +733,7 @@ async function fetchLetterPrefs() {
   return r?.prefs || {};
 }
 
-// ✅ مهم: برای جلوگیری از missing_id به جای PATCH از POST استفاده کن (upsert)
+// âœ… Ù…Ù‡Ù…: Ø¨Ø±Ø§ÛŒ Ø¬Ù„ÙˆÚ¯ÛŒØ±ÛŒ Ø§Ø² missing_id Ø¨Ù‡ Ø¬Ø§ÛŒ PATCH Ø§Ø² POST Ø§Ø³ØªÙØ§Ø¯Ù‡ Ú©Ù† (upsert)
 async function patchLetterPrefs(patch) {
   const r = await api(LETTER_PREFS_ENDPOINT, {
     method: "POST",
@@ -753,7 +753,7 @@ async function patchLetterPrefs(patch) {
     const raw = localStorage.getItem(activeFilterLsKey());
     const parsed = raw ? JSON.parse(raw) : null;
     const ids = normalizeIdList(parsed?.ids || []).slice(0, TAG_PREFS_LIMIT);
-    setFilterTagIds(ids); // ✅
+    setFilterTagIds(ids); // âœ…
   } catch {
     setFilterTagIds([]);
   }
@@ -780,16 +780,16 @@ useEffect(() => {
   }, []);
 
   const [formOpen, setFormOpen] = useState(false);
-const [formKind, setFormKind] = useState("incoming"); // نوع نامه داخل فرم: وارده/صادره/داخلی
+const [formKind, setFormKind] = useState("incoming"); // Ù†ÙˆØ¹ Ù†Ø§Ù…Ù‡ Ø¯Ø§Ø®Ù„ ÙØ±Ù…: ÙˆØ§Ø±Ø¯Ù‡/ØµØ§Ø¯Ø±Ù‡/Ø¯Ø§Ø®Ù„ÛŒ
 
-  // ✅ edit state
+  // âœ… edit state
   const [editingId, setEditingId] = useState(null);
-// ✅ برچسب‌ها (تنها چیز مشترک بین هر سه تب)
+// âœ… Ø¨Ø±Ú†Ø³Ø¨â€ŒÙ‡Ø§ (ØªÙ†Ù‡Ø§ Ú†ÛŒØ² Ù…Ø´ØªØ±Ú© Ø¨ÛŒÙ† Ù‡Ø± Ø³Ù‡ ØªØ¨)
 const [formTagIds, setFormTagIds] = useState([]);
 
-// ✅ فرم‌ها جدا (برای جلوگیری از قاطی شدن بین تب‌ها)
+// âœ… ÙØ±Ù…â€ŒÙ‡Ø§ Ø¬Ø¯Ø§ (Ø¨Ø±Ø§ÛŒ Ø¬Ù„ÙˆÚ¯ÛŒØ±ÛŒ Ø§Ø² Ù‚Ø§Ø·ÛŒ Ø´Ø¯Ù† Ø¨ÛŒÙ† ØªØ¨â€ŒÙ‡Ø§)
 const [incomingForm, setIncomingForm] = useState({
-  classification: "عادی",
+  classification: "Ø¹Ø§Ø¯ÛŒ",
   projectId: "",
   letterNo: "",
   letterDate: "",
@@ -800,7 +800,7 @@ const [incomingForm, setIncomingForm] = useState({
 });
 
 const [outgoingForm, setOutgoingForm] = useState({
-category: "نامه",
+category: "Ù†Ø§Ù…Ù‡",
   projectId: "",
     letterNo: "",
   letterDate: "",
@@ -817,7 +817,7 @@ const [internalForm, setInternalForm] = useState({
   subject: "",
 });
 
-// ✅ helpers
+// âœ… helpers
 const getForm = (kind) =>
   kind === "outgoing" ? outgoingForm : kind === "internal" ? internalForm : incomingForm;
 
@@ -876,7 +876,7 @@ const ORG_UNITS_CACHE_KEY = "org_structure_my_units_v1";
 useEffect(() => {
   let mounted = true;
 
-  // 1) اول از کشی که OrgStructurePage می‌سازه بخون
+  // 1) Ø§ÙˆÙ„ Ø§Ø² Ú©Ø´ÛŒ Ú©Ù‡ OrgStructurePage Ù…ÛŒâ€ŒØ³Ø§Ø²Ù‡ Ø¨Ø®ÙˆÙ†
   try {
     const raw =
       sessionStorage.getItem(ORG_UNITS_CACHE_KEY) ||
@@ -884,7 +884,7 @@ useEffect(() => {
 
     const parsed = raw ? JSON.parse(raw) : null;
 
-    // کش ممکنه items داشته باشه یا مستقیم آرایه باشه
+    // Ú©Ø´ Ù…Ù…Ú©Ù†Ù‡ items Ø¯Ø§Ø´ØªÙ‡ Ø¨Ø§Ø´Ù‡ ÛŒØ§ Ù…Ø³ØªÙ‚ÛŒÙ… Ø¢Ø±Ø§ÛŒÙ‡ Ø¨Ø§Ø´Ù‡
     const cached =
       Array.isArray(parsed?.items) ? parsed.items :
       Array.isArray(parsed?.units) ? parsed.units :
@@ -898,10 +898,10 @@ useEffect(() => {
     }
   } catch {}
 
-  // 2) fallback: اگر کش نبود، از API بخون
+  // 2) fallback: Ø§Ú¯Ø± Ú©Ø´ Ù†Ø¨ÙˆØ¯ØŒ Ø§Ø² API Ø¨Ø®ÙˆÙ†
   (async () => {
     try {
-      const r = await api("/base/units");         // ✅ بک‌اندت {units} میده
+      const r = await api("/base/units");         // âœ… Ø¨Ú©â€ŒØ§Ù†Ø¯Øª {units} Ù…ÛŒØ¯Ù‡
       const units = Array.isArray(r?.units) ? r.units : [];
       if (!mounted) return;
       setUnitsAll(units);
@@ -924,7 +924,7 @@ const resolveFileUrl = (u) => {
   if (url.startsWith("//")) return window.location.protocol + url;
   if (url.startsWith("/")) return url;
 
-  // اگر بک‌اند "public/..." داد
+  // Ø§Ú¯Ø± Ø¨Ú©â€ŒØ§Ù†Ø¯ "public/..." Ø¯Ø§Ø¯
   if (url.startsWith("public/")) return "/" + url.replace(/^public\//, "");
 
   return "/" + url;
@@ -944,18 +944,18 @@ const resolveFileUrl = (u) => {
 ).trim();
   }, [user]);
 
-  // ✅ فقط این دو نفر + نقش admin دسترسی محرمانه دارند
+  // âœ… ÙÙ‚Ø· Ø§ÛŒÙ† Ø¯Ùˆ Ù†ÙØ± + Ù†Ù‚Ø´ admin Ø¯Ø³ØªØ±Ø³ÛŒ Ù…Ø­Ø±Ù…Ø§Ù†Ù‡ Ø¯Ø§Ø±Ù†Ø¯
 const PRIV_USERS = new Set(["marandi1234", "rastegar"]);
 
 const canSeeConfidential = useMemo(() => {
   const uname = String(loggedInUserName || "").trim().toLowerCase();
-  const role = String(user?.role || "").trim().toLowerCase(); // اگر role داری
+  const role = String(user?.role || "").trim().toLowerCase(); // Ø§Ú¯Ø± role Ø¯Ø§Ø±ÛŒ
   return role === "admin" || PRIV_USERS.has(uname);
 }, [loggedInUserName, user?.role]);
 
 const canSeeMainAdminLogin = useMemo(() => isMainAdminUser(user), [user]);
 
-// اگر جاهای دیگه از isAdmin استفاده می‌کنی:
+// Ø§Ú¯Ø± Ø¬Ø§Ù‡Ø§ÛŒ Ø¯ÛŒÚ¯Ù‡ Ø§Ø² isAdmin Ø§Ø³ØªÙØ§Ø¯Ù‡ Ù…ÛŒâ€ŒÚ©Ù†ÛŒ:
 const isAdmin = canSeeConfidential;
 
 // ===== Filters (page-level) =====
@@ -995,15 +995,15 @@ useEffect(() => {
 
 useEffect(() => {
   if (!user?.id) return;
- loadActiveFilterTags(user.id);            // ✅ بدون پارامتر
-  filterActiveHydratedRef.current = true; // ✅
+ loadActiveFilterTags(user.id);            // âœ… Ø¨Ø¯ÙˆÙ† Ù¾Ø§Ø±Ø§Ù…ØªØ±
+  filterActiveHydratedRef.current = true; // âœ…
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [user?.id]);
 
 useEffect(() => {
   if (!filterActiveHydratedRef.current) return;
   saveActiveFilterTags(user.id, filterTagIds);
-    // ✅ بدون پارامتر
+    // âœ… Ø¨Ø¯ÙˆÙ† Ù¾Ø§Ø±Ø§Ù…ØªØ±
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [filterTagIds]);
 
@@ -1018,28 +1018,28 @@ useEffect(() => {
   }, [uploadOpen, uploadFor]);
 
 
-// کلاس سند (گزینه‌های ثابت)
+// Ú©Ù„Ø§Ø³ Ø³Ù†Ø¯ (Ú¯Ø²ÛŒÙ†Ù‡â€ŒÙ‡Ø§ÛŒ Ø«Ø§Ø¨Øª)
 const DOC_CLASS_BASE = [
-  "نامه",
-  "ترنسمیتال",
-  "مستندات داخلی",
-  "قرارداد",
-  "پیشنهاد (فنی - مالی)",
-  "اسناد فنی و مهندسی",
-  "اسناد خرید و بازرگانی",
-  "اسناد پروژه ای",
-  "اسناد مالی",
-  "اسناد ثبتی و حقوقی",
+  "Ù†Ø§Ù…Ù‡",
+  "ØªØ±Ù†Ø³Ù…ÛŒØªØ§Ù„",
+  "Ù…Ø³ØªÙ†Ø¯Ø§Øª Ø¯Ø§Ø®Ù„ÛŒ",
+  "Ù‚Ø±Ø§Ø±Ø¯Ø§Ø¯",
+  "Ù¾ÛŒØ´Ù†Ù‡Ø§Ø¯ (ÙÙ†ÛŒ - Ù…Ø§Ù„ÛŒ)",
+  "Ø§Ø³Ù†Ø§Ø¯ ÙÙ†ÛŒ Ùˆ Ù…Ù‡Ù†Ø¯Ø³ÛŒ",
+  "Ø§Ø³Ù†Ø§Ø¯ Ø®Ø±ÛŒØ¯ Ùˆ Ø¨Ø§Ø²Ø±Ú¯Ø§Ù†ÛŒ",
+  "Ø§Ø³Ù†Ø§Ø¯ Ù¾Ø±ÙˆÚ˜Ù‡ Ø§ÛŒ",
+  "Ø§Ø³Ù†Ø§Ø¯ Ù…Ø§Ù„ÛŒ",
+  "Ø§Ø³Ù†Ø§Ø¯ Ø«Ø¨ØªÛŒ Ùˆ Ø­Ù‚ÙˆÙ‚ÛŒ",
 ];
 
-// گزینه‌های سفارشی (وقتی کاربر «سایر» می‌زند)
+// Ú¯Ø²ÛŒÙ†Ù‡â€ŒÙ‡Ø§ÛŒ Ø³ÙØ§Ø±Ø´ÛŒ (ÙˆÙ‚ØªÛŒ Ú©Ø§Ø±Ø¨Ø± Â«Ø³Ø§ÛŒØ±Â» Ù…ÛŒâ€ŒØ²Ù†Ø¯)
 const [docClassExtras, setDocClassExtras] = useState([]);
 
-// پاپ‌آپ «سایر»
+// Ù¾Ø§Ù¾â€ŒØ¢Ù¾ Â«Ø³Ø§ÛŒØ±Â»
 const [docClassOtherOpen, setDocClassOtherOpen] = useState(false);
 const [docClassOtherText, setDocClassOtherText] = useState("");
 
-// طبقه بندی (عادی/محرمانه)
+// Ø·Ø¨Ù‚Ù‡ Ø¨Ù†Ø¯ÛŒ (Ø¹Ø§Ø¯ÛŒ/Ù…Ø­Ø±Ù…Ø§Ù†Ù‡)
 
   const [projects, setProjects] = useState([]);
   const [hasAttachment, setHasAttachment] = useState(false);
@@ -1067,7 +1067,7 @@ const closeRelatedPicker = () => {
   setRelatedPickQuery("");
 };
 
-  // ===== helpers: باید قبل از useMemoهایی که ازشون استفاده می‌کنن تعریف بشن =====
+  // ===== helpers: Ø¨Ø§ÛŒØ¯ Ù‚Ø¨Ù„ Ø§Ø² useMemoÙ‡Ø§ÛŒÛŒ Ú©Ù‡ Ø§Ø²Ø´ÙˆÙ† Ø§Ø³ØªÙØ§Ø¯Ù‡ Ù…ÛŒâ€ŒÚ©Ù†Ù† ØªØ¹Ø±ÛŒÙ Ø¨Ø´Ù† =====
   const letterIdOf = (l) => {
     const raw = l?.id ?? l?.letter_id ?? l?.letterId ?? l?._id;
     const id = Number(raw);
@@ -1089,13 +1089,13 @@ const closeRelatedPicker = () => {
   }
   return out;
 };
-// ✅ ghost detector: رکوردهای خالی/ناقص که نباید نمایش داده شوند
+// âœ… ghost detector: Ø±Ú©ÙˆØ±Ø¯Ù‡Ø§ÛŒ Ø®Ø§Ù„ÛŒ/Ù†Ø§Ù‚Øµ Ú©Ù‡ Ù†Ø¨Ø§ÛŒØ¯ Ù†Ù…Ø§ÛŒØ´ Ø¯Ø§Ø¯Ù‡ Ø´ÙˆÙ†Ø¯
 const isGhostLetter = (l) => {
-  // اگر id نداشته باشه اصلاً نامه نیست
+  // Ø§Ú¯Ø± id Ù†Ø¯Ø§Ø´ØªÙ‡ Ø¨Ø§Ø´Ù‡ Ø§ØµÙ„Ø§Ù‹ Ù†Ø§Ù…Ù‡ Ù†ÛŒØ³Øª
   const id = String(letterIdOf(l) || "").trim();
   if (!id) return true;
 
-  // اگر همه چیز خالیه → ghost
+  // Ø§Ú¯Ø± Ù‡Ù…Ù‡ Ú†ÛŒØ² Ø®Ø§Ù„ÛŒÙ‡ â†’ ghost
   const hasAny =
     String(letterNoOf(l) || "").trim() ||
     String(letterDateOf(l) || "").trim() ||
@@ -1111,7 +1111,7 @@ const isGhostLetter = (l) => {
   return !hasAny;
 };
 
-// ✅ همیشه قبل setMyLetters از این استفاده کن
+// âœ… Ù‡Ù…ÛŒØ´Ù‡ Ù‚Ø¨Ù„ setMyLetters Ø§Ø² Ø§ÛŒÙ† Ø§Ø³ØªÙØ§Ø¯Ù‡ Ú©Ù†
 const sanitizeLetters = (items) => {
   const arr = Array.isArray(items) ? items : [];
   const cleaned = arr.filter((l) => !isGhostLetter(l));
@@ -1123,9 +1123,9 @@ const sanitizeLetters = (items) => {
     l?.kind || l?.type || l?.direction || l?.io || l?.tab || l?.letter_type || l?.letter_kind || ""
   ).toLowerCase();
 
-  if (v.includes("internal") || v.includes("dakheli") || v.includes("داخلی")) return "internal";
+  if (v.includes("internal") || v.includes("dakheli") || v.includes("Ø¯Ø§Ø®Ù„ÛŒ")) return "internal";
   if (v.includes("out") || v.includes("صادر")) return "outgoing";
-  if (v.includes("in") || v.includes("وارده")) return "incoming";
+  if (v.includes("in") || v.includes("ÙˆØ§Ø±Ø¯Ù‡")) return "incoming";
   if (v === "o" || v === "outgoing") return "outgoing";
   if (v === "i" || v === "incoming") return "incoming";
   return "incoming";
@@ -1135,15 +1135,15 @@ const normFa = (s) =>
   String(s ?? "")
     .trim()
     .toLowerCase()
-    // یکسان‌سازی حروف عربی/فارسی
-    .replace(/ي/g, "ی")
-    .replace(/ك/g, "ک")
-    // حذف نیم‌فاصله و انواع فاصله‌های خاص
+    // ÛŒÚ©Ø³Ø§Ù†â€ŒØ³Ø§Ø²ÛŒ Ø­Ø±ÙˆÙ Ø¹Ø±Ø¨ÛŒ/ÙØ§Ø±Ø³ÛŒ
+    .replace(/ÙŠ/g, "ÛŒ")
+    .replace(/Ùƒ/g, "Ú©")
+    // Ø­Ø°Ù Ù†ÛŒÙ…â€ŒÙØ§ØµÙ„Ù‡ Ùˆ Ø§Ù†ÙˆØ§Ø¹ ÙØ§ØµÙ„Ù‡â€ŒÙ‡Ø§ÛŒ Ø®Ø§Øµ
     .replace(/[\u200c\u200f\u202a-\u202e]/g, "")
     .replace(/\s+/g, " ");
 
 const isConfidentialLetter = (l) => {
-  // 1) اگر بک‌اند فلگ بولی بده
+  // 1) Ø§Ú¯Ø± Ø¨Ú©â€ŒØ§Ù†Ø¯ ÙÙ„Ú¯ Ø¨ÙˆÙ„ÛŒ Ø¨Ø¯Ù‡
   const flag =
     l?.is_confidential ??
     l?.isConfidential ??
@@ -1154,7 +1154,7 @@ const isConfidentialLetter = (l) => {
   if (flag === true) return true;
   if (flag === 1 || flag === "1") return true;
 
-  // 2) مقدار متنی/آبجکتی
+  // 2) Ù…Ù‚Ø¯Ø§Ø± Ù…ØªÙ†ÛŒ/Ø¢Ø¨Ø¬Ú©ØªÛŒ
   const raw =
     l?.classification ??
     l?.doc_classification ??
@@ -1166,11 +1166,11 @@ const isConfidentialLetter = (l) => {
 
   const v = normFa(raw);
 
-  // فارسی
-  if (v.includes("محرمانه")) return true;
-  if (v.includes("خیلی محرمانه")) return true;
+  // ÙØ§Ø±Ø³ÛŒ
+  if (v.includes("Ù…Ø­Ø±Ù…Ø§Ù†Ù‡")) return true;
+  if (v.includes("Ø®ÛŒÙ„ÛŒ Ù…Ø­Ø±Ù…Ø§Ù†Ù‡")) return true;
 
-  // انگلیسی
+  // Ø§Ù†Ú¯Ù„ÛŒØ³ÛŒ
   if (v.includes("confidential")) return true;
   if (v.includes("secret")) return true;
 
@@ -1206,7 +1206,7 @@ const isConfidentialLetter = (l) => {
   arr.sort((a, b) => {
     const ad = dateKeyOf(a);
     const bd = dateKeyOf(b);
-    if (ad && bd && ad !== bd) return bd.localeCompare(ad); // جدیدتر اول
+    if (ad && bd && ad !== bd) return bd.localeCompare(ad); // Ø¬Ø¯ÛŒØ¯ØªØ± Ø§ÙˆÙ„
     if (ad && !bd) return -1;
     if (!ad && bd) return 1;
 
@@ -1225,7 +1225,7 @@ const fromToOf = (l) => {
     const a = String(l?.from_name ?? l?.from ?? "");
     const b = String(l?.to_name ?? l?.to ?? "");
     const s = `${a}${a && b ? " / " : ""}${b}`.trim();
-    return s || "—";
+    return s || "â€”";
   };
 const relatedPickIndex = useMemo(() => {
   if (!relatedPickOpen) return [];
@@ -1239,7 +1239,7 @@ const relatedPickIndex = useMemo(() => {
     const org = String(orgOf(l) || "");
     const f2 = typeof fromToOf === "function" ? String(fromToOf(l) || "") : "";
 
-    // ✅ یک رشته‌ی آماده برای سرچ
+    // âœ… ÛŒÚ© Ø±Ø´ØªÙ‡â€ŒÛŒ Ø¢Ù…Ø§Ø¯Ù‡ Ø¨Ø±Ø§ÛŒ Ø³Ø±Ú†
     const hay = toEnDigits([id, no, sub, org, f2].join(" ")).toLowerCase();
 
     return { l, id, hay };
@@ -1252,16 +1252,16 @@ const relatedPickList = useMemo(() => {
 
   const q = toEnDigits(String(relatedPickQueryDebounced || "").trim()).toLowerCase();
 
-  // ✅ اگر سرچ خالیه: فقط 200 تای اول (برای جلوگیری از فریز)
+  // âœ… Ø§Ú¯Ø± Ø³Ø±Ú† Ø®Ø§Ù„ÛŒÙ‡: ÙÙ‚Ø· 200 ØªØ§ÛŒ Ø§ÙˆÙ„ (Ø¨Ø±Ø§ÛŒ Ø¬Ù„ÙˆÚ¯ÛŒØ±ÛŒ Ø§Ø² ÙØ±ÛŒØ²)
   if (!q) {
     return relatedPickIndex.slice(0, RELATED_PICK_LIMIT).map((x) => x.l);
   }
 
-  // ✅ اگر سرچ داشت: فیلتر سریع روی hay
+  // âœ… Ø§Ú¯Ø± Ø³Ø±Ú† Ø¯Ø§Ø´Øª: ÙÛŒÙ„ØªØ± Ø³Ø±ÛŒØ¹ Ø±ÙˆÛŒ hay
   const out = [];
   for (const x of relatedPickIndex) {
     if (x.hay.includes(q)) out.push(x.l);
-    if (out.length >= 800) break; // (اختیاری) سقف نتایج برای جلوگیری از رندر سنگین
+    if (out.length >= 800) break; // (Ø§Ø®ØªÛŒØ§Ø±ÛŒ) Ø³Ù‚Ù Ù†ØªØ§ÛŒØ¬ Ø¨Ø±Ø§ÛŒ Ø¬Ù„ÙˆÚ¯ÛŒØ±ÛŒ Ø§Ø² Ø±Ù†Ø¯Ø± Ø³Ù†Ú¯ÛŒÙ†
   }
   return out;
 }, [relatedPickIndex, relatedPickQueryDebounced, relatedPickOpen]);
@@ -1277,30 +1277,30 @@ const letterById = useMemo(() => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [myLettersSorted]);
 
-// کنار بقیه useRef ها
-// کنار بقیه useRef ها
+// Ú©Ù†Ø§Ø± Ø¨Ù‚ÛŒÙ‡ useRef Ù‡Ø§
+// Ú©Ù†Ø§Ø± Ø¨Ù‚ÛŒÙ‡ useRef Ù‡Ø§
 const relatedWrapRef = useRef(null);
 const relatedInputRef = useRef(null);
 
-// ✅ اول این باید بیاد (قبل از relatedDisplayValue)
+// âœ… Ø§ÙˆÙ„ Ø§ÛŒÙ† Ø¨Ø§ÛŒØ¯ Ø¨ÛŒØ§Ø¯ (Ù‚Ø¨Ù„ Ø§Ø² relatedDisplayValue)
 const relatedSelectedIds = useMemo(() => {
   return (Array.isArray(returnToIds) ? returnToIds : [])
     .map((x) => String(x || "").trim())
     .filter(Boolean);
 }, [returnToIds]);
 
-// متن نمایشی شماره‌های انتخاب شده (وقتی dropdown بسته است)
+// Ù…ØªÙ† Ù†Ù…Ø§ÛŒØ´ÛŒ Ø´Ù…Ø§Ø±Ù‡â€ŒÙ‡Ø§ÛŒ Ø§Ù†ØªØ®Ø§Ø¨ Ø´Ø¯Ù‡ (ÙˆÙ‚ØªÛŒ dropdown Ø¨Ø³ØªÙ‡ Ø§Ø³Øª)
 const relatedDisplayValue = useMemo(() => {
   const parts = (Array.isArray(relatedSelectedIds) ? relatedSelectedIds : []).map((id) => {
     const l = letterById.get(String(id));
     const no = String(letterNoOf(l) || "").trim() || String(id);
     return toFaDigits(no);
   });
-  return parts.join(" و ");
+  return parts.join(" Ùˆ ");
 }, [relatedSelectedIds, letterById]);
 
 
-// بستن با کلیک بیرون
+// Ø¨Ø³ØªÙ† Ø¨Ø§ Ú©Ù„ÛŒÚ© Ø¨ÛŒØ±ÙˆÙ†
 useEffect(() => {
   if (!relatedOpen) return;
 
@@ -1308,7 +1308,7 @@ useEffect(() => {
     const t = e.target;
     if (relatedWrapRef.current && relatedWrapRef.current.contains(t)) return;
     setRelatedOpen(false);
-    setRelatedQuery(""); // پاک کردن حالت سرچ
+    setRelatedQuery(""); // Ù¾Ø§Ú© Ú©Ø±Ø¯Ù† Ø­Ø§Ù„Øª Ø³Ø±Ú†
   };
 
   const onEsc = (e) => {
@@ -1391,17 +1391,17 @@ const formSelectedTagIds =
     return () => document.removeEventListener("keydown", onEsc);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewOpen]);
-const [filterTagPinnedIds, setFilterTagPinnedIds] = useState([]); // ✅ برچسب‌های سنجاق‌شده برای همین کاربر)
+const [filterTagPinnedIds, setFilterTagPinnedIds] = useState([]); // âœ… Ø¨Ø±Ú†Ø³Ø¨â€ŒÙ‡Ø§ÛŒ Ø³Ù†Ø¬Ø§Ù‚â€ŒØ´Ø¯Ù‡ Ø¨Ø±Ø§ÛŒ Ù‡Ù…ÛŒÙ† Ú©Ø§Ø±Ø¨Ø±)
 
 
 
 // ===== Per-user pinned tags for filter (NO localStorage) =====
-const TAG_PREFS_SCOPE = "letters_filter"; // اسم کلید برای بک‌اند (بعداً هم همینو استفاده می‌کنیم)
+const TAG_PREFS_SCOPE = "letters_filter"; // Ø§Ø³Ù… Ú©Ù„ÛŒØ¯ Ø¨Ø±Ø§ÛŒ Ø¨Ú©â€ŒØ§Ù†Ø¯ (Ø¨Ø¹Ø¯Ø§Ù‹ Ù‡Ù… Ù‡Ù…ÛŒÙ†Ùˆ Ø§Ø³ØªÙØ§Ø¯Ù‡ Ù…ÛŒâ€ŒÚ©Ù†ÛŒÙ…)
 const TAG_PREFS_LIMIT = 24;
 
 const tagPrefsLsKey = (scope) => `tag_prefs_v1:${scope}:u${String(user?.id || "0")}`;
 
-// ===== Per-user selected tags for FORM (incoming/outgoing/internal) — stored in backend (/tag-prefs) =====
+// ===== Per-user selected tags for FORM (incoming/outgoing/internal) â€” stored in backend (/tag-prefs) =====
 const FORM_TAG_PREFS_SCOPE = {
   incoming: "letters_form_incoming",
   outgoing: "letters_form_outgoing",
@@ -1413,26 +1413,26 @@ const formPrefsLsKey = (which) => `tag_prefs_v1:${FORM_TAG_PREFS_SCOPE[which]}:u
 const [formTagPrefs, setFormTagPrefs] = useState({ incoming: [], outgoing: [], internal: [] });
 const formTagsHydratedRef = useRef({ incoming: false, outgoing: false, internal: false });
 
-// ✅ فقط یک منبع برای برچسب‌های فرم (برای هر سه تب مشترک)
+// âœ… ÙÙ‚Ø· ÛŒÚ© Ù…Ù†Ø¨Ø¹ Ø¨Ø±Ø§ÛŒ Ø¨Ø±Ú†Ø³Ø¨â€ŒÙ‡Ø§ÛŒ ÙØ±Ù… (Ø¨Ø±Ø§ÛŒ Ù‡Ø± Ø³Ù‡ ØªØ¨ Ù…Ø´ØªØ±Ú©)
 const saveFormTagPrefs = async (_which, ids) => {
   const clean = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
-  // فقط incoming_tag_ids ذخیره شود (منبع واحد)
+  // ÙÙ‚Ø· incoming_tag_ids Ø°Ø®ÛŒØ±Ù‡ Ø´ÙˆØ¯ (Ù…Ù†Ø¨Ø¹ ÙˆØ§Ø­Ø¯)
   return await patchLetterPrefs({ incoming_tag_ids: clean });
 };
 
 const loadFormTagPrefs = async (_which) => {
   const p = await fetchLetterPrefs();
 
-  // ✅ یک منبع واحد برای فرم: incoming_tag_ids (یا هرکدوم که می‌خوای)
+  // âœ… ÛŒÚ© Ù…Ù†Ø¨Ø¹ ÙˆØ§Ø­Ø¯ Ø¨Ø±Ø§ÛŒ ÙØ±Ù…: incoming_tag_ids (ÛŒØ§ Ù‡Ø±Ú©Ø¯ÙˆÙ… Ú©Ù‡ Ù…ÛŒâ€ŒØ®ÙˆØ§ÛŒ)
   const ids = normalizeIdList(p?.incoming_tag_ids || []).slice(0, TAG_PREFS_LIMIT);
 lastSavedFormTagsRef.current = JSON.stringify(ids);
 
-  // ✅ هم UI هر سه تب یکی شود
+  // âœ… Ù‡Ù… UI Ù‡Ø± Ø³Ù‡ ØªØ¨ ÛŒÚ©ÛŒ Ø´ÙˆØ¯
   setIncomingTagIds(ids);
   setOutgoingTagIds(ids);
   setInternalTagIds(ids);
 
-  // ✅ هم formTagPrefs هر سه کلید یکی شود (برای هیدرات شدن فرم)
+  // âœ… Ù‡Ù… formTagPrefs Ù‡Ø± Ø³Ù‡ Ú©Ù„ÛŒØ¯ ÛŒÚ©ÛŒ Ø´ÙˆØ¯ (Ø¨Ø±Ø§ÛŒ Ù‡ÛŒØ¯Ø±Ø§Øª Ø´Ø¯Ù† ÙØ±Ù…)
   setFormTagPrefs((prev) => ({
     ...prev,
     incoming: ids,
@@ -1472,7 +1472,7 @@ const setFormTagsAndPersist = (which, ids) => {
 
     setFormTagPrefs((p) => ({ ...p, incoming: next, outgoing: next, internal: next }));
 
-    // ✅ هر سه کلید در بک‌اند ذخیره شود
+    // âœ… Ù‡Ø± Ø³Ù‡ Ú©Ù„ÛŒØ¯ Ø¯Ø± Ø¨Ú©â€ŒØ§Ù†Ø¯ Ø°Ø®ÛŒØ±Ù‡ Ø´ÙˆØ¯
     saveFormTagPrefs("incoming", next);
     saveFormTagPrefs("outgoing", next);
     saveFormTagPrefs("internal", next);
@@ -1523,12 +1523,12 @@ const pinnedLsKey = (uid) => `letters_filter_pinned_v1:u${String(uid || "0")}`;
 const savePinnedFilterTags = async (ids) => {
   const clean = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
 
-  // ✅ اول لوکال (حتی اگر سرور fail شد، بعد refresh می‌مونه)
+  // âœ… Ø§ÙˆÙ„ Ù„ÙˆÚ©Ø§Ù„ (Ø­ØªÛŒ Ø§Ú¯Ø± Ø³Ø±ÙˆØ± fail Ø´Ø¯ØŒ Ø¨Ø¹Ø¯ refresh Ù…ÛŒâ€ŒÙ…ÙˆÙ†Ù‡)
   try {
     localStorage.setItem(pinnedLsKey(user?.id), JSON.stringify({ t: Date.now(), ids: clean }));
   } catch {}
 
-  // ✅ بعد سرور
+  // âœ… Ø¨Ø¹Ø¯ Ø³Ø±ÙˆØ±
   try {
     await patchLetterPrefs({ all_tag_ids: clean });
   } catch (e) {
@@ -1539,7 +1539,7 @@ const savePinnedFilterTags = async (ids) => {
 const loadPinnedFilterTags = async () => {
   const uid = user?.id;
 
-  // ✅ اول لوکال سریع
+  // âœ… Ø§ÙˆÙ„ Ù„ÙˆÚ©Ø§Ù„ Ø³Ø±ÛŒØ¹
   try {
     const raw = localStorage.getItem(pinnedLsKey(uid));
     const parsed = raw ? JSON.parse(raw) : null;
@@ -1547,7 +1547,7 @@ const loadPinnedFilterTags = async () => {
     if (ids.length) setFilterTagPinnedIds(ids);
   } catch {}
 
-  // ✅ بعد سرور (اگر موجود بود override کن)
+  // âœ… Ø¨Ø¹Ø¯ Ø³Ø±ÙˆØ± (Ø§Ú¯Ø± Ù…ÙˆØ¬ÙˆØ¯ Ø¨ÙˆØ¯ override Ú©Ù†)
   try {
     const p = await fetchLetterPrefs();
     const ids = normalizeIdList(p?.all_tag_ids || []).slice(0, TAG_PREFS_LIMIT);
@@ -1599,7 +1599,7 @@ useEffect(() => {
   if (!user?.id) return;
 
   (async () => {
-    // برای اینکه pinned ها از هر تب (letters/projects/execution) بعد refresh دیده بشن
+    // Ø¨Ø±Ø§ÛŒ Ø§ÛŒÙ†Ú©Ù‡ pinned Ù‡Ø§ Ø§Ø² Ù‡Ø± ØªØ¨ (letters/projects/execution) Ø¨Ø¹Ø¯ refresh Ø¯ÛŒØ¯Ù‡ Ø¨Ø´Ù†
     await Promise.all([
       refreshTags("letters"),
       refreshTags("projects"),
@@ -1613,21 +1613,21 @@ useEffect(() => {
 
 useEffect(() => {
   if (!user?.id) return;
-  loadFormTagPrefs("incoming"); // ✅ فقط یک بار
+  loadFormTagPrefs("incoming"); // âœ… ÙÙ‚Ø· ÛŒÚ© Ø¨Ø§Ø±
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [user?.id]);
 
 useEffect(() => {
-  // فقط Create
+  // ÙÙ‚Ø· Create
   if (!formOpen || editingId) return;
 
-  // ✅ تا وقتی prefs از سرور نیومده، هیچ کاری نکن (نه set، نه save)
+  // âœ… ØªØ§ ÙˆÙ‚ØªÛŒ prefs Ø§Ø² Ø³Ø±ÙˆØ± Ù†ÛŒÙˆÙ…Ø¯Ù‡ØŒ Ù‡ÛŒÚ† Ú©Ø§Ø±ÛŒ Ù†Ú©Ù† (Ù†Ù‡ setØŒ Ù†Ù‡ save)
   if (!prefsHydratedRef.current) return;
 
   const which = formKind; // incoming|outgoing|internal
   if (!which) return;
 
-  // فقط یک بار برای هر تب فرم
+  // ÙÙ‚Ø· ÛŒÚ© Ø¨Ø§Ø± Ø¨Ø±Ø§ÛŒ Ù‡Ø± ØªØ¨ ÙØ±Ù…
   if (formTagsHydratedRef.current[which]) return;
 
  const pref = Array.isArray(formTagPrefs?.incoming) ? formTagPrefs.incoming : [];
@@ -1643,7 +1643,7 @@ useEffect(() => {
   formTagsHydratedRef.current = { incoming: false, outgoing: false, internal: false };
 }, [formOpen]);
 
-// اضافه کردن/بردن به اول لیست (و ذخیره در بک‌اند)
+// Ø§Ø¶Ø§ÙÙ‡ Ú©Ø±Ø¯Ù†/Ø¨Ø±Ø¯Ù† Ø¨Ù‡ Ø§ÙˆÙ„ Ù„ÛŒØ³Øª (Ùˆ Ø°Ø®ÛŒØ±Ù‡ Ø¯Ø± Ø¨Ú©â€ŒØ§Ù†Ø¯)
 const bumpPinnedFilterTag = (id) => {
   const sid = String(id || "").trim();
   if (!sid) return;
@@ -1656,7 +1656,7 @@ const bumpPinnedFilterTag = (id) => {
   });
 };
 
-// وقتی چندتا برچسب از picker انتخاب شد
+// ÙˆÙ‚ØªÛŒ Ú†Ù†Ø¯ØªØ§ Ø¨Ø±Ú†Ø³Ø¨ Ø§Ø² picker Ø§Ù†ØªØ®Ø§Ø¨ Ø´Ø¯
 const mergePinnedFilterTags = (ids) => {
   const arr = normalizeIdList(ids);
   setFilterTagPinnedIds((prev) => {
@@ -1674,7 +1674,7 @@ const resetAllFilters = () => {
   setFilterFromDate("");
   setFilterToDate("");
   setFilterQuery("");
-  // فقط active های همه تب‌ها پاک شود:
+  // ÙÙ‚Ø· active Ù‡Ø§ÛŒ Ù‡Ù…Ù‡ ØªØ¨â€ŒÙ‡Ø§ Ù¾Ø§Ú© Ø´ÙˆØ¯:
   setFilterTagIds([]);
 };
 
@@ -1728,11 +1728,11 @@ const resetAllFilters = () => {
             resolve({});
           }
         } else {
-          reject(new Error("خطا در آپلود فایل"));
+          reject(new Error("Ø®Ø·Ø§ Ø¯Ø± Ø¢Ù¾Ù„ÙˆØ¯ ÙØ§ÛŒÙ„"));
         }
       };
 
-      xhr.onerror = () => reject(new Error("خطا در آپلود فایل"));
+      xhr.onerror = () => reject(new Error("Ø®Ø·Ø§ Ø¯Ø± Ø¢Ù¾Ù„ÙˆØ¯ ÙØ§ÛŒÙ„"));
       xhr.send(fd);
     });
   };
@@ -1770,7 +1770,7 @@ const resetAllFilters = () => {
       );
     } catch (e) {
       setDocFilesFor(kind, (prev) =>
-        prev.map((x) => (x.id === f.id ? { ...x, status: "error", error: e?.message || "خطا در آپلود فایل." } : x))
+        prev.map((x) => (x.id === f.id ? { ...x, status: "error", error: e?.message || "Ø®Ø·Ø§ Ø¯Ø± Ø¢Ù¾Ù„ÙˆØ¯ ÙØ§ÛŒÙ„." } : x))
       );
     }
   };
@@ -1786,7 +1786,7 @@ const resetAllFilters = () => {
       const isImg = rawFile.type && rawFile.type.startsWith("image/");
 
       if (!isImg && !isPdf) {
-        alert("فقط تصویر و PDF مجاز است.");
+        alert("ÙÙ‚Ø· ØªØµÙˆÛŒØ± Ùˆ PDF Ù…Ø¬Ø§Ø² Ø§Ø³Øª.");
         continue;
       }
 
@@ -1884,7 +1884,7 @@ try {
  useEffect(() => {
   let mounted = true;
 
-  // 1) سریع از کش نشون بده
+  // 1) Ø³Ø±ÛŒØ¹ Ø§Ø² Ú©Ø´ Ù†Ø´ÙˆÙ† Ø¨Ø¯Ù‡
   try {
     const raw = sessionStorage.getItem(LETTERS_CACHE_KEY);
     if (raw) {
@@ -1899,7 +1899,7 @@ setMyLetters(sanitizeLetters(cached));
     }
   } catch {}
 
-  // 2) بعدش در پس‌زمینه از سرور آپدیت کن
+  // 2) Ø¨Ø¹Ø¯Ø´ Ø¯Ø± Ù¾Ø³â€ŒØ²Ù…ÛŒÙ†Ù‡ Ø§Ø² Ø³Ø±ÙˆØ± Ø¢Ù¾Ø¯ÛŒØª Ú©Ù†
   (async () => {
     try {
       const r = await api("/letters/mine");
@@ -1920,10 +1920,10 @@ try {
 } catch {}
 
     } catch {
-      // اگر کش داشتی، اینجا لازم نیست خالی کنی
+      // Ø§Ú¯Ø± Ú©Ø´ Ø¯Ø§Ø´ØªÛŒØŒ Ø§ÛŒÙ†Ø¬Ø§ Ù„Ø§Ø²Ù… Ù†ÛŒØ³Øª Ø®Ø§Ù„ÛŒ Ú©Ù†ÛŒ
       if (!mounted) return;
 
-      // فقط وقتی کش نداشتیم خالی کن (اختیاری ولی بهتر برای UX)
+      // ÙÙ‚Ø· ÙˆÙ‚ØªÛŒ Ú©Ø´ Ù†Ø¯Ø§Ø´ØªÛŒÙ… Ø®Ø§Ù„ÛŒ Ú©Ù† (Ø§Ø®ØªÛŒØ§Ø±ÛŒ ÙˆÙ„ÛŒ Ø¨Ù‡ØªØ± Ø¨Ø±Ø§ÛŒ UX)
       try {
         const raw = sessionStorage.getItem(LETTERS_CACHE_KEY);
         const parsed = raw ? JSON.parse(raw) : null;
@@ -1946,7 +1946,7 @@ try {
     let mounted = true;
     (async () => {
       try {
-        // اول تلاش با ساختار جدید
+        // Ø§ÙˆÙ„ ØªÙ„Ø§Ø´ Ø¨Ø§ Ø³Ø§Ø®ØªØ§Ø± Ø¬Ø¯ÛŒØ¯
         const r = await api("/tags?scope=letters");
         if (!mounted) return;
 
@@ -2043,7 +2043,7 @@ const tabSmCls = (active) =>
   const formCellCls = "p-2 " + (theme === "dark" ? "bg-neutral-900" : "bg-white");
 
 
- // ✅ Chip style (مثل TagsPage)
+ // âœ… Chip style (Ù…Ø«Ù„ TagsPage)
 const chipBase =
   "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs shadow-sm transition";
 
@@ -2052,7 +2052,7 @@ const chipCls =
   " border-black/10 bg-white !text-neutral-900 hover:bg-black/5 " +
   "dark:border-neutral-800 dark:bg-neutral-900 dark:!text-neutral-100 dark:hover:bg-white/10";
 
-// حالت انتخاب‌شده (برای وقتی tag فعال است)
+// Ø­Ø§Ù„Øª Ø§Ù†ØªØ®Ø§Ø¨â€ŒØ´Ø¯Ù‡ (Ø¨Ø±Ø§ÛŒ ÙˆÙ‚ØªÛŒ tag ÙØ¹Ø§Ù„ Ø§Ø³Øª)
 const selectedTagChipCls =
   chipBase +
   " border-black bg-black !text-white hover:bg-black/90 " +
@@ -2064,7 +2064,7 @@ const selectedTagChipCls =
     ? "bg-white text-black ring-white/15 hover:bg-white/90"
     : "bg-black text-white ring-black/15 hover:bg-black/90");
 
-        // ✅ Outer border box for the whole form (like filters box)
+        // âœ… Outer border box for the whole form (like filters box)
   const formOuterBoxCls =
     "space-y-3 rounded-2xl border p-3 " +
     (theme === "dark" ? "border-white/10 bg-transparent" : "border-black/10 bg-white");
@@ -2097,29 +2097,29 @@ const projectsTopOnly = useMemo(() => {
   const seen = new Set();
 
   for (const p of arr) {
-    const raw = String(p?.code ?? "").trim(); // مثال: 159 یا 159.1.1
-    const base = raw.split(".")[0].trim();   // میشه 159
+    const raw = String(p?.code ?? "").trim(); // Ù…Ø«Ø§Ù„: 159 ÛŒØ§ 159.1.1
+    const base = raw.split(".")[0].trim();   // Ù…ÛŒØ´Ù‡ 159
 
-    // فقط کد ۳ رقمی
+    // ÙÙ‚Ø· Ú©Ø¯ Û³ Ø±Ù‚Ù…ÛŒ
     if (!/^\d{3}$/.test(base)) continue;
 
-    // زیرپروژه‌ها حذف (هرچی نقطه داره)
+    // Ø²ÛŒØ±Ù¾Ø±ÙˆÚ˜Ù‡â€ŒÙ‡Ø§ Ø­Ø°Ù (Ù‡Ø±Ú†ÛŒ Ù†Ù‚Ø·Ù‡ Ø¯Ø§Ø±Ù‡)
     if (raw.includes(".")) continue;
 
-    // تکراری‌ها حذف
+    // ØªÚ©Ø±Ø§Ø±ÛŒâ€ŒÙ‡Ø§ Ø­Ø°Ù
     if (seen.has(base)) continue;
     seen.add(base);
 
     out.push({ ...p, __baseCode: base });
   }
-  // ✅ مرتب‌سازی عددی نزولی: 165,164,...,101
+  // âœ… Ù…Ø±ØªØ¨â€ŒØ³Ø§Ø²ÛŒ Ø¹Ø¯Ø¯ÛŒ Ù†Ø²ÙˆÙ„ÛŒ: 165,164,...,101
   out.sort((a, b) => {
     const an = Number(String(a?.__baseCode ?? "").trim()) || 0;
     const bn = Number(String(b?.__baseCode ?? "").trim()) || 0;
     return bn - an;
   });
 
-  // ✅ پین پروژه 100 همیشه اول
+  // âœ… Ù¾ÛŒÙ† Ù¾Ø±ÙˆÚ˜Ù‡ 100 Ù‡Ù…ÛŒØ´Ù‡ Ø§ÙˆÙ„
   const pinIdx = out.findIndex((p) => String(p?.__baseCode ?? p?.code ?? "").trim() === "100");
   if (pinIdx >= 0) {
     const [pin] = out.splice(pinIdx, 1);
@@ -2134,7 +2134,7 @@ const currentProjectId = getForm(formKind).projectId || "";
 
 useEffect(() => {
   if (!formOpen) return;
-  if (editingId) return; // ادیت → کد جدید نساز
+  if (editingId) return; // Ø§Ø¯ÛŒØª â†’ Ú©Ø¯ Ø¬Ø¯ÛŒØ¯ Ù†Ø³Ø§Ø²
 
   const code = computeNextAutoCode({
     kind: formKind,
@@ -2145,8 +2145,8 @@ useEffect(() => {
 
   if (!code) return;
 
-  // وارده: شماره ثبت دبیرخانه
- // ✅ در هر سه تب: کد داخل "شماره ثبت دبیرخانه" پر شود
+  // ÙˆØ§Ø±Ø¯Ù‡: Ø´Ù…Ø§Ø±Ù‡ Ø«Ø¨Øª Ø¯Ø¨ÛŒØ±Ø®Ø§Ù†Ù‡
+ // âœ… Ø¯Ø± Ù‡Ø± Ø³Ù‡ ØªØ¨: Ú©Ø¯ Ø¯Ø§Ø®Ù„ "Ø´Ù…Ø§Ø±Ù‡ Ø«Ø¨Øª Ø¯Ø¨ÛŒØ±Ø®Ø§Ù†Ù‡" Ù¾Ø± Ø´ÙˆØ¯
 if (formKind === "incoming") {
   setIncomingSecretariatNo(code);
 } else if (formKind === "outgoing") {
@@ -2159,12 +2159,12 @@ if (formKind === "incoming") {
 const setFormTagsAllAndPersist = async (ids) => {
   const next = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
 
-  // ✅ UI: برچسب‌ها در هر سه تب یکی
+  // âœ… UI: Ø¨Ø±Ú†Ø³Ø¨â€ŒÙ‡Ø§ Ø¯Ø± Ù‡Ø± Ø³Ù‡ ØªØ¨ ÛŒÚ©ÛŒ
   setIncomingTagIds(next);
   setOutgoingTagIds(next);
   setInternalTagIds(next);
 
-  // ✅ اگر هیچ تغییری نکرده، اصلاً POST نزن
+  // âœ… Ø§Ú¯Ø± Ù‡ÛŒÚ† ØªØºÛŒÛŒØ±ÛŒ Ù†Ú©Ø±Ø¯Ù‡ØŒ Ø§ØµÙ„Ø§Ù‹ POST Ù†Ø²Ù†
   const sig = JSON.stringify(next);
   if (lastSavedFormTagsRef.current === sig) return;
 
@@ -2205,9 +2205,9 @@ const [tagPickKind, setTagPickKind] = useState("letters"); // letters/projects/e
 const [tagPickCategoryId, setTagPickCategoryId] = useState("");
 const [tagPickDraftIds, setTagPickDraftIds] = useState([]);
 const TAG_PICK_TABS = [
-  { id: "projects", label: "پروژه‌ها" },
-  { id: "letters", label: "نامه‌ها و مستندات" },
-  { id: "execution", label: "اجرای پروژه‌ها" },
+  { id: "projects", label: "Ù¾Ø±ÙˆÚ˜Ù‡â€ŒÙ‡Ø§" },
+  { id: "letters", label: "Ù†Ø§Ù…Ù‡â€ŒÙ‡Ø§ Ùˆ Ù…Ø³ØªÙ†Ø¯Ø§Øª" },
+  { id: "execution", label: "Ø§Ø¬Ø±Ø§ÛŒ Ù¾Ø±ÙˆÚ˜Ù‡â€ŒÙ‡Ø§" },
 ];
 const SCOPE_BY_KIND = {
   letters: "letters",
@@ -2232,7 +2232,7 @@ const [loadedScopes, setLoadedScopes] = useState({
   execution: false,
 });
 
-// ✅ همه نامه‌ها (وارده/صادره/داخلی) از یک لیست تگ استفاده کنند
+// âœ… Ù‡Ù…Ù‡ Ù†Ø§Ù…Ù‡â€ŒÙ‡Ø§ (ÙˆØ§Ø±Ø¯Ù‡/ØµØ§Ø¯Ø±Ù‡/Ø¯Ø§Ø®Ù„ÛŒ) Ø§Ø² ÛŒÚ© Ù„ÛŒØ³Øª ØªÚ¯ Ø§Ø³ØªÙØ§Ø¯Ù‡ Ú©Ù†Ù†Ø¯
 const formScope = "letters";
 
 const tagsForFormScope = useMemo(() => {
@@ -2255,10 +2255,10 @@ const tagsForFormScope = useMemo(() => {
   const sel = Array.isArray(selectedIds) ? selectedIds.map(String) : [];
   const selSet = new Set(sel);
 
-  // پایه نمایش: همون latestTags (ثابت)
+  // Ù¾Ø§ÛŒÙ‡ Ù†Ù…Ø§ÛŒØ´: Ù‡Ù…ÙˆÙ† latestTags (Ø«Ø§Ø¨Øª)
   const base = Array.isArray(latestTags) ? latestTags : [];
 
-  // اگر تگی انتخاب شده ولی تو latest نیست، آخر لیست اضافه کن (بدون دستکاری ترتیب base)
+  // Ø§Ú¯Ø± ØªÚ¯ÛŒ Ø§Ù†ØªØ®Ø§Ø¨ Ø´Ø¯Ù‡ ÙˆÙ„ÛŒ ØªÙˆ latest Ù†ÛŒØ³ØªØŒ Ø¢Ø®Ø± Ù„ÛŒØ³Øª Ø§Ø¶Ø§ÙÙ‡ Ú©Ù† (Ø¨Ø¯ÙˆÙ† Ø¯Ø³ØªÚ©Ø§Ø±ÛŒ ØªØ±ØªÛŒØ¨ base)
   const map = new Map((Array.isArray(tagsForFormScope) ? tagsForFormScope : []).map((t) => [String(t?.id), t]));
   const extra = sel
     .filter((id) => !base.some((t) => String(t?.id) === String(id)))
@@ -2345,7 +2345,7 @@ const secretariatLongText = (ymd) => {
   const weekdayFa = new Intl.DateTimeFormat("fa-IR", { weekday: "long" }).format(d);
   const gregYmd = `${g.gy}/${pad2(g.gm)}/${pad2(g.gd)}`;
 
-  return `${weekdayFa} — ${gregYmd}`;
+  return `${weekdayFa} â€” ${gregYmd}`;
 };
   const openUpload = (which) => {
     setUploadFor(which);
@@ -2383,12 +2383,12 @@ const secretariatLongText = (ymd) => {
   const categoryOf = (l) => String(l?.category ?? l?.category_name ?? l?.categoryTitle ?? "");
   const categoryLabelOf = (l) => {
     const c = String(categoryOf(l) || "");
-    if (c === "project") return "پروژه‌ها";
-    return c || "—";
+    if (c === "project") return "Ù¾Ø±ÙˆÚ˜Ù‡â€ŒÙ‡Ø§";
+    return c || "â€”";
   };
   const categoryLabel = (c) => {
     const v = String(c || "");
-    if (v === "project") return "پروژه‌ها";
+    if (v === "project") return "Ù¾Ø±ÙˆÚ˜Ù‡â€ŒÙ‡Ø§";
     return v || "";
   };
 
@@ -2448,9 +2448,9 @@ const isImageUrl = (url, name = "") =>
 
   const normalizeYmd = (s) => {
   const raw = String(s || "").trim();
-  const v = toEnDigits(raw); // ✅ تبدیل ارقام فارسی/عربی به انگلیسی
+  const v = toEnDigits(raw); // âœ… ØªØ¨Ø¯ÛŒÙ„ Ø§Ø±Ù‚Ø§Ù… ÙØ§Ø±Ø³ÛŒ/Ø¹Ø±Ø¨ÛŒ Ø¨Ù‡ Ø§Ù†Ú¯Ù„ÛŒØ³ÛŒ
 
-  // اجازه / یا - 
+  // Ø§Ø¬Ø§Ø²Ù‡ / ÛŒØ§ - 
   const m = v.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
   if (!m) return "";
   return `${m[1]}/${pad2(m[2])}/${pad2(m[3])}`;
@@ -2493,18 +2493,18 @@ const isImageUrl = (url, name = "") =>
   const toY = normalizeYmd(filterToDate);
 
   return arr.filter((l) => {
-    // ✅ فقط ادمین محرمانه‌ها را ببیند
-    const isConf = isConfidentialLetter(l); // همونی که خودت داری
+    // âœ… ÙÙ‚Ø· Ø§Ø¯Ù…ÛŒÙ† Ù…Ø­Ø±Ù…Ø§Ù†Ù‡â€ŒÙ‡Ø§ Ø±Ø§ Ø¨Ø¨ÛŒÙ†Ø¯
+    const isConf = isConfidentialLetter(l); // Ù‡Ù…ÙˆÙ†ÛŒ Ú©Ù‡ Ø®ÙˆØ¯Øª Ø¯Ø§Ø±ÛŒ
     if (isConf && !canSeeConfidential) return false;
 
     const kind = letterKindOf(l);
 
-    // ✅ تب
+    // âœ… ØªØ¨
     if (filterTab !== "all") {
       if (kind !== filterTab) return false;
     }
 
-    // ✅ تگ‌ها
+    // âœ… ØªÚ¯â€ŒÙ‡Ø§
     if (filterTagIds.length > 0) {
       const letterTags = Array.isArray(l?.tag_ids)
         ? l.tag_ids
@@ -2516,13 +2516,13 @@ const isImageUrl = (url, name = "") =>
       if (!ok) return false;
     }
 
-    // ✅ تاریخ
+    // âœ… ØªØ§Ø±ÛŒØ®
     const d = normalizeYmd(letterDateOf(l));
     if ((fromY || toY) && !d) return false;
     if (fromY && d < fromY) return false;
     if (toY && d > toY) return false;
 
-    // ✅ سرچ
+    // âœ… Ø³Ø±Ú†
     if (q) {
       const subject = toEnDigits(String(subjectOf(l) || "")).toLowerCase();
       const org = toEnDigits(String(orgOf(l) || "")).toLowerCase();
@@ -2542,7 +2542,7 @@ const isImageUrl = (url, name = "") =>
   filterTagIds,
   filterFromDate,
   filterToDate,
-  canSeeConfidential, // ✅ اضافه شد
+  canSeeConfidential, // âœ… Ø§Ø¶Ø§ÙÙ‡ Ø´Ø¯
 ]);
 
   useEffect(() => {
@@ -2617,12 +2617,12 @@ useLayoutEffect(() => {
 const kindRowTintCls = (kind) => {
   if (kind === "incoming") return "bg-blue-50 dark:bg-blue-500/10";
   if (kind === "outgoing") return "bg-emerald-50 dark:bg-emerald-500/10";
-  return "bg-orange-50 dark:bg-orange-500/10"; // ✅ internal
+  return "bg-orange-50 dark:bg-orange-500/10"; // âœ… internal
 };
 
  const resetForm = () => {
  setIncomingForm({
-  classification: "عادی",
+  classification: "Ø¹Ø§Ø¯ÛŒ",
   projectId: "",
   letterNo: "",
   letterDate: "",
@@ -2633,7 +2633,7 @@ const kindRowTintCls = (kind) => {
 });
 
   setOutgoingForm({
-    category: "نامه",
+    category: "Ù†Ø§Ù…Ù‡",
     projectId: "",
     letterNo: "",
     letterDate: "",
@@ -2710,18 +2710,18 @@ else setInternalSecretariatNote(sn);
 
     const rawCat = String(l?.category ?? l?.category_name ?? l?.categoryTitle ?? "").trim();
 
-// سازگاری با دیتاهای قدیمی شما که category="project" بوده
-    const mappedCat = rawCat === "project" ? "اسناد پروژه ای" : (rawCat || "نامه");
+// Ø³Ø§Ø²Ú¯Ø§Ø±ÛŒ Ø¨Ø§ Ø¯ÛŒØªØ§Ù‡Ø§ÛŒ Ù‚Ø¯ÛŒÙ…ÛŒ Ø´Ù…Ø§ Ú©Ù‡ category="project" Ø¨ÙˆØ¯Ù‡
+    const mappedCat = rawCat === "project" ? "Ø§Ø³Ù†Ø§Ø¯ Ù¾Ø±ÙˆÚ˜Ù‡ Ø§ÛŒ" : (rawCat || "Ù†Ø§Ù…Ù‡");
     setCategory(mappedCat);
 
-    // طبقه بندی (اگر از بک‌اند اومد، وگرنه پیش‌فرض)
+    // Ø·Ø¨Ù‚Ù‡ Ø¨Ù†Ø¯ÛŒ (Ø§Ú¯Ø± Ø§Ø² Ø¨Ú©â€ŒØ§Ù†Ø¯ Ø§ÙˆÙ…Ø¯ØŒ ÙˆÚ¯Ø±Ù†Ù‡ Ù¾ÛŒØ´â€ŒÙØ±Ø¶)
     const rawClass =
       String(l?.classification ?? l?.doc_classification ?? l?.confidentiality ?? "").trim();
-    setClassification(rawClass || "عادی");
+    setClassification(rawClass || "Ø¹Ø§Ø¯ÛŒ");
 
     const pid = l?.project_id ?? l?.projectId ?? l?.projectID ?? null;
     setProjectId(pid ? String(pid) : "");
-// ✅ برای نامه‌های داخلی: پر کردن واحد در حالت Edit
+// âœ… Ø¨Ø±Ø§ÛŒ Ù†Ø§Ù…Ù‡â€ŒÙ‡Ø§ÛŒ Ø¯Ø§Ø®Ù„ÛŒ: Ù¾Ø± Ú©Ø±Ø¯Ù† ÙˆØ§Ø­Ø¯ Ø¯Ø± Ø­Ø§Ù„Øª Edit
 const uid = l?.unit_id ?? l?.unitId ?? l?.unit ?? l?.internal_unit_id ?? "";
 setInternalUnitId(uid ? String(uid) : "");
 
@@ -2797,9 +2797,9 @@ if (kind === "incoming") {
           try {
             const u = String(url);
             const parts = u.split("?")[0].split("/");
-            return parts[parts.length - 1] || "فایل";
+            return parts[parts.length - 1] || "ÙØ§ÛŒÙ„";
           } catch {
-            return "فایل";
+            return "ÙØ§ÛŒÙ„";
           }
         })();
       const type = attachmentTypeOf(a) || (isPdfUrl(url) ? "application/pdf" : "");
@@ -2846,7 +2846,7 @@ const makeProgressUpdater = (kind, fileId) => {
 
   return (p) => {
     const now = Date.now();
-    // هر 120ms یا هر 5% یکبار آپدیت
+    // Ù‡Ø± 120ms ÛŒØ§ Ù‡Ø± 5% ÛŒÚ©Ø¨Ø§Ø± Ø¢Ù¾Ø¯ÛŒØª
     if (p === 0 || p === 100 || (p - lastP >= 5 && now - lastT >= 120)) {
       lastP = p;
       lastT = now;
@@ -2888,14 +2888,14 @@ const uploadQueueInBackground = async (kind, queue, letterId) => {
       setDocFilesFor(kind, (prev) =>
         prev.map((x) =>
           x.id === f.id
-            ? { ...x, status: "error", error: e?.message || "خطا در آپلود فایل." }
+            ? { ...x, status: "error", error: e?.message || "Ø®Ø·Ø§ Ø¯Ø± Ø¢Ù¾Ù„ÙˆØ¯ ÙØ§ÛŒÙ„." }
             : x
         )
       );
     }
   });
 
-  await runWithLimit(tasks, 2); // 2 تا همزمان
+  await runWithLimit(tasks, 2); // 2 ØªØ§ Ù‡Ù…Ø²Ù…Ø§Ù†
 };
 const submitLockRef = useRef(false);
 const lastSavedFormTagsRef = useRef("");
@@ -2903,7 +2903,7 @@ const lastSavedFormTagsRef = useRef("");
   const submitLetter = async (kind) => {
 
   const ok = validate(kind);
-  if (!ok) return; // ✅ جلو ارسال را می‌گیرد
+  if (!ok) return; // âœ… Ø¬Ù„Ùˆ Ø§Ø±Ø³Ø§Ù„ Ø±Ø§ Ù…ÛŒâ€ŒÚ¯ÛŒØ±Ø¯
 
     const tagIds =
       kind === "incoming" ? incomingTagIds : kind === "outgoing" ? outgoingTagIds : internalTagIds;
@@ -2949,14 +2949,14 @@ const f = getForm(kind);
 const payload = {
   kind,
 
-  // ✅ category + classification از فرم درست
+  // âœ… category + classification Ø§Ø² ÙØ±Ù… Ø¯Ø±Ø³Øª
   category:
-    kind === "outgoing" ? String(outgoingForm.category || "نامه").trim()
-    : "نامه",
+    kind === "outgoing" ? String(outgoingForm.category || "Ù†Ø§Ù…Ù‡").trim()
+    : "Ù†Ø§Ù…Ù‡",
 
   classification:
-    kind === "incoming" ? (incomingForm.classification || "عادی")
-    : "عادی",
+    kind === "incoming" ? (incomingForm.classification || "Ø¹Ø§Ø¯ÛŒ")
+    : "Ø¹Ø§Ø¯ÛŒ",
 
   project_id: (() => {
     const pid =
@@ -3014,7 +3014,7 @@ subject:
   const eid = String(editingId || "").trim();
   if (!eid) throw new Error("missing_id");
 
-  // ✅ سازگاری کامل: هم query هم body
+  // âœ… Ø³Ø§Ø²Ú¯Ø§Ø±ÛŒ Ú©Ø§Ù…Ù„: Ù‡Ù… query Ù‡Ù… body
   const body = JSON.stringify({ ...payload, id: eid, letter_id: eid });
 
   saved = await api(`/letters?id=${encodeURIComponent(eid)}`, {
@@ -3029,11 +3029,11 @@ subject:
   newId = item?.id ?? item?.letter_id ?? item?.letterId;
 }
 
-// ✅ آپدیت UI بدون GET /letters/mine
+// âœ… Ø¢Ù¾Ø¯ÛŒØª UI Ø¨Ø¯ÙˆÙ† GET /letters/mine
 const serverItem = saved?.item || saved || null;
 
 if (editingId) {
-  // حالت ویرایش: آیتم را در لیست جایگزین کن
+  // Ø­Ø§Ù„Øª ÙˆÛŒØ±Ø§ÛŒØ´: Ø¢ÛŒØªÙ… Ø±Ø§ Ø¯Ø± Ù„ÛŒØ³Øª Ø¬Ø§ÛŒÚ¯Ø²ÛŒÙ† Ú©Ù†
   setMyLetters((prev) => {
     const arr = Array.isArray(prev) ? prev : [];
     return arr.map((x) =>
@@ -3043,7 +3043,7 @@ if (editingId) {
     );
   });
 } else {
-  // حالت ایجاد: آیتم را ابتدای لیست اضافه کن
+  // Ø­Ø§Ù„Øª Ø§ÛŒØ¬Ø§Ø¯: Ø¢ÛŒØªÙ… Ø±Ø§ Ø§Ø¨ØªØ¯Ø§ÛŒ Ù„ÛŒØ³Øª Ø§Ø¶Ø§ÙÙ‡ Ú©Ù†
   const created = (serverItem && typeof serverItem === "object")
     ? serverItem
     : { ...payload, id: newId };
@@ -3051,11 +3051,11 @@ if (editingId) {
 setMyLetters((prev) => sanitizeLetters([created, ...(Array.isArray(prev) ? prev : [])]));
 }
 
-// ✅ آپدیت کش هم (اختیاری ولی خوب)
+// âœ… Ø¢Ù¾Ø¯ÛŒØª Ú©Ø´ Ù‡Ù… (Ø§Ø®ØªÛŒØ§Ø±ÛŒ ÙˆÙ„ÛŒ Ø®ÙˆØ¨)
 try {
   setTimeout(() => {
-    // setTimeout برای اینکه مقدار جدید state اعمال شده باشد
-    // (یا اگر خواستی، همینجا هم با prev کار کن)
+    // setTimeout Ø¨Ø±Ø§ÛŒ Ø§ÛŒÙ†Ú©Ù‡ Ù…Ù‚Ø¯Ø§Ø± Ø¬Ø¯ÛŒØ¯ state Ø§Ø¹Ù…Ø§Ù„ Ø´Ø¯Ù‡ Ø¨Ø§Ø´Ø¯
+    // (ÛŒØ§ Ø§Ú¯Ø± Ø®ÙˆØ§Ø³ØªÛŒØŒ Ù‡Ù…ÛŒÙ†Ø¬Ø§ Ù‡Ù… Ø¨Ø§ prev Ú©Ø§Ø± Ú©Ù†)
   }, 0);
 } catch {}
 
@@ -3086,7 +3086,7 @@ try {
           );
         } catch (e) {
           setDocFilesFor(kind, (prev) =>
-            prev.map((x) => (x.id === f.id ? { ...x, status: "error", error: e?.message || "خطا در آپلود فایل." } : x))
+            prev.map((x) => (x.id === f.id ? { ...x, status: "error", error: e?.message || "Ø®Ø·Ø§ Ø¯Ø± Ø¢Ù¾Ù„ÙˆØ¯ ÙØ§ÛŒÙ„." } : x))
           );
         }
       }
@@ -3096,16 +3096,16 @@ try {
   };
 
  const deleteLetter = async (id) => {
-  const ok = window.confirm("حذف شود؟");
+  const ok = window.confirm("Ø­Ø°Ù Ø´ÙˆØ¯ØŸ");
   if (!ok) return;
 
   const sid = String(id || "").trim();
   if (!sid) return;
 
-  // ✅ 1) سریع از UI حذف کن (Optimistic) تا طول نکشه
+  // âœ… 1) Ø³Ø±ÛŒØ¹ Ø§Ø² UI Ø­Ø°Ù Ú©Ù† (Optimistic) ØªØ§ Ø·ÙˆÙ„ Ù†Ú©Ø´Ù‡
   setMyLetters((prev) => (Array.isArray(prev) ? prev.filter((x) => String(letterIdOf(x)) !== sid) : prev));
 
-  // ✅ 2) از انتخاب‌ها هم حذف کن
+  // âœ… 2) Ø§Ø² Ø§Ù†ØªØ®Ø§Ø¨â€ŒÙ‡Ø§ Ù‡Ù… Ø­Ø°Ù Ú©Ù†
   setSelectedIds((prev) => {
     const next = new Set(prev);
     next.delete(sid);
@@ -3113,18 +3113,18 @@ try {
   });
 
   try {
-    // ✅ 3) فقط یک endpoint بزن (همون که قبلاً کار می‌کرد)
+    // âœ… 3) ÙÙ‚Ø· ÛŒÚ© endpoint Ø¨Ø²Ù† (Ù‡Ù…ÙˆÙ† Ú©Ù‡ Ù‚Ø¨Ù„Ø§Ù‹ Ú©Ø§Ø± Ù…ÛŒâ€ŒÚ©Ø±Ø¯)
     await api(`/letters?id=${encodeURIComponent(sid)}`, {
       method: "DELETE",
       body: JSON.stringify({ id: sid, letter_id: sid }),
     });
 
-    // ✅ 4) refetch کامل نزن (اصلی‌ترین علت کندی همین بود)
-    // اگر خیلی لازم داری، اینو بدون await بزن:
+    // âœ… 4) refetch Ú©Ø§Ù…Ù„ Ù†Ø²Ù† (Ø§ØµÙ„ÛŒâ€ŒØªØ±ÛŒÙ† Ø¹Ù„Øª Ú©Ù†Ø¯ÛŒ Ù‡Ù…ÛŒÙ† Ø¨ÙˆØ¯)
+    // Ø§Ú¯Ø± Ø®ÛŒÙ„ÛŒ Ù„Ø§Ø²Ù… Ø¯Ø§Ø±ÛŒØŒ Ø§ÛŒÙ†Ùˆ Ø¨Ø¯ÙˆÙ† await Ø¨Ø²Ù†:
     // refetchLetters();
 
   } catch (e) {
-    // ✅ اگر حذف سرور fail شد، لیست رو از سرور دوباره درست کن
+    // âœ… Ø§Ú¯Ø± Ø­Ø°Ù Ø³Ø±ÙˆØ± fail Ø´Ø¯ØŒ Ù„ÛŒØ³Øª Ø±Ùˆ Ø§Ø² Ø³Ø±ÙˆØ± Ø¯ÙˆØ¨Ø§Ø±Ù‡ Ø¯Ø±Ø³Øª Ú©Ù†
     console.error("delete failed", e);
     await refetchLetters();
     throw e;
@@ -3132,9 +3132,9 @@ try {
 };
 
 const deleteAllLetters = async () => {
-  if (!isMainAdmin) return; // فقط برای ادمین اصلی
+  if (!isMainAdmin) return; // ÙÙ‚Ø· Ø¨Ø±Ø§ÛŒ Ø§Ø¯Ù…ÛŒÙ† Ø§ØµÙ„ÛŒ
 
-  const ok = window.confirm("⚠️ همه نامه‌ها حذف شوند؟ این عملیات برگشت‌پذیر نیست.");
+  const ok = window.confirm("âš ï¸ Ù‡Ù…Ù‡ Ù†Ø§Ù…Ù‡â€ŒÙ‡Ø§ Ø­Ø°Ù Ø´ÙˆÙ†Ø¯ØŸ Ø§ÛŒÙ† Ø¹Ù…Ù„ÛŒØ§Øª Ø¨Ø±Ú¯Ø´Øªâ€ŒÙ¾Ø°ÛŒØ± Ù†ÛŒØ³Øª.");
   if (!ok) return;
 
   try {
@@ -3150,19 +3150,19 @@ const deleteAllLetters = async () => {
       throw new Error(data?.error || "delete_all_failed");
     }
 
-    // ✅ پاکسازی UI
+    // âœ… Ù¾Ø§Ú©Ø³Ø§Ø²ÛŒ UI
     setMyLetters([]);
     setSelectedIds(new Set());
     setPage(0);
 
-    // کش هم پاک شود (اگر از کش استفاده می‌کنی)
+    // Ú©Ø´ Ù‡Ù… Ù¾Ø§Ú© Ø´ÙˆØ¯ (Ø§Ú¯Ø± Ø§Ø² Ú©Ø´ Ø§Ø³ØªÙØ§Ø¯Ù‡ Ù…ÛŒâ€ŒÚ©Ù†ÛŒ)
     try {
       sessionStorage.removeItem(LETTERS_CACHE_KEY);
     } catch {}
 
-    alert(`✅ ${data.deleted ?? 0} نامه حذف شد`);
+    alert(`âœ… ${data.deleted ?? 0} Ù†Ø§Ù…Ù‡ Ø­Ø°Ù Ø´Ø¯`);
   } catch (e) {
-    alert("خطا در حذف همه نامه‌ها: " + (e?.message || "delete_all_failed"));
+    alert("Ø®Ø·Ø§ Ø¯Ø± Ø­Ø°Ù Ù‡Ù…Ù‡ Ù†Ø§Ù…Ù‡â€ŒÙ‡Ø§: " + (e?.message || "delete_all_failed"));
   }
 };
 
@@ -3171,7 +3171,7 @@ const deleteAllLetters = async () => {
       <div className={"col-span-4 text-xs font-semibold " + (theme === "dark" ? "text-white/70" : "text-neutral-600")}>
         {label}
       </div>
-      <div className={"col-span-8 text-sm " + (theme === "dark" ? "text-white" : "text-neutral-900")}>{value || "—"}</div>
+      <div className={"col-span-8 text-sm " + (theme === "dark" ? "text-white" : "text-neutral-900")}>{value || "â€”"}</div>
     </div>
   );
   const viewAttachments = useMemo(() => attachmentsOf(viewLetter), [viewLetter]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -3233,7 +3233,7 @@ const isImageView = useMemo(() => {
   }, [uploadOpen, uploadFor]);
 
   const allUploadedAttachments = useMemo(() => {
-  // ✅ وقتی مودال آپلود بسته است، اصلاً محاسبه نکن
+  // âœ… ÙˆÙ‚ØªÛŒ Ù…ÙˆØ¯Ø§Ù„ Ø¢Ù¾Ù„ÙˆØ¯ Ø¨Ø³ØªÙ‡ Ø§Ø³ØªØŒ Ø§ØµÙ„Ø§Ù‹ Ù…Ø­Ø§Ø³Ø¨Ù‡ Ù†Ú©Ù†
   if (!uploadOpen) return [];
 
   const arr = Array.isArray(myLettersSorted) ? myLettersSorted : [];
@@ -3254,9 +3254,9 @@ const isImageView = useMemo(() => {
           try {
             const u = String(url);
             const parts = u.split("?")[0].split("/");
-            return parts[parts.length - 1] || "فایل";
+            return parts[parts.length - 1] || "ÙØ§ÛŒÙ„";
           } catch {
-            return "فایل";
+            return "ÙØ§ÛŒÙ„";
           }
         })();
 
@@ -3267,7 +3267,7 @@ const isImageView = useMemo(() => {
         map.set(String(url), { ...a, url, name, type, size, _letterNo: letterNo });
       } else {
         const prev = map.get(String(url));
-        if (prev && (!prev.name || prev.name === "فایل") && name) {
+        if (prev && (!prev.name || prev.name === "ÙØ§ÛŒÙ„") && name) {
           map.set(String(url), {
             ...prev,
             url,
@@ -3302,7 +3302,7 @@ const isImageView = useMemo(() => {
   const addExistingAttachmentToCurrent = (which, att) => {
     const url = attachmentUrlOf(att);
     if (!url) return;
-    const name = attachmentNameOf(att) || att?.name || "فایل";
+    const name = attachmentNameOf(att) || att?.name || "ÙØ§ÛŒÙ„";
     const type = attachmentTypeOf(att) || att?.type || (isPdfUrl(url) ? "application/pdf" : "");
     const size = attachmentSizeOf(att) || Number(att?.size || 0) || 0;
     setDocFilesFor(which, (prev) => {
@@ -3332,11 +3332,11 @@ const isImageView = useMemo(() => {
   // ===== NEW: quick chips integrated into tags area =====
   const QUICK_CHIPS = useMemo(
     () => [
-      ["week", "هفته قبل"],
-      ["2w", "2 هفته قبل"],
-      ["1m", "ماه قبل"],
-      ["3m", "3 ماه قبل"],
-      ["6m", "6 ماه قبل"],
+      ["week", "Ù‡ÙØªÙ‡ Ù‚Ø¨Ù„"],
+      ["2w", "2 Ù‡ÙØªÙ‡ Ù‚Ø¨Ù„"],
+      ["1m", "Ù…Ø§Ù‡ Ù‚Ø¨Ù„"],
+      ["3m", "3 Ù…Ø§Ù‡ Ù‚Ø¨Ù„"],
+      ["6m", "6 Ù…Ø§Ù‡ Ù‚Ø¨Ù„"],
     ],
     []
   );
@@ -3366,18 +3366,18 @@ const filterTagCaps = useMemo(() => {
   const map = new Map((Array.isArray(allTags) ? allTags : []).map((t) => [String(t?.id), t]));
   const pinned = normalizeIdList(filterTagPinnedIds).slice(0, TAG_PREFS_LIMIT);
 
-  // ✅ اگر تگ هنوز تو allTags نبود، یک آبجکت placeholder می‌سازیم تا کپسول غیب نشه
+  // âœ… Ø§Ú¯Ø± ØªÚ¯ Ù‡Ù†ÙˆØ² ØªÙˆ allTags Ù†Ø¨ÙˆØ¯ØŒ ÛŒÚ© Ø¢Ø¨Ø¬Ú©Øª placeholder Ù…ÛŒâ€ŒØ³Ø§Ø²ÛŒÙ… ØªØ§ Ú©Ù¾Ø³ÙˆÙ„ ØºÛŒØ¨ Ù†Ø´Ù‡
   return pinned.map((id) => {
     const t = map.get(String(id));
     if (t) return t;
-    return { id: String(id), label: `برچسب (${toFaDigits(id)})`, _missing: true };
+    return { id: String(id), label: `Ø¨Ø±Ú†Ø³Ø¨ (${toFaDigits(id)})`, _missing: true };
   });
 }, [filterTagPinnedIds, allTags]);
 
 const openTagPicker = async (forWhat) => {
   setTagPickFor(forWhat);
 
-  const initialKind = forWhat === "form" ? "letters" : "letters"; // یا ساده‌تر: "letters"
+  const initialKind = forWhat === "form" ? "letters" : "letters"; // ÛŒØ§ Ø³Ø§Ø¯Ù‡â€ŒØªØ±: "letters"
   setTagPickKind(initialKind);
 
   await ensureTagsForKind(initialKind);
@@ -3400,17 +3400,17 @@ const applyPickedTags = () => {
   const ids = normalizeIdList(tagPickDraftIds).slice(0, TAG_PREFS_LIMIT);
 
   if (tagPickFor === "filter") {
-    // ✅ این پاپ‌آپ فقط “مدیریت برچسب‌های نوار فیلترها (Pinned)” است
+    // âœ… Ø§ÛŒÙ† Ù¾Ø§Ù¾â€ŒØ¢Ù¾ ÙÙ‚Ø· â€œÙ…Ø¯ÛŒØ±ÛŒØª Ø¨Ø±Ú†Ø³Ø¨â€ŒÙ‡Ø§ÛŒ Ù†ÙˆØ§Ø± ÙÛŒÙ„ØªØ±Ù‡Ø§ (Pinned)â€ Ø§Ø³Øª
     setFilterTagPinnedIds(ids);
     savePinnedFilterTags(ids);
 
-    // ✅ اگر برچسبی از نوار حذف شد، از فیلتر فعال هم حذف شود تا فیلتر مخفی نماند
+    // âœ… Ø§Ú¯Ø± Ø¨Ø±Ú†Ø³Ø¨ÛŒ Ø§Ø² Ù†ÙˆØ§Ø± Ø­Ø°Ù Ø´Ø¯ØŒ Ø§Ø² ÙÛŒÙ„ØªØ± ÙØ¹Ø§Ù„ Ù‡Ù… Ø­Ø°Ù Ø´ÙˆØ¯ ØªØ§ ÙÛŒÙ„ØªØ± Ù…Ø®ÙÛŒ Ù†Ù…Ø§Ù†Ø¯
 setFilterTagIds((prev) => {
   const cur = Array.isArray(prev) ? prev.map(String) : [];
   return cur.filter((x) => ids.includes(String(x)));
 });
    } else {
-    // ✅ همیشه روی همون تبِ فرم که بازه اعمال کن
+    // âœ… Ù‡Ù…ÛŒØ´Ù‡ Ø±ÙˆÛŒ Ù‡Ù…ÙˆÙ† ØªØ¨Ù ÙØ±Ù… Ú©Ù‡ Ø¨Ø§Ø²Ù‡ Ø§Ø¹Ù…Ø§Ù„ Ú©Ù†
       setFormTagsAllAndPersist(ids);
   }
 
@@ -3439,7 +3439,7 @@ setFilterTagIds((prev) => {
     setTagsByScope((m) => ({ ...m, [sc]: tgs }));
     setLoadedScopes((m) => ({ ...m, [sc]: true }));
   } catch {
-    // fallback قدیمی
+    // fallback Ù‚Ø¯ÛŒÙ…ÛŒ
     try {
       const r2 = await api("/tags");
       const items = Array.isArray(r2?.items) ? r2.items : Array.isArray(r2) ? r2 : [];
@@ -3462,7 +3462,7 @@ const ensureTagsForKind = async (kind) => {
 
 useEffect(() => {
   if (!formOpen) return;
-  ensureTagsForKind("letters"); // ✅ همیشه letters
+  ensureTagsForKind("letters"); // âœ… Ù‡Ù…ÛŒØ´Ù‡ letters
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [formOpen]);
 
@@ -3476,7 +3476,7 @@ useEffect(() => {
         <div className="p-3 md:p-4">
           {/* Header INSIDE card */}
           <div className="flex items-center justify-between gap-3 mb-3">
-            <div className="text-lg md:text-xl font-bold">اسناد و نامه ها</div>
+            <div className="text-lg md:text-xl font-bold">Ø§Ø³Ù†Ø§Ø¯ Ùˆ Ù†Ø§Ù…Ù‡ Ù‡Ø§</div>
             <button
               type="button"
               onClick={() => {
@@ -3493,8 +3493,8 @@ useEffect(() => {
                 "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
                 (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
               }
-              title={formOpen ? "بستن" : "افزودن"}
-              aria-label={formOpen ? "بستن" : "افزودن"}
+              title={formOpen ? "Ø¨Ø³ØªÙ†" : "Ø§ÙØ²ÙˆØ¯Ù†"}
+              aria-label={formOpen ? "Ø¨Ø³ØªÙ†" : "Ø§ÙØ²ÙˆØ¯Ù†"}
             >
               <img
                 src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"}
@@ -3546,11 +3546,11 @@ useEffect(() => {
 
     if (t.id === "all") {
       setFilterTab("all");
-      resetAllFilters();   // ✅ همه فیلترها پاک
+      resetAllFilters();   // âœ… Ù‡Ù…Ù‡ ÙÛŒÙ„ØªØ±Ù‡Ø§ Ù¾Ø§Ú©
       return;
     }
 
-    setFilterTab(t.id);   // ✅ فقط فیلتر
+    setFilterTab(t.id);   // âœ… ÙÙ‚Ø· ÙÛŒÙ„ØªØ±
   }}
   className={cls}
     style={
@@ -3569,10 +3569,10 @@ useEffect(() => {
                   className="w-5 h-5"
                   style={{
                   filter: active
-                  ? "brightness(0) invert(1)"            // ✅ وقتی تب انتخاب شد: آیکن سفید
+                  ? "brightness(0) invert(1)"            // âœ… ÙˆÙ‚ØªÛŒ ØªØ¨ Ø§Ù†ØªØ®Ø§Ø¨ Ø´Ø¯: Ø¢ÛŒÚ©Ù† Ø³ÙÛŒØ¯
                   : theme === "dark"
-                  ? "brightness(0) invert(1)"            // ✅ دارک: آیکن سفید
-                  : "none",                               // ✅ لایت و غیر فعال: رنگ اصلی فایل
+                  ? "brightness(0) invert(1)"            // âœ… Ø¯Ø§Ø±Ú©: Ø¢ÛŒÚ©Ù† Ø³ÙÛŒØ¯
+                  : "none",                               // âœ… Ù„Ø§ÛŒØª Ùˆ ØºÛŒØ± ÙØ¹Ø§Ù„: Ø±Ù†Ú¯ Ø§ØµÙ„ÛŒ ÙØ§ÛŒÙ„
                               }}
                             />
                           ) : null}
@@ -3582,13 +3582,13 @@ useEffect(() => {
                 </div>
 
                 <div className="min-w-[260px] flex-1">
-  <div className={labelCls}>جست و جو</div>
+  <div className={labelCls}>Ø¬Ø³Øª Ùˆ Ø¬Ùˆ</div>
   <input
     value={filterQuery}
     onChange={(e) => setFilterQuery(e.target.value)}
     className={inputCls}
     type="text"
-    placeholder="جستجو بر اساس موضوع / شرکت-سازمان / شماره سند ..."
+    placeholder="Ø¬Ø³ØªØ¬Ùˆ Ø¨Ø± Ø§Ø³Ø§Ø³ Ù…ÙˆØ¶ÙˆØ¹ / Ø´Ø±Ú©Øª-Ø³Ø§Ø²Ù…Ø§Ù† / Ø´Ù…Ø§Ø±Ù‡ Ø³Ù†Ø¯ ..."
   />
 </div>
                 <div className="min-w-[140px]">
@@ -3598,7 +3598,7 @@ useEffect(() => {
                     value={filterFromDate}
                     onChange={(v) => {
                       setFilterFromDate(v);
-                      setFilterQuick(""); // ✅
+                      setFilterQuick(""); // âœ…
                     }}
                     theme={theme}
                   />
@@ -3610,7 +3610,7 @@ useEffect(() => {
                     value={filterToDate}
                     onChange={(v) => {
                       setFilterToDate(v);
-                      setFilterQuick(""); // ✅
+                      setFilterQuick(""); // âœ…
                     }}
                     theme={theme}
                   />
@@ -3623,7 +3623,7 @@ useEffect(() => {
 
               {/* Tags + Quick chips (moved here) */}
               <div>
-                <div className={labelCls}>برچسب ها</div>
+                <div className={labelCls}>Ø¨Ø±Ú†Ø³Ø¨ Ù‡Ø§</div>
                 <div className="flex flex-wrap items-center gap-2">
   {/* 1) Quick chips */}
   {QUICK_CHIPS.map(([k, lab]) => (
@@ -3653,7 +3653,7 @@ useEffect(() => {
     </button>
   ))}
 
-  {/* 2) Pinned user tags (قبل از افزودن) */}
+  {/* 2) Pinned user tags (Ù‚Ø¨Ù„ Ø§Ø² Ø§ÙØ²ÙˆØ¯Ù†) */}
   {filterTagCaps.map((t) => {
   const id = String(t?.id);
   const label = tagLabelOf(t);
@@ -3664,7 +3664,7 @@ useEffect(() => {
       key={id}
       type="button"
        onClick={() => {
-        // ✅ فقط روشن/خاموش شدن فیلتر، بدون جابه‌جایی در لیست
+        // âœ… ÙÙ‚Ø· Ø±ÙˆØ´Ù†/Ø®Ø§Ù…ÙˆØ´ Ø´Ø¯Ù† ÙÛŒÙ„ØªØ±ØŒ Ø¨Ø¯ÙˆÙ† Ø¬Ø§Ø¨Ù‡â€ŒØ¬Ø§ÛŒÛŒ Ø¯Ø± Ù„ÛŒØ³Øª
         toggleFilterTag(id);
       }}
       className={(active ? selectedTagChipCls : chipCls) + " shrink-0"}
@@ -3677,7 +3677,7 @@ useEffect(() => {
 })}
 
 
-  {/* 3) Add button (همیشه آخر) */}
+  {/* 3) Add button (Ù‡Ù…ÛŒØ´Ù‡ Ø¢Ø®Ø±) */}
   <button
   type="button"
   onClick={() => openTagPicker("filter")}
@@ -3687,8 +3687,8 @@ useEffect(() => {
       ? "border-white/15 bg-white/5 hover:bg-white/10"
       : "border-black/10 bg-white hover:bg-black/[0.02]")
   }
-  aria-label="افزودن برچسب"
-  title="افزودن برچسب"
+  aria-label="Ø§ÙØ²ÙˆØ¯Ù† Ø¨Ø±Ú†Ø³Ø¨"
+  title="Ø§ÙØ²ÙˆØ¯Ù† Ø¨Ø±Ú†Ø³Ø¨"
 >
   <img
     src="/images/icons/sayer.svg"
@@ -3713,9 +3713,9 @@ useEffect(() => {
     pb-1
   "
 >
-  {/* نوع نامه */}
+  {/* Ù†ÙˆØ¹ Ù†Ø§Ù…Ù‡ */}
   <div className="shrink-0 w-[320px]">
-    <div className={labelSmCls}>نوع سند</div>
+    <div className={labelSmCls}>Ù†ÙˆØ¹ Ø³Ù†Ø¯</div>
     <div className="flex items-center gap-1">
       {TABS.filter((x) => x.id !== "all").map((t) => {
         const active = formKind === t.id;
@@ -3754,9 +3754,9 @@ useEffect(() => {
     </div>
   </div>
 
-  {/* کلاس سند */}
+  {/* Ú©Ù„Ø§Ø³ Ø³Ù†Ø¯ */}
 <div className="shrink-0 w-[190px]">
-  <div className={labelSmCls}>کلاس سند</div>
+  <div className={labelSmCls}>Ú©Ù„Ø§Ø³ Ø³Ù†Ø¯</div>
 
   <FieldWrap>
     <select
@@ -3771,7 +3771,7 @@ aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "category") : 
       {([...DOC_CLASS_BASE, ...(Array.isArray(docClassExtras) ? docClassExtras : [])]).map((lab) => (
         <option key={lab} value={lab}>{lab}</option>
       ))}
-      <option value="سایر">سایر</option>
+      <option value="Ø³Ø§ÛŒØ±">Ø³Ø§ÛŒØ±</option>
     </select>
 
     {formKind === "outgoing" ? <ErrorTextAbs k="category" /> : null}
@@ -3779,9 +3779,9 @@ aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "category") : 
 </div>
 
 
-  {/* طبقه بندی */}
+  {/* Ø·Ø¨Ù‚Ù‡ Ø¨Ù†Ø¯ÛŒ */}
   <div className="shrink-0 w-[140px]">
-  <div className={labelSmCls}>طبقه بندی</div>
+  <div className={labelSmCls}>Ø·Ø¨Ù‚Ù‡ Ø¨Ù†Ø¯ÛŒ</div>
 
   <FieldWrap>
     <select
@@ -3793,16 +3793,16 @@ onChange={(e) => {
 className={inputWithError(inputSmCls, "incoming", "classification")}
 aria-invalid={fieldHasError("incoming", "classification")}
     >
-      <option value="عادی">عادی</option>
-      <option value="محرمانه">محرمانه</option>
+      <option value="Ø¹Ø§Ø¯ÛŒ">Ø¹Ø§Ø¯ÛŒ</option>
+      <option value="Ù…Ø­Ø±Ù…Ø§Ù†Ù‡">Ù…Ø­Ø±Ù…Ø§Ù†Ù‡</option>
     </select>
 <ErrorTextAbs kind="incoming" k="classification" />
   </FieldWrap>
 </div>
 
-  {/* مرکز/پروژه */}
+  {/* Ù…Ø±Ú©Ø²/Ù¾Ø±ÙˆÚ˜Ù‡ */}
 <div className="shrink-0 w-[220px]">
-  <div className={labelSmCls}>مرکز/پروژه</div>
+  <div className={labelSmCls}>Ù…Ø±Ú©Ø²/Ù¾Ø±ÙˆÚ˜Ù‡</div>
 
   <FieldWrap>
     <select
@@ -3826,16 +3826,16 @@ aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "projectId") :
   </FieldWrap>
 </div>
 
-{/* شماره سند */}
+{/* Ø´Ù…Ø§Ø±Ù‡ Ø³Ù†Ø¯ */}
 <div className="shrink-0 w-[170px]">
-  <div className={labelSmCls}>شماره سند</div>
+  <div className={labelSmCls}>Ø´Ù…Ø§Ø±Ù‡ Ø³Ù†Ø¯</div>
 
   <FieldWrap>
     <input
       value={getForm(formKind).letterNo || ""}
       onChange={(e) => {
         setForm(formKind, { letterNo: e.target.value });
-        clearFieldError(formKind, "letterNo"); // اگر برای اون تب ولیدیشن داری
+        clearFieldError(formKind, "letterNo"); // Ø§Ú¯Ø± Ø¨Ø±Ø§ÛŒ Ø§ÙˆÙ† ØªØ¨ ÙˆÙ„ÛŒØ¯ÛŒØ´Ù† Ø¯Ø§Ø±ÛŒ
       }}
       className={
         formKind === "incoming"
@@ -3859,9 +3859,9 @@ aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "projectId") :
 </div>
 
 
-  {/* تاریخ */}
+  {/* ØªØ§Ø±ÛŒØ® */}
   <div className="shrink-0 w-[170px]">
-  <div className={labelSmCls}>تاریخ سند</div>
+  <div className={labelSmCls}>ØªØ§Ø±ÛŒØ® Ø³Ù†Ø¯</div>
 
   <FieldWrap>
     <JalaliPopupDatePicker
@@ -3883,7 +3883,7 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
     <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
       {formKind === "outgoing" ? (
         <>
-          {/* از (کمی کوچکتر) */}
+          {/* Ø§Ø² (Ú©Ù…ÛŒ Ú©ÙˆÚ†Ú©ØªØ±) */}
           <div className="md:col-span-3 md:col-start-1">
             <div className={labelCls}>از</div>
   <FieldWrap>
@@ -3891,18 +3891,18 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
     value={outgoingForm.fromName}
     onChange={(e) => {
       setOutgoingForm((p) => ({ ...p, fromName: e.target.value }));
-      clearFieldError("outgoing", "fromName"); // ✅ با تایپ، خطا پاک شود
+      clearFieldError("outgoing", "fromName"); // âœ… Ø¨Ø§ ØªØ§ÛŒÙ¾ØŒ Ø®Ø·Ø§ Ù¾Ø§Ú© Ø´ÙˆØ¯
     }}
-    className={inputWithError(inputCls, "outgoing", "fromName")} // ✅ دور قرمز
+    className={inputWithError(inputCls, "outgoing", "fromName")} // âœ… Ø¯ÙˆØ± Ù‚Ø±Ù…Ø²
     aria-invalid={fieldHasError("outgoing", "fromName")}
     type="text"
   />
-  <ErrorTextAbs kind="outgoing" k="fromName" /> {/* ✅ متن ارور */}
+  <ErrorTextAbs kind="outgoing" k="fromName" /> {/* âœ… Ù…ØªÙ† Ø§Ø±ÙˆØ± */}
 </FieldWrap>
 
           </div>
 
-          {/* آیکن وسط */}
+          {/* Ø¢ÛŒÚ©Ù† ÙˆØ³Ø· */}
           <div className="md:col-span-1 md:col-start-4 flex flex-col items-center">
             <div className={labelCls + " opacity-0 select-none"}>_</div>
             <div className="h-10 flex items-center justify-center">
@@ -3914,9 +3914,9 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
             </div>
           </div>
 
-          {/* به (کمی کوچکتر) */}
+          {/* Ø¨Ù‡ (Ú©Ù…ÛŒ Ú©ÙˆÚ†Ú©ØªØ±) */}
           <div className="md:col-span-3 md:col-start-5">
-            <div className={labelCls}>به</div>
+            <div className={labelCls}>Ø¨Ù‡</div>
             <FieldWrap>
  <input
     value={outgoingForm.toName}
@@ -3933,9 +3933,9 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
 
           </div>
 
-          {/* شرکت/سازمان (باقی فضا) */}
+          {/* Ø´Ø±Ú©Øª/Ø³Ø§Ø²Ù…Ø§Ù† (Ø¨Ø§Ù‚ÛŒ ÙØ¶Ø§) */}
           <div className="md:col-span-5 md:col-start-8">
-            <div className={labelCls}>شرکت/سازمان</div>
+            <div className={labelCls}>Ø´Ø±Ú©Øª/Ø³Ø§Ø²Ù…Ø§Ù†</div>
      <FieldWrap>
   <input
     value={outgoingForm.orgName}
@@ -3953,7 +3953,7 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
         </>
       ) : (
         <>
-          {/* وارده (مثل قبل) */}
+          {/* ÙˆØ§Ø±Ø¯Ù‡ (Ù…Ø«Ù„ Ù‚Ø¨Ù„) */}
           <div className="md:col-span-4 md:col-start-1">
   <div className={labelCls}>از</div>
 <FieldWrap>
@@ -3961,34 +3961,34 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
     value={incomingForm.fromName}
     onChange={(e) => {
       setIncomingForm((p) => ({ ...p, fromName: e.target.value }));
-      clearFieldError("incoming", "fromName"); // ✅
+      clearFieldError("incoming", "fromName"); // âœ…
     }}
-    className={inputWithError(inputCls, "incoming", "fromName")} // ✅
+    className={inputWithError(inputCls, "incoming", "fromName")} // âœ…
     aria-invalid={fieldHasError("incoming", "fromName")}
     type="text"
   />
-  <ErrorTextAbs kind="incoming" k="fromName" /> {/* ✅ */}
+  <ErrorTextAbs kind="incoming" k="fromName" /> {/* âœ… */}
 </FieldWrap>
 
 
 </div>
 
-          {/* شرکت/سازمان (باقی فضا) */}
+          {/* Ø´Ø±Ú©Øª/Ø³Ø§Ø²Ù…Ø§Ù† (Ø¨Ø§Ù‚ÛŒ ÙØ¶Ø§) */}
 <div className="md:col-span-4 md:col-start-5">
-  <div className={labelCls}>شرکت/سازمان</div>
+  <div className={labelCls}>Ø´Ø±Ú©Øª/Ø³Ø§Ø²Ù…Ø§Ù†</div>
 
    <FieldWrap>
   <input
     value={incomingForm.orgName}
     onChange={(e) => {
       setIncomingForm((p) => ({ ...p, orgName: e.target.value }));
-      clearFieldError("incoming", "orgName"); // ✅ مهم
+      clearFieldError("incoming", "orgName"); // âœ… Ù…Ù‡Ù…
     }}
-    className={inputWithError(inputCls, "incoming", "orgName")} // ✅ مهم
-    aria-invalid={fieldHasError("incoming", "orgName")} // ✅ مهم
+    className={inputWithError(inputCls, "incoming", "orgName")} // âœ… Ù…Ù‡Ù…
+    aria-invalid={fieldHasError("incoming", "orgName")} // âœ… Ù…Ù‡Ù…
     type="text"
   />
-  <ErrorTextAbs kind="incoming" k="orgName" /> {/* ✅ مهم */}
+  <ErrorTextAbs kind="incoming" k="orgName" /> {/* âœ… Ù…Ù‡Ù… */}
 </FieldWrap>
 
     <ErrorTextAbs k="orgName" />
@@ -4007,9 +4007,9 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
             </div>
           </div>
 
-          {/* به (کمی کوچکتر) */}
+          {/* Ø¨Ù‡ (Ú©Ù…ÛŒ Ú©ÙˆÚ†Ú©ØªØ±) */}
 <div className="md:col-span-3 md:col-start-10">
-  <div className={labelCls}>به</div>
+  <div className={labelCls}>Ø¨Ù‡</div>
 
     <input
   value={incomingForm.toName}
@@ -4030,12 +4030,12 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
     </div>
   </div>
 )}
-   {/* موضوع + ضمیمه + (برای داخلی: واحد) */}
+   {/* Ù…ÙˆØ¶ÙˆØ¹ + Ø¶Ù…ÛŒÙ…Ù‡ + (Ø¨Ø±Ø§ÛŒ Ø¯Ø§Ø®Ù„ÛŒ: ÙˆØ§Ø­Ø¯) */}
 {formKind === "internal" ? (
   <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start">
-    {/* موضوع */}
+    {/* Ù…ÙˆØ¶ÙˆØ¹ */}
     <div className="md:col-span-7 md:col-start-1">
-      <div className={labelCls}>موضوع</div>
+      <div className={labelCls}>Ù…ÙˆØ¶ÙˆØ¹</div>
 
       <FieldWrap>
         <input
@@ -4052,9 +4052,9 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
       </FieldWrap>
     </div>
 
-    {/* واحد (کنار ضمیمه) */}
+    {/* ÙˆØ§Ø­Ø¯ (Ú©Ù†Ø§Ø± Ø¶Ù…ÛŒÙ…Ù‡) */}
     <div className="md:col-span-3 md:col-start-8">
-      <div className={labelCls}>واحد</div>
+      <div className={labelCls}>ÙˆØ§Ø­Ø¯</div>
 <FieldWrap>
   <select
     value={internalUnitId}
@@ -4077,9 +4077,9 @@ clearFieldError("internal", "internalUnitId");
 
     </div>
 
-    {/* ضمیمه (کنار واحد و در همان خط) */}
+    {/* Ø¶Ù…ÛŒÙ…Ù‡ (Ú©Ù†Ø§Ø± ÙˆØ§Ø­Ø¯ Ùˆ Ø¯Ø± Ù‡Ù…Ø§Ù† Ø®Ø·) */}
     <div className="md:col-span-2 md:col-start-11 flex flex-col items-center">
-      <div className={labelCls}>ضمیمه</div>
+      <div className={labelCls}>Ø¶Ù…ÛŒÙ…Ù‡</div>
       <div className="flex items-center justify-center gap-4 mt-0 h-10">
         <label className="inline-flex items-center gap-2 cursor-pointer select-none">
           <input
@@ -4100,7 +4100,7 @@ clearFieldError("internal", "internalUnitId");
             onChange={() => setHasAttachment(false)}
             className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
           />
-          <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>ندارد</span>
+          <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>Ù†Ø¯Ø§Ø±Ø¯</span>
         </label>
       </div>
     </div>
@@ -4108,9 +4108,9 @@ clearFieldError("internal", "internalUnitId");
 ) : (
 
   <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start">
-    {/* موضوع */}
+    {/* Ù…ÙˆØ¶ÙˆØ¹ */}
    <div className="md:col-span-10">
-  <div className={labelCls}>موضوع</div>
+  <div className={labelCls}>Ù…ÙˆØ¶ÙˆØ¹</div>
 
   <FieldWrap>
     <input
@@ -4128,9 +4128,9 @@ aria-invalid={fieldHasError(formKind, "subject")}
 </div>
 
 
-    {/* ضمیمه (کنار موضوع) */}
+    {/* Ø¶Ù…ÛŒÙ…Ù‡ (Ú©Ù†Ø§Ø± Ù…ÙˆØ¶ÙˆØ¹) */}
     <div className="md:col-span-2 flex flex-col items-center">
-      <div className={labelCls}>ضمیمه</div>
+      <div className={labelCls}>Ø¶Ù…ÛŒÙ…Ù‡</div>
       <div className="flex items-center justify-center gap-4 mt-0 h-10">
         <label className="inline-flex items-center gap-2 cursor-pointer select-none">
           <input
@@ -4151,24 +4151,24 @@ aria-invalid={fieldHasError(formKind, "subject")}
             onChange={() => setHasAttachment(false)}
             className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
           />
-          <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>ندارد</span>
+          <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>Ù†Ø¯Ø§Ø±Ø¯</span>
         </label>
       </div>
     </div>
   </div>
 )}
 
-{/* ضمیمه (رادیویی دارد/ندارد) + عنوان ضمیمه + بازگشت/پیرو کنار عنوان — بدون شرط نمایش */}
+{/* Ø¶Ù…ÛŒÙ…Ù‡ (Ø±Ø§Ø¯ÛŒÙˆÛŒÛŒ Ø¯Ø§Ø±Ø¯/Ù†Ø¯Ø§Ø±Ø¯) + Ø¹Ù†ÙˆØ§Ù† Ø¶Ù…ÛŒÙ…Ù‡ + Ø¨Ø§Ø²Ú¯Ø´Øª/Ù¾ÛŒØ±Ùˆ Ú©Ù†Ø§Ø± Ø¹Ù†ÙˆØ§Ù† â€” Ø¨Ø¯ÙˆÙ† Ø´Ø±Ø· Ù†Ù…Ø§ÛŒØ´ */}
 <div>
-    {/* ردیف کنارهم: ضمیمه + عنوان ضمیمه + بازگشت به (+ پیرو در صادره) */}
+    {/* Ø±Ø¯ÛŒÙ Ú©Ù†Ø§Ø±Ù‡Ù…: Ø¶Ù…ÛŒÙ…Ù‡ + Ø¹Ù†ÙˆØ§Ù† Ø¶Ù…ÛŒÙ…Ù‡ + Ø¨Ø§Ø²Ú¯Ø´Øª Ø¨Ù‡ (+ Ù¾ÛŒØ±Ùˆ Ø¯Ø± ØµØ§Ø¯Ø±Ù‡) */}
 <div className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-1 items-start">
 
-{/* اسناد مرتبط + بارگذاری اسناد (کنار هم و چسبیده) */}
+{/* Ø§Ø³Ù†Ø§Ø¯ Ù…Ø±ØªØ¨Ø· + Ø¨Ø§Ø±Ú¯Ø°Ø§Ø±ÛŒ Ø§Ø³Ù†Ø§Ø¯ (Ú©Ù†Ø§Ø± Ù‡Ù… Ùˆ Ú†Ø³Ø¨ÛŒØ¯Ù‡) */}
 <div className="md:col-span-12 min-w-0">
   <div className="flex items-start justify-start gap-2">
-    {/* اسناد مرتبط */}
+    {/* Ø§Ø³Ù†Ø§Ø¯ Ù…Ø±ØªØ¨Ø· */}
     <div className="min-w-0">
-      <div className={labelCls}>اسناد مرتبط</div>
+      <div className={labelCls}>Ø§Ø³Ù†Ø§Ø¯ Ù…Ø±ØªØ¨Ø·</div>
 
       <button
         type="button"
@@ -4179,8 +4179,8 @@ aria-invalid={fieldHasError(formKind, "subject")}
             ? "border-white/15 bg-white/5 hover:bg-white/10"
             : "border-black/10 bg-white hover:bg-black/[0.02]")
         }
-        aria-label="انتخاب اسناد مرتبط"
-        title="انتخاب اسناد مرتبط"
+        aria-label="Ø§Ù†ØªØ®Ø§Ø¨ Ø§Ø³Ù†Ø§Ø¯ Ù…Ø±ØªØ¨Ø·"
+        title="Ø§Ù†ØªØ®Ø§Ø¨ Ø§Ø³Ù†Ø§Ø¯ Ù…Ø±ØªØ¨Ø·"
       >
         <img
           src="/images/icons/sayer.svg"
@@ -4189,7 +4189,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
         />
       </button>
 
-      {/* نمایش انتخاب‌ها */}
+      {/* Ù†Ù…Ø§ÛŒØ´ Ø§Ù†ØªØ®Ø§Ø¨â€ŒÙ‡Ø§ */}
       {relatedSelectedIds.length > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-1 text-sm">
           {relatedSelectedIds.map((id, i) => {
@@ -4199,7 +4199,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
             return (
               <span key={String(id)} className="inline-flex items-center gap-1">
                 {i > 0 && (
-                  <span className={theme === "dark" ? "text-white/60" : "text-neutral-600"}>و</span>
+                  <span className={theme === "dark" ? "text-white/60" : "text-neutral-600"}>Ùˆ</span>
                 )}
 
                 <button
@@ -4209,7 +4209,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
                     "underline underline-offset-4 font-semibold " +
                     (theme === "dark" ? "text-white hover:text-white/90" : "text-neutral-900 hover:text-black")
                   }
-                  title="پیش نمایش"
+                  title="Ù¾ÛŒØ´ Ù†Ù…Ø§ÛŒØ´"
                 >
                   {toFaDigits(no)}
                 </button>
@@ -4228,7 +4228,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
                   aria-label="حذف"
                   title="حذف"
                 >
-                  ×
+                  Ã—
                 </button>
               </span>
             );
@@ -4237,21 +4237,21 @@ aria-invalid={fieldHasError(formKind, "subject")}
       )}
     </div>
 
-    {/* بارگذاری اسناد (چسبیده کنار اسناد مرتبط) */}
+    {/* Ø¨Ø§Ø±Ú¯Ø°Ø§Ø±ÛŒ Ø§Ø³Ù†Ø§Ø¯ (Ú†Ø³Ø¨ÛŒØ¯Ù‡ Ú©Ù†Ø§Ø± Ø§Ø³Ù†Ø§Ø¯ Ù…Ø±ØªØ¨Ø·) */}
     <div className="shrink-0">
-      <div className={labelCls}>&nbsp;</div> {/* هم‌تراز با لیبل بالا */}
+      <div className={labelCls}>&nbsp;</div> {/* Ù‡Ù…â€ŒØªØ±Ø§Ø² Ø¨Ø§ Ù„ÛŒØ¨Ù„ Ø¨Ø§Ù„Ø§ */}
       <button
   type="button"
   onClick={() => openUpload(formKind)}
   className={uploadTriggerCls + " h-10 w-auto whitespace-nowrap"}
-  title="بارگذاری اسناد"
+  title="Ø¨Ø§Ø±Ú¯Ø°Ø§Ø±ÛŒ Ø§Ø³Ù†Ø§Ø¯"
 >
   <img
     src="/images/icons/upload.svg"
     alt=""
     className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
   />
-  <span>بارگذاری اسناد</span>
+  <span>Ø¨Ø§Ø±Ú¯Ø°Ø§Ø±ÛŒ Ø§Ø³Ù†Ø§Ø¯</span>
 
   {Array.isArray(docFilesByType?.[formKind]) && docFilesByType[formKind].length > 0 ? (
     <span className="mr-2 text-xs opacity-80">
@@ -4260,9 +4260,9 @@ aria-invalid={fieldHasError(formKind, "subject")}
   ) : null}
 </button>
     </div>
-     {/* ✅ توضیح کنار بارگذاری اسناد */}
+     {/* âœ… ØªÙˆØ¶ÛŒØ­ Ú©Ù†Ø§Ø± Ø¨Ø§Ø±Ú¯Ø°Ø§Ø±ÛŒ Ø§Ø³Ù†Ø§Ø¯ */}
 <div className="min-w-0 w-full md:w-[15%]">
-  <div className={labelCls}>توضیح</div>
+  <div className={labelCls}>ØªÙˆØ¶ÛŒØ­</div>
   <input
     value={
       formKind === "incoming"
@@ -4279,7 +4279,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
     }}
     className={inputCls + " h-10"}
     type="text"
-    placeholder="توضیح..."
+    placeholder="ØªÙˆØ¶ÛŒØ­..."
   />
 </div>
   </div>
@@ -4301,7 +4301,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
         {/* header */}
         <div className="p-4 flex items-center justify-between gap-3">
           <div className="font-semibold text-sm">
-            انتخاب اسناد مرتبط
+            Ø§Ù†ØªØ®Ø§Ø¨ Ø§Ø³Ù†Ø§Ø¯ Ù…Ø±ØªØ¨Ø·
             {relatedPickIds.length ? (
               <span className={theme === "dark" ? "text-white/60 mr-2" : "text-neutral-600 mr-2"}>
                 ({toFaDigits(relatedPickIds.length)})
@@ -4318,8 +4318,8 @@ aria-invalid={fieldHasError(formKind, "subject")}
                 ? "border-white/10 hover:bg-white/10"
                 : "border-black/10 hover:bg-black/[0.04]")
             }
-            aria-label="بستن"
-            title="بستن"
+            aria-label="Ø¨Ø³ØªÙ†"
+            title="Ø¨Ø³ØªÙ†"
           >
             <img
               src="/images/icons/bastan.svg"
@@ -4336,7 +4336,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
             onChange={(e) => setRelatedPickQuery(e.target.value)}
             className={inputCls + " h-10 text-sm"}
             type="text"
-            placeholder="جستجو با شماره / موضوع / سازمان ..."
+            placeholder="Ø¬Ø³ØªØ¬Ùˆ Ø¨Ø§ Ø´Ù…Ø§Ø±Ù‡ / Ù…ÙˆØ¶ÙˆØ¹ / Ø³Ø§Ø²Ù…Ø§Ù† ..."
             autoFocus
           />
         </div>
@@ -4346,22 +4346,22 @@ aria-invalid={fieldHasError(formKind, "subject")}
         {/* list */}
         <div className="max-h-[55vh] overflow-auto p-2">
            {(() => {
-    const list = relatedPickList; // ✅ لیست بهینه‌شده
+    const list = relatedPickList; // âœ… Ù„ÛŒØ³Øª Ø¨Ù‡ÛŒÙ†Ù‡â€ŒØ´Ø¯Ù‡
 
     if (!list.length) {
       return (
         <div className={theme === "dark" ? "text-white/60 text-sm p-4" : "text-neutral-600 text-sm p-4"}>
-          موردی پیدا نشد.
+          Ù…ÙˆØ±Ø¯ÛŒ Ù¾ÛŒØ¯Ø§ Ù†Ø´Ø¯.
         </div>
       );
     }
 
     return (
       <>
-        {/* اگر سرچ خالیه، فقط N مورد اول نمایش داده می‌شود */}
+        {/* Ø§Ú¯Ø± Ø³Ø±Ú† Ø®Ø§Ù„ÛŒÙ‡ØŒ ÙÙ‚Ø· N Ù…ÙˆØ±Ø¯ Ø§ÙˆÙ„ Ù†Ù…Ø§ÛŒØ´ Ø¯Ø§Ø¯Ù‡ Ù…ÛŒâ€ŒØ´ÙˆØ¯ */}
         {!String(relatedPickQueryDebounced || "").trim() && (
           <div className={theme === "dark" ? "text-white/50 text-xs px-3 pb-2" : "text-neutral-500 text-xs px-3 pb-2"}>
-            برای نمایش همه موارد، بخشی از شماره/موضوع/سازمان را جستجو کنید. (نمایش {toFaDigits(RELATED_PICK_LIMIT)} مورد اول)
+            Ø¨Ø±Ø§ÛŒ Ù†Ù…Ø§ÛŒØ´ Ù‡Ù…Ù‡ Ù…ÙˆØ§Ø±Ø¯ØŒ Ø¨Ø®Ø´ÛŒ Ø§Ø² Ø´Ù…Ø§Ø±Ù‡/Ù…ÙˆØ¶ÙˆØ¹/Ø³Ø§Ø²Ù…Ø§Ù† Ø±Ø§ Ø¬Ø³ØªØ¬Ùˆ Ú©Ù†ÛŒØ¯. (Ù†Ù…Ø§ÛŒØ´ {toFaDigits(RELATED_PICK_LIMIT)} Ù…ÙˆØ±Ø¯ Ø§ÙˆÙ„)
           </div>
         )}
 
@@ -4399,7 +4399,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
                 </div>
 
                 <div className={"text-xs truncate mt-0.5 " + (theme === "dark" ? "text-white/60" : "text-neutral-600")}>
-                  {sub || "—"}
+                  {sub || "â€”"}
                 </div>
               </div>
 
@@ -4414,10 +4414,10 @@ aria-invalid={fieldHasError(formKind, "subject")}
                     ? "border-white/15"
                     : "border-black/15")
                 }
-                aria-label={checked ? "انتخاب شده" : "انتخاب نشده"}
-                title={checked ? "انتخاب شده" : "انتخاب"}
+                aria-label={checked ? "Ø§Ù†ØªØ®Ø§Ø¨ Ø´Ø¯Ù‡" : "Ø§Ù†ØªØ®Ø§Ø¨ Ù†Ø´Ø¯Ù‡"}
+                title={checked ? "Ø§Ù†ØªØ®Ø§Ø¨ Ø´Ø¯Ù‡" : "Ø§Ù†ØªØ®Ø§Ø¨"}
               >
-                {checked ? "✓" : ""}
+                {checked ? "âœ“" : ""}
               </div>
             </button>
           );
@@ -4449,8 +4449,8 @@ aria-invalid={fieldHasError(formKind, "subject")}
                 ? "border-white/15 bg-white text-black hover:bg-white/90"
                 : "border-black/10 bg-black text-white hover:bg-black/90")
             }
-            aria-label="تایید"
-            title="تایید"
+            aria-label="ØªØ§ÛŒÛŒØ¯"
+            title="ØªØ§ÛŒÛŒØ¯"
           >
             <img
               src="/images/icons/check.svg"
@@ -4473,7 +4473,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div>
           <div className={labelCls}
-          >  {formKind === "outgoing" ? "تاریخ ثبت دبیرخانه " : "تاریخ ثبت دبیرخانه"}
+          >  {formKind === "outgoing" ? "ØªØ§Ø±ÛŒØ® Ø«Ø¨Øª Ø¯Ø¨ÛŒØ±Ø®Ø§Ù†Ù‡ " : "ØªØ§Ø±ÛŒØ® Ø«Ø¨Øª Ø¯Ø¨ÛŒØ±Ø®Ø§Ù†Ù‡"}
           </div>
           <JalaliPopupDatePicker
             value={formKind === "incoming" ? incomingSecretariatDate : formKind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate}
@@ -4496,7 +4496,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
 
         <div>
           <div className={labelCls}
-          >  {formKind === "outgoing" ? "شماره ثبت دبیرخانه " : "شماره ثبت دبیرخانه"}
+          >  {formKind === "outgoing" ? "Ø´Ù…Ø§Ø±Ù‡ Ø«Ø¨Øª Ø¯Ø¨ÛŒØ±Ø®Ø§Ù†Ù‡ " : "Ø´Ù…Ø§Ø±Ù‡ Ø«Ø¨Øª Ø¯Ø¨ÛŒØ±Ø®Ø§Ù†Ù‡"}
           </div>
         <input
   value={
@@ -4506,9 +4506,9 @@ aria-invalid={fieldHasError(formKind, "subject")}
       ? outgoingSecretariatNo
       : internalSecretariatNo
   }
-  readOnly // ✅ قفل کامل در هر سه تب
-  tabIndex={-1} // ✅ فوکوس با Tab نگیرد (اختیاری ولی بهتر)
-  onChange={() => {}} // ✅ هیچ تغییری از تایپ اعمال نشود
+  readOnly // âœ… Ù‚ÙÙ„ Ú©Ø§Ù…Ù„ Ø¯Ø± Ù‡Ø± Ø³Ù‡ ØªØ¨
+  tabIndex={-1} // âœ… ÙÙˆÚ©ÙˆØ³ Ø¨Ø§ Tab Ù†Ú¯ÛŒØ±Ø¯ (Ø§Ø®ØªÛŒØ§Ø±ÛŒ ÙˆÙ„ÛŒ Ø¨Ù‡ØªØ±)
+  onChange={() => {}} // âœ… Ù‡ÛŒÚ† ØªØºÛŒÛŒØ±ÛŒ Ø§Ø² ØªØ§ÛŒÙ¾ Ø§Ø¹Ù…Ø§Ù„ Ù†Ø´ÙˆØ¯
   className={
     inputCls +
     " bg-black/5 dark:bg-white/10 cursor-not-allowed select-none"
@@ -4518,11 +4518,11 @@ aria-invalid={fieldHasError(formKind, "subject")}
 
         </div>
         <div>
-          <div className={labelCls}>مسئول دبیرخانه</div>
+          <div className={labelCls}>Ù…Ø³Ø¦ÙˆÙ„ Ø¯Ø¨ÛŒØ±Ø®Ø§Ù†Ù‡</div>
           <input value={loggedInUserName || ""} readOnly className={inputCls + " opacity-90"} type="text" />
         </div>
         <div>
-  <div className={labelCls}>توضیح</div>
+  <div className={labelCls}>ØªÙˆØ¶ÛŒØ­</div>
   <input
     value={
       formKind === "incoming"
@@ -4539,15 +4539,15 @@ aria-invalid={fieldHasError(formKind, "subject")}
     }}
     className={inputCls}
     type="text"
-    placeholder="توضیح دبیرخانه..."
+    placeholder="ØªÙˆØ¶ÛŒØ­ Ø¯Ø¨ÛŒØ±Ø®Ø§Ù†Ù‡..."
   />
 </div>
 
       </div>
 
-{/* برچسب‌ها (برای فرم) */}
+{/* Ø¨Ø±Ú†Ø³Ø¨â€ŒÙ‡Ø§ (Ø¨Ø±Ø§ÛŒ ÙØ±Ù…) */}
 <div className="md:col-span-12 min-w-0">
-  <div className={labelCls}>برچسب ها</div>
+  <div className={labelCls}>Ø¨Ø±Ú†Ø³Ø¨ Ù‡Ø§</div>
 
   <FieldWrap>
     <div className="w-full min-w-0 flex flex-wrap items-center gap-2">
@@ -4622,8 +4622,8 @@ aria-invalid={fieldHasError(formKind, "subject")}
             ? "border-white/15 bg-white/5 hover:bg-white/10"
             : "border-black/10 bg-white hover:bg-black/[0.02]")
         }
-        aria-label="افزودن برچسب"
-        title="افزودن برچسب"
+        aria-label="Ø§ÙØ²ÙˆØ¯Ù† Ø¨Ø±Ú†Ø³Ø¨"
+        title="Ø§ÙØ²ÙˆØ¯Ù† Ø¨Ø±Ú†Ø³Ø¨"
       >
         <img
           src="/images/icons/sayer.svg"
@@ -4638,15 +4638,15 @@ aria-invalid={fieldHasError(formKind, "subject")}
 </div>
 
 
-      {/* ✅ دکمه ارسال هم داخل همین کادر قرار گرفت */}
+      {/* âœ… Ø¯Ú©Ù…Ù‡ Ø§Ø±Ø³Ø§Ù„ Ù‡Ù… Ø¯Ø§Ø®Ù„ Ù‡Ù…ÛŒÙ† Ú©Ø§Ø¯Ø± Ù‚Ø±Ø§Ø± Ú¯Ø±ÙØª */}
       <div className="flex items-center justify-end pt-2">
         <button
   type="button"
   disabled={isSubmitting}
   onClick={() => submitLetter(formKind)}
   className={sendBtnCls + (isSubmitting ? " opacity-50 cursor-not-allowed" : "")}
-  title="ارسال"
-  aria-label="ارسال"
+  title="Ø§Ø±Ø³Ø§Ù„"
+  aria-label="Ø§Ø±Ø³Ø§Ù„"
 >
   <img src="/images/icons/check.svg" alt="" className={sendIconCls} />
 </button>
@@ -4679,12 +4679,12 @@ aria-invalid={fieldHasError(formKind, "subject")}
 >
 <colgroup>
   <col style={{ width: 48 }} />   {/* checkbox */}
-  <col style={{ width: 96 }} />   {/* شماره */}
-  <col style={{ width: 96 }} />   {/* تاریخ */}
-  <col />                         {/* موضوع (باقی فضا) */}
-  <col style={{ width: 144 }} />  {/* از/به */}
-  <col style={{ width: 176 }} />  {/* شرکت/سازمان */}
-  <col style={{ width: 160 }} />  {/* اقدامات */}
+  <col style={{ width: 96 }} />   {/* Ø´Ù…Ø§Ø±Ù‡ */}
+  <col style={{ width: 96 }} />   {/* ØªØ§Ø±ÛŒØ® */}
+  <col />                         {/* Ù…ÙˆØ¶ÙˆØ¹ (Ø¨Ø§Ù‚ÛŒ ÙØ¶Ø§) */}
+  <col style={{ width: 144 }} />  {/* Ø§Ø²/Ø¨Ù‡ */}
+  <col style={{ width: 176 }} />  {/* Ø´Ø±Ú©Øª/Ø³Ø§Ø²Ù…Ø§Ù† */}
+  <col style={{ width: 160 }} />  {/* Ø§Ù‚Ø¯Ø§Ù…Ø§Øª */}
 </colgroup>
 
   <thead>
@@ -4698,34 +4698,34 @@ aria-invalid={fieldHasError(formKind, "subject")}
             if (el) el.indeterminate = someVisibleSelected;
           }}
           onChange={toggleSelectAllVisible}
-          aria-label="انتخاب همه"
-          title="انتخاب همه"
+          aria-label="Ø§Ù†ØªØ®Ø§Ø¨ Ù‡Ù…Ù‡"
+          title="Ø§Ù†ØªØ®Ø§Ø¨ Ù‡Ù…Ù‡"
         />
       </th>
 
       <th className="w-24 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
-        شماره
+        Ø´Ù…Ø§Ø±Ù‡
       </th>
 
       <th className="w-24 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
-        تاریخ
+        ØªØ§Ø±ÛŒØ®
       </th>
 
       <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
-        موضوع
+        Ù…ÙˆØ¶ÙˆØ¹
       </th>
 
       <th className="w-36 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
-        از/به
+        Ø§Ø²/Ø¨Ù‡
       </th>
 
       <th className="w-44 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
-        شرکت/سازمان
+        Ø´Ø±Ú©Øª/Ø³Ø§Ø²Ù…Ø§Ù†
       </th>
 
      <th className="w-28 !py-2 pl-6 !pr-3 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
   <div className="flex items-center justify-between gap-2">
-    <span>اقدامات</span>
+    <span>Ø§Ù‚Ø¯Ø§Ù…Ø§Øª</span>
 
     {isMainAdmin ? (
       <div className="flex items-center gap-1">
@@ -4738,8 +4738,8 @@ aria-invalid={fieldHasError(formKind, "subject")}
               ? "bg-white/10 hover:bg-white/15 text-white"
               : "bg-black/10 hover:bg-black/15 text-black")
           }
-          aria-label="حذف همه نامه‌ها"
-          title="حذف همه نامه‌ها"
+          aria-label="Ø­Ø°Ù Ù‡Ù…Ù‡ Ù†Ø§Ù…Ù‡â€ŒÙ‡Ø§"
+          title="Ø­Ø°Ù Ù‡Ù…Ù‡ Ù†Ø§Ù…Ù‡â€ŒÙ‡Ø§"
         >
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M18 6 6 18M6 6l12 12" />
@@ -4755,8 +4755,8 @@ aria-invalid={fieldHasError(formKind, "subject")}
               ? "bg-white/10 hover:bg-white/15 text-white/70"
               : "bg-black/10 hover:bg-black/15 text-black/70")
           }
-          aria-label="خروج ادمین"
-          title="خروج ادمین"
+          aria-label="Ø®Ø±ÙˆØ¬ Ø§Ø¯Ù…ÛŒÙ†"
+          title="Ø®Ø±ÙˆØ¬ Ø§Ø¯Ù…ÛŒÙ†"
         >
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M10 7h9M10 12h9M10 17h9" />
@@ -4765,7 +4765,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
         </button>
       </div>
     ) : canSeeMainAdminLogin ? (
-      // این دکمه اختیاریه: اگر نمی‌خوای اصلاً راه ورود کنار جدول باشه، حذفش کن
+      // Ø§ÛŒÙ† Ø¯Ú©Ù…Ù‡ Ø§Ø®ØªÛŒØ§Ø±ÛŒÙ‡: Ø§Ú¯Ø± Ù†Ù…ÛŒâ€ŒØ®ÙˆØ§ÛŒ Ø§ØµÙ„Ø§Ù‹ Ø±Ø§Ù‡ ÙˆØ±ÙˆØ¯ Ú©Ù†Ø§Ø± Ø¬Ø¯ÙˆÙ„ Ø¨Ø§Ø´Ù‡ØŒ Ø­Ø°ÙØ´ Ú©Ù†
       <button
         type="button"
         onClick={() => askMainAdminEnable(setIsMainAdmin)}
@@ -4775,8 +4775,8 @@ aria-invalid={fieldHasError(formKind, "subject")}
             ? "bg-white/10 hover:bg-white/15 text-white/70"
             : "bg-black/10 hover:bg-black/15 text-black/70")
         }
-        aria-label="ورود ادمین"
-        title="ورود ادمین"
+        aria-label="ÙˆØ±ÙˆØ¯ Ø§Ø¯Ù…ÛŒÙ†"
+        title="ÙˆØ±ÙˆØ¯ Ø§Ø¯Ù…ÛŒÙ†"
       >
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
           <path d="M12 17v-2" />
@@ -4796,7 +4796,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
     {pageItems.length === 0 ? (
       <tr>
         <td colSpan={7} className="py-6 text-black/60 dark:text-neutral-400">
-          آیتمی ثبت نشده است.
+          Ø¢ÛŒØªÙ…ÛŒ Ø«Ø¨Øª Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª.
         </td>
       </tr>
     ) : (
@@ -4827,7 +4827,7 @@ const normalRowBg = isOutgoing
   ? "bg-white/5 hover:bg-white/10"
   : "bg-black/[0.02] hover:bg-black/[0.04]";
 
-// ✅ محرمانه: بک‌گراند ثابت با رنگ مدنظر
+// âœ… Ù…Ø­Ø±Ù…Ø§Ù†Ù‡: Ø¨Ú©â€ŒÚ¯Ø±Ø§Ù†Ø¯ Ø«Ø§Ø¨Øª Ø¨Ø§ Ø±Ù†Ú¯ Ù…Ø¯Ù†Ø¸Ø±
 const confRowBg = "bg-[#F75270] hover:bg-[#F75270]";
 
 const rowBg = isConf ? confRowBg : normalRowBg;
@@ -4847,8 +4847,8 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                 className="w-4 h-4 accent-black dark:accent-neutral-200"
                 checked={selectedIds.has(id)}
                 onChange={() => toggleRowSelect(id)}
-                aria-label="انتخاب"
-                title="انتخاب"
+                aria-label="Ø§Ù†ØªØ®Ø§Ø¨"
+                title="Ø§Ù†ØªØ®Ø§Ø¨"
               />
             </td>
 
@@ -4864,17 +4864,17 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                     ? "text-white"
                     : "text-neutral-900")
                 }
-                title="نمایش"
-                aria-label="نمایش"
+                title="Ù†Ù…Ø§ÛŒØ´"
+                aria-label="Ù†Ù…Ø§ÛŒØ´"
               >
-                {letterNoOf(l) || "—"}
+                {letterNoOf(l) || "â€”"}
               </button>
             </td>
 
-            <td className={"px-3 " + divider}>{letterDateOf(l) ? toFaDigits(letterDateOf(l)) : "—"}</td>
+            <td className={"px-3 " + divider}>{letterDateOf(l) ? toFaDigits(letterDateOf(l)) : "â€”"}</td>
 
             <td className={"px-3 " + divider}>
-              <span className="block truncate mx-auto">{subjectOf(l) || "—"}</span>
+              <span className="block truncate mx-auto">{subjectOf(l) || "â€”"}</span>
             </td>
 
             <td className={"px-3 " + divider}>
@@ -4882,16 +4882,16 @@ const rowBg = isConf ? confRowBg : normalRowBg;
             </td>
 
             <td className={"px-3 " + divider}>
-              <span className="block truncate mx-auto">{orgOf(l) || "—"}</span>
+              <span className="block truncate mx-auto">{orgOf(l) || "â€”"}</span>
             </td>
 
             <td className={"!pl-6 !pr-3 " + divider}>
               <div className="w-full flex items-center justify-start gap-2 pl-3">
-                <button type="button" onClick={() => openView(l)} className={iconBtnCls} aria-label="نمایش" title="نمایش">
+                <button type="button" onClick={() => openView(l)} className={iconBtnCls} aria-label="Ù†Ù…Ø§ÛŒØ´" title="Ù†Ù…Ø§ÛŒØ´">
                   <img src="/images/icons/namayeshname.svg" alt="" className="w-5 h-5 dark:invert" />
                 </button>
 
-                <button type="button" onClick={() => startEdit(l)} className={iconBtnCls} aria-label="ویرایش" title="ویرایش">
+                <button type="button" onClick={() => startEdit(l)} className={iconBtnCls} aria-label="ÙˆÛŒØ±Ø§ÛŒØ´" title="ÙˆÛŒØ±Ø§ÛŒØ´">
                   <img src="/images/icons/pencil.svg" alt="" className="w-5 h-5 dark:invert" />
                 </button>
 
@@ -4926,8 +4926,8 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                       onClick={() => setPage((p) => Math.max(0, p - 1))}
                       disabled={safePage <= 0}
                       className={paginationIconBtnCls}
-                      aria-label="صفحه قبل"
-                      title="صفحه قبل"
+                      aria-label="ØµÙØ­Ù‡ Ù‚Ø¨Ù„"
+                      title="ØµÙØ­Ù‡ Ù‚Ø¨Ù„"
                     >
                       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M9 18l6-6-6-6" />
@@ -4939,8 +4939,8 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                       onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
                       disabled={safePage >= pageCount - 1}
                       className={paginationIconBtnCls}
-                      aria-label="صفحه بعد"
-                      title="صفحه بعد"
+                      aria-label="ØµÙØ­Ù‡ Ø¨Ø¹Ø¯"
+                      title="ØµÙØ­Ù‡ Ø¨Ø¹Ø¯"
                     >
                       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M15 18l-6-6 6-6" />
@@ -4948,12 +4948,12 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                     </button>
 
                     <div className="text-black/70 dark:text-neutral-400 whitespace-nowrap">
-                      {total === 0 ? "۰ از ۰" : `${toFaDigits(startIdx + 1)}–${toFaDigits(endIdx)} از ${toFaDigits(total)}`}
+                      {total === 0 ? "Û° Ø§Ø² Û°" : `${toFaDigits(startIdx + 1)}â€“${toFaDigits(endIdx)} Ø§Ø² ${toFaDigits(total)}`}
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span>
+                    <span className="text-black/70 dark:text-neutral-400">ØªØ¹Ø¯Ø§Ø¯ Ø¯Ø± Ù‡Ø± ØµÙØ­Ù‡:</span>
                     <select
                       value={rowsPerPage}
                       onChange={(e) => {
@@ -4995,11 +4995,11 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                 <div className="h-full flex flex-col">
                   <div className="px-4 py-3 flex items-center justify-between gap-3 border-b border-black/10 dark:border-white/10">
                     <div className="font-bold text-sm">
-                      نمایش نامه
+                      Ù†Ù…Ø§ÛŒØ´ Ù†Ø§Ù…Ù‡
                       {viewLetter ? (
                         <span className={theme === "dark" ? "text-white/60 font-normal" : "text-neutral-600 font-normal"}>
                           {" "}
-                          — {toFaDigits(letterNoOf(viewLetter) || "")}
+                          â€” {toFaDigits(letterNoOf(viewLetter) || "")}
                         </span>
                       ) : null}
                     </div>
@@ -5011,8 +5011,8 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                         "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
                         (theme === "dark" ? "ring-neutral-800 hover:bg-white/10 text-white" : "ring-black/15 hover:bg-black/90 bg-black text-white")
                       }
-                      aria-label="بستن"
-                      title="بستن"
+                      aria-label="Ø¨Ø³ØªÙ†"
+                      title="Ø¨Ø³ØªÙ†"
                     >
                       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M18 6 6 18M6 6l12 12" />
@@ -5025,7 +5025,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                       <div className="lg:w-[56%] h-full overflow-auto p-4">
                         <div className={"rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")}>
                           <div className={"px-4 py-3 text-sm font-semibold border-b " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
-                            مشخصات نامه
+                            Ù…Ø´Ø®ØµØ§Øª Ù†Ø§Ù…Ù‡
                           </div>
 
                           <div className="px-4 divide-y divide-black/10 dark:divide-white/10">
@@ -5240,19 +5240,19 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                               }
                             />
 
-                            <InfoRow label="تاریخ ثبت دبیرخانه" value={viewLetter ? toFaDigits(String(viewLetter?.secretariat_date ?? viewLetter?.secretariatDate ?? "")) : ""} />
-                            <InfoRow label="شماره ثبت دبیرخانه" value={viewLetter ? String(viewLetter?.secretariat_no ?? viewLetter?.secretariatNo ?? "") : ""} />
-                            <InfoRow label="مسئول دبیرخانه" value={viewLetter ? String(viewLetter?.receiver_name ?? viewLetter?.receiverName ?? "") : ""} />
+                            <InfoRow label="ØªØ§Ø±ÛŒØ® Ø«Ø¨Øª Ø¯Ø¨ÛŒØ±Ø®Ø§Ù†Ù‡" value={viewLetter ? toFaDigits(String(viewLetter?.secretariat_date ?? viewLetter?.secretariatDate ?? "")) : ""} />
+                            <InfoRow label="Ø´Ù…Ø§Ø±Ù‡ Ø«Ø¨Øª Ø¯Ø¨ÛŒØ±Ø®Ø§Ù†Ù‡" value={viewLetter ? String(viewLetter?.secretariat_no ?? viewLetter?.secretariatNo ?? "") : ""} />
+                            <InfoRow label="Ù…Ø³Ø¦ÙˆÙ„ Ø¯Ø¨ÛŒØ±Ø®Ø§Ù†Ù‡" value={viewLetter ? String(viewLetter?.receiver_name ?? viewLetter?.receiverName ?? "") : ""} />
                           </div>
                         </div>
 
                         {viewAttachments.length > 1 && (
                           <div className="mt-3">
-                            <div className={labelCls}>فایل‌ها</div>
+                            <div className={labelCls}>ÙØ§ÛŒÙ„â€ŒÙ‡Ø§</div>
                             <div className="flex flex-wrap gap-2">
                               {viewAttachments.map((a, i) => {
                                 const u = attachmentUrlOf(a);
-                                const n = attachmentNameOf(a) || `فایل ${i + 1}`;
+                                const n = attachmentNameOf(a) || `ÙØ§ÛŒÙ„ ${i + 1}`;
                                 const active = (viewAttIdx || 0) === i;
                                 return (
                                   <button
@@ -5283,7 +5283,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                       <div className="lg:w-[44%] h-full border-t lg:border-t-0 lg:border-r border-black/10 dark:border-white/10 overflow-hidden">
                         <div className="h-full flex flex-col">
                           <div className="px-4 py-3 flex items-center justify-between gap-2 border-b border-black/10 dark:border-white/10">
-                            <div className="text-sm font-semibold">پیش نمایش</div>
+                            <div className="text-sm font-semibold">Ù¾ÛŒØ´ Ù†Ù…Ø§ÛŒØ´</div>
                           </div>
 
                           <div className="flex-1 p-3 overflow-hidden flex flex-col">
@@ -5307,12 +5307,12 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                                   <img key={currentViewUrl} src={currentViewUrl} alt="" className="w-full h-full object-contain bg-transparent" />
                                 ) : (
                                   <div className="h-full w-full grid place-items-center p-6">
-                                    <div className={theme === "dark" ? "text-white/70 text-sm" : "text-neutral-700 text-sm"}>امکان پیش نمایش این نوع فایل نیست.</div>
+                                    <div className={theme === "dark" ? "text-white/70 text-sm" : "text-neutral-700 text-sm"}>Ø§Ù…Ú©Ø§Ù† Ù¾ÛŒØ´ Ù†Ù…Ø§ÛŒØ´ Ø§ÛŒÙ† Ù†ÙˆØ¹ ÙØ§ÛŒÙ„ Ù†ÛŒØ³Øª.</div>
                                   </div>
                                 )
                               ) : (
                                 <div className="h-full w-full grid place-items-center p-6">
-                                  <div className={theme === "dark" ? "text-white/60 text-sm" : "text-neutral-600 text-sm"}>فایلی برای پیش نمایش موجود نیست.</div>
+                                  <div className={theme === "dark" ? "text-white/60 text-sm" : "text-neutral-600 text-sm"}>ÙØ§ÛŒÙ„ÛŒ Ø¨Ø±Ø§ÛŒ Ù¾ÛŒØ´ Ù†Ù…Ø§ÛŒØ´ Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛŒØ³Øª.</div>
                                 </div>
                               )}
                             </div>
@@ -5333,11 +5333,11 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                                     ? "bg-white/10 text-white/40 pointer-events-none"
                                     : "bg-black/10 text-black/40 pointer-events-none")
                                 }
-                                title="دانلود فایل"
-                                aria-label="دانلود فایل"
+                                title="Ø¯Ø§Ù†Ù„ÙˆØ¯ ÙØ§ÛŒÙ„"
+                                aria-label="Ø¯Ø§Ù†Ù„ÙˆØ¯ ÙØ§ÛŒÙ„"
                               >
                                 <img src="/images/icons/download.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")} />
-                                <span className="text-sm font-semibold">دانلود فایل</span>
+                                <span className="text-sm font-semibold">Ø¯Ø§Ù†Ù„ÙˆØ¯ ÙØ§ÛŒÙ„</span>
                               </a>
 
                               {currentViewName ? (
@@ -5382,9 +5382,9 @@ const rowBg = isConf ? confRowBg : normalRowBg;
           <div className="h-full flex flex-col">
             {/* Header */}
             <div className="px-4 py-3 flex items-center justify-between gap-3 border-b border-black/10 dark:border-white/10">
-              <div className="font-bold text-sm">انتخاب برچسب</div>
+              <div className="font-bold text-sm">Ø§Ù†ØªØ®Ø§Ø¨ Ø¨Ø±Ú†Ø³Ø¨</div>
 
-              {/* ✅ بستن: آیکن مشکی */}
+              {/* âœ… Ø¨Ø³ØªÙ†: Ø¢ÛŒÚ©Ù† Ù…Ø´Ú©ÛŒ */}
               <button
                 type="button"
                 onClick={() => setTagPickOpen(false)}
@@ -5394,8 +5394,8 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                     ? "bg-white text-black ring-white/20 hover:bg-white/90"
                     : "bg-white text-black ring-black/15 hover:bg-black/5")
                 }
-                aria-label="بستن"
-                title="بستن"
+                aria-label="Ø¨Ø³ØªÙ†"
+                title="Ø¨Ø³ØªÙ†"
               >
                 <img
                   src="/images/icons/bastan.svg"
@@ -5407,7 +5407,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
 
             {/* Tabs */}
             <div className="px-4 pt-3">
-              {/* ✅ سه تب حتما سمت راست + ترتیب: پروژه‌ها، نامه‌ها و مستندات، اجرای پروژه‌ها */}
+              {/* âœ… Ø³Ù‡ ØªØ¨ Ø­ØªÙ…Ø§ Ø³Ù…Øª Ø±Ø§Ø³Øª + ØªØ±ØªÛŒØ¨: Ù¾Ø±ÙˆÚ˜Ù‡â€ŒÙ‡Ø§ØŒ Ù†Ø§Ù…Ù‡â€ŒÙ‡Ø§ Ùˆ Ù…Ø³ØªÙ†Ø¯Ø§ØªØŒ Ø§Ø¬Ø±Ø§ÛŒ Ù¾Ø±ÙˆÚ˜Ù‡â€ŒÙ‡Ø§ */}
               <div className="flex items-center justify-start gap-2">
                 {(() => {
                   const order = ["projects", "letters", "execution"];
@@ -5456,11 +5456,11 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                 const scope = SCOPE_BY_KIND[tagPickKind] || "letters";
                 const cats = Array.isArray(tagCatsByScope?.[scope]) ? tagCatsByScope[scope] : [];
 
-                // ✅ پروژه‌ها دسته‌بندی ندارند
+                // âœ… Ù¾Ø±ÙˆÚ˜Ù‡â€ŒÙ‡Ø§ Ø¯Ø³ØªÙ‡â€ŒØ¨Ù†Ø¯ÛŒ Ù†Ø¯Ø§Ø±Ù†Ø¯
                 if (tagPickKind === "projects") {
                   return (
                     <div className="mt-3 text-xs text-neutral-500 dark:text-white/50">
-                      پروژه‌ها دسته‌بندی ندارد.
+                      Ù¾Ø±ÙˆÚ˜Ù‡â€ŒÙ‡Ø§ Ø¯Ø³ØªÙ‡â€ŒØ¨Ù†Ø¯ÛŒ Ù†Ø¯Ø§Ø±Ø¯.
                     </div>
                   );
                 }
@@ -5469,9 +5469,9 @@ const rowBg = isConf ? confRowBg : normalRowBg;
 
                 return (
                   <div className="mt-3">
-                    <div className={labelCls}>دسته‌بندی‌ها</div>
+                    <div className={labelCls}>Ø¯Ø³ØªÙ‡â€ŒØ¨Ù†Ø¯ÛŒâ€ŒÙ‡Ø§</div>
                     <div className="flex flex-wrap items-center gap-2">
-                      {/* همه */}
+                      {/* Ù‡Ù…Ù‡ */}
                       <button
                         type="button"
                         onClick={() => setTagPickCategoryId("")}
@@ -5483,7 +5483,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                             : chipBase + " border-black/15 bg-black text-white") + " h-10"
                         }
                       >
-                        همه
+                        Ù‡Ù…Ù‡
                       </button>
 
                       {cats.map((c) => {
@@ -5510,12 +5510,12 @@ const rowBg = isConf ? confRowBg : normalRowBg;
 
               {/* Search */}
               <div className="mt-3">
-                <div className={labelCls}>جستجو</div>
+                <div className={labelCls}>Ø¬Ø³ØªØ¬Ùˆ</div>
                 <input
                   value={tagPickSearch}
                   onChange={(e) => setTagPickSearch(e.target.value)}
                   className={inputCls}
-                  placeholder="جستجو در برچسب‌ها..."
+                  placeholder="Ø¬Ø³ØªØ¬Ùˆ Ø¯Ø± Ø¨Ø±Ú†Ø³Ø¨â€ŒÙ‡Ø§..."
                 />
               </div>
             </div>
@@ -5538,7 +5538,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                 if (!filtered.length) {
                   return (
                     <div className="py-10 text-center text-sm text-neutral-500 dark:text-white/50">
-                      چیزی پیدا نشد.
+                      Ú†ÛŒØ²ÛŒ Ù¾ÛŒØ¯Ø§ Ù†Ø´Ø¯.
                     </div>
                   );
                 }
@@ -5569,7 +5569,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
 
             {/* Footer buttons */}
             <div className="px-4 py-3 border-t border-black/10 dark:border-white/10 flex items-center justify-end gap-2">
-              {/* ✅ تایید: آیکن سفید */}
+              {/* âœ… ØªØ§ÛŒÛŒØ¯: Ø¢ÛŒÚ©Ù† Ø³ÙÛŒØ¯ */}
               <button
                 type="button"
                 onClick={applyPickedTags}
@@ -5579,8 +5579,8 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                     ? "bg-black text-white ring-white/10 hover:bg-black/90"
                     : "bg-black text-white ring-black/15 hover:bg-black/90")
                 }
-                aria-label="تایید"
-                title="تایید"
+                aria-label="ØªØ§ÛŒÛŒØ¯"
+                title="ØªØ§ÛŒÛŒØ¯"
               >
                 <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
               </button>
@@ -5606,8 +5606,8 @@ const rowBg = isConf ? confRowBg : normalRowBg;
         >
           <div className="p-4 flex items-center justify-between">
             <div className="font-bold text-sm">
-  بارگذاری اسناد{" "}
-  {uploadFor === "incoming" ? "(وارده)" : uploadFor === "outgoing" ? "(صادره)" : "(داخلی)"}
+  Ø¨Ø§Ø±Ú¯Ø°Ø§Ø±ÛŒ Ø§Ø³Ù†Ø§Ø¯{" "}
+  {uploadFor === "incoming" ? "(ÙˆØ§Ø±Ø¯Ù‡)" : uploadFor === "outgoing" ? "(ØµØ§Ø¯Ø±Ù‡)" : "(Ø¯Ø§Ø®Ù„ÛŒ)"}
 </div>
 <button
   type="button"
@@ -5618,8 +5618,8 @@ const rowBg = isConf ? confRowBg : normalRowBg;
       ? "ring-neutral-800 hover:bg-white/10 text-white"
       : "ring-black/15 hover:bg-black/90 bg-black text-white")
   }
-  aria-label="بستن"
-  title="بستن"
+  aria-label="Ø¨Ø³ØªÙ†"
+  title="Ø¨Ø³ØªÙ†"
 >
   <img
     src="/images/icons/bastan.svg"
@@ -5635,16 +5635,16 @@ const rowBg = isConf ? confRowBg : normalRowBg;
           <div className="p-4 grid grid-cols-1 gap-4">
                   {/* Right: pick new + selected list */}
                   <div>
-                    <div className={labelCls}>فایل‌های انتخاب‌شده</div>
+                    <div className={labelCls}>ÙØ§ÛŒÙ„â€ŒÙ‡Ø§ÛŒ Ø§Ù†ØªØ®Ø§Ø¨â€ŒØ´Ø¯Ù‡</div>
 
                     <div className={"rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
                       <div className={"px-3 py-2 text-xs font-semibold border-b " + (theme === "dark" ? "border-white/10 text-white/80" : "border-black/10 text-neutral-700")}>
-                        {uploadFor === "incoming" ? "وارده" : uploadFor === "outgoing" ? "صادره" : "داخلی"}
+                        {uploadFor === "incoming" ? "ÙˆØ§Ø±Ø¯Ù‡" : uploadFor === "outgoing" ? "ØµØ§Ø¯Ø±Ù‡" : "Ø¯Ø§Ø®Ù„ÛŒ"}
                       </div>
 
                       <div className="p-3 space-y-2">
                         {currentDocFiles.length === 0 ? (
-                          <div className="py-6 text-center text-black/60 dark:text-white/50 text-sm">فایلی انتخاب نشده است.</div>
+                          <div className="py-6 text-center text-black/60 dark:text-white/50 text-sm">ÙØ§ÛŒÙ„ÛŒ Ø§Ù†ØªØ®Ø§Ø¨ Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª.</div>
                         ) : (
                           currentDocFiles.map((f) => (
                             <div
@@ -5659,7 +5659,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                                   {f.name}
                                 </div>
                                 <div className={theme === "dark" ? "text-white/60 text-[11px] mt-1" : "text-neutral-600 text-[11px] mt-1"}>
-                                  {formatBytes(f.size)} {f.url ? "— الصاق شده" : f.status === "uploading" ? `— ${toFaDigits(f.progress)}٪` : ""}
+                                  {formatBytes(f.size)} {f.url ? "â€” Ø§Ù„ØµØ§Ù‚ Ø´Ø¯Ù‡" : f.status === "uploading" ? `â€” ${toFaDigits(f.progress)}Ùª` : ""}
                                 </div>
 
                                 {f.status === "error" && f.error ? (
@@ -5679,9 +5679,9 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                                         ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
                                         : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
                                     }
-                                    title="باز کردن"
+                                    title="Ø¨Ø§Ø² Ú©Ø±Ø¯Ù†"
                                   >
-                                    باز کردن
+                                    Ø¨Ø§Ø² Ú©Ø±Ø¯Ù†
                                   </a>
                                 ) : null}
 
@@ -5713,10 +5713,10 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                           onDragOver={onDragOverUpload}
                         >
                           <div className={theme === "dark" ? "text-white/80 text-sm font-semibold" : "text-neutral-800 text-sm font-semibold"}>
-                            فایل را اینجا رها کنید
+                            ÙØ§ÛŒÙ„ Ø±Ø§ Ø§ÛŒÙ†Ø¬Ø§ Ø±Ù‡Ø§ Ú©Ù†ÛŒØ¯
                           </div>
                           <div className={theme === "dark" ? "text-white/50 text-xs mt-1" : "text-neutral-500 text-xs mt-1"}>
-                            یا با دکمه زیر انتخاب کنید (تصویر / PDF)
+                            ÛŒØ§ Ø¨Ø§ Ø¯Ú©Ù…Ù‡ Ø²ÛŒØ± Ø§Ù†ØªØ®Ø§Ø¨ Ú©Ù†ÛŒØ¯ (ØªØµÙˆÛŒØ± / PDF)
                           </div>
 
                           <div className="mt-3 flex items-center justify-center">
@@ -5731,7 +5731,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                               }
                             >
                               <img src="/images/icons/upload.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")} />
-                              انتخاب فایل
+                              Ø§Ù†ØªØ®Ø§Ø¨ ÙØ§ÛŒÙ„
                             </button>
                             <input
                               ref={uploadInputRef}
@@ -5759,8 +5759,8 @@ const rowBg = isConf ? confRowBg : normalRowBg;
         ? "border-white/15 bg-white text-black hover:bg-white/90"
         : "border-black/10 bg-black text-white hover:bg-black/90")
     }
-    aria-label="تایید"
-    title="تایید"
+    aria-label="ØªØ§ÛŒÛŒØ¯"
+    title="ØªØ§ÛŒÛŒØ¯"
   >
     <img
       src="/images/icons/check.svg"
@@ -5798,7 +5798,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="p-4 flex items-center justify-between">
-                  <div className="font-bold text-sm">افزودن برچسب</div>
+                  <div className="font-bold text-sm">Ø§ÙØ²ÙˆØ¯Ù† Ø¨Ø±Ú†Ø³Ø¨</div>
                   <button
                     type="button"
                     onClick={() => setAddTagOpen(false)}
@@ -5806,8 +5806,8 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                       "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
                       (theme === "dark" ? "ring-neutral-800 hover:bg-white/10 text-white" : "ring-black/15 hover:bg-black/90 bg-black text-white")
                     }
-                    aria-label="بستن"
-                    title="بستن"
+                    aria-label="Ø¨Ø³ØªÙ†"
+                    title="Ø¨Ø³ØªÙ†"
                   >
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M18 6 6 18M6 6l12 12" />
@@ -5817,12 +5817,12 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                 <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
                 <div className="p-4 space-y-3">
                   <div>
-                    <div className={labelCls}>عنوان برچسب</div>
-                    <input value={newTagLabel} onChange={(e) => setNewTagLabel(e.target.value)} className={inputCls} type="text" placeholder="مثلا: فوری" />
+                    <div className={labelCls}>Ø¹Ù†ÙˆØ§Ù† Ø¨Ø±Ú†Ø³Ø¨</div>
+                    <input value={newTagLabel} onChange={(e) => setNewTagLabel(e.target.value)} className={inputCls} type="text" placeholder="Ù…Ø«Ù„Ø§: ÙÙˆØ±ÛŒ" />
                   </div>
                   {Array.isArray(tagCategories) && tagCategories.length > 0 ? (
                     <div>
-                      <div className={labelCls}>دسته‌بندی</div>
+                      <div className={labelCls}>Ø¯Ø³ØªÙ‡â€ŒØ¨Ù†Ø¯ÛŒ</div>
                       <select
                         value={newTagCategoryId}
                         onChange={(e) => setNewTagCategoryId(e.target.value)}
@@ -5846,7 +5846,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                         (theme === "dark" ? "border-white/15 hover:bg-white/10" : "border-black/10 hover:bg-black/[0.04]")
                       }
                     >
-                      انصراف
+                      Ø§Ù†ØµØ±Ø§Ù
                     </button>
                     <button
                       type="button"
