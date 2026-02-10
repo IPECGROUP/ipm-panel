@@ -957,12 +957,61 @@ const resolveFileUrl = (u) => {
 ).trim();
   }, [user]);
 
-const [isDeletingAll, setIsDeletingAll] = useState(false);
-
+  // ✅ main admin فقط marandi
 const isMainAdmin = useMemo(() => {
   return String(loggedInUserName || "").trim().toLowerCase() === "marandi";
 }, [loggedInUserName]);
-const [mainAdminUnlocked, setMainAdminUnlocked] = useState(false);
+
+const [isDeletingAll, setIsDeletingAll] = useState(false);
+
+async function deleteAllLetters() {
+  // ✅ گارد نهایی
+  if (!isMainAdmin) return;
+
+  // ✅ رمز
+  const pass = window.prompt("رمز ادمین اصلی را وارد کنید:");
+  if (String(pass || "").trim() !== "1234") {
+    alert("رمز اشتباه است.");
+    return;
+  }
+
+  // ✅ تایید خطر
+  const ok = window.confirm("هشدار! با این کار همه نامه‌ها برای همیشه حذف می‌شوند. ادامه می‌دهید؟");
+  if (!ok) return;
+
+  try {
+    setIsDeletingAll(true);
+
+    const res = await fetch("/api/letters", {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        // طبق بک‌اندی که گفتی
+        "x-username": String(loggedInUserName || ""),
+      },
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok || !data?.ok) {
+      alert(data?.error || "خطا در حذف همه نامه‌ها");
+      return;
+    }
+
+    alert(`همه نامه‌ها حذف شد: ${data.deleted}`);
+
+    // ✅ رفرش لیست
+    setMyLetters([]);
+    setSelectedIds(new Set());
+    // اگر تابع refetchLetters داری بهتره:
+    // await refetchLetters();
+
+  } catch (e) {
+    alert(e?.message || "خطا در ارتباط با سرور");
+  } finally {
+    setIsDeletingAll(false);
+  }
+}
 
 // اگر خواستی اسم دقیقاً marandi باشد:
 const isMarandi = isMainAdmin;
@@ -4625,26 +4674,24 @@ aria-invalid={fieldHasError(formKind, "subject")}
   <div className="flex items-center justify-start gap-2">
     <span>اقدامات</span>
 
-    {isMarandi && (
-      <button
-        type="button"
-        onClick={unlockMainAdmin}
-        className={
-          "h-6 w-6 rounded-md border inline-flex items-center justify-center text-xs font-bold " +
-          (mainAdminUnlocked
-            ? (theme === "dark"
-                ? "border-white/15 bg-white text-black"
-                : "border-black/15 bg-black text-white")
-            : (theme === "dark"
-                ? "border-white/15 bg-white/5 hover:bg-white/10 text-white"
-                : "border-black/15 bg-white hover:bg-black/[0.04] text-black"))
-        }
-        title={mainAdminUnlocked ? "فعال است" : "فعال‌سازی با رمز 1234"}
-        aria-label="فعال‌سازی حذف همه"
-      >
-        {mainAdminUnlocked ? "✓" : "🔒"}
-      </button>
-    )}
+   {isMainAdmin && (
+  <button
+    type="button"
+    onClick={deleteAllLetters}
+    disabled={isDeletingAll}
+    className={
+      "h-6 w-6 rounded-md border inline-flex items-center justify-center text-sm font-bold " +
+      (theme === "dark"
+        ? "border-white/15 bg-white/5 hover:bg-white/10 text-white"
+        : "border-black/15 bg-white hover:bg-black/[0.04] text-black") +
+      (isDeletingAll ? " opacity-50 cursor-not-allowed" : "")
+    }
+    title="حذف همه نامه‌ها (ادمین اصلی)"
+    aria-label="حذف همه نامه‌ها"
+  >
+    ×
+  </button>
+)}
 
     {canSeeDeleteAll && (
       <button
