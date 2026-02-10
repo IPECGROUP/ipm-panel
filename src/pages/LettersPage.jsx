@@ -575,34 +575,38 @@ const validate = (kind) => {
   };
 
   // ✅ مقادیر هر تب جدا
-  const valuesByKind = {
-   incoming: {
-  classification: incomingForm.classification,
-  fromName: incomingForm.fromName,   // ✅ اضافه شود
-  orgName: incomingForm.orgName,     // ✅ اضافه شود
-  letterNo: incomingForm.letterNo,
-  letterDate: incomingForm.letterDate,
-  subject: incomingForm.subject,
-  formTags: Array.isArray(incomingTagIds) ? incomingTagIds : [],
-},
+  // ✅ مقادیر هر تب جدا (همه چیز فقط از getForm)
+const valuesByKind = {
+  incoming: {
+    classification: getForm("incoming").classification,
+    fromName: getForm("incoming").fromName,
+    orgName: getForm("incoming").orgName,
+    toName: getForm("incoming").toName,
+    letterNo: getForm("incoming").letterNo,
+    letterDate: getForm("incoming").letterDate,
+    subject: getForm("incoming").subject,
+    formTags: Array.isArray(incomingTagIds) ? incomingTagIds : [],
+  },
 
-    outgoing: {
-      category: outgoingForm.category,
-      projectId: outgoingForm.projectId,
-      letterDate: outgoingForm.letterDate,
-      toName: outgoingForm.toName,
-      orgName: outgoingForm.orgName,
-      subject: outgoingForm.subject,
-      formTags: Array.isArray(outgoingTagIds) ? outgoingTagIds : [],
-    },
+  outgoing: {
+    category: getForm("outgoing").category,
+    projectId: getForm("outgoing").projectId,
+    fromName: getForm("outgoing").fromName,
+    toName: getForm("outgoing").toName,
+    orgName: getForm("outgoing").orgName,
+    letterNo: getForm("outgoing").letterNo,
+    letterDate: getForm("outgoing").letterDate,
+    subject: getForm("outgoing").subject,
+    formTags: Array.isArray(outgoingTagIds) ? outgoingTagIds : [],
+  },
 
-    internal: {
-      letterDate: internalForm.letterDate,
-      subject: internalForm.subject,
-      formTags: Array.isArray(internalTagIds) ? internalTagIds : [],
-          unitId: internalUnitId, // ✅ اضافه شد
-    },
-  };
+  internal: {
+    letterDate: getForm("internal").letterDate,
+    subject: getForm("internal").subject,
+    unitId: internalUnitId,
+    formTags: Array.isArray(internalTagIds) ? internalTagIds : [],
+  },
+};
 
   const values = valuesByKind[kind] || {};
   const req = REQUIRED[kind] || [];
@@ -828,10 +832,8 @@ const subjectSelRef = useRef({ start: 0, end: 0 });
 const subjectFocusedRef = useRef(false);
 
 // ✅ value واحد برای input
-const currentSubject =
-  formKind === "outgoing" ? outgoingForm.subject :
-  formKind === "internal" ? internalForm.subject :
-  incomingForm.subject;
+const currentSubject = getForm(formKind).subject || "";
+
 
 // ✅ ذخیره‌ی selection قبل از setState
 const rememberSubjectSel = (el) => {
@@ -879,7 +881,7 @@ if (typeof start !== "number" || typeof end !== "number") return;
 try {
   el.setSelectionRange(start, end);
 } catch {}
-}, [formKind, incomingForm.subject, outgoingForm.subject, internalForm.subject]);
+}, [formKind, currentSubject]);
 
 // ✅ handler واحد برای subject
 const onSubjectChange = (e) => {
@@ -2870,51 +2872,56 @@ const f = getForm(kind);
 const payload = {
   kind,
 
-  // ✅ category + classification از فرم درست
   category:
-    kind === "outgoing" ? String(outgoingForm.category || "نامه").trim()
-    : "نامه",
+    kind === "outgoing"
+      ? String(f.category || "نامه").trim()
+      : "نامه",
 
   classification:
-    kind === "incoming" ? (incomingForm.classification || "عادی")
-    : "عادی",
+    kind === "incoming"
+      ? String(f.classification || "عادی").trim()
+      : "عادی",
 
   project_id: (() => {
-    const pid =
-      kind === "outgoing" ? outgoingForm.projectId :
-      kind === "incoming" ? incomingForm.projectId :
-      null;
+    const pid = f.projectId;
     const n = pid ? Number(pid) : null;
     return n && Number.isFinite(n) ? n : null;
   })(),
 
-letter_no: String(f.letterNo || "").trim(),
+  letter_no: String(f.letterNo || "").trim(),
   letter_date: f.letterDate || "",
 
   from_name:
-  kind === "incoming" ? (incomingForm.fromName || "")
-  : kind === "outgoing" ? (outgoingForm.fromName || "")
-  : "",
-
-to_name:
-  kind === "incoming" ? (incomingForm.toName || "")
-  : kind === "outgoing" ? (outgoingForm.toName || "")
-  : "",
-
-  org_name:
-    kind === "outgoing" ? (outgoingForm.orgName || "")
-    : kind === "incoming" ? (incomingForm.orgName || "")
+    kind === "incoming" ? (f.fromName || "")
+    : kind === "outgoing" ? (f.fromName || "")
     : "",
 
-subject:
-  kind === "incoming" ? (incomingForm.subject || "")
-  : kind === "outgoing" ? (outgoingForm.subject || "")
-  : (internalForm.subject || ""),
+  to_name:
+    kind === "incoming" ? (f.toName || "")
+    : kind === "outgoing" ? (f.toName || "")
+    : "",
+
+  org_name:
+    kind === "outgoing" ? (f.orgName || "")
+    : kind === "incoming" ? (f.orgName || "")
+    : "",
+
+  subject:
+    kind === "internal"
+      ? (f.subject || "")
+      : (f.subject || ""),
 
   has_attachment: computedHasAttachment,
-  return_to_ids: (Array.isArray(returnToIds) ? returnToIds : []).map(String).filter((x) => x && x.trim()),
-  piro_ids: (Array.isArray(piroIds) ? piroIds : []).map(String).filter((x) => x && x.trim()),
-  tag_ids: (Array.isArray(tagIds) ? tagIds : []).map(String).filter((x) => x && x.trim()),
+
+  return_to_ids: (Array.isArray(returnToIds) ? returnToIds : [])
+    .map(String).filter((x) => x && x.trim()),
+
+  piro_ids: (Array.isArray(piroIds) ? piroIds : [])
+    .map(String).filter((x) => x && x.trim()),
+
+  tag_ids: (Array.isArray(tagIds) ? tagIds : [])
+    .map(String).filter((x) => x && x.trim()),
+
   secretariat_date: secretariatDate || "",
   secretariat_no: secretariatNo || "",
   secretariat_note: secretariatNote || "",
@@ -2926,7 +2933,6 @@ subject:
       ? (internalUnitId ? Number(internalUnitId) : null)
       : null,
 };
-
 
     let saved;
     let newId = null;
@@ -3766,9 +3772,9 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
             <div className={labelCls}>به</div>
             <FieldWrap>
               <input
-                value={outgoingForm.toName || ""}
+                value={getForm("outgoing").toName || ""}
                 onChange={(e) => {
-                  setOutgoingForm((p) => ({ ...p, toName: e.target.value }));
+                  setForm("outgoing", { toName: e.target.value });
                   clearFieldError("outgoing", "toName");
                 }}
                 className={inputWithError(inputCls, "outgoing", "toName")}
@@ -3782,16 +3788,16 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
                 <div className="md:col-span-5 md:col-start-8 min-w-0">
                   <div className={labelCls}>شرکت/سازمان</div>
                   <FieldWrap>
-                    <input
-                      value={outgoingForm.orgName || ""}
-                      onChange={(e) => {
-                        setOutgoingForm((p) => ({ ...p, orgName: e.target.value }));
-                        clearFieldError("outgoing", "orgName");
-                      }}
-                      className={inputWithError(inputCls, "outgoing", "orgName")}
-                      aria-invalid={fieldHasError("outgoing", "orgName")}
-                      type="text"
-                    />
+                  <input
+  value={getForm("outgoing").orgName || ""}
+  onChange={(e) => {
+    setForm("outgoing", { orgName: e.target.value });
+    clearFieldError("outgoing", "orgName");
+  }}
+  className={inputWithError(inputCls, "outgoing", "orgName")}
+  aria-invalid={fieldHasError("outgoing", "orgName")}
+  type="text"
+/>
                     <ErrorTextAbs kind="outgoing" k="orgName" />
                   </FieldWrap>
                 </div>
