@@ -2794,11 +2794,6 @@ const uploadQueueInBackground = async (kind, queue, letterId) => {
   const submitLetter = async (kind) => {
 
   const ok = validate(kind);
-  if (!ok) return; // ✅ جلو ارسال را می‌گیرد
-    if (kind === "internal" && !String(internalUnitId || "").trim()) {
-  alert("برای نامه داخلی انتخاب واحد الزامی است.");
-  return;
-}
 
     const tagIds =
       kind === "incoming" ? incomingTagIds : kind === "outgoing" ? outgoingTagIds : internalTagIds;
@@ -3871,38 +3866,48 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
           value={internalForm.subject}
           onChange={(e) => {
             setInternalForm((p) => ({ ...p, subject: e.target.value }));
-            clearFieldError("subject");
+            clearFieldError("internal", "subject");
+
           }}
           className={inputWithError(inputCls, "internal", "subject")}
           aria-invalid={fieldHasError("internal", "subject")}
           type="text"
         />
-        <ErrorTextAbs k="subject" />
+<ErrorTextAbs kind="internal" k="subject" />
       </FieldWrap>
     </div>
 
     {/* واحد (کنار ضمیمه) */}
     <div className="md:col-span-3 md:col-start-8">
       <div className={labelCls}>واحد</div>
-      <select
-        value={internalUnitId}
-        onChange={(e) => setInternalUnitId(e.target.value)}
-        className={inputCls}
-      >
-        <option value=""></option>
+   <FieldWrap>
+  <select
+    value={internalUnitId}
+    onChange={(e) => {
+      setInternalUnitId(e.target.value);
+      clearFieldError("internal", "internalUnitId"); // ✅ با انتخاب، ارور پاک شود
+    }}
+    className={inputWithError(inputCls, "internal", "internalUnitId")} // ✅ دور قرمز
+    aria-invalid={fieldHasError("internal", "internalUnitId")} // ✅
+  >
+    <option value=""></option>
 
-        {internalUnitId && !unitOptions.some((u) => String(u.id) === String(internalUnitId)) ? (
-          <option value={internalUnitId}>
-            {unitsLoaded ? `واحد (${toFaDigits(internalUnitId)})` : "در حال دریافت واحدها..."}
-          </option>
-        ) : null}
+    {internalUnitId && !unitOptions.some((u) => String(u.id) === String(internalUnitId)) ? (
+      <option value={internalUnitId}>
+        {unitsLoaded ? `واحد (${toFaDigits(internalUnitId)})` : "در حال دریافت واحدها..."}
+      </option>
+    ) : null}
 
-        {unitOptions.map((u) => (
-          <option key={u.id} value={u.id}>
-            {u.label}
-          </option>
-        ))}
-      </select>
+    {unitOptions.map((u) => (
+      <option key={u.id} value={u.id}>
+        {u.label}
+      </option>
+    ))}
+  </select>
+
+  <ErrorTextAbs kind="internal" k="internalUnitId" /> {/* ✅ متن ارور */}
+</FieldWrap>
+
     </div>
 
     {/* ضمیمه (کنار واحد و در همان خط) */}
