@@ -474,7 +474,6 @@ const TAG_PREFS_LIMIT = 24;
 export default function LettersPage() {
 
   // طبقه بندی (عادی/محرمانه)
-
   const [projects, setProjects] = useState([]);
   const [incomingAttachmentTitle, setIncomingAttachmentTitle] = useState("");
   const [outgoingAttachmentTitle, setOutgoingAttachmentTitle] = useState("");
@@ -2420,6 +2419,11 @@ const isImageUrl = (url, name = "") =>
     setFilterFromDate(from);
     setFilterToDate(to);
   };
+
+  useEffect(() => {
+  const t = setTimeout(() => setTagPickSearchDebounced(tagPickSearch), 120);
+  return () => clearTimeout(t);
+}, [tagPickSearch]);
 
   useEffect(() => {
     if (!filterQuick) return;
@@ -5268,7 +5272,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
               {(() => {
                 const scope = SCOPE_BY_KIND[tagPickKind] || "letters";
                 const all = Array.isArray(tagsByScope?.[scope]) ? tagsByScope[scope] : [];
-                const q = String(tagPickSearch || "").trim().toLowerCase();
+                const q = String(tagPickSearchDebounced || "").trim().toLowerCase();
 
                 const filtered = all.filter((t) => {
                   const label = tagLabelOf(t).toLowerCase();
