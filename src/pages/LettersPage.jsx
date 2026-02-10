@@ -3735,16 +3735,17 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
           <div className="md:col-span-3 md:col-start-1">
               <div className={labelCls}>از</div>
               <FieldWrap>
-                <input
-                  value={outgoingForm.fromName || ""}
-                 onChange={(e) => {
-                    setForm("outgoing", { fromName: e.target.value }); // ✅ یکدست با بقیه
-                    clearFieldError("outgoing", "fromName");
-                  }}
-                  className={inputWithError(inputCls, "outgoing", "fromName")}
-                  aria-invalid={fieldHasError("outgoing", "fromName")}
-                  type="text"
-                />
+              <input
+                value={outgoingForm.fromName || ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setOutgoingForm((p) => ({ ...p, fromName: v }));
+                  clearFieldError("outgoing", "fromName");
+                }}
+                className={inputWithError(inputCls, "outgoing", "fromName")}
+                aria-invalid={fieldHasError("outgoing", "fromName")}
+                type="text"
+              />
                 <ErrorTextAbs kind="outgoing" k="fromName" />
               </FieldWrap>
             </div>
