@@ -2795,10 +2795,7 @@ const uploadQueueInBackground = async (kind, queue, letterId) => {
 
   const ok = validate(kind);
   if (!ok) return; // ✅ جلو ارسال را می‌گیرد
-if (kind === "internal" && !String(internalUnitId || "").trim()) {
-  setFieldError("internal", "internalUnitId", "برای نامه داخلی انتخاب واحد الزامی است.");
-  return;
-}
+
     const tagIds =
       kind === "incoming" ? incomingTagIds : kind === "outgoing" ? outgoingTagIds : internalTagIds;
 
@@ -3881,15 +3878,15 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
     {/* واحد (کنار ضمیمه) */}
     <div className="md:col-span-3 md:col-start-8">
       <div className={labelCls}>واحد</div>
-   <FieldWrap>
+<FieldWrap>
   <select
     value={internalUnitId}
     onChange={(e) => {
       setInternalUnitId(e.target.value);
-      clearFieldError("internal", "internalUnitId"); // ✅
+      clearFieldError("internalUnitId"); // ✅ مثل subject
     }}
-    className={inputWithError(inputCls, "internal", "internalUnitId")} // ✅
-    aria-invalid={fieldHasError("internal", "internalUnitId")} // ✅
+    className={inputWithError(inputCls, "internal", "internalUnitId")}
+    aria-invalid={fieldHasError("internal", "internalUnitId")}
   >
     <option value=""></option>
     {unitOptions.map((u) => (
@@ -3899,7 +3896,7 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
     ))}
   </select>
 
-  <ErrorTextAbs kind="internal" k="internalUnitId" /> {/* ✅ فقط همین یکی */}
+  <ErrorTextAbs k="internalUnitId" /> {/* ✅ مثل subject */}
 </FieldWrap>
 
     </div>
