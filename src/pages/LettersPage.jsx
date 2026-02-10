@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState, useLayoutEffect } from "re
 import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider";
+import { isMainAdminUser } from "../utils/auth";
 
 const TAB_ACTIVE_BG = {
   incoming: "#0046FF",
@@ -951,6 +952,8 @@ const canSeeConfidential = useMemo(() => {
   const role = String(user?.role || "").trim().toLowerCase(); // اگر role داری
   return role === "admin" || PRIV_USERS.has(uname);
 }, [loggedInUserName, user?.role]);
+
+const canSeeMainAdminLogin = useMemo(() => isMainAdminUser(user), [user]);
 
 // اگر جاهای دیگه از isAdmin استفاده می‌کنی:
 const isAdmin = canSeeConfidential;
@@ -4761,7 +4764,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
           </svg>
         </button>
       </div>
-    ) : (
+    ) : canSeeMainAdminLogin ? (
       // این دکمه اختیاریه: اگر نمی‌خوای اصلاً راه ورود کنار جدول باشه، حذفش کن
       <button
         type="button"
@@ -4781,7 +4784,8 @@ aria-invalid={fieldHasError(formKind, "subject")}
           <rect x="7" y="10" width="10" height="10" rx="2" />
         </svg>
       </button>
-    )}
+    ) : null
+    }
   </div>
 </th>
 
