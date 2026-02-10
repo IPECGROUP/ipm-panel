@@ -3883,7 +3883,7 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
     value={internalUnitId}
     onChange={(e) => {
       setInternalUnitId(e.target.value);
-      clearFieldError("internalUnitId"); // ✅ مثل subject
+clearFieldError("internal", "internalUnitId");
     }}
     className={inputWithError(inputCls, "internal", "internalUnitId")}
     aria-invalid={fieldHasError("internal", "internalUnitId")}
@@ -3896,7 +3896,7 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
     ))}
   </select>
 
-  <ErrorTextAbs k="internalUnitId" /> {/* ✅ مثل subject */}
+<ErrorTextAbs kind="internal" k="internalUnitId" />
 </FieldWrap>
 
     </div>
