@@ -515,8 +515,20 @@ async function uploadQueueInBackground({
 
 export default function LettersPage() {
 
+const unlockMainAdmin = () => {
+  if (!isMarandi) return; // یا isMarandiLoose
+  const pass = window.prompt("رمز ادمین اصلی را وارد کنید:");
+  if (String(pass || "").trim() === "1234") {
+    setMainAdminUnlocked(true);
+  } else {
+    setMainAdminUnlocked(false);
+    alert("رمز اشتباه است.");
+  }
+};
 
 async function deleteAllLetters() {
+  if (!canSeeDeleteAll) return;
+
   if (!isMainAdmin) return;
 
   // ✅ تأیید دو مرحله‌ای
@@ -950,6 +962,18 @@ const [isDeletingAll, setIsDeletingAll] = useState(false);
 const isMainAdmin = useMemo(() => {
   return String(loggedInUserName || "").trim().toLowerCase() === "marandi";
 }, [loggedInUserName]);
+const [mainAdminUnlocked, setMainAdminUnlocked] = useState(false);
+
+// اگر خواستی اسم دقیقاً marandi باشد:
+const isMarandi = isMainAdmin;
+
+// یا اگر ممکنه username ات marandi1234 باشد و باز هم اجازه بدی:
+const isMarandiLoose = useMemo(() => {
+  const u = String(loggedInUserName || "").trim().toLowerCase();
+  return u === "marandi" || u === "marandi1234";
+}, [loggedInUserName]);
+
+const canSeeDeleteAll = isMarandi && mainAdminUnlocked; // (یا isMarandiLoose)
 
 
   // ✅ فقط این دو نفر + نقش admin دسترسی محرمانه دارند
