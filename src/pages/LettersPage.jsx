@@ -3728,17 +3728,22 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
         <>
           {/* از (کمی کوچکتر) */}
           <div className="md:col-span-3 md:col-start-1">
-            <div className={labelCls}>از</div>
-              <input
-                value={outgoingForm.fromName || ""}
-                onChange={(e) => {
-                  setOutgoingForm((p) => ({ ...p, fromName: e.target.value }));
-                  clearFieldError?.("outgoing", "fromName"); // اگر داری، خطا رو هم مثل بقیه پاک کن
-                }}
-                className={inputCls}
-                type="text"
-              />
-          </div>
+              <div className={labelCls}>از</div>
+              <FieldWrap>
+                <input
+                  value={outgoingForm.fromName || ""}
+                  onChange={(e) => {
+                    setOutgoingForm((p) => ({ ...p, fromName: e.target.value }));
+                    clearFieldError("outgoing", "fromName");
+                  }}
+                  className={inputWithError(inputCls, "outgoing", "fromName")}
+                  aria-invalid={fieldHasError("outgoing", "fromName")}
+                  type="text"
+                />
+                <ErrorTextAbs kind="outgoing" k="fromName" />
+              </FieldWrap>
+            </div>
+
         {/* آیکن وسط */}
           <div className="md:col-span-1 md:col-start-4 flex flex-col items-center">
             <div className={labelCls + " opacity-0 select-none"}>_</div>
