@@ -3806,16 +3806,20 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
 <div className="md:col-span-4 md:col-start-5">
   <div className={labelCls}>شرکت/سازمان</div>
 
-    <input
-      value={incomingForm.orgName}
-onChange={(e) => {
-  setIncomingForm((p) => ({ ...p, orgName: e.target.value }));
-  clearFieldError("orgName");
-}}
-      className={inputWithError(inputCls, "orgName")}
-      aria-invalid={fieldHasError("orgName")}
-      type="text"
-    />
+   <FieldWrap>
+  <input
+    value={incomingForm.orgName}
+    onChange={(e) => {
+      setIncomingForm((p) => ({ ...p, orgName: e.target.value }));
+      clearFieldError("incoming", "orgName"); // ✅ مهم
+    }}
+    className={inputWithError(inputCls, "incoming", "orgName")} // ✅ مهم
+    aria-invalid={fieldHasError("incoming", "orgName")} // ✅ مهم
+    type="text"
+  />
+  <ErrorTextAbs kind="incoming" k="orgName" /> {/* ✅ مهم */}
+</FieldWrap>
+
     <ErrorTextAbs k="orgName" />
 </div>
 
