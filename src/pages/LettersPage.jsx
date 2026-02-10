@@ -516,9 +516,6 @@ async function uploadQueueInBackground({
 export default function LettersPage() {
 
 
-  const isMainAdmin = String(loggedInUserName || "").trim().toLowerCase() === "marandi";
-const [isDeletingAll, setIsDeletingAll] = useState(false);
-
 async function deleteAllLetters() {
   if (!isMainAdmin) return;
 
@@ -947,6 +944,13 @@ const resolveFileUrl = (u) => {
     ""
 ).trim();
   }, [user]);
+
+const [isDeletingAll, setIsDeletingAll] = useState(false);
+
+const isMainAdmin = useMemo(() => {
+  return String(loggedInUserName || "").trim().toLowerCase() === "marandi";
+}, [loggedInUserName]);
+
 
   // ✅ فقط این دو نفر + نقش admin دسترسی محرمانه دارند
 const PRIV_USERS = new Set(["marandi1234", "rastegar"]);
