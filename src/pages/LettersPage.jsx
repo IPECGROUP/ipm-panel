@@ -3888,7 +3888,6 @@ clearFieldError("internal", "internalUnitId");
     className={inputWithError(inputCls, "internal", "internalUnitId")}
     aria-invalid={fieldHasError("internal", "internalUnitId")}
   >
-    <option value=""></option>
     {unitOptions.map((u) => (
       <option key={u.id} value={u.id}>
         {u.label}
