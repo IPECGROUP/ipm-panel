@@ -473,6 +473,9 @@ const TAG_PREFS_LIMIT = 24;
 
 export default function LettersPage() {
 
+  const subjectRef = useRef(null);
+const subjectSelRef = useRef({ start: 0, end: 0 }); // اگر selection رو نگه می‌داری
+
   const [currentLetterNo, setCurrentLetterNo] = useState("");
 const [currentFromName, setCurrentFromName] = useState("");
 const [draftIncoming, setDraftIncoming] = useState({});
@@ -1274,7 +1277,6 @@ const letterById = useMemo(() => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [myLettersSorted]);
 
-// کنار بقیه useRef ها
 // کنار بقیه useRef ها
 const relatedWrapRef = useRef(null);
 const relatedInputRef = useRef(null);
