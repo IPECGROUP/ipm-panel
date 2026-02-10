@@ -2147,6 +2147,9 @@ const [tagPickFor, setTagPickFor] = useState("filter"); // "filter" | "form"
 const [tagPickKind, setTagPickKind] = useState("letters"); // letters/projects/execution
 const [tagPickCategoryId, setTagPickCategoryId] = useState("");
 const [tagPickDraftIds, setTagPickDraftIds] = useState([]);
+const [tagPickSearch, setTagPickSearch] = useState("");
+const [tagPickSearchDebounced, setTagPickSearchDebounced] = useState("");
+
 const TAG_PICK_TABS = [
   { id: "projects", label: "پروژه‌ها" },
   { id: "letters", label: "نامه‌ها و مستندات" },
@@ -3164,8 +3167,6 @@ const isImageView = useMemo(() => {
     ],
     []
   );
-
-const [tagPickSearch, setTagPickSearch] = useState("");
 
 const allTags = useMemo(() => {
   return [
