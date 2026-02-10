@@ -3171,7 +3171,9 @@ const deleteAllLetters = async () => {
       <div className={"col-span-4 text-xs font-semibold " + (theme === "dark" ? "text-white/70" : "text-neutral-600")}>
         {label}
       </div>
-      <div className={"col-span-8 text-sm " + (theme === "dark" ? "text-white" : "text-neutral-900")}>{value || "—"}</div>
+      <div className={"col-span-8 text-sm " + (theme === "dark" ? "text-white" : "text-neutral-900")}>
+        {value !== null && value !== undefined && value !== "" ? value : "—"}
+      </div>
     </div>
   );
   const viewAttachments = useMemo(() => attachmentsOf(viewLetter), [viewLetter]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -3207,6 +3209,56 @@ const isImageView = useMemo(() => {
     const ha = viewLetter?.has_attachment ?? viewLetter?.hasAttachment;
     return !!ha;
   }, [viewLetter, viewAttachments]);
+
+  const viewLetterKind = viewLetter ? letterKindOf(viewLetter) : "";
+  const isViewIncoming = viewLetterKind === "incoming";
+
+  const viewLinkedLetterMap = useMemo(() => {
+    return new Map((Array.isArray(myLetters) ? myLetters : []).map((x) => [String(letterIdOf(x)), x]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myLetters]);
+
+  const linkedLetterNosText = (idsRaw) => {
+    const ids = (Array.isArray(idsRaw) ? idsRaw : []).map((x) => String(x)).filter(Boolean);
+    if (!ids.length) return "—";
+    const labels = ids.map((sid) => {
+      const item = viewLinkedLetterMap.get(sid);
+      const no = item ? String(letterNoOf(item) || sid) : sid;
+      return toFaDigits(no);
+    });
+    return labels.join("، ");
+  };
+
+  const viewFromToValue = useMemo(() => {
+    if (!viewLetter) return "—";
+    const from = String(viewLetter?.from_name ?? viewLetter?.fromName ?? viewLetter?.from ?? "").trim();
+    const to = String(viewLetter?.to_name ?? viewLetter?.toName ?? viewLetter?.to ?? "").trim();
+    if (isViewIncoming) {
+      if (!from && !to) return "—";
+      return `${from || "—"} - ${to || "—"}`;
+    }
+    const merged = `${from}${from && to ? " / " : ""}${to}`.trim();
+    return merged || "—";
+  }, [viewLetter, isViewIncoming]);
+
+  const viewTagItems = useMemo(() => {
+    if (!viewLetter) return [];
+    const idsFromFields = Array.isArray(viewLetter?.tag_ids)
+      ? viewLetter.tag_ids
+      : Array.isArray(viewLetter?.tagIds)
+      ? viewLetter.tagIds
+      : [];
+    const idsFromObjects = Array.isArray(viewLetter?.tags)
+      ? viewLetter.tags.map((t) => t?.id ?? t?.tag_id ?? t?.tagId).filter(Boolean)
+      : [];
+    const ids = [...idsFromFields, ...idsFromObjects].map((x) => String(x)).filter(Boolean);
+    const uniqueIds = Array.from(new Set(ids));
+    if (!uniqueIds.length) return [];
+
+    const all = Object.values(tagsByScope || {}).flatMap((arr) => (Array.isArray(arr) ? arr : []));
+    const tagMap = new Map(all.map((t) => [String(t?.id), t]));
+    return uniqueIds.map((id) => tagMap.get(id) || { id, label: `برچسب (${toFaDigits(id)})`, _missing: true });
+  }, [viewLetter, tagsByScope]);
 
   const paginationIconBtnCls =
     "h-9 w-9 rounded-lg grid place-items-center transition !bg-transparent !ring-0 !border-0 !shadow-none " +
@@ -5036,16 +5088,23 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                                   ? (() => {
                                       const k = letterKindOf(viewLetter);
                                       if (k === "outgoing") return "صادره";
-                                      if (k === "incoming") return "وارده";
+                                      if (k === "incoming") {
+                                        return (
+                                          <span className="inline-flex items-center gap-2">
+                                            <img src="/images/icons/varede.svg" alt="" className="w-4 h-4 shrink-0" />
+                                            <span>وارده</span>
+                                          </span>
+                                        );
+                                      }
                                       return "داخلی";
                                     })()
                                   : ""
                               }
                             />
-                            <InfoRow label="دسته بندی" value={viewLetter ? categoryLabel(categoryOf(viewLetter)) : ""} />
+                            <InfoRow label={isViewIncoming ? "کلاس سند" : "دسته بندی"} value={viewLetter ? categoryLabel(categoryOf(viewLetter)) : ""} />
 
                             <InfoRow
-                              label="پروژه"
+                              label={isViewIncoming ? "مرکز/پروژه" : "پروژه"}
                               value={
                                 viewLetter && (viewLetter?.project_id ?? viewLetter?.projectId)
                                   ? (() => {
@@ -5058,7 +5117,8 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                               }
                             />
 
-                            <div className="py-2">
+                            {!isViewIncoming && (
+                              <div className="py-2">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
   <div>
     <div className={labelCls}>بازگشت</div>
@@ -5171,74 +5231,80 @@ const rowBg = isConf ? confRowBg : normalRowBg;
   </div>
 </div>
 
-                            </div>
+                              </div>
+                            )}
 
                             <InfoRow
-                              label="از / به"
-                              value={
-                                viewLetter
-                                  ? (() => {
-                                      const a = String(viewLetter?.from_name ?? viewLetter?.fromName ?? viewLetter?.from ?? "").trim();
-                                      const b = String(viewLetter?.to_name ?? viewLetter?.toName ?? viewLetter?.to ?? "").trim();
-                                      const s = `${a}${a && b ? " / " : ""}${b}`.trim();
-                                      return s || "—";
-                                    })()
-                                  : "—"
-                              }
+                              label={isViewIncoming ? "از" : "از / به"}
+                              value={viewFromToValue}
                             />
-                            <InfoRow label="شرکت/سازمان" value={viewLetter ? String(viewLetter?.org_name ?? viewLetter?.orgName ?? viewLetter?.org ?? "") : ""} />
+                            {!isViewIncoming && (
+                              <InfoRow label="شرکت/سازمان" value={viewLetter ? String(viewLetter?.org_name ?? viewLetter?.orgName ?? viewLetter?.org ?? "") : ""} />
+                            )}
                             <InfoRow label="موضوع" value={viewLetter ? String(subjectOf(viewLetter) || "") : ""} />
 
                             <InfoRow label="ضمیمه" value={viewHasAttachment ? "دارد" : "ندارد"} />
-                            <InfoRow
-                              label="بازگشت به"
-                              value={
-                                viewLetter
-                                  ? (() => {
-                                      const ids = Array.isArray(viewLetter?.return_to_ids)
-                                        ? viewLetter.return_to_ids
-                                        : Array.isArray(viewLetter?.returnToIds)
-                                        ? viewLetter.returnToIds
-                                        : [];
-                                      if (!ids.length) return "—";
-                                      const map = new Map((Array.isArray(myLetters) ? myLetters : []).map((x) => [String(letterIdOf(x)), x]));
-                                      const labels = ids
-                                        .map((x) => String(x))
-                                        .filter(Boolean)
-                                        .map((sid) => {
-                                          const it = map.get(sid);
-                                          return it ? String(it?.letter_no || sid) : sid;
-                                        });
-                                      return labels.join("، ");
-                                    })()
-                                  : ""
-                              }
-                            />
+                            {!isViewIncoming && (
+                              <InfoRow
+                                label="بازگشت به"
+                                value={
+                                  viewLetter
+                                    ? linkedLetterNosText(
+                                        Array.isArray(viewLetter?.return_to_ids)
+                                          ? viewLetter.return_to_ids
+                                          : Array.isArray(viewLetter?.returnToIds)
+                                          ? viewLetter.returnToIds
+                                          : []
+                                      )
+                                    : ""
+                                }
+                              />
+                            )}
 
                             <InfoRow
-                              label="پیرو"
+                              label={isViewIncoming ? "اسناد مرتبط" : "پیرو"}
                               value={
                                 viewLetter
-                                  ? (() => {
-                                      const ids = Array.isArray(viewLetter?.piro_ids)
+                                  ? linkedLetterNosText(
+                                      Array.isArray(viewLetter?.piro_ids)
                                         ? viewLetter.piro_ids
                                         : Array.isArray(viewLetter?.piroIds)
                                         ? viewLetter.piroIds
-                                        : [];
-                                      if (!ids.length) return "—";
-                                      const map = new Map((Array.isArray(myLetters) ? myLetters : []).map((x) => [String(letterIdOf(x)), x]));
-                                      const labels = ids
-                                        .map((x) => String(x))
-                                        .filter(Boolean)
-                                        .map((sid) => {
-                                          const it = map.get(sid);
-                                          return it ? String(it?.letter_no || sid) : sid;
-                                        });
-                                      return labels.join("، ");
-                                    })()
+                                        : []
+                                    )
                                   : ""
                               }
                             />
+                            {isViewIncoming && (
+                              <InfoRow
+                                label="برچسب"
+                                value={
+                                  viewTagItems.length ? (
+                                    <div className="flex flex-wrap gap-2">
+                                      {viewTagItems.map((t) => {
+                                        const id = String(t?.id ?? "");
+                                        const label = tagLabelOf(t) || (id ? `برچسب (${toFaDigits(id)})` : "برچسب");
+                                        return (
+                                          <span
+                                            key={id || label}
+                                            className={
+                                              "inline-flex items-center rounded-full border px-3 py-1 text-xs " +
+                                              (theme === "dark"
+                                                ? "border-white/15 bg-white/10 text-white"
+                                                : "border-black/10 bg-black/[0.04] text-neutral-900")
+                                            }
+                                          >
+                                            {label}
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    "—"
+                                  )
+                                }
+                              />
+                            )}
 
                             <InfoRow label="تاریخ ثبت دبیرخانه" value={viewLetter ? toFaDigits(String(viewLetter?.secretariat_date ?? viewLetter?.secretariatDate ?? "")) : ""} />
                             <InfoRow label="شماره ثبت دبیرخانه" value={viewLetter ? String(viewLetter?.secretariat_no ?? viewLetter?.secretariatNo ?? "") : ""} />
