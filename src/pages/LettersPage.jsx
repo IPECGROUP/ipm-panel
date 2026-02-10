@@ -1068,6 +1068,21 @@ const closeRelatedPicker = () => {
     return id && Number.isFinite(id) ? id : String(raw || "");
   };
 
+  const dedupeLettersById = (items) => {
+  const arr = Array.isArray(items) ? items : [];
+  const seen = new Set();
+  const out = [];
+
+  for (const l of arr) {
+    const id = String(letterIdOf(l) || "").trim();
+    if (!id) continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(l);
+  }
+  return out;
+};
+
   const letterKindOf = (l) => {
   const v = String(
     l?.kind || l?.type || l?.direction || l?.io || l?.tab || l?.letter_type || l?.letter_kind || ""
@@ -1792,13 +1807,14 @@ const resetAllFilters = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const refetchLetters = async () => {
+const refetchLetters = async () => {
   const r = await api("/letters/mine");
-  const items = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
+
+  const itemsRaw = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
+  const items = dedupeLettersById(itemsRaw);
+
   setMyLetters(items);
 
-  // ✅ cache
   try {
     sessionStorage.setItem(
       LETTERS_CACHE_KEY,
@@ -1838,9 +1854,10 @@ const resetAllFilters = () => {
       const t = Number(parsed?.t || 0);
       const cached = Array.isArray(parsed?.items) ? parsed.items : [];
 
-      if (cached.length && Date.now() - t < LETTERS_CACHE_TTL) {
-        setMyLetters(cached);
-      }
+    if (cached.length && Date.now() - t < LETTERS_CACHE_TTL) {
+  setMyLetters(dedupeLettersById(cached));
+}
+
     }
   } catch {}
 
@@ -1848,15 +1865,17 @@ const resetAllFilters = () => {
   (async () => {
     try {
       const r = await api("/letters/mine");
-      const items = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
-      if (!mounted) return;
+const itemsRaw = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
+const items = dedupeLettersById(itemsRaw);
 
-      setMyLetters(items);
+if (!mounted) return;
 
-      // آپدیت کش
-      try {
-        sessionStorage.setItem(LETTERS_CACHE_KEY, JSON.stringify({ t: Date.now(), items }));
-      } catch {}
+setMyLetters(items);
+
+try {
+  sessionStorage.setItem(LETTERS_CACHE_KEY, JSON.stringify({ t: Date.now(), items }));
+} catch {}
+
     } catch {
       // اگر کش داشتی، اینجا لازم نیست خالی کنی
       if (!mounted) return;
@@ -2986,7 +3005,7 @@ if (editingId) {
     ? serverItem
     : { ...payload, id: newId };
 
-  setMyLetters((prev) => [created, ...(Array.isArray(prev) ? prev : [])]);
+setMyLetters((prev) => dedupeLettersById([created, ...(Array.isArray(prev) ? prev : [])]));
 }
 
 // ✅ آپدیت کش هم (اختیاری ولی خوب)
