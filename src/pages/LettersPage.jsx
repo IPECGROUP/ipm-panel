@@ -390,7 +390,7 @@ const computeNextAutoCode = ({ kind, projectId, letters, projectsTopOnly }) => {
   const pcode = getProjectCode(projectId, projectsTopOnly);
   if (!pcode) return ""; // تا پروژه انتخاب نشده، کد نساز
 
-  const startByYear = (yy === "04" ? 10700 : 10000);
+  const startByYear = (yy === "04" ? 10521 : 10000);
 
   let maxSeq = 0;
 
@@ -582,6 +582,8 @@ const REQUIRED = {
     "classification", // طبقه بندی
     "letterNo",       // شماره سند
     "letterDate",     // تاریخ سند
+     "fromName",      
+  "orgName",
     "subject",        // موضوع
     "formTags",       // برچسب
   ],
@@ -604,6 +606,9 @@ const validate = (kind) => {
       classification: incomingForm.classification,
       letterNo: incomingForm.letterNo,
       letterDate: incomingForm.letterDate,
+      
+  fromName: incomingForm.fromName, 
+  orgName: incomingForm.orgName,   
 subject: incomingForm.subject,
       formTags: Array.isArray(incomingTagIds) ? incomingTagIds : [],
     },
