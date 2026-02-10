@@ -2586,17 +2586,16 @@ const kindRowTintCls = (kind) => {
   subject: "",
 });
 
-setOutgoingForm({
+setForm("outgoing", {
   category: "نامه",
   projectId: "",
   letterNo: "",
   letterDate: "",
-  fromName: "",  
+  fromName: "",
   toName: "",
   orgName: "",
   subject: "",
 });
-
 
   setInternalForm({
      projectId: "",      
@@ -3736,10 +3735,10 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
               <div className={labelCls}>از</div>
               <FieldWrap>
               <input
-                value={outgoingForm.fromName || ""}
+                value={getForm("outgoing").fromName || ""}
                 onChange={(e) => {
                   const v = e.target.value;
-                  setOutgoingForm((p) => ({ ...p, fromName: v }));
+                  setForm("outgoing", { fromName: v });
                   clearFieldError("outgoing", "fromName");
                 }}
                 className={inputWithError(inputCls, "outgoing", "fromName")}
