@@ -930,6 +930,8 @@ useEffect(() => {
   // ✅ اگر کاربر همین الان داره توی این دو input تایپ می‌کنه، وسط تایپ overwrite نکن
   if (fromNameRef.current && document.activeElement === fromNameRef.current) return;
   if (letterNoRef.current && document.activeElement === letterNoRef.current) return;
+const [currentLetterNo, setCurrentLetterNo] = useState("");
+const [currentFromName, setCurrentFromName] = useState("");
 
   setCurrentFromName(String(f?.fromName ?? ""));
   setCurrentLetterNo(String(f?.letterNo ?? ""));
