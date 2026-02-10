@@ -996,11 +996,18 @@ const unitOptions = useMemo(() => {
 const ORG_UNITS_CACHE_KEY = "org_structure_my_units_v1";
 
 useEffect(() => {
-  const inc = getForm("incoming");
-  setCurrentFromName(String(inc?.fromName ?? ""));
-  setCurrentLetterNo(String(inc?.letterNo ?? ""));
-}, [formOpen, formKind, editingId]);
+  if (!formOpen) return;
 
+  // ✅ از تب فعلی بخون، نه incoming
+  const f = getForm(formKind);
+
+  // ✅ اگر کاربر همین الان داره توی این دو input تایپ می‌کنه، وسط تایپ overwrite نکن
+  if (fromNameRef.current && document.activeElement === fromNameRef.current) return;
+  if (letterNoRef.current && document.activeElement === letterNoRef.current) return;
+
+  setCurrentFromName(String(f?.fromName ?? ""));
+  setCurrentLetterNo(String(f?.letterNo ?? ""));
+}, [formOpen, formKind, editingId]);
 
 useEffect(() => {
   let mounted = true;
