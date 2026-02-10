@@ -4601,7 +4601,28 @@ aria-invalid={fieldHasError(formKind, "subject")}
   <div className="flex items-center justify-start gap-2">
     <span>اقدامات</span>
 
-    {isMainAdmin && (
+    {isMarandi && (
+      <button
+        type="button"
+        onClick={unlockMainAdmin}
+        className={
+          "h-6 w-6 rounded-md border inline-flex items-center justify-center text-xs font-bold " +
+          (mainAdminUnlocked
+            ? (theme === "dark"
+                ? "border-white/15 bg-white text-black"
+                : "border-black/15 bg-black text-white")
+            : (theme === "dark"
+                ? "border-white/15 bg-white/5 hover:bg-white/10 text-white"
+                : "border-black/15 bg-white hover:bg-black/[0.04] text-black"))
+        }
+        title={mainAdminUnlocked ? "فعال است" : "فعال‌سازی با رمز 1234"}
+        aria-label="فعال‌سازی حذف همه"
+      >
+        {mainAdminUnlocked ? "✓" : "🔒"}
+      </button>
+    )}
+
+    {canSeeDeleteAll && (
       <button
         type="button"
         onClick={deleteAllLetters}
@@ -4621,6 +4642,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
     )}
   </div>
 </th>
+
 
     </tr>
   </thead>
