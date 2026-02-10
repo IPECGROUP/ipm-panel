@@ -3715,14 +3715,20 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
           {/* از (کمی کوچکتر) */}
           <div className="md:col-span-3 md:col-start-1">
             <div className={labelCls}>از</div>
-            <input
-  value={outgoingForm.fromName}
-  onChange={(e) =>
-    setOutgoingForm((p) => ({ ...p, fromName: e.target.value }))
-  }
-  className={inputCls}
-  type="text"
-/>
+  <FieldWrap>
+  <input
+    value={outgoingForm.fromName}
+    onChange={(e) => {
+      setOutgoingForm((p) => ({ ...p, fromName: e.target.value }));
+      clearFieldError("outgoing", "fromName"); // ✅ با تایپ، خطا پاک شود
+    }}
+    className={inputWithError(inputCls, "outgoing", "fromName")} // ✅ دور قرمز
+    aria-invalid={fieldHasError("outgoing", "fromName")}
+    type="text"
+  />
+  <ErrorTextAbs kind="outgoing" k="fromName" /> {/* ✅ متن ارور */}
+</FieldWrap>
+
           </div>
 
           {/* آیکن وسط */}
@@ -3779,13 +3785,20 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
           {/* وارده (مثل قبل) */}
           <div className="md:col-span-4 md:col-start-1">
   <div className={labelCls}>از</div>
-
+<FieldWrap>
   <input
-  value={incomingForm.fromName}
-  onChange={(e) => setIncomingForm((p) => ({ ...p, fromName: e.target.value }))}
-  className={inputCls}
-  type="text"
-/>
+    value={incomingForm.fromName}
+    onChange={(e) => {
+      setIncomingForm((p) => ({ ...p, fromName: e.target.value }));
+      clearFieldError("incoming", "fromName"); // ✅
+    }}
+    className={inputWithError(inputCls, "incoming", "fromName")} // ✅
+    aria-invalid={fieldHasError("incoming", "fromName")}
+    type="text"
+  />
+  <ErrorTextAbs kind="incoming" k="fromName" /> {/* ✅ */}
+</FieldWrap>
+
 
 </div>
 
