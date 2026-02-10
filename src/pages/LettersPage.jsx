@@ -1069,6 +1069,7 @@ const closeRelatedPicker = () => {
   };
 
   const dedupeLettersById = (items) => {
+    
   const arr = Array.isArray(items) ? items : [];
   const seen = new Set();
   const out = [];
@@ -1081,6 +1082,34 @@ const closeRelatedPicker = () => {
     out.push(l);
   }
   return out;
+};
+// ✅ ghost detector: رکوردهای خالی/ناقص که نباید نمایش داده شوند
+const isGhostLetter = (l) => {
+  // اگر id نداشته باشه اصلاً نامه نیست
+  const id = String(letterIdOf(l) || "").trim();
+  if (!id) return true;
+
+  // اگر همه چیز خالیه → ghost
+  const hasAny =
+    String(letterNoOf(l) || "").trim() ||
+    String(letterDateOf(l) || "").trim() ||
+    String(subjectOf(l) || "").trim() ||
+    String(orgOf(l) || "").trim() ||
+    String(l?.from_name ?? l?.fromName ?? "").trim() ||
+    String(l?.to_name ?? l?.toName ?? "").trim() ||
+    (Array.isArray(l?.tag_ids) && l.tag_ids.length) ||
+    (Array.isArray(l?.attachments) && l.attachments.length) ||
+    String(l?.secretariat_no ?? "").trim() ||
+    String(l?.secretariat_date ?? "").trim();
+
+  return !hasAny;
+};
+
+// ✅ همیشه قبل setMyLetters از این استفاده کن
+const sanitizeLetters = (items) => {
+  const arr = Array.isArray(items) ? items : [];
+  const cleaned = arr.filter((l) => !isGhostLetter(l));
+  return dedupeLettersById(cleaned);
 };
 
   const letterKindOf = (l) => {
@@ -1811,9 +1840,12 @@ const refetchLetters = async () => {
   const r = await api("/letters/mine");
 
   const itemsRaw = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
-  const items = dedupeLettersById(itemsRaw);
+const items = sanitizeLetters(itemsRaw);
+setMyLetters(items);
 
-  setMyLetters(items);
+try {
+  sessionStorage.setItem(LETTERS_CACHE_KEY, JSON.stringify({ t: Date.now(), items }));
+} catch {}
 
   try {
     sessionStorage.setItem(
@@ -1855,7 +1887,7 @@ const refetchLetters = async () => {
       const cached = Array.isArray(parsed?.items) ? parsed.items : [];
 
     if (cached.length && Date.now() - t < LETTERS_CACHE_TTL) {
-  setMyLetters(dedupeLettersById(cached));
+setMyLetters(sanitizeLetters(cached));
 }
 
     }
@@ -1866,11 +1898,16 @@ const refetchLetters = async () => {
     try {
       const r = await api("/letters/mine");
 const itemsRaw = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
-const items = dedupeLettersById(itemsRaw);
+const items = sanitizeLetters(itemsRaw);
 
 if (!mounted) return;
 
 setMyLetters(items);
+
+try {
+  sessionStorage.setItem(LETTERS_CACHE_KEY, JSON.stringify({ t: Date.now(), items }));
+} catch {}
+
 
 try {
   sessionStorage.setItem(LETTERS_CACHE_KEY, JSON.stringify({ t: Date.now(), items }));
@@ -3005,7 +3042,7 @@ if (editingId) {
     ? serverItem
     : { ...payload, id: newId };
 
-setMyLetters((prev) => dedupeLettersById([created, ...(Array.isArray(prev) ? prev : [])]));
+setMyLetters((prev) => sanitizeLetters([created, ...(Array.isArray(prev) ? prev : [])]));
 }
 
 // ✅ آپدیت کش هم (اختیاری ولی خوب)
