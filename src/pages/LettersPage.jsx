@@ -2795,8 +2795,8 @@ const uploadQueueInBackground = async (kind, queue, letterId) => {
 
   const ok = validate(kind);
   if (!ok) return; // ✅ جلو ارسال را می‌گیرد
- if (kind === "internal" && !String(internalUnitId || "").trim()) {
-  setFieldError("internal", "internalUnitId", "برای نامه داخلی انتخاب واحد الزامی است.");
+if (kind === "internal" && !String(internalUnitId || "").trim()) {
+  setFieldError("internalUnitId", "برای نامه داخلی انتخاب واحد الزامی است.");
   return;
 }
 
@@ -3886,29 +3886,25 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
     <div className="md:col-span-3 md:col-start-8">
       <div className={labelCls}>واحد</div>
    <FieldWrap>
-  <select
-    value={internalUnitId}
-    onChange={(e) => {
-      setInternalUnitId(e.target.value);
-      clearFieldError("internal", "internalUnitId"); // ✅ با تغییر پاک شود
-    }}
-    className={inputWithError(inputCls, "internal", "internalUnitId")}
-    aria-invalid={fieldHasError("internal", "internalUnitId")}
-  >
-    <option value=""></option>
+ <select
+  value={internalUnitId}
+  onChange={(e) => {
+    setInternalUnitId(e.target.value);
+    clearFieldError("internalUnitId");
+  }}
+  className={inputWithError(inputCls, "internalUnitId")}
+  aria-invalid={fieldHasError("internalUnitId")}
+>
+  <option value=""></option>
+  {unitOptions.map((u) => (
+    <option key={u.id} value={u.id}>
+      {u.label}
+    </option>
+  ))}
+</select>
 
-    {internalUnitId && !unitOptions.some((u) => String(u.id) === String(internalUnitId)) ? (
-      <option value={internalUnitId}>
-        {unitsLoaded ? `واحد (${toFaDigits(internalUnitId)})` : "در حال دریافت واحدها..."}
-      </option>
-    ) : null}
+<ErrorTextAbs k="internalUnitId" />
 
-    {unitOptions.map((u) => (
-      <option key={u.id} value={u.id}>
-        {u.label}
-      </option>
-    ))}
-  </select>
 
   <ErrorTextAbs kind="internal" k="internalUnitId" />
 </FieldWrap>
