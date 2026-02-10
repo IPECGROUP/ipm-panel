@@ -473,6 +473,7 @@ const TAG_PREFS_LIMIT = 24;
 
 export default function LettersPage() {
 
+  const subjectValue = getForm(formKind)?.subject ?? "";
   const [currentLetterNo, setCurrentLetterNo] = useState("");
 const [currentFromName, setCurrentFromName] = useState("");
 const [draftIncoming, setDraftIncoming] = useState({});
@@ -870,12 +871,13 @@ useLayoutEffect(() => {
   if (document.activeElement !== el) return;
 
   const { start, end } = subjectSelRef.current || {};
-if (typeof start !== "number" || typeof end !== "number") return;
+  if (typeof start !== "number" || typeof end !== "number") return;
 
-try {
-  el.setSelectionRange(start, end);
-} catch {}
-}, [formKind, currentSubject]);
+  try {
+    el.setSelectionRange(start, end);
+  } catch {}
+}, [formKind, subjectValue]); // ✅ به جای currentSubject
+
 
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFor, setUploadFor] = useState("incoming");
