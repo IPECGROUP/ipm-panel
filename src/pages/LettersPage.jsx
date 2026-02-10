@@ -473,6 +473,9 @@ const TAG_PREFS_LIMIT = 24;
 
 export default function LettersPage() {
 
+const [incomingUploadNote, setIncomingUploadNote] = useState("");
+const [outgoingUploadNote, setOutgoingUploadNote] = useState("");
+const [internalUploadNote, setInternalUploadNote] = useState("");
   // طبقه بندی (عادی/محرمانه)
   const [projects, setProjects] = useState([]);
   const [incomingAttachmentTitle, setIncomingAttachmentTitle] = useState("");
@@ -4118,28 +4121,29 @@ aria-invalid={fieldHasError("incoming", "toName")}
   ) : null}
 </button>
     </div>
-     {/* ✅ توضیح کنار بارگذاری اسناد */} 
+{/* ✅ توضیح کنار بارگذاری اسناد */} 
 <div className="min-w-0 w-full md:w-auto md:flex-1">
   <div className={labelCls}>توضیح</div>
   <input
     value={
       formKind === "incoming"
-        ? incomingSecretariatNote
+        ? incomingUploadNote
         : formKind === "outgoing"
-        ? outgoingSecretariatNote
-        : internalSecretariatNote
+        ? outgoingUploadNote
+        : internalUploadNote
     }
     onChange={(e) => {
       const v = e.target.value;
-      if (formKind === "incoming") setIncomingSecretariatNote(v);
-      else if (formKind === "outgoing") setOutgoingSecretariatNote(v);
-      else setInternalSecretariatNote(v);
+      if (formKind === "incoming") setIncomingUploadNote(v);
+      else if (formKind === "outgoing") setOutgoingUploadNote(v);
+      else setInternalUploadNote(v);
     }}
     className={inputCls + " h-10"}
     type="text"
     placeholder="توضیح..."
   />
 </div>
+
   </div>
 </div>
 )}
