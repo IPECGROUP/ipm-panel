@@ -2796,11 +2796,9 @@ const uploadQueueInBackground = async (kind, queue, letterId) => {
   const ok = validate(kind);
   if (!ok) return; // ✅ جلو ارسال را می‌گیرد
 if (kind === "internal" && !String(internalUnitId || "").trim()) {
-  setFieldError("internalUnitId", "برای نامه داخلی انتخاب واحد الزامی است.");
+  setFieldError("internal", "internalUnitId", "برای نامه داخلی انتخاب واحد الزامی است.");
   return;
 }
-
-
     const tagIds =
       kind === "incoming" ? incomingTagIds : kind === "outgoing" ? outgoingTagIds : internalTagIds;
 
@@ -3632,8 +3630,6 @@ aria-invalid={fieldHasError("incoming", "classification")}
   </FieldWrap>
 </div>
 
-
-  {/* مرکز/پروژه */}
   {/* مرکز/پروژه */}
 <div className="shrink-0 w-[220px]">
   <div className={labelSmCls}>مرکز/پروژه</div>
@@ -3886,27 +3882,24 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
     <div className="md:col-span-3 md:col-start-8">
       <div className={labelCls}>واحد</div>
    <FieldWrap>
- <select
-  value={internalUnitId}
-  onChange={(e) => {
-    setInternalUnitId(e.target.value);
-    clearFieldError("internalUnitId");
-  }}
-  className={inputWithError(inputCls, "internalUnitId")}
-  aria-invalid={fieldHasError("internalUnitId")}
->
-  <option value=""></option>
-  {unitOptions.map((u) => (
-    <option key={u.id} value={u.id}>
-      {u.label}
-    </option>
-  ))}
-</select>
+  <select
+    value={internalUnitId}
+    onChange={(e) => {
+      setInternalUnitId(e.target.value);
+      clearFieldError("internal", "internalUnitId"); // ✅
+    }}
+    className={inputWithError(inputCls, "internal", "internalUnitId")} // ✅
+    aria-invalid={fieldHasError("internal", "internalUnitId")} // ✅
+  >
+    <option value=""></option>
+    {unitOptions.map((u) => (
+      <option key={u.id} value={u.id}>
+        {u.label}
+      </option>
+    ))}
+  </select>
 
-<ErrorTextAbs k="internalUnitId" />
-
-
-  <ErrorTextAbs kind="internal" k="internalUnitId" />
+  <ErrorTextAbs kind="internal" k="internalUnitId" /> {/* ✅ فقط همین یکی */}
 </FieldWrap>
 
     </div>
