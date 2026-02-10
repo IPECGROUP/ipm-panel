@@ -3853,7 +3853,8 @@ aria-invalid={fieldHasError("incoming", "toName")}
   type="text"
 />
 
-    <ErrorTextAbs k="toName" />
+    <ErrorTextAbs kind="incoming" k="toName" />
+
 </div>
 
         </>
@@ -3873,6 +3874,8 @@ aria-invalid={fieldHasError("incoming", "toName")}
   ref={subjectRef}
   value={currentSubject}
   onChange={onSubjectChange}
+  onFocus={onSubjectFocus}
+  onBlur={onSubjectBlur}
   onSelect={(e) => rememberSubjectSel(e.target)}
   onKeyUp={(e) => rememberSubjectSel(e.target)}
   className={inputWithError(inputCls, "internal", "subject")}
