@@ -3827,20 +3827,24 @@ aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "projectId") :
   <FieldWrap>
     <input
       value={getForm(formKind).letterNo || ""}
-      readOnly={formKind !== "incoming"}  // ✅ صادره/داخلی قفل
       onChange={(e) => {
-        // ✅ فقط برای وارده اجازه تایپ/تغییر بده (اگر خواستی)
-        if (formKind === "incoming") {
-          setForm(formKind, { letterNo: e.target.value });
-          clearFieldError("incoming", "letterNo");
-        }
+        setForm(formKind, { letterNo: e.target.value });
+        clearFieldError(formKind, "letterNo"); // اگر برای اون تب ولیدیشن داری
       }}
       className={
-        (formKind !== "incoming"
-          ? (inputSmCls + " bg-black/5 dark:bg-white/10 cursor-not-allowed")
-          : inputWithError(inputSmCls, "incoming", "letterNo"))
+        formKind === "incoming"
+          ? inputWithError(inputSmCls, "incoming", "letterNo")
+          : formKind === "outgoing"
+          ? inputWithError(inputSmCls, "outgoing", "letterNo")
+          : inputWithError(inputSmCls, "internal", "letterNo")
       }
-      aria-invalid={formKind === "incoming" ? fieldHasError("incoming", "letterNo") : undefined}
+      aria-invalid={
+        formKind === "incoming"
+          ? fieldHasError("incoming", "letterNo")
+          : formKind === "outgoing"
+          ? fieldHasError("outgoing", "letterNo")
+          : fieldHasError("internal", "letterNo")
+      }
       type="text"
     />
 
