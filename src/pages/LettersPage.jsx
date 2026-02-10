@@ -473,6 +473,8 @@ const TAG_PREFS_LIMIT = 24;
 
 export default function LettersPage() {
 
+  const [currentLetterNo, setCurrentLetterNo] = useState("");
+const [currentFromName, setCurrentFromName] = useState("");
 const [draftIncoming, setDraftIncoming] = useState({});
 const [draftOutgoing, setDraftOutgoing] = useState({});
 const [draftInternal, setDraftInternal] = useState({});
@@ -920,8 +922,7 @@ const unitOptions = useMemo(() => {
 }, [unitsAll, myUnitsFromUser]);
 
 const ORG_UNITS_CACHE_KEY = "org_structure_my_units_v1";
-const [currentLetterNo, setCurrentLetterNo] = useState("");
-const [currentFromName, setCurrentFromName] = useState("");
+
 useEffect(() => {
   if (!formOpen) return;
 
