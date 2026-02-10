@@ -526,52 +526,6 @@ const unlockMainAdmin = () => {
   }
 };
 
-async function deleteAllLetters() {
-  if (!canSeeDeleteAll) return;
-
-  if (!isMainAdmin) return;
-
-  // ✅ تأیید دو مرحله‌ای
-  const ok1 = window.confirm("هشدار! با این کار همه نامه‌ها برای همیشه حذف می‌شوند. ادامه می‌دهید؟");
-  if (!ok1) return;
-
-  const ok2 = window.prompt("برای تأیید، عبارت DELETE را دقیقاً وارد کنید:");
-  if (ok2 !== "DELETE") return;
-
-  try {
-    setIsDeletingAll(true);
-
-    const res = await fetch("/api/letters", {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        // ✅ فقط برای نمونه‌ی بک‌اند بالا
-        "x-username": String(loggedInUserName || ""),
-      },
-    });
-
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok || !data?.ok) {
-      alert(data?.error || "خطا در حذف همه نامه‌ها");
-      return;
-    }
-
-    alert(`همه نامه‌ها حذف شد: ${data.deleted}`);
-
-    // ✅ رفرش لیستت (هر چی داری)
-    // اگر تابع loadLetters / fetchLetters داری صدا بزن
-    // مثال:
-    // await fetchMyLetters();
-    // یا:
-    // setMyLetters([]);
-  } catch (e) {
-    alert(e?.message || "خطا در ارتباط با سرور");
-  } finally {
-    setIsDeletingAll(false);
-  }
-}
-
 // ✅ Validation (per tab)
 const [errorsByKind, setErrorsByKind] = useState({
   incoming: {},
@@ -944,40 +898,55 @@ const resolveFileUrl = (u) => {
 };
 
 
-  const loggedInUserName = useMemo(() => {
-    const u = user || {};
-    return String(
-  u?.name ||
+// ✅ کلید تشخیص ادمین اصلی (فقط از username/login/email)
+const mainAdminKey = useMemo(() => {
+  const u = user || {};
+  return String(
+    u?.username ||
+    u?.user_name ||
+    u?.login ||
+    u?.email ||   // اگر لاگین با ایمیل باشه
+    ""
+  )
+    .trim()
+    .toLowerCase();
+}, [user]);
+
+// ✅ فقط marandi
+const isMainAdmin = mainAdminKey === "marandi";
+
+// ✅ اگر هنوز loggedInUserName رو جای دیگه لازم داری، نگهش دار (برای x-username)
+const loggedInUserName = useMemo(() => {
+  const u = user || {};
+  return String(
+    u?.username ||
+    u?.user_name ||
+    u?.login ||
+    u?.name ||
     u?.full_name ||
     u?.displayName ||
-    u?.user_name ||
-    u?.username ||
-    u?.login ||
+    u?.email ||
     ""
-).trim();
-  }, [user]);
+  ).trim();
+}, [user]);
 
-  // ✅ main admin فقط marandi
-const isMainAdmin = useMemo(() => {
-  return String(loggedInUserName || "").trim().toLowerCase() === "marandi";
-}, [loggedInUserName]);
 
 const [isDeletingAll, setIsDeletingAll] = useState(false);
 
 async function deleteAllLetters() {
-  // ✅ گارد نهایی
   if (!isMainAdmin) return;
 
-  // ✅ رمز
   const pass = window.prompt("رمز ادمین اصلی را وارد کنید:");
   if (String(pass || "").trim() !== "1234") {
     alert("رمز اشتباه است.");
     return;
   }
 
-  // ✅ تایید خطر
-  const ok = window.confirm("هشدار! با این کار همه نامه‌ها برای همیشه حذف می‌شوند. ادامه می‌دهید؟");
-  if (!ok) return;
+  const ok1 = window.confirm("هشدار! با این کار همه نامه‌ها برای همیشه حذف می‌شوند. ادامه می‌دهید؟");
+  if (!ok1) return;
+
+  const ok2 = window.prompt("برای تأیید، عبارت DELETE را دقیقاً وارد کنید:");
+  if (ok2 !== "DELETE") return;
 
   try {
     setIsDeletingAll(true);
@@ -986,7 +955,6 @@ async function deleteAllLetters() {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
-        // طبق بک‌اندی که گفتی
         "x-username": String(loggedInUserName || ""),
       },
     });
@@ -1000,18 +968,15 @@ async function deleteAllLetters() {
 
     alert(`همه نامه‌ها حذف شد: ${data.deleted}`);
 
-    // ✅ رفرش لیست
     setMyLetters([]);
     setSelectedIds(new Set());
-    // اگر تابع refetchLetters داری بهتره:
-    // await refetchLetters();
-
   } catch (e) {
     alert(e?.message || "خطا در ارتباط با سرور");
   } finally {
     setIsDeletingAll(false);
   }
 }
+
 
 // اگر خواستی اسم دقیقاً marandi باشد:
 const isMarandi = isMainAdmin;
@@ -4674,7 +4639,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
   <div className="flex items-center justify-start gap-2">
     <span>اقدامات</span>
 
-   {isMainAdmin && (
+{isMainAdmin && (
   <button
     type="button"
     onClick={deleteAllLetters}
