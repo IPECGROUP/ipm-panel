@@ -2079,10 +2079,8 @@ const projectsTopOnly = useMemo(() => {
 }, [projectsDesc]);
 
 // ===== Auto code injection (Create only) =====
-const currentProjectId =
-  (formKind === "outgoing" ? outgoingForm.projectId :
-   formKind === "internal" ? internalForm.projectId :
-   incomingForm.projectId) || "";
+const currentProjectId = getForm(formKind).projectId || "";
+
 
 
 useEffect(() => {
@@ -2576,32 +2574,32 @@ const kindRowTintCls = (kind) => {
   return "bg-orange-50 dark:bg-orange-500/10"; // ✅ internal
 };
 
- const resetForm = () => {
- setIncomingForm({
-  classification: "عادی",
-  projectId: "",
-  letterNo: "",
-  letterDate: "",
-  fromName: "",
-  toName: "",
-  orgName: "",
-  subject: "",
-});
+const resetForm = () => {
+  setForm("incoming", {
+    classification: "عادی",
+    projectId: "",
+    letterNo: "",
+    letterDate: "",
+    fromName: "",
+    toName: "",
+    orgName: "",
+    subject: "",
+  });
 
-setForm("outgoing", {
-  category: "نامه",
-  projectId: "",
-  letterNo: "",
-  letterDate: "",
-  fromName: "",
-  toName: "",
-  orgName: "",
-  subject: "",
-});
+  setForm("outgoing", {
+    category: "نامه",
+    projectId: "",
+    letterNo: "",
+    letterDate: "",
+    fromName: "",
+    toName: "",
+    orgName: "",
+    subject: "",
+  });
 
-  setInternalForm({
-     projectId: "",      
-  letterNo: "",  
+  setForm("internal", {
+    projectId: "",
+    letterNo: "",
     letterDate: "",
     subject: "",
   });
