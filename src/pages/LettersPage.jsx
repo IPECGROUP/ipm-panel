@@ -844,6 +844,8 @@ const getForm = (kind) => {
   if (kind === "internal") return internalForm;
   return incomingForm;
 };
+const [currentFromName, setCurrentFromName] = useState("");
+const [currentLetterNo, setCurrentLetterNo] = useState("");
 
 const subjectRef = useRef(null);
 const subjectSelRef = useRef({ start: 0, end: 0 });
@@ -971,6 +973,14 @@ const unitOptions = useMemo(() => {
 }, [unitsAll, myUnitsFromUser]);
 
 const ORG_UNITS_CACHE_KEY = "org_structure_my_units_v1";
+
+useEffect(() => {
+  // فقط برای وارده مهمه چون فیلد "شماره سند" فقط incoming قابل تایپ است
+  const inc = getForm("incoming");
+  setCurrentFromName(String(inc?.fromName ?? ""));
+  setCurrentLetterNo(String(inc?.letterNo ?? ""));
+}, [formOpen, formKind, editId]); 
+
 
 useEffect(() => {
   let mounted = true;
@@ -3704,28 +3714,27 @@ aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "projectId") :
   <div className={labelSmCls}>شماره سند</div>
 
   <FieldWrap>
-    <input
-      ref={letterNoRef}
-      value={getForm(formKind).letterNo || ""}
-      readOnly={formKind !== "incoming"}
-      onSelect={(e) => rememberSel("letterNo", e.target)}
-      onKeyUp={(e) => rememberSel("letterNo", e.target)}
-      onChange={(e) => {
-        if (formKind !== "incoming") return;
+   <input
+  ref={letterNoRef}
+  value={formKind === "incoming" ? currentLetterNo : (getForm(formKind).letterNo || "")}
+  readOnly={formKind !== "incoming"}
+  onChange={(e) => {
+    if (formKind !== "incoming") return;
 
-        setForm("incoming", { letterNo: e.target.value });
-        clearFieldError("incoming", "letterNo");
+    const v = e.target.value;
+    setCurrentLetterNo(v);                  // ✅ مثل subject
+    setForm("incoming", { letterNo: v });   // ✅ sync با فرم
+    clearFieldError("incoming", "letterNo");
+  }}
+  className={
+    formKind !== "incoming"
+      ? inputSmCls + " bg-black/5 dark:bg-white/10 cursor-not-allowed"
+      : inputWithError(inputSmCls, "incoming", "letterNo")
+  }
+  aria-invalid={formKind === "incoming" ? fieldHasError("incoming", "letterNo") : undefined}
+  type="text"
+/>
 
-        requestAnimationFrame(() => restoreSel("letterNo", letterNoRef.current));
-      }}
-      className={
-        formKind !== "incoming"
-          ? inputSmCls + " bg-black/5 dark:bg-white/10 cursor-not-allowed"
-          : inputWithError(inputSmCls, "incoming", "letterNo")
-      }
-      aria-invalid={formKind === "incoming" ? fieldHasError("incoming", "letterNo") : undefined}
-      type="text"
-    />
 
     {formKind === "incoming" ? <ErrorTextAbs kind="incoming" k="letterNo" /> : null}
   </FieldWrap>
@@ -3832,19 +3841,18 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
 <FieldWrap>
 <input
   ref={fromNameRef}
-  value={getForm("incoming").fromName || ""}
-  onSelect={(e) => rememberSel("fromName", e.target)}
-  onKeyUp={(e) => rememberSel("fromName", e.target)}
+  value={currentFromName}
   onChange={(e) => {
-    setForm("incoming", { fromName: e.target.value });
+    const v = e.target.value;
+    setCurrentFromName(v);                 // ✅ مثل subject: کنترل پایدار
+    setForm("incoming", { fromName: v });  // ✅ sync با فرم
     clearFieldError("incoming", "fromName");
-
-    requestAnimationFrame(() => restoreSel("fromName", fromNameRef.current));
   }}
   className={inputWithError(inputCls, "incoming", "fromName")}
   aria-invalid={fieldHasError("incoming", "fromName")}
   type="text"
 />
+
   <ErrorTextAbs kind="incoming" k="fromName" />
 </FieldWrap>
 
@@ -3855,11 +3863,12 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
   <div className={labelCls}>شرکت/سازمان</div>
 
     <input
-      value={incomingForm.orgName}
+      value={getForm("incoming").orgName || ""}
 onChange={(e) => {
-  setIncomingForm((p) => ({ ...p, orgName: e.target.value }));
+  setForm("incoming", { orgName: e.target.value });
   clearFieldError("incoming", "orgName");
 }}
+
 className={inputWithError(inputCls, "incoming", "orgName")}
 aria-invalid={fieldHasError("incoming", "orgName")}
       type="text"
@@ -3885,11 +3894,12 @@ aria-invalid={fieldHasError("incoming", "orgName")}
   <div className={labelCls}>به</div>
 
     <input
-  value={incomingForm.toName}
+ value={getForm("incoming").toName || ""}
 onChange={(e) => {
-  setIncomingForm((p) => ({ ...p, toName: e.target.value }));
+  setForm("incoming", { toName: e.target.value });
   clearFieldError("incoming", "toName");
 }}
+
 className={inputWithError(inputCls, "incoming", "toName")}
 aria-invalid={fieldHasError("incoming", "toName")}
   type="text"
