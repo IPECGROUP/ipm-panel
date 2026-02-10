@@ -473,6 +473,26 @@ const TAG_PREFS_LIMIT = 24;
 
 export default function LettersPage() {
 
+  const saveSubjectSel = () => {
+  const el = subjectRef.current;
+  if (!el) return;
+
+  const start = typeof el.selectionStart === "number" ? el.selectionStart : 0;
+  const end = typeof el.selectionEnd === "number" ? el.selectionEnd : start;
+
+  subjectSelRef.current = { start, end };
+};
+
+const onSubjectFocus = () => {
+  // وقتی فوکوس می‌گیریم selection فعلی رو ذخیره کن
+  saveSubjectSel();
+};
+
+const onSubjectBlur = () => {
+  // وقتی فوکوس از دست میره هم آخرین selection ذخیره بشه
+  saveSubjectSel();
+};
+
   const subjectRef = useRef(null);
 const subjectSelRef = useRef({ start: 0, end: 0 }); // اگر selection رو نگه می‌داری
 
