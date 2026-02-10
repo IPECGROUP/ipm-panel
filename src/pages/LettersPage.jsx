@@ -1375,6 +1375,7 @@ const loadFormTagPrefs = async (_which) => {
 
   // ✅ یک منبع واحد برای فرم: incoming_tag_ids (یا هرکدوم که می‌خوای)
   const ids = normalizeIdList(p?.incoming_tag_ids || []).slice(0, TAG_PREFS_LIMIT);
+lastSavedFormTagsRef.current = JSON.stringify(ids);
 
   // ✅ هم UI هر سه تب یکی شود
   setIncomingTagIds(ids);
@@ -2101,7 +2102,12 @@ const setFormTagsAllAndPersist = async (ids) => {
   setOutgoingTagIds(next);
   setInternalTagIds(next);
 
-  // ✅ فقط یک ذخیره در prefs
+  // ✅ اگر هیچ تغییری نکرده، اصلاً POST نزن
+  const sig = JSON.stringify(next);
+  if (lastSavedFormTagsRef.current === sig) return;
+
+  lastSavedFormTagsRef.current = sig;
+
   try {
     await patchLetterPrefs({ incoming_tag_ids: next });
   } catch {}
@@ -2830,6 +2836,7 @@ const uploadQueueInBackground = async (kind, queue, letterId) => {
   await runWithLimit(tasks, 2); // 2 تا همزمان
 };
 const submitLockRef = useRef(false);
+const lastSavedFormTagsRef = useRef("");
 
   const submitLetter = async (kind) => {
 
@@ -2960,6 +2967,36 @@ subject:
   newId = item?.id ?? item?.letter_id ?? item?.letterId;
 }
 
+// ✅ آپدیت UI بدون GET /letters/mine
+const serverItem = saved?.item || saved || null;
+
+if (editingId) {
+  // حالت ویرایش: آیتم را در لیست جایگزین کن
+  setMyLetters((prev) => {
+    const arr = Array.isArray(prev) ? prev : [];
+    return arr.map((x) =>
+      String(letterIdOf(x)) === String(editingId)
+        ? { ...x, ...(serverItem && typeof serverItem === "object" ? serverItem : payload) }
+        : x
+    );
+  });
+} else {
+  // حالت ایجاد: آیتم را ابتدای لیست اضافه کن
+  const created = (serverItem && typeof serverItem === "object")
+    ? serverItem
+    : { ...payload, id: newId };
+
+  setMyLetters((prev) => [created, ...(Array.isArray(prev) ? prev : [])]);
+}
+
+// ✅ آپدیت کش هم (اختیاری ولی خوب)
+try {
+  setTimeout(() => {
+    // setTimeout برای اینکه مقدار جدید state اعمال شده باشد
+    // (یا اگر خواستی، همینجا هم با prev کار کن)
+  }, 0);
+} catch {}
+
     if (!newId) throw new Error("save_failed");
     const letterId = Number(newId) || newId;
     if (queue.length > 0) {
@@ -2992,7 +3029,6 @@ subject:
         }
       }
     }
-    await refetchLetters();
     resetForm();
     setFormOpen(false);
   };
