@@ -473,30 +473,20 @@ const TAG_PREFS_LIMIT = 24;
 
 export default function LettersPage() {
 
+const [draftIncoming, setDraftIncoming] = useState({});
+const [draftOutgoing, setDraftOutgoing] = useState({});
+const [draftInternal, setDraftInternal] = useState({});
+
   const letterNoRef = useRef(null);
 const fromNameRef = useRef(null);
-const fromNameFocusedRef = useRef(false);
-const letterNoFocusedRef = useRef(false);
 
-const onFromNameFocus = () => { fromNameFocusedRef.current = true; };
-const onFromNameBlur  = () => { fromNameFocusedRef.current = false; };
+const getDraft = (k) =>
+  k === "incoming" ? draftIncoming : k === "outgoing" ? draftOutgoing : draftInternal;
 
-const onLetterNoFocus = () => { letterNoFocusedRef.current = true; };
-const onLetterNoBlur  = () => { letterNoFocusedRef.current = false; };
-
-const selMem = useRef({});
-
-const rememberSel = (k, el) => {
-  if (!el) return;
-  try {
-    selMem.current[k] = { s: el.selectionStart ?? 0, e: el.selectionEnd ?? 0 };
-  } catch {}
-};
-
-const restoreSel = (k, el) => {
-  const m = selMem.current[k];
-  if (!el || !m) return;
-  try { el.setSelectionRange(m.s, m.e); } catch {}
+const setDraft = (k, patch) => {
+  if (k === "incoming") setDraftIncoming((p) => ({ ...p, ...patch }));
+  else if (k === "outgoing") setDraftOutgoing((p) => ({ ...p, ...patch }));
+  else setDraftInternal((p) => ({ ...p, ...patch }));
 };
 
 const [incomingUploadNote, setIncomingUploadNote] = useState("");
@@ -557,7 +547,18 @@ const clearFieldError = (kind, k) => {
     return { ...prev, [kind]: nextKind };
   });
 };
+const onDraftInput = (kind, key) => (e) => {
+  const v = e.target.value;
 
+  // 1) draft
+  setDraft(kind, { [key]: v });
+
+  // 2) فرم اصلی (منبع ذخیره)
+  setForm(kind, { [key]: v });
+
+  // 3) پاک کردن ارور همان فیلد
+  clearFieldError(kind, key);
+};
 
 // ✅ اینجا تعیین کن کدوم فیلدها اجباری هستن
 
@@ -852,56 +853,6 @@ const getForm = (kind) => {
   if (kind === "internal") return internalForm;
   return incomingForm;
 };
-const [currentFromName, setCurrentFromName] = useState("");
-const [currentLetterNo, setCurrentLetterNo] = useState("");
-
-const subjectRef = useRef(null);
-const subjectSelRef = useRef({ start: 0, end: 0 });
-const subjectFocusedRef = useRef(false);
-
-// ✅ value واحد برای input
-const currentSubject = getForm(formKind).subject || "";
-
-
-// ✅ ذخیره‌ی selection قبل از setState
-const rememberSubjectSel = (el) => {
-  if (!el) return;
-  const start = typeof el.selectionStart === "number" ? el.selectionStart : 0;
-  const end = typeof el.selectionEnd === "number" ? el.selectionEnd : start;
-  subjectSelRef.current = { start, end };
-};
-
-const onSubjectFocus = () => {
-  subjectFocusedRef.current = true;
-};
-
-const onSubjectBlur = () => {
-  subjectFocusedRef.current = false;
-};
-
-
-useLayoutEffect(() => {
-  const el = subjectRef.current;
-  if (!el) return;
-
-  // فقط وقتی خودِ subject فوکوس داشته
-  if (!subjectFocusedRef.current) return;
-
-  // فوکوس و کرسر رو بعد از رندر برگردون
-  el.focus({ preventScroll: true });
-
-  const { start, end } = subjectSelRef.current || { start: 0, end: 0 };
-  try {
-    el.setSelectionRange(start, end);
-  } catch {}
-}, [currentSubject]);
-
-useLayoutEffect(() => {
-  const el = fromNameRef.current;
-  if (!el) return;
-  if (!fromNameFocusedRef.current) return;
-  restoreSel("fromName", el);
-}, [currentFromName]);
 
 useLayoutEffect(() => {
   const el = letterNoRef.current;
@@ -923,31 +874,6 @@ try {
   el.setSelectionRange(start, end);
 } catch {}
 }, [formKind, currentSubject]);
-
-// ✅ handler واحد برای subject
-const onSubjectChange = (e) => {
-  const el = e.target;
-  rememberSubjectSel(el);
-
-  const v = el.value;
-
-  // ✅ دقیقاً مثل بقیه فیلدها: فقط state همان تب
-  setForm(formKind, { subject: v });
-
-  // ✅ خطای ولیدیشن همان فیلد پاک شود
-  clearFieldError(formKind, "subject");
-
-  // ✅ یکبار دیگر بعد از paint هم تلاش کن (برای جلوگیری از پرش/blur در بعضی مرورگرها)
-  requestAnimationFrame(() => {
-    const inp = subjectRef.current;
-    if (inp && document.activeElement === inp) {
-      try {
-    const { start, end } = subjectSelRef.current || {};
-inp.setSelectionRange(start ?? 0, end ?? 0);
-      } catch {}
-    }
-  });
-};
 
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFor, setUploadFor] = useState("incoming");
@@ -2639,7 +2565,11 @@ const resetForm = () => {
     toName: "",
     orgName: "",
     subject: "",
+    
   });
+setDraftIncoming({});
+setDraftOutgoing({});
+setDraftInternal({});
 
   setForm("outgoing", {
     category: "نامه",
@@ -3741,43 +3671,18 @@ aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "projectId") :
   <div className={labelSmCls}>شماره سند</div>
 
   <FieldWrap>
-<input
-  ref={letterNoRef}
-  value={formKind === "incoming" ? currentLetterNo : (getForm(formKind).letterNo || "")}
-  readOnly={formKind !== "incoming"}
-  onFocus={formKind === "incoming" ? onLetterNoFocus : undefined}
-  onBlur={formKind === "incoming" ? onLetterNoBlur : undefined}
-  onSelect={formKind === "incoming" ? (e) => rememberSel("letterNo", e.target) : undefined}
-  onKeyUp={formKind === "incoming" ? (e) => rememberSel("letterNo", e.target) : undefined}
-  onChange={(e) => {
-    if (formKind !== "incoming") return;
+    <input
+      ref={letterNoRef}
+      value={getDraft(formKind).letterNo ?? ""}
+      onChange={onDraftInput(formKind, "letterNo")}
+      className={inputWithError(inputSmCls, formKind, "letterNo")}
+      aria-invalid={fieldHasError(formKind, "letterNo")}
+      type="text"
+    />
 
-    const el = e.target;
-    rememberSel("letterNo", el); // ✅ قبل از setState کرسر ذخیره شود
-
-    const v = el.value;
-    setCurrentLetterNo(v);                // ✅ کنترل پایدار
-    setForm("incoming", { letterNo: v }); // ✅ sync با فرم
-    clearFieldError("incoming", "letterNo");
-
-    requestAnimationFrame(() => {
-      const inp = letterNoRef.current;
-      if (inp && document.activeElement === inp) restoreSel("letterNo", inp);
-    });
-  }}
-  className={
-    formKind !== "incoming"
-      ? inputSmCls + " bg-black/5 dark:bg-white/10 cursor-not-allowed"
-      : inputWithError(inputSmCls, "incoming", "letterNo")
-  }
-  aria-invalid={formKind === "incoming" ? fieldHasError("incoming", "letterNo") : undefined}
-  type="text"
-/>
-
-    {formKind === "incoming" ? <ErrorTextAbs kind="incoming" k="letterNo" /> : null}
+    <ErrorTextAbs kind={formKind} k="letterNo" />
   </FieldWrap>
 </div>
-
 
 
   {/* تاریخ */}
@@ -3809,12 +3714,9 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
               <div className={labelCls}>از</div>
               <FieldWrap>
               <input
-                value={getForm("outgoing").fromName || ""}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setForm("outgoing", { fromName: v });
-                  clearFieldError("outgoing", "fromName");
-                }}
+              value={getDraft("outgoing").fromName ?? ""}
+onChange={onDraftInput("outgoing", "fromName")}
+
                 className={inputWithError(inputCls, "outgoing", "fromName")}
                 aria-invalid={fieldHasError("outgoing", "fromName")}
                 type="text"
@@ -3840,11 +3742,9 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
             <div className={labelCls}>به</div>
             <FieldWrap>
               <input
-                value={getForm("outgoing").toName || ""}
-                onChange={(e) => {
-                  setForm("outgoing", { toName: e.target.value });
-                  clearFieldError("outgoing", "toName");
-                }}
+              value={getDraft("outgoing").toName ?? ""}
+onChange={onDraftInput("outgoing", "toName")}
+
                 className={inputWithError(inputCls, "outgoing", "toName")}
                 aria-invalid={fieldHasError("outgoing", "toName")}
                 type="text"
@@ -3857,11 +3757,9 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
                   <div className={labelCls}>شرکت/سازمان</div>
                   <FieldWrap>
                   <input
-  value={getForm("outgoing").orgName || ""}
-  onChange={(e) => {
-    setForm("outgoing", { orgName: e.target.value });
-    clearFieldError("outgoing", "orgName");
-  }}
+  value={getDraft("outgoing").orgName ?? ""}
+onChange={onDraftInput("outgoing", "orgName")}
+
   className={inputWithError(inputCls, "outgoing", "orgName")}
   aria-invalid={fieldHasError("outgoing", "orgName")}
   type="text"
@@ -3879,31 +3777,12 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
 <FieldWrap>
 <input
   ref={fromNameRef}
-  value={currentFromName}
-  onFocus={onFromNameFocus}
-  onBlur={onFromNameBlur}
-  onSelect={(e) => rememberSel("fromName", e.target)}
-  onKeyUp={(e) => rememberSel("fromName", e.target)}
-  onChange={(e) => {
-    const el = e.target;
-    rememberSel("fromName", el); // ✅ قبل از setState کرسر ذخیره شود
-
-    const v = el.value;
-    setCurrentFromName(v);                 // ✅ کنترل پایدار
-    setForm("incoming", { fromName: v });  // ✅ sync با فرم
-    clearFieldError("incoming", "fromName");
-
-    requestAnimationFrame(() => {
-      const inp = fromNameRef.current;
-      if (inp && document.activeElement === inp) restoreSel("fromName", inp);
-    });
-  }}
+  value={getDraft("incoming").fromName ?? ""}
+  onChange={onDraftInput("incoming", "fromName")}
   className={inputWithError(inputCls, "incoming", "fromName")}
   aria-invalid={fieldHasError("incoming", "fromName")}
   type="text"
 />
-
-
   <ErrorTextAbs kind="incoming" k="fromName" />
 </FieldWrap>
 
@@ -3914,11 +3793,9 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
   <div className={labelCls}>شرکت/سازمان</div>
 
     <input
-      value={getForm("incoming").orgName || ""}
-onChange={(e) => {
-  setForm("incoming", { orgName: e.target.value });
-  clearFieldError("incoming", "orgName");
-}}
+value={getDraft("incoming").orgName ?? ""}
+onChange={onDraftInput("incoming", "orgName")}
+
 
 className={inputWithError(inputCls, "incoming", "orgName")}
 aria-invalid={fieldHasError("incoming", "orgName")}
@@ -3945,11 +3822,8 @@ aria-invalid={fieldHasError("incoming", "orgName")}
   <div className={labelCls}>به</div>
 
     <input
- value={getForm("incoming").toName || ""}
-onChange={(e) => {
-  setForm("incoming", { toName: e.target.value });
-  clearFieldError("incoming", "toName");
-}}
+value={getDraft("incoming").toName ?? ""}
+onChange={onDraftInput("incoming", "toName")}
 
 className={inputWithError(inputCls, "incoming", "toName")}
 aria-invalid={fieldHasError("incoming", "toName")}
@@ -3975,8 +3849,8 @@ aria-invalid={fieldHasError("incoming", "toName")}
       <FieldWrap>
 <input
   ref={subjectRef}
-  value={currentSubject}
-  onChange={onSubjectChange}
+value={getDraft("internal").subject ?? ""}
+onChange={onDraftInput("internal", "subject")}
   onFocus={onSubjectFocus}
   onBlur={onSubjectBlur}
   onSelect={(e) => rememberSubjectSel(e.target)}
@@ -4065,8 +3939,8 @@ aria-invalid={fieldHasError("incoming", "toName")}
   <FieldWrap>
 <input
   ref={subjectRef}
-  value={currentSubject}
-  onChange={onSubjectChange}
+value={getDraft("internal").subject ?? ""}
+onChange={onDraftInput("internal", "subject")}
   onFocus={onSubjectFocus}
   onBlur={onSubjectBlur}
   onSelect={(e) => rememberSubjectSel(e.target)}
@@ -5002,7 +4876,6 @@ const rowBg = isConf ? confRowBg : normalRowBg;
   }
 />
 
-
 {viewLetter && letterKindOf(viewLetter) !== "internal" && (
   <InfoRow
     label={letterKindOf(viewLetter) === "incoming" ? "از / به" : "به"}
@@ -5018,8 +4891,8 @@ const rowBg = isConf ? confRowBg : normalRowBg;
 )}
 
 
-                            <InfoRow label="موضوع" value={viewLetter ? String(subjectOf(viewLetter) || "") : ""} />
-                            <InfoRow
+<InfoRow label="موضوع" value={viewLetter ? String(subjectOf(viewLetter) || "") : ""} />
+<InfoRow
   label="برچسب‌ها"
   value={(() => {
     const ids = normalizeIdList(viewLetter?.tag_ids ?? viewLetter?.tagIds ?? viewLetter?.tag_ids?.split?.(",") ?? []);
@@ -5049,8 +4922,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
     );
   })()}
 />
-
-                             {viewLetter && letterKindOf(viewLetter) === "internal" ? (
+{viewLetter && letterKindOf(viewLetter) === "internal" ? (
   <InfoRow
     label="واحد"
     value={(() => {
@@ -5060,7 +4932,6 @@ const rowBg = isConf ? confRowBg : normalRowBg;
         const u = (Array.isArray(unitOptions) ? unitOptions : []).find(x => String(x.id) === uid);
         return u?.label || uid;
       }
-
       // 2) اگر فعلاً واحد را داخل to_name ذخیره کرده‌اید:
       const v = String(viewLetter?.to_name ?? viewLetter?.toName ?? "").trim();
       return v || "—";
