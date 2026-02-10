@@ -847,61 +847,31 @@ const onSubjectBlur = () => {
 };
 
 
+// ✅ وقتی state عوض شد و هنوز فوکوس روی همون input هست، selection برگرده
 useLayoutEffect(() => {
   const el = subjectRef.current;
   if (!el) return;
 
-  // فقط وقتی خودِ subject فوکوس داشته
-  if (!subjectFocusedRef.current) return;
+  // ✅ فقط اگر واقعاً فوکوس روی همین input است
+  if (document.activeElement !== el) return;
 
-  // فوکوس و کرسر رو بعد از رندر برگردون
-  el.focus({ preventScroll: true });
+  const { start, end } = subjectSelRef.current || {};
+  if (typeof start !== "number" || typeof end !== "number") return;
 
-  const { start, end } = subjectSelRef.current || { start: 0, end: 0 };
   try {
     el.setSelectionRange(start, end);
   } catch {}
 }, [currentSubject]);
 
-
-// ✅ وقتی state عوض شد و هنوز فوکوس روی همون input هست، selection برگرده
-useLayoutEffect(() => {
-  const el = subjectRef.current;
-  if (!el) return;
-  if (document.activeElement !== el) return;
-
-  const { start, end } = subjectSelRef.current || {};
-if (typeof start !== "number" || typeof end !== "number") return;
-
-try {
-  el.setSelectionRange(start, end);
-} catch {}
-}, [formKind, incomingForm.subject, outgoingForm.subject, internalForm.subject]);
-
-// ✅ handler واحد برای subject
 const onSubjectChange = (e) => {
   const el = e.target;
   rememberSubjectSel(el);
 
   const v = el.value;
-
-  // ✅ دقیقاً مثل بقیه فیلدها: فقط state همان تب
   setForm(formKind, { subject: v });
-
-  // ✅ خطای ولیدیشن همان فیلد پاک شود
   clearFieldError(formKind, "subject");
-
-  // ✅ یکبار دیگر بعد از paint هم تلاش کن (برای جلوگیری از پرش/blur در بعضی مرورگرها)
-  requestAnimationFrame(() => {
-    const inp = subjectRef.current;
-    if (inp && document.activeElement === inp) {
-      try {
-    const { start, end } = subjectSelRef.current || {};
-inp.setSelectionRange(start ?? 0, end ?? 0);
-      } catch {}
-    }
-  });
 };
+
 
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFor, setUploadFor] = useState("incoming");
@@ -3874,8 +3844,6 @@ aria-invalid={fieldHasError("incoming", "toName")}
   ref={subjectRef}
   value={currentSubject}
   onChange={onSubjectChange}
-  onFocus={onSubjectFocus}
-  onBlur={onSubjectBlur}
   onSelect={(e) => rememberSubjectSel(e.target)}
   onKeyUp={(e) => rememberSubjectSel(e.target)}
   className={inputWithError(inputCls, "internal", "subject")}
