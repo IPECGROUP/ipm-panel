@@ -975,11 +975,10 @@ const unitOptions = useMemo(() => {
 const ORG_UNITS_CACHE_KEY = "org_structure_my_units_v1";
 
 useEffect(() => {
-  // فقط برای وارده مهمه چون فیلد "شماره سند" فقط incoming قابل تایپ است
   const inc = getForm("incoming");
   setCurrentFromName(String(inc?.fromName ?? ""));
   setCurrentLetterNo(String(inc?.letterNo ?? ""));
-}, [formOpen, formKind, editId]); 
+}, [formOpen, formKind, editingId]);
 
 
 useEffect(() => {
