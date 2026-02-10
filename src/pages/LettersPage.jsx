@@ -473,6 +473,24 @@ const TAG_PREFS_LIMIT = 24;
 
 export default function LettersPage() {
 
+  const letterNoRef = useRef(null);
+const fromNameRef = useRef(null);
+
+const selMem = useRef({});
+
+const rememberSel = (k, el) => {
+  if (!el) return;
+  try {
+    selMem.current[k] = { s: el.selectionStart ?? 0, e: el.selectionEnd ?? 0 };
+  } catch {}
+};
+
+const restoreSel = (k, el) => {
+  const m = selMem.current[k];
+  if (!el || !m) return;
+  try { el.setSelectionRange(m.s, m.e); } catch {}
+};
+
 const [incomingUploadNote, setIncomingUploadNote] = useState("");
 const [outgoingUploadNote, setOutgoingUploadNote] = useState("");
 const [internalUploadNote, setInternalUploadNote] = useState("");
@@ -3687,19 +3705,23 @@ aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "projectId") :
 
   <FieldWrap>
     <input
+      ref={letterNoRef}
       value={getForm(formKind).letterNo || ""}
-      readOnly={formKind !== "incoming"}  // ✅ صادره/داخلی قفل
+      readOnly={formKind !== "incoming"}
+      onSelect={(e) => rememberSel("letterNo", e.target)}
+      onKeyUp={(e) => rememberSel("letterNo", e.target)}
       onChange={(e) => {
-        // ✅ فقط برای وارده اجازه تایپ/تغییر بده (اگر خواستی)
-        if (formKind === "incoming") {
-          setForm(formKind, { letterNo: e.target.value });
-          clearFieldError("incoming", "letterNo");
-        }
+        if (formKind !== "incoming") return;
+
+        setForm("incoming", { letterNo: e.target.value });
+        clearFieldError("incoming", "letterNo");
+
+        requestAnimationFrame(() => restoreSel("letterNo", letterNoRef.current));
       }}
       className={
-        (formKind !== "incoming"
-          ? (inputSmCls + " bg-black/5 dark:bg-white/10 cursor-not-allowed")
-          : inputWithError(inputSmCls, "incoming", "letterNo"))
+        formKind !== "incoming"
+          ? inputSmCls + " bg-black/5 dark:bg-white/10 cursor-not-allowed"
+          : inputWithError(inputSmCls, "incoming", "letterNo")
       }
       aria-invalid={formKind === "incoming" ? fieldHasError("incoming", "letterNo") : undefined}
       type="text"
@@ -3708,6 +3730,7 @@ aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "projectId") :
     {formKind === "incoming" ? <ErrorTextAbs kind="incoming" k="letterNo" /> : null}
   </FieldWrap>
 </div>
+
 
 
   {/* تاریخ */}
@@ -3807,16 +3830,21 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
   <div className={labelCls}>از</div>
 
 <FieldWrap>
-  <input
-    value={incomingForm.fromName || ""}
-    onChange={(e) => {
-      setIncomingForm((p) => ({ ...p, fromName: e.target.value }));
-      clearFieldError("incoming", "fromName");
-    }}
-    className={inputWithError(inputCls, "incoming", "fromName")}
-    aria-invalid={fieldHasError("incoming", "fromName")}
-    type="text"
-  />
+<input
+  ref={fromNameRef}
+  value={getForm("incoming").fromName || ""}
+  onSelect={(e) => rememberSel("fromName", e.target)}
+  onKeyUp={(e) => rememberSel("fromName", e.target)}
+  onChange={(e) => {
+    setForm("incoming", { fromName: e.target.value });
+    clearFieldError("incoming", "fromName");
+
+    requestAnimationFrame(() => restoreSel("fromName", fromNameRef.current));
+  }}
+  className={inputWithError(inputCls, "incoming", "fromName")}
+  aria-invalid={fieldHasError("incoming", "fromName")}
+  type="text"
+/>
   <ErrorTextAbs kind="incoming" k="fromName" />
 </FieldWrap>
 
