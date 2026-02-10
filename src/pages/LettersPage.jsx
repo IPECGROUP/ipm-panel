@@ -17,7 +17,7 @@ const TABS = [
   { id: "all", label: "همه" },
   { id: "incoming", label: "وارده", icon: "/images/icons/varede.svg" },
   { id: "outgoing", label: "صادره", icon: "/images/icons/sadere.svg" },
- { id: "internal", label: "داخلی", icon: "/images/icons/dakheli.svg" }
+  { id: "internal", label: "داخلی", icon: "/images/icons/dakheli.svg" },
 ];
 
 const FILTER_ACTIVE_SCOPE = "letters_filter_active";
@@ -390,8 +390,7 @@ const computeNextAutoCode = ({ kind, projectId, letters, projectsTopOnly }) => {
   const pcode = getProjectCode(projectId, projectsTopOnly);
   if (!pcode) return ""; // تا پروژه انتخاب نشده، کد نساز
 
-const startByYear = (yy === "04" ? 10523 : 10000);
-
+  const startByYear = (yy === "04" ? 10700 : 10000);
 
   let maxSeq = 0;
 
@@ -437,6 +436,7 @@ function makeProgressUpdater(setDocFilesFor, kind, fileId) {
 
   return (p) => {
     const now = Date.now();
+    // فقط وقتی تغییر معنی‌دار داشت یا زمان کافی گذشته بود
     if (p === 0 || p === 100 || (p - lastP >= 5 && now - lastT >= 120)) {
       lastP = p;
       lastT = now;
@@ -447,89 +447,74 @@ function makeProgressUpdater(setDocFilesFor, kind, fileId) {
   };
 }
 
-function normalizeIdList(arr) {
-  const a = Array.isArray(arr) ? arr : [];
-  const out = [];
-  const seen = new Set();
+async function runWithLimit(tasks, limit = 2) {
+  const executing = new Set();
+  const results = [];
 
-  const pickId = (x) => {
-    if (x == null) return "";
-    if (typeof x === "object") {
-      return (x.id ?? x.tag_id ?? x.tagId ?? x.value ?? x.key ?? x._id ?? "");
+  for (const task of tasks) {
+    const p = Promise.resolve().then(task);
+    results.push(p);
+    executing.add(p);
+    p.finally(() => executing.delete(p));
+
+    if (executing.size >= limit) {
+      await Promise.race(executing);
     }
-    return x;
-  };
-
-  for (const x of a) {
-    const s = String(pickId(x) || "").trim();
-    if (!s || seen.has(s)) continue;
-    seen.add(s);
-    out.push(s);
   }
-  return out;
+  return Promise.allSettled(results);
 }
 
-const TAG_PREFS_LIMIT = 24;
+async function uploadQueueInBackground({
+  kind,
+  queue,
+  letterId,
+  uploadFileToLetter,
+  setDocFilesFor,
+}) {
+  const tasks = queue.map((f) => async () => {
+    const fileToSend = f.optimizedFile || f.file;
+
+    setDocFilesFor(kind, (prev) =>
+      prev.map((x) =>
+        x.id === f.id ? { ...x, status: "uploading", progress: 0, error: "" } : x
+      )
+    );
+
+    try {
+      const onProg = makeProgressUpdater(setDocFilesFor, kind, f.id);
+
+      const res = await uploadFileToLetter(fileToSend, letterId, onProg);
+
+      setDocFilesFor(kind, (prev) =>
+        prev.map((x) =>
+          x.id === f.id
+            ? {
+                ...x,
+                status: "done",
+                progress: 100,
+                serverId: res?.item?.id ?? res?.id ?? x.serverId,
+                url: res?.item?.url ?? res?.url ?? x.url,
+              }
+            : x
+        )
+      );
+    } catch (e) {
+      setDocFilesFor(kind, (prev) =>
+        prev.map((x) =>
+          x.id === f.id
+            ? { ...x, status: "error", error: e?.message || "خطا در آپلود فایل." }
+            : x
+        )
+      );
+    }
+  });
+
+  // همزمانی 2 تا (می‌تونی 3 هم بذاری)
+  await runWithLimit(tasks, 2);
+}
 
 export default function LettersPage() {
 
-  const saveSubjectSel = () => {
-  const el = subjectRef.current;
-  if (!el) return;
-
-  const start = typeof el.selectionStart === "number" ? el.selectionStart : 0;
-  const end = typeof el.selectionEnd === "number" ? el.selectionEnd : start;
-
-  subjectSelRef.current = { start, end };
-};
-
-const onSubjectFocus = () => {
-  // وقتی فوکوس می‌گیریم selection فعلی رو ذخیره کن
-  saveSubjectSel();
-};
-
-const onSubjectBlur = () => {
-  // وقتی فوکوس از دست میره هم آخرین selection ذخیره بشه
-  saveSubjectSel();
-};
-
-  const subjectRef = useRef(null);
-const subjectSelRef = useRef({ start: 0, end: 0 }); // اگر selection رو نگه می‌داری
-
-  const [currentLetterNo, setCurrentLetterNo] = useState("");
-const [currentFromName, setCurrentFromName] = useState("");
-const [draftIncoming, setDraftIncoming] = useState({});
-const [draftOutgoing, setDraftOutgoing] = useState({});
-const [draftInternal, setDraftInternal] = useState({});
-
-  const letterNoRef = useRef(null);
-const fromNameRef = useRef(null);
-
-const getDraft = (k) =>
-  k === "incoming" ? draftIncoming : k === "outgoing" ? draftOutgoing : draftInternal;
-
-const setDraft = (k, patch) => {
-  if (k === "incoming") setDraftIncoming((p) => ({ ...p, ...patch }));
-  else if (k === "outgoing") setDraftOutgoing((p) => ({ ...p, ...patch }));
-  else setDraftInternal((p) => ({ ...p, ...patch }));
-};
-
-const [incomingUploadNote, setIncomingUploadNote] = useState("");
-const [outgoingUploadNote, setOutgoingUploadNote] = useState("");
-const [internalUploadNote, setInternalUploadNote] = useState("");
-  // طبقه بندی (عادی/محرمانه)
-  const [projects, setProjects] = useState([]);
-  const [incomingAttachmentTitle, setIncomingAttachmentTitle] = useState("");
-  const [outgoingAttachmentTitle, setOutgoingAttachmentTitle] = useState("");
-  const [internalAttachmentTitle, setInternalAttachmentTitle] = useState("");
-  const [returnToIds, setReturnToIds] = useState([""]);
-  const [piroIds, setPiroIds] = useState([""]);
-  const [myLetters, setMyLetters] = useState([]);
-  const [relatedOpen, setRelatedOpen] = useState(false);
-const [relatedQuery, setRelatedQuery] = useState("");
-  const [hasAttachment, setHasAttachment] = useState(false);
-  const [projectCentersActive, setProjectCentersActive] = useState([]);
-const [projectCentersLoading, setProjectCentersLoading] = useState(false);
 // ✅ Validation (per tab)
 const [errorsByKind, setErrorsByKind] = useState({
   incoming: {},
@@ -572,18 +557,7 @@ const clearFieldError = (kind, k) => {
     return { ...prev, [kind]: nextKind };
   });
 };
-const onDraftInput = (kind, key) => (e) => {
-  const v = e.target.value;
 
-  // 1) draft
-  setDraft(kind, { [key]: v });
-
-  // 2) فرم اصلی (منبع ذخیره)
-  setForm(kind, { [key]: v });
-
-  // 3) پاک کردن ارور همان فیلد
-  clearFieldError(kind, key);
-};
 
 // ✅ اینجا تعیین کن کدوم فیلدها اجباری هستن
 
@@ -592,7 +566,7 @@ const REQUIRED_MSG = "کامل کردن این فیلد ضروری است";
 
 // ✅ required ها دقیقاً طبق گفته‌ی تو
 const REQUIRED = {
-  internal: ["letterDate", "subject", "formTags", "unitId"],
+  internal: ["letterDate", "subject", "formTags"],
 
   outgoing: [
     "category",     // کلاس سند
@@ -605,8 +579,6 @@ const REQUIRED = {
   ],
 
   incoming: [
-    "fromName",      
-    "orgName", 
     "classification", // طبقه بندی
     "letterNo",       // شماره سند
     "letterDate",     // تاریخ سند
@@ -627,38 +599,31 @@ const validate = (kind) => {
   };
 
   // ✅ مقادیر هر تب جدا
-  // ✅ مقادیر هر تب جدا (همه چیز فقط از getForm)
-const valuesByKind = {
-  incoming: {
-    classification: getForm("incoming").classification,
-    fromName: getForm("incoming").fromName,
-    orgName: getForm("incoming").orgName,
-    toName: getForm("incoming").toName,
-    letterNo: getForm("incoming").letterNo,
-    letterDate: getForm("incoming").letterDate,
-    subject: getForm("incoming").subject,
-    formTags: Array.isArray(incomingTagIds) ? incomingTagIds : [],
-  },
+  const valuesByKind = {
+    incoming: {
+      classification: incomingForm.classification,
+      letterNo: incomingForm.letterNo,
+      letterDate: incomingForm.letterDate,
+subject: incomingForm.subject,
+      formTags: Array.isArray(incomingTagIds) ? incomingTagIds : [],
+    },
 
-  outgoing: {
-    category: getForm("outgoing").category,
-    projectId: getForm("outgoing").projectId,
-    fromName: getForm("outgoing").fromName,
-    toName: getForm("outgoing").toName,
-    orgName: getForm("outgoing").orgName,
-    letterNo: getForm("outgoing").letterNo,
-    letterDate: getForm("outgoing").letterDate,
-    subject: getForm("outgoing").subject,
-    formTags: Array.isArray(outgoingTagIds) ? outgoingTagIds : [],
-  },
+    outgoing: {
+      category: outgoingForm.category,
+      projectId: outgoingForm.projectId,
+      letterDate: outgoingForm.letterDate,
+      toName: outgoingForm.toName,
+      orgName: outgoingForm.orgName,
+      subject: outgoingForm.subject,
+      formTags: Array.isArray(outgoingTagIds) ? outgoingTagIds : [],
+    },
 
-  internal: {
-    letterDate: getForm("internal").letterDate,
-    subject: getForm("internal").subject,
-    unitId: internalUnitId,
-    formTags: Array.isArray(internalTagIds) ? internalTagIds : [],
-  },
-};
+    internal: {
+      letterDate: internalForm.letterDate,
+      subject: internalForm.subject,
+      formTags: Array.isArray(internalTagIds) ? internalTagIds : [],
+    },
+  };
 
   const values = valuesByKind[kind] || {};
   const req = REQUIRED[kind] || [];
@@ -691,43 +656,6 @@ useEffect(() => {
 }, [relatedPickQuery, relatedPickOpen]);
   const [filterQuery, setFilterQuery] = useState("");
   const { user } = useAuth();
-
-const usernameNorm = (v) =>
-  String(v ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "");
-
-const canDeleteAllLetters = useMemo(() => {
-  const u = user || {};
-
-  // هر چیزی که ممکنه بک‌اند بعنوان username بده
-  const candidates = [
-    u.username,
-    u.user_name,
-    u.login,
-    u.name,
-    u.full_name,
-    u.displayName,
-  ].map(usernameNorm).filter(Boolean);
-
-  // ✅ فقط این اکانت
-  return candidates.includes("marandi") || candidates.includes("marandi1234");
-}, [user]);
-
-   const loggedInUserName = useMemo(() => {
-    const u = user || {};
-    return String(
-  u?.name ||
-    u?.full_name ||
-    u?.displayName ||
-    u?.user_name ||
-    u?.username ||
-    u?.login ||
-    ""
-).trim();
-  }, [user]);
-
 const userId = String(user?.id || "0");
  const [filterTab, setFilterTab] = useState("all"); // اول این
  const [filterTagIds, setFilterTagIds] = useState([]); // ✅ global
@@ -773,7 +701,7 @@ async function patchLetterPrefs(patch) {
   if (!user?.id) return;
 
   try {
-    const raw = localStorage.getItem(activeFilterLsKey(user?.id));
+    const raw = localStorage.getItem(activeFilterLsKey());
     const parsed = raw ? JSON.parse(raw) : null;
     const ids = normalizeIdList(parsed?.ids || []).slice(0, TAG_PREFS_LIMIT);
     setFilterTagIds(ids); // ✅
@@ -784,35 +712,11 @@ async function patchLetterPrefs(patch) {
 }, [user?.id]);
 
 useEffect(() => {
-  // وقتی هنوز projects نیومده، لودینگ را روشن نگه دار
-  setProjectCentersLoading(true);
-
-  const items = Array.isArray(projects) ? projects : [];
-
-  // ✅ فقط فعال‌ها + فقط کد 3 رقمی + نزولی
-  const list = items
-    .filter((p) => p && typeof p === "object")
-    .filter((p) => p.isActive === true || p.is_active === true) // فقط فعال‌ها
-    .filter((p) => {
-      const code = String(p.code || "").trim();
-      return /^\d{3}$/.test(code); // فقط 3 رقم (مثل 165) و نه 156.1.1
-    })
-.sort((a, b) => Number(b.code) - Number(a.code)) // ✅ نزولی: 123 اول، 103 آخر
-    .map((p) => ({
-      id: String(p.id),
-      label: `${String(p.code).trim()} - ${String(p.name || "").trim()}`.trim(),
-    }));
-
-  setProjectCentersActive(list);
-  setProjectCentersLoading(false);
-}, [projects]);
-
-useEffect(() => {
   if (!user?.id) return;
 
   try {
     const clean = normalizeIdList(filterTagIds).slice(0, TAG_PREFS_LIMIT);
-   localStorage.setItem(activeFilterLsKey(user?.id), JSON.stringify({ t: Date.now(), ids: clean }));
+    localStorage.setItem(activeFilterLsKey(), JSON.stringify({ t: Date.now(), ids: clean }));
   } catch {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [user?.id, filterTagIds]);
@@ -864,43 +768,15 @@ const [internalForm, setInternalForm] = useState({
   subject: "",
 });
 
-
+// ✅ helpers
+const getForm = (kind) =>
+  kind === "outgoing" ? outgoingForm : kind === "internal" ? internalForm : incomingForm;
 
 const setForm = (kind, patch) => {
   if (kind === "outgoing") setOutgoingForm((p) => ({ ...p, ...patch }));
   else if (kind === "internal") setInternalForm((p) => ({ ...p, ...patch }));
   else setIncomingForm((p) => ({ ...p, ...patch }));
 };
-
-
-const getForm = (kind) => {
-  if (kind === "outgoing") return outgoingForm;
-  if (kind === "internal") return internalForm;
-  return incomingForm;
-};
-  const subjectValue = getForm(formKind)?.subject ?? "";
-
-useLayoutEffect(() => {
-  const el = letterNoRef.current;
-  if (!el) return;
-  if (!letterNoFocusedRef.current) return;
-  restoreSel("letterNo", el);
-}, [currentLetterNo]);
-
-// ✅ وقتی state عوض شد و هنوز فوکوس روی همون input هست، selection برگرده
-useLayoutEffect(() => {
-  const el = subjectRef.current;
-  if (!el) return;
-  if (document.activeElement !== el) return;
-
-  const { start, end } = subjectSelRef.current || {};
-  if (typeof start !== "number" || typeof end !== "number") return;
-
-  try {
-    el.setSelectionRange(start, end);
-  } catch {}
-}, [formKind, subjectValue]); // ✅ به جای currentSubject
-
 
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFor, setUploadFor] = useState("incoming");
@@ -947,21 +823,6 @@ const unitOptions = useMemo(() => {
 }, [unitsAll, myUnitsFromUser]);
 
 const ORG_UNITS_CACHE_KEY = "org_structure_my_units_v1";
-
-useEffect(() => {
-  if (!formOpen) return;
-
-  // ✅ از تب فعلی بخون، نه incoming
-  const f = getForm(formKind);
-
-  // ✅ اگر کاربر همین الان داره توی این دو input تایپ می‌کنه، وسط تایپ overwrite نکن
-  if (fromNameRef.current && document.activeElement === fromNameRef.current) return;
-  if (letterNoRef.current && document.activeElement === letterNoRef.current) return;
-
-
-  setCurrentFromName(String(f?.fromName ?? ""));
-  setCurrentLetterNo(String(f?.letterNo ?? ""));
-}, [formOpen, formKind, editingId]);
 
 useEffect(() => {
   let mounted = true;
@@ -1021,7 +882,19 @@ const resolveFileUrl = (u) => {
 };
 
 
- 
+  const loggedInUserName = useMemo(() => {
+    const u = user || {};
+    return String(
+  u?.name ||
+    u?.full_name ||
+    u?.displayName ||
+    u?.user_name ||
+    u?.username ||
+    u?.login ||
+    ""
+).trim();
+  }, [user]);
+
   // ✅ فقط این دو نفر + نقش admin دسترسی محرمانه دارند
 const PRIV_USERS = new Set(["marandi1234", "rastegar"]);
 
@@ -1115,6 +988,18 @@ const [docClassExtras, setDocClassExtras] = useState([]);
 const [docClassOtherOpen, setDocClassOtherOpen] = useState(false);
 const [docClassOtherText, setDocClassOtherText] = useState("");
 
+// طبقه بندی (عادی/محرمانه)
+
+  const [projects, setProjects] = useState([]);
+  const [hasAttachment, setHasAttachment] = useState(false);
+  const [incomingAttachmentTitle, setIncomingAttachmentTitle] = useState("");
+  const [outgoingAttachmentTitle, setOutgoingAttachmentTitle] = useState("");
+  const [internalAttachmentTitle, setInternalAttachmentTitle] = useState("");
+  const [returnToIds, setReturnToIds] = useState([""]);
+  const [piroIds, setPiroIds] = useState([""]);
+  const [myLetters, setMyLetters] = useState([]);
+  const [relatedOpen, setRelatedOpen] = useState(false);
+const [relatedQuery, setRelatedQuery] = useState("");
 
 
 
@@ -1298,6 +1183,7 @@ const letterById = useMemo(() => {
 }, [myLettersSorted]);
 
 // کنار بقیه useRef ها
+// کنار بقیه useRef ها
 const relatedWrapRef = useRef(null);
 const relatedInputRef = useRef(null);
 
@@ -1416,7 +1302,7 @@ const [filterTagPinnedIds, setFilterTagPinnedIds] = useState([]); // ✅ برچ�
 
 // ===== Per-user pinned tags for filter (NO localStorage) =====
 const TAG_PREFS_SCOPE = "letters_filter"; // اسم کلید برای بک‌اند (بعداً هم همینو استفاده می‌کنیم)
-
+const TAG_PREFS_LIMIT = 24;
 
 const tagPrefsLsKey = (scope) => `tag_prefs_v1:${scope}:u${String(user?.id || "0")}`;
 
@@ -1432,11 +1318,12 @@ const formPrefsLsKey = (which) => `tag_prefs_v1:${FORM_TAG_PREFS_SCOPE[which]}:u
 const [formTagPrefs, setFormTagPrefs] = useState({ incoming: [], outgoing: [], internal: [] });
 const formTagsHydratedRef = useRef({ incoming: false, outgoing: false, internal: false });
 
-const saveFormTagPrefs = async (_which, ids) => {
+const saveFormTagPrefs = async (which, ids) => {
   const clean = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
 
-  // ✅ فقط یک کلید روی سرور ذخیره می‌کنیم تا 3 بار POST نخوره
-  await patchLetterPrefs({ incoming_tag_ids: clean });
+  if (which === "incoming") await patchLetterPrefs({ incoming_tag_ids: clean });
+  else if (which === "outgoing") await patchLetterPrefs({ outgoing_tag_ids: clean });
+  else await patchLetterPrefs({ internal_tag_ids: clean });
 };
 
 const loadFormTagPrefs = async (_which) => {
@@ -1480,23 +1367,62 @@ const setFormTagsOnly = (which, ids) => {
   setFormTagPrefs((p) => ({ ...p, [which]: next }));
 };
 
-const setFormTagsAndPersist = (_which, ids) => {
-  // ✅ چون فرم‌ها یکی شده‌اند، همیشه همین را انجام بده
-  setFormTagsAllAndPersist(ids);
+const setFormTagsAndPersist = (which, ids) => {
+  const next = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
+
+  if (which === "all") {
+    setIncomingTagIds(next);
+    setOutgoingTagIds(next);
+    setInternalTagIds(next);
+
+    setFormTagPrefs((p) => ({ ...p, incoming: next, outgoing: next, internal: next }));
+
+    // ✅ هر سه کلید در بک‌اند ذخیره شود
+    saveFormTagPrefs("incoming", next);
+    saveFormTagPrefs("outgoing", next);
+    saveFormTagPrefs("internal", next);
+    return;
+  }
+
+  if (which === "incoming") setIncomingTagIds(next);
+  else if (which === "outgoing") setOutgoingTagIds(next);
+  else setInternalTagIds(next);
+
+  setFormTagPrefs((p) => ({ ...p, [which]: next }));
+  saveFormTagPrefs(which, next);
 };
 
+function normalizeIdList(arr) {
+  const a = Array.isArray(arr) ? arr : [];
+  const out = [];
+  const seen = new Set();
 
+  const pickId = (x) => {
+    if (x == null) return "";
+    if (typeof x === "object") {
+      return (x.id ?? x.tag_id ?? x.tagId ?? x.value ?? x.key ?? x._id ?? "");
+    }
+    return x;
+  };
 
-function activeFilterLsKey(uid) {
-  return `letters_filter_active_global_v1:u${String(uid || "0")}`;
+  for (const x of a) {
+    const s = String(pickId(x) || "").trim();
+    if (!s || seen.has(s)) continue;
+    seen.add(s);
+    out.push(s);
+  }
+  return out;
 }
 
-function saveActiveFilterTags(uid, ids) {
+const activeFilterLsKey = (uid) =>
+  `letters_filter_active_global_v1:u${String(uid || "0")}`;
+
+const saveActiveFilterTags = (uid, ids) => {
   try {
     const clean = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
     localStorage.setItem(activeFilterLsKey(uid), JSON.stringify({ t: Date.now(), ids: clean }));
   } catch {}
-}
+};
 const pinnedLsKey = (uid) => `letters_filter_pinned_v1:u${String(uid || "0")}`;
 
 const savePinnedFilterTags = async (ids) => {
@@ -1547,7 +1473,7 @@ useEffect(() => {
   loadPinnedFilterTags();
 }, [user?.id]);
 
-function loadActiveFilterTags(uid) {
+const loadActiveFilterTags = (uid) => {
   try {
     const raw = localStorage.getItem(activeFilterLsKey(uid));
     const parsed = raw ? JSON.parse(raw) : null;
@@ -1556,7 +1482,7 @@ function loadActiveFilterTags(uid) {
   } catch {
     setFilterTagIds([]);
   }
-}
+};
 
 useEffect(() => {
   if (!user?.id) return;
@@ -1567,6 +1493,12 @@ useEffect(() => {
   if (!user?.id) return;
   saveActiveFilterTags(user.id, filterTagIds);
 }, [user?.id, filterTagIds]);
+
+useEffect(() => {
+  if (!user?.id) return;
+  loadPinnedFilterTags();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [user?.id]);
 
 useEffect(() => {
   if (!user?.id) return;
@@ -1710,6 +1642,46 @@ const resetAllFilters = () => {
     });
   };
 
+  const uploadQueuedFiles = async (kind, letterId) => {
+  const files = Array.isArray(docFilesByType?.[kind]) ? docFilesByType[kind] : [];
+  const queue = files.filter((f) => f && f.status !== "error" && (f.optimizedFile || f.file) && !f.url);
+
+  if (!queue.length) return;
+
+  const runOne = async (f) => {
+    const fileToSend = f.optimizedFile || f.file;
+
+    setDocFilesFor(kind, (prev) =>
+      prev.map((x) => (x.id === f.id ? { ...x, status: "uploading", progress: 0, error: "" } : x))
+    );
+
+    try {
+      const res = await uploadFileToLetter(fileToSend, letterId, (p) => {
+        setDocFilesFor(kind, (prev) => prev.map((x) => (x.id === f.id ? { ...x, progress: p } : x)));
+      });
+
+      setDocFilesFor(kind, (prev) =>
+        prev.map((x) =>
+          x.id === f.id
+            ? {
+                ...x,
+                status: "done",
+                progress: 100,
+                serverId: res?.item?.id ?? res?.id ?? x.serverId,
+                url: res?.item?.url ?? res?.url ?? x.url,
+              }
+            : x
+        )
+      );
+    } catch (e) {
+      setDocFilesFor(kind, (prev) =>
+        prev.map((x) => (x.id === f.id ? { ...x, status: "error", error: e?.message || "خطا در آپلود فایل." } : x))
+      );
+    }
+  };
+
+  await Promise.allSettled(queue.map(runOne));
+};
   const addFilesToUpload = async (which, fileList) => {
     const list = Array.from(fileList || []);
     if (!list.length) return;
@@ -1790,42 +1762,6 @@ const resetAllFilters = () => {
   } catch {}
 };
 
-const [isDeletingAll, setIsDeletingAll] = useState(false);
-
-const deleteAllLetters = async () => {
-  if (isDeletingAll) return;
-
-  const ok = window.confirm("کل نامه‌ها و ضمیمه‌ها پاک می‌شوند. مطمئن هستید؟");
-  if (!ok) return;
-
-  setIsDeletingAll(true);
-  try {
-    // ✅ چون api() خودش credentials/include و base url رو درست می‌کنه
-    const r = await api("/letters/all", { method: "DELETE" }); 
-    // (اختیاری) اگر بک‌اند پیام داد:
-    // const deletedCount = r?.deleted ?? r?.count;
-
-    // ✅ UI را فوری تمیز کن
-    setMyLetters([]);
-    setSelectedIds(new Set());
-    setPage(0);
-
-    // ✅ کش را هم پاک کن تا بعد refresh برنگرده
-    try {
-      sessionStorage.removeItem(LETTERS_CACHE_KEY);
-    } catch {}
-
-    // ✅ اگر مودال/فرم باز است ببند (اختیاری ولی UX بهتر)
-    setViewOpen(false);
-    setFormOpen(false);
-
-    alert("همه نامه‌ها پاک شد.");
-  } catch (e) {
-    alert(e?.message || "خطا در حذف همه نامه‌ها");
-  } finally {
-    setIsDeletingAll(false);
-  }
-};
 
   useEffect(() => {
     let mounted = true;
@@ -2089,8 +2025,6 @@ const projectsTopOnly = useMemo(() => {
 // ===== Auto code injection (Create only) =====
 const currentProjectId = getForm(formKind).projectId || "";
 
-
-
 useEffect(() => {
   if (!formOpen) return;
   if (editingId) return; // ادیت → کد جدید نساز
@@ -2104,6 +2038,7 @@ useEffect(() => {
 
   if (!code) return;
 
+  // وارده: شماره ثبت دبیرخانه
  // ✅ در هر سه تب: کد داخل "شماره ثبت دبیرخانه" پر شود
 if (formKind === "incoming") {
   setIncomingSecretariatNo(code);
@@ -2115,18 +2050,17 @@ if (formKind === "incoming") {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [formOpen, formKind, editingId, currentProjectId, myLetters, projectsTopOnly]);
 const setFormTagsAllAndPersist = (ids) => {
-  const next = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
+  const next = normalizeIdList(ids);
 
   // ✅ UI: هر سه تب فرم یکی
   setIncomingTagIds(next);
   setOutgoingTagIds(next);
   setInternalTagIds(next);
 
-  // ✅ (اختیاری ولی بهتر) state prefs هم یکی شود
-  setFormTagPrefs((p) => ({ ...p, incoming: next, outgoing: next, internal: next }));
-
-  // ✅ Persist فقط یکبار
+  // ✅ Persist: هر سه تب ذخیره شود تا بعد Refresh هم بماند
   saveFormTagPrefs("incoming", next);
+  saveFormTagPrefs("outgoing", next);
+  saveFormTagPrefs("internal", next);
 };
 
  const toggleTag = (_which, id) => {
@@ -2158,9 +2092,6 @@ const [tagPickFor, setTagPickFor] = useState("filter"); // "filter" | "form"
 const [tagPickKind, setTagPickKind] = useState("letters"); // letters/projects/execution
 const [tagPickCategoryId, setTagPickCategoryId] = useState("");
 const [tagPickDraftIds, setTagPickDraftIds] = useState([]);
-const [tagPickSearch, setTagPickSearch] = useState("");
-const [tagPickSearchDebounced, setTagPickSearchDebounced] = useState("");
-
 const TAG_PICK_TABS = [
   { id: "projects", label: "پروژه‌ها" },
   { id: "letters", label: "نامه‌ها و مستندات" },
@@ -2435,11 +2366,6 @@ const isImageUrl = (url, name = "") =>
   };
 
   useEffect(() => {
-  const t = setTimeout(() => setTagPickSearchDebounced(tagPickSearch), 120);
-  return () => clearTimeout(t);
-}, [tagPickSearch]);
-
-  useEffect(() => {
     if (!filterQuick) return;
     applyQuickRange(filterQuick);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2582,36 +2508,31 @@ const kindRowTintCls = (kind) => {
   return "bg-orange-50 dark:bg-orange-500/10"; // ✅ internal
 };
 
-const resetForm = () => {
-  setForm("incoming", {
-    classification: "عادی",
-    projectId: "",
-    letterNo: "",
-    letterDate: "",
-    fromName: "",
-    toName: "",
-    orgName: "",
-    subject: "",
-    
-  });
-setDraftIncoming({});
-setDraftOutgoing({});
-setDraftInternal({});
+ const resetForm = () => {
+ setIncomingForm({
+  classification: "عادی",
+  projectId: "",
+  letterNo: "",
+  letterDate: "",
+  fromName: "",
+  toName: "",
+  orgName: "",
+  subject: "",
+});
 
-  setForm("outgoing", {
+  setOutgoingForm({
     category: "نامه",
     projectId: "",
     letterNo: "",
     letterDate: "",
-    fromName: "",
     toName: "",
     orgName: "",
     subject: "",
   });
 
-  setForm("internal", {
-    projectId: "",
-    letterNo: "",
+  setInternalForm({
+     projectId: "",      
+  letterNo: "",  
     letterDate: "",
     subject: "",
   });
@@ -2659,122 +2580,136 @@ setDraftInternal({});
     if (size) out.size = size;
     return Object.keys(out).length ? out : null;
   };
-const startEdit = (l) => {
-  if (!l) return;
 
-  const kind =
-    String(l.kind ?? l.letter_kind ?? l.letterKind ?? l.doc_kind ?? "").trim() ||
-    letterKindOf(l);
+  const startEdit = (l) => {
+const kind = letterKindOf(l);
+    const id = String(letterIdOf(l));
+    const sn = l?.secretariat_note ?? l?.secretariatNote ?? "";
 
-  const id = String(l.id ?? l.letter_id ?? l.letterId ?? letterIdOf(l) ?? "");
-  if (!id) return;
+if (kind === "incoming") setIncomingSecretariatNote(sn);
+else if (kind === "outgoing") setOutgoingSecretariatNote(sn);
+else setInternalSecretariatNote(sn);
 
-  setEditingId(id);
-  setFormOpen(true);
-  setFormKind(kind);
+    
 
-  // helpers
-  const pick = (a, b) => (a !== undefined && a !== null ? a : b);
+    setEditingId(id);
+    setFormOpen(true);
+    setFormKind(kind);
 
-  // ✅ فرم همون تب رو یکجا پر کن (به جای setCategory/setClassification/...)
-  const payload = {
-    category: String(pick(l.category, l.doc_class) || "").trim() || "نامه",
-    classification: String(pick(l.classification_id, l.classification) || "").trim() || "عادی",
-    projectId: String(pick(l.project_id, l.projectId) || ""),
-    letterNo: String(pick(l.letter_no, l.letterNo) || ""),
-    letterDate: String(pick(l.letter_date, l.letterDate) || ""),
-    fromName: String(pick(l.from_name, l.fromName) || ""),
-    toName: String(pick(l.to_name, l.toName) || ""),
-    orgName: String(pick(l.org_name, l.orgName) || ""),
-    subject: String(pick(l.subject, l.title) || ""),
+    const rawCat = String(l?.category ?? l?.category_name ?? l?.categoryTitle ?? "").trim();
+
+// سازگاری با دیتاهای قدیمی شما که category="project" بوده
+    const mappedCat = rawCat === "project" ? "اسناد پروژه ای" : (rawCat || "نامه");
+    setCategory(mappedCat);
+
+    // طبقه بندی (اگر از بک‌اند اومد، وگرنه پیش‌فرض)
+    const rawClass =
+      String(l?.classification ?? l?.doc_classification ?? l?.confidentiality ?? "").trim();
+    setClassification(rawClass || "عادی");
+
+    const pid = l?.project_id ?? l?.projectId ?? l?.projectID ?? null;
+    setProjectId(pid ? String(pid) : "");
+// ✅ برای نامه‌های داخلی: پر کردن واحد در حالت Edit
+const uid = l?.unit_id ?? l?.unitId ?? l?.unit ?? l?.internal_unit_id ?? "";
+setInternalUnitId(uid ? String(uid) : "");
+
+    setLetterNo(String(l?.letter_no ?? l?.letterNo ?? l?.no ?? l?.number ?? ""));
+    setLetterDate(String(l?.letter_date ?? l?.letterDate ?? l?.date ?? ""));
+
+const fromVal = String(l?.from_name ?? l?.fromName ?? l?.from ?? "");
+if (kind === "outgoing") {
+  setOutgoingForm((p) => ({ ...p, fromName: fromVal }));
+} else if (kind === "incoming") {
+  setIncomingForm((p) => ({ ...p, fromName: fromVal }));
+} else {
+  setInternalForm((p) => ({ ...p, fromName: fromVal }));
+}
+
+const toVal = String(l?.to_name ?? l?.toName ?? l?.to ?? "");
+
+if (kind === "incoming") {
+  setIncomingForm((p) => ({ ...p, toName: toVal }));
+} else if (kind === "outgoing") {
+  setOutgoingForm((p) => ({ ...p, toName: toVal }));
+}
+    setOrgName(String(l?.org_name ?? l?.orgName ?? l?.org ?? l?.organization ?? l?.company ?? ""));
+const subVal = String(l?.subject ?? l?.title ?? "");
+
+if (kind === "incoming") {
+  setIncomingForm((p) => ({ ...p, subject: subVal }));
+} else if (kind === "outgoing") {
+  setOutgoingForm((p) => ({ ...p, subject: subVal }));
+} else {
+  setInternalForm((p) => ({ ...p, subject: subVal }));
+}
+
+
+    const ha = l?.has_attachment ?? l?.hasAttachment ?? false;
+    setHasAttachment(!!ha);
+
+    const rids = Array.isArray(l?.return_to_ids) ? l.return_to_ids : Array.isArray(l?.returnToIds) ? l.returnToIds : [];
+    setReturnToIds(rids.length ? rids.map((x) => String(x)) : [""]);
+
+    const pids = Array.isArray(l?.piro_ids) ? l.piro_ids : Array.isArray(l?.piroIds) ? l.piroIds : [];
+    setPiroIds(pids.length ? pids.map((x) => String(x)) : [""]);
+
+    const tids = Array.isArray(l?.tag_ids) ? l.tag_ids : Array.isArray(l?.tagIds) ? l.tagIds : [];
+    if (kind === "incoming") setIncomingTagIds(tids.map((x) => String(x)));
+    else if (kind === "outgoing") setOutgoingTagIds(tids.map((x) => String(x)));
+    else setInternalTagIds(tids.map((x) => String(x)));
+
+    const sDate = String(l?.secretariat_date ?? l?.secretariatDate ?? "");
+    const sNo = String(l?.secretariat_no ?? l?.secretariatNo ?? "");
+    const rName = String(l?.receiver_name ?? l?.receiverName ?? "");
+    if (kind === "incoming") {
+      setIncomingSecretariatDate(sDate || todayJalaliYmd || "");
+      setIncomingSecretariatNo(sNo || "");
+      setIncomingReceiverName(rName || "");
+    } else if (kind === "outgoing") {
+      setOutgoingSecretariatDate(sDate || todayJalaliYmd || "");
+      setOutgoingSecretariatNo(sNo || "");
+      setOutgoingReceiverName(rName || "");
+    } else {
+      setInternalSecretariatDate(sDate || todayJalaliYmd || "");
+      setInternalSecretariatNo(sNo || "");
+      setInternalReceiverName(rName || "");
+    }
+
+    const atts = attachmentsOf(l);
+    const mapped = (Array.isArray(atts) ? atts : []).map((a, i) => {
+      const url = attachmentUrlOf(a);
+      const nameRaw = attachmentNameOf(a);
+      const name =
+        String(nameRaw || "").trim() ||
+        (() => {
+          try {
+            const u = String(url);
+            const parts = u.split("?")[0].split("/");
+            return parts[parts.length - 1] || "فایل";
+          } catch {
+            return "فایل";
+          }
+        })();
+      const type = attachmentTypeOf(a) || (isPdfUrl(url) ? "application/pdf" : "");
+      const size = attachmentSizeOf(a);
+      return {
+        id: `att_${id}_${i}`,
+        name,
+        size,
+        type,
+        status: "done",
+        progress: 100,
+        error: "",
+        serverId: a?.id ?? a?.file_id ?? null,
+        url: url || null,
+        previewUrl: null,
+        file: null,
+        optimizedFile: null,
+      };
+    });
+
+    setDocFilesByType((prev) => ({ ...prev, [kind]: mapped }));
   };
-
-  setForm(kind, payload);
-
-  // attachment
-  const ha = pick(l.has_attachment, l.hasAttachment);
-  setHasAttachment(ha === true || ha === "true" || ha === 1 || ha === "1");
-
-  // tags
-  const tagIdsRaw = pick(l.tag_ids, l.tagIds);
-  const tagIds = normalizeIdList(
-    Array.isArray(tagIdsRaw) ? tagIdsRaw : String(tagIdsRaw || "").split(",")
-  );
-
-  if (kind === "incoming") setIncomingTagIds(tagIds);
-  else if (kind === "outgoing") setOutgoingTagIds(tagIds);
-  else setInternalTagIds(tagIds);
-
-  // internal unit
-  if (kind === "internal") {
-    const uid = String(pick(l.unit_id, l.unitId) || "");
-    setInternalUnitId(uid);
-  }
-
-  // secretariat fields
-  const secDate = String(pick(l.secretariat_date, l.secretariatDate) || "");
-  const secNo = String(pick(l.secretariat_no, l.secretariatNo) || "");
-  const secNote = String(pick(l.secretariat_note, l.secretariatNote) || "");
-
-  if (kind === "incoming") {
-    setIncomingSecretariatDate(secDate || todayJalaliYmd || "");
-    setIncomingSecretariatNo(secNo || "");
-    setIncomingSecretariatNote(secNote || "");
-  } else if (kind === "outgoing") {
-    setOutgoingSecretariatDate(secDate || todayJalaliYmd || "");
-    setOutgoingSecretariatNo(secNo || "");
-    setOutgoingSecretariatNote(secNote || "");
-  } else {
-    setInternalSecretariatDate(secDate || todayJalaliYmd || "");
-    setInternalSecretariatNo(secNo || "");
-    setInternalSecretariatNote(secNote || "");
-  }
-
-  // related/returnTo
-  const returnRaw = pick(l.return_to_ids, l.returnToIds);
-  const relatedIds = normalizeIdList(
-    Array.isArray(returnRaw) ? returnRaw : String(returnRaw || "").split(",")
-  );
-  setReturnToIds(relatedIds.length ? relatedIds : [""]);
-
-  // attachments in edit (reuse your existing mapping)
-  const atts = attachmentsOf(l);
-  const mapped = (Array.isArray(atts) ? atts : []).map((a, i) => {
-    const url = attachmentUrlOf(a);
-    const nameRaw = attachmentNameOf(a);
-    const name =
-      String(nameRaw || "").trim() ||
-      (() => {
-        try {
-          const u = String(url);
-          const parts = u.split("?")[0].split("/");
-          return parts[parts.length - 1] || "فایل";
-        } catch {
-          return "فایل";
-        }
-      })();
-    const type = attachmentTypeOf(a) || (isPdfUrl(url) ? "application/pdf" : "");
-    const size = attachmentSizeOf(a);
-
-    return {
-      id: `att_${id}_${i}`,
-      name,
-      size,
-      type,
-      status: "done",
-      progress: 100,
-      error: "",
-      serverId: a?.id ?? a?.file_id ?? null,
-      url: url || null,
-      previewUrl: null,
-      file: null,
-      optimizedFile: null,
-    };
-  });
-
-  setDocFilesByType((prev) => ({ ...prev, [kind]: mapped }));
-};
-
 const runWithLimit = async (tasks, limit = 2) => {
   const executing = new Set();
   const results = [];
@@ -2792,6 +2727,24 @@ const runWithLimit = async (tasks, limit = 2) => {
 
   return Promise.allSettled(results);
 };
+
+const makeProgressUpdater = (kind, fileId) => {
+  let lastP = -1;
+  let lastT = 0;
+
+  return (p) => {
+    const now = Date.now();
+    // هر 120ms یا هر 5% یکبار آپدیت
+    if (p === 0 || p === 100 || (p - lastP >= 5 && now - lastT >= 120)) {
+      lastP = p;
+      lastT = now;
+      setDocFilesFor(kind, (prev) =>
+        prev.map((x) => (x.id === fileId ? { ...x, progress: p } : x))
+      );
+    }
+  };
+};
+
 const uploadQueueInBackground = async (kind, queue, letterId) => {
   const tasks = queue.map((f) => async () => {
     const fileToSend = f.optimizedFile || f.file;
@@ -2837,6 +2790,10 @@ const uploadQueueInBackground = async (kind, queue, letterId) => {
 
   const ok = validate(kind);
   if (!ok) return; // ✅ جلو ارسال را می‌گیرد
+    if (kind === "internal" && !String(internalUnitId || "").trim()) {
+  alert("برای نامه داخلی انتخاب واحد الزامی است.");
+  return;
+}
 
     const tagIds =
       kind === "incoming" ? incomingTagIds : kind === "outgoing" ? outgoingTagIds : internalTagIds;
@@ -2882,56 +2839,51 @@ const f = getForm(kind);
 const payload = {
   kind,
 
+  // ✅ category + classification از فرم درست
   category:
-    kind === "outgoing"
-      ? String(f.category || "نامه").trim()
-      : "نامه",
+    kind === "outgoing" ? String(outgoingForm.category || "نامه").trim()
+    : "نامه",
 
   classification:
-    kind === "incoming"
-      ? String(f.classification || "عادی").trim()
-      : "عادی",
+    kind === "incoming" ? (incomingForm.classification || "عادی")
+    : "عادی",
 
   project_id: (() => {
-    const pid = f.projectId;
+    const pid =
+      kind === "outgoing" ? outgoingForm.projectId :
+      kind === "incoming" ? incomingForm.projectId :
+      null;
     const n = pid ? Number(pid) : null;
     return n && Number.isFinite(n) ? n : null;
   })(),
 
-  letter_no: String(f.letterNo || "").trim(),
+letter_no: String(f.letterNo || "").trim(),
   letter_date: f.letterDate || "",
 
   from_name:
-    kind === "incoming" ? (f.fromName || "")
-    : kind === "outgoing" ? (f.fromName || "")
-    : "",
+  kind === "incoming" ? (incomingForm.fromName || "")
+  : kind === "outgoing" ? (outgoingForm.fromName || "")
+  : "",
 
-  to_name:
-    kind === "incoming" ? (f.toName || "")
-    : kind === "outgoing" ? (f.toName || "")
-    : "",
+to_name:
+  kind === "incoming" ? (incomingForm.toName || "")
+  : kind === "outgoing" ? (outgoingForm.toName || "")
+  : "",
 
   org_name:
-    kind === "outgoing" ? (f.orgName || "")
-    : kind === "incoming" ? (f.orgName || "")
+    kind === "outgoing" ? (outgoingForm.orgName || "")
+    : kind === "incoming" ? (incomingForm.orgName || "")
     : "",
 
-  subject:
-    kind === "internal"
-      ? (f.subject || "")
-      : (f.subject || ""),
+subject:
+  kind === "incoming" ? (incomingForm.subject || "")
+  : kind === "outgoing" ? (outgoingForm.subject || "")
+  : (internalForm.subject || ""),
 
   has_attachment: computedHasAttachment,
-
-  return_to_ids: (Array.isArray(returnToIds) ? returnToIds : [])
-    .map(String).filter((x) => x && x.trim()),
-
-  piro_ids: (Array.isArray(piroIds) ? piroIds : [])
-    .map(String).filter((x) => x && x.trim()),
-
-  tag_ids: (Array.isArray(tagIds) ? tagIds : [])
-    .map(String).filter((x) => x && x.trim()),
-
+  return_to_ids: (Array.isArray(returnToIds) ? returnToIds : []).map(String).filter((x) => x && x.trim()),
+  piro_ids: (Array.isArray(piroIds) ? piroIds : []).map(String).filter((x) => x && x.trim()),
+  tag_ids: (Array.isArray(tagIds) ? tagIds : []).map(String).filter((x) => x && x.trim()),
   secretariat_date: secretariatDate || "",
   secretariat_no: secretariatNo || "",
   secretariat_note: secretariatNote || "",
@@ -2943,6 +2895,7 @@ const payload = {
       ? (internalUnitId ? Number(internalUnitId) : null)
       : null,
 };
+
 
     let saved;
     let newId = null;
@@ -2968,10 +2921,36 @@ const payload = {
 
     if (!newId) throw new Error("save_failed");
     const letterId = Number(newId) || newId;
-   if (queue.length > 0) {
-  await uploadQueueInBackground(kind, queue, letterId);
-}
-
+    if (queue.length > 0) {
+      for (const f of queue) {
+        const fileToSend = f.optimizedFile || f.file;
+        setDocFilesFor(kind, (prev) =>
+          prev.map((x) => (x.id === f.id ? { ...x, status: "uploading", progress: 0, error: "" } : x))
+        );
+        try {
+          const res = await uploadFileToLetter(fileToSend, letterId, (p) => {
+            setDocFilesFor(kind, (prev) => prev.map((x) => (x.id === f.id ? { ...x, progress: p } : x)));
+          });
+          setDocFilesFor(kind, (prev) =>
+            prev.map((x) =>
+              x.id === f.id
+                ? {
+                    ...x,
+                    status: "done",
+                    progress: 100,
+                    serverId: res?.item?.id ?? res?.id ?? x.serverId,
+                    url: res?.item?.url ?? res?.url ?? x.url,
+                  }
+                : x
+            )
+          );
+        } catch (e) {
+          setDocFilesFor(kind, (prev) =>
+            prev.map((x) => (x.id === f.id ? { ...x, status: "error", error: e?.message || "خطا در آپلود فایل." } : x))
+          );
+        }
+      }
+    }
     await refetchLetters();
     resetForm();
     setFormOpen(false);
@@ -3188,6 +3167,8 @@ const isImageView = useMemo(() => {
     []
   );
 
+const [tagPickSearch, setTagPickSearch] = useState("");
+
 const allTags = useMemo(() => {
   return [
     ...(tagsByScope.letters || []),
@@ -3195,16 +3176,6 @@ const allTags = useMemo(() => {
     ...(tagsByScope.execution || []),
   ];
 }, [tagsByScope]);
-
-  const tagById = useMemo(() => {
-  const m = new Map();
-  (Array.isArray(allTags) ? allTags : []).forEach((t) => {
-    const id = String(t?.id ?? "");
-    if (id) m.set(id, t);
-  });
-  return m;
-}, [allTags]);
-
 
 const latestAllTags = useMemo(() => {
   const arr = Array.isArray(allTags) ? allTags.slice() : [];
@@ -3272,7 +3243,6 @@ setFilterTagIds((prev) => {
   setTagPickOpen(false);
 };
 
-
   const [addTagOpen, setAddTagOpen] = useState(false);
   const [newTagLabel, setNewTagLabel] = useState("");
   const [newTagCategoryId, setNewTagCategoryId] = useState("");
@@ -3318,17 +3288,9 @@ const ensureTagsForKind = async (kind) => {
 
 useEffect(() => {
   if (!formOpen) return;
-
-  // ✅ برای اینکه برچسب‌ها در هر ۳ تب همیشه دیده شوند
-  Promise.all([
-    ensureTagsForKind("letters"),
-    ensureTagsForKind("projects"),
-    ensureTagsForKind("execution"),
-  ]);
-
+  ensureTagsForKind("letters"); // ✅ همیشه letters
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [formOpen]);
-
 
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
@@ -3624,11 +3586,10 @@ useEffect(() => {
 
   <FieldWrap>
     <select
-    value={getForm(formKind).category || ""}
+      value={outgoingForm.category}
 onChange={(e) => {
-  setForm(formKind, { category: e.target.value });
+  setOutgoingForm((p) => ({ ...p, category: e.target.value }));
   if (formKind === "outgoing") clearFieldError("outgoing", "category");
-  if (formKind === "internal") clearFieldError("internal", "category");
 }}
       className={formKind === "outgoing" ? inputWithError(inputSmCls, "outgoing", "category") : inputSmCls}
 aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "category") : undefined}
@@ -3639,33 +3600,34 @@ aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "category") : 
       <option value="سایر">سایر</option>
     </select>
 
-   {formKind === "outgoing" ? <ErrorTextAbs kind="outgoing" k="category" /> : null}
+    {formKind === "outgoing" ? <ErrorTextAbs k="category" /> : null}
   </FieldWrap>
 </div>
 
 
- <div className="shrink-0 w-[140px]">
+  {/* طبقه بندی */}
+  <div className="shrink-0 w-[140px]">
   <div className={labelSmCls}>طبقه بندی</div>
 
   <FieldWrap>
     <select
-      value={getForm(formKind).classification || ""}
-      onChange={(e) => {
-        setForm(formKind, { classification: e.target.value });
-        clearFieldError(formKind, "classification");
-      }}
-      className={inputWithError(inputSmCls, formKind, "classification")}
-      aria-invalid={fieldHasError(formKind, "classification")}
+      value={incomingForm.classification}
+onChange={(e) => {
+  setIncomingForm((p) => ({ ...p, classification: e.target.value }));
+  clearFieldError("incoming", "classification");
+}}
+className={inputWithError(inputSmCls, "incoming", "classification")}
+aria-invalid={fieldHasError("incoming", "classification")}
     >
-      <option value=""></option>
       <option value="عادی">عادی</option>
       <option value="محرمانه">محرمانه</option>
     </select>
-
-    <ErrorTextAbs kind={formKind} k="classification" />
+<ErrorTextAbs kind="incoming" k="classification" />
   </FieldWrap>
 </div>
 
+
+  {/* مرکز/پروژه */}
   {/* مرکز/پروژه */}
 <div className="shrink-0 w-[220px]">
   <div className={labelSmCls}>مرکز/پروژه</div>
@@ -3681,15 +3643,14 @@ className={formKind === "outgoing" ? inputWithError(inputSmCls, "outgoing", "pro
 aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "projectId") : undefined}
     >
       <option value=""></option>
-  {projectCentersActive.map((p) => (
-  <option key={String(p.id)} value={String(p.id)}>
-    {p.label}
-  </option>
-))}
+      {projectsTopOnly.map((p) => (
+        <option key={p.id} value={String(p.id)}>
+          {projectOptionLabel(p)}
+        </option>
+      ))}
     </select>
 
-   {formKind === "outgoing" ? <ErrorTextAbs kind="outgoing" k="projectId" /> : null}
-
+    {formKind === "outgoing" ? <ErrorTextAbs k="projectId" /> : null}
   </FieldWrap>
 </div>
 
@@ -3699,15 +3660,25 @@ aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "projectId") :
 
   <FieldWrap>
     <input
-      ref={letterNoRef}
-      value={getDraft(formKind).letterNo ?? ""}
-      onChange={onDraftInput(formKind, "letterNo")}
-      className={inputWithError(inputSmCls, formKind, "letterNo")}
-      aria-invalid={fieldHasError(formKind, "letterNo")}
+      value={getForm(formKind).letterNo || ""}
+      readOnly={formKind !== "incoming"}  // ✅ صادره/داخلی قفل
+      onChange={(e) => {
+        // ✅ فقط برای وارده اجازه تایپ/تغییر بده (اگر خواستی)
+        if (formKind === "incoming") {
+          setForm(formKind, { letterNo: e.target.value });
+          clearFieldError("incoming", "letterNo");
+        }
+      }}
+      className={
+        (formKind !== "incoming"
+          ? (inputSmCls + " bg-black/5 dark:bg-white/10 cursor-not-allowed")
+          : inputWithError(inputSmCls, "incoming", "letterNo"))
+      }
+      aria-invalid={formKind === "incoming" ? fieldHasError("incoming", "letterNo") : undefined}
       type="text"
     />
 
-    <ErrorTextAbs kind={formKind} k="letterNo" />
+    {formKind === "incoming" ? <ErrorTextAbs kind="incoming" k="letterNo" /> : null}
   </FieldWrap>
 </div>
 
@@ -3738,21 +3709,18 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
         <>
           {/* از (کمی کوچکتر) */}
           <div className="md:col-span-3 md:col-start-1">
-              <div className={labelCls}>از</div>
-              <FieldWrap>
-              <input
-              value={getDraft("outgoing").fromName ?? ""}
-onChange={onDraftInput("outgoing", "fromName")}
+            <div className={labelCls}>از</div>
+            <input
+  value={outgoingForm.fromName}
+  onChange={(e) =>
+    setOutgoingForm((p) => ({ ...p, fromName: e.target.value }))
+  }
+  className={inputCls}
+  type="text"
+/>
+          </div>
 
-                className={inputWithError(inputCls, "outgoing", "fromName")}
-                aria-invalid={fieldHasError("outgoing", "fromName")}
-                type="text"
-              />
-                <ErrorTextAbs kind="outgoing" k="fromName" />
-              </FieldWrap>
-            </div>
-
-        {/* آیکن وسط */}
+          {/* آیکن وسط */}
           <div className="md:col-span-1 md:col-start-4 flex flex-col items-center">
             <div className={labelCls + " opacity-0 select-none"}>_</div>
             <div className="h-10 flex items-center justify-center">
@@ -3764,36 +3732,42 @@ onChange={onDraftInput("outgoing", "fromName")}
             </div>
           </div>
 
-         {/* به */}
-          <div className="md:col-span-3 md:col-start-5 min-w-0">
+          {/* به (کمی کوچکتر) */}
+          <div className="md:col-span-3 md:col-start-5">
             <div className={labelCls}>به</div>
             <FieldWrap>
-              <input
-              value={getDraft("outgoing").toName ?? ""}
-onChange={onDraftInput("outgoing", "toName")}
+ <input
+    value={outgoingForm.toName}
+    onChange={(e) => {
+      setOutgoingForm((p) => ({ ...p, toName: e.target.value }));
+      clearFieldError("outgoing", "toName");
+    }}
+               className={inputWithError(inputCls, "outgoing", "toName")}
+    aria-invalid={fieldHasError("outgoing", "toName")}
+    type="text"
+  />
+    <ErrorTextAbs kind="outgoing" k="toName" />
+</FieldWrap>
 
-                className={inputWithError(inputCls, "outgoing", "toName")}
-                aria-invalid={fieldHasError("outgoing", "toName")}
-                type="text"
-              />
-              <ErrorTextAbs kind="outgoing" k="toName" />
-            </FieldWrap>
           </div>
-               {/* شرکت/سازمان */}
-                <div className="md:col-span-5 md:col-start-8 min-w-0">
-                  <div className={labelCls}>شرکت/سازمان</div>
-                  <FieldWrap>
-                  <input
-  value={getDraft("outgoing").orgName ?? ""}
-onChange={onDraftInput("outgoing", "orgName")}
 
-  className={inputWithError(inputCls, "outgoing", "orgName")}
-  aria-invalid={fieldHasError("outgoing", "orgName")}
-  type="text"
-/>
-                    <ErrorTextAbs kind="outgoing" k="orgName" />
-                  </FieldWrap>
-                </div>
+          {/* شرکت/سازمان (باقی فضا) */}
+          <div className="md:col-span-5 md:col-start-8">
+            <div className={labelCls}>شرکت/سازمان</div>
+     <FieldWrap>
+  <input
+    value={outgoingForm.orgName}
+    onChange={(e) => {
+      setOutgoingForm((p) => ({ ...p, orgName: e.target.value }));
+      clearFieldError("outgoing", "orgName");
+    }}
+    className={inputWithError(inputCls, "outgoing", "orgName")}
+    aria-invalid={fieldHasError("outgoing", "orgName")}
+    type="text"
+  />
+  <ErrorTextAbs kind="outgoing" k="orgName" />
+</FieldWrap>
+          </div>
         </>
       ) : (
         <>
@@ -3801,17 +3775,12 @@ onChange={onDraftInput("outgoing", "orgName")}
           <div className="md:col-span-4 md:col-start-1">
   <div className={labelCls}>از</div>
 
-<FieldWrap>
-<input
-  ref={fromNameRef}
-  value={getDraft("incoming").fromName ?? ""}
-  onChange={onDraftInput("incoming", "fromName")}
-  className={inputWithError(inputCls, "incoming", "fromName")}
-  aria-invalid={fieldHasError("incoming", "fromName")}
+  <input
+  value={incomingForm.fromName}
+  onChange={(e) => setIncomingForm((p) => ({ ...p, fromName: e.target.value }))}
+  className={inputCls}
   type="text"
 />
-  <ErrorTextAbs kind="incoming" k="fromName" />
-</FieldWrap>
 
 </div>
 
@@ -3820,15 +3789,16 @@ onChange={onDraftInput("outgoing", "orgName")}
   <div className={labelCls}>شرکت/سازمان</div>
 
     <input
-value={getDraft("incoming").orgName ?? ""}
-onChange={onDraftInput("incoming", "orgName")}
-
-
-className={inputWithError(inputCls, "incoming", "orgName")}
-aria-invalid={fieldHasError("incoming", "orgName")}
+      value={incomingForm.orgName}
+onChange={(e) => {
+  setIncomingForm((p) => ({ ...p, orgName: e.target.value }));
+  clearFieldError("orgName");
+}}
+      className={inputWithError(inputCls, "orgName")}
+      aria-invalid={fieldHasError("orgName")}
       type="text"
     />
-<ErrorTextAbs kind="incoming" k="orgName" />
+    <ErrorTextAbs k="orgName" />
 </div>
 
 
@@ -3849,16 +3819,17 @@ aria-invalid={fieldHasError("incoming", "orgName")}
   <div className={labelCls}>به</div>
 
     <input
-value={getDraft("incoming").toName ?? ""}
-onChange={onDraftInput("incoming", "toName")}
-
-className={inputWithError(inputCls, "incoming", "toName")}
-aria-invalid={fieldHasError("incoming", "toName")}
+  value={incomingForm.toName}
+  onChange={(e) => {
+    setIncomingForm((p) => ({ ...p, toName: e.target.value }));
+    clearFieldError("toName");
+  }}
+  className={inputWithError(inputCls, "toName")}
+  aria-invalid={fieldHasError("toName")}
   type="text"
 />
 
-    <ErrorTextAbs kind="incoming" k="toName" />
-
+    <ErrorTextAbs k="toName" />
 </div>
 
         </>
@@ -3874,59 +3845,43 @@ aria-invalid={fieldHasError("incoming", "toName")}
       <div className={labelCls}>موضوع</div>
 
       <FieldWrap>
-<input
-  ref={subjectRef}
-value={getDraft("internal").subject ?? ""}
-onChange={onDraftInput("internal", "subject")}
-  onFocus={onSubjectFocus}
-  onBlur={onSubjectBlur}
-  onSelect={(e) => rememberSubjectSel(e.target)}
-  onKeyUp={(e) => rememberSubjectSel(e.target)}
-  className={inputWithError(inputCls, "internal", "subject")}
-  aria-invalid={fieldHasError("internal", "subject")}
-  type="text"
-/>
-
-
-<ErrorTextAbs kind="internal" k="subject" />
-
-
+        <input
+          value={internalForm.subject}
+          onChange={(e) => {
+            setInternalForm((p) => ({ ...p, subject: e.target.value }));
+            clearFieldError("subject");
+          }}
+          className={inputWithError(inputCls, "internal", "subject")}
+          aria-invalid={fieldHasError("internal", "subject")}
+          type="text"
+        />
+        <ErrorTextAbs k="subject" />
       </FieldWrap>
     </div>
 
     {/* واحد (کنار ضمیمه) */}
- {/* واحد (کنار ضمیمه) */}
-<div className="md:col-span-3 md:col-start-8">
-  <div className={labelCls}>واحد</div>
+    <div className="md:col-span-3 md:col-start-8">
+      <div className={labelCls}>واحد</div>
+      <select
+        value={internalUnitId}
+        onChange={(e) => setInternalUnitId(e.target.value)}
+        className={inputCls}
+      >
+        <option value=""></option>
 
-  <FieldWrap>
-    <select
-      value={internalUnitId}
-      onChange={(e) => {
-        setInternalUnitId(e.target.value);
-        clearFieldError("internal", "unitId"); // ✅ پاک کردن خطا مثل بقیه
-      }}
-      className={inputWithError(inputCls, "internal", "unitId")} // ✅ قرمز شدن مثل بقیه
-      aria-invalid={fieldHasError("internal", "unitId")}
-    >
-      <option value=""></option>
+        {internalUnitId && !unitOptions.some((u) => String(u.id) === String(internalUnitId)) ? (
+          <option value={internalUnitId}>
+            {unitsLoaded ? `واحد (${toFaDigits(internalUnitId)})` : "در حال دریافت واحدها..."}
+          </option>
+        ) : null}
 
-      {internalUnitId && !unitOptions.some((u) => String(u.id) === String(internalUnitId)) ? (
-        <option value={internalUnitId}>
-          {unitsLoaded ? `واحد (${toFaDigits(internalUnitId)})` : "در حال دریافت واحدها..."}
-        </option>
-      ) : null}
-
-      {unitOptions.map((u) => (
-        <option key={u.id} value={u.id}>
-          {u.label}
-        </option>
-      ))}
-    </select>
-
-    <ErrorTextAbs kind="internal" k="unitId" /> {/* ✅ خطا زیر خودش */}
-  </FieldWrap>
-</div>
+        {unitOptions.map((u) => (
+          <option key={u.id} value={u.id}>
+            {u.label}
+          </option>
+        ))}
+      </select>
+    </div>
 
     {/* ضمیمه (کنار واحد و در همان خط) */}
     <div className="md:col-span-2 md:col-start-11 flex flex-col items-center">
@@ -3964,19 +3919,16 @@ onChange={onDraftInput("internal", "subject")}
   <div className={labelCls}>موضوع</div>
 
   <FieldWrap>
-<input
-  ref={subjectRef}
-value={getDraft("internal").subject ?? ""}
-onChange={onDraftInput("internal", "subject")}
-  onFocus={onSubjectFocus}
-  onBlur={onSubjectBlur}
-  onSelect={(e) => rememberSubjectSel(e.target)}
-  onKeyUp={(e) => rememberSubjectSel(e.target)}
+    <input
+  value={getForm(formKind).subject || ""}
+  onChange={(e) => {
+    setForm(formKind, { subject: e.target.value });
+clearFieldError(formKind, "subject");
+  }}
   className={inputWithError(inputCls, formKind, "subject")}
-  aria-invalid={fieldHasError(formKind, "subject")}
+aria-invalid={fieldHasError(formKind, "subject")}
   type="text"
 />
-
 <ErrorTextAbs kind={formKind} k="subject" />
   </FieldWrap>
 </div>
@@ -3989,7 +3941,7 @@ onChange={onDraftInput("internal", "subject")}
         <label className="inline-flex items-center gap-2 cursor-pointer select-none">
           <input
             type="radio"
-            name={"hasAttachment_" + formKind}
+            name="hasAttachment"
             checked={hasAttachment === true}
             onChange={() => setHasAttachment(true)}
             className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
@@ -4000,7 +3952,7 @@ onChange={onDraftInput("internal", "subject")}
         <label className="inline-flex items-center gap-2 cursor-pointer select-none">
           <input
             type="radio"
-            name={"hasAttachment_" + formKind}
+            name="hasAttachment"
             checked={hasAttachment === false}
             onChange={() => setHasAttachment(false)}
             className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
@@ -4018,7 +3970,6 @@ onChange={onDraftInput("internal", "subject")}
 <div className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-1 items-start">
 
 {/* اسناد مرتبط + بارگذاری اسناد (کنار هم و چسبیده) */}
-{formKind !== "internal" && (
 <div className="md:col-span-12 min-w-0">
   <div className="flex items-start justify-start gap-2">
     {/* اسناد مرتبط */}
@@ -4115,32 +4066,31 @@ onChange={onDraftInput("internal", "subject")}
   ) : null}
 </button>
     </div>
-{/* ✅ توضیح کنار بارگذاری اسناد */} 
-<div className="min-w-0 w-full md:w-auto md:flex-1">
+     {/* ✅ توضیح کنار بارگذاری اسناد */}
+<div className="min-w-0 w-full md:w-[15%]">
   <div className={labelCls}>توضیح</div>
   <input
     value={
       formKind === "incoming"
-        ? incomingUploadNote
+        ? incomingSecretariatNote
         : formKind === "outgoing"
-        ? outgoingUploadNote
-        : internalUploadNote
+        ? outgoingSecretariatNote
+        : internalSecretariatNote
     }
     onChange={(e) => {
       const v = e.target.value;
-      if (formKind === "incoming") setIncomingUploadNote(v);
-      else if (formKind === "outgoing") setOutgoingUploadNote(v);
-      else setInternalUploadNote(v);
+      if (formKind === "incoming") setIncomingSecretariatNote(v);
+      else if (formKind === "outgoing") setOutgoingSecretariatNote(v);
+      else setInternalSecretariatNote(v);
     }}
     className={inputCls + " h-10"}
     type="text"
     placeholder="توضیح..."
   />
 </div>
-
   </div>
 </div>
-)}
+
 {relatedPickOpen &&
   createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
@@ -4408,62 +4358,65 @@ onChange={onDraftInput("internal", "subject")}
   <FieldWrap>
     <div className="w-full min-w-0 flex flex-wrap items-center gap-2">
       {(() => {
+        const scope =
+          formKind === "outgoing" ? "projects" :
+          formKind === "internal" ? "execution" :
+          "letters";
+
        const selectedIds =
-  formKind === "outgoing"
-    ? (Array.isArray(outgoingTagIds) ? outgoingTagIds : [])
-    : formKind === "internal"
-    ? (Array.isArray(internalTagIds) ? internalTagIds : [])
-    : (Array.isArray(incomingTagIds) ? incomingTagIds : []);
+  formKind === "outgoing" ? (Array.isArray(outgoingTagIds) ? outgoingTagIds : [])
+  : formKind === "internal" ? (Array.isArray(internalTagIds) ? internalTagIds : [])
+  : (Array.isArray(incomingTagIds) ? incomingTagIds : []);
 
-const ids = (Array.isArray(selectedIds) ? selectedIds : []).map((x) => String(x)).filter(Boolean);
+        const pool = Array.isArray(tagsByScope?.[scope]) ? tagsByScope[scope] : [];
 
-// ✅ همیشه از tagById (ترکیب هر ۳ اسکوپ) استفاده کن
-const selectedObjs = ids.map((id) => {
-  const t = tagById.get(String(id));
-  return t ? t : { id: String(id), label: `برچسب (${toFaDigits(id)})`, _missing: true };
-});
+        const selSet = new Set(selectedIds.map(String));
+        const selectedObjs = pool.filter((t) => selSet.has(String(t?.id)));
 
-if (!selectedObjs.length) return null;
+        if (selectedObjs.length === 0) return null;
 
-return selectedObjs.map((t) => {
-  const id = String(t?.id);
-  const label = tagLabelOf(t);
+        return selectedObjs.map((t) => {
+          const id = String(t?.id);
+          const label = tagLabelOf(t);
 
-  return (
-    <button
-      key={id}
-      type="button"
-      onClick={() => {
-        const sid = String(id || "").trim();
-        if (!sid) return;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => {
+  const sid = String(id || "").trim();
+  if (!sid) return;
+ const toggleFormTag = (sid) => {
+  if (formKind === "incoming") {
+    setIncomingTagIds((prev) => {
+      const base = Array.isArray(prev) ? prev.map(String) : [];
+      return base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
+    });
+  } else if (formKind === "outgoing") {
+    setOutgoingTagIds((prev) => {
+      const base = Array.isArray(prev) ? prev.map(String) : [];
+      return base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
+    });
+  } else {
+    setInternalTagIds((prev) => {
+      const base = Array.isArray(prev) ? prev.map(String) : [];
+      return base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
+    });
+  }
+  clearFieldError("formTags");
+};
 
-        if (formKind === "incoming") {
-          setIncomingTagIds((prev) => {
-            const base = Array.isArray(prev) ? prev.map(String) : [];
-            return base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
-          });
-        } else if (formKind === "outgoing") {
-          setOutgoingTagIds((prev) => {
-            const base = Array.isArray(prev) ? prev.map(String) : [];
-            return base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
-          });
-        } else {
-          setInternalTagIds((prev) => {
-            const base = Array.isArray(prev) ? prev.map(String) : [];
-            return base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
-          });
-        }
+  clearFieldError("formTags");
+}}
 
-        clearFieldError("formTags");
-      }}
-      className={selectedTagChipCls + " shrink-0" + (t?._missing ? " opacity-70" : "")}
-      title={label}
-      aria-label={label}
-    >
-      <span className="truncate max-w-[220px]">{label}</span>
-    </button>
-  );
-});
+              className={selectedTagChipCls + " shrink-0"}
+              title={label}
+              aria-label={label}
+            >
+              <span className="truncate max-w-[220px]">{label}</span>
+            </button>
+          );
+        });
       })()}
 
       <button
@@ -4575,30 +4528,10 @@ return selectedObjs.map((t) => {
       <th className="w-44 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
         شرکت/سازمان
       </th>
-<th className="w-28 !py-2 pl-6 !pr-3 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
-  <div className="w-full flex items-center justify-between gap-2">
-    <span>اقدامات</span>
 
-    {canDeleteAllLetters && (
-      <button
-        type="button"
-        onClick={deleteAllLetters}
-        className={
-          "h-6 w-6 rounded-full border inline-flex items-center justify-center text-[14px] leading-none transition " +
-          (theme === "dark"
-            ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
-            : "border-black/15 bg-white text-neutral-900 hover:bg-black/[0.04]")
-        }
-        title="حذف همه نامه‌ها"
-        aria-label="حذف همه نامه‌ها"
-      >
-        ×
-      </button>
-    )}
-  </div>
-</th>
-
-
+      <th className="w-28 !py-2 pl-6 !pr-3 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+        اقدامات
+      </th>
     </tr>
   </thead>
 
@@ -4839,160 +4772,216 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                           </div>
 
                           <div className="px-4 divide-y divide-black/10 dark:divide-white/10">
-             <InfoRow
-  label="نوع"
-  value={
-    viewLetter
-      ? (() => {
-          const k = letterKindOf(viewLetter);
+                            <InfoRow
+                              label="نوع"
+                              value={
+                                viewLetter
+                                  ? (() => {
+                                      const k = letterKindOf(viewLetter);
+                                      if (k === "outgoing") return "صادره";
+                                      if (k === "incoming") return "وارده";
+                                      return "داخلی";
+                                    })()
+                                  : ""
+                              }
+                            />
+                            <InfoRow label="دسته بندی" value={viewLetter ? categoryLabel(categoryOf(viewLetter)) : ""} />
 
-          if (k === "outgoing") {
-            return (
-              <span className="inline-flex items-center gap-1">
-                صادره
-                <img src="/images/icons/sadere.svg" alt="" className="w-4 h-4" />
-              </span>
-            );
-          }
+                            <InfoRow
+                              label="پروژه"
+                              value={
+                                viewLetter && (viewLetter?.project_id ?? viewLetter?.projectId)
+                                  ? (() => {
+                                      const pid = String(viewLetter?.project_id ?? viewLetter?.projectId);
+                                      const p = findProject(pid);
+                                      if (!p) return pid;
+                                      return `${String(p.code || "")}${p.name ? ` - ${p.name}` : ""}`.trim();
+                                    })()
+                                  : "—"
+                              }
+                            />
 
-          if (k === "incoming") {
-            return (
-              <span className="inline-flex items-center gap-1">
-                وارده
-                <img src="/images/icons/varede.svg" alt="" className="w-4 h-4" />
-              </span>
-            );
-          }
+                            <div className="py-2">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+  <div>
+    <div className={labelCls}>بازگشت</div>
+    <div className="space-y-2">
+      {(Array.isArray(returnToIds) ? returnToIds : [""]).map((val, idx) => (
+        <div key={idx} className="flex items-center gap-2">
+          <input
+            value={val}
+            onChange={(e) => {
+              const v = e.target.value;
+              setReturnToIds((prev) => {
+                const arr = Array.isArray(prev) ? [...prev] : [""];
+                arr[idx] = v;
+                return arr;
+              });
+            }}
+            className={inputCls}
+            type="text"
+            placeholder="شماره/کد بازگشت"
+          />
 
-          return "داخلی";
-        })()
-      : ""
-  }
-/>
-
-<InfoRow
-  label={
-    viewLetter
-      ? (() => {
-          const k = letterKindOf(viewLetter);
-          if (k === "incoming") return "کلاس سند";
-          if (k === "outgoing") return "کلاس سند";   // ✅ فقط برای صادره هم کلاس سند
-          return "کلاس سند";
-        })()
-      : "دسته بندی"
-  }
-  value={viewLetter ? categoryLabel(categoryOf(viewLetter)) : ""}
-/>
-
-
-                           <InfoRow
-  label={
-  viewLetter && (["outgoing","incoming","internal"].includes(letterKindOf(viewLetter)))
-    ? "مرکز/پروژه"
-    : "پروژه"
-}
-  value={
-    viewLetter && (viewLetter?.project_id ?? viewLetter?.projectId)
-      ? (() => {
-          const pid = String(viewLetter?.project_id ?? viewLetter?.projectId);
-          const p = findProject(pid);
-          if (!p) return pid;
-          return `${String(p.code || "")}${p.name ? ` - ${p.name}` : ""}`.trim();
-        })()
-      : "—"
-  }
-/>
-
-{viewLetter && letterKindOf(viewLetter) !== "internal" && (
-  <InfoRow
-    label={letterKindOf(viewLetter) === "incoming" ? "از / به" : "به"}
-    value={(() => {
-      const k = letterKindOf(viewLetter);
-      const a = String(viewLetter?.from_name ?? viewLetter?.fromName ?? "").trim();
-      const b = String(viewLetter?.to_name ?? viewLetter?.toName ?? "").trim();
-
-      if (k === "incoming") return `${a}${a && b ? " - " : ""}${b}`.trim() || "—";
-      return b || "—"; // outgoing
-    })()}
-  />
-)}
-
-
-<InfoRow label="موضوع" value={viewLetter ? String(subjectOf(viewLetter) || "") : ""} />
-<InfoRow
-  label="برچسب‌ها"
-  value={(() => {
-    const ids = normalizeIdList(viewLetter?.tag_ids ?? viewLetter?.tagIds ?? viewLetter?.tag_ids?.split?.(",") ?? []);
-    if (!ids.length) return "—";
-
-    const items = ids.map((id) => {
-      const t = tagById.get(String(id));
-      return t ? t : { id: String(id), label: `برچسب (${toFaDigits(id)})`, _missing: true };
-    });
-
-    return (
-      <div className="flex flex-wrap gap-1 justify-start">
-        {items.map((t) => (
-          <span
-            key={String(t.id)}
-            className={
-              "px-2 py-1 rounded-lg text-xs border " +
-              (theme === "dark" ? "border-white/15 bg-white/5" : "border-black/10 bg-black/[0.02]") +
-              (t._missing ? " opacity-70" : "")
-            }
-            title={tagLabelOf(t)}
+          <button
+            type="button"
+            onClick={() => setReturnToIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
+            className={iconBtnCls}
+            aria-label="افزودن"
+            title="افزودن"
           >
-            {tagLabelOf(t)}
-          </span>
-        ))}
-      </div>
-    );
-  })()}
-/>
-{viewLetter && letterKindOf(viewLetter) === "internal" ? (
-  <InfoRow
-    label="واحد"
-    value={(() => {
-      // 1) اگر unit_id دارید:
-      const uid = String(viewLetter?.unit_id ?? viewLetter?.unitId ?? "").trim();
-      if (uid) {
-        const u = (Array.isArray(unitOptions) ? unitOptions : []).find(x => String(x.id) === uid);
-        return u?.label || uid;
-      }
-      // 2) اگر فعلاً واحد را داخل to_name ذخیره کرده‌اید:
-      const v = String(viewLetter?.to_name ?? viewLetter?.toName ?? "").trim();
-      return v || "—";
-    })()}
-  />
-) : (
-  <InfoRow
-    label={(() => {
-      const k = letterKindOf(viewLetter);
-      if (k === "incoming") return "از";
-      if (k === "outgoing") return "به";
-      return "از / به";
-    })()}
-    value={(() => {
-      const k = letterKindOf(viewLetter);
-      const a = String(viewLetter?.from_name ?? viewLetter?.fromName ?? "").trim();
-      const b = String(viewLetter?.to_name ?? viewLetter?.toName ?? "").trim();
+            <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
+          </button>
 
-      if (k === "incoming") return `${a}${a && b ? " - " : ""}${b}`.trim() || "—";
-      if (k === "outgoing") {
-        return (
-          <span className="inline-flex items-center gap-2">
-            <img src="/images/icons/arrow-left.svg" alt="" className={"w-4 h-4 " + (theme === "dark" ? "invert" : "")} />
-            <span>{b || "—"}</span>
-          </span>
-        );
-      }
-      return `${a}${a && b ? " / " : ""}${b}`.trim() || "—";
-    })()}
-  />
-)}
+          {idx > 0 && (
+            <button
+              type="button"
+              onClick={() =>
+                setReturnToIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))
+              }
+              className={iconBtnCls}
+              aria-label="حذف"
+              title="حذف"
+            >
+              <img
+                src="/images/icons/hazf.svg"
+                alt=""
+                className="w-5 h-5"
+                style={{
+                  filter:
+                    "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
+                }}
+              />
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  </div>
 
+  <div>
+    <div className={labelCls}>پیرو</div>
+    <div className="space-y-2">
+      {(Array.isArray(piroIds) ? piroIds : [""]).map((val, idx) => (
+        <div key={idx} className="flex items-center gap-2">
+          <input
+            value={val}
+            onChange={(e) => {
+              const v = e.target.value;
+              setPiroIds((prev) => {
+                const arr = Array.isArray(prev) ? [...prev] : [""];
+                arr[idx] = v;
+                return arr;
+              });
+            }}
+            className={inputCls}
+            type="text"
+            placeholder="شماره/کد پیرو"
+          />
+
+          <button
+            type="button"
+            onClick={() => setPiroIds((prev) => [...(Array.isArray(prev) ? prev : [""]), ""])}
+            className={iconBtnCls}
+            aria-label="افزودن"
+            title="افزودن"
+          >
+            <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
+          </button>
+
+          {idx > 0 && (
+            <button
+              type="button"
+              onClick={() => setPiroIds((prev) => (Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : [""]))}
+              className={iconBtnCls}
+              aria-label="حذف"
+              title="حذف"
+            >
+              <img
+                src="/images/icons/hazf.svg"
+                alt=""
+                className="w-5 h-5"
+                style={{
+                  filter:
+                    "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
+                }}
+              />
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  </div>
+</div>
+
+                            </div>
+
+                            <InfoRow
+                              label="از / به"
+                              value={
+                                viewLetter
+                                  ? (() => {
+                                      const a = String(viewLetter?.from_name ?? viewLetter?.fromName ?? viewLetter?.from ?? "").trim();
+                                      const b = String(viewLetter?.to_name ?? viewLetter?.toName ?? viewLetter?.to ?? "").trim();
+                                      const s = `${a}${a && b ? " / " : ""}${b}`.trim();
+                                      return s || "—";
+                                    })()
+                                  : "—"
+                              }
+                            />
+                            <InfoRow label="شرکت/سازمان" value={viewLetter ? String(viewLetter?.org_name ?? viewLetter?.orgName ?? viewLetter?.org ?? "") : ""} />
+                            <InfoRow label="موضوع" value={viewLetter ? String(subjectOf(viewLetter) || "") : ""} />
 
                             <InfoRow label="ضمیمه" value={viewHasAttachment ? "دارد" : "ندارد"} />
+                            <InfoRow
+                              label="بازگشت به"
+                              value={
+                                viewLetter
+                                  ? (() => {
+                                      const ids = Array.isArray(viewLetter?.return_to_ids)
+                                        ? viewLetter.return_to_ids
+                                        : Array.isArray(viewLetter?.returnToIds)
+                                        ? viewLetter.returnToIds
+                                        : [];
+                                      if (!ids.length) return "—";
+                                      const map = new Map((Array.isArray(myLetters) ? myLetters : []).map((x) => [String(letterIdOf(x)), x]));
+                                      const labels = ids
+                                        .map((x) => String(x))
+                                        .filter(Boolean)
+                                        .map((sid) => {
+                                          const it = map.get(sid);
+                                          return it ? String(it?.letter_no || sid) : sid;
+                                        });
+                                      return labels.join("، ");
+                                    })()
+                                  : ""
+                              }
+                            />
+
+                            <InfoRow
+                              label="پیرو"
+                              value={
+                                viewLetter
+                                  ? (() => {
+                                      const ids = Array.isArray(viewLetter?.piro_ids)
+                                        ? viewLetter.piro_ids
+                                        : Array.isArray(viewLetter?.piroIds)
+                                        ? viewLetter.piroIds
+                                        : [];
+                                      if (!ids.length) return "—";
+                                      const map = new Map((Array.isArray(myLetters) ? myLetters : []).map((x) => [String(letterIdOf(x)), x]));
+                                      const labels = ids
+                                        .map((x) => String(x))
+                                        .filter(Boolean)
+                                        .map((sid) => {
+                                          const it = map.get(sid);
+                                          return it ? String(it?.letter_no || sid) : sid;
+                                        });
+                                      return labels.join("، ");
+                                    })()
+                                  : ""
+                              }
+                            />
 
                             <InfoRow label="تاریخ ثبت دبیرخانه" value={viewLetter ? toFaDigits(String(viewLetter?.secretariat_date ?? viewLetter?.secretariatDate ?? "")) : ""} />
                             <InfoRow label="شماره ثبت دبیرخانه" value={viewLetter ? String(viewLetter?.secretariat_no ?? viewLetter?.secretariatNo ?? "") : ""} />
@@ -5279,7 +5268,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
               {(() => {
                 const scope = SCOPE_BY_KIND[tagPickKind] || "letters";
                 const all = Array.isArray(tagsByScope?.[scope]) ? tagsByScope[scope] : [];
-                const q = String(tagPickSearchDebounced || "").trim().toLowerCase();
+                const q = String(tagPickSearch || "").trim().toLowerCase();
 
                 const filtered = all.filter((t) => {
                   const label = tagLabelOf(t).toLowerCase();
