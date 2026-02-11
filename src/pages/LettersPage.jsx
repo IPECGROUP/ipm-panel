@@ -3212,6 +3212,8 @@ const isImageView = useMemo(() => {
 
   const viewLetterKind = viewLetter ? letterKindOf(viewLetter) : "";
   const isViewIncoming = viewLetterKind === "incoming";
+  const isViewOutgoing = viewLetterKind === "outgoing";
+  const isViewInternal = viewLetterKind === "internal";
 
   const viewLinkedLetterMap = useMemo(() => {
     return new Map((Array.isArray(myLetters) ? myLetters : []).map((x) => [String(letterIdOf(x)), x]));
@@ -3229,17 +3231,49 @@ const isImageView = useMemo(() => {
     return labels.join("، ");
   };
 
+  const unitLabelMap = useMemo(() => {
+    return new Map((Array.isArray(unitOptions) ? unitOptions : []).map((u) => [String(u?.id ?? ""), String(u?.label ?? "").trim()]));
+  }, [unitOptions]);
+
+  const viewInternalUnitsValue = useMemo(() => {
+    if (!viewLetter) return "—";
+
+    const rawIds = [
+      ...(Array.isArray(viewLetter?.unit_ids) ? viewLetter.unit_ids : []),
+      ...(Array.isArray(viewLetter?.unitIds) ? viewLetter.unitIds : []),
+      viewLetter?.internal_unit_id,
+      viewLetter?.internalUnitId,
+      viewLetter?.unit_id,
+      viewLetter?.unitId,
+      viewLetter?.unit,
+    ];
+
+    const ids = Array.from(new Set(rawIds.map((x) => String(x ?? "").trim()).filter(Boolean)));
+    if (ids.length) {
+      const labels = ids.map((id) => unitLabelMap.get(id) || `واحد (${toFaDigits(id)})`);
+      return labels.join("، ");
+    }
+
+    const directLabel = String(viewLetter?.unit_name ?? viewLetter?.unitName ?? "").trim();
+    return directLabel || "—";
+  }, [viewLetter, unitLabelMap]);
+
+  const showModernViewLayout = isViewIncoming || isViewOutgoing || isViewInternal;
+
   const viewFromToValue = useMemo(() => {
     if (!viewLetter) return "—";
     const from = String(viewLetter?.from_name ?? viewLetter?.fromName ?? viewLetter?.from ?? "").trim();
     const to = String(viewLetter?.to_name ?? viewLetter?.toName ?? viewLetter?.to ?? "").trim();
-    if (isViewIncoming) {
+    if (isViewInternal) {
+      return viewInternalUnitsValue;
+    }
+    if (isViewIncoming || isViewOutgoing) {
       if (!from && !to) return "—";
       return `${from || "—"} - ${to || "—"}`;
     }
     const merged = `${from}${from && to ? " / " : ""}${to}`.trim();
     return merged || "—";
-  }, [viewLetter, isViewIncoming]);
+  }, [viewLetter, isViewIncoming, isViewOutgoing, isViewInternal, viewInternalUnitsValue]);
 
   const viewTagItems = useMemo(() => {
     if (!viewLetter) return [];
@@ -5087,7 +5121,14 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                                 viewLetter
                                   ? (() => {
                                       const k = letterKindOf(viewLetter);
-                                      if (k === "outgoing") return "صادره";
+                                      if (k === "outgoing") {
+                                        return (
+                                          <span className="inline-flex items-center gap-2">
+                                            <img src="/images/icons/sadere.svg" alt="" className="w-4 h-4 shrink-0" />
+                                            <span>صادره</span>
+                                          </span>
+                                        );
+                                      }
                                       if (k === "incoming") {
                                         return (
                                           <span className="inline-flex items-center gap-2">
@@ -5096,15 +5137,20 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                                           </span>
                                         );
                                       }
-                                      return "داخلی";
+                                      return (
+                                        <span className="inline-flex items-center gap-2">
+                                          <img src="/images/icons/dakheli.svg" alt="" className="w-4 h-4 shrink-0" />
+                                          <span>داخلی</span>
+                                        </span>
+                                      );
                                     })()
                                   : ""
                               }
                             />
-                            <InfoRow label={isViewIncoming ? "کلاس سند" : "دسته بندی"} value={viewLetter ? categoryLabel(categoryOf(viewLetter)) : ""} />
+                            <InfoRow label={showModernViewLayout ? "کلاس سند" : "دسته بندی"} value={viewLetter ? categoryLabel(categoryOf(viewLetter)) : ""} />
 
                             <InfoRow
-                              label={isViewIncoming ? "مرکز/پروژه" : "پروژه"}
+                              label={showModernViewLayout ? "مرکز/پروژه" : "پروژه"}
                               value={
                                 viewLetter && (viewLetter?.project_id ?? viewLetter?.projectId)
                                   ? (() => {
@@ -5117,7 +5163,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                               }
                             />
 
-                            {!isViewIncoming && (
+                            {!showModernViewLayout && (
                               <div className="py-2">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
   <div>
@@ -5235,16 +5281,16 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                             )}
 
                             <InfoRow
-                              label={isViewIncoming ? "از" : "از / به"}
+                              label={isViewInternal ? "واحدها" : isViewOutgoing ? "به" : isViewIncoming ? "از" : "از / به"}
                               value={viewFromToValue}
                             />
-                            {!isViewIncoming && (
+                            {!showModernViewLayout && (
                               <InfoRow label="شرکت/سازمان" value={viewLetter ? String(viewLetter?.org_name ?? viewLetter?.orgName ?? viewLetter?.org ?? "") : ""} />
                             )}
                             <InfoRow label="موضوع" value={viewLetter ? String(subjectOf(viewLetter) || "") : ""} />
 
                             <InfoRow label="ضمیمه" value={viewHasAttachment ? "دارد" : "ندارد"} />
-                            {!isViewIncoming && (
+                            {!showModernViewLayout && (
                               <InfoRow
                                 label="بازگشت به"
                                 value={
@@ -5261,21 +5307,23 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                               />
                             )}
 
-                            <InfoRow
-                              label={isViewIncoming ? "اسناد مرتبط" : "پیرو"}
-                              value={
-                                viewLetter
-                                  ? linkedLetterNosText(
-                                      Array.isArray(viewLetter?.piro_ids)
-                                        ? viewLetter.piro_ids
-                                        : Array.isArray(viewLetter?.piroIds)
-                                        ? viewLetter.piroIds
-                                        : []
-                                    )
-                                  : ""
-                              }
-                            />
-                            {isViewIncoming && (
+                            {!isViewInternal && (
+                              <InfoRow
+                                label={isViewIncoming || isViewOutgoing ? "اسناد مرتبط" : "پیرو"}
+                                value={
+                                  viewLetter
+                                    ? linkedLetterNosText(
+                                        Array.isArray(viewLetter?.piro_ids)
+                                          ? viewLetter.piro_ids
+                                          : Array.isArray(viewLetter?.piroIds)
+                                          ? viewLetter.piroIds
+                                          : []
+                                      )
+                                    : ""
+                                }
+                              />
+                            )}
+                            {showModernViewLayout && (
                               <InfoRow
                                 label="برچسب"
                                 value={
