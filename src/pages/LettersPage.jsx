@@ -3237,6 +3237,7 @@ const isImageView = useMemo(() => {
 
   const viewInternalUnitsValue = useMemo(() => {
     if (!viewLetter) return "—";
+    const unitObj = viewLetter?.unit && typeof viewLetter.unit === "object" ? viewLetter.unit : null;
 
     const rawIds = [
       ...(Array.isArray(viewLetter?.unit_ids) ? viewLetter.unit_ids : []),
@@ -3245,7 +3246,9 @@ const isImageView = useMemo(() => {
       viewLetter?.internalUnitId,
       viewLetter?.unit_id,
       viewLetter?.unitId,
-      viewLetter?.unit,
+      unitObj?.id,
+      unitObj?.unit_id,
+      typeof viewLetter?.unit === "string" || typeof viewLetter?.unit === "number" ? viewLetter.unit : null,
     ];
 
     const ids = Array.from(new Set(rawIds.map((x) => String(x ?? "").trim()).filter(Boolean)));
@@ -3254,7 +3257,15 @@ const isImageView = useMemo(() => {
       return labels.join("، ");
     }
 
-    const directLabel = String(viewLetter?.unit_name ?? viewLetter?.unitName ?? "").trim();
+    const directLabel = String(
+      viewLetter?.unit_name ??
+      viewLetter?.unitName ??
+      unitObj?.name ??
+      unitObj?.title ??
+      unitObj?.label ??
+      unitObj?.unit_name ??
+      ""
+    ).trim();
     return directLabel || "—";
   }, [viewLetter, unitLabelMap]);
 
