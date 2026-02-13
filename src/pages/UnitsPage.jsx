@@ -462,22 +462,27 @@ function OrgStructurePage() {
     }
   };
 
+  const topTabBtnClass = (isActive) =>
+    [
+      "relative flex-1 h-12 sm:h-14 rounded-t-[22px] rounded-b-none",
+      "text-center text-sm sm:text-base font-medium select-none transition-all duration-200",
+      "focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20",
+      isActive
+        ? "bg-white text-[#6e7686] shadow-[0_-1px_0_rgba(255,255,255,0.85)] dark:bg-neutral-900 dark:text-neutral-100"
+        : "bg-[#aeb4bd] text-white hover:bg-[#9fa7b3] dark:bg-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-600",
+    ].join(" ");
+
   return (
     <>
       <Card className="rounded-2xl border bg-white text-black border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
         {/* تب‌ها */}
         <div className="w-full isolate" dir="rtl">
-          <div className="w-full rounded-t-3xl bg-neutral-300 dark:bg-neutral-800 p-2">
-            <div className="flex w-full gap-2">
+          <div className="w-full rounded-t-[26px] bg-[#c3c8c9] dark:bg-neutral-800 p-1.5 sm:p-2">
+            <div className="flex w-full gap-1.5 sm:gap-2">
               <button
                 type="button"
                 onClick={() => setActiveTab("units")}
-                className={`flex-1 h-12 sm:h-14 text-center rounded-2xl transition select-none relative
-                          ${
-                            activeTab === "units"
-                              ? "bg-black text-white z-20 shadow-[0_10px_30px_-18px_rgba(0,0,0,0.6)]"
-                              : "bg-neutral-300 text-white/95 z-10 hover:bg-neutral-400 dark:bg-neutral-800 dark:hover:bg-neutral-700"
-                          }`}
+                className={topTabBtnClass(activeTab === "units")}
               >
                 واحد ها
               </button>
@@ -485,12 +490,7 @@ function OrgStructurePage() {
               <button
                 type="button"
                 onClick={() => setActiveTab("roles")}
-                className={`flex-1 h-12 sm:h-14 text-center rounded-2xl transition select-none relative
-                          ${
-                            activeTab === "roles"
-                              ? "bg-black text-white z-20 shadow-[0_10px_30px_-18px_rgba(0,0,0,0.6)]"
-                              : "bg-neutral-300 text-white/95 z-10 hover:bg-neutral-400 dark:bg-neutral-800 dark:hover:bg-neutral-700"
-                          }`}
+                className={topTabBtnClass(activeTab === "roles")}
               >
                 نقش ها
               </button>
