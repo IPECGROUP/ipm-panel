@@ -2026,7 +2026,7 @@ const labelSmCls = (theme === "dark"
   : "text-neutral-600 text-[11px] mb-1");
 
 const tabSmCls = (active) =>
-  "h-10 px-4 rounded-xl border transition text-[13px] font-semibold inline-flex items-center gap-2 whitespace-nowrap " +
+  "h-10 px-5 rounded-xl border transition text-sm font-semibold inline-flex items-center gap-2 " +
   (active
     ? "text-white"
     : theme === "dark"
