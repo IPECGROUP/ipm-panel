@@ -1,5 +1,5 @@
 // src/components/RightNav.jsx
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "./AuthProvider";
 import { isMainAdminUser } from "../utils/auth";
@@ -22,11 +22,6 @@ function RightNav() {
   };
 
   const pNow = stripBase(pathname);
-
-  const [pendingPath, setPendingPath] = useState(null);
-  useEffect(() => {
-    setPendingPath(pNow);
-  }, [pNow]);
 
   const isActive = (to) => {
     const p = clean(pNow);
@@ -76,19 +71,19 @@ function RightNav() {
   const activeSection = sectionFromPath(pNow);
 
   // آیکن‌ها
-  const icImgCls = "w-5 h-5 block m-0 filter invert";
-  const IcDashboard = () => <img src="/images/icons/dashbaord.svg" className={icImgCls} alt="" />;
-  const IcPay = () => <img src="/images/icons/darkastpardakht.svg" className={icImgCls} alt="" />;
-  const IcLetter = () => <img src="/images/icons/nameha.svg" className={icImgCls} alt="" />;
-  const IcProjects = () => <img src="/images/icons/project.svg" className={icImgCls} alt="" />;
-  const IcBudget = () => <img src="/images/icons/busgebandi.svg" className={icImgCls} alt="" />;
-  const IcBase = () => <img src="/images/icons/atelaatpaye.svg" className={icImgCls} alt="" />;
-  const IcCurrency = () => <img src="/images/icons/arz.svg" className={icImgCls} alt="" />;
-  const IcUsers = () => <img src="/images/icons/users.svg" className={icImgCls} alt="" />;
-  const IcContract = () => <img src="/images/icons/gharadad.svg" className={icImgCls} alt="" />;
-  const IcTags = () => <img src="/images/icons/tags.svg" className={icImgCls} alt="" />;
+  const icImgCls = "w-5 h-5 block m-0 filter invert pointer-events-none select-none";
+  const IcDashboard = () => <img src="/images/icons/dashbaord.svg" className={icImgCls} alt="" draggable={false} />;
+  const IcPay = () => <img src="/images/icons/darkastpardakht.svg" className={icImgCls} alt="" draggable={false} />;
+  const IcLetter = () => <img src="/images/icons/nameha.svg" className={icImgCls} alt="" draggable={false} />;
+  const IcProjects = () => <img src="/images/icons/project.svg" className={icImgCls} alt="" draggable={false} />;
+  const IcBudget = () => <img src="/images/icons/busgebandi.svg" className={icImgCls} alt="" draggable={false} />;
+  const IcBase = () => <img src="/images/icons/atelaatpaye.svg" className={icImgCls} alt="" draggable={false} />;
+  const IcCurrency = () => <img src="/images/icons/arz.svg" className={icImgCls} alt="" draggable={false} />;
+  const IcUsers = () => <img src="/images/icons/users.svg" className={icImgCls} alt="" draggable={false} />;
+  const IcContract = () => <img src="/images/icons/gharadad.svg" className={icImgCls} alt="" draggable={false} />;
+  const IcTags = () => <img src="/images/icons/tags.svg" className={icImgCls} alt="" draggable={false} />;
 
-  const svgCls = "w-5 h-5 block m-0 text-white";
+  const svgCls = "w-5 h-5 block m-0 text-white pointer-events-none select-none";
   const sw = 2.2;
 
   const IcDoc = () => (
@@ -128,8 +123,8 @@ function RightNav() {
   // ✅ کلاس Active با ! (هیچ چیزی نتونه override کنه)
   const railBtn = (active) =>
     [
-      "group w-14 h-14 border transition-all duration-200 p-0 mx-auto",
-      "flex items-center justify-center cursor-pointer select-none",
+      "group w-12 h-12 sm:w-14 sm:h-14 border transition-all duration-200 p-0 mx-auto",
+      "flex items-center justify-center cursor-pointer select-none touch-manipulation",
       "focus:outline-none focus:ring-0",
       active
         ? "!bg-[#F48B35] !border-[#F48B35] !text-neutral-900"
@@ -137,8 +132,13 @@ function RightNav() {
     ].join(" ");
 
   const [tip, setTip] = useState({ show: false, y: 0, label: "" });
+  const canHover =
+    typeof window !== "undefined" &&
+    window.matchMedia &&
+    window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
   const showTip = (label, e) => {
+    if (!canHover) return;
     const rect = e.currentTarget.getBoundingClientRect();
     setTip({ show: true, y: rect.top + rect.height / 2, label });
   };
@@ -157,18 +157,17 @@ function RightNav() {
     <>
       <aside
         dir="rtl"
-        className="fixed right-0 top-0 bottom-0 z-50 w-[92px] rounded-none
+        className="fixed right-0 top-0 bottom-0 z-50 w-[76px] sm:w-[92px] rounded-none
                    bg-neutral-900/85 backdrop-blur-xl border-s border-neutral-800 shadow-2xl
-                   px-3 overflow-auto"
+                   px-2 sm:px-3 overflow-y-auto overscroll-contain
+                   pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))]"
       >
-        <div className="h-full flex flex-col items-center pt-4 gap-2">
+        <div className="h-full flex flex-col items-center gap-2">
           <div onMouseEnter={(e) => showTip("داشبورد", e)} onMouseLeave={hideTip}>
             <LinkBtn
               to="/"
               className={railBtn(isActive("/"))}
               aria-label="داشبورد"
-              onPointerDown={() => setPendingPath(clean("/"))}
-              onTouchStart={() => setPendingPath(clean("/"))}
             >
               <IcDashboard />
             </LinkBtn>
@@ -179,8 +178,6 @@ function RightNav() {
               to="/payment"
               className={railBtn(isActive("/payment"))}
               aria-label="درخواست پرداخت"
-              onPointerDown={() => setPendingPath(clean("/payment"))}
-              onTouchStart={() => setPendingPath(clean("/payment"))}
             >
               <IcPay />
             </LinkBtn>
@@ -191,8 +188,6 @@ function RightNav() {
               to="/letters"
               className={railBtn(isActive("/letters"))}
               aria-label="نامه‌ها"
-              onPointerDown={() => setPendingPath(clean("/letters"))}
-              onTouchStart={() => setPendingPath(clean("/letters"))}
             >
               <IcLetter />
             </LinkBtn>
@@ -234,7 +229,7 @@ function RightNav() {
 
               <div onMouseEnter={(e) => showTip("گزارش‌ها", e)} onMouseLeave={hideTip}>
                 <LinkBtn to="/projects/reports" className={railBtn(isActive("/projects/reports"))} aria-label="گزارش‌ها">
-                  <img src="/images/icons/gozareshrozane.svg" className={icImgCls} alt="" />
+                  <img src="/images/icons/gozareshrozane.svg" className={icImgCls} alt="" draggable={false} />
                 </LinkBtn>
               </div>
 
@@ -284,31 +279,31 @@ function RightNav() {
             <div className="ms-2 mt-2 flex flex-col items-stretch gap-2">
               <div onMouseEnter={(e) => showTip("تعریف مراکز بودجه", e)} onMouseLeave={hideTip}>
                 <LinkBtn to="/budget/centers" className={railBtn(isActive("/budget/centers"))}>
-                  <img src="/images/icons/tarifmarakez.svg" className={icImgCls} alt="" />
+                  <img src="/images/icons/tarifmarakez.svg" className={icImgCls} alt="" draggable={false} />
                 </LinkBtn>
               </div>
 
               <div onMouseEnter={(e) => showTip("برآورد هزینه‌ها", e)} onMouseLeave={hideTip}>
                 <LinkBtn to="/estimates" className={railBtn(isActive("/estimates"))}>
-                  <img src="/images/icons/baravord.svg" className={icImgCls} alt="" />
+                  <img src="/images/icons/baravord.svg" className={icImgCls} alt="" draggable={false} />
                 </LinkBtn>
               </div>
 
               <div onMouseEnter={(e) => showTip("برآورد درآمد", e)} onMouseLeave={hideTip}>
                 <LinkBtn to="/revenue-estimates" className={railBtn(isActive("/revenue-estimates"))}>
-                  <img src="/images/icons/baravordhazine.svg" className={icImgCls} alt="" />
+                  <img src="/images/icons/baravordhazine.svg" className={icImgCls} alt="" draggable={false} />
                 </LinkBtn>
               </div>
 
               <div onMouseEnter={(e) => showTip("تخصیص بودجه", e)} onMouseLeave={hideTip}>
                 <LinkBtn to="/budget-allocation" className={railBtn(isActive("/budget-allocation"))}>
-                  <img src="/images/icons/taksisbodge.svg" className={icImgCls} alt="" />
+                  <img src="/images/icons/taksisbodge.svg" className={icImgCls} alt="" draggable={false} />
                 </LinkBtn>
               </div>
 
               <div onMouseEnter={(e) => showTip("گزارش‌ها", e)} onMouseLeave={hideTip}>
                 <LinkBtn to="/budget/reports" className={railBtn(isActive("/budget/reports"))}>
-                  <img src="/images/icons/gozareshha.svg" className={icImgCls} alt="" />
+                  <img src="/images/icons/gozareshha.svg" className={icImgCls} alt="" draggable={false} />
                 </LinkBtn>
               </div>
             </div>
@@ -330,7 +325,7 @@ function RightNav() {
             <div className="ms-2 mt-2 flex flex-col items-stretch gap-2">
               <div onMouseEnter={(e) => showTip("ساختار سازمانی", e)} onMouseLeave={hideTip}>
                 <LinkBtn to="/base/units" className={railBtn(isActive("/base/units"))}>
-                  <img src="/images/icons/unit.svg" className={icImgCls} alt="" />
+                  <img src="/images/icons/unit.svg" className={icImgCls} alt="" draggable={false} />
                 </LinkBtn>
               </div>
 
@@ -358,7 +353,7 @@ function RightNav() {
               {isMainAdmin && (
                 <div onMouseEnter={(e) => showTip("تست", e)} onMouseLeave={hideTip}>
                   <LinkBtn to="/test/editor" className={railBtn(isActive("/test/editor"))}>
-                    <img src="/images/icons/dashbaord.svg" className={icImgCls} alt="" />
+                    <img src="/images/icons/dashbaord.svg" className={icImgCls} alt="" draggable={false} />
                   </LinkBtn>
                 </div>
               )}
@@ -374,10 +369,10 @@ function RightNav() {
         </div>
       </aside>
 
-      {tip.show && (
+      {canHover && tip.show && (
         <div
           className="fixed z-[60] pointer-events-none text-xs px-3 py-1.5 rounded-lg bg-neutral-800 text-neutral-100 border border-neutral-700 shadow-lg whitespace-nowrap"
-          style={{ top: tip.y, right: "100px", transform: "translateY(-50%)" }}
+          style={{ top: tip.y, right: "clamp(84px, 10vw, 100px)", transform: "translateY(-50%)" }}
         >
           {tip.label}
         </div>

@@ -256,7 +256,7 @@ export default function Shell() {
         </div>
       </header>
 
-      <main className="grid grid-cols-[1fr_92px] min-h-[calc(100dvh-64px)] md:min-h-[calc(100dvh-80px)]">
+      <main className="grid grid-cols-[1fr_76px] sm:grid-cols-[1fr_92px] min-h-[calc(100dvh-64px)] md:min-h-[calc(100dvh-80px)]">
         <div dir="ltr" className="px-4 md:px-6 py-4 md:py-6">
           <div dir="rtl" className="mx-auto max-w-[1400px]">
             {/* اینجا روت‌های داخلی رندر می‌شن */}
