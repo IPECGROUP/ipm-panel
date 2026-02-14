@@ -762,7 +762,7 @@ if (active === "projects") {
                   <TH className={`w-48 ${tablePreset.th}`}>
                     تخصیص جدید
                   </TH>
-                  <TH className={`w-[28ch] ${tablePreset.th}`}>
+                  <TH className={`w-[26ch] ${tablePreset.th}`}>
                     شرح
                   </TH>
                   <TH className={`w-28 ${tablePreset.th}`}>
@@ -803,7 +803,7 @@ if (active === "projects") {
                             {toFaDigits(renderDisplayBudgetCode(r.code))}
                           </div>
                         </TD>
-                        <TD className="px-2.5 py-2 whitespace-normal break-words leading-snug align-middle max-w-[28ch] mx-auto !text-center">
+                        <TD className="px-2.5 py-2 whitespace-normal break-words leading-snug align-middle max-w-[26ch] mx-auto !text-center">
                           {r.name || "—"}
                         </TD>
                         <TD className="px-2.5 py-2 align-middle">
@@ -988,7 +988,7 @@ if (active === "projects") {
                             <td className="py-2 px-2 text-center">
                               {toFaDigits(renderDisplayBudgetCode(r.code))}
                             </td>
-                            <td className="py-2 px-2 whitespace-normal break-words leading-relaxed text-center max-w-[28ch] mx-auto">
+                            <td className="py-2 px-2 whitespace-normal break-words leading-relaxed text-center max-w-[26ch] mx-auto">
                               {r.name || "—"}
                             </td>
                             <td className="py-2 px-2 text-center">
