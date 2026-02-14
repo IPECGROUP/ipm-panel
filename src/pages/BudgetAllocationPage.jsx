@@ -852,7 +852,7 @@ if (active === "projects") {
                         <TD className={`px-2.5 py-2 align-middle !text-center ${tdBorder}`}>
                           <textarea
                             ref={(el) => (descRefs.current[r.code] = el)}
-                            className="w-full rounded-xl px-2 py-1.5 whitespace-normal break-words leading-snug outline-none
+                            className="w-full rounded-xl px-2 pt-2 pb-1.5 whitespace-normal break-words leading-snug outline-none
                                      bg-white text-black placeholder-black/40 border border-black/15 focus:ring-2 focus:ring-black/10
                                      dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
                             rows={2}

@@ -2,6 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
+import { baseCurrenciesTablePreset as tablePreset } from "../components/ui/tablePresets.js";
 import { usePageAccess } from "../hooks/usePageAccess";
 
 const PAGE_KEY = "EstimatesPage";
@@ -836,16 +837,18 @@ const sortedProjects = useMemo(() => {
         </div>
 
         <TableWrap>
-          <div className="bg-white rounded-2xl overflow-hidden border border-black/10 shadow-sm text-black dark:bg-neutral-900 dark:text-neutral-200 dark:border-neutral-800">
-            <div className="overflow-x-auto">
-              <table
-                className="w-full table-fixed text-[12px] md:text-[13px] text-center [&_th]:text-center [&_td]:text-center"
-                dir="rtl"
-              >
-                <THead>
-                  <tr className="bg-black/5 border-b border-black/10 sticky top-0 z-10 text-black dark:bg-neutral-900 dark:text-neutral-300 dark:border-neutral-700">
-                    <TH className="!text-center py-3 w-14 !text-black dark:!text-neutral-300">#</TH>
-                    <TH className="!text-center py-3 w-40 !text-black dark:!text-neutral-300">
+          <div className={tablePreset.outer}>
+            <div className={tablePreset.innerPad}>
+              <div className={tablePreset.frame + " shadow-sm"}>
+                <div className="overflow-x-auto">
+                  <table
+                    className={tablePreset.table + " table-fixed text-[12px] md:text-[13px]"}
+                    dir="rtl"
+                  >
+                    <THead>
+                      <tr className={tablePreset.headRow + " sticky top-0 z-10"}>
+                        <TH className={`w-14 ${tablePreset.th}`}>#</TH>
+                        <TH className={`w-40 ${tablePreset.th}`}>
                       <div className="flex items-center justify-center gap-1 w-full">
                         <span>کد بودجه</span>
                         <button
@@ -861,14 +864,14 @@ const sortedProjects = useMemo(() => {
                           />
                         </button>
                       </div>
-                    </TH>
-                    <TH className="!text-center py-3 w-40 !text-black dark:!text-neutral-300">نام بودجه</TH>
+                        </TH>
+                        <TH className={`w-40 ${tablePreset.th}`}>نام بودجه</TH>
                     {dynamicMonths.map((m) => (
-                      <TH key={m.key} className="!text-center py-3 w-24 px-0 !text-black dark:!text-neutral-300">
+                          <TH key={m.key} className={`w-24 px-0 ${tablePreset.th}`}>
                         {m.label}
                       </TH>
                     ))}
-                    <TH className="!text-center py-3 w-28 !text-black dark:!text-neutral-300 border-l border-r border-black/10 dark:border-neutral-700">
+                        <TH className={`w-28 border-l border-r border-black/10 dark:border-neutral-700 ${tablePreset.th}`}>
                       <div className="flex items-center justify-center gap-1">
                         <span>جمع</span>
                         <button
@@ -880,20 +883,20 @@ const sortedProjects = useMemo(() => {
                           <span className="text-[11px]">×</span>
                         </button>
                       </div>
-                    </TH>
-                  </tr>
-                </THead>
+                        </TH>
+                      </tr>
+                    </THead>
 
-                <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100">
+                    <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100">
                   {loading ? (
                     <TR>
-                      <TD colSpan={colCount} className="text-center text-black/60 dark:text-neutral-400 py-4">
+                          <TD colSpan={colCount} className={tablePreset.emptyRow}>
                         در حال بارگذاری…
                       </TD>
                     </TR>
                   ) : (displayRows || []).length === 0 ? (
                     <TR>
-                      <TD colSpan={colCount} className="text-center text-black/60 py-4 dark:text-neutral-400">
+                          <TD colSpan={colCount} className={tablePreset.emptyRow}>
                         {active === "projects" && !projectId ? "ابتدا پروژه را انتخاب کنید" : "موردی یافت نشد."}
                       </TD>
                     </TR>
@@ -1044,8 +1047,10 @@ const sortedProjects = useMemo(() => {
                       })}
                     </>
                   )}
-                </tbody>
-              </table>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
         </TableWrap>

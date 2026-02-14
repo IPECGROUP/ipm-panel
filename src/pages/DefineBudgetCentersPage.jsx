@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
+import { baseCurrenciesTablePreset as tablePreset } from "../components/ui/tablePresets.js";
 import { usePageAccess } from "../hooks/usePageAccess";
 
 const PAGE_KEY = "DefineBudgetCentersPage";
@@ -694,25 +695,22 @@ const sortedProjects = useMemo(() => {
       </div>
 
       <TableWrap>
-        <div
-          className="bg-white text-neutral-900 rounded-2xl ring-1 ring-neutral-200 border border-neutral-200 overflow-hidden
-                        dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-800 dark:border-neutral-800
-                        [&_th]:text-neutral-900 [&_td]:text-neutral-900
-                        dark:[&_th]:text-neutral-100 dark:[&_td]:text-neutral-100"
-        >
-          <table className="w-full text-[13px] md:text-sm text-center [&_th]:text-center [&_td]:text-center" dir="rtl">
-            <THead>
-              <tr className="bg-neutral-100 text-neutral-900 border-b border-neutral-200 sticky top-0 z-10 dark:bg-white/5 dark:text-neutral-100 dark:border-neutral-700">
-                <TH className="!text-center !font-semibold !py-2 w-20">#</TH>
-                <TH className="!text-center !font-semibold !py-2 w-56">کد بودجه</TH>
-                <TH className="!text-center !font-semibold !py-2">شرح</TH>
-                <TH className="!text-center !font-semibold !py-2 w-40">اقدامات</TH>
-              </tr>
-            </THead>
-            <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+        <div className={tablePreset.outer}>
+          <div className={tablePreset.innerPad}>
+            <div className={tablePreset.frame}>
+              <table className={tablePreset.table + " text-[13px] md:text-sm"} dir="rtl">
+                <THead>
+                  <tr className={tablePreset.headRow + " sticky top-0 z-10"}>
+                    <TH className={`w-20 ${tablePreset.th}`}>#</TH>
+                    <TH className={`w-56 ${tablePreset.th}`}>کد بودجه</TH>
+                    <TH className={tablePreset.th}>شرح</TH>
+                    <TH className={`w-40 ${tablePreset.th}`}>اقدامات</TH>
+                  </tr>
+                </THead>
+                <tbody className={tablePreset.body}>
               {loading ? (
                 <TR>
-                  <TD colSpan={4} className="text-center text-neutral-700 dark:text-neutral-400 py-3">
+                  <TD colSpan={4} className={tablePreset.emptyRow}>
                     در حال بارگذاری…
                   </TD>
                 </TR>
@@ -720,7 +718,7 @@ const sortedProjects = useMemo(() => {
                 <TR>
                   <TD
                     colSpan={4}
-                    className="text-center text-neutral-700 py-3 bg-neutral-50 dark:text-neutral-400 dark:bg-transparent"
+                    className={tablePreset.emptyRow}
                   >
                     {active === "projects" && !projectId ? "ابتدا کد پروژه را انتخاب کنید" : "موردی ثبت نشده."}
                   </TD>
@@ -851,8 +849,10 @@ const sortedProjects = useMemo(() => {
                   );
                 })
               )}
-            </tbody>
-          </table>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </TableWrap>
     </Card>

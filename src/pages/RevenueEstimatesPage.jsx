@@ -9,6 +9,7 @@ import React, {
 
 import { Card } from '../components/ui/Card';
 import { TableWrap, THead, TR, TH, TD } from '../components/ui/Table';
+import { baseCurrenciesTablePreset as tablePreset } from '../components/ui/tablePresets';
 import { usePageAccess } from '../hooks/usePageAccess';
 
 const PAGE_KEY = 'RevenueEstimatesPage';
@@ -1513,28 +1514,30 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
         {/* جدول اصلی */}
         <div className="mt-4">
           <TableWrap>
-            <div className="bg-white rounded-2xl overflow-hidden border border-black/10 shadow-sm text-black dark:bg-neutral-900 dark:text-neutral-200 dark:border-neutral-800">
-              <div className="overflow-x-auto">
-                <table
-                  className="w-full table-fixed text-[11px] md:text-[12px] leading-tight text-center [&_th]:text-center [&_td]:text-center"
-                  dir="rtl"
-                >
-                  <THead>
-                    <tr className="bg-black/5 border-b border-black/10 sticky top-0 z-10 text-black dark:bg-neutral-900 dark:text-neutral-300 dark:border-neutral-700">
-                      <TH className="!text-center py-2 w-14 !text-black dark:!text-neutral-300">#</TH>
-                      <TH className="!text-center py-2 w-56 !text-black dark:!text-neutral-300">پروژه / مورد</TH>
+            <div className={tablePreset.outer}>
+              <div className={tablePreset.innerPad}>
+                <div className={tablePreset.frame + ' shadow-sm'}>
+                  <div className="overflow-x-auto">
+                    <table
+                      className={tablePreset.table + ' table-fixed text-[11px] md:text-[12px] leading-tight'}
+                      dir="rtl"
+                    >
+                      <THead>
+                        <tr className={tablePreset.headRow + ' sticky top-0 z-10'}>
+                          <TH className={`w-14 ${tablePreset.th}`}>#</TH>
+                          <TH className={`w-56 ${tablePreset.th}`}>پروژه / مورد</TH>
                       {dynamicMonths.map((m) => (
-                        <TH key={m.key} className="!text-center py-2 w-24 px-0 !text-black dark:!text-neutral-300">
+                        <TH key={m.key} className={`w-24 px-0 ${tablePreset.th}`}>
                           {m.label}
                         </TH>
                       ))}
-                      <TH className="!text-center py-2 w-28 !text-black dark:!text-neutral-300 border-l border-r border-black/10 dark:border-neutral-700">
+                      <TH className={`w-28 border-l border-r border-black/10 dark:border-neutral-700 ${tablePreset.th}`}>
                         جمع
                       </TH>
-                    </tr>
-                  </THead>
+                        </tr>
+                      </THead>
 
-                  <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100">
+                      <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100">
                     {visibleRoots.length > 0 && (
                       <TR className="text-center border-t border-black/10 bg-black/[0.035] font-semibold dark:border-neutral-800 dark:bg-white/10">
                         <TD className="px-2 py-2 border-b border-black/10 dark:border-neutral-800">-</TD>
@@ -1688,13 +1691,15 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
 
                     {visibleRoots.length === 0 && (
                       <TR className="border-t border-black/10 dark:border-neutral-800">
-                        <TD colSpan={totalCols} className="py-6 text-black/60 dark:text-neutral-400 text-center">
+                        <TD colSpan={totalCols} className={tablePreset.emptyRow}>
                           از کپسول‌های بالا استفاده کنید تا موارد به جدول اصلی اضافه/کم شوند.
                         </TD>
                       </TR>
                     )}
-                  </tbody>
-                </table>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             </div>
           </TableWrap>
