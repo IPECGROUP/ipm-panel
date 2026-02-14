@@ -887,7 +887,7 @@ const sortedProjects = useMemo(() => {
                       </tr>
                     </THead>
 
-                    <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100">
+                    <tbody className={tablePreset.body}>
                   {loading ? (
                     <TR>
                           <TD colSpan={colCount} className={tablePreset.emptyRow}>
@@ -902,7 +902,7 @@ const sortedProjects = useMemo(() => {
                     </TR>
                   ) : (
                     <>
-                      <TR className="text-center border-t border-black/10 bg-black/[0.04] font-semibold dark:border-neutral-800 dark:bg-white/10">
+                      <TR className="text-center bg-black/[0.04] font-semibold dark:bg-white/10">
                         <TD className="px-2 py-3 border-b border-black/10 dark:border-neutral-800">-</TD>
                         <TD className="px-2 py-3 border-b border-black/10 dark:border-neutral-800">-</TD>
                         <TD className="px-2 py-3 text-center border-b border-black/10 dark:border-neutral-800">جمع</TD>
@@ -951,10 +951,7 @@ const sortedProjects = useMemo(() => {
                         })();
 
                         return (
-                          <TR
-                            key={code || idx}
-                            className="text-center border-t border-black/10 odd:bg-black/[0.02] even:bg-black/[0.04] hover:bg-black/[0.06] transition-colors dark:border-neutral-800 dark:odd:bg-white/5 dark:even:bg-white/10 dark:hover:bg-white/15"
-                          >
+                          <TR key={code || idx} className="text-center hover:bg-black/[0.06] transition-colors dark:hover:bg-white/15">
                             <TD className="px-2 py-3">{toFaDigits(idx + 1)}</TD>
 
                             <TD className="px-2 py-3 text-center whitespace-nowrap">
