@@ -3097,11 +3097,11 @@ try {
   }, 0);
 } catch {}
 
-    if (!newId) throw new Error("save_failed");
-    const letterId = Number(newId) || newId;
-    if (queue.length > 0) {
-      for (const f of queue) {
-        const fileToSend = f.optimizedFile || f.file;
+	    if (!newId) throw new Error("save_failed");
+	    const letterId = Number(newId) || newId;
+	    if (queue.length > 0) {
+	      for (const f of queue) {
+	        const fileToSend = f.optimizedFile || f.file;
         setDocFilesFor(kind, (prev) =>
           prev.map((x) => (x.id === f.id ? { ...x, status: "uploading", progress: 0, error: "" } : x))
         );
@@ -3126,12 +3126,16 @@ try {
           setDocFilesFor(kind, (prev) =>
             prev.map((x) => (x.id === f.id ? { ...x, status: "error", error: e?.message || "خطا در آپلود فایل." } : x))
           );
-        }
-      }
-    }
-    resetForm();
-    setFormOpen(false);
-  };
+	        }
+	      }
+	      try {
+	        // بعد از آپلود فایل‌ها، لیست را از سرور تازه کن تا attachments واقعی نمایش داده شود.
+	        await refetchLetters();
+	      } catch {}
+	    }
+	    resetForm();
+	    setFormOpen(false);
+	  };
 
  const deleteLetter = async (id) => {
   const ok = window.confirm("حذف شود؟");
