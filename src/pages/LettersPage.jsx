@@ -2694,66 +2694,69 @@ const kindRowTintCls = (kind) => {
   };
 
   const startEdit = (l) => {
-const kind = letterKindOf(l);
-    const id = String(letterIdOf(l));
+    const kind = letterKindOf(l);
+    const id = String(letterIdOf(l) || "").trim();
+    if (!id) return;
+
     const sn = l?.secretariat_note ?? l?.secretariatNote ?? "";
-
-if (kind === "incoming") setIncomingSecretariatNote(sn);
-else if (kind === "outgoing") setOutgoingSecretariatNote(sn);
-else setInternalSecretariatNote(sn);
-
-    
+    if (kind === "incoming") setIncomingSecretariatNote(sn);
+    else if (kind === "outgoing") setOutgoingSecretariatNote(sn);
+    else setInternalSecretariatNote(sn);
 
     setEditingId(id);
     setFormOpen(true);
     setFormKind(kind);
 
     const rawCat = String(l?.category ?? l?.category_name ?? l?.categoryTitle ?? "").trim();
-
-// سازگاری با دیتاهای قدیمی شما که category="project" بوده
+    // سازگاری با دیتاهای قدیمی شما که category="project" بوده
     const mappedCat = rawCat === "project" ? "اسناد پروژه ای" : (rawCat || "نامه");
-    setCategory(mappedCat);
-
-    // طبقه بندی (اگر از بک‌اند اومد، وگرنه پیش‌فرض)
-    const rawClass =
-      String(l?.classification ?? l?.doc_classification ?? l?.confidentiality ?? "").trim();
-    setClassification(rawClass || "عادی");
-
+    const rawClass = String(l?.classification ?? l?.doc_classification ?? l?.confidentiality ?? "").trim();
     const pid = l?.project_id ?? l?.projectId ?? l?.projectID ?? null;
-    setProjectId(pid ? String(pid) : "");
-// ✅ برای نامه‌های داخلی: پر کردن واحد در حالت Edit
-const uid = l?.unit_id ?? l?.unitId ?? l?.unit ?? l?.internal_unit_id ?? "";
-setInternalUnitId(uid ? String(uid) : "");
+    const formProjectId = pid ? String(pid) : "";
+    const formLetterNo = String(l?.letter_no ?? l?.letterNo ?? l?.no ?? l?.number ?? "");
+    const formLetterDate = String(l?.letter_date ?? l?.letterDate ?? l?.date ?? "");
+    const fromVal = String(l?.from_name ?? l?.fromName ?? l?.from ?? "");
+    const toVal = String(l?.to_name ?? l?.toName ?? l?.to ?? "");
+    const orgVal = String(l?.org_name ?? l?.orgName ?? l?.org ?? l?.organization ?? l?.company ?? "");
+    const subVal = String(l?.subject ?? l?.title ?? "");
 
-    setLetterNo(String(l?.letter_no ?? l?.letterNo ?? l?.no ?? l?.number ?? ""));
-    setLetterDate(String(l?.letter_date ?? l?.letterDate ?? l?.date ?? ""));
+    if (kind === "incoming") {
+      setIncomingForm((p) => ({
+        ...p,
+        classification: rawClass || "عادی",
+        projectId: formProjectId,
+        letterNo: formLetterNo,
+        letterDate: formLetterDate,
+        fromName: fromVal,
+        toName: toVal,
+        orgName: orgVal,
+        subject: subVal,
+      }));
+    } else if (kind === "outgoing") {
+      setOutgoingForm((p) => ({
+        ...p,
+        category: mappedCat,
+        projectId: formProjectId,
+        letterNo: formLetterNo,
+        letterDate: formLetterDate,
+        fromName: fromVal,
+        toName: toVal,
+        orgName: orgVal,
+        subject: subVal,
+      }));
+    } else {
+      setInternalForm((p) => ({
+        ...p,
+        projectId: formProjectId,
+        letterNo: formLetterNo,
+        letterDate: formLetterDate,
+        subject: subVal,
+      }));
+    }
 
-const fromVal = String(l?.from_name ?? l?.fromName ?? l?.from ?? "");
-if (kind === "outgoing") {
-  setOutgoingForm((p) => ({ ...p, fromName: fromVal }));
-} else if (kind === "incoming") {
-  setIncomingForm((p) => ({ ...p, fromName: fromVal }));
-} else {
-  setInternalForm((p) => ({ ...p, fromName: fromVal }));
-}
-
-const toVal = String(l?.to_name ?? l?.toName ?? l?.to ?? "");
-
-if (kind === "incoming") {
-  setIncomingForm((p) => ({ ...p, toName: toVal }));
-} else if (kind === "outgoing") {
-  setOutgoingForm((p) => ({ ...p, toName: toVal }));
-}
-    setOrgName(String(l?.org_name ?? l?.orgName ?? l?.org ?? l?.organization ?? l?.company ?? ""));
-const subVal = String(l?.subject ?? l?.title ?? "");
-
-if (kind === "incoming") {
-  setIncomingForm((p) => ({ ...p, subject: subVal }));
-} else if (kind === "outgoing") {
-  setOutgoingForm((p) => ({ ...p, subject: subVal }));
-} else {
-  setInternalForm((p) => ({ ...p, subject: subVal }));
-}
+    // ✅ برای نامه‌های داخلی: پر کردن واحد در حالت Edit
+    const uid = l?.unit_id ?? l?.unitId ?? l?.unit ?? l?.internal_unit_id ?? "";
+    setInternalUnitId(uid ? String(uid) : "");
 
 
     const ha = l?.has_attachment ?? l?.hasAttachment ?? false;
@@ -2959,10 +2962,7 @@ const payload = {
     : "عادی",
 
   project_id: (() => {
-    const pid =
-      kind === "outgoing" ? outgoingForm.projectId :
-      kind === "incoming" ? incomingForm.projectId :
-      null;
+    const pid = f?.projectId ?? null;
     const n = pid ? Number(pid) : null;
     return n && Number.isFinite(n) ? n : null;
   })(),
