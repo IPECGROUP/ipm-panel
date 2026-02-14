@@ -1537,9 +1537,9 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                         </tr>
                       </THead>
 
-                      <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100">
+                      <tbody className={tablePreset.body}>
                     {visibleRoots.length > 0 && (
-                      <TR className="text-center border-t border-black/10 bg-black/[0.035] font-semibold dark:border-neutral-800 dark:bg-white/10">
+                      <TR className="text-center bg-black/[0.035] font-semibold dark:bg-white/10">
                         <TD className="px-2 py-2 border-b border-black/10 dark:border-neutral-800">-</TD>
                         <TD className="px-2 py-2 text-center border-b border-black/10 dark:border-neutral-800">جمع</TD>
                         {dynamicMonths.map((m) => (
@@ -1566,7 +1566,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                     {displayRows.map((x, idx) => {
                       if (x.type === 'addChild') {
                         return (
-                          <TR key={'addchild-' + x.parentId} className="border-t border-black/10 bg-black/[0.012] dark:border-neutral-800 dark:bg-white/5">
+                          <TR key={'addchild-' + x.parentId} className="bg-black/[0.012] dark:bg-white/5">
                             <TD className="px-2 py-2 text-center text-black/60 dark:text-neutral-400">—</TD>
                             <TD className="px-2 py-2 text-center">
                               <div className="flex items-center justify-center" style={{ paddingInlineStart: Math.min(44, x.depth * 18) }}>
@@ -1603,10 +1603,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                               : (r.title || '—'));
 
                       return (
-                        <TR
-                          key={r.id}
-                          className="text-center border-t border-black/10 odd:bg-black/[0.018] even:bg-black/[0.032] hover:bg-black/[0.05] transition-colors dark:border-neutral-800 dark:odd:bg-white/5 dark:even:bg-white/10 dark:hover:bg-white/15"
-                        >
+                        <TR key={r.id} className="text-center hover:bg-black/[0.05] transition-colors dark:hover:bg-white/15">
                           <TD className="px-2 py-2">{toFaDigits(idxText || (idx + 1))}</TD>
 
                           <TD className="px-2 py-2 text-center whitespace-nowrap">
@@ -1690,7 +1687,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                     })}
 
                     {visibleRoots.length === 0 && (
-                      <TR className="border-t border-black/10 dark:border-neutral-800">
+                      <TR>
                         <TD colSpan={totalCols} className={tablePreset.emptyRow}>
                           از کپسول‌های بالا استفاده کنید تا موارد به جدول اصلی اضافه/کم شوند.
                         </TD>
