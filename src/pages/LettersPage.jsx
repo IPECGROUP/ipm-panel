@@ -3574,21 +3574,20 @@ useEffect(() => {
           {/* Header INSIDE card */}
           <div className="flex items-center justify-between gap-3 mb-3">
             <div className="text-lg md:text-xl font-bold">اسناد و نامه ها</div>
-            <button
-              type="button"
-              onClick={() => {
-                setFormOpen((v) => {
-                  const next = !v;
-                  if (next) {
-                  } else {
-                    setEditingId(null);
-                  }
-                  return next;
-                });
-              }}
-              className={
-                "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
-                (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
+	            <button
+	              type="button"
+	              onClick={() => {
+	                if (formOpen) {
+	                  setEditingId(null);
+	                  resetForm();
+	                  setFormOpen(false);
+	                  return;
+	                }
+	                setFormOpen(true);
+	              }}
+	              className={
+	                "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
+	                (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
               }
               title={formOpen ? "بستن" : "افزودن"}
               aria-label={formOpen ? "بستن" : "افزودن"}
@@ -3819,14 +3818,19 @@ useEffect(() => {
         const activeColor = TAB_ACTIVE_BG[t.id];
 
         return (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setFormKind(t.id)}
-            className={tabSmCls(active)}
-            style={
-              active
-                ? { backgroundColor: activeColor, borderColor: activeColor }
+	          <button
+	            key={t.id}
+	            type="button"
+	            onClick={() => {
+	              if (formKind === t.id) return;
+	              setEditingId(null);
+	              resetForm();
+	              setFormKind(t.id);
+	            }}
+	            className={tabSmCls(active)}
+	            style={
+	              active
+	                ? { backgroundColor: activeColor, borderColor: activeColor }
                 : { borderColor: activeColor }
             }
           >
