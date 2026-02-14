@@ -5419,17 +5419,51 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                         )}
                       </div>
 
-                      <div className="lg:w-[44%] h-full border-t lg:border-t-0 lg:border-r border-black/10 dark:border-white/10 overflow-hidden">
-                        <div className="h-full flex flex-col">
-                          <div className="px-4 py-3 flex items-center justify-between gap-2 border-b border-black/10 dark:border-white/10">
-                            <div className="text-sm font-semibold">پیش نمایش</div>
-                          </div>
+	                      <div className="lg:w-[44%] h-full border-t lg:border-t-0 lg:border-r border-black/10 dark:border-white/10 overflow-hidden">
+	                        <div className="h-full flex flex-col">
+	                          <div className="px-4 py-3 flex items-center justify-between gap-2 border-b border-black/10 dark:border-white/10">
+	                            <div className="text-sm font-semibold">پیش نمایش</div>
+	                          </div>
 
-                          <div className="flex-1 p-3 overflow-hidden flex flex-col">
-                            <div className={"flex-1 rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")}>
-                              {currentViewUrl ? (
-                                isPdfView ? (
-                                <object
+	                          <div className="flex-1 p-3 overflow-hidden flex flex-col">
+	                            {viewAttachments.length > 1 ? (
+	                              <div className="mb-2">
+	                                <div className={theme === "dark" ? "text-xs text-white/60 mb-1" : "text-xs text-neutral-600 mb-1"}>
+	                                  انتخاب فایل ({toFaDigits(viewAttIdx + 1)} / {toFaDigits(viewAttachments.length)})
+	                                </div>
+	                                <div className="flex flex-wrap gap-2">
+	                                  {viewAttachments.map((a, i) => {
+	                                    const n = attachmentNameOf(a) || `فایل ${toFaDigits(i + 1)}`;
+	                                    const active = (viewAttIdx || 0) === i;
+	                                    return (
+	                                      <button
+	                                        key={`preview_pick_${i}`}
+	                                        type="button"
+	                                        onClick={() => setViewAttIdx(i)}
+	                                        className={
+	                                          "h-9 px-3 rounded-xl border transition text-xs max-w-[180px] truncate " +
+	                                          (active
+	                                            ? theme === "dark"
+	                                              ? "border-white/15 bg-white text-black"
+	                                              : "border-black/15 bg-black text-white"
+	                                            : theme === "dark"
+	                                            ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+	                                            : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
+	                                        }
+	                                        title={n}
+	                                      >
+	                                        {n}
+	                                      </button>
+	                                    );
+	                                  })}
+	                                </div>
+	                              </div>
+	                            ) : null}
+
+	                            <div className={"flex-1 rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")}>
+	                              {currentViewUrl ? (
+	                                isPdfView ? (
+	                                <object
                                   key={currentViewUrl}
                                   data={(currentViewUrl || "") + "#view=FitH"}
                                   type="application/pdf"
