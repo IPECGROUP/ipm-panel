@@ -961,21 +961,34 @@ useEffect(() => {
   let mounted = true;
 
   (async () => {
-    const p = await fetchLetterPrefs();
-    if (!mounted) return;
+    const localQuick = loadFormQuickLocal(user?.id);
+    if (localQuick.length) {
+      setFormTagPrefs({
+        incoming: localQuick,
+        outgoing: localQuick,
+        internal: localQuick,
+      });
+      lastSavedFormTagsRef.current = JSON.stringify(localQuick);
+    }
+    try {
+      const p = await fetchLetterPrefs();
+      if (!mounted) return;
 
-    // 1) pinned tags for FILTER bar  -> از all_tag_ids
-    const pinned = normalizeIdList(p?.all_tag_ids || []).slice(0, TAG_PREFS_LIMIT);
-    setFilterTagPinnedIds(pinned);
+      // 1) pinned tags for FILTER bar  -> از all_tag_ids
+      const pinned = normalizeIdList(p?.all_tag_ids || []).slice(0, TAG_PREFS_LIMIT);
+      setFilterTagPinnedIds(pinned);
 
-    // 2) quick tags for FORM (shared بین هر سه تب)
-    const formQuick = normalizeIdList(p?.incoming_tag_ids || []).slice(0, TAG_PREFS_LIMIT);
-    setFormTagPrefs({
-      incoming: formQuick,
-      outgoing: formQuick,
-      internal: formQuick,
-    });
-    lastSavedFormTagsRef.current = JSON.stringify(formQuick);
+      // 2) quick tags for FORM (shared بین هر سه تب)
+      const serverQuick = normalizeIdList(p?.incoming_tag_ids || []).slice(0, TAG_PREFS_LIMIT);
+      const formQuick = serverQuick.length ? serverQuick : localQuick;
+      setFormTagPrefs({
+        incoming: formQuick,
+        outgoing: formQuick,
+        internal: formQuick,
+      });
+      lastSavedFormTagsRef.current = JSON.stringify(formQuick);
+      saveFormQuickLocal(user?.id, formQuick);
+    } catch {}
 
     prefsHydratedRef.current = true;
   })();
@@ -1393,6 +1406,24 @@ const TAG_PREFS_SCOPE = "letters_filter"; // اسم کلید برای بک‌ا�
 const TAG_PREFS_LIMIT = 24;
 
 const tagPrefsLsKey = (scope) => `tag_prefs_v1:${scope}:u${String(user?.id || "0")}`;
+const formQuickLsKey = (uid) => `letters_form_quick_v1:u${String(uid || "0")}`;
+
+const loadFormQuickLocal = (uid) => {
+  try {
+    const raw = localStorage.getItem(formQuickLsKey(uid));
+    const parsed = raw ? JSON.parse(raw) : null;
+    return normalizeIdList(parsed?.ids || []).slice(0, TAG_PREFS_LIMIT);
+  } catch {
+    return [];
+  }
+};
+
+const saveFormQuickLocal = (uid, ids) => {
+  try {
+    const clean = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
+    localStorage.setItem(formQuickLsKey(uid), JSON.stringify({ t: Date.now(), ids: clean }));
+  } catch {}
+};
 
 // ===== Per-user selected tags for FORM (incoming/outgoing/internal) — stored in backend (/tag-prefs) =====
 const FORM_TAG_PREFS_SCOPE = {
@@ -1414,11 +1445,17 @@ const saveFormTagPrefs = async (_which, ids) => {
 };
 
 const loadFormTagPrefs = async (_which) => {
-  const p = await fetchLetterPrefs();
+  const localIds = loadFormQuickLocal(user?.id);
+  let p = {};
+  try {
+    p = await fetchLetterPrefs();
+  } catch {}
 
   // ✅ یک منبع واحد برای فرم: incoming_tag_ids (یا هرکدوم که می‌خوای)
-  const ids = normalizeIdList(p?.incoming_tag_ids || []).slice(0, TAG_PREFS_LIMIT);
+  const serverIds = normalizeIdList(p?.incoming_tag_ids || []).slice(0, TAG_PREFS_LIMIT);
+  const ids = serverIds.length ? serverIds : localIds;
 lastSavedFormTagsRef.current = JSON.stringify(ids);
+  saveFormQuickLocal(user?.id, ids);
 
   // ✅ هم formTagPrefs هر سه کلید یکی شود (برای هیدرات شدن فرم)
   setFormTagPrefs((prev) => ({
@@ -2158,6 +2195,7 @@ const setFormTagsAllAndPersist = async (ids) => {
   const baseQuick = normalizeIdList(formTagPrefs?.incoming || []).slice(0, TAG_PREFS_LIMIT);
   const quick = normalizeIdList([...next, ...baseQuick]).slice(0, TAG_PREFS_LIMIT);
   setFormTagPrefs((p) => ({ ...p, incoming: quick, outgoing: quick, internal: quick }));
+  saveFormQuickLocal(user?.id, quick);
 
   // ✅ اگر quick list تغییری نکرده، اصلاً POST نزن
   const sig = JSON.stringify(quick);
