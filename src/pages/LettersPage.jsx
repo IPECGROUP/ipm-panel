@@ -2963,9 +2963,11 @@ const secretariatNote =
     const secretariatNo =
       kind === "incoming" ? incomingSecretariatNo : kind === "outgoing" ? outgoingSecretariatNo : internalSecretariatNo;
 
+        const formReceiverName =
+      kind === "incoming" ? incomingReceiverName : kind === "outgoing" ? outgoingReceiverName : internalReceiverName;
         const receiverName =
-      (loggedInUserName || "").trim() ||
-      (kind === "incoming" ? incomingReceiverName : kind === "outgoing" ? outgoingReceiverName : internalReceiverName);
+      String(formReceiverName || "").trim() ||
+      (editingId ? "" : String(loggedInUserName || "").trim());
 
 
     const files = Array.isArray(docFilesByType?.[kind]) ? docFilesByType[kind] : [];
@@ -4662,7 +4664,18 @@ aria-invalid={fieldHasError(formKind, "subject")}
         </div>
         <div>
           <div className={labelCls}>مسئول دبیرخانه</div>
-          <input value={loggedInUserName || ""} readOnly className={inputCls + " opacity-90"} type="text" />
+          <input
+            value={
+              (formKind === "incoming"
+                ? incomingReceiverName
+                : formKind === "outgoing"
+                ? outgoingReceiverName
+                : internalReceiverName) || (!editingId ? loggedInUserName || "" : "")
+            }
+            readOnly
+            className={inputCls + " opacity-90"}
+            type="text"
+          />
         </div>
         <div>
   <div className={labelCls}>توضیح</div>
