@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import Shell from "../components/layout/Shell";
 import { Card } from "../components/ui/Card";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table";
+import { baseCurrenciesTablePreset as tablePreset } from "../components/ui/tablePresets";
 import { usePageAccess } from "../hooks/usePageAccess";
 
 // تب‌ها به‌صورت ثابت بیرون کامپوننت
@@ -714,23 +715,16 @@ if (active === "projects") {
         </div>
 
         <TableWrap>
-          <div
-            className="bg-white rounded-2xl overflow-hidden border border-black/10 shadow-sm
-                          text-black dark:bg-neutral-900 dark:text-neutral-200 dark:border-neutral-800"
-          >
-            <table
-              className="w-full text-sm [&_th]:text-center [&_td]:text-center"
-              dir="rtl"
-            >
+          <div className={tablePreset.outer}>
+            <div className={tablePreset.innerPad}>
+              <div className={tablePreset.frame + " shadow-sm"}>
+                <table className={tablePreset.table} dir="rtl">
               <THead>
-                <tr
-                  className="bg-black/5 text-black border-y border-black/10
-                               dark:bg-white/5 dark:text-neutral-100 dark:border-neutral-700"
-                >
-                  <TH className="!text-center py-3 w-16 !text-black dark:!text-neutral-100">
+                <tr className={tablePreset.headRow}>
+                  <TH className={`w-16 ${tablePreset.th}`}>
                     #
                   </TH>
-                  <TH className="!text-center py-3 w-56 !text-black dark:!text-neutral-100">
+                  <TH className={`w-56 ${tablePreset.th}`}>
                     <div className="flex items-center justify-center gap-1 w-full">
                       <span>{budgetCodeHeader}</span>
                       <button
@@ -756,43 +750,37 @@ if (active === "projects") {
                       </button>
                     </div>
                   </TH>
-                  <TH className="!text-center py-3 !text-black dark:!text-neutral-100">
+                  <TH className={tablePreset.th}>
                     نام بودجه
                   </TH>
-                  <TH className="!text-center py-3 w-40 !text-black dark:!text-neutral-100">
+                  <TH className={`w-40 ${tablePreset.th}`}>
                     آخرین برآورد
                   </TH>
-                  <TH className="!text-center py-3 w-44 !text-black dark:!text-neutral-100">
+                  <TH className={`w-44 ${tablePreset.th}`}>
                     مجموع تخصیص‌ها
                   </TH>
-                  <TH className="!text-center py-3 w-48 !text-black dark:!text-neutral-100">
+                  <TH className={`w-48 ${tablePreset.th}`}>
                     تخصیص جدید
                   </TH>
-                  <TH className="!text-center py-3 w-[28ch] !text-black dark:!text-neutral-100">
+                  <TH className={`w-[28ch] ${tablePreset.th}`}>
                     شرح
                   </TH>
-                  <TH className="!text-center py-3 w-28 !text-black dark:!text-neutral-100">
+                  <TH className={`w-28 ${tablePreset.th}`}>
                     اقدامات
                   </TH>
                 </tr>
               </THead>
 
-              <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100">
+              <tbody className={tablePreset.body}>
                 {loading ? (
                   <TR>
-                    <TD
-                      colSpan={8}
-                      className="!text-center text-black/60 dark:text-neutral-400 py-3"
-                    >
+                    <TD colSpan={8} className={tablePreset.emptyRow}>
                       در حال بارگذاری…
                     </TD>
                   </TR>
                 ) : (rowsToRender || []).length === 0 ? (
                   <TR>
-                    <TD
-                      colSpan={8}
-                      className="!text-center text-black/60 dark:text-neutral-400 py-3"
-                    >
+                    <TD colSpan={8} className={tablePreset.emptyRow}>
                       {active === "projects" && !projectId
                         ? "ابتدا پروژه را انتخاب کنید"
                         : "موردی یافت نشد."}
@@ -804,35 +792,33 @@ if (active === "projects") {
                       Number(r.totalAlloc || 0) + Number(r.allocRaw || 0);
                     const limit = Number(r.lastAmount || 0);
                     const isOver = newTotal > limit;
+                    const isLast = idx === (rowsToRender || []).length - 1;
+                    const tdBorder = isLast ? "" : tablePreset.rowDivider;
 
                     return (
-                      <TR
-                        key={r.code}
-                        className="border-t border-black/10 odd:bg-black/[0.02] even:bg-black/[0.04] hover:bg-black/[0.06] transition-colors
-                                     dark:border-neutral-800 dark:odd:bg-white/5 dark:even:bg-white/10 dark:hover:bg-white/15 last:border-b"
-                      >
-                        <TD className="px-2.5 py-2 align-middle !text-center">
+                      <TR key={r.code} className="transition-colors hover:bg-black/[0.03] dark:hover:bg-white/10">
+                        <TD className={`px-2.5 py-2 align-middle !text-center ${tdBorder}`}>
                           {toFaDigits(idx + 1)}
                         </TD>
-                        <TD className="px-2.5 py-2 align-middle">
+                        <TD className={`px-2.5 py-2 align-middle ${tdBorder}`}>
                           <div className="flex justify-center ltr">
                             {toFaDigits(renderDisplayBudgetCode(r.code))}
                           </div>
                         </TD>
-                        <TD className="px-2.5 py-2 whitespace-normal break-words leading-snug align-middle max-w-[28ch] mx-auto !text-center">
+                        <TD className={`px-2.5 py-2 whitespace-normal break-words leading-snug align-middle max-w-[28ch] mx-auto !text-center ${tdBorder}`}>
                           {r.name || "—"}
                         </TD>
-                        <TD className="px-2.5 py-2 align-middle">
+                        <TD className={`px-2.5 py-2 align-middle ${tdBorder}`}>
                           <div className="flex justify-center ltr">
                             {toFaDigits(formatMoney(r.lastAmount || 0))}
                           </div>
                         </TD>
-                        <TD className="px-2.5 py-2 align-middle">
+                        <TD className={`px-2.5 py-2 align-middle ${tdBorder}`}>
                           <div className="flex justify-center ltr">
                             {toFaDigits(formatMoney(r.totalAlloc || 0))}
                           </div>
                         </TD>
-                        <TD className="px-2.5 py-2 align-middle !text-center">
+                        <TD className={`px-2.5 py-2 align-middle !text-center ${tdBorder}`}>
                           <div className="flex flex-col">
                             <input
                               ref={(el) => (moneyRefs.current[r.code] = el)}
@@ -863,7 +849,7 @@ if (active === "projects") {
                             )}
                           </div>
                         </TD>
-                        <TD className="px-2.5 py-2 align-middle !text-center">
+                        <TD className={`px-2.5 py-2 align-middle !text-center ${tdBorder}`}>
                           <textarea
                             ref={(el) => (descRefs.current[r.code] = el)}
                             className="w-full rounded-xl px-2 py-1.5 whitespace-normal break-words leading-snug outline-none
@@ -875,7 +861,7 @@ if (active === "projects") {
                             placeholder="شرح تخصیص…"
                           />
                         </TD>
-                        <TD className="px-2.5 py-2 align-middle !text-center">
+                        <TD className={`px-2.5 py-2 align-middle !text-center ${tdBorder}`}>
                           <div className="inline-flex items-center justify-center gap-2">
                             <button
                               onClick={() => removeRow(r.code)}
@@ -898,7 +884,9 @@ if (active === "projects") {
                   })
                 )}
               </tbody>
-            </table>
+                </table>
+              </div>
+            </div>
           </div>
         </TableWrap>
 
