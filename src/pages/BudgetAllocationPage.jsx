@@ -792,33 +792,31 @@ if (active === "projects") {
                       Number(r.totalAlloc || 0) + Number(r.allocRaw || 0);
                     const limit = Number(r.lastAmount || 0);
                     const isOver = newTotal > limit;
-                    const isLast = idx === (rowsToRender || []).length - 1;
-                    const tdBorder = isLast ? "" : tablePreset.rowDivider;
 
                     return (
-                      <TR key={r.code} className="transition-colors hover:bg-black/[0.03] dark:hover:bg-white/10">
-                        <TD className={`px-2.5 py-2 align-middle !text-center ${tdBorder}`}>
+                      <TR key={r.code} className="transition-colors hover:bg-black/[0.05] dark:hover:bg-white/15">
+                        <TD className="px-2.5 py-2 align-middle !text-center">
                           {toFaDigits(idx + 1)}
                         </TD>
-                        <TD className={`px-2.5 py-2 align-middle ${tdBorder}`}>
+                        <TD className="px-2.5 py-2 align-middle">
                           <div className="flex justify-center ltr">
                             {toFaDigits(renderDisplayBudgetCode(r.code))}
                           </div>
                         </TD>
-                        <TD className={`px-2.5 py-2 whitespace-normal break-words leading-snug align-middle max-w-[28ch] mx-auto !text-center ${tdBorder}`}>
+                        <TD className="px-2.5 py-2 whitespace-normal break-words leading-snug align-middle max-w-[28ch] mx-auto !text-center">
                           {r.name || "—"}
                         </TD>
-                        <TD className={`px-2.5 py-2 align-middle ${tdBorder}`}>
+                        <TD className="px-2.5 py-2 align-middle">
                           <div className="flex justify-center ltr">
                             {toFaDigits(formatMoney(r.lastAmount || 0))}
                           </div>
                         </TD>
-                        <TD className={`px-2.5 py-2 align-middle ${tdBorder}`}>
+                        <TD className="px-2.5 py-2 align-middle">
                           <div className="flex justify-center ltr">
                             {toFaDigits(formatMoney(r.totalAlloc || 0))}
                           </div>
                         </TD>
-                        <TD className={`px-2.5 py-2 align-middle !text-center ${tdBorder}`}>
+                        <TD className="px-2.5 py-2 align-middle !text-center">
                           <div className="flex flex-col">
                             <input
                               ref={(el) => (moneyRefs.current[r.code] = el)}
@@ -849,7 +847,7 @@ if (active === "projects") {
                             )}
                           </div>
                         </TD>
-                        <TD className={`px-2.5 py-2 align-middle !text-center ${tdBorder}`}>
+                        <TD className="px-2.5 py-2 align-middle !text-center">
                           <textarea
                             ref={(el) => (descRefs.current[r.code] = el)}
                             className="w-full rounded-xl px-2 pt-2 pb-1.5 whitespace-normal break-words leading-snug outline-none
@@ -861,7 +859,7 @@ if (active === "projects") {
                             placeholder="شرح تخصیص…"
                           />
                         </TD>
-                        <TD className={`px-2.5 py-2 align-middle !text-center ${tdBorder}`}>
+                        <TD className="px-2.5 py-2 align-middle !text-center">
                           <div className="inline-flex items-center justify-center gap-2">
                             <button
                               onClick={() => removeRow(r.code)}
