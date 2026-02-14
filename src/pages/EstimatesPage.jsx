@@ -908,7 +908,8 @@ const sortedProjects = useMemo(() => {
         <head>
           <meta charset="utf-8" />
           <style>
-            body { font-family: Vazirmatn, Vazir, IRANSans, Segoe UI, Tahoma, sans-serif; direction: rtl; }
+            body { font-family: Vazir, Vazirmatn, IRANSans, Segoe UI, Tahoma, sans-serif; direction: rtl; }
+            table, th, td, .meta { font-family: Vazir, Vazirmatn, IRANSans, Segoe UI, Tahoma, sans-serif; }
             .meta { margin-bottom: 10px; font-size: 11pt; }
             .meta div { margin-bottom: 4px; }
             table { border-collapse: collapse; width: 100%; font-size: 11pt; }
@@ -1355,7 +1356,7 @@ const sortedProjects = useMemo(() => {
             aria-label="خروجی اکسل"
             title="خروجی اکسل"
           >
-            <img src="/images/icons/excel.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
+            <img src="/images/icons8-excel-48.png" alt="" className="w-5 h-5" />
           </button>
 
           <button
