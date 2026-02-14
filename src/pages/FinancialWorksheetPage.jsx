@@ -1,4 +1,5 @@
-﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+// کاربرگ مالی
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
@@ -247,6 +248,16 @@ export default function FinancialWorksheetPage() {
   const [currencySourceItems, setCurrencySourceItems] = useState([]);
   const [currencyId, setCurrencyId] = useState("");
   const [currencySourceId, setCurrencySourceId] = useState("");
+  const [receiptTypeRows, setReceiptTypeRows] = useState([{ id: Date.now() + Math.random(), type: "", number: "", otherDescription: "" }]);
+  const [receiptJalaliDate, setReceiptJalaliDate] = useState("");
+  const [receiptReceivedAmount, setReceiptReceivedAmount] = useState("");
+  const [receiptCurrencyId, setReceiptCurrencyId] = useState("");
+  const [receiptCurrencySourceId, setReceiptCurrencySourceId] = useState("");
+  const [receiptRialDescription, setReceiptRialDescription] = useState("");
+  const [receiptDescription, setReceiptDescription] = useState("");
+  const [receiptOtherOpen, setReceiptOtherOpen] = useState(false);
+  const [receiptOtherRowId, setReceiptOtherRowId] = useState(null);
+  const [receiptOtherDraft, setReceiptOtherDraft] = useState("");
 
   const [worksheetRows, setWorksheetRows] = useState([]);
   const [rowsLoading, setRowsLoading] = useState(false);
@@ -304,6 +315,24 @@ export default function FinancialWorksheetPage() {
       date: String(r?.jalali_date ?? r?.date_jalali ?? r?.date ?? ""),
       grossAmount: Number(r?.gross_amount ?? r?.grossAmount ?? r?.gross ?? 0) || 0,
       vatAmount: Number(r?.vat_amount ?? r?.vatAmount ?? r?.vat ?? 0) || 0,
+      receiptAmount: Number(r?.received_amount ?? r?.receivedAmount ?? r?.receipt_amount ?? r?.receiptAmount ?? r?.amount ?? r?.gross_amount ?? r?.grossAmount ?? 0) || 0,
+      receiptForeignAmount: Number(
+        r?.received_amount_foreign ??
+          r?.receivedAmountForeign ??
+          r?.receipt_amount_foreign ??
+          r?.receiptAmountForeign ??
+          r?.amount_foreign ??
+          r?.amountForeign ??
+          r?.vat_amount ??
+          r?.vatAmount ??
+          0,
+      ) || 0,
+      currencyId: String(r?.currency_id ?? r?.currencyId ?? r?.currency_type_id ?? r?.currencyTypeId ?? ""),
+      currencySourceId: String(r?.currency_source_id ?? r?.currencySourceId ?? ""),
+      description: String(r?.description ?? r?.desc ?? r?.notes ?? r?.note ?? ""),
+      rialDescription: String(r?.rial_description ?? r?.rialDescription ?? r?.description_rial ?? ""),
+      receiptType: String(r?.receipt_type ?? r?.receiptType ?? r?.type ?? ""),
+      receiptTypeOtherDescription: String(r?.receipt_type_other_description ?? r?.receiptTypeOtherDescription ?? r?.other_type_description ?? ""),
       currencySourceLabel: String(
         r?.currency_source_label ??
           r?.currencySourceLabel ??
@@ -347,6 +376,8 @@ export default function FinancialWorksheetPage() {
 
   const sumGross = useMemo(() => (worksheetRows || []).reduce((s, r) => s + Number(r.grossAmount || 0), 0), [worksheetRows]);
   const sumVat = useMemo(() => (worksheetRows || []).reduce((s, r) => s + Number(r.vatAmount || 0), 0), [worksheetRows]);
+  const sumReceiptAmount = useMemo(() => (worksheetRows || []).reduce((s, r) => s + Number(r.receiptAmount || 0), 0), [worksheetRows]);
+  const sumReceiptForeignAmount = useMemo(() => (worksheetRows || []).reduce((s, r) => s + Number(r.receiptForeignAmount || 0), 0), [worksheetRows]);
 
   const gregorianDate = useMemo(() => {
     const m = String(jalaliDate || "").match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
@@ -364,6 +395,63 @@ export default function FinancialWorksheetPage() {
 
   const readItemId = (it) => String(it?.id ?? it?.code ?? it?.value ?? it?.key ?? "");
   const readItemLabel = (it) => String(it?.label ?? it?.title ?? it?.name ?? it?.code ?? "").trim();
+  const receiptTypeOptions = [
+    { value: "prepayment", label: "پیش پرداخت" },
+    { value: "statement", label: "صورت وضعیت" },
+    { value: "interim", label: "علی الحساب" },
+    { value: "vat", label: "ارزش افزوده" },
+    { value: "other", label: "سایر" },
+  ];
+
+  const addReceiptTypeRow = () =>
+    setReceiptTypeRows((prev) => [...(Array.isArray(prev) ? prev : []), { id: Date.now() + Math.random(), type: "", number: "", otherDescription: "" }]);
+  const removeReceiptTypeRow = (id) => setReceiptTypeRows((prev) => prev.filter((r) => r.id !== id));
+  const updateReceiptTypeRow = (id, patch) =>
+    setReceiptTypeRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+
+  const openReceiptOtherPopup = (rowId, initialValue = "") => {
+    setReceiptOtherRowId(rowId);
+    setReceiptOtherDraft(initialValue);
+    setReceiptOtherOpen(true);
+  };
+  const closeReceiptOtherPopup = () => {
+    setReceiptOtherOpen(false);
+    setReceiptOtherRowId(null);
+    setReceiptOtherDraft("");
+  };
+  const saveReceiptOtherPopup = () => {
+    if (receiptOtherRowId != null) {
+      updateReceiptTypeRow(receiptOtherRowId, { otherDescription: receiptOtherDraft });
+    }
+    closeReceiptOtherPopup();
+  };
+
+  const receiptGregorianDate = useMemo(() => {
+    const m = String(receiptJalaliDate || "").match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+    if (!m) return "";
+    const g = jalaliToGregorian(Number(m[1]), Number(m[2]), Number(m[3]));
+    if (!g) return "";
+    return `${g.gy}-${pad2(g.gm)}-${pad2(g.gd)}`;
+  }, [receiptJalaliDate]);
+
+  const selectedReceiptCurrency = useMemo(
+    () => (currencyItems || []).find((it) => readItemId(it) === String(receiptCurrencyId)),
+    [currencyItems, receiptCurrencyId],
+  );
+  const selectedReceiptCurrencyLabel = useMemo(
+    () => readItemLabel(selectedReceiptCurrency),
+    [selectedReceiptCurrency],
+  );
+  const isRialCurrency = useMemo(() => {
+    const id = readItemId(selectedReceiptCurrency).toLowerCase();
+    const label = readItemLabel(selectedReceiptCurrency).toLowerCase();
+    return label.includes("ریال") || label.includes("irr") || label.includes("rial") || id.includes("irr") || id.includes("rial");
+  }, [selectedReceiptCurrency]);
+  const receiptAmountDisplay = useMemo(() => {
+    const raw = String(receiptReceivedAmount || "").replace(/,/g, "").trim();
+    if (!raw) return "";
+    return toFaDigits(formatMoney(Number(raw) || 0));
+  }, [receiptReceivedAmount]);
 
   const addOtherDebtRow = () =>
     setOtherDebts((prev) => [...prev, { id: Date.now() + Math.random(), amount: "", description: "" }]);
@@ -385,13 +473,36 @@ export default function FinancialWorksheetPage() {
     "h-10 w-10 inline-grid place-items-center !bg-transparent !ring-0 !border-0 !shadow-none hover:opacity-80 active:opacity-70 transition disabled:opacity-50";
 
   const handleViewRow = (row) => {
-    const no = row?.number ? toFaDigits(row.number) : "—";
     const dt = row?.date ? toFaDigits(row.date) : "—";
+    if (tab === "receipts") {
+      const amount = toFaDigits(formatMoney(row?.receiptAmount || 0));
+      const amountForeign = toFaDigits(formatMoney(row?.receiptForeignAmount || 0));
+      window.alert(`تاریخ: ${dt}\nمبلغ دریافت شده: ${amount}\nمبلغ دریافت شده ارزی: ${amountForeign}`);
+      return;
+    }
+    const no = row?.number ? toFaDigits(row.number) : "—";
     window.alert(`شماره: ${no}\nتاریخ: ${dt}`);
   };
 
   const handleEditRow = (row) => {
     setFormOpen(true);
+    if (tab === "receipts") {
+      setReceiptTypeRows([
+        {
+          id: Date.now() + Math.random(),
+          type: String(row?.receiptType || ""),
+          number: String(row?.number || ""),
+          otherDescription: String(row?.receiptTypeOtherDescription || ""),
+        },
+      ]);
+      setReceiptJalaliDate(String(row?.date || ""));
+      setReceiptReceivedAmount(String(row?.receiptAmount || ""));
+      setReceiptCurrencyId(String(row?.currencyId || ""));
+      setReceiptCurrencySourceId(String(row?.currencySourceId || ""));
+      setReceiptRialDescription(String(row?.rialDescription || ""));
+      setReceiptDescription(String(row?.description || ""));
+      return;
+    }
     setStatementNo(String(row?.number || ""));
     setJalaliDate(String(row?.date || ""));
     setGrossAmount(String(row?.grossAmount || ""));
@@ -473,38 +584,207 @@ export default function FinancialWorksheetPage() {
 
           {formOpen && (
             <div className="rounded-2xl border border-black/10 p-3 md:p-4 space-y-3 dark:border-white/10">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
-                <div className="lg:col-span-4">
-                  <label className="text-xs text-neutral-600 dark:text-white/60">شماره صورت وضعیت</label>
-                  <input
-                    value={statementNo}
-                    onChange={(e) => setStatementNo(e.target.value)}
-                    className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
-                    type="text"
-                    placeholder={tab === "receipts" ? "شماره دریافتی" : "شماره صورت وضعیت"}
-                  />
-                </div>
+              {tab === "receipts" ? (
+                <>
+                  {(receiptTypeRows || []).map((row, idx) => (
+                    <div key={row.id} className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-end">
+                      <div className="xl:col-span-5">
+                        <label className="text-xs text-neutral-600 dark:text-white/60">نوع دریافتی</label>
+                        <select
+                          value={row.type}
+                          onChange={(e) => {
+                            const nextType = e.target.value;
+                            updateReceiptTypeRow(row.id, { type: nextType, ...(nextType !== "other" ? { otherDescription: "" } : {}) });
+                            if (nextType === "other") openReceiptOtherPopup(row.id, row.otherDescription || "");
+                          }}
+                          className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                        >
+                          <option value="">انتخاب نوع دریافتی</option>
+                          {receiptTypeOptions.map((op) => (
+                            <option key={op.value} value={op.value}>
+                              {op.label}
+                            </option>
+                          ))}
+                        </select>
+                        {row.type === "other" ? (
+                          <div className="mt-1 flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openReceiptOtherPopup(row.id, row.otherDescription || "")}
+                              className="h-8 px-3 rounded-lg border text-xs border-black/15 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
+                            >
+                              شرح سایر
+                            </button>
+                            <span className="text-xs text-neutral-500 dark:text-white/60 truncate">
+                              {row.otherDescription ? row.otherDescription : "شرح ثبت نشده است"}
+                            </span>
+                          </div>
+                        ) : null}
+                      </div>
 
-                <div className="lg:col-span-4">
-                  <label className="text-xs text-neutral-600 dark:text-white/60">تاریخ شمسی</label>
-                  <div className="mt-1">
-                    <JalaliPopupDatePicker value={jalaliDate} onChange={setJalaliDate} />
+                      <div className="xl:col-span-5">
+                        <label className="text-xs text-neutral-600 dark:text-white/60">شماره</label>
+                        <input
+                          value={row.number}
+                          onChange={(e) => updateReceiptTypeRow(row.id, { number: e.target.value })}
+                          className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="شماره دریافتی"
+                        />
+                      </div>
+
+                      <div className="xl:col-span-2 flex xl:justify-end gap-2">
+                        {idx === 0 ? (
+                          <button type="button" onClick={addReceiptTypeRow} className="h-10 w-10 rounded-xl border border-black/15 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10 grid place-items-center" aria-label="افزودن نوع دریافتی" title="افزودن">
+                            <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
+                          </button>
+                        ) : (
+                          <button type="button" onClick={() => removeReceiptTypeRow(row.id)} className="h-10 w-10 rounded-xl border border-red-300 text-red-600 hover:bg-red-50 dark:border-red-500/50 dark:text-red-400 dark:hover:bg-red-500/10 grid place-items-center" aria-label="حذف این ردیف" title="حذف">
+                            <span className="text-xl leading-none">−</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
+                    <div className="lg:col-span-4">
+                      <label className="text-xs text-neutral-600 dark:text-white/60">تاریخ دریافت (شمسی)</label>
+                      <div className="mt-1">
+                        <JalaliPopupDatePicker value={receiptJalaliDate} onChange={setReceiptJalaliDate} />
+                      </div>
+                    </div>
+
+                    <div className="lg:col-span-4">
+                      <label className="text-xs text-neutral-600 dark:text-white/60">تاریخ میلادی (خودکار)</label>
+                      <input
+                        value={receiptGregorianDate}
+                        readOnly
+                        className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-black/5 text-neutral-900 border-black/10 dark:bg-white/10 dark:text-white dark:border-white/15"
+                        type="text"
+                        dir="ltr"
+                        placeholder="YYYY-MM-DD"
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
+                  <div className="lg:col-span-4">
+                    <label className="text-xs text-neutral-600 dark:text-white/60">شماره صورت وضعیت</label>
+                    <input
+                      value={statementNo}
+                      onChange={(e) => setStatementNo(e.target.value)}
+                      className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                      type="text"
+                      placeholder="شماره صورت وضعیت"
+                    />
+                  </div>
+
+                  <div className="lg:col-span-4">
+                    <label className="text-xs text-neutral-600 dark:text-white/60">تاریخ شمسی</label>
+                    <div className="mt-1">
+                      <JalaliPopupDatePicker value={jalaliDate} onChange={setJalaliDate} />
+                    </div>
+                  </div>
+
+                  <div className="lg:col-span-4">
+                    <label className="text-xs text-neutral-600 dark:text-white/60">تاریخ میلادی (خودکار)</label>
+                    <input
+                      value={gregorianDate}
+                      readOnly
+                      className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-black/5 text-neutral-900 border-black/10 dark:bg-white/10 dark:text-white dark:border-white/15"
+                      type="text"
+                      dir="ltr"
+                      placeholder="YYYY-MM-DD"
+                    />
                   </div>
                 </div>
+              )}
 
-                <div className="lg:col-span-4">
-                  <label className="text-xs text-neutral-600 dark:text-white/60">تاریخ میلادی (خودکار)</label>
-                  <input
-                    value={gregorianDate}
-                    readOnly
-                    className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-black/5 text-neutral-900 border-black/10 dark:bg-white/10 dark:text-white dark:border-white/15"
-                    type="text"
-                    dir="ltr"
-                    placeholder="YYYY-MM-DD"
-                  />
-                </div>
-              </div>
+              {tab === "receipts" ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3">
+                    <div className="xl:col-span-5">
+                      <label className="text-xs text-neutral-600 dark:text-white/60">مبلغ دریافت شده</label>
+                      <input
+                        value={receiptReceivedAmount}
+                        onChange={(e) => setReceiptReceivedAmount(e.target.value)}
+                        className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                        type="text"
+                        dir="ltr"
+                        placeholder="0"
+                      />
+                    </div>
 
+                    <div className="xl:col-span-3">
+                      <label className="text-xs text-neutral-600 dark:text-white/60">ارز</label>
+                      <select value={receiptCurrencyId} onChange={(e) => setReceiptCurrencyId(e.target.value)} className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15">
+                        <option value="">انتخاب ارز</option>
+                        {(currencyItems || []).map((it) => {
+                          const id = readItemId(it);
+                          if (!id) return null;
+                          return <option key={id} value={id}>{readItemLabel(it) || id}</option>;
+                        })}
+                      </select>
+                    </div>
+
+                    <div className="xl:col-span-4">
+                      <label className="text-xs text-neutral-600 dark:text-white/60">منشا</label>
+                      <select value={receiptCurrencySourceId} onChange={(e) => setReceiptCurrencySourceId(e.target.value)} className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15">
+                        <option value="">انتخاب منشا</option>
+                        {(currencySourceItems || []).map((it) => {
+                          const id = readItemId(it);
+                          if (!id) return null;
+                          return <option key={id} value={id}>{readItemLabel(it) || id}</option>;
+                        })}
+                      </select>
+                    </div>
+                  </div>
+
+                  {isRialCurrency ? (
+                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
+                      <div className="xl:col-span-12">
+                        <label className="text-xs text-neutral-600 dark:text-white/60">شرح</label>
+                        <input
+                          value={receiptRialDescription}
+                          onChange={(e) => setReceiptRialDescription(e.target.value)}
+                          className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                          type="text"
+                          placeholder="شرح..."
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3">
+                    <div className="xl:col-span-5">
+                      <label className="text-xs text-neutral-600 dark:text-white/60">مبلغ دریافت شده (نمایش)</label>
+                      <input value={receiptAmountDisplay} readOnly className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-black/5 text-neutral-900 border-black/10 dark:bg-white/10 dark:text-white dark:border-white/15" type="text" />
+                    </div>
+                    <div className="xl:col-span-3">
+                      <label className="text-xs text-neutral-600 dark:text-white/60">ارز</label>
+                      <div className="mt-1 h-11 rounded-xl border border-black/10 bg-black/5 dark:border-white/15 dark:bg-white/10 flex items-center px-3 text-sm text-neutral-600 dark:text-white/70">
+                        {selectedReceiptCurrencyLabel || "—"}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3">
+                    <div>
+                      <label className="text-xs text-neutral-600 dark:text-white/60">توضیحات</label>
+                      <textarea
+                        value={receiptDescription}
+                        onChange={(e) => setReceiptDescription(e.target.value)}
+                        className="mt-1 w-full min-h-[88px] rounded-xl px-3 py-2 border outline-none resize-y bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                        placeholder="توضیحات..."
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
               <div className="grid grid-cols-1 gap-3">
                 <div>
                   <label className="text-xs text-neutral-600 dark:text-white/60">شرح بابت</label>
@@ -690,6 +970,8 @@ export default function FinancialWorksheetPage() {
                   {uploadedFiles.length ? <span className="text-xs opacity-80">({toFaDigits(uploadedFiles.length)})</span> : null}
                 </button>
               </div>
+                </>
+              )}
             </div>
           )}
 
@@ -700,19 +982,62 @@ export default function FinancialWorksheetPage() {
                   <div className="overflow-x-auto">
                     <table className={tablePreset.table + " table-fixed text-[12px] md:text-[13px]"} dir="rtl">
                       <THead>
-                        <tr className={tablePreset.headRow + " sticky top-0 z-10"}>
-                          <TH className={`w-14 ${tablePreset.th}`}>#</TH>
-                          <TH className={`w-32 ${tablePreset.th}`}>{tab === "receipts" ? "شماره دریافتی" : "شماره صورت وضعیت"}</TH>
-                          <TH className={`w-32 ${tablePreset.th}`}>تاریخ</TH>
-                          <TH className={`w-40 ${tablePreset.th}`}>مبلغ ناخالص</TH>
-                          <TH className={`w-32 ${tablePreset.th}`}>VAT</TH>
-                          <TH className={`w-32 ${tablePreset.th}`}>ارز منشا</TH>
-                          <TH className={`w-36 ${tablePreset.th}`}>اقدامات</TH>
-                        </tr>
+                        {tab === "receipts" ? (
+                          <tr className={tablePreset.headRow + " sticky top-0 z-10"}>
+                            <TH className={`w-14 ${tablePreset.th}`}>#</TH>
+                            <TH className={`w-36 ${tablePreset.th}`}>تاریخ</TH>
+                            <TH className={`w-44 ${tablePreset.th}`}>مبلغ دریافت شده</TH>
+                            <TH className={`w-44 ${tablePreset.th}`}>مبلغ دریافت شده ارزی</TH>
+                            <TH className={`w-36 ${tablePreset.th}`}>اقدامات</TH>
+                          </tr>
+                        ) : (
+                          <tr className={tablePreset.headRow + " sticky top-0 z-10"}>
+                            <TH className={`w-14 ${tablePreset.th}`}>#</TH>
+                            <TH className={`w-32 ${tablePreset.th}`}>شماره صورت وضعیت</TH>
+                            <TH className={`w-32 ${tablePreset.th}`}>تاریخ</TH>
+                            <TH className={`w-40 ${tablePreset.th}`}>مبلغ ناخالص</TH>
+                            <TH className={`w-32 ${tablePreset.th}`}>VAT</TH>
+                            <TH className={`w-32 ${tablePreset.th}`}>ارز منشا</TH>
+                            <TH className={`w-36 ${tablePreset.th}`}>اقدامات</TH>
+                          </tr>
+                        )}
                       </THead>
 
                       <tbody className={tablePreset.body}>
-                        {rowsLoading ? (
+                        {tab === "receipts" ? (
+                          rowsLoading ? (
+                            <TR><TD colSpan={5} className={tablePreset.emptyRow}>در حال بارگذاری...</TD></TR>
+                          ) : !worksheetRows.length ? (
+                            <TR><TD colSpan={5} className={tablePreset.emptyRow}>موردی برای نمایش وجود ندارد.</TD></TR>
+                          ) : (
+                            <>
+                              <TR className="text-center bg-black/[0.04] font-semibold dark:bg-white/10">
+                                <TD>-</TD>
+                                <TD>جمع</TD>
+                                <TD>{toFaDigits(formatMoney(sumReceiptAmount))}</TD>
+                                <TD>{toFaDigits(formatMoney(sumReceiptForeignAmount))}</TD>
+                                <TD>—</TD>
+                              </TR>
+                              {worksheetRows.map((row, idx) => (
+                                <TR key={row.id} className="text-center hover:bg-black/[0.06] transition-colors dark:hover:bg-white/15">
+                                  <TD>{toFaDigits(idx + 1)}</TD>
+                                  <TD>{row.date ? toFaDigits(row.date) : "—"}</TD>
+                                  <TD>{toFaDigits(formatMoney(row.receiptAmount || 0))}</TD>
+                                  <TD>{toFaDigits(formatMoney(row.receiptForeignAmount || 0))}</TD>
+                                  <TD>
+                                    <div className="w-full flex items-center justify-center gap-1">
+                                      <button type="button" onClick={() => handleViewRow(row)} className={iconBtnCls} aria-label="نمایش" title="نمایش"><img src="/images/icons/namayeshname.svg" alt="" className="w-5 h-5 dark:invert" /></button>
+                                      <button type="button" onClick={() => handleEditRow(row)} className={iconBtnCls} aria-label="ویرایش" title="ویرایش"><img src="/images/icons/pencil.svg" alt="" className="w-5 h-5 dark:invert" /></button>
+                                      <button type="button" onClick={() => handleDeleteRow(row)} className={iconBtnCls} aria-label="حذف" title="حذف">
+                                        <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" style={{ filter: "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)" }} />
+                                      </button>
+                                    </div>
+                                  </TD>
+                                </TR>
+                              ))}
+                            </>
+                          )
+                        ) : rowsLoading ? (
                           <TR><TD colSpan={7} className={tablePreset.emptyRow}>در حال بارگذاری...</TD></TR>
                         ) : !worksheetRows.length ? (
                           <TR><TD colSpan={7} className={tablePreset.emptyRow}>موردی برای نمایش وجود ندارد.</TD></TR>
@@ -756,6 +1081,39 @@ export default function FinancialWorksheetPage() {
           {err ? <div className="text-sm text-red-600 dark:text-red-400">{err}</div> : null}
         </div>
       </Card>
+
+      {receiptOtherOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[10000]">
+            <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={closeReceiptOtherPopup} />
+            <div className="absolute inset-0 p-3 md:p-6 flex items-center justify-center">
+              <div className="w-[min(560px,calc(100vw-20px))] rounded-2xl border shadow-2xl overflow-hidden border-black/10 bg-white text-neutral-900 dark:border-white/10 dark:bg-neutral-900 dark:text-white">
+                <div className="p-4 border-b border-black/10 dark:border-white/10 flex items-center justify-between">
+                  <button type="button" onClick={closeReceiptOtherPopup} className="h-10 w-10 rounded-xl bg-black text-white dark:bg-white dark:text-black grid place-items-center" aria-label="بستن" title="بستن">
+                    <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
+                  </button>
+                  <div className="font-semibold text-sm md:text-base">شرح نوع دریافتی (سایر)</div>
+                </div>
+
+                <div className="p-4 space-y-3">
+                  <label className="text-xs text-neutral-600 dark:text-white/60">شرح</label>
+                  <textarea
+                    value={receiptOtherDraft}
+                    onChange={(e) => setReceiptOtherDraft(e.target.value)}
+                    className="w-full min-h-[100px] rounded-xl px-3 py-2 border outline-none resize-y bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                    placeholder="شرح را وارد کنید..."
+                  />
+
+                  <div className="flex items-center justify-start gap-2">
+                    <button type="button" onClick={saveReceiptOtherPopup} className="h-10 px-4 rounded-xl bg-black text-white dark:bg-white dark:text-black">ثبت</button>
+                    <button type="button" onClick={closeReceiptOtherPopup} className="h-10 px-4 rounded-xl border border-black/15 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10">انصراف</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
 
       {uploadOpen &&
         createPortal(
