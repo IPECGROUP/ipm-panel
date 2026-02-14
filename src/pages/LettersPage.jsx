@@ -800,6 +800,7 @@ const [incomingForm, setIncomingForm] = useState({
 });
 
 const [outgoingForm, setOutgoingForm] = useState({
+classification: "عادی",
 category: "نامه",
   projectId: "",
     letterNo: "",
@@ -811,6 +812,7 @@ category: "نامه",
 });
 
 const [internalForm, setInternalForm] = useState({
+  classification: "عادی",
   projectId: "",     
   letterNo: "",      
   letterDate: "",
@@ -2633,6 +2635,7 @@ const kindRowTintCls = (kind) => {
 });
 
   setOutgoingForm({
+    classification: "عادی",
     category: "نامه",
     projectId: "",
     letterNo: "",
@@ -2643,8 +2646,9 @@ const kindRowTintCls = (kind) => {
   });
 
   setInternalForm({
-     projectId: "",      
-  letterNo: "",  
+    classification: "عادی",
+    projectId: "",      
+    letterNo: "",  
     letterDate: "",
     subject: "",
   });
@@ -2735,6 +2739,7 @@ const kindRowTintCls = (kind) => {
     } else if (kind === "outgoing") {
       setOutgoingForm((p) => ({
         ...p,
+        classification: rawClass || "عادی",
         category: mappedCat,
         projectId: formProjectId,
         letterNo: formLetterNo,
@@ -2747,6 +2752,7 @@ const kindRowTintCls = (kind) => {
     } else {
       setInternalForm((p) => ({
         ...p,
+        classification: rawClass || "عادی",
         projectId: formProjectId,
         letterNo: formLetterNo,
         letterDate: formLetterDate,
@@ -2958,8 +2964,7 @@ const payload = {
     : "نامه",
 
   classification:
-    kind === "incoming" ? (incomingForm.classification || "عادی")
-    : "عادی",
+    String(getForm(kind)?.classification || "عادی").trim() || "عادی",
 
   project_id: (() => {
     const pid = f?.projectId ?? null;
@@ -3882,18 +3887,18 @@ aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "category") : 
 
   <FieldWrap>
     <select
-      value={incomingForm.classification}
+      value={getForm(formKind).classification || "عادی"}
 onChange={(e) => {
-  setIncomingForm((p) => ({ ...p, classification: e.target.value }));
-  clearFieldError("incoming", "classification");
+  setForm(formKind, { classification: e.target.value });
+  if (formKind === "incoming") clearFieldError("incoming", "classification");
 }}
-className={inputWithError(inputSmCls, "incoming", "classification")}
-aria-invalid={fieldHasError("incoming", "classification")}
+className={formKind === "incoming" ? inputWithError(inputSmCls, "incoming", "classification") : inputSmCls}
+aria-invalid={formKind === "incoming" ? fieldHasError("incoming", "classification") : undefined}
     >
       <option value="عادی">عادی</option>
       <option value="محرمانه">محرمانه</option>
     </select>
-<ErrorTextAbs kind="incoming" k="classification" />
+{formKind === "incoming" ? <ErrorTextAbs kind="incoming" k="classification" /> : null}
   </FieldWrap>
 </div>
 
