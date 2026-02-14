@@ -259,6 +259,16 @@ export default function FinancialWorksheetPage() {
   const [jalaliDate, setJalaliDate] = useState("");
   const [description, setDescription] = useState("");
   const [grossAmount, setGrossAmount] = useState("");
+  const [prepaymentDepreciation, setPrepaymentDepreciation] = useState("");
+  const [prepaymentCurrencyId, setPrepaymentCurrencyId] = useState("");
+  const [insuranceDeposit, setInsuranceDeposit] = useState("");
+  const [insuranceCurrencyId, setInsuranceCurrencyId] = useState("");
+  const [performanceDeposit, setPerformanceDeposit] = useState("");
+  const [performanceCurrencyId, setPerformanceCurrencyId] = useState("");
+  const [otherDebts, setOtherDebts] = useState([{ id: Date.now(), amount: "", description: "" }]);
+  const [vatPercent, setVatPercent] = useState("10");
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const uploadInputRef = useRef(null);
 
   const [currencyItems, setCurrencyItems] = useState([]);
   const [currencySourceItems, setCurrencySourceItems] = useState([]);
@@ -326,6 +336,11 @@ export default function FinancialWorksheetPage() {
 
   const readItemId = (it) => String(it?.id ?? it?.code ?? it?.value ?? it?.key ?? "");
   const readItemLabel = (it) => String(it?.label ?? it?.title ?? it?.name ?? it?.code ?? "").trim();
+  const addOtherDebtRow = () =>
+    setOtherDebts((prev) => [...prev, { id: Date.now() + Math.random(), amount: "", description: "" }]);
+
+  const updateOtherDebtRow = (id, patch) =>
+    setOtherDebts((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
 
   return (
     <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
@@ -336,31 +351,29 @@ export default function FinancialWorksheetPage() {
       </div>
 
       <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-          <div>
-            <label className="text-xs text-neutral-600 dark:text-white/60">پروژه</label>
-            <select
-              value={projectId}
-              onChange={(e) => setProjectId(e.target.value)}
-              disabled={projectsLoading}
-              className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
-            >
-              <option value="">{projectsLoading ? "در حال بارگذاری..." : "انتخاب پروژه فعال"}</option>
-              {activeProjects.map((p) => (
-                <option key={String(p?.id)} value={String(p?.id)}>
-                  {projectLabel(p)}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div>
+          <label className="text-xs text-neutral-600 dark:text-white/60">پروژه</label>
+          <select
+            value={projectId}
+            onChange={(e) => setProjectId(e.target.value)}
+            disabled={projectsLoading}
+            className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+          >
+            <option value="">{projectsLoading ? "در حال بارگذاری..." : "انتخاب پروژه فعال"}</option>
+            {activeProjects.map((p) => (
+              <option key={String(p?.id)} value={String(p?.id)}>
+                {projectLabel(p)}
+              </option>
+            ))}
+          </select>
         </div>
 
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-2">
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2 w-full">
             <button
               type="button"
               onClick={() => setTab("statement")}
-              className={`h-10 px-4 rounded-xl border text-sm transition ${
+              className={`h-10 w-full px-4 rounded-xl border text-sm transition ${
                 tab === "statement"
                   ? "bg-black text-white border-black dark:bg-white dark:text-black dark:border-white"
                   : "bg-white text-black border-black/15 hover:bg-black/5 dark:bg-white/5 dark:text-white dark:border-white/15 dark:hover:bg-white/10"
@@ -371,7 +384,7 @@ export default function FinancialWorksheetPage() {
             <button
               type="button"
               onClick={() => setTab("receipts")}
-              className={`h-10 px-4 rounded-xl border text-sm transition ${
+              className={`h-10 w-full px-4 rounded-xl border text-sm transition ${
                 tab === "receipts"
                   ? "bg-black text-white border-black dark:bg-white dark:text-black dark:border-white"
                   : "bg-white text-black border-black/15 hover:bg-black/5 dark:bg-white/5 dark:text-white dark:border-white/15 dark:hover:bg-white/10"
@@ -381,6 +394,7 @@ export default function FinancialWorksheetPage() {
             </button>
           </div>
 
+          <div className="flex justify-end">
           <button
             type="button"
             onClick={() => setFormOpen((v) => !v)}
@@ -394,6 +408,7 @@ export default function FinancialWorksheetPage() {
               className="w-5 h-5 dark:invert"
             />
           </button>
+          </div>
         </div>
 
         {formOpen && (
@@ -495,6 +510,245 @@ export default function FinancialWorksheetPage() {
                   })}
                 </select>
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-end">
+              <div className="xl:col-span-4">
+                <label className="text-xs text-neutral-600 dark:text-white/60">استهلاک پیش پرداخت</label>
+                <input
+                  value={prepaymentDepreciation}
+                  onChange={(e) => setPrepaymentDepreciation(e.target.value)}
+                  className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                  type="text"
+                  dir="ltr"
+                  placeholder="0"
+                />
+              </div>
+              <div className="xl:col-span-3">
+                <label className="text-xs text-neutral-600 dark:text-white/60">ارز</label>
+                <select
+                  value={prepaymentCurrencyId}
+                  onChange={(e) => setPrepaymentCurrencyId(e.target.value)}
+                  className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                >
+                  <option value="">انتخاب ارز</option>
+                  {(currencyItems || []).map((it) => {
+                    const id = readItemId(it);
+                    if (!id) return null;
+                    return (
+                      <option key={id} value={id}>
+                        {readItemLabel(it) || id}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-end">
+              <div className="xl:col-span-4">
+                <label className="text-xs text-neutral-600 dark:text-white/60">سپرده بیمه</label>
+                <input
+                  value={insuranceDeposit}
+                  onChange={(e) => setInsuranceDeposit(e.target.value)}
+                  className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                  type="text"
+                  dir="ltr"
+                  placeholder="0"
+                />
+              </div>
+              <div className="xl:col-span-3">
+                <label className="text-xs text-neutral-600 dark:text-white/60">ارز</label>
+                <select
+                  value={insuranceCurrencyId}
+                  onChange={(e) => setInsuranceCurrencyId(e.target.value)}
+                  className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                >
+                  <option value="">انتخاب ارز</option>
+                  {(currencyItems || []).map((it) => {
+                    const id = readItemId(it);
+                    if (!id) return null;
+                    return (
+                      <option key={id} value={id}>
+                        {readItemLabel(it) || id}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-end">
+              <div className="xl:col-span-4">
+                <label className="text-xs text-neutral-600 dark:text-white/60">سپرده حسن انجام کار</label>
+                <input
+                  value={performanceDeposit}
+                  onChange={(e) => setPerformanceDeposit(e.target.value)}
+                  className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                  type="text"
+                  dir="ltr"
+                  placeholder="0"
+                />
+              </div>
+              <div className="xl:col-span-3">
+                <label className="text-xs text-neutral-600 dark:text-white/60">ارز</label>
+                <select
+                  value={performanceCurrencyId}
+                  onChange={(e) => setPerformanceCurrencyId(e.target.value)}
+                  className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                >
+                  <option value="">انتخاب ارز</option>
+                  {(currencyItems || []).map((it) => {
+                    const id = readItemId(it);
+                    if (!id) return null;
+                    return (
+                      <option key={id} value={id}>
+                        {readItemLabel(it) || id}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            </div>
+
+            {(otherDebts || []).map((row, idx) => (
+              <div key={row.id} className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-end">
+                <div className="xl:col-span-4">
+                  <label className="text-xs text-neutral-600 dark:text-white/60">سایر بدهی</label>
+                  <input
+                    value={row.amount}
+                    onChange={(e) => updateOtherDebtRow(row.id, { amount: e.target.value })}
+                    className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                    type="text"
+                    dir="ltr"
+                    placeholder="0"
+                  />
+                </div>
+
+                <div className="xl:col-span-7">
+                  <label className="text-xs text-neutral-600 dark:text-white/60">شرح</label>
+                  <input
+                    value={row.description}
+                    onChange={(e) => updateOtherDebtRow(row.id, { description: e.target.value })}
+                    className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                    type="text"
+                    placeholder="شرح..."
+                  />
+                </div>
+
+                <div className="xl:col-span-1 flex xl:justify-end">
+                  <button
+                    type="button"
+                    onClick={addOtherDebtRow}
+                    className="h-10 w-10 rounded-xl border border-black/15 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10 grid place-items-center"
+                    aria-label={idx === 0 ? "افزودن ردیف سایر بدهی" : "افزودن ردیف جدید"}
+                    title="افزودن"
+                  >
+                    <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            <div className="h-px bg-gradient-to-r from-transparent via-black/20 to-transparent dark:via-white/20" />
+
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-end">
+              <div className="xl:col-span-5">
+                <label className="text-xs text-neutral-600 dark:text-white/60">جمع خالص تایید شده بدون VAT</label>
+                <input
+                  value=""
+                  readOnly
+                  className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-black/5 text-neutral-900 border-black/10 dark:bg-white/10 dark:text-white dark:border-white/15"
+                  type="text"
+                  placeholder=""
+                />
+              </div>
+              <div className="xl:col-span-3">
+                <label className="text-xs text-neutral-600 dark:text-white/60">ارز منشا</label>
+                <div className="mt-1 h-11 rounded-xl border border-black/10 bg-black/5 dark:border-white/15 dark:bg-white/10 flex items-center px-3 text-sm text-neutral-600 dark:text-white/70">
+                  ارز منشا
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-end">
+              <div className="xl:col-span-5">
+                <label className="text-xs text-neutral-600 dark:text-white/60">VAT</label>
+                <div className="mt-1 h-11 rounded-xl border border-black/10 dark:border-white/15 bg-white dark:bg-white/5 px-3 flex items-center gap-2">
+                  <span className="text-sm text-neutral-600 dark:text-white/70">(</span>
+                  <input
+                    value={vatPercent}
+                    onChange={(e) => setVatPercent(e.target.value)}
+                    className="w-16 text-center bg-transparent outline-none text-neutral-900 dark:text-white"
+                    type="text"
+                    dir="ltr"
+                  />
+                  <span className="text-sm text-neutral-600 dark:text-white/70">%)</span>
+                </div>
+              </div>
+              <div className="xl:col-span-4">
+                <label className="text-xs text-neutral-600 dark:text-white/60">مبلغ VAT</label>
+                <input
+                  value=""
+                  readOnly
+                  className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-black/5 text-neutral-900 border-black/10 dark:bg-white/10 dark:text-white dark:border-white/15"
+                  type="text"
+                  placeholder=""
+                />
+              </div>
+              <div className="xl:col-span-3">
+                <label className="text-xs text-neutral-600 dark:text-white/60">ارز منشا</label>
+                <div className="mt-1 h-11 rounded-xl border border-black/10 bg-black/5 dark:border-white/15 dark:bg-white/10 flex items-center px-3 text-sm text-neutral-600 dark:text-white/70">
+                  ارز منشا
+                </div>
+              </div>
+            </div>
+
+            <div className="h-px bg-gradient-to-r from-transparent via-black/20 to-transparent dark:via-white/20" />
+
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-end">
+              <div className="xl:col-span-5">
+                <label className="text-xs text-neutral-600 dark:text-white/60">جمع خالص تایید شده با احتساب VAT</label>
+                <input
+                  value=""
+                  readOnly
+                  className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-black/5 text-neutral-900 border-black/10 dark:bg-white/10 dark:text-white dark:border-white/15"
+                  type="text"
+                  placeholder=""
+                />
+              </div>
+              <div className="xl:col-span-3">
+                <label className="text-xs text-neutral-600 dark:text-white/60">ارز منشا</label>
+                <div className="mt-1 h-11 rounded-xl border border-black/10 bg-black/5 dark:border-white/15 dark:bg-white/10 flex items-center px-3 text-sm text-neutral-600 dark:text-white/70">
+                  ارز منشا
+                </div>
+              </div>
+            </div>
+
+            <div className="h-px bg-gradient-to-r from-transparent via-black/20 to-transparent dark:via-white/20" />
+
+            <div className="flex items-center justify-start">
+              <button
+                type="button"
+                onClick={() => uploadInputRef.current?.click()}
+                className="h-11 px-3 rounded-xl border transition flex items-center justify-center gap-2 whitespace-nowrap border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02] dark:border-white/15 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10"
+                title="آپلود فایل"
+                aria-label="آپلود فایل"
+              >
+                <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
+                آپلود فایل
+                {uploadedFiles.length ? <span className="text-xs opacity-80">({toFaDigits(uploadedFiles.length)})</span> : null}
+              </button>
+              <input
+                ref={uploadInputRef}
+                type="file"
+                className="hidden"
+                multiple
+                onChange={(e) => {
+                  const fl = Array.from(e.target.files || []);
+                  setUploadedFiles(fl);
+                }}
+              />
             </div>
           </div>
         )}
