@@ -968,12 +968,14 @@ useEffect(() => {
     const pinned = normalizeIdList(p?.all_tag_ids || []).slice(0, TAG_PREFS_LIMIT);
     setFilterTagPinnedIds(pinned);
 
-    // 2) default tags for FORM (incoming/outgoing/internal)
+    // 2) quick tags for FORM (shared بین هر سه تب)
+    const formQuick = normalizeIdList(p?.incoming_tag_ids || []).slice(0, TAG_PREFS_LIMIT);
     setFormTagPrefs({
-      incoming: normalizeIdList(p?.incoming_tag_ids || []).slice(0, TAG_PREFS_LIMIT),
-      outgoing: normalizeIdList(p?.outgoing_tag_ids || []).slice(0, TAG_PREFS_LIMIT),
-      internal: normalizeIdList(p?.internal_tag_ids || []).slice(0, TAG_PREFS_LIMIT),
+      incoming: formQuick,
+      outgoing: formQuick,
+      internal: formQuick,
     });
+    lastSavedFormTagsRef.current = JSON.stringify(formQuick);
 
     prefsHydratedRef.current = true;
   })();
@@ -1418,11 +1420,6 @@ const loadFormTagPrefs = async (_which) => {
   const ids = normalizeIdList(p?.incoming_tag_ids || []).slice(0, TAG_PREFS_LIMIT);
 lastSavedFormTagsRef.current = JSON.stringify(ids);
 
-  // ✅ هم UI هر سه تب یکی شود
-  setIncomingTagIds(ids);
-  setOutgoingTagIds(ids);
-  setInternalTagIds(ids);
-
   // ✅ هم formTagPrefs هر سه کلید یکی شود (برای هیدرات شدن فرم)
   setFormTagPrefs((prev) => ({
     ...prev,
@@ -1620,9 +1617,6 @@ useEffect(() => {
 
   // فقط یک بار برای هر تب فرم
   if (formTagsHydratedRef.current[which]) return;
-
- const pref = Array.isArray(formTagPrefs?.incoming) ? formTagPrefs.incoming : [];
-setFormTagsOnly("all", pref);
 
   formTagsHydratedRef.current[which] = true;
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2147,22 +2141,32 @@ if (formKind === "incoming") {
 }
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [formOpen, formKind, editingId, currentProjectId, myLetters, projectsTopOnly]);
+const setSelectedTagsForKind = (kind, ids) => {
+  const next = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
+  if (kind === "outgoing") setOutgoingTagIds(next);
+  else if (kind === "internal") setInternalTagIds(next);
+  else setIncomingTagIds(next);
+};
+
 const setFormTagsAllAndPersist = async (ids) => {
   const next = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
 
-  // ✅ UI: برچسب‌ها در هر سه تب یکی
-  setIncomingTagIds(next);
-  setOutgoingTagIds(next);
-  setInternalTagIds(next);
+  // ✅ انتخاب برچسب فقط روی تب فعلی اعمال شود
+  setSelectedTagsForKind(formKind, next);
 
-  // ✅ اگر هیچ تغییری نکرده، اصلاً POST نزن
-  const sig = JSON.stringify(next);
+  // ✅ لیست سریع مشترک بین تب‌ها: تگ‌های جدید + لیست قبلی
+  const baseQuick = normalizeIdList(formTagPrefs?.incoming || []).slice(0, TAG_PREFS_LIMIT);
+  const quick = normalizeIdList([...next, ...baseQuick]).slice(0, TAG_PREFS_LIMIT);
+  setFormTagPrefs((p) => ({ ...p, incoming: quick, outgoing: quick, internal: quick }));
+
+  // ✅ اگر quick list تغییری نکرده، اصلاً POST نزن
+  const sig = JSON.stringify(quick);
   if (lastSavedFormTagsRef.current === sig) return;
 
   lastSavedFormTagsRef.current = sig;
 
   try {
-    await patchLetterPrefs({ incoming_tag_ids: next });
+    await patchLetterPrefs({ incoming_tag_ids: quick });
   } catch {}
 };
 
@@ -2231,32 +2235,28 @@ const tagsForFormScope = useMemo(() => {
   return Array.isArray(arr) ? arr : [];
 }, [tagsByScope, formScope]);
 
-  const latestTags = useMemo(() => {
-  const arr = Array.isArray(tagsForFormScope) ? tagsForFormScope.slice() : [];
-  arr.sort((a, b) => {
-    const ai = Number(a?.id);
-    const bi = Number(b?.id);
-    if (Number.isFinite(ai) && Number.isFinite(bi)) return bi - ai;
-    return String(b?.id ?? "").localeCompare(String(a?.id ?? ""));
-  });
-  return arr.slice(0, 14);
-}, [tagsForFormScope]);
-
   const tagCapsFor = (selectedIds) => {
   const sel = Array.isArray(selectedIds) ? selectedIds.map(String) : [];
-  const selSet = new Set(sel);
-
-  // پایه نمایش: همون latestTags (ثابت)
-  const base = Array.isArray(latestTags) ? latestTags : [];
-
-  // اگر تگی انتخاب شده ولی تو latest نیست، آخر لیست اضافه کن (بدون دستکاری ترتیب base)
   const map = new Map((Array.isArray(tagsForFormScope) ? tagsForFormScope : []).map((t) => [String(t?.id), t]));
-  const extra = sel
-    .filter((id) => !base.some((t) => String(t?.id) === String(id)))
-    .map((id) => map.get(String(id)))
-    .filter(Boolean);
 
-  const merged = [...base, ...extra];
+  // لیست سریع کاربر: مشترک بین تب‌ها و ماندگار بعد از refresh
+  const quickIds = normalizeIdList(formTagPrefs?.incoming || []).slice(0, TAG_PREFS_LIMIT);
+  const quick = quickIds.map((id) => {
+    const t = map.get(String(id));
+    if (t) return t;
+    return { id: String(id), label: `برچسب (${toFaDigits(id)})`, _missing: true };
+  });
+
+  // اگر تگی انتخاب شده ولی تو quick نبود، نمایش بده
+  const extra = sel
+    .filter((id) => !quick.some((t) => String(t?.id) === String(id)))
+    .map((id) => {
+      const t = map.get(String(id));
+      if (t) return t;
+      return { id: String(id), label: `برچسب (${toFaDigits(id)})`, _missing: true };
+    });
+
+  const merged = [...quick, ...extra];
 
   const seen = new Set();
   return merged.filter((t) => {
@@ -4651,64 +4651,36 @@ aria-invalid={fieldHasError(formKind, "subject")}
   <div className={labelCls}>برچسب ها</div>
 
   <FieldWrap>
-    <div className="w-full min-w-0 flex flex-wrap items-center gap-2">
-      {(() => {
-        const scope =
-          formKind === "outgoing" ? "projects" :
-          formKind === "internal" ? "execution" :
-          "letters";
+	    <div className="w-full min-w-0 flex flex-wrap items-center gap-2">
+	      {(() => {
+	        const selectedIds =
+	  formKind === "outgoing" ? (Array.isArray(outgoingTagIds) ? outgoingTagIds : [])
+	  : formKind === "internal" ? (Array.isArray(internalTagIds) ? internalTagIds : [])
+	  : (Array.isArray(incomingTagIds) ? incomingTagIds : []);
 
-       const selectedIds =
-  formKind === "outgoing" ? (Array.isArray(outgoingTagIds) ? outgoingTagIds : [])
-  : formKind === "internal" ? (Array.isArray(internalTagIds) ? internalTagIds : [])
-  : (Array.isArray(incomingTagIds) ? incomingTagIds : []);
+	        const caps = tagCapsFor(selectedIds);
+	        if (!caps.length) return null;
 
-        const pool = Array.isArray(tagsByScope?.[scope]) ? tagsByScope[scope] : [];
+	        const selSet = new Set(selectedIds.map(String));
+	        return caps.map((t) => {
+	          const id = String(t?.id);
+	          const label = tagLabelOf(t);
+	          const active = selSet.has(id);
 
-        const selSet = new Set(selectedIds.map(String));
-        const selectedObjs = pool.filter((t) => selSet.has(String(t?.id)));
+	          return (
+	            <button
+	              key={id}
+	              type="button"
+	              onClick={() => {
+	  toggleTag(formKind, id);
+	  clearFieldError("formTags");
+	}}
 
-        if (selectedObjs.length === 0) return null;
-
-        return selectedObjs.map((t) => {
-          const id = String(t?.id);
-          const label = tagLabelOf(t);
-
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => {
-  const sid = String(id || "").trim();
-  if (!sid) return;
- const toggleFormTag = (sid) => {
-  if (formKind === "incoming") {
-    setIncomingTagIds((prev) => {
-      const base = Array.isArray(prev) ? prev.map(String) : [];
-      return base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
-    });
-  } else if (formKind === "outgoing") {
-    setOutgoingTagIds((prev) => {
-      const base = Array.isArray(prev) ? prev.map(String) : [];
-      return base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
-    });
-  } else {
-    setInternalTagIds((prev) => {
-      const base = Array.isArray(prev) ? prev.map(String) : [];
-      return base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
-    });
-  }
-  clearFieldError("formTags");
-};
-
-  clearFieldError("formTags");
-}}
-
-              className={selectedTagChipCls + " shrink-0"}
-              title={label}
-              aria-label={label}
-            >
-              <span className="truncate max-w-[220px]">{label}</span>
+	              className={(active ? selectedTagChipCls : chipCls) + " shrink-0"}
+	              title={label}
+	              aria-label={label}
+	            >
+	              <span className="truncate max-w-[220px]">{label}</span>
             </button>
           );
         });
@@ -5538,19 +5510,23 @@ const rowBg = isConf ? confRowBg : normalRowBg;
             <div className="px-4 pt-3">
               {/* ✅ سه تب حتما سمت راست + ترتیب: پروژه‌ها، نامه‌ها و مستندات، اجرای پروژه‌ها */}
               <div className="flex items-center justify-start gap-2">
-                {(() => {
-                  const order = ["projects", "letters", "execution"];
-                  const ordered =
-                    Array.isArray(TAG_PICK_TABS) && TAG_PICK_TABS.length
-                      ? [
-                          ...order
-                            .map((id) => TAG_PICK_TABS.find((x) => x?.id === id))
-                            .filter(Boolean),
-                          ...TAG_PICK_TABS.filter((x) => !order.includes(x?.id)),
-                        ]
-                      : [];
+	                {(() => {
+	                  const baseTabs =
+	                    tagPickFor === "form"
+	                      ? (Array.isArray(TAG_PICK_TABS) ? TAG_PICK_TABS.filter((x) => x?.id === "letters") : [])
+	                      : (Array.isArray(TAG_PICK_TABS) ? TAG_PICK_TABS : []);
+	                  const order = ["projects", "letters", "execution"];
+	                  const ordered =
+	                    baseTabs.length
+	                      ? [
+	                          ...order
+	                            .map((id) => baseTabs.find((x) => x?.id === id))
+	                            .filter(Boolean),
+	                          ...baseTabs.filter((x) => !order.includes(x?.id)),
+	                        ]
+	                      : [];
 
-                  const tabsToRender = ordered.length ? ordered : TAG_PICK_TABS;
+	                  const tabsToRender = ordered.length ? ordered : baseTabs;
 
                   return tabsToRender.map((t) => {
                     const active = tagPickKind === t.id;
