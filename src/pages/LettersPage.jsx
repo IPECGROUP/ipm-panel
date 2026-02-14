@@ -946,19 +946,8 @@ const resolveFileUrl = (u) => {
 ).trim();
   }, [user]);
 
-  // ✅ فقط این دو نفر + نقش admin دسترسی محرمانه دارند
-const PRIV_USERS = new Set(["marandi1234", "rastegar"]);
-
-const canSeeConfidential = useMemo(() => {
-  const uname = String(loggedInUserName || "").trim().toLowerCase();
-  const role = String(user?.role || "").trim().toLowerCase(); // اگر role داری
-  return role === "admin" || PRIV_USERS.has(uname);
-}, [loggedInUserName, user?.role]);
-
-const canSeeMainAdminLogin = useMemo(() => isMainAdminUser(user), [user]);
-
-// اگر جاهای دیگه از isAdmin استفاده می‌کنی:
-const isAdmin = canSeeConfidential;
+const viewerIsMainAdmin = useMemo(() => isMainAdminUser(user), [user]);
+const canSeeMainAdminLogin = viewerIsMainAdmin;
 
 // ===== Filters (page-level) =====
   const [filterQuick, setFilterQuick] = useState(""); // week|2w|1m|3m|6m
@@ -2495,9 +2484,14 @@ const isImageUrl = (url, name = "") =>
   const toY = normalizeYmd(filterToDate);
 
   return arr.filter((l) => {
-    // ✅ فقط ادمین محرمانه‌ها را ببیند
-    const isConf = isConfidentialLetter(l); // همونی که خودت داری
-    if (isConf && !canSeeConfidential) return false;
+    // ✅ محرمانه فقط برای ثبت‌کننده یا ادمین اصلی (marandi)
+    const isConf = isConfidentialLetter(l);
+    if (isConf) {
+      const ownerId = String(l?.created_by ?? l?.createdBy ?? "").trim();
+      const meId = String(user?.id ?? "").trim();
+      const isOwner = !!ownerId && !!meId && ownerId === meId;
+      if (!isOwner && !viewerIsMainAdmin) return false;
+    }
 
     const kind = letterKindOf(l);
 
@@ -2544,7 +2538,8 @@ const isImageUrl = (url, name = "") =>
   filterTagIds,
   filterFromDate,
   filterToDate,
-  canSeeConfidential, // ✅ اضافه شد
+  user?.id,
+  viewerIsMainAdmin,
 ]);
 
   useEffect(() => {
