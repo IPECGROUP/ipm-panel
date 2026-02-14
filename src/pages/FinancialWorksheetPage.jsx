@@ -1,681 +1,507 @@
-import React from "react";
-import { Card } from "../components/ui/Card";
-import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Card from "../components/ui/Card.jsx";
 
-export default function FinancialWorksheetPage() {
-  // ======= State: مشترک =======
-  const [projects, setProjects] = React.useState([]);
-  const [projectId, setProjectId] = React.useState('');
-  const [active, setActive] = React.useState('balance'); // balance | invoices | receipts
+function toFaDigits(s) {
+  return String(s ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
+}
 
-  const [currencyTypes, setCurrencyTypes] = React.useState([]);     // از صفحه «ارزها/نوع ارز»
-  const [currencySources, setCurrencySources] = React.useState([]); // از صفحه «منشأ ارز»
+function pad2(n) {
+  const x = Number(n) || 0;
+  return x < 10 ? `0${x}` : String(x);
+}
 
-  const selectedProject = React.useMemo(
-    () => projects.find(p => String(p.id) === String(projectId)),
-    [projects, projectId]
-  );
+function getJalaliPartsFromDate(d) {
+  try {
+    const y = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric" }).format(d);
+    const m = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { month: "numeric" }).format(d);
+    const day = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { day: "numeric" }).format(d);
+    const en = (x) =>
+      Number(
+        String(x)
+          .replace(/[۰-۹]/g, (c) => "۰۱۲۳۴۵۶۷۸۹".indexOf(c))
+          .replace(/[٠-٩]/g, (c) => "٠١٢٣٤٥٦٧٨٩".indexOf(c)),
+      ) || 0;
+    return { jy: en(y), jm: en(m), jd: en(day) };
+  } catch {
+    return { jy: 1404, jm: 1, jd: 1 };
+  }
+}
 
-  // ======= Helpers / API =======
-  const api = async (path, opt = {}) => {
-    const res = await fetch('/api' + path, {
-      credentials: 'include',
-      ...opt,
-      headers: { 'Content-Type': 'application/json', ...(opt.headers || {}) },
-    });
-    let data = {};
-    try { data = await res.json(); } catch {}
-    if (!res.ok) throw new Error(data?.error || data?.message || 'request_failed');
-    return data;
-  };
+function jalaliToGregorian(jy, jm, jd) {
+  let jY = Number(jy);
+  let jM = Number(jm);
+  let jD = Number(jd);
+  if (!jY || !jM || !jD) return null;
 
-  const pickDefaultSourceTitle = React.useCallback(() => {
-    const def = (currencySources || []).find(s => s.is_default || s.default === 1 || s.default === true);
-    if (def) return def.title || def.name || '';
-    const first = (currencySources || [])[0];
-    return first ? (first.title || first.name || '') : '';
-  }, [currencySources]);
+  jY += 1595;
+  let days =
+    -355668 +
+    365 * jY +
+    Math.floor(jY / 33) * 8 +
+    Math.floor(((jY % 33) + 3) / 4) +
+    jD +
+    (jM < 7 ? (jM - 1) * 31 : (jM - 7) * 30 + 186);
 
-  // ======= Loader =======
-  React.useEffect(() => {
-    api('/projects').then(d => setProjects(d.projects || [])).catch(console.error);
-    api('/base/currencies/types')
-      .then(d => setCurrencyTypes(d.types || d.items || []))
-      .catch(() => setCurrencyTypes([]));
-    api('/base/currencies/sources')
-      .then(d => setCurrencySources(d.sources || d.items || []))
-      .catch(() => setCurrencySources([]));
-  }, []);
+  let gY = 400 * Math.floor(days / 146097);
+  days %= 146097;
 
-  // ======= Controls =======
-  const CurrencySelect = ({ value, onChange }) => (
-    <select
-      className="w-full rounded-xl px-3 py-2 bg-white text-black placeholder-black/40 border border-black/15 outline-none
-                 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700"
-      value={value}
-      onChange={e => onChange(e.target.value)}
-    >
-      <option className="bg-white dark:bg-neutral-900" value="">انتخاب کنید</option>
-      {(currencyTypes || []).map((c, i) => {
-        const title = c.title || c.name || '';
-        const val = c.code || title;
-        return (
-          <option className="bg-white dark:bg-neutral-900" key={c.id || val || i} value={val}>
-            {title || val}
-          </option>
-        );
-      })}
-    </select>
-  );
+  if (days > 36524) {
+    gY += 100 * Math.floor(--days / 36524);
+    days %= 36524;
+    if (days >= 365) days++;
+  }
 
-  const SourceSelect = ({ value, onChange }) => (
-    <select
-      className="w-full rounded-xl px-3 py-2 bg-white text-black placeholder-black/40 border border-black/15 outline-none
-                 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700"
-      value={value}
-      onChange={e => onChange(e.target.value)}
-    >
-      <option className="bg-white dark:bg-neutral-900" value="">انتخاب کنید</option>
-      {(currencySources || []).map((s, i) => {
-        const title = s.title || s.name || '';
-        return (
-          <option className="bg-white dark:bg-neutral-900" key={s.id || title || i} value={title}>
-            {title}
-          </option>
-        );
-      })}
-    </select>
-  );
+  gY += 4 * Math.floor(days / 1461);
+  days %= 1461;
 
-  // ورودی عددی با جداسازی سه‌رقمی و بدون گم‌کردن فوکوس
-  const AmountInput = ({ value, onChange, placeholder = '0' }) => {
-    const fmt = n => (n === '' ? '' : Number(String(n).replace(/[^\d]/g, '') || 0).toLocaleString('fa-IR'));
-    const parse = s => String(s).replace(/[^\d]/g, '');
-    return (
-      <input
-        dir="ltr"
-        className="w-full rounded-xl px-3 py-2 text-left font-mono
-                   bg-white text-black placeholder-black/40 border border-black/15 outline-none
-                   focus:ring-2 focus:ring-black/10
-                   dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-        value={fmt(value)}
-        onChange={e => onChange(parse(e.target.value))}
-        inputMode="numeric"
-        placeholder={placeholder}
-      />
-    );
-  };
+  if (days > 365) {
+    gY += Math.floor((days - 1) / 365);
+    days = (days - 1) % 365;
+  }
 
-  const todayISO = React.useMemo(() => {
-    const d = new Date(); const pad = n => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  }, []);
+  let gD = days + 1;
+  const leap = (gY % 4 === 0 && gY % 100 !== 0) || gY % 400 === 0;
+  const monthDays = [0, 31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
-  // ======= TAB: تراز مالی (خلاصه) =======
-  const [contractRow, setContractRow] = React.useState({
-    title: 'قرارداد (ریالی/ارزی)',
-    amount: '',
-    currency: '',
-    source: '',
-  });
-  const [appendixRow, setAppendixRow] = React.useState({
-    title: 'الحاقیه (ریالی/ارزی)',
-    amount: '',
-    currency: '',
-    source: '',
-  });
+  let gM = 1;
+  while (gM <= 12 && gD > monthDays[gM]) {
+    gD -= monthDays[gM];
+    gM++;
+  }
 
-  const BalanceTab = () => (
-    <div className="space-y-4">
-      <TableWrap>
-        <table className="w-full text-sm text-center bg-white text-black dark:bg-neutral-900 dark:text-neutral-200">
-          <THead>
-            <tr className="bg-black/5 text-black dark:bg-neutral-900 dark:text-neutral-200">
-              <TH className="!text-center w-20">ردیف</TH>
-              <TH className="!text-center">قرارداد و الحاقیه</TH>
-              <TH className="!text-center w-48">مبلغ</TH>
-              <TH className="!text-center w-48">ارز</TH>
-              <TH className="!text-center w-48">منشأ ارز</TH>
-            </tr>
-          </THead>
-          <tbody>
-            <TR className="border-t border-black/10 odd:bg-black/[0.02] dark:border-neutral-800 dark:odd:bg-white/5">
-              <TD>1</TD>
-              <TD className="text-right">
-                <input
-                  className="w-full rounded-xl px-3 py-2
-                             bg-white text-black placeholder-black/40 border border-black/15 outline-none
-                             focus:ring-2 focus:ring-black/10
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-                  value={contractRow.title}
-                  onChange={e => setContractRow({ ...contractRow, title: e.target.value })}
-                />
-              </TD>
-              <TD>
-                <AmountInput value={contractRow.amount} onChange={v => setContractRow({ ...contractRow, amount: v })} />
-              </TD>
-              <TD>
-                <CurrencySelect
-                  value={contractRow.currency}
-                  onChange={v =>
-                    setContractRow({ ...contractRow, currency: v, source: pickDefaultSourceTitle() })
-                  }
-                />
-              </TD>
-              <TD>
-                <SourceSelect value={contractRow.source} onChange={v => setContractRow({ ...contractRow, source: v })} />
-              </TD>
-            </TR>
+  return { gy: gY, gm: gM, gd: gD };
+}
 
-            <TR className="border-t border-black/10 odd:bg-black/[0.02] dark:border-neutral-800 dark:odd:bg:white/5">
-              <TD>2</TD>
-              <TD className="text-right">
-                <input
-                  className="w-full rounded-xl px-3 py-2
-                             bg:white text-black placeholder-black/40 border border-black/15 outline-none
-                             focus:ring-2 focus:ring-black/10
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-                  value={appendixRow.title}
-                  onChange={e => setAppendixRow({ ...appendixRow, title: e.target.value })}
-                />
-              </TD>
-              <TD>
-                <AmountInput value={appendixRow.amount} onChange={v => setAppendixRow({ ...appendixRow, amount: v })} />
-              </TD>
-              <TD>
-                <CurrencySelect
-                  value={appendixRow.currency}
-                  onChange={v =>
-                    setAppendixRow({ ...appendixRow, currency: v, source: pickDefaultSourceTitle() })
-                  }
-                />
-              </TD>
-              <TD>
-                <SourceSelect value={appendixRow.source} onChange={v => setAppendixRow({ ...appendixRow, source: v })} />
-              </TD>
-            </TR>
-          </tbody>
-        </table>
-      </TableWrap>
+function JalaliPopupDatePicker({ value, onChange }) {
+  const wrapRef = useRef(null);
+  const now = useMemo(() => getJalaliPartsFromDate(new Date()), []);
+  const init = useMemo(() => {
+    const m = String(value || "").match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+    if (m) return { jy: Number(m[1]), jm: Number(m[2]), jd: Number(m[3]) };
+    return now;
+  }, [value, now]);
 
-      <Card className="p-4 bg-white ring-1 ring-black/10 dark:bg-neutral-900 dark:ring-neutral-800">
-        <ul className="space-y-2 text-sm text-black/70 dark:text-neutral-300">
-          <li>مجموع ناخالص صورت وضعیت‌ها: —</li>
-          <li>مجموع سپرده‌های بیمه: —</li>
-          <li>مجموع سپرده‌های حسن انجام کار: —</li>
-          <li>خالص صورت وضعیت‌ها: —</li>
-          <li>VAT: —</li>
-          <li>دریافتی‌ها: —</li>
-        </ul>
-      </Card>
-    </div>
-  );
+  const [open, setOpen] = useState(false);
+  const [jy, setJy] = useState(init.jy);
+  const [jm, setJm] = useState(init.jm);
+  const [jd, setJd] = useState(init.jd);
 
-  // ======= TAB: صورت وضعیت‌ها =======
-  const [invForm, setInvForm] = React.useState({
-    number: '',
-    currency: '',
-    source: '',
-    grossApproved: '',
-    insurancePct: '7.5',
-    workGoodPct: '10',
-    others: '',
-    vatPct: '9',
-  });
-  const setInv = (patch) => setInvForm(prev => ({ ...prev, ...patch }));
-  const [invoiceRows, setInvoiceRows] = React.useState([]);
-  const addInvoice = () => {
-    const row = {
-      id: Date.now(),
-      number: invForm.number || `${invoiceRows.length + 1}`,
-      sendDate: todayISO,
-      grossApproved: invForm.grossApproved,
-      vat: invForm.vatPct,
+  useEffect(() => {
+    const m = String(value || "").match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+    if (!m) return;
+    setJy(Number(m[1]));
+    setJm(Number(m[2]));
+    setJd(Number(m[3]));
+  }, [value]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e) => {
+      if (!wrapRef.current?.contains(e.target)) setOpen(false);
     };
-    setInvoiceRows([row, ...invoiceRows]);
-    setInv({ number: '', grossApproved: '', others: '' });
-  };
-
-  const InvoicesTab = () => (
-    <div className="space-y-4">
-      <div className="flex justify-start">
-        <button
-          onClick={addInvoice}
-          className="h-10 px-4 rounded-2xl text-sm transition
-                     bg-white text-black border border-black/15 hover:bg-black/5
-                     dark:bg-neutral-900 dark:text-neutral-100 dark:ring-1 dark:ring-neutral-800 dark:hover:bg-neutral-800"
-        >
-          صورت وضعیت جدید
-        </button>
-      </div>
-
-      <Card className="p-4 space-y-4 bg-white ring-1 ring-black/10 dark:bg-neutral-900 dark:ring-neutral-800">
-        <div className="grid md:grid-cols-3 gap-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-black/70 dark:text-neutral-300">شماره صورت وضعیت</label>
-            <input
-              className="w-full rounded-xl px-3 py-2
-                         bg-white text-black placeholder-black/40 border border-black/15 outline-none
-                         focus:ring-2 focus:ring-black/10
-                         dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-              value={invForm.number}
-              onChange={e => setInv({ number: e.target.value })}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-black/70 dark:text-neutral-300">تاریخ ارسال</label>
-            <input
-              className="w-full rounded-xl px-3 py-2 bg-black/5 text-black border border-black/15 outline-none
-                         dark:bg-neutral-900 dark:text-neutral-200 dark:ring-1 dark:ring-neutral-800"
-              value={todayISO}
-              readOnly
-            />
-          </div>
-
-          <div />
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-black/70 dark:text-neutral-300">ارز</label>
-            <CurrencySelect
-              value={invForm.currency}
-              onChange={v => setInv({ currency: v, source: pickDefaultSourceTitle() })}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-black/70 dark:text-neutral-300">منشأ ارز</label>
-            <SourceSelect value={invForm.source} onChange={v => setInv({ source: v })} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-black/70 dark:text-neutral-300">مبلغ ناخالص تایید شده</label>
-            <AmountInput value={invForm.grossApproved} onChange={v => setInv({ grossApproved: v })} />
-          </div>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-black/70 dark:text-neutral-300">بیمه (%):</span>
-            <input
-              dir="ltr"
-              className="w-24 rounded-xl px-3 py-2 text-left
-                         bg-white text-black border border-black/15 outline-none
-                         dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-              value={invForm.insurancePct}
-              onChange={e => setInv({ insurancePct: e.target.value })}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-black/70 dark:text-neutral-300">سپرده حسن انجام کار (%):</span>
-            <input
-              dir="ltr"
-              className="w-24 rounded-xl px-3 py-2 text-left
-                         bg-white text-black border border-black/15 outline-none
-                         dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-              value={invForm.workGoodPct}
-              onChange={e => setInv({ workGoodPct: e.target.value })}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-black/70 dark:text-neutral-300">سایر کسرها / شرح</label>
-            <input
-              className="w-full rounded-xl px-3 py-2
-                         bg-white text-black placeholder-black/40 border border-black/15 outline-none
-                         focus:ring-2 focus:ring-black/10
-                         dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-              value={invForm.others}
-              onChange={e => setInv({ others: e.target.value })}
-            />
-          </div>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-black/70 dark:text-neutral-300">VAT (%):</span>
-            <input
-              dir="ltr"
-              className="w-24 rounded-xl px-3 py-2 text-left
-                         bg-white text-black border border-black/15 outline-none
-                         dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-              value={invForm.vatPct}
-              onChange={e => setInv({ vatPct: e.target.value })}
-            />
-          </div>
-          <div className="flex items-center text-black/70 dark:text-neutral-300 text-sm">جمع خالص با احتساب VAT: —</div>
-        </div>
-      </Card>
-
-      <TableWrap>
-        <table className="w-full text-sm text-center bg:white text-black dark:bg-neutral-900 dark:text-neutral-200">
-          <THead>
-            <tr className="bg-black/5 text-black dark:bg-neutral-900 dark:text-neutral-200">
-              <TH className="!text-center w-16">ردیف</TH>
-              <TH className="!text-center w-40">شماره</TH>
-              <TH className="!text-center w-40">تاریخ ارسال</TH>
-              <TH className="!text-center">مبلغ ناخالص تایید شده</TH>
-              <TH className="!text-center w-24">VAT</TH>
-              <TH className="!text-center w-36">اقدامات</TH>
-            </tr>
-          </THead>
-          <tbody>
-            {invoiceRows.length === 0 ? (
-              <TR><TD colSpan={6} className="text-black/60 dark:text-neutral-400 py-4">موردی ثبت نشده.</TD></TR>
-            ) : (
-              invoiceRows.map((r, idx) => (
-                <TR key={r.id} className="border-t border-black/10 odd:bg-black/[0.02] dark:border-neutral-800 dark:odd:bg-white/5">
-                  <TD>{idx + 1}</TD>
-                  <TD>{r.number}</TD>
-                  <TD>{r.sendDate}</TD>
-                  <TD className="font-mono ltr">{Number(r.grossApproved || 0).toLocaleString('fa-IR')}</TD>
-                  <TD className="ltr">{r.vat}%</TD>
-                  <TD>
-                    <div className="inline-flex gap-2">
-                      <button className="px-3 py-1 rounded-xl border border-black/15 hover:bg-black/5 transition text-black
-                                         dark:text-neutral-100 dark:ring-1 dark:ring-neutral-800 dark:hover:bg-neutral-800">
-                        نمایش
-                      </button>
-                      <button className="px-3 py-1 rounded-xl border border-black/15 hover:bg-black/5 transition text-black
-                                         dark:text-neutral-100 dark:ring-1 dark:ring-neutral-800 dark:hover:bg-neutral-800">
-                        ویرایش
-                      </button>
-                    </div>
-                  </TD>
-                </TR>
-              ))
-            )}
-          </tbody>
-        </table>
-      </TableWrap>
-    </div>
-  );
-
-  // ======= TAB: دریافتی‌ها (جدید) =======
-  const [receiptRows, setReceiptRows] = React.useState([]);
-  const [rcvForm, setRcvForm] = React.useState({
-    rcvType: '',       // نوع دریافتی
-    number: '',        // شماره
-    rcvDate: todayISO, // فقط نمایش
-    currency: '',
-    source: '',
-    amountFx: '',      // مبلغ ارزی
-    fxRate: '',        // نرخ تسعیر
-    amountIrr: '',     // مبلغ ریالی
-  });
-
-  // محاسبه خودکار مبلغ ریالی
-  React.useEffect(() => {
-    const a = Number(String(rcvForm.amountFx).replace(/[^\d]/g, '') || 0);
-    const r = Number(String(rcvForm.fxRate).replace(/[^\d.]/g, '') || 0);
-    if (a > 0 && r > 0) {
-      const irr = Math.round(a * r);
-      setRcvForm(prev => ({ ...prev, amountIrr: String(irr) }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rcvForm.amountFx, rcvForm.fxRate]);
-
-  const addReceipt = () => {
-    const row = {
-      id: Date.now(),
-      date: todayISO,
-      amountFx: rcvForm.amountFx,
-      amountIrr: rcvForm.amountIrr,
+    const onEsc = (e) => {
+      if (e.key === "Escape") setOpen(false);
     };
-    setReceiptRows([row, ...receiptRows]);
-    setRcvForm({
-      rcvType: '',
-      number: '',
-      rcvDate: todayISO,
-      currency: '',
-      source: '',
-      amountFx: '',
-      fxRate: '',
-      amountIrr: '',
-    });
-  };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onEsc);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onEsc);
+    };
+  }, [open]);
 
-  const ReceiptsTab = () => (
-    <div className="space-y-4">
-      <div className="flex justify-start">
-        <button
-          onClick={addReceipt}
-          className="h-10 px-4 rounded-2xl text-sm transition
-                     bg-white text-black border border-black/15 hover:bg-black/5
-                     dark:bg-neutral-900 dark:text-neutral-100 dark:ring-1 dark:ring-neutral-800 dark:hover:bg-neutral-800"
+  const years = useMemo(() => {
+    const out = [];
+    for (let y = (now.jy || 1404) - 10; y <= (now.jy || 1404) + 10; y++) out.push(y);
+    return out;
+  }, [now.jy]);
+
+  const days = useMemo(() => {
+    const max = jm <= 6 ? 31 : jm <= 11 ? 30 : 29;
+    const out = [];
+    for (let d = 1; d <= max; d++) out.push(d);
+    return out;
+  }, [jm]);
+
+  useEffect(() => {
+    const max = jm <= 6 ? 31 : jm <= 11 ? 30 : 29;
+    if (jd > max) setJd(max);
+  }, [jm, jd]);
+
+  const preview = `${jy}/${pad2(jm)}/${pad2(jd)}`;
+
+  return (
+    <div className="relative" ref={wrapRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full h-11 px-3 rounded-xl border text-right flex items-center justify-between gap-2 border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02] dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+      >
+        <span className={value ? "" : "text-neutral-400 dark:text-white/50"}>{value ? toFaDigits(value) : "انتخاب تاریخ"}</span>
+        <svg
+          viewBox="0 0 24 24"
+          width="18"
+          height="18"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="text-neutral-500 dark:text-white/50"
         >
-          دریافتی جدید
-        </button>
-      </div>
+          <rect x="3" y="4" width="18" height="18" rx="2" />
+          <path d="M16 2v4M8 2v4M3 10h18" />
+        </svg>
+      </button>
 
-      <Card className="p-4 space-y-4 bg-white ring-1 ring-black/10 dark:bg-neutral-900 dark:ring-neutral-800">
-        <div className="grid md:grid-cols-3 gap-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-black/70 dark:text-neutral-300">نوع دریافتی</label>
+      {open && (
+        <div className="absolute z-30 mt-2 w-[min(400px,calc(100vw-32px))] rounded-2xl border p-3 shadow-lg border-black/10 bg-white text-neutral-900 dark:border-white/10 dark:bg-neutral-900 dark:text-white">
+          <div className="grid grid-cols-3 gap-2">
             <select
-              className="w-full rounded-xl px-3 py-2
-                         bg-white text-black placeholder-black/40 border border-black/15 outline-none
-                         dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700"
-              value={rcvForm.rcvType}
-              onChange={e => setRcvForm({ ...rcvForm, rcvType: e.target.value })}
+              value={jy}
+              onChange={(e) => setJy(Number(e.target.value))}
+              className="h-10 rounded-xl border px-2 text-sm bg-white border-black/10 dark:bg-white/5 dark:border-white/15"
             >
-              <option className="bg-white dark:bg-neutral-900" value="">انتخاب کنید</option>
-              <option className="bg-white dark:bg-neutral-900" value="invoice">در قبال صورت‌وضعیت</option>
-              <option className="bg-white dark:bg-neutral-900" value="advance">علی‌الحساب</option>
-              <option className="bg-white dark:bg-neutral-900" value="other">سایر</option>
+              {years.map((y) => (
+                <option key={y} value={y}>
+                  {toFaDigits(y)}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={jm}
+              onChange={(e) => setJm(Number(e.target.value))}
+              className="h-10 rounded-xl border px-2 text-sm bg-white border-black/10 dark:bg-white/5 dark:border-white/15"
+            >
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                <option key={m} value={m}>
+                  {toFaDigits(m)}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={jd}
+              onChange={(e) => setJd(Number(e.target.value))}
+              className="h-10 rounded-xl border px-2 text-sm bg-white border-black/10 dark:bg-white/5 dark:border-white/15"
+            >
+              {days.map((d) => (
+                <option key={d} value={d}>
+                  {toFaDigits(d)}
+                </option>
+              ))}
             </select>
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-black/70 dark:text-neutral-300">شماره</label>
-            <input
-              className="w-full rounded-xl px-3 py-2
-                         bg-white text-black placeholder-black/40 border border-black/15 outline-none
-                         focus:ring-2 focus:ring-black/10
-                         dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-              value={rcvForm.number}
-              onChange={e => setRcvForm({ ...rcvForm, number: e.target.value })}
-            />
+          <div className="mt-2 text-xs text-neutral-500 dark:text-white/60">
+            پیش نمایش: <span className="font-semibold">{toFaDigits(preview)}</span>
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-black/70 dark:text-neutral-300">تاریخ دریافت</label>
-            <input
-              className="w-full rounded-xl px-3 py-2 bg-black/5 text-black border border-black/15 outline-none
-                         dark:bg-neutral-900 dark:text-neutral-200 dark:ring-1 dark:ring-neutral-800"
-              value={todayISO}
-              readOnly
-            />
+          <div className="mt-3 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="h-9 px-4 rounded-xl border text-sm border-black/15 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
+            >
+              بستن
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onChange(preview);
+                setOpen(false);
+              }}
+              className="h-9 px-4 rounded-xl text-sm bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
+            >
+              تایید
+            </button>
           </div>
         </div>
-
-        <div className="grid md:grid-cols-4 gap-3">
-          <div className="flex flex-col gap-1 md:col-span-2">
-            <label className="text-sm text-black/70 dark:text-neutral-300">ارز</label>
-            <CurrencySelect
-              value={rcvForm.currency}
-              onChange={v => setRcvForm({ ...rcvForm, currency: v, source: pickDefaultSourceTitle() })}
-            />
-          </div>
-          <div className="flex flex-col gap-1 md:col-span-2">
-            <label className="text-sm text-black/70 dark:text-neutral-300">منشأ ارز</label>
-            <SourceSelect value={rcvForm.source} onChange={v => setRcvForm({ ...rcvForm, source: v })} />
-          </div>
-        </div>
-
-        <div className="grid md:grid-cols-4 gap-3">
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-black/70 dark:text-neutral-300">مبلغ دریافت‌شده (ارزی)</label>
-            <AmountInput value={rcvForm.amountFx} onChange={v => setRcvForm({ ...rcvForm, amountFx: v })} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm text-black/70 dark:text-neutral-300">نرخ تسعیر</label>
-            <input
-              dir="ltr"
-              className="w-full rounded-xl px-3 py-2 text-left font-mono
-                         bg-white text-black placeholder-black/40 border border-black/15 outline-none
-                         focus:ring-2 focus:ring-black/10
-                         dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-              value={rcvForm.fxRate}
-              onChange={e => setRcvForm({ ...rcvForm, fxRate: e.target.value })}
-              inputMode="decimal"
-              placeholder="0"
-            />
-          </div>
-          <div className="flex flex-col gap-1 md:col-span-2">
-            <label className="text-sm text-black/70 dark:text-neutral-300">مبلغ دریافتی تبدیل‌شده (ریالی)</label>
-            <AmountInput value={rcvForm.amountIrr} onChange={v => setRcvForm({ ...rcvForm, amountIrr: v })} />
-          </div>
-        </div>
-      </Card>
-
-      <TableWrap>
-        <table className="w-full text-sm text-center bg-white text-black dark:bg-neutral-900 dark:text-neutral-200">
-          <THead>
-            <tr className="bg-black/5 text-black dark:bg-neutral-900 dark:text-neutral-200">
-              <TH className="!text-center w-16">ردیف</TH>
-              <TH className="!text-center w-40">تاریخ</TH>
-              <TH className="!text-center">مبلغ دریافت شده (ارزی)</TH>
-              <TH className="!text-center">مبلغ دریافت شده (ریالی)</TH>
-              <TH className="!text-center w-40">اقدامات</TH>
-            </tr>
-          </THead>
-          <tbody>
-            {receiptRows.length === 0 ? (
-              <TR><TD colSpan={5} className="text-black/60 dark:text-neutral-400 py-4">موردی ثبت نشده.</TD></TR>
-            ) : (
-              receiptRows.map((r, idx) => (
-                <TR key={r.id} className="border-t border-black/10 odd:bg-black/[0.02] dark:border-neutral-800 dark:odd:bg-white/5">
-                  <TD>{idx + 1}</TD>
-                  <TD>{r.date}</TD>
-                  <TD className="font-mono ltr">{Number(String(r.amountFx).replace(/[^\d]/g,'') || 0).toLocaleString('fa-IR')}</TD>
-                  <TD className="font-mono ltr">{Number(String(r.amountIrr).replace(/[^\d]/g,'') || 0).toLocaleString('fa-IR')}</TD>
-                  <TD>
-                    <div className="inline-flex gap-2">
-                      <button className="px-3 py-1 rounded-xl border border-black/15 hover:bg-black/5 transition text-black
-                                         dark:text-neutral-100 dark:ring-1 dark:ring-neutral-800 dark:hover:bg-neutral-800">
-                        نمایش
-                      </button>
-                      <button className="px-3 py-1 rounded-xl border border-black/15 hover:bg-black/5 transition text-black
-                                         dark:text-neutral-100 dark:ring-1 dark:ring-neutral-800 dark:hover:bg-neutral-800">
-                        ویرایش
-                      </button>
-                      <button
-                        className="px-3 py-1 rounded-xl bg-red-600 text-white"
-                        onClick={() => setReceiptRows(receiptRows.filter(x => x.id !== r.id))}
-                      >
-                        حذف
-                      </button>
-                    </div>
-                  </TD>
-                </TR>
-              ))
-            )}
-          </tbody>
-        </table>
-      </TableWrap>
-
-      <div className="grid md:grid-cols-2 gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-black/70 dark:text-neutral-300 text-sm">جمع کل (ارزی):</span>
-          <input
-            className="w-48 rounded-xl px-3 py-2 bg-black/5 text-black border border-black/15 font-mono ltr
-                       dark:bg-neutral-900 dark:text-neutral-200 dark:ring-1 dark:ring-neutral-800"
-            readOnly
-            value={receiptRows.reduce((s, r) => s + (Number(String(r.amountFx).replace(/[^\d]/g, '') || 0)), 0).toLocaleString('fa-IR')}
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-black/70 dark:text-neutral-300 text-sm">جمع کل (ریالی):</span>
-          <input
-            className="w-48 rounded-xl px-3 py-2 bg-black/5 text:black border border-black/15 font-mono ltr
-                       dark:bg-neutral-900 dark:text-neutral-200 dark:ring-1 dark:ring-neutral-800"
-            readOnly
-            value={receiptRows.reduce((s, r) => s + (Number(String(r.amountIrr).replace(/[^\d]/g, '') || 0)), 0).toLocaleString('fa-IR')}
-          />
-        </div>
-      </div>
+      )}
     </div>
   );
+}
 
-  // ======= Layout =======
+export default function FinancialWorksheetPage() {
+  const API_BASE = (window.API_URL || "/api").replace(/\/+$/, "");
+
+  const api = useCallback(
+    async (path, opt = {}) => {
+      const res = await fetch(API_BASE + path, {
+        credentials: "include",
+        cache: "no-store",
+        ...opt,
+        headers: { "Content-Type": "application/json", ...(opt.headers || {}) },
+      });
+      const txt = await res.text();
+      let data = {};
+      try {
+        data = txt ? JSON.parse(txt) : {};
+      } catch {
+        throw new Error("bad_json_response");
+      }
+      if (!res.ok) throw new Error(data?.error || data?.message || "request_failed");
+      return data;
+    },
+    [API_BASE],
+  );
+
+  const [projects, setProjects] = useState([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [projectId, setProjectId] = useState("");
+
+  const [tab, setTab] = useState("statement");
+  const [formOpen, setFormOpen] = useState(false);
+  const [err, setErr] = useState("");
+
+  const [statementNo, setStatementNo] = useState("");
+  const [jalaliDate, setJalaliDate] = useState("");
+  const [description, setDescription] = useState("");
+  const [grossAmount, setGrossAmount] = useState("");
+
+  const [currencyItems, setCurrencyItems] = useState([]);
+  const [currencySourceItems, setCurrencySourceItems] = useState([]);
+  const [currencyId, setCurrencyId] = useState("");
+  const [currencySourceId, setCurrencySourceId] = useState("");
+
+  useEffect(() => {
+    let stop = false;
+    (async () => {
+      setErr("");
+      setProjectsLoading(true);
+      try {
+        const [pResp, tResp, sResp] = await Promise.all([
+          api("/projects").catch(() => ({ items: [] })),
+          api("/base/currencies/types").catch(() => ({ items: [] })),
+          api("/base/currencies/sources").catch(() => ({ items: [] })),
+        ]);
+
+        if (stop) return;
+
+        const pList = pResp?.projects || pResp?.items || pResp?.data || [];
+        setProjects(Array.isArray(pList) ? pList : []);
+
+        const tList = tResp?.items || tResp?.data || tResp?.types || [];
+        const sList = sResp?.items || sResp?.data || sResp?.sources || [];
+        setCurrencyItems(Array.isArray(tList) ? tList : []);
+        setCurrencySourceItems(Array.isArray(sList) ? sList : []);
+      } catch (e) {
+        if (!stop) setErr(e.message || "خطا در بارگذاری اطلاعات");
+      } finally {
+        if (!stop) setProjectsLoading(false);
+      }
+    })();
+    return () => {
+      stop = true;
+    };
+  }, [api]);
+
+  const activeProjects = useMemo(() => {
+    const list = Array.isArray(projects) ? projects : [];
+    return list
+      .filter((p) => p?.isActive !== false && p?.is_active !== false)
+      .slice()
+      .sort((a, b) =>
+        String(a?.code || "").localeCompare(String(b?.code || ""), "fa", {
+          numeric: true,
+          sensitivity: "base",
+        }),
+      );
+  }, [projects]);
+
+  const gregorianDate = useMemo(() => {
+    const m = String(jalaliDate || "").match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+    if (!m) return "";
+    const g = jalaliToGregorian(Number(m[1]), Number(m[2]), Number(m[3]));
+    if (!g) return "";
+    return `${g.gy}-${pad2(g.gm)}-${pad2(g.gd)}`;
+  }, [jalaliDate]);
+
+  const projectLabel = (p) => {
+    const code = String(p?.code || "").trim();
+    const name = String(p?.name || p?.title || "").trim();
+    return `${code ? `${toFaDigits(code)} - ` : ""}${name || "—"}`;
+  };
+
+  const readItemId = (it) => String(it?.id ?? it?.code ?? it?.value ?? it?.key ?? "");
+  const readItemLabel = (it) => String(it?.label ?? it?.title ?? it?.name ?? it?.code ?? "").trim();
+
   return (
-    <Card>
-      {/* breadcrumb */}
+    <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
       <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
         <span>پروژه‌ها</span>
         <span className="mx-2">›</span>
         <span className="font-semibold text-black dark:text-neutral-100">کاربرگ مالی</span>
       </div>
 
-      {/* انتخاب پروژه */}
-      <div className="grid md:grid-cols-2 gap-3 mb-4">
-        <div className="flex flex-col gap-1">
-          <label className="text-sm text-black/70 dark:text-neutral-300">کد پروژه</label>
-          <select
-            className="w-full rounded-xl px-3 py-2 ltr
-                       bg-white text-black placeholder-black/40 border border-black/15 outline-none
-                       dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700"
-            value={projectId}
-            onChange={e => setProjectId(e.target.value)}
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          <div>
+            <label className="text-xs text-neutral-600 dark:text-white/60">پروژه</label>
+            <select
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+              disabled={projectsLoading}
+              className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+            >
+              <option value="">{projectsLoading ? "در حال بارگذاری..." : "انتخاب پروژه فعال"}</option>
+              {activeProjects.map((p) => (
+                <option key={String(p?.id)} value={String(p?.id)}>
+                  {projectLabel(p)}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setTab("statement")}
+              className={`h-10 px-4 rounded-xl border text-sm transition ${
+                tab === "statement"
+                  ? "bg-black text-white border-black dark:bg-white dark:text-black dark:border-white"
+                  : "bg-white text-black border-black/15 hover:bg-black/5 dark:bg-white/5 dark:text-white dark:border-white/15 dark:hover:bg-white/10"
+              }`}
+            >
+              صورت وضعیت
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("receipts")}
+              className={`h-10 px-4 rounded-xl border text-sm transition ${
+                tab === "receipts"
+                  ? "bg-black text-white border-black dark:bg-white dark:text-black dark:border-white"
+                  : "bg-white text-black border-black/15 hover:bg-black/5 dark:bg-white/5 dark:text-white dark:border-white/15 dark:hover:bg-white/10"
+              }`}
+            >
+              دریافتی‌ها
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setFormOpen((v) => !v)}
+            className="h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 ring-black/15 hover:bg-black/5 dark:ring-neutral-700 dark:hover:bg-white/10"
+            title={formOpen ? "بستن" : "افزودن"}
+            aria-label={formOpen ? "بستن" : "افزودن"}
           >
-            <option className="bg-white dark:bg-neutral-900" value="">انتخاب کنید</option>
-            {(projects || []).map(p => (
-              <option className="bg-white dark:bg-neutral-900" key={p.id} value={p.id}>
-                {(p.code || '—') + ' — ' + (p.name || '')}
-              </option>
-            ))}
-          </select>
+            <img
+              src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"}
+              alt=""
+              className="w-5 h-5 dark:invert"
+            />
+          </button>
         </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-sm text-black/70 dark:text-neutral-300">نام پروژه</label>
-          <input
-            className="w-full rounded-xl px-3 py-2
-                       bg-black/5 text-black border border-black/15 outline-none
-                       dark:bg-neutral-900 dark:text-neutral-200 dark:ring-1 dark:ring-neutral-800"
-            value={selectedProject?.name || ''}
-            readOnly
-          />
-        </div>
-      </div>
 
-      {/* تب‌ها */}
-      <div className="grid grid-cols-3 gap-2 mb-4">
-        <button
-          className={`h-10 px-4 rounded-2xl text-sm shadow-sm transition ${
-            active === 'balance'
-              ? 'bg-neutral-100 text-neutral-900'
-              : 'bg-white text-black border border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800'
-          }`}
-          onClick={() => setActive('balance')}
-        >
-          تراز مالی پروژه
-        </button>
-        <button
-          className={`h-10 px-4 rounded-2xl text-sm shadow-sm transition ${
-            active === 'invoices'
-              ? 'bg-neutral-100 text-neutral-900'
-              : 'bg-white text-black border border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800'
-          }`}
-          onClick={() => setActive('invoices')}
-        >
-          صورت وضعیت‌ها
-        </button>
-        <button
-          className={`h-10 px-4 rounded-2xl text-sm shadow-sm transition ${
-            active === 'receipts'
-              ? 'bg-neutral-100 text-neutral-900'
-              : 'bg-white text-black border border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800'
-          }`}
-          onClick={() => setActive('receipts')}
-        >
-          دریافتـی‌ها
-        </button>
-      </div>
+        {formOpen && (
+          <div className="rounded-2xl border border-black/10 p-3 md:p-4 space-y-3 dark:border-white/10">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
+              <div className="lg:col-span-4">
+                <label className="text-xs text-neutral-600 dark:text-white/60">شماره صورت وضعیت</label>
+                <input
+                  value={statementNo}
+                  onChange={(e) => setStatementNo(e.target.value)}
+                  className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                  type="text"
+                  placeholder={tab === "receipts" ? "شماره دریافتی" : "شماره صورت وضعیت"}
+                />
+              </div>
 
-      {/* محتوای تب‌ها */}
-      {active === 'balance' && <BalanceTab />}
-      {active === 'invoices' && <InvoicesTab />}
-      {active === 'receipts' && <ReceiptsTab />}
+              <div className="lg:col-span-4">
+                <label className="text-xs text-neutral-600 dark:text-white/60">تاریخ شمسی</label>
+                <div className="mt-1">
+                  <JalaliPopupDatePicker value={jalaliDate} onChange={setJalaliDate} />
+                </div>
+              </div>
+
+              <div className="lg:col-span-4">
+                <label className="text-xs text-neutral-600 dark:text-white/60">تاریخ میلادی (خودکار)</label>
+                <input
+                  value={gregorianDate}
+                  readOnly
+                  className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-black/5 text-neutral-900 border-black/10 dark:bg-white/10 dark:text-white dark:border-white/15"
+                  type="text"
+                  dir="ltr"
+                  placeholder="YYYY-MM-DD"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+              <div>
+                <label className="text-xs text-neutral-600 dark:text-white/60">شرح بابت</label>
+                <input
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                  type="text"
+                  placeholder="شرح بابت..."
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3">
+              <div className="xl:col-span-5">
+                <label className="text-xs text-neutral-600 dark:text-white/60">مبلغ ناخالص تایید شده</label>
+                <input
+                  value={grossAmount}
+                  onChange={(e) => setGrossAmount(e.target.value)}
+                  className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                  type="text"
+                  dir="ltr"
+                  placeholder="0"
+                />
+              </div>
+
+              <div className="xl:col-span-3">
+                <label className="text-xs text-neutral-600 dark:text-white/60">ارز</label>
+                <select
+                  value={currencyId}
+                  onChange={(e) => setCurrencyId(e.target.value)}
+                  className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                >
+                  <option value="">انتخاب ارز</option>
+                  {(currencyItems || []).map((it) => {
+                    const id = readItemId(it);
+                    if (!id) return null;
+                    return (
+                      <option key={id} value={id}>
+                        {readItemLabel(it) || id}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div className="xl:col-span-4">
+                <label className="text-xs text-neutral-600 dark:text-white/60">منشا ارز</label>
+                <select
+                  value={currencySourceId}
+                  onChange={(e) => setCurrencySourceId(e.target.value)}
+                  className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                >
+                  <option value="">انتخاب منشا</option>
+                  {(currencySourceItems || []).map((it) => {
+                    const id = readItemId(it);
+                    if (!id) return null;
+                    return (
+                      <option key={id} value={id}>
+                        {readItemLabel(it) || id}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {err ? <div className="text-sm text-red-600 dark:text-red-400">{err}</div> : null}
+      </div>
     </Card>
   );
 }
+
