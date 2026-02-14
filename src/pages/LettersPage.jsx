@@ -4964,7 +4964,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                 title="نمایش"
                 aria-label="نمایش"
               >
-                {letterNoOf(l) || "—"}
+                {String(l?.secretariat_no ?? l?.secretariatNo ?? letterNoOf(l) ?? "").trim() || "—"}
               </button>
             </td>
 
