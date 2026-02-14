@@ -4995,7 +4995,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                 title="نمایش"
                 aria-label="نمایش"
               >
-                {String(l?.secretariat_no ?? l?.secretariatNo ?? letterNoOf(l) ?? "").trim() || "—"}
+                {toFaDigits(String(l?.secretariat_no ?? l?.secretariatNo ?? letterNoOf(l) ?? "").trim() || "—")}
               </button>
             </td>
 
