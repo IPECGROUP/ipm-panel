@@ -1012,7 +1012,7 @@ const sortedProjects = useMemo(() => {
                                       if (!isParent) openMonthModal(r, m);
                                     }}
                                     disabled={isParent}
-                                    className={`w-24 mx-auto h-12 md:w-24 md:h-12 rounded-2xl border text-[11px] md:text-[12px] flex items-center justify-center shadow-sm transition ${
+                                    className={`w-[5.5rem] mx-auto h-10 md:w-[5.5rem] md:h-10 rounded-xl border text-[10px] md:text-[11px] flex items-center justify-center shadow-sm transition ${
                                       hasVal
                                         ? "bg-[#edaf7c] border-[#edaf7c]/90 text-black"
                                         : "bg-black/5 border-black/10 text-black/70 dark:bg-white/5 dark:border-neutral-700 dark:text-neutral-100"
