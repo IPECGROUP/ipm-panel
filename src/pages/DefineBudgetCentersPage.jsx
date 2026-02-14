@@ -820,7 +820,7 @@ const sortedProjects = useMemo(() => {
                           <div className="inline-flex items-center gap-2">
                             <button
                               onClick={() => beginEdit(r)}
-                              className="h-9 w-11 grid place-items-center rounded-xl ring-1 ring-neutral-200 bg-white text-neutral-800 hover:bg-neutral-50 transition dark:bg-transparent dark:ring-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10"
+                              className="h-9 w-9 grid place-items-center bg-transparent text-neutral-800 hover:opacity-80 active:opacity-70 transition dark:text-neutral-100"
                               aria-label="ویرایش"
                               title="ویرایش"
                             >
@@ -828,7 +828,7 @@ const sortedProjects = useMemo(() => {
                             </button>
                             <button
                               onClick={() => del(r)}
-                              className="h-9 w-11 grid place-items-center rounded-xl ring-1 ring-red-400 bg-white text-red-600 hover:bg-neutral-50 transition dark:bg-transparent dark:ring-red-500 dark:text-red-400 dark:hover:bg-white/10"
+                              className="h-9 w-9 grid place-items-center bg-transparent text-red-600 hover:opacity-80 active:opacity-70 transition dark:text-red-400"
                               aria-label="حذف"
                               title="حذف"
                             >
