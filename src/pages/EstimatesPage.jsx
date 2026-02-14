@@ -496,6 +496,106 @@ const sortedProjects = useMemo(() => {
     return result;
   }, [rowsToRender, coreOf, renderCode, codeSortDir, openCodes]);
 
+  const allRowsForExport = useMemo(() => {
+    const base = rowsToRender || [];
+    if (!base.length) return [];
+
+    const nodes = base.map((r, index) => {
+      const core = coreOf(r.code);
+      const parts = core ? core.split(".").filter(Boolean) : [];
+      const key = core || `__idx_${index}`;
+      let parentCore = null;
+      if (parts.length > 1) parentCore = parts.slice(0, -1).join(".");
+      return { row: r, key, core, parentCore };
+    });
+
+    const byCore = new Map();
+    nodes.forEach((n) => n.core && byCore.set(n.core, n));
+
+    nodes.forEach((n) => {
+      if (!n.core) return;
+      const parts = n.core.split(".").filter(Boolean);
+      if (parts.length <= 1) {
+        n.parentCore = null;
+        return;
+      }
+      let found = null;
+      for (let i = parts.length - 1; i >= 1; i--) {
+        const candidate = parts.slice(0, i).join(".");
+        if (byCore.has(candidate)) {
+          found = candidate;
+          break;
+        }
+      }
+      n.parentCore = found;
+    });
+
+    const childrenMap = new Map();
+    nodes.forEach((n) => {
+      if (!n.parentCore) return;
+      if (!byCore.has(n.parentCore)) return;
+      if (!childrenMap.has(n.parentCore)) childrenMap.set(n.parentCore, []);
+      childrenMap.get(n.parentCore).push(n);
+    });
+
+    nodes.forEach((n) => (n.hasChildren = !!(n.core && childrenMap.has(n.core))));
+
+    const sortFn = (a, b) => {
+      const ca = renderCode(a.row.code);
+      const cb = renderCode(b.row.code);
+      const cmp = String(ca || "").localeCompare(String(cb || ""), "fa", { numeric: true, sensitivity: "base" });
+      return codeSortDir === "asc" ? cmp : -cmp;
+    };
+
+    const roots = nodes.filter((n) => !n.parentCore || !byCore.has(n.parentCore));
+    roots.sort(sortFn);
+    for (const list of childrenMap.values()) list.sort(sortFn);
+
+    const result = [];
+    const visit = (node, depth) => {
+      result.push({ row: node.row, depth, key: node.key, core: node.core, hasChildren: node.hasChildren });
+      const children = node.core ? childrenMap.get(node.core) || [] : [];
+      children.forEach((child) => visit(child, depth + 1));
+    };
+
+    roots.forEach((root) => visit(root, 0));
+    return result;
+  }, [rowsToRender, coreOf, renderCode, codeSortDir]);
+
+  const monthValueOfRow = useCallback(
+    (row, monthKey) => {
+      if (!row?.code) return 0;
+      const code = row.code;
+      const isParent = !hierarchyMaps.isLeafByCode[code];
+
+      if (!isParent) {
+        if (row.months && row.months[monthKey] != null) return Number(row.months[monthKey] || 0);
+        return Number((row.lastMonths && row.lastMonths[monthKey]) || 0);
+      }
+
+      const core = hierarchyMaps.coreByCode[code];
+      if (!core) return 0;
+      const prefix = core + ".";
+
+      let sum = 0;
+      (rowsToRender || []).forEach((rr) => {
+        if (!rr?.code) return;
+        const c2 = hierarchyMaps.coreByCode[rr.code];
+        if (!c2 || !hierarchyMaps.isLeafByCode[rr.code]) return;
+        if (!c2.startsWith(prefix)) return;
+        if (rr.months && rr.months[monthKey] != null) sum += Number(rr.months[monthKey] || 0);
+        else sum += Number((rr.lastMonths && rr.lastMonths[monthKey]) || 0);
+      });
+      return sum;
+    },
+    [rowsToRender, hierarchyMaps],
+  );
+
+  const finalTotalOfRow = useCallback(
+    (row) => dynamicMonths.reduce((acc, m) => acc + monthValueOfRow(row, m.key), 0),
+    [dynamicMonths, monthValueOfRow],
+  );
+
   const totalsComputed = useMemo(() => {
     const t = {};
     dynamicMonths.forEach((m) => (t[m.key] = 0));
@@ -734,6 +834,127 @@ const sortedProjects = useMemo(() => {
       setSaving(false);
     }
   };
+
+  const exportExcel = useCallback(() => {
+    const escapeHtml = (v) =>
+      String(v ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+    const activeLabel = tabs.find((t) => t.id === active)?.label || "";
+    const projectLabel =
+      active === "projects" ? (selectedProject ? `${selectedProject.code || ""} - ${selectedProject.name || ""}` : "") : "";
+    const title = `برآورد هزینه‌ها${activeLabel ? ` - ${activeLabel}` : ""}`;
+
+    const headerHtml = `
+      <tr>
+        <th>#</th>
+        <th>کد بودجه</th>
+        <th>نام بودجه</th>
+        ${dynamicMonths.map((m) => `<th>${escapeHtml(m.label)}</th>`).join("")}
+        <th>جمع</th>
+      </tr>
+    `;
+
+    const bodyHtml = (allRowsForExport || [])
+      .map((node, idx) => {
+        const r = node.row || {};
+        const codeCell = renderCode(r.code);
+        const indent = "&nbsp;".repeat(Math.max(0, Number(node.depth || 0)) * 4);
+        const nameCell = `${indent}${escapeHtml(r.name || "—")}`;
+
+        const monthsHtml = dynamicMonths
+          .map((m) => {
+            const v = monthValueOfRow(r, m.key);
+            return `<td>${v ? escapeHtml(toFaDigits(formatMoney(v))) : "—"}</td>`;
+          })
+          .join("");
+
+        const rowTotal = finalTotalOfRow(r);
+
+        return `
+          <tr>
+            <td>${escapeHtml(toFaDigits(idx + 1))}</td>
+            <td>${escapeHtml(codeCell || "—")}</td>
+            <td style="text-align:right">${nameCell}</td>
+            ${monthsHtml}
+            <td>${rowTotal ? escapeHtml(toFaDigits(formatMoney(rowTotal))) : "—"}</td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    const footerHtml = `
+      <tr>
+        <td>-</td>
+        <td>-</td>
+        <td>جمع کل</td>
+        ${dynamicMonths
+          .map((m) => {
+            const v = totalsComputed[m.key];
+            return `<td>${v ? escapeHtml(toFaDigits(formatMoney(v))) : "—"}</td>`;
+          })
+          .join("")}
+        <td>${totalGrand ? escapeHtml(toFaDigits(formatMoney(totalGrand))) : "—"}</td>
+      </tr>
+    `;
+
+    const noRowsHtml = `<tr><td colspan="${3 + dynamicMonths.length + 1}">موردی برای نمایش نیست.</td></tr>`;
+    const exportDate = new Date().toLocaleDateString("fa-IR");
+
+    const html = `
+      <html lang="fa" dir="rtl">
+        <head>
+          <meta charset="utf-8" />
+          <style>
+            body { font-family: Vazirmatn, Vazir, IRANSans, Segoe UI, Tahoma, sans-serif; direction: rtl; }
+            .meta { margin-bottom: 10px; font-size: 11pt; }
+            .meta div { margin-bottom: 4px; }
+            table { border-collapse: collapse; width: 100%; font-size: 11pt; }
+            th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: center; vertical-align: middle; }
+            thead th { background-color: #f3f4f6; font-weight: 700; }
+            tfoot td { background-color: #f9fafb; font-weight: 700; }
+          </style>
+        </head>
+        <body>
+          <div class="meta">
+            <div><strong>${escapeHtml(title)}</strong></div>
+            ${active === "projects" ? `<div>پروژه: ${escapeHtml(projectLabel || "—")}</div>` : ""}
+            <div>تاریخ خروجی: ${escapeHtml(exportDate)}</div>
+          </div>
+          <table>
+            <thead>${headerHtml}</thead>
+            <tbody>${bodyHtml || noRowsHtml}</tbody>
+            <tfoot>${footerHtml}</tfoot>
+          </table>
+        </body>
+      </html>
+    `;
+
+    const blob = new Blob(["\ufeff" + html], { type: "application/vnd.ms-excel;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `estimates-${active}.xls`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [
+    tabs,
+    active,
+    selectedProject,
+    dynamicMonths,
+    allRowsForExport,
+    renderCode,
+    monthValueOfRow,
+    finalTotalOfRow,
+    toFaDigits,
+    formatMoney,
+    totalsComputed,
+    totalGrand,
+  ]);
 
   const TopButtons = () => (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
@@ -1127,6 +1348,16 @@ const sortedProjects = useMemo(() => {
         {err && <div className="text-sm text-red-600 dark:text-red-400 mt-3">{err}</div>}
 
         <div className="mt-4 flex items-center gap-2 justify-end">
+          <button
+            onClick={exportExcel}
+            disabled={loading || (active === "projects" && !projectId) || !(rowsToRender || []).length}
+            className="h-10 w-14 grid place-items-center rounded-xl border border-black/15 hover:bg-black/5 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
+            aria-label="خروجی اکسل"
+            title="خروجی اکسل"
+          >
+            <img src="/images/icons/excel.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
+          </button>
+
           <button
             onClick={onUpdate}
             disabled={saving || (active === "projects" && !projectId)}
