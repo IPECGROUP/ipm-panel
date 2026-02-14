@@ -1356,7 +1356,7 @@ const sortedProjects = useMemo(() => {
             aria-label="خروجی اکسل"
             title="خروجی اکسل"
           >
-            <img src="/images/icons8-excel-48.png" alt="" className="w-5 h-5" />
+            <img src="/images/icons8-excel-50.png" alt="" className="w-5 h-5" />
           </button>
 
           <button
