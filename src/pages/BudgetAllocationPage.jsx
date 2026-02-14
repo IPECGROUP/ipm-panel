@@ -795,33 +795,33 @@ if (active === "projects") {
 
                     return (
                       <TR key={r.code} className="transition-colors hover:bg-black/[0.05] dark:hover:bg-white/15">
-                        <TD className="px-2.5 py-2 align-middle !text-center">
+                        <TD className="px-2.5 pt-1.5 pb-1 align-middle !text-center">
                           {toFaDigits(idx + 1)}
                         </TD>
-                        <TD className="px-2.5 py-2 align-middle">
+                        <TD className="px-2.5 pt-1.5 pb-1 align-middle">
                           <div className="flex justify-center ltr">
                             {toFaDigits(renderDisplayBudgetCode(r.code))}
                           </div>
                         </TD>
-                        <TD className="px-2.5 py-2 whitespace-normal break-words leading-snug align-middle max-w-[26ch] mx-auto !text-center">
+                        <TD className="px-2.5 pt-1.5 pb-1 whitespace-normal break-words leading-snug align-middle max-w-[26ch] mx-auto !text-center">
                           {r.name || "—"}
                         </TD>
-                        <TD className="px-2.5 py-2 align-middle">
+                        <TD className="px-2.5 pt-1.5 pb-1 align-middle">
                           <div className="flex justify-center ltr">
                             {toFaDigits(formatMoney(r.lastAmount || 0))}
                           </div>
                         </TD>
-                        <TD className="px-2.5 py-2 align-middle">
+                        <TD className="px-2.5 pt-1.5 pb-1 align-middle">
                           <div className="flex justify-center ltr">
                             {toFaDigits(formatMoney(r.totalAlloc || 0))}
                           </div>
                         </TD>
-                        <TD className="px-2.5 py-2 align-middle !text-center">
+                        <TD className="px-2.5 pt-1.5 pb-1 align-middle !text-center">
                           <div className="flex flex-col">
                             <input
                               ref={(el) => (moneyRefs.current[r.code] = el)}
                               dir="ltr"
-                              className={`w-full rounded-xl px-2 py-1.5 outline-none border transition
+                              className={`w-full rounded-xl px-2 py-1 outline-none border transition
                                         ${
                                           isOver
                                             ? "border-red-500 ring-1 ring-red-400 bg-red-50 text-red-700 placeholder-red-400 dark:bg-red-600/10 dark:text-red-200"
@@ -847,10 +847,10 @@ if (active === "projects") {
                             )}
                           </div>
                         </TD>
-                        <TD className="px-2.5 py-2 align-middle !text-center">
+                        <TD className="px-2.5 pt-1.5 pb-1 align-middle !text-center">
                           <textarea
                             ref={(el) => (descRefs.current[r.code] = el)}
-                            className="w-full rounded-xl px-2 pt-2 pb-1.5 whitespace-normal break-words leading-snug outline-none
+                            className="w-full rounded-xl px-2 pt-1.5 pb-1 whitespace-normal break-words leading-snug outline-none
                                      bg-white text-black placeholder-black/40 border border-black/15 focus:ring-2 focus:ring-black/10
                                      dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
                             rows={2}
@@ -859,7 +859,7 @@ if (active === "projects") {
                             placeholder="شرح تخصیص…"
                           />
                         </TD>
-                        <TD className="px-2.5 py-2 align-middle !text-center">
+                        <TD className="px-2.5 pt-1.5 pb-1 align-middle !text-center">
                           <div className="inline-flex items-center justify-center gap-2">
                             <button
                               onClick={() => removeRow(r.code)}
