@@ -4929,7 +4929,7 @@ const normalRowBg = isOutgoing
   : "bg-black/[0.02] hover:bg-black/[0.04]";
 
 // ✅ محرمانه: بک‌گراند ثابت با رنگ مدنظر
-const confRowBg = "bg-[#F63049] hover:bg-[#F63049]";
+const confRowBg = "bg-[#FF2E2E] hover:bg-[#FF2E2E]";
 
 const rowBg = isConf ? confRowBg : normalRowBg;
 
