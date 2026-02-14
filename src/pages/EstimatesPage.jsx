@@ -911,7 +911,6 @@ const sortedProjects = useMemo(() => {
                             {totalsComputed[m.key] ? (
                               <span className="inline-flex items-center justify-center gap-1">
                                 <span className="ltr">{toFaDigits(formatMoney(totalsComputed[m.key]))}</span>
-                                <span>ریال</span>
                               </span>
                             ) : (
                               "—"
@@ -921,7 +920,6 @@ const sortedProjects = useMemo(() => {
                         <TD className="px-3 py-3 whitespace-nowrap text-center border-l border-r border-b border-black/10 dark:border-neutral-700">
                           <span className="inline-flex items-center justify-center gap-1">
                             <span className="ltr">{toFaDigits(formatMoney(totalGrand || 0))}</span>
-                            <span>ریال</span>
                           </span>
                         </TD>
                       </TR>
@@ -1023,7 +1021,6 @@ const sortedProjects = useMemo(() => {
                                     {hasVal ? (
                                       <div className="flex flex-col items-center justify-center leading-tight">
                                         <span>{toFaDigits(formatMoney(val))}</span>
-                                        <span className="mt-0.5 text-[10px] text-black/70 dark:text-neutral-300">ریال</span>
                                       </div>
                                     ) : (
                                       "—"
@@ -1036,7 +1033,6 @@ const sortedProjects = useMemo(() => {
                             <TD className="px-3 py-3 whitespace-nowrap text-center border-l border-r border-black/10 dark:border-neutral-700">
                               <span className="inline-flex items-center justify-center gap-1">
                                 <span className="ltr">{toFaDigits(formatMoney(finalTotal || 0))}</span>
-                                <span>ریال</span>
                               </span>
                             </TD>
                           </TR>
