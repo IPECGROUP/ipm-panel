@@ -4899,7 +4899,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                   openView(l);
                 }}
                 className={
-                  "mx-auto inline-flex items-center justify-center gap-2 font-semibold underline-offset-4 hover:underline transition " +
+                  "mx-auto inline-flex items-center justify-center gap-2 text-[13px] font-semibold underline-offset-4 hover:underline transition " +
                   (isConf
                     ? "text-red-600 dark:text-red-400"
                     : theme === "dark"
@@ -4909,7 +4909,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                 title="نمایش"
                 aria-label="نمایش"
               >
-                {letterNoOf(l) || "—"}
+                {toFaDigits(letterNoOf(l) || "—")}
               </button>
             </td>
 
