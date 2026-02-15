@@ -187,13 +187,18 @@ setProjects(Array.from(byId.values()));
     return sign + s.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
 
-  const toFaDigits = (s) =>
-    String(s ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]);
+  const toFaDigits = useCallback(
+    (s) => String(s ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]),
+    []
+  );
 
-  const toEnDigits = (s) =>
-    String(s || "")
-      .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d))
-      .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
+  const toEnDigits = useCallback(
+    (s) =>
+      String(s || "")
+        .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d))
+        .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d)),
+    []
+  );
 
   const parseMoney = (s) => {
     if (s == null) return 0;
