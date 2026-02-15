@@ -622,37 +622,36 @@ const sortedProjects = useMemo(() => {
     return grand;
   }, [rowsToRender, hierarchyMaps, finalPreviewOf]);
 
-  const [monthModal, setMonthModal] = useState({
-    open: false,
+  const [editingCell, setEditingCell] = useState({
     code: null,
     monthKey: "",
-    label: "",
-    name: "",
     value: "",
   });
-  const monthInputRef = useRef(null);
+  const editingInputRef = useRef(null);
+  const skipBlurSaveRef = useRef(false);
 
-  const openMonthModal = (row, month) => {
+  const startInlineEdit = (row, monthKey) => {
+    if (!row?.code) return;
     let rawVal = 0;
-    if (row.months && row.months[month.key] != null) rawVal = row.months[month.key];
-    else if (row.lastMonths && row.lastMonths[month.key] != null) rawVal = row.lastMonths[month.key];
+    if (row.months && row.months[monthKey] != null) rawVal = row.months[monthKey];
+    else if (row.lastMonths && row.lastMonths[monthKey] != null) rawVal = row.lastMonths[monthKey];
     const currentVal = Number(rawVal || 0);
-    setMonthModal({
-      open: true,
+    setEditingCell({
       code: row.code,
-      monthKey: month.key,
-      label: month.label,
-      name: row.name || "",
+      monthKey,
       value: currentVal ? formatMoney(currentVal) : "",
     });
   };
-  const closeMonthModal = () => setMonthModal((p) => ({ ...p, open: false }));
 
-  const handleMonthModalChange = (raw) => {
+  const closeInlineEdit = useCallback(() => {
+    setEditingCell({ code: null, monthKey: "", value: "" });
+  }, []);
+
+  const handleInlineEditChange = (raw) => {
     const en = toEnDigits(raw);
     const digits = en.replace(/[^\d]/g, "");
     const formatted = digits ? formatMoney(Number(digits)) : "";
-    setMonthModal((p) => ({ ...p, value: formatted }));
+    setEditingCell((p) => ({ ...p, value: formatted }));
   };
 
   const persistSingleCell = async (code, monthKey, num) => {
@@ -710,35 +709,37 @@ const sortedProjects = useMemo(() => {
     }
   };
 
-  const handleMonthModalSave = () => {
-    if (!monthModal.code || !monthModal.monthKey) return closeMonthModal();
-    const num = parseMoney(monthModal.value);
+  const saveInlineEdit = useCallback(() => {
+    if (!editingCell.code || !editingCell.monthKey) return;
+    const num = parseMoney(editingCell.value);
+    const targetCode = editingCell.code;
+    const targetMonthKey = editingCell.monthKey;
 
     setRows((prev) =>
       (prev || []).map((r) => {
-        if (String(r.code) !== String(monthModal.code)) return r;
-        const nextMonths = { ...(r.months || {}), [monthModal.monthKey]: num };
+        if (String(r.code) !== String(targetCode)) return r;
+        const nextMonths = { ...(r.months || {}), [targetMonthKey]: num };
         const nextLast = { ...(r.lastMonths || {}) };
-        if (num) nextLast[monthModal.monthKey] = num;
-        else delete nextLast[monthModal.monthKey];
+        if (num) nextLast[targetMonthKey] = num;
+        else delete nextLast[targetMonthKey];
         return { ...r, months: nextMonths, lastMonths: nextLast };
       }),
     );
 
-    const c = monthModal.code;
-    const mk = monthModal.monthKey;
-
-    setMonthModal({ open: false, code: null, monthKey: "", label: "", name: "", value: "" });
-
-    persistSingleCell(c, mk, num);
-  };
+    closeInlineEdit();
+    persistSingleCell(targetCode, targetMonthKey, num);
+  }, [editingCell, parseMoney, closeInlineEdit, persistSingleCell]);
 
   useEffect(() => {
-    if (monthModal.open && monthInputRef.current) {
-      monthInputRef.current.focus();
-      monthInputRef.current.select();
+    if (editingCell.code && editingInputRef.current) {
+      editingInputRef.current.focus();
+      editingInputRef.current.select();
     }
-  }, [monthModal.open]);
+  }, [editingCell.code, editingCell.monthKey]);
+
+  useEffect(() => {
+    if (!editingCell.code) skipBlurSaveRef.current = false;
+  }, [editingCell.code]);
 
   const onUpdate = async () => {
     try {
@@ -1225,29 +1226,63 @@ const sortedProjects = useMemo(() => {
                               }
 
                               const hasVal = !!val;
+                              const isEditing =
+                                !isParent &&
+                                String(editingCell.code || "") === String(r.code || "") &&
+                                editingCell.monthKey === m.key;
 
                               return (
                                 <TD key={m.key} className="px-0 py-2 text-center align-middle">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      if (!isParent) openMonthModal(r, m);
-                                    }}
-                                    disabled={isParent}
-                                    className={`w-[5.5rem] mx-auto h-10 md:w-[5.5rem] md:h-10 rounded-xl border text-[10px] md:text-[11px] flex items-center justify-center shadow-sm transition ${
-                                      hasVal
-                                        ? "bg-[#edaf7c] border-[#edaf7c]/90 text-black"
-                                        : "bg-black/5 border-black/10 text-black/70 dark:bg-white/5 dark:border-neutral-700 dark:text-neutral-100"
-                                    } ${isParent ? "cursor-default" : "cursor-pointer"}`}
-                                  >
-                                    {hasVal ? (
-                                      <div className="flex flex-col items-center justify-center leading-tight">
-                                        <span>{toFaDigits(formatMoney(val))}</span>
-                                      </div>
-                                    ) : (
-                                      "—"
-                                    )}
-                                  </button>
+                                  {isEditing ? (
+                                    <input
+                                      ref={editingInputRef}
+                                      dir="ltr"
+                                      value={editingCell.value ? toFaDigits(editingCell.value) : ""}
+                                      onChange={(e) => handleInlineEditChange(e.target.value)}
+                                      onBlur={() => {
+                                        if (skipBlurSaveRef.current) {
+                                          skipBlurSaveRef.current = false;
+                                          return;
+                                        }
+                                        saveInlineEdit();
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          skipBlurSaveRef.current = true;
+                                          saveInlineEdit();
+                                        }
+                                        if (e.key === "Escape") {
+                                          e.preventDefault();
+                                          skipBlurSaveRef.current = true;
+                                          closeInlineEdit();
+                                        }
+                                      }}
+                                      className="w-[5.5rem] mx-auto h-10 md:w-[5.5rem] md:h-10 rounded-xl border text-[10px] md:text-[11px] text-center bg-white text-black border-black/20 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-600 outline-none ring-2 ring-black/10 dark:ring-white/20"
+                                      placeholder="0"
+                                    />
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (!isParent) startInlineEdit(r, m.key);
+                                      }}
+                                      disabled={isParent}
+                                      className={`w-[5.5rem] mx-auto h-10 md:w-[5.5rem] md:h-10 rounded-xl border text-[10px] md:text-[11px] flex items-center justify-center shadow-sm transition ${
+                                        hasVal
+                                          ? "bg-[#edaf7c] border-[#edaf7c]/90 text-black"
+                                          : "bg-black/5 border-black/10 text-black/70 dark:bg-white/5 dark:border-neutral-700 dark:text-neutral-100"
+                                      } ${isParent ? "cursor-default" : "cursor-pointer"}`}
+                                    >
+                                      {hasVal ? (
+                                        <div className="flex flex-col items-center justify-center leading-tight">
+                                          <span>{toFaDigits(formatMoney(val))}</span>
+                                        </div>
+                                      ) : (
+                                        "—"
+                                      )}
+                                    </button>
+                                  )}
                                 </TD>
                               );
                             })}
@@ -1269,82 +1304,6 @@ const sortedProjects = useMemo(() => {
             </div>
           </div>
         </TableWrap>
-
-        {monthModal.open && (
-          <div className="fixed inset-0 z-40 flex items-center justify-center px-3">
-            <div
-              className="absolute inset-0 bg-black/40 dark:bg-neutral-950/70 backdrop-blur-[2px]"
-              onClick={closeMonthModal}
-            />
-            <div className="relative w-full max-w-sm rounded-2xl bg-white text-neutral-900 border border-black/10 shadow-2xl dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 p-4 space-y-3">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="text-sm font-semibold">ثبت برآورد ماهانه</div>
-                  <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400 space-y-0.5">
-                    <div>
-                      کد بودجه: <b className="ltr text-xs">{monthModal.code ? renderCode(monthModal.code) : "—"}</b>
-                    </div>
-                    <div>
-                      نام بودجه: <b>{monthModal.name || "—"}</b>
-                    </div>
-                    <div>
-                      ماه: <b>{monthModal.label || "—"}</b>
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={closeMonthModal}
-                  className="h-8 w-8 grid place-items-center rounded-xl bg-black text-white dark:bg-neutral-100 dark:text-neutral-900"
-                >
-                  <img src="/images/icons/bastan.svg" alt="" className="w-4 h-4 invert dark:invert-0" />
-                </button>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs text-neutral-600 dark:text-neutral-300">مبلغ برآورد برای این ماه</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    ref={monthInputRef}
-                    dir="ltr"
-                    className="flex-1 w-full rounded-xl px-3 py-2 text-sm text-center bg-white text-black border border-black/15 outline-none focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-                    placeholder="0"
-                    value={monthModal.value ? toFaDigits(monthModal.value) : ""}
-                    onChange={(e) => handleMonthModalChange(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleMonthModalSave();
-                      }
-                    }}
-                  />
-                  <span className="text-xs text-neutral-600 dark:text-neutral-300">ریال</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={closeMonthModal}
-                  className="h-9 px-4 rounded-xl border border-neutral-300 text-xs text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
-                >
-                  انصراف
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleMonthModalSave}
-                  disabled={saving}
-                  className="h-9 w-11 rounded-xl bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200 grid place-items-center disabled:opacity-50"
-                  aria-label="ثبت برآورد"
-                  title="ثبت برآورد"
-                >
-                  <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {err && <div className="text-sm text-red-600 dark:text-red-400 mt-3">{err}</div>}
 
