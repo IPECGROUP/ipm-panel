@@ -159,7 +159,6 @@ setProjects(Array.from(byId.values()));
     );
 }, [projects]);
 
-  const [sourceItems, setSourceItems] = useState([]); // [{code,name,last_amount}]
   const [totals, setTotals] = useState({}); // { code: totalAlloc }
   const [historyByCode, setHistoryByCode] = useState({}); // { code: [...] }
 
@@ -168,7 +167,6 @@ setProjects(Array.from(byId.values()));
   const [err, setErr] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const [pickCode, setPickCode] = useState("");
   const moneyRefs = useRef({});
   const descRefs = useRef({});
 
@@ -256,12 +254,10 @@ setProjects(Array.from(byId.values()));
     if (canAccessPage !== true) return;
     if (active === "projects" && !projectId) {
       setRows([]);
-      setSourceItems([]);
       return;
     }
     if (active === "projects" && !selectedProject) {
       setRows([]);
-      setSourceItems([]);
       return;
     }
     let abort = false;
@@ -405,7 +401,6 @@ setProjects(Array.from(byId.values()));
           desc: "",
         }));
 
-        setSourceItems(sorted);
         setTotals(sum?.totals || {});
         setHistoryByCode(histMap);
         setRows(built);
@@ -571,54 +566,8 @@ setProjects(Array.from(byId.values()));
     }
   };
 
-  const Picker = () => (
-    <div className="flex items-end gap-2">
-      <div className="flex-1">
-        <label className="text-sm text-black/70 dark:text-neutral-300">
-          انتخاب کد/نام بودجه (برای فیلتر)
-        </label>
-        <select
-          className="w-full rounded-xl px-3 py-2 bg-white text-black placeholder-black/40 border border-black/15 outline-none
-                     dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700"
-          value={pickCode}
-          onChange={(e) => setPickCode(e.target.value)}
-          disabled={active === "projects" && !projectId}
-        >
-          <option
-            className="bg-white text-black dark:bg-neutral-900 dark:text-neutral-100"
-            value=""
-          >
-            -- همه موارد --
-          </option>
-          {(sourceItems || []).map((it) => (
-            <option
-              className="bg-white text-black dark:bg-neutral-900 dark:text-neutral-100"
-              key={it.code}
-              value={it.code}
-            >
-              {`${toFaDigits(renderDisplayBudgetCode(it.code))} — ${
-                it.center_desc || it.name || ""
-              }`}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
-  );
-
   const flatRowsToRender = useMemo(() => {
     let base = rows || [];
-    if (pickCode) {
-      if (active === "projects") {
-        const pCore = coreOf(pickCode);
-        base = base.filter((r) => {
-          const cCore = coreOf(r?.code);
-          return cCore === pCore || cCore.startsWith(pCore + ".");
-        });
-      } else {
-        base = base.filter((r) => String(r.code) === String(pickCode));
-      }
-    }
     const sorted = base.slice().sort((a, b) => {
       const ac = renderDisplayBudgetCode(a.code);
       const bc = renderDisplayBudgetCode(b.code);
@@ -629,7 +578,7 @@ setProjects(Array.from(byId.values()));
       return codeSortDir === "asc" ? cmp : -cmp;
     });
     return sorted;
-  }, [rows, pickCode, codeSortDir, active, coreOf]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [rows, codeSortDir, active, coreOf]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hierarchyMaps = useMemo(() => {
     if (active !== "projects") {
@@ -792,7 +741,6 @@ setProjects(Array.from(byId.values()));
         <button
           key={t.id}
           onClick={() => {
-            setPickCode("");
             setActive(t.id);
           }}
           className={`h-10 px-4 rounded-2xl border text-sm shadow-sm transition
@@ -820,10 +768,7 @@ setProjects(Array.from(byId.values()));
             className="w-full rounded-xl px-3 py-2 ltr font-[inherit] bg-white text-black placeholder-black/40 border border-black/15 outline-none
                        dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700"
             value={projectId}
-            onChange={(e) => {
-              setPickCode("");
-              setProjectId(e.target.value);
-            }}
+            onChange={(e) => setProjectId(e.target.value)}
           >
             <option
               className="bg-white text-black dark:bg-neutral-900 dark:text-neutral-100"
@@ -940,7 +885,6 @@ setProjects(Array.from(byId.values()));
         <div className="space-y-4 mb-4">
           <TopButtons />
           <ProjectsControls />
-          <Picker />
         </div>
 
         <TableWrap>
