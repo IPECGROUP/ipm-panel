@@ -1705,6 +1705,8 @@ const resetAllFilters = () => {
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
+  const [kbdAbsIdx, setKbdAbsIdx] = useState(-1);
+  const tableRowRefs = useRef(new Map());
 
   // ===== Uploader state (incoming/outgoing/internal) =====
   const uploadInputRef = useRef(null);
@@ -2103,7 +2105,17 @@ const selectedTagChipCls =
 };
 
 const projectsDesc = useMemo(() => {
-  const arr = Array.isArray(projects) ? projects.slice() : [];
+  const arr = Array.isArray(projects)
+    ? projects.filter((p) => {
+        if (!p || typeof p !== "object") return false;
+        if (p?.isActive === false || p?.is_active === false) return false;
+        const st = String(p?.status ?? p?.state ?? "").trim().toLowerCase();
+        if (st && ["inactive", "disabled", "archived", "closed", "false", "0", "off", "غیرفعال", "غيرفعال", "بسته"].includes(st)) {
+          return false;
+        }
+        return true;
+      })
+    : [];
   arr.sort((a, b) => {
     const ai = Number(a?.id);
     const bi = Number(b?.id);
@@ -2591,6 +2603,84 @@ const isImageUrl = (url, name = "") =>
   const startIdx = safePage * rowsPerPage;
   const endIdx = Math.min(total, startIdx + rowsPerPage);
   const pageItems = filteredLetters.slice(startIdx, endIdx);
+
+  useEffect(() => {
+    if (!filteredLetters.length) {
+      if (kbdAbsIdx !== -1) setKbdAbsIdx(-1);
+      return;
+    }
+    if (kbdAbsIdx < 0 || kbdAbsIdx >= filteredLetters.length) {
+      const next = Math.min(startIdx, filteredLetters.length - 1);
+      if (kbdAbsIdx !== next) setKbdAbsIdx(next);
+    }
+  }, [filteredLetters.length, kbdAbsIdx, startIdx]);
+
+  useEffect(() => {
+    if (kbdAbsIdx < startIdx || kbdAbsIdx >= endIdx) return;
+    const current = filteredLetters[kbdAbsIdx];
+    const id = String(letterIdOf(current) || "");
+    if (!id) return;
+    const rowEl = tableRowRefs.current.get(id);
+    if (rowEl && typeof rowEl.scrollIntoView === "function") {
+      rowEl.scrollIntoView({ block: "nearest" });
+    }
+  }, [kbdAbsIdx, startIdx, endIdx, filteredLetters]);
+
+  useEffect(() => {
+    const onTableNav = (e) => {
+      const key = e.key;
+      if (key !== "ArrowDown" && key !== "ArrowUp" && key !== "Enter") return;
+      if (formOpen || viewOpen || uploadOpen || tagPickOpen || relatedPickOpen) return;
+
+      const target = e.target;
+      if (target && typeof target.closest === "function") {
+        if (target.closest("input, textarea, select, [contenteditable='true'], button, a")) return;
+      }
+
+      if (!filteredLetters.length) return;
+
+      if (key === "Enter") {
+        e.preventDefault();
+        const idx =
+          kbdAbsIdx >= 0 && kbdAbsIdx < filteredLetters.length
+            ? kbdAbsIdx
+            : Math.min(startIdx, filteredLetters.length - 1);
+        const letter = filteredLetters[idx];
+        if (!letter) return;
+        setKbdAbsIdx(idx);
+        openView(letter);
+        return;
+      }
+
+      e.preventDefault();
+      const step = key === "ArrowDown" ? 1 : -1;
+      const base =
+        kbdAbsIdx >= 0 && kbdAbsIdx < filteredLetters.length
+          ? kbdAbsIdx
+          : Math.min(startIdx, filteredLetters.length - 1);
+      const next = Math.min(filteredLetters.length - 1, Math.max(0, base + step));
+
+      setKbdAbsIdx(next);
+      const nextPage = Math.floor(next / Math.max(1, rowsPerPage));
+      if (nextPage !== safePage) setPage(nextPage);
+    };
+
+    document.addEventListener("keydown", onTableNav);
+    return () => document.removeEventListener("keydown", onTableNav);
+  }, [
+    filteredLetters,
+    formOpen,
+    kbdAbsIdx,
+    openView,
+    relatedPickOpen,
+    rowsPerPage,
+    safePage,
+    startIdx,
+    tagPickOpen,
+    uploadOpen,
+    viewOpen,
+  ]);
+
 useLayoutEffect(() => {
   const el = tableScrollRef.current;
   if (!el) return;
@@ -2607,6 +2697,13 @@ useLayoutEffect(() => {
     if (page !== safePage) setPage(safePage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [safePage]);
+
+  useEffect(() => {
+    if (!filteredLetters.length) return;
+    if (kbdAbsIdx < startIdx || kbdAbsIdx >= endIdx) {
+      setKbdAbsIdx(Math.min(startIdx, filteredLetters.length - 1));
+    }
+  }, [endIdx, filteredLetters.length, kbdAbsIdx, startIdx]);
 
   const visibleIds = useMemo(() => pageItems.map((l) => String(letterIdOf(l))), [pageItems]);
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(String(id)));
@@ -4930,6 +5027,8 @@ aria-invalid={fieldHasError(formKind, "subject")}
     ) : (
       pageItems.map((l, idx) => {
         const id = String(letterIdOf(l));
+        const absIdx = startIdx + idx;
+        const isKeyboardActive = absIdx === kbdAbsIdx;
         const kind = letterKindOf(l);
         const isOutgoing = kind === "outgoing";
         const isIncoming = kind === "incoming";
@@ -4963,10 +5062,16 @@ const rowBg = isConf ? confRowBg : normalRowBg;
         return (  
          <tr
           key={id}
+          ref={(el) => {
+            if (el) tableRowRefs.current.set(id, el);
+            else tableRowRefs.current.delete(id);
+          }}
+          onClick={() => setKbdAbsIdx(absIdx)}
           className={
             rowBg +
             " transition-colors" +
-            (isConf ? " font-semibold [&_td]:!text-white" : "")
+            (isConf ? " font-semibold [&_td]:!text-white" : "") +
+            (isKeyboardActive ? " outline outline-2 -outline-offset-2 outline-black/40 dark:outline-white/50" : "")
           }
         >
             <td className={"px-3 " + divider}>
@@ -4983,7 +5088,10 @@ const rowBg = isConf ? confRowBg : normalRowBg;
             <td className={"px-3 " + divider}>
               <button
                 type="button"
-                onClick={() => openView(l)}
+                onClick={() => {
+                  setKbdAbsIdx(absIdx);
+                  openView(l);
+                }}
                 className={
                   "mx-auto inline-flex items-center justify-center gap-2 font-semibold underline-offset-4 hover:underline transition " +
                   (isConf
@@ -5015,7 +5123,16 @@ const rowBg = isConf ? confRowBg : normalRowBg;
 
             <td className={"!pl-6 !pr-3 " + divider}>
               <div className="w-full flex items-center justify-start gap-2 pl-3">
-                <button type="button" onClick={() => openView(l)} className={iconBtnCls} aria-label="نمایش" title="نمایش">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setKbdAbsIdx(absIdx);
+                    openView(l);
+                  }}
+                  className={iconBtnCls}
+                  aria-label="نمایش"
+                  title="نمایش"
+                >
                   <img src="/images/icons/namayeshname.svg" alt="" className="w-5 h-5 dark:invert" />
                 </button>
 
