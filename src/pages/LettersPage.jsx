@@ -3,12 +3,44 @@ import React, { useEffect, useMemo, useRef, useState, useLayoutEffect } from "re
 import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider";
+import { isMainAdminUser } from "../utils/auth";
 
 const TAB_ACTIVE_BG = {
   incoming: "#0046FF",
   outgoing: "#8BAE66",
   internal: "#FF8040",
 };
+
+const MAIN_ADMIN_USER = "marandi";
+const MAIN_ADMIN_PASS = "1234";
+const ADMIN_FLAG_KEY = "main_admin_ok";
+
+const basicAuthHeader = () => {
+  const token = btoa(`${MAIN_ADMIN_USER}:${MAIN_ADMIN_PASS}`);
+  return `Basic ${token}`;
+};
+
+function askMainAdminEnable(setIsMainAdmin) {
+  const u = window.prompt("نام کاربری ادمین اصلی:");
+  if (String(u || "").trim() !== MAIN_ADMIN_USER) {
+    alert("نام کاربری اشتباه است.");
+    return;
+  }
+
+  const p = window.prompt("رمز ادمین اصلی:");
+  if (String(p || "").trim() !== MAIN_ADMIN_PASS) {
+    alert("رمز اشتباه است.");
+    return;
+  }
+
+  localStorage.setItem(ADMIN_FLAG_KEY, "1");
+  setIsMainAdmin(true);
+}
+
+function disableMainAdmin(setIsMainAdmin) {
+  localStorage.removeItem(ADMIN_FLAG_KEY);
+  setIsMainAdmin(false);
+}
 
 const LETTERS_CACHE_KEY = "letters_mine_cache_v1";
 const LETTERS_CACHE_TTL = 1000 * 60 * 10; // 10 دقیقه
@@ -702,6 +734,13 @@ useEffect(() => {
 }, [relatedPickQuery, relatedPickOpen]);
   const [filterQuery, setFilterQuery] = useState("");
   const { user } = useAuth();
+  const [isMainAdmin, setIsMainAdmin] = useState(false);
+
+  useEffect(() => {
+    setIsMainAdmin(localStorage.getItem(ADMIN_FLAG_KEY) === "1");
+  }, []);
+
+  const canSeeMainAdminLogin = useMemo(() => isMainAdminUser(user), [user]);
 const userId = String(user?.id || "0");
  const [filterTab, setFilterTab] = useState("all"); // اول این
  const [filterTagIds, setFilterTagIds] = useState([]); // ✅ global
@@ -3101,7 +3140,7 @@ subject:
     setFormOpen(false);
   };
 
- const deleteLetter = async (id) => {
+const deleteLetter = async (id) => {
   const ok = window.confirm("حذف شود؟");
   if (!ok) return;
 
@@ -3134,6 +3173,39 @@ subject:
     console.error("delete failed", e);
     await refetchLetters();
     throw e;
+  }
+};
+
+const deleteAllLetters = async () => {
+  if (!isMainAdmin) return;
+
+  const ok = window.confirm("⚠️ همه نامه‌ها حذف شوند؟ این عملیات برگشت‌پذیر نیست.");
+  if (!ok) return;
+
+  try {
+    const res = await fetch(API_BASE + "/letters/delete-all", {
+      method: "DELETE",
+      headers: {
+        Authorization: basicAuthHeader(),
+      },
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data?.ok) {
+      throw new Error(data?.error || "delete_all_failed");
+    }
+
+    setMyLetters([]);
+    setSelectedIds(new Set());
+    setPage(0);
+
+    try {
+      sessionStorage.removeItem(LETTERS_CACHE_KEY);
+    } catch {}
+
+    alert(`✅ ${data.deleted ?? 0} نامه حذف شد`);
+  } catch (e) {
+    alert("خطا در حذف همه نامه‌ها: " + (e?.message || "delete_all_failed"));
   }
 };
 
@@ -4685,9 +4757,69 @@ aria-invalid={fieldHasError(formKind, "subject")}
         شرکت/سازمان
       </th>
 
-      <th className="w-28 !py-2 pl-6 !pr-3 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
-        اقدامات
-      </th>
+     <th className="w-28 !py-2 pl-6 !pr-3 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+  <div className="flex items-center justify-between gap-2">
+    <span>اقدامات</span>
+
+    {isMainAdmin ? (
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={deleteAllLetters}
+          className={
+            "h-6 w-6 rounded-md flex items-center justify-center transition " +
+            (theme === "dark"
+              ? "bg-white/10 hover:bg-white/15 text-white"
+              : "bg-black/10 hover:bg-black/15 text-black")
+          }
+          aria-label="حذف همه نامه‌ها"
+          title="حذف همه نامه‌ها"
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => disableMainAdmin(setIsMainAdmin)}
+          className={
+            "h-6 w-6 rounded-md flex items-center justify-center transition " +
+            (theme === "dark"
+              ? "bg-white/10 hover:bg-white/15 text-white/70"
+              : "bg-black/10 hover:bg-black/15 text-black/70")
+          }
+          aria-label="خروج ادمین"
+          title="خروج ادمین"
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M10 7h9M10 12h9M10 17h9" />
+            <path d="M4 6h2v12H4z" />
+          </svg>
+        </button>
+      </div>
+    ) : canSeeMainAdminLogin ? (
+      <button
+        type="button"
+        onClick={() => askMainAdminEnable(setIsMainAdmin)}
+        className={
+          "h-6 w-6 rounded-md flex items-center justify-center transition " +
+          (theme === "dark"
+            ? "bg-white/10 hover:bg-white/15 text-white/70"
+            : "bg-black/10 hover:bg-black/15 text-black/70")
+        }
+        aria-label="ورود ادمین"
+        title="ورود ادمین"
+      >
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <path d="M12 17v-2" />
+          <path d="M8 10V8a4 4 0 0 1 8 0v2" />
+          <rect x="7" y="10" width="10" height="10" rx="2" />
+        </svg>
+      </button>
+    ) : null}
+  </div>
+</th>
     </tr>
   </thead>
 
