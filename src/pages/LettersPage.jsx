@@ -561,16 +561,6 @@ async function uploadQueueInBackground({
 }
 
 export default function LettersPage() {
-
-  const tagById = useMemo(() => {
-  const m = new Map();
-  (Array.isArray(allTags) ? allTags : []).forEach((t) => {
-    const id = String(t?.id ?? "");
-    if (id) m.set(id, t);
-  });
-  return m;
-}, [allTags]);
-
 // ✅ Validation (per tab)
 const [errorsByKind, setErrorsByKind] = useState({
   incoming: {},
@@ -3331,6 +3321,15 @@ const allTags = useMemo(() => {
     ...(tagsByScope.execution || []),
   ];
 }, [tagsByScope]);
+
+const tagById = useMemo(() => {
+  const m = new Map();
+  (Array.isArray(allTags) ? allTags : []).forEach((t) => {
+    const id = String(t?.id ?? "");
+    if (id) m.set(id, t);
+  });
+  return m;
+}, [allTags]);
 
 const latestAllTags = useMemo(() => {
   const arr = Array.isArray(allTags) ? allTags.slice() : [];
