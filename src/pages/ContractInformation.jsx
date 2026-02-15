@@ -1,7 +1,7 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
-import { JalaliDatePicker } from "../components/JalaliDatePicker.jsx";
-import { dayjs, isJalaliYmd } from "../utils/date";
+import { dayjs } from "../utils/date";
 
 const CONTRACT_SCOPE_TABS = [
   { id: "main", label: "قرارداد اصلی (با کارفرما)" },
@@ -21,10 +21,58 @@ const CONTRACT_TYPES = [
   "اجاره ماشین آلات و تجهیزات",
 ];
 
-function toGregorianYmd(jalaliYmd) {
-  if (!isJalaliYmd(jalaliYmd)) return "";
+const PERSIAN_MONTHS = [
+  "فروردین",
+  "اردیبهشت",
+  "خرداد",
+  "تیر",
+  "مرداد",
+  "شهریور",
+  "مهر",
+  "آبان",
+  "آذر",
+  "دی",
+  "بهمن",
+  "اسفند",
+];
+
+function toFaDigits(s) {
+  return String(s || "").replace(/[0-9]/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
+}
+
+function toEnDigits(s) {
+  return String(s ?? "")
+    .replace(/[۰-۹]/g, (d) => "0123456789"["۰۱۲۳۴۵۶۷۸۹".indexOf(d)])
+    .replace(/[٠-٩]/g, (d) => "0123456789"["٠١٢٣٤٥٦٧٨٩".indexOf(d)]);
+}
+
+function pad2(n) {
+  const x = Number(n) || 0;
+  return x < 10 ? `0${x}` : String(x);
+}
+
+function getJalaliPartsFromDate(d) {
   try {
-    return dayjs(jalaliYmd, { jalali: true }).calendar("gregory").format("YYYY-MM-DD");
+    const y = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric" }).format(d);
+    const m = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { month: "numeric" }).format(d);
+    const day = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { day: "numeric" }).format(d);
+    return {
+      jy: Number(toEnDigits(y)) || 1400,
+      jm: Number(toEnDigits(m)) || 1,
+      jd: Number(toEnDigits(day)) || 1,
+    };
+  } catch {
+    return { jy: 1400, jm: 1, jd: 1 };
+  }
+}
+
+function toGregorianYmd(jalaliYmd) {
+  const raw = String(jalaliYmd || "").trim();
+  if (!raw) return "";
+  const normalized = toEnDigits(raw).replace(/\//g, "-");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return "";
+  try {
+    return dayjs(normalized, { jalali: true }).calendar("gregory").format("YYYY-MM-DD");
   } catch {
     return "";
   }
@@ -39,6 +87,257 @@ function firstStringValue(obj, keys) {
     }
   }
   return "";
+}
+
+function JalaliPopupDatePicker({ value, onChange, buttonClassName }) {
+  const [open, setOpen] = React.useState(false);
+  const btnRef = React.useRef(null);
+  const popRef = React.useRef(null);
+  const [pos, setPos] = React.useState({ top: 0, right: 0 });
+
+  const nowParts = React.useMemo(() => getJalaliPartsFromDate(new Date()), []);
+  const initial = React.useMemo(() => {
+    const v = String(value || "");
+    const m = v.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+    if (m) {
+      return { jy: Number(m[1]), jm: Number(m[2]), jd: Number(m[3]) };
+    }
+    return nowParts;
+  }, [value, nowParts]);
+
+  const [jy, setJy] = React.useState(initial.jy);
+  const [jm, setJm] = React.useState(initial.jm);
+  const [jd, setJd] = React.useState(initial.jd);
+
+  React.useEffect(() => {
+    const v = String(value || "");
+    const m = v.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+    if (!m) return;
+    setJy(Number(m[1]));
+    setJm(Number(m[2]));
+    setJd(Number(m[3]));
+  }, [value]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => {
+      const t = e.target;
+      if (popRef.current && popRef.current.contains(t)) return;
+      if (btnRef.current && btnRef.current.contains(t)) return;
+      setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onEsc = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onEsc);
+    return () => document.removeEventListener("keydown", onEsc);
+  }, [open]);
+
+  const years = React.useMemo(() => {
+    const base = nowParts.jy || 1400;
+    const arr = [];
+    for (let y = base - 10; y <= base + 10; y += 1) arr.push(y);
+    return arr;
+  }, [nowParts.jy]);
+
+  const days = React.useMemo(() => {
+    const max = jm <= 6 ? 31 : jm <= 11 ? 30 : 29;
+    const arr = [];
+    for (let d = 1; d <= max; d += 1) arr.push(d);
+    return arr;
+  }, [jm]);
+
+  React.useEffect(() => {
+    const max = jm <= 6 ? 31 : jm <= 11 ? 30 : 29;
+    if (jd > max) setJd(max);
+  }, [jm, jd]);
+
+  const preview = `${jy}/${pad2(jm)}/${pad2(jd)}`;
+
+  const defaultBtnCls =
+    "w-full h-11 px-3 rounded-xl border text-right flex items-center justify-between gap-2 transition " +
+    "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]";
+
+  const recalcPos = () => {
+    const btn = btnRef.current;
+    if (!btn) return;
+
+    const r = btn.getBoundingClientRect();
+    const margin = 8;
+    const right = Math.max(margin, window.innerWidth - r.right);
+    let top = r.bottom + margin;
+    const pop = popRef.current;
+    if (pop) {
+      const pr = pop.getBoundingClientRect();
+      const h = pr.height || 0;
+      if (top + h > window.innerHeight - margin) {
+        const above = r.top - h - margin;
+        if (above >= margin) top = above;
+        else top = Math.max(margin, window.innerHeight - h - margin);
+      }
+    }
+    setPos({ top, right });
+  };
+
+  React.useEffect(() => {
+    if (!open) return;
+
+    recalcPos();
+    const raf = requestAnimationFrame(() => recalcPos());
+    const onResize = () => recalcPos();
+    const onScrollAny = () => recalcPos();
+
+    window.addEventListener("resize", onResize);
+    document.addEventListener("scroll", onScrollAny, true);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", onResize);
+      document.removeEventListener("scroll", onScrollAny, true);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  return (
+    <div className="relative">
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={buttonClassName || defaultBtnCls}
+      >
+        <span className={value ? "" : "text-neutral-400"}>{value ? toFaDigits(value) : ""}</span>
+        <span className="text-neutral-500">
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="3" y="4" width="18" height="18" rx="2" />
+            <path d="M16 2v4M8 2v4M3 10h18" />
+          </svg>
+        </span>
+      </button>
+
+      {open &&
+        createPortal(
+          <div
+            ref={popRef}
+            className="fixed z-[9999] w-[min(420px,calc(100vw-24px))] rounded-2xl border shadow-lg p-4 border-black/10 bg-white text-neutral-900"
+            style={{ top: pos.top, right: pos.right }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-semibold text-sm">انتخاب تاریخ</div>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="h-9 w-9 rounded-xl border flex items-center justify-center transition border-black/10 hover:bg-black/[0.04]"
+                aria-label="بستن"
+                title="بستن"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <div className="text-neutral-600 text-xs mb-1">روز</div>
+                <select
+                  value={jd}
+                  onChange={(e) => setJd(Number(e.target.value))}
+                  className="w-full h-11 px-3 rounded-xl border outline-none border-black/10 bg-white text-neutral-900"
+                >
+                  {days.map((d) => (
+                    <option key={d} value={d}>
+                      {toFaDigits(d)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <div className="text-neutral-600 text-xs mb-1">ماه</div>
+                <select
+                  value={jm}
+                  onChange={(e) => setJm(Number(e.target.value))}
+                  className="w-full h-11 px-3 rounded-xl border outline-none border-black/10 bg-white text-neutral-900"
+                >
+                  {PERSIAN_MONTHS.map((name, idx) => (
+                    <option key={name} value={idx + 1}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <div className="text-neutral-600 text-xs mb-1">سال</div>
+                <select
+                  value={jy}
+                  onChange={(e) => setJy(Number(e.target.value))}
+                  className="w-full h-11 px-3 rounded-xl border outline-none border-black/10 bg-white text-neutral-900"
+                >
+                  {years.map((y) => (
+                    <option key={y} value={y}>
+                      {toFaDigits(y)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <div className="text-neutral-600 text-xs">
+                پیش نمایش: <span className="font-semibold">{toFaDigits(preview)}</span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 justify-end w-full">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(preview);
+                    setOpen(false);
+                  }}
+                  className="h-10 px-4 rounded-xl transition bg-black text-white hover:bg-black/90"
+                >
+                  تایید
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="h-10 px-4 rounded-xl border transition border-black/10 hover:bg-black/[0.04]"
+                >
+                  بستن
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+    </div>
+  );
 }
 
 export default function ContractInformation() {
@@ -187,6 +486,13 @@ export default function ContractInformation() {
     `h-10 px-4 rounded-2xl border text-sm shadow-sm transition ${
       isActive
         ? "bg-neutral-100 text-neutral-900 border-neutral-100"
+        : "bg-white text-black border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800"
+    }`;
+
+  const adjustmentBtnClass = (isActive) =>
+    `h-10 px-4 rounded-2xl border text-sm shadow-sm transition ${
+      isActive
+        ? "bg-black text-white border-black"
         : "bg-white text-black border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800"
     }`;
 
@@ -363,9 +669,10 @@ export default function ContractInformation() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
                 <label className="text-sm text-black/70 dark:text-neutral-300">تاریخ ابلاغ (شمسی)</label>
-                <JalaliDatePicker
+                <JalaliPopupDatePicker
                   value={generalForm.notifyDateJ}
                   onChange={(v) => setGeneralJalaliDate("notifyDateJ", "notifyDateG", v)}
+                  buttonClassName="w-full h-11 px-3 rounded-xl border text-right flex items-center justify-between gap-2 transition border-black/15 bg-white text-neutral-900 hover:bg-black/[0.02] dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -382,9 +689,10 @@ export default function ContractInformation() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
                 <label className="text-sm text-black/70 dark:text-neutral-300">تاریخ شروع قرارداد (شمسی)</label>
-                <JalaliDatePicker
+                <JalaliPopupDatePicker
                   value={generalForm.startDateJ}
                   onChange={(v) => setGeneralJalaliDate("startDateJ", "startDateG", v)}
+                  buttonClassName="w-full h-11 px-3 rounded-xl border text-right flex items-center justify-between gap-2 transition border-black/15 bg-white text-neutral-900 hover:bg-black/[0.02] dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -410,9 +718,10 @@ export default function ContractInformation() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
                 <label className="text-sm text-black/70 dark:text-neutral-300">تاریخ پایان قرارداد (شمسی)</label>
-                <JalaliDatePicker
+                <JalaliPopupDatePicker
                   value={generalForm.endDateJ}
                   onChange={(v) => setGeneralJalaliDate("endDateJ", "endDateG", v)}
+                  buttonClassName="w-full h-11 px-3 rounded-xl border text-right flex items-center justify-between gap-2 transition border-black/15 bg-white text-neutral-900 hover:bg-black/[0.02] dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -437,7 +746,7 @@ export default function ContractInformation() {
                     key={item.id}
                     type="button"
                     onClick={() => setGeneralField("adjustment", item.id)}
-                    className={tabBtnClass(generalForm.adjustment === item.id)}
+                    className={adjustmentBtnClass(generalForm.adjustment === item.id)}
                   >
                     {item.label}
                   </button>
