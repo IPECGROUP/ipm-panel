@@ -68,6 +68,7 @@ function BudgetAllocationPage() {
     return (pref ? pref + "-" : "") + raw;
   };
 
+
   const todayFa = useMemo(() => {
     try {
       return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
@@ -172,6 +173,11 @@ setProjects(Array.from(byId.values()));
   const descRefs = useRef({});
 
   const [codeSortDir, setCodeSortDir] = useState("asc");
+  const [openCodes, setOpenCodes] = useState({});
+
+  useEffect(() => {
+    setOpenCodes({});
+  }, [active, projectId]);
 
   // ===== Helpers: تبدیل اعداد =====
   const formatMoney = (n) => {
@@ -197,6 +203,16 @@ setProjects(Array.from(byId.values()));
     return sign * parseInt(d, 10);
   };
 
+  const coreOf = useCallback(
+    (s) => {
+      const raw = toEnDigits(String(s || "")).trim();
+      const noPrefix = raw.replace(/^[A-Za-z]+[^0-9]*/, "");
+      const normalized = noPrefix.replace(/[^0-9.]+/g, ".");
+      return normalized.replace(/\.+/g, ".").replace(/^\./, "").replace(/\.$/, "");
+    },
+    [toEnDigits]
+  );
+
   const formatDateTimeFa = (dt) => {
     try {
       return toFaDigits(
@@ -212,13 +228,7 @@ setProjects(Array.from(byId.values()));
 
   // ===== نمایش کد بودجه در حالت پروژه با پیشوند کد پروژه (نمایشی، بدون تغییر منطق ذخیره) =====
   const renderDisplayBudgetCode = (code) => {
-    const base = renderCode(code);
-    if (active === "projects" && selectedProject?.code) {
-      const pc = String(selectedProject.code || "").trim();
-      if (!pc) return base;
-      return `${pc}-${base}`;
-    }
-    return base;
+    return renderCode(code);
   };
 
   const budgetCodeHeader = useMemo(() => {
@@ -239,8 +249,16 @@ setProjects(Array.from(byId.values()));
   // ===== لود داده‌ها از سرور =====
   useEffect(() => {
     if (canAccessPage !== true) return;
-    if (active === "projects" && !projectId) return;
-if (active === "projects" && !selectedProject) return;
+    if (active === "projects" && !projectId) {
+      setRows([]);
+      setSourceItems([]);
+      return;
+    }
+    if (active === "projects" && !selectedProject) {
+      setRows([]);
+      setSourceItems([]);
+      return;
+    }
     let abort = false;
     (async () => {
       setErr("");
@@ -252,46 +270,89 @@ if (active === "projects" && !selectedProject) return;
           qs1.set("project_id", String(projectId));
         qs1.set("_", String(Date.now()));
 
-       let items = [];
+        let items = [];
 
-if (active === "projects") {
-  // ✅ فقط پروژه‌ها؛ هیچ API دیگری وارد نشود
-  const p = selectedProject;
-  items = p
-    ? [
-        {
-          code: String(p.code || "").trim(),          // همین ۳رقمی
-          center_desc: String(p.name || "").trim(),   // نام پروژه
-          last_amount: 0,                              // اگر آخرین برآورد پروژه ندارید
-        },
-      ]
-    : [];
-} else {
-  // حالت‌های غیر پروژه مثل قبل
-  try {
-    const est = await api("/budget-estimates?" + qs1.toString());
-    items = Array.isArray(est?.items) ? est.items.slice() : [];
-  } catch {
-    items = [];
-  }
+        if (active === "projects") {
+          const [rEst, rCenters] = await Promise.all([
+            api("/budget-estimates?" + qs1.toString()).catch(() => ({ items: [] })),
+            api("/centers/projects").catch(() => ({ items: [] })),
+          ]);
 
-  if (items.length === 0) {
-    try {
-      const centers = await api(`/centers/${active}`);
-      const raw = centers?.items || centers?.centers || centers?.data || [];
-      const list = Array.isArray(raw) ? raw : [];
-      items = list
-        .map((c) => ({
-          code: c?.code || c?.center_code || c?.suffix || "",
-          center_desc: c?.center_desc || c?.description || c?.name || "",
-          last_amount: Number(c?.last_amount || 0),
-        }))
-        .filter((x) => String(x.code || "").trim());
-    } catch {
-      items = [];
-    }
-  }
-}
+          const estItems = Array.isArray(rEst?.items) ? rEst.items : [];
+          const centersRaw = rCenters?.items || rCenters?.centers || rCenters?.data || [];
+          const centersList = Array.isArray(centersRaw) ? centersRaw : [];
+
+          const pCore = coreOf(selectedProject?.code);
+          const matchedCenters = pCore
+            ? centersList.filter((c) => {
+                const code = String(c?.suffix ?? c?.code ?? "").trim();
+                if (!code) return false;
+                const cCore = coreOf(code);
+                return cCore === pCore || cCore.startsWith(pCore + ".");
+              })
+            : [];
+
+          const byCode = new Map();
+
+          for (const c of matchedCenters) {
+            const code = String(c?.suffix ?? c?.code ?? "").trim();
+            if (!code) continue;
+            byCode.set(code, {
+              code,
+              center_desc: String(c?.description ?? c?.name ?? ""),
+              last_amount: 0,
+            });
+          }
+
+          for (const it of estItems) {
+            const code = String(it?.code ?? "").trim();
+            if (!code) continue;
+            const cCore = coreOf(code);
+            if (pCore && !(cCore === pCore || cCore.startsWith(pCore + "."))) continue;
+            const prev = byCode.get(code) || { code, center_desc: "", last_amount: 0 };
+            byCode.set(code, {
+              ...prev,
+              center_desc: prev.center_desc || String(it?.center_desc ?? it?.name ?? ""),
+              last_amount: Number(it?.last_amount ?? it?.amount ?? prev.last_amount ?? 0),
+            });
+          }
+
+          if (!byCode.size && selectedProject?.code) {
+            const code = String(selectedProject.code || "").trim();
+            byCode.set(code, {
+              code,
+              center_desc: String(selectedProject?.name || "").trim(),
+              last_amount: 0,
+            });
+          }
+
+          items = Array.from(byCode.values());
+        } else {
+          // حالت‌های غیر پروژه مثل قبل
+          try {
+            const est = await api("/budget-estimates?" + qs1.toString());
+            items = Array.isArray(est?.items) ? est.items.slice() : [];
+          } catch {
+            items = [];
+          }
+
+          if (items.length === 0) {
+            try {
+              const centers = await api(`/centers/${active}`);
+              const raw = centers?.items || centers?.centers || centers?.data || [];
+              const list = Array.isArray(raw) ? raw : [];
+              items = list
+                .map((c) => ({
+                  code: c?.code || c?.center_code || c?.suffix || "",
+                  center_desc: c?.center_desc || c?.description || c?.name || "",
+                  last_amount: Number(c?.last_amount || 0),
+                }))
+                .filter((x) => String(x.code || "").trim());
+            } catch {
+              items = [];
+            }
+          }
+        }
 
         const qs2 = new URLSearchParams();
         qs2.set("kind", active);
@@ -352,7 +413,7 @@ if (active === "projects") {
     return () => {
       abort = true;
     };
-  }, [active, projectId, refreshKey, canAccessPage]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [active, projectId, selectedProject, refreshKey, canAccessPage, coreOf]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const kick = () => {
@@ -540,10 +601,18 @@ if (active === "projects") {
     </div>
   );
 
-  const rowsToRender = useMemo(() => {
+  const flatRowsToRender = useMemo(() => {
     let base = rows || [];
     if (pickCode) {
-      base = base.filter((r) => String(r.code) === String(pickCode));
+      if (active === "projects") {
+        const pCore = coreOf(pickCode);
+        base = base.filter((r) => {
+          const cCore = coreOf(r?.code);
+          return cCore === pCore || cCore.startsWith(pCore + ".");
+        });
+      } else {
+        base = base.filter((r) => String(r.code) === String(pickCode));
+      }
     }
     const sorted = base.slice().sort((a, b) => {
       const ac = renderDisplayBudgetCode(a.code);
@@ -555,7 +624,162 @@ if (active === "projects") {
       return codeSortDir === "asc" ? cmp : -cmp;
     });
     return sorted;
-  }, [rows, pickCode, codeSortDir, active, projectId, selectedProject]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [rows, pickCode, codeSortDir, active, coreOf]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const hierarchyMaps = useMemo(() => {
+    if (active !== "projects") {
+      return { coreByCode: {}, hasChildrenByCode: {}, isLeafByCode: {} };
+    }
+
+    const base = flatRowsToRender || [];
+    const coreByCode = {};
+
+    base.forEach((r) => {
+      if (!r?.code) return;
+      coreByCode[r.code] = coreOf(r.code);
+    });
+
+    const hasChildrenByCode = {};
+    base.forEach((r) => {
+      if (!r?.code) return;
+      const core = coreByCode[r.code];
+      if (!core) return (hasChildrenByCode[r.code] = false);
+      const prefix = core + ".";
+      hasChildrenByCode[r.code] = base.some((o) => {
+        if (!o?.code || o === r) return false;
+        const oc = coreByCode[o.code];
+        return oc && oc.startsWith(prefix);
+      });
+    });
+
+    const isLeafByCode = {};
+    Object.keys(coreByCode).forEach((code) => {
+      isLeafByCode[code] = !hasChildrenByCode[code];
+    });
+
+    return { coreByCode, hasChildrenByCode, isLeafByCode };
+  }, [active, flatRowsToRender, coreOf]);
+
+  const displayRows = useMemo(() => {
+    if (active !== "projects") {
+      return (flatRowsToRender || []).map((r, index) => ({
+        row: r,
+        depth: 0,
+        key: String(r?.code || `__idx_${index}`),
+        core: coreOf(r?.code),
+        hasChildren: false,
+      }));
+    }
+
+    const base = flatRowsToRender || [];
+    if (!base.length) return [];
+
+    const nodes = base.map((r, index) => {
+      const core = coreOf(r.code);
+      const parts = core ? core.split(".").filter(Boolean) : [];
+      const key = core || `__idx_${index}`;
+      let parentCore = null;
+      if (parts.length > 1) parentCore = parts.slice(0, -1).join(".");
+      return { row: r, key, core, parentCore };
+    });
+
+    const byCore = new Map();
+    nodes.forEach((n) => n.core && byCore.set(n.core, n));
+
+    nodes.forEach((n) => {
+      if (!n.core) return;
+      const parts = n.core.split(".").filter(Boolean);
+      if (parts.length <= 1) {
+        n.parentCore = null;
+        return;
+      }
+
+      let found = null;
+      for (let i = parts.length - 1; i >= 1; i--) {
+        const candidate = parts.slice(0, i).join(".");
+        if (byCore.has(candidate)) {
+          found = candidate;
+          break;
+        }
+      }
+      n.parentCore = found;
+    });
+
+    const childrenMap = new Map();
+    nodes.forEach((n) => {
+      if (!n.parentCore) return;
+      if (!byCore.has(n.parentCore)) return;
+      if (!childrenMap.has(n.parentCore)) childrenMap.set(n.parentCore, []);
+      childrenMap.get(n.parentCore).push(n);
+    });
+
+    nodes.forEach((n) => {
+      n.hasChildren = !!(n.core && childrenMap.has(n.core));
+    });
+
+    const sortFn = (a, b) => {
+      const ca = renderDisplayBudgetCode(a.row.code);
+      const cb = renderDisplayBudgetCode(b.row.code);
+      const cmp = String(ca || "").localeCompare(String(cb || ""), "fa", {
+        numeric: true,
+        sensitivity: "base",
+      });
+      return codeSortDir === "asc" ? cmp : -cmp;
+    };
+
+    const roots = nodes.filter((n) => !n.parentCore || !byCore.has(n.parentCore));
+    roots.sort(sortFn);
+    for (const list of childrenMap.values()) list.sort(sortFn);
+
+    const out = [];
+    const visit = (node, depth) => {
+      out.push({
+        row: node.row,
+        depth,
+        key: node.key,
+        core: node.core,
+        hasChildren: node.hasChildren,
+      });
+      if (!node.hasChildren) return;
+      const toggleKey = node.core || node.key;
+      const isOpen = !!openCodes[toggleKey];
+      if (!isOpen) return;
+      const children = node.core ? childrenMap.get(node.core) || [] : [];
+      children.forEach((child) => visit(child, depth + 1));
+    };
+
+    roots.forEach((r) => visit(r, 0));
+    return out;
+  }, [active, flatRowsToRender, coreOf, renderDisplayBudgetCode, codeSortDir, openCodes]);
+
+  const valueOfRow = useCallback(
+    (row, key) => {
+      const own = Number(row?.[key] || 0);
+      if (active !== "projects") return own;
+      if (!row?.code) return own;
+
+      const code = String(row.code);
+      const isLeaf = !!hierarchyMaps?.isLeafByCode?.[code];
+      if (isLeaf) return own;
+
+      const core = hierarchyMaps?.coreByCode?.[code];
+      if (!core) return own;
+      const prefix = core + ".";
+
+      let sum = 0;
+      (flatRowsToRender || []).forEach((rr) => {
+        if (!rr?.code) return;
+        const rrCode = String(rr.code);
+        if (!hierarchyMaps?.isLeafByCode?.[rrCode]) return;
+        const rrCore = hierarchyMaps?.coreByCode?.[rrCode];
+        if (!rrCore || !rrCore.startsWith(prefix)) return;
+        sum += Number(rr?.[key] || 0);
+      });
+
+      return sum;
+    },
+    [active, hierarchyMaps, flatRowsToRender]
+  );
 
   const TopButtons = () => (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
@@ -778,7 +1002,7 @@ if (active === "projects") {
                       در حال بارگذاری…
                     </TD>
                   </TR>
-                ) : (rowsToRender || []).length === 0 ? (
+                ) : (displayRows || []).length === 0 ? (
                   <TR>
                     <TD colSpan={8} className={tablePreset.emptyRow}>
                       {active === "projects" && !projectId
@@ -787,20 +1011,50 @@ if (active === "projects") {
                     </TD>
                   </TR>
                 ) : (
-                  (rowsToRender || []).map((r, idx) => {
-                    const newTotal =
-                      Number(r.totalAlloc || 0) + Number(r.allocRaw || 0);
-                    const limit = Number(r.lastAmount || 0);
+                  (displayRows || []).map((node, idx) => {
+                    const r = node.row;
+                    const isComputed = active === "projects" && !!node.hasChildren;
+                    const toggleKey = node.core || node.key;
+                    const isOpen = !!openCodes[toggleKey];
+                    const depthPad = node.depth ? node.depth * 12 : 0;
+
+                    const lastAmountView = valueOfRow(r, "lastAmount");
+                    const totalAllocView = valueOfRow(r, "totalAlloc");
+                    const allocRawView = isComputed
+                      ? valueOfRow(r, "allocRaw")
+                      : Number(r.allocRaw || 0);
+                    const newTotal = totalAllocView + allocRawView;
+                    const limit = lastAmountView;
                     const isOver = newTotal > limit;
 
                     return (
-                      <TR key={r.code} className="transition-colors hover:bg-black/[0.05] dark:hover:bg-white/15">
+                      <TR key={node.key || r.code || idx} className="transition-colors hover:bg-black/[0.05] dark:hover:bg-white/15">
                         <TD className="px-2.5 pt-1.5 pb-1 align-middle !text-center">
                           {toFaDigits(idx + 1)}
                         </TD>
                         <TD className="px-2.5 pt-1.5 pb-1 align-middle">
-                          <div className="flex justify-center ltr">
-                            {toFaDigits(renderDisplayBudgetCode(r.code))}
+                          <div
+                            className="inline-flex items-center justify-center gap-1 flex-row-reverse"
+                            style={{ paddingRight: depthPad }}
+                          >
+                            {node.hasChildren && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setOpenCodes((p) => ({ ...p, [toggleKey]: !p[toggleKey] }))
+                                }
+                                className="h-5 w-5 grid place-items-center rounded-md border border-black/25 bg-white text-black dark:border-neutral-500 dark:bg-white dark:text-black"
+                                aria-label={isOpen ? "بستن زیرمجموعه" : "باز کردن زیرمجموعه"}
+                                title={isOpen ? "بستن زیرمجموعه" : "باز کردن زیرمجموعه"}
+                              >
+                                {isOpen ? (
+                                  <span className="text-[11px] leading-none text-black">−</span>
+                                ) : (
+                                  <img src="/images/icons/afzodan.svg" alt="" className="w-3 h-3" />
+                                )}
+                              </button>
+                            )}
+                            <span className="ltr">{toFaDigits(renderDisplayBudgetCode(r.code))}</span>
                           </div>
                         </TD>
                         <TD className="px-2.5 pt-1.5 pb-1 whitespace-normal break-words leading-snug align-middle max-w-[26ch] mx-auto !text-center">
@@ -808,30 +1062,33 @@ if (active === "projects") {
                         </TD>
                         <TD className="px-2.5 pt-1.5 pb-1 align-middle">
                           <div className="flex justify-center ltr">
-                            {toFaDigits(formatMoney(r.lastAmount || 0))}
+                            {toFaDigits(formatMoney(lastAmountView || 0))}
                           </div>
                         </TD>
                         <TD className="px-2.5 pt-1.5 pb-1 align-middle">
                           <div className="flex justify-center ltr">
-                            {toFaDigits(formatMoney(r.totalAlloc || 0))}
+                            {toFaDigits(formatMoney(totalAllocView || 0))}
                           </div>
                         </TD>
                         <TD className="px-2.5 pt-1.5 pb-1 align-middle !text-center">
                           <div className="flex flex-col">
                             <input
-                              ref={(el) => (moneyRefs.current[r.code] = el)}
+                              ref={(el) => {
+                                if (!isComputed) moneyRefs.current[r.code] = el;
+                              }}
                               dir="ltr"
+                              disabled={isComputed}
                               className={`w-full rounded-xl px-2 py-1 outline-none border transition
                                         ${
                                           isOver
                                             ? "border-red-500 ring-1 ring-red-400 bg-red-50 text-red-700 placeholder-red-400 dark:bg-red-600/10 dark:text-red-200"
                                             : "bg-white text-black placeholder-black/40 border border-black/15 focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-                                        }`}
-                              value={toFaDigits(formatMoney(r.allocRaw))}
+                                        } ${isComputed ? "opacity-70 cursor-default" : ""}`}
+                              value={toFaDigits(formatMoney(allocRawView))}
                               onChange={(e) =>
-                                onAllocChange(r.code, e.target.value)
+                                !isComputed && onAllocChange(r.code, e.target.value)
                               }
-                              placeholder="۰"
+                              placeholder={isComputed ? "—" : "۰"}
                               title={
                                 isOver
                                   ? "تخصیص جدید از آخرین برآورد بیشتر می‌شود"
@@ -839,7 +1096,7 @@ if (active === "projects") {
                               }
                               aria-invalid={isOver ? "true" : "false"}
                             />
-                            {isOver && (
+                            {isOver && !isComputed && (
                               <span className="mt-1 text-[11px] leading-none text-red-600 dark:text-red-400">
                                 مقدار «تخصیص جدید» از مقدار آخرین برآورد بیشتر
                                 می‌شود
@@ -848,33 +1105,41 @@ if (active === "projects") {
                           </div>
                         </TD>
                         <TD className="px-2.5 py-1 align-middle !text-center">
-                          <textarea
-                            ref={(el) => (descRefs.current[r.code] = el)}
-                            className="w-full rounded-xl px-2 py-1 whitespace-normal break-words leading-snug outline-none
+                          {isComputed ? (
+                            <div className="text-black/40 dark:text-neutral-500">—</div>
+                          ) : (
+                            <textarea
+                              ref={(el) => (descRefs.current[r.code] = el)}
+                              className="w-full rounded-xl px-2 py-1 whitespace-normal break-words leading-snug outline-none
                                      bg-white text-black placeholder-black/40 border border-black/15 focus:ring-2 focus:ring-black/10
                                      dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-                            rows={2}
-                            value={r.desc}
-                            onChange={(e) => onDescChange(r.code, e.target.value)}
-                            placeholder="شرح تخصیص…"
-                          />
+                              rows={2}
+                              value={r.desc}
+                              onChange={(e) => onDescChange(r.code, e.target.value)}
+                              placeholder="شرح تخصیص…"
+                            />
+                          )}
                         </TD>
                         <TD className="px-2.5 pt-1.5 pb-1 align-middle !text-center">
                           <div className="inline-flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => removeRow(r.code)}
-                              className="h-9 w-11 grid place-items-center rounded-xl bg-white text-red-600
+                            {isComputed ? (
+                              <span className="text-black/40 dark:text-neutral-500">—</span>
+                            ) : (
+                              <button
+                                onClick={() => removeRow(r.code)}
+                                className="h-9 w-11 grid place-items-center rounded-xl bg-white text-red-600
                                       border border-red-500 hover:bg-red-50 transition
                                       dark:bg-transparent dark:text-red-300 dark:border-red-400/60 dark:hover:bg-white/10"
-                              aria-label="حذف"
-                              title="حذف"
-                            >
-                              <img
-                                src="/images/icons/hazf.svg"
-                                alt=""
-                                className="w-5 h-5 [filter:invert(22%)_sepia(94%)_saturate(7488%)_hue-rotate(1deg)_brightness(103%)_contrast(122%)]"
-                              />
-                            </button>
+                                aria-label="حذف"
+                                title="حذف"
+                              >
+                                <img
+                                  src="/images/icons/hazf.svg"
+                                  alt=""
+                                  className="w-5 h-5 [filter:invert(22%)_sepia(94%)_saturate(7488%)_hue-rotate(1deg)_brightness(103%)_contrast(122%)]"
+                                />
+                              </button>
+                            )}
                           </div>
                         </TD>
                       </TR>
