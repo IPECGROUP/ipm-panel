@@ -5,7 +5,7 @@ import DashboardPage from "./pages/DashboardPage.jsx";
 import PaymentRequestPage from "./pages/PaymentRequestPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import { useAuth } from "./components/AuthProvider.jsx";
-import ContractInfoPage from "./pages/ContractInfoPage.jsx";
+import ContractInformation from "./pages/ContractInformation.jsx";
 import RequestDetailPage from "./pages/RequestDetailPage.jsx";
 import Projects2Page from "./pages/Projects2Page.jsx";
 import ProjectsPage from "./pages/ProjectsPage.jsx";
@@ -75,7 +75,8 @@ export default function App() {
         <Route path="/requests" element={<PaymentRequestPage />} />
         <Route path="/payment" element={<PaymentRequestPage />} />
         <Route path="/requests/:id" element={<RequestDetailPage />} />
-        <Route path="/contracts/info" element={<ContractInfoPage />} />
+        <Route path="/contracts/info" element={<ContractInformation />} />
+        <Route path="/centers/contract-info" element={<ContractInformation />} />
 
         {/* پروژه‌ها */}
         <Route path="/projects/simple" element={<Projects2Page />} />
