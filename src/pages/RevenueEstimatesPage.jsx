@@ -1107,15 +1107,13 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     closeEditRowModal();
   };
 
-  const [monthModal, setMonthModal] = useState({
-    open: false,
+  const [editingCell, setEditingCell] = useState({
     rowId: null,
     monthKey: '',
-    label: '',
-    title: '',
     value: '',
   });
-  const monthInputRef = useRef(null);
+  const editingInputRef = useRef(null);
+  const skipBlurSaveRef = useRef(false);
 
   const updateNodeMonths = useCallback((nodes, id, monthKey, val) => {
     const rec = (arr) =>
@@ -1132,57 +1130,56 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     return rec(nodes);
   }, []);
 
-  const openMonthModal = (row, month) => {
+  const startInlineEdit = (row, monthKey) => {
     if (hasChildren(row)) return;
-    const rawVal = Number(row.months?.[month.key] || 0);
-    setMonthModal({
-      open: true,
+    const rawVal = Number(row.months?.[monthKey] || 0);
+    setEditingCell({
       rowId: row.id,
-      monthKey: month.key,
-      label: month.label,
-      title: row.title || '',
+      monthKey,
       value: rawVal ? formatMoney(rawVal) : '',
     });
   };
 
-  const closeMonthModal = () => setMonthModal((prev) => ({ ...prev, open: false }));
-
-  const handleMonthModalChange = (raw) => {
-    const en = toEnDigits(raw);
-    const digits = en.replace(/[^\d]/g, '');
-    const formatted = digits ? formatMoney(Number(digits)) : '';
-    setMonthModal((prev) => ({ ...prev, value: formatted }));
-  };
-
-  const handleMonthModalSave = () => {
-    if (!monthModal.rowId || !monthModal.monthKey) {
-      closeMonthModal();
-      return;
-    }
-    const num = parseMoney(monthModal.value);
-
-    setAllRows((prev) => {
-      const next = updateNodeMonths(prev, monthModal.rowId, monthModal.monthKey, num);
-      scheduleSave(next, 150);
-      return next;
-    });
-
-    setMonthModal({
-      open: false,
+  const closeInlineEdit = () => {
+    setEditingCell({
       rowId: null,
       monthKey: '',
-      label: '',
-      title: '',
       value: '',
     });
   };
 
-  useEffect(() => {
-    if (monthModal.open && monthInputRef.current) {
-      monthInputRef.current.focus();
-      monthInputRef.current.select();
+  const handleInlineEditChange = (raw) => {
+    const en = toEnDigits(raw);
+    const digits = en.replace(/[^\d]/g, '');
+    const formatted = digits ? formatMoney(Number(digits)) : '';
+    setEditingCell((prev) => ({ ...prev, value: formatted }));
+  };
+
+  const saveInlineEdit = () => {
+    if (!editingCell.rowId || !editingCell.monthKey) {
+      return;
     }
-  }, [monthModal.open]);
+    const num = parseMoney(editingCell.value);
+
+    setAllRows((prev) => {
+      const next = updateNodeMonths(prev, editingCell.rowId, editingCell.monthKey, num);
+      scheduleSave(next, 150);
+      return next;
+    });
+
+    closeInlineEdit();
+  };
+
+  useEffect(() => {
+    if (editingCell.rowId && editingInputRef.current) {
+      editingInputRef.current.focus();
+      editingInputRef.current.select();
+    }
+  }, [editingCell.rowId, editingCell.monthKey]);
+
+  useEffect(() => {
+    if (!editingCell.rowId) skipBlurSaveRef.current = false;
+  }, [editingCell.rowId]);
 
   const displayRows = useMemo(() => {
     const out = [];
@@ -1650,28 +1647,62 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                           {dynamicMonths.map((m) => {
                             const val = sumNodeMonth(r, m.key);
                             const hasVal = !!val;
+                            const isEditing =
+                              !isComputed &&
+                              String(editingCell.rowId || '') === String(r.id || '') &&
+                              editingCell.monthKey === m.key;
                             return (
                               <TD key={m.key} className="px-0 py-2 text-center align-middle">
-                                <button
-                                  type="button"
-                                  onClick={() => openMonthModal(r, m)}
-                                  disabled={isComputed}
-                                  className={`w-24 mx-auto h-9 md:w-24 md:h-9 rounded-xl border text-[11px] md:text-[12px] flex items-center justify-center shadow-sm transition ${
-                                    hasVal
-                                      ? 'bg-[#edaf7c] border-[#edaf7c]/90 text-black'
-                                      : 'bg-black/5 border-black/10 text-black/70 dark:bg-white/5 dark:border-neutral-700 dark:text-neutral-100'
-                                  } ${isComputed ? 'opacity-70 cursor-default' : 'cursor-pointer'}`}
-                                  title={isComputed ? 'این مقدار از زیرمجموعه‌ها محاسبه می‌شود' : 'ثبت/ویرایش مقدار (و ذخیره)'}
-                                >
-                                  {hasVal ? (
-                                    <div className="flex flex-col items-center justify-center leading-tight">
-                                      <span>{toFaDigits(formatMoney(val))}</span>
-                                      <span className="mt-0.5 text-[10px] text-black/70 dark:text-neutral-300">ریال</span>
-                                    </div>
-                                  ) : (
-                                    '—'
-                                  )}
-                                </button>
+                                {isEditing ? (
+                                  <input
+                                    ref={editingInputRef}
+                                    dir="ltr"
+                                    value={editingCell.value ? toFaDigits(editingCell.value) : ''}
+                                    onChange={(e) => handleInlineEditChange(e.target.value)}
+                                    onBlur={() => {
+                                      if (skipBlurSaveRef.current) {
+                                        skipBlurSaveRef.current = false;
+                                        return;
+                                      }
+                                      saveInlineEdit();
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        skipBlurSaveRef.current = true;
+                                        saveInlineEdit();
+                                      }
+                                      if (e.key === 'Escape') {
+                                        e.preventDefault();
+                                        skipBlurSaveRef.current = true;
+                                        closeInlineEdit();
+                                      }
+                                    }}
+                                    className="w-24 mx-auto h-9 md:w-24 md:h-9 rounded-xl border text-[11px] md:text-[12px] text-center bg-white text-black border-black/20 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-600 outline-none ring-2 ring-black/10 dark:ring-white/20"
+                                    placeholder="0"
+                                  />
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => startInlineEdit(r, m.key)}
+                                    disabled={isComputed}
+                                    className={`w-24 mx-auto h-9 md:w-24 md:h-9 rounded-xl border text-[11px] md:text-[12px] flex items-center justify-center shadow-sm transition ${
+                                      hasVal
+                                        ? 'bg-[#edaf7c] border-[#edaf7c]/90 text-black'
+                                        : 'bg-black/5 border-black/10 text-black/70 dark:bg-white/5 dark:border-neutral-700 dark:text-neutral-100'
+                                    } ${isComputed ? 'opacity-70 cursor-default' : 'cursor-pointer'}`}
+                                    title={isComputed ? 'این مقدار از زیرمجموعه‌ها محاسبه می‌شود' : 'ثبت/ویرایش مقدار (و ذخیره)'}
+                                  >
+                                    {hasVal ? (
+                                      <div className="flex flex-col items-center justify-center leading-tight">
+                                        <span>{toFaDigits(formatMoney(val))}</span>
+                                        <span className="mt-0.5 text-[10px] text-black/70 dark:text-neutral-300">ریال</span>
+                                      </div>
+                                    ) : (
+                                      '—'
+                                    )}
+                                  </button>
+                                )}
                               </TD>
                             );
                           })}
@@ -1873,59 +1904,6 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                     انتخاب همه
                   </button>
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {monthModal.open && (
-          <div className="fixed inset-0 z-40 grid place-items-center px-3">
-            <div className="absolute inset-0 bg-black/25 dark:bg-neutral-950/55 backdrop-blur-[2px]" onClick={closeMonthModal} />
-            <div
-              className="relative w-full max-w-sm rounded-2xl bg-white text-neutral-900 border border-black/10 shadow-2xl dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 p-4 space-y-3"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="text-sm font-semibold">برآورد درآمد ها</div>
-                  <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400 space-y-0.5">
-                    <div>ماه: <b>{monthModal.label || '—'}</b></div>
-                    <div className="text-[11px]">ردیف: <b>{monthModal.title || '—'}</b></div>
-                  </div>
-                </div>
-                <button type="button" onClick={closeMonthModal} className="h-8 w-8 grid place-items-center rounded-xl bg-black text-white dark:bg-neutral-100 dark:text-neutral-900">
-                  <img src="/images/icons/bastan.svg" alt="" className="w-4 h-4 invert dark:invert-0" />
-                </button>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs text-neutral-600 dark:text-neutral-300">مبلغ برآورد برای این ماه</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    ref={monthInputRef}
-                    dir="ltr"
-                    className="flex-1 w-full rounded-xl px-3 py-2 text-sm text-center bg-white text-black placeholder-black/40 border border-black/15 outline-none focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-                    placeholder="0"
-                    value={monthModal.value ? toFaDigits(monthModal.value) : ''}
-                    onChange={(e) => handleMonthModalChange(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleMonthModalSave();
-                      }
-                    }}
-                  />
-                  <span className="text-xs text-neutral-600 dark:text-neutral-300">ریال</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between gap-2 pt-1">
-                <button type="button" onClick={closeMonthModal} className="h-9 px-4 rounded-xl border border-neutral-300 text-xs text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800">
-                  انصراف
-                </button>
-                <button type="button" onClick={handleMonthModalSave} className="h-9 px-5 rounded-xl bg-neutral-900 text-xs text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200">
-                  ثبت برآورد
-                </button>
               </div>
             </div>
           </div>
