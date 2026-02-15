@@ -3946,7 +3946,7 @@ aria-invalid={formKind === "incoming" ? fieldHasError("incoming", "classificatio
 </div>
 
   {/* مرکز/پروژه */}
-<div className="shrink-0 w-[220px]">
+<div className="flex-1 min-w-[260px]">
   <div className={labelSmCls}>مرکز/پروژه</div>
 
   <FieldWrap>
@@ -4406,7 +4406,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
 </button>
     </div>
      {/* ✅ توضیح کنار بارگذاری اسناد */}
-<div className="min-w-0 w-full md:w-[15%]">
+<div className="flex-1 min-w-[260px]">
   <div className={labelCls}>توضیح</div>
   <input
     value={
