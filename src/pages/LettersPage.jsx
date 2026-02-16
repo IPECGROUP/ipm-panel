@@ -2753,7 +2753,28 @@ const kindRowTintCls = (kind) => {
   setInternalReceiverName(loggedInUserName || "");
 
   setDocFilesByType({ incoming: [], outgoing: [], internal: [] });
+  setErrorsByKind({ incoming: {}, outgoing: {}, internal: {} });
+  setSubmitTriedByKind({ incoming: false, outgoing: false, internal: false });
   setEditingId(null);
+};
+
+const closeFormAndReset = () => {
+  resetForm();
+  setFormKind("incoming");
+  setFormOpen(false);
+};
+
+const openFreshForm = () => {
+  resetForm();
+  setFormKind("incoming");
+  setFormOpen(true);
+};
+
+const switchFormKindAndReset = (nextKind) => {
+  const nk = String(nextKind || "").trim();
+  if (!nk || nk === formKind) return;
+  resetForm();
+  setFormKind(nk);
 };
 
   const normalizeAttachmentForPayload = (x) => {
@@ -3546,14 +3567,8 @@ useEffect(() => {
             <button
               type="button"
               onClick={() => {
-                setFormOpen((v) => {
-                  const next = !v;
-                  if (next) {
-                  } else {
-                    setEditingId(null);
-                  }
-                  return next;
-                });
+                if (formOpen) closeFormAndReset();
+                else openFreshForm();
               }}
               className={
                 "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
@@ -3791,7 +3806,7 @@ useEffect(() => {
           <button
             key={t.id}
             type="button"
-            onClick={() => setFormKind(t.id)}
+            onClick={() => switchFormKindAndReset(t.id)}
             className={tabSmCls(active)}
             style={
               active
