@@ -791,10 +791,15 @@ const sortedProjects = useMemo(() => {
                               <button
                                 type="button"
                                 onClick={() => setOpenCodes((prev) => ({ ...prev, [node.key]: !isOpen }))}
-                                className="w-5 h-5 grid place-items-center rounded-full border border-neutral-300 text-xs bg-white dark:bg-neutral-800 dark:border-neutral-600"
+                                className="h-5 w-5 grid place-items-center rounded-md border border-black/25 bg-white text-black dark:border-neutral-500 dark:bg-white dark:text-black"
                                 aria-label={isOpen ? "بستن زیرمجموعه" : "باز کردن زیرمجموعه"}
+                                title={isOpen ? "بستن زیرمجموعه" : "باز کردن زیرمجموعه"}
                               >
-                                {isOpen ? "−" : "+"}
+                                {isOpen ? (
+                                  <span className="text-[11px] leading-none text-black">−</span>
+                                ) : (
+                                  <img src="/images/icons/afzodan.svg" alt="" className="w-3 h-3" />
+                                )}
                               </button>
                             )}
                             <button
