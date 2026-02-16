@@ -469,7 +469,11 @@ const computeNextAutoCode = ({ kind, projectId, letters, projectsTopOnly }) => {
   const pcode = getProjectCode(projectId, projectsTopOnly);
   if (!pcode) return ""; // تا پروژه انتخاب نشده، کد نساز
 
-  const startByYear = (yy === "04" ? 10700 : 10000);
+  // مقدار شروع هر سال را اینجا تنظیم کن. برای سال 1404 از 10536 شروع می‌شود.
+  const startByYearMap = {
+    "04": 10536,
+  };
+  const startByYear = Number(startByYearMap[yy]) || 10000;
 
   let maxSeq = 0;
 
@@ -2784,48 +2788,57 @@ else setInternalSecretariatNote(sn);
 
 // سازگاری با دیتاهای قدیمی شما که category="project" بوده
     const mappedCat = rawCat === "project" ? "اسناد پروژه ای" : (rawCat || "نامه");
-    setCategory(mappedCat);
 
     // طبقه بندی (اگر از بک‌اند اومد، وگرنه پیش‌فرض)
     const rawClass =
       String(l?.classification ?? l?.doc_classification ?? l?.confidentiality ?? "").trim();
-    setClassification(rawClass || "عادی");
 
     const pid = l?.project_id ?? l?.projectId ?? l?.projectID ?? null;
-    setProjectId(pid ? String(pid) : "");
+    const projectId = pid ? String(pid) : "";
+    const letterNo = String(l?.letter_no ?? l?.letterNo ?? l?.no ?? l?.number ?? "");
+    const letterDate = String(l?.letter_date ?? l?.letterDate ?? l?.date ?? "");
+    const fromVal = String(l?.from_name ?? l?.fromName ?? l?.from ?? "");
+    const toVal = String(l?.to_name ?? l?.toName ?? l?.to ?? "");
+    const orgVal = String(l?.org_name ?? l?.orgName ?? l?.org ?? l?.organization ?? l?.company ?? "");
+    const subVal = String(l?.subject ?? l?.title ?? "");
+
 // ✅ برای نامه‌های داخلی: پر کردن واحد در حالت Edit
 const uid = l?.unit_id ?? l?.unitId ?? l?.unit ?? l?.internal_unit_id ?? "";
 setInternalUnitId(uid ? String(uid) : "");
 
-    setLetterNo(String(l?.letter_no ?? l?.letterNo ?? l?.no ?? l?.number ?? ""));
-    setLetterDate(String(l?.letter_date ?? l?.letterDate ?? l?.date ?? ""));
-
-const fromVal = String(l?.from_name ?? l?.fromName ?? l?.from ?? "");
-if (kind === "outgoing") {
-  setOutgoingForm((p) => ({ ...p, fromName: fromVal }));
-} else if (kind === "incoming") {
-  setIncomingForm((p) => ({ ...p, fromName: fromVal }));
-} else {
-  setInternalForm((p) => ({ ...p, fromName: fromVal }));
-}
-
-const toVal = String(l?.to_name ?? l?.toName ?? l?.to ?? "");
-
-if (kind === "incoming") {
-  setIncomingForm((p) => ({ ...p, toName: toVal }));
-} else if (kind === "outgoing") {
-  setOutgoingForm((p) => ({ ...p, toName: toVal }));
-}
-    setOrgName(String(l?.org_name ?? l?.orgName ?? l?.org ?? l?.organization ?? l?.company ?? ""));
-const subVal = String(l?.subject ?? l?.title ?? "");
-
-if (kind === "incoming") {
-  setIncomingForm((p) => ({ ...p, subject: subVal }));
-} else if (kind === "outgoing") {
-  setOutgoingForm((p) => ({ ...p, subject: subVal }));
-} else {
-  setInternalForm((p) => ({ ...p, subject: subVal }));
-}
+    if (kind === "outgoing") {
+      setOutgoingForm((p) => ({
+        ...p,
+        category: mappedCat,
+        projectId,
+        letterNo,
+        letterDate,
+        fromName: fromVal,
+        toName: toVal,
+        orgName: orgVal,
+        subject: subVal,
+      }));
+    } else if (kind === "incoming") {
+      setIncomingForm((p) => ({
+        ...p,
+        classification: rawClass || "عادی",
+        projectId,
+        letterNo,
+        letterDate,
+        fromName: fromVal,
+        toName: toVal,
+        orgName: orgVal,
+        subject: subVal,
+      }));
+    } else {
+      setInternalForm((p) => ({
+        ...p,
+        projectId,
+        letterNo,
+        letterDate,
+        subject: subVal,
+      }));
+    }
 
 
     const ha = l?.has_attachment ?? l?.hasAttachment ?? false;
