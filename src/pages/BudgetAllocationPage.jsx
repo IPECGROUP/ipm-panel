@@ -891,7 +891,7 @@ setProjects(Array.from(byId.values()));
 
         <TableWrap>
           <div className={tablePreset.outer + " min-w-0"}>
-            <div className={tablePreset.innerPad + " !px-0 sm:!px-[15px] !pb-3 sm:!pb-4"}>
+            <div className={tablePreset.innerPad + " !px-0 !pb-3 sm:!pb-4"}>
               <div className={tablePreset.frame + " shadow-sm"}>
                 <div className="-mx-2 px-2 sm:mx-0 sm:px-0 overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-gutter:stable_both-edges]">
                 <table className={tablePreset.table + " text-[11px] sm:text-[12px] md:text-sm min-w-[700px] sm:min-w-[760px] md:min-w-[920px] xl:min-w-[980px]"} dir="rtl">
