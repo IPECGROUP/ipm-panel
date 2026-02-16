@@ -997,6 +997,17 @@ const canSeeConfidential = useMemo(() => {
 // اگر جاهای دیگه از isAdmin استفاده می‌کنی:
 const isAdmin = canSeeConfidential;
 
+const canEditSecretariatNo = useMemo(() => {
+  const role = String(user?.role || "").trim().toLowerCase();
+  if (role === "admin" || isMainAdminUser(user)) return true;
+
+  const ids = [user?.id, user?.username, user?.user_name, user?.login]
+    .map((x) => String(x || "").trim().toLowerCase())
+    .filter(Boolean);
+
+  return ids.includes("rastegar");
+}, [user]);
+
 // ===== Filters (page-level) =====
   const [filterQuick, setFilterQuick] = useState(""); // week|2w|1m|3m|6m
   const [filterFromDate, setFilterFromDate] = useState("");
@@ -2547,6 +2558,140 @@ const isImageUrl = (url, name = "") =>
   const endIdx = Math.min(total, startIdx + rowsPerPage);
   const pageItems = filteredLetters.slice(startIdx, endIdx);
 
+  const exportLettersExcel = () => {
+    const items = Array.isArray(filteredLetters) ? filteredLetters : [];
+    if (!items.length) {
+      alert("موردی برای خروجی اکسل وجود ندارد.");
+      return;
+    }
+
+    const escapeHtml = (v) =>
+      String(v ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+    const kindLabel = (l) => {
+      const k = letterKindOf(l);
+      if (k === "outgoing") return "صادره";
+      if (k === "internal") return "داخلی";
+      return "وارده";
+    };
+
+    const classificationLabel = (l) =>
+      String(
+        l?.classification ??
+          l?.doc_classification ??
+          l?.confidentiality ??
+          l?.classification_label ??
+          l?.classificationName ??
+          ""
+      ).trim();
+
+    const tagIdsOf = (l) => {
+      if (Array.isArray(l?.tag_ids)) return l.tag_ids;
+      if (Array.isArray(l?.tagIds)) return l.tagIds;
+      return [];
+    };
+
+    const tagsLabelOf = (l) => {
+      const ids = tagIdsOf(l).map((x) => String(x || "").trim()).filter(Boolean);
+      if (!ids.length) return "—";
+
+      const labels = ids
+        .map((id) => tagById.get(id))
+        .filter(Boolean)
+        .map((t) => tagLabelOf(t))
+        .map((x) => String(x || "").trim())
+        .filter(Boolean);
+
+      if (labels.length) return labels.join("، ");
+      return ids.join("، ");
+    };
+
+    const rowsHtml = items
+      .map((l, idx) => {
+        const letterNo = String(letterNoOf(l) || "").trim();
+        const letterDate = String(letterDateOf(l) || "").trim();
+        const subject = String(subjectOf(l) || "").trim();
+        const fromTo = String(fromToOf(l) || "").trim();
+        const org = String(orgOf(l) || "").trim();
+        const classification = classificationLabel(l);
+        const secretariatDate = String(l?.secretariat_date ?? l?.secretariatDate ?? "").trim();
+        const secretariatNo = String(l?.secretariat_no ?? l?.secretariatNo ?? "").trim();
+        const receiverName = String(l?.receiver_name ?? l?.receiverName ?? "").trim();
+        const hasAtt = (l?.has_attachment ?? l?.hasAttachment) ? "دارد" : "ندارد";
+        const tags = tagsLabelOf(l);
+
+        return `
+          <tr>
+            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:center;">${idx + 1}</td>
+            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:center;">${escapeHtml(kindLabel(l))}</td>
+            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:center;">${escapeHtml(letterNo || "—")}</td>
+            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:center;">${escapeHtml(letterDate || "—")}</td>
+            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:right;">${escapeHtml(subject || "—")}</td>
+            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:right;">${escapeHtml(fromTo || "—")}</td>
+            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:right;">${escapeHtml(org || "—")}</td>
+            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:center;">${escapeHtml(classification || "—")}</td>
+            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:center;">${escapeHtml(secretariatDate || "—")}</td>
+            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:center;">${escapeHtml(secretariatNo || "—")}</td>
+            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:right;">${escapeHtml(receiverName || "—")}</td>
+            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:center;">${escapeHtml(hasAtt)}</td>
+            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:right;">${escapeHtml(tags)}</td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    const exportDate = new Date().toLocaleDateString("fa-IR");
+    const html = `
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <title>خروجی اسناد و نامه ها</title>
+  </head>
+  <body>
+    <h3 style="margin:0 0 8px 0;">گزارش اسناد و نامه ها</h3>
+    <div style="margin:0 0 12px 0; font-size:12px;">تاریخ خروجی: ${escapeHtml(exportDate)}</div>
+    <table style="border-collapse:collapse; width:100%; font-family:Tahoma, Arial, sans-serif; font-size:12px;">
+      <thead>
+        <tr style="background:#F3F4F6;">
+          <th style="border:1px solid #BFBFBF; padding:6px 8px;">ردیف</th>
+          <th style="border:1px solid #BFBFBF; padding:6px 8px;">نوع</th>
+          <th style="border:1px solid #BFBFBF; padding:6px 8px;">شماره سند</th>
+          <th style="border:1px solid #BFBFBF; padding:6px 8px;">تاریخ سند</th>
+          <th style="border:1px solid #BFBFBF; padding:6px 8px;">موضوع</th>
+          <th style="border:1px solid #BFBFBF; padding:6px 8px;">از/به</th>
+          <th style="border:1px solid #BFBFBF; padding:6px 8px;">شرکت/سازمان</th>
+          <th style="border:1px solid #BFBFBF; padding:6px 8px;">طبقه بندی</th>
+          <th style="border:1px solid #BFBFBF; padding:6px 8px;">تاریخ ثبت دبیرخانه</th>
+          <th style="border:1px solid #BFBFBF; padding:6px 8px;">شماره ثبت دبیرخانه</th>
+          <th style="border:1px solid #BFBFBF; padding:6px 8px;">مسئول دبیرخانه</th>
+          <th style="border:1px solid #BFBFBF; padding:6px 8px;">ضمیمه</th>
+          <th style="border:1px solid #BFBFBF; padding:6px 8px;">برچسب ها</th>
+        </tr>
+      </thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+  </body>
+</html>`;
+
+    const blob = new Blob(["\uFEFF" + html], {
+      type: "application/vnd.ms-excel;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `letters-${new Date().toISOString().slice(0, 10)}.xls`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
   useEffect(() => {
     if (!filteredLetters.length) {
       if (kbdAbsIdx !== -1) setKbdAbsIdx(-1);
@@ -3759,7 +3904,7 @@ useEffect(() => {
 
 
   {/* 3) Add button (همیشه آخر) */}
-  <button
+<button
   type="button"
   onClick={() => openTagPicker("filter")}
   className={
@@ -3775,6 +3920,25 @@ useEffect(() => {
     src="/images/icons/sayer.svg"
     alt=""
     className={"w-5 h-5 " + (theme === "dark" ? "dark:invert" : "")}
+  />
+</button>
+
+<button
+  type="button"
+  onClick={exportLettersExcel}
+  className={
+    "h-10 w-10 shrink-0 rounded-full border transition inline-flex items-center justify-center " +
+    (theme === "dark"
+      ? "border-white/15 bg-white/5 hover:bg-white/10"
+      : "border-black/10 bg-white hover:bg-black/[0.02]")
+  }
+  aria-label="خروجی اکسل"
+  title="خروجی اکسل"
+>
+  <img
+    src="/images/icons8-excel-50.png"
+    alt=""
+    className="w-5 h-5 object-contain"
   />
 </button>
 
@@ -4569,12 +4733,18 @@ aria-invalid={fieldHasError(formKind, "subject")}
       ? outgoingSecretariatNo
       : internalSecretariatNo
   }
-  readOnly // ✅ قفل کامل در هر سه تب
-  tabIndex={-1} // ✅ فوکوس با Tab نگیرد (اختیاری ولی بهتر)
-  onChange={() => {}} // ✅ هیچ تغییری از تایپ اعمال نشود
+  readOnly={!canEditSecretariatNo}
+  tabIndex={canEditSecretariatNo ? 0 : -1}
+  onChange={(e) => {
+    if (!canEditSecretariatNo) return;
+    const v = e.target.value;
+    if (formKind === "incoming") setIncomingSecretariatNo(v);
+    else if (formKind === "outgoing") setOutgoingSecretariatNo(v);
+    else setInternalSecretariatNo(v);
+  }}
   className={
     inputCls +
-    " bg-black/5 dark:bg-white/10 cursor-not-allowed select-none"
+    (canEditSecretariatNo ? "" : " bg-black/5 dark:bg-white/10 cursor-not-allowed select-none")
   }
   type="text"
 />
