@@ -1054,41 +1054,33 @@ setProjects(Array.from(byId.values()));
                           </div>
                         </TD>
                         <TD className="px-2.5 py-1 align-middle !text-center">
-                          {isComputed ? (
-                            <div className="text-black/40 dark:text-neutral-500">—</div>
-                          ) : (
-                            <textarea
-                              ref={(el) => (descRefs.current[r.code] = el)}
-                              className="w-full rounded-xl px-2 py-1 whitespace-normal break-words leading-snug outline-none
+                          <textarea
+                            ref={(el) => (descRefs.current[r.code] = el)}
+                            className="w-full rounded-xl px-2 py-1 whitespace-normal break-words leading-snug outline-none
                                      bg-white text-black placeholder-black/40 border border-black/15 focus:ring-2 focus:ring-black/10
                                      dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-                              rows={2}
-                              value={r.desc}
-                              onChange={(e) => onDescChange(r.code, e.target.value)}
-                              placeholder="شرح تخصیص…"
-                            />
-                          )}
+                            rows={2}
+                            value={r.desc}
+                            onChange={(e) => onDescChange(r.code, e.target.value)}
+                            placeholder="شرح تخصیص…"
+                          />
                         </TD>
                         <TD className="px-2.5 pt-1.5 pb-1 align-middle !text-center">
                           <div className="inline-flex items-center justify-center gap-2">
-                            {isComputed ? (
-                              <span className="text-black/40 dark:text-neutral-500">—</span>
-                            ) : (
-                              <button
-                                onClick={() => removeRow(r.code)}
-                                className="h-9 w-11 grid place-items-center rounded-xl bg-white text-red-600
+                            <button
+                              onClick={() => removeRow(r.code)}
+                              className="h-9 w-11 grid place-items-center rounded-xl bg-white text-red-600
                                       border border-red-500 hover:bg-red-50 transition
                                       dark:bg-transparent dark:text-red-300 dark:border-red-400/60 dark:hover:bg-white/10"
-                                aria-label="حذف"
-                                title="حذف"
-                              >
-                                <img
-                                  src="/images/icons/hazf.svg"
-                                  alt=""
-                                  className="w-5 h-5 [filter:invert(22%)_sepia(94%)_saturate(7488%)_hue-rotate(1deg)_brightness(103%)_contrast(122%)]"
-                                />
-                              </button>
-                            )}
+                              aria-label="حذف"
+                              title="حذف"
+                            >
+                              <img
+                                src="/images/icons/hazf.svg"
+                                alt=""
+                                className="w-5 h-5 [filter:invert(22%)_sepia(94%)_saturate(7488%)_hue-rotate(1deg)_brightness(103%)_contrast(122%)]"
+                              />
+                            </button>
                           </div>
                         </TD>
                       </TR>
