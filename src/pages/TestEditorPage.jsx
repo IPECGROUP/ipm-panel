@@ -8,7 +8,6 @@ import Underline from "@tiptap/extension-underline";
 import { TextStyle, FontFamily } from "@tiptap/extension-text-style";
 import { TableKit } from "@tiptap/extension-table";
 import Placeholder from "@tiptap/extension-placeholder";
-import { api } from "../utils/api.js";
 
 // FontSize extension
 const FontSize = Extension.create({
@@ -261,7 +260,7 @@ function Modal({ open, onClose, children }) {
               ].join(" ")}
               title="Close"
             >
-              ✕
+              x
             </button>
           </div>
           <div className="p-4 md:p-6 bg-neutral-50 dark:bg-neutral-900">{children}</div>
@@ -271,9 +270,8 @@ function Modal({ open, onClose, children }) {
   );
 }
 
-const DOC_CLASS = "test_editor_doc";
 const WORD_MIME = "application/msword";
-const API_BASE = String(import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
+const LOCAL_DOCS_KEY = "test_editor_local_docs_v1";
 
 function safeFileName(v) {
   return String(v || "document")
@@ -310,15 +308,34 @@ function downloadBlob(blob, fileName) {
   URL.revokeObjectURL(url);
 }
 
-function toAbsoluteUrl(rawUrl) {
-  const s = String(rawUrl || "").trim();
-  if (!s) return "";
-  if (/^https?:\/\//i.test(s)) return s;
+function readLocalDocs() {
   try {
-    return new URL(s, window.location.origin).toString();
+    if (typeof window === "undefined") return [];
+    const raw = window.localStorage.getItem(LOCAL_DOCS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((x) => ({
+        id: String(x?.id || ""),
+        title: String(x?.title || "Untitled"),
+        html: String(x?.html || ""),
+        updatedAt: String(x?.updatedAt || ""),
+      }))
+      .filter((x) => x.id);
   } catch {
-    return "";
+    return [];
   }
+}
+
+function writeLocalDocs(items) {
+  try {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(LOCAL_DOCS_KEY, JSON.stringify(Array.isArray(items) ? items : []));
+  } catch {}
+}
+
+function makeLocalDocId() {
+  return `${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
 }
 
 export default function TestEditorPage() {
@@ -346,7 +363,6 @@ export default function TestEditorPage() {
   const [saving, setSaving] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
   const [isDirty, setIsDirty] = useState(false);
-  const [lastWordUrl, setLastWordUrl] = useState("");
 
   // Excel-like row resize state
   const rowResizeRef = useRef({
@@ -356,24 +372,10 @@ export default function TestEditorPage() {
     startH: 0,
   });
 
-  const extractLatestAttachmentUrl = useCallback((item) => {
-    const atts = Array.isArray(item?.attachments) ? item.attachments : [];
-    for (let i = atts.length - 1; i >= 0; i--) {
-      const raw = atts[i]?.url || atts[i]?.href || atts[i]?.path || "";
-      const abs = toAbsoluteUrl(raw);
-      if (abs) return abs;
-    }
-    return "";
-  }, []);
-
-  const loadSavedDocs = useCallback(async () => {
+  const loadSavedDocs = useCallback(() => {
     setLoadingDocs(true);
     try {
-      const res = await api("/letters/mine");
-      const all = Array.isArray(res?.items) ? res.items : [];
-      const docs = all
-        .filter((x) => String(x?.doc_class || x?.docClass || "") === DOC_CLASS)
-        .sort((a, b) => Number(b?.id || 0) - Number(a?.id || 0));
+      const docs = readLocalDocs().sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
       setSavedDocs(docs);
     } catch {
       setSavedDocs([]);
@@ -385,35 +387,6 @@ export default function TestEditorPage() {
   useEffect(() => {
     loadSavedDocs();
   }, [loadSavedDocs]);
-
-
-  const uploadWordAttachment = useCallback(async (letterId, html, title) => {
-    const content = buildWordHtmlDocument(html, title);
-    const blob = new Blob(["\uFEFF", content], { type: WORD_MIME });
-    const file = new File([blob], `${safeFileName(title)}.doc`, { type: WORD_MIME });
-
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("letter_id", String(letterId));
-
-    const res = await fetch(`${API_BASE}/uploads/letters`, {
-      method: "POST",
-      credentials: "include",
-      body: fd,
-    });
-
-    const txt = await res.text();
-    let data = {};
-    try {
-      data = txt ? JSON.parse(txt) : {};
-    } catch {}
-
-    if (!res.ok) {
-      throw new Error(data?.error || data?.message || "upload_failed");
-    }
-
-    return data;
-  }, []);
 
   const editor = useEditor({
     extensions: [
@@ -459,9 +432,8 @@ export default function TestEditorPage() {
   const resetDocument = useCallback(() => {
     if (!editor) return;
     setDocId(null);
-    setDocTitle("سند جدید");
+    setDocTitle("New document");
     setPreviewHtml("");
-    setLastWordUrl("");
     setIsDirty(false);
     setStatusMsg("");
     editor.commands.clearContent();
@@ -471,18 +443,17 @@ export default function TestEditorPage() {
   const openDocument = useCallback(
     (item) => {
       if (!editor || !item) return;
-      const html = String(item?.secretariat_note || "");
-      const nextTitle = String(item?.subject || `سند ${item?.id || ""}`).trim() || "سند";
-      setDocId(item?.id || null);
+      const html = String(item?.html || "");
+      const nextTitle = String(item?.title || `Document ${item?.id || ""}`).trim() || "Untitled";
+      setDocId(String(item?.id || ""));
       setDocTitle(nextTitle);
       setPreviewHtml(html);
-      setLastWordUrl(extractLatestAttachmentUrl(item));
       setIsDirty(false);
       setStatusMsg("");
       editor.commands.setContent(html || "<p></p>", false);
       editor.commands.focus("end");
     },
-    [editor, extractLatestAttachmentUrl]
+    [editor]
   );
 
   const handleSaveDocument = useCallback(async () => {
@@ -492,49 +463,32 @@ export default function TestEditorPage() {
 
     try {
       const html = editor.getHTML();
-      const title = String(docTitle || "").trim() || "سند بدون عنوان";
+      const title = String(docTitle || "").trim() || "Untitled";
+      const currentId = String(docId || makeLocalDocId());
 
-      const payload = {
-        kind: "internal",
-        doc_class: DOC_CLASS,
-        subject: title,
-        secretariat_note: html,
+      const nextDoc = {
+        id: currentId,
+        title,
+        html,
+        updatedAt: new Date().toISOString(),
       };
 
-      let result = null;
-      if (docId) {
-        result = await api(`/letters/${docId}`, {
-          method: "PATCH",
-          body: JSON.stringify(payload),
-        });
-      } else {
-        result = await api("/letters", {
-          method: "POST",
-          body: JSON.stringify(payload),
-        });
-      }
+      const filtered = (Array.isArray(savedDocs) ? savedDocs : []).filter((x) => String(x?.id || "") !== currentId);
+      const nextDocs = [nextDoc, ...filtered].sort((a, b) =>
+        String(b?.updatedAt || "").localeCompare(String(a?.updatedAt || ""))
+      );
 
-      const savedId = Number(result?.item?.id || docId || 0);
-      if (!savedId) throw new Error("save_failed");
-
-      setDocId(savedId);
-      let savedWordUrl = "";
-      try {
-        const uploadRes = await uploadWordAttachment(savedId, html, title);
-        savedWordUrl = toAbsoluteUrl(uploadRes?.url || uploadRes?.file?.url || uploadRes?.attachment?.url || "");
-      } catch {}
-
-      if (savedWordUrl) setLastWordUrl(savedWordUrl);
+      writeLocalDocs(nextDocs);
+      setSavedDocs(nextDocs);
+      setDocId(currentId);
       setIsDirty(false);
-      setStatusMsg(savedWordUrl ? "سند ذخیره شد و فایل Word به روز شد." : "سند ذخیره شد.");
-      await loadSavedDocs();
+      setStatusMsg("Saved locally in browser only. Nothing was sent to database.");
     } catch (e) {
-      setStatusMsg(`خطا در ذخیره سازی: ${e?.message || "request_failed"}`);
+      setStatusMsg(`Save failed: ${e?.message || "unknown_error"}`);
     } finally {
       setSaving(false);
     }
-  }, [docId, docTitle, editor, loadSavedDocs, uploadWordAttachment]);
-
+  }, [docId, docTitle, editor, savedDocs]);
   const handleDownloadWord = useCallback(() => {
     if (!editor) return;
     const html = editor.getHTML();
@@ -545,16 +499,9 @@ export default function TestEditorPage() {
   }, [docTitle, editor]);
 
   const handleOpenInWord = useCallback(() => {
-    if (!lastWordUrl) {
-      handleDownloadWord();
-      setStatusMsg("برای باز شدن مستقیم در Word، یک بار سند را داخل سایت ذخیره کنید.");
-      return;
-    }
-
-    const openUrl = encodeURI(lastWordUrl);
-    window.location.href = `ms-word:ofe|u|${openUrl}`;
-  }, [handleDownloadWord, lastWordUrl]);
-
+    handleDownloadWord();
+    setStatusMsg("Word cannot run inside this web page. The .doc file was downloaded for Word Desktop.");
+  }, [handleDownloadWord]);
   // Click anywhere on the page to move cursor and focus editor
   const handlePageMouseDown = (e) => {
     if (!editor) return;
@@ -692,26 +639,26 @@ export default function TestEditorPage() {
               type="text"
               value={docTitle}
               onChange={(e) => setDocTitle(e.target.value)}
-              placeholder="عنوان سند"
+              placeholder="Document title"
               className="h-10 min-w-[210px] flex-1 rounded-xl border border-black/10 bg-white px-3 text-sm text-black dark:bg-neutral-950 dark:text-neutral-100 dark:border-neutral-800"
             />
             <PrimaryBtn disabled={!editor || saving} onClick={handleSaveDocument}>
-              {saving ? "در حال ذخیره..." : "ذخیره در سایت"}
+              {saving ? "Saving..." : "Save (Local only)"}
             </PrimaryBtn>
             <SmallBtn disabled={!editor} onClick={handleDownloadWord}>
-              خروجی Word
+              Download Word
             </SmallBtn>
             <SmallBtn disabled={!editor} onClick={handleOpenInWord}>
-              باز کردن در Word
+              Open In Word
             </SmallBtn>
             <SmallBtn disabled={!editor || saving} onClick={resetDocument}>
-              سند جدید
+              New Document
             </SmallBtn>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <SmallBtn onClick={insertTable3x3} disabled={!editor}>
-              افزودن جدول
+              Insert Table
             </SmallBtn>
 
             <div className="flex-1" />
@@ -725,9 +672,9 @@ export default function TestEditorPage() {
           </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-600 dark:text-neutral-300">
-            <span>شناسه سند: {docId || "جدید"}</span>
+            <span>Document ID: {docId || "new"}</span>
             <span className="opacity-60">|</span>
-            <span>{isDirty ? "دارای تغییرات ذخیره نشده" : "همگام با نسخه ذخیره شده"}</span>
+            <span>{isDirty ? "Unsaved changes" : "Saved state"}</span>
             {!!statusMsg && (
               <>
                 <span className="opacity-60">|</span>
@@ -777,13 +724,13 @@ export default function TestEditorPage() {
           <div className="h-6 w-px bg-black/10 dark:bg-white/10 mx-1" />
 
           <IconBtn title="Align right" disabled={!editor} onClick={alignRight}>
-            ↦
+            R
           </IconBtn>
           <IconBtn title="Align center" disabled={!editor} onClick={alignCenter}>
             C
           </IconBtn>
           <IconBtn title="Align left" disabled={!editor} onClick={alignLeft}>
-            ↤
+            L
           </IconBtn>
           <IconBtn title="Justify" disabled={!editor} onClick={alignJustify}>
             J
@@ -791,8 +738,13 @@ export default function TestEditorPage() {
 
           <div className="h-6 w-px bg-black/10 dark:bg-white/10 mx-1" />
 
-          <IconBtn title="Bullet List" active={editor?.isActive("bulletList")} disabled={!editor} onClick={() => editor?.chain().focus().toggleBulletList().run()}>
-            ••
+          <IconBtn
+            title="Bullet List"
+            active={editor?.isActive("bulletList")}
+            disabled={!editor}
+            onClick={() => editor?.chain().focus().toggleBulletList().run()}
+          >
+            *
           </IconBtn>
           <IconBtn title="Ordered List" active={editor?.isActive("orderedList")} disabled={!editor} onClick={() => editor?.chain().focus().toggleOrderedList().run()}>
             1.
@@ -845,9 +797,9 @@ export default function TestEditorPage() {
           </div>
 
           <div className="mt-4 rounded-2xl border border-black/10 bg-white p-3 dark:bg-neutral-950 dark:border-neutral-800">
-            <div className="mb-2 text-sm font-semibold">اسناد ذخیره شده</div>
+            <div className="mb-2 text-sm font-semibold">Saved Documents (Local)</div>
             {loadingDocs ? (
-              <div className="text-xs text-neutral-500 dark:text-neutral-400">در حال بارگذاری...</div>
+              <div className="text-xs text-neutral-500 dark:text-neutral-400">Loading...</div>
             ) : savedDocs.length ? (
               <div className="grid gap-2">
                 {savedDocs.slice(0, 8).map((item) => (
@@ -855,7 +807,7 @@ export default function TestEditorPage() {
                     key={item.id}
                     className={[
                       "flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2",
-                      Number(item.id) === Number(docId)
+                      String(item.id) === String(docId)
                         ? "border-black/30 dark:border-white/30"
                         : "border-black/10 dark:border-neutral-800",
                     ].join(" ")}
@@ -865,18 +817,18 @@ export default function TestEditorPage() {
                       onClick={() => openDocument(item)}
                       className="text-sm text-right hover:underline"
                     >
-                      {item?.subject || `سند ${item?.id}`}
+                      {item?.title || `Document ${item?.id}`}
                     </button>
                     <div className="flex-1" />
                     <SmallBtn onClick={() => openDocument(item)} disabled={!editor}>
-                      باز کردن
+                      Open
                     </SmallBtn>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                هنوز سندی ذخیره نشده است.
+                No local documents yet.
               </div>
             )}
           </div>
