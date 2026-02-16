@@ -1038,7 +1038,7 @@ const sortedProjects = useMemo(() => {
     totalGrand,
   ]);
 
-  const TopButtons = () => (
+  const renderTopButtons = () => (
     <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
       {tabs.map((t) => (
         <button
@@ -1056,7 +1056,7 @@ const sortedProjects = useMemo(() => {
     </div>
   );
 
-  const ProjectsControls = () => {
+  const renderProjectsControls = () => {
     if (active !== "projects") return null;
     return (
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
@@ -1101,7 +1101,7 @@ const sortedProjects = useMemo(() => {
     );
   };
 
-  const CenterCreateControls = () => (
+  const renderCenterCreateControls = () => (
     <div
       className="rounded-2xl ring-1 ring-black/10 border border-black/10 p-3 md:p-4 bg-white dark:bg-neutral-900 dark:ring-neutral-800 dark:border-neutral-800"
       dir="rtl"
@@ -1226,9 +1226,9 @@ const sortedProjects = useMemo(() => {
         </div>
 
         <div className="space-y-3 md:space-y-4 mb-4">
-          <TopButtons />
-          <ProjectsControls />
-          <CenterCreateControls />
+          {renderTopButtons()}
+          {renderProjectsControls()}
+          {renderCenterCreateControls()}
         </div>
 
         <TableWrap>
@@ -1326,6 +1326,7 @@ const sortedProjects = useMemo(() => {
                         const hasChildren = !!node.hasChildren || isParent;
                         const toggleKey = node.core || node.key;
                         const isOpen = !!openCodes[toggleKey];
+                        const shiftX = node.depth ? node.depth * 10 : 0;
 
                         const finalTotal = (() => {
                           if (!code || !isParent) return finalPreviewOf(r);
@@ -1347,10 +1348,10 @@ const sortedProjects = useMemo(() => {
                           <TR key={code || idx} className="text-center hover:bg-black/[0.06] transition-colors dark:hover:bg-white/15">
                             <TD className="px-2 py-3">{toFaDigits(idx + 1)}</TD>
 
-                            <TD className="px-2 py-3 text-center whitespace-nowrap">
+                            <TD className="px-2 py-3 text-right whitespace-nowrap">
                               <div
-                                className="inline-flex items-center justify-center gap-1 flex-row-reverse"
-                                style={{ paddingRight: node.depth ? node.depth * 18 : 0 }}
+                                className="inline-flex items-center justify-end gap-1 flex-row-reverse"
+                                style={{ transform: shiftX ? `translateX(${shiftX}px)` : undefined }}
                               >
                                 {hasChildren && (
                                   <button
@@ -1376,9 +1377,8 @@ const sortedProjects = useMemo(() => {
                               className={`px-2 py-3 text-right break-words max-w-[180px] ${
                                 node.depth ? "text-[10px] md:text-[12px]" : "text-[11px] md:text-[13px]"
                               }`}
-                              style={{ paddingRight: node.depth ? 8 + node.depth * 12 : 8 }}
                             >
-                              {r.name || "—"}
+                              <div style={{ transform: shiftX ? `translateX(${shiftX}px)` : undefined }}>{r.name || "—"}</div>
                             </TD>
 
                             {dynamicMonths.map((m) => {
