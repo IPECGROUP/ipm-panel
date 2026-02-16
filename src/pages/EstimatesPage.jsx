@@ -113,6 +113,13 @@ export default function EstimatesPage() {
     [toEnDigits],
   );
 
+  const onlyDigitsDot = useCallback((s = "") => toEnDigits(s).replace(/[^0-9.]/g, ""), [toEnDigits]);
+
+  const visualPrefix = useCallback(
+    (kind) => (kind === "projects" ? "PB-" : prefixOf(kind) ? prefixOf(kind) + "-" : ""),
+    [prefixOf],
+  );
+
   // projects
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState("");
@@ -227,6 +234,11 @@ const sortedProjects = useMemo(() => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
+  const [newSuffix, setNewSuffix] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [creatingCenter, setCreatingCenter] = useState(false);
+  const [centerFormErr, setCenterFormErr] = useState("");
+  const [reloadTick, setReloadTick] = useState(0);
 
   const reqSeq = useRef(0);
 
@@ -252,6 +264,12 @@ const sortedProjects = useMemo(() => {
     }
     return { desc: desc || "", lastMonths };
   }, []);
+
+  useEffect(() => {
+    setNewSuffix("");
+    setNewDesc("");
+    setCenterFormErr("");
+  }, [active, projectId]);
 
   useEffect(() => {
     if (canAccessPage !== true) return;
@@ -372,7 +390,7 @@ const sortedProjects = useMemo(() => {
     return () => {
       dead = true;
     };
-  }, [canAccessPage, tabs.length, active, projectId, dynamicMonths, renderCode, parseDescMonths, coreOf, selectedProject]);
+  }, [canAccessPage, tabs.length, active, projectId, dynamicMonths, renderCode, parseDescMonths, coreOf, selectedProject, reloadTick]);
 
   const filteredRows = useMemo(() => {
     if (active !== "projects") return rows || [];
@@ -845,6 +863,59 @@ const sortedProjects = useMemo(() => {
     }
   };
 
+  const addCenterRow = async () => {
+    setCenterFormErr("");
+    if (!active) return;
+
+    if (active === "projects" && !projectId) {
+      setCenterFormErr("ابتدا پروژه را انتخاب کنید.");
+      return;
+    }
+
+    const desc = String(newDesc || "").trim();
+    const suffixRaw = onlyDigitsDot(newSuffix || "");
+
+    if (active !== "projects" && !suffixRaw) {
+      setCenterFormErr("کد بودجه را وارد کنید.");
+      return;
+    }
+
+    const baseProjectCode = String(selectedProject?.code || "").trim();
+    if (active === "projects" && !baseProjectCode) {
+      setCenterFormErr("کد پروژه نامعتبر است.");
+      return;
+    }
+
+    const suffixToSend = active === "projects" ? (suffixRaw ? `${baseProjectCode}.${suffixRaw}` : baseProjectCode) : suffixRaw;
+
+    setCreatingCenter(true);
+    try {
+      await api(`/centers/${active}`, {
+        method: "POST",
+        body: JSON.stringify({ suffix: suffixToSend, description: desc }),
+      });
+
+      const parts = coreOf(suffixToSend).split(".").filter(Boolean);
+      if (parts.length > 1) {
+        setOpenCodes((prev) => {
+          const next = { ...prev };
+          for (let i = 1; i < parts.length; i += 1) {
+            next[parts.slice(0, i).join(".")] = true;
+          }
+          return next;
+        });
+      }
+
+      setNewSuffix("");
+      setNewDesc("");
+      setReloadTick((v) => v + 1);
+    } catch (ex) {
+      setCenterFormErr(ex.message || "خطا در ثبت مرکز بودجه");
+    } finally {
+      setCreatingCenter(false);
+    }
+  };
+
   const exportExcel = useCallback(() => {
     const escapeHtml = (v) =>
       String(v ?? "")
@@ -1030,6 +1101,77 @@ const sortedProjects = useMemo(() => {
     );
   };
 
+  const CenterCreateControls = () => (
+    <div
+      className="rounded-2xl ring-1 ring-black/10 border border-black/10 p-3 md:p-4 bg-white dark:bg-neutral-900 dark:ring-neutral-800 dark:border-neutral-800"
+      dir="rtl"
+    >
+      <form
+        className="flex flex-col md:flex-row-reverse md:items-end gap-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          addCenterRow();
+        }}
+      >
+        <div className="md:w-auto">
+          <button
+            type="submit"
+            disabled={creatingCenter || (active === "projects" && !projectId)}
+            className="h-10 w-12 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
+            title={active === "projects" && !projectId ? "ابتدا پروژه را انتخاب کنید" : "تأیید"}
+            aria-label="تأیید"
+          >
+            <img src="/images/icons/check.svg" alt="" className="w-4 h-4 invert dark:invert-0" />
+          </button>
+        </div>
+
+        <div className="flex-1 min-w-[240px] flex flex-col gap-1">
+          <label className="text-xs sm:text-sm text-black/70 dark:text-neutral-300">شرح بودجه</label>
+          <input
+            className="w-full h-11 rounded-2xl px-3 sm:px-4 text-sm text-center bg-white text-black border border-black/15 outline-none placeholder:text-black/40 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
+            value={newDesc}
+            onChange={(e) => setNewDesc(e.target.value)}
+            placeholder="شرح..."
+          />
+        </div>
+
+        <div className="w-full md:w-[280px] flex flex-col gap-1">
+          <label className="text-xs sm:text-sm text-black/70 dark:text-neutral-300">کد بودجه</label>
+
+          {active !== "projects" ? (
+            <div className="w-full h-11 flex items-center rounded-xl overflow-hidden bg-white text-black ltr border border-black/15 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700">
+              <span className="px-3 h-full inline-flex items-center font-mono select-none bg-black/[0.04] ring-1 ring-black/10 dark:bg-neutral-900 dark:ring-neutral-800">
+                {visualPrefix(active)}
+              </span>
+              <input
+                className="flex-1 px-3 font-mono outline-none bg-transparent text-center text-sm placeholder:text-black/40 dark:placeholder:text-neutral-500"
+                value={newSuffix}
+                onChange={(e) => setNewSuffix(onlyDigitsDot(e.target.value))}
+                spellCheck={false}
+              />
+            </div>
+          ) : (
+            <div className="w-full h-11 flex items-center rounded-xl overflow-hidden bg-white text-black ltr border border-black/15 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700">
+              <span className="px-3 h-full inline-flex items-center font-mono select-none text-xs md:text-sm whitespace-nowrap bg-black/[0.04] ring-1 ring-black/10 dark:bg-neutral-900 dark:ring-neutral-800">
+                {"PB-"}
+                {selectedProject?.code || ""}
+                {selectedProject ? "." : ""}
+              </span>
+              <input
+                className="flex-1 px-3 font-mono outline-none bg-transparent text-center text-sm placeholder:text-black/40 dark:placeholder:text-neutral-500"
+                value={newSuffix}
+                onChange={(e) => setNewSuffix(onlyDigitsDot(e.target.value))}
+                spellCheck={false}
+              />
+            </div>
+          )}
+        </div>
+      </form>
+
+      {centerFormErr && <div className="text-sm text-red-600 dark:text-red-400 mt-2 text-center">{centerFormErr}</div>}
+    </div>
+  );
+
   const colCount = 3 + dynamicMonths.length + 1;
 
   // ✅ Guards (مثل DefineBudgetCentersPage)
@@ -1086,6 +1228,7 @@ const sortedProjects = useMemo(() => {
         <div className="space-y-3 md:space-y-4 mb-4">
           <TopButtons />
           <ProjectsControls />
+          <CenterCreateControls />
         </div>
 
         <TableWrap>
@@ -1207,7 +1350,7 @@ const sortedProjects = useMemo(() => {
                             <TD className="px-2 py-3 text-center whitespace-nowrap">
                               <div
                                 className="inline-flex items-center justify-center gap-1 flex-row-reverse"
-                                style={{ paddingRight: node.depth ? node.depth * 12 : 0 }}
+                                style={{ paddingRight: node.depth ? node.depth * 18 : 0 }}
                               >
                                 {hasChildren && (
                                   <button
@@ -1223,11 +1366,18 @@ const sortedProjects = useMemo(() => {
                                     )}
                                   </button>
                                 )}
-                                <span className="ltr text-xs md:text-[13px]">{renderCode(code)}</span>
+                                <span className={`ltr ${node.depth ? "text-[11px] md:text-xs" : "text-xs md:text-[13px]"}`}>
+                                  {renderCode(code)}
+                                </span>
                               </div>
                             </TD>
 
-                            <TD className="px-2 py-3 text-center break-words text-[11px] md:text-[13px] max-w-[180px]">
+                            <TD
+                              className={`px-2 py-3 text-right break-words max-w-[180px] ${
+                                node.depth ? "text-[10px] md:text-[12px]" : "text-[11px] md:text-[13px]"
+                              }`}
+                              style={{ paddingRight: node.depth ? 8 + node.depth * 12 : 8 }}
+                            >
                               {r.name || "—"}
                             </TD>
 
