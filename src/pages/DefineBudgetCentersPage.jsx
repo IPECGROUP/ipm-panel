@@ -92,6 +92,11 @@ const toEnDigits = useCallback(
   []
 );
 
+const toFaDigits = useCallback(
+  (s = "") => String(s).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]),
+  []
+);
+
 const onlyDigitsDot = useCallback((s = "") => toEnDigits(s).replace(/[^0-9.]/g, ""), [toEnDigits]);
 
 // ✅ دقیقاً مثل صفحه پروژه‌ها: فقط کدهای اصلی (عدد بدون نقطه)
@@ -227,6 +232,15 @@ const sortedProjects = useMemo(() => {
       })
     );
 }, [projects]);
+
+  const projectOptionLabel = useCallback(
+    (p) => {
+      const code = toFaDigits(String(p?.code || "—"));
+      const name = String(p?.name || "").trim();
+      return name ? `${code} - ${name}` : code;
+    },
+    [toFaDigits]
+  );
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -587,9 +601,9 @@ const sortedProjects = useMemo(() => {
       {active === "projects" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
           <div className="flex flex-col gap-1">
-            <label className="text-sm text-neutral-700 dark:text-neutral-300">کد پروژه</label>
+            <label className="text-sm text-neutral-700 dark:text-neutral-300">کد/نام پروژه</label>
             <select
-              className="w-full rounded-xl px-3 py-2 ltr font-[inherit]
+              className="w-full rounded-xl px-3 py-2 text-right
                          bg-white text-neutral-900 border border-neutral-200 outline-none
                          dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
               value={projectId}
@@ -601,7 +615,7 @@ const sortedProjects = useMemo(() => {
 
               {(sortedProjects || []).map((p) => (
                 <option className="bg-white dark:bg-neutral-900" key={String(p.id)} value={String(p.id)}>
-                  {p.code ? p.code : "—"}
+                  {projectOptionLabel(p)}
                 </option>
               ))}
             </select>
