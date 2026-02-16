@@ -739,14 +739,14 @@ setProjects(Array.from(byId.values()));
   );
 
   const TopButtons = () => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
       {tabs.map((t) => (
         <button
           key={t.id}
           onClick={() => {
             setActive(t.id);
           }}
-          className={`h-10 px-4 rounded-2xl border text-sm shadow-sm transition
+          className={`h-10 min-w-0 px-3 sm:px-4 rounded-2xl border text-xs sm:text-sm shadow-sm transition
             ${
               active === t.id
                 ? "bg-neutral-100 text-neutral-900 border-neutral-100"
@@ -762,7 +762,7 @@ setProjects(Array.from(byId.values()));
   const ProjectsControls = () => {
     if (active !== "projects") return null;
     return (
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <div className="flex min-w-0 flex-col gap-1">
           <label className="text-xs sm:text-sm text-black/70 dark:text-neutral-300">
             کد پروژه
@@ -770,7 +770,7 @@ setProjects(Array.from(byId.values()));
           <div className="relative">
             <select
               dir="rtl"
-              className="w-full h-11 rounded-xl pr-3 pl-9 sm:pr-4 sm:pl-10 text-sm leading-6 text-right bg-white text-black border border-black/15 outline-none appearance-none
+              className="w-full h-11 rounded-xl pr-3 pl-9 sm:pr-4 sm:pl-10 text-sm leading-6 text-right bg-white text-black border border-black/15 outline-none appearance-none truncate
                          [-webkit-appearance:none] [-moz-appearance:none] [background-image:none]
                          focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
               value={projectId}
@@ -795,7 +795,7 @@ setProjects(Array.from(byId.values()));
             نام پروژه
           </label>
           <input
-            className="w-full h-11 rounded-xl px-3 sm:px-4 text-sm text-right bg-black/5 text-black border border-black/15 outline-none
+            className="w-full h-11 rounded-xl px-3 sm:px-4 text-sm text-right bg-black/5 text-black border border-black/15 outline-none truncate
                        dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
             value={selectedProject?.name || ""}
             readOnly
@@ -890,17 +890,17 @@ setProjects(Array.from(byId.values()));
         </div>
 
         <TableWrap>
-          <div className={tablePreset.outer}>
-            <div className={tablePreset.innerPad}>
+          <div className={tablePreset.outer + " min-w-0"}>
+            <div className={tablePreset.innerPad + " !px-0 sm:!px-[15px] !pb-3 sm:!pb-4"}>
               <div className={tablePreset.frame + " shadow-sm"}>
-                <div className="overflow-x-auto overscroll-x-contain">
-                <table className={tablePreset.table + " text-[12px] md:text-sm min-w-[760px] md:min-w-[920px] xl:min-w-[980px]"} dir="rtl">
+                <div className="-mx-2 px-2 sm:mx-0 sm:px-0 overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-gutter:stable_both-edges]">
+                <table className={tablePreset.table + " text-[11px] sm:text-[12px] md:text-sm min-w-[700px] sm:min-w-[760px] md:min-w-[920px] xl:min-w-[980px]"} dir="rtl">
               <THead>
                 <tr className={tablePreset.headRow}>
-                  <TH className={`w-16 ${tablePreset.th}`}>
+                  <TH className={`w-14 sm:w-16 ${tablePreset.th}`}>
                     #
                   </TH>
-                  <TH className={`w-44 md:w-56 ${tablePreset.th}`}>
+                  <TH className={`w-40 sm:w-44 md:w-56 ${tablePreset.th}`}>
                     <div className="flex items-center justify-center gap-1 w-full">
                       <span>{budgetCodeHeader}</span>
                       <button
@@ -929,19 +929,19 @@ setProjects(Array.from(byId.values()));
                   <TH className={tablePreset.th}>
                     نام بودجه
                   </TH>
-                  <TH className={`w-32 md:w-40 ${tablePreset.th}`}>
+                  <TH className={`w-28 sm:w-32 md:w-40 ${tablePreset.th}`}>
                     آخرین برآورد
                   </TH>
-                  <TH className={`w-36 md:w-44 ${tablePreset.th}`}>
+                  <TH className={`w-32 sm:w-36 md:w-44 ${tablePreset.th}`}>
                     مجموع تخصیص‌ها
                   </TH>
-                  <TH className={`w-40 md:w-48 ${tablePreset.th}`}>
+                  <TH className={`w-36 sm:w-40 md:w-48 ${tablePreset.th}`}>
                     تخصیص جدید
                   </TH>
-                  <TH className={`w-[22ch] md:w-[26ch] ${tablePreset.th}`}>
+                  <TH className={`w-[18ch] sm:w-[22ch] md:w-[26ch] ${tablePreset.th}`}>
                     شرح
                   </TH>
-                  <TH className={`w-24 md:w-28 ${tablePreset.th}`}>
+                  <TH className={`w-20 sm:w-24 md:w-28 ${tablePreset.th}`}>
                     اقدامات
                   </TH>
                 </tr>
@@ -1128,7 +1128,7 @@ setProjects(Array.from(byId.values()));
               onClick={() => setModalMsg(null)}
             />
             <div
-              className="relative w-full max-w-4xl max-h-[90vh] overflow-auto bg-white rounded-3xl shadow-2xl ring-1 ring-black/10 p-4 sm:p-6
+              className="relative w-full max-w-[96vw] sm:max-w-4xl max-h-[90vh] overflow-auto bg-white rounded-3xl shadow-2xl ring-1 ring-black/10 p-4 sm:p-6
                          text-black dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-800"
               onClick={(e) => e.stopPropagation()}
             >
@@ -1169,8 +1169,8 @@ setProjects(Array.from(byId.values()));
                 </div>
 
                 {(rows || []).length > 0 && (
-                  <div className="overflow-auto rounded-xl ring-1 ring-black/10 dark:ring-neutral-800 mb-6">
-                    <table className="w-full min-w-[760px] md:min-w-[880px] text-sm [&_th]:text-center [&_td]:text-center">
+                  <div className="-mx-2 px-2 sm:mx-0 sm:px-0 overflow-auto rounded-xl ring-1 ring-black/10 dark:ring-neutral-800 mb-6">
+                    <table className="w-full min-w-[700px] sm:min-w-[760px] md:min-w-[880px] text-xs sm:text-sm [&_th]:text-center [&_td]:text-center">
                       <thead className="bg-black/5 dark:bg-white/5 dark:text-neutral-100">
                         <tr>
                           <th className="py-3 px-2 text-center">#</th>
@@ -1223,8 +1223,8 @@ setProjects(Array.from(byId.values()));
                 <h3 className="section-title text-center text-base md:text-lg text-black dark:text-neutral-100">
                   تاریخچه تخصیص‌ها
                 </h3>
-                <div className="overflow-auto rounded-xl ring-1 ring-black/10 dark:ring-neutral-800 mt-2">
-                  <table className="w-full min-w-[680px] md:min-w-[760px] text-sm [&_th]:text-center [&_td]:text-center">
+                <div className="-mx-2 px-2 sm:mx-0 sm:px-0 overflow-auto rounded-xl ring-1 ring-black/10 dark:ring-neutral-800 mt-2">
+                  <table className="w-full min-w-[620px] sm:min-w-[680px] md:min-w-[760px] text-xs sm:text-sm [&_th]:text-center [&_td]:text-center">
                     <thead className="bg-black/5 dark:bg-white/5 dark:text-neutral-100">
                       <tr>
                         <th className="py-3 px-2 w-56 text-center">
