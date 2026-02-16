@@ -54,9 +54,12 @@ function BudgetAllocationPage() {
     if (!tabs.some((t) => t.id === active)) setActive(tabs[0].id);
   }, [tabs, active]);
 
-  const prefixOf = (k) => tabs.find((t) => t.id === k)?.prefix || "";
+  const prefixOf = useCallback(
+    (k) => tabs.find((t) => t.id === k)?.prefix || "",
+    [tabs]
+  );
 
-  const renderCode = (code) => {
+  const renderCode = useCallback((code) => {
     if (active === "projects") return code || "—";
     const pref = prefixOf(active);
     let raw = String(code || "").trim();
@@ -65,7 +68,7 @@ function BudgetAllocationPage() {
       raw = raw.replace(re, "").replace(/^[-.]/, "");
     }
     return (pref ? pref + "-" : "") + raw;
-  };
+  }, [active, prefixOf]);
 
 
   const todayFa = useMemo(() => {
@@ -229,9 +232,10 @@ setProjects(Array.from(byId.values()));
   };
 
   // ===== نمایش کد بودجه در حالت پروژه با پیشوند کد پروژه (نمایشی، بدون تغییر منطق ذخیره) =====
-  const renderDisplayBudgetCode = (code) => {
-    return renderCode(code);
-  };
+  const renderDisplayBudgetCode = useCallback(
+    (code) => renderCode(code),
+    [renderCode]
+  );
 
   const budgetCodeHeader = useMemo(() => {
     if (active === "projects") return "کد بودجه (پروژه)";
@@ -758,42 +762,40 @@ setProjects(Array.from(byId.values()));
   const ProjectsControls = () => {
     if (active !== "projects") return null;
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
         <div className="flex min-w-0 flex-col gap-1">
           <label className="text-xs sm:text-sm text-black/70 dark:text-neutral-300">
             کد پروژه
           </label>
-          <select
-            dir="rtl"
-            className="w-full h-11 rounded-xl px-3 sm:px-4 text-sm bg-white text-black border border-black/15 outline-none appearance-auto
-                       focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-            value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
-          >
-            <option
-              className="bg-white text-black dark:bg-neutral-900 dark:text-neutral-100"
-              value=""
+          <div className="relative">
+            <select
+              dir="rtl"
+              className="w-full h-11 rounded-xl pr-3 pl-9 sm:pr-4 sm:pl-10 text-sm leading-6 text-right bg-white text-black border border-black/15 outline-none appearance-none
+                         [-webkit-appearance:none] [-moz-appearance:none] [background-image:none]
+                         focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
             >
-              انتخاب کنید
-            </option>
-            {(sortedProjects || []).map((p) => (
-  <option
-    className="bg-white text-black dark:bg-neutral-900 dark:text-neutral-100"
-    key={String(p.id)}
-    value={String(p.id)}
-  >
-    {toFaDigits(p.code || "—")} {p?.name ? `— ${p.name}` : ""}
-  </option>
-))}
-
-          </select>
+              <option value="">انتخاب کنید</option>
+              {(sortedProjects || []).map((p) => (
+                <option key={String(p.id)} value={String(p.id)}>
+                  {toFaDigits(p.code || "—")} {p?.name ? `— ${p.name}` : ""}
+                </option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-black/60 dark:text-neutral-300">
+              <svg viewBox="0 0 20 20" width="16" height="16" fill="currentColor" aria-hidden="true">
+                <path d="M5.5 7.5 10 12l4.5-4.5" />
+              </svg>
+            </span>
+          </div>
         </div>
         <div className="flex min-w-0 flex-col gap-1">
           <label className="text-xs sm:text-sm text-black/70 dark:text-neutral-300">
             نام پروژه
           </label>
           <input
-            className="w-full h-11 rounded-xl px-3 sm:px-4 text-sm bg-black/5 text-black border border-black/15 outline-none
+            className="w-full h-11 rounded-xl px-3 sm:px-4 text-sm text-right bg-black/5 text-black border border-black/15 outline-none
                        dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
             value={selectedProject?.name || ""}
             readOnly
@@ -882,7 +884,7 @@ setProjects(Array.from(byId.values()));
           </div>
         </div>
 
-        <div className="space-y-4 mb-4">
+        <div className="space-y-3 md:space-y-4 mb-4">
           <TopButtons />
           <ProjectsControls />
         </div>
@@ -891,8 +893,8 @@ setProjects(Array.from(byId.values()));
           <div className={tablePreset.outer}>
             <div className={tablePreset.innerPad}>
               <div className={tablePreset.frame + " shadow-sm"}>
-                <div className="overflow-x-auto">
-                <table className={tablePreset.table + " min-w-[980px]"} dir="rtl">
+                <div className="-mx-2 px-2 sm:mx-0 sm:px-0 overflow-x-auto overscroll-x-contain">
+                <table className={tablePreset.table + " min-w-[840px] md:min-w-[920px] xl:min-w-[980px]"} dir="rtl">
               <THead>
                 <tr className={tablePreset.headRow}>
                   <TH className={`w-16 ${tablePreset.th}`}>
@@ -1102,7 +1104,7 @@ setProjects(Array.from(byId.values()));
           </div>
         )}
 
-        <div className="mt-4 flex items-center gap-2 justify-end">
+        <div className="mt-4 flex items-center gap-2 justify-start">
           <button
             onClick={onSubmit}
             disabled={saving || (active === "projects" && !projectId)}
@@ -1168,8 +1170,8 @@ setProjects(Array.from(byId.values()));
 
                 {(rows || []).length > 0 && (
                   <div className="overflow-auto rounded-xl ring-1 ring-black/10 dark:ring-neutral-800 mb-6">
-                    <table className="w-full min-w-[880px] text-sm [&_th]:text-center [&_td]:text-center">
-                      <thead className="bg-black/5 dark:bg:white/5 dark:text-neutral-100">
+                    <table className="w-full min-w-[760px] md:min-w-[880px] text-sm [&_th]:text-center [&_td]:text-center">
+                      <thead className="bg-black/5 dark:bg-white/5 dark:text-neutral-100">
                         <tr>
                           <th className="py-3 px-2 text-center">#</th>
                           <th className="py-3 px-2 text-center">
@@ -1222,8 +1224,8 @@ setProjects(Array.from(byId.values()));
                   تاریخچه تخصیص‌ها
                 </h3>
                 <div className="overflow-auto rounded-xl ring-1 ring-black/10 dark:ring-neutral-800 mt-2">
-                  <table className="w-full min-w-[760px] text-sm [&_th]:text-center [&_td]:text-center">
-                    <thead className="bg-black/5 dark:bg:white/5 dark:text-neutral-100">
+                  <table className="w-full min-w-[680px] md:min-w-[760px] text-sm [&_th]:text-center [&_td]:text-center">
+                    <thead className="bg-black/5 dark:bg-white/5 dark:text-neutral-100">
                       <tr>
                         <th className="py-3 px-2 w-56 text-center">
                           {budgetCodeHeader}
