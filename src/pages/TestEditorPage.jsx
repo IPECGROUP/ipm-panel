@@ -1,848 +1,386 @@
-// src/pages/TestEditorPage.jsx
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Card from "../components/ui/Card.jsx";
-import { useEditor, EditorContent } from "@tiptap/react";
-import { Extension } from "@tiptap/core";
-import StarterKit from "@tiptap/starter-kit";
-import Underline from "@tiptap/extension-underline";
-import { TextStyle, FontFamily } from "@tiptap/extension-text-style";
-import { TableKit } from "@tiptap/extension-table";
-import Placeholder from "@tiptap/extension-placeholder";
+import { api } from "../utils/api.js";
 
-// FontSize extension
-const FontSize = Extension.create({
-  name: "fontSize",
-  addGlobalAttributes() {
-    return [
-      {
-        types: ["textStyle"],
-        attributes: {
-          fontSize: {
-            default: null,
-            parseHTML: (element) => element.style.fontSize?.replace(/['"]/g, "") || null,
-            renderHTML: (attrs) => {
-              if (!attrs.fontSize) return {};
-              return { style: `font-size: ${attrs.fontSize}` };
-            },
-          },
-        },
-      },
-    ];
-  },
-  addCommands() {
-    return {
-      setFontSize:
-        (fontSize) =>
-        ({ chain }) =>
-          chain().setMark("textStyle", { fontSize }).run(),
-      unsetFontSize:
-        () =>
-        ({ chain }) =>
-          chain().setMark("textStyle", { fontSize: null }).removeEmptyTextStyle().run(),
-    };
-  },
-});
+const DEFAULT_DOC_SERVER_URL = String(import.meta.env.VITE_ONLYOFFICE_URL || "http://localhost:8082").replace(/\/+$/, "");
+const DOCS_API_SCRIPT = "/web-apps/apps/api/documents/api.js";
 
-// Text alignment extension
-const SimpleTextAlign = Extension.create({
-  name: "simpleTextAlign",
-  addGlobalAttributes() {
-    return [
-      {
-        types: ["paragraph", "heading"],
-        attributes: {
-          textAlign: {
-            default: null,
-            parseHTML: (el) => el.style.textAlign || null,
-            renderHTML: (attrs) => {
-              if (!attrs.textAlign) return {};
-              return { style: `text-align: ${attrs.textAlign}` };
-            },
-          },
-        },
-      },
-    ];
-  },
-  addCommands() {
-    return {
-      setTextAlign:
-        (align) =>
-        ({ state, dispatch }) => {
-          const { tr, selection } = state;
-          const { from, to } = selection;
-
-          state.doc.nodesBetween(from, to, (node, pos) => {
-            if (node.type.name === "paragraph" || node.type.name === "heading") {
-              tr.setNodeMarkup(pos, undefined, { ...node.attrs, textAlign: align });
-            }
-          });
-
-          if (dispatch) dispatch(tr);
-          return true;
-        },
-      unsetTextAlign:
-        () =>
-        ({ state, dispatch }) => {
-          const { tr, selection } = state;
-          const { from, to } = selection;
-
-          state.doc.nodesBetween(from, to, (node, pos) => {
-            if (node.type.name === "paragraph" || node.type.name === "heading") {
-              const nextAttrs = { ...node.attrs };
-              delete nextAttrs.textAlign;
-              tr.setNodeMarkup(pos, undefined, nextAttrs);
-            }
-          });
-
-          if (dispatch) dispatch(tr);
-          return true;
-        },
-    };
-  },
-});
-
-// Row height extension for table rows
-const RowHeight = Extension.create({
-  name: "rowHeight",
-  addGlobalAttributes() {
-    return [
-      {
-        types: ["tableRow"],
-        attributes: {
-          rowHeight: {
-            default: null,
-            parseHTML: (el) => {
-              const h = el?.style?.height || "";
-              const m = String(h).match(/(\d+)\s*px/);
-              return m ? Number(m[1]) : null;
-            },
-            renderHTML: (attrs) => {
-              if (!attrs.rowHeight) return {};
-              return { style: `height:${attrs.rowHeight}px` };
-            },
-          },
-        },
-      },
-    ];
-  },
-  addCommands() {
-    return {
-      setActiveRowHeight:
-        (heightPx) =>
-        ({ state, dispatch }) => {
-          const { selection } = state;
-          const $from = selection.$from;
-
-          let rowDepth = -1;
-          for (let d = $from.depth; d > 0; d--) {
-            if ($from.node(d).type.name === "tableRow") {
-              rowDepth = d;
-              break;
-            }
-          }
-          if (rowDepth === -1) return false;
-
-          const rowPos = $from.before(rowDepth);
-          const rowNode = state.doc.nodeAt(rowPos);
-          if (!rowNode) return false;
-
-          const nextAttrs = { ...rowNode.attrs, rowHeight: Math.max(18, Math.min(240, heightPx)) };
-          const tr = state.tr.setNodeMarkup(rowPos, undefined, nextAttrs);
-          if (dispatch) dispatch(tr);
-          return true;
-        },
-    };
-  },
-});
-
-function IconBtn({ active, disabled, onClick, children, title, className = "" }) {
+function Btn({ children, className = "", ...props }) {
   return (
     <button
       type="button"
-      title={title}
-      disabled={disabled}
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={onClick}
       className={[
-        "h-10 w-10 rounded-xl border border-black/10 bg-white text-black hover:bg-black/5",
+        "h-10 px-3 rounded-xl border border-black/10 bg-white hover:bg-black/5 text-sm",
         "disabled:opacity-40 disabled:hover:bg-white",
         "dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-white/10",
-        active ? "ring-2 ring-black/30 dark:ring-white/20" : "",
         className,
       ].join(" ")}
+      {...props}
     >
       {children}
     </button>
   );
 }
 
-function SmallBtn({ onClick, children, disabled }) {
+function PrimaryBtn({ children, className = "", ...props }) {
   return (
     <button
       type="button"
-      disabled={disabled}
-      onClick={onClick}
       className={[
-        "h-10 px-3 rounded-xl border border-black/10 bg-white text-black hover:bg-black/5",
-        "disabled:opacity-40 disabled:hover:bg-white",
-        "dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-white/10",
-        "text-sm",
-      ].join(" ")}
-    >
-      {children}
-    </button>
-  );
-}
-
-function PrimaryBtn({ onClick, children, disabled }) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={[
-        "h-10 px-4 rounded-xl bg-black text-white hover:bg-black/90",
+        "h-10 px-4 rounded-xl bg-black text-white hover:bg-black/90 text-sm",
         "disabled:opacity-40",
         "dark:bg-white dark:text-black dark:hover:bg-white/90",
-        "text-sm",
+        className,
       ].join(" ")}
+      {...props}
     >
       {children}
     </button>
   );
 }
 
-function PageFrame({ templateUrl, children, className = "" }) {
+function TextInput(props) {
   return (
-    <div
-      className={[
-        "mx-auto w-full max-w-[560px]",
-        "aspect-[210/297]",
-        "rounded-2xl border border-black/10 overflow-hidden",
-        "bg-white dark:bg-neutral-950 dark:border-neutral-800",
-        className,
-      ].join(" ")}
-      style={{
-        backgroundImage: `url(${templateUrl})`,
-        backgroundRepeat: "no-repeat",
-        backgroundPosition: "center",
-        backgroundSize: "100% 100%",
-      }}
-    >
-      {children}
-    </div>
+    <input
+      className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm text-black dark:bg-neutral-950 dark:text-neutral-100 dark:border-neutral-800"
+      {...props}
+    />
   );
-}
-
-function Modal({ open, onClose, children }) {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-[1000]">
-      <div className="absolute inset-0 bg-black/40" onMouseDown={onClose} role="presentation" />
-      <div className="absolute inset-0 p-4 md:p-8 overflow-auto">
-        <div
-          className={[
-            "mx-auto w-full max-w-[980px]",
-            "rounded-2xl border border-black/10 bg-white text-black shadow-xl",
-            "dark:bg-neutral-950 dark:text-neutral-100 dark:border-neutral-800",
-          ].join(" ")}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          <div className="p-3 md:p-4 border-b border-black/10 dark:border-neutral-800 flex items-center justify-between">
-            <div className="text-sm font-semibold">Preview</div>
-            <button
-              type="button"
-              onClick={onClose}
-              className={[
-                "h-10 w-10 rounded-xl border border-black/10 bg-white hover:bg-black/5",
-                "dark:bg-neutral-900 dark:border-neutral-800 dark:hover:bg-white/10",
-                "grid place-items-center",
-              ].join(" ")}
-              title="Close"
-            >
-              x
-            </button>
-          </div>
-          <div className="p-4 md:p-6 bg-neutral-50 dark:bg-neutral-900">{children}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const WORD_MIME = "application/msword";
-const LOCAL_DOCS_KEY = "test_editor_local_docs_v1";
-
-function safeFileName(v) {
-  return String(v || "document")
-    .replace(/[\\/:*?"<>|]+/g, "_")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 120) || "document";
-}
-
-function buildWordHtmlDocument(contentHtml, title) {
-  const cleanTitle = safeFileName(title || "document");
-  const body = String(contentHtml || "");
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-  <title>${cleanTitle}</title>
-</head>
-<body dir="rtl" style="font-family: Vazirmatn, Tahoma, Arial, sans-serif;">
-${body}
-</body>
-</html>`;
-}
-
-function downloadBlob(blob, fileName) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
-function readLocalDocs() {
-  try {
-    if (typeof window === "undefined") return [];
-    const raw = window.localStorage.getItem(LOCAL_DOCS_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .map((x) => ({
-        id: String(x?.id || ""),
-        title: String(x?.title || "Untitled"),
-        html: String(x?.html || ""),
-        updatedAt: String(x?.updatedAt || ""),
-      }))
-      .filter((x) => x.id);
-  } catch {
-    return [];
-  }
-}
-
-function writeLocalDocs(items) {
-  try {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(LOCAL_DOCS_KEY, JSON.stringify(Array.isArray(items) ? items : []));
-  } catch {}
-}
-
-function makeLocalDocId() {
-  return `${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
 }
 
 export default function TestEditorPage() {
-  // Place your letter template image in: public/images/letter-template.png
-  const TEMPLATE_URL = "/images/letter-template.png";
+  const [docs, setDocs] = useState([]);
+  const [loadingDocs, setLoadingDocs] = useState(false);
+  const [selectedId, setSelectedId] = useState("");
 
-  const FONTS = useMemo(
-    () => [
-      { label: "Vazirmatn", value: "Vazirmatn, sans-serif" },
-      { label: "Tahoma", value: "Tahoma, sans-serif" },
-      { label: "Arial", value: "Arial, sans-serif" },
-    ],
-    []
+  const [newTitle, setNewTitle] = useState("");
+  const [renameTitle, setRenameTitle] = useState("");
+
+  const [busyCreate, setBusyCreate] = useState(false);
+  const [busyRename, setBusyRename] = useState(false);
+  const [busyDelete, setBusyDelete] = useState(false);
+
+  const [statusMsg, setStatusMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const [docServerUrl, setDocServerUrl] = useState(DEFAULT_DOC_SERVER_URL);
+  const [docsApiReady, setDocsApiReady] = useState(false);
+  const [docsApiError, setDocsApiError] = useState("");
+  const [loadingEditor, setLoadingEditor] = useState(false);
+
+  const editorId = useMemo(() => `onlyoffice_editor_${Math.random().toString(16).slice(2)}`, []);
+  const editorRef = useRef(null);
+
+  const selectedDoc = useMemo(
+    () => docs.find((d) => String(d?.id || "") === String(selectedId || "")) || null,
+    [docs, selectedId]
   );
 
-  const SIZES = useMemo(() => ["12px", "14px", "16px", "18px", "20px", "24px"], []);
-
-  const editorWrapRef = useRef(null);
-  const [previewHtml, setPreviewHtml] = useState("");
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [docId, setDocId] = useState(null);
-  const [docTitle, setDocTitle] = useState("New document");
-  const [savedDocs, setSavedDocs] = useState([]);
-  const [loadingDocs, setLoadingDocs] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [statusMsg, setStatusMsg] = useState("");
-  const [isDirty, setIsDirty] = useState(false);
-
-  // Excel-like row resize state
-  const rowResizeRef = useRef({
-    active: false,
-    rowEl: null,
-    startY: 0,
-    startH: 0,
-  });
-
-  const loadSavedDocs = useCallback(() => {
-    setLoadingDocs(true);
+  const destroyEditor = useCallback(() => {
     try {
-      const docs = readLocalDocs().sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
-      setSavedDocs(docs);
-    } catch {
-      setSavedDocs([]);
+      if (editorRef.current && typeof editorRef.current.destroyEditor === "function") {
+        editorRef.current.destroyEditor();
+      }
+    } catch {}
+    editorRef.current = null;
+  }, []);
+
+  const loadDocs = useCallback(async () => {
+    setLoadingDocs(true);
+    setErrorMsg("");
+    try {
+      const res = await api("/word-docs", { method: "GET" });
+      const items = Array.isArray(res?.items) ? res.items : [];
+      setDocs(items);
+
+      if (!items.length) {
+        setSelectedId("");
+        setRenameTitle("");
+        destroyEditor();
+      } else if (!items.some((x) => String(x?.id || "") === String(selectedId || ""))) {
+        const first = items[0];
+        setSelectedId(String(first?.id || ""));
+        setRenameTitle(String(first?.title || ""));
+      }
+    } catch (e) {
+      setErrorMsg(`Failed to load docs: ${e?.message || "request_failed"}`);
     } finally {
       setLoadingDocs(false);
     }
-  }, []);
+  }, [destroyEditor, selectedId]);
 
   useEffect(() => {
-    loadSavedDocs();
-  }, [loadSavedDocs]);
+    loadDocs();
+  }, [loadDocs]);
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        bulletList: { keepMarks: true, keepAttributes: false },
-        orderedList: { keepMarks: true, keepAttributes: false },
-      }),
-      Underline,
-      TextStyle,
-      FontFamily.configure({ types: ["textStyle"] }),
-      FontSize,
-      SimpleTextAlign,
-      RowHeight, // per-row height
-      Placeholder.configure({ placeholder: "Start typing here..." }),
-      TableKit.configure({
-        table: { resizable: true }, // column resize with mouse
-      }),
-    ],
-    content: ``,
-    onCreate: ({ editor }) => setPreviewHtml(editor.getHTML()),
-    editorProps: {
-      attributes: {
-        dir: "rtl",
-        class: ["outline-none", "text-[14px] leading-7", "text-black dark:text-neutral-100"].join(" "),
-      },
-    },
-    onUpdate: ({ editor }) => {
-      setPreviewHtml(editor.getHTML());
-      setIsDirty(true);
-    },
-  });
-
-  const currentFont = editor?.getAttributes("textStyle")?.fontFamily || FONTS[0].value;
-  const currentSize = editor?.getAttributes("textStyle")?.fontSize || "14px";
-
-  const insertTable3x3 = () => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
-
-  const alignRight = () => editor?.chain().focus().setTextAlign("right").run();
-  const alignCenter = () => editor?.chain().focus().setTextAlign("center").run();
-  const alignLeft = () => editor?.chain().focus().setTextAlign("left").run();
-  const alignJustify = () => editor?.chain().focus().setTextAlign("justify").run();
-
-  const resetDocument = useCallback(() => {
-    if (!editor) return;
-    setDocId(null);
-    setDocTitle("New document");
-    setPreviewHtml("");
-    setIsDirty(false);
-    setStatusMsg("");
-    editor.commands.clearContent();
-    editor.commands.focus("start");
-  }, [editor]);
-
-  const openDocument = useCallback(
-    (item) => {
-      if (!editor || !item) return;
-      const html = String(item?.html || "");
-      const nextTitle = String(item?.title || `Document ${item?.id || ""}`).trim() || "Untitled";
-      setDocId(String(item?.id || ""));
-      setDocTitle(nextTitle);
-      setPreviewHtml(html);
-      setIsDirty(false);
-      setStatusMsg("");
-      editor.commands.setContent(html || "<p></p>", false);
-      editor.commands.focus("end");
-    },
-    [editor]
-  );
-
-  const handleSaveDocument = useCallback(async () => {
-    if (!editor) return;
-    setSaving(true);
-    setStatusMsg("");
-
-    try {
-      const html = editor.getHTML();
-      const title = String(docTitle || "").trim() || "Untitled";
-      const currentId = String(docId || makeLocalDocId());
-
-      const nextDoc = {
-        id: currentId,
-        title,
-        html,
-        updatedAt: new Date().toISOString(),
-      };
-
-      const filtered = (Array.isArray(savedDocs) ? savedDocs : []).filter((x) => String(x?.id || "") !== currentId);
-      const nextDocs = [nextDoc, ...filtered].sort((a, b) =>
-        String(b?.updatedAt || "").localeCompare(String(a?.updatedAt || ""))
-      );
-
-      writeLocalDocs(nextDocs);
-      setSavedDocs(nextDocs);
-      setDocId(currentId);
-      setIsDirty(false);
-      setStatusMsg("Saved locally in browser only. Nothing was sent to database.");
-    } catch (e) {
-      setStatusMsg(`Save failed: ${e?.message || "unknown_error"}`);
-    } finally {
-      setSaving(false);
-    }
-  }, [docId, docTitle, editor, savedDocs]);
-  const handleDownloadWord = useCallback(() => {
-    if (!editor) return;
-    const html = editor.getHTML();
-    const title = String(docTitle || "").trim() || "document";
-    const content = buildWordHtmlDocument(html, title);
-    const blob = new Blob(["\uFEFF", content], { type: WORD_MIME });
-    downloadBlob(blob, `${safeFileName(title)}.doc`);
-  }, [docTitle, editor]);
-
-  const handleOpenInWord = useCallback(() => {
-    handleDownloadWord();
-    setStatusMsg("Word cannot run inside this web page. The .doc file was downloaded for Word Desktop.");
-  }, [handleDownloadWord]);
-  // Click anywhere on the page to move cursor and focus editor
-  const handlePageMouseDown = (e) => {
-    if (!editor) return;
-
-    // Let ProseMirror handle native clicks
-    const pm = editorWrapRef.current?.querySelector?.(".ProseMirror");
-    if (pm && pm.contains(e.target)) return;
-
-    // Clicked outside editor text: move selection near click position
-    try {
-      const pos = editor.view.posAtCoords({ left: e.clientX, top: e.clientY });
-      if (pos?.pos != null) {
-        editor.commands.focus();
-        editor.commands.setTextSelection(pos.pos);
-      } else {
-        editor.commands.focus("end");
-      }
-    } catch {
-      editor.commands.focus("end");
-    }
-  };
-
-  // Row resize (Excel-like): drag near TR bottom border
   useEffect(() => {
-    if (!editor) return;
+    if (!selectedDoc) {
+      setRenameTitle("");
+      return;
+    }
+    setRenameTitle(String(selectedDoc?.title || ""));
+  }, [selectedDoc]);
 
-    const wrap = editorWrapRef.current;
-    if (!wrap) return;
+  useEffect(() => {
+    setDocsApiReady(false);
+    setDocsApiError("");
 
-    const isNearBottomEdge = (rect, y, threshold = 4) => Math.abs(y - rect.bottom) <= threshold;
+    if (!docServerUrl) {
+      setDocsApiError("ONLYOFFICE server URL is empty.");
+      return;
+    }
 
-    const onMove = (e) => {
-      if (!wrap) return;
+    if (window.DocsAPI) {
+      setDocsApiReady(true);
+      return;
+    }
 
-      // Active drag
-      if (rowResizeRef.current.active) {
-        const dy = e.clientY - rowResizeRef.current.startY;
-        const nextH = Math.max(18, Math.min(240, rowResizeRef.current.startH + dy));
-        // Persist row height on the active TR
-        editor.commands.setActiveRowHeight(nextH);
-        e.preventDefault();
-        return;
-      }
+    const src = `${docServerUrl}${DOCS_API_SCRIPT}`;
+    const existing = document.querySelector(`script[data-onlyoffice-src="${src}"]`);
+    if (existing) {
+      const t = setInterval(() => {
+        if (window.DocsAPI) {
+          clearInterval(t);
+          setDocsApiReady(true);
+        }
+      }, 120);
+      return () => clearInterval(t);
+    }
 
-      // Idle drag mode: only update cursor
-      const pm = wrap.querySelector(".ProseMirror");
-      if (!pm) return;
-
-      const t = e.target;
-      const tr = t?.closest?.("tr");
-      if (!tr) {
-        pm.classList.remove("resize-row-cursor");
-        return;
-      }
-
-      const rect = tr.getBoundingClientRect();
-      if (isNearBottomEdge(rect, e.clientY)) {
-        pm.classList.add("resize-row-cursor");
-      } else {
-        pm.classList.remove("resize-row-cursor");
-      }
-    };
-
-    const onDown = (e) => {
-      if (!wrap) return;
-      const pm = wrap.querySelector(".ProseMirror");
-      if (!pm) return;
-
-      const tr = e.target?.closest?.("tr");
-      if (!tr) return;
-
-      const rect = tr.getBoundingClientRect();
-      if (!isNearBottomEdge(rect, e.clientY)) return;
-
-      // Start drag
-      rowResizeRef.current.active = true;
-      rowResizeRef.current.rowEl = tr;
-      rowResizeRef.current.startY = e.clientY;
-      rowResizeRef.current.startH = rect.height;
-
-      document.body.style.userSelect = "none";
-      document.body.style.cursor = "row-resize";
-
-      e.preventDefault();
-    };
-
-    const onUp = () => {
-      if (!rowResizeRef.current.active) return;
-      rowResizeRef.current.active = false;
-      rowResizeRef.current.rowEl = null;
-      document.body.style.userSelect = "";
-      document.body.style.cursor = "";
-    };
-
-    wrap.addEventListener("mousemove", onMove, { passive: false });
-    wrap.addEventListener("mousedown", onDown);
-    window.addEventListener("mouseup", onUp);
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.dataset.onlyofficeSrc = src;
+    script.onload = () => setDocsApiReady(true);
+    script.onerror = () => setDocsApiError(`Cannot load ONLYOFFICE script from ${src}`);
+    document.body.appendChild(script);
 
     return () => {
-      wrap.removeEventListener("mousemove", onMove);
-      wrap.removeEventListener("mousedown", onDown);
-      window.removeEventListener("mouseup", onUp);
+      script.onload = null;
+      script.onerror = null;
     };
-  }, [editor]);
+  }, [docServerUrl]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function mountEditor() {
+      if (!selectedId) return;
+      setLoadingEditor(true);
+      setErrorMsg("");
+
+      try {
+        const res = await api(`/word-docs/editor-config/${selectedId}`, { method: "GET" });
+        const nextDocServerUrl = String(res?.documentServerUrl || "").replace(/\/+$/, "");
+        if (nextDocServerUrl && nextDocServerUrl !== docServerUrl) {
+          setDocServerUrl(nextDocServerUrl);
+          return;
+        }
+
+        if (!docsApiReady || !window.DocsAPI) return;
+
+        const config = res?.config;
+        if (!config || typeof config !== "object") {
+          throw new Error("invalid_editor_config");
+        }
+
+        destroyEditor();
+
+        const host = document.getElementById(editorId);
+        if (host) host.innerHTML = "";
+
+        if (!cancelled) {
+          editorRef.current = new window.DocsAPI.DocEditor(editorId, config);
+          setStatusMsg("Word editor is ready.");
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setErrorMsg(`Failed to open editor: ${e?.message || "request_failed"}`);
+        }
+      } finally {
+        if (!cancelled) setLoadingEditor(false);
+      }
+    }
+
+    mountEditor();
+    return () => {
+      cancelled = true;
+    };
+  }, [destroyEditor, docServerUrl, docsApiReady, editorId, selectedId]);
+
+  useEffect(() => {
+    return () => destroyEditor();
+  }, [destroyEditor]);
+
+  const onCreate = useCallback(async () => {
+    setBusyCreate(true);
+    setErrorMsg("");
+    setStatusMsg("");
+    try {
+      const title = String(newTitle || "").trim() || "New document";
+      const res = await api("/word-docs", {
+        method: "POST",
+        body: JSON.stringify({ title }),
+      });
+      const id = String(res?.item?.id || "");
+      setNewTitle("");
+      await loadDocs();
+      if (id) setSelectedId(id);
+      setStatusMsg("Document created.");
+    } catch (e) {
+      setErrorMsg(`Create failed: ${e?.message || "request_failed"}`);
+    } finally {
+      setBusyCreate(false);
+    }
+  }, [loadDocs, newTitle]);
+
+  const onRename = useCallback(async () => {
+    if (!selectedId) return;
+    setBusyRename(true);
+    setErrorMsg("");
+    setStatusMsg("");
+    try {
+      const title = String(renameTitle || "").trim();
+      if (!title) throw new Error("title_required");
+      await api(`/word-docs/${selectedId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ title }),
+      });
+      await loadDocs();
+      setStatusMsg("Title updated.");
+    } catch (e) {
+      setErrorMsg(`Rename failed: ${e?.message || "request_failed"}`);
+    } finally {
+      setBusyRename(false);
+    }
+  }, [loadDocs, renameTitle, selectedId]);
+
+  const onDelete = useCallback(async () => {
+    if (!selectedId) return;
+    const ok = window.confirm("Delete this document?");
+    if (!ok) return;
+
+    setBusyDelete(true);
+    setErrorMsg("");
+    setStatusMsg("");
+    try {
+      await api(`/word-docs/${selectedId}`, { method: "DELETE" });
+      await loadDocs();
+      setStatusMsg("Document deleted.");
+    } catch (e) {
+      setErrorMsg(`Delete failed: ${e?.message || "request_failed"}`);
+    } finally {
+      setBusyDelete(false);
+    }
+  }, [loadDocs, selectedId]);
 
   return (
     <div className="p-4 md:p-6">
-      <style>{`
-        /* Column resize handle */
-        .ProseMirror table { position: relative; }
-        .ProseMirror .column-resize-handle {
-          position: absolute;
-          top: -2px;
-          right: -2px;
-          bottom: -2px;
-          width: 6px;
-          background: rgba(0,0,0,0.08);
-          pointer-events: none;
-          opacity: 0;
-          transition: opacity .12s ease;
-        }
-        .ProseMirror table:hover .column-resize-handle { opacity: 1; }
-        .ProseMirror.resize-cursor { cursor: col-resize; }
-        .dark .ProseMirror .column-resize-handle { background: rgba(255,255,255,0.14); }
-
-        /* Row resize cursor */
-        .ProseMirror.resize-row-cursor { cursor: row-resize; }
-      `}</style>
-
       <Card className="rounded-2xl border border-black/10 bg-white overflow-hidden dark:bg-neutral-950 dark:border-neutral-800">
-        {/* Top Controls */}
         <div className="p-3 md:p-4 border-b border-black/10 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900">
-          <div className="flex flex-wrap items-center gap-2 mb-2">
-            <input
-              type="text"
-              value={docTitle}
-              onChange={(e) => setDocTitle(e.target.value)}
-              placeholder="Document title"
-              className="h-10 min-w-[210px] flex-1 rounded-xl border border-black/10 bg-white px-3 text-sm text-black dark:bg-neutral-950 dark:text-neutral-100 dark:border-neutral-800"
-            />
-            <PrimaryBtn disabled={!editor || saving} onClick={handleSaveDocument}>
-              {saving ? "Saving..." : "Save (Local only)"}
-            </PrimaryBtn>
-            <SmallBtn disabled={!editor} onClick={handleDownloadWord}>
-              Download Word
-            </SmallBtn>
-            <SmallBtn disabled={!editor} onClick={handleOpenInWord}>
-              Open In Word
-            </SmallBtn>
-            <SmallBtn disabled={!editor || saving} onClick={resetDocument}>
-              New Document
-            </SmallBtn>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <SmallBtn onClick={insertTable3x3} disabled={!editor}>
-              Insert Table
-            </SmallBtn>
-
-            <div className="flex-1" />
-
-            <SmallBtn disabled={!editor} onClick={() => editor?.chain().focus().undo().run()}>
-              Undo
-            </SmallBtn>
-            <SmallBtn disabled={!editor} onClick={() => editor?.chain().focus().redo().run()}>
-              Redo
-            </SmallBtn>
-          </div>
-
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-600 dark:text-neutral-300">
-            <span>Document ID: {docId || "new"}</span>
-            <span className="opacity-60">|</span>
-            <span>{isDirty ? "Unsaved changes" : "Saved state"}</span>
-            {!!statusMsg && (
-              <>
-                <span className="opacity-60">|</span>
-                <span>{statusMsg}</span>
-              </>
-            )}
+          <div className="text-base font-semibold">ONLYOFFICE Word Editor</div>
+          <div className="text-xs text-neutral-500 mt-1">
+            True in-browser Word-style editing with server-side save callback.
           </div>
         </div>
-        {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-2 p-3 border-b border-black/10 dark:border-neutral-800 bg-white dark:bg-neutral-950">
-          <select
-            className="h-10 rounded-xl border border-black/10 bg-white px-3 text-black dark:bg-neutral-950 dark:text-neutral-100 dark:border-neutral-800"
-            value={currentFont}
-            onChange={(e) => editor?.chain().focus().setFontFamily(e.target.value).run()}
-          >
-            {FONTS.map((f) => (
-              <option key={f.label} value={f.value}>
-                {f.label}
-              </option>
-            ))}
-          </select>
 
-          <select
-            className="h-10 rounded-xl border border-black/10 bg-white px-3 text-black dark:bg-neutral-950 dark:text-neutral-100 dark:border-neutral-800"
-            value={currentSize}
-            onChange={(e) => editor?.chain().focus().setFontSize(e.target.value).run()}
-          >
-            {SIZES.map((s) => (
-              <option key={s} value={s}>
-                {s.replace("px", "")}
-              </option>
-            ))}
-          </select>
+        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] min-h-[74vh]">
+          <div className="border-b lg:border-b-0 lg:border-l border-black/10 dark:border-neutral-800 p-3 space-y-3 bg-neutral-50/70 dark:bg-neutral-900/50">
+            <div className="space-y-2">
+              <div className="text-sm font-semibold">Create Document</div>
+              <TextInput
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="New document title"
+              />
+              <PrimaryBtn onClick={onCreate} disabled={busyCreate}>
+                {busyCreate ? "Creating..." : "Create"}
+              </PrimaryBtn>
+            </div>
 
-          <div className="h-6 w-px bg-black/10 dark:bg-white/10 mx-1" />
-
-          <IconBtn title="Bold" active={editor?.isActive("bold")} disabled={!editor} onClick={() => editor?.chain().focus().toggleBold().run()}>
-            B
-          </IconBtn>
-          <IconBtn title="Italic" active={editor?.isActive("italic")} disabled={!editor} onClick={() => editor?.chain().focus().toggleItalic().run()}>
-            I
-          </IconBtn>
-          <IconBtn title="Underline" active={editor?.isActive("underline")} disabled={!editor} onClick={() => editor?.chain().focus().toggleUnderline().run()}>
-            U
-          </IconBtn>
-
-          <div className="h-6 w-px bg-black/10 dark:bg-white/10 mx-1" />
-
-          <IconBtn title="Align right" disabled={!editor} onClick={alignRight}>
-            R
-          </IconBtn>
-          <IconBtn title="Align center" disabled={!editor} onClick={alignCenter}>
-            C
-          </IconBtn>
-          <IconBtn title="Align left" disabled={!editor} onClick={alignLeft}>
-            L
-          </IconBtn>
-          <IconBtn title="Justify" disabled={!editor} onClick={alignJustify}>
-            J
-          </IconBtn>
-
-          <div className="h-6 w-px bg-black/10 dark:bg-white/10 mx-1" />
-
-          <IconBtn
-            title="Bullet List"
-            active={editor?.isActive("bulletList")}
-            disabled={!editor}
-            onClick={() => editor?.chain().focus().toggleBulletList().run()}
-          >
-            *
-          </IconBtn>
-          <IconBtn title="Ordered List" active={editor?.isActive("orderedList")} disabled={!editor} onClick={() => editor?.chain().focus().toggleOrderedList().run()}>
-            1.
-          </IconBtn>
-
-          <div className="flex-1" />
-
-          <PrimaryBtn disabled={!editor} onClick={() => setPreviewOpen(true)}>
-            Preview
-          </PrimaryBtn>
-        </div>
-
-        {/* Editor Area */}
-        <div className="p-4 md:p-5 bg-neutral-50 dark:bg-neutral-900">
-          <div
-            ref={editorWrapRef}
-            className={[
-              "relative",
-              "mx-auto w-full max-w-[560px]",
-              "max-h-[640px] overflow-auto rounded-2xl",
-              "border border-black/10 bg-white dark:bg-neutral-950 dark:border-neutral-800",
-
-              // Tables
-              "[&_table]:w-full [&_table]:border-collapse [&_table]:my-3",
-              "[&_td]:border [&_th]:border [&_td]:border-black/20 [&_th]:border-black/20",
-              "dark:[&_td]:border-neutral-700 dark:[&_th]:border-neutral-700",
-              "[&_th]:bg-black/5 dark:[&_th]:bg-white/10",
-              "[&_td]:p-2 [&_th]:p-2",
-
-              // Lists
-              "[&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pr-6 [&_.ProseMirror_ul]:my-2",
-              "[&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pr-6 [&_.ProseMirror_ol]:my-2",
-              "[&_.ProseMirror_li]:my-1",
-            ].join(" ")}
-            style={{ fontFamily: "Vazirmatn, sans-serif" }}
-            onMouseDownCapture={handlePageMouseDown}
-          >
-            <PageFrame templateUrl={TEMPLATE_URL}>
-              {/* Text area aligns with template header/footer */}
-              <div className="h-full w-full pt-[110px] pb-[70px] px-[56px]">
-                <EditorContent editor={editor} />
+            <div className="space-y-2">
+              <div className="text-sm font-semibold">Documents</div>
+              <div className="max-h-[240px] overflow-auto rounded-xl border border-black/10 dark:border-neutral-800 bg-white dark:bg-neutral-950">
+                {loadingDocs ? (
+                  <div className="p-3 text-xs text-neutral-500">Loading...</div>
+                ) : docs.length ? (
+                  docs.map((d) => {
+                    const active = String(d?.id || "") === String(selectedId || "");
+                    return (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => setSelectedId(String(d.id || ""))}
+                        className={[
+                          "w-full text-right px-3 py-2 text-sm border-b border-black/5 dark:border-neutral-800",
+                          active ? "bg-black/10 dark:bg-white/10 font-semibold" : "hover:bg-black/[0.03] dark:hover:bg-white/[0.06]",
+                        ].join(" ")}
+                      >
+                        <div className="truncate">{d.title || "Untitled"}</div>
+                        <div className="text-[11px] text-neutral-500">{d.updatedAt || "-"}</div>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="p-3 text-xs text-neutral-500">No documents yet.</div>
+                )}
               </div>
-            </PageFrame>
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-sm font-semibold">Selected Document</div>
+              <TextInput
+                value={renameTitle}
+                onChange={(e) => setRenameTitle(e.target.value)}
+                placeholder="Rename title"
+                disabled={!selectedId}
+              />
+              <div className="flex gap-2">
+                <Btn onClick={onRename} disabled={!selectedId || busyRename}>
+                  {busyRename ? "Saving..." : "Rename"}
+                </Btn>
+                <Btn onClick={onDelete} disabled={!selectedId || busyDelete} className="text-red-600 dark:text-red-400">
+                  {busyDelete ? "Deleting..." : "Delete"}
+                </Btn>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-black/10 dark:border-neutral-800 text-xs space-y-1">
+              <div><span className="font-semibold">DocServer:</span> {docServerUrl || "-"}</div>
+              <div><span className="font-semibold">Docs API:</span> {docsApiReady ? "Loaded" : "Not loaded"}</div>
+              {docsApiError ? <div className="text-red-600 dark:text-red-400">{docsApiError}</div> : null}
+            </div>
           </div>
 
-          <div className="mt-4 flex justify-center">
-            <PrimaryBtn disabled={!editor} onClick={() => setPreviewOpen(true)}>
-              Preview
-            </PrimaryBtn>
-          </div>
+          <div className="p-3 md:p-4 bg-white dark:bg-neutral-950">
+            {errorMsg ? (
+              <div className="mb-3 rounded-xl border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm dark:bg-red-900/20 dark:border-red-800 dark:text-red-300">
+                {errorMsg}
+              </div>
+            ) : null}
+            {statusMsg ? (
+              <div className="mb-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 px-3 py-2 text-sm dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-300">
+                {statusMsg}
+              </div>
+            ) : null}
 
-          <div className="mt-4 rounded-2xl border border-black/10 bg-white p-3 dark:bg-neutral-950 dark:border-neutral-800">
-            <div className="mb-2 text-sm font-semibold">Saved Documents (Local)</div>
-            {loadingDocs ? (
-              <div className="text-xs text-neutral-500 dark:text-neutral-400">Loading...</div>
-            ) : savedDocs.length ? (
-              <div className="grid gap-2">
-                {savedDocs.slice(0, 8).map((item) => (
-                  <div
-                    key={item.id}
-                    className={[
-                      "flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2",
-                      String(item.id) === String(docId)
-                        ? "border-black/30 dark:border-white/30"
-                        : "border-black/10 dark:border-neutral-800",
-                    ].join(" ")}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => openDocument(item)}
-                      className="text-sm text-right hover:underline"
-                    >
-                      {item?.title || `Document ${item?.id}`}
-                    </button>
-                    <div className="flex-1" />
-                    <SmallBtn onClick={() => openDocument(item)} disabled={!editor}>
-                      Open
-                    </SmallBtn>
-                  </div>
-                ))}
+            {!selectedId ? (
+              <div className="h-[70vh] rounded-2xl border border-dashed border-black/15 dark:border-neutral-700 grid place-items-center text-sm text-neutral-500">
+                Create or select a document to start editing.
               </div>
             ) : (
-              <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                No local documents yet.
+              <div className="h-[70vh] rounded-2xl overflow-hidden border border-black/10 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 relative">
+                {loadingEditor ? (
+                  <div className="absolute inset-0 grid place-items-center text-sm text-neutral-500 z-10 bg-white/70 dark:bg-neutral-950/70">
+                    Loading Word editor...
+                  </div>
+                ) : null}
+                <div id={editorId} className="h-full w-full" />
               </div>
             )}
           </div>
         </div>
       </Card>
-
-      <Modal open={previewOpen} onClose={() => setPreviewOpen(false)}>
-        <PageFrame templateUrl={TEMPLATE_URL} className="max-w-[760px]">
-          <div className="h-full w-full pt-[110px] pb-[70px] px-[56px]">
-            <div style={{ fontFamily: "Vazirmatn, sans-serif" }} dangerouslySetInnerHTML={{ __html: previewHtml }} />
-          </div>
-        </PageFrame>
-      </Modal>
     </div>
   );
 }
-
