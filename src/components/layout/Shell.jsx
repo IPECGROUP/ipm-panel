@@ -74,7 +74,7 @@ export default function Shell() {
             : "border-black/10 bg-gradient-to-l from-black/5 to-transparent")
         }
       >
-        <div className="mx-auto max-w-[1400px] flex items-center justify-between gap-2 p-2.5 md:p-3 pr-[72px] sm:pr-[88px] lg:pr-[104px]">
+        <div className="mx-auto max-w-[1400px] flex items-center justify-between gap-2 p-2.5 md:p-3 pr-[72px] sm:pr-[88px] lg:pr-[104px] lg:pl-[104px]">
           <Link
             to="/"
             className="flex items-center justify-start hover:opacity-95 transition shrink-0"
@@ -215,7 +215,7 @@ export default function Shell() {
       <main className="relative min-h-[calc(100dvh-64px)] md:min-h-[calc(100dvh-80px)]">
         <div
           dir="ltr"
-          className="px-2 sm:px-3 md:px-6 py-3 md:py-6 pr-[72px] sm:pr-[88px] lg:pr-[104px]"
+          className="px-2 sm:px-3 md:px-6 py-3 md:py-6 pr-[72px] sm:pr-[88px] lg:pr-[104px] lg:pl-[104px]"
         >
           <div dir="rtl" className="mx-auto max-w-[1400px]">
             {/* اینجا روت‌های داخلی رندر می‌شن */}
