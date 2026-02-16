@@ -474,16 +474,33 @@ const sortedProjects = useMemo(() => {
     const baseList = rows || [];
     if (!baseList.length) return [];
 
-    const nodes = baseList.map((r) => {
-      const suffixPlain = getSuffixPlain(r);
-      const parts = suffixPlain ? suffixPlain.split(".").filter(Boolean) : [];
-      const key = suffixPlain;
-      const parentKey = parts.length > 1 ? parts.slice(0, -1).join(".") : null;
-      return { row: r, key, parentKey, suffixPlain, parts };
+    const nodes = baseList.map((r, idx) => {
+      // در تب پروژه، کلید درخت باید کد کامل باشد (مثل 163.1.1) تا والد اصلی گم نشود.
+      const rawKey = canonForCompare(active, r?.suffix);
+      const key = String(rawKey || "").trim() || `__idx_${idx}`;
+      const parts = key.startsWith("__idx_") ? [] : key.split(".").filter(Boolean);
+      return { row: r, key, parentKey: null, parts };
     });
 
     const byKey = new Map();
     nodes.forEach((n) => byKey.set(n.key, n));
+
+    // پیدا کردن نزدیک‌ترین والد موجود (مثل منطق Estimates): اگر 163.1 نبود، 163 والد 163.1.1 شود.
+    nodes.forEach((n) => {
+      if (!n.parts.length || n.parts.length <= 1) {
+        n.parentKey = null;
+        return;
+      }
+      let found = null;
+      for (let i = n.parts.length - 1; i >= 1; i--) {
+        const candidate = n.parts.slice(0, i).join(".");
+        if (byKey.has(candidate)) {
+          found = candidate;
+          break;
+        }
+      }
+      n.parentKey = found;
+    });
 
     const childrenMap = new Map();
     nodes.forEach((n) => {
@@ -517,7 +534,7 @@ const sortedProjects = useMemo(() => {
 
     roots.forEach((root) => visit(root, 0));
     return result;
-  }, [rows, active, getSuffixPlain, openCodes, codeTextOf]);
+  }, [rows, active, openCodes, codeTextOf, canonForCompare]);
 
   if (accessLoading) {
     return (
