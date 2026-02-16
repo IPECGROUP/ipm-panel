@@ -5,6 +5,55 @@ import { useAuth } from "./AuthProvider";
 import { isMainAdminUser } from "../utils/auth";
 import { Btn, LinkBtn } from "./ui/Button";
 
+const icImgCls = "w-5 h-5 block m-0 filter invert pointer-events-none select-none";
+const svgCls = "w-5 h-5 block m-0 text-white pointer-events-none select-none";
+const sw = 2.2;
+
+const IcDashboard = () => <img src="/images/icons/dashbaord.svg" className={icImgCls} alt="" draggable={false} />;
+const IcPay = () => <img src="/images/icons/darkastpardakht.svg" className={icImgCls} alt="" draggable={false} />;
+const IcLetter = () => <img src="/images/icons/nameha.svg" className={icImgCls} alt="" draggable={false} />;
+const IcProjects = () => <img src="/images/icons/project.svg" className={icImgCls} alt="" draggable={false} />;
+const IcBudget = () => <img src="/images/icons/busgebandi.svg" className={icImgCls} alt="" draggable={false} />;
+const IcBase = () => <img src="/images/icons/atelaatpaye.svg" className={icImgCls} alt="" draggable={false} />;
+const IcCurrency = () => <img src="/images/icons/arz.svg" className={icImgCls} alt="" draggable={false} />;
+const IcUsers = () => <img src="/images/icons/users.svg" className={icImgCls} alt="" draggable={false} />;
+const IcContract = () => <img src="/images/icons/gharadad.svg" className={icImgCls} alt="" draggable={false} />;
+const IcTags = () => <img src="/images/icons/tags.svg" className={icImgCls} alt="" draggable={false} />;
+
+const IcDoc = () => (
+  <svg viewBox="0 0 24 24" className={svgCls} fill="none" stroke="currentColor" strokeWidth={sw}>
+    <path d="M6 4h9l3 3v13H6z" />
+    <path d="M9 13h6M9 17h6M9 9h3" />
+  </svg>
+);
+
+const IcWorksheet = () => (
+  <svg viewBox="0 0 24 24" className={svgCls} fill="none" stroke="currentColor" strokeWidth={sw}>
+    <rect x="3" y="4" width="18" height="16" rx="2" />
+    <path d="M8 4v16M3 10h18" />
+  </svg>
+);
+
+const IcBalance = () => (
+  <svg viewBox="0 0 24 24" className={svgCls} fill="none" stroke="currentColor" strokeWidth={sw}>
+    <path d="M4 20h16M12 4v16M6 8l6 4 6-4" />
+  </svg>
+);
+
+const IcReceipt = () => (
+  <svg viewBox="0 0 24 24" className={svgCls} fill="none" stroke="currentColor" strokeWidth={sw}>
+    <path d="M6 2h12v20l-3-2-3 2-3-2-3 2z" />
+    <path d="M8 7h8M8 11h8M8 15h6" />
+  </svg>
+);
+
+const IcDaily = () => (
+  <svg viewBox="0 0 24 24" className={svgCls} fill="none" stroke="currentColor" strokeWidth={sw}>
+    <rect x="3" y="4" width="18" height="18" rx="2" />
+    <path d="M8 2v4M16 2v4M3 10h18" />
+  </svg>
+);
+
 function RightNav() {
   const { user } = useAuth();
   const isMainAdmin = isMainAdminUser(user);
@@ -70,56 +119,6 @@ function RightNav() {
 
   const activeSection = sectionFromPath(pNow);
 
-  // آیکن‌ها
-  const icImgCls = "w-5 h-5 block m-0 filter invert pointer-events-none select-none";
-  const IcDashboard = () => <img src="/images/icons/dashbaord.svg" className={icImgCls} alt="" draggable={false} />;
-  const IcPay = () => <img src="/images/icons/darkastpardakht.svg" className={icImgCls} alt="" draggable={false} />;
-  const IcLetter = () => <img src="/images/icons/nameha.svg" className={icImgCls} alt="" draggable={false} />;
-  const IcProjects = () => <img src="/images/icons/project.svg" className={icImgCls} alt="" draggable={false} />;
-  const IcBudget = () => <img src="/images/icons/busgebandi.svg" className={icImgCls} alt="" draggable={false} />;
-  const IcBase = () => <img src="/images/icons/atelaatpaye.svg" className={icImgCls} alt="" draggable={false} />;
-  const IcCurrency = () => <img src="/images/icons/arz.svg" className={icImgCls} alt="" draggable={false} />;
-  const IcUsers = () => <img src="/images/icons/users.svg" className={icImgCls} alt="" draggable={false} />;
-  const IcContract = () => <img src="/images/icons/gharadad.svg" className={icImgCls} alt="" draggable={false} />;
-  const IcTags = () => <img src="/images/icons/tags.svg" className={icImgCls} alt="" draggable={false} />;
-
-  const svgCls = "w-5 h-5 block m-0 text-white pointer-events-none select-none";
-  const sw = 2.2;
-
-  const IcDoc = () => (
-    <svg viewBox="0 0 24 24" className={svgCls} fill="none" stroke="currentColor" strokeWidth={sw}>
-      <path d="M6 4h9l3 3v13H6z" />
-      <path d="M9 13h6M9 17h6M9 9h3" />
-    </svg>
-  );
-
-  const IcWorksheet = () => (
-    <svg viewBox="0 0 24 24" className={svgCls} fill="none" stroke="currentColor" strokeWidth={sw}>
-      <rect x="3" y="4" width="18" height="16" rx="2" />
-      <path d="M8 4v16M3 10h18" />
-    </svg>
-  );
-
-  const IcBalance = () => (
-    <svg viewBox="0 0 24 24" className={svgCls} fill="none" stroke="currentColor" strokeWidth={sw}>
-      <path d="M4 20h16M12 4v16M6 8l6 4 6-4" />
-    </svg>
-  );
-
-  const IcReceipt = () => (
-    <svg viewBox="0 0 24 24" className={svgCls} fill="none" stroke="currentColor" strokeWidth={sw}>
-      <path d="M6 2h12v20l-3-2-3 2-3-2-3 2z" />
-      <path d="M8 7h8M8 11h8M8 15h6" />
-    </svg>
-  );
-
-  const IcDaily = () => (
-    <svg viewBox="0 0 24 24" className={svgCls} fill="none" stroke="currentColor" strokeWidth={sw}>
-      <rect x="3" y="4" width="18" height="18" rx="2" />
-      <path d="M8 2v4M16 2v4M3 10h18" />
-    </svg>
-  );
-
   // ✅ کلاس Active با ! (هیچ چیزی نتونه override کنه)
   const railBtn = (active) =>
     [
@@ -173,6 +172,16 @@ function RightNav() {
             </LinkBtn>
           </div>
 
+          <div onMouseEnter={(e) => showTip("اسناد و نامه ها", e)} onMouseLeave={hideTip}>
+            <LinkBtn
+              to="/letters"
+              className={railBtn(isActive("/letters"))}
+              aria-label="اسناد و نامه ها"
+            >
+              <IcLetter />
+            </LinkBtn>
+          </div>
+
           <div onMouseEnter={(e) => showTip("درخواست پرداخت", e)} onMouseLeave={hideTip}>
             <LinkBtn
               to="/payment"
@@ -180,16 +189,6 @@ function RightNav() {
               aria-label="درخواست پرداخت"
             >
               <IcPay />
-            </LinkBtn>
-          </div>
-
-          <div onMouseEnter={(e) => showTip("نامه‌ها", e)} onMouseLeave={hideTip}>
-            <LinkBtn
-              to="/letters"
-              className={railBtn(isActive("/letters"))}
-              aria-label="نامه‌ها"
-            >
-              <IcLetter />
             </LinkBtn>
           </div>
 
@@ -381,4 +380,4 @@ function RightNav() {
   );
 }
 
-export default RightNav;
+export default React.memo(RightNav);
