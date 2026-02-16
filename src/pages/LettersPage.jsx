@@ -428,6 +428,10 @@ function formatBytes(n) {
   return `${Math.round(v * 10) / 10} ${units[i]}`;
 }
 
+const FieldWrap = React.memo(function FieldWrap({ children }) {
+  return <div className="relative pb-4">{children}</div>;
+});
+
 // =====================
 // Auto Code Helpers (TOP OF FILE) — خارج از کامپوننت
 // =====================
@@ -617,9 +621,6 @@ const fieldHasError = (kind, key) =>
 
 const inputWithError = (baseCls, kind, key) =>
   baseCls + (fieldHasError(kind, key) ? " !border-red-500 !ring-1 !ring-red-500" : "");
-
-// ✅ wrapper برای اینکه ارور absolute بشه و فیلد هل داده نشه
-const FieldWrap = ({ children }) => <div className="relative pb-4">{children}</div>;
 
 // ✅ ارور: زیر فیلد، ولی absolute (پس هل نمیده)
 const ErrorTextAbs = ({ kind, k }) =>
@@ -1689,6 +1690,7 @@ const resetAllFilters = () => {
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
+  const [letterNoSortDir, setLetterNoSortDir] = useState(null); // null | asc | desc
   const [kbdAbsIdx, setKbdAbsIdx] = useState(-1);
   const tableRowRefs = useRef(new Map());
 
@@ -2493,7 +2495,7 @@ const isImageUrl = (url, name = "") =>
   const fromY = normalizeYmd(filterFromDate);
   const toY = normalizeYmd(filterToDate);
 
-  return arr.filter((l) => {
+  const out = arr.filter((l) => {
     // ✅ فقط ادمین محرمانه‌ها را ببیند
     const isConf = isConfidentialLetter(l); // همونی که خودت داری
     if (isConf && !canSeeConfidential) return false;
@@ -2536,6 +2538,28 @@ const isImageUrl = (url, name = "") =>
 
     return true;
   });
+  if (!letterNoSortDir) return out;
+
+  const sorted = out.slice();
+  const normalizeLetterNo = (l) => toEnDigits(String(letterNoOf(l) || "")).trim();
+
+  sorted.sort((a, b) => {
+    const an = normalizeLetterNo(a);
+    const bn = normalizeLetterNo(b);
+
+    if (!an && !bn) return 0;
+    if (!an) return 1;
+    if (!bn) return -1;
+
+    const cmp = an.localeCompare(bn, "en", { numeric: true, sensitivity: "base" });
+    if (cmp !== 0) return letterNoSortDir === "asc" ? cmp : -cmp;
+
+    const ai = String(letterIdOf(a));
+    const bi = String(letterIdOf(b));
+    return ai.localeCompare(bi, "en", { numeric: true, sensitivity: "base" });
+  });
+
+  return sorted;
 }, [
   myLettersSorted,
   filterTab,
@@ -2544,12 +2568,13 @@ const isImageUrl = (url, name = "") =>
   filterFromDate,
   filterToDate,
   canSeeConfidential, // ✅ اضافه شد
+  letterNoSortDir,
 ]);
 
-  useEffect(() => {
+useEffect(() => {
     setSelectedIds(new Set());
     setPage(0);
-}, [filterTab, rowsPerPage, filterQuick, filterFromDate, filterToDate, filterTagIds, filterQuery]);
+}, [filterTab, rowsPerPage, filterQuick, filterFromDate, filterToDate, filterTagIds, filterQuery, letterNoSortDir]);
 
   const total = filteredLetters.length;
   const pageCount = Math.max(1, Math.ceil(total / Math.max(1, rowsPerPage)));
@@ -4937,7 +4962,20 @@ aria-invalid={fieldHasError(formKind, "subject")}
       </th>
 
       <th className="w-24 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
-        شماره
+        <button
+          type="button"
+          onClick={() => setLetterNoSortDir((prev) => (prev === "asc" ? "desc" : "asc"))}
+          className="mx-auto inline-flex items-center gap-1 hover:opacity-90"
+          aria-label={letterNoSortDir === "desc" ? "مرتب سازی شماره از بزرگ به کوچک" : "مرتب سازی شماره از کوچک به بزرگ"}
+          title={letterNoSortDir === "desc" ? "مرتب سازی شماره از بزرگ به کوچک" : "مرتب سازی شماره از کوچک به بزرگ"}
+        >
+          <span>شماره</span>
+          <img
+            src={letterNoSortDir === "desc" ? "/images/icons/bozorgbekochik.svg" : "/images/icons/kochikbebozorg.svg"}
+            alt=""
+            className={"w-4 h-4 " + (theme === "dark" ? "invert" : "")}
+          />
+        </button>
       </th>
 
       <th className="w-24 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
