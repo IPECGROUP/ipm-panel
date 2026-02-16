@@ -1,9 +1,100 @@
-﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+// src/pages/TestEditorPage.jsx
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Card from "../components/ui/Card.jsx";
-import { api } from "../utils/api.js";
+import { useEditor, EditorContent } from "@tiptap/react";
+import { Extension } from "@tiptap/core";
+import StarterKit from "@tiptap/starter-kit";
+import Underline from "@tiptap/extension-underline";
+import { TextStyle, FontFamily } from "@tiptap/extension-text-style";
+import Placeholder from "@tiptap/extension-placeholder";
 
-const DEFAULT_DOC_SERVER_URL = String(import.meta.env.VITE_ONLYOFFICE_URL || "http://localhost:8082").replace(/\/+$/, "");
-const DOCS_API_SCRIPT = "/web-apps/apps/api/documents/api.js";
+const STORAGE_KEY = "test_editor_docs_local_v3";
+const WORD_MIME = "application/msword";
+const PAGE_VERSION = "Local-Only v4";
+
+const FontSize = Extension.create({
+  name: "fontSize",
+  addGlobalAttributes() {
+    return [
+      {
+        types: ["textStyle"],
+        attributes: {
+          fontSize: {
+            default: null,
+            parseHTML: (el) => el.style.fontSize || null,
+            renderHTML: (attrs) => {
+              if (!attrs.fontSize) return {};
+              return { style: `font-size: ${attrs.fontSize}` };
+            },
+          },
+        },
+      },
+    ];
+  },
+  addCommands() {
+    return {
+      setFontSize:
+        (fontSize) =>
+        ({ chain }) =>
+          chain().setMark("textStyle", { fontSize }).run(),
+    };
+  },
+});
+
+function readDocs() {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeDocs(items) {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.isArray(items) ? items : []));
+  } catch {}
+}
+
+function newId() {
+  return `${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
+}
+
+function safeFileName(v) {
+  return String(v || "document")
+    .replace(/[\\/:*?"<>|]+/g, "_")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120) || "document";
+}
+
+function buildWordHtmlDocument(contentHtml, title) {
+  const cleanTitle = safeFileName(title || "document");
+  const body = String(contentHtml || "");
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <title>${cleanTitle}</title>
+</head>
+<body dir="rtl" style="font-family: Vazirmatn, Tahoma, Arial, sans-serif;">
+${body}
+</body>
+</html>`;
+}
+
+function downloadBlob(blob, fileName) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 function Btn({ children, className = "", ...props }) {
   return (
@@ -39,271 +130,201 @@ function PrimaryBtn({ children, className = "", ...props }) {
   );
 }
 
-function TextInput(props) {
+function IconBtn({ title, active, onClick, disabled, children }) {
   return (
-    <input
-      className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm text-black dark:bg-neutral-950 dark:text-neutral-100 dark:border-neutral-800"
-      {...props}
-    />
+    <button
+      type="button"
+      title={title}
+      disabled={disabled}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onClick}
+      className={[
+        "h-10 w-10 rounded-xl border border-black/10 bg-white hover:bg-black/5",
+        "dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-white/10",
+        "disabled:opacity-40",
+        active ? "ring-2 ring-black/30 dark:ring-white/20" : "",
+      ].join(" ")}
+    >
+      {children}
+    </button>
   );
 }
 
 export default function TestEditorPage() {
   const [docs, setDocs] = useState([]);
-  const [loadingDocs, setLoadingDocs] = useState(false);
   const [selectedId, setSelectedId] = useState("");
-
-  const [newTitle, setNewTitle] = useState("");
-  const [renameTitle, setRenameTitle] = useState("");
-
-  const [busyCreate, setBusyCreate] = useState(false);
-  const [busyRename, setBusyRename] = useState(false);
-  const [busyDelete, setBusyDelete] = useState(false);
-
-  const [statusMsg, setStatusMsg] = useState("");
-  const [errorMsg, setErrorMsg] = useState("");
-
-  const [docServerUrl, setDocServerUrl] = useState(DEFAULT_DOC_SERVER_URL);
-  const [docsApiReady, setDocsApiReady] = useState(false);
-  const [docsApiError, setDocsApiError] = useState("");
-  const [loadingEditor, setLoadingEditor] = useState(false);
-
-  const editorId = useMemo(() => `onlyoffice_editor_${Math.random().toString(16).slice(2)}`, []);
-  const editorRef = useRef(null);
+  const [title, setTitle] = useState("New document");
+  const [status, setStatus] = useState("");
+  const [dirty, setDirty] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const selectedDoc = useMemo(
     () => docs.find((d) => String(d?.id || "") === String(selectedId || "")) || null,
     [docs, selectedId]
   );
 
-  const destroyEditor = useCallback(() => {
-    try {
-      if (editorRef.current && typeof editorRef.current.destroyEditor === "function") {
-        editorRef.current.destroyEditor();
-      }
-    } catch {}
-    editorRef.current = null;
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        bulletList: { keepMarks: true, keepAttributes: false },
+        orderedList: { keepMarks: true, keepAttributes: false },
+      }),
+      Underline,
+      TextStyle,
+      FontFamily.configure({ types: ["textStyle"] }),
+      FontSize,
+      Placeholder.configure({ placeholder: "Start typing here..." }),
+    ],
+    content: "<p></p>",
+    editorProps: {
+      attributes: {
+        dir: "rtl",
+        class: "outline-none text-[14px] leading-7 text-black dark:text-neutral-100 min-h-[420px]",
+      },
+    },
+    onUpdate: () => setDirty(true),
+  });
+
+  useEffect(() => {
+    const items = readDocs().sort((a, b) => String(b?.updatedAt || "").localeCompare(String(a?.updatedAt || "")));
+    setDocs(items);
+    if (items.length) {
+      setSelectedId(String(items[0].id));
+      setTitle(String(items[0].title || "New document"));
+    }
+    setStatus("Local-only mode active. No server/database write.");
   }, []);
 
-  const loadDocs = useCallback(async () => {
-    setLoadingDocs(true);
-    setErrorMsg("");
-    try {
-      const res = await api("/word-docs", { method: "GET" });
-      const items = Array.isArray(res?.items) ? res.items : [];
-      setDocs(items);
-
-      if (!items.length) {
-        setSelectedId("");
-        setRenameTitle("");
-        destroyEditor();
-      } else if (!items.some((x) => String(x?.id || "") === String(selectedId || ""))) {
-        const first = items[0];
-        setSelectedId(String(first?.id || ""));
-        setRenameTitle(String(first?.title || ""));
-      }
-    } catch (e) {
-      setErrorMsg(`Failed to load docs: ${e?.message || "request_failed"}`);
-    } finally {
-      setLoadingDocs(false);
-    }
-  }, [destroyEditor, selectedId]);
-
   useEffect(() => {
-    loadDocs();
-  }, [loadDocs]);
-
-  useEffect(() => {
+    if (!editor) return;
     if (!selectedDoc) {
-      setRenameTitle("");
+      editor.commands.setContent("<p></p>", false);
+      setTitle("New document");
+      setDirty(false);
       return;
     }
-    setRenameTitle(String(selectedDoc?.title || ""));
-  }, [selectedDoc]);
+    setTitle(String(selectedDoc.title || "New document"));
+    editor.commands.setContent(String(selectedDoc.html || "<p></p>"), false);
+    setDirty(false);
+  }, [editor, selectedDoc]);
 
-  useEffect(() => {
-    setDocsApiReady(false);
-    setDocsApiError("");
+  const saveCurrent = useCallback(() => {
+    if (!editor) return;
+    const currentId = String(selectedId || newId());
+    const cleanTitle = String(title || "").trim() || "Untitled";
 
-    if (!docServerUrl) {
-      setDocsApiError("ONLYOFFICE server URL is empty.");
-      return;
-    }
-
-    if (window.DocsAPI) {
-      setDocsApiReady(true);
-      return;
-    }
-
-    const src = `${docServerUrl}${DOCS_API_SCRIPT}`;
-    const existing = document.querySelector(`script[data-onlyoffice-src="${src}"]`);
-    if (existing) {
-      const t = setInterval(() => {
-        if (window.DocsAPI) {
-          clearInterval(t);
-          setDocsApiReady(true);
-        }
-      }, 120);
-      return () => clearInterval(t);
-    }
-
-    const script = document.createElement("script");
-    script.src = src;
-    script.async = true;
-    script.dataset.onlyofficeSrc = src;
-    script.onload = () => setDocsApiReady(true);
-    script.onerror = () => setDocsApiError(`Cannot load ONLYOFFICE script from ${src}`);
-    document.body.appendChild(script);
-
-    return () => {
-      script.onload = null;
-      script.onerror = null;
+    const nextDoc = {
+      id: currentId,
+      title: cleanTitle,
+      html: editor.getHTML(),
+      updatedAt: new Date().toISOString(),
     };
-  }, [docServerUrl]);
 
-  useEffect(() => {
-    let cancelled = false;
+    const filtered = (Array.isArray(docs) ? docs : []).filter((x) => String(x?.id || "") !== currentId);
+    const next = [nextDoc, ...filtered].sort((a, b) => String(b?.updatedAt || "").localeCompare(String(a?.updatedAt || "")));
 
-    async function mountEditor() {
-      if (!selectedId) return;
-      setLoadingEditor(true);
-      setErrorMsg("");
+    writeDocs(next);
+    setDocs(next);
+    setSelectedId(currentId);
+    setDirty(false);
+    setStatus("Saved locally in browser only.");
+  }, [docs, editor, selectedId, title]);
 
-      try {
-        const res = await api(`/word-docs/editor-config/${selectedId}`, { method: "GET" });
-        const nextDocServerUrl = String(res?.documentServerUrl || "").replace(/\/+$/, "");
-        if (nextDocServerUrl && nextDocServerUrl !== docServerUrl) {
-          setDocServerUrl(nextDocServerUrl);
-          return;
-        }
-
-        if (!docsApiReady || !window.DocsAPI) return;
-
-        const config = res?.config;
-        if (!config || typeof config !== "object") {
-          throw new Error("invalid_editor_config");
-        }
-
-        destroyEditor();
-
-        const host = document.getElementById(editorId);
-        if (host) host.innerHTML = "";
-
-        if (!cancelled) {
-          editorRef.current = new window.DocsAPI.DocEditor(editorId, config);
-          setStatusMsg("Word editor is ready.");
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setErrorMsg(`Failed to open editor: ${e?.message || "request_failed"}`);
-        }
-      } finally {
-        if (!cancelled) setLoadingEditor(false);
-      }
-    }
-
-    mountEditor();
-    return () => {
-      cancelled = true;
+  const createNewDoc = useCallback(() => {
+    if (!editor) return;
+    const id = newId();
+    const doc = {
+      id,
+      title: "New document",
+      html: "<p></p>",
+      updatedAt: new Date().toISOString(),
     };
-  }, [destroyEditor, docServerUrl, docsApiReady, editorId, selectedId]);
+    const next = [doc, ...(Array.isArray(docs) ? docs : [])];
+    writeDocs(next);
+    setDocs(next);
+    setSelectedId(id);
+    setTitle(doc.title);
+    editor.commands.setContent(doc.html, false);
+    setDirty(false);
+    setStatus("New local document created.");
+  }, [docs, editor]);
 
-  useEffect(() => {
-    return () => destroyEditor();
-  }, [destroyEditor]);
-
-  const onCreate = useCallback(async () => {
-    setBusyCreate(true);
-    setErrorMsg("");
-    setStatusMsg("");
-    try {
-      const title = String(newTitle || "").trim() || "New document";
-      const res = await api("/word-docs", {
-        method: "POST",
-        body: JSON.stringify({ title }),
-      });
-      const id = String(res?.item?.id || "");
-      setNewTitle("");
-      await loadDocs();
-      if (id) setSelectedId(id);
-      setStatusMsg("Document created.");
-    } catch (e) {
-      setErrorMsg(`Create failed: ${e?.message || "request_failed"}`);
-    } finally {
-      setBusyCreate(false);
-    }
-  }, [loadDocs, newTitle]);
-
-  const onRename = useCallback(async () => {
+  const deleteCurrent = useCallback(() => {
     if (!selectedId) return;
-    setBusyRename(true);
-    setErrorMsg("");
-    setStatusMsg("");
-    try {
-      const title = String(renameTitle || "").trim();
-      if (!title) throw new Error("title_required");
-      await api(`/word-docs/${selectedId}`, {
-        method: "PATCH",
-        body: JSON.stringify({ title }),
-      });
-      await loadDocs();
-      setStatusMsg("Title updated.");
-    } catch (e) {
-      setErrorMsg(`Rename failed: ${e?.message || "request_failed"}`);
-    } finally {
-      setBusyRename(false);
-    }
-  }, [loadDocs, renameTitle, selectedId]);
-
-  const onDelete = useCallback(async () => {
-    if (!selectedId) return;
-    const ok = window.confirm("Delete this document?");
+    const ok = window.confirm("Delete this local document?");
     if (!ok) return;
 
-    setBusyDelete(true);
-    setErrorMsg("");
-    setStatusMsg("");
-    try {
-      await api(`/word-docs/${selectedId}`, { method: "DELETE" });
-      await loadDocs();
-      setStatusMsg("Document deleted.");
-    } catch (e) {
-      setErrorMsg(`Delete failed: ${e?.message || "request_failed"}`);
-    } finally {
-      setBusyDelete(false);
+    const next = (Array.isArray(docs) ? docs : []).filter((x) => String(x?.id || "") !== String(selectedId));
+    writeDocs(next);
+    setDocs(next);
+
+    if (!next.length) {
+      setSelectedId("");
+      setTitle("New document");
+      editor?.commands.setContent("<p></p>", false);
+      setDirty(false);
+      setStatus("Document deleted.");
+      return;
     }
-  }, [loadDocs, selectedId]);
+
+    setSelectedId(String(next[0].id));
+    setStatus("Document deleted.");
+  }, [docs, editor, selectedId]);
+
+  const clearAllLocalDocs = useCallback(() => {
+    const ok = window.confirm("Delete ALL local documents from this browser?");
+    if (!ok) return;
+    writeDocs([]);
+    setDocs([]);
+    setSelectedId("");
+    setTitle("New document");
+    editor?.commands.setContent("<p></p>", false);
+    setDirty(false);
+    setStatus("All local documents deleted. No server/database action.");
+  }, [editor]);
+
+  const downloadWord = useCallback(() => {
+    if (!editor) return;
+    const cleanTitle = String(title || "").trim() || "document";
+    const content = buildWordHtmlDocument(editor.getHTML(), cleanTitle);
+    const blob = new Blob(["\uFEFF", content], { type: WORD_MIME });
+    downloadBlob(blob, `${safeFileName(cleanTitle)}.doc`);
+    setStatus("Word file downloaded. Open it in Microsoft Word Desktop.");
+  }, [editor, title]);
+
+  const applyTitleOnly = useCallback(() => {
+    if (!selectedDoc) return;
+    const cleanTitle = String(title || "").trim() || "Untitled";
+    const next = docs.map((x) =>
+      String(x?.id || "") === String(selectedDoc.id)
+        ? { ...x, title: cleanTitle, updatedAt: new Date().toISOString() }
+        : x
+    );
+    writeDocs(next);
+    setDocs(next);
+    setStatus("Title updated locally.");
+  }, [docs, selectedDoc, title]);
+
+  const currentFont = editor?.getAttributes("textStyle")?.fontFamily || "Vazirmatn, sans-serif";
+  const currentSize = editor?.getAttributes("textStyle")?.fontSize || "14px";
 
   return (
     <div className="p-4 md:p-6">
       <Card className="rounded-2xl border border-black/10 bg-white overflow-hidden dark:bg-neutral-950 dark:border-neutral-800">
         <div className="p-3 md:p-4 border-b border-black/10 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900">
-          <div className="text-base font-semibold">ONLYOFFICE Word Editor</div>
-          <div className="text-xs text-neutral-500 mt-1">
-            True in-browser Word-style editing with server-side save callback.
-          </div>
+          <div className="text-base font-semibold">Editor (Local Only)</div>
+          <div className="text-xs text-neutral-500 mt-1">No API calls. No database writes. Everything stays in browser localStorage.</div>
+          <div className="text-[11px] text-neutral-400 mt-1">{PAGE_VERSION}</div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] min-h-[74vh]">
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] min-h-[76vh]">
           <div className="border-b lg:border-b-0 lg:border-l border-black/10 dark:border-neutral-800 p-3 space-y-3 bg-neutral-50/70 dark:bg-neutral-900/50">
             <div className="space-y-2">
-              <div className="text-sm font-semibold">Create Document</div>
-              <TextInput
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="New document title"
-              />
-              <PrimaryBtn onClick={onCreate} disabled={busyCreate}>
-                {busyCreate ? "Creating..." : "Create"}
-              </PrimaryBtn>
-            </div>
-
-            <div className="space-y-2">
               <div className="text-sm font-semibold">Documents</div>
-              <div className="max-h-[240px] overflow-auto rounded-xl border border-black/10 dark:border-neutral-800 bg-white dark:bg-neutral-950">
-                {loadingDocs ? (
-                  <div className="p-3 text-xs text-neutral-500">Loading...</div>
-                ) : docs.length ? (
+              <div className="max-h-[320px] overflow-auto rounded-xl border border-black/10 dark:border-neutral-800 bg-white dark:bg-neutral-950">
+                {!docs.length ? (
+                  <div className="p-3 text-xs text-neutral-500">No local docs.</div>
+                ) : (
                   docs.map((d) => {
                     const active = String(d?.id || "") === String(selectedId || "");
                     return (
@@ -321,66 +342,105 @@ export default function TestEditorPage() {
                       </button>
                     );
                   })
-                ) : (
-                  <div className="p-3 text-xs text-neutral-500">No documents yet.</div>
                 )}
               </div>
             </div>
 
             <div className="space-y-2">
-              <div className="text-sm font-semibold">Selected Document</div>
-              <TextInput
-                value={renameTitle}
-                onChange={(e) => setRenameTitle(e.target.value)}
-                placeholder="Rename title"
-                disabled={!selectedId}
-              />
-              <div className="flex gap-2">
-                <Btn onClick={onRename} disabled={!selectedId || busyRename}>
-                  {busyRename ? "Saving..." : "Rename"}
-                </Btn>
-                <Btn onClick={onDelete} disabled={!selectedId || busyDelete} className="text-red-600 dark:text-red-400">
-                  {busyDelete ? "Deleting..." : "Delete"}
-                </Btn>
+              <TextInput value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Document title" />
+              <div className="flex flex-wrap gap-2">
+                <PrimaryBtn onClick={createNewDoc}>New</PrimaryBtn>
+                <Btn onClick={saveCurrent} disabled={!editor}>Save</Btn>
+                <Btn onClick={applyTitleOnly} disabled={!selectedDoc}>Rename</Btn>
+                <Btn onClick={deleteCurrent} disabled={!selectedDoc} className="text-red-600 dark:text-red-400">Delete</Btn>
+                <Btn onClick={clearAllLocalDocs} className="text-red-600 dark:text-red-400">Delete All Local</Btn>
+                <Btn onClick={downloadWord} disabled={!editor}>Download Word</Btn>
+                <Btn onClick={() => setPreviewOpen(true)} disabled={!editor}>Preview</Btn>
               </div>
             </div>
 
-            <div className="pt-2 border-t border-black/10 dark:border-neutral-800 text-xs space-y-1">
-              <div><span className="font-semibold">DocServer:</span> {docServerUrl || "-"}</div>
-              <div><span className="font-semibold">Docs API:</span> {docsApiReady ? "Loaded" : "Not loaded"}</div>
-              {docsApiError ? <div className="text-red-600 dark:text-red-400">{docsApiError}</div> : null}
+            <div className="text-xs border-t border-black/10 dark:border-neutral-800 pt-2 space-y-1">
+              <div>Doc ID: <span className="font-mono">{selectedId || "-"}</span></div>
+              <div>Storage Key: <span className="font-mono">{STORAGE_KEY}</span></div>
+              <div>Status: {dirty ? "Unsaved changes" : "Saved state"}</div>
+              <div className="text-neutral-600 dark:text-neutral-300">{status}</div>
             </div>
           </div>
 
           <div className="p-3 md:p-4 bg-white dark:bg-neutral-950">
-            {errorMsg ? (
-              <div className="mb-3 rounded-xl border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm dark:bg-red-900/20 dark:border-red-800 dark:text-red-300">
-                {errorMsg}
-              </div>
-            ) : null}
-            {statusMsg ? (
-              <div className="mb-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 px-3 py-2 text-sm dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-300">
-                {statusMsg}
-              </div>
-            ) : null}
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <select
+                className="h-10 rounded-xl border border-black/10 bg-white px-3 text-black dark:bg-neutral-950 dark:text-neutral-100 dark:border-neutral-800"
+                value={currentFont}
+                onChange={(e) => editor?.chain().focus().setFontFamily(e.target.value).run()}
+              >
+                <option value="Vazirmatn, sans-serif">Vazirmatn</option>
+                <option value="Tahoma, sans-serif">Tahoma</option>
+                <option value="Arial, sans-serif">Arial</option>
+              </select>
+              <select
+                className="h-10 rounded-xl border border-black/10 bg-white px-3 text-black dark:bg-neutral-950 dark:text-neutral-100 dark:border-neutral-800"
+                value={currentSize}
+                onChange={(e) => editor?.chain().focus().setFontSize(e.target.value).run()}
+              >
+                {["12px", "14px", "16px", "18px", "20px", "24px"].map((s) => (
+                  <option key={s} value={s}>{s.replace("px", "")}</option>
+                ))}
+              </select>
 
-            {!selectedId ? (
-              <div className="h-[70vh] rounded-2xl border border-dashed border-black/15 dark:border-neutral-700 grid place-items-center text-sm text-neutral-500">
-                Create or select a document to start editing.
-              </div>
-            ) : (
-              <div className="h-[70vh] rounded-2xl overflow-hidden border border-black/10 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 relative">
-                {loadingEditor ? (
-                  <div className="absolute inset-0 grid place-items-center text-sm text-neutral-500 z-10 bg-white/70 dark:bg-neutral-950/70">
-                    Loading Word editor...
-                  </div>
-                ) : null}
-                <div id={editorId} className="h-full w-full" />
-              </div>
-            )}
+              <div className="h-6 w-px bg-black/10 dark:bg-white/10 mx-1" />
+
+              <IconBtn title="Bold" active={editor?.isActive("bold")} disabled={!editor} onClick={() => editor?.chain().focus().toggleBold().run()}>B</IconBtn>
+              <IconBtn title="Italic" active={editor?.isActive("italic")} disabled={!editor} onClick={() => editor?.chain().focus().toggleItalic().run()}>I</IconBtn>
+              <IconBtn title="Underline" active={editor?.isActive("underline")} disabled={!editor} onClick={() => editor?.chain().focus().toggleUnderline().run()}>U</IconBtn>
+
+              <div className="h-6 w-px bg-black/10 dark:bg-white/10 mx-1" />
+
+              <IconBtn title="Bullet list" active={editor?.isActive("bulletList")} disabled={!editor} onClick={() => editor?.chain().focus().toggleBulletList().run()}>*</IconBtn>
+              <IconBtn title="Ordered list" active={editor?.isActive("orderedList")} disabled={!editor} onClick={() => editor?.chain().focus().toggleOrderedList().run()}>1.</IconBtn>
+            </div>
+
+            <div
+              className={[
+                "rounded-2xl border border-black/10 bg-white dark:bg-neutral-950 dark:border-neutral-800 p-4",
+                "[&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pr-6 [&_.ProseMirror_ul]:my-2",
+                "[&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pr-6 [&_.ProseMirror_ol]:my-2",
+              ].join(" ")}
+              style={{ fontFamily: "Vazirmatn, sans-serif" }}
+            >
+              <EditorContent editor={editor} />
+            </div>
           </div>
         </div>
       </Card>
+
+      {previewOpen && (
+        <div className="fixed inset-0 z-[1000]">
+          <div className="absolute inset-0 bg-black/40" onMouseDown={() => setPreviewOpen(false)} role="presentation" />
+          <div className="absolute inset-0 p-4 md:p-8 overflow-auto">
+            <div className="mx-auto w-full max-w-[980px] rounded-2xl border border-black/10 bg-white text-black shadow-xl dark:bg-neutral-950 dark:text-neutral-100 dark:border-neutral-800">
+              <div className="p-3 md:p-4 border-b border-black/10 dark:border-neutral-800 flex items-center justify-between">
+                <div className="text-sm font-semibold">Preview</div>
+                <Btn onClick={() => setPreviewOpen(false)}>Close</Btn>
+              </div>
+              <div className="p-4 md:p-6 bg-neutral-50 dark:bg-neutral-900">
+                <div className="rounded-2xl border border-black/10 bg-white dark:bg-neutral-950 dark:border-neutral-800 p-6">
+                  <div style={{ fontFamily: "Vazirmatn, sans-serif" }} dangerouslySetInnerHTML={{ __html: editor?.getHTML() || "" }} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+function TextInput(props) {
+  return (
+    <input
+      className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm text-black dark:bg-neutral-950 dark:text-neutral-100 dark:border-neutral-800"
+      {...props}
+    />
   );
 }

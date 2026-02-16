@@ -15,10 +15,10 @@ The React Compiler is not enabled on this template because of its impact on dev 
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
 
-## ONLYOFFICE Editor URL
+## Test Editor (Local Only)
 
-For the Word-style editor page (`/test/editor`), you can optionally set:
+The page at `/test/editor` is intentionally local-only:
 
-- `VITE_ONLYOFFICE_URL=http://localhost:8082`
-
-If omitted, the page defaults to `http://localhost:8082`.
+- No API calls
+- No database writes
+- Documents are stored only in browser `localStorage`
