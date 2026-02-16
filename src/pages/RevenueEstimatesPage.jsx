@@ -208,6 +208,13 @@ const getProjectLabel = useCallback((p) => {
   return code || name || 'پروژه بدون نام';
 }, []);
 
+const projectOptionLabel = useCallback((p) => {
+  const code = toFaDigits(String(p?.code ?? '').trim());
+  const name = String(p?.name ?? '').trim();
+  if (code && name) return `${code} - ${name}`;
+  return code || name || '—';
+}, [toFaDigits]);
+
   const getProjectLabelById = useCallback(
     (pid, fallback = '') => {
       const p = projectById.get(String(pid));
@@ -1396,41 +1403,47 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
           </div>
 
           {/* انتخاب پروژه + دکمه افزودن */}
-          <div className="mt-3 flex items-center gap-2">
-            <div className="flex-1 flex items-stretch gap-2">
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-stretch">
+            <div className="relative min-w-0">
               <select
+                dir="rtl"
                 value={pickedProjectId}
                 onChange={(e) => setPickedProjectId(e.target.value)}
-                className="flex-1 h-11 rounded-2xl border border-black/15 bg-white text-black px-3 text-sm outline-none focus:ring-2 focus:ring-black/10
-                  dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                className="w-full h-11 rounded-2xl border border-black/15 bg-white text-black pr-3 pl-9 sm:pr-4 sm:pl-10 text-sm text-right outline-none appearance-none
+                  [-webkit-appearance:none] [-moz-appearance:none] [background-image:none]
+                  focus:ring-2 focus:ring-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
                 title="انتخاب پروژه"
               >
                 <option value="">پروژه را انتخاب کنید...</option>
                 <option value="__ALL__">انتخاب همه موارد</option>
 
                 {projectsForPicker.map((p) => {
-  const pid = String(p?.id ?? '');
-  if (!pid) return null;
-  return (
-    <option key={pid} value={pid}>
-      {getProjectLabel(p)}
-    </option>
-  );
-})}
-
+                  const pid = String(p?.id ?? '');
+                  if (!pid) return null;
+                  return (
+                    <option key={pid} value={pid}>
+                      {projectOptionLabel(p)}
+                    </option>
+                  );
+                })}
               </select>
-              <button
-                type="button"
-                onClick={addPickedProject}
-                disabled={!pickedProjectId}
-                className="h-11 w-12 rounded-2xl bg-black text-white grid place-items-center transition disabled:opacity-40 disabled:cursor-not-allowed
-                  dark:bg-neutral-100 dark:text-neutral-900"
-                aria-label="افزودن پروژه"
-                title={!pickedProjectId ? 'ابتدا پروژه را انتخاب کنید' : 'افزودن به کپسول‌ها'}
-              >
-                <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
-              </button>
+              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-black/60 dark:text-neutral-300">
+                <svg viewBox="0 0 20 20" width="16" height="16" fill="currentColor" aria-hidden="true">
+                  <path d="M5.5 7.5 10 12l4.5-4.5" />
+                </svg>
+              </span>
             </div>
+            <button
+              type="button"
+              onClick={addPickedProject}
+              disabled={!pickedProjectId}
+              className="h-11 w-full sm:w-12 rounded-2xl bg-black text-white grid place-items-center transition disabled:opacity-40 disabled:cursor-not-allowed
+                dark:bg-neutral-100 dark:text-neutral-900"
+              aria-label="افزودن پروژه"
+              title={!pickedProjectId ? 'ابتدا پروژه را انتخاب کنید' : 'افزودن به کپسول‌ها'}
+            >
+              <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
+            </button>
           </div>
 
           {/* کپسول‌ها */}
@@ -1514,9 +1527,9 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
             <div className={tablePreset.outer}>
               <div className={tablePreset.innerPad}>
                 <div className={tablePreset.frame + ' shadow-sm'}>
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto overscroll-x-contain">
                     <table
-                      className={tablePreset.table + ' table-fixed text-[11px] md:text-[12px] leading-tight'}
+                      className={tablePreset.table + ' table-fixed text-[11px] md:text-[12px] leading-tight min-w-[900px] lg:min-w-[1040px]'}
                       dir="rtl"
                     >
                       <THead>
@@ -2049,7 +2062,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
 
               <div id="revenue-preview" className="p-4 max-h-[70vh] overflow-auto space-y-4 text-center flex-1">
                 <div className="overflow-auto rounded-xl border border-black/10 dark:border-neutral-800 bg-white dark:bg-neutral-900">
-                  <table className="w-full table-fixed text-[11px] md:text-xs text-center [&_th]:text-center [&_td]:text-center">
+                  <table className="w-full min-w-[860px] md:min-w-[980px] table-fixed text-[11px] md:text-xs text-center [&_th]:text-center [&_td]:text-center">
                     <thead className="bg-black/5 text-black border-b border-black/10 sticky top-0 dark:bg-white/5 dark:text-neutral-100 dark:border-neutral-700">
                       <tr>
                         <th className="py-2.5 px-2 w-16 text-center">#</th>
