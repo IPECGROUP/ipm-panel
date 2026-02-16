@@ -170,6 +170,15 @@ const sortedProjects = useMemo(() => {
     );
 }, [topLevelProjects]);
 
+  const projectOptionLabel = useCallback(
+    (p) => {
+      const code = toFaDigits(String(p?.code || "—"));
+      const name = String(p?.name || "").trim();
+      return name ? `${code} - ${name}` : code;
+    },
+    [toFaDigits],
+  );
+
   // months
   const monthNames = useMemo(
     () => ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"],
@@ -959,7 +968,7 @@ const sortedProjects = useMemo(() => {
   ]);
 
   const TopButtons = () => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
       {tabs.map((t) => (
         <button
           key={t.id}
@@ -979,23 +988,43 @@ const sortedProjects = useMemo(() => {
   const ProjectsControls = () => {
     if (active !== "projects") return null;
     return (
-      <div className="grid grid-cols-1 gap-3">
-        <div className="flex flex-col gap-1">
-          <label className="text-sm text-black/70 dark:text-neutral-300">پروژه</label>
-          <select
-            className="w-full rounded-xl px-3 py-2 text-sm font-[inherit] bg-white text-black border border-black/15 outline-none text-right dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-            value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
-          >
-            <option className="bg-white dark:bg-neutral-900" value="">
-              انتخاب کنید
-            </option>
-            {(sortedProjects || []).map((p) => (
-              <option className="bg-white dark:bg-neutral-900" key={p.id} value={p.id}>
-                {p.code ? `${p.code} - ${p.name || ""}` : p.name || "—"}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <label className="text-xs sm:text-sm text-black/70 dark:text-neutral-300">کد/نام پروژه</label>
+          <div className="relative">
+            <select
+              dir="rtl"
+              className="w-full h-11 rounded-xl pr-3 pl-9 sm:pr-4 sm:pl-10 text-sm leading-6 text-right bg-white text-black border border-black/15 outline-none appearance-none
+                         [-webkit-appearance:none] [-moz-appearance:none] [background-image:none]
+                         focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+            >
+              <option className="bg-white dark:bg-neutral-900" value="">
+                انتخاب کنید
               </option>
-            ))}
-          </select>
+              {(sortedProjects || []).map((p) => (
+                <option className="bg-white dark:bg-neutral-900" key={p.id} value={p.id}>
+                  {projectOptionLabel(p)}
+                </option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-black/60 dark:text-neutral-300">
+              <svg viewBox="0 0 20 20" width="16" height="16" fill="currentColor" aria-hidden="true">
+                <path d="M5.5 7.5 10 12l4.5-4.5" />
+              </svg>
+            </span>
+          </div>
+        </div>
+        <div className="flex min-w-0 flex-col gap-1">
+          <label className="text-xs sm:text-sm text-black/70 dark:text-neutral-300">نام پروژه</label>
+          <input
+            className="w-full h-11 rounded-xl px-3 sm:px-4 text-sm text-right bg-black/5 text-black border border-black/15 outline-none
+                       dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
+            value={selectedProject?.name || ""}
+            readOnly
+            placeholder="پس از انتخاب پروژه پر می‌شود"
+          />
         </div>
       </div>
     );
@@ -1054,7 +1083,7 @@ const sortedProjects = useMemo(() => {
           <span className="font-semibold text-black dark:text-neutral-100">برآورد هزینه‌ها</span>
         </div>
 
-        <div className="space-y-4 mb-4">
+        <div className="space-y-3 md:space-y-4 mb-4">
           <TopButtons />
           <ProjectsControls />
         </div>
@@ -1065,13 +1094,13 @@ const sortedProjects = useMemo(() => {
               <div className={tablePreset.frame + " shadow-sm"}>
                 <div className="overflow-x-auto">
                   <table
-                    className={tablePreset.table + " table-fixed text-[12px] md:text-[13px]"}
+                    className={tablePreset.table + " table-fixed text-[12px] md:text-[13px] min-w-[900px] lg:min-w-[1020px]"}
                     dir="rtl"
                   >
                     <THead>
                       <tr className={tablePreset.headRow + " sticky top-0 z-10"}>
                         <TH className={`w-14 ${tablePreset.th}`}>#</TH>
-                        <TH className={`w-40 ${tablePreset.th}`}>
+                        <TH className={`w-36 md:w-40 ${tablePreset.th}`}>
                       <div className="flex items-center justify-center gap-1 w-full">
                         <span>کد بودجه</span>
                         <button
@@ -1088,13 +1117,13 @@ const sortedProjects = useMemo(() => {
                         </button>
                       </div>
                         </TH>
-                        <TH className={`w-40 ${tablePreset.th}`}>نام بودجه</TH>
+                        <TH className={`w-32 md:w-40 ${tablePreset.th}`}>نام بودجه</TH>
                     {dynamicMonths.map((m) => (
-                          <TH key={m.key} className={`w-24 px-0 ${tablePreset.th}`}>
+                          <TH key={m.key} className={`w-20 md:w-24 px-0 ${tablePreset.th}`}>
                         {m.label}
                       </TH>
                     ))}
-                        <TH className={`w-28 border-l border-r border-black/10 dark:border-neutral-700 ${tablePreset.th}`}>
+                        <TH className={`w-24 md:w-28 border-l border-r border-black/10 dark:border-neutral-700 ${tablePreset.th}`}>
                       <div className="flex items-center justify-center gap-1">
                         <span>جمع</span>
                         <button
