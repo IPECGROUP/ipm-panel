@@ -122,7 +122,7 @@ function RightNav() {
   // ✅ کلاس Active با ! (هیچ چیزی نتونه override کنه)
   const railBtn = (active) =>
     [
-      "group w-12 h-12 sm:w-14 sm:h-14 border transition-all duration-200 p-0 mx-auto",
+      "group w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 border transition-all duration-200 p-0 mx-auto",
       "flex items-center justify-center cursor-pointer select-none touch-manipulation",
       "focus:outline-none focus:ring-0",
       active
@@ -144,7 +144,7 @@ function RightNav() {
   const hideTip = () => setTip({ show: false, y: 0, label: "" });
 
   const RailDivider = () => (
-    <div className="my-2 h-px bg-neutral-800/60 dark:bg-neutral-700/60 w-10 mx-auto" />
+    <div className="my-2 h-px bg-neutral-800/60 dark:bg-neutral-700/60 w-8 sm:w-10 mx-auto" />
   );
 
   // والدها هم وقتی زیرمنو فعاله یا خودش بازه، هایلایت بشن
@@ -156,9 +156,9 @@ function RightNav() {
     <>
       <aside
         dir="rtl"
-        className="fixed right-0 top-0 bottom-0 z-50 w-[76px] sm:w-[92px] rounded-none
+        className="fixed right-0 top-0 bottom-0 z-50 w-[64px] sm:w-[76px] lg:w-[92px] rounded-none
                    bg-neutral-900/85 backdrop-blur-xl border-s border-neutral-800 shadow-2xl
-                   px-2 sm:px-3 overflow-y-auto overscroll-contain
+                   px-1.5 sm:px-2 lg:px-3 overflow-y-auto overscroll-contain
                    pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))]"
       >
         <div className="h-full flex flex-col items-center gap-2">
@@ -205,7 +205,7 @@ function RightNav() {
           </Btn>
 
           {open.projects && (
-            <div className="ms-2 mt-2 flex flex-col items-stretch gap-2">
+            <div className="ms-1 sm:ms-2 mt-2 flex flex-col items-stretch gap-2">
               <div onMouseEnter={(e) => showTip("اطلاعات قراردادی", e)} onMouseLeave={hideTip}>
                 <LinkBtn
                   to="/centers/contract-info"
@@ -275,7 +275,7 @@ function RightNav() {
           </Btn>
 
           {open.budget && (
-            <div className="ms-2 mt-2 flex flex-col items-stretch gap-2">
+            <div className="ms-1 sm:ms-2 mt-2 flex flex-col items-stretch gap-2">
               <div onMouseEnter={(e) => showTip("تعریف مراکز بودجه", e)} onMouseLeave={hideTip}>
                 <LinkBtn to="/budget/centers" className={railBtn(isActive("/budget/centers"))}>
                   <img src="/images/icons/tarifmarakez.svg" className={icImgCls} alt="" draggable={false} />
@@ -321,7 +321,7 @@ function RightNav() {
           </Btn>
 
           {open.base && (
-            <div className="ms-2 mt-2 flex flex-col items-stretch gap-2">
+            <div className="ms-1 sm:ms-2 mt-2 flex flex-col items-stretch gap-2">
               <div onMouseEnter={(e) => showTip("ساختار سازمانی", e)} onMouseLeave={hideTip}>
                 <LinkBtn to="/base/units" className={railBtn(isActive("/base/units"))}>
                   <img src="/images/icons/unit.svg" className={icImgCls} alt="" draggable={false} />
@@ -371,7 +371,7 @@ function RightNav() {
       {canHover && tip.show && (
         <div
           className="fixed z-[60] pointer-events-none text-xs px-3 py-1.5 rounded-lg bg-neutral-800 text-neutral-100 border border-neutral-700 shadow-lg whitespace-nowrap"
-          style={{ top: tip.y, right: "clamp(84px, 10vw, 100px)", transform: "translateY(-50%)" }}
+          style={{ top: tip.y, right: "clamp(70px, 10vw, 108px)", transform: "translateY(-50%)" }}
         >
           {tip.label}
         </div>

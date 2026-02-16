@@ -74,7 +74,7 @@ export default function Shell() {
             : "border-black/10 bg-gradient-to-l from-black/5 to-transparent")
         }
       >
-        <div className="mx-auto max-w-[1400px] flex items-center justify-between gap-2 p-2.5 md:p-3">
+        <div className="mx-auto max-w-[1400px] flex items-center justify-between gap-2 p-2.5 md:p-3 pr-[72px] sm:pr-[88px] lg:pr-[104px]">
           <Link
             to="/"
             className="flex items-center justify-start hover:opacity-95 transition shrink-0"
@@ -194,7 +194,7 @@ export default function Shell() {
         </div>
 
         {/* تاریخ برای موبایل/تبلت */}
-        <div className="mx-auto max-w-[1400px] px-3 pb-3 md:px-4 lg:hidden">
+        <div className="mx-auto max-w-[1400px] px-3 pb-3 md:px-4 pr-[72px] sm:pr-[88px] lg:hidden">
           <div
             className={
               "w-full flex items-center justify-center gap-2 px-3 py-2 rounded-2xl border text-xs " +
@@ -212,16 +212,17 @@ export default function Shell() {
         </div>
       </header>
 
-      <main className="grid grid-cols-[1fr_76px] sm:grid-cols-[1fr_92px] min-h-[calc(100dvh-64px)] md:min-h-[calc(100dvh-80px)]">
-        <div dir="ltr" className="px-4 md:px-6 py-4 md:py-6">
+      <main className="relative min-h-[calc(100dvh-64px)] md:min-h-[calc(100dvh-80px)]">
+        <div
+          dir="ltr"
+          className="px-2 sm:px-3 md:px-6 py-3 md:py-6 pr-[72px] sm:pr-[88px] lg:pr-[104px]"
+        >
           <div dir="rtl" className="mx-auto max-w-[1400px]">
             {/* اینجا روت‌های داخلی رندر می‌شن */}
             <Outlet />
           </div>
         </div>
-        <div dir="rtl" className="shrink-0">
-          <RightNav />
-        </div>
+        <RightNav />
       </main>
     </div>
   );

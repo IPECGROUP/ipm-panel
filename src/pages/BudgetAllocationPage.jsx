@@ -893,14 +893,14 @@ setProjects(Array.from(byId.values()));
           <div className={tablePreset.outer}>
             <div className={tablePreset.innerPad}>
               <div className={tablePreset.frame + " shadow-sm"}>
-                <div className="-mx-2 px-2 sm:mx-0 sm:px-0 overflow-x-auto overscroll-x-contain">
-                <table className={tablePreset.table + " min-w-[840px] md:min-w-[920px] xl:min-w-[980px]"} dir="rtl">
+                <div className="overflow-x-auto overscroll-x-contain">
+                <table className={tablePreset.table + " text-[12px] md:text-sm min-w-[760px] md:min-w-[920px] xl:min-w-[980px]"} dir="rtl">
               <THead>
                 <tr className={tablePreset.headRow}>
                   <TH className={`w-16 ${tablePreset.th}`}>
                     #
                   </TH>
-                  <TH className={`w-56 ${tablePreset.th}`}>
+                  <TH className={`w-44 md:w-56 ${tablePreset.th}`}>
                     <div className="flex items-center justify-center gap-1 w-full">
                       <span>{budgetCodeHeader}</span>
                       <button
@@ -929,19 +929,19 @@ setProjects(Array.from(byId.values()));
                   <TH className={tablePreset.th}>
                     نام بودجه
                   </TH>
-                  <TH className={`w-40 ${tablePreset.th}`}>
+                  <TH className={`w-32 md:w-40 ${tablePreset.th}`}>
                     آخرین برآورد
                   </TH>
-                  <TH className={`w-44 ${tablePreset.th}`}>
+                  <TH className={`w-36 md:w-44 ${tablePreset.th}`}>
                     مجموع تخصیص‌ها
                   </TH>
-                  <TH className={`w-48 ${tablePreset.th}`}>
+                  <TH className={`w-40 md:w-48 ${tablePreset.th}`}>
                     تخصیص جدید
                   </TH>
-                  <TH className={`w-[26ch] ${tablePreset.th}`}>
+                  <TH className={`w-[22ch] md:w-[26ch] ${tablePreset.th}`}>
                     شرح
                   </TH>
-                  <TH className={`w-28 ${tablePreset.th}`}>
+                  <TH className={`w-24 md:w-28 ${tablePreset.th}`}>
                     اقدامات
                   </TH>
                 </tr>
@@ -1104,7 +1104,7 @@ setProjects(Array.from(byId.values()));
           </div>
         )}
 
-        <div className="mt-4 flex items-center gap-2 justify-start">
+        <div className="mt-4 flex items-center gap-2 justify-end">
           <button
             onClick={onSubmit}
             disabled={saving || (active === "projects" && !projectId)}
