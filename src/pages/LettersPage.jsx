@@ -655,7 +655,6 @@ const REQUIRED = {
   outgoing: [
     "category",     // کلاس سند
     "projectId",    // مرکز/پروژه
-    "letterDate",   // تاریخ سند
     "toName",       // به
     "orgName",      // شرکت/سازمان
     "subject",      // موضوع
@@ -1184,48 +1183,129 @@ const isConfidentialLetter = (l) => {
   return false;
 };
 
-
-  const letterNoOf = (l) => String(l?.letter_no ?? l?.no ?? l?.number ?? l?.letterNo ?? "");
-  const letterDateOf = (l) =>
-  String(
-    l?.letter_date ??
-      l?.letterDate ??
-      l?.secretariat_date ??
-      l?.secretariatDate ??
-      l?.date ??
-      ""
-  ).trim();
-  const myLettersSorted = useMemo(() => {
-  const arr = Array.isArray(myLetters) ? myLetters.slice() : [];
-
-  const normYmd = (s) => {
-    const raw = String(s || "").trim();
-    const v = toEnDigits(raw);
-    const m = v.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
-    if (!m) return "";
-    return `${m[1]}/${pad2(m[2])}/${pad2(m[3])}`;
+  const pickFirstNonEmpty = (...vals) => {
+    for (const v of vals) {
+      const s = String(v ?? "").trim();
+      if (s) return s;
+    }
+    return "";
   };
 
-  const dateKeyOf = (l) =>
-    normYmd(letterDateOf(l)) ||
-    normYmd(l?.secretariat_date ?? l?.secretariatDate ?? "");
+  const letterNoOf = (l) =>
+    pickFirstNonEmpty(
+      l?.letter_no,
+      l?.letterNo,
+      l?.no,
+      l?.number,
+      l?.secretariat_no,
+      l?.secretariatNo
+    );
 
-  arr.sort((a, b) => {
-    const ad = dateKeyOf(a);
-    const bd = dateKeyOf(b);
-    if (ad && bd && ad !== bd) return bd.localeCompare(ad); // جدیدتر اول
-    if (ad && !bd) return -1;
-    if (!ad && bd) return 1;
+  const secretariatNoOf = (l) => pickFirstNonEmpty(l?.secretariat_no, l?.secretariatNo);
 
-    const ai = Number(letterIdOf(a));
-    const bi = Number(letterIdOf(b));
-    if (Number.isFinite(ai) && Number.isFinite(bi)) return bi - ai;
-    return String(letterIdOf(b)).localeCompare(String(letterIdOf(a)));
-  });
+  const letterDateOf = (l) =>
+    pickFirstNonEmpty(
+      l?.letter_date,
+      l?.letterDate,
+      l?.secretariat_date,
+      l?.secretariatDate,
+      l?.date
+    );
 
-  return arr;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [myLetters]);
+  const secretariatDateOf = (l) => pickFirstNonEmpty(l?.secretariat_date, l?.secretariatDate);
+
+  const createdAtMsOf = (l) => {
+    const candidates = [
+      l?.created_at,
+      l?.createdAt,
+      l?.inserted_at,
+      l?.insertedAt,
+      l?.timestamp,
+      l?.created_ts,
+      l?.createdTs,
+    ];
+
+    for (const raw of candidates) {
+      const s = String(raw ?? "").trim();
+      if (!s) continue;
+
+      const parsed = Date.parse(s);
+      if (Number.isFinite(parsed)) return parsed;
+
+      const n = Number(toEnDigits(s));
+      if (Number.isFinite(n) && n > 0) return n < 1e12 ? n * 1000 : n;
+    }
+
+    return Number.NaN;
+  };
+
+  const compareLettersByNewest = (a, b) => {
+    const at = createdAtMsOf(a);
+    const bt = createdAtMsOf(b);
+    if (Number.isFinite(at) && Number.isFinite(bt) && at !== bt) return bt - at;
+    if (Number.isFinite(at) && !Number.isFinite(bt)) return -1;
+    if (!Number.isFinite(at) && Number.isFinite(bt)) return 1;
+
+    const ai = Number(toEnDigits(String(letterIdOf(a) || "")));
+    const bi = Number(toEnDigits(String(letterIdOf(b) || "")));
+    if (Number.isFinite(ai) && Number.isFinite(bi) && ai !== bi) return bi - ai;
+
+    return String(letterIdOf(b) || "").localeCompare(String(letterIdOf(a) || ""), "en", {
+      numeric: true,
+      sensitivity: "base",
+    });
+  };
+
+  const letterNoTokensOf = (l) =>
+    toEnDigits(String(letterNoOf(l) || ""))
+      .trim()
+      .match(/\d+|[^\d]+/g) || [];
+
+  const compareLetterNo = (a, b) => {
+    const an = toEnDigits(String(letterNoOf(a) || "")).trim();
+    const bn = toEnDigits(String(letterNoOf(b) || "")).trim();
+
+    if (!an && !bn) return 0;
+    if (!an) return 1;
+    if (!bn) return -1;
+
+    const at = letterNoTokensOf(a);
+    const bt = letterNoTokensOf(b);
+    const n = Math.max(at.length, bt.length);
+
+    for (let i = 0; i < n; i += 1) {
+      const x = at[i];
+      const y = bt[i];
+      if (x === undefined) return -1;
+      if (y === undefined) return 1;
+      if (x === y) continue;
+
+      const nx = /^\d+$/.test(x);
+      const ny = /^\d+$/.test(y);
+
+      if (nx && ny) {
+        const xv = Number(x);
+        const yv = Number(y);
+        if (xv !== yv) return xv - yv;
+        continue;
+      }
+
+      if (nx && !ny) return -1;
+      if (!nx && ny) return 1;
+
+      const cmp = x.localeCompare(y, "en", { sensitivity: "base" });
+      if (cmp !== 0) return cmp;
+    }
+
+    return 0;
+  };
+
+  const myLettersSorted = useMemo(() => {
+    const arr = Array.isArray(myLetters) ? myLetters.slice() : [];
+    arr.sort(compareLettersByNewest);
+    return arr;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myLetters]);
 const subjectOf = (l) => String(l?.subject ?? l?.title ?? "");
 const orgOf = (l) => String(l?.org_name ?? l?.org ?? l?.organization ?? l?.company ?? "");
 const fromToOf = (l) => {
@@ -1234,6 +1314,47 @@ const fromToOf = (l) => {
     const s = `${a}${a && b ? " / " : ""}${b}`.trim();
     return s || "—";
   };
+
+const searchHaystackOf = (l) => {
+  const head = [
+    letterIdOf(l),
+    letterNoOf(l),
+    secretariatNoOf(l),
+    letterDateOf(l),
+    secretariatDateOf(l),
+    subjectOf(l),
+    orgOf(l),
+    fromToOf(l),
+    l?.from_name,
+    l?.fromName,
+    l?.from,
+    l?.to_name,
+    l?.toName,
+    l?.to,
+    l?.receiver_name,
+    l?.receiverName,
+    l?.classification,
+    l?.doc_classification,
+    l?.confidentiality,
+    l?.category,
+    l?.category_name,
+    l?.categoryTitle,
+    l?.secretariat_note,
+    l?.secretariatNote,
+    l?.project_id,
+    l?.projectId,
+  ]
+    .map((x) => String(x ?? "").trim())
+    .filter(Boolean)
+    .join(" ");
+
+  let raw = "";
+  try {
+    raw = JSON.stringify(l ?? {});
+  } catch {}
+
+  return normFa(toEnDigits(`${head} ${raw}`));
+};
 const relatedPickIndex = useMemo(() => {
   if (!relatedPickOpen) return [];
 
@@ -2490,7 +2611,7 @@ const isImageUrl = (url, name = "") =>
   const arr = Array.isArray(myLettersSorted) ? myLettersSorted : [];
 
   const qRaw = String(filterQuery || "").trim();
-  const q = toEnDigits(qRaw).toLowerCase();
+  const q = normFa(toEnDigits(qRaw));
 
   const fromY = normalizeYmd(filterFromDate);
   const toY = normalizeYmd(filterToDate);
@@ -2525,38 +2646,20 @@ const isImageUrl = (url, name = "") =>
     if (fromY && d < fromY) return false;
     if (toY && d > toY) return false;
 
-    // ✅ سرچ
-    if (q) {
-      const subject = toEnDigits(String(subjectOf(l) || "")).toLowerCase();
-      const org = toEnDigits(String(orgOf(l) || "")).toLowerCase();
-      const no = toEnDigits(String(letterNoOf(l) || "")).toLowerCase();
-      const id = toEnDigits(String(letterIdOf(l) || "")).toLowerCase();
-
-      const ok = subject.includes(q) || org.includes(q) || no.includes(q) || id.includes(q);
-      if (!ok) return false;
-    }
+    // ✅ سرچ: تمام فیلدهای نامه
+    if (q && !searchHaystackOf(l).includes(q)) return false;
 
     return true;
   });
-  if (!letterNoSortDir) return out;
+  const baseSorted = out.slice().sort(compareLettersByNewest);
+  if (!letterNoSortDir) return baseSorted;
 
-  const sorted = out.slice();
-  const normalizeLetterNo = (l) => toEnDigits(String(letterNoOf(l) || "")).trim();
+  const sorted = baseSorted.slice();
 
   sorted.sort((a, b) => {
-    const an = normalizeLetterNo(a);
-    const bn = normalizeLetterNo(b);
-
-    if (!an && !bn) return 0;
-    if (!an) return 1;
-    if (!bn) return -1;
-
-    const cmp = an.localeCompare(bn, "en", { numeric: true, sensitivity: "base" });
+    const cmp = compareLetterNo(a, b);
     if (cmp !== 0) return letterNoSortDir === "asc" ? cmp : -cmp;
-
-    const ai = String(letterIdOf(a));
-    const bi = String(letterIdOf(b));
-    return ai.localeCompare(bi, "en", { numeric: true, sensitivity: "base" });
+    return compareLettersByNewest(a, b);
   });
 
   return sorted;
@@ -3341,6 +3444,7 @@ subject:
       }
     }
     await refetchLetters();
+    if (!editingId) setPage(0);
     resetForm();
     setFormOpen(false);
   };
@@ -3839,7 +3943,7 @@ useEffect(() => {
     onChange={(e) => setFilterQuery(e.target.value)}
     className={inputCls}
     type="text"
-    placeholder="جستجو بر اساس موضوع / شرکت-سازمان / شماره سند ..."
+    placeholder="جستجو در همه فیلدها (شماره، موضوع، تاریخ، سازمان و ...)"
   />
 </div>
                 <div className="min-w-[140px]">
