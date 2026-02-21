@@ -1256,46 +1256,59 @@ const isConfidentialLetter = (l) => {
     });
   };
 
-  const letterNoTokensOf = (l) =>
-    toEnDigits(String(letterNoOf(l) || ""))
-      .trim()
-      .match(/\d+|[^\d]+/g) || [];
+  const normalizeDocNo = (v) =>
+    toEnDigits(String(v ?? ""))
+      .replace(/[\u200c\u200d\u200e\u200f\u202a-\u202e]/g, "")
+      .replace(/\s+/g, "")
+      .replace(/[\\|,;:_]+/g, "/")
+      .trim();
+
+  const docNoDigitsOf = (v) => normalizeDocNo(v).replace(/\D/g, "");
+
+  const parseStructuredDocNo = (v) => {
+    const s = normalizeDocNo(v).replace(/[-]+/g, "/");
+    const parts = s.split("/").filter(Boolean);
+    if (parts.length !== 3) return null;
+    if (!parts.every((p) => /^\d+$/.test(p))) return null;
+    return {
+      y: Number(parts[0]),
+      p: Number(parts[1]),
+      seq: Number(parts[2]),
+    };
+  };
+
+  const compareNumericStrings = (a, b) => {
+    const x = String(a || "").replace(/^0+/, "") || "0";
+    const y = String(b || "").replace(/^0+/, "") || "0";
+    if (x.length !== y.length) return x.length - y.length;
+    return x.localeCompare(y, "en", { sensitivity: "base" });
+  };
 
   const compareLetterNo = (a, b) => {
-    const an = toEnDigits(String(letterNoOf(a) || "")).trim();
-    const bn = toEnDigits(String(letterNoOf(b) || "")).trim();
+    const anRaw = normalizeDocNo(letterNoOf(a));
+    const bnRaw = normalizeDocNo(letterNoOf(b));
 
-    if (!an && !bn) return 0;
-    if (!an) return 1;
-    if (!bn) return -1;
+    if (!anRaw && !bnRaw) return 0;
+    if (!anRaw) return 1;
+    if (!bnRaw) return -1;
 
-    const at = letterNoTokensOf(a);
-    const bt = letterNoTokensOf(b);
-    const n = Math.max(at.length, bt.length);
-
-    for (let i = 0; i < n; i += 1) {
-      const x = at[i];
-      const y = bt[i];
-      if (x === undefined) return -1;
-      if (y === undefined) return 1;
-      if (x === y) continue;
-
-      const nx = /^\d+$/.test(x);
-      const ny = /^\d+$/.test(y);
-
-      if (nx && ny) {
-        const xv = Number(x);
-        const yv = Number(y);
-        if (xv !== yv) return xv - yv;
-        continue;
-      }
-
-      if (nx && !ny) return -1;
-      if (!nx && ny) return 1;
-
-      const cmp = x.localeCompare(y, "en", { sensitivity: "base" });
-      if (cmp !== 0) return cmp;
+    const pa = parseStructuredDocNo(anRaw);
+    const pb = parseStructuredDocNo(bnRaw);
+    if (pa && pb) {
+      if (pa.y !== pb.y) return pa.y - pb.y;
+      if (pa.p !== pb.p) return pa.p - pb.p;
+      if (pa.seq !== pb.seq) return pa.seq - pb.seq;
     }
+
+    const ad = docNoDigitsOf(anRaw);
+    const bd = docNoDigitsOf(bnRaw);
+    if (ad && bd) {
+      const dcmp = compareNumericStrings(ad, bd);
+      if (dcmp !== 0) return dcmp;
+    }
+
+    const cmp = anRaw.localeCompare(bnRaw, "fa", { numeric: true, sensitivity: "base" });
+    if (cmp !== 0) return cmp;
 
     return 0;
   };
@@ -1354,6 +1367,25 @@ const searchHaystackOf = (l) => {
   } catch {}
 
   return normFa(toEnDigits(`${head} ${raw}`));
+};
+
+const queryMatchesLetter = (l, qNorm, qDigits) => {
+  if (qNorm && searchHaystackOf(l).includes(qNorm)) return true;
+  if (!qDigits) return false;
+
+  const digitsCandidates = [
+    letterNoOf(l),
+    secretariatNoOf(l),
+    letterIdOf(l),
+    l?.letter_no,
+    l?.letterNo,
+    l?.secretariat_no,
+    l?.secretariatNo,
+  ]
+    .map((v) => docNoDigitsOf(v))
+    .filter(Boolean);
+
+  return digitsCandidates.some((n) => n.includes(qDigits));
 };
 const relatedPickIndex = useMemo(() => {
   if (!relatedPickOpen) return [];
@@ -2612,6 +2644,7 @@ const isImageUrl = (url, name = "") =>
 
   const qRaw = String(filterQuery || "").trim();
   const q = normFa(toEnDigits(qRaw));
+  const qDigits = docNoDigitsOf(qRaw);
 
   const fromY = normalizeYmd(filterFromDate);
   const toY = normalizeYmd(filterToDate);
@@ -2646,8 +2679,8 @@ const isImageUrl = (url, name = "") =>
     if (fromY && d < fromY) return false;
     if (toY && d > toY) return false;
 
-    // ✅ سرچ: تمام فیلدهای نامه
-    if (q && !searchHaystackOf(l).includes(q)) return false;
+    // ✅ سرچ: همه فیلدها + تطبیق عددی شماره‌ها (با/بدون /)
+    if ((q || qDigits) && !queryMatchesLetter(l, q, qDigits)) return false;
 
     return true;
   });
