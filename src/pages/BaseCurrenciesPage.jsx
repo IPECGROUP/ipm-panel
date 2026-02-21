@@ -1,10 +1,8 @@
 // ارز ها
 // src/pages/BaseCurrenciesPage.jsx
 import React from "react";
-import Shell from "../components/layout/Shell.jsx";
 import Card from "../components/ui/Card.jsx";
-import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
-import { Btn, PrimaryBtn, DangerBtn } from "../components/ui/Button.jsx";
+import { TableWrap, THead, TH, TD } from "../components/ui/Table.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 import { baseCurrenciesTablePreset as tablePreset } from "../components/ui/tablePresets.js";
 
@@ -27,6 +25,10 @@ function BaseCurrenciesPage() {
     kind: null,
     id: null,
     title: "",
+  });
+  const [selectedByKind, setSelectedByKind] = React.useState({
+    type: [],
+    source: [],
   });
 
   const [typeSortDir, setTypeSortDir] = React.useState("asc");
@@ -81,6 +83,14 @@ function BaseCurrenciesPage() {
   }, []);
 
   const norm = (s = "") => String(s).trim().replace(/\s+/g, " ").toLowerCase();
+  const setSelectedFor = (kind, nextOrUpdater) => {
+    setSelectedByKind((prev) => {
+      const prevList = Array.isArray(prev[kind]) ? prev[kind] : [];
+      const rawNext = typeof nextOrUpdater === "function" ? nextOrUpdater(prevList) : nextOrUpdater;
+      const next = Array.from(new Set((Array.isArray(rawNext) ? rawNext : []).map((id) => String(id))));
+      return { ...prev, [kind]: next };
+    });
+  };
 
   const addType = async (e) => {
     e?.preventDefault();
@@ -168,25 +178,48 @@ function BaseCurrenciesPage() {
     }
   };
 
-  const removeRow = async (kind, id) => {
-    if (!confirm("حذف این ردیف؟")) return;
+  const removeRows = async (kind, ids) => {
+    const uniqIds = Array.from(
+      new Set(
+        (Array.isArray(ids) ? ids : [ids])
+          .filter((id) => id !== null && id !== undefined)
+          .map((id) => String(id))
+      )
+    );
+    if (!uniqIds.length) return;
 
-    if (typeof id === "string" && id.startsWith("tmp-")) {
-      if (kind === "type") setTypes((prev) => prev.filter((r) => r.id !== id));
-      else setSources((prev) => prev.filter((r) => r.id !== id));
-      return;
-    }
+    const confirmText = uniqIds.length > 1 ? `حذف ${uniqIds.length} ردیف انتخاب‌شده؟` : "حذف این ردیف؟";
+    if (!confirm(confirmText)) return;
+
+    const idSet = new Set(uniqIds);
+    const rows = kind === "type" ? types : sources;
+    const realIds = rows
+      .filter((r) => {
+        const sid = String(r.id);
+        return idSet.has(sid) && !(typeof r.id === "string" && r.id.startsWith("tmp-"));
+      })
+      .map((r) => r.id);
+
+    if (kind === "type") setTypes((prev) => prev.filter((r) => !idSet.has(String(r.id))));
+    else setSources((prev) => prev.filter((r) => !idSet.has(String(r.id))));
+
+    setSelectedFor(kind, (prev) => prev.filter((id) => !idSet.has(String(id))));
+    setEditRow((prev) => (prev.kind === kind && idSet.has(String(prev.id)) ? { kind: null, id: null, title: "" } : prev));
+
+    if (!realIds.length) return;
 
     const path = kind === "type" ? `/base/currencies/types` : `/base/currencies/sources`;
-
     try {
-      await api(path, {
-        method: "DELETE",
-        body: JSON.stringify({ id }),
-      });
-      if (kind === "type") setTypes((prev) => prev.filter((r) => r.id !== id));
-      else setSources((prev) => prev.filter((r) => r.id !== id));
+      await Promise.all(
+        realIds.map((id) =>
+          api(path, {
+            method: "DELETE",
+            body: JSON.stringify({ id }),
+          })
+        )
+      );
     } catch (ex) {
+      loadAll().catch(() => {});
       alert(ex.message || "خطا در حذف");
     }
   };
@@ -251,6 +284,16 @@ function BaseCurrenciesPage() {
     return arr;
   }, [sources, srcSortDir]);
 
+  React.useEffect(() => {
+    const validIds = new Set(sortedTypes.map((r) => String(r.id)));
+    setSelectedFor("type", (prev) => prev.filter((id) => validIds.has(String(id))));
+  }, [sortedTypes]);
+
+  React.useEffect(() => {
+    const validIds = new Set(sortedSources.map((r) => String(r.id)));
+    setSelectedFor("source", (prev) => prev.filter((id) => validIds.has(String(id))));
+  }, [sortedSources]);
+
   const FormRow = ({ placeholder, value, onChange, onSubmit, inputRef, error, adding }) => (
     <form onSubmit={onSubmit} dir="rtl" className="grid grid-cols-[1fr_auto] gap-3 items-center">
       <input
@@ -283,116 +326,198 @@ function BaseCurrenciesPage() {
     </form>
   );
 
-  const SimpleTable = ({ rows, kind, sortDir, onToggleSort }) => (
-    <TableWrap>
-      <div className={tablePreset.outer}>
-        <div className={tablePreset.innerPad}>
+  const SimpleTable = ({ rows, kind, sortDir, onToggleSort }) => {
+    const selectedIds = Array.isArray(selectedByKind[kind]) ? selectedByKind[kind] : [];
+    const selectedSet = new Set(selectedIds.map((id) => String(id)));
+    const visibleIds = (rows || []).map((r) => String(r.id));
+    const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedSet.has(id));
+    const someVisibleSelected = visibleIds.some((id) => selectedSet.has(id)) && !allVisibleSelected;
 
-          <div className={tablePreset.frame}>
-            <table className={tablePreset.table} dir="rtl">
-              <THead>
-                <tr className={tablePreset.headRow}>
-                  <TH className={`w-20 sm:w-24 ${tablePreset.th}`}>
-                    #
-                  </TH>
+    const toggleSelectAllVisible = () => {
+      setSelectedFor(kind, (prev) => {
+        const prevSet = new Set((prev || []).map((id) => String(id)));
+        if (allVisibleSelected) {
+          return (prev || []).filter((id) => !visibleIds.includes(String(id)));
+        }
+        visibleIds.forEach((id) => prevSet.add(String(id)));
+        return Array.from(prevSet);
+      });
+    };
 
-                  <TH className={tablePreset.th}>
-                    <div className="flex items-center justify-center gap-2">
-                      <span>عنوان</span>
-                      <button
-                        type="button"
-                        onClick={onToggleSort}
-                        className="h-7 w-7 inline-grid place-items-center bg-transparent p-0
-                                   text-neutral-500 hover:text-neutral-600 active:text-neutral-700
-                                   dark:text-neutral-400 dark:hover:text-neutral-300"
-                        title="مرتب‌سازی عنوان"
-                        aria-label="مرتب‌سازی عنوان"
-                      >
-                        <svg
-                          className={`w-[14px] h-[14px] transition-transform ${sortDir === "asc" ? "rotate-180" : ""}`}
-                          focusable="false"
-                          aria-hidden="true"
-                          viewBox="0 0 24 24"
+    const toggleRowSelect = (id) => {
+      const sid = String(id);
+      setSelectedFor(kind, (prev) => {
+        const exists = (prev || []).some((x) => String(x) === sid);
+        return exists ? (prev || []).filter((x) => String(x) !== sid) : [...(prev || []), sid];
+      });
+    };
+
+    return (
+      <TableWrap>
+        <div className={tablePreset.outer}>
+          <div className={tablePreset.innerPad}>
+            <div className={tablePreset.frame}>
+              <table className={tablePreset.table} dir="rtl">
+                <THead>
+                  <tr className={tablePreset.headRow}>
+                    <TH className={`w-12 ${tablePreset.th}`}>
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 accent-black dark:accent-neutral-200"
+                        checked={allVisibleSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = someVisibleSelected;
+                        }}
+                        onChange={toggleSelectAllVisible}
+                        aria-label="انتخاب همه"
+                        title="انتخاب همه"
+                      />
+                    </TH>
+
+                    <TH className={`w-20 sm:w-24 ${tablePreset.th}`}>#</TH>
+
+                    <TH className={tablePreset.th}>
+                      <div className="flex items-center justify-center gap-2">
+                        <span>عنوان</span>
+                        <button
+                          type="button"
+                          onClick={onToggleSort}
+                          className="h-7 w-7 inline-grid place-items-center bg-transparent p-0
+                                     text-neutral-500 hover:text-neutral-600 active:text-neutral-700
+                                     dark:text-neutral-400 dark:hover:text-neutral-300"
+                          title="مرتب‌سازی عنوان"
+                          aria-label="مرتب‌سازی عنوان"
                         >
-                          <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </TH>
+                          <svg
+                            className={`w-[14px] h-[14px] transition-transform ${sortDir === "asc" ? "rotate-180" : ""}`}
+                            focusable="false"
+                            aria-hidden="true"
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"></path>
+                          </svg>
+                        </button>
+                      </div>
+                    </TH>
+                  </tr>
+                </THead>
 
-                  <TH className={`w-44 sm:w-72 ${tablePreset.th}`}>
-                    اقدامات
-                  </TH>
-                </tr>
-              </THead>
+                <tbody className={tablePreset.body}>
+                  {loading ? (
+                    <tr>
+                      <TD colSpan={3} className={tablePreset.emptyRow}>
+                        در حال بارگذاری…
+                      </TD>
+                    </tr>
+                  ) : (rows || []).length === 0 ? (
+                    <tr>
+                      <TD colSpan={3} className={tablePreset.emptyRow}>
+                        موردی ثبت نشده.
+                      </TD>
+                    </tr>
+                  ) : (
+                    rows.map((r, idx) => {
+                      const rowId = String(r.id);
+                      const isLast = idx === rows.length - 1;
+                      const tdBorder = isLast ? "" : tablePreset.rowDivider;
+                      const isEditing = editRow.kind === kind && String(editRow.id) === rowId;
+                      const isSelected = selectedSet.has(rowId);
+                      const shouldDeleteSelectedOnAction = isSelected && selectedIds.length > 1;
 
-              <tbody className={tablePreset.body}>
-                {loading ? (
-                  <TR className="bg-white dark:bg-transparent">
-                    <TD colSpan={3} className={tablePreset.emptyRow}>
-                      در حال بارگذاری…
-                    </TD>
-                  </TR>
-                ) : (rows || []).length === 0 ? (
-                  <TR className="bg-white dark:bg-transparent">
-                    <TD colSpan={3} className={tablePreset.emptyRow}>
-                      موردی ثبت نشده.
-                    </TD>
-                  </TR>
-                ) : (
-                  rows.map((r, idx) => {
-                    const isLast = idx === rows.length - 1;
-                    const tdBorder = isLast ? "" : tablePreset.rowDivider;
-
-                    return (
-                      <TR key={`${kind}-${r.id}`}>
-                        <TD className={`px-3 ${tdBorder}`}>{idx + 1}</TD>
-
-                        <TD className={`px-3 ${tdBorder}`}>
-                          {editRow.kind === kind && editRow.id === r.id ? (
+                      return (
+                        <tr
+                          key={`${kind}-${r.id}`}
+                          className={
+                            "group transition-colors " +
+                            (isSelected
+                              ? "!bg-black/[0.08] !hover:bg-black/[0.12] dark:!bg-white/15 dark:!hover:bg-white/20"
+                              : "!hover:bg-black/[0.04] dark:!hover:bg-white/10")
+                          }
+                        >
+                          <TD className={`px-3 ${tdBorder}`}>
                             <input
-                              className="w-full max-w-md rounded-xl px-2 py-0.5 text-center
-                                         border border-black/15 dark:border-neutral-700
-                                         bg-white text-black placeholder-black/40
-                                         dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400"
-                              value={editRow.title}
-                              onChange={(e) =>
-                                setEditRow({
-                                  ...editRow,
-                                  title: e.target.value,
-                                })
-                              }
-                              autoFocus
+                              type="checkbox"
+                              className="w-4 h-4 accent-black dark:accent-neutral-200"
+                              checked={isSelected}
+                              onChange={() => toggleRowSelect(r.id)}
+                              aria-label="انتخاب"
+                              title="انتخاب"
                             />
-                          ) : (
-                            r.title || "—"
-                          )}
-                        </TD>
+                          </TD>
 
-                        <TD className={`px-3 ${tdBorder}`}>
-                          {editRow.kind === kind && editRow.id === r.id ? (
-                            <div className="flex items-center justify-center gap-2">
-                              <RowActionIconBtn action="save" onClick={saveEdit} size={36} iconSize={16} />
-                              <RowActionIconBtn action="cancel" onClick={cancelEdit} size={36} iconSize={15} />
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-center gap-2">
-                              <RowActionIconBtn action="edit" onClick={() => startEdit(kind, r)} size={36} iconSize={16} />
-                              <RowActionIconBtn action="delete" onClick={() => removeRow(kind, r.id)} size={36} iconSize={17} />
-                            </div>
-                          )}
-                        </TD>
-                      </TR>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+                          <TD className={`px-3 ${tdBorder}`}>{idx + 1}</TD>
+
+                          <TD className={`px-3 !text-right ${tdBorder}`}>
+                            {isEditing ? (
+                              <div className="flex items-center justify-between gap-2">
+                                <input
+                                  className="w-full max-w-md rounded-xl px-2 py-0.5 text-right
+                                             border border-black/15 dark:border-neutral-700
+                                             bg-white text-black placeholder-black/40
+                                             dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400"
+                                  value={editRow.title}
+                                  onChange={(e) =>
+                                    setEditRow({
+                                      ...editRow,
+                                      title: e.target.value,
+                                    })
+                                  }
+                                  autoFocus
+                                />
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <RowActionIconBtn action="save" onClick={saveEdit} size={34} iconSize={15} />
+                                  <RowActionIconBtn action="cancel" onClick={cancelEdit} size={34} iconSize={14} />
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="block truncate">{r.title || "—"}</span>
+                                <div
+                                  className={
+                                    "flex items-center gap-1 shrink-0 transition-opacity " +
+                                    "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+                                  }
+                                >
+                                  <RowActionIconBtn
+                                    action="edit"
+                                    onClick={() => {
+                                      if (shouldDeleteSelectedOnAction) {
+                                        removeRows(kind, selectedIds);
+                                        return;
+                                      }
+                                      startEdit(kind, r);
+                                    }}
+                                    size={34}
+                                    iconSize={15}
+                                  />
+                                  <RowActionIconBtn
+                                    action="delete"
+                                    onClick={() => {
+                                      if (shouldDeleteSelectedOnAction) {
+                                        removeRows(kind, selectedIds);
+                                        return;
+                                      }
+                                      removeRows(kind, [r.id]);
+                                    }}
+                                    size={34}
+                                    iconSize={16}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </TD>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
-    </TableWrap>
-  );
+      </TableWrap>
+    );
+  };
 
   const Section = ({ title, form, table }) => (
     <div
