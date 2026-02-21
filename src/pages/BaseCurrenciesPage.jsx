@@ -30,7 +30,6 @@ function BaseCurrenciesPage() {
     type: [],
     source: [],
   });
-  const [hoveredRow, setHoveredRow] = React.useState({ kind: null, id: null });
 
   const [typeSortDir, setTypeSortDir] = React.useState("asc");
   const [srcSortDir, setSrcSortDir] = React.useState("asc");
@@ -423,20 +422,13 @@ function BaseCurrenciesPage() {
                       const tdBorder = isLast ? "" : tablePreset.rowDivider;
                       const isEditing = editRow.kind === kind && String(editRow.id) === rowId;
                       const isSelected = selectedSet.has(rowId);
-                      const isHovered = hoveredRow.kind === kind && hoveredRow.id === rowId;
                       const shouldDeleteSelectedOnAction = isSelected && selectedIds.length > 1;
 
                       return (
                         <tr
                           key={`${kind}-${r.id}`}
-                          onMouseEnter={() => setHoveredRow({ kind, id: rowId })}
-                          onMouseLeave={() => setHoveredRow((prev) => (prev.kind === kind && prev.id === rowId ? { kind: null, id: null } : prev))}
                           className={
-                            "group transition-[background-color,transform,box-shadow] duration-150 will-change-transform " +
-                            (isHovered
-                              ? "relative z-[2] -translate-y-[2px] shadow-[0_10px_22px_rgba(15,23,42,0.18)] dark:shadow-[0_10px_24px_rgba(0,0,0,0.5)]"
-                              : "") +
-                            " " +
+                            "group transition-colors " +
                             (isSelected
                               ? "!bg-black/[0.08] !hover:bg-black/[0.12] dark:!bg-white/15 dark:!hover:bg-white/20"
                               : "!hover:bg-black/[0.04] dark:!hover:bg-white/10")
