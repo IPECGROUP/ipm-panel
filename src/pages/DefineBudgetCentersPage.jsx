@@ -2,7 +2,11 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
-import { baseCurrenciesTablePreset as tablePreset } from "../components/ui/tablePresets.js";
+import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
+import {
+  baseCurrenciesTablePreset as tablePreset,
+  getHoverSelectableRowClass,
+} from "../components/ui/tablePresets.js";
 import { usePageAccess } from "../hooks/usePageAccess";
 
 const PAGE_KEY = "DefineBudgetCentersPage";
@@ -764,11 +768,7 @@ const sortedProjects = useMemo(() => {
                   const isOpen = !!openCodes[node.key];
 
                   return (
-                    <TR
-                      key={r.id}
-                      className="border-t border-neutral-200 odd:bg-neutral-50 even:bg-neutral-100/70 hover:bg-neutral-200/40 transition-colors
-                                 dark:border-neutral-800 dark:odd:bg-transparent dark:even:bg-white/5 dark:hover:bg-white/10"
-                    >
+                    <TR key={r.id} className={getHoverSelectableRowClass(false)}>
                       <TD className="px-2.5 py-2">{idx + 1}</TD>
 
                       <TD className="px-2.5 py-2 font-mono ltr text-center" style={{ paddingRight: level * 12 }}>
@@ -833,53 +833,37 @@ const sortedProjects = useMemo(() => {
                       </TD>
 
                       <TD className="px-2.5 py-2 text-center">
-                        {isEditing ? (
-                          <div className="inline-flex items-center gap-2">
-                            <button
-                              onClick={saveEdit}
-                              className="h-9 w-11 grid place-items-center rounded-xl bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
-                              aria-label="ذخیره"
-                              title="ذخیره"
-                            >
-                              <img src="/images/icons/check.svg" alt="" className="w-4 h-4 invert dark:invert-0" />
-                            </button>
-                            <button
-                              onClick={cancelEdit}
-                              className="h-9 w-11 grid place-items-center rounded-xl ring-1 ring-neutral-200 text-neutral-900 hover:bg-neutral-50 transition dark:ring-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10"
-                              aria-label="انصراف"
-                              title="انصراف"
-                            >
-                              <img src="/images/icons/hazf.svg" alt="" className="w-4 h-4" />
-                            </button>
+                        <div className="relative flex min-h-[34px] items-center justify-center">
+                          <span
+                            className={`transition-opacity ${
+                              isEditing
+                                ? "opacity-0 pointer-events-none"
+                                : "opacity-100 group-hover:opacity-0 group-hover:pointer-events-none"
+                            }`}
+                          >
+                            -
+                          </span>
+
+                          <div
+                            className={`absolute inset-0 flex items-center justify-center gap-1 transition-opacity ${
+                              isEditing
+                                ? "opacity-100 pointer-events-auto"
+                                : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+                            }`}
+                          >
+                            {isEditing ? (
+                              <>
+                                <RowActionIconBtn action="save" onClick={saveEdit} size={34} iconSize={15} />
+                                <RowActionIconBtn action="cancel" onClick={cancelEdit} size={34} iconSize={14} />
+                              </>
+                            ) : (
+                              <>
+                                <RowActionIconBtn action="edit" onClick={() => beginEdit(r)} size={34} iconSize={15} />
+                                <RowActionIconBtn action="delete" onClick={() => del(r)} size={34} iconSize={16} />
+                              </>
+                            )}
                           </div>
-                        ) : (
-                          <div className="inline-flex items-center gap-2">
-                            <button
-                              onClick={() => beginEdit(r)}
-                              className="h-9 w-9 grid place-items-center bg-transparent text-neutral-800 hover:opacity-80 active:opacity-70 transition dark:text-neutral-100"
-                              aria-label="ویرایش"
-                              title="ویرایش"
-                            >
-                              <img src="/images/icons/pencil.svg" alt="" className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => del(r)}
-                              className="h-9 w-9 grid place-items-center bg-transparent text-red-600 hover:opacity-80 active:opacity-70 transition dark:text-red-400"
-                              aria-label="حذف"
-                              title="حذف"
-                            >
-                              <img
-                                src="/images/icons/hazf.svg"
-                                alt=""
-                                className="w-4 h-4"
-                                style={{
-                                  filter:
-                                    "invert(18%) sepia(93%) saturate(7494%) hue-rotate(2deg) brightness(96%) contrast(110%)",
-                                }}
-                              />
-                            </button>
-                          </div>
-                        )}
+                        </div>
                       </TD>
                     </TR>
                   );
