@@ -5,6 +5,7 @@ import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 import {
   baseCurrenciesTablePreset as tablePreset,
+  hoverSelectableRowPreset,
   getHoverSelectableRowClass,
 } from "../components/ui/tablePresets";
 import { usePageAccess } from "../hooks/usePageAccess";
@@ -172,8 +173,10 @@ setProjects(Array.from(byId.values()));
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [selectedCodes, setSelectedCodes] = useState([]);
 
   const moneyRefs = useRef({});
+  const selectAllRef = useRef(null);
 
   const [codeSortDir, setCodeSortDir] = useState("asc");
   const [openCodes, setOpenCodes] = useState({});
@@ -183,8 +186,8 @@ setProjects(Array.from(byId.values()));
   }, [active, projectId]);
 
   useEffect(() => {
-    setEditingAllocCode("");
-  }, [active, projectId, refreshKey]);
+    setSelectedCodes([]);
+  }, [active, projectId]);
 
   // ===== Helpers: تبدیل اعداد =====
   const formatMoney = (n) => {
@@ -461,46 +464,68 @@ setProjects(Array.from(byId.values()));
     );
   };
 
-  const removeRow = async (code) => {
+  const removeRows = async (codesInput) => {
+    const codes = Array.from(
+      new Set(
+        (Array.isArray(codesInput) ? codesInput : [codesInput])
+          .map((x) => String(x || "").trim())
+          .filter(Boolean)
+      )
+    );
+    if (!codes.length) return;
+
     try {
-      const hist = historyByCode?.[code] || [];
-      if (hist.length === 0) {
+      setErr("");
+      const removedByCode = {};
+      let removedAny = false;
+
+      for (const code of codes) {
+        const hist = historyByCode?.[code] || [];
+        if (hist.length === 0) continue;
+
+        const last = hist
+          .slice()
+          .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+          .pop();
+        const lastAmt = Number(last?.amount || 0);
+        if (!lastAmt) continue;
+
+        const next = await getNextSerial();
+        const serial = next?.serial || "";
+        const date_jalali = next?.date_jalali || todayFa;
+
+        const body = {
+          serial,
+          date_jalali,
+          project_id:
+            active === "projects" ? (projectId ? Number(projectId) : null) : null,
+          project_name:
+            active === "projects" && selectedProject ? selectedProject.name : null,
+          kind: active,
+          rows: [{ code, alloc: -lastAmt, desc: "حذف آخرین تخصیص" }],
+        };
+        await api("/budget-allocations", {
+          method: "POST",
+          body: JSON.stringify(body),
+        });
+
+        removedAny = true;
+        removedByCode[code] = Number(removedByCode[code] || 0) + lastAmt;
+      }
+
+      if (!removedAny) {
         setErr("سابقه‌ای برای حذف یافت نشد.");
         return;
       }
-      const last = hist
-        .slice()
-        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
-        .pop();
-      const lastAmt = Number(last?.amount || 0);
-      if (!lastAmt) {
-        setErr("آخرین تخصیص قابل حذف نیست.");
-        return;
-      }
 
-      const next = await getNextSerial();
-      const serial = next?.serial || "";
-      const date_jalali = next?.date_jalali || todayFa;
-
-      const body = {
-        serial,
-        date_jalali,
-        project_id:
-          active === "projects" ? (projectId ? Number(projectId) : null) : null,
-        project_name:
-          active === "projects" && selectedProject ? selectedProject.name : null,
-        kind: active,
-        rows: [{ code, alloc: -lastAmt, desc: "حذف آخرین تخصیص" }],
-      };
-      await api("/budget-allocations", {
-        method: "POST",
-        body: JSON.stringify(body),
+      setTotals((prev) => {
+        const next = { ...prev };
+        Object.entries(removedByCode).forEach(([code, amt]) => {
+          next[code] = Number(next[code] || 0) - Number(amt || 0);
+        });
+        return next;
       });
-
-      setTotals((prev) => ({
-        ...prev,
-        [code]: Number(prev[code] || 0) - lastAmt,
-      }));
+      setSelectedCodes((prev) => prev.filter((code) => !codes.includes(code)));
       setRefreshKey((x) => x + 1);
     } catch (ex) {
       setErr(ex.message || "خطا در حذف آخرین تخصیص");
@@ -509,7 +534,6 @@ setProjects(Array.from(byId.values()));
 
   const [saving, setSaving] = useState(false);
   const [modalMsg, setModalMsg] = useState(null);
-  const [editingAllocCode, setEditingAllocCode] = useState("");
   const [descModal, setDescModal] = useState({
     open: false,
     code: "",
@@ -723,6 +747,35 @@ setProjects(Array.from(byId.values()));
     return out;
   }, [active, flatRowsToRender, coreOf, renderDisplayBudgetCode, codeSortDir, openCodes]);
 
+  const selectableRowCodes = useMemo(
+    () =>
+      (displayRows || [])
+        .filter((node) => !(active === "projects" && !!node?.hasChildren))
+        .map((node) => String(node?.row?.code || ""))
+        .filter(Boolean),
+    [displayRows, active]
+  );
+
+  const allSelectableChecked =
+    selectableRowCodes.length > 0 &&
+    selectableRowCodes.every((code) => selectedCodes.includes(code));
+  const someSelectableChecked = selectableRowCodes.some((code) =>
+    selectedCodes.includes(code)
+  );
+
+  useEffect(() => {
+    setSelectedCodes((prev) =>
+      prev.filter((code) => selectableRowCodes.includes(String(code)))
+    );
+  }, [selectableRowCodes]);
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate =
+        !allSelectableChecked && someSelectableChecked;
+    }
+  }, [allSelectableChecked, someSelectableChecked]);
+
   const exportRowsAll = useMemo(() => {
     if (active !== "projects") {
       return (flatRowsToRender || []).map((r, index) => ({
@@ -842,7 +895,6 @@ setProjects(Array.from(byId.values()));
   );
 
   const focusRowForEdit = useCallback((code) => {
-    setEditingAllocCode(String(code || ""));
     requestAnimationFrame(() => {
       const target = moneyRefs.current[code];
       if (!target) return;
@@ -899,8 +951,8 @@ setProjects(Array.from(byId.values()));
         <th>${escapeHtml(budgetCodeHeader)}</th>
         <th>نام بودجه</th>
         <th>آخرین برآورد</th>
-        <th>مجموع تخصیص‌ها</th>
         <th>تخصیص جدید</th>
+        <th>مجموع تخصیص‌ها</th>
         <th>شرح</th>
       </tr>
     `;
@@ -934,8 +986,8 @@ setProjects(Array.from(byId.values()));
               r.name || "—"
             )}</td>
             <td>${escapeHtml(toFaDigits(formatMoney(lastAmountView || 0)))}</td>
-            <td>${escapeHtml(toFaDigits(formatMoney(totalAllocView || 0)))}</td>
             <td>${escapeHtml(toFaDigits(formatMoney(allocRawView || 0)))}</td>
+            <td>${escapeHtml(toFaDigits(formatMoney(totalAllocView || 0)))}</td>
             <td style="text-align:right">${escapeHtml(r.desc || "—")}</td>
           </tr>
         `;
@@ -1148,6 +1200,24 @@ setProjects(Array.from(byId.values()));
                 <table className={tablePreset.table + " table-fixed text-[12px] md:text-[13px] min-w-[900px] lg:min-w-[1020px]"} dir="rtl">
               <THead>
                 <tr className={tablePreset.headRow}>
+                  <TH className={`w-12 ${tablePreset.th}`}>
+                    <input
+                      ref={selectAllRef}
+                      type="checkbox"
+                      className={hoverSelectableRowPreset.checkbox}
+                      checked={allSelectableChecked}
+                      onChange={(e) => {
+                        const checked = !!e.target.checked;
+                        setSelectedCodes((prev) => {
+                          if (checked) {
+                            return Array.from(new Set([...prev, ...selectableRowCodes]));
+                          }
+                          return prev.filter((code) => !selectableRowCodes.includes(code));
+                        });
+                      }}
+                      aria-label="انتخاب همه"
+                    />
+                  </TH>
                   <TH className={`w-14 sm:w-16 ${tablePreset.th}`}>
                     #
                   </TH>
@@ -1183,11 +1253,11 @@ setProjects(Array.from(byId.values()));
                   <TH className={`w-28 sm:w-32 md:w-40 ${tablePreset.th}`}>
                     آخرین برآورد
                   </TH>
-                  <TH className={`w-32 sm:w-36 md:w-44 ${tablePreset.th}`}>
-                    مجموع تخصیص‌ها
-                  </TH>
                   <TH className={`w-36 sm:w-40 md:w-48 ${tablePreset.th}`}>
                     تخصیص جدید
+                  </TH>
+                  <TH className={`w-32 sm:w-36 md:w-44 ${tablePreset.th}`}>
+                    مجموع تخصیص‌ها
                   </TH>
                 </tr>
               </THead>
@@ -1195,13 +1265,13 @@ setProjects(Array.from(byId.values()));
               <tbody className={tablePreset.body}>
                 {loading ? (
                   <TR>
-                    <TD colSpan={6} className={tablePreset.emptyRow}>
+                    <TD colSpan={7} className={tablePreset.emptyRow}>
                       در حال بارگذاری…
                     </TD>
                   </TR>
                 ) : (displayRows || []).length === 0 ? (
                   <TR>
-                    <TD colSpan={6} className={tablePreset.emptyRow}>
+                    <TD colSpan={7} className={tablePreset.emptyRow}>
                       {active === "projects" && !projectId
                         ? "ابتدا پروژه را انتخاب کنید"
                         : "موردی یافت نشد."}
@@ -1221,7 +1291,10 @@ setProjects(Array.from(byId.values()));
                       ? valueOfRow(r, "allocRaw")
                       : Number(r.allocRaw || 0);
                     const hasAllocValue = Number(allocRawView || 0) !== 0;
-                    const isEditingAlloc = String(editingAllocCode) === String(r.code);
+                    const rowCode = String(r.code || "");
+                    const isSelected = selectedCodes.includes(rowCode);
+                    const shouldDeleteSelectedOnAction =
+                      isSelected && selectedCodes.length > 1;
                     const newTotal = totalAllocView + allocRawView;
                     const limit = lastAmountView;
                     const isOver = newTotal > limit;
@@ -1229,8 +1302,25 @@ setProjects(Array.from(byId.values()));
                     return (
                       <TR
                         key={node.key || r.code || idx}
-                        className={getHoverSelectableRowClass(false)}
+                        className={getHoverSelectableRowClass(isSelected)}
                       >
+                        <TD className="px-2.5 pt-1.5 pb-1 align-middle !text-center">
+                          <input
+                            type="checkbox"
+                            className={hoverSelectableRowPreset.checkbox}
+                            checked={isSelected}
+                            disabled={isComputed}
+                            onChange={(e) => {
+                              const checked = !!e.target.checked;
+                              setSelectedCodes((prev) =>
+                                checked
+                                  ? Array.from(new Set([...prev, rowCode]))
+                                  : prev.filter((code) => code !== rowCode)
+                              );
+                            }}
+                            aria-label={`انتخاب ردیف ${toFaDigits(idx + 1)}`}
+                          />
+                        </TD>
                         <TD className="px-2.5 pt-1.5 pb-1 align-middle !text-center">
                           {toFaDigits(idx + 1)}
                         </TD>
@@ -1267,32 +1357,14 @@ setProjects(Array.from(byId.values()));
                             {toFaDigits(formatMoney(lastAmountView || 0))}
                           </div>
                         </TD>
-                        <TD className="px-2.5 pt-1.5 pb-1 align-middle">
-                          <div className="flex justify-center ltr">
-                            {toFaDigits(formatMoney(totalAllocView || 0))}
-                          </div>
-                        </TD>
                         <TD className="px-2.5 pt-1.5 pb-1 align-middle !text-center">
                           <div className="relative flex min-h-[34px] items-center justify-center">
-                            <div
-                              className={`w-full transition-opacity ${
-                                isEditingAlloc
-                                  ? "opacity-100 pointer-events-auto"
-                                  : "opacity-100 pointer-events-auto group-hover:opacity-0 group-hover:pointer-events-none"
-                              }`}
-                            >
                             <input
                               ref={(el) => {
                                 if (!isComputed) moneyRefs.current[r.code] = el;
                               }}
                               dir="ltr"
                               disabled={isComputed}
-                              onFocus={() => setEditingAllocCode(String(r.code))}
-                              onBlur={() =>
-                                setEditingAllocCode((prev) =>
-                                  String(prev) === String(r.code) ? "" : prev
-                                )
-                              }
                               className={`w-24 mx-auto h-9 md:w-24 md:h-9 rounded-xl border text-[11px] md:text-[12px] text-center shadow-sm outline-none transition
                                         ${
                                           isOver
@@ -1313,25 +1385,35 @@ setProjects(Array.from(byId.values()));
                               }
                               aria-invalid={isOver ? "true" : "false"}
                             />
-                            </div>
+                          </div>
+                          <div className="flex flex-col">
+                            {isOver && !isComputed && (
+                              <span className="mt-1 text-[11px] leading-none text-red-600 dark:text-red-400">
+                                مقدار «تخصیص جدید» از مقدار آخرین برآورد بیشتر
+                                می‌شود
+                              </span>
+                            )}
+                          </div>
+                        </TD>
+                        <TD className="px-2.5 pt-1.5 pb-1 align-middle">
+                          <div className="relative flex min-h-[34px] items-center justify-center">
+                            <span className="inline-flex items-center justify-center transition-opacity opacity-100 group-hover:opacity-0 group-hover:pointer-events-none">
+                              {toFaDigits(formatMoney(totalAllocView || 0))}
+                            </span>
                             <div
-                              dir="ltr"
-                              className={`absolute inset-0 flex items-center justify-center gap-1 transition-opacity ${
-                                isEditingAlloc
-                                  ? "opacity-0 pointer-events-none"
-                                  : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
-                              }`}
+                              dir="rtl"
+                              className="absolute inset-0 flex items-center justify-center gap-1 transition-opacity opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
                             >
                               <RowActionIconBtn
-                                action="delete"
+                                icon="/images/icons/sayer.svg"
+                                title="ثبت شرح"
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  removeRow(r.code);
+                                  openDescModal(r);
                                 }}
-                                disabled={isComputed}
                                 size={34}
-                                iconSize={16}
+                                iconSize={15}
                               />
                               <RowActionIconBtn
                                 action="edit"
@@ -1345,25 +1427,21 @@ setProjects(Array.from(byId.values()));
                                 iconSize={15}
                               />
                               <RowActionIconBtn
-                                icon="/images/icons/sayer.svg"
-                                title="ثبت شرح"
+                                action="delete"
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  openDescModal(r);
+                                  if (shouldDeleteSelectedOnAction) {
+                                    removeRows(selectedCodes);
+                                    return;
+                                  }
+                                  removeRows([r.code]);
                                 }}
+                                disabled={isComputed}
                                 size={34}
-                                iconSize={15}
+                                iconSize={16}
                               />
                             </div>
-                          </div>
-                          <div className="flex flex-col">
-                            {isOver && !isComputed && (
-                              <span className="mt-1 text-[11px] leading-none text-red-600 dark:text-red-400">
-                                مقدار «تخصیص جدید» از مقدار آخرین برآورد بیشتر
-                                می‌شود
-                              </span>
-                            )}
                           </div>
                         </TD>
                       </TR>
@@ -1525,10 +1603,10 @@ setProjects(Array.from(byId.values()));
                           </th>
                           <th className="py-3 px-2 text-center">نام بودجه</th>
                           <th className="py-3 px-2 text-center">آخرین برآورد</th>
+                          <th className="py-3 px-2 text-center">تخصیص جدید</th>
                           <th className="py-3 px-2 text-center">
                             مجموع تخصیص‌ها
                           </th>
-                          <th className="py-3 px-2 text-center">تخصیص جدید</th>
                           <th className="py-3 px-2 text-center">شرح</th>
                         </tr>
                       </thead>
@@ -1551,10 +1629,10 @@ setProjects(Array.from(byId.values()));
                               {toFaDigits(formatMoney(r.lastAmount || 0))}
                             </td>
                             <td className="py-2 px-2 text-center">
-                              {toFaDigits(formatMoney(r.totalAlloc || 0))}
+                              {toFaDigits(formatMoney(r.allocRaw || 0))}
                             </td>
                             <td className="py-2 px-2 text-center">
-                              {toFaDigits(formatMoney(r.allocRaw || 0))}
+                              {toFaDigits(formatMoney(r.totalAlloc || 0))}
                             </td>
                             <td className="py-2 px-2 whitespace-normal break-words leading-relaxed text-center">
                               {r.desc || "—"}
