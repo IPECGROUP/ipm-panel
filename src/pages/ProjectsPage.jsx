@@ -39,10 +39,8 @@ function ProjectsPage() {
   const [codeInput, setCodeInput] = React.useState("");
   const [nameInput, setNameInput] = React.useState("");
 
-  const [editId, setEditId] = React.useState(null);
-  const [editCode, setEditCode] = React.useState("");
-  const [editName, setEditName] = React.useState("");
-  const [editIsActive, setEditIsActive] = React.useState(true);
+  const [editingIds, setEditingIds] = React.useState([]);
+  const [editDraftById, setEditDraftById] = React.useState({});
   const [selectedIds, setSelectedIds] = React.useState([]);
 
   const [codeSortDir, setCodeSortDir] = React.useState("asc");
@@ -129,23 +127,55 @@ function ProjectsPage() {
   };
 
   const beginEdit = (r) => {
-    setEditId(r.id);
-    setEditCode(String(r.code || ""));
-    setEditName(String(r.name || ""));
-    setEditIsActive(Boolean(r?.isActive ?? true)); // ✅ اگر فیلد نیومده بود، فعال در نظر بگیر
+    const clickedId = String(r.id);
+    const shouldEditSelected = selectedIds.length > 1 && selectedIds.some((id) => String(id) === clickedId);
+    const targetIds = shouldEditSelected ? selectedIds.map((id) => String(id)) : [clickedId];
+    const targetSet = new Set(targetIds);
+    const drafts = {};
+    const finalIds = [];
+
+    (rows || []).forEach((row) => {
+      const sid = String(row.id);
+      if (!targetSet.has(sid)) return;
+      drafts[sid] = {
+        code: String(row.code || ""),
+        name: String(row.name || ""),
+        isActive: Boolean(row?.isActive ?? true),
+      };
+      finalIds.push(sid);
+    });
+
+    if (!finalIds.length) return;
+    setEditingIds(finalIds);
+    setEditDraftById(drafts);
     setErr("");
   };
 
-  const cancelEdit = () => {
-    setEditId(null);
-    setEditCode("");
-    setEditName("");
-    setEditIsActive(true);
+  const cancelEdit = (id = null) => {
+    if (id === null || id === undefined) {
+      setEditingIds([]);
+      setEditDraftById({});
+      return;
+    }
+
+    const sid = String(id);
+    setEditingIds((prev) => (prev || []).filter((x) => String(x) !== sid));
+    setEditDraftById((prev) => {
+      if (!prev || !Object.prototype.hasOwnProperty.call(prev, sid)) return prev;
+      const next = { ...prev };
+      delete next[sid];
+      return next;
+    });
   };
 
-  const saveInline = async () => {
-    const code = toEnDigits(editCode).trim();
-    const name = (editName || "").trim();
+  const saveInline = async (id) => {
+    const sid = String(id);
+    const draft = editDraftById[sid];
+    if (!draft) return;
+
+    const code = toEnDigits(draft.code).trim();
+    const name = String(draft.name || "").trim();
+    const isActive = Boolean(draft.isActive);
 
     if (!code || !name) {
       setErr("کد و نام پروژه الزامی است.");
@@ -158,17 +188,19 @@ function ProjectsPage() {
 
     setErr("");
     try {
+      const targetRow = (rows || []).find((x) => String(x.id) === sid);
+      const targetId = targetRow ? targetRow.id : id;
       await api("/projects", {
         method: "PATCH",
-        body: JSON.stringify({ id: editId, code, name, isActive: !!editIsActive }),
+        body: JSON.stringify({ id: targetId, code, name, isActive }),
       });
 
       setRows((prev) =>
         prev
-          .map((r) => (r.id === editId ? { ...r, code, name, isActive: !!editIsActive } : r))
+          .map((r) => (String(r.id) === sid ? { ...r, code, name, isActive } : r))
           .filter((r) => isTopProjectCode(r?.code))
       );
-      cancelEdit();
+      cancelEdit(sid);
     } catch (ex) {
       console.error(ex);
       setErr(ex.message || "خطا در ویرایش پروژه");
@@ -189,12 +221,17 @@ function ProjectsPage() {
     if (!window.confirm(confirmText)) return;
 
     const idSet = new Set(uniqIds);
-    if (editId !== null && idSet.has(String(editId))) {
-      cancelEdit();
-    }
 
     setRows((prev) => prev.filter((x) => !idSet.has(String(x.id))));
     setSelected((prev) => prev.filter((id) => !idSet.has(String(id))));
+    setEditingIds((prev) => (prev || []).filter((id) => !idSet.has(String(id))));
+    setEditDraftById((prev) => {
+      const next = { ...(prev || {}) };
+      idSet.forEach((id) => {
+        delete next[String(id)];
+      });
+      return next;
+    });
 
     const existingIds = rows.filter((r) => idSet.has(String(r.id))).map((r) => r.id);
     if (!existingIds.length) return;
@@ -241,6 +278,7 @@ function ProjectsPage() {
   const rowUi = tablePreset.row;
   const visibleIds = pageRows.map((r) => String(r.id));
   const selectedSet = new Set((selectedIds || []).map((id) => String(id)));
+  const editingSet = new Set((editingIds || []).map((id) => String(id)));
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedSet.has(id));
   const someVisibleSelected = visibleIds.some((id) => selectedSet.has(id)) && !allVisibleSelected;
 
@@ -268,14 +306,54 @@ function ProjectsPage() {
     setCodeInput(v);
   };
 
-  const onEditCodeChange = (e) => {
+  const onEditCodeChange = (id, e) => {
+    const sid = String(id);
     const v = toEnDigits(e.target.value).replace(/[^\d]/g, "").slice(0, 3);
-    setEditCode(v);
+    setEditDraftById((prev) => ({
+      ...(prev || {}),
+      [sid]: {
+        ...(prev?.[sid] || {}),
+        code: v,
+      },
+    }));
+  };
+
+  const onEditNameChange = (id, value) => {
+    const sid = String(id);
+    setEditDraftById((prev) => ({
+      ...(prev || {}),
+      [sid]: {
+        ...(prev?.[sid] || {}),
+        name: value,
+      },
+    }));
+  };
+
+  const onEditActiveToggle = (id) => {
+    const sid = String(id);
+    setEditDraftById((prev) => {
+      const current = prev?.[sid] || {};
+      return {
+        ...(prev || {}),
+        [sid]: {
+          ...current,
+          isActive: !Boolean(current.isActive),
+        },
+      };
+    });
   };
 
   React.useEffect(() => {
     const validIds = new Set(sortedRows.map((r) => String(r.id)));
     setSelected((prev) => prev.filter((id) => validIds.has(String(id))));
+    setEditingIds((prev) => (prev || []).filter((id) => validIds.has(String(id))));
+    setEditDraftById((prev) => {
+      const next = { ...(prev || {}) };
+      Object.keys(next).forEach((id) => {
+        if (!validIds.has(String(id))) delete next[id];
+      });
+      return next;
+    });
   }, [sortedRows]);
 
   const escapeHtml = (s) =>
@@ -447,7 +525,7 @@ function ProjectsPage() {
               <div className={tableUi.frame}>
                 {/* ✅ اسکرول فقط داخل جدول */}
                 <div className="max-h-[520px] overflow-auto">
-                  <table className={`${tableUi.table} min-w-[760px]`} dir="rtl">
+                  <table className={`${tableUi.table} min-w-[760px] mx-auto`} dir="rtl">
                     <THead>
                       <tr className={`sticky top-0 z-20 ${tableUi.headRow}`}>
                         <TH className={`${tablePreset.columns.select} ${tableUi.th}`}>
@@ -523,7 +601,7 @@ function ProjectsPage() {
                         </TH>
 
                         {/* ✅ ستون وضعیت */}
-                        <TH className={`w-24 sm:w-28 ${tableUi.th}`}>
+                        <TH className={`w-40 sm:w-48 ${tableUi.th}`}>
                           وضعیت
                         </TH>
                       </tr>
@@ -547,8 +625,13 @@ function ProjectsPage() {
                           const isLast = idx === pageRows.length - 1;
                           const tdBorder = isLast ? "" : tableUi.rowDivider;
                           const rowId = String(r.id);
-                          const rowIsEditing = editId === r.id;
-                          const rowIsActive = Boolean(r?.isActive ?? true);
+                          const rowIsEditing = editingSet.has(rowId);
+                          const rowDraft = editDraftById[rowId] || {
+                            code: String(r.code || ""),
+                            name: String(r.name || ""),
+                            isActive: Boolean(r?.isActive ?? true),
+                          };
+                          const rowIsActive = rowIsEditing ? Boolean(rowDraft.isActive) : Boolean(r?.isActive ?? true);
                           const isSelected = selectedSet.has(rowId);
                           const shouldDeleteSelectedOnAction = isSelected && selectedIds.length > 1;
 
@@ -591,8 +674,8 @@ function ProjectsPage() {
                                                border border-black/15 dark:border-neutral-700
                                                bg-white text-black placeholder-black/40
                                                dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400"
-                                    value={editCode}
-                                    onChange={onEditCodeChange}
+                                    value={rowDraft.code}
+                                    onChange={(e) => onEditCodeChange(rowId, e)}
                                     placeholder="123"
                                     autoFocus
                                   />
@@ -605,23 +688,55 @@ function ProjectsPage() {
 
                               <TD className={`px-3 ${rowUi.valueCell} ${tdBorder}`}>
                                 {rowIsEditing ? (
-                                  <div className="flex items-center justify-between gap-2">
-                                    <input
-                                      className="w-full max-w-[260px] rounded-xl px-2 py-0.5 text-center
-                                                 border border-black/15 dark:border-neutral-700
-                                                 bg-white text-black placeholder-black/40
-                                                 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400"
-                                      value={editName}
-                                      onChange={(e) => setEditName(e.target.value)}
-                                      placeholder="نام…"
-                                    />
-                                    <div className="flex items-center gap-1 shrink-0">
+                                  <input
+                                    className="w-full max-w-[260px] rounded-xl px-2 py-0.5 text-center
+                                               border border-black/15 dark:border-neutral-700
+                                               bg-white text-black placeholder-black/40
+                                               dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400"
+                                    value={rowDraft.name}
+                                    onChange={(e) => onEditNameChange(rowId, e.target.value)}
+                                    placeholder="نام…"
+                                  />
+                                ) : (
+                                  r.name || "—"
+                                )}
+                              </TD>
+
+                              {/* ✅ وضعیت: فقط در حالت ویرایش قابل تغییر */}
+                              <TD className={`px-3 ${tdBorder}`}>
+                                <div className="relative flex min-h-[34px] items-center justify-center">
+                                  {rowIsEditing ? (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onEditActiveToggle(rowId);
+                                      }}
+                                      className={`${boxBase} ${rowIsActive ? boxOn : boxOff} ${boxEnabled}`}
+                                      aria-label={rowIsActive ? "فعال" : "غیرفعال"}
+                                      title={rowIsActive ? "فعال" : "غیرفعال"}
+                                    >
+                                      {rowIsActive ? "✓" : "✓"}
+                                    </button>
+                                  ) : (
+                                    <div
+                                      className={`${boxBase} ${rowIsActive ? boxOn : boxOff} ${boxDisabled}`}
+                                      aria-label={rowIsActive ? "فعال" : "غیرفعال"}
+                                      title="برای تغییر، ابتدا ویرایش را بزنید"
+                                    >
+                                      {rowIsActive ? "✓" : "✓"}
+                                    </div>
+                                  )}
+
+                                  {rowIsEditing ? (
+                                    <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-1 shrink-0">
                                       <RowActionIconBtn
                                         action="save"
                                         onClick={(e) => {
                                           e.preventDefault();
                                           e.stopPropagation();
-                                          saveInline();
+                                          saveInline(rowId);
                                         }}
                                         size={tablePreset.actionSizes.button}
                                         iconSize={tablePreset.actionSizes.save}
@@ -631,16 +746,13 @@ function ProjectsPage() {
                                         onClick={(e) => {
                                           e.preventDefault();
                                           e.stopPropagation();
-                                          cancelEdit();
+                                          cancelEdit(rowId);
                                         }}
                                         size={tablePreset.actionSizes.button}
                                         iconSize={tablePreset.actionSizes.cancel}
                                       />
                                     </div>
-                                  </div>
-                                ) : (
-                                  <div className={rowUi.valueWrap}>
-                                    <span className={rowUi.valueText}>{r.name || "—"}</span>
+                                  ) : (
                                     <div className={rowUi.rowActions}>
                                       <RowActionIconBtn
                                         action="edit"
@@ -667,35 +779,8 @@ function ProjectsPage() {
                                         iconSize={tablePreset.actionSizes.delete}
                                       />
                                     </div>
-                                  </div>
-                                )}
-                              </TD>
-
-                              {/* ✅ وضعیت: فقط در حالت ویرایش قابل تغییر */}
-                              <TD className={`px-3 ${tdBorder}`}>
-                                {rowIsEditing ? (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      setEditIsActive((v) => !v);
-                                    }}
-                                    className={`${boxBase} ${editIsActive ? boxOn : boxOff} ${boxEnabled}`}
-                                    aria-label={editIsActive ? "فعال" : "غیرفعال"}
-                                    title={editIsActive ? "فعال" : "غیرفعال"}
-                                  >
-                                    {editIsActive ? "✓" : "✓"}
-                                  </button>
-                                ) : (
-                                  <div
-                                    className={`${boxBase} ${rowIsActive ? boxOn : boxOff} ${boxDisabled}`}
-                                    aria-label={rowIsActive ? "فعال" : "غیرفعال"}
-                                    title="برای تغییر، ابتدا ویرایش را بزنید"
-                                  >
-                                    {rowIsActive ? "✓" : "✓"}
-                                  </div>
-                                )}
+                                  )}
+                                </div>
                               </TD>
                             </TR>
                           );
