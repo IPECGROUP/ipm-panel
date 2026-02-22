@@ -2,7 +2,11 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Card } from "../components/ui/Card";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table";
-import { baseCurrenciesTablePreset as tablePreset } from "../components/ui/tablePresets";
+import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
+import {
+  baseCurrenciesTablePreset as tablePreset,
+  getHoverSelectableRowClass,
+} from "../components/ui/tablePresets";
 import { usePageAccess } from "../hooks/usePageAccess";
 
 // تب‌ها به‌صورت ثابت بیرون کامپوننت
@@ -709,6 +713,95 @@ setProjects(Array.from(byId.values()));
     return out;
   }, [active, flatRowsToRender, coreOf, renderDisplayBudgetCode, codeSortDir, openCodes]);
 
+  const exportRowsAll = useMemo(() => {
+    if (active !== "projects") {
+      return (flatRowsToRender || []).map((r, index) => ({
+        row: r,
+        depth: 0,
+        key: String(r?.code || `__idx_${index}`),
+        core: coreOf(r?.code),
+        hasChildren: false,
+      }));
+    }
+
+    const base = flatRowsToRender || [];
+    if (!base.length) return [];
+
+    const nodes = base.map((r, index) => {
+      const core = coreOf(r.code);
+      const parts = core ? core.split(".").filter(Boolean) : [];
+      const key = core || `__idx_${index}`;
+      let parentCore = null;
+      if (parts.length > 1) parentCore = parts.slice(0, -1).join(".");
+      return { row: r, key, core, parentCore };
+    });
+
+    const byCore = new Map();
+    nodes.forEach((n) => n.core && byCore.set(n.core, n));
+
+    nodes.forEach((n) => {
+      if (!n.core) return;
+      const parts = n.core.split(".").filter(Boolean);
+      if (parts.length <= 1) {
+        n.parentCore = null;
+        return;
+      }
+
+      let found = null;
+      for (let i = parts.length - 1; i >= 1; i--) {
+        const candidate = parts.slice(0, i).join(".");
+        if (byCore.has(candidate)) {
+          found = candidate;
+          break;
+        }
+      }
+      n.parentCore = found;
+    });
+
+    const childrenMap = new Map();
+    nodes.forEach((n) => {
+      if (!n.parentCore) return;
+      if (!byCore.has(n.parentCore)) return;
+      if (!childrenMap.has(n.parentCore)) childrenMap.set(n.parentCore, []);
+      childrenMap.get(n.parentCore).push(n);
+    });
+
+    nodes.forEach((n) => {
+      n.hasChildren = !!(n.core && childrenMap.has(n.core));
+    });
+
+    const sortFn = (a, b) => {
+      const ca = renderDisplayBudgetCode(a.row.code);
+      const cb = renderDisplayBudgetCode(b.row.code);
+      const cmp = String(ca || "").localeCompare(String(cb || ""), "fa", {
+        numeric: true,
+        sensitivity: "base",
+      });
+      return codeSortDir === "asc" ? cmp : -cmp;
+    };
+
+    const roots = nodes.filter((n) => !n.parentCore || !byCore.has(n.parentCore));
+    roots.sort(sortFn);
+    for (const list of childrenMap.values()) list.sort(sortFn);
+
+    const out = [];
+    const visit = (node, depth) => {
+      out.push({
+        row: node.row,
+        depth,
+        key: node.key,
+        core: node.core,
+        hasChildren: node.hasChildren,
+      });
+      if (!node.hasChildren) return;
+      const children = node.core ? childrenMap.get(node.core) || [] : [];
+      children.forEach((child) => visit(child, depth + 1));
+    };
+
+    roots.forEach((r) => visit(r, 0));
+    return out;
+  }, [active, flatRowsToRender, coreOf, renderDisplayBudgetCode, codeSortDir]);
+
   const valueOfRow = useCallback(
     (row, key) => {
       const own = Number(row?.[key] || 0);
@@ -737,6 +830,129 @@ setProjects(Array.from(byId.values()));
     },
     [active, hierarchyMaps, flatRowsToRender]
   );
+
+  const focusRowForEdit = useCallback((code, isComputed) => {
+    requestAnimationFrame(() => {
+      const target = !isComputed ? moneyRefs.current[code] : descRefs.current[code];
+      if (!target) return;
+      target.focus();
+      if (typeof target.setSelectionRange === "function") {
+        const txt = String(target.value ?? "");
+        target.setSelectionRange(txt.length, txt.length);
+      }
+    });
+  }, []);
+
+  const exportExcel = () => {
+    const rowsForExport = exportRowsAll || [];
+    if (!rowsForExport.length) return;
+
+    const escapeHtml = (v) =>
+      String(v ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+    const activeLabel = tabs.find((t) => t.id === active)?.label || "";
+    const projectLabel =
+      active === "projects" && selectedProject
+        ? `${selectedProject.code || ""} - ${selectedProject.name || ""}`
+        : "";
+    const title = `Budget Allocation${activeLabel ? ` - ${activeLabel}` : ""}`;
+
+    const headerHtml = `
+      <tr>
+        <th>#</th>
+        <th>${escapeHtml(budgetCodeHeader)}</th>
+        <th>نام بودجه</th>
+        <th>آخرین برآورد</th>
+        <th>مجموع تخصیص‌ها</th>
+        <th>تخصیص جدید</th>
+        <th>شرح</th>
+      </tr>
+    `;
+
+    const bodyHtml = rowsForExport
+      .map((node, idx) => {
+        const r = node.row || {};
+        const depth = Math.max(0, Number(node.depth || 0));
+        const outlineLevel = Math.min(depth, 7);
+        const isParentRow = active === "projects" && !!node.hasChildren;
+        const lastAmountView = valueOfRow(r, "lastAmount");
+        const totalAllocView = valueOfRow(r, "totalAlloc");
+        const allocRawView = isParentRow
+          ? valueOfRow(r, "allocRaw")
+          : Number(r.allocRaw || 0);
+
+        const rowStyle = [
+          outlineLevel > 0 ? `mso-outline-level:${outlineLevel}` : "",
+          isParentRow ? "font-weight:700;background-color:#f8fafc" : "",
+        ]
+          .filter(Boolean)
+          .join(";");
+
+        const trClass = isParentRow ? "parent-row" : "child-row";
+
+        return `
+          <tr class="${trClass}" style="${rowStyle}">
+            <td>${escapeHtml(toFaDigits(idx + 1))}</td>
+            <td>${escapeHtml(toFaDigits(renderDisplayBudgetCode(r.code) || "—"))}</td>
+            <td style="text-align:right;padding-right:${8 + depth * 16}px">${escapeHtml(
+              r.name || "—"
+            )}</td>
+            <td>${escapeHtml(toFaDigits(formatMoney(lastAmountView || 0)))}</td>
+            <td>${escapeHtml(toFaDigits(formatMoney(totalAllocView || 0)))}</td>
+            <td>${escapeHtml(toFaDigits(formatMoney(allocRawView || 0)))}</td>
+            <td style="text-align:right">${escapeHtml(r.desc || "—")}</td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    const noRowsHtml = `<tr><td colspan="7">موردی برای نمایش نیست.</td></tr>`;
+    const exportDate = new Date().toLocaleDateString("fa-IR");
+
+    const html = `
+      <html lang="fa" dir="rtl">
+        <head>
+          <meta charset="utf-8" />
+          <style>
+            body { font-family: Vazir, Vazirmatn, IRANSans, Segoe UI, Tahoma, sans-serif; direction: rtl; }
+            table { border-collapse: collapse; width: 100%; font-size: 11pt; }
+            th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: center; vertical-align: middle; }
+            thead th { background-color: #f3f4f6; font-weight: 700; }
+            tbody tr.parent-row td { font-weight: 700; }
+            tbody tr.child-row td { background-color: #ffffff; }
+            .meta { margin-bottom: 10px; font-size: 11pt; }
+            .meta div { margin-bottom: 4px; }
+          </style>
+        </head>
+        <body>
+          <div class="meta">
+            <div><strong>${escapeHtml(title)}</strong></div>
+            ${active === "projects" ? `<div>پروژه: ${escapeHtml(projectLabel || "—")}</div>` : ""}
+            <div>تاریخ خروجی: ${escapeHtml(exportDate)}</div>
+          </div>
+          <table>
+            <thead>${headerHtml}</thead>
+            <tbody>${bodyHtml || noRowsHtml}</tbody>
+          </table>
+        </body>
+      </html>
+    `;
+
+    const blob = new Blob(["\ufeff" + html], {
+      type: "application/vnd.ms-excel;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `budget-allocation-${active}.xls`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   const TopButtons = () => (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
@@ -980,7 +1196,10 @@ setProjects(Array.from(byId.values()));
                     const isOver = newTotal > limit;
 
                     return (
-                      <TR key={node.key || r.code || idx} className="transition-colors hover:bg-black/[0.05] dark:hover:bg-white/15">
+                      <TR
+                        key={node.key || r.code || idx}
+                        className={getHoverSelectableRowClass(false)}
+                      >
                         <TD className="px-2.5 pt-1.5 pb-1 align-middle !text-center">
                           {toFaDigits(idx + 1)}
                         </TD>
@@ -1069,21 +1288,29 @@ setProjects(Array.from(byId.values()));
                           />
                         </TD>
                         <TD className="px-2.5 pt-1.5 pb-1 align-middle !text-center">
-                          <div className="inline-flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => removeRow(r.code)}
-                              className="h-9 w-11 grid place-items-center rounded-xl bg-white text-red-600
-                                      border border-red-500 hover:bg-red-50 transition
-                                      dark:bg-transparent dark:text-red-300 dark:border-red-400/60 dark:hover:bg-white/10"
-                              aria-label="حذف"
-                              title="حذف"
-                            >
-                              <img
-                                src="/images/icons/hazf.svg"
-                                alt=""
-                                className="w-5 h-5 [filter:invert(22%)_sepia(94%)_saturate(7488%)_hue-rotate(1deg)_brightness(103%)_contrast(122%)]"
-                              />
-                            </button>
+                          <div className="inline-flex items-center justify-center gap-1 opacity-85 transition-opacity group-hover:opacity-100">
+                            <RowActionIconBtn
+                              action="edit"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                focusRowForEdit(r.code, isComputed);
+                              }}
+                              disabled={isComputed}
+                              size={34}
+                              iconSize={15}
+                            />
+                            <RowActionIconBtn
+                              action="delete"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                removeRow(r.code);
+                              }}
+                              disabled={isComputed}
+                              size={34}
+                              iconSize={16}
+                            />
                           </div>
                         </TD>
                       </TR>
@@ -1105,6 +1332,16 @@ setProjects(Array.from(byId.values()));
         )}
 
         <div className="mt-4 flex items-center gap-2 justify-end">
+          <button
+            onClick={exportExcel}
+            disabled={loading || (active === "projects" && !projectId) || !(exportRowsAll || []).length}
+            className="h-10 w-14 grid place-items-center rounded-xl border border-black/15 hover:bg-black/5 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
+            aria-label="خروجی اکسل"
+            title="خروجی اکسل"
+          >
+            <img src="/images/icons8-excel-50.png" alt="" className="w-5 h-5" />
+          </button>
+
           <button
             onClick={onSubmit}
             disabled={saving || (active === "projects" && !projectId)}
