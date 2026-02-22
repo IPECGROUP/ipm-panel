@@ -11,8 +11,10 @@ export const THead = ({ children }) => (
   <thead className="bg-white/5 text-white/80">{children}</thead>
 );
 
-export const TR = ({ children }) => (
-  <tr className="border-t border-white/10 hover:bg-white/5/50">{children}</tr>
+export const TR = ({ children, className = "", ...props }) => (
+  <tr className={`border-t border-white/10 hover:bg-white/5/50 ${className}`} {...props}>
+    {children}
+  </tr>
 );
 
 export const TH = ({ children, className = "" }) => (

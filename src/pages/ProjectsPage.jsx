@@ -489,21 +489,6 @@ function ProjectsPage() {
                                 <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"></path>
                               </svg>
                             </button>
-                          </div>
-                        </TH>
-
-                        <TH className={tableUi.th}>
-                          نام پروژه
-                        </TH>
-
-                        {/* ✅ ستون وضعیت */}
-                        <TH className={`w-24 sm:w-28 ${tableUi.th}`}>
-                          وضعیت
-                        </TH>
-
-                        <TH className={`w-44 sm:w-72 ${tableUi.th}`}>
-                          <div className={tablePreset.titleHeaderWrap}>
-                            <span>اقدامات</span>
 
                             {isMainAdmin && (
                               <button
@@ -532,19 +517,28 @@ function ProjectsPage() {
                             )}
                           </div>
                         </TH>
+
+                        <TH className={tableUi.th}>
+                          نام پروژه
+                        </TH>
+
+                        {/* ✅ ستون وضعیت */}
+                        <TH className={`w-24 sm:w-28 ${tableUi.th}`}>
+                          وضعیت
+                        </TH>
                       </tr>
                     </THead>
 
                     <tbody className={tableUi.body}>
                       {loading ? (
                         <TR>
-                          <TD colSpan={6} className={tableUi.emptyRow}>
+                          <TD colSpan={5} className={tableUi.emptyRow}>
                             در حال بارگذاری…
                           </TD>
                         </TR>
                       ) : pageRows.length === 0 ? (
                         <TR>
-                          <TD colSpan={6} className={tableUi.emptyRow}>
+                          <TD colSpan={5} className={tableUi.emptyRow}>
                             موردی ثبت نشده.
                           </TD>
                         </TR>
@@ -609,19 +603,71 @@ function ProjectsPage() {
                                 )}
                               </TD>
 
-                              <TD className={`px-3 ${tdBorder}`}>
+                              <TD className={`px-3 ${rowUi.valueCell} ${tdBorder}`}>
                                 {rowIsEditing ? (
-                                  <input
-                                    className="w-full max-w-[260px] rounded-xl px-2 py-0.5 text-center
-                                               border border-black/15 dark:border-neutral-700
-                                               bg-white text-black placeholder-black/40
-                                               dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400"
-                                    value={editName}
-                                    onChange={(e) => setEditName(e.target.value)}
-                                    placeholder="نام…"
-                                  />
+                                  <div className="flex items-center justify-between gap-2">
+                                    <input
+                                      className="w-full max-w-[260px] rounded-xl px-2 py-0.5 text-center
+                                                 border border-black/15 dark:border-neutral-700
+                                                 bg-white text-black placeholder-black/40
+                                                 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400"
+                                      value={editName}
+                                      onChange={(e) => setEditName(e.target.value)}
+                                      placeholder="نام…"
+                                    />
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <RowActionIconBtn
+                                        action="save"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          saveInline();
+                                        }}
+                                        size={tablePreset.actionSizes.button}
+                                        iconSize={tablePreset.actionSizes.save}
+                                      />
+                                      <RowActionIconBtn
+                                        action="cancel"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          cancelEdit();
+                                        }}
+                                        size={tablePreset.actionSizes.button}
+                                        iconSize={tablePreset.actionSizes.cancel}
+                                      />
+                                    </div>
+                                  </div>
                                 ) : (
-                                  r.name || "—"
+                                  <div className={rowUi.valueWrap}>
+                                    <span className={rowUi.valueText}>{r.name || "—"}</span>
+                                    <div className={rowUi.rowActions}>
+                                      <RowActionIconBtn
+                                        action="edit"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          beginEdit(r);
+                                        }}
+                                        size={tablePreset.actionSizes.button}
+                                        iconSize={tablePreset.actionSizes.edit}
+                                      />
+                                      <RowActionIconBtn
+                                        action="delete"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          if (shouldDeleteSelectedOnAction) {
+                                            removeRows(selectedIds);
+                                            return;
+                                          }
+                                          removeRows([r.id]);
+                                        }}
+                                        size={tablePreset.actionSizes.button}
+                                        iconSize={tablePreset.actionSizes.delete}
+                                      />
+                                    </div>
+                                  </div>
                                 )}
                               </TD>
 
@@ -648,60 +694,6 @@ function ProjectsPage() {
                                     title="برای تغییر، ابتدا ویرایش را بزنید"
                                   >
                                     {rowIsActive ? "✓" : "✓"}
-                                  </div>
-                                )}
-                              </TD>
-
-                              <TD className={`px-3 ${tdBorder}`}>
-                                {rowIsEditing ? (
-                                  <div className="flex items-center justify-center gap-2">
-                                    <RowActionIconBtn
-                                      action="save"
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        saveInline();
-                                      }}
-                                      size={tablePreset.actionSizes.button}
-                                      iconSize={tablePreset.actionSizes.save}
-                                    />
-                                    <RowActionIconBtn
-                                      action="cancel"
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        cancelEdit();
-                                      }}
-                                      size={tablePreset.actionSizes.button}
-                                      iconSize={tablePreset.actionSizes.cancel}
-                                    />
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center justify-center gap-2 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto">
-                                    <RowActionIconBtn
-                                      action="edit"
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        beginEdit(r);
-                                      }}
-                                      size={tablePreset.actionSizes.button}
-                                      iconSize={tablePreset.actionSizes.edit}
-                                    />
-                                    <RowActionIconBtn
-                                      action="delete"
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        if (shouldDeleteSelectedOnAction) {
-                                          removeRows(selectedIds);
-                                          return;
-                                        }
-                                        removeRows([r.id]);
-                                      }}
-                                      size={tablePreset.actionSizes.button}
-                                      iconSize={tablePreset.actionSizes.delete}
-                                    />
                                   </div>
                                 )}
                               </TD>
