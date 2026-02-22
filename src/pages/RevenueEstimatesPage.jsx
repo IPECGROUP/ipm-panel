@@ -1339,16 +1339,31 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
       </tr>
     `;
 
-    const rowsFlat = displayRows.filter((x) => x.type === 'node').map((x) => x);
+    const rowsForExcel = [];
+    const walkExcel = (node, depth, indexPath) => {
+      rowsForExcel.push({
+        node,
+        depth,
+        indexPath,
+        isParent: hasChildren(node),
+      });
+      (node.children || []).forEach((ch, i) => walkExcel(ch, depth + 1, [...indexPath, i + 1]));
+    };
+    (visibleRoots || []).forEach((r, i) => walkExcel(r, 0, [i + 1]));
 
-    const bodyHtml = rowsFlat
+    const bodyHtml = rowsForExcel
       .map((x, i) => {
         const r = x.node;
+        const depth = Math.max(0, Number(x.depth || 0));
+        const outlineLevel = Math.min(depth, 7);
+        const isParentRow = !!x.isParent;
         const rowTotal = sumNodeMonths(r);
         const titleCell =
-          x.depth === 0 && r?.projectId != null
+          depth === 0 && r?.projectId != null
             ? getProjectLabelById(r.projectId, normalizeFaText(r.title || '') || '—')
             : (normalizeFaText(r.title || '') || '—');
+
+        const indentMarker = depth > 0 ? `${'↳ '.repeat(depth)}` : '';
 
         const monthsHtml = dynamicMonths
           .map((m) => {
@@ -1356,10 +1371,17 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
             return `<td>${val ? buildCell(toFaDigits(formatMoney(val))) : '—'}</td>`;
           })
           .join('');
+        const rowStyle = [
+          outlineLevel > 0 ? `mso-outline-level:${outlineLevel}` : '',
+          isParentRow ? 'font-weight:700;background-color:#f8fafc' : '',
+        ]
+          .filter(Boolean)
+          .join(';');
+        const trClass = isParentRow ? 'parent-row' : 'child-row';
         return `
-          <tr>
+          <tr class="${trClass}" style="${rowStyle}">
             <td>${buildCell(toFaDigits(indexLabel(x.indexPath) || (i + 1)))}</td>
-            <td>${buildCell(titleCell)}</td>
+            <td style="text-align:right;padding-right:${8 + depth * 16}px">${buildCell(indentMarker)}${buildCell(titleCell)}</td>
             ${monthsHtml}
             <td>${rowTotal ? buildCell(toFaDigits(formatMoney(rowTotal))) : '—'}</td>
           </tr>
@@ -1392,6 +1414,8 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
             table { border-collapse: collapse; width: 100%; font-size: 11pt; }
             th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: center; vertical-align: middle; }
             thead th { background-color: #f3f4f6; font-weight: 600; }
+            tbody tr.parent-row td { font-weight: 700; }
+            tbody tr.child-row td { background-color: #ffffff; }
           </style>
         </head>
         <body>
@@ -1476,7 +1500,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
           <span className="font-semibold text-black dark:text-neutral-100">برآورد درآمد ها</span>
         </div>
 
-        <div className="rounded-2xl border border-black/10 dark:border-neutral-800 bg-white/70 dark:bg-neutral-900/70 backdrop-blur px-3 py-3">
+        <div>
           <div className="rounded-2xl border border-black/10 dark:border-neutral-700 bg-white dark:bg-neutral-900 py-3">
             <div className="px-[15px]">
               <div className="grid grid-cols-1 md:grid-cols-[minmax(220px,320px)_1fr_auto] gap-2 items-end">
