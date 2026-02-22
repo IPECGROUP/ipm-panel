@@ -476,6 +476,12 @@ function OrgStructurePage() {
   return (
     <>
       <Card className="rounded-2xl border bg-white text-black border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+        <div className="mb-3 text-base md:text-lg">
+          <span className="text-black/70 dark:text-neutral-300">اطلاعات پایه</span>
+          <span className="mx-2 text-black/50 dark:text-neutral-400">›</span>
+          <span className="font-semibold text-black dark:text-neutral-100">{breadcrumbTitle}</span>
+        </div>
+
         {/* تب‌ها */}
         <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2" dir="rtl">
           <button
@@ -497,13 +503,6 @@ function OrgStructurePage() {
 
         {activeTab === "units" && (
           <>
-            {/* نوار مسیر */}
-            <div className="mt-4 mb-3 text-base md:text-lg">
-              <span className="text-black/70 dark:text-neutral-300">اطلاعات پایه</span>
-              <span className="mx-2 text-black/50 dark:text-neutral-400">›</span>
-              <span className="font-semibold text-black dark:text-neutral-100">{breadcrumbTitle}</span>
-            </div>
-
             {/* Section: form + table */}
             <div className="rounded-2xl border border-black/10 bg-white overflow-hidden dark:bg-neutral-900 dark:border-neutral-800">
               {/* فرم افزودن */}
@@ -866,12 +865,6 @@ function OrgStructurePage() {
 
         {activeTab === "roles" && (
           <>
-            <div className="mt-4 mb-3 text-base md:text-lg">
-              <span className="text-black/70 dark:text-neutral-300">اطلاعات پایه</span>
-              <span className="mx-2 text-black/50 dark:text-neutral-400">›</span>
-              <span className="font-semibold text-black dark:text-neutral-100">{breadcrumbTitle}</span>
-            </div>
-
             {/* Section (form + table) */}
             <div className="rounded-2xl border border-black/10 bg-white overflow-hidden dark:bg-neutral-900 dark:border-neutral-800">
               {/* فرم افزودن نقش */}
