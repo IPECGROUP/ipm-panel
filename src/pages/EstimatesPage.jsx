@@ -79,7 +79,7 @@ export default function EstimatesPage() {
   const toEnDigits = useCallback(
     (s) =>
       String(s || "")
-        .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d))
+        .replace(/[Û°-Û¹]/g, (d) => "Û°Û±Û²Û³Û´ÛµÛ¶Û·Û¸Û¹".indexOf(d))
         .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d)),
     [],
   );
@@ -93,6 +93,23 @@ export default function EstimatesPage() {
       return sign * parseInt(d, 10);
     },
     [toEnDigits],
+  );
+
+  const formatDateTimeFa = useCallback(
+    (dt) => {
+      if (!dt) return "—";
+      try {
+        return toFaDigits(
+          new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+            dateStyle: "medium",
+            timeStyle: "short",
+          }).format(new Date(dt)),
+        );
+      } catch {
+        return toFaDigits(new Date(dt).toLocaleString("fa-IR"));
+      }
+    },
+    [toFaDigits],
   );
 
   const renderCode = useCallback(
@@ -229,6 +246,12 @@ const sortedProjects = useMemo(() => {
     return arr;
   }, [jalaliMonthIndex, monthNames]);
 
+  const monthLabelByKey = useMemo(() => {
+    const map = {};
+    for (let i = 1; i <= 12; i += 1) map["m" + i] = monthNames[i - 1] || "m" + i;
+    return map;
+  }, [monthNames]);
+
   // data rows
   const [rows, setRows] = useState([]);
   const rowsRef = useRef(rows);
@@ -244,6 +267,11 @@ const sortedProjects = useMemo(() => {
   const [creatingCenter, setCreatingCenter] = useState(false);
   const [centerFormErr, setCenterFormErr] = useState("");
   const [reloadTick, setReloadTick] = useState(0);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyErr, setHistoryErr] = useState("");
+  const [historyFetchedAt, setHistoryFetchedAt] = useState("");
+  const [historyEvents, setHistoryEvents] = useState([]);
 
   const reqSeq = useRef(0);
 
@@ -636,7 +664,10 @@ const sortedProjects = useMemo(() => {
     (rowsToRender || []).forEach((r) => {
       const code = String(r?.code || "").trim();
       if (!code || !targetSet.has(code)) return;
-      drafts[code] = { name: String(r?.name || "") };
+      drafts[code] = {
+        code,
+        name: String(r?.name || ""),
+      };
       finalCodes.push(code);
     });
 
@@ -670,6 +701,19 @@ const sortedProjects = useMemo(() => {
       [sc]: {
         ...(prev?.[sc] || {}),
         name: value,
+      },
+    }));
+  };
+
+  const onEditCodeChange = (code, value) => {
+    const sc = String(code || "").trim();
+    if (!sc) return;
+    const normalized = toEnDigits(value).replace(/[^0-9.]/g, "");
+    setEditDraftByCode((prev) => ({
+      ...(prev || {}),
+      [sc]: {
+        ...(prev?.[sc] || {}),
+        code: normalized,
       },
     }));
   };
@@ -1026,14 +1070,49 @@ const sortedProjects = useMemo(() => {
       .filter((it) => it.id != null && it.code);
   }, [active]);
 
+  const buildEstimatePayloadFromRow = useCallback(
+    (row, code) => {
+      const nextMonths = {};
+      const merged = { ...(row?.lastMonths || {}), ...(row?.months || {}) };
+      ALL_MONTH_KEYS.forEach((k) => {
+        const v = Number(merged[k] || 0);
+        if (v) nextMonths[k] = v;
+      });
+
+      const plainDesc = String(row?.desc || "").trim();
+      const amount = Object.values(nextMonths).reduce((sum, v) => sum + Number(v || 0), 0);
+
+      let description = null;
+      if (plainDesc || Object.keys(nextMonths).length) {
+        try {
+          description = JSON.stringify({ desc: plainDesc || null, months: nextMonths });
+        } catch {
+          description = plainDesc || null;
+        }
+      }
+
+      return {
+        code: String(code || "").trim(),
+        amount,
+        description,
+      };
+    },
+    [ALL_MONTH_KEYS],
+  );
+
   const saveInlineRow = async (code) => {
     const targetCode = String(code || "").trim();
     const draft = editDraftByCode[targetCode];
     if (!targetCode || !draft) return;
 
     const targetName = String(draft?.name || "").trim();
+    const nextCode = onlyDigitsDot(draft?.code || "");
     if (!targetName) {
       setErr("نام بودجه الزامی است.");
+      return;
+    }
+    if (!nextCode) {
+      setErr("کد بودجه الزامی است.");
       return;
     }
 
@@ -1047,20 +1126,164 @@ const sortedProjects = useMemo(() => {
       await api(`/centers/${active}/${target.id}`, {
         method: "PATCH",
         body: JSON.stringify({
-          suffix: target.code,
+          suffix: nextCode,
           description: targetName,
         }),
       });
 
+      const codeChanged = nextCode !== targetCode;
+      if (codeChanged) {
+        const sourceRow = (rowsRef.current || []).find((r) => String(r?.code || "").trim() === targetCode);
+        if (sourceRow) {
+          const nextPayload = buildEstimatePayloadFromRow(sourceRow, nextCode);
+          if (nextPayload.code) {
+            await api("/budget-estimates", {
+              method: "POST",
+              body: JSON.stringify({
+                kind: active,
+                project_id: active === "projects" ? Number(projectId) : null,
+                rows: [nextPayload],
+              }),
+            });
+          }
+        }
+
+        await api("/budget-estimates", {
+          method: "DELETE",
+          body: JSON.stringify({
+            kind: active,
+            project_id: active === "projects" ? Number(projectId) : null,
+            codes: [targetCode],
+          }),
+        });
+      }
+
       setRows((prev) =>
-        (prev || []).map((r) => (String(r.code) === targetCode ? { ...r, name: targetName } : r)),
+        (prev || []).map((r) => (String(r.code) === targetCode ? { ...r, code: nextCode, name: targetName } : r)),
       );
+      if (nextCode !== targetCode) {
+        setSelected((prev) => (prev || []).map((x) => (String(x) === targetCode ? nextCode : x)));
+      }
       cancelEdit(targetCode);
     } catch (ex) {
       setErr(ex.message || "update_failed");
       setReloadTick((v) => v + 1);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const buildHistoryEvents = useCallback(
+    (historyByCode = {}, nameByCode = {}) => {
+      const events = [];
+      const keys = Object.keys(historyByCode || {});
+      keys.forEach((code) => {
+        const rawList = Array.isArray(historyByCode?.[code]) ? historyByCode[code] : [];
+        if (!rawList.length) return;
+
+        const sorted = rawList
+          .map((h) => {
+            const { desc, lastMonths } = parseDescMonths(h?.desc ?? h?.description ?? "");
+            const months = {};
+            ALL_MONTH_KEYS.forEach((k) => {
+              const v = Number(lastMonths?.[k] || 0);
+              if (v) months[k] = v;
+            });
+            return {
+              code: String(code || "").trim(),
+              name: String(nameByCode?.[code] || "").trim(),
+              amount: Number(h?.amount || 0),
+              desc: String(desc || "").trim(),
+              months,
+              createdAt: h?.created_at || null,
+            };
+          })
+          .sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime());
+
+        sorted.forEach((entry, index) => {
+          const prev = index > 0 ? sorted[index - 1] : null;
+          const beforeAmount = Number(prev?.amount || 0);
+          const afterAmount = Number(entry?.amount || 0);
+          const beforeDesc = String(prev?.desc || "").trim();
+          const afterDesc = String(entry?.desc || "").trim();
+
+          const changedMonths = ALL_MONTH_KEYS.filter((k) => {
+            const a = Number(prev?.months?.[k] || 0);
+            const b = Number(entry?.months?.[k] || 0);
+            return a !== b;
+          });
+
+          const hasAnyDiff =
+            !prev ||
+            beforeAmount !== afterAmount ||
+            beforeDesc !== afterDesc ||
+            changedMonths.length > 0;
+          if (!hasAnyDiff) return;
+
+          let type = "update";
+          if (!prev) type = "create";
+          else if (!afterAmount && !afterDesc && Object.keys(entry?.months || {}).length === 0) type = "clear";
+
+          events.push({
+            type,
+            code: entry.code,
+            name: entry.name,
+            createdAt: entry.createdAt,
+            beforeAmount,
+            afterAmount,
+            beforeDesc,
+            afterDesc,
+            beforeMonths: prev?.months || {},
+            afterMonths: entry.months || {},
+            changedMonths,
+          });
+        });
+      });
+
+      events.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      return events;
+    },
+    [ALL_MONTH_KEYS, parseDescMonths],
+  );
+
+  const openHistoryModal = async () => {
+    if (active === "projects" && !projectId) return;
+    setHistoryOpen(true);
+    setHistoryLoading(true);
+    setHistoryErr("");
+    setHistoryEvents([]);
+    try {
+      const qs = new URLSearchParams();
+      qs.set("kind", active);
+      if (active === "projects") qs.set("project_id", String(projectId));
+      qs.set("history", "1");
+      qs.set("_", String(Date.now()));
+
+      const [histRes, centers] = await Promise.all([
+        api("/budget-estimates?" + qs.toString()),
+        loadCentersForActive().catch(() => []),
+      ]);
+
+      const nameByCode = {};
+      (rowsToRender || []).forEach((r) => {
+        const c = String(r?.code || "").trim();
+        if (!c) return;
+        const nm = String(r?.name || "").trim();
+        if (nm) nameByCode[c] = nm;
+      });
+      (centers || []).forEach((c) => {
+        const code = String(c?.code || "").trim();
+        const name = String(c?.name || "").trim();
+        if (code && name && !nameByCode[code]) nameByCode[code] = name;
+      });
+
+      const events = buildHistoryEvents(histRes?.history || {}, nameByCode);
+      setHistoryEvents(events);
+      setHistoryFetchedAt(new Date().toISOString());
+    } catch (ex) {
+      setHistoryErr(ex.message || "history_failed");
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -1605,7 +1828,9 @@ const sortedProjects = useMemo(() => {
                         const isSelected = rowCode ? selectedSet.has(rowCode) : false;
                         const shouldDeleteSelectedOnAction = isSelected && selectedCodes.length > 1;
                         const rowIsEditing = rowCode ? editingSet.has(rowCode) : false;
-                        const rowDraft = rowCode ? (editDraftByCode[rowCode] || { name: String(r?.name || "") }) : { name: String(r?.name || "") };
+                        const rowDraft = rowCode
+                          ? (editDraftByCode[rowCode] || { code: rowCode, name: String(r?.name || "") })
+                          : { code: "", name: String(r?.name || "") };
                         const isParent = !!code && !hierarchyMaps.isLeafByCode[r.code];
                         const hasChildren = !!node.hasChildren || isParent;
                         const toggleKey = node.core || node.key;
@@ -1662,9 +1887,32 @@ const sortedProjects = useMemo(() => {
                                     )}
                                   </button>
                                 )}
-                                <span className={`ltr ${node.depth ? "text-[11px] md:text-xs" : "text-xs md:text-[13px]"}`}>
-                                  {renderCode(code)}
-                                </span>
+                                {rowIsEditing ? (
+                                  active === "projects" ? (
+                                    <input
+                                      className="h-9 w-28 rounded-xl px-2 text-center border border-black/15 bg-white text-black font-mono dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
+                                      value={rowDraft.code}
+                                      onChange={(e) => onEditCodeChange(rowCode, e.target.value)}
+                                      spellCheck={false}
+                                    />
+                                  ) : (
+                                    <div className="inline-flex h-9 items-center rounded-xl overflow-hidden border border-black/15 bg-white text-black ltr dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700">
+                                      <span className="px-2 h-full inline-flex items-center font-mono select-none bg-black/[0.04] ring-1 ring-black/10 dark:bg-neutral-900 dark:ring-neutral-800">
+                                        {visualPrefix(active)}
+                                      </span>
+                                      <input
+                                        className="w-20 px-2 h-full text-center font-mono outline-none bg-transparent"
+                                        value={rowDraft.code}
+                                        onChange={(e) => onEditCodeChange(rowCode, e.target.value)}
+                                        spellCheck={false}
+                                      />
+                                    </div>
+                                  )
+                                ) : (
+                                  <span className={`ltr ${node.depth ? "text-[11px] md:text-xs" : "text-xs md:text-[13px]"}`}>
+                                    {renderCode(code)}
+                                  </span>
+                                )}
                               </div>
                             </TD>
 
@@ -1871,6 +2119,17 @@ const sortedProjects = useMemo(() => {
           </button>
 
           <button
+            onClick={openHistoryModal}
+            disabled={historyLoading || (active === "projects" && !projectId)}
+            className="h-10 px-3 inline-flex items-center justify-center gap-2 rounded-xl border border-black/15 hover:bg-black/5 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
+            aria-label="history"
+            title="history"
+          >
+            <img src="/images/icons/gozareshha.svg" alt="" className="w-4 h-4 dark:invert" />
+            <span className="text-xs">History</span>
+          </button>
+
+          <button
             onClick={onUpdate}
             disabled={saving || (active === "projects" && !projectId)}
             className="h-10 w-14 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
@@ -1880,6 +2139,111 @@ const sortedProjects = useMemo(() => {
             <img src="/images/icons/berozresani.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
           </button>
         </div>
+
+        {historyOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-2 sm:px-4">
+            <div className="absolute inset-0 bg-black/40 dark:bg-neutral-950/70" onClick={() => setHistoryOpen(false)} />
+            <div
+              className="relative w-full max-w-[98vw] sm:max-w-6xl max-h-[92vh] overflow-auto bg-white rounded-3xl shadow-2xl ring-1 ring-black/10 p-4 sm:p-5 text-black dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-800"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <div className="text-sm sm:text-base font-semibold">History</div>
+                <button
+                  type="button"
+                  onClick={() => setHistoryOpen(false)}
+                  className="h-9 w-9 grid place-items-center rounded-xl border border-black/15 hover:bg-black/5 dark:border-neutral-700 dark:hover:bg-neutral-800"
+                >
+                  <img src="/images/icons/bastan.svg" alt="" className="w-4 h-4 dark:invert" />
+                </button>
+              </div>
+
+              <div className="text-xs text-black/60 dark:text-neutral-300 mb-3">
+                Last refresh: {historyFetchedAt ? formatDateTimeFa(historyFetchedAt) : "—"}
+              </div>
+
+              {historyLoading ? (
+                <div className="text-sm text-center py-8">Loading history...</div>
+              ) : historyErr ? (
+                <div className="text-sm text-red-600 dark:text-red-400 py-4">{historyErr}</div>
+              ) : historyEvents.length === 0 ? (
+                <div className="text-sm text-center py-8">No history found.</div>
+              ) : (
+                <div className="overflow-auto rounded-xl ring-1 ring-black/10 dark:ring-neutral-800">
+                  <table className="w-full min-w-[1100px] text-xs sm:text-sm [&_th]:text-center [&_td]:text-center" dir="rtl">
+                    <thead className="bg-black/5 dark:bg-white/10">
+                      <tr>
+                        <th className="px-2 py-3">#</th>
+                        <th className="px-2 py-3">زمان</th>
+                        <th className="px-2 py-3">کد بودجه</th>
+                        <th className="px-2 py-3">نام</th>
+                        <th className="px-2 py-3">نوع</th>
+                        <th className="px-2 py-3">قبل</th>
+                        <th className="px-2 py-3">بعد</th>
+                        <th className="px-2 py-3">تغییر ماه‌ها</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {historyEvents.map((ev, idx) => {
+                        const typeLabel =
+                          ev.type === "create" ? "Create" : ev.type === "clear" ? "Clear" : "Update";
+                        return (
+                          <tr key={`${ev.code}-${ev.createdAt || idx}-${idx}`} className="border-t border-black/10 dark:border-neutral-800">
+                            <td className="px-2 py-3">{toFaDigits(idx + 1)}</td>
+                            <td className="px-2 py-3 whitespace-nowrap">{formatDateTimeFa(ev.createdAt)}</td>
+                            <td className="px-2 py-3 ltr">{toFaDigits(renderCode(ev.code))}</td>
+                            <td className="px-2 py-3">{ev.name || "—"}</td>
+                            <td className="px-2 py-3 whitespace-nowrap">{typeLabel}</td>
+                            <td className="px-2 py-3 text-right">
+                              <div className="space-y-1 leading-6">
+                                <div>
+                                  <span className="text-black/60 dark:text-neutral-300">جمع:</span>{" "}
+                                  <span className="ltr">{toFaDigits(formatMoney(ev.beforeAmount || 0))}</span>
+                                </div>
+                                <div>
+                                  <span className="text-black/60 dark:text-neutral-300">شرح:</span>{" "}
+                                  <span>{ev.beforeDesc || "—"}</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-2 py-3 text-right">
+                              <div className="space-y-1 leading-6">
+                                <div>
+                                  <span className="text-black/60 dark:text-neutral-300">جمع:</span>{" "}
+                                  <span className="ltr">{toFaDigits(formatMoney(ev.afterAmount || 0))}</span>
+                                </div>
+                                <div>
+                                  <span className="text-black/60 dark:text-neutral-300">شرح:</span>{" "}
+                                  <span>{ev.afterDesc || "—"}</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-2 py-3 text-right">
+                              {ev.changedMonths.length === 0 ? (
+                                <span>—</span>
+                              ) : (
+                                <div className="space-y-1 leading-6">
+                                  {ev.changedMonths.map((mKey) => (
+                                    <div key={mKey}>
+                                      <span>{monthLabelByKey[mKey] || mKey}:</span>{" "}
+                                      <span className="ltr">{toFaDigits(formatMoney(ev.beforeMonths?.[mKey] || 0))}</span>
+                                      <span className="px-1">→</span>
+                                      <span className="ltr">{toFaDigits(formatMoney(ev.afterMonths?.[mKey] || 0))}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
 
       </Card>
