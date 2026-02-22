@@ -1477,65 +1477,66 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
         </div>
 
         <div className="rounded-2xl border border-black/10 dark:border-neutral-800 bg-white/70 dark:bg-neutral-900/70 backdrop-blur px-3 py-3">
-          <div className="rounded-2xl border border-black/10 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-3">
-            <div className="grid grid-cols-1 md:grid-cols-[minmax(220px,320px)_1fr_auto] gap-2 items-end">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-black/60 dark:text-neutral-400">انتخاب پروژه</label>
-                <select
-                  value={childParentId}
-                  onChange={(e) => {
-                    setChildParentId(e.target.value);
-                    if (childDraftErr) setChildDraftErr('');
-                  }}
-                  className="h-10 rounded-xl border border-black/15 bg-white text-black px-3 text-sm outline-none
-                    focus:ring-2 focus:ring-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+          <div className="rounded-2xl border border-black/10 dark:border-neutral-700 bg-white dark:bg-neutral-900 py-3">
+            <div className="px-[15px]">
+              <div className="grid grid-cols-1 md:grid-cols-[minmax(220px,320px)_1fr_auto] gap-2 items-end">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-black/60 dark:text-neutral-400">انتخاب پروژه</label>
+                  <select
+                    value={childParentId}
+                    onChange={(e) => {
+                      setChildParentId(e.target.value);
+                      if (childDraftErr) setChildDraftErr('');
+                    }}
+                    className="h-10 rounded-xl border border-black/15 bg-white text-black px-3 text-sm outline-none
+                      focus:ring-2 focus:ring-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                  >
+                    <option value="">انتخاب پروژه...</option>
+                    {selectedProjectTargets.map((item) => (
+                      <option key={`target-${item.id}`} value={String(item.id)}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-black/60 dark:text-neutral-400">عنوان زیرمجموعه جدید</label>
+                  <input
+                    value={childDraftTitle}
+                    onChange={(e) => {
+                      setChildDraftTitle(e.target.value);
+                      if (childDraftErr) setChildDraftErr('');
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddChildFromPanel();
+                      }
+                    }}
+                    placeholder="مثلاً تجهیز کارگاه، فروش مرحله‌ای، ..."
+                    className="h-10 rounded-xl border border-black/15 bg-white text-black px-3 text-sm outline-none
+                      focus:ring-2 focus:ring-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAddChildFromPanel}
+                  disabled={!childParentId || !String(childDraftTitle || '').trim()}
+                  className="h-10 w-full md:w-12 rounded-xl bg-black text-white grid place-items-center transition disabled:opacity-40 disabled:cursor-not-allowed dark:bg-neutral-100 dark:text-neutral-900"
+                  aria-label="افزودن زیرمجموعه"
+                  title="افزودن زیرمجموعه"
                 >
-                  <option value="">انتخاب پروژه...</option>
-                  {selectedProjectTargets.map((item) => (
-                    <option key={`target-${item.id}`} value={String(item.id)}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
+                  <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
+                </button>
               </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-black/60 dark:text-neutral-400">عنوان زیرمجموعه جدید</label>
-                <input
-                  value={childDraftTitle}
-                  onChange={(e) => {
-                    setChildDraftTitle(e.target.value);
-                    if (childDraftErr) setChildDraftErr('');
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleAddChildFromPanel();
-                    }
-                  }}
-                  placeholder="مثلاً تجهیز کارگاه، فروش مرحله‌ای، ..."
-                  className="h-10 rounded-xl border border-black/15 bg-white text-black px-3 text-sm outline-none
-                    focus:ring-2 focus:ring-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={handleAddChildFromPanel}
-                disabled={!childParentId || !String(childDraftTitle || '').trim()}
-                className="h-10 w-full md:w-12 rounded-xl bg-black text-white grid place-items-center transition disabled:opacity-40 disabled:cursor-not-allowed dark:bg-neutral-100 dark:text-neutral-900"
-                aria-label="افزودن زیرمجموعه"
-                title="افزودن زیرمجموعه"
-              >
-                <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
-              </button>
+              {childDraftErr && <div className="mt-2 text-xs text-red-600 dark:text-red-400">{childDraftErr}</div>}
             </div>
 
-            {childDraftErr && <div className="mt-2 text-xs text-red-600 dark:text-red-400">{childDraftErr}</div>}
-          </div>
-
-          {/* جدول اصلی */}
-          <div className="mt-3">
+            {/* جدول اصلی */}
+            <div className="mt-3">
           <TableWrap>
             <div className={tablePreset.outer}>
               <div className={tablePreset.innerPad}>
@@ -1797,6 +1798,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
               </div>
             </div>
           </TableWrap>
+            </div>
           </div>
         </div>
 
