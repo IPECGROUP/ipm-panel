@@ -1486,9 +1486,12 @@ const sortedProjects = useMemo(() => {
     const bodyHtml = (allRowsForExport || [])
       .map((node, idx) => {
         const r = node.row || {};
+        const depth = Math.max(0, Number(node.depth || 0));
+        const outlineLevel = Math.min(depth, 7);
+        const isParentRow = !!node.hasChildren;
         const codeCell = renderCode(r.code);
-        const indent = "&nbsp;".repeat(Math.max(0, Number(node.depth || 0)) * 4);
-        const nameCell = `${indent}${escapeHtml(r.name || "—")}`;
+        const indentMarker = depth > 0 ? `${"↳ ".repeat(depth)}` : "";
+        const nameCell = `${escapeHtml(indentMarker)}${escapeHtml(r.name || "—")}`;
 
         const monthsHtml = dynamicMonths
           .map((m) => {
@@ -1498,12 +1501,19 @@ const sortedProjects = useMemo(() => {
           .join("");
 
         const rowTotal = finalTotalOfRow(r);
+        const rowStyle = [
+          outlineLevel > 0 ? `mso-outline-level:${outlineLevel}` : "",
+          isParentRow ? "font-weight:700;background-color:#f8fafc" : "",
+        ]
+          .filter(Boolean)
+          .join(";");
+        const trClass = isParentRow ? "parent-row" : "child-row";
 
         return `
-          <tr>
+          <tr class="${trClass}" style="${rowStyle}">
             <td>${escapeHtml(toFaDigits(idx + 1))}</td>
             <td>${escapeHtml(codeCell || "—")}</td>
-            <td style="text-align:right">${nameCell}</td>
+            <td style="text-align:right;padding-right:${8 + depth * 16}px">${nameCell}</td>
             ${monthsHtml}
             <td>${rowTotal ? escapeHtml(toFaDigits(formatMoney(rowTotal))) : "—"}</td>
           </tr>
@@ -1542,6 +1552,8 @@ const sortedProjects = useMemo(() => {
             th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: center; vertical-align: middle; }
             thead th { background-color: #f3f4f6; font-weight: 700; }
             tfoot td { background-color: #f9fafb; font-weight: 700; }
+            tbody tr.parent-row td { font-weight: 700; }
+            tbody tr.child-row td { background-color: #ffffff; }
           </style>
         </head>
         <body>
