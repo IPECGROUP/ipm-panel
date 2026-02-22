@@ -10,11 +10,13 @@ import React, {
 import { Card } from '../components/ui/Card';
 import { TableWrap, THead, TR, TH, TD } from '../components/ui/Table';
 import { baseCurrenciesTablePreset as tablePreset } from '../components/ui/tablePresets';
-import { usePageAccess } from '../hooks/usePageAccess';
-
-const PAGE_KEY = 'RevenueEstimatesPage';
 
 function RevenueEstimatesPage() {
+  // This page is intentionally open for any authenticated user (no page-level access check).
+  const me = {};
+  const accessLoading = false;
+  const canAccessPage = true;
+
   const formatMoney = (n) => {
     const s = String(n ?? '');
     if (s === '') return '';
@@ -69,9 +71,6 @@ const isTopProjectCode = (code) => {
     if (!res.ok) throw new Error(data?.error || data?.message || 'request_failed');
     return data;
   };
-
-  // ===== Access (مثل همون الگو) =====
-  const { me, loading: accessLoading, canAccessPage } = usePageAccess(PAGE_KEY);
 
   const monthNames = [
     'فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور',
