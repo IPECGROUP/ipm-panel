@@ -1603,10 +1603,11 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                     {displayRows.map((x, idx) => {
                       const r = x.node;
                       const level = x.depth || 0;
-                      const indentRight = level === 0 ? 8 : 18 + level * 20;
+                      const indentRight = level === 0 ? 8 : 30 + level * 26;
                       const rowTotal = sumNodeMonths(r);
                       const isProjectRoot = level === 0 && r?.projectId != null && r?.isOther !== true;
                       const isComputed = hasChildren(r) || isProjectRoot;
+                      const titleTextClass = isProjectRoot ? 'text-[13px] md:text-[14px]' : 'text-[12px]';
                       const idxText = indexLabel(x.indexPath);
                       const rowId = String(r.id);
                       const isSelected = selectedRowSet.has(rowId);
@@ -1644,7 +1645,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                                   if (isComputed) toggleExpand(r.id);
                                   else openEditRowModal(r);
                                 }}
-                                className={`px-1 py-0.5 text-[12px] ${isComputed ? 'font-semibold hover:underline' : 'hover:underline'}`}
+                                className={`px-1 py-0.5 ${titleTextClass} ${isComputed ? 'font-semibold hover:underline' : 'hover:underline'}`}
                                 title={isComputed ? 'باز/بسته کردن زیرمجموعه‌ها' : 'افزودن/ویرایش توضیحات'}
                               >
                                 {displayTitle}
