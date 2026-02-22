@@ -3,6 +3,10 @@ import React from "react";
 import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TR, TD, TH } from "../components/ui/Table.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
+import {
+  hoverSelectableCrudTablePreset as tablePreset,
+  getHoverSelectableRowClass,
+} from "../components/ui/tablePresets.js";
 import { useAuth } from "../components/AuthProvider";
 import { isMainAdminUser } from "../utils/auth";
 
@@ -39,12 +43,21 @@ function ProjectsPage() {
   const [editCode, setEditCode] = React.useState("");
   const [editName, setEditName] = React.useState("");
   const [editIsActive, setEditIsActive] = React.useState(true);
+  const [selectedIds, setSelectedIds] = React.useState([]);
 
   const [codeSortDir, setCodeSortDir] = React.useState("asc");
 
   // pagination
   const [pageSize, setPageSize] = React.useState(20);
   const [page, setPage] = React.useState(0);
+
+  const setSelected = (nextOrUpdater) => {
+    setSelectedIds((prev) => {
+      const prevList = Array.isArray(prev) ? prev : [];
+      const rawNext = typeof nextOrUpdater === "function" ? nextOrUpdater(prevList) : nextOrUpdater;
+      return Array.from(new Set((Array.isArray(rawNext) ? rawNext : []).map((id) => String(id))));
+    });
+  };
 
   const toEnDigits = (s) =>
     String(s || "")
@@ -162,16 +175,42 @@ function ProjectsPage() {
     }
   };
 
-  const del = async (r) => {
-    if (!window.confirm("حذف این پروژه؟")) return;
+  const removeRows = async (ids) => {
+    const uniqIds = Array.from(
+      new Set(
+        (Array.isArray(ids) ? ids : [ids])
+          .filter((id) => id !== null && id !== undefined)
+          .map((id) => String(id))
+      )
+    );
+    if (!uniqIds.length) return;
+
+    const confirmText = uniqIds.length > 1 ? `حذف ${uniqIds.length} ردیف انتخاب‌شده؟` : "حذف این پروژه؟";
+    if (!window.confirm(confirmText)) return;
+
+    const idSet = new Set(uniqIds);
+    if (editId !== null && idSet.has(String(editId))) {
+      cancelEdit();
+    }
+
+    setRows((prev) => prev.filter((x) => !idSet.has(String(x.id))));
+    setSelected((prev) => prev.filter((id) => !idSet.has(String(id))));
+
+    const existingIds = rows.filter((r) => idSet.has(String(r.id))).map((r) => r.id);
+    if (!existingIds.length) return;
+
     try {
-      await api("/projects", {
-        method: "DELETE",
-        body: JSON.stringify({ id: r.id }),
-      });
-      setRows((prev) => prev.filter((x) => x.id !== r.id));
+      await Promise.all(
+        existingIds.map((id) =>
+          api("/projects", {
+            method: "DELETE",
+            body: JSON.stringify({ id }),
+          })
+        )
+      );
     } catch (ex) {
       console.error(ex);
+      await loadAll();
       alert(ex.message || "خطا در حذف پروژه");
     }
   };
@@ -198,6 +237,31 @@ function ProjectsPage() {
   const startIdx = total === 0 ? 0 : page * pageSize;
   const endIdx = Math.min(total, startIdx + pageSize);
   const pageRows = sortedRows.slice(startIdx, endIdx);
+  const tableUi = tablePreset.table;
+  const rowUi = tablePreset.row;
+  const visibleIds = pageRows.map((r) => String(r.id));
+  const selectedSet = new Set((selectedIds || []).map((id) => String(id)));
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedSet.has(id));
+  const someVisibleSelected = visibleIds.some((id) => selectedSet.has(id)) && !allVisibleSelected;
+
+  const toggleSelectAllVisible = () => {
+    setSelected((prev) => {
+      const prevSet = new Set((prev || []).map((id) => String(id)));
+      if (allVisibleSelected) {
+        return (prev || []).filter((id) => !visibleIds.includes(String(id)));
+      }
+      visibleIds.forEach((id) => prevSet.add(String(id)));
+      return Array.from(prevSet);
+    });
+  };
+
+  const toggleRowSelect = (id) => {
+    const sid = String(id);
+    setSelected((prev) => {
+      const exists = (prev || []).some((x) => String(x) === sid);
+      return exists ? (prev || []).filter((x) => String(x) !== sid) : [...(prev || []), sid];
+    });
+  };
 
   const onAddCodeChange = (e) => {
     const v = toEnDigits(e.target.value).replace(/[^\d]/g, "").slice(0, 3);
@@ -208,6 +272,11 @@ function ProjectsPage() {
     const v = toEnDigits(e.target.value).replace(/[^\d]/g, "").slice(0, 3);
     setEditCode(v);
   };
+
+  React.useEffect(() => {
+    const validIds = new Set(sortedRows.map((r) => String(r.id)));
+    setSelected((prev) => prev.filter((id) => validIds.has(String(id))));
+  }, [sortedRows]);
 
   const escapeHtml = (s) =>
     String(s ?? "")
@@ -373,30 +442,39 @@ function ProjectsPage() {
 
         {/* جدول */}
         <TableWrap>
-          <div className="bg-white text-black dark:bg-neutral-900 dark:text-neutral-100">
+          <div className={tableUi.outer}>
             <div className="px-[15px] pb-4">
-              <div className="rounded-2xl border border-black/10 overflow-hidden bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+              <div className={tableUi.frame}>
                 {/* ✅ اسکرول فقط داخل جدول */}
                 <div className="max-h-[520px] overflow-auto">
-                  <table
-                    className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
-                    dir="rtl"
-                  >
+                  <table className={`${tableUi.table} min-w-[760px]`} dir="rtl">
                     <THead>
-                      <tr className="sticky top-0 z-20 bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
-                        <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                      <tr className={`sticky top-0 z-20 ${tableUi.headRow}`}>
+                        <TH className={`${tablePreset.columns.select} ${tableUi.th}`}>
+                          <input
+                            type="checkbox"
+                            className={rowUi.checkbox}
+                            checked={allVisibleSelected}
+                            ref={(el) => {
+                              if (el) el.indeterminate = someVisibleSelected;
+                            }}
+                            onChange={toggleSelectAllVisible}
+                            aria-label="انتخاب همه"
+                            title="انتخاب همه"
+                          />
+                        </TH>
+
+                        <TH className={`${tablePreset.columns.index} ${tableUi.th}`}>
                           #
                         </TH>
 
-                        <TH className="w-44 sm:w-56 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                          <div className="flex items-center justify-center gap-2">
+                        <TH className={`w-44 sm:w-56 ${tableUi.th}`}>
+                          <div className={tablePreset.titleHeaderWrap}>
                             <span>کد</span>
                             <button
                               type="button"
                               onClick={() => setCodeSortDir((d) => (d === "asc" ? "desc" : "asc"))}
-                              className="h-7 w-7 inline-grid place-items-center bg-transparent p-0
-                                         text-neutral-500 hover:text-neutral-600 active:text-neutral-700
-                                         dark:text-neutral-400 dark:hover:text-neutral-300"
+                              className={tablePreset.sortButton}
                               title="مرتب‌سازی کد"
                               aria-label="مرتب‌سازی کد"
                             >
@@ -414,17 +492,17 @@ function ProjectsPage() {
                           </div>
                         </TH>
 
-                        <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                        <TH className={tableUi.th}>
                           نام پروژه
                         </TH>
 
                         {/* ✅ ستون وضعیت */}
-                        <TH className="w-24 sm:w-28 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                        <TH className={`w-24 sm:w-28 ${tableUi.th}`}>
                           وضعیت
                         </TH>
 
-                        <TH className="w-44 sm:w-72 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                          <div className="flex items-center justify-center gap-2">
+                        <TH className={`w-44 sm:w-72 ${tableUi.th}`}>
+                          <div className={tablePreset.titleHeaderWrap}>
                             <span>اقدامات</span>
 
                             {isMainAdmin && (
@@ -435,9 +513,7 @@ function ProjectsPage() {
                                   e.stopPropagation();
                                   exportProjectsExcel();
                                 }}
-                                className="h-7 w-7 inline-grid place-items-center bg-transparent p-0
-                                           text-neutral-500 hover:text-neutral-600 active:text-neutral-700
-                                           dark:text-neutral-400 dark:hover:text-neutral-300"
+                                className={tablePreset.sortButton}
                                 title="خروجی اکسل"
                                 aria-label="خروجی اکسل"
                               >
@@ -459,30 +535,28 @@ function ProjectsPage() {
                       </tr>
                     </THead>
 
-                    <tbody
-                      className="[&_td]:text-black dark:[&_td]:text-neutral-100
-                                 [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50
-                                 dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50"
-                    >
+                    <tbody className={tableUi.body}>
                       {loading ? (
-                        <TR className="bg-white dark:bg-transparent">
-                          <TD colSpan={5} className="text-center text-black/60 dark:text-neutral-400 py-4">
+                        <TR>
+                          <TD colSpan={6} className={tableUi.emptyRow}>
                             در حال بارگذاری…
                           </TD>
                         </TR>
                       ) : pageRows.length === 0 ? (
-                        <TR className="bg-white dark:bg-transparent">
-                          <TD colSpan={5} className="text-center text-black/60 dark:text-neutral-400 py-4">
+                        <TR>
+                          <TD colSpan={6} className={tableUi.emptyRow}>
                             موردی ثبت نشده.
                           </TD>
                         </TR>
                       ) : (
                         pageRows.map((r, idx) => {
                           const isLast = idx === pageRows.length - 1;
-                          const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
-
+                          const tdBorder = isLast ? "" : tableUi.rowDivider;
+                          const rowId = String(r.id);
                           const rowIsEditing = editId === r.id;
                           const rowIsActive = Boolean(r?.isActive ?? true);
+                          const isSelected = selectedSet.has(rowId);
+                          const shouldDeleteSelectedOnAction = isSelected && selectedIds.length > 1;
 
                           const boxBase =
                             "h-5 w-5 rounded-[6px] border inline-grid place-items-center text-[12px] leading-none select-none";
@@ -500,7 +574,18 @@ function ProjectsPage() {
                             "cursor-pointer hover:opacity-90 active:opacity-80";
 
                           return (
-                            <TR key={r.id}>
+                            <TR key={r.id} className={getHoverSelectableRowClass(isSelected)}>
+                              <TD className={`px-3 ${tdBorder}`}>
+                                <input
+                                  type="checkbox"
+                                  className={rowUi.checkbox}
+                                  checked={isSelected}
+                                  onChange={() => toggleRowSelect(r.id)}
+                                  aria-label="انتخاب"
+                                  title="انتخاب"
+                                />
+                              </TD>
+
                               <TD className={`px-3 ${tdBorder}`}>{startIdx + idx + 1}</TD>
 
                               <TD className={`px-3 font-mono ${tdBorder}`}>
@@ -577,8 +662,8 @@ function ProjectsPage() {
                                         e.stopPropagation();
                                         saveInline();
                                       }}
-                                      size={36}
-                                      iconSize={16}
+                                      size={tablePreset.actionSizes.button}
+                                      iconSize={tablePreset.actionSizes.save}
                                     />
                                     <RowActionIconBtn
                                       action="cancel"
@@ -587,12 +672,12 @@ function ProjectsPage() {
                                         e.stopPropagation();
                                         cancelEdit();
                                       }}
-                                      size={36}
-                                      iconSize={14}
+                                      size={tablePreset.actionSizes.button}
+                                      iconSize={tablePreset.actionSizes.cancel}
                                     />
                                   </div>
                                 ) : (
-                                  <div className="flex items-center justify-center gap-2">
+                                  <div className="flex items-center justify-center gap-2 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto">
                                     <RowActionIconBtn
                                       action="edit"
                                       onClick={(e) => {
@@ -600,18 +685,22 @@ function ProjectsPage() {
                                         e.stopPropagation();
                                         beginEdit(r);
                                       }}
-                                      size={36}
-                                      iconSize={18}
+                                      size={tablePreset.actionSizes.button}
+                                      iconSize={tablePreset.actionSizes.edit}
                                     />
                                     <RowActionIconBtn
                                       action="delete"
                                       onClick={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
-                                        del(r);
+                                        if (shouldDeleteSelectedOnAction) {
+                                          removeRows(selectedIds);
+                                          return;
+                                        }
+                                        removeRows([r.id]);
                                       }}
-                                      size={36}
-                                      iconSize={17}
+                                      size={tablePreset.actionSizes.button}
+                                      iconSize={tablePreset.actionSizes.delete}
                                     />
                                   </div>
                                 )}

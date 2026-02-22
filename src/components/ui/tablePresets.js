@@ -30,3 +30,31 @@ export const hoverSelectableRowPreset = {
   rowActions:
     "absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-1 shrink-0 transition-opacity opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto",
 };
+
+// Single bundle for reuse on CRUD pages:
+// - same table look as BaseCurrenciesPage
+// - hover actions (edit/delete)
+// - square checkboxes for multi-select behavior
+export const hoverSelectableCrudTablePreset = {
+  table: baseCurrenciesTablePreset,
+  row: hoverSelectableRowPreset,
+  columns: {
+    select: "w-12",
+    index: "w-20 sm:w-24",
+  },
+  titleHeaderWrap: "flex items-center justify-center gap-2",
+  sortButton:
+    "h-7 w-7 inline-grid place-items-center bg-transparent p-0 text-neutral-500 hover:text-neutral-600 active:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-300",
+  actionSizes: {
+    button: 34,
+    edit: 15,
+    delete: 16,
+    save: 15,
+    cancel: 14,
+  },
+};
+
+export const getHoverSelectableRowClass = (isSelected) =>
+  `${hoverSelectableRowPreset.rowBase} ${
+    isSelected ? hoverSelectableRowPreset.rowSelected : hoverSelectableRowPreset.rowIdle
+  }`;
