@@ -142,6 +142,35 @@ export default function EstimatesPage() {
     [prefixOf],
   );
 
+  const normalizeBudgetCode = useCallback(
+    (code) => {
+      const raw = String(code || "").trim();
+      if (!raw) return "";
+      if (active === "projects") return raw;
+      const pre = (prefixOf(active) || "").toUpperCase();
+      const re = pre ? new RegExp("^" + pre + "[\\-\\.]?\\s*", "i") : null;
+      const noPrefix = re ? raw.replace(re, "") : raw;
+      return toEnDigits(noPrefix).replace(/[^0-9.]/g, "");
+    },
+    [active, prefixOf, toEnDigits],
+  );
+
+  const isSameBudgetCode = useCallback(
+    (a, b) => {
+      const sa = String(a || "").trim();
+      const sb = String(b || "").trim();
+      if (!sa || !sb) return false;
+      if (sa === sb) return true;
+      const na = normalizeBudgetCode(sa);
+      const nb = normalizeBudgetCode(sb);
+      if (na && nb && na === nb) return true;
+      const ca = coreOf(sa);
+      const cb = coreOf(sb);
+      return !!ca && ca === cb;
+    },
+    [normalizeBudgetCode, coreOf],
+  );
+
   // projects
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState("");
@@ -668,7 +697,7 @@ const sortedProjects = useMemo(() => {
       const code = String(r?.code || "").trim();
       if (!code || !targetSet.has(code)) return;
       drafts[code] = {
-        code,
+        code: active === "projects" ? code : normalizeBudgetCode(code) || code,
         name: String(r?.name || ""),
       };
       finalCodes.push(code);
@@ -1124,9 +1153,7 @@ const sortedProjects = useMemo(() => {
     let migrationErr = "";
     try {
       const centers = await loadCentersForActive();
-      const target =
-        centers.find((c) => String(c.code || "").trim() === targetCode) ||
-        centers.find((c) => coreOf(c.code) === coreOf(targetCode));
+      const target = centers.find((c) => isSameBudgetCode(c.code, targetCode));
       if (!target?.id) throw new Error("row_not_found_for_edit");
 
       await api(`/centers/${active}/${target.id}`, {
@@ -1137,7 +1164,8 @@ const sortedProjects = useMemo(() => {
         }),
       });
 
-      const codeChanged = nextCode !== targetCode;
+      const oldComparable = active === "projects" ? targetCode : normalizeBudgetCode(targetCode) || targetCode;
+      const codeChanged = nextCode !== oldComparable;
       if (codeChanged) {
         try {
           const sourceRow = (rowsRef.current || []).find((r) => String(r?.code || "").trim() === targetCode);
@@ -1319,14 +1347,26 @@ const sortedProjects = useMemo(() => {
       uniqCodes.length > 1 ? `حذف ${uniqCodes.length} ردیف انتخاب‌شده؟` : "حذف این ردیف؟";
     if (!window.confirm(confirmText)) return;
 
-    const codeSet = new Set(uniqCodes.map((c) => String(c)));
-    setRows((prev) => (prev || []).filter((r) => !codeSet.has(String(r?.code || ""))));
-    setSelected((prev) => (prev || []).filter((code) => !codeSet.has(String(code))));
-    setEditingCodes((prev) => (prev || []).filter((code) => !codeSet.has(String(code))));
+    const isTargetCode = (candidate) =>
+      uniqCodes.some((c) => isSameBudgetCode(String(candidate || "").trim(), String(c || "").trim()));
+
+    const deleteCodeSet = new Set();
+    uniqCodes.forEach((c) => {
+      const raw = String(c || "").trim();
+      if (!raw) return;
+      deleteCodeSet.add(raw);
+      const normalized = normalizeBudgetCode(raw);
+      if (normalized) deleteCodeSet.add(normalized);
+    });
+    const deleteCodes = Array.from(deleteCodeSet);
+
+    setRows((prev) => (prev || []).filter((r) => !isTargetCode(r?.code)));
+    setSelected((prev) => (prev || []).filter((code) => !isTargetCode(code)));
+    setEditingCodes((prev) => (prev || []).filter((code) => !isTargetCode(code)));
     setEditDraftByCode((prev) => {
       const next = { ...(prev || {}) };
-      uniqCodes.forEach((code) => {
-        delete next[String(code)];
+      Object.keys(next).forEach((code) => {
+        if (isTargetCode(code)) delete next[String(code)];
       });
       return next;
     });
@@ -1340,13 +1380,13 @@ const sortedProjects = useMemo(() => {
         body: JSON.stringify({
           kind: active,
           project_id: active === "projects" ? Number(projectId) : null,
-          codes: uniqCodes,
+          codes: deleteCodes,
         }),
       });
 
       const centers = await loadCentersForActive().catch(() => []);
       const centerIds = centers
-        .filter((c) => codeSet.has(String(c.code)))
+        .filter((c) => isTargetCode(c.code))
         .map((c) => c.id)
         .filter((id) => id != null);
 
@@ -1847,7 +1887,7 @@ const sortedProjects = useMemo(() => {
                         const shouldDeleteSelectedOnAction = isSelected && selectedCodes.length > 1;
                         const rowIsEditing = rowCode ? editingSet.has(rowCode) : false;
                         const rowDraft = rowCode
-                          ? (editDraftByCode[rowCode] || { code: rowCode, name: String(r?.name || "") })
+                          ? (editDraftByCode[rowCode] || { code: active === "projects" ? rowCode : normalizeBudgetCode(rowCode) || rowCode, name: String(r?.name || "") })
                           : { code: "", name: String(r?.name || "") };
                         const isParent = !!code && !hierarchyMaps.isLeafByCode[r.code];
                         const hasChildren = !!node.hasChildren || isParent;
