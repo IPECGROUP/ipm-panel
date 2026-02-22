@@ -1,11 +1,15 @@
 // ساختار سازمانی
 // src/pages/OrgStructurePage.jsx
 import React, { useState, useEffect, useMemo } from "react";
-import Shell from "../components/layout/Shell.jsx";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
-import { Btn, PrimaryBtn, DangerBtn } from "../components/ui/Button.jsx";
+import { PrimaryBtn } from "../components/ui/Button.jsx";
+import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
+import {
+  hoverSelectableCrudTablePreset as tablePreset,
+  getHoverSelectableRowClass,
+} from "../components/ui/tablePresets.js";
 import { api } from "../utils/api"; // 👈 فقط این خط اضافه شد
 
 function OrgStructurePage() {
@@ -18,8 +22,8 @@ function OrgStructurePage() {
   const [adding, setAdding] = useState("");
   const [err, setErr] = useState("");
   const [saving, setSaving] = useState(false);
-  const [editId, setEditId] = useState(null);
-  const [editName, setEditName] = useState("");
+  const [selectedUnitIds, setSelectedUnitIds] = useState([]);
+  const [editingUnitsById, setEditingUnitsById] = useState({});
 
   const [nameSortDir, setNameSortDir] = useState("asc");
 
@@ -29,8 +33,8 @@ function OrgStructurePage() {
 
   const [roleName, setRoleName] = React.useState("");
   const [rolesErr, setRolesErr] = React.useState("");
-  const [rolesEditingId, setRolesEditingId] = React.useState(null);
-  const [rolesEditingName, setRolesEditingName] = React.useState("");
+  const [selectedRoleIds, setSelectedRoleIds] = React.useState([]);
+  const [editingRolesById, setEditingRolesById] = React.useState({});
 
   const loadRoles = async () => {
     setRolesLoading(true);
@@ -73,52 +77,119 @@ function OrgStructurePage() {
     }
   };
 
+  const setSelectedRoles = (nextOrUpdater) => {
+    setSelectedRoleIds((prev) => {
+      const prevList = Array.isArray(prev) ? prev : [];
+      const rawNext = typeof nextOrUpdater === "function" ? nextOrUpdater(prevList) : nextOrUpdater;
+      return Array.from(new Set((Array.isArray(rawNext) ? rawNext : []).map((id) => String(id))));
+    });
+  };
+
   const startRoleEdit = (it) => {
-    setRolesEditingId(it.id);
-    setRolesEditingName(it.name);
+    const clickedId = String(it.id);
+    const shouldEditSelected = selectedRoleIds.length > 1 && selectedRoleIds.some((id) => String(id) === clickedId);
+    const targetSet = new Set((shouldEditSelected ? selectedRoleIds : [clickedId]).map((id) => String(id)));
+    const next = {};
+
+    (rolesList || []).forEach((r) => {
+      const sid = String(r.id);
+      if (!targetSet.has(sid)) return;
+      next[sid] = { id: r.id, name: r.name || "" };
+    });
+
+    setEditingRolesById(next);
   };
 
-  const cancelRoleEdit = () => {
-    setRolesEditingId(null);
-    setRolesEditingName("");
+  const cancelRoleEdit = (rowId = null) => {
+    if (rowId === null || rowId === undefined) {
+      setEditingRolesById({});
+      return;
+    }
+    const sid = String(rowId);
+    setEditingRolesById((prev) => {
+      const next = { ...(prev || {}) };
+      delete next[sid];
+      return next;
+    });
   };
 
-  const saveRoleEdit = async () => {
-    const v = rolesEditingName.trim();
+  const setRoleDraftName = (rowId, name) => {
+    const sid = String(rowId);
+    setEditingRolesById((prev) => {
+      const current = prev?.[sid];
+      if (!current) return prev;
+      return { ...(prev || {}), [sid]: { ...current, name } };
+    });
+  };
+
+  const saveRoleEdit = async (rowId) => {
+    const sid = String(rowId);
+    const draft = editingRolesById?.[sid];
+    if (!draft) return;
+
+    const v = String(draft.name || "").trim();
     if (!v) {
       alert("نام نقش را وارد کنید");
       return;
     }
+
     try {
       const resp = await api("/base/user-roles", {
         method: "PATCH",
-        body: JSON.stringify({ id: rolesEditingId, name: v }),
+        body: JSON.stringify({ id: draft.id, name: v }),
         headers: { "Content-Type": "application/json" },
         credentials: "include",
       });
       const item = resp.item || null;
       if (item) {
-        setRolesList((prev) => prev.map((it) => (it.id === item.id ? item : it)));
+        setRolesList((prev) => prev.map((it) => (String(it.id) === sid ? item : it)));
       } else {
-        await loadRoles();
+        setRolesList((prev) => prev.map((it) => (String(it.id) === sid ? { ...it, name: v } : it)));
       }
-      cancelRoleEdit();
+      cancelRoleEdit(sid);
     } catch (e) {
       alert(e.message || "خطا در ویرایش نقش");
     }
   };
 
-  const delRole = async (it) => {
-    if (!window.confirm(`حذف نقش «${it.name}»؟`)) return;
-    try {
-      await api("/base/user-roles", {
-        method: "DELETE",
-        body: JSON.stringify({ id: it.id }),
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+  const removeRoleRows = async (ids) => {
+    const uniqIds = Array.from(
+      new Set(
+        (Array.isArray(ids) ? ids : [ids])
+          .filter((id) => id !== null && id !== undefined)
+          .map((id) => String(id))
+      )
+    );
+    if (!uniqIds.length) return;
+
+    const confirmText = uniqIds.length > 1 ? `حذف ${uniqIds.length} نقش انتخاب‌شده؟` : "حذف این نقش؟";
+    if (!window.confirm(confirmText)) return;
+
+    const idSet = new Set(uniqIds);
+    setRolesList((prev) => (prev || []).filter((r) => !idSet.has(String(r.id))));
+    setSelectedRoles((prev) => (prev || []).filter((id) => !idSet.has(String(id))));
+    setEditingRolesById((prev) => {
+      const next = { ...(prev || {}) };
+      uniqIds.forEach((id) => {
+        delete next[String(id)];
       });
-      setRolesList((prev) => prev.filter((r) => r.id !== it.id));
+      return next;
+    });
+
+    const idMap = new Map((rolesList || []).map((it) => [String(it.id), it.id]));
+    try {
+      await Promise.all(
+        uniqIds.map((sid) =>
+          api("/base/user-roles", {
+            method: "DELETE",
+            body: JSON.stringify({ id: idMap.has(sid) ? idMap.get(sid) : sid }),
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+          })
+        )
+      );
     } catch (e) {
+      await loadRoles().catch(() => {});
       alert(e.message || "خطا در حذف نقش");
     }
   };
@@ -384,6 +455,20 @@ function OrgStructurePage() {
     return arr;
   }, [list, nameSortDir]);
 
+  const setSelectedUnits = (nextOrUpdater) => {
+    setSelectedUnitIds((prev) => {
+      const prevList = Array.isArray(prev) ? prev : [];
+      const rawNext = typeof nextOrUpdater === "function" ? nextOrUpdater(prevList) : nextOrUpdater;
+      return Array.from(new Set((Array.isArray(rawNext) ? rawNext : []).map((id) => String(id))));
+    });
+  };
+
+  const unitRowId = (u, fallback = "") => {
+    const id = unitIdOf(u);
+    if (id) return String(id);
+    return String(u?.id ?? u?.unit_id ?? u?.unitId ?? fallback);
+  };
+
   const addUnit = async () => {
     setErr("");
     const name = (adding || "").trim();
@@ -409,23 +494,56 @@ function OrgStructurePage() {
   };
 
   const startEdit = (u) => {
-    const id = unitIdOf(u);
-    if (!id) {
-      alert("شناسه واحد معتبر نیست.");
-      return;
-    }
-    setEditId(id);
-    setEditName(u.name || "");
+    const clickedId = unitRowId(u);
+    const shouldEditSelected = selectedUnitIds.length > 1 && selectedUnitIds.some((id) => String(id) === clickedId);
+    const targetSet = new Set((shouldEditSelected ? selectedUnitIds : [clickedId]).map((id) => String(id)));
+    const next = {};
+
+    (list || []).forEach((it, idx) => {
+      const sid = unitRowId(it, idx);
+      if (!targetSet.has(sid)) return;
+      const apiId = unitIdOf(it);
+      if (!apiId) return;
+      next[sid] = { id: apiId, name: it.name || "" };
+    });
+
+    setEditingUnitsById(next);
   };
 
-  const saveEdit = async () => {
-    const name = (editName || "").trim();
+  const cancelEdit = (rowId = null) => {
+    if (rowId === null || rowId === undefined) {
+      setEditingUnitsById({});
+      return;
+    }
+    const sid = String(rowId);
+    setEditingUnitsById((prev) => {
+      const next = { ...(prev || {}) };
+      delete next[sid];
+      return next;
+    });
+  };
+
+  const setUnitDraftName = (rowId, name) => {
+    const sid = String(rowId);
+    setEditingUnitsById((prev) => {
+      const current = prev?.[sid];
+      if (!current) return prev;
+      return { ...(prev || {}), [sid]: { ...current, name } };
+    });
+  };
+
+  const saveEdit = async (rowId) => {
+    const sid = String(rowId);
+    const draft = editingUnitsById?.[sid];
+    if (!draft) return;
+
+    const name = String(draft.name || "").trim();
     if (!name) {
       alert("نام واحد را وارد کنید");
       return;
     }
     try {
-      const id = Number(editId);
+      const id = Number(draft.id);
       if (!id) {
         alert("شناسه واحد معتبر نیست.");
         return;
@@ -436,28 +554,54 @@ function OrgStructurePage() {
         body: JSON.stringify({ name }),
         credentials: "include",
       });
-      setEditId(null);
-      setEditName("");
-      await reload();
+      setList((prev) => prev.map((it, idx) => (unitRowId(it, idx) === sid ? { ...it, name } : it)));
+      cancelEdit(sid);
     } catch (ex) {
       alert(ex.message || "خطا در ویرایش");
     }
   };
 
-  const del = async (u) => {
-    const id = unitIdOf(u);
-    if (!id) {
-      alert("شناسه واحد معتبر نیست.");
-      return;
-    }
-    if (!confirm(`حذف واحد «${u.name}»؟`)) return;
-    try {
-      await api(`/base/units/${id}`, {
-        method: "DELETE",
-        credentials: "include",
+  const removeUnitRows = async (ids) => {
+    const uniqIds = Array.from(
+      new Set(
+        (Array.isArray(ids) ? ids : [ids])
+          .filter((id) => id !== null && id !== undefined)
+          .map((id) => String(id))
+      )
+    );
+    if (!uniqIds.length) return;
+
+    const confirmText = uniqIds.length > 1 ? `حذف ${uniqIds.length} واحد انتخاب‌شده؟` : "حذف این واحد؟";
+    if (!confirm(confirmText)) return;
+
+    const idSet = new Set(uniqIds);
+    setList((prev) => (prev || []).filter((u, idx) => !idSet.has(unitRowId(u, idx))));
+    setSelectedUnits((prev) => (prev || []).filter((id) => !idSet.has(String(id))));
+    setEditingUnitsById((prev) => {
+      const next = { ...(prev || {}) };
+      uniqIds.forEach((id) => {
+        delete next[String(id)];
       });
-      await reload();
+      return next;
+    });
+
+    const realIds = (list || [])
+      .filter((u, idx) => idSet.has(unitRowId(u, idx)))
+      .map((u) => unitIdOf(u))
+      .filter((id) => !!id);
+
+    if (!realIds.length) return;
+    try {
+      await Promise.all(
+        realIds.map((id) =>
+          api(`/base/units/${id}`, {
+            method: "DELETE",
+            credentials: "include",
+          })
+        )
+      );
     } catch (ex) {
+      await reload();
       alert(ex.message || "خطا در حذف");
     }
   };
@@ -470,6 +614,81 @@ function OrgStructurePage() {
         ? "bg-black text-white border-black dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-100"
         : "bg-white text-black border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800",
     ].join(" ");
+
+  const tableUi = tablePreset.table;
+  const rowUi = tablePreset.row;
+
+  useEffect(() => {
+    const validIds = new Set((sortedList || []).map((u, idx) => unitRowId(u, idx)));
+    setSelectedUnits((prev) => prev.filter((id) => validIds.has(String(id))));
+    setEditingUnitsById((prev) => {
+      const next = { ...(prev || {}) };
+      Object.keys(next).forEach((id) => {
+        if (!validIds.has(String(id))) delete next[id];
+      });
+      return next;
+    });
+  }, [sortedList]);
+
+  useEffect(() => {
+    const validIds = new Set((rolesList || []).map((it) => String(it.id)));
+    setSelectedRoles((prev) => prev.filter((id) => validIds.has(String(id))));
+    setEditingRolesById((prev) => {
+      const next = { ...(prev || {}) };
+      Object.keys(next).forEach((id) => {
+        if (!validIds.has(String(id))) delete next[id];
+      });
+      return next;
+    });
+  }, [rolesList]);
+
+  const unitVisibleIds = (sortedList || []).map((u, idx) => unitRowId(u, idx));
+  const selectedUnitSet = new Set((selectedUnitIds || []).map((id) => String(id)));
+  const allVisibleUnitsSelected = unitVisibleIds.length > 0 && unitVisibleIds.every((id) => selectedUnitSet.has(id));
+  const someVisibleUnitsSelected = unitVisibleIds.some((id) => selectedUnitSet.has(id)) && !allVisibleUnitsSelected;
+
+  const toggleSelectAllUnitsVisible = () => {
+    setSelectedUnits((prev) => {
+      const prevSet = new Set((prev || []).map((id) => String(id)));
+      if (allVisibleUnitsSelected) {
+        return (prev || []).filter((id) => !unitVisibleIds.includes(String(id)));
+      }
+      unitVisibleIds.forEach((id) => prevSet.add(String(id)));
+      return Array.from(prevSet);
+    });
+  };
+
+  const toggleUnitRowSelect = (id) => {
+    const sid = String(id);
+    setSelectedUnits((prev) => {
+      const exists = (prev || []).some((x) => String(x) === sid);
+      return exists ? (prev || []).filter((x) => String(x) !== sid) : [...(prev || []), sid];
+    });
+  };
+
+  const roleVisibleIds = (rolesList || []).map((it) => String(it.id));
+  const selectedRoleSet = new Set((selectedRoleIds || []).map((id) => String(id)));
+  const allVisibleRolesSelected = roleVisibleIds.length > 0 && roleVisibleIds.every((id) => selectedRoleSet.has(id));
+  const someVisibleRolesSelected = roleVisibleIds.some((id) => selectedRoleSet.has(id)) && !allVisibleRolesSelected;
+
+  const toggleSelectAllRolesVisible = () => {
+    setSelectedRoles((prev) => {
+      const prevSet = new Set((prev || []).map((id) => String(id)));
+      if (allVisibleRolesSelected) {
+        return (prev || []).filter((id) => !roleVisibleIds.includes(String(id)));
+      }
+      roleVisibleIds.forEach((id) => prevSet.add(String(id)));
+      return Array.from(prevSet);
+    });
+  };
+
+  const toggleRoleRowSelect = (id) => {
+    const sid = String(id);
+    setSelectedRoles((prev) => {
+      const exists = (prev || []).some((x) => String(x) === sid);
+      return exists ? (prev || []).filter((x) => String(x) !== sid) : [...(prev || []), sid];
+    });
+  };
 
   return (
     <>
@@ -533,20 +752,32 @@ function OrgStructurePage() {
 
               {/* جدول واحدها */}
               <TableWrap>
-                <div className="px-[15px] pb-4">
-                  <div className="rounded-2xl border border-black/10 overflow-hidden bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+                <div className={tableUi.outer}>
+                  <div className={tableUi.innerPad}>
+                    <div className={tableUi.frame}>
                     <div className="overflow-x-auto">
-                      <table
-                        className="min-w-[560px] w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
-                        dir="rtl"
-                      >
+                      <table className={`${tableUi.table} min-w-[560px]`} dir="rtl">
                         <THead>
-                          <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
-                            <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                          <tr className={tableUi.headRow}>
+                            <TH className={`w-12 ${tableUi.th}`}>
+                              <input
+                                type="checkbox"
+                                className={rowUi.checkbox}
+                                checked={allVisibleUnitsSelected}
+                                ref={(el) => {
+                                  if (el) el.indeterminate = someVisibleUnitsSelected;
+                                }}
+                                onChange={toggleSelectAllUnitsVisible}
+                                aria-label="انتخاب همه"
+                                title="انتخاب همه"
+                              />
+                            </TH>
+
+                            <TH className={`w-20 sm:w-24 ${tableUi.th}`}>
                               #
                             </TH>
 
-                            <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                            <TH className={tableUi.th}>
                               <div className="flex items-center justify-center gap-2">
                                 <span>نام واحد</span>
 
@@ -572,137 +803,108 @@ function OrgStructurePage() {
                                 </button>
                               </div>
                             </TH>
-
-                            <TH className="w-44 sm:w-72 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                              اقدامات
-                            </TH>
                           </tr>
                         </THead>
 
-                        <tbody
-                          className="[&_td]:text-black dark:[&_td]:text-neutral-100
-                                 [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50
-                                 dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50"
-                        >
+                        <tbody className={tableUi.body}>
                           {(sortedList || []).length === 0 ? (
-                            <TR className="bg-white dark:bg-transparent">
-                              <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-4">
+                            <TR>
+                              <TD colSpan={3} className={tableUi.emptyRow}>
                                 واحدی ثبت نشده.
                               </TD>
                             </TR>
                           ) : (
                             sortedList.map((u, idx) => {
                               const isLast = idx === sortedList.length - 1;
-                              const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
-                              const rowId = unitIdOf(u);
+                              const tdBorder = isLast ? "" : tableUi.rowDivider;
+                              const rowId = unitRowId(u, idx);
+                              const isSelected = selectedUnitSet.has(rowId);
+                              const isEditing = !!editingUnitsById[rowId];
+                              const shouldDeleteSelectedOnAction = isSelected && selectedUnitIds.length > 1;
 
                               return (
-                                <TR key={rowId || u.id || idx}>
-                                  <TD className={`px-3 ${tdBorder}`}>{idx + 1}</TD>
-
+                                <TR key={rowId || idx} className={getHoverSelectableRowClass(isSelected)}>
                                   <TD className={`px-3 ${tdBorder}`}>
-                                    {editId === rowId ? (
-                                      <input
-                                        className="w-full max-w-xs rounded-xl px-3 py-2 text-center bg-white text-black placeholder-black/40 border border-black/15 outline-none
-                                               focus:ring-2 focus:ring-black/10
-                                               dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-                                        value={editName}
-                                        onChange={(e) => setEditName(e.target.value)}
-                                        autoFocus
-                                      />
-                                    ) : (
-                                      u.name || "—"
-                                    )}
+                                    <input
+                                      type="checkbox"
+                                      className={rowUi.checkbox}
+                                      checked={isSelected}
+                                      onChange={() => toggleUnitRowSelect(rowId)}
+                                      aria-label="انتخاب"
+                                      title="انتخاب"
+                                    />
                                   </TD>
 
-                                  <TD className={`px-3 ${tdBorder}`}>
-                                    {editId === rowId ? (
-                                      <div className="flex items-center justify-center gap-3">
-                                        <button
-                                          type="button"
-                                          onClick={saveEdit}
-                                          className="h-10 w-10 grid place-items-center !bg-transparent !ring-0 !border-0 !shadow-none hover:opacity-80 active:opacity-70 transition"
-                                          aria-label="ذخیره"
-                                          title="ذخیره"
-                                        >
-                                          <img src="/images/icons/check.svg" alt="" className="w-[18px] h-[18px] dark:invert" />
-                                        </button>
+                                  <TD className={`px-3 ${tdBorder}`}>{idx + 1}</TD>
 
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setEditId(null);
-                                            setEditName("");
-                                          }}
-                                          className="h-10 w-10 grid place-items-center !bg-transparent !ring-0 !border-0 !shadow-none hover:opacity-80 active:opacity-70 transition"
-                                          aria-label="انصراف"
-                                          title="انصراف"
-                                        >
-                                          <img
-                                            src="/images/icons/bastan.svg"
-                                            alt=""
-                                            className="w-[16px] h-[16px] dark:invert"
-                                            style={{
-                                              filter:
-                                                "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
-                                            }}
+                                  <TD className={`px-3 ${rowUi.valueCell} ${tdBorder}`}>
+                                    {isEditing ? (
+                                      <div className="flex items-center justify-between gap-2">
+                                        <input
+                                          className="w-full max-w-xs rounded-xl px-3 py-2 text-center bg-white text-black placeholder-black/40 border border-black/15 outline-none
+                                                 focus:ring-2 focus:ring-black/10
+                                                 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                                          value={editingUnitsById?.[rowId]?.name || ""}
+                                          onChange={(e) => setUnitDraftName(rowId, e.target.value)}
+                                          autoFocus
+                                        />
+                                        <div className="flex items-center gap-1 shrink-0">
+                                          <RowActionIconBtn
+                                            action="save"
+                                            onClick={() => saveEdit(rowId)}
+                                            size={tablePreset.actionSizes.button}
+                                            iconSize={tablePreset.actionSizes.save}
                                           />
-                                        </button>
+                                          <RowActionIconBtn
+                                            action="cancel"
+                                            onClick={() => cancelEdit(rowId)}
+                                            size={tablePreset.actionSizes.button}
+                                            iconSize={tablePreset.actionSizes.cancel}
+                                          />
+                                        </div>
                                       </div>
                                     ) : (
-                                      <div className="flex items-center justify-center gap-3">
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            openAccess(u);
-                                          }}
-                                          disabled={!isAdmin}
-                                          className="h-10 w-10 grid place-items-center !p-0 !bg-transparent !ring-0 !border-0 !shadow-none disabled:opacity-50 hover:opacity-80 active:opacity-70 transition"
-                                          aria-label="سطح دسترسی"
-                                          title="سطح دسترسی"
-                                        >
-                                          <img src="/images/icons/sath.svg" alt="" className="w-[18px] h-[18px] dark:invert" />
-                                        </button>
-
-                                        <Btn
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            startEdit(u);
-                                          }}
-                                          className="!h-10 !w-10 !p-0 !rounded-xl !grid !place-items-center !bg-transparent !ring-0 !border-0 !shadow-none hover:opacity-80 active:opacity-70 disabled:opacity-50"
-                                          disabled={!isAdmin}
-                                          aria-label="ویرایش"
-                                          title="ویرایش"
-                                        >
-                                          <img src="/images/icons/pencil.svg" alt="" className="w-[18px] h-[18px] dark:invert" />
-                                        </Btn>
-
-                                        <DangerBtn
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            del(u);
-                                          }}
-                                          className="!h-10 !w-10 !p-0 !rounded-xl !grid !place-items-center !bg-transparent !ring-0 !border-0 !shadow-none hover:opacity-80 active:opacity-70 disabled:opacity-50"
-                                          disabled={!isAdmin}
-                                          aria-label="حذف"
-                                          title="حذف"
-                                        >
-                                          <img
-                                            src="/images/icons/hazf.svg"
-                                            alt=""
-                                            className="w-[18px] h-[18px]"
-                                            style={{
-                                              filter:
-                                                "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
+                                      <div className={rowUi.valueWrap}>
+                                        <span className={rowUi.valueText}>{u.name || "—"}</span>
+                                        <div className={rowUi.rowActions}>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              openAccess(u);
                                             }}
+                                            disabled={!isAdmin}
+                                            className="inline-grid place-items-center rounded-xl !bg-transparent !ring-0 !border-0 !shadow-none hover:opacity-80 active:opacity-70 disabled:opacity-50"
+                                            style={{ width: tablePreset.actionSizes.button, height: tablePreset.actionSizes.button }}
+                                            aria-label="سطح دسترسی"
+                                            title="سطح دسترسی"
+                                          >
+                                            <img src="/images/icons/sath.svg" alt="" className="w-[18px] h-[18px] dark:invert" />
+                                          </button>
+
+                                          <RowActionIconBtn
+                                            action="edit"
+                                            onClick={() => startEdit(u)}
+                                            disabled={!isAdmin}
+                                            size={tablePreset.actionSizes.button}
+                                            iconSize={tablePreset.actionSizes.edit}
                                           />
-                                        </DangerBtn>
+
+                                          <RowActionIconBtn
+                                            action="delete"
+                                            onClick={() => {
+                                              if (shouldDeleteSelectedOnAction) {
+                                                removeUnitRows(selectedUnitIds);
+                                                return;
+                                              }
+                                              removeUnitRows([rowId]);
+                                            }}
+                                            disabled={!isAdmin}
+                                            size={tablePreset.actionSizes.button}
+                                            iconSize={tablePreset.actionSizes.delete}
+                                          />
+                                        </div>
                                       </div>
                                     )}
                                   </TD>
@@ -712,8 +914,9 @@ function OrgStructurePage() {
                           )}
                         </tbody>
                       </table>
+                      </div>
                     </div>
-                  </div>
+                    </div>
                 </div>
               </TableWrap>
             </div>
@@ -901,126 +1104,110 @@ function OrgStructurePage() {
 
               {/* جدول نقش‌ها */}
               <TableWrap>
-                <div className="px-[15px] pb-4">
-                  <div className="rounded-2xl border border-black/10 overflow-hidden bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+                <div className={tableUi.outer}>
+                  <div className={tableUi.innerPad}>
+                    <div className={tableUi.frame}>
                     <div className="overflow-x-auto">
-                      <table
-                        className="min-w-[520px] w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
-                        dir="rtl"
-                      >
+                      <table className={`${tableUi.table} min-w-[520px]`} dir="rtl">
                         <thead>
-                          <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
-                            <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold w-20 sm:w-24">#</th>
-                            <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold">نام نقش</th>
-                            <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold w-44 sm:w-72">
-                              اقدامات
+                          <tr className={tableUi.headRow}>
+                            <th className={`w-12 ${tableUi.th}`}>
+                              <input
+                                type="checkbox"
+                                className={rowUi.checkbox}
+                                checked={allVisibleRolesSelected}
+                                ref={(el) => {
+                                  if (el) el.indeterminate = someVisibleRolesSelected;
+                                }}
+                                onChange={toggleSelectAllRolesVisible}
+                                aria-label="انتخاب همه"
+                                title="انتخاب همه"
+                              />
                             </th>
+                            <th className={`w-20 sm:w-24 ${tableUi.th}`}>#</th>
+                            <th className={tableUi.th}>نام نقش</th>
                           </tr>
                         </thead>
 
-                        <tbody
-                          className="[&_td]:text-black dark:[&_td]:text-neutral-100
-                               [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50
-                               dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50"
-                        >
+                        <tbody className={tableUi.body}>
                           {rolesList.length === 0 && !rolesLoading ? (
                             <tr>
-                              <td colSpan={3} className="py-4 text-black/60 dark:text-neutral-400 bg-transparent">
+                              <td colSpan={3} className={tableUi.emptyRow}>
                                 آیتمی ثبت نشده است.
                               </td>
                             </tr>
                           ) : (
                             rolesList.map((it, idx) => {
                               const isLast = idx === rolesList.length - 1;
-                              const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
+                              const tdBorder = isLast ? "" : tableUi.rowDivider;
+                              const rowId = String(it.id);
+                              const isSelected = selectedRoleSet.has(rowId);
+                              const isEditing = !!editingRolesById[rowId];
+                              const shouldDeleteSelectedOnAction = isSelected && selectedRoleIds.length > 1;
 
                               return (
-                                <tr key={it.id}>
+                                <tr key={it.id} className={getHoverSelectableRowClass(isSelected)}>
+                                  <td className={`px-3 ${tdBorder}`}>
+                                    <input
+                                      type="checkbox"
+                                      className={rowUi.checkbox}
+                                      checked={isSelected}
+                                      onChange={() => toggleRoleRowSelect(rowId)}
+                                      aria-label="انتخاب"
+                                      title="انتخاب"
+                                    />
+                                  </td>
                                   <td className={`px-3 ${tdBorder}`}>{idx + 1}</td>
 
-                                  <td className={`px-3 ${tdBorder}`}>
-                                    {rolesEditingId === it.id ? (
-                                      <input
-                                        value={rolesEditingName}
-                                        onChange={(e) => setRolesEditingName(e.target.value)}
-                                        className="w-full rounded-xl px-3 py-2 bg-white text-black placeholder-black/40 border border-black/15 outline-none text-center
-                                             focus:ring-2 focus:ring-black/10
-                                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
-                                        autoFocus
-                                      />
-                                    ) : (
-                                      it.name
-                                    )}
-                                  </td>
-
-                                  <td className={`px-3 ${tdBorder}`}>
-                                    {rolesEditingId === it.id ? (
-                                      <div className="flex items-center justify-center gap-2">
-                                        <button
-                                          type="button"
-                                          onClick={saveRoleEdit}
-                                          className="h-10 w-10 grid place-items-center !bg-transparent !ring-0 !border-0 !shadow-none hover:opacity-80 active:opacity-70 transition"
-                                          aria-label="ذخیره"
-                                          title="ذخیره"
-                                        >
-                                          <img
-                                            src="/images/icons/check.svg"
-                                            alt=""
-                                            className="w-[18px] h-[18px] dark:invert"
+                                  <td className={`px-3 ${rowUi.valueCell} ${tdBorder}`}>
+                                    {isEditing ? (
+                                      <div className="flex items-center justify-between gap-2">
+                                        <input
+                                          value={editingRolesById?.[rowId]?.name || ""}
+                                          onChange={(e) => setRoleDraftName(rowId, e.target.value)}
+                                          className="w-full rounded-xl px-3 py-2 bg-white text-black placeholder-black/40 border border-black/15 outline-none text-center
+                                               focus:ring-2 focus:ring-black/10
+                                               dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
+                                          autoFocus
+                                        />
+                                        <div className="flex items-center gap-1 shrink-0">
+                                          <RowActionIconBtn
+                                            action="save"
+                                            onClick={() => saveRoleEdit(rowId)}
+                                            size={tablePreset.actionSizes.button}
+                                            iconSize={tablePreset.actionSizes.save}
                                           />
-                                        </button>
-
-                                        <button
-                                          type="button"
-                                          onClick={cancelRoleEdit}
-                                          className="h-10 w-10 grid place-items-center !bg-transparent !ring-0 !border-0 !shadow-none hover:opacity-80 active:opacity-70 transition"
-                                          aria-label="انصراف"
-                                          title="انصراف"
-                                        >
-                                          <img
-                                            src="/images/icons/bastan.svg"
-                                            alt=""
-                                            className="w-[16px] h-[16px] dark:invert"
-                                            style={{
-                                              filter:
-                                                "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
-                                            }}
+                                          <RowActionIconBtn
+                                            action="cancel"
+                                            onClick={() => cancelRoleEdit(rowId)}
+                                            size={tablePreset.actionSizes.button}
+                                            iconSize={tablePreset.actionSizes.cancel}
                                           />
-                                        </button>
+                                        </div>
                                       </div>
                                     ) : (
-                                      <div className="flex items-center justify-center gap-2">
-                                        <button
-                                          type="button"
-                                          onClick={() => startRoleEdit(it)}
-                                          className="h-10 w-10 grid place-items-center !bg-transparent !ring-0 !border-0 !shadow-none hover:opacity-80 active:opacity-70 transition"
-                                          aria-label="ویرایش"
-                                          title="ویرایش"
-                                        >
-                                          <img
-                                            src="/images/icons/pencil.svg"
-                                            alt=""
-                                            className="w-[18px] h-[18px] dark:invert"
+                                      <div className={rowUi.valueWrap}>
+                                        <span className={rowUi.valueText}>{it.name}</span>
+                                        <div className={rowUi.rowActions}>
+                                          <RowActionIconBtn
+                                            action="edit"
+                                            onClick={() => startRoleEdit(it)}
+                                            size={tablePreset.actionSizes.button}
+                                            iconSize={tablePreset.actionSizes.edit}
                                           />
-                                        </button>
-
-                                        <button
-                                          type="button"
-                                          onClick={() => delRole(it)}
-                                          className="h-10 w-10 grid place-items-center !bg-transparent !ring-0 !border-0 !shadow-none hover:opacity-80 active:opacity-70 transition"
-                                          aria-label="حذف"
-                                          title="حذف"
-                                        >
-                                          <img
-                                            src="/images/icons/hazf.svg"
-                                            alt=""
-                                            className="w-[19px] h-[19px]"
-                                            style={{
-                                              filter:
-                                                "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
+                                          <RowActionIconBtn
+                                            action="delete"
+                                            onClick={() => {
+                                              if (shouldDeleteSelectedOnAction) {
+                                                removeRoleRows(selectedRoleIds);
+                                                return;
+                                              }
+                                              removeRoleRows([rowId]);
                                             }}
+                                            size={tablePreset.actionSizes.button}
+                                            iconSize={tablePreset.actionSizes.delete}
                                           />
-                                        </button>
+                                        </div>
                                       </div>
                                     )}
                                   </td>
@@ -1030,8 +1217,9 @@ function OrgStructurePage() {
                           )}
                         </tbody>
                       </table>
+                      </div>
                     </div>
-                  </div>
+                    </div>
                 </div>
               </TableWrap>
             </div>
