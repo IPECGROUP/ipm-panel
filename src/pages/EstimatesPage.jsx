@@ -282,7 +282,10 @@ const sortedProjects = useMemo(() => {
       try {
         const parsed = JSON.parse(desc);
         if (parsed && typeof parsed === "object") {
-          if (typeof parsed.desc === "string") desc = parsed.desc;
+          if (Object.prototype.hasOwnProperty.call(parsed, "desc")) {
+            if (typeof parsed.desc === "string") desc = parsed.desc;
+            else desc = "";
+          }
           if (parsed.months && typeof parsed.months === "object") {
             const mm = {};
             Object.keys(parsed.months || {}).forEach((k) => {
@@ -1118,9 +1121,12 @@ const sortedProjects = useMemo(() => {
 
     setSaving(true);
     setErr("");
+    let migrationErr = "";
     try {
       const centers = await loadCentersForActive();
-      const target = centers.find((c) => String(c.code) === targetCode);
+      const target =
+        centers.find((c) => String(c.code || "").trim() === targetCode) ||
+        centers.find((c) => coreOf(c.code) === coreOf(targetCode));
       if (!target?.id) throw new Error("row_not_found_for_edit");
 
       await api(`/centers/${active}/${target.id}`, {
@@ -1133,29 +1139,33 @@ const sortedProjects = useMemo(() => {
 
       const codeChanged = nextCode !== targetCode;
       if (codeChanged) {
-        const sourceRow = (rowsRef.current || []).find((r) => String(r?.code || "").trim() === targetCode);
-        if (sourceRow) {
-          const nextPayload = buildEstimatePayloadFromRow(sourceRow, nextCode);
-          if (nextPayload.code) {
-            await api("/budget-estimates", {
-              method: "POST",
-              body: JSON.stringify({
-                kind: active,
-                project_id: active === "projects" ? Number(projectId) : null,
-                rows: [nextPayload],
-              }),
-            });
+        try {
+          const sourceRow = (rowsRef.current || []).find((r) => String(r?.code || "").trim() === targetCode);
+          if (sourceRow) {
+            const nextPayload = buildEstimatePayloadFromRow(sourceRow, nextCode);
+            if (nextPayload.code) {
+              await api("/budget-estimates", {
+                method: "POST",
+                body: JSON.stringify({
+                  kind: active,
+                  project_id: active === "projects" ? Number(projectId) : null,
+                  rows: [nextPayload],
+                }),
+              });
+            }
           }
-        }
 
-        await api("/budget-estimates", {
-          method: "DELETE",
-          body: JSON.stringify({
-            kind: active,
-            project_id: active === "projects" ? Number(projectId) : null,
-            codes: [targetCode],
-          }),
-        });
+          await api("/budget-estimates", {
+            method: "DELETE",
+            body: JSON.stringify({
+              kind: active,
+              project_id: active === "projects" ? Number(projectId) : null,
+              codes: [targetCode],
+            }),
+          });
+        } catch (ex) {
+          migrationErr = ex?.message || "انتقال اطلاعات کد قبلی به کد جدید کامل نشد.";
+        }
       }
 
       setRows((prev) =>
@@ -1166,10 +1176,15 @@ const sortedProjects = useMemo(() => {
       }
       cancelEdit(targetCode);
     } catch (ex) {
-      setErr(ex.message || "update_failed");
+      setErr(ex.message || "خطا در ذخیره ویرایش");
       setReloadTick((v) => v + 1);
     } finally {
       setSaving(false);
+    }
+
+    if (migrationErr) {
+      setErr(migrationErr);
+      setReloadTick((v) => v + 1);
     }
   };
 
@@ -1184,6 +1199,9 @@ const sortedProjects = useMemo(() => {
         const sorted = rawList
           .map((h) => {
             const { desc, lastMonths } = parseDescMonths(h?.desc ?? h?.description ?? "");
+            const cleanDesc = String(desc || "").trim();
+            const normalizedDesc =
+              cleanDesc.startsWith("{") && cleanDesc.includes("\"months\"") ? "" : cleanDesc;
             const months = {};
             ALL_MONTH_KEYS.forEach((k) => {
               const v = Number(lastMonths?.[k] || 0);
@@ -1193,7 +1211,7 @@ const sortedProjects = useMemo(() => {
               code: String(code || "").trim(),
               name: String(nameByCode?.[code] || "").trim(),
               amount: Number(h?.amount || 0),
-              desc: String(desc || "").trim(),
+              desc: normalizedDesc,
               months,
               createdAt: h?.created_at || null,
             };
@@ -1868,10 +1886,10 @@ const sortedProjects = useMemo(() => {
                             </TD>
                             <TD className="px-2 py-3">{toFaDigits(idx + 1)}</TD>
 
-                            <TD className="px-2 py-3 text-right whitespace-nowrap">
+                            <TD className={`px-2 py-3 whitespace-nowrap ${rowIsEditing ? "text-center" : "text-right"}`}>
                               <div
-                                className="inline-flex items-center justify-end gap-1 flex-row-reverse"
-                                style={{ transform: shiftX ? `translateX(${shiftX}px)` : undefined }}
+                                className={`inline-flex items-center ${rowIsEditing ? "justify-center gap-2" : "justify-end gap-1 flex-row-reverse"}`}
+                                style={!rowIsEditing && shiftX ? { transform: `translateX(${shiftX}px)` } : undefined}
                               >
                                 {hasChildren && (
                                   <button
@@ -1890,21 +1908,23 @@ const sortedProjects = useMemo(() => {
                                 {rowIsEditing ? (
                                   active === "projects" ? (
                                     <input
-                                      className="h-9 w-28 rounded-xl px-2 text-center border border-black/15 bg-white text-black font-mono dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
+                                      className="h-10 w-32 rounded-xl px-2 text-center border border-black/15 bg-white text-black font-mono outline-none focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
                                       value={rowDraft.code}
                                       onChange={(e) => onEditCodeChange(rowCode, e.target.value)}
                                       spellCheck={false}
+                                      autoFocus
                                     />
                                   ) : (
-                                    <div className="inline-flex h-9 items-center rounded-xl overflow-hidden border border-black/15 bg-white text-black ltr dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700">
-                                      <span className="px-2 h-full inline-flex items-center font-mono select-none bg-black/[0.04] ring-1 ring-black/10 dark:bg-neutral-900 dark:ring-neutral-800">
+                                    <div className="inline-flex h-10 items-center rounded-xl overflow-hidden border border-black/15 bg-white text-black ltr dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700">
+                                      <span className="px-2.5 h-full inline-flex items-center font-mono select-none bg-black/[0.04] ring-1 ring-black/10 dark:bg-neutral-900 dark:ring-neutral-800">
                                         {visualPrefix(active)}
                                       </span>
                                       <input
-                                        className="w-20 px-2 h-full text-center font-mono outline-none bg-transparent"
+                                        className="w-24 px-2 h-full text-center font-mono outline-none bg-transparent focus:ring-2 focus:ring-black/10 dark:focus:ring-neutral-600/50"
                                         value={rowDraft.code}
                                         onChange={(e) => onEditCodeChange(rowCode, e.target.value)}
                                         spellCheck={false}
+                                        autoFocus
                                       />
                                     </div>
                                   )
@@ -1923,11 +1943,10 @@ const sortedProjects = useMemo(() => {
                             >
                               {rowIsEditing ? (
                                 <input
-                                  className="w-full rounded-xl px-2 py-1 text-right border border-black/15 bg-white text-black dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
+                                  className="w-full h-10 rounded-xl px-3 text-right border border-black/15 bg-white text-black outline-none focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
                                   value={rowDraft.name}
                                   onChange={(e) => onEditNameChange(rowCode, e.target.value)}
                                   placeholder="نام بودجه..."
-                                  autoFocus
                                 />
                               ) : (
                                 <div style={{ transform: shiftX ? `translateX(${shiftX}px)` : undefined }}>{r.name || "—"}</div>
@@ -2122,11 +2141,11 @@ const sortedProjects = useMemo(() => {
             onClick={openHistoryModal}
             disabled={historyLoading || (active === "projects" && !projectId)}
             className="h-10 px-3 inline-flex items-center justify-center gap-2 rounded-xl border border-black/15 hover:bg-black/5 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
-            aria-label="history"
-            title="history"
+            aria-label="تاریخچه"
+            title="تاریخچه"
           >
             <img src="/images/icons/gozareshha.svg" alt="" className="w-4 h-4 dark:invert" />
-            <span className="text-xs">History</span>
+            <span className="text-xs">تاریخچه</span>
           </button>
 
           <button
@@ -2144,11 +2163,16 @@ const sortedProjects = useMemo(() => {
           <div className="fixed inset-0 z-50 flex items-center justify-center px-2 sm:px-4">
             <div className="absolute inset-0 bg-black/40 dark:bg-neutral-950/70" onClick={() => setHistoryOpen(false)} />
             <div
-              className="relative w-full max-w-[98vw] sm:max-w-6xl max-h-[92vh] overflow-auto bg-white rounded-3xl shadow-2xl ring-1 ring-black/10 p-4 sm:p-5 text-black dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-800"
+              className="relative w-full max-w-[98vw] sm:max-w-7xl max-h-[92vh] overflow-auto bg-white rounded-3xl shadow-2xl ring-1 ring-black/10 p-4 sm:p-6 text-black dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-800"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <div className="text-sm sm:text-base font-semibold">History</div>
+              <div className="flex items-center justify-between gap-2 mb-4">
+                <div>
+                  <div className="text-sm sm:text-base font-semibold">تاریخچه تغییرات</div>
+                  <div className="text-[11px] sm:text-xs text-black/60 dark:text-neutral-300 mt-1">
+                    آخرین بروزرسانی: {historyFetchedAt ? formatDateTimeFa(historyFetchedAt) : "-"}
+                  </div>
+                </div>
                 <button
                   type="button"
                   onClick={() => setHistoryOpen(false)}
@@ -2158,74 +2182,77 @@ const sortedProjects = useMemo(() => {
                 </button>
               </div>
 
-              <div className="text-xs text-black/60 dark:text-neutral-300 mb-3">
-                Last refresh: {historyFetchedAt ? formatDateTimeFa(historyFetchedAt) : "—"}
-              </div>
-
               {historyLoading ? (
-                <div className="text-sm text-center py-8">Loading history...</div>
+                <div className="text-sm text-center py-10">در حال بارگذاری تاریخچه...</div>
               ) : historyErr ? (
                 <div className="text-sm text-red-600 dark:text-red-400 py-4">{historyErr}</div>
               ) : historyEvents.length === 0 ? (
-                <div className="text-sm text-center py-8">No history found.</div>
+                <div className="text-sm text-center py-10">تاریخچه‌ای یافت نشد.</div>
               ) : (
-                <div className="overflow-auto rounded-xl ring-1 ring-black/10 dark:ring-neutral-800">
-                  <table className="w-full min-w-[1100px] text-xs sm:text-sm [&_th]:text-center [&_td]:text-center" dir="rtl">
-                    <thead className="bg-black/5 dark:bg-white/10">
+                <div className="overflow-auto rounded-2xl ring-1 ring-black/10 dark:ring-neutral-800">
+                  <table className="w-full min-w-[1120px] text-xs sm:text-sm [&_th]:text-center [&_td]:text-center" dir="rtl">
+                    <thead className="bg-black/[0.06] dark:bg-white/10 sticky top-0 z-10">
                       <tr>
                         <th className="px-2 py-3">#</th>
-                        <th className="px-2 py-3">زمان</th>
+                        <th className="px-2 py-3">تاریخ/ساعت</th>
                         <th className="px-2 py-3">کد بودجه</th>
-                        <th className="px-2 py-3">نام</th>
+                        <th className="px-2 py-3">نام بودجه</th>
                         <th className="px-2 py-3">نوع</th>
                         <th className="px-2 py-3">قبل</th>
                         <th className="px-2 py-3">بعد</th>
-                        <th className="px-2 py-3">تغییر ماه‌ها</th>
+                        <th className="px-2 py-3">جزئیات تغییر ماه‌ها</th>
                       </tr>
                     </thead>
                     <tbody>
                       {historyEvents.map((ev, idx) => {
                         const typeLabel =
-                          ev.type === "create" ? "Create" : ev.type === "clear" ? "Clear" : "Update";
+                          ev.type === "create" ? "ایجاد" : ev.type === "clear" ? "حذف/صفر" : "ویرایش";
                         return (
-                          <tr key={`${ev.code}-${ev.createdAt || idx}-${idx}`} className="border-t border-black/10 dark:border-neutral-800">
+                          <tr
+                            key={`${ev.code}-${ev.createdAt || idx}-${idx}`}
+                            className="border-t border-black/10 dark:border-neutral-800 odd:bg-white even:bg-black/[0.02] dark:odd:bg-neutral-900 dark:even:bg-neutral-800/30"
+                          >
                             <td className="px-2 py-3">{toFaDigits(idx + 1)}</td>
                             <td className="px-2 py-3 whitespace-nowrap">{formatDateTimeFa(ev.createdAt)}</td>
                             <td className="px-2 py-3 ltr">{toFaDigits(renderCode(ev.code))}</td>
-                            <td className="px-2 py-3">{ev.name || "—"}</td>
-                            <td className="px-2 py-3 whitespace-nowrap">{typeLabel}</td>
-                            <td className="px-2 py-3 text-right">
-                              <div className="space-y-1 leading-6">
+                            <td className="px-2 py-3">{ev.name || "-"}</td>
+                            <td className="px-2 py-3 whitespace-nowrap">
+                              <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg bg-black/5 dark:bg-white/10">
+                                {typeLabel}
+                              </span>
+                            </td>
+                            <td className="px-2 py-3 text-right align-top">
+                              <div className="space-y-1 leading-6 rounded-xl p-2 bg-black/[0.03] dark:bg-white/[0.04]">
                                 <div>
                                   <span className="text-black/60 dark:text-neutral-300">جمع:</span>{" "}
                                   <span className="ltr">{toFaDigits(formatMoney(ev.beforeAmount || 0))}</span>
                                 </div>
                                 <div>
                                   <span className="text-black/60 dark:text-neutral-300">شرح:</span>{" "}
-                                  <span>{ev.beforeDesc || "—"}</span>
+                                  <span>{ev.beforeDesc || "-"}</span>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-2 py-3 text-right">
-                              <div className="space-y-1 leading-6">
+                            <td className="px-2 py-3 text-right align-top">
+                              <div className="space-y-1 leading-6 rounded-xl p-2 bg-black/[0.03] dark:bg-white/[0.04]">
                                 <div>
                                   <span className="text-black/60 dark:text-neutral-300">جمع:</span>{" "}
                                   <span className="ltr">{toFaDigits(formatMoney(ev.afterAmount || 0))}</span>
                                 </div>
                                 <div>
                                   <span className="text-black/60 dark:text-neutral-300">شرح:</span>{" "}
-                                  <span>{ev.afterDesc || "—"}</span>
+                                  <span>{ev.afterDesc || "-"}</span>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-2 py-3 text-right">
+                            <td className="px-2 py-3 text-right align-top">
                               {ev.changedMonths.length === 0 ? (
-                                <span>—</span>
+                                <span>-</span>
                               ) : (
-                                <div className="space-y-1 leading-6">
+                                <div className="space-y-1 leading-6 rounded-xl p-2 bg-black/[0.03] dark:bg-white/[0.04]">
                                   {ev.changedMonths.map((mKey) => (
                                     <div key={mKey}>
-                                      <span>{monthLabelByKey[mKey] || mKey}:</span>{" "}
+                                      <span className="text-black/60 dark:text-neutral-300">{monthLabelByKey[mKey] || mKey}:</span>{" "}
                                       <span className="ltr">{toFaDigits(formatMoney(ev.beforeMonths?.[mKey] || 0))}</span>
                                       <span className="px-1">→</span>
                                       <span className="ltr">{toFaDigits(formatMoney(ev.afterMonths?.[mKey] || 0))}</span>
