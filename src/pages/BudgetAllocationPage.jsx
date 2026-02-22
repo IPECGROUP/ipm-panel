@@ -1315,12 +1315,24 @@ setProjects(Array.from(byId.values()));
                             />
                             </div>
                             <div
+                              dir="ltr"
                               className={`absolute inset-0 flex items-center justify-center gap-1 transition-opacity ${
                                 isEditingAlloc
                                   ? "opacity-0 pointer-events-none"
                                   : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
                               }`}
                             >
+                              <RowActionIconBtn
+                                action="delete"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  removeRow(r.code);
+                                }}
+                                disabled={isComputed}
+                                size={34}
+                                iconSize={16}
+                              />
                               <RowActionIconBtn
                                 action="edit"
                                 onClick={(e) => {
