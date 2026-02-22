@@ -955,17 +955,17 @@ setProjects(Array.from(byId.values()));
   };
 
   const TopButtons = () => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
       {tabs.map((t) => (
         <button
           key={t.id}
           onClick={() => {
             setActive(t.id);
           }}
-          className={`h-10 min-w-0 px-3 sm:px-4 rounded-2xl border text-xs sm:text-sm shadow-sm transition
+          className={`h-10 px-4 rounded-2xl border text-sm shadow-sm transition
             ${
               active === t.id
-                ? "bg-neutral-100 text-neutral-900 border-neutral-100"
+                ? "bg-black text-white border-black"
                 : "bg-white text-black border border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800"
             }`}
         >
@@ -1091,18 +1091,20 @@ setProjects(Array.from(byId.values()));
           </span>
         </div>
 
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <div className="text-sm text-black/60 dark:text-neutral-400">
-            تاریخ:
+        <div className="px-[15px]">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <div className="text-sm text-black/60 dark:text-neutral-400">
+              تاریخ:
+            </div>
+            <div className="px-3 py-1 rounded-lg bg-black/5 text-black text-sm ring-1 ring-black/15 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-800">
+              {toFaDigits(todayFa)}
+            </div>
           </div>
-          <div className="px-3 py-1 rounded-lg bg-black/5 text-black text-sm ring-1 ring-black/15 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-800">
-            {toFaDigits(todayFa)}
-          </div>
-        </div>
 
-        <div className="space-y-3 md:space-y-4 mb-4">
-          <TopButtons />
-          <ProjectsControls />
+          <div className="space-y-3 md:space-y-4 mb-4">
+            <TopButtons />
+            <ProjectsControls />
+          </div>
         </div>
 
         <TableWrap>
@@ -1288,7 +1290,7 @@ setProjects(Array.from(byId.values()));
                           />
                         </TD>
                         <TD className="px-2.5 pt-1.5 pb-1 align-middle !text-center">
-                          <div className="inline-flex items-center justify-center gap-1 opacity-85 transition-opacity group-hover:opacity-100">
+                          <div className="inline-flex items-center justify-center gap-1 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto">
                             <RowActionIconBtn
                               action="edit"
                               onClick={(e) => {
