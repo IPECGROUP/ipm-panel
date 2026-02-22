@@ -2,7 +2,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
-import { baseCurrenciesTablePreset as tablePreset } from "../components/ui/tablePresets.js";
+import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
+import {
+  baseCurrenciesTablePreset as tablePreset,
+  hoverSelectableRowPreset,
+  getHoverSelectableRowClass,
+} from "../components/ui/tablePresets.js";
 import { usePageAccess } from "../hooks/usePageAccess";
 
 const PAGE_KEY = "EstimatesPage";
@@ -523,6 +528,75 @@ const sortedProjects = useMemo(() => {
     return result;
   }, [rowsToRender, coreOf, renderCode, codeSortDir, openCodes]);
 
+  const [selectedCodes, setSelectedCodes] = useState([]);
+  const setSelected = useCallback((nextOrUpdater) => {
+    setSelectedCodes((prev) => {
+      const prevList = Array.isArray(prev) ? prev : [];
+      const rawNext = typeof nextOrUpdater === "function" ? nextOrUpdater(prevList) : nextOrUpdater;
+      return Array.from(
+        new Set(
+          (Array.isArray(rawNext) ? rawNext : [])
+            .map((code) => String(code || "").trim())
+            .filter(Boolean),
+        ),
+      );
+    });
+  }, []);
+
+  const visibleCodes = useMemo(
+    () =>
+      (displayRows || [])
+        .map((n) => String(n?.row?.code || "").trim())
+        .filter(Boolean),
+    [displayRows],
+  );
+
+  const selectedSet = useMemo(
+    () => new Set((selectedCodes || []).map((c) => String(c || "").trim())),
+    [selectedCodes],
+  );
+
+  const selectedVisibleCount = useMemo(() => {
+    if (!visibleCodes.length) return 0;
+    return visibleCodes.reduce((acc, code) => (selectedSet.has(code) ? acc + 1 : acc), 0);
+  }, [visibleCodes, selectedSet]);
+
+  const allVisibleSelected = visibleCodes.length > 0 && selectedVisibleCount === visibleCodes.length;
+  const someVisibleSelected = selectedVisibleCount > 0 && selectedVisibleCount < visibleCodes.length;
+
+  const toggleRowSelect = (code) => {
+    const sc = String(code || "").trim();
+    if (!sc) return;
+    setSelected((prev) => {
+      const s = new Set((prev || []).map((x) => String(x)));
+      if (s.has(sc)) s.delete(sc);
+      else s.add(sc);
+      return Array.from(s);
+    });
+  };
+
+  const toggleSelectAllVisible = () => {
+    if (!visibleCodes.length) return;
+    if (allVisibleSelected) {
+      setSelected((prev) => (prev || []).filter((code) => !visibleCodes.includes(String(code))));
+      return;
+    }
+    setSelected((prev) => {
+      const s = new Set((prev || []).map((x) => String(x)));
+      visibleCodes.forEach((code) => s.add(String(code)));
+      return Array.from(s);
+    });
+  };
+
+  useEffect(() => {
+    if (!visibleCodes.length) {
+      if (selectedCodes.length) setSelected([]);
+      return;
+    }
+    const valid = new Set(visibleCodes.map((c) => String(c)));
+    setSelected((prev) => (prev || []).filter((code) => valid.has(String(code))));
+  }, [visibleCodes]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const allRowsForExport = useMemo(() => {
     const base = rowsToRender || [];
     if (!base.length) return [];
@@ -863,6 +937,125 @@ const sortedProjects = useMemo(() => {
     }
   };
 
+  const loadCentersForActive = useCallback(async () => {
+    const r = await api(`/centers/${active}`);
+    const items = Array.isArray(r?.items) ? r.items : [];
+    return items
+      .map((it) => ({
+        id: it?.id,
+        code: String(it?.code ?? it?.suffix ?? "").trim(),
+        name: String(it?.name ?? it?.description ?? "").trim(),
+      }))
+      .filter((it) => it.id != null && it.code);
+  }, [active]);
+
+  const [editRowModal, setEditRowModal] = useState({
+    open: false,
+    code: "",
+    name: "",
+    saving: false,
+    error: "",
+  });
+
+  const openEditRowModal = (row) => {
+    const code = String(row?.code || "").trim();
+    if (!code) return;
+    setEditRowModal({
+      open: true,
+      code,
+      name: String(row?.name || "").trim(),
+      saving: false,
+      error: "",
+    });
+  };
+
+  const closeEditRowModal = () =>
+    setEditRowModal({ open: false, code: "", name: "", saving: false, error: "" });
+
+  const saveEditRowModal = async () => {
+    const targetCode = String(editRowModal.code || "").trim();
+    const targetName = String(editRowModal.name || "").trim();
+    if (!targetCode || !targetName) return;
+
+    setEditRowModal((p) => ({ ...p, saving: true, error: "" }));
+    try {
+      const centers = await loadCentersForActive();
+      const target = centers.find((c) => String(c.code) === targetCode);
+      if (!target?.id) throw new Error("row_not_found_for_edit");
+
+      await api(`/centers/${active}/${target.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          suffix: target.code,
+          description: targetName,
+        }),
+      });
+
+      setRows((prev) =>
+        (prev || []).map((r) => (String(r.code) === targetCode ? { ...r, name: targetName } : r)),
+      );
+      closeEditRowModal();
+    } catch (ex) {
+      setEditRowModal((p) => ({ ...p, saving: false, error: ex.message || "update_failed" }));
+    }
+  };
+
+  const removeRows = async (codes) => {
+    const uniqCodes = Array.from(
+      new Set(
+        (Array.isArray(codes) ? codes : [codes])
+          .map((code) => String(code || "").trim())
+          .filter(Boolean),
+      ),
+    );
+    if (!uniqCodes.length) return;
+
+    const confirmText =
+      uniqCodes.length > 1 ? `حذف ${uniqCodes.length} ردیف انتخاب‌شده؟` : "حذف این ردیف؟";
+    if (!window.confirm(confirmText)) return;
+
+    const codeSet = new Set(uniqCodes.map((c) => String(c)));
+    setRows((prev) => (prev || []).filter((r) => !codeSet.has(String(r?.code || ""))));
+    setSelected((prev) => (prev || []).filter((code) => !codeSet.has(String(code))));
+
+    try {
+      setSaving(true);
+      setErr("");
+
+      await api("/budget-estimates", {
+        method: "DELETE",
+        body: JSON.stringify({
+          kind: active,
+          project_id: active === "projects" ? Number(projectId) : null,
+          codes: uniqCodes,
+        }),
+      });
+
+      const centers = await loadCentersForActive().catch(() => []);
+      const centerIds = centers
+        .filter((c) => codeSet.has(String(c.code)))
+        .map((c) => c.id)
+        .filter((id) => id != null);
+
+      if (centerIds.length) {
+        await Promise.all(
+          centerIds.map((id) =>
+            api(`/centers/${active}/${id}`, {
+              method: "DELETE",
+            }),
+          ),
+        );
+      }
+
+      setReloadTick((v) => v + 1);
+    } catch (ex) {
+      setErr(ex.message || "delete_failed");
+      setReloadTick((v) => v + 1);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const addCenterRow = async () => {
     setCenterFormErr("");
     if (!active) return;
@@ -1172,7 +1365,7 @@ const sortedProjects = useMemo(() => {
     </div>
   );
 
-  const colCount = 3 + dynamicMonths.length + 1;
+  const colCount = 4 + dynamicMonths.length + 1;
 
   // ✅ Guards (مثل DefineBudgetCentersPage)
   if (accessLoading) {
@@ -1242,6 +1435,19 @@ const sortedProjects = useMemo(() => {
                   >
                     <THead>
                       <tr className={tablePreset.headRow + " sticky top-0 z-10"}>
+                        <TH className={`w-12 ${tablePreset.th}`}>
+                          <input
+                            type="checkbox"
+                            className={hoverSelectableRowPreset.checkbox}
+                            checked={allVisibleSelected}
+                            ref={(el) => {
+                              if (el) el.indeterminate = someVisibleSelected;
+                            }}
+                            onChange={toggleSelectAllVisible}
+                            aria-label="انتخاب همه"
+                            title="انتخاب همه"
+                          />
+                        </TH>
                         <TH className={`w-14 ${tablePreset.th}`}>#</TH>
                         <TH className={`w-36 md:w-40 ${tablePreset.th}`}>
                       <div className="flex items-center justify-center gap-1 w-full">
@@ -1300,6 +1506,7 @@ const sortedProjects = useMemo(() => {
                       <TR className="text-center bg-black/[0.04] font-semibold dark:bg-white/10">
                         <TD className="px-2 py-3 border-b border-black/10 dark:border-neutral-800">-</TD>
                         <TD className="px-2 py-3 border-b border-black/10 dark:border-neutral-800">-</TD>
+                        <TD className="px-2 py-3 border-b border-black/10 dark:border-neutral-800">-</TD>
                         <TD className="px-2 py-3 text-center border-b border-black/10 dark:border-neutral-800">جمع</TD>
                         {dynamicMonths.map((m) => (
                           <TD key={m.key} className="px-0 py-2 text-center align-middle border-b border-black/10 dark:border-neutral-800">
@@ -1322,6 +1529,9 @@ const sortedProjects = useMemo(() => {
                       {(displayRows || []).map((node, idx) => {
                         const r = node.row;
                         const code = r.code;
+                        const rowCode = String(code || "").trim();
+                        const isSelected = rowCode ? selectedSet.has(rowCode) : false;
+                        const shouldDeleteSelectedOnAction = isSelected && selectedCodes.length > 1;
                         const isParent = !!code && !hierarchyMaps.isLeafByCode[r.code];
                         const hasChildren = !!node.hasChildren || isParent;
                         const toggleKey = node.core || node.key;
@@ -1345,7 +1555,18 @@ const sortedProjects = useMemo(() => {
                         })();
 
                         return (
-                          <TR key={code || idx} className="text-center hover:bg-black/[0.06] transition-colors dark:hover:bg-white/15">
+                          <TR key={code || idx} className={getHoverSelectableRowClass(isSelected)}>
+                            <TD className="px-2 py-3">
+                              <input
+                                type="checkbox"
+                                className={hoverSelectableRowPreset.checkbox}
+                                checked={isSelected}
+                                disabled={!rowCode}
+                                onChange={() => toggleRowSelect(rowCode)}
+                                aria-label="انتخاب ردیف"
+                                title="انتخاب ردیف"
+                              />
+                            </TD>
                             <TD className="px-2 py-3">{toFaDigits(idx + 1)}</TD>
 
                             <TD className="px-2 py-3 text-right whitespace-nowrap">
@@ -1467,9 +1688,50 @@ const sortedProjects = useMemo(() => {
                             })}
 
                             <TD className="px-3 py-3 whitespace-nowrap text-center border-l border-r border-black/10 dark:border-neutral-700">
-                              <span className="inline-flex items-center justify-center gap-1">
-                                <span className="ltr">{toFaDigits(formatMoney(finalTotal || 0))}</span>
-                              </span>
+                              <div className="relative flex min-h-[34px] items-center justify-center">
+                                <span
+                                  className={`inline-flex items-center justify-center gap-1 transition-opacity ${
+                                    isSelected
+                                      ? "opacity-0 pointer-events-none"
+                                      : "opacity-100 group-hover:opacity-0 group-hover:pointer-events-none"
+                                  }`}
+                                >
+                                  <span className="ltr">{toFaDigits(formatMoney(finalTotal || 0))}</span>
+                                </span>
+
+                                <div
+                                  className={`absolute inset-0 flex items-center justify-center gap-1 transition-opacity ${
+                                    isSelected
+                                      ? "opacity-100 pointer-events-auto"
+                                      : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+                                  }`}
+                                >
+                                  <RowActionIconBtn
+                                    action="edit"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      openEditRowModal(r);
+                                    }}
+                                    size={34}
+                                    iconSize={15}
+                                  />
+                                  <RowActionIconBtn
+                                    action="delete"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      if (shouldDeleteSelectedOnAction) {
+                                        removeRows(selectedCodes);
+                                        return;
+                                      }
+                                      removeRows([rowCode]);
+                                    }}
+                                    size={34}
+                                    iconSize={16}
+                                  />
+                                </div>
+                              </div>
                             </TD>
                           </TR>
                         );
@@ -1507,6 +1769,63 @@ const sortedProjects = useMemo(() => {
             <img src="/images/icons/berozresani.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
           </button>
         </div>
+
+
+        {editRowModal.open && (
+          <div className="fixed inset-0 z-40 grid place-items-center px-3">
+            <div className="absolute inset-0 bg-black/25 dark:bg-neutral-950/55 backdrop-blur-[2px]" onClick={closeEditRowModal} />
+            <div
+              className="relative w-full max-w-sm rounded-2xl bg-white text-neutral-900 border border-black/10 shadow-2xl dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 p-4 space-y-3"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="text-sm font-semibold">Edit Row</div>
+                  <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400 ltr">
+                    {editRowModal.code || "-"}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeEditRowModal}
+                  className="h-8 w-8 grid place-items-center rounded-xl bg-black text-white dark:bg-neutral-100 dark:text-neutral-900"
+                >
+                  <img src="/images/icons/bastan.svg" alt="" className="w-4 h-4 invert dark:invert-0" />
+                </button>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-neutral-600 dark:text-neutral-300">Budget Name</label>
+                <input
+                  type="text"
+                  className="w-full rounded-xl px-3 py-2 text-sm bg-white text-black placeholder-black/40 border border-black/15 outline-none focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                  value={editRowModal.name}
+                  onChange={(e) => setEditRowModal((p) => ({ ...p, name: e.target.value, error: "" }))}
+                  placeholder="Budget name..."
+                />
+                {editRowModal.error ? <div className="text-xs text-red-600 dark:text-red-400">{editRowModal.error}</div> : null}
+              </div>
+
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={closeEditRowModal}
+                  className="h-9 px-4 rounded-xl border border-neutral-300 text-xs text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={saveEditRowModal}
+                  disabled={editRowModal.saving || !String(editRowModal.name || "").trim()}
+                  className="h-9 px-5 rounded-xl bg-neutral-900 text-xs text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {editRowModal.saving ? "..." : "Save"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </Card>
     </>
   );
