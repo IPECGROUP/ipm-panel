@@ -1659,7 +1659,7 @@ const sortedProjects = useMemo(() => {
             addCenterRow();
           }}
         >
-          <div className="md:w-auto">
+          <div className="md:w-auto md:translate-x-[2px]">
             <button
               type="submit"
               disabled={creatingCenter || (active === "projects" && !projectId)}
