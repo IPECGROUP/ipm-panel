@@ -1646,7 +1646,7 @@ const sortedProjects = useMemo(() => {
     );
   };
 
-  const renderCenterCreateControls = () => (
+  const renderCenterCreateControls = (children = null) => (
     <div
       className="rounded-2xl ring-1 ring-black/10 border border-black/10 p-3 md:p-4 bg-white dark:bg-neutral-900 dark:ring-neutral-800 dark:border-neutral-800"
       dir="rtl"
@@ -1714,6 +1714,8 @@ const sortedProjects = useMemo(() => {
       </form>
 
       {centerFormErr && <div className="text-sm text-red-600 dark:text-red-400 mt-2 text-center">{centerFormErr}</div>}
+
+      {children ? <div className="mt-3">{children}</div> : null}
     </div>
   );
 
@@ -1770,14 +1772,10 @@ const sortedProjects = useMemo(() => {
           <span className="font-semibold text-black dark:text-neutral-100">برآورد هزینه‌ها</span>
         </div>
 
-        <div className="rounded-2xl border border-black/10 dark:border-neutral-800 bg-white/70 dark:bg-neutral-900/70 backdrop-blur px-3 py-3">
-          <div className="space-y-3 md:space-y-4">
-            {renderTopButtons()}
-            {renderProjectsControls()}
-            {renderCenterCreateControls()}
-          </div>
-
-          <div className="mt-3">
+        <div className="space-y-3 md:space-y-4 mb-4">
+          {renderTopButtons()}
+          {renderProjectsControls()}
+          {renderCenterCreateControls(
             <TableWrap>
               <div className={tablePreset.outer}>
                 <div className={tablePreset.innerPad}>
@@ -2169,7 +2167,7 @@ const sortedProjects = useMemo(() => {
                 </div>
               </div>
             </TableWrap>
-          </div>
+          )}
         </div>
 
         {err && <div className="text-sm text-red-600 dark:text-red-400 mt-3">{err}</div>}
