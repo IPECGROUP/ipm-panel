@@ -3,6 +3,7 @@ import React from "react";
 import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TR, TD, TH } from "../components/ui/Table.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
+import { hoverSelectableRowPreset } from "../components/ui/tablePresets.js";
 import { useAuth } from "../components/AuthProvider";
 import { isMainAdminUser } from "../utils/auth";
 
@@ -39,6 +40,7 @@ function ProjectsPage() {
   const [editCode, setEditCode] = React.useState("");
   const [editName, setEditName] = React.useState("");
   const [editIsActive, setEditIsActive] = React.useState(true);
+  const [selectedProjectIds, setSelectedProjectIds] = React.useState([]);
 
   const [codeSortDir, setCodeSortDir] = React.useState("asc");
 
@@ -176,6 +178,38 @@ function ProjectsPage() {
     }
   };
 
+  const delSelected = async (itemsOrItem) => {
+    const rowsToDelete = Array.isArray(itemsOrItem) ? itemsOrItem : [itemsOrItem];
+    const ids = Array.from(
+      new Set(
+        rowsToDelete
+          .map((it) => Number(it?.id))
+          .filter((id) => Number.isFinite(id) && id > 0)
+      )
+    );
+    if (!ids.length) return;
+
+    const confirmText = ids.length > 1 ? `Delete ${ids.length} selected projects?` : "Delete this project?";
+    if (!window.confirm(confirmText)) return;
+
+    try {
+      await Promise.all(
+        ids.map((id) =>
+          api("/projects", {
+            method: "DELETE",
+            body: JSON.stringify({ id }),
+          })
+        )
+      );
+      setRows((prev) => prev.filter((x) => !ids.includes(Number(x.id))));
+      setSelectedProjectIds((prev) => (prev || []).filter((id) => !ids.includes(Number(id))));
+    } catch (ex) {
+      console.error(ex);
+      alert(ex.message || "Error deleting projects");
+      await loadAll().catch(() => {});
+    }
+  };
+
   const sortedRows = React.useMemo(() => {
     const arr = Array.isArray(rows) ? [...rows] : [];
     arr.sort((a, b) => {
@@ -198,6 +232,35 @@ function ProjectsPage() {
   const startIdx = total === 0 ? 0 : page * pageSize;
   const endIdx = Math.min(total, startIdx + pageSize);
   const pageRows = sortedRows.slice(startIdx, endIdx);
+
+  React.useEffect(() => {
+    const validIds = new Set((sortedRows || []).map((r) => String(r.id)));
+    setSelectedProjectIds((prev) => (prev || []).filter((id) => validIds.has(String(id))));
+  }, [sortedRows]);
+
+  const visibleProjectIds = (pageRows || []).map((r) => String(r.id));
+  const selectedProjectSet = new Set((selectedProjectIds || []).map((id) => String(id)));
+  const allVisibleProjectsSelected =
+    visibleProjectIds.length > 0 && visibleProjectIds.every((id) => selectedProjectSet.has(id));
+  const someVisibleProjectsSelected =
+    visibleProjectIds.some((id) => selectedProjectSet.has(id)) && !allVisibleProjectsSelected;
+  const toggleSelectAllVisibleProjects = () => {
+    setSelectedProjectIds((prev) => {
+      const prevSet = new Set((prev || []).map((id) => String(id)));
+      if (allVisibleProjectsSelected) {
+        return (prev || []).filter((id) => !visibleProjectIds.includes(String(id)));
+      }
+      visibleProjectIds.forEach((id) => prevSet.add(id));
+      return Array.from(prevSet);
+    });
+  };
+  const toggleSelectProject = (id) => {
+    const sid = String(id);
+    setSelectedProjectIds((prev) => {
+      const exists = (prev || []).some((x) => String(x) === sid);
+      return exists ? (prev || []).filter((x) => String(x) !== sid) : [...(prev || []), sid];
+    });
+  };
 
   const onAddCodeChange = (e) => {
     const v = toEnDigits(e.target.value).replace(/[^\d]/g, "").slice(0, 3);
@@ -384,6 +447,20 @@ function ProjectsPage() {
                   >
                     <THead>
                       <tr className="sticky top-0 z-20 bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
+                        <TH className="w-12 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                          <input
+                            type="checkbox"
+                            className={hoverSelectableRowPreset.checkbox}
+                            checked={allVisibleProjectsSelected}
+                            ref={(el) => {
+                              if (el) el.indeterminate = someVisibleProjectsSelected;
+                            }}
+                            onChange={toggleSelectAllVisibleProjects}
+                            aria-label="Select all projects"
+                            title="Select all projects"
+                          />
+                        </TH>
+
                         <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
                           #
                         </TH>
@@ -466,13 +543,13 @@ function ProjectsPage() {
                     >
                       {loading ? (
                         <TR className="bg-white dark:bg-transparent">
-                          <TD colSpan={5} className="text-center text-black/60 dark:text-neutral-400 py-4">
+                          <TD colSpan={6} className="text-center text-black/60 dark:text-neutral-400 py-4">
                             در حال بارگذاری…
                           </TD>
                         </TR>
                       ) : pageRows.length === 0 ? (
                         <TR className="bg-white dark:bg-transparent">
-                          <TD colSpan={5} className="text-center text-black/60 dark:text-neutral-400 py-4">
+                          <TD colSpan={6} className="text-center text-black/60 dark:text-neutral-400 py-4">
                             موردی ثبت نشده.
                           </TD>
                         </TR>
@@ -483,6 +560,8 @@ function ProjectsPage() {
 
                           const rowIsEditing = editId === r.id;
                           const rowIsActive = Boolean(r?.isActive ?? true);
+                          const isSelected = selectedProjectSet.has(String(r.id));
+                          const deleteSelected = isSelected && selectedProjectIds.length > 1;
 
                           const boxBase =
                             "h-5 w-5 rounded-[6px] border inline-grid place-items-center text-[12px] leading-none select-none";
@@ -500,7 +579,22 @@ function ProjectsPage() {
                             "cursor-pointer hover:opacity-90 active:opacity-80";
 
                           return (
-                            <TR key={r.id}>
+                            <TR
+                              key={r.id}
+                              className={`${hoverSelectableRowPreset.rowBase} ${
+                                isSelected ? hoverSelectableRowPreset.rowSelected : hoverSelectableRowPreset.rowIdle
+                              }`}
+                            >
+                              <TD className={`px-3 ${tdBorder}`}>
+                                <input
+                                  type="checkbox"
+                                  className={hoverSelectableRowPreset.checkbox}
+                                  checked={isSelected}
+                                  onChange={() => toggleSelectProject(r.id)}
+                                  aria-label="Select project"
+                                  title="Select project"
+                                />
+                              </TD>
                               <TD className={`px-3 ${tdBorder}`}>{startIdx + idx + 1}</TD>
 
                               <TD className={`px-3 font-mono ${tdBorder}`}>
@@ -592,7 +686,7 @@ function ProjectsPage() {
                                     />
                                   </div>
                                 ) : (
-                                  <div className="flex items-center justify-center gap-2">
+                                  <div className={hoverSelectableRowPreset.rowActionsInline}>
                                     <RowActionIconBtn
                                       action="edit"
                                       onClick={(e) => {
@@ -608,6 +702,10 @@ function ProjectsPage() {
                                       onClick={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
+                                        if (deleteSelected) {
+                                          delSelected(sortedRows.filter((x) => selectedProjectSet.has(String(x.id))));
+                                          return;
+                                        }
                                         del(r);
                                       }}
                                       size={36}

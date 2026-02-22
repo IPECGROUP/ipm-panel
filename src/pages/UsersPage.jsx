@@ -4,6 +4,7 @@ import Shell from "../components/layout/Shell.jsx";
 import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
 import { Btn, PrimaryBtn, DangerBtn } from "../components/ui/Button.jsx";
+import { hoverSelectableRowPreset } from "../components/ui/tablePresets.js";
 import { useAuth } from "../components/AuthProvider.jsx";
 
 // اگر api جدا داری، می‌تونی این بخش رو حذف و از util خودت ایمپورت کنی
@@ -49,6 +50,7 @@ function UsersPage() {
   // ===== state =====
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
 
   // مرتب‌سازی
   const [sortKey, setSortKey] = useState("");
@@ -449,6 +451,38 @@ function UsersPage() {
     }
   };
 
+  const delSelected = async (itemsOrItem) => {
+    const rows = Array.isArray(itemsOrItem) ? itemsOrItem : [itemsOrItem];
+    const ids = Array.from(
+      new Set(
+        rows
+          .map((u) => Number(u?.id))
+          .filter((id) => Number.isFinite(id) && id > 0)
+      )
+    );
+    if (!ids.length) return;
+
+    const firstLabel = rows[0]?.username || rows[0]?.name || "-";
+    const confirmText = ids.length > 1 ? `Delete ${ids.length} selected users?` : `Delete user "${firstLabel}"?`;
+    if (!confirm(confirmText)) return;
+
+    try {
+      await Promise.all(
+        ids.map((id) =>
+          api(`/admin/users`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id }),
+          })
+        )
+      );
+      setSelectedUserIds((prev) => (prev || []).filter((id) => !ids.includes(Number(id))));
+      await reload();
+    } catch (ex) {
+      alert(ex?.message || "Error deleting users");
+    }
+  };
+
   // ===== translate access labels (فارسی‌سازی) =====
   const accessLabelMap = {
     "budget:projects": "پروژه‌ها",
@@ -494,6 +528,33 @@ function UsersPage() {
     });
     return arr;
   }, [list, sortKey, sortDir]);
+
+  useEffect(() => {
+    const validIds = new Set((sortedList || []).map((u) => String(u.id)));
+    setSelectedUserIds((prev) => (prev || []).filter((id) => validIds.has(String(id))));
+  }, [sortedList]);
+
+  const visibleUserIds = (sortedList || []).map((u) => String(u.id));
+  const selectedUserSet = new Set((selectedUserIds || []).map((id) => String(id)));
+  const allUsersSelected = visibleUserIds.length > 0 && visibleUserIds.every((id) => selectedUserSet.has(id));
+  const someUsersSelected = visibleUserIds.some((id) => selectedUserSet.has(id)) && !allUsersSelected;
+  const toggleSelectAllUsers = () => {
+    setSelectedUserIds((prev) => {
+      const prevSet = new Set((prev || []).map((id) => String(id)));
+      if (allUsersSelected) {
+        return (prev || []).filter((id) => !visibleUserIds.includes(String(id)));
+      }
+      visibleUserIds.forEach((id) => prevSet.add(id));
+      return Array.from(prevSet);
+    });
+  };
+  const toggleSelectUser = (id) => {
+    const sid = String(id);
+    setSelectedUserIds((prev) => {
+      const exists = (prev || []).some((x) => String(x) === sid);
+      return exists ? (prev || []).filter((x) => String(x) !== sid) : [...(prev || []), sid];
+    });
+  };
 
   const [addRolesOpen, setAddRolesOpen] = useState(false);
   const [editRolesOpen, setEditRolesOpen] = useState(false);
@@ -826,6 +887,20 @@ function UsersPage() {
                   >
                     <THead>
                       <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
+                        <TH className="w-12 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                          <input
+                            type="checkbox"
+                            className={hoverSelectableRowPreset.checkbox}
+                            checked={allUsersSelected}
+                            ref={(el) => {
+                              if (el) el.indeterminate = someUsersSelected;
+                            }}
+                            onChange={toggleSelectAllUsers}
+                            aria-label="Select all users"
+                            title="Select all users"
+                          />
+                        </TH>
+
                         <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
                           #
                         </TH>
@@ -899,13 +974,13 @@ function UsersPage() {
                     >
                       {loading ? (
                         <TR className="bg-white dark:bg-transparent">
-                          <TD colSpan={5} className="text-center text-black/60 dark:text-neutral-400 py-4">
+                          <TD colSpan={6} className="text-center text-black/60 dark:text-neutral-400 py-4">
                             در حال بارگذاری...
                           </TD>
                         </TR>
                       ) : (sortedList || []).length === 0 ? (
                         <TR className="bg-white dark:bg-transparent">
-                          <TD colSpan={5} className="text-center text-black/60 dark:text-neutral-400 py-4">
+                          <TD colSpan={6} className="text-center text-black/60 dark:text-neutral-400 py-4">
                             کاربری ثبت نشده است.
                           </TD>
                         </TR>
@@ -913,9 +988,26 @@ function UsersPage() {
                         (sortedList || []).map((u, idx) => {
                           const isLast = idx === (sortedList || []).length - 1;
                           const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
+                          const isSelected = selectedUserSet.has(String(u.id));
+                          const deleteSelected = isSelected && selectedUserIds.length > 1;
 
                           return (
-                            <TR key={u.id}>
+                            <TR
+                              key={u.id}
+                              className={`${hoverSelectableRowPreset.rowBase} ${
+                                isSelected ? hoverSelectableRowPreset.rowSelected : hoverSelectableRowPreset.rowIdle
+                              }`}
+                            >
+                              <TD className={`px-3 ${tdBorder}`}>
+                                <input
+                                  type="checkbox"
+                                  className={hoverSelectableRowPreset.checkbox}
+                                  checked={isSelected}
+                                  onChange={() => toggleSelectUser(u.id)}
+                                  aria-label="Select user"
+                                  title="Select user"
+                                />
+                              </TD>
                               <TD className={`px-3 ${tdBorder}`}>{idx + 1}</TD>
                               <TD className={`px-3 ${tdBorder}`}>{u.name || u.username || "—"}</TD>
                               <TD className={`px-3 ${tdBorder}`}>{u.department || "—"}</TD>
@@ -924,7 +1016,7 @@ function UsersPage() {
                               </TD>
 
                               <TD className={`px-3 ${tdBorder}`}>
-                                <div className="flex items-center justify-center gap-2">
+                                <div className={hoverSelectableRowPreset.rowActionsInline}>
                                   <button
                                     type="button"
                                     onClick={() => startEdit(u)}
@@ -941,7 +1033,13 @@ function UsersPage() {
 
                                   <button
                                     type="button"
-                                    onClick={() => del(u)}
+                                    onClick={() => {
+                                      if (deleteSelected) {
+                                        delSelected(sortedList.filter((x) => selectedUserSet.has(String(x.id))));
+                                        return;
+                                      }
+                                      del(u);
+                                    }}
                                     className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
                                     aria-label="حذف"
                                     title="حذف"

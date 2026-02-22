@@ -4,7 +4,7 @@ import React from "react";
 import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TH, TD } from "../components/ui/Table.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
-import { baseCurrenciesTablePreset as tablePreset } from "../components/ui/tablePresets.js";
+import { baseCurrenciesTablePreset as tablePreset, hoverSelectableRowPreset } from "../components/ui/tablePresets.js";
 
 function BaseCurrenciesPage() {
   const [types, setTypes] = React.useState([]);
@@ -363,7 +363,7 @@ function BaseCurrenciesPage() {
                     <TH className={`w-12 ${tablePreset.th}`}>
                       <input
                         type="checkbox"
-                        className="w-4 h-4 accent-black dark:accent-neutral-200"
+                        className={hoverSelectableRowPreset.checkbox}
                         checked={allVisibleSelected}
                         ref={(el) => {
                           if (el) el.indeterminate = someVisibleSelected;
@@ -427,17 +427,14 @@ function BaseCurrenciesPage() {
                       return (
                         <tr
                           key={`${kind}-${r.id}`}
-                          className={
-                            "group transition-colors " +
-                            (isSelected
-                              ? "!bg-black/[0.08] !hover:bg-black/[0.12] dark:!bg-white/15 dark:!hover:bg-white/20"
-                              : "!hover:bg-black/[0.04] dark:!hover:bg-white/10")
-                          }
+                          className={`${hoverSelectableRowPreset.rowBase} ${
+                            isSelected ? hoverSelectableRowPreset.rowSelected : hoverSelectableRowPreset.rowIdle
+                          }`}
                         >
                           <TD className={`px-3 ${tdBorder}`}>
                             <input
                               type="checkbox"
-                              className="w-4 h-4 accent-black dark:accent-neutral-200"
+                              className={hoverSelectableRowPreset.checkbox}
                               checked={isSelected}
                               onChange={() => toggleRowSelect(r.id)}
                               aria-label="انتخاب"
@@ -447,7 +444,7 @@ function BaseCurrenciesPage() {
 
                           <TD className={`px-3 ${tdBorder}`}>{idx + 1}</TD>
 
-                          <TD className={`px-3 !text-center ${tdBorder}`}>
+                          <TD className={`px-3 ${hoverSelectableRowPreset.valueCell} ${tdBorder}`}>
                             {isEditing ? (
                               <div className="flex items-center justify-between gap-2">
                                 <input
@@ -470,14 +467,9 @@ function BaseCurrenciesPage() {
                                 </div>
                               </div>
                             ) : (
-                              <div className="relative flex min-h-[34px] items-center justify-center">
-                                <span className="block w-full truncate px-12 text-center">{r.title || "—"}</span>
-                                <div
-                                  className={
-                                    "absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-1 shrink-0 transition-opacity " +
-                                    "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
-                                  }
-                                >
+                              <div className={hoverSelectableRowPreset.valueWrap}>
+                                <span className={hoverSelectableRowPreset.valueText}>{r.title || "—"}</span>
+                                <div className={hoverSelectableRowPreset.rowActions}>
                                   <RowActionIconBtn
                                     action="edit"
                                     onClick={() => {

@@ -14,3 +14,21 @@ export const baseCurrenciesTablePreset = {
   rowDivider: "border-b border-neutral-300 dark:border-neutral-700",
   emptyRow: "text-center text-black/60 dark:text-neutral-400 py-3",
 };
+
+// Reusable row interaction preset:
+// - square multi-select checkboxes
+// - hover-only row actions (edit/delete)
+// - highlighted selected rows
+export const hoverSelectableRowPreset = {
+  checkbox: "w-4 h-4 accent-black dark:accent-neutral-200",
+  rowBase: "group transition-colors",
+  rowSelected: "!bg-black/[0.08] !hover:bg-black/[0.12] dark:!bg-white/15 dark:!hover:bg-white/20",
+  rowIdle: "!hover:bg-black/[0.04] dark:!hover:bg-white/10",
+  valueCell: "!text-center",
+  valueWrap: "relative flex min-h-[34px] items-center justify-center",
+  valueText: "block w-full truncate px-12 text-center",
+  rowActions:
+    "absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-1 shrink-0 transition-opacity opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto",
+  rowActionsInline:
+    "flex items-center justify-center gap-2 transition-opacity opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto",
+};
