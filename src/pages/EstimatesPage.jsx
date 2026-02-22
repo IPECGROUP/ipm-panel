@@ -1648,72 +1648,74 @@ const sortedProjects = useMemo(() => {
 
   const renderCenterCreateControls = (children = null) => (
     <div
-      className="rounded-2xl ring-1 ring-black/10 border border-black/10 p-3 md:p-4 bg-white dark:bg-neutral-900 dark:ring-neutral-800 dark:border-neutral-800"
+      className="rounded-2xl ring-1 ring-black/10 border border-black/10 py-3 md:py-4 bg-white dark:bg-neutral-900 dark:ring-neutral-800 dark:border-neutral-800"
       dir="rtl"
     >
-      <form
-        className="flex flex-col md:flex-row-reverse md:items-end gap-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          addCenterRow();
-        }}
-      >
-        <div className="md:w-auto">
-          <button
-            type="submit"
-            disabled={creatingCenter || (active === "projects" && !projectId)}
-            className="h-10 w-12 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
-            title={active === "projects" && !projectId ? "ابتدا پروژه را انتخاب کنید" : "تأیید"}
-            aria-label="تأیید"
-          >
-            <img src="/images/icons/check.svg" alt="" className="w-4 h-4 invert dark:invert-0" />
-          </button>
-        </div>
+      <div className="px-[15px]">
+        <form
+          className="flex flex-col md:flex-row-reverse md:items-end gap-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            addCenterRow();
+          }}
+        >
+          <div className="md:w-auto">
+            <button
+              type="submit"
+              disabled={creatingCenter || (active === "projects" && !projectId)}
+              className="h-10 w-12 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
+              title={active === "projects" && !projectId ? "ابتدا پروژه را انتخاب کنید" : "تأیید"}
+              aria-label="تأیید"
+            >
+              <img src="/images/icons/check.svg" alt="" className="w-4 h-4 invert dark:invert-0" />
+            </button>
+          </div>
 
-        <div className="flex-1 min-w-[240px] flex flex-col gap-1">
-          <label className="text-xs sm:text-sm text-black/70 dark:text-neutral-300">شرح بودجه</label>
-          <input
-            className="w-full h-11 rounded-2xl px-3 sm:px-4 text-sm text-center bg-white text-black border border-black/15 outline-none placeholder:text-black/40 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-            value={newDesc}
-            onChange={(e) => setNewDesc(e.target.value)}
-            placeholder="شرح..."
-          />
-        </div>
+          <div className="flex-1 min-w-[240px] flex flex-col gap-1">
+            <label className="text-xs sm:text-sm text-black/70 dark:text-neutral-300">شرح بودجه</label>
+            <input
+              className="w-full h-11 rounded-2xl px-3 sm:px-4 text-sm text-center bg-white text-black border border-black/15 outline-none placeholder:text-black/40 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
+              value={newDesc}
+              onChange={(e) => setNewDesc(e.target.value)}
+              placeholder="شرح..."
+            />
+          </div>
 
-        <div className="w-full md:w-[280px] flex flex-col gap-1">
-          <label className="text-xs sm:text-sm text-black/70 dark:text-neutral-300">کد بودجه</label>
+          <div className="w-full md:w-[280px] flex flex-col gap-1">
+            <label className="text-xs sm:text-sm text-black/70 dark:text-neutral-300">کد بودجه</label>
 
-          {active !== "projects" ? (
-            <div className="w-full h-11 flex items-center rounded-xl overflow-hidden bg-white text-black ltr border border-black/15 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700">
-              <span className="px-3 h-full inline-flex items-center font-mono select-none bg-black/[0.04] ring-1 ring-black/10 dark:bg-neutral-900 dark:ring-neutral-800">
-                {visualPrefix(active)}
-              </span>
-              <input
-                className="flex-1 px-3 font-mono outline-none bg-transparent text-center text-sm placeholder:text-black/40 dark:placeholder:text-neutral-500"
-                value={newSuffix}
-                onChange={(e) => setNewSuffix(onlyDigitsDot(e.target.value))}
-                spellCheck={false}
-              />
-            </div>
-          ) : (
-            <div className="w-full h-11 flex items-center rounded-xl overflow-hidden bg-white text-black ltr border border-black/15 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700">
-              <span className="px-3 h-full inline-flex items-center font-mono select-none text-xs md:text-sm whitespace-nowrap bg-black/[0.04] ring-1 ring-black/10 dark:bg-neutral-900 dark:ring-neutral-800">
-                {"PB-"}
-                {selectedProject?.code || ""}
-                {selectedProject ? "." : ""}
-              </span>
-              <input
-                className="flex-1 px-3 font-mono outline-none bg-transparent text-center text-sm placeholder:text-black/40 dark:placeholder:text-neutral-500"
-                value={newSuffix}
-                onChange={(e) => setNewSuffix(onlyDigitsDot(e.target.value))}
-                spellCheck={false}
-              />
-            </div>
-          )}
-        </div>
-      </form>
+            {active !== "projects" ? (
+              <div className="w-full h-11 flex items-center rounded-xl overflow-hidden bg-white text-black ltr border border-black/15 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700">
+                <span className="px-3 h-full inline-flex items-center font-mono select-none bg-black/[0.04] ring-1 ring-black/10 dark:bg-neutral-900 dark:ring-neutral-800">
+                  {visualPrefix(active)}
+                </span>
+                <input
+                  className="flex-1 px-3 font-mono outline-none bg-transparent text-center text-sm placeholder:text-black/40 dark:placeholder:text-neutral-500"
+                  value={newSuffix}
+                  onChange={(e) => setNewSuffix(onlyDigitsDot(e.target.value))}
+                  spellCheck={false}
+                />
+              </div>
+            ) : (
+              <div className="w-full h-11 flex items-center rounded-xl overflow-hidden bg-white text-black ltr border border-black/15 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700">
+                <span className="px-3 h-full inline-flex items-center font-mono select-none text-xs md:text-sm whitespace-nowrap bg-black/[0.04] ring-1 ring-black/10 dark:bg-neutral-900 dark:ring-neutral-800">
+                  {"PB-"}
+                  {selectedProject?.code || ""}
+                  {selectedProject ? "." : ""}
+                </span>
+                <input
+                  className="flex-1 px-3 font-mono outline-none bg-transparent text-center text-sm placeholder:text-black/40 dark:placeholder:text-neutral-500"
+                  value={newSuffix}
+                  onChange={(e) => setNewSuffix(onlyDigitsDot(e.target.value))}
+                  spellCheck={false}
+                />
+              </div>
+            )}
+          </div>
+        </form>
 
-      {centerFormErr && <div className="text-sm text-red-600 dark:text-red-400 mt-2 text-center">{centerFormErr}</div>}
+        {centerFormErr && <div className="text-sm text-red-600 dark:text-red-400 mt-2 text-center">{centerFormErr}</div>}
+      </div>
 
       {children ? <div className="mt-3">{children}</div> : null}
     </div>
