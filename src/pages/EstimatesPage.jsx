@@ -1164,8 +1164,7 @@ const sortedProjects = useMemo(() => {
         }),
       });
 
-      const oldComparable = active === "projects" ? targetCode : normalizeBudgetCode(targetCode) || targetCode;
-      const codeChanged = nextCode !== oldComparable;
+      const codeChanged = String(nextCode) !== String(targetCode || "").trim();
       if (codeChanged) {
         try {
           const sourceRow = (rowsRef.current || []).find((r) => String(r?.code || "").trim() === targetCode);
