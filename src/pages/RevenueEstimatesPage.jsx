@@ -955,19 +955,42 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     scheduleSave(allRows || [], 150);
   };
 
+  const selectedProjectTargets = useMemo(() => {
+    return (allRows || [])
+      .filter((r) => r?.projectId != null && selectedKeys.has(projectKey(r.projectId)))
+      .map((r) => ({
+        id: r.id,
+        label: getProjectLabelById(r.projectId, r.title || '—'),
+      }));
+  }, [allRows, selectedKeys, getProjectLabelById]);
+
   // ===== Tree ops =====
-  const [childModal, setChildModal] = useState({ open: false, parentId: null, title: '', desc: '' });
+  const [childParentId, setChildParentId] = useState('');
+  const [childDraftTitle, setChildDraftTitle] = useState('');
+  const [childDraftErr, setChildDraftErr] = useState('');
 
-  const openChildModal = (parentId) => {
-    setChildModal({ open: true, parentId, title: '', desc: '' });
+  useEffect(() => {
+    if (!selectedProjectTargets.length) {
+      if (childParentId) setChildParentId('');
+      return;
+    }
+    const exists = selectedProjectTargets.some((item) => String(item.id) === String(childParentId));
+    if (!exists) setChildParentId(String(selectedProjectTargets[0].id));
+  }, [selectedProjectTargets, childParentId]);
+
+  const findNodeById = (nodes, id) => {
+    for (const n of nodes || []) {
+      if (String(n?.id) === String(id)) return n;
+      const r = findNodeById(n?.children, id);
+      if (r) return r;
+    }
+    return null;
   };
-
-  const closeChildModal = () => setChildModal((prev) => ({ ...prev, open: false }));
 
   const addChildToTree = useCallback((tree, parentId, child) => {
     const rec = (nodes) =>
       nodes.map((n) => {
-        if (n.id === parentId) {
+        if (String(n?.id) === String(parentId)) {
           const nextChildren = [...(n.children || []), child];
           return { ...n, children: nextChildren, expanded: true };
         }
@@ -977,48 +1000,53 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     return rec(tree);
   }, []);
 
-  const handleChildSave = () => {
-    const title = childModal.title.trim();
-    const desc = childModal.desc.trim();
-    if (!title || !childModal.parentId) {
-      closeChildModal();
+  const handleAddChildFromPanel = () => {
+    const parentId = String(childParentId || '').trim();
+    const title = String(childDraftTitle || '').trim();
+
+    if (!parentId) {
+      setChildDraftErr('ابتدا مقصد را از پروژه‌های انتخاب‌شده مشخص کنید.');
       return;
     }
 
-    const id = rowIdRef.current++;
+    if (!title) {
+      setChildDraftErr('عنوان زیرمجموعه را وارد کنید.');
+      return;
+    }
+
+    const parentNode = findNodeById(allRows, parentId);
+    if (!parentNode) {
+      setChildDraftErr('مورد انتخاب‌شده پیدا نشد.');
+      return;
+    }
+
+    const duplicate = (parentNode.children || []).some(
+      (ch) => String(ch?.title || '').trim() === title
+    );
+    if (duplicate) {
+      setChildDraftErr('این زیرمجموعه قبلاً ثبت شده است.');
+      return;
+    }
+
+    setChildDraftErr('');
     const newChild = makeNode({
-      id,
+      id: rowIdRef.current++,
       title,
-      desc,
-      projectId: null,
+      desc: '',
+      projectId: parentNode.projectId || null,
       months: {},
       children: [],
       expanded: false,
-      isOther: false,
+      isOther: !!parentNode.isOther,
       otherRoot: false,
     });
 
-    const findProjectId = (nodes, pid) => {
-      for (const n of nodes) {
-        if (n.id === pid) return n.projectId || null;
-        if (n.children?.length) {
-          const r = findProjectId(n.children, pid);
-          if (r != null) return r;
-        }
-      }
-      return null;
-    };
-
-    const pProjectId = findProjectId(allRows, childModal.parentId);
-    newChild.projectId = pProjectId;
-
     setAllRows((prev) => {
-      const next = addChildToTree(prev, childModal.parentId, newChild);
+      const next = addChildToTree(prev, parentId, newChild);
       scheduleSave(next, 150);
       return next;
     });
-
-    setChildModal({ open: false, parentId: null, title: '', desc: '' });
+    setChildDraftTitle('');
   };
 
   const toggleExpand = useCallback((id) => {
@@ -1064,15 +1092,6 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
 
   const closeEditRowModal = () =>
     setEditRowModal({ open: false, rowId: null, title: '', desc: '', isOther: false, isOtherRoot: false });
-
-  const findNodeById = (nodes, id) => {
-    for (const n of nodes || []) {
-      if (n?.id === id) return n;
-      const r = findNodeById(n?.children, id);
-      if (r) return r;
-    }
-    return null;
-  };
 
   const saveEditRowModal = () => {
     if (!editRowModal.rowId) {
@@ -1197,7 +1216,6 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
       if (node.expanded) {
         const children = node.children || [];
         children.forEach((ch, i) => walk(ch, depth + 1, [...indexPath, i + 1]));
-        out.push({ type: 'addChild', parentId: node.id, depth: depth + 1, indexPath: [...indexPath, 0] });
       }
     };
 
@@ -1398,7 +1416,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="text-xs text-black/60 dark:text-neutral-400">پروژه‌ها را انتخاب کنید تا وارد جدول شوند:</div>
             <div className="text-xs text-black/50 dark:text-neutral-500">
-              انتخاب‌شده: <span className="font-semibold">{toFaDigits(selectedKeys.size)}</span>
+              انتخاب‌شده: <span className="font-semibold">{toFaDigits(selectedProjectTargets.length)}</span>
             </div>
           </div>
 
@@ -1519,6 +1537,80 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
               </button>
             </div>
           </div>
+
+          <div className="mt-4 rounded-2xl border border-black/10 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-3">
+            <div className="text-xs text-black/60 dark:text-neutral-400">پروژه‌های واردشده و انتخاب‌شده</div>
+
+            <div className="mt-2 min-h-11 rounded-xl border border-dashed border-black/15 dark:border-neutral-700 px-2 py-2 flex flex-wrap gap-1.5">
+              {selectedProjectTargets.length === 0 ? (
+                <div className="text-xs text-black/45 dark:text-neutral-500">هنوز پروژه‌ای در وضعیت انتخاب‌شده ندارید.</div>
+              ) : (
+                selectedProjectTargets.map((item) => (
+                  <span
+                    key={`selected-project-${item.id}`}
+                    className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] bg-black text-white dark:bg-neutral-100 dark:text-neutral-900"
+                  >
+                    {item.label}
+                  </span>
+                ))
+              )}
+            </div>
+
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-[minmax(220px,320px)_1fr_auto] gap-2 items-end">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-black/60 dark:text-neutral-400">انتخاب مقصد</label>
+                <select
+                  value={childParentId}
+                  onChange={(e) => {
+                    setChildParentId(e.target.value);
+                    if (childDraftErr) setChildDraftErr('');
+                  }}
+                  className="h-10 rounded-xl border border-black/15 bg-white text-black px-3 text-sm outline-none
+                    focus:ring-2 focus:ring-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                >
+                  <option value="">انتخاب پروژه...</option>
+                  {selectedProjectTargets.map((item) => (
+                    <option key={`target-${item.id}`} value={String(item.id)}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-black/60 dark:text-neutral-400">عنوان زیرمجموعه جدید</label>
+                <input
+                  value={childDraftTitle}
+                  onChange={(e) => {
+                    setChildDraftTitle(e.target.value);
+                    if (childDraftErr) setChildDraftErr('');
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddChildFromPanel();
+                    }
+                  }}
+                  placeholder="مثلاً تجهیز کارگاه، فروش مرحله‌ای، ..."
+                  className="h-10 rounded-xl border border-black/15 bg-white text-black px-3 text-sm outline-none
+                    focus:ring-2 focus:ring-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={handleAddChildFromPanel}
+                disabled={!childParentId || !String(childDraftTitle || '').trim()}
+                className="h-10 w-full md:w-12 rounded-xl bg-black text-white grid place-items-center transition disabled:opacity-40 disabled:cursor-not-allowed dark:bg-neutral-100 dark:text-neutral-900"
+                aria-label="افزودن زیرمجموعه"
+                title="افزودن زیرمجموعه"
+              >
+                <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
+              </button>
+            </div>
+
+            {childDraftErr && <div className="mt-2 text-xs text-red-600 dark:text-red-400">{childDraftErr}</div>}
+          </div>
         </div>
 
         {/* جدول اصلی */}
@@ -1574,31 +1666,6 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                     )}
 
                     {displayRows.map((x, idx) => {
-                      if (x.type === 'addChild') {
-                        return (
-                          <TR key={'addchild-' + x.parentId} className="bg-black/[0.012] dark:bg-white/5">
-                            <TD className="px-2 py-2 text-center text-black/60 dark:text-neutral-400">—</TD>
-                            <TD className="px-2 py-2 text-center">
-                              <div className="flex items-center justify-center" style={{ paddingInlineStart: Math.min(44, x.depth * 18) }}>
-                                <button
-                                  type="button"
-                                  onClick={() => openChildModal(x.parentId)}
-                                  className="h-9 w-9 mx-auto grid place-items-center rounded-xl ring-1 ring-black/15 hover:bg-black/5 bg-white dark:bg-neutral-800 dark:ring-neutral-700 dark:hover:bg-white/10"
-                                  aria-label="افزودن زیرمجموعه"
-                                  title="افزودن زیرمجموعه"
-                                >
-                                  <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 invert-0 dark:invert" />
-                                </button>
-                              </div>
-                            </TD>
-                            {dynamicMonths.map((m) => (
-                              <TD key={m.key} className="px-0 py-2 text-center text-black/40 dark:text-neutral-500">—</TD>
-                            ))}
-                            <TD className="px-3 py-2 text-center text-black/40 dark:text-neutral-500">—</TD>
-                          </TR>
-                        );
-                      }
-
                       const r = x.node;
                       const rowTotal = sumNodeMonths(r);
                       const isComputed = hasChildren(r);
@@ -1748,6 +1815,16 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
 
         {/* دکمه ذخیره دستی (اختیاری) */}
         <div className="mt-4 flex items-center gap-2 justify-end">
+          <button
+            onClick={exportExcel}
+            disabled={displayRows.length === 0}
+            className="h-10 w-10 rounded-xl border border-black/15 hover:bg-black/5 grid place-items-center transition disabled:opacity-40 disabled:cursor-not-allowed dark:border-neutral-700 dark:hover:bg-neutral-800"
+            aria-label="خروجی اکسل"
+            title="خروجی اکسل"
+          >
+            <img src="/images/icons8-excel-50.png" alt="" className="w-5 h-5" />
+          </button>
+
           <button
             onClick={handleSave}
             className="h-10 w-10 rounded-xl bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200 grid place-items-center disabled:opacity-40 disabled:cursor-not-allowed"
@@ -1917,63 +1994,6 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                     انتخاب همه
                   </button>
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {childModal.open && (
-          <div className="fixed inset-0 z-40 grid place-items-center px-3">
-            <div className="absolute inset-0 bg-black/25 dark:bg-neutral-950/55 backdrop-blur-[2px]" onClick={closeChildModal} />
-            <div
-              className="relative w-full max-w-sm rounded-2xl bg-white text-neutral-900 border border-black/10 shadow-2xl dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 p-4 space-y-3"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="text-sm font-semibold">افزودن زیرمجموعه</div>
-                  <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">عنوان و توضیح زیرمجموعه را وارد کنید.</div>
-                </div>
-                <button type="button" onClick={closeChildModal} className="h-8 w-8 grid place-items-center rounded-xl bg-black text-white dark:bg-neutral-100 dark:text-neutral-900">
-                  <img src="/images/icons/bastan.svg" alt="" className="w-4 h-4 invert dark:invert-0" />
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                <div className="space-y-1">
-                  <label className="text-xs text-neutral-600 dark:text-neutral-300">عنوان</label>
-                  <input
-                    type="text"
-                    className="w-full rounded-xl px-3 py-2 text-sm bg-white text-black placeholder-black/40 border border-black/15 outline-none focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-                    value={childModal.title}
-                    onChange={(e) => setChildModal((p) => ({ ...p, title: e.target.value }))}
-                    placeholder="مثلاً تجهیز کارگاه، فروش مرحله‌ای، ..."
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs text-neutral-600 dark:text-neutral-300">توضیحات (اختیاری)</label>
-                  <textarea
-                    className="w-full min-h-[72px] rounded-xl px-3 py-2 text-sm bg-white text-black placeholder-black/40 border border-black/15 outline-none focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-                    value={childModal.desc}
-                    onChange={(e) => setChildModal((p) => ({ ...p, desc: e.target.value }))}
-                    placeholder="در صورت نیاز توضیحات تکمیلی را بنویسید."
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between gap-2 pt-1">
-                <button type="button" onClick={closeChildModal} className="h-9 px-4 rounded-xl border border-neutral-300 text-xs text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800">
-                  انصراف
-                </button>
-                <button
-                  type="button"
-                  onClick={handleChildSave}
-                  className="h-9 px-5 rounded-xl bg-neutral-900 text-xs text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed"
-                  disabled={!childModal.title.trim()}
-                >
-                  ذخیره
-                </button>
               </div>
             </div>
           </div>
