@@ -1672,6 +1672,18 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
 
                           <TD className="px-2 py-2 text-right whitespace-nowrap" style={{ paddingRight: 8 + level * 14 }}>
                             <div className="inline-flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (isComputed) toggleExpand(r.id);
+                                  else openEditRowModal(r);
+                                }}
+                                className={`px-1 py-0.5 text-[12px] ${isComputed ? 'font-semibold hover:underline' : 'hover:underline'}`}
+                                title={isComputed ? 'باز/بسته کردن زیرمجموعه‌ها' : 'افزودن/ویرایش توضیحات'}
+                              >
+                                {displayTitle}
+                              </button>
+
                               {isComputed && (
                                 <button
                                   type="button"
@@ -1687,18 +1699,6 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                                   )}
                                 </button>
                               )}
-
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (isComputed) toggleExpand(r.id);
-                                  else openEditRowModal(r);
-                                }}
-                                className={`px-1 py-0.5 text-[12px] ${isComputed ? 'font-semibold hover:underline' : 'hover:underline'}`}
-                                title={isComputed ? 'باز/بسته کردن زیرمجموعه‌ها' : 'افزودن/ویرایش توضیحات'}
-                              >
-                                {displayTitle}
-                              </button>
                             </div>
                           </TD>
 
