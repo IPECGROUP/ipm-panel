@@ -1603,6 +1603,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                     {displayRows.map((x, idx) => {
                       const r = x.node;
                       const level = x.depth || 0;
+                      const indentRight = level === 0 ? 8 : 18 + level * 20;
                       const rowTotal = sumNodeMonths(r);
                       const isProjectRoot = level === 0 && r?.projectId != null && r?.isOther !== true;
                       const isComputed = hasChildren(r) || isProjectRoot;
@@ -1635,7 +1636,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                           </TD>
                           <TD className="px-2 py-2">{toFaDigits(idxText || (idx + 1))}</TD>
 
-                          <TD className="relative pl-16 px-2 py-2 text-right whitespace-nowrap" style={{ paddingRight: 8 + level * 14 }}>
+                          <TD className="relative pl-16 px-2 py-2 text-right whitespace-nowrap" style={{ paddingRight: indentRight }}>
                             <div className="inline-flex items-center gap-2">
                               <button
                                 type="button"
