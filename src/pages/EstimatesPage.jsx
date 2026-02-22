@@ -79,7 +79,7 @@ export default function EstimatesPage() {
   const toEnDigits = useCallback(
     (s) =>
       String(s || "")
-        .replace(/[Û°-Û¹]/g, (d) => "Û°Û±Û²Û³Û´ÛµÛ¶Û·Û¸Û¹".indexOf(d))
+        .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d))
         .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d)),
     [],
   );
