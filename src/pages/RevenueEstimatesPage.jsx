@@ -21,6 +21,7 @@ function RevenueEstimatesPage() {
   const me = {};
   const accessLoading = false;
   const canAccessPage = true;
+  const OTHER_TITLE = '\u0633\u0627\u06cc\u0631';
 
   const formatMoney = (n) => {
     const s = String(n ?? '');
@@ -58,6 +59,33 @@ const isTopProjectCode = (code) => {
     if (!d) return 0;
     return sign * parseInt(d, 10);
   };
+
+  const decodeLatin1ToUtf8 = useCallback((value) => {
+    const raw = String(value ?? '');
+    if (!raw) return '';
+    try {
+      const bytes = new Uint8Array(Array.from(raw, (ch) => ch.charCodeAt(0) & 0xff));
+      return new TextDecoder('utf-8').decode(bytes);
+    } catch {
+      return raw;
+    }
+  }, []);
+
+  const normalizeFaText = useCallback((value) => {
+    let out = String(value ?? '');
+    for (let i = 0; i < 2; i++) {
+      if (!/[ØÙÛ]/.test(out)) break;
+      const fixed = decodeLatin1ToUtf8(out);
+      if (!fixed || fixed === out) break;
+      out = fixed;
+    }
+    return out;
+  }, [decodeLatin1ToUtf8]);
+
+  const normalizeTitleText = useCallback(
+    (value) => normalizeFaText(String(value ?? '')).trim(),
+    [normalizeFaText]
+  );
 
   const api = async (path, opt = {}) => {
     const res = await fetch('/api' + path, {
@@ -179,8 +207,8 @@ useEffect(() => {
  
 const getProjectCode = useCallback((p) => {
   // دقیقاً مثل صفحه پروژه‌ها: کد را از همان فیلد اصلی code بردار
-  return String(p?.code ?? '').trim();
-}, []);
+  return normalizeTitleText(p?.code ?? '');
+}, [normalizeTitleText]);
 
 const projectsForPicker = useMemo(() => {
   return (projects || [])
@@ -198,31 +226,31 @@ const projectsForPicker = useMemo(() => {
     });
 if (cmp !== 0) return -cmp; // ✅ نزولی: 165 ... 106
 
-    const na = String(a?.name ?? a?.title ?? '').trim();
-    const nb = String(b?.name ?? b?.title ?? '').trim();
+    const na = normalizeTitleText(a?.name ?? a?.title ?? '');
+    const nb = normalizeTitleText(b?.name ?? b?.title ?? '');
     return na.localeCompare(nb, 'fa', { numeric: true, sensitivity: 'base' });
   });
 
-}, [projects, getProjectCode]);
+}, [projects, getProjectCode, normalizeTitleText]);
 
 const getProjectLabel = useCallback((p) => {
-  const code = String(p?.code ?? '').trim();
-  const name = String(p?.name ?? '').trim();
+  const code = normalizeTitleText(p?.code ?? '');
+  const name = normalizeTitleText(p?.name ?? '');
   if (code && name) return `${code} - ${name}`;
-  return code || name || 'پروژه بدون نام';
-}, []);
+  return code || name || '\u067e\u0631\u0648\u0698\u0647 \u0628\u062f\u0648\u0646 \u0646\u0627\u0645';
+}, [normalizeTitleText]);
 
 const projectOptionLabel = useCallback((p) => {
-  const code = toFaDigits(String(p?.code ?? '').trim());
-  const name = String(p?.name ?? '').trim();
+  const code = toFaDigits(normalizeTitleText(p?.code ?? ''));
+  const name = normalizeTitleText(p?.name ?? '');
   if (code && name) return `${code} - ${name}`;
   return code || name || '—';
-}, [toFaDigits]);
+}, [toFaDigits, normalizeTitleText]);
 
   const getProjectLabelById = useCallback(
     (pid, fallback = '') => {
       const p = projectById.get(String(pid));
-      return p ? getProjectLabel(p) : (fallback || '—');
+      return p ? getProjectLabel(p) : (normalizeFaText(fallback) || '—');
     },
     [projectById, getProjectLabel]
   );
@@ -234,12 +262,12 @@ const projectOptionLabel = useCallback((p) => {
   const [otherMenuOpen, setOtherMenuOpen] = useState(false);
 
   const projectKey = (pid) => `p:${String(pid)}`;
-  const otherKeyFromTitle = (t) => `o:${encodeURIComponent(String(t || '').trim())}`;
+  const otherKeyFromTitle = (t) => `o:${encodeURIComponent(normalizeTitleText(t))}`;
   const otherTitleFromKey = (k) => {
     try {
-      return decodeURIComponent(String(k || '').slice(2));
+      return normalizeTitleText(decodeURIComponent(String(k || '').slice(2)));
     } catch {
-      return String(k || '').slice(2);
+      return normalizeTitleText(String(k || '').slice(2));
     }
   };
 
@@ -272,7 +300,7 @@ const projectOptionLabel = useCallback((p) => {
   const ensureOtherRoot = useCallback(() => {
     return makeNode({
       id: 'other-root',
-      title: 'سایر',
+      title: OTHER_TITLE,
       desc: '',
       projectId: null,
       months: {},
@@ -281,7 +309,7 @@ const projectOptionLabel = useCallback((p) => {
       isOther: true,
       otherRoot: true,
     });
-  }, []);
+  }, [OTHER_TITLE]);
 
   const getOtherRoot = useCallback((rows) => {
     return (rows || []).find((r) => r?.isOther && r?.otherRoot);
@@ -298,13 +326,24 @@ const projectOptionLabel = useCallback((p) => {
     (allRows || []).forEach((r) => {
       if (!r) return;
       if (r.otherRoot === true) {
-        (r.children || []).forEach((ch) => out.push(ch));
+        (r.children || []).forEach((ch) => {
+          const t = normalizeTitleText(ch?.title || '');
+          if (!t) return;
+          if (selectedOtherSet.has(t)) out.push(ch);
+        });
         return;
       }
-      out.push(r);
+      if (r?.projectId != null && (r.children || []).length === 0) {
+        return;
+      }
+      if (r?.projectId != null) {
+        out.push(r);
+        return;
+      }
+      if ((r.children || []).length > 0) out.push(r);
     });
     return out;
-  }, [allRows]);
+  }, [allRows, normalizeTitleText, selectedOtherSet]);
 
   const totalsByMonth = useMemo(() => {
     const totals = {};
@@ -350,7 +389,7 @@ const projectOptionLabel = useCallback((p) => {
       const ensureRoot = (seg0, projectId, isOther) => {
         let key = '';
         if (projectId != null) key = 'p:' + String(projectId);
-        else if (isOther && seg0 === 'سایر') key = 'otherRoot';
+        else if (isOther && seg0 === OTHER_TITLE) key = 'otherRoot';
         else key = 'null::' + String(seg0);
 
         if (!rootMap.has(key)) {
@@ -373,11 +412,14 @@ const projectOptionLabel = useCallback((p) => {
       };
 
       items.forEach((it) => {
-        const rawTitle = String(it.title || '').trim(); // فقط title
+        const rawTitle = normalizeTitleText(it.title || ''); // فقط title
         if (!rawTitle) return;
         if (rawTitle === '__META__') return;
 
-        let parts = rawTitle.split(SEP).map((x) => x.trim()).filter(Boolean);
+        let parts = rawTitle
+          .split(SEP)
+          .map((x) => normalizeTitleText(x))
+          .filter(Boolean);
         if (!parts.length) return;
 
         const projectId = it.project_id ?? null;
@@ -385,7 +427,7 @@ const projectOptionLabel = useCallback((p) => {
 
         // سایرها: همه زیر روت "سایر"
         if (isOther && projectId == null) {
-          if (parts[0] !== 'سایر') parts = ['سایر', ...parts];
+          if (parts[0] !== OTHER_TITLE) parts = [OTHER_TITLE, ...parts];
         }
 
         const monthsMap = {};
@@ -424,14 +466,14 @@ for (let i = 0; i < parts.length; i++) {
   node = getOrCreateChild(node, seg, isOtherChild);
 }
 
-        node.desc = String(it.description || '');
+        node.desc = normalizeFaText(String(it.description || ''));
         node.projectId = projectId != null ? projectId : node.projectId || null;
         node.months = monthsMap;
       });
 
       return Array.from(rootMap.values());
     },
-    []
+    [OTHER_TITLE]
   );
 
   const metaRef = useRef({ poolProjectIds: [], selectedKeysArr: [] });
@@ -458,7 +500,7 @@ for (let i = 0; i < parts.length; i++) {
 
         let meta = null;
         for (const it of items) {
-          const t = String(it?.title || '').trim();
+          const t = normalizeTitleText(it?.title || '');
           if (t === '__META__') {
             try {
               meta = JSON.parse(String(it?.description || '{}') || '{}');
@@ -469,7 +511,7 @@ for (let i = 0; i < parts.length; i++) {
           }
         }
 
-        const itemsNoMeta = items.filter((x) => String(x?.title || '').trim() !== '__META__');
+        const itemsNoMeta = items.filter((x) => normalizeTitleText(x?.title || '') !== '__META__');
 
         rowIdRef.current = 1;
         let tree = buildTreeFromItems(itemsNoMeta);
@@ -496,12 +538,11 @@ setPoolProjectIds(nextPool);
 
 // انتخاب‌ها از meta (اگر باشد) یا همه
 const otherRoot = getOtherRoot(tree);
-const otherTitles = (otherRoot?.children || []).map((ch) => String(ch?.title || '').trim()).filter(Boolean);
+const otherTitles = (otherRoot?.children || [])
+  .map((ch) => normalizeTitleText(ch?.title || ''))
+  .filter(Boolean);
 
-const defaultKeys = [
-  ...nextPool.map((pid) => projectKey(pid)),
-  ...otherTitles.map((t) => otherKeyFromTitle(t)),
-];
+const defaultKeys = [];
 
 const hasMetaSel = Array.isArray(meta?.selectedKeysArr);
 const metaSel = hasMetaSel ? meta.selectedKeysArr.map(String) : null;
@@ -526,7 +567,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
         console.error('load revenue estimates failed', e);
       }
     })();
-  }, [buildTreeFromItems, canAccessPage, upsertOtherRoot, getOtherRoot]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [buildTreeFromItems, canAccessPage, upsertOtherRoot, getOtherRoot, normalizeTitleText]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ===== Auto Save =====
   const saveTimerRef = useRef(null);
@@ -687,7 +728,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
   }, [otherMenuOpen]);
 
   const addOtherChildWithTitle = (rawTitle) => {
-  const title = String(rawTitle || '').trim();
+  const title = normalizeTitleText(rawTitle || '');
   if (!title) return;
 
   const selK = otherKeyFromTitle(title);
@@ -709,7 +750,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     if (!otherRoot) return rows;
 
     const exists = (otherRoot.children || []).some(
-      (ch) => String(ch?.title || '').trim() === title
+      (ch) => normalizeTitleText(ch?.title || '') === title
     );
     if (exists) {
       scheduleSave(rows, 150);
@@ -745,14 +786,16 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
 
 
   const handleAddOtherFromModal = () => {
-    const t = String(otherDraftTitle || '').trim();
+    const t = normalizeTitleText(otherDraftTitle || '');
     if (!t) {
       setOtherDraftErr('عنوان را وارد کنید.');
       return;
     }
 
     const otherRoot = getOtherRoot(allRows);
-    const exists = (otherRoot?.children || []).some((ch) => String(ch?.title || '').trim() === t);
+    const exists = (otherRoot?.children || []).some(
+      (ch) => normalizeTitleText(ch?.title || '') === t
+    );
     if (exists) {
   setOtherDraftErr('این عنوان قبلاً اضافه شده است.');
 
@@ -775,14 +818,14 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
   };
 
   const toggleOtherChild = (title) => {
-    const t = String(title || '').trim();
+    const t = normalizeTitleText(title || '');
     if (!t) return;
     toggleSelected(otherKeyFromTitle(t));
     scheduleSave(allRows || [], 150);
   };
 
   const deleteOtherChild = (title) => {
-    const t = String(title || '').trim();
+    const t = normalizeTitleText(title || '');
     if (!t) return;
 
     removeFromSelected(otherKeyFromTitle(t));
@@ -791,7 +834,9 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
       const rec = (arr) =>
         arr.map((n) => {
           if (n?.isOther && n?.otherRoot) {
-            const nextChildren = (n.children || []).filter((ch) => String(ch?.title || '').trim() !== t);
+            const nextChildren = (n.children || []).filter(
+              (ch) => normalizeTitleText(ch?.title || '') !== t
+            );
             return { ...n, children: nextChildren };
           }
           if (n.children?.length) return { ...n, children: rec(n.children) };
@@ -855,7 +900,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
 
   const handleAddChildFromPanel = () => {
     const projectId = String(childParentId || '').trim();
-    const title = String(childDraftTitle || '').trim();
+    const title = normalizeTitleText(childDraftTitle || '');
 
     if (!projectId) {
       setChildDraftErr('ابتدا پروژه را انتخاب کنید.');
@@ -881,7 +926,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
 
     if (parentNode) {
       const duplicate = (parentNode.children || []).some(
-        (ch) => String(ch?.title || '').trim() === title
+        (ch) => normalizeTitleText(ch?.title || '') === title
       );
       if (duplicate) {
         setChildDraftErr('این زیرمجموعه قبلاً ثبت شده است.');
@@ -1302,8 +1347,8 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
         const rowTotal = sumNodeMonths(r);
         const titleCell =
           x.depth === 0 && r?.projectId != null
-            ? getProjectLabelById(r.projectId, r.title || '—')
-            : (r.title || '—');
+            ? getProjectLabelById(r.projectId, normalizeFaText(r.title || '') || '—')
+            : (normalizeFaText(r.title || '') || '—');
 
         const monthsHtml = dynamicMonths
           .map((m) => {
@@ -1413,7 +1458,9 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
   }
 
   const otherRootNow = getOtherRoot(allRows);
-  const otherChildrenNow = (otherRootNow?.children || []).map((ch) => String(ch?.title || '').trim()).filter(Boolean);
+  const otherChildrenNow = (otherRootNow?.children || [])
+    .map((ch) => normalizeTitleText(ch?.title || ''))
+    .filter(Boolean);
   const editModalTargetCount = Array.isArray(editRowModal.targetIds) && editRowModal.targetIds.length
     ? editRowModal.targetIds.length
     : (editRowModal.rowId ? 1 : 0);
@@ -1486,10 +1533,9 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
 
             {childDraftErr && <div className="mt-2 text-xs text-red-600 dark:text-red-400">{childDraftErr}</div>}
           </div>
-        </div>
 
-        {/* جدول اصلی */}
-        <div className="mt-4">
+          {/* جدول اصلی */}
+          <div className="mt-3">
           <TableWrap>
             <div className={tablePreset.outer}>
               <div className={tablePreset.innerPad}>
@@ -1567,10 +1613,10 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
 
                       const displayTitle =
                         r.isOther
-                          ? (r.title || '—')
+                          ? (normalizeFaText(r.title || '') || '—')
                           : (x.depth === 0 && r?.projectId != null
-                              ? getProjectLabelById(r.projectId, r.title || '—')
-                              : (r.title || '—'));
+                              ? getProjectLabelById(r.projectId, normalizeFaText(r.title || '') || '—')
+                              : (normalizeFaText(r.title || '') || '—'));
 
                       return (
                         <TR
@@ -1749,6 +1795,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
               </div>
             </div>
           </TableWrap>
+          </div>
         </div>
 
         {/* دکمه ذخیره دستی (اختیاری) */}
