@@ -243,8 +243,6 @@ const projectOptionLabel = useCallback((p) => {
     }
   };
 
-  const selectedKeys = useMemo(() => new Set(selectedKeysArr), [selectedKeysArr]);
-
   const selectedOtherTitles = useMemo(() => {
     return selectedKeysArr
       .filter((k) => String(k).startsWith('o:'))
@@ -253,18 +251,6 @@ const projectOptionLabel = useCallback((p) => {
   }, [selectedKeysArr]);
 
   const selectedOtherSet = useMemo(() => new Set(selectedOtherTitles), [selectedOtherTitles]);
-
-  const poolKeys = useMemo(() => {
-    const out = [];
-    (poolProjectIds || []).forEach((pid) => out.push(projectKey(pid)));
-    return out;
-  }, [poolProjectIds]);
-
-  const isAllSelected = useMemo(() => {
-    if (!poolKeys.length) return false;
-    for (const k of poolKeys) if (!selectedKeys.has(k)) return false;
-    return true;
-  }, [poolKeys, selectedKeys]);
 
   const ensureRootForProject = useCallback((pid) => {
     const spid = String(pid);
@@ -275,7 +261,7 @@ const projectOptionLabel = useCallback((p) => {
       id: rowIdRef.current++,
       title,
       desc: '',
-      projectId: Number(spid),
+      projectId: p?.id ?? spid,
       months: {},
       children: [],
       expanded: true,
@@ -308,28 +294,17 @@ const projectOptionLabel = useCallback((p) => {
   }, [ensureOtherRoot, getOtherRoot]);
 
   const visibleRoots = useMemo(() => {
-    const keys = selectedKeys;
-    const roots = (allRows || []).filter((r) => r && r.otherRoot !== true); // پروژه‌ها/غیره (به جز روت سایر)
     const out = [];
-
-    // پروژه‌ها
-    roots.forEach((r) => {
-      const k = r?.projectId != null ? projectKey(r.projectId) : '';
-      if (k && keys.has(k)) out.push(r);
+    (allRows || []).forEach((r) => {
+      if (!r) return;
+      if (r.otherRoot === true) {
+        (r.children || []).forEach((ch) => out.push(ch));
+        return;
+      }
+      out.push(r);
     });
-
-    // سایر (بدون نمایش روت "سایر"؛ فقط آیتم‌ها به‌صورت ریشه نمایش داده شوند)
-    const otherRoot = (allRows || []).find((r) => r?.isOther && r?.otherRoot);
-    if (otherRoot && selectedOtherSet.size > 0) {
-      const filteredChildren = (otherRoot.children || []).filter((ch) => {
-        const t = String(ch?.title || '').trim();
-        return t && selectedOtherSet.has(t);
-      });
-      filteredChildren.forEach((ch) => out.push(ch));
-    }
-
     return out;
-  }, [allRows, selectedKeys, selectedOtherSet]);
+  }, [allRows]);
 
   const totalsByMonth = useMemo(() => {
     const totals = {};
@@ -664,20 +639,6 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
   };
 
   // ===== ابزارهای انتخاب/نمایش =====
-  const addToSelected = (k) => {
-    setSelectedKeysArr((prev) => {
-      const s = new Set(prev);
-      s.add(k);
-      const next = Array.from(s);
-      metaRef.current = {
-        ...(metaRef.current || {}),
-        poolProjectIds: (metaRef.current?.poolProjectIds ?? poolProjectIds ?? []),
-        selectedKeysArr: next,
-      };
-      return next;
-    });
-  };
-
   const removeFromSelected = (k) => {
     setSelectedKeysArr((prev) => {
       const next = prev.filter((x) => x !== k);
@@ -705,98 +666,6 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     });
   };
 
-  const toggleSelectAll = () => {
-    if (!poolKeys.length) return;
-    if (isAllSelected) {
-      setSelectedKeysArr((prev) => {
-        const next = prev.filter((k) => !String(k).startsWith('p:'));
-        metaRef.current = {
-          ...(metaRef.current || {}),
-          poolProjectIds: (metaRef.current?.poolProjectIds ?? poolProjectIds ?? []),
-          selectedKeysArr: next,
-        };
-        return next;
-      });
-    } else {
-      setSelectedKeysArr((prev) => {
-        const s = new Set(prev);
-        poolKeys.forEach((k) => s.add(k));
-        const next = Array.from(s);
-        metaRef.current = {
-          ...(metaRef.current || {}),
-          poolProjectIds: (metaRef.current?.poolProjectIds ?? poolProjectIds ?? []),
-          selectedKeysArr: next,
-        };
-        return next;
-      });
-    }
-    scheduleSave(allRows || [], 150);
-  };
-
-  // هر تغییر انتخاب/کپسول‌ها هم باید ذخیره شود
-  useEffect(() => {
-    if (canAccessPage !== true) return;
-    scheduleSave(allRows || [], 150);
-  }, [selectedKeysArr, poolProjectIds]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ===== افزودن پروژه به کپسول‌ها =====
-  const [pickedProjectId, setPickedProjectId] = useState('');
-
-  const addPickedProject = () => {
-    const pid = String(pickedProjectId || '');
-    if (!pid) return;
-
-    if (pid === '__ALL__') {
-    const all = (projectsForPicker || [])
-  .map((p) => String(p?.id ?? ''))
-  .filter(Boolean);
-
-      setPoolProjectIds((prev) => {
-        const next = Array.from(new Set([...(prev || []), ...all]));
-        metaRef.current = {
-          ...(metaRef.current || {}),
-          poolProjectIds: next,
-          selectedKeysArr: (metaRef.current?.selectedKeysArr ?? selectedKeysArr ?? []),
-        };
-        return next;
-      });
-      setPickedProjectId('');
-      return;
-    }
-
-    const exists = (poolProjectIds || []).includes(pid);
-    if (exists) {
-      setPickedProjectId('');
-      return;
-    }
-    setPoolProjectIds((prev) => {
-      const next = [...(prev || []), pid];
-      metaRef.current = {
-        ...(metaRef.current || {}),
-        poolProjectIds: next,
-        selectedKeysArr: (metaRef.current?.selectedKeysArr ?? selectedKeysArr ?? []),
-      };
-      return next;
-    });
-    setPickedProjectId('');
-  };
-
-  // ===== حذف پروژه از کپسول (بدون حذف دیتا) =====
-  const removeProjectChip = (pid) => {
-    const spid = String(pid);
-    setPoolProjectIds((prev) => {
-      const next = (prev || []).filter((x) => String(x) !== spid);
-      metaRef.current = {
-        ...(metaRef.current || {}),
-        poolProjectIds: next,
-        selectedKeysArr: (metaRef.current?.selectedKeysArr ?? selectedKeysArr ?? []),
-      };
-      return next;
-    });
-    removeFromSelected(projectKey(spid));
-    scheduleSave(allRows || [], 150);
-  };
-
   // ===== سایر: روت + زیرمجموعه‌ها =====
   const ensureOtherRootInState = () => {
     setAllRows((prev) => {
@@ -816,12 +685,6 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
       otherTitleRef.current.select();
     }
   }, [otherMenuOpen]);
-
-  const openOtherManager = () => {
-    ensureOtherRootInState();
-    setOtherDraftErr('');
-    setOtherMenuOpen(true);
-  };
 
   const addOtherChildWithTitle = (rawTitle) => {
   const title = String(rawTitle || '').trim();
@@ -940,33 +803,19 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     });
   };
 
-  // ===== کلیک روی کپسول پروژه: اضافه/کم کردن از جدول اصلی =====
-  const onToggleProjectChip = (pid) => {
-    const k = projectKey(pid);
-    const isOn = selectedKeys.has(k);
-
-    if (!isOn) {
-      setAllRows((prev) => {
-        const exists = (prev || []).some((r) => String(r?.projectId) === String(pid));
-        if (exists) return prev;
-        const next = [...(prev || []), ensureRootForProject(pid)];
-        scheduleSave(next, 150);
-        return next;
-      });
-    }
-
-    toggleSelected(k);
-    scheduleSave(allRows || [], 150);
-  };
-
   const selectedProjectTargets = useMemo(() => {
-    return (allRows || [])
-      .filter((r) => r?.projectId != null && selectedKeys.has(projectKey(r.projectId)))
-      .map((r) => ({
-        id: r.id,
-        label: getProjectLabelById(r.projectId, r.title || '—'),
-      }));
-  }, [allRows, selectedKeys, getProjectLabelById]);
+    return (projectsForPicker || [])
+      .map((p) => {
+        const pid = String(p?.id ?? '').trim();
+        if (!pid) return null;
+        return {
+          id: pid,
+          rawId: p?.id ?? pid,
+          label: projectOptionLabel(p),
+        };
+      })
+      .filter(Boolean);
+  }, [projectsForPicker, projectOptionLabel]);
 
   // ===== Tree ops =====
   const [childParentId, setChildParentId] = useState('');
@@ -1005,11 +854,11 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
   }, []);
 
   const handleAddChildFromPanel = () => {
-    const parentId = String(childParentId || '').trim();
+    const projectId = String(childParentId || '').trim();
     const title = String(childDraftTitle || '').trim();
 
-    if (!parentId) {
-      setChildDraftErr('ابتدا مقصد را از پروژه‌های انتخاب‌شده مشخص کنید.');
+    if (!projectId) {
+      setChildDraftErr('ابتدا پروژه را انتخاب کنید.');
       return;
     }
 
@@ -1018,38 +867,54 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
       return;
     }
 
-    const parentNode = findNodeById(allRows, parentId);
-    if (!parentNode) {
-      setChildDraftErr('مورد انتخاب‌شده پیدا نشد.');
+    const selectedProject = selectedProjectTargets.find(
+      (item) => String(item.id) === projectId
+    );
+    if (!selectedProject) {
+      setChildDraftErr('پروژه انتخاب‌شده در لیست پروژه‌های فعال موجود نیست.');
       return;
     }
 
-    const duplicate = (parentNode.children || []).some(
-      (ch) => String(ch?.title || '').trim() === title
+    const parentNode = (allRows || []).find(
+      (r) => r?.otherRoot !== true && r?.projectId != null && String(r.projectId) === projectId
     );
-    if (duplicate) {
-      setChildDraftErr('این زیرمجموعه قبلاً ثبت شده است.');
-      return;
+
+    if (parentNode) {
+      const duplicate = (parentNode.children || []).some(
+        (ch) => String(ch?.title || '').trim() === title
+      );
+      if (duplicate) {
+        setChildDraftErr('این زیرمجموعه قبلاً ثبت شده است.');
+        return;
+      }
     }
 
     setChildDraftErr('');
+
     const newChild = makeNode({
       id: rowIdRef.current++,
       title,
       desc: '',
-      projectId: parentNode.projectId || null,
+      projectId: parentNode?.projectId ?? selectedProject.rawId ?? projectId,
       months: {},
       children: [],
       expanded: false,
-      isOther: !!parentNode.isOther,
+      isOther: false,
       otherRoot: false,
     });
 
-    setAllRows((prev) => {
-      const next = addChildToTree(prev, parentId, newChild);
-      scheduleSave(next, 150);
-      return next;
-    });
+    let next = allRows || [];
+    if (parentNode) {
+      next = addChildToTree(next, parentNode.id, newChild);
+    } else {
+      const root = ensureRootForProject(selectedProject.rawId ?? projectId);
+      root.expanded = true;
+      root.children = [newChild];
+      next = [...next, root];
+    }
+
+    setAllRows(next);
+    scheduleSave(next, 150);
     setChildDraftTitle('');
   };
 
@@ -1564,137 +1429,11 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
           <span className="font-semibold text-black dark:text-neutral-100">برآورد درآمد ها</span>
         </div>
 
-        {/* کپسول/انتخاب پروژه‌ها */}
         <div className="rounded-2xl border border-black/10 dark:border-neutral-800 bg-white/70 dark:bg-neutral-900/70 backdrop-blur px-3 py-3">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="text-xs text-black/60 dark:text-neutral-400">پروژه‌ها را انتخاب کنید تا وارد جدول شوند:</div>
-            <div className="text-xs text-black/50 dark:text-neutral-500">
-              انتخاب‌شده: <span className="font-semibold">{toFaDigits(selectedProjectTargets.length)}</span>
-            </div>
-          </div>
-
-          {/* انتخاب پروژه + دکمه افزودن */}
-          <div className="mt-3 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-stretch">
-            <div className="relative min-w-0">
-              <select
-                dir="rtl"
-                value={pickedProjectId}
-                onChange={(e) => setPickedProjectId(e.target.value)}
-                className="w-full h-11 rounded-2xl border border-black/15 bg-white text-black pr-3 pl-9 sm:pr-4 sm:pl-10 text-sm text-right outline-none appearance-none
-                  [-webkit-appearance:none] [-moz-appearance:none] [background-image:none]
-                  focus:ring-2 focus:ring-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-                title="انتخاب پروژه"
-              >
-                <option value="">پروژه را انتخاب کنید...</option>
-                <option value="__ALL__">انتخاب همه موارد</option>
-
-                {projectsForPicker.map((p) => {
-                  const pid = String(p?.id ?? '');
-                  if (!pid) return null;
-                  return (
-                    <option key={pid} value={pid}>
-                      {projectOptionLabel(p)}
-                    </option>
-                  );
-                })}
-              </select>
-              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-black/60 dark:text-neutral-300">
-                <svg viewBox="0 0 20 20" width="16" height="16" fill="currentColor" aria-hidden="true">
-                  <path d="M5.5 7.5 10 12l4.5-4.5" />
-                </svg>
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={addPickedProject}
-              disabled={!pickedProjectId}
-              className="h-11 w-full sm:w-12 rounded-2xl bg-black text-white grid place-items-center transition disabled:opacity-40 disabled:cursor-not-allowed
-                dark:bg-neutral-100 dark:text-neutral-900"
-              aria-label="افزودن پروژه"
-              title={!pickedProjectId ? 'ابتدا پروژه را انتخاب کنید' : 'افزودن به کپسول‌ها'}
-            >
-              <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
-            </button>
-          </div>
-
-          {/* کپسول‌ها */}
-          <div className="mt-3 flex flex-wrap gap-2 items-center">
-            <button
-              type="button"
-              onClick={toggleSelectAll}
-              className={`px-3 py-2 rounded-full text-xs md:text-[13px] border transition select-none shadow-sm
-                ${isAllSelected
-                  ? 'bg-black text-white border-black'
-                  : 'bg-white text-black border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-white/10'
-                }`}
-              title={isAllSelected ? 'لغو انتخاب همه' : 'انتخاب همه'}
-            >
-              همه
-            </button>
-
-            {(poolProjectIds || []).map((pid) => {
-              const k = projectKey(pid);
-              const active = selectedKeys.has(k);
-              const label = getProjectLabelById(pid, '—');
-              return (
-                <div
-                  key={k}
-                  className={`inline-flex items-center gap-1.5 px-2 py-1.5 rounded-full border transition select-none shadow-sm
-                    ${active
-                      ? 'bg-black text-white border-black'
-                      : 'bg-white text-black border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-white/10'
-                    }`}
-                  title={active ? 'حذف از جدول اصلی' : 'افزودن به جدول اصلی'}
-                >
-                  <button
-                    type="button"
-                    onClick={() => onToggleProjectChip(pid)}
-                    className="px-1.5 py-0.5 text-xs md:text-[13px]"
-                  >
-                    {label}
-                  </button>
-
-                  {/* حذف کوچک کنار کپسول (فقط حذف از کپسول، نه حذف دیتا) */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      removeProjectChip(pid);
-                    }}
-                    className="h-6 w-6 grid place-items-center rounded-full hover:bg-black/5 dark:hover:bg-white/10"
-                    aria-label="حذف کپسول پروژه"
-                    title="حذف کپسول پروژه"
-                  >
-                    <img
-                      src="/images/icons/bastan.svg"
-                      alt=""
-                      className={`w-3 h-3 ${active ? 'invert dark:invert' : 'invert-0 dark:invert'}`}
-                    />
-                  </button>
-                </div>
-              );
-            })}
-
-            {/* کنترل سایر (بدون متن) */}
-            <div className="inline-flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={openOtherManager}
-                className="h-10 w-10 grid place-items-center rounded-xl bg-white text-black ring-1 ring-black/15 hover:bg-black/5
-                  dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-800 dark:hover:bg-white/10"
-                aria-label="افزودن مورد جدید"
-                title="افزودن مورد جدید"
-              >
-                <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert-0 dark:invert" />
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-4 rounded-2xl border border-black/10 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-3">
+          <div className="rounded-2xl border border-black/10 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-3">
             <div className="grid grid-cols-1 md:grid-cols-[minmax(220px,320px)_1fr_auto] gap-2 items-end">
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-black/60 dark:text-neutral-400">انتخاب مقصد</label>
+                <label className="text-xs text-black/60 dark:text-neutral-400">انتخاب پروژه</label>
                 <select
                   value={childParentId}
                   onChange={(e) => {
@@ -1819,7 +1558,8 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                       const r = x.node;
                       const level = x.depth || 0;
                       const rowTotal = sumNodeMonths(r);
-                      const isComputed = hasChildren(r);
+                      const isProjectRoot = level === 0 && r?.projectId != null && r?.isOther !== true;
+                      const isComputed = hasChildren(r) || isProjectRoot;
                       const idxText = indexLabel(x.indexPath);
                       const rowId = String(r.id);
                       const isSelected = selectedRowSet.has(rowId);
@@ -1998,7 +1738,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                     {visibleRoots.length === 0 && (
                       <TR>
                         <TD colSpan={mainTotalCols} className={tablePreset.emptyRow}>
-                          از کپسول‌های بالا استفاده کنید تا موارد به جدول اصلی اضافه/کم شوند.
+                          برای شروع، یک پروژه انتخاب کنید و یک زیرمجموعه جدید ثبت کنید.
                         </TD>
                       </TR>
                     )}
@@ -2353,4 +2093,3 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
 }
 
 export default RevenueEstimatesPage;
-
