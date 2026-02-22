@@ -174,7 +174,6 @@ setProjects(Array.from(byId.values()));
   const [refreshKey, setRefreshKey] = useState(0);
 
   const moneyRefs = useRef({});
-  const descRefs = useRef({});
 
   const [codeSortDir, setCodeSortDir] = useState("asc");
   const [openCodes, setOpenCodes] = useState({});
@@ -506,6 +505,12 @@ setProjects(Array.from(byId.values()));
 
   const [saving, setSaving] = useState(false);
   const [modalMsg, setModalMsg] = useState(null);
+  const [descModal, setDescModal] = useState({
+    open: false,
+    code: "",
+    name: "",
+    value: "",
+  });
 
   const onSubmit = async () => {
     try {
@@ -831,9 +836,9 @@ setProjects(Array.from(byId.values()));
     [active, hierarchyMaps, flatRowsToRender]
   );
 
-  const focusRowForEdit = useCallback((code, isComputed) => {
+  const focusRowForEdit = useCallback((code) => {
     requestAnimationFrame(() => {
-      const target = !isComputed ? moneyRefs.current[code] : descRefs.current[code];
+      const target = moneyRefs.current[code];
       if (!target) return;
       target.focus();
       if (typeof target.setSelectionRange === "function") {
@@ -842,6 +847,28 @@ setProjects(Array.from(byId.values()));
       }
     });
   }, []);
+
+  const openDescModal = (row) => {
+    setDescModal({
+      open: true,
+      code: String(row?.code || ""),
+      name: String(row?.name || ""),
+      value: String(row?.desc || ""),
+    });
+  };
+
+  const closeDescModal = () => {
+    setDescModal({ open: false, code: "", name: "", value: "" });
+  };
+
+  const saveDescModal = () => {
+    if (!descModal.code) {
+      closeDescModal();
+      return;
+    }
+    onDescChange(descModal.code, descModal.value);
+    closeDescModal();
+  };
 
   const exportExcel = () => {
     const rowsForExport = exportRowsAll || [];
@@ -1156,25 +1183,19 @@ setProjects(Array.from(byId.values()));
                   <TH className={`w-36 sm:w-40 md:w-48 ${tablePreset.th}`}>
                     تخصیص جدید
                   </TH>
-                  <TH className={`w-[18ch] sm:w-[22ch] md:w-[26ch] ${tablePreset.th}`}>
-                    شرح
-                  </TH>
-                  <TH className={`w-20 sm:w-24 md:w-28 ${tablePreset.th}`}>
-                    اقدامات
-                  </TH>
                 </tr>
               </THead>
 
               <tbody className={tablePreset.body}>
                 {loading ? (
                   <TR>
-                    <TD colSpan={8} className={tablePreset.emptyRow}>
+                    <TD colSpan={6} className={tablePreset.emptyRow}>
                       در حال بارگذاری…
                     </TD>
                   </TR>
                 ) : (displayRows || []).length === 0 ? (
                   <TR>
-                    <TD colSpan={8} className={tablePreset.emptyRow}>
+                    <TD colSpan={6} className={tablePreset.emptyRow}>
                       {active === "projects" && !projectId
                         ? "ابتدا پروژه را انتخاب کنید"
                         : "موردی یافت نشد."}
@@ -1202,8 +1223,34 @@ setProjects(Array.from(byId.values()));
                         key={node.key || r.code || idx}
                         className={getHoverSelectableRowClass(false)}
                       >
-                        <TD className="px-2.5 pt-1.5 pb-1 align-middle !text-center">
-                          {toFaDigits(idx + 1)}
+                        <TD className="px-2.5 pt-1.5 pb-1 align-middle !text-center relative overflow-visible">
+                          <div className="relative flex min-h-[34px] items-center justify-center">
+                            <span>{toFaDigits(idx + 1)}</span>
+                            <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto">
+                              <RowActionIconBtn
+                                action="edit"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  focusRowForEdit(r.code);
+                                }}
+                                disabled={isComputed}
+                                size={30}
+                                iconSize={14}
+                              />
+                              <RowActionIconBtn
+                                icon="/images/icons/sayer.svg"
+                                title="ثبت شرح"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  openDescModal(r);
+                                }}
+                                size={30}
+                                iconSize={14}
+                              />
+                            </div>
+                          </div>
                         </TD>
                         <TD className="px-2.5 pt-1.5 pb-1 align-middle">
                           <div
@@ -1277,44 +1324,6 @@ setProjects(Array.from(byId.values()));
                             )}
                           </div>
                         </TD>
-                        <TD className="px-2.5 py-1 align-middle !text-center">
-                          <textarea
-                            ref={(el) => (descRefs.current[r.code] = el)}
-                            className="w-full rounded-xl px-2 py-1 whitespace-normal break-words leading-snug outline-none
-                                     bg-white text-black placeholder-black/40 border border-black/15 focus:ring-2 focus:ring-black/10
-                                     dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-                            rows={2}
-                            value={r.desc}
-                            onChange={(e) => onDescChange(r.code, e.target.value)}
-                            placeholder="شرح تخصیص…"
-                          />
-                        </TD>
-                        <TD className="px-2.5 pt-1.5 pb-1 align-middle !text-center">
-                          <div className="inline-flex items-center justify-center gap-1 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto">
-                            <RowActionIconBtn
-                              action="edit"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                focusRowForEdit(r.code, isComputed);
-                              }}
-                              disabled={isComputed}
-                              size={34}
-                              iconSize={15}
-                            />
-                            <RowActionIconBtn
-                              action="delete"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                removeRow(r.code);
-                              }}
-                              disabled={isComputed}
-                              size={34}
-                              iconSize={16}
-                            />
-                          </div>
-                        </TD>
                       </TR>
                     );
                   })
@@ -1330,6 +1339,62 @@ setProjects(Array.from(byId.values()));
         {err && (
           <div className="text-sm text-red-600 dark:text-red-400 mt-3">
             {err}
+          </div>
+        )}
+
+        {descModal.open && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <div
+              className="absolute inset-0 bg-black/40 dark:bg-neutral-950/60 backdrop-blur-[2px]"
+              onClick={closeDescModal}
+            />
+            <div
+              className="relative w-full max-w-xl rounded-2xl bg-white p-4 sm:p-5 ring-1 ring-black/10 shadow-2xl dark:bg-neutral-900 dark:ring-neutral-800"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-base font-semibold text-black dark:text-neutral-100">
+                ثبت شرح
+              </div>
+              <div className="mt-1 text-xs text-black/60 dark:text-neutral-300">
+                کد بودجه:{" "}
+                <span className="ltr">
+                  {toFaDigits(renderDisplayBudgetCode(descModal.code) || "—")}
+                </span>
+                {descModal.name ? ` — ${descModal.name}` : ""}
+              </div>
+
+              <textarea
+                autoFocus
+                rows={5}
+                value={descModal.value}
+                onChange={(e) =>
+                  setDescModal((prev) => ({ ...prev, value: e.target.value }))
+                }
+                placeholder="شرح تخصیص را وارد کنید…"
+                className="mt-3 w-full rounded-xl px-3 py-2 whitespace-normal break-words leading-snug outline-none
+                           bg-white text-black placeholder-black/40 border border-black/15 focus:ring-2 focus:ring-black/10
+                           dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+              />
+
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={closeDescModal}
+                  className="h-10 px-4 rounded-xl border border-black/15 hover:bg-black/5 transition
+                             dark:border-neutral-700 dark:hover:bg-neutral-800"
+                >
+                  انصراف
+                </button>
+                <button
+                  type="button"
+                  onClick={saveDescModal}
+                  className="h-10 px-4 rounded-xl bg-neutral-900 text-white transition
+                             dark:bg-neutral-100 dark:text-neutral-900"
+                >
+                  ذخیره
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
