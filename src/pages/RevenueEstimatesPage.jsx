@@ -9,7 +9,12 @@ import React, {
 
 import { Card } from '../components/ui/Card';
 import { TableWrap, THead, TR, TH, TD } from '../components/ui/Table';
-import { baseCurrenciesTablePreset as tablePreset } from '../components/ui/tablePresets';
+import RowActionIconBtn from '../components/ui/RowActionIconBtn.jsx';
+import {
+  baseCurrenciesTablePreset as tablePreset,
+  hoverSelectableRowPreset,
+  getHoverSelectableRowClass,
+} from '../components/ui/tablePresets';
 
 function RevenueEstimatesPage() {
   // This page is intentionally open for any authenticated user (no page-level access check).
@@ -1068,9 +1073,20 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     return rec(nodes);
   }, []);
 
+  const [selectedRowIds, setSelectedRowIds] = useState([]);
+  const setSelectedRows = useCallback((nextOrUpdater) => {
+    setSelectedRowIds((prev) => {
+      const prevList = Array.isArray(prev) ? prev : [];
+      const rawNext = typeof nextOrUpdater === 'function' ? nextOrUpdater(prevList) : nextOrUpdater;
+      return Array.from(new Set((Array.isArray(rawNext) ? rawNext : []).map((id) => String(id))));
+    });
+  }, []);
+
   const [editRowModal, setEditRowModal] = useState({
     open: false,
     rowId: null,
+    targetIds: [],
+    bulk: false,
     title: '',
     desc: '',
     isOther: false,
@@ -1078,43 +1094,72 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
   });
 
   const openEditRowModal = (row) => {
-    const baseTitle = row?.title || '';
+    const clickedId = String(row?.id || '');
+    const shouldEditSelected =
+      selectedRowIds.length > 1 && selectedRowIds.some((id) => String(id) === clickedId);
+    const targetIds = shouldEditSelected ? selectedRowIds.map((id) => String(id)) : [clickedId];
+    const targetNodes = targetIds.map((id) => findNodeById(allRows, id)).filter(Boolean);
+    if (!targetNodes.length) return;
+
+    const first = targetNodes[0];
+    const isBulk = targetNodes.length > 1;
+    const baseTitle = first?.title || '';
     setEditRowModal({
       open: true,
-      rowId: row?.id || null,
+      rowId: first?.id || null,
+      targetIds: targetNodes.map((n) => String(n.id)),
+      bulk: isBulk,
       title: baseTitle || '',
-      desc: row?.desc || '',
-      isOther: !!row?.isOther,
-      isOtherRoot: !!row?.otherRoot,
+      desc: isBulk ? '' : (first?.desc || ''),
+      isOther: !!first?.isOther,
+      isOtherRoot: !!first?.otherRoot,
     });
   };
 
   const closeEditRowModal = () =>
-    setEditRowModal({ open: false, rowId: null, title: '', desc: '', isOther: false, isOtherRoot: false });
+    setEditRowModal({
+      open: false,
+      rowId: null,
+      targetIds: [],
+      bulk: false,
+      title: '',
+      desc: '',
+      isOther: false,
+      isOtherRoot: false,
+    });
 
   const saveEditRowModal = () => {
-    if (!editRowModal.rowId) {
+    const targetIds = Array.isArray(editRowModal.targetIds)
+      ? editRowModal.targetIds.map((id) => String(id)).filter(Boolean)
+      : [];
+    if (!targetIds.length && editRowModal.rowId) targetIds.push(String(editRowModal.rowId));
+    if (!targetIds.length) {
       closeEditRowModal();
       return;
     }
 
-    const oldNode = findNodeById(allRows, editRowModal.rowId);
+    const isBulk = targetIds.length > 1;
+    const oldNode = findNodeById(allRows, targetIds[0]);
     const oldTitle = String(oldNode?.title || '').trim();
     const newTitle = String(editRowModal.title || '').trim();
+    const canEditTitle = !isBulk && editRowModal.isOther && !editRowModal.isOtherRoot;
 
     const patch = { desc: editRowModal.desc };
-    if (editRowModal.isOther && !editRowModal.isOtherRoot) {
+    if (canEditTitle) {
       patch.title = newTitle;
     }
 
     setAllRows((prev) => {
-      const next = updateNodeMeta(prev, editRowModal.rowId, patch);
+      let next = prev;
+      targetIds.forEach((id) => {
+        next = updateNodeMeta(next, id, patch);
+      });
       scheduleSave(next, 150);
       return next;
     });
 
     // ✅ اگر "سایر" بود و عنوان تغییر کرد، کلید انتخاب هم آپدیت شود تا آیتم غیب نشود
-    if (editRowModal.isOther && !editRowModal.isOtherRoot && oldTitle && newTitle && oldTitle !== newTitle) {
+    if (canEditTitle && oldTitle && newTitle && oldTitle !== newTitle) {
       const oldK = otherKeyFromTitle(oldTitle);
       const newK = otherKeyFromTitle(newTitle);
       setSelectedKeysArr((prev) => {
@@ -1223,13 +1268,117 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     return out;
   }, [visibleRoots]);
 
+  const visibleRowIds = useMemo(
+    () => displayRows.map((x) => String(x?.node?.id ?? '')).filter(Boolean),
+    [displayRows]
+  );
+
+  const selectedRowSet = useMemo(
+    () => new Set((selectedRowIds || []).map((id) => String(id))),
+    [selectedRowIds]
+  );
+
+  const selectedVisibleCount = useMemo(() => {
+    if (!visibleRowIds.length) return 0;
+    return visibleRowIds.reduce((acc, id) => (selectedRowSet.has(id) ? acc + 1 : acc), 0);
+  }, [visibleRowIds, selectedRowSet]);
+
+  const allVisibleRowsSelected =
+    visibleRowIds.length > 0 && selectedVisibleCount === visibleRowIds.length;
+  const someVisibleRowsSelected =
+    selectedVisibleCount > 0 && selectedVisibleCount < visibleRowIds.length;
+
+  const toggleRowSelect = (rowId) => {
+    const sid = String(rowId);
+    setSelectedRows((prev) => {
+      const set = new Set((prev || []).map((id) => String(id)));
+      if (set.has(sid)) set.delete(sid);
+      else set.add(sid);
+      return Array.from(set);
+    });
+  };
+
+  const toggleSelectAllVisibleRows = () => {
+    if (!visibleRowIds.length) return;
+    if (allVisibleRowsSelected) {
+      setSelectedRows((prev) =>
+        (prev || []).filter((id) => !visibleRowIds.includes(String(id)))
+      );
+      return;
+    }
+    setSelectedRows((prev) => {
+      const set = new Set((prev || []).map((id) => String(id)));
+      visibleRowIds.forEach((id) => set.add(String(id)));
+      return Array.from(set);
+    });
+  };
+
+  useEffect(() => {
+    if (!visibleRowIds.length) {
+      if (selectedRowIds.length) setSelectedRows([]);
+      return;
+    }
+    const visibleSet = new Set(visibleRowIds.map((id) => String(id)));
+    setSelectedRows((prev) => (prev || []).filter((id) => visibleSet.has(String(id))));
+  }, [visibleRowIds]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const removeNodesByIds = useCallback((nodes, idSet) => {
+    const rec = (arr) =>
+      (arr || []).reduce((acc, n) => {
+        const sid = String(n?.id ?? '');
+        if (sid && idSet.has(sid)) return acc;
+        const nextChildren = Array.isArray(n?.children) ? rec(n.children) : [];
+        if (Array.isArray(n?.children)) acc.push({ ...n, children: nextChildren });
+        else acc.push(n);
+        return acc;
+      }, []);
+    return rec(nodes || []);
+  }, []);
+
+  const removeRows = (ids) => {
+    const uniqIds = Array.from(
+      new Set(
+        (Array.isArray(ids) ? ids : [ids])
+          .map((id) => String(id || '').trim())
+          .filter(Boolean)
+      )
+    );
+    if (!uniqIds.length) return;
+    const confirmText =
+      uniqIds.length > 1 ? `حذف ${uniqIds.length} ردیف انتخاب‌شده؟` : 'حذف این ردیف؟';
+    if (!window.confirm(confirmText)) return;
+
+    const idSet = new Set(uniqIds);
+    setAllRows((prev) => {
+      const next = removeNodesByIds(prev, idSet);
+      scheduleSave(next, 150);
+      return next;
+    });
+
+    setSelectedRows((prev) => (prev || []).filter((id) => !idSet.has(String(id))));
+
+    if (editingCell.rowId && idSet.has(String(editingCell.rowId))) {
+      closeInlineEdit();
+    }
+
+    if (editRowModal.open) {
+      const modalTargets = Array.isArray(editRowModal.targetIds)
+        ? editRowModal.targetIds.map((id) => String(id))
+        : (editRowModal.rowId ? [String(editRowModal.rowId)] : []);
+      if (modalTargets.some((id) => idSet.has(String(id)))) {
+        closeEditRowModal();
+      }
+    }
+  };
+
   const indexLabel = (pathArr) => {
     if (!pathArr?.length) return '';
     const cleaned = pathArr.filter((x) => x !== 0);
     return cleaned.join('.');
   };
 
-  const totalCols = 2 + dynamicMonths.length + 1;
+  const mainTotalCols = 3 + dynamicMonths.length + 1;
+  const previewTotalCols = 2 + dynamicMonths.length + 1;
 
   const [showModal, setShowModal] = useState(false);
 
@@ -1400,6 +1549,11 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
 
   const otherRootNow = getOtherRoot(allRows);
   const otherChildrenNow = (otherRootNow?.children || []).map((ch) => String(ch?.title || '').trim()).filter(Boolean);
+  const editModalTargetCount = Array.isArray(editRowModal.targetIds) && editRowModal.targetIds.length
+    ? editRowModal.targetIds.length
+    : (editRowModal.rowId ? 1 : 0);
+  const isBulkEditModal = editModalTargetCount > 1;
+  const canEditModalTitle = !isBulkEditModal && editRowModal.isOther && !editRowModal.isOtherRoot;
 
   return (
     <>
@@ -1608,6 +1762,19 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                     >
                       <THead>
                         <tr className={tablePreset.headRow + ' sticky top-0 z-10'}>
+                          <TH className={`w-12 ${tablePreset.th}`}>
+                            <input
+                              type="checkbox"
+                              className={hoverSelectableRowPreset.checkbox}
+                              checked={allVisibleRowsSelected}
+                              ref={(el) => {
+                                if (el) el.indeterminate = someVisibleRowsSelected;
+                              }}
+                              onChange={toggleSelectAllVisibleRows}
+                              aria-label="انتخاب همه"
+                              title="انتخاب همه"
+                            />
+                          </TH>
                           <TH className={`w-14 ${tablePreset.th}`}>#</TH>
                           <TH className={`w-56 ${tablePreset.th}`}>پروژه / مورد</TH>
                       {dynamicMonths.map((m) => (
@@ -1624,6 +1791,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                       <tbody className={tablePreset.body}>
                     {visibleRoots.length > 0 && (
                       <TR className="text-center bg-black/[0.035] font-semibold dark:bg-white/10">
+                        <TD className="px-2 py-2 border-b border-black/10 dark:border-neutral-800">-</TD>
                         <TD className="px-2 py-2 border-b border-black/10 dark:border-neutral-800">-</TD>
                         <TD className="px-2 py-2 text-center border-b border-black/10 dark:border-neutral-800">جمع</TD>
                         {dynamicMonths.map((m) => (
@@ -1653,6 +1821,9 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                       const rowTotal = sumNodeMonths(r);
                       const isComputed = hasChildren(r);
                       const idxText = indexLabel(x.indexPath);
+                      const rowId = String(r.id);
+                      const isSelected = selectedRowSet.has(rowId);
+                      const shouldDeleteSelectedOnAction = isSelected && selectedRowIds.length > 1;
 
                       const displayTitle =
                         r.isOther
@@ -1664,12 +1835,21 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                       return (
                         <TR
                           key={r.id}
-                          className="border-t border-neutral-200 odd:bg-neutral-50 even:bg-neutral-100/70 hover:bg-neutral-200/40 transition-colors
-                            dark:border-neutral-800 dark:odd:bg-transparent dark:even:bg-white/5 dark:hover:bg-white/10"
+                          className={getHoverSelectableRowClass(isSelected)}
                         >
+                          <TD className="px-2 py-2">
+                            <input
+                              type="checkbox"
+                              className={hoverSelectableRowPreset.checkbox}
+                              checked={isSelected}
+                              onChange={() => toggleRowSelect(rowId)}
+                              aria-label="انتخاب ردیف"
+                              title="انتخاب ردیف"
+                            />
+                          </TD>
                           <TD className="px-2 py-2">{toFaDigits(idxText || (idx + 1))}</TD>
 
-                          <TD className="px-2 py-2 text-right whitespace-nowrap" style={{ paddingRight: 8 + level * 14 }}>
+                          <TD className="relative pl-16 px-2 py-2 text-right whitespace-nowrap" style={{ paddingRight: 8 + level * 14 }}>
                             <div className="inline-flex items-center gap-2">
                               <button
                                 type="button"
@@ -1698,6 +1878,32 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                                   )}
                                 </button>
                               )}
+                            </div>
+                            <div className={hoverSelectableRowPreset.rowActions}>
+                              <RowActionIconBtn
+                                action="edit"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  openEditRowModal(r);
+                                }}
+                                size={34}
+                                iconSize={15}
+                              />
+                              <RowActionIconBtn
+                                action="delete"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  if (shouldDeleteSelectedOnAction) {
+                                    removeRows(selectedRowIds);
+                                    return;
+                                  }
+                                  removeRows([r.id]);
+                                }}
+                                size={34}
+                                iconSize={16}
+                              />
                             </div>
                           </TD>
 
@@ -1776,7 +1982,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
 
                     {visibleRoots.length === 0 && (
                       <TR>
-                        <TD colSpan={totalCols} className={tablePreset.emptyRow}>
+                        <TD colSpan={mainTotalCols} className={tablePreset.emptyRow}>
                           از کپسول‌های بالا استفاده کنید تا موارد به جدول اصلی اضافه/کم شوند.
                         </TD>
                       </TR>
@@ -1986,10 +2192,14 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <div className="text-sm font-semibold">
-                    {editRowModal.isOther && !editRowModal.isOtherRoot ? 'ویرایش مورد' : 'جزئیات / توضیحات'}
+                    {isBulkEditModal
+                      ? 'ویرایش گروهی'
+                      : (canEditModalTitle ? 'ویرایش مورد' : 'جزئیات / توضیحات')}
                   </div>
                   <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                    {editRowModal.isOther && !editRowModal.isOtherRoot ? 'عنوان و توضیحات مورد را ثبت کنید.' : 'در صورت نیاز، توضیحات را ثبت کنید.'}
+                    {isBulkEditModal
+                      ? 'توضیحات روی همه موارد انتخاب‌شده اعمال می‌شود.'
+                      : (canEditModalTitle ? 'عنوان و توضیحات مورد را ثبت کنید.' : 'در صورت نیاز، توضیحات را ثبت کنید.')}
                   </div>
                 </div>
                 <button type="button" onClick={closeEditRowModal} className="h-8 w-8 grid place-items-center rounded-xl bg-black text-white dark:bg-neutral-100 dark:text-neutral-900">
@@ -2001,7 +2211,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                 <div className="space-y-1">
                   <label className="text-xs text-neutral-600 dark:text-neutral-300">عنوان</label>
 
-                  {editRowModal.isOther && !editRowModal.isOtherRoot ? (
+                  {canEditModalTitle ? (
                     <input
                       type="text"
                       className="w-full rounded-xl px-3 py-2 text-sm bg-white text-black placeholder-black/40 border border-black/15 outline-none focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
@@ -2011,7 +2221,9 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                     />
                   ) : (
                     <div className="mt-1 w-full rounded-xl px-3 py-2 text-sm bg-black/[0.02] text-black border border-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700">
-                      {editRowModal.title || '—'}
+                      {isBulkEditModal
+                        ? `${toFaDigits(editModalTargetCount)} مورد انتخاب شده`
+                        : (editRowModal.title || '—')}
                     </div>
                   )}
                 </div>
@@ -2035,7 +2247,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                   type="button"
                   onClick={saveEditRowModal}
                   className="h-9 px-5 rounded-xl bg-neutral-900 text-xs text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed"
-                  disabled={(editRowModal.isOther && !editRowModal.isOtherRoot) ? !editRowModal.title.trim() : false}
+                  disabled={canEditModalTitle ? !editRowModal.title.trim() : false}
                 >
                   ذخیره
                 </button>
@@ -2073,7 +2285,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                     <tbody className="text-black dark:text-neutral-100">
                       {visibleRoots.length === 0 ? (
                         <tr>
-                          <td colSpan={totalCols} className="py-6 text-black/60 dark:text-neutral-400 text-center">موردی برای نمایش نیست.</td>
+                          <td colSpan={previewTotalCols} className="py-6 text-black/60 dark:text-neutral-400 text-center">موردی برای نمایش نیست.</td>
                         </tr>
                       ) : (
                         <>
