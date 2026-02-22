@@ -21,10 +21,9 @@ function BaseCurrenciesPage() {
   const [errSrc, setErrSrc] = React.useState("");
   const srcInputRef = React.useRef(null);
 
-  const [editRow, setEditRow] = React.useState({
-    kind: null,
-    id: null,
-    title: "",
+  const [editingByKind, setEditingByKind] = React.useState({
+    type: {},
+    source: {},
   });
   const [selectedByKind, setSelectedByKind] = React.useState({
     type: [],
@@ -204,7 +203,13 @@ function BaseCurrenciesPage() {
     else setSources((prev) => prev.filter((r) => !idSet.has(String(r.id))));
 
     setSelectedFor(kind, (prev) => prev.filter((id) => !idSet.has(String(id))));
-    setEditRow((prev) => (prev.kind === kind && idSet.has(String(prev.id)) ? { kind: null, id: null, title: "" } : prev));
+    setEditingByKind((prev) => {
+      const nextKind = { ...(prev?.[kind] || {}) };
+      uniqIds.forEach((id) => {
+        delete nextKind[String(id)];
+      });
+      return { ...prev, [kind]: nextKind };
+    });
 
     if (!realIds.length) return;
 
@@ -224,39 +229,91 @@ function BaseCurrenciesPage() {
     }
   };
 
-  const startEdit = (kind, row) => setEditRow({ kind, id: row.id, title: row.title || "" });
-  const cancelEdit = () => setEditRow({ kind: null, id: null, title: "" });
+  const startEdit = (kind, row, selectedIds = []) => {
+    const clickedId = String(row.id);
+    const shouldEditSelected = selectedIds.length > 1 && selectedIds.some((id) => String(id) === clickedId);
+    const targetIds = shouldEditSelected ? selectedIds.map((id) => String(id)) : [clickedId];
+    const targetSet = new Set(targetIds);
+    const sourceRows = kind === "type" ? types : sources;
+    const nextKind = {};
 
-  const saveEdit = async () => {
-    if (!editRow.id || !editRow.kind) return;
+    sourceRows.forEach((r) => {
+      const sid = String(r.id);
+      if (!targetSet.has(sid)) return;
+      nextKind[sid] = {
+        id: r.id,
+        title: r.title || r.name || "",
+      };
+    });
 
-    if (typeof editRow.id === "string" && editRow.id.startsWith("tmp-")) {
-      if (editRow.kind === "type") {
-        setTypes((prev) => prev.map((r) => (r.id === editRow.id ? { ...r, title: editRow.title } : r)));
-      } else {
-        setSources((prev) => prev.map((r) => (r.id === editRow.id ? { ...r, title: editRow.title } : r)));
+    setEditingByKind((prev) => ({ ...prev, [kind]: nextKind }));
+  };
+
+  const cancelEdit = (kind, rowId = null) => {
+    setEditingByKind((prev) => {
+      const prevKind = { ...(prev?.[kind] || {}) };
+      if (rowId === null || rowId === undefined) {
+        return { ...prev, [kind]: {} };
       }
-      cancelEdit();
+      delete prevKind[String(rowId)];
+      return { ...prev, [kind]: prevKind };
+    });
+  };
+
+  const setEditTitle = (kind, rowId, title) => {
+    const sid = String(rowId);
+    setEditingByKind((prev) => {
+      const prevKind = prev?.[kind] || {};
+      const current = prevKind[sid];
+      if (!current) return prev;
+      return {
+        ...prev,
+        [kind]: {
+          ...prevKind,
+          [sid]: { ...current, title },
+        },
+      };
+    });
+  };
+
+  const saveEdit = async (kind, rowId) => {
+    const sid = String(rowId);
+    const draft = editingByKind?.[kind]?.[sid];
+    if (!draft) return;
+
+    const title = String(draft.title || "").trim();
+    if (!title) {
+      alert("عنوان را وارد کنید");
       return;
     }
 
-    const path = editRow.kind === "type" ? `/base/currencies/types` : `/base/currencies/sources`;
+    if (typeof draft.id === "string" && draft.id.startsWith("tmp-")) {
+      if (kind === "type") {
+        setTypes((prev) => prev.map((r) => (String(r.id) === sid ? { ...r, title } : r)));
+      } else {
+        setSources((prev) => prev.map((r) => (String(r.id) === sid ? { ...r, title } : r)));
+      }
+      cancelEdit(kind, sid);
+      return;
+    }
+
+    const path = kind === "type" ? `/base/currencies/types` : `/base/currencies/sources`;
 
     try {
       await api(path, {
         method: "PATCH",
         body: JSON.stringify({
-          id: editRow.id,
-          title: (editRow.title || "").trim(),
+          id: draft.id,
+          title,
         }),
       });
 
-      if (editRow.kind === "type") {
-        setTypes((prev) => prev.map((r) => (r.id === editRow.id ? { ...r, title: editRow.title } : r)));
+      if (kind === "type") {
+        setTypes((prev) => prev.map((r) => (String(r.id) === sid ? { ...r, title } : r)));
       } else {
-        setSources((prev) => prev.map((r) => (r.id === editRow.id ? { ...r, title: editRow.title } : r)));
+        setSources((prev) => prev.map((r) => (String(r.id) === sid ? { ...r, title } : r)));
       }
-      cancelEdit();
+      cancelEdit(kind, sid);
     } catch (ex) {
       alert(ex.message || "خطا در ویرایش");
     }
@@ -287,11 +344,25 @@ function BaseCurrenciesPage() {
   React.useEffect(() => {
     const validIds = new Set(sortedTypes.map((r) => String(r.id)));
     setSelectedFor("type", (prev) => prev.filter((id) => validIds.has(String(id))));
+    setEditingByKind((prev) => {
+      const nextType = { ...(prev?.type || {}) };
+      Object.keys(nextType).forEach((id) => {
+        if (!validIds.has(String(id))) delete nextType[id];
+      });
+      return { ...prev, type: nextType };
+    });
   }, [sortedTypes]);
 
   React.useEffect(() => {
     const validIds = new Set(sortedSources.map((r) => String(r.id)));
     setSelectedFor("source", (prev) => prev.filter((id) => validIds.has(String(id))));
+    setEditingByKind((prev) => {
+      const nextSource = { ...(prev?.source || {}) };
+      Object.keys(nextSource).forEach((id) => {
+        if (!validIds.has(String(id))) delete nextSource[id];
+      });
+      return { ...prev, source: nextSource };
+    });
   }, [sortedSources]);
 
   const FormRow = ({ placeholder, value, onChange, onSubmit, inputRef, error, adding }) => (
@@ -420,7 +491,8 @@ function BaseCurrenciesPage() {
                       const rowId = String(r.id);
                       const isLast = idx === rows.length - 1;
                       const tdBorder = isLast ? "" : tablePreset.rowDivider;
-                      const isEditing = editRow.kind === kind && String(editRow.id) === rowId;
+                      const rowDraft = editingByKind?.[kind]?.[rowId];
+                      const isEditing = Boolean(rowDraft);
                       const isSelected = selectedSet.has(rowId);
                       const shouldDeleteSelectedOnAction = isSelected && selectedIds.length > 1;
 
@@ -452,18 +524,13 @@ function BaseCurrenciesPage() {
                                              border border-black/15 dark:border-neutral-700
                                              bg-white text-black placeholder-black/40
                                              dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400"
-                                  value={editRow.title}
-                                  onChange={(e) =>
-                                    setEditRow({
-                                      ...editRow,
-                                      title: e.target.value,
-                                    })
-                                  }
+                                  value={rowDraft?.title || ""}
+                                  onChange={(e) => setEditTitle(kind, rowId, e.target.value)}
                                   autoFocus
                                 />
                                 <div className="flex items-center gap-1 shrink-0">
-                                  <RowActionIconBtn action="save" onClick={saveEdit} size={34} iconSize={15} />
-                                  <RowActionIconBtn action="cancel" onClick={cancelEdit} size={34} iconSize={14} />
+                                  <RowActionIconBtn action="save" onClick={() => saveEdit(kind, rowId)} size={34} iconSize={15} />
+                                  <RowActionIconBtn action="cancel" onClick={() => cancelEdit(kind, rowId)} size={34} iconSize={14} />
                                 </div>
                               </div>
                             ) : (
@@ -472,13 +539,7 @@ function BaseCurrenciesPage() {
                                 <div className={hoverSelectableRowPreset.rowActions}>
                                   <RowActionIconBtn
                                     action="edit"
-                                    onClick={() => {
-                                      if (shouldDeleteSelectedOnAction) {
-                                        removeRows(kind, selectedIds);
-                                        return;
-                                      }
-                                      startEdit(kind, r);
-                                    }}
+                                    onClick={() => startEdit(kind, r, selectedIds)}
                                     size={34}
                                     iconSize={15}
                                   />
