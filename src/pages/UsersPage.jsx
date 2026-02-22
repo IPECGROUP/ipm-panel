@@ -1,10 +1,14 @@
 // src/pages/UsersPage.jsx
 import React, { useState, useEffect } from "react";
-import Shell from "../components/layout/Shell.jsx";
 import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
-import { Btn, PrimaryBtn, DangerBtn } from "../components/ui/Button.jsx";
+import { Btn } from "../components/ui/Button.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
+import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
+import {
+  hoverSelectableCrudTablePreset as tablePreset,
+  getHoverSelectableRowClass,
+} from "../components/ui/tablePresets.js";
 
 // اگر api جدا داری، می‌تونی این بخش رو حذف و از util خودت ایمپورت کنی
 const api = async (path, opt = {}) => {
@@ -64,6 +68,14 @@ function UsersPage() {
     });
   };
 
+  const setSelected = (nextOrUpdater) => {
+    setSelectedIds((prev) => {
+      const prevList = Array.isArray(prev) ? prev : [];
+      const rawNext = typeof nextOrUpdater === "function" ? nextOrUpdater(prevList) : nextOrUpdater;
+      return Array.from(new Set((Array.isArray(rawNext) ? rawNext : []).map((id) => String(id))));
+    });
+  };
+
   // لیست واحدها
   const [units, setUnits] = useState([]);
   const [addOpen, setAddOpen] = useState(false);
@@ -115,7 +127,9 @@ function UsersPage() {
 
   // ویرایش
   const [editId, setEditId] = useState(null);
+  const [editIds, setEditIds] = useState([]);
   const [editOpen, setEditOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -340,6 +354,14 @@ function UsersPage() {
 
   // ===== edit (modal) =====
   const startEdit = (u) => {
+    const clickedId = String(u.id);
+    const shouldEditSelected = selectedIds.length > 1 && selectedIds.some((id) => String(id) === clickedId);
+    const selectedSet = new Set((shouldEditSelected ? selectedIds : [clickedId]).map((id) => String(id)));
+    const targetIds = (list || [])
+      .map((it) => String(it.id))
+      .filter((id) => selectedSet.has(id));
+    if (!targetIds.length) return;
+
     const acc = Array.isArray(u.access_labels) ? u.access_labels : Array.isArray(u.access) ? u.access : [];
     const contracts = acc.find((x) => String(x).startsWith("contracts:")) || "contracts:nonfinancial";
 
@@ -368,6 +390,7 @@ function UsersPage() {
       .filter(Boolean);
 
     setEditId(u.id);
+    setEditIds(targetIds);
     setForm({
       name: u.name || "",
       email: u.email || "",
@@ -383,7 +406,9 @@ function UsersPage() {
   };
   const cancelEdit = () => {
     setEditId(null);
+    setEditIds([]);
     setEditOpen(false);
+    setEditRolesOpen(false);
     setForm((s) => ({ ...s, password: "" }));
   };
 
@@ -401,33 +426,48 @@ function UsersPage() {
       alert("نقش‌ها هنوز بارگذاری نشده‌اند. لطفاً چند ثانیه بعد دوباره ذخیره کنید.");
       return;
     }
+    const isBatchEdit = (editIds || []).length > 1;
+    const targetIds = (editIds || []).length
+      ? editIds.map((id) => String(id))
+      : editId != null
+      ? [String(editId)]
+      : [];
+    if (!targetIds.length) return;
 
-    const payload = { ...form };
-
-    // ⭐ اینجا id رو داخل body می‌فرستیم برای PATCH
-    payload.id = editId;
-
-    if (payload.role !== "admin") {
-      const base = Array.isArray(payload.access)
-        ? payload.access.filter((x) => !String(x).startsWith("contracts:"))
+    const payloadBase = { ...form };
+    if (payloadBase.role !== "admin") {
+      const base = Array.isArray(payloadBase.access)
+        ? payloadBase.access.filter((x) => !String(x).startsWith("contracts:"))
         : [];
       if (contractsSel) base.push(contractsSel);
-      payload.access = sanitizeAccess(base);
+      payloadBase.access = sanitizeAccess(base);
     } else {
-      delete payload.access;
+      delete payloadBase.access;
     }
-    if (!payload.password) delete payload.password;
-
+    if (!payloadBase.password || isBatchEdit) delete payloadBase.password;
+    if (isBatchEdit) {
+      delete payloadBase.name;
+      delete payloadBase.email;
+      delete payloadBase.username;
+    }
     const positionsIds = (form.positions || []).map((n) => nameToId[n]).filter((v) => v != null);
-    payload.positions = positionsIds;
-    payload.roles = positionsIds;
+    payloadBase.positions = positionsIds;
+    payloadBase.roles = positionsIds;
 
     try {
-      await api(`/admin/users`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const idMap = new Map((list || []).map((it) => [String(it.id), it.id]));
+      await Promise.all(
+        targetIds.map((sid) =>
+          api(`/admin/users`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...payloadBase,
+              id: idMap.has(sid) ? idMap.get(sid) : sid,
+            }),
+          })
+        )
+      );
       cancelEdit();
       await reload();
     } catch (ex) {
@@ -435,16 +475,42 @@ function UsersPage() {
     }
   };
 
-  const del = async (u) => {
-    if (!confirm(`حذف کاربر «${u.username || u.name || "-"}»؟`)) return;
+  const removeRows = async (ids) => {
+    const uniqIds = Array.from(
+      new Set(
+        (Array.isArray(ids) ? ids : [ids])
+          .filter((id) => id !== null && id !== undefined)
+          .map((id) => String(id))
+      )
+    );
+    if (!uniqIds.length) return;
+
+    const firstUser = (list || []).find((u) => String(u.id) === String(uniqIds[0]));
+    const firstLabel = firstUser?.username || firstUser?.name || uniqIds[0] || "-";
+    const confirmText = uniqIds.length > 1 ? `حذف ${uniqIds.length} کاربر انتخاب‌شده؟` : `حذف کاربر «${firstLabel}»؟`;
+    if (!confirm(confirmText)) return;
+
+    const idSet = new Set(uniqIds);
+    if ((editIds || []).some((id) => idSet.has(String(id))) || (editId != null && idSet.has(String(editId)))) {
+      cancelEdit();
+    }
+
+    setList((prev) => (prev || []).filter((u) => !idSet.has(String(u.id))));
+    setSelected((prev) => (prev || []).filter((id) => !idSet.has(String(id))));
+
+    const idMap = new Map((list || []).map((it) => [String(it.id), it.id]));
     try {
-      await api(`/admin/users`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: u.id }),
-      });
-      await reload();
+      await Promise.all(
+        uniqIds.map((sid) =>
+          api(`/admin/users`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: idMap.has(sid) ? idMap.get(sid) : sid }),
+          })
+        )
+      );
     } catch (ex) {
+      await reload();
       alert(ex?.message || "خطا در حذف");
     }
   };
@@ -494,6 +560,39 @@ function UsersPage() {
     });
     return arr;
   }, [list, sortKey, sortDir]);
+
+  const tableUi = tablePreset.table;
+  const rowUi = tablePreset.row;
+  const visibleIds = (sortedList || []).map((u) => String(u.id));
+  const selectedSet = new Set((selectedIds || []).map((id) => String(id)));
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedSet.has(id));
+  const someVisibleSelected = visibleIds.some((id) => selectedSet.has(id)) && !allVisibleSelected;
+  const isBatchEdit = (editIds || []).length > 1;
+
+  const toggleSelectAllVisible = () => {
+    setSelected((prev) => {
+      const prevSet = new Set((prev || []).map((id) => String(id)));
+      if (allVisibleSelected) {
+        return (prev || []).filter((id) => !visibleIds.includes(String(id)));
+      }
+      visibleIds.forEach((id) => prevSet.add(String(id)));
+      return Array.from(prevSet);
+    });
+  };
+
+  const toggleRowSelect = (id) => {
+    const sid = String(id);
+    setSelected((prev) => {
+      const exists = (prev || []).some((x) => String(x) === sid);
+      return exists ? (prev || []).filter((x) => String(x) !== sid) : [...(prev || []), sid];
+    });
+  };
+
+  useEffect(() => {
+    const validIds = new Set((sortedList || []).map((u) => String(u.id)));
+    setSelected((prev) => prev.filter((id) => validIds.has(String(id))));
+    setEditIds((prev) => (prev || []).filter((id) => validIds.has(String(id))));
+  }, [sortedList]);
 
   const [addRolesOpen, setAddRolesOpen] = useState(false);
   const [editRolesOpen, setEditRolesOpen] = useState(false);
@@ -816,21 +915,32 @@ function UsersPage() {
 
         {/* جدول کاربران (✅ استاندارد BaseCurrenciesPage + ریسپانسیو با اسکرول افقی) */}
         <TableWrap>
-          <div className="bg-white text-black overflow-hidden dark:bg-neutral-900 dark:text-neutral-100">
+          <div className={tableUi.outer}>
             <div className="px-[15px] pb-4">
-              <div className="rounded-2xl border border-black/10 overflow-hidden bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+              <div className={tableUi.frame}>
                 <div className="w-full overflow-x-auto">
-                  <table
-                    className="w-full min-w-[860px] text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
-                    dir="rtl"
-                  >
+                  <table className={`${tableUi.table} min-w-[860px]`} dir="rtl">
                     <THead>
-                      <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
-                        <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                      <tr className={tableUi.headRow}>
+                        <TH className={`w-12 ${tableUi.th}`}>
+                          <input
+                            type="checkbox"
+                            className={rowUi.checkbox}
+                            checked={allVisibleSelected}
+                            ref={(el) => {
+                              if (el) el.indeterminate = someVisibleSelected;
+                            }}
+                            onChange={toggleSelectAllVisible}
+                            aria-label="انتخاب همه"
+                            title="انتخاب همه"
+                          />
+                        </TH>
+
+                        <TH className={`w-20 sm:w-24 ${tableUi.th}`}>
                           #
                         </TH>
 
-                        <TH className="min-w-[180px] !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                        <TH className={`min-w-[180px] ${tableUi.th}`}>
                           <div className="flex items-center justify-center gap-2">
                             <span>نام</span>
                             <button
@@ -856,7 +966,7 @@ function UsersPage() {
                           </div>
                         </TH>
 
-                        <TH className="min-w-[160px] !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                        <TH className={`min-w-[160px] ${tableUi.th}`}>
                           <div className="flex items-center justify-center gap-2">
                             <span>واحد</span>
                             <button
@@ -882,80 +992,72 @@ function UsersPage() {
                           </div>
                         </TH>
 
-                        <TH className="min-w-[320px] !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                        <TH className={`min-w-[320px] ${tableUi.th}`}>
                           سطح دسترسی‌ها
-                        </TH>
-
-                        <TH className="w-44 sm:w-72 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                          اقدامات
                         </TH>
                       </tr>
                     </THead>
 
-                    <tbody
-                      className="[&_td]:text-black dark:[&_td]:text-neutral-100
-                                 [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50
-                                 dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50"
-                    >
+                    <tbody className={tableUi.body}>
                       {loading ? (
-                        <TR className="bg-white dark:bg-transparent">
-                          <TD colSpan={5} className="text-center text-black/60 dark:text-neutral-400 py-4">
+                        <TR>
+                          <TD colSpan={5} className={tableUi.emptyRow}>
                             در حال بارگذاری...
                           </TD>
                         </TR>
                       ) : (sortedList || []).length === 0 ? (
-                        <TR className="bg-white dark:bg-transparent">
-                          <TD colSpan={5} className="text-center text-black/60 dark:text-neutral-400 py-4">
+                        <TR>
+                          <TD colSpan={5} className={tableUi.emptyRow}>
                             کاربری ثبت نشده است.
                           </TD>
                         </TR>
                       ) : (
                         (sortedList || []).map((u, idx) => {
                           const isLast = idx === (sortedList || []).length - 1;
-                          const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
+                          const tdBorder = isLast ? "" : tableUi.rowDivider;
+                          const rowId = String(u.id);
+                          const isSelected = selectedSet.has(rowId);
+                          const shouldDeleteSelectedOnAction = isSelected && selectedIds.length > 1;
 
                           return (
-                            <TR key={u.id}>
+                            <TR key={u.id} className={getHoverSelectableRowClass(isSelected)}>
+                              <TD className={`px-3 ${tdBorder}`}>
+                                <input
+                                  type="checkbox"
+                                  className={rowUi.checkbox}
+                                  checked={isSelected}
+                                  onChange={() => toggleRowSelect(u.id)}
+                                  aria-label="انتخاب"
+                                  title="انتخاب"
+                                />
+                              </TD>
+
                               <TD className={`px-3 ${tdBorder}`}>{idx + 1}</TD>
                               <TD className={`px-3 ${tdBorder}`}>{u.name || u.username || "—"}</TD>
                               <TD className={`px-3 ${tdBorder}`}>{u.department || "—"}</TD>
-                              <TD className={`px-3 ${tdBorder} text-black/80 dark:text-neutral-300`}>
-                                {renderAccessText(u)}
-                              </TD>
-
-                              <TD className={`px-3 ${tdBorder}`}>
-                                <div className="flex items-center justify-center gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => startEdit(u)}
-                                    className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
-                                    aria-label="ویرایش"
-                                    title="ویرایش"
-                                  >
-                                    <img
-                                      src="/images/icons/pencil.svg"
-                                      alt=""
-                                      className="w-[18px] h-[18px] dark:invert"
+                              <TD className={`px-3 ${rowUi.valueCell} ${tdBorder} text-black/80 dark:text-neutral-300`}>
+                                <div className={rowUi.valueWrap}>
+                                  <span className={rowUi.valueText}>{renderAccessText(u)}</span>
+                                  <div className={rowUi.rowActions}>
+                                    <RowActionIconBtn
+                                      action="edit"
+                                      onClick={() => startEdit(u)}
+                                      size={tablePreset.actionSizes.button}
+                                      iconSize={tablePreset.actionSizes.edit}
                                     />
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => del(u)}
-                                    className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
-                                    aria-label="حذف"
-                                    title="حذف"
-                                  >
-                                    <img
-                                      src="/images/icons/hazf.svg"
-                                      alt=""
-                                      className="w-[19px] h-[19px]"
-                                      style={{
-                                        filter:
-                                          "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
+                                    <RowActionIconBtn
+                                      action="delete"
+                                      onClick={() => {
+                                        if (shouldDeleteSelectedOnAction) {
+                                          removeRows(selectedIds);
+                                          return;
+                                        }
+                                        removeRows([u.id]);
                                       }}
+                                      size={tablePreset.actionSizes.button}
+                                      iconSize={tablePreset.actionSizes.delete}
                                     />
-                                  </button>
+                                  </div>
                                 </div>
                               </TD>
                             </TR>
@@ -978,7 +1080,9 @@ function UsersPage() {
 
           <div className="relative w-full max-w-3xl rounded-2xl shadow-2xl p-5 bg-white text-black border border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
             <div className="mb-3 flex items-center justify-between gap-3">
-              <h3 className="text-lg md:text-xl font-bold">ویرایش کاربر</h3>
+              <h3 className="text-lg md:text-xl font-bold">
+                {isBatchEdit ? `ویرایش گروهی کاربران (${editIds.length} مورد)` : "ویرایش کاربر"}
+              </h3>
 
               <button
                 onClick={cancelEdit}
@@ -990,14 +1094,21 @@ function UsersPage() {
               </button>
             </div>
 
+            {isBatchEdit && (
+              <div className="mb-3 text-xs text-black/70 dark:text-neutral-300">
+                در ویرایش گروهی، فیلدهای نام، ایمیل، نام کاربری و رمز عبور غیرفعال هستند و فقط روی یک کاربر اعمال نمی‌شوند.
+              </div>
+            )}
+
             <div className="grid md:grid-cols-2 gap-4" dir="rtl">
               <div className="flex flex-col gap-1">
                 <label className="text-sm text-black/70 dark:text-neutral-300">نام</label>
                 <input
                   value={form.name}
                   onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
+                  disabled={isBatchEdit}
                   className="h-10 rounded-2xl px-3 bg-white text-black placeholder-black/40 border border-black/15 outline-none
-                             focus:ring-2 focus:ring-black/10
+                             focus:ring-2 focus:ring-black/10 disabled:opacity-60
                              dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
                 />
               </div>
@@ -1025,8 +1136,9 @@ function UsersPage() {
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
+                  disabled={isBatchEdit}
                   className="h-10 rounded-2xl px-3 bg-white text-black placeholder-black/40 border border-black/15 outline-none text-left
-                             focus:ring-2 focus:ring-black/10
+                             focus:ring-2 focus:ring-black/10 disabled:opacity-60
                              dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
                   dir="ltr"
                 />
@@ -1037,8 +1149,9 @@ function UsersPage() {
                 <input
                   value={form.username}
                   onChange={(e) => setForm((s) => ({ ...s, username: e.target.value }))}
+                  disabled={isBatchEdit}
                   className="h-10 rounded-2xl px-3 bg-white text-black placeholder-black/40 border border-black/15 outline-none text-left
-                             focus:ring-2 focus:ring-black/10
+                             focus:ring-2 focus:ring-black/10 disabled:opacity-60
                              dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
                   dir="ltr"
                 />
@@ -1062,8 +1175,9 @@ function UsersPage() {
                 <input
                   value={form.password}
                   onChange={(e) => setForm((s) => ({ ...s, password: e.target.value.slice(0, 8) }))}
+                  disabled={isBatchEdit}
                   className="h-10 rounded-2xl px-3 bg-white text-black placeholder-black/40 border border-black/15 outline-none text-left
-                             focus:ring-2 focus:ring-black/10
+                             focus:ring-2 focus:ring-black/10 disabled:opacity-60
                              dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
                   dir="ltr"
                   type="password"
@@ -1179,7 +1293,7 @@ function UsersPage() {
                   >
                     <input
                       type="radio"
-                      name={`contracts-${editId}`}
+                      name={`contracts-${editIds.join("-") || editId}`}
                       className="accent-neutral-900 dark:accent-neutral-200"
                       checked={contractsSel === "contracts:all"}
                       onChange={() => setContracts("contracts:all")}
@@ -1194,7 +1308,7 @@ function UsersPage() {
                   >
                     <input
                       type="radio"
-                      name={`contracts-${editId}`}
+                      name={`contracts-${editIds.join("-") || editId}`}
                       className="accent-neutral-900 dark:accent-neutral-200"
                       checked={contractsSel === "contracts:nonfinancial"}
                       onChange={() => setContracts("contracts:nonfinancial")}
