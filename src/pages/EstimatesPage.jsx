@@ -597,6 +597,83 @@ const sortedProjects = useMemo(() => {
     setSelected((prev) => (prev || []).filter((code) => valid.has(String(code))));
   }, [visibleCodes]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!visibleCodes.length) {
+      if (editingCodes.length) {
+        setEditingCodes([]);
+        setEditDraftByCode({});
+      }
+      return;
+    }
+    const valid = new Set(visibleCodes.map((c) => String(c)));
+    setEditingCodes((prev) => (prev || []).filter((code) => valid.has(String(code))));
+    setEditDraftByCode((prev) => {
+      const next = { ...(prev || {}) };
+      Object.keys(next).forEach((code) => {
+        if (!valid.has(String(code))) delete next[code];
+      });
+      return next;
+    });
+  }, [visibleCodes]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const [editingCodes, setEditingCodes] = useState([]);
+  const [editDraftByCode, setEditDraftByCode] = useState({});
+  const editingSet = useMemo(
+    () => new Set((editingCodes || []).map((code) => String(code || "").trim())),
+    [editingCodes],
+  );
+
+  const beginEdit = (row) => {
+    const clickedCode = String(row?.code || "").trim();
+    if (!clickedCode) return;
+
+    const shouldEditSelected = selectedCodes.length > 1 && selectedSet.has(clickedCode);
+    const targetCodes = shouldEditSelected ? selectedCodes.map((code) => String(code)) : [clickedCode];
+    const targetSet = new Set(targetCodes);
+    const drafts = {};
+    const finalCodes = [];
+
+    (rowsToRender || []).forEach((r) => {
+      const code = String(r?.code || "").trim();
+      if (!code || !targetSet.has(code)) return;
+      drafts[code] = { name: String(r?.name || "") };
+      finalCodes.push(code);
+    });
+
+    if (!finalCodes.length) return;
+    setEditingCodes(finalCodes);
+    setEditDraftByCode(drafts);
+    setErr("");
+  };
+
+  const cancelEdit = (code = null) => {
+    if (code === null || code === undefined) {
+      setEditingCodes([]);
+      setEditDraftByCode({});
+      return;
+    }
+    const sc = String(code).trim();
+    setEditingCodes((prev) => (prev || []).filter((x) => String(x) !== sc));
+    setEditDraftByCode((prev) => {
+      if (!prev || !Object.prototype.hasOwnProperty.call(prev, sc)) return prev;
+      const next = { ...prev };
+      delete next[sc];
+      return next;
+    });
+  };
+
+  const onEditNameChange = (code, value) => {
+    const sc = String(code || "").trim();
+    if (!sc) return;
+    setEditDraftByCode((prev) => ({
+      ...(prev || {}),
+      [sc]: {
+        ...(prev?.[sc] || {}),
+        name: value,
+      },
+    }));
+  };
+
   const allRowsForExport = useMemo(() => {
     const base = rowsToRender || [];
     if (!base.length) return [];
@@ -949,35 +1026,19 @@ const sortedProjects = useMemo(() => {
       .filter((it) => it.id != null && it.code);
   }, [active]);
 
-  const [editRowModal, setEditRowModal] = useState({
-    open: false,
-    code: "",
-    name: "",
-    saving: false,
-    error: "",
-  });
+  const saveInlineRow = async (code) => {
+    const targetCode = String(code || "").trim();
+    const draft = editDraftByCode[targetCode];
+    if (!targetCode || !draft) return;
 
-  const openEditRowModal = (row) => {
-    const code = String(row?.code || "").trim();
-    if (!code) return;
-    setEditRowModal({
-      open: true,
-      code,
-      name: String(row?.name || "").trim(),
-      saving: false,
-      error: "",
-    });
-  };
+    const targetName = String(draft?.name || "").trim();
+    if (!targetName) {
+      setErr("نام بودجه الزامی است.");
+      return;
+    }
 
-  const closeEditRowModal = () =>
-    setEditRowModal({ open: false, code: "", name: "", saving: false, error: "" });
-
-  const saveEditRowModal = async () => {
-    const targetCode = String(editRowModal.code || "").trim();
-    const targetName = String(editRowModal.name || "").trim();
-    if (!targetCode || !targetName) return;
-
-    setEditRowModal((p) => ({ ...p, saving: true, error: "" }));
+    setSaving(true);
+    setErr("");
     try {
       const centers = await loadCentersForActive();
       const target = centers.find((c) => String(c.code) === targetCode);
@@ -994,9 +1055,12 @@ const sortedProjects = useMemo(() => {
       setRows((prev) =>
         (prev || []).map((r) => (String(r.code) === targetCode ? { ...r, name: targetName } : r)),
       );
-      closeEditRowModal();
+      cancelEdit(targetCode);
     } catch (ex) {
-      setEditRowModal((p) => ({ ...p, saving: false, error: ex.message || "update_failed" }));
+      setErr(ex.message || "update_failed");
+      setReloadTick((v) => v + 1);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -1017,6 +1081,14 @@ const sortedProjects = useMemo(() => {
     const codeSet = new Set(uniqCodes.map((c) => String(c)));
     setRows((prev) => (prev || []).filter((r) => !codeSet.has(String(r?.code || ""))));
     setSelected((prev) => (prev || []).filter((code) => !codeSet.has(String(code))));
+    setEditingCodes((prev) => (prev || []).filter((code) => !codeSet.has(String(code))));
+    setEditDraftByCode((prev) => {
+      const next = { ...(prev || {}) };
+      uniqCodes.forEach((code) => {
+        delete next[String(code)];
+      });
+      return next;
+    });
 
     try {
       setSaving(true);
@@ -1532,6 +1604,8 @@ const sortedProjects = useMemo(() => {
                         const rowCode = String(code || "").trim();
                         const isSelected = rowCode ? selectedSet.has(rowCode) : false;
                         const shouldDeleteSelectedOnAction = isSelected && selectedCodes.length > 1;
+                        const rowIsEditing = rowCode ? editingSet.has(rowCode) : false;
+                        const rowDraft = rowCode ? (editDraftByCode[rowCode] || { name: String(r?.name || "") }) : { name: String(r?.name || "") };
                         const isParent = !!code && !hierarchyMaps.isLeafByCode[r.code];
                         const hasChildren = !!node.hasChildren || isParent;
                         const toggleKey = node.core || node.key;
@@ -1599,7 +1673,17 @@ const sortedProjects = useMemo(() => {
                                 node.depth ? "text-[10px] md:text-[12px]" : "text-[11px] md:text-[13px]"
                               }`}
                             >
-                              <div style={{ transform: shiftX ? `translateX(${shiftX}px)` : undefined }}>{r.name || "—"}</div>
+                              {rowIsEditing ? (
+                                <input
+                                  className="w-full rounded-xl px-2 py-1 text-right border border-black/15 bg-white text-black dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
+                                  value={rowDraft.name}
+                                  onChange={(e) => onEditNameChange(rowCode, e.target.value)}
+                                  placeholder="نام بودجه..."
+                                  autoFocus
+                                />
+                              ) : (
+                                <div style={{ transform: shiftX ? `translateX(${shiftX}px)` : undefined }}>{r.name || "—"}</div>
+                              )}
                             </TD>
 
                             {dynamicMonths.map((m) => {
@@ -1691,7 +1775,7 @@ const sortedProjects = useMemo(() => {
                               <div className="relative flex min-h-[34px] items-center justify-center">
                                 <span
                                   className={`inline-flex items-center justify-center gap-1 transition-opacity ${
-                                    isSelected
+                                    rowIsEditing || isSelected
                                       ? "opacity-0 pointer-events-none"
                                       : "opacity-100 group-hover:opacity-0 group-hover:pointer-events-none"
                                   }`}
@@ -1701,35 +1785,62 @@ const sortedProjects = useMemo(() => {
 
                                 <div
                                   className={`absolute inset-0 flex items-center justify-center gap-1 transition-opacity ${
-                                    isSelected
+                                    rowIsEditing || isSelected
                                       ? "opacity-100 pointer-events-auto"
                                       : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
                                   }`}
                                 >
-                                  <RowActionIconBtn
-                                    action="edit"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      openEditRowModal(r);
-                                    }}
-                                    size={34}
-                                    iconSize={15}
-                                  />
-                                  <RowActionIconBtn
-                                    action="delete"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      if (shouldDeleteSelectedOnAction) {
-                                        removeRows(selectedCodes);
-                                        return;
-                                      }
-                                      removeRows([rowCode]);
-                                    }}
-                                    size={34}
-                                    iconSize={16}
-                                  />
+                                  {rowIsEditing ? (
+                                    <>
+                                      <RowActionIconBtn
+                                        action="save"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          saveInlineRow(rowCode);
+                                        }}
+                                        size={34}
+                                        iconSize={15}
+                                      />
+                                      <RowActionIconBtn
+                                        action="cancel"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          cancelEdit(rowCode);
+                                        }}
+                                        size={34}
+                                        iconSize={14}
+                                      />
+                                    </>
+                                  ) : (
+                                    <>
+                                      <RowActionIconBtn
+                                        action="edit"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          beginEdit(r);
+                                        }}
+                                        size={34}
+                                        iconSize={15}
+                                      />
+                                      <RowActionIconBtn
+                                        action="delete"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          if (shouldDeleteSelectedOnAction) {
+                                            removeRows(selectedCodes);
+                                            return;
+                                          }
+                                          removeRows([rowCode]);
+                                        }}
+                                        size={34}
+                                        iconSize={16}
+                                      />
+                                    </>
+                                  )}
                                 </div>
                               </div>
                             </TD>
@@ -1771,61 +1882,6 @@ const sortedProjects = useMemo(() => {
         </div>
 
 
-        {editRowModal.open && (
-          <div className="fixed inset-0 z-40 grid place-items-center px-3">
-            <div className="absolute inset-0 bg-black/25 dark:bg-neutral-950/55 backdrop-blur-[2px]" onClick={closeEditRowModal} />
-            <div
-              className="relative w-full max-w-sm rounded-2xl bg-white text-neutral-900 border border-black/10 shadow-2xl dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 p-4 space-y-3"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="text-sm font-semibold">Edit Row</div>
-                  <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400 ltr">
-                    {editRowModal.code || "-"}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={closeEditRowModal}
-                  className="h-8 w-8 grid place-items-center rounded-xl bg-black text-white dark:bg-neutral-100 dark:text-neutral-900"
-                >
-                  <img src="/images/icons/bastan.svg" alt="" className="w-4 h-4 invert dark:invert-0" />
-                </button>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs text-neutral-600 dark:text-neutral-300">Budget Name</label>
-                <input
-                  type="text"
-                  className="w-full rounded-xl px-3 py-2 text-sm bg-white text-black placeholder-black/40 border border-black/15 outline-none focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-                  value={editRowModal.name}
-                  onChange={(e) => setEditRowModal((p) => ({ ...p, name: e.target.value, error: "" }))}
-                  placeholder="Budget name..."
-                />
-                {editRowModal.error ? <div className="text-xs text-red-600 dark:text-red-400">{editRowModal.error}</div> : null}
-              </div>
-
-              <div className="flex items-center justify-between gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={closeEditRowModal}
-                  className="h-9 px-4 rounded-xl border border-neutral-300 text-xs text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={saveEditRowModal}
-                  disabled={editRowModal.saving || !String(editRowModal.name || "").trim()}
-                  className="h-9 px-5 rounded-xl bg-neutral-900 text-xs text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {editRowModal.saving ? "..." : "Save"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </Card>
     </>
   );
