@@ -1770,21 +1770,23 @@ const sortedProjects = useMemo(() => {
           <span className="font-semibold text-black dark:text-neutral-100">برآورد هزینه‌ها</span>
         </div>
 
-        <div className="space-y-3 md:space-y-4 mb-4">
-          {renderTopButtons()}
-          {renderProjectsControls()}
-          {renderCenterCreateControls()}
-        </div>
+        <div className="rounded-2xl border border-black/10 dark:border-neutral-800 bg-white/70 dark:bg-neutral-900/70 backdrop-blur px-3 py-3">
+          <div className="space-y-3 md:space-y-4">
+            {renderTopButtons()}
+            {renderProjectsControls()}
+            {renderCenterCreateControls()}
+          </div>
 
-        <TableWrap>
-          <div className={tablePreset.outer}>
-            <div className={tablePreset.innerPad}>
-              <div className={tablePreset.frame + " shadow-sm"}>
-                <div className="overflow-x-auto">
-                  <table
-                    className={tablePreset.table + " table-fixed text-[12px] md:text-[13px] min-w-[900px] lg:min-w-[1020px]"}
-                    dir="rtl"
-                  >
+          <div className="mt-3">
+            <TableWrap>
+              <div className={tablePreset.outer}>
+                <div className={tablePreset.innerPad}>
+                  <div className={tablePreset.frame + " shadow-sm"}>
+                    <div className="overflow-x-auto">
+                      <table
+                        className={tablePreset.table + " table-fixed text-[12px] md:text-[13px] min-w-[900px] lg:min-w-[1020px]"}
+                        dir="rtl"
+                      >
                     <THead>
                       <tr className={tablePreset.headRow + " sticky top-0 z-10"}>
                         <TH className={`w-12 ${tablePreset.th}`}>
@@ -1890,6 +1892,13 @@ const sortedProjects = useMemo(() => {
                           : { code: "", name: String(r?.name || "") };
                         const isParent = !!code && !hierarchyMaps.isLeafByCode[r.code];
                         const hasChildren = !!node.hasChildren || isParent;
+                        const mainReadonlyRow = isParent;
+                        const codeTextClass = mainReadonlyRow
+                          ? "text-[13px] md:text-[15px] font-semibold"
+                          : (node.depth ? "text-[11px] md:text-xs" : "text-xs md:text-[13px]");
+                        const nameCellTextClass = mainReadonlyRow
+                          ? "text-[12px] md:text-[14px] font-semibold"
+                          : (node.depth ? "text-[10px] md:text-[12px]" : "text-[11px] md:text-[13px]");
                         const toggleKey = node.core || node.key;
                         const isOpen = !!openCodes[toggleKey];
                         const shiftX = node.depth ? node.depth * 10 : 0;
@@ -1968,7 +1977,7 @@ const sortedProjects = useMemo(() => {
                                     </div>
                                   )
                                 ) : (
-                                  <span className={`ltr ${node.depth ? "text-[11px] md:text-xs" : "text-xs md:text-[13px]"}`}>
+                                  <span className={`ltr ${codeTextClass}`}>
                                     {renderCode(code)}
                                   </span>
                                 )}
@@ -1976,9 +1985,7 @@ const sortedProjects = useMemo(() => {
                             </TD>
 
                             <TD
-                              className={`px-2 py-3 text-right break-words max-w-[180px] ${
-                                node.depth ? "text-[10px] md:text-[12px]" : "text-[11px] md:text-[13px]"
-                              }`}
+                              className={`px-2 py-3 text-right break-words max-w-[180px] ${nameCellTextClass}`}
                             >
                               {rowIsEditing ? (
                                 <input
@@ -2155,13 +2162,15 @@ const sortedProjects = useMemo(() => {
                       })}
                     </>
                   )}
-                    </tbody>
-                  </table>
+                      </tbody>
+                    </table>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            </TableWrap>
           </div>
-        </TableWrap>
+        </div>
 
         {err && <div className="text-sm text-red-600 dark:text-red-400 mt-3">{err}</div>}
 
