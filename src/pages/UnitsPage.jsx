@@ -6,7 +6,6 @@ import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
 import { Btn, PrimaryBtn, DangerBtn } from "../components/ui/Button.jsx";
-import { hoverSelectableRowPreset } from "../components/ui/tablePresets.js";
 import { api } from "../utils/api"; // 👈 فقط این خط اضافه شد
 
 function OrgStructurePage() {
@@ -21,7 +20,6 @@ function OrgStructurePage() {
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState(null);
   const [editName, setEditName] = useState("");
-  const [selectedUnitIds, setSelectedUnitIds] = useState([]);
 
   const [nameSortDir, setNameSortDir] = useState("asc");
 
@@ -386,15 +384,6 @@ function OrgStructurePage() {
     return arr;
   }, [list, nameSortDir]);
 
-  useEffect(() => {
-    const validIds = new Set(
-      (sortedList || [])
-        .map((u) => String(unitIdOf(u)))
-        .filter((id) => id && id !== "0")
-    );
-    setSelectedUnitIds((prev) => (prev || []).filter((id) => validIds.has(String(id))));
-  }, [sortedList]);
-
   const addUnit = async () => {
     setErr("");
     const name = (adding || "").trim();
@@ -455,62 +444,22 @@ function OrgStructurePage() {
     }
   };
 
-  const del = async (itemsOrItem) => {
-    const rows = Array.isArray(itemsOrItem) ? itemsOrItem : [itemsOrItem];
-    const normalized = rows
-      .map((u) => ({ id: unitIdOf(u), name: u?.name || "-" }))
-      .filter((x) => x.id);
-    if (!normalized.length) {
+  const del = async (u) => {
+    const id = unitIdOf(u);
+    if (!id) {
       alert("شناسه واحد معتبر نیست.");
       return;
     }
-
-    const ids = Array.from(new Set(normalized.map((x) => Number(x.id))));
-    const confirmText = ids.length > 1 ? `حذف ${ids.length} واحد انتخاب‌شده؟` : `حذف واحد «${normalized[0].name}»؟`;
-    if (!confirm(confirmText)) return;
-
+    if (!confirm(`حذف واحد «${u.name}»؟`)) return;
     try {
-      await Promise.all(
-        ids.map((id) =>
-          api(`/base/units/${id}`, {
-            method: "DELETE",
-            credentials: "include",
-          })
-        )
-      );
-      setSelectedUnitIds((prev) => (prev || []).filter((id) => !ids.includes(Number(id))));
-      if (editId && ids.includes(Number(editId))) {
-        setEditId(null);
-        setEditName("");
-      }
+      await api(`/base/units/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
       await reload();
     } catch (ex) {
       alert(ex.message || "خطا در حذف");
     }
-  };
-
-  const unitVisibleIds = (sortedList || [])
-    .map((u) => String(unitIdOf(u)))
-    .filter((id) => id && id !== "0");
-  const unitSelectedSet = new Set((selectedUnitIds || []).map((id) => String(id)));
-  const allUnitsSelected = unitVisibleIds.length > 0 && unitVisibleIds.every((id) => unitSelectedSet.has(id));
-  const someUnitsSelected = unitVisibleIds.some((id) => unitSelectedSet.has(id)) && !allUnitsSelected;
-  const toggleSelectAllUnits = () => {
-    setSelectedUnitIds((prev) => {
-      const prevSet = new Set((prev || []).map((id) => String(id)));
-      if (allUnitsSelected) {
-        return (prev || []).filter((id) => !unitVisibleIds.includes(String(id)));
-      }
-      unitVisibleIds.forEach((id) => prevSet.add(id));
-      return Array.from(prevSet);
-    });
-  };
-  const toggleSelectUnit = (id) => {
-    const sid = String(id);
-    setSelectedUnitIds((prev) => {
-      const exists = (prev || []).some((x) => String(x) === sid);
-      return exists ? (prev || []).filter((x) => String(x) !== sid) : [...(prev || []), sid];
-    });
   };
 
   return (
@@ -600,20 +549,6 @@ function OrgStructurePage() {
                       >
                         <THead>
                           <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
-                            <TH className="w-12 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                              <input
-                                type="checkbox"
-                                className={hoverSelectableRowPreset.checkbox}
-                                checked={allUnitsSelected}
-                                ref={(el) => {
-                                  if (el) el.indeterminate = someUnitsSelected;
-                                }}
-                                onChange={toggleSelectAllUnits}
-                                aria-label="Select all units"
-                                title="Select all units"
-                              />
-                            </TH>
-
                             <TH className="w-20 sm:w-24 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
                               #
                             </TH>
@@ -658,7 +593,7 @@ function OrgStructurePage() {
                         >
                           {(sortedList || []).length === 0 ? (
                             <TR className="bg-white dark:bg-transparent">
-                              <TD colSpan={4} className="text-center text-black/60 dark:text-neutral-400 py-4">
+                              <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-4">
                                 واحدی ثبت نشده.
                               </TD>
                             </TR>
@@ -667,26 +602,9 @@ function OrgStructurePage() {
                               const isLast = idx === sortedList.length - 1;
                               const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
                               const rowId = unitIdOf(u);
-                              const isSelected = unitSelectedSet.has(String(rowId));
-                              const deleteSelected = isSelected && selectedUnitIds.length > 1;
 
                               return (
-                                <TR
-                                  key={rowId || u.id || idx}
-                                  className={`${hoverSelectableRowPreset.rowBase} ${
-                                    isSelected ? hoverSelectableRowPreset.rowSelected : hoverSelectableRowPreset.rowIdle
-                                  }`}
-                                >
-                                  <TD className={`px-3 ${tdBorder}`}>
-                                    <input
-                                      type="checkbox"
-                                      className={hoverSelectableRowPreset.checkbox}
-                                      checked={isSelected}
-                                      onChange={() => toggleSelectUnit(rowId)}
-                                      aria-label="Select unit"
-                                      title="Select unit"
-                                    />
-                                  </TD>
+                                <TR key={rowId || u.id || idx}>
                                   <TD className={`px-3 ${tdBorder}`}>{idx + 1}</TD>
 
                                   <TD className={`px-3 ${tdBorder}`}>
@@ -739,7 +657,7 @@ function OrgStructurePage() {
                                         </button>
                                       </div>
                                     ) : (
-                                      <div className={`${hoverSelectableRowPreset.rowActionsInline} gap-3`}>
+                                      <div className="flex items-center justify-center gap-3">
                                         <button
                                           type="button"
                                           onClick={(e) => {
@@ -775,10 +693,6 @@ function OrgStructurePage() {
                                           onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
-                                            if (deleteSelected) {
-                                              del(sortedList.filter((x) => unitSelectedSet.has(String(unitIdOf(x)))));
-                                              return;
-                                            }
                                             del(u);
                                           }}
                                           className="!h-10 !w-10 !p-0 !rounded-xl !grid !place-items-center !bg-transparent !ring-0 !border-0 !shadow-none hover:opacity-80 active:opacity-70 disabled:opacity-50"

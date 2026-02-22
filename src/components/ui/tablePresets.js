@@ -29,6 +29,4 @@ export const hoverSelectableRowPreset = {
   valueText: "block w-full truncate px-12 text-center",
   rowActions:
     "absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-1 shrink-0 transition-opacity opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto",
-  rowActionsInline:
-    "flex items-center justify-center gap-2 transition-opacity opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto",
 };
