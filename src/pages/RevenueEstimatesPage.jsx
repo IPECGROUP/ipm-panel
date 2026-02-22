@@ -1,4 +1,4 @@
-﻿// Ø¨Ø±Ø§ÙˆØ±Ø¯ Ø¯Ø±Ø§Ù…Ø¯ Ù‡Ø§
+// براورد درامد ها
 import React, {
   useState,
   useEffect,
@@ -31,22 +31,22 @@ function RevenueEstimatesPage() {
   };
 
   const toFaDigits = (s) =>
-    String(s ?? '').replace(/\d/g, (d) => 'Û°Û±Û²Û³Û´ÛµÛ¶Û·Û¸Û¹'[d]);
+    String(s ?? '').replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]);
 
   const toEnDigits = (s) =>
     String(s || '')
-      .replace(/[Û°-Û¹]/g, (d) => 'Û°Û±Û²Û³Û´ÛµÛ¶Û·Û¸Û¹'.indexOf(d))
-      .replace(/[Ù -Ù©]/g, (d) => 'Ù Ù¡Ù¢Ù£Ù¤Ù¥Ù¦Ù§Ù¨Ù©'.indexOf(d));
+      .replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+      .replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
 
-// ÙÙ‚Ø· Ù¾Ø±ÙˆÚ˜Ù‡â€ŒÙ‡Ø§ÛŒ Ø§ØµÙ„ÛŒ: Ú©Ø¯ Ø¨Ø¯ÙˆÙ† Ù†Ù‚Ø·Ù‡ (Ù…Ø«Ù„ 156)
-// Ø§Ú¯Ø± Ø®ÙˆØ§Ø³ØªÛŒ Ø¯Ù‚ÛŒÙ‚Ø§Ù‹ 3 Ø±Ù‚Ù… Ø¨Ø§Ø´Ø¯: /^\d{3}$/
-// ÙˆÙ„ÛŒ Ú†ÙˆÙ† Ù…Ù…Ú©Ù†Ù‡ Ú©Ø¯Ù‡Ø§ 2 ÛŒØ§ 4 Ø±Ù‚Ù… Ù‡Ù… Ø¨Ø§Ø´Ù†Ø¯ØŒ Ø¨Ù‡ØªØ±Ù‡ "Ø¨Ø¯ÙˆÙ† Ù†Ù‚Ø·Ù‡" ÙÛŒÙ„ØªØ± Ú©Ù†ÛŒÙ…
+// فقط پروژه‌های اصلی: کد بدون نقطه (مثل 156)
+// اگر خواستی دقیقاً 3 رقم باشد: /^\d{3}$/
+// ولی چون ممکنه کدها 2 یا 4 رقم هم باشند، بهتره "بدون نقطه" فیلتر کنیم
 const isTopProjectCode = (code) => {
   const c = toEnDigits(String(code ?? '')).trim();
   if (!c) return false;
-  // âœ… Ø²ÛŒØ±Ù…Ø¬Ù…ÙˆØ¹Ù‡â€ŒÙ‡Ø§ Ù…Ø¹Ù…ÙˆÙ„Ø§Ù‹ Ù†Ù‚Ø·Ù‡ Ø¯Ø§Ø±Ù†Ø¯: 156.1.1
+  // ✅ زیرمجموعه‌ها معمولاً نقطه دارند: 156.1.1
   if (c.includes('.')) return false;
-  // âœ… ÙÙ‚Ø· Ø¹Ø¯Ø¯ Ø¨Ø§Ø´Ø¯
+  // ✅ فقط عدد باشد
   return /^\d+$/.test(c);
 };
 
@@ -78,8 +78,8 @@ const isTopProjectCode = (code) => {
   };
 
   const monthNames = [
-    'ÙØ±ÙˆØ±Ø¯ÛŒÙ†','Ø§Ø±Ø¯ÛŒØ¨Ù‡Ø´Øª','Ø®Ø±Ø¯Ø§Ø¯','ØªÛŒØ±','Ù…Ø±Ø¯Ø§Ø¯','Ø´Ù‡Ø±ÛŒÙˆØ±',
-    'Ù…Ù‡Ø±','Ø¢Ø¨Ø§Ù†','Ø¢Ø°Ø±','Ø¯ÛŒ','Ø¨Ù‡Ù…Ù†','Ø§Ø³ÙÙ†Ø¯',
+    'فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور',
+    'مهر','آبان','آذر','دی','بهمن','اسفند',
   ];
 
   const jalaliMonthIndex = useMemo(() => {
@@ -137,8 +137,8 @@ const isTopProjectCode = (code) => {
   );
 
   const [projects, setProjects] = useState([]);
-    const [poolProjectIds, setPoolProjectIds] = useState([]); // Ù¾Ø±ÙˆÚ˜Ù‡â€ŒÙ‡Ø§ÛŒÛŒ Ú©Ù‡ Ø¨Ù‡ Ú©Ù¾Ø³ÙˆÙ„â€ŒÙ‡Ø§ Ø§Ø¶Ø§ÙÙ‡ Ø´Ø¯Ù‡â€ŒØ§Ù†Ø¯
-  const [selectedKeysArr, setSelectedKeysArr] = useState([]); // Ø§Ù†ØªØ®Ø§Ø¨â€ŒÙ‡Ø§ÛŒ ÙØ¹Ø§Ù„ Ø¨Ø±Ø§ÛŒ Ù†Ù…Ø§ÛŒØ´ Ø¯Ø± Ø¬Ø¯ÙˆÙ„ Ø§ØµÙ„ÛŒ
+    const [poolProjectIds, setPoolProjectIds] = useState([]); // پروژه‌هایی که به کپسول‌ها اضافه شده‌اند
+  const [selectedKeysArr, setSelectedKeysArr] = useState([]); // انتخاب‌های فعال برای نمایش در جدول اصلی
 useEffect(() => {
   if (canAccessPage !== true) return;
 
@@ -149,21 +149,21 @@ useEffect(() => {
         Array.isArray(data.items) ? data.items :
         (Array.isArray(data.projects) ? data.projects : []);
 
-      // âœ… ÙÙ‚Ø· Ù¾Ø±ÙˆÚ˜Ù‡â€ŒÙ‡Ø§ÛŒ Ø§ØµÙ„ÛŒ (Ø¨Ø¯ÙˆÙ† Ø²ÛŒØ±Ù…Ø¬Ù…ÙˆØ¹Ù‡ Ù…Ø«Ù„ 156.1.1)
+      // ✅ فقط پروژه‌های اصلی (بدون زیرمجموعه مثل 156.1.1)
       const topOnly = items.filter((p) => isTopProjectCode(p?.code));
 
-      // âœ… ÙÙ‚Ø· ÙØ¹Ø§Ù„â€ŒÙ‡Ø§ (Ø§Ú¯Ø± ØºÛŒØ±ÙØ¹Ø§Ù„â€ŒÙ‡Ø§ Ù‡Ù… Ù…ÛŒâ€ŒØ®ÙˆØ§ÛŒØŒ Ø§ÛŒÙ† Ø®Ø· Ø±Ùˆ Ø­Ø°Ù Ú©Ù†)
+      // ✅ فقط فعال‌ها (اگر غیرفعال‌ها هم می‌خوای، این خط رو حذف کن)
       const topActive = topOnly.filter((p) => p?.isActive !== false);
 
-      // âœ… Ø§Ú¯Ø± Ø¨Ø§ ÙÛŒÙ„ØªØ± Ù‡ÛŒÚ†ÛŒ Ø¯Ø±Ù†ÛŒÙˆÙ…Ø¯ØŒ Ø­Ø¯Ø§Ù‚Ù„ Ù¾Ø±ÙˆÚ˜Ù‡â€ŒÙ‡Ø§ Ø±Ø§ Ø®Ø§Ù„ÛŒ Ù†Ú©Ù†
-      // (Ø¨Ø±Ø§ÛŒ Ø§ÛŒÙ†Ú©Ù‡ ØµÙØ­Ù‡ Ø®Ø§Ù„ÛŒ Ù†Ø´Ù‡ Ùˆ Ø¨ÙÙ‡Ù…ÛŒÙ… Ù…Ø´Ú©Ù„ Ø§Ø² ÙÛŒÙ„ØªØ±Ù‡)
+      // ✅ اگر با فیلتر هیچی درنیومد، حداقل پروژه‌ها را خالی نکن
+      // (برای اینکه صفحه خالی نشه و بفهمیم مشکل از فیلتره)
       setProjects(topActive.length ? topActive : items);
 
       console.log('projects total:', items.length);
       console.log('projects topActive:', topActive.length);
     } catch (e) {
       console.error('load projects failed', e);
-      setProjects([]); // Ø§ÛŒÙ†Ø¬Ø§ Ø®Ø§Ù„ÛŒ Ú©Ø±Ø¯Ù† ok
+      setProjects([]); // اینجا خالی کردن ok
     }
   })();
 }, [canAccessPage]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -178,7 +178,7 @@ useEffect(() => {
   }, [projects]);
  
 const getProjectCode = useCallback((p) => {
-  // Ø¯Ù‚ÛŒÙ‚Ø§Ù‹ Ù…Ø«Ù„ ØµÙØ­Ù‡ Ù¾Ø±ÙˆÚ˜Ù‡â€ŒÙ‡Ø§: Ú©Ø¯ Ø±Ø§ Ø§Ø² Ù‡Ù…Ø§Ù† ÙÛŒÙ„Ø¯ Ø§ØµÙ„ÛŒ code Ø¨Ø±Ø¯Ø§Ø±
+  // دقیقاً مثل صفحه پروژه‌ها: کد را از همان فیلد اصلی code بردار
   return String(p?.code ?? '').trim();
 }, []);
 
@@ -196,7 +196,7 @@ const projectsForPicker = useMemo(() => {
       numeric: true,
       sensitivity: 'base',
     });
-if (cmp !== 0) return -cmp; // âœ… Ù†Ø²ÙˆÙ„ÛŒ: 165 ... 106
+if (cmp !== 0) return -cmp; // ✅ نزولی: 165 ... 106
 
     const na = String(a?.name ?? a?.title ?? '').trim();
     const nb = String(b?.name ?? b?.title ?? '').trim();
@@ -209,27 +209,27 @@ const getProjectLabel = useCallback((p) => {
   const code = String(p?.code ?? '').trim();
   const name = String(p?.name ?? '').trim();
   if (code && name) return `${code} - ${name}`;
-  return code || name || 'Ù¾Ø±ÙˆÚ˜Ù‡ Ø¨Ø¯ÙˆÙ† Ù†Ø§Ù…';
+  return code || name || 'پروژه بدون نام';
 }, []);
 
 const projectOptionLabel = useCallback((p) => {
   const code = toFaDigits(String(p?.code ?? '').trim());
   const name = String(p?.name ?? '').trim();
   if (code && name) return `${code} - ${name}`;
-  return code || name || 'â€”';
+  return code || name || '—';
 }, [toFaDigits]);
 
   const getProjectLabelById = useCallback(
     (pid, fallback = '') => {
       const p = projectById.get(String(pid));
-      return p ? getProjectLabel(p) : (fallback || 'â€”');
+      return p ? getProjectLabel(p) : (fallback || '—');
     },
     [projectById, getProjectLabel]
   );
 
-  const SEP = ' â€º ';
+  const SEP = ' › ';
 
-  // ===== Ø§Ù†ØªØ®Ø§Ø¨â€ŒÙ‡Ø§ (Ú©Ù¾Ø³ÙˆÙ„â€ŒÙ‡Ø§) =====
+  // ===== انتخاب‌ها (کپسول‌ها) =====
 
   const [otherMenuOpen, setOtherMenuOpen] = useState(false);
 
@@ -269,7 +269,7 @@ const projectOptionLabel = useCallback((p) => {
   const ensureRootForProject = useCallback((pid) => {
     const spid = String(pid);
     const p = projectById.get(spid);
-   const title = p ? getProjectLabel(p) : `Ù¾Ø±ÙˆÚ˜Ù‡ ${String(spid)}`;
+   const title = p ? getProjectLabel(p) : `پروژه ${String(spid)}`;
 
     return makeNode({
       id: rowIdRef.current++,
@@ -286,7 +286,7 @@ const projectOptionLabel = useCallback((p) => {
   const ensureOtherRoot = useCallback(() => {
     return makeNode({
       id: 'other-root',
-      title: 'Ø³Ø§ÛŒØ±',
+      title: 'سایر',
       desc: '',
       projectId: null,
       months: {},
@@ -309,16 +309,16 @@ const projectOptionLabel = useCallback((p) => {
 
   const visibleRoots = useMemo(() => {
     const keys = selectedKeys;
-    const roots = (allRows || []).filter((r) => r && r.otherRoot !== true); // Ù¾Ø±ÙˆÚ˜Ù‡â€ŒÙ‡Ø§/ØºÛŒØ±Ù‡ (Ø¨Ù‡ Ø¬Ø² Ø±ÙˆØª Ø³Ø§ÛŒØ±)
+    const roots = (allRows || []).filter((r) => r && r.otherRoot !== true); // پروژه‌ها/غیره (به جز روت سایر)
     const out = [];
 
-    // Ù¾Ø±ÙˆÚ˜Ù‡â€ŒÙ‡Ø§
+    // پروژه‌ها
     roots.forEach((r) => {
       const k = r?.projectId != null ? projectKey(r.projectId) : '';
       if (k && keys.has(k)) out.push(r);
     });
 
-    // Ø³Ø§ÛŒØ± (Ø¨Ø¯ÙˆÙ† Ù†Ù…Ø§ÛŒØ´ Ø±ÙˆØª "Ø³Ø§ÛŒØ±"Ø› ÙÙ‚Ø· Ø¢ÛŒØªÙ…â€ŒÙ‡Ø§ Ø¨Ù‡â€ŒØµÙˆØ±Øª Ø±ÛŒØ´Ù‡ Ù†Ù…Ø§ÛŒØ´ Ø¯Ø§Ø¯Ù‡ Ø´ÙˆÙ†Ø¯)
+    // سایر (بدون نمایش روت "سایر"؛ فقط آیتم‌ها به‌صورت ریشه نمایش داده شوند)
     const otherRoot = (allRows || []).find((r) => r?.isOther && r?.otherRoot);
     if (otherRoot && selectedOtherSet.size > 0) {
       const filteredChildren = (otherRoot.children || []).filter((ch) => {
@@ -375,7 +375,7 @@ const projectOptionLabel = useCallback((p) => {
       const ensureRoot = (seg0, projectId, isOther) => {
         let key = '';
         if (projectId != null) key = 'p:' + String(projectId);
-        else if (isOther && seg0 === 'Ø³Ø§ÛŒØ±') key = 'otherRoot';
+        else if (isOther && seg0 === 'سایر') key = 'otherRoot';
         else key = 'null::' + String(seg0);
 
         if (!rootMap.has(key)) {
@@ -398,7 +398,7 @@ const projectOptionLabel = useCallback((p) => {
       };
 
       items.forEach((it) => {
-        const rawTitle = String(it.title || '').trim(); // ÙÙ‚Ø· title
+        const rawTitle = String(it.title || '').trim(); // فقط title
         if (!rawTitle) return;
         if (rawTitle === '__META__') return;
 
@@ -408,9 +408,9 @@ const projectOptionLabel = useCallback((p) => {
         const projectId = it.project_id ?? null;
         const isOther = it.is_other === true || it.isOther === true;
 
-        // Ø³Ø§ÛŒØ±Ù‡Ø§: Ù‡Ù…Ù‡ Ø²ÛŒØ± Ø±ÙˆØª "Ø³Ø§ÛŒØ±"
+        // سایرها: همه زیر روت "سایر"
         if (isOther && projectId == null) {
-          if (parts[0] !== 'Ø³Ø§ÛŒØ±') parts = ['Ø³Ø§ÛŒØ±', ...parts];
+          if (parts[0] !== 'سایر') parts = ['سایر', ...parts];
         }
 
         const monthsMap = {};
@@ -418,26 +418,26 @@ const projectOptionLabel = useCallback((p) => {
           if (m && m.key) monthsMap[m.key] = Number(m.amount || 0);
         });
 
-        // âœ… Ø§Ú¯Ø± Ù¾Ø±ÙˆÚ˜Ù‡ Ø¯Ø§Ø±Ø¯: Ø±ÛŒØ´Ù‡ Ø¨Ø§ÛŒØ¯ Ø§Ø² projectId Ø³Ø§Ø®ØªÙ‡ Ø´ÙˆØ¯ (Ù†Ù‡ Ø§Ø² title Ø°Ø®ÛŒØ±Ù‡ Ø´Ø¯Ù‡)
+        // ✅ اگر پروژه دارد: ریشه باید از projectId ساخته شود (نه از title ذخیره شده)
 let root;
 
 if (projectId != null) {
-  // Ú©Ù„ÛŒØ¯ Ø«Ø§Ø¨Øª Ø¨Ø±Ø§ÛŒ Ù‡Ø± Ù¾Ø±ÙˆÚ˜Ù‡
+  // کلید ثابت برای هر پروژه
   const key = 'p:' + String(projectId);
 
   if (!rootMap.has(key)) {
-    // Ø±ÛŒØ´Ù‡ Ù¾Ø±ÙˆÚ˜Ù‡ Ø¨Ø§ Ø¹Ù†ÙˆØ§Ù† Ø¯Ø±Ø³Øª Ø§Ø² Ù„ÛŒØ³Øª Ù¾Ø±ÙˆÚ˜Ù‡â€ŒÙ‡Ø§
+    // ریشه پروژه با عنوان درست از لیست پروژه‌ها
     rootMap.set(key, ensureRootForProject(projectId));
   }
 
   root = rootMap.get(key);
 
-  // âœ… Ø§Ú¯Ø± title Ù‚Ø¨Ù„Ø§Ù‹ Ø¨Ø§ "Ú©Ø¯ - Ù†Ø§Ù…" Ø°Ø®ÛŒØ±Ù‡ Ø´Ø¯Ù‡ Ø¨ÙˆØ¯ØŒ Ø¢Ù† Ø±Ø§ Ø­Ø°Ù Ú©Ù† ØªØ§ 800 ÛŒØ§ Ø§Ø³Ù…â€ŒÙ‡Ø§ÛŒ Ø§Ø¶Ø§ÙÛŒ Ù†Ú¯ÛŒØ±Ø¯
-  // ÛŒØ¹Ù†ÛŒ Ù…Ø³ÛŒØ± ÙˆØ§Ù‚Ø¹ÛŒ Ø§Ø² level 1 Ø´Ø±ÙˆØ¹ Ù…ÛŒâ€ŒØ´ÙˆØ¯
-  // parts[0] Ø±Ø§ Ù†Ø§Ø¯ÛŒØ¯Ù‡ Ù…ÛŒâ€ŒÚ¯ÛŒØ±ÛŒÙ…
+  // ✅ اگر title قبلاً با "کد - نام" ذخیره شده بود، آن را حذف کن تا 800 یا اسم‌های اضافی نگیرد
+  // یعنی مسیر واقعی از level 1 شروع می‌شود
+  // parts[0] را نادیده می‌گیریم
   parts = parts.slice(1);
 } else {
-  // Ø³Ø§ÛŒØ± ÛŒØ§ Ø¢ÛŒØªÙ…â€ŒÙ‡Ø§ÛŒ Ø¨Ø¯ÙˆÙ† Ù¾Ø±ÙˆÚ˜Ù‡
+  // سایر یا آیتم‌های بدون پروژه
   root = ensureRoot(parts[0], projectId, isOther);
   parts = parts.slice(1);
 }
@@ -499,15 +499,15 @@ for (let i = 0; i < parts.length; i++) {
         rowIdRef.current = 1;
         let tree = buildTreeFromItems(itemsNoMeta);
 
-        // ØªØ¶Ù…ÛŒÙ† Ø±ÙˆØª Ø³Ø§ÛŒØ± Ø§Ú¯Ø± Ø¯ÛŒØªØ§ Ø¯Ø§Ø±Ø¯
+        // تضمین روت سایر اگر دیتا دارد
         const hasOtherInTree = (tree || []).some((r) => r?.isOther && r?.otherRoot);
         const shouldHaveOther = hasOtherInTree || itemsNoMeta.some((x) => (x.is_other === true || x.isOther === true) && (x.project_id == null));
         if (shouldHaveOther) tree = upsertOtherRoot(tree);
 
         setAllRows(tree);
 
-        // Ù¾Ø±ÙˆÚ˜Ù‡â€ŒÙ‡Ø§ Ø§Ø² meta (Ø§Ú¯Ø± Ø¨Ø§Ø´Ø¯) ÛŒØ§ Ø§Ø² Ø®ÙˆØ¯ tree
-        // Ù¾Ø±ÙˆÚ˜Ù‡â€ŒÙ‡Ø§ Ø§Ø² meta (Ø§Ú¯Ø± Ø¨Ø§Ø´Ø¯) ÛŒØ§ Ø§Ø² Ø®ÙˆØ¯ tree
+        // پروژه‌ها از meta (اگر باشد) یا از خود tree
+        // پروژه‌ها از meta (اگر باشد) یا از خود tree
 const pidsFromTree = [];
 (tree || []).forEach((r) => {
   if (r?.projectId != null) pidsFromTree.push(String(r.projectId));
@@ -519,7 +519,7 @@ const metaPool = hasMetaPool ? meta.poolProjectIds.map((x) => String(x)).filter(
 const nextPool = hasMetaPool ? Array.from(new Set(metaPool)) : uniqTree;
 setPoolProjectIds(nextPool);
 
-// Ø§Ù†ØªØ®Ø§Ø¨â€ŒÙ‡Ø§ Ø§Ø² meta (Ø§Ú¯Ø± Ø¨Ø§Ø´Ø¯) ÛŒØ§ Ù‡Ù…Ù‡
+// انتخاب‌ها از meta (اگر باشد) یا همه
 const otherRoot = getOtherRoot(tree);
 const otherTitles = (otherRoot?.children || []).map((ch) => String(ch?.title || '').trim()).filter(Boolean);
 
@@ -542,7 +542,7 @@ const filteredSel = (rawSel || []).filter((k) => {
   return false;
 });
 
-// Ù†Ú©ØªÙ‡ Ù…Ù‡Ù…: Ø§Ú¯Ø± metaSel ÙˆØ¬ÙˆØ¯ Ø¯Ø§Ø´Øª (Ø­ØªÛŒ Ø®Ø§Ù„ÛŒ)ØŒ Ù‡Ù…ÙˆÙ† Ø±Ø§ Ù†Ú¯Ù‡ Ø¯Ø§Ø±
+// نکته مهم: اگر metaSel وجود داشت (حتی خالی)، همون را نگه دار
 const finalSel = hasMetaSel ? filteredSel : (filteredSel.length ? filteredSel : defaultKeys);
 
 setSelectedKeysArr(Array.from(new Set(finalSel)));
@@ -656,14 +656,14 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
   const handleSave = async () => {
     try {
       await saveRowsToServer(allRows || []);
-      alert('Ø¨Ø±Ø¢ÙˆØ±Ø¯ Ø¯Ø±Ø¢Ù…Ø¯ Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø°Ø®ÛŒØ±Ù‡ Ø´Ø¯.');
+      alert('برآورد درآمد با موفقیت ذخیره شد.');
     } catch (e) {
       console.error('save revenue estimates failed', e);
-      alert('Ø°Ø®ÛŒØ±Ù‡ Ø¨Ø±Ø¢ÙˆØ±Ø¯ Ø¨Ø§ Ø®Ø·Ø§ Ù…ÙˆØ§Ø¬Ù‡ Ø´Ø¯.');
+      alert('ذخیره برآورد با خطا مواجه شد.');
     }
   };
 
-  // ===== Ø§Ø¨Ø²Ø§Ø±Ù‡Ø§ÛŒ Ø§Ù†ØªØ®Ø§Ø¨/Ù†Ù…Ø§ÛŒØ´ =====
+  // ===== ابزارهای انتخاب/نمایش =====
   const addToSelected = (k) => {
     setSelectedKeysArr((prev) => {
       const s = new Set(prev);
@@ -733,13 +733,13 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     scheduleSave(allRows || [], 150);
   };
 
-  // Ù‡Ø± ØªØºÛŒÛŒØ± Ø§Ù†ØªØ®Ø§Ø¨/Ú©Ù¾Ø³ÙˆÙ„â€ŒÙ‡Ø§ Ù‡Ù… Ø¨Ø§ÛŒØ¯ Ø°Ø®ÛŒØ±Ù‡ Ø´ÙˆØ¯
+  // هر تغییر انتخاب/کپسول‌ها هم باید ذخیره شود
   useEffect(() => {
     if (canAccessPage !== true) return;
     scheduleSave(allRows || [], 150);
   }, [selectedKeysArr, poolProjectIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ===== Ø§ÙØ²ÙˆØ¯Ù† Ù¾Ø±ÙˆÚ˜Ù‡ Ø¨Ù‡ Ú©Ù¾Ø³ÙˆÙ„â€ŒÙ‡Ø§ =====
+  // ===== افزودن پروژه به کپسول‌ها =====
   const [pickedProjectId, setPickedProjectId] = useState('');
 
   const addPickedProject = () => {
@@ -781,7 +781,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     setPickedProjectId('');
   };
 
-  // ===== Ø­Ø°Ù Ù¾Ø±ÙˆÚ˜Ù‡ Ø§Ø² Ú©Ù¾Ø³ÙˆÙ„ (Ø¨Ø¯ÙˆÙ† Ø­Ø°Ù Ø¯ÛŒØªØ§) =====
+  // ===== حذف پروژه از کپسول (بدون حذف دیتا) =====
   const removeProjectChip = (pid) => {
     const spid = String(pid);
     setPoolProjectIds((prev) => {
@@ -797,7 +797,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     scheduleSave(allRows || [], 150);
   };
 
-  // ===== Ø³Ø§ÛŒØ±: Ø±ÙˆØª + Ø²ÛŒØ±Ù…Ø¬Ù…ÙˆØ¹Ù‡â€ŒÙ‡Ø§ =====
+  // ===== سایر: روت + زیرمجموعه‌ها =====
   const ensureOtherRootInState = () => {
     setAllRows((prev) => {
       const next = upsertOtherRoot(prev || []);
@@ -829,7 +829,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
 
   const selK = otherKeyFromTitle(title);
 
-  // âœ… Ù…Ù‡Ù…: Ù‚Ø¨Ù„ Ø§Ø² Ù‡Ø± scheduleSaveØŒ metaRef Ùˆ Ø§Ù†ØªØ®Ø§Ø¨â€ŒÙ‡Ø§ Ø±Ø§ Ù‡Ù…ÛŒÙ†Ø¬Ø§ Ø³ÛŒÙ†Ú© Ú©Ù†
+  // ✅ مهم: قبل از هر scheduleSave، metaRef و انتخاب‌ها را همینجا سینک کن
   const nextSel = Array.from(new Set([...(selectedKeysArr || []), selK]));
   setSelectedKeysArr(nextSel);
   metaRef.current = {
@@ -884,14 +884,14 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
   const handleAddOtherFromModal = () => {
     const t = String(otherDraftTitle || '').trim();
     if (!t) {
-      setOtherDraftErr('Ø¹Ù†ÙˆØ§Ù† Ø±Ø§ ÙˆØ§Ø±Ø¯ Ú©Ù†ÛŒØ¯.');
+      setOtherDraftErr('عنوان را وارد کنید.');
       return;
     }
 
     const otherRoot = getOtherRoot(allRows);
     const exists = (otherRoot?.children || []).some((ch) => String(ch?.title || '').trim() === t);
     if (exists) {
-  setOtherDraftErr('Ø§ÛŒÙ† Ø¹Ù†ÙˆØ§Ù† Ù‚Ø¨Ù„Ø§Ù‹ Ø§Ø¶Ø§ÙÙ‡ Ø´Ø¯Ù‡ Ø§Ø³Øª.');
+  setOtherDraftErr('این عنوان قبلاً اضافه شده است.');
 
   const selK = otherKeyFromTitle(t);
   const nextSel = Array.from(new Set([...(selectedKeysArr || []), selK]));
@@ -940,7 +940,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     });
   };
 
-  // ===== Ú©Ù„ÛŒÚ© Ø±ÙˆÛŒ Ú©Ù¾Ø³ÙˆÙ„ Ù¾Ø±ÙˆÚ˜Ù‡: Ø§Ø¶Ø§ÙÙ‡/Ú©Ù… Ú©Ø±Ø¯Ù† Ø§Ø² Ø¬Ø¯ÙˆÙ„ Ø§ØµÙ„ÛŒ =====
+  // ===== کلیک روی کپسول پروژه: اضافه/کم کردن از جدول اصلی =====
   const onToggleProjectChip = (pid) => {
     const k = projectKey(pid);
     const isOn = selectedKeys.has(k);
@@ -964,7 +964,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
       .filter((r) => r?.projectId != null && selectedKeys.has(projectKey(r.projectId)))
       .map((r) => ({
         id: r.id,
-        label: getProjectLabelById(r.projectId, r.title || 'â€”'),
+        label: getProjectLabelById(r.projectId, r.title || '—'),
       }));
   }, [allRows, selectedKeys, getProjectLabelById]);
 
@@ -1009,18 +1009,18 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     const title = String(childDraftTitle || '').trim();
 
     if (!parentId) {
-      setChildDraftErr('Ø§Ø¨ØªØ¯Ø§ Ù…Ù‚ØµØ¯ Ø±Ø§ Ø§Ø² Ù¾Ø±ÙˆÚ˜Ù‡â€ŒÙ‡Ø§ÛŒ Ø§Ù†ØªØ®Ø§Ø¨â€ŒØ´Ø¯Ù‡ Ù…Ø´Ø®Øµ Ú©Ù†ÛŒØ¯.');
+      setChildDraftErr('ابتدا مقصد را از پروژه‌های انتخاب‌شده مشخص کنید.');
       return;
     }
 
     if (!title) {
-      setChildDraftErr('Ø¹Ù†ÙˆØ§Ù† Ø²ÛŒØ±Ù…Ø¬Ù…ÙˆØ¹Ù‡ Ø±Ø§ ÙˆØ§Ø±Ø¯ Ú©Ù†ÛŒØ¯.');
+      setChildDraftErr('عنوان زیرمجموعه را وارد کنید.');
       return;
     }
 
     const parentNode = findNodeById(allRows, parentId);
     if (!parentNode) {
-      setChildDraftErr('Ù…ÙˆØ±Ø¯ Ø§Ù†ØªØ®Ø§Ø¨â€ŒØ´Ø¯Ù‡ Ù¾ÛŒØ¯Ø§ Ù†Ø´Ø¯.');
+      setChildDraftErr('مورد انتخاب‌شده پیدا نشد.');
       return;
     }
 
@@ -1028,7 +1028,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
       (ch) => String(ch?.title || '').trim() === title
     );
     if (duplicate) {
-      setChildDraftErr('Ø§ÛŒÙ† Ø²ÛŒØ±Ù…Ø¬Ù…ÙˆØ¹Ù‡ Ù‚Ø¨Ù„Ø§Ù‹ Ø«Ø¨Øª Ø´Ø¯Ù‡ Ø§Ø³Øª.');
+      setChildDraftErr('این زیرمجموعه قبلاً ثبت شده است.');
       return;
     }
 
@@ -1158,7 +1158,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
       return next;
     });
 
-    // âœ… Ø§Ú¯Ø± "Ø³Ø§ÛŒØ±" Ø¨ÙˆØ¯ Ùˆ Ø¹Ù†ÙˆØ§Ù† ØªØºÛŒÛŒØ± Ú©Ø±Ø¯ØŒ Ú©Ù„ÛŒØ¯ Ø§Ù†ØªØ®Ø§Ø¨ Ù‡Ù… Ø¢Ù¾Ø¯ÛŒØª Ø´ÙˆØ¯ ØªØ§ Ø¢ÛŒØªÙ… ØºÛŒØ¨ Ù†Ø´ÙˆØ¯
+    // ✅ اگر "سایر" بود و عنوان تغییر کرد، کلید انتخاب هم آپدیت شود تا آیتم غیب نشود
     if (canEditTitle && oldTitle && newTitle && oldTitle !== newTitle) {
       const oldK = otherKeyFromTitle(oldTitle);
       const newK = otherKeyFromTitle(newTitle);
@@ -1345,7 +1345,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     );
     if (!uniqIds.length) return;
     const confirmText =
-      uniqIds.length > 1 ? `Ø­Ø°Ù ${uniqIds.length} Ø±Ø¯ÛŒÙ Ø§Ù†ØªØ®Ø§Ø¨â€ŒØ´Ø¯Ù‡ØŸ` : 'Ø­Ø°Ù Ø§ÛŒÙ† Ø±Ø¯ÛŒÙØŸ';
+      uniqIds.length > 1 ? `حذف ${uniqIds.length} ردیف انتخاب‌شده؟` : 'حذف این ردیف؟';
     if (!window.confirm(confirmText)) return;
 
     const idSet = new Set(uniqIds);
@@ -1391,7 +1391,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
       <html lang="fa" dir="rtl">
         <head>
           <meta charset="utf-8" />
-          <title>Ø¨Ø±Ø¢ÙˆØ±Ø¯ Ø¯Ø±Ø¢Ù…Ø¯Ù‡Ø§</title>
+          <title>برآورد درآمدها</title>
           <style>
             @page { size: A4; margin: 14mm; }
             *{box-sizing:border-box}
@@ -1423,9 +1423,9 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     const headerHtml = `
       <tr>
         <th>#</th>
-        <th>Ù¾Ø±ÙˆÚ˜Ù‡ / Ù…ÙˆØ±Ø¯</th>
+        <th>پروژه / مورد</th>
         ${dynamicMonths.map((m) => `<th>${buildCell(m.label)}</th>`).join('')}
-        <th>Ø¬Ù…Ø¹</th>
+        <th>جمع</th>
       </tr>
     `;
 
@@ -1437,13 +1437,13 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
         const rowTotal = sumNodeMonths(r);
         const titleCell =
           x.depth === 0 && r?.projectId != null
-            ? getProjectLabelById(r.projectId, r.title || 'â€”')
-            : (r.title || 'â€”');
+            ? getProjectLabelById(r.projectId, r.title || '—')
+            : (r.title || '—');
 
         const monthsHtml = dynamicMonths
           .map((m) => {
             const val = sumNodeMonth(r, m.key);
-            return `<td>${val ? buildCell(toFaDigits(formatMoney(val))) : 'â€”'}</td>`;
+            return `<td>${val ? buildCell(toFaDigits(formatMoney(val))) : '—'}</td>`;
           })
           .join('');
         return `
@@ -1451,7 +1451,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
             <td>${buildCell(toFaDigits(indexLabel(x.indexPath) || (i + 1)))}</td>
             <td>${buildCell(titleCell)}</td>
             ${monthsHtml}
-            <td>${rowTotal ? buildCell(toFaDigits(formatMoney(rowTotal))) : 'â€”'}</td>
+            <td>${rowTotal ? buildCell(toFaDigits(formatMoney(rowTotal))) : '—'}</td>
           </tr>
         `;
       })
@@ -1460,18 +1460,18 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     const footerHtml = `
       <tr>
         <td>-</td>
-        <td>Ø¬Ù…Ø¹</td>
+        <td>جمع</td>
         ${dynamicMonths
           .map((m) => {
             const v = totalsByMonth[m.key];
-            return `<td>${v ? buildCell(toFaDigits(formatMoney(v))) : 'â€”'}</td>`;
+            return `<td>${v ? buildCell(toFaDigits(formatMoney(v))) : '—'}</td>`;
           })
           .join('')}
-        <td>${totalGrand ? buildCell(toFaDigits(formatMoney(totalGrand))) : 'â€”'}</td>
+        <td>${totalGrand ? buildCell(toFaDigits(formatMoney(totalGrand))) : '—'}</td>
       </tr>
     `;
 
-    const noRowsHtml = `<tr><td colspan="${2 + dynamicMonths.length + 1}">Ù…ÙˆØ±Ø¯ÛŒ Ø¨Ø±Ø§ÛŒ Ù†Ù…Ø§ÛŒØ´ Ù†ÛŒØ³Øª.</td></tr>`;
+    const noRowsHtml = `<tr><td colspan="${2 + dynamicMonths.length + 1}">موردی برای نمایش نیست.</td></tr>`;
 
     const html = `
       <html lang="fa" dir="rtl">
@@ -1512,11 +1512,11 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     return (
       <Card>
         <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
-          <span>Ø¨ÙˆØ¯Ø¬Ù‡â€ŒØ¨Ù†Ø¯ÛŒ</span>
-          <span className="mx-2">â€º</span>
-          <span className="font-semibold text-black dark:text-neutral-100">Ø¨Ø±Ø¢ÙˆØ±Ø¯ Ø¯Ø±Ø¢Ù…Ø¯ Ù‡Ø§</span>
+          <span>بودجه‌بندی</span>
+          <span className="mx-2">›</span>
+          <span className="font-semibold text-black dark:text-neutral-100">برآورد درآمد ها</span>
         </div>
-        <div className="text-sm text-black/70 dark:text-neutral-300">Ø¯Ø± Ø­Ø§Ù„ Ø¨Ø±Ø±Ø³ÛŒ Ø¯Ø³ØªØ±Ø³ÛŒ...</div>
+        <div className="text-sm text-black/70 dark:text-neutral-300">در حال بررسی دسترسی...</div>
       </Card>
     );
   }
@@ -1525,11 +1525,11 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     return (
       <Card>
         <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
-          <span>Ø¨ÙˆØ¯Ø¬Ù‡â€ŒØ¨Ù†Ø¯ÛŒ</span>
-          <span className="mx-2">â€º</span>
-          <span className="font-semibold text-black dark:text-neutral-100">Ø¨Ø±Ø¢ÙˆØ±Ø¯ Ø¯Ø±Ø¢Ù…Ø¯ Ù‡Ø§</span>
+          <span>بودجه‌بندی</span>
+          <span className="mx-2">›</span>
+          <span className="font-semibold text-black dark:text-neutral-100">برآورد درآمد ها</span>
         </div>
-        <div className="text-sm text-red-600 dark:text-red-400">Ø§Ø¨ØªØ¯Ø§ ÙˆØ§Ø±Ø¯ Ø³Ø§Ù…Ø§Ù†Ù‡ Ø´ÙˆÛŒØ¯.</div>
+        <div className="text-sm text-red-600 dark:text-red-400">ابتدا وارد سامانه شوید.</div>
       </Card>
     );
   }
@@ -1538,11 +1538,11 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     return (
       <Card>
         <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
-          <span>Ø¨ÙˆØ¯Ø¬Ù‡â€ŒØ¨Ù†Ø¯ÛŒ</span>
-          <span className="mx-2">â€º</span>
-          <span className="font-semibold text-black dark:text-neutral-100">Ø¨Ø±Ø¢ÙˆØ±Ø¯ Ø¯Ø±Ø¢Ù…Ø¯ Ù‡Ø§</span>
+          <span>بودجه‌بندی</span>
+          <span className="mx-2">›</span>
+          <span className="font-semibold text-black dark:text-neutral-100">برآورد درآمد ها</span>
         </div>
-        <div className="text-sm text-black/70 dark:text-neutral-300">Ø´Ù…Ø§ Ø³Ø·Ø­ Ø¯Ø³ØªØ±Ø³ÛŒ Ù„Ø§Ø²Ù… Ø±Ø§ Ù†Ø¯Ø§Ø±ÛŒØ¯.</div>
+        <div className="text-sm text-black/70 dark:text-neutral-300">شما سطح دسترسی لازم را ندارید.</div>
       </Card>
     );
   }
@@ -1559,21 +1559,21 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     <>
       <Card>
         <div className="mb-3 text-black/70 dark:text-neutral-300 text-base md:text-lg">
-          <span>Ø¨ÙˆØ¯Ø¬Ù‡â€ŒØ¨Ù†Ø¯ÛŒ</span>
-          <span className="mx-2">â€º</span>
-          <span className="font-semibold text-black dark:text-neutral-100">Ø¨Ø±Ø¢ÙˆØ±Ø¯ Ø¯Ø±Ø¢Ù…Ø¯ Ù‡Ø§</span>
+          <span>بودجه‌بندی</span>
+          <span className="mx-2">›</span>
+          <span className="font-semibold text-black dark:text-neutral-100">برآورد درآمد ها</span>
         </div>
 
-        {/* Ú©Ù¾Ø³ÙˆÙ„/Ø§Ù†ØªØ®Ø§Ø¨ Ù¾Ø±ÙˆÚ˜Ù‡â€ŒÙ‡Ø§ */}
+        {/* کپسول/انتخاب پروژه‌ها */}
         <div className="rounded-2xl border border-black/10 dark:border-neutral-800 bg-white/70 dark:bg-neutral-900/70 backdrop-blur px-3 py-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="text-xs text-black/60 dark:text-neutral-400">Ù¾Ø±ÙˆÚ˜Ù‡â€ŒÙ‡Ø§ Ø±Ø§ Ø§Ù†ØªØ®Ø§Ø¨ Ú©Ù†ÛŒØ¯ ØªØ§ ÙˆØ§Ø±Ø¯ Ø¬Ø¯ÙˆÙ„ Ø´ÙˆÙ†Ø¯:</div>
+            <div className="text-xs text-black/60 dark:text-neutral-400">پروژه‌ها را انتخاب کنید تا وارد جدول شوند:</div>
             <div className="text-xs text-black/50 dark:text-neutral-500">
-              Ø§Ù†ØªØ®Ø§Ø¨â€ŒØ´Ø¯Ù‡: <span className="font-semibold">{toFaDigits(selectedProjectTargets.length)}</span>
+              انتخاب‌شده: <span className="font-semibold">{toFaDigits(selectedProjectTargets.length)}</span>
             </div>
           </div>
 
-          {/* Ø§Ù†ØªØ®Ø§Ø¨ Ù¾Ø±ÙˆÚ˜Ù‡ + Ø¯Ú©Ù…Ù‡ Ø§ÙØ²ÙˆØ¯Ù† */}
+          {/* انتخاب پروژه + دکمه افزودن */}
           <div className="mt-3 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-stretch">
             <div className="relative min-w-0">
               <select
@@ -1583,10 +1583,10 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                 className="w-full h-11 rounded-2xl border border-black/15 bg-white text-black pr-3 pl-9 sm:pr-4 sm:pl-10 text-sm text-right outline-none appearance-none
                   [-webkit-appearance:none] [-moz-appearance:none] [background-image:none]
                   focus:ring-2 focus:ring-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-                title="Ø§Ù†ØªØ®Ø§Ø¨ Ù¾Ø±ÙˆÚ˜Ù‡"
+                title="انتخاب پروژه"
               >
-                <option value="">Ù¾Ø±ÙˆÚ˜Ù‡ Ø±Ø§ Ø§Ù†ØªØ®Ø§Ø¨ Ú©Ù†ÛŒØ¯...</option>
-                <option value="__ALL__">Ø§Ù†ØªØ®Ø§Ø¨ Ù‡Ù…Ù‡ Ù…ÙˆØ§Ø±Ø¯</option>
+                <option value="">پروژه را انتخاب کنید...</option>
+                <option value="__ALL__">انتخاب همه موارد</option>
 
                 {projectsForPicker.map((p) => {
                   const pid = String(p?.id ?? '');
@@ -1610,14 +1610,14 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
               disabled={!pickedProjectId}
               className="h-11 w-full sm:w-12 rounded-2xl bg-black text-white grid place-items-center transition disabled:opacity-40 disabled:cursor-not-allowed
                 dark:bg-neutral-100 dark:text-neutral-900"
-              aria-label="Ø§ÙØ²ÙˆØ¯Ù† Ù¾Ø±ÙˆÚ˜Ù‡"
-              title={!pickedProjectId ? 'Ø§Ø¨ØªØ¯Ø§ Ù¾Ø±ÙˆÚ˜Ù‡ Ø±Ø§ Ø§Ù†ØªØ®Ø§Ø¨ Ú©Ù†ÛŒØ¯' : 'Ø§ÙØ²ÙˆØ¯Ù† Ø¨Ù‡ Ú©Ù¾Ø³ÙˆÙ„â€ŒÙ‡Ø§'}
+              aria-label="افزودن پروژه"
+              title={!pickedProjectId ? 'ابتدا پروژه را انتخاب کنید' : 'افزودن به کپسول‌ها'}
             >
               <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
             </button>
           </div>
 
-          {/* Ú©Ù¾Ø³ÙˆÙ„â€ŒÙ‡Ø§ */}
+          {/* کپسول‌ها */}
           <div className="mt-3 flex flex-wrap gap-2 items-center">
             <button
               type="button"
@@ -1627,15 +1627,15 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                   ? 'bg-black text-white border-black'
                   : 'bg-white text-black border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-white/10'
                 }`}
-              title={isAllSelected ? 'Ù„ØºÙˆ Ø§Ù†ØªØ®Ø§Ø¨ Ù‡Ù…Ù‡' : 'Ø§Ù†ØªØ®Ø§Ø¨ Ù‡Ù…Ù‡'}
+              title={isAllSelected ? 'لغو انتخاب همه' : 'انتخاب همه'}
             >
-              Ù‡Ù…Ù‡
+              همه
             </button>
 
             {(poolProjectIds || []).map((pid) => {
               const k = projectKey(pid);
               const active = selectedKeys.has(k);
-              const label = getProjectLabelById(pid, 'â€”');
+              const label = getProjectLabelById(pid, '—');
               return (
                 <div
                   key={k}
@@ -1644,7 +1644,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                       ? 'bg-black text-white border-black'
                       : 'bg-white text-black border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-white/10'
                     }`}
-                  title={active ? 'Ø­Ø°Ù Ø§Ø² Ø¬Ø¯ÙˆÙ„ Ø§ØµÙ„ÛŒ' : 'Ø§ÙØ²ÙˆØ¯Ù† Ø¨Ù‡ Ø¬Ø¯ÙˆÙ„ Ø§ØµÙ„ÛŒ'}
+                  title={active ? 'حذف از جدول اصلی' : 'افزودن به جدول اصلی'}
                 >
                   <button
                     type="button"
@@ -1654,7 +1654,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                     {label}
                   </button>
 
-                  {/* Ø­Ø°Ù Ú©ÙˆÚ†Ú© Ú©Ù†Ø§Ø± Ú©Ù¾Ø³ÙˆÙ„ (ÙÙ‚Ø· Ø­Ø°Ù Ø§Ø² Ú©Ù¾Ø³ÙˆÙ„ØŒ Ù†Ù‡ Ø­Ø°Ù Ø¯ÛŒØªØ§) */}
+                  {/* حذف کوچک کنار کپسول (فقط حذف از کپسول، نه حذف دیتا) */}
                   <button
                     type="button"
                     onClick={(e) => {
@@ -1663,8 +1663,8 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                       removeProjectChip(pid);
                     }}
                     className="h-6 w-6 grid place-items-center rounded-full hover:bg-black/5 dark:hover:bg-white/10"
-                    aria-label="Ø­Ø°Ù Ú©Ù¾Ø³ÙˆÙ„ Ù¾Ø±ÙˆÚ˜Ù‡"
-                    title="Ø­Ø°Ù Ú©Ù¾Ø³ÙˆÙ„ Ù¾Ø±ÙˆÚ˜Ù‡"
+                    aria-label="حذف کپسول پروژه"
+                    title="حذف کپسول پروژه"
                   >
                     <img
                       src="/images/icons/bastan.svg"
@@ -1676,15 +1676,15 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
               );
             })}
 
-            {/* Ú©Ù†ØªØ±Ù„ Ø³Ø§ÛŒØ± (Ø¨Ø¯ÙˆÙ† Ù…ØªÙ†) */}
+            {/* کنترل سایر (بدون متن) */}
             <div className="inline-flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={openOtherManager}
                 className="h-10 w-10 grid place-items-center rounded-xl bg-white text-black ring-1 ring-black/15 hover:bg-black/5
                   dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-800 dark:hover:bg-white/10"
-                aria-label="Ø§ÙØ²ÙˆØ¯Ù† Ù…ÙˆØ±Ø¯ Ø¬Ø¯ÛŒØ¯"
-                title="Ø§ÙØ²ÙˆØ¯Ù† Ù…ÙˆØ±Ø¯ Ø¬Ø¯ÛŒØ¯"
+                aria-label="افزودن مورد جدید"
+                title="افزودن مورد جدید"
               >
                 <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert-0 dark:invert" />
               </button>
@@ -1694,7 +1694,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
           <div className="mt-4 rounded-2xl border border-black/10 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-3">
             <div className="grid grid-cols-1 md:grid-cols-[minmax(220px,320px)_1fr_auto] gap-2 items-end">
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-black/60 dark:text-neutral-400">Ø§Ù†ØªØ®Ø§Ø¨ Ù…Ù‚ØµØ¯</label>
+                <label className="text-xs text-black/60 dark:text-neutral-400">انتخاب مقصد</label>
                 <select
                   value={childParentId}
                   onChange={(e) => {
@@ -1704,7 +1704,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                   className="h-10 rounded-xl border border-black/15 bg-white text-black px-3 text-sm outline-none
                     focus:ring-2 focus:ring-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
                 >
-                  <option value="">Ø§Ù†ØªØ®Ø§Ø¨ Ù¾Ø±ÙˆÚ˜Ù‡...</option>
+                  <option value="">انتخاب پروژه...</option>
                   {selectedProjectTargets.map((item) => (
                     <option key={`target-${item.id}`} value={String(item.id)}>
                       {item.label}
@@ -1714,7 +1714,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs text-black/60 dark:text-neutral-400">Ø¹Ù†ÙˆØ§Ù† Ø²ÛŒØ±Ù…Ø¬Ù…ÙˆØ¹Ù‡ Ø¬Ø¯ÛŒØ¯</label>
+                <label className="text-xs text-black/60 dark:text-neutral-400">عنوان زیرمجموعه جدید</label>
                 <input
                   value={childDraftTitle}
                   onChange={(e) => {
@@ -1727,7 +1727,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                       handleAddChildFromPanel();
                     }
                   }}
-                  placeholder="Ù…Ø«Ù„Ø§Ù‹ ØªØ¬Ù‡ÛŒØ² Ú©Ø§Ø±Ú¯Ø§Ù‡ØŒ ÙØ±ÙˆØ´ Ù…Ø±Ø­Ù„Ù‡â€ŒØ§ÛŒØŒ ..."
+                  placeholder="مثلاً تجهیز کارگاه، فروش مرحله‌ای، ..."
                   className="h-10 rounded-xl border border-black/15 bg-white text-black px-3 text-sm outline-none
                     focus:ring-2 focus:ring-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
                 />
@@ -1738,8 +1738,8 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                 onClick={handleAddChildFromPanel}
                 disabled={!childParentId || !String(childDraftTitle || '').trim()}
                 className="h-10 w-full md:w-12 rounded-xl bg-black text-white grid place-items-center transition disabled:opacity-40 disabled:cursor-not-allowed dark:bg-neutral-100 dark:text-neutral-900"
-                aria-label="Ø§ÙØ²ÙˆØ¯Ù† Ø²ÛŒØ±Ù…Ø¬Ù…ÙˆØ¹Ù‡"
-                title="Ø§ÙØ²ÙˆØ¯Ù† Ø²ÛŒØ±Ù…Ø¬Ù…ÙˆØ¹Ù‡"
+                aria-label="افزودن زیرمجموعه"
+                title="افزودن زیرمجموعه"
               >
                 <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
               </button>
@@ -1749,7 +1749,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
           </div>
         </div>
 
-        {/* Ø¬Ø¯ÙˆÙ„ Ø§ØµÙ„ÛŒ */}
+        {/* جدول اصلی */}
         <div className="mt-4">
           <TableWrap>
             <div className={tablePreset.outer}>
@@ -1771,19 +1771,19 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                                 if (el) el.indeterminate = someVisibleRowsSelected;
                               }}
                               onChange={toggleSelectAllVisibleRows}
-                              aria-label="Ø§Ù†ØªØ®Ø§Ø¨ Ù‡Ù…Ù‡"
-                              title="Ø§Ù†ØªØ®Ø§Ø¨ Ù‡Ù…Ù‡"
+                              aria-label="انتخاب همه"
+                              title="انتخاب همه"
                             />
                           </TH>
                           <TH className={`w-14 ${tablePreset.th}`}>#</TH>
-                          <TH className={`w-56 ${tablePreset.th}`}>Ù¾Ø±ÙˆÚ˜Ù‡ / Ù…ÙˆØ±Ø¯</TH>
+                          <TH className={`w-56 ${tablePreset.th}`}>پروژه / مورد</TH>
                       {dynamicMonths.map((m) => (
                         <TH key={m.key} className={`w-24 px-0 ${tablePreset.th}`}>
                           {m.label}
                         </TH>
                       ))}
                       <TH className={`w-28 border-l border-r border-black/10 dark:border-neutral-700 ${tablePreset.th}`}>
-                        Ø¬Ù…Ø¹
+                        جمع
                       </TH>
                         </tr>
                       </THead>
@@ -1793,23 +1793,23 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                       <TR className="text-center bg-black/[0.035] font-semibold dark:bg-white/10">
                         <TD className="px-2 py-2 border-b border-black/10 dark:border-neutral-800">-</TD>
                         <TD className="px-2 py-2 border-b border-black/10 dark:border-neutral-800">-</TD>
-                        <TD className="px-2 py-2 text-center border-b border-black/10 dark:border-neutral-800">Ø¬Ù…Ø¹</TD>
+                        <TD className="px-2 py-2 text-center border-b border-black/10 dark:border-neutral-800">جمع</TD>
                         {dynamicMonths.map((m) => (
                           <TD key={m.key} className="px-0 py-2 text-center align-middle border-b border-black/10 dark:border-neutral-800">
                             {totalsByMonth[m.key] ? (
                               <span className="inline-flex items-center justify-center gap-1">
                                 <span className="ltr">{toFaDigits(formatMoney(totalsByMonth[m.key]))}</span>
-                                <span>Ø±ÛŒØ§Ù„</span>
+                                <span>ریال</span>
                               </span>
                             ) : (
-                              'â€”'
+                              '—'
                             )}
                           </TD>
                         ))}
                         <TD className="px-3 py-2 whitespace-nowrap text-center border-l border-r border-b border-black/10 dark:border-neutral-700">
                           <span className="inline-flex items-center justify-center gap-1">
                             <span className="ltr">{toFaDigits(formatMoney(totalGrand || 0))}</span>
-                            <span>Ø±ÛŒØ§Ù„</span>
+                            <span>ریال</span>
                           </span>
                         </TD>
                       </TR>
@@ -1827,10 +1827,10 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
 
                       const displayTitle =
                         r.isOther
-                          ? (r.title || 'â€”')
+                          ? (r.title || '—')
                           : (x.depth === 0 && r?.projectId != null
-                              ? getProjectLabelById(r.projectId, r.title || 'â€”')
-                              : (r.title || 'â€”'));
+                              ? getProjectLabelById(r.projectId, r.title || '—')
+                              : (r.title || '—'));
 
                       return (
                         <TR
@@ -1843,8 +1843,8 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                               className={hoverSelectableRowPreset.checkbox}
                               checked={isSelected}
                               onChange={() => toggleRowSelect(rowId)}
-                              aria-label="Ø§Ù†ØªØ®Ø§Ø¨ Ø±Ø¯ÛŒÙ"
-                              title="Ø§Ù†ØªØ®Ø§Ø¨ Ø±Ø¯ÛŒÙ"
+                              aria-label="انتخاب ردیف"
+                              title="انتخاب ردیف"
                             />
                           </TD>
                           <TD className="px-2 py-2">{toFaDigits(idxText || (idx + 1))}</TD>
@@ -1858,7 +1858,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                                   else openEditRowModal(r);
                                 }}
                                 className={`px-1 py-0.5 text-[12px] ${isComputed ? 'font-semibold hover:underline' : 'hover:underline'}`}
-                                title={isComputed ? 'Ø¨Ø§Ø²/Ø¨Ø³ØªÙ‡ Ú©Ø±Ø¯Ù† Ø²ÛŒØ±Ù…Ø¬Ù…ÙˆØ¹Ù‡â€ŒÙ‡Ø§' : 'Ø§ÙØ²ÙˆØ¯Ù†/ÙˆÛŒØ±Ø§ÛŒØ´ ØªÙˆØ¶ÛŒØ­Ø§Øª'}
+                                title={isComputed ? 'باز/بسته کردن زیرمجموعه‌ها' : 'افزودن/ویرایش توضیحات'}
                               >
                                 {displayTitle}
                               </button>
@@ -1868,11 +1868,11 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                                   type="button"
                                   onClick={() => toggleExpand(r.id)}
                                   className="h-5 w-5 grid place-items-center rounded-md border border-black/25 bg-white text-black dark:border-neutral-500 dark:bg-white dark:text-black"
-                                  aria-label={r.expanded ? 'Ø¨Ø³ØªÙ† Ø²ÛŒØ±Ù…Ø¬Ù…ÙˆØ¹Ù‡' : 'Ø¨Ø§Ø² Ú©Ø±Ø¯Ù† Ø²ÛŒØ±Ù…Ø¬Ù…ÙˆØ¹Ù‡'}
-                                  title={r.expanded ? 'Ø¨Ø³ØªÙ† Ø²ÛŒØ±Ù…Ø¬Ù…ÙˆØ¹Ù‡' : 'Ø¨Ø§Ø² Ú©Ø±Ø¯Ù† Ø²ÛŒØ±Ù…Ø¬Ù…ÙˆØ¹Ù‡'}
+                                  aria-label={r.expanded ? 'بستن زیرمجموعه' : 'باز کردن زیرمجموعه'}
+                                  title={r.expanded ? 'بستن زیرمجموعه' : 'باز کردن زیرمجموعه'}
                                 >
                                   {r.expanded ? (
-                                    <span className="text-[11px] leading-none text-black">âˆ’</span>
+                                    <span className="text-[11px] leading-none text-black">−</span>
                                   ) : (
                                     <img src="/images/icons/afzodan.svg" alt="" className="w-3 h-3" />
                                   )}
@@ -1928,15 +1928,15 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                                         ? 'bg-[#edaf7c] border-[#edaf7c]/90 text-black'
                                         : 'bg-black/5 border-black/10 text-black/70 dark:bg-white/5 dark:border-neutral-700 dark:text-neutral-100'
                                     } ${isComputed ? 'opacity-70 cursor-default' : 'cursor-pointer'}`}
-                                    title={isComputed ? 'Ø§ÛŒÙ† Ù…Ù‚Ø¯Ø§Ø± Ø§Ø² Ø²ÛŒØ±Ù…Ø¬Ù…ÙˆØ¹Ù‡â€ŒÙ‡Ø§ Ù…Ø­Ø§Ø³Ø¨Ù‡ Ù…ÛŒâ€ŒØ´ÙˆØ¯' : 'Ø«Ø¨Øª/ÙˆÛŒØ±Ø§ÛŒØ´ Ù…Ù‚Ø¯Ø§Ø± (Ùˆ Ø°Ø®ÛŒØ±Ù‡)'}
+                                    title={isComputed ? 'این مقدار از زیرمجموعه‌ها محاسبه می‌شود' : 'ثبت/ویرایش مقدار (و ذخیره)'}
                                   >
                                     {hasVal ? (
                                       <div className="flex flex-col items-center justify-center leading-tight">
                                         <span>{toFaDigits(formatMoney(val))}</span>
-                                        <span className="mt-0.5 text-[10px] text-black/70 dark:text-neutral-300">Ø±ÛŒØ§Ù„</span>
+                                        <span className="mt-0.5 text-[10px] text-black/70 dark:text-neutral-300">ریال</span>
                                       </div>
                                     ) : (
-                                      'â€”'
+                                      '—'
                                     )}
                                   </button>
                                 )}
@@ -1998,7 +1998,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                     {visibleRoots.length === 0 && (
                       <TR>
                         <TD colSpan={mainTotalCols} className={tablePreset.emptyRow}>
-                          Ø§Ø² Ú©Ù¾Ø³ÙˆÙ„â€ŒÙ‡Ø§ÛŒ Ø¨Ø§Ù„Ø§ Ø§Ø³ØªÙØ§Ø¯Ù‡ Ú©Ù†ÛŒØ¯ ØªØ§ Ù…ÙˆØ§Ø±Ø¯ Ø¨Ù‡ Ø¬Ø¯ÙˆÙ„ Ø§ØµÙ„ÛŒ Ø§Ø¶Ø§ÙÙ‡/Ú©Ù… Ø´ÙˆÙ†Ø¯.
+                          از کپسول‌های بالا استفاده کنید تا موارد به جدول اصلی اضافه/کم شوند.
                         </TD>
                       </TR>
                     )}
@@ -2011,14 +2011,14 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
           </TableWrap>
         </div>
 
-        {/* Ø¯Ú©Ù…Ù‡ Ø°Ø®ÛŒØ±Ù‡ Ø¯Ø³ØªÛŒ (Ø§Ø®ØªÛŒØ§Ø±ÛŒ) */}
+        {/* دکمه ذخیره دستی (اختیاری) */}
         <div className="mt-4 flex items-center gap-2 justify-end">
           <button
             onClick={exportExcel}
             disabled={displayRows.length === 0}
             className="h-10 w-10 rounded-xl border border-black/15 hover:bg-black/5 grid place-items-center transition disabled:opacity-40 disabled:cursor-not-allowed dark:border-neutral-700 dark:hover:bg-neutral-800"
-            aria-label="Ø®Ø±ÙˆØ¬ÛŒ Ø§Ú©Ø³Ù„"
-            title="Ø®Ø±ÙˆØ¬ÛŒ Ø§Ú©Ø³Ù„"
+            aria-label="خروجی اکسل"
+            title="خروجی اکسل"
           >
             <img src="/images/icons8-excel-50.png" alt="" className="w-5 h-5" />
           </button>
@@ -2026,14 +2026,14 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
           <button
             onClick={handleSave}
             className="h-10 w-10 rounded-xl bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200 grid place-items-center disabled:opacity-40 disabled:cursor-not-allowed"
-            aria-label="Ø°Ø®ÛŒØ±Ù‡ Ø¯Ø³ØªÛŒ"
-            title="Ø°Ø®ÛŒØ±Ù‡ Ø¯Ø³ØªÛŒ"
+            aria-label="ذخیره دستی"
+            title="ذخیره دستی"
           >
             <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
           </button>
         </div>
 
-        {/* Ù…ÙˆØ¯Ø§Ù„ Ù…Ø¯ÛŒØ±ÛŒØª Ø³Ø§ÛŒØ± (ØªÙ…Ø§Ù…Ø§Ù‹ Ø³ÙÛŒØ¯ Ø¯Ø± Ù„Ø§ÛŒØª Ùˆ Ø¨Ø§ Ø¨Ú©â€ŒØ¯Ø±Ø§Ù¾ØŒ ØªØ§ Ø¬Ø¯ÙˆÙ„ Ù¾Ø´ØªØ´ Ø¯ÛŒØ¯Ù‡ Ù†Ø´ÙˆØ¯) */}
+        {/* مودال مدیریت سایر (تماماً سفید در لایت و با بک‌دراپ، تا جدول پشتش دیده نشود) */}
         {otherMenuOpen && (
           <div className="fixed inset-0 z-50 grid place-items-center px-3">
             <div
@@ -2046,17 +2046,17 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <div className="text-sm font-semibold">Ø§ÙØ²ÙˆØ¯Ù† / Ù…Ø¯ÛŒØ±ÛŒØª Ù…ÙˆØ±Ø¯ Ø¬Ø¯ÛŒØ¯</div>
+                  <div className="text-sm font-semibold">افزودن / مدیریت مورد جدید</div>
                   <div className="mt-1 text-xs text-black/60">
-                    Ø¹Ù†ÙˆØ§Ù† Ø±Ø§ ÙˆØ§Ø±Ø¯ Ú©Ù†ÛŒØ¯ Ùˆ Ø¨Ø§ Ø¯Ú©Ù…Ù‡ ØªÛŒÚ© Ø§Ø¶Ø§ÙÙ‡ Ú©Ù†ÛŒØ¯.
+                    عنوان را وارد کنید و با دکمه تیک اضافه کنید.
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setOtherMenuOpen(false)}
                   className="h-8 w-8 grid place-items-center rounded-xl bg-black text-white"
-                  aria-label="Ø¨Ø³ØªÙ†"
-                  title="Ø¨Ø³ØªÙ†"
+                  aria-label="بستن"
+                  title="بستن"
                 >
                   <img src="/images/icons/bastan.svg" alt="" className="w-4 h-4 invert" />
                 </button>
@@ -2079,14 +2079,14 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                         handleAddOtherFromModal();
                       }
                     }}
-                    placeholder="Ø¹Ù†ÙˆØ§Ù† Ù…ÙˆØ±Ø¯ Ø¬Ø¯ÛŒØ¯..."
+                    placeholder="عنوان مورد جدید..."
                   />
                   <button
                     type="button"
                     onClick={handleAddOtherFromModal}
                     className="h-10 w-11 rounded-xl bg-black text-white grid place-items-center"
-                    aria-label="Ø§ÙØ²ÙˆØ¯Ù†"
-                    title="Ø§ÙØ²ÙˆØ¯Ù†"
+                    aria-label="افزودن"
+                    title="افزودن"
                   >
                     <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
                   </button>
@@ -2096,11 +2096,11 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                   <div className="text-xs text-red-600">{otherDraftErr}</div>
                 )}
 
-                <div className="mt-2 text-xs text-black/60">Ù„ÛŒØ³Øª Ù…ÙˆØ§Ø±Ø¯:</div>
+                <div className="mt-2 text-xs text-black/60">لیست موارد:</div>
 
                 {otherChildrenNow.length === 0 && (
                   <div className="px-2 py-2 text-xs text-black/50">
-                    ÙØ¹Ù„Ø§Ù‹ Ù…ÙˆØ±Ø¯ÛŒ Ù†Ø¯Ø§Ø±ÛŒØ¯.
+                    فعلاً موردی ندارید.
                   </div>
                 )}
 
@@ -2117,7 +2117,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                           type="button"
                           onClick={() => toggleOtherChild(t)}
                           className="flex-1 text-right text-xs"
-                          title={active ? 'Ø­Ø°Ù Ø§Ø² Ø¬Ø¯ÙˆÙ„' : 'Ø§ÙØ²ÙˆØ¯Ù† Ø¨Ù‡ Ø¬Ø¯ÙˆÙ„'}
+                          title={active ? 'حذف از جدول' : 'افزودن به جدول'}
                         >
                           <span className="inline-flex items-center gap-2">
                             <span className={`h-4 w-4 rounded border grid place-items-center
@@ -2136,8 +2136,8 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                           type="button"
                           onClick={() => deleteOtherChild(t)}
                           className="h-8 w-8 grid place-items-center rounded-xl ring-1 ring-black/10 hover:bg-black/5"
-                          aria-label="Ø­Ø°Ù Ù…ÙˆØ±Ø¯"
-                          title="Ø­Ø°Ù Ù…ÙˆØ±Ø¯"
+                          aria-label="حذف مورد"
+                          title="حذف مورد"
                         >
                           <img src="/images/icons/bastan.svg" alt="" className="w-3 h-3 invert-0" />
                         </button>
@@ -2152,7 +2152,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                     onClick={() => setOtherMenuOpen(false)}
                     className="h-9 px-4 rounded-xl border border-black/15 text-xs hover:bg-black/5"
                   >
-                    Ø¨Ø³ØªÙ†
+                    بستن
                   </button>
 
                   <button
@@ -2187,9 +2187,9 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                       scheduleSave(allRows || [], 150);
                     }}
                     className="h-9 px-4 rounded-xl bg-black text-white text-xs"
-                    title="Ø§Ù†ØªØ®Ø§Ø¨/Ù„ØºÙˆ Ø§Ù†ØªØ®Ø§Ø¨ Ù‡Ù…Ù‡"
+                    title="انتخاب/لغو انتخاب همه"
                   >
-                    Ø§Ù†ØªØ®Ø§Ø¨ Ù‡Ù…Ù‡
+                    انتخاب همه
                   </button>
                 </div>
               </div>
@@ -2208,13 +2208,13 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                 <div>
                   <div className="text-sm font-semibold">
                     {isBulkEditModal
-                      ? 'ÙˆÛŒØ±Ø§ÛŒØ´ Ú¯Ø±ÙˆÙ‡ÛŒ'
-                      : (canEditModalTitle ? 'ÙˆÛŒØ±Ø§ÛŒØ´ Ù…ÙˆØ±Ø¯' : 'Ø¬Ø²Ø¦ÛŒØ§Øª / ØªÙˆØ¶ÛŒØ­Ø§Øª')}
+                      ? 'ویرایش گروهی'
+                      : (canEditModalTitle ? 'ویرایش مورد' : 'جزئیات / توضیحات')}
                   </div>
                   <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
                     {isBulkEditModal
-                      ? 'ØªÙˆØ¶ÛŒØ­Ø§Øª Ø±ÙˆÛŒ Ù‡Ù…Ù‡ Ù…ÙˆØ§Ø±Ø¯ Ø§Ù†ØªØ®Ø§Ø¨â€ŒØ´Ø¯Ù‡ Ø§Ø¹Ù…Ø§Ù„ Ù…ÛŒâ€ŒØ´ÙˆØ¯.'
-                      : (canEditModalTitle ? 'Ø¹Ù†ÙˆØ§Ù† Ùˆ ØªÙˆØ¶ÛŒØ­Ø§Øª Ù…ÙˆØ±Ø¯ Ø±Ø§ Ø«Ø¨Øª Ú©Ù†ÛŒØ¯.' : 'Ø¯Ø± ØµÙˆØ±Øª Ù†ÛŒØ§Ø²ØŒ ØªÙˆØ¶ÛŒØ­Ø§Øª Ø±Ø§ Ø«Ø¨Øª Ú©Ù†ÛŒØ¯.')}
+                      ? 'توضیحات روی همه موارد انتخاب‌شده اعمال می‌شود.'
+                      : (canEditModalTitle ? 'عنوان و توضیحات مورد را ثبت کنید.' : 'در صورت نیاز، توضیحات را ثبت کنید.')}
                   </div>
                 </div>
                 <button type="button" onClick={closeEditRowModal} className="h-8 w-8 grid place-items-center rounded-xl bg-black text-white dark:bg-neutral-100 dark:text-neutral-900">
@@ -2224,7 +2224,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
 
               <div className="space-y-2">
                 <div className="space-y-1">
-                  <label className="text-xs text-neutral-600 dark:text-neutral-300">Ø¹Ù†ÙˆØ§Ù†</label>
+                  <label className="text-xs text-neutral-600 dark:text-neutral-300">عنوان</label>
 
                   {canEditModalTitle ? (
                     <input
@@ -2232,31 +2232,31 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                       className="w-full rounded-xl px-3 py-2 text-sm bg-white text-black placeholder-black/40 border border-black/15 outline-none focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
                       value={editRowModal.title}
                       onChange={(e) => setEditRowModal((p) => ({ ...p, title: e.target.value }))}
-                      placeholder="Ø¹Ù†ÙˆØ§Ù† Ø¯Ù„Ø®ÙˆØ§Ù‡ Ø±Ø§ ÙˆØ§Ø±Ø¯ Ú©Ù†ÛŒØ¯"
+                      placeholder="عنوان دلخواه را وارد کنید"
                     />
                   ) : (
                     <div className="mt-1 w-full rounded-xl px-3 py-2 text-sm bg-black/[0.02] text-black border border-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700">
                       {isBulkEditModal
-                        ? `${toFaDigits(editModalTargetCount)} Ù…ÙˆØ±Ø¯ Ø§Ù†ØªØ®Ø§Ø¨ Ø´Ø¯Ù‡`
-                        : (editRowModal.title || 'â€”')}
+                        ? `${toFaDigits(editModalTargetCount)} مورد انتخاب شده`
+                        : (editRowModal.title || '—')}
                     </div>
                   )}
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs text-neutral-600 dark:text-neutral-300">ØªÙˆØ¶ÛŒØ­Ø§Øª (Ø§Ø®ØªÛŒØ§Ø±ÛŒ)</label>
+                  <label className="text-xs text-neutral-600 dark:text-neutral-300">توضیحات (اختیاری)</label>
                   <textarea
                     className="w-full min-h-[88px] rounded-xl px-3 py-2 text-sm bg-white text-black placeholder-black/40 border border-black/15 outline-none focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
                     value={editRowModal.desc}
                     onChange={(e) => setEditRowModal((p) => ({ ...p, desc: e.target.value }))}
-                    placeholder="Ù…Ø«Ù„Ø§Ù‹ ØªÙˆØ¶ÛŒØ­Ø§Øª ØªÚ©Ù…ÛŒÙ„ÛŒ Ø¨Ø±Ø§ÛŒ Ø§ÛŒÙ† Ù…ÙˆØ±Ø¯..."
+                    placeholder="مثلاً توضیحات تکمیلی برای این مورد..."
                   />
                 </div>
               </div>
 
               <div className="flex items-center justify-between gap-2 pt-1">
                 <button type="button" onClick={closeEditRowModal} className="h-9 px-4 rounded-xl border border-neutral-300 text-xs text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800">
-                  Ø§Ù†ØµØ±Ø§Ù
+                  انصراف
                 </button>
                 <button
                   type="button"
@@ -2264,7 +2264,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                   className="h-9 px-5 rounded-xl bg-neutral-900 text-xs text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 disabled:opacity-40 disabled:cursor-not-allowed"
                   disabled={canEditModalTitle ? !editRowModal.title.trim() : false}
                 >
-                  Ø°Ø®ÛŒØ±Ù‡
+                  ذخیره
                 </button>
               </div>
             </div>
@@ -2280,7 +2280,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
             >
               <div className="px-4 py-3 border-b border-black/10 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/80 backdrop-blur shrink-0">
                 <div className="flex flex-col items-center justify-center text-center gap-1">
-                  <h2 className="text-sm md:text-base font-bold text-black dark:text-neutral-100">Ø¨Ø±Ø¢ÙˆØ±Ø¯ Ø¯Ø±Ø¢Ù…Ø¯ Ù‡Ø§</h2>
+                  <h2 className="text-sm md:text-base font-bold text-black dark:text-neutral-100">برآورد درآمد ها</h2>
                 </div>
               </div>
 
@@ -2290,37 +2290,37 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                     <thead className="bg-black/5 text-black border-b border-black/10 sticky top-0 dark:bg-white/5 dark:text-neutral-100 dark:border-neutral-700">
                       <tr>
                         <th className="py-2.5 px-2 w-16 text-center">#</th>
-                        <th className="py-2.5 px-2 w-56 text-center">Ù¾Ø±ÙˆÚ˜Ù‡ / Ù…ÙˆØ±Ø¯</th>
+                        <th className="py-2.5 px-2 w-56 text-center">پروژه / مورد</th>
                         {dynamicMonths.map((m) => (
                           <th key={m.key} className="py-2.5 px-2 w-24 text-center">{m.label}</th>
                         ))}
-                        <th className="py-2.5 px-2 w-32 text-center border-l border-r border-black/10 dark:border-neutral-700">Ø¬Ù…Ø¹</th>
+                        <th className="py-2.5 px-2 w-32 text-center border-l border-r border-black/10 dark:border-neutral-700">جمع</th>
                       </tr>
                     </thead>
                     <tbody className="text-black dark:text-neutral-100">
                       {visibleRoots.length === 0 ? (
                         <tr>
-                          <td colSpan={previewTotalCols} className="py-6 text-black/60 dark:text-neutral-400 text-center">Ù…ÙˆØ±Ø¯ÛŒ Ø¨Ø±Ø§ÛŒ Ù†Ù…Ø§ÛŒØ´ Ù†ÛŒØ³Øª.</td>
+                          <td colSpan={previewTotalCols} className="py-6 text-black/60 dark:text-neutral-400 text-center">موردی برای نمایش نیست.</td>
                         </tr>
                       ) : (
                         <>
                           <tr className="border-t border-b border-black/10 bg-black/[0.04] font-semibold dark:border-neutral-800 dark:bg-white/10">
                             <td className="py-2 px-2 w-16 text-center">-</td>
-                            <td className="py-2 px-2 w-56 text-center">Ø¬Ù…Ø¹</td>
+                            <td className="py-2 px-2 w-56 text-center">جمع</td>
                             {dynamicMonths.map((m) => (
                               <td key={m.key} className="py-2 px-2 w-24 text-center whitespace-nowrap">
                                 {totalsByMonth[m.key] ? (
                                   <span className="inline-flex items-center justify-center gap-1">
                                     <span className="ltr">{toFaDigits(formatMoney(totalsByMonth[m.key]))}</span>
-                                    <span>Ø±ÛŒØ§Ù„</span>
+                                    <span>ریال</span>
                                   </span>
-                                ) : 'â€”'}
+                                ) : '—'}
                               </td>
                             ))}
                             <td className="py-2 px-2 w-32 text-center whitespace-nowrap border-l border-r border-black/10 dark:border-neutral-700">
                               <span className="inline-flex items-center justify-center gap-1">
                                 <span className="ltr">{toFaDigits(formatMoney(totalGrand || 0))}</span>
-                                <span>Ø±ÛŒØ§Ù„</span>
+                                <span>ریال</span>
                               </span>
                             </td>
                           </tr>
@@ -2333,15 +2333,15 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
 
               <div className="px-4 py-3 flex items-center justify-between gap-3 border-t border-black/10 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/80 shrink-0">
                 <div className="flex items-center gap-2">
-                  <button onClick={printModal} className="h-9 w-11 grid place-items-center rounded-xl border border-black/15 hover:bg-black hover:text-white transition dark:border-neutral-700" aria-label="Ú†Ø§Ù¾" title="Ú†Ø§Ù¾">
+                  <button onClick={printModal} className="h-9 w-11 grid place-items-center rounded-xl border border-black/15 hover:bg-black hover:text-white transition dark:border-neutral-700" aria-label="چاپ" title="چاپ">
                     <img src="/images/icons/print.svg" alt="" className="w-5 h-5" />
                   </button>
-                  <button onClick={exportExcel} className="h-9 w-11 grid place-items-center rounded-xl border border-black/15 hover:bg-black/5 transition dark:border-neutral-700 dark:hover:bg-neutral-800" aria-label="Ø®Ø±ÙˆØ¬ÛŒ Ø§Ú©Ø³Ù„" title="Ø®Ø±ÙˆØ¬ÛŒ Ø§Ú©Ø³Ù„">
+                  <button onClick={exportExcel} className="h-9 w-11 grid place-items-center rounded-xl border border-black/15 hover:bg-black/5 transition dark:border-neutral-700 dark:hover:bg-neutral-800" aria-label="خروجی اکسل" title="خروجی اکسل">
                     <img src="/images/icons/excel.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
                   </button>
                 </div>
-                <button onClick={() => setShowModal(false)} className="h-9 w-11 grid place-items-center rounded-xl bg-black text-white dark:bg-neutral-100 dark:text-neutral-900" aria-label="Ø¨Ø³ØªÙ†" title="Ø¨Ø³ØªÙ†">
-                  <img src="/images/icons/bastan.svg" alt="Ø¨Ø³ØªÙ†" className="w-5 h-5 invert dark:invert-0" />
+                <button onClick={() => setShowModal(false)} className="h-9 w-11 grid place-items-center rounded-xl bg-black text-white dark:bg-neutral-100 dark:text-neutral-900" aria-label="بستن" title="بستن">
+                  <img src="/images/icons/bastan.svg" alt="بستن" className="w-5 h-5 invert dark:invert-0" />
                 </button>
               </div>
             </div>
