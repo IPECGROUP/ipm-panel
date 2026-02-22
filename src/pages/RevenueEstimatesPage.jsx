@@ -1539,24 +1539,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
           </div>
 
           <div className="mt-4 rounded-2xl border border-black/10 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-3">
-            <div className="text-xs text-black/60 dark:text-neutral-400">پروژه‌های واردشده و انتخاب‌شده</div>
-
-            <div className="mt-2 min-h-11 rounded-xl border border-dashed border-black/15 dark:border-neutral-700 px-2 py-2 flex flex-wrap gap-1.5">
-              {selectedProjectTargets.length === 0 ? (
-                <div className="text-xs text-black/45 dark:text-neutral-500">هنوز پروژه‌ای در وضعیت انتخاب‌شده ندارید.</div>
-              ) : (
-                selectedProjectTargets.map((item) => (
-                  <span
-                    key={`selected-project-${item.id}`}
-                    className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] bg-black text-white dark:bg-neutral-100 dark:text-neutral-900"
-                  >
-                    {item.label}
-                  </span>
-                ))
-              )}
-            </div>
-
-            <div className="mt-3 grid grid-cols-1 md:grid-cols-[minmax(220px,320px)_1fr_auto] gap-2 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-[minmax(220px,320px)_1fr_auto] gap-2 items-end">
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-black/60 dark:text-neutral-400">انتخاب مقصد</label>
                 <select
@@ -1667,9 +1650,9 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
 
                     {displayRows.map((x, idx) => {
                       const r = x.node;
+                      const level = x.depth || 0;
                       const rowTotal = sumNodeMonths(r);
                       const isComputed = hasChildren(r);
-                      const depthPad = Math.min(44, x.depth * 18);
                       const idxText = indexLabel(x.indexPath);
 
                       const displayTitle =
@@ -1680,47 +1663,42 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                               : (r.title || '—'));
 
                       return (
-                        <TR key={r.id} className="text-center hover:bg-black/[0.05] transition-colors dark:hover:bg-white/15">
+                        <TR
+                          key={r.id}
+                          className="border-t border-neutral-200 odd:bg-neutral-50 even:bg-neutral-100/70 hover:bg-neutral-200/40 transition-colors
+                            dark:border-neutral-800 dark:odd:bg-transparent dark:even:bg-white/5 dark:hover:bg-white/10"
+                        >
                           <TD className="px-2 py-2">{toFaDigits(idxText || (idx + 1))}</TD>
 
-                          <TD className="px-2 py-2 text-center whitespace-nowrap">
-                            <div className="flex items-center justify-center gap-2">
-                              <div className="flex items-center justify-center gap-2" style={{ paddingInlineStart: depthPad }}>
-                                <div
-                                  role="button"
-                                  tabIndex={0}
-                                  onClick={() => openEditRowModal(r)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') openEditRowModal(r);
-                                  }}
-                                  className="inline-flex flex-row-reverse items-center gap-2 px-3 py-1.5 rounded-full border border-black/10 bg-white/90 shadow-sm ring-1 ring-black/5 text-[11px] text-black cursor-pointer select-none hover:bg-black/[0.03] hover:shadow transition dark:border-neutral-700 dark:bg-neutral-900/70 dark:ring-0 dark:text-neutral-100 dark:hover:bg-white/10"
-                                  title="افزودن/ویرایش توضیحات"
+                          <TD className="px-2 py-2 text-right whitespace-nowrap" style={{ paddingRight: 8 + level * 14 }}>
+                            <div className="inline-flex items-center gap-2">
+                              {isComputed && (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleExpand(r.id)}
+                                  className="h-5 w-5 grid place-items-center rounded-md border border-black/25 bg-white text-black dark:border-neutral-500 dark:bg-white dark:text-black"
+                                  aria-label={r.expanded ? 'بستن زیرمجموعه' : 'باز کردن زیرمجموعه'}
+                                  title={r.expanded ? 'بستن زیرمجموعه' : 'باز کردن زیرمجموعه'}
                                 >
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      toggleExpand(r.id);
-                                    }}
-                                    className="h-6 w-6 grid place-items-center rounded-full hover:bg-black/5 dark:hover:bg-white/10"
-                                    aria-label="باز/بسته"
-                                    title="باز/بسته"
-                                  >
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="opacity-90">
-                                      <path
-                                        d={r.expanded ? 'M7 14l5-5 5 5' : 'M7 10l5 5 5-5'}
-                                        stroke="currentColor"
-                                        strokeWidth="2.2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      />
-                                    </svg>
-                                  </button>
+                                  {r.expanded ? (
+                                    <span className="text-[11px] leading-none text-black">−</span>
+                                  ) : (
+                                    <img src="/images/icons/afzodan.svg" alt="" className="w-3 h-3" />
+                                  )}
+                                </button>
+                              )}
 
-                                  <span className="max-w-[240px] truncate">{displayTitle}</span>
-                                </div>
-                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (isComputed) toggleExpand(r.id);
+                                  else openEditRowModal(r);
+                                }}
+                                className={`px-1 py-0.5 text-[12px] ${isComputed ? 'font-semibold hover:underline' : 'hover:underline'}`}
+                                title={isComputed ? 'باز/بسته کردن زیرمجموعه‌ها' : 'افزودن/ویرایش توضیحات'}
+                              >
+                                {displayTitle}
+                              </button>
                             </div>
                           </TD>
 
