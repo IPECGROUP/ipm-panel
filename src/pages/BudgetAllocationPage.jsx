@@ -182,6 +182,10 @@ setProjects(Array.from(byId.values()));
     setOpenCodes({});
   }, [active, projectId]);
 
+  useEffect(() => {
+    setEditingAllocCode("");
+  }, [active, projectId, refreshKey]);
+
   // ===== Helpers: تبدیل اعداد =====
   const formatMoney = (n) => {
     if (n === null || n === undefined) return "";
@@ -505,6 +509,7 @@ setProjects(Array.from(byId.values()));
 
   const [saving, setSaving] = useState(false);
   const [modalMsg, setModalMsg] = useState(null);
+  const [editingAllocCode, setEditingAllocCode] = useState("");
   const [descModal, setDescModal] = useState({
     open: false,
     code: "",
@@ -837,6 +842,7 @@ setProjects(Array.from(byId.values()));
   );
 
   const focusRowForEdit = useCallback((code) => {
+    setEditingAllocCode(String(code || ""));
     requestAnimationFrame(() => {
       const target = moneyRefs.current[code];
       if (!target) return;
@@ -1214,6 +1220,8 @@ setProjects(Array.from(byId.values()));
                     const allocRawView = isComputed
                       ? valueOfRow(r, "allocRaw")
                       : Number(r.allocRaw || 0);
+                    const hasAllocValue = Number(allocRawView || 0) !== 0;
+                    const isEditingAlloc = String(editingAllocCode) === String(r.code);
                     const newTotal = totalAllocView + allocRawView;
                     const limit = lastAmountView;
                     const isOver = newTotal > limit;
@@ -1223,34 +1231,8 @@ setProjects(Array.from(byId.values()));
                         key={node.key || r.code || idx}
                         className={getHoverSelectableRowClass(false)}
                       >
-                        <TD className="px-2.5 pt-1.5 pb-1 align-middle !text-center relative overflow-visible">
-                          <div className="relative flex min-h-[34px] items-center justify-center">
-                            <span>{toFaDigits(idx + 1)}</span>
-                            <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto">
-                              <RowActionIconBtn
-                                action="edit"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  focusRowForEdit(r.code);
-                                }}
-                                disabled={isComputed}
-                                size={30}
-                                iconSize={14}
-                              />
-                              <RowActionIconBtn
-                                icon="/images/icons/sayer.svg"
-                                title="ثبت شرح"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  openDescModal(r);
-                                }}
-                                size={30}
-                                iconSize={14}
-                              />
-                            </div>
-                          </div>
+                        <TD className="px-2.5 pt-1.5 pb-1 align-middle !text-center">
+                          {toFaDigits(idx + 1)}
                         </TD>
                         <TD className="px-2.5 pt-1.5 pb-1 align-middle">
                           <div
@@ -1291,18 +1273,33 @@ setProjects(Array.from(byId.values()));
                           </div>
                         </TD>
                         <TD className="px-2.5 pt-1.5 pb-1 align-middle !text-center">
-                          <div className="flex flex-col">
+                          <div className="relative flex min-h-[34px] items-center justify-center">
+                            <div
+                              className={`w-full transition-opacity ${
+                                isEditingAlloc
+                                  ? "opacity-100 pointer-events-auto"
+                                  : "opacity-100 pointer-events-auto group-hover:opacity-0 group-hover:pointer-events-none"
+                              }`}
+                            >
                             <input
                               ref={(el) => {
                                 if (!isComputed) moneyRefs.current[r.code] = el;
                               }}
                               dir="ltr"
                               disabled={isComputed}
-                              className={`w-full rounded-xl px-2 py-1 outline-none border transition
+                              onFocus={() => setEditingAllocCode(String(r.code))}
+                              onBlur={() =>
+                                setEditingAllocCode((prev) =>
+                                  String(prev) === String(r.code) ? "" : prev
+                                )
+                              }
+                              className={`w-24 mx-auto h-9 md:w-24 md:h-9 rounded-xl border text-[11px] md:text-[12px] text-center shadow-sm outline-none transition
                                         ${
                                           isOver
-                                            ? "border-red-500 ring-1 ring-red-400 bg-red-50 text-red-700 placeholder-red-400 dark:bg-red-600/10 dark:text-red-200"
-                                            : "bg-white text-black placeholder-black/40 border border-black/15 focus:ring-2 focus:ring-black/10 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                                            ? "border-red-500 ring-2 ring-red-300 bg-red-50 text-red-700 placeholder-red-400 dark:bg-red-600/10 dark:text-red-200"
+                                            : hasAllocValue
+                                            ? "bg-[#edaf7c] border-[#edaf7c]/90 text-black focus:ring-2 focus:ring-[#edaf7c]/50"
+                                            : "bg-black/5 border-black/10 text-black/70 focus:ring-2 focus:ring-black/10 dark:bg-white/5 dark:border-neutral-700 dark:text-neutral-100 dark:focus:ring-neutral-600/50"
                                         } ${isComputed ? "opacity-70 cursor-default" : ""}`}
                               value={toFaDigits(formatMoney(allocRawView))}
                               onChange={(e) =>
@@ -1316,6 +1313,39 @@ setProjects(Array.from(byId.values()));
                               }
                               aria-invalid={isOver ? "true" : "false"}
                             />
+                            </div>
+                            <div
+                              className={`absolute inset-0 flex items-center justify-center gap-1 transition-opacity ${
+                                isEditingAlloc
+                                  ? "opacity-0 pointer-events-none"
+                                  : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+                              }`}
+                            >
+                              <RowActionIconBtn
+                                action="edit"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  focusRowForEdit(r.code);
+                                }}
+                                disabled={isComputed}
+                                size={34}
+                                iconSize={15}
+                              />
+                              <RowActionIconBtn
+                                icon="/images/icons/sayer.svg"
+                                title="ثبت شرح"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  openDescModal(r);
+                                }}
+                                size={34}
+                                iconSize={15}
+                              />
+                            </div>
+                          </div>
+                          <div className="flex flex-col">
                             {isOver && !isComputed && (
                               <span className="mt-1 text-[11px] leading-none text-red-600 dark:text-red-400">
                                 مقدار «تخصیص جدید» از مقدار آخرین برآورد بیشتر
