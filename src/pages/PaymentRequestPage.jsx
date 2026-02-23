@@ -14,11 +14,17 @@ import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table";
 
 
 export default function PaymentRequestPage() {
+  const { user: authUser } = useAuth();
   const api = async (path, opt = {}) => {
+    const uid = authUser?.id != null ? String(authUser.id) : '';
     const res = await fetch('/api' + path, {
       credentials: 'include',
       ...opt,
-      headers: { 'Content-Type': 'application/json', ...(opt.headers || {}) },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(uid ? { 'x-user-id': uid } : {}),
+        ...(opt.headers || {}),
+      },
     });
     const txt = await res.text();
     let data = {};
