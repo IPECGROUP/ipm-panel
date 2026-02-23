@@ -1002,29 +1002,6 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     isOtherRoot: false,
   });
 
-  const openEditRowModal = (row) => {
-    const clickedId = String(row?.id || '');
-    const shouldEditSelected =
-      selectedRowIds.length > 1 && selectedRowIds.some((id) => String(id) === clickedId);
-    const targetIds = shouldEditSelected ? selectedRowIds.map((id) => String(id)) : [clickedId];
-    const targetNodes = targetIds.map((id) => findNodeById(allRows, id)).filter(Boolean);
-    if (!targetNodes.length) return;
-
-    const first = targetNodes[0];
-    const isBulk = targetNodes.length > 1;
-    const baseTitle = first?.title || '';
-    setEditRowModal({
-      open: true,
-      rowId: first?.id || null,
-      targetIds: targetNodes.map((n) => String(n.id)),
-      bulk: isBulk,
-      title: baseTitle || '',
-      desc: isBulk ? '' : (first?.desc || ''),
-      isOther: !!first?.isOther,
-      isOtherRoot: !!first?.otherRoot,
-    });
-  };
-
   const closeEditRowModal = () =>
     setEditRowModal({
       open: false,
@@ -1709,9 +1686,11 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                                 type="button"
                                 onClick={() => {
                                   if (isComputed) toggleExpand(r.id);
-                                  else openEditRowModal(r);
                                 }}
-                                className={`min-w-0 truncate px-1 py-0.5 ${isChildRow ? 'max-w-[88%] text-center' : 'flex-1 text-right'} ${titleTextClass} ${isComputed ? 'font-semibold hover:underline' : 'hover:underline'}`}
+                                disabled={!isComputed}
+                                className={`min-w-0 truncate px-1 py-0.5 ${isChildRow ? 'max-w-[88%] text-center' : 'flex-1 text-right'} ${titleTextClass} ${
+                                  isComputed ? 'font-semibold hover:underline cursor-pointer' : 'cursor-default'
+                                }`}
                                 title={displayTitle}
                               >
                                 {displayTitle}
@@ -1812,22 +1791,12 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                               </span>
 
                               <div
-                                className={`absolute inset-0 flex items-center justify-center gap-1 transition-opacity ${
+                                className={`absolute inset-0 flex items-center justify-center transition-opacity ${
                                   isSelected
                                     ? 'opacity-100 pointer-events-auto'
                                     : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto'
                                 }`}
                               >
-                                <RowActionIconBtn
-                                  action="edit"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    openEditRowModal(r);
-                                  }}
-                                  size={34}
-                                  iconSize={15}
-                                />
                                 <RowActionIconBtn
                                   action="delete"
                                   onClick={(e) => {
