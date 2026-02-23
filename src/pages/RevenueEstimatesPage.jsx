@@ -1371,21 +1371,17 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
     win.document.close();
   };
 
-  const exportExcel = () => {
-    const buildCell = (v) =>
-      String(v ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
+  const exportExcel = async () => {
+    const dash = "-";
+    const title = "\u0628\u0631\u0622\u0648\u0631\u062F \u062F\u0631\u0622\u0645\u062F \u0647\u0627";
+    const exportDate = new Date().toLocaleDateString("fa-IR");
 
-    const headerHtml = `
-      <tr>
-        <th>#</th>
-        <th>پروژه / مورد</th>
-        ${dynamicMonths.map((m) => `<th>${buildCell(m.label)}</th>`).join('')}
-        <th>جمع</th>
-      </tr>
-    `;
+    const headers = [
+      "#",
+      "\u067E\u0631\u0648\u0698\u0647 / \u0645\u0648\u0631\u062F",
+      ...dynamicMonths.map((m) => String(m?.label || "").trim() || dash),
+      "\u062C\u0645\u0639",
+    ];
 
     const rowsForExcel = [];
     const walkExcel = (node, depth, indexPath) => {
@@ -1395,100 +1391,92 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
         indexPath,
         isParent: hasChildren(node),
       });
-      (node.children || []).forEach((ch, i) => walkExcel(ch, depth + 1, [...indexPath, i + 1]));
+      (node?.children || []).forEach((ch, i) => walkExcel(ch, depth + 1, [...indexPath, i + 1]));
     };
     (visibleRoots || []).forEach((r, i) => walkExcel(r, 0, [i + 1]));
 
-    const bodyHtml = rowsForExcel
-      .map((x, i) => {
-        const r = x.node;
-        const depth = Math.max(0, Number(x.depth || 0));
-        const outlineLevel = Math.min(depth, 7);
-        const isParentRow = !!x.isParent;
-        const rowTotal = sumNodeMonths(r);
-        const titleCell =
-          depth === 0 && r?.projectId != null
-            ? getProjectLabelById(r.projectId, normalizeFaText(r.title || '') || '—')
-            : (normalizeFaText(r.title || '') || '—');
+    const bodyRows = rowsForExcel.map((x, i) => {
+      const r = x.node || {};
+      const depth = Math.max(0, Number(x.depth || 0));
+      const rowTotal = sumNodeMonths(r);
+      const titleCell =
+        depth === 0 && r?.projectId != null
+          ? getProjectLabelById(r.projectId, normalizeFaText(r.title || "") || dash)
+          : normalizeFaText(r.title || "") || dash;
 
-        const indentMarker = depth > 0 ? `${'↳ '.repeat(depth)}` : '';
+      const indexCell = toFaDigits(indexLabel(x.indexPath) || (i + 1));
+      const indentMarker = depth > 0 ? `${"  ".repeat(depth)}\u21B3 ` : "";
 
-        const monthsHtml = dynamicMonths
-          .map((m) => {
-            const val = sumNodeMonth(r, m.key);
-            return `<td>${val ? buildCell(toFaDigits(formatMoney(val))) : '—'}</td>`;
-          })
-          .join('');
-        const rowStyle = [
-          outlineLevel > 0 ? `mso-outline-level:${outlineLevel}` : '',
-          isParentRow ? 'font-weight:700;background-color:#f8fafc' : '',
-        ]
-          .filter(Boolean)
-          .join(';');
-        const trClass = isParentRow ? 'parent-row' : 'child-row';
-        return `
-          <tr class="${trClass}" style="${rowStyle}">
-            <td>${buildCell(toFaDigits(indexLabel(x.indexPath) || (i + 1)))}</td>
-            <td style="text-align:right;padding-right:${8 + depth * 16}px">${buildCell(indentMarker)}${buildCell(titleCell)}</td>
-            ${monthsHtml}
-            <td>${rowTotal ? buildCell(toFaDigits(formatMoney(rowTotal))) : '—'}</td>
-          </tr>
-        `;
-      })
-      .join('');
+      const monthCells = dynamicMonths.map((m) => {
+        const val = sumNodeMonth(r, m.key);
+        return val ? toFaDigits(formatMoney(val)) : dash;
+      });
 
-    const footerHtml = `
-      <tr>
-        <td>-</td>
-        <td>جمع</td>
-        ${dynamicMonths
-          .map((m) => {
-            const v = totalsByMonth[m.key];
-            return `<td>${v ? buildCell(toFaDigits(formatMoney(v))) : '—'}</td>`;
-          })
-          .join('')}
-        <td>${totalGrand ? buildCell(toFaDigits(formatMoney(totalGrand))) : '—'}</td>
-      </tr>
-    `;
-
-    const noRowsHtml = `<tr><td colspan="${2 + dynamicMonths.length + 1}">موردی برای نمایش نیست.</td></tr>`;
-
-    const html = `
-      <html lang="fa" dir="rtl">
-        <head>
-          <meta charset="utf-8" />
-          <style>
-            body { font-family: Vazirmatn, Vazir, IRANSans, Segoe UI, Tahoma, sans-serif; direction: rtl; }
-            table { border-collapse: collapse; width: 100%; font-size: 11pt; }
-            th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: center; vertical-align: middle; }
-            thead th { background-color: #f3f4f6; font-weight: 600; }
-            tbody tr.parent-row td { font-weight: 700; }
-            tbody tr.child-row td { background-color: #ffffff; }
-          </style>
-        </head>
-        <body>
-          <table>
-            <thead>${headerHtml}</thead>
-            <tbody>${bodyHtml || noRowsHtml}</tbody>
-            <tfoot>${footerHtml}</tfoot>
-          </table>
-        </body>
-      </html>
-    `;
-
-    const blob = new Blob(['\ufeff' + html], {
-      type: 'application/vnd.ms-excel;charset=utf-8;',
+      return [
+        indexCell,
+        `${indentMarker}${titleCell}`,
+        ...monthCells,
+        rowTotal ? toFaDigits(formatMoney(rowTotal)) : dash,
+      ];
     });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'revenue-estimates.xls';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
 
+    const footerRow = [
+      dash,
+      "\u062C\u0645\u0639",
+      ...dynamicMonths.map((m) => {
+        const v = totalsByMonth[m.key];
+        return v ? toFaDigits(formatMoney(v)) : dash;
+      }),
+      totalGrand ? toFaDigits(formatMoney(totalGrand)) : dash,
+    ];
+
+    const rowsSection = bodyRows.length
+      ? bodyRows
+      : [[dash, "\u0645\u0648\u0631\u062F\u06CC \u0628\u0631\u0627\u06CC \u0646\u0645\u0627\u06CC\u0634 \u0646\u06CC\u0633\u062A.", ...dynamicMonths.map(() => dash), dash]];
+
+    const metaRows = [[title], [`\u062A\u0627\u0631\u06CC\u062E \u062E\u0631\u0648\u062C\u06CC: ${exportDate}`]];
+    const sheetData = [...metaRows, [], headers, ...rowsSection, footerRow];
+
+    const xlsxMod = await import("xlsx");
+    const XLSX = xlsxMod?.default || xlsxMod;
+
+    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+    ws["!cols"] = [
+      { wch: 7 },
+      { wch: 48 },
+      ...dynamicMonths.map(() => ({ wch: 16 })),
+      { wch: 18 },
+    ];
+
+    const headerRowIndex = metaRows.length + 1;
+    ws["!rows"] = Array.from({ length: sheetData.length }, (_, i) => {
+      if (i < metaRows.length) return { hpt: 22 };
+      if (i === metaRows.length) return { hpt: 8 };
+      if (i === headerRowIndex) return { hpt: 20 };
+      return { hpt: 18 };
+    });
+
+    const lastColIndex = headers.length - 1;
+    ws["!merges"] = metaRows.map((_, i) => ({
+      s: { r: i, c: 0 },
+      e: { r: i, c: lastColIndex },
+    }));
+
+    const lastCol = XLSX.utils.encode_col(lastColIndex);
+    const headerRowNum = headerRowIndex + 1;
+    const lastRowNum = sheetData.length;
+    ws["!autofilter"] = { ref: `A${headerRowNum}:${lastCol}${lastRowNum}` };
+
+    const wb = XLSX.utils.book_new();
+    wb.Workbook = wb.Workbook || {};
+    wb.Workbook.Views = [{ RTL: true }];
+    XLSX.utils.book_append_sheet(wb, ws, "RevenueEstimates");
+
+    XLSX.writeFile(wb, "revenue-estimates.xlsx", {
+      bookType: "xlsx",
+      compression: true,
+    });
+  };
   // ===== UI states for access =====
   if (accessLoading) {
     return (
