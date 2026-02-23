@@ -1,4 +1,4 @@
-// src/pages/BudgetAllocationPage.jsx
+﻿// src/pages/BudgetAllocationPage.jsx
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Card } from "../components/ui/Card";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table";
@@ -10,7 +10,7 @@ import {
 } from "../components/ui/tablePresets";
 import { usePageAccess } from "../hooks/usePageAccess";
 
-// تب‌ها به‌صورت ثابت بیرون کامپوننت
+// ØªØ¨ï¿½Rï¿½!Ø§ Ø¨ï¿½!ï¿½RØµï¿½ï¿½Ø±Øª Ø«Ø§Ø¨Øª Ø¨ï¿½RØ±ï¿½ï¿½ï¿½  Ú©Ø§ï¿½&Ù¾ï¿½ï¿½ï¿½ ï¿½ Øª
 const ALLOC_TABS = [
   { id: "office", label: "دفتر مرکزی", prefix: "OB" },
   { id: "site", label: "سایت", prefix: "SB" },
@@ -106,14 +106,14 @@ function BudgetAllocationPage() {
 const normalizeTopProject = (p) => {
   return {
     id: p?.id == null ? null : String(p.id),
-    code: toEnDigits(String(p?.code ?? "")).trim(), // ✅ کد واقعی بدون بریدن
+    code: toEnDigits(String(p?.code ?? "")).trim(), // ï¿½S& Ú©Ø¯ ï¿½ï¿½Ø§ï¿½Ø¹ï¿½R Ø¨Ø¯ï¿½ï¿½ï¿½  Ø¨Ø±ï¿½RØ¯ï¿½ 
     name: p?.name == null ? "" : String(p.name).trim(),
-    isActive: p?.isActive !== false, // ✅ مثل صفحه پروژه‌ها
+    isActive: p?.isActive !== false, // ï¿½S& ï¿½&Ø«ï¿½ ØµÙØ­ï¿½! Ù¾Ø±ï¿½ï¿½ï¿½ï¿½ï¿½!ï¿½Rï¿½!Ø§
   };
 };
 
 
-  // پروژه‌ها از سرور
+  // Ù¾Ø±ï¿½ï¿½ï¿½ï¿½ï¿½!ï¿½Rï¿½!Ø§ Ø§Ø² Ø³Ø±ï¿½ï¿½Ø±
   useEffect(() => {
   if (canAccessPage !== true) return;
 
@@ -121,11 +121,11 @@ const normalizeTopProject = (p) => {
 
   (async () => {
     try {
-      // ✅ فقط از پروژه‌ها (صفحه پروژه‌ها) + فقط فعال‌ها
+      // ï¿½S& Ùï¿½Ø· Ø§Ø² Ù¾Ø±ï¿½ï¿½ï¿½ï¿½ï¿½!ï¿½Rï¿½!Ø§ (ØµÙØ­ï¿½! Ù¾Ø±ï¿½ï¿½ï¿½ï¿½ï¿½!ï¿½Rï¿½!Ø§) + Ùï¿½Ø· ÙØ¹Ø§ï¿½ï¿½Rï¿½!Ø§
       const r = await api("/projects?isActive=true");
       if (!alive) return;
 
-      // ✅ فقط parse (نه fallback به مسیرهای دیگر)
+      // ï¿½S& Ùï¿½Ø· parse (ï¿½ ï¿½! fallback Ø¨ï¿½! ï¿½&Ø³ï¿½RØ±ï¿½!Ø§ï¿½R Ø¯ï¿½RÚ¯Ø±)
       const raw = Array.isArray(r) ? r : Array.isArray(r?.items) ? r.items : [];
 
     const clean = (raw || [])
@@ -133,9 +133,9 @@ const normalizeTopProject = (p) => {
   .map(normalizeTopProject)
   .filter((p) => p && p.id != null)
   .filter((p) => p.isActive === true)
-  .filter((p) => isTopProjectCode(p.code)); // ✅ دقیقاً مثل ProjectsPage
+  .filter((p) => isTopProjectCode(p.code)); // ï¿½S& Ø¯ï¿½ï¿½Rï¿½Ø§ï¿½9 ï¿½&Ø«ï¿½ ProjectsPage
 
-// ✅ حذف تکراری بر اساس id (نه code)
+// ï¿½S& Ø­Ø°Ù ØªÚ©Ø±Ø§Ø±ï¿½R Ø¨Ø± Ø§Ø³Ø§Ø³ id (ï¿½ ï¿½! code)
 const byId = new Map();
 for (const p of clean) {
   const k = String(p.id);
@@ -177,6 +177,7 @@ setProjects(Array.from(byId.values()));
 
   const moneyRefs = useRef({});
   const selectAllRef = useRef(null);
+  const autoSavingCodesRef = useRef(new Set());
 
   const [codeSortDir, setCodeSortDir] = useState("asc");
   const [openCodes, setOpenCodes] = useState({});
@@ -189,7 +190,7 @@ setProjects(Array.from(byId.values()));
     setSelectedCodes([]);
   }, [active, projectId]);
 
-  // ===== Helpers: تبدیل اعداد =====
+  // ===== Helpers: ØªØ¨Ø¯ï¿½Rï¿½ Ø§Ø¹Ø¯Ø§Ø¯ =====
   const formatMoney = (n) => {
     if (n === null || n === undefined) return "";
     const sign = n < 0 ? "-" : "";
@@ -198,15 +199,15 @@ setProjects(Array.from(byId.values()));
   };
 
   const toFaDigits = useCallback(
-    (s) => String(s ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]),
+    (s) => String(s ?? "").replace(/\d/g, (d) => "Û°Û±Û²Û³Û´ÛµÛ¶Û·Û¸Û¹"[d]),
     []
   );
 
   const toEnDigits = useCallback(
     (s) =>
       String(s || "")
-        .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d))
-        .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d)),
+        .replace(/[Û°-Û¹]/g, (d) => "Û°Û±Û²Û³Û´ÛµÛ¶Û·Û¸Û¹".indexOf(d))
+        .replace(/[Ù -Ù©]/g, (d) => "Ù Ù¡Ù¢Ù£Ù¤Ù¥Ù¦Ù§Ù¨Ù©".indexOf(d)),
     []
   );
 
@@ -241,7 +242,7 @@ setProjects(Array.from(byId.values()));
     }
   };
 
-  // ===== نمایش کد بودجه در حالت پروژه با پیشوند کد پروژه (نمایشی، بدون تغییر منطق ذخیره) =====
+  // ===== ï¿½ ï¿½&Ø§ï¿½RØ´ Ú©Ø¯ Ø¨ï¿½ï¿½Ø¯Ø¬ï¿½! Ø¯Ø± Ø­Ø§ï¿½Øª Ù¾Ø±ï¿½ï¿½ï¿½ï¿½ï¿½! Ø¨Ø§ Ù¾ï¿½RØ´ï¿½ï¿½ï¿½ Ø¯ Ú©Ø¯ Ù¾Ø±ï¿½ï¿½ï¿½ï¿½ï¿½! (ï¿½ ï¿½&Ø§ï¿½RØ´ï¿½Rï¿½R Ø¨Ø¯ï¿½ï¿½ï¿½  ØªØºï¿½Rï¿½RØ± ï¿½&ï¿½ Ø·ï¿½ Ø°Ø®ï¿½RØ±ï¿½!) =====
   const renderDisplayBudgetCode = useCallback(
     (code) => renderCode(code),
     [renderCode]
@@ -262,7 +263,7 @@ setProjects(Array.from(byId.values()));
     return r || {};
   };
 
-  // ===== لود داده‌ها از سرور =====
+  // ===== ï¿½ï¿½ï¿½Ø¯ Ø¯Ø§Ø¯ï¿½!ï¿½Rï¿½!Ø§ Ø§Ø² Ø³Ø±ï¿½ï¿½Ø± =====
   useEffect(() => {
     if (canAccessPage !== true) return;
     if (active === "projects" && !projectId) {
@@ -342,7 +343,7 @@ setProjects(Array.from(byId.values()));
 
           items = Array.from(byCode.values());
         } else {
-          // حالت‌های غیر پروژه مثل قبل
+          // Ø­Ø§ï¿½Øªï¿½Rï¿½!Ø§ï¿½R Øºï¿½RØ± Ù¾Ø±ï¿½ï¿½ï¿½ï¿½ï¿½! ï¿½&Ø«ï¿½ ï¿½Ø¨ï¿½
           try {
             const est = await api("/budget-estimates?" + qs1.toString());
             items = Array.isArray(est?.items) ? est.items.slice() : [];
@@ -418,7 +419,7 @@ setProjects(Array.from(byId.values()));
         setHistoryByCode(histMap);
         setRows(built);
       } catch (ex) {
-        if (!abort) setErr(ex.message || "خطا در بارگذاری");
+        if (!abort) setErr(ex.message || "Ø®Ø·Ø§ Ø¯Ø± Ø¨Ø§Ø±Ú¯Ø°Ø§Ø±ï¿½R");
       } finally {
         if (!abort) setLoading(false);
       }
@@ -502,7 +503,7 @@ setProjects(Array.from(byId.values()));
           project_name:
             active === "projects" && selectedProject ? selectedProject.name : null,
           kind: active,
-          rows: [{ code, alloc: -lastAmt, desc: "حذف آخرین تخصیص" }],
+          rows: [{ code, alloc: -lastAmt, desc: "Ø­Ø°Ù Ø¢Ø®Ø±ï¿½Rï¿½  ØªØ®Øµï¿½RØµ" }],
         };
         await api("/budget-allocations", {
           method: "POST",
@@ -514,7 +515,7 @@ setProjects(Array.from(byId.values()));
       }
 
       if (!removedAny) {
-        setErr("سابقه‌ای برای حذف یافت نشد.");
+        setErr("Ø³Ø§Ø¨ï¿½ï¿½!ï¿½RØ§ï¿½R Ø¨Ø±Ø§ï¿½R Ø­Ø°Ù ï¿½RØ§ÙØª ï¿½ Ø´Ø¯.");
         return;
       }
 
@@ -528,7 +529,7 @@ setProjects(Array.from(byId.values()));
       setSelectedCodes((prev) => prev.filter((code) => !codes.includes(code)));
       setRefreshKey((x) => x + 1);
     } catch (ex) {
-      setErr(ex.message || "خطا در حذف آخرین تخصیص");
+      setErr(ex.message || "Ø®Ø·Ø§ Ø¯Ø± Ø­Ø°Ù Ø¢Ø®Ø±ï¿½Rï¿½  ØªØ®Øµï¿½RØµ");
     }
   };
 
@@ -540,6 +541,109 @@ setProjects(Array.from(byId.values()));
     name: "",
     value: "",
   });
+
+    const saveAllocationRows = async (
+    payloadRowsInput,
+    { showEmptyMsg = false, showSuccessModal = false } = {}
+  ) => {
+    const payloadRows = (Array.isArray(payloadRowsInput) ? payloadRowsInput : [])
+      .map((r) => ({
+        code: String(r?.code || "").trim(),
+        alloc: Number(r?.alloc || 0),
+        desc: r?.desc == null ? null : String(r.desc).trim() || null,
+      }))
+      .filter((r) => r.code && r.alloc !== 0);
+
+    if (payloadRows.length === 0) {
+      if (showEmptyMsg) {
+        setModalMsg({ ok: true, msg: "Ú†ÛŒØ²ÛŒ Ø¨Ø±Ø§ÛŒ Ø«Ø¨Øª Ø§Ù†ØªØ®Ø§Ø¨ Ù†Ø´Ø¯Ù‡ Ø§Ø³Øª." });
+      }
+      return { ok: false, reason: "empty" };
+    }
+
+    const viol = payloadRows.find((pr) => {
+      const r = rows.find((x) => x.code === pr.code);
+      const newTotal = Number(r?.totalAlloc || 0) + Number(pr.alloc || 0);
+      return newTotal > Number(r?.lastAmount || 0);
+    });
+    if (viol) {
+      throw new Error("Ù…Ø¨Ù„Øº ØªØ®ØµÛŒØµ Ø§Ø² Ø¢Ø®Ø±ÛŒÙ† Ø¨Ø±Ø¢ÙˆØ±Ø¯ Ø§ÛŒÙ† Ú©Ø¯ Ø¨ÛŒØ´ØªØ± Ù…ÛŒâ€ŒØ´ÙˆØ¯.");
+    }
+
+    const next = await getNextSerial();
+    const serial = next?.serial || "";
+    const date_jalali = next?.date_jalali || todayFa;
+
+    const body = {
+      serial,
+      date_jalali,
+      project_id:
+        active === "projects" ? (projectId ? Number(projectId) : null) : null,
+      project_name:
+        active === "projects" && selectedProject ? selectedProject.name : null,
+      kind: active,
+      rows: payloadRows,
+    };
+    await api("/budget-allocations", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+
+    const allocByCode = new Map(payloadRows.map((r) => [r.code, Number(r.alloc || 0)]));
+    setRows((prev) =>
+      prev.map((r) => {
+        const delta = Number(allocByCode.get(r.code) || 0);
+        if (!delta) return r;
+        return {
+          ...r,
+          totalAlloc: Number(r.totalAlloc || 0) + delta,
+          allocRaw: 0,
+          desc: "",
+        };
+      })
+    );
+    setRefreshKey((x) => x + 1);
+
+    if (showSuccessModal) {
+      setModalMsg({ ok: true, msg: `Ø«Ø¨Øª Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø§Ù†Ø¬Ø§Ù… Ø´Ø¯. Ø³Ø±ÛŒØ§Ù„: ${serial}` });
+    }
+
+    return { ok: true, serial };
+  };
+
+  const saveSingleRowOnBlur = async (code) => {
+    const rowCode = String(code || "").trim();
+    if (!rowCode) return;
+    if (autoSavingCodesRef.current.has(rowCode)) return;
+    if (saving) return;
+
+    const row = rows.find((x) => String(x.code) === rowCode);
+    if (!row) return;
+
+    const alloc = Number(row.allocRaw || 0);
+    if (!alloc) return;
+
+    autoSavingCodesRef.current.add(rowCode);
+    try {
+      setSaving(true);
+      setErr("");
+      await saveAllocationRows(
+        [
+          {
+            code: rowCode,
+            alloc,
+            desc: (row.desc || "").trim() || null,
+          },
+        ],
+        { showEmptyMsg: false, showSuccessModal: false }
+      );
+    } catch (ex) {
+      setErr(ex.message || "Ø®Ø·Ø§ Ø¯Ø± Ø°Ø®ÛŒØ±Ù‡ Ø®ÙˆØ¯Ú©Ø§Ø±");
+    } finally {
+      autoSavingCodesRef.current.delete(rowCode);
+      setSaving(false);
+    }
+  };
 
   const onSubmit = async () => {
     try {
@@ -553,55 +657,12 @@ setProjects(Array.from(byId.values()));
           desc: (r.desc || "").trim() || null,
         }));
 
-      if (payloadRows.length === 0) {
-        setModalMsg({ ok: true, msg: "چیزی برای ثبت انتخاب نشده است." });
-        return;
-      }
-
-      const viol = payloadRows.find((pr) => {
-        const r = rows.find((x) => x.code === pr.code);
-        const newTotal = Number(r?.totalAlloc || 0) + Number(pr.alloc || 0);
-        return newTotal > Number(r?.lastAmount || 0);
+      await saveAllocationRows(payloadRows, {
+        showEmptyMsg: true,
+        showSuccessModal: true,
       });
-      if (viol) {
-        setErr("مبلغ تخصیص از آخرین برآورد این کُد بیشتر می‌شود.");
-        setSaving(false);
-        return;
-      }
-
-      const next = await getNextSerial();
-      const serial = next?.serial || "";
-      const date_jalali = next?.date_jalali || todayFa;
-
-      const body = {
-        serial,
-        date_jalali,
-        project_id:
-          active === "projects" ? (projectId ? Number(projectId) : null) : null,
-        project_name:
-          active === "projects" && selectedProject ? selectedProject.name : null,
-        kind: active,
-        rows: payloadRows,
-      };
-      await api("/budget-allocations", {
-        method: "POST",
-        body: JSON.stringify(body),
-      });
-
-      setRows((prev) =>
-        prev.map((r) => ({
-          ...r,
-          totalAlloc:
-            Number(r.totalAlloc || 0) +
-            Number(payloadRows.find((p) => p.code === r.code)?.alloc || 0),
-          allocRaw: 0,
-          desc: "",
-        }))
-      );
-      setRefreshKey((x) => x + 1);
-      setModalMsg({ ok: true, msg: `ثبت با موفقیت انجام شد. سریال: ${serial}` });
     } catch (ex) {
-      setModalMsg({ ok: false, msg: ex.message || "خطا از سرور" });
+      setModalMsg({ ok: false, msg: ex.message || "Ø®Ø·Ø§ Ø§Ø² Ø³Ø±ÙˆØ±" });
     } finally {
       setSaving(false);
     }
@@ -949,11 +1010,11 @@ setProjects(Array.from(byId.values()));
       <tr>
         <th>#</th>
         <th>${escapeHtml(budgetCodeHeader)}</th>
-        <th>نام بودجه</th>
-        <th>آخرین برآورد</th>
-        <th>تخصیص جدید</th>
-        <th>مجموع تخصیص‌ها</th>
-        <th>شرح</th>
+        <th>ï¿½ Ø§ï¿½& Ø¨ï¿½ï¿½Ø¯Ø¬ï¿½!</th>
+        <th>Ø¢Ø®Ø±ï¿½Rï¿½  Ø¨Ø±Ø¢ï¿½ï¿½Ø±Ø¯</th>
+        <th>ØªØ®Øµï¿½RØµ Ø¬Ø¯ï¿½RØ¯</th>
+        <th>ï¿½&Ø¬ï¿½&ï¿½ï¿½Ø¹ ØªØ®Øµï¿½RØµï¿½Rï¿½!Ø§</th>
+        <th>Ø´Ø±Ø­</th>
       </tr>
     `;
 
@@ -981,20 +1042,20 @@ setProjects(Array.from(byId.values()));
         return `
           <tr class="${trClass}" style="${rowStyle}">
             <td>${escapeHtml(toFaDigits(idx + 1))}</td>
-            <td>${escapeHtml(toFaDigits(renderDisplayBudgetCode(r.code) || "—"))}</td>
+            <td>${escapeHtml(toFaDigits(renderDisplayBudgetCode(r.code) || "â€”"))}</td>
             <td style="text-align:right;padding-right:${8 + depth * 16}px">${escapeHtml(
-              r.name || "—"
+              r.name || "â€”"
             )}</td>
             <td>${escapeHtml(toFaDigits(formatMoney(lastAmountView || 0)))}</td>
             <td>${escapeHtml(toFaDigits(formatMoney(allocRawView || 0)))}</td>
             <td>${escapeHtml(toFaDigits(formatMoney(totalAllocView || 0)))}</td>
-            <td style="text-align:right">${escapeHtml(r.desc || "—")}</td>
+            <td style="text-align:right">${escapeHtml(r.desc || "â€”")}</td>
           </tr>
         `;
       })
       .join("");
 
-    const noRowsHtml = `<tr><td colspan="7">موردی برای نمایش نیست.</td></tr>`;
+    const noRowsHtml = `<tr><td colspan="7">ï¿½&ï¿½ï¿½Ø±Ø¯ï¿½R Ø¨Ø±Ø§ï¿½R ï¿½ ï¿½&Ø§ï¿½RØ´ ï¿½ ï¿½RØ³Øª.</td></tr>`;
     const exportDate = new Date().toLocaleDateString("fa-IR");
 
     const html = `
@@ -1015,8 +1076,8 @@ setProjects(Array.from(byId.values()));
         <body>
           <div class="meta">
             <div><strong>${escapeHtml(title)}</strong></div>
-            ${active === "projects" ? `<div>پروژه: ${escapeHtml(projectLabel || "—")}</div>` : ""}
-            <div>تاریخ خروجی: ${escapeHtml(exportDate)}</div>
+            ${active === "projects" ? `<div>Ù¾Ø±ï¿½ï¿½ï¿½ï¿½ï¿½!: ${escapeHtml(projectLabel || "ï¿½")}</div>` : ""}
+            <div>ØªØ§Ø±ï¿½RØ® Ø®Ø±ï¿½ï¿½Ø¬ï¿½R: ${escapeHtml(exportDate)}</div>
           </div>
           <table>
             <thead>${headerHtml}</thead>
@@ -1066,7 +1127,7 @@ setProjects(Array.from(byId.values()));
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <div className="flex min-w-0 flex-col gap-1">
           <label className="text-xs sm:text-sm text-black/70 dark:text-neutral-300">
-            کد پروژه
+            Ú©Ø¯ Ù¾Ø±ï¿½ï¿½ï¿½ï¿½ï¿½!
           </label>
           <div className="relative">
             <select
@@ -1077,10 +1138,10 @@ setProjects(Array.from(byId.values()));
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
             >
-              <option value="">انتخاب کنید</option>
+              <option value="">Ø§ï¿½ ØªØ®Ø§Ø¨ Ú©ï¿½ ï¿½RØ¯</option>
               {(sortedProjects || []).map((p) => (
                 <option key={String(p.id)} value={String(p.id)}>
-                  {toFaDigits(p.code || "—")} {p?.name ? `— ${p.name}` : ""}
+                  {toFaDigits(p.code || "â€”")} {p?.name ? `â€” ${p.name}` : ""}
                 </option>
               ))}
             </select>
@@ -1093,7 +1154,7 @@ setProjects(Array.from(byId.values()));
         </div>
         <div className="flex min-w-0 flex-col gap-1">
           <label className="text-xs sm:text-sm text-black/70 dark:text-neutral-300">
-            نام پروژه
+            ï¿½ Ø§ï¿½& Ù¾Ø±ï¿½ï¿½ï¿½ï¿½ï¿½!
           </label>
           <input
             className="w-full h-11 rounded-xl px-3 sm:px-4 text-sm text-right bg-black/5 text-black border border-black/15 outline-none truncate
@@ -1113,14 +1174,14 @@ setProjects(Array.from(byId.values()));
       <>
         <Card>
           <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
-            <span>بودجه‌بندی</span>
-            <span className="mx-2">›</span>
+            <span>Ø¨ï¿½ï¿½Ø¯Ø¬ï¿½!ï¿½RØ¨ï¿½ Ø¯ï¿½R</span>
+            <span className="mx-2">â€º</span>
             <span className="font-semibold text-black dark:text-neutral-100">
-              تخصیص بودجه
+              ØªØ®Øµï¿½RØµ Ø¨ï¿½ï¿½Ø¯Ø¬ï¿½!
             </span>
           </div>
           <div className="p-5 text-center text-black/60 dark:text-neutral-300">
-            در حال بررسی دسترسی…
+            Ø¯Ø± Ø­Ø§ï¿½ Ø¨Ø±Ø±Ø³ï¿½R Ø¯Ø³ØªØ±Ø³ï¿½Râ¬¦
           </div>
         </Card>
       </>
@@ -1132,14 +1193,14 @@ setProjects(Array.from(byId.values()));
       <>
         <Card>
           <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
-            <span>بودجه‌بندی</span>
-            <span className="mx-2">›</span>
+            <span>Ø¨ï¿½ï¿½Ø¯Ø¬ï¿½!ï¿½RØ¨ï¿½ Ø¯ï¿½R</span>
+            <span className="mx-2">â€º</span>
             <span className="font-semibold text-black dark:text-neutral-100">
-              تخصیص بودجه
+              ØªØ®Øµï¿½RØµ Ø¨ï¿½ï¿½Ø¯Ø¬ï¿½!
             </span>
           </div>
           <div className="p-5 text-center text-red-600 dark:text-red-400">
-            ابتدا وارد سامانه شوید.
+            Ø§Ø¨ØªØ¯Ø§ ï¿½ï¿½Ø§Ø±Ø¯ Ø³Ø§ï¿½&Ø§ï¿½ ï¿½! Ø´ï¿½ï¿½ï¿½RØ¯.
           </div>
         </Card>
       </>
@@ -1151,14 +1212,14 @@ setProjects(Array.from(byId.values()));
       <>
         <Card>
           <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
-            <span>بودجه‌بندی</span>
-            <span className="mx-2">›</span>
+            <span>Ø¨ï¿½ï¿½Ø¯Ø¬ï¿½!ï¿½RØ¨ï¿½ Ø¯ï¿½R</span>
+            <span className="mx-2">â€º</span>
             <span className="font-semibold text-black dark:text-neutral-100">
-              تخصیص بودجه
+              ØªØ®Øµï¿½RØµ Ø¨ï¿½ï¿½Ø¯Ø¬ï¿½!
             </span>
           </div>
           <div className="p-5 rounded-2xl ring-1 ring-black/10 bg-white text-center text-red-600 dark:bg-neutral-900 dark:ring-neutral-800 dark:text-red-400">
-            شما سطح دسترسی لازم را ندارید.
+            Ø´ï¿½&Ø§ Ø³Ø·Ø­ Ø¯Ø³ØªØ±Ø³ï¿½R ï¿½Ø§Ø²ï¿½& Ø±Ø§ ï¿½ Ø¯Ø§Ø±ï¿½RØ¯.
           </div>
         </Card>
       </>
@@ -1169,17 +1230,17 @@ setProjects(Array.from(byId.values()));
     <>
       <Card>
         <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
-          <span>بودجه‌بندی</span>
-          <span className="mx-2">›</span>
+          <span>Ø¨ï¿½ï¿½Ø¯Ø¬ï¿½!ï¿½RØ¨ï¿½ Ø¯ï¿½R</span>
+          <span className="mx-2">â€º</span>
           <span className="font-semibold text-black dark:text-neutral-100">
-            تخصیص بودجه
+            ØªØ®Øµï¿½RØµ Ø¨ï¿½ï¿½Ø¯Ø¬ï¿½!
           </span>
         </div>
 
         <div className="px-[15px]">
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <div className="text-sm text-black/60 dark:text-neutral-400">
-              تاریخ:
+              ØªØ§Ø±ï¿½RØ®:
             </div>
             <div className="px-3 py-1 rounded-lg bg-black/5 text-black text-sm ring-1 ring-black/15 dark:bg-neutral-900 dark:text-neutral-100 dark:ring-neutral-800">
               {toFaDigits(todayFa)}
@@ -1215,7 +1276,7 @@ setProjects(Array.from(byId.values()));
                           return prev.filter((code) => !selectableRowCodes.includes(code));
                         });
                       }}
-                      aria-label="انتخاب همه"
+                      aria-label="Ø§ï¿½ ØªØ®Ø§Ø¨ ï¿½!ï¿½&ï¿½!"
                     />
                   </TH>
                   <TH className={`w-14 sm:w-16 ${tablePreset.th}`}>
@@ -1233,7 +1294,7 @@ setProjects(Array.from(byId.values()));
                         }
                         className="rounded-lg px-2 py-1 ring-1 ring-black/15 hover:bg-black/5
                                    dark:ring-neutral-800 dark:hover:bg-white/10"
-                        aria-label="مرتب‌سازی کد بودجه"
+                        aria-label="ï¿½&Ø±ØªØ¨ï¿½RØ³Ø§Ø²ï¿½R Ú©Ø¯ Ø¨ï¿½ï¿½Ø¯Ø¬ï¿½!"
                       >
                         <img
                           src={
@@ -1248,16 +1309,16 @@ setProjects(Array.from(byId.values()));
                     </div>
                   </TH>
                   <TH className={tablePreset.th}>
-                    نام بودجه
+                    ï¿½ Ø§ï¿½& Ø¨ï¿½ï¿½Ø¯Ø¬ï¿½!
                   </TH>
                   <TH className={`w-28 sm:w-32 md:w-40 ${tablePreset.th}`}>
-                    آخرین برآورد
+                    Ø¢Ø®Ø±ï¿½Rï¿½  Ø¨Ø±Ø¢ï¿½ï¿½Ø±Ø¯
                   </TH>
                   <TH className={`w-36 sm:w-40 md:w-48 ${tablePreset.th}`}>
-                    تخصیص جدید
+                    ØªØ®Øµï¿½RØµ Ø¬Ø¯ï¿½RØ¯
                   </TH>
                   <TH className={`w-32 sm:w-36 md:w-44 ${tablePreset.th}`}>
-                    مجموع تخصیص‌ها
+                    ï¿½&Ø¬ï¿½&ï¿½ï¿½Ø¹ ØªØ®Øµï¿½RØµï¿½Rï¿½!Ø§
                   </TH>
                 </tr>
               </THead>
@@ -1266,15 +1327,15 @@ setProjects(Array.from(byId.values()));
                 {loading ? (
                   <TR>
                     <TD colSpan={7} className={tablePreset.emptyRow}>
-                      در حال بارگذاری…
+                      Ø¯Ø± Ø­Ø§ï¿½ Ø¨Ø§Ø±Ú¯Ø°Ø§Ø±ï¿½Râ¬¦
                     </TD>
                   </TR>
                 ) : (displayRows || []).length === 0 ? (
                   <TR>
                     <TD colSpan={7} className={tablePreset.emptyRow}>
                       {active === "projects" && !projectId
-                        ? "ابتدا پروژه را انتخاب کنید"
-                        : "موردی یافت نشد."}
+                        ? "Ø§Ø¨ØªØ¯Ø§ Ù¾Ø±ï¿½ï¿½ï¿½ï¿½ï¿½! Ø±Ø§ Ø§ï¿½ ØªØ®Ø§Ø¨ Ú©ï¿½ ï¿½RØ¯"
+                        : "ï¿½&ï¿½ï¿½Ø±Ø¯ï¿½R ï¿½RØ§ÙØª ï¿½ Ø´Ø¯."}
                     </TD>
                   </TR>
                 ) : (
@@ -1318,7 +1379,7 @@ setProjects(Array.from(byId.values()));
                                   : prev.filter((code) => code !== rowCode)
                               );
                             }}
-                            aria-label={`انتخاب ردیف ${toFaDigits(idx + 1)}`}
+                            aria-label={`Ø§ï¿½ ØªØ®Ø§Ø¨ Ø±Ø¯ï¿½RÙ ${toFaDigits(idx + 1)}`}
                           />
                         </TD>
                         <TD className="px-2.5 pt-1.5 pb-1 align-middle !text-center">
@@ -1336,11 +1397,11 @@ setProjects(Array.from(byId.values()));
                                   setOpenCodes((p) => ({ ...p, [toggleKey]: !p[toggleKey] }))
                                 }
                                 className="h-5 w-5 grid place-items-center rounded-md border border-black/25 bg-white text-black dark:border-neutral-500 dark:bg-white dark:text-black"
-                                aria-label={isOpen ? "بستن زیرمجموعه" : "باز کردن زیرمجموعه"}
-                                title={isOpen ? "بستن زیرمجموعه" : "باز کردن زیرمجموعه"}
+                                aria-label={isOpen ? "Ø¨Ø³Øªï¿½  Ø²ï¿½RØ±ï¿½&Ø¬ï¿½&ï¿½ï¿½Ø¹ï¿½!" : "Ø¨Ø§Ø² Ú©Ø±Ø¯ï¿½  Ø²ï¿½RØ±ï¿½&Ø¬ï¿½&ï¿½ï¿½Ø¹ï¿½!"}
+                                title={isOpen ? "Ø¨Ø³Øªï¿½  Ø²ï¿½RØ±ï¿½&Ø¬ï¿½&ï¿½ï¿½Ø¹ï¿½!" : "Ø¨Ø§Ø² Ú©Ø±Ø¯ï¿½  Ø²ï¿½RØ±ï¿½&Ø¬ï¿½&ï¿½ï¿½Ø¹ï¿½!"}
                               >
                                 {isOpen ? (
-                                  <span className="text-[11px] leading-none text-black">−</span>
+                                  <span className="text-[11px] leading-none text-black">âˆ’</span>
                                 ) : (
                                   <img src="/images/icons/afzodan.svg" alt="" className="w-3 h-3" />
                                 )}
@@ -1350,7 +1411,7 @@ setProjects(Array.from(byId.values()));
                           </div>
                         </TD>
                         <TD className="px-2.5 pt-1.5 pb-1 whitespace-normal break-words leading-snug align-middle max-w-[26ch] mx-auto !text-center">
-                          {r.name || "—"}
+                          {r.name || "â€”"}
                         </TD>
                         <TD className="px-2.5 pt-1.5 pb-1 align-middle">
                           <div className="flex justify-center ltr">
@@ -1377,10 +1438,19 @@ setProjects(Array.from(byId.values()));
                               onChange={(e) =>
                                 !isComputed && onAllocChange(r.code, e.target.value)
                               }
-                              placeholder={isComputed ? "—" : "۰"}
+                              onBlur={() => {
+                                if (!isComputed) void saveSingleRowOnBlur(r.code);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  e.currentTarget.blur();
+                                }
+                              }}
+                              placeholder={isComputed ? "ï¿½" : "Û°"}
                               title={
                                 isOver
-                                  ? "تخصیص جدید از آخرین برآورد بیشتر می‌شود"
+                                  ? "ØªØ®Øµï¿½RØµ Ø¬Ø¯ï¿½RØ¯ Ø§Ø² Ø¢Ø®Ø±ï¿½Rï¿½  Ø¨Ø±Ø¢ï¿½ï¿½Ø±Ø¯ Ø¨ï¿½RØ´ØªØ± ï¿½&ï¿½Rï¿½RØ´ï¿½ï¿½Ø¯"
                                   : ""
                               }
                               aria-invalid={isOver ? "true" : "false"}
@@ -1389,8 +1459,8 @@ setProjects(Array.from(byId.values()));
                           <div className="flex flex-col">
                             {isOver && !isComputed && (
                               <span className="mt-1 text-[11px] leading-none text-red-600 dark:text-red-400">
-                                مقدار «تخصیص جدید» از مقدار آخرین برآورد بیشتر
-                                می‌شود
+                                ï¿½&ï¿½Ø¯Ø§Ø± Â«ØªØ®Øµï¿½RØµ Ø¬Ø¯ï¿½RØ¯Â» Ø§Ø² ï¿½&ï¿½Ø¯Ø§Ø± Ø¢Ø®Ø±ï¿½Rï¿½  Ø¨Ø±Ø¢ï¿½ï¿½Ø±Ø¯ Ø¨ï¿½RØ´ØªØ±
+                                ï¿½&ï¿½Rï¿½RØ´ï¿½ï¿½Ø¯
                               </span>
                             )}
                           </div>
@@ -1406,7 +1476,7 @@ setProjects(Array.from(byId.values()));
                             >
                               <RowActionIconBtn
                                 icon="/images/icons/sayer.svg"
-                                title="ثبت شرح"
+                                title="Ø«Ø¨Øª Ø´Ø±Ø­"
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
@@ -1473,14 +1543,14 @@ setProjects(Array.from(byId.values()));
               onClick={(e) => e.stopPropagation()}
             >
               <div className="text-base font-semibold text-black dark:text-neutral-100">
-                ثبت شرح
+                Ø«Ø¨Øª Ø´Ø±Ø­
               </div>
               <div className="mt-1 text-xs text-black/60 dark:text-neutral-300">
-                کد بودجه:{" "}
+                Ú©Ø¯ Ø¨ï¿½ï¿½Ø¯Ø¬ï¿½!:{" "}
                 <span className="ltr">
-                  {toFaDigits(renderDisplayBudgetCode(descModal.code) || "—")}
+                  {toFaDigits(renderDisplayBudgetCode(descModal.code) || "â€”")}
                 </span>
-                {descModal.name ? ` — ${descModal.name}` : ""}
+                {descModal.name ? ` â€” ${descModal.name}` : ""}
               </div>
 
               <textarea
@@ -1490,7 +1560,7 @@ setProjects(Array.from(byId.values()));
                 onChange={(e) =>
                   setDescModal((prev) => ({ ...prev, value: e.target.value }))
                 }
-                placeholder="شرح تخصیص را وارد کنید…"
+                placeholder="Ø´Ø±Ø­ ØªØ®Øµï¿½RØµ Ø±Ø§ ï¿½ï¿½Ø§Ø±Ø¯ Ú©ï¿½ ï¿½RØ¯â¬¦"
                 className="mt-3 w-full rounded-xl px-3 py-2 whitespace-normal break-words leading-snug outline-none
                            bg-white text-black placeholder-black/40 border border-black/15 focus:ring-2 focus:ring-black/10
                            dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
@@ -1503,7 +1573,7 @@ setProjects(Array.from(byId.values()));
                   className="h-10 px-4 rounded-xl border border-black/15 hover:bg-black/5 transition
                              dark:border-neutral-700 dark:hover:bg-neutral-800"
                 >
-                  انصراف
+                  Ø§ï¿½ ØµØ±Ø§Ù
                 </button>
                 <button
                   type="button"
@@ -1511,7 +1581,7 @@ setProjects(Array.from(byId.values()));
                   className="h-10 px-4 rounded-xl bg-neutral-900 text-white transition
                              dark:bg-neutral-100 dark:text-neutral-900"
                 >
-                  ذخیره
+                  Ø°Ø®ï¿½RØ±ï¿½!
                 </button>
               </div>
             </div>
@@ -1523,8 +1593,8 @@ setProjects(Array.from(byId.values()));
             onClick={exportExcel}
             disabled={loading || (active === "projects" && !projectId) || !(exportRowsAll || []).length}
             className="h-10 w-14 grid place-items-center rounded-xl border border-black/15 hover:bg-black/5 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
-            aria-label="خروجی اکسل"
-            title="خروجی اکسل"
+            aria-label="Ø®Ø±ï¿½ï¿½Ø¬ï¿½R Ø§Ú©Ø³ï¿½"
+            title="Ø®Ø±ï¿½ï¿½Ø¬ï¿½R Ø§Ú©Ø³ï¿½"
           >
             <img src="/images/icons8-excel-50.png" alt="" className="w-5 h-5" />
           </button>
@@ -1534,8 +1604,8 @@ setProjects(Array.from(byId.values()));
             disabled={saving || (active === "projects" && !projectId)}
             className="h-10 w-14 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50
                        dark:bg-neutral-100 dark:text-neutral-900"
-            aria-label="ثبت"
-            title="ثبت"
+            aria-label="Ø«Ø¨Øª Ø¯Ø³ØªÛŒ"
+            title="Ø«Ø¨Øª Ø¯Ø³ØªÛŒ (Ø§Ø·Ù…ÛŒÙ†Ø§Ù†)"
           >
             <img
               src="/images/icons/check.svg"
@@ -1558,24 +1628,24 @@ setProjects(Array.from(byId.values()));
             >
               <div id="alloc-preview">
                 <h2 className="text-lg md:text-xl font-bold text-black dark:text-neutral-100 mb-2 text-center">
-                  تخصیص بودجه
+                  ØªØ®Øµï¿½RØµ Ø¨ï¿½ï¿½Ø¯Ø¬ï¿½!
                 </h2>
                 <div className="meta text-sm text-black/70 dark:text-neutral-300 grid sm:grid-cols-2 gap-x-6 gap-y-1 mb-3 text-center">
                   <div>
-                    تاریخ:{" "}
+                    ØªØ§Ø±ï¿½RØ®:{" "}
                     <b className="text-black dark:text-neutral-100">
                       {toFaDigits(todayFa)}
                     </b>
                   </div>
                   <div>
-                    ساعت:{" "}
+                    Ø³Ø§Ø¹Øª:{" "}
                     <b className="text-black dark:text-neutral-100">
                       {toFaDigits(new Date().toLocaleTimeString("fa-IR"))}
                     </b>
                   </div>
                   {me && (
                     <div>
-                      کاربر:{" "}
+                      Ú©Ø§Ø±Ø¨Ø±:{" "}
                       <b className="text-black dark:text-neutral-100">
                         {me.name || me.username || me.email}
                       </b>
@@ -1583,9 +1653,9 @@ setProjects(Array.from(byId.values()));
                   )}
                   {active === "projects" && selectedProject && (
                     <div>
-                      پروژه:{" "}
+                      Ù¾Ø±ï¿½ï¿½ï¿½ï¿½ï¿½!:{" "}
                       <b className="text-black dark:text-neutral-100">
-                        {toFaDigits(selectedProject.code)} —{" "}
+                        {toFaDigits(selectedProject.code)} â€”{" "}
                         {selectedProject.name}
                       </b>
                     </div>
@@ -1601,13 +1671,13 @@ setProjects(Array.from(byId.values()));
                           <th className="py-3 px-2 text-center">
                             {budgetCodeHeader}
                           </th>
-                          <th className="py-3 px-2 text-center">نام بودجه</th>
-                          <th className="py-3 px-2 text-center">آخرین برآورد</th>
-                          <th className="py-3 px-2 text-center">تخصیص جدید</th>
+                          <th className="py-3 px-2 text-center">ï¿½ Ø§ï¿½& Ø¨ï¿½ï¿½Ø¯Ø¬ï¿½!</th>
+                          <th className="py-3 px-2 text-center">Ø¢Ø®Ø±ï¿½Rï¿½  Ø¨Ø±Ø¢ï¿½ï¿½Ø±Ø¯</th>
+                          <th className="py-3 px-2 text-center">ØªØ®Øµï¿½RØµ Ø¬Ø¯ï¿½RØ¯</th>
                           <th className="py-3 px-2 text-center">
-                            مجموع تخصیص‌ها
+                            ï¿½&Ø¬ï¿½&ï¿½ï¿½Ø¹ ØªØ®Øµï¿½RØµï¿½Rï¿½!Ø§
                           </th>
-                          <th className="py-3 px-2 text-center">شرح</th>
+                          <th className="py-3 px-2 text-center">Ø´Ø±Ø­</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1623,7 +1693,7 @@ setProjects(Array.from(byId.values()));
                               {toFaDigits(renderDisplayBudgetCode(r.code))}
                             </td>
                             <td className="py-2 px-2 whitespace-normal break-words leading-relaxed text-center max-w-[26ch] mx-auto">
-                              {r.name || "—"}
+                              {r.name || "â€”"}
                             </td>
                             <td className="py-2 px-2 text-center">
                               {toFaDigits(formatMoney(r.lastAmount || 0))}
@@ -1635,7 +1705,7 @@ setProjects(Array.from(byId.values()));
                               {toFaDigits(formatMoney(r.totalAlloc || 0))}
                             </td>
                             <td className="py-2 px-2 whitespace-normal break-words leading-relaxed text-center">
-                              {r.desc || "—"}
+                              {r.desc || "â€”"}
                             </td>
                           </tr>
                         ))}
@@ -1645,7 +1715,7 @@ setProjects(Array.from(byId.values()));
                 )}
 
                 <h3 className="section-title text-center text-base md:text-lg text-black dark:text-neutral-100">
-                  تاریخچه تخصیص‌ها
+                  ØªØ§Ø±ï¿½RØ®ï¿½ ï¿½! ØªØ®Øµï¿½RØµï¿½Rï¿½!Ø§
                 </h3>
                 <div className="-mx-2 px-2 sm:mx-0 sm:px-0 overflow-auto rounded-xl ring-1 ring-black/10 dark:ring-neutral-800 mt-2">
                   <table className="w-full min-w-[620px] sm:min-w-[680px] md:min-w-[760px] text-xs sm:text-sm [&_th]:text-center [&_td]:text-center">
@@ -1655,7 +1725,7 @@ setProjects(Array.from(byId.values()));
                           {budgetCodeHeader}
                         </th>
                         <th className="py-3 px-2 text-center">
-                          سوابق (مبلغ — تاریخ/ساعت)
+                          Ø³ï¿½ï¿½Ø§Ø¨ï¿½ (ï¿½&Ø¨ï¿½Øº ï¿½ ØªØ§Ø±ï¿½RØ®/Ø³Ø§Ø¹Øª)
                         </th>
                       </tr>
                     </thead>
@@ -1674,7 +1744,7 @@ setProjects(Array.from(byId.values()));
                             <td className="py-2 px-2 text-center">
                               {list.length === 0 ? (
                                 <span className="text-black/50 dark:text-neutral-400">
-                                  — سابقه‌ای یافت نشد —
+                                  ï¿½ Ø³Ø§Ø¨ï¿½ï¿½!ï¿½RØ§ï¿½R ï¿½RØ§ÙØª ï¿½ Ø´Ø¯ ï¿½
                                 </span>
                               ) : (
                                 <div className="grid gap-1">
@@ -1687,7 +1757,7 @@ setProjects(Array.from(byId.values()));
                                         {toFaDigits(formatMoney(h.amount || 0))}
                                       </span>
                                       <span className="text-black/70 dark:text-neutral-300">
-                                        —
+                                        â€”
                                       </span>
                                       <span>{formatDateTimeFa(h.created_at)}</span>
                                     </div>
@@ -1711,7 +1781,7 @@ setProjects(Array.from(byId.values()));
                 >
                   <img
                     src="/images/icons/print.svg"
-                    alt="چاپ"
+                    alt="ï¿½ Ø§Ù¾"
                     className="w-5 h-5 dark:invert"
                   />
                 </button>
@@ -1721,7 +1791,7 @@ setProjects(Array.from(byId.values()));
                 >
                   <img
                     src="/images/icons/bastan.svg"
-                    alt="بستن"
+                    alt="Ø¨Ø³Øªï¿½ "
                     className="w-5 h-5 invert dark:invert-0"
                   />
                 </button>
@@ -1735,3 +1805,4 @@ setProjects(Array.from(byId.values()));
 }
 
 export default BudgetAllocationPage;
+
