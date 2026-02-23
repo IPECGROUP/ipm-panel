@@ -426,46 +426,38 @@ if (lastMove && lastMove.to_role) {
   }, []);
 
   const [me, setMe] = React.useState(null);
-React.useEffect(() => {
-  (async () => {
-    try {
-      const r = await api('/auth/me');
-      const user = r.user || null;
-      React.useEffect(() => {
-  (async () => {
-    try {
-      const r = await api('/auth/me');
-      const user = r.user || null;
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await api('/auth/me');
+        const user = r.user || null;
 
-      if (user) {
-        // نقش‌ها را فقط از فیلدهای نقش بخوان (واقعی)
-        const roleCandidates = []
-          .concat(user.current_role || user.currentRole || [])
-          .concat(user.role || [])
-          .concat(user.roles || [])
-          .concat(user.user_roles || [])
-          .concat(user.permissions || [])
-          .flat()
-          .filter(Boolean);
+        if (user) {
+          const roleCandidates = []
+            .concat(user.current_role || user.currentRole || [])
+            .concat(user.role || [])
+            .concat(user.roles || [])
+            .concat(user.user_roles || [])
+            .concat(user.permissions || [])
+            .flat()
+            .filter(Boolean);
 
-        let detected = null;
-        for (const x of roleCandidates) {
-          const k = roleToStepKey(x);
-          if (k) { detected = k; break; }
+          let detected = null;
+          for (const x of roleCandidates) {
+            const k = roleToStepKey(x);
+            if (k) { detected = k; break; }
+          }
+          user.detectedRole = detected;
         }
 
-        user.detectedRole = detected; // مثل: 'finance_manager'، 'project_control'، ...
+        if (!cancelled) setMe(user);
+      } catch {
+        if (!cancelled) setMe(null);
       }
-
-      setMe(user);
-    } catch {}
-  })();
-}, []);
-
-      setMe(user);
-    } catch {}
-  })();
-}, []);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
 
 
@@ -1681,24 +1673,34 @@ const createRequestWithFiles = async (payload) => {
 const isRowForMe = React.useCallback((row) => {
   if (!me || !row) return false;
 
-  // ادمین اصلی همه درخواست‌ها را می‌بیند
+  // ادمین اصلی می‌تواند همه را ببیند (فقط مانیتورینگ)
   if (isAdmin) return true;
 
   const myIdStr = String(me.id ?? '');
+  const meta = row.meta && typeof row.meta === 'object' ? row.meta : {};
+  const creatorId =
+    row.createdById ??
+    row.created_by ??
+    meta.createdById ??
+    meta.created_by ??
+    null;
 
   // درخواست‌های خودم در اینباکس نیاید
-  if (row.createdById != null && String(row.createdById) === myIdStr) {
+  if (creatorId != null && String(creatorId) === myIdStr) {
     return false;
   }
 
- const directRole =
-  row.current_role ||
-  row.currentRole ||
-  row.assigned_user_role ||
-  row.assignedUserRole ||
-  '';
+  // اگر سرور صریحاً گفته این ردیف برای من قابل اقدام است
+  if (row.canAct === true) return true;
 
-const currentStepKey = roleToStepKey(directRole) || getCurrentStepKeyForRow(row);
+  const directRole =
+    row.current_role ||
+    row.currentRole ||
+    row.assigned_user_role ||
+    row.assignedUserRole ||
+    '';
+
+  const currentStepKey = roleToStepKey(directRole) || getCurrentStepKeyForRow(row);
 
   if (!currentStepKey) return false;
 
@@ -1748,9 +1750,12 @@ const currentStepKey = roleToStepKey(directRole) || getCurrentStepKeyForRow(row)
         meta.created_by ??
         null;
       const isMine = cId != null && myId && String(cId) === myId;
-      return !isMine && isRowForMe(it);
+      if (isMine) return false;
+      if (isAdmin) return true;
+      if (it.canAct === true) return true;
+      return isRowForMe(it);
     });
-  }, [items, me, myId, isRowForMe]);
+  }, [items, me, myId, isAdmin, isRowForMe]);
 
   const canTakeActionsFor = React.useCallback((row) => {
     if (!row || !me) return false;
@@ -1763,14 +1768,17 @@ const currentStepKey = roleToStepKey(directRole) || getCurrentStepKeyForRow(row)
       meta.created_by ??
       null;
 
+    const st = (row.status || '').toString().toLowerCase();
+    if (row.canAct === true) return st === 'pending' || st === 'returned';
+
     if (myId && creatorId != null && String(creatorId) === myId) {
       return false;
     }
 
     if (!isRowForMe(row)) return false;
-    const st = (row.status || '').toString().toLowerCase();
+    if (isAdmin) return false;
     return st === 'pending';
-  }, [me, myId, isRowForMe]);
+  }, [me, myId, isRowForMe, isAdmin]);
 
   const [viewItem, setViewItem] = React.useState(null);
 
