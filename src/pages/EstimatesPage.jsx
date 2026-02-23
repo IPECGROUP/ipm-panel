@@ -1876,7 +1876,7 @@ const sortedProjects = useMemo(() => {
                         {m.label}
                       </TH>
                     ))}
-                        <TH className={`w-24 md:w-28 border-l border-r border-black/10 dark:border-neutral-700 ${tableUi.th}`}>
+                        <TH className={`w-40 md:w-52 border-l border-r border-black/10 dark:border-neutral-700 ${tableUi.th}`}>
                       <div className="flex items-center justify-center gap-1">
                         <span>جمع</span>
                         <button
@@ -2135,22 +2135,22 @@ const sortedProjects = useMemo(() => {
                             })}
 
                             <TD className="px-3 py-3 whitespace-nowrap text-center border-l border-r border-black/10 dark:border-neutral-700">
-                              <div className="relative flex min-h-[34px] items-center justify-center">
+                              <div className="relative mx-auto flex min-h-[34px] w-full max-w-[230px] items-center justify-center overflow-visible">
                                 <span
-                                  className={`inline-flex items-center justify-center gap-1 transition-opacity ${
+                                  className={`inline-flex items-center justify-center gap-1 px-1 transition-transform duration-200 ${
                                     rowIsEditing || isSelected
-                                      ? "opacity-0 pointer-events-none"
-                                      : "opacity-100 group-hover:opacity-0 group-hover:pointer-events-none"
+                                      ? "translate-x-7"
+                                      : "group-hover:translate-x-7"
                                   }`}
                                 >
                                   <span className="ltr">{toFaDigits(formatMoney(finalTotal || 0))}</span>
                                 </span>
 
                                 <div
-                                  className={`absolute inset-0 flex items-center justify-center gap-1 transition-opacity ${
+                                  className={`absolute left-1 top-1/2 flex -translate-y-1/2 items-center gap-1 transition-all duration-200 ${
                                     rowIsEditing || isSelected
-                                      ? "opacity-100 pointer-events-auto"
-                                      : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+                                      ? "translate-x-0 opacity-100 pointer-events-auto"
+                                      : "-translate-x-1 opacity-0 pointer-events-none group-hover:translate-x-0 group-hover:opacity-100 group-hover:pointer-events-auto"
                                   }`}
                                 >
                                   {rowIsEditing ? (
