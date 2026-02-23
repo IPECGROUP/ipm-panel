@@ -20,13 +20,6 @@ const IcUsers = () => <img src="/images/icons/users.svg" className={icImgCls} al
 const IcContract = () => <img src="/images/icons/gharadad.svg" className={icImgCls} alt="" draggable={false} />;
 const IcTags = () => <img src="/images/icons/tags.svg" className={icImgCls} alt="" draggable={false} />;
 
-const IcDoc = () => (
-  <svg viewBox="0 0 24 24" className={svgCls} fill="none" stroke="currentColor" strokeWidth={sw}>
-    <path d="M6 4h9l3 3v13H6z" />
-    <path d="M9 13h6M9 17h6M9 9h3" />
-  </svg>
-);
-
 const IcWorksheet = () => (
   <svg viewBox="0 0 24 24" className={svgCls} fill="none" stroke="currentColor" strokeWidth={sw}>
     <rect x="3" y="4" width="18" height="16" rx="2" />
@@ -37,13 +30,6 @@ const IcWorksheet = () => (
 const IcBalance = () => (
   <svg viewBox="0 0 24 24" className={svgCls} fill="none" stroke="currentColor" strokeWidth={sw}>
     <path d="M4 20h16M12 4v16M6 8l6 4 6-4" />
-  </svg>
-);
-
-const IcReceipt = () => (
-  <svg viewBox="0 0 24 24" className={svgCls} fill="none" stroke="currentColor" strokeWidth={sw}>
-    <path d="M6 2h12v20l-3-2-3 2-3-2-3 2z" />
-    <path d="M8 7h8M8 11h8M8 15h6" />
   </svg>
 );
 
@@ -62,7 +48,7 @@ function RightNav() {
 
   const clean = (p) => (p || "").replace(/\/+$/, "") || "/";
 
-  // اگر پروژه با BASE_URL (ساب‌پث) بالا بیاد، path رو normalize کن
+  // اگر پروژه با BASE_URL (ساب‌پث) بالا بیاید، مسیر را normalize کن
   const base = (import.meta?.env?.BASE_URL || "/").replace(/\/+$/, "");
   const stripBase = (p) => {
     const cp = clean(p);
@@ -100,7 +86,6 @@ function RightNav() {
 
     if (
       path.startsWith("/budget/") ||
-      path === "/budget/centers" ||
       path === "/estimates" ||
       path === "/revenue-estimates" ||
       path === "/budget-allocation" ||
@@ -119,7 +104,6 @@ function RightNav() {
 
   const activeSection = sectionFromPath(pNow);
 
-  // ✅ کلاس Active با ! (هیچ چیزی نتونه override کنه)
   const railBtn = (active) =>
     [
       "group w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 border transition-all duration-200 p-0 mx-auto",
@@ -147,7 +131,6 @@ function RightNav() {
     <div className="my-2 h-px bg-neutral-800/60 dark:bg-neutral-700/60 w-8 sm:w-10 mx-auto" />
   );
 
-  // والدها هم وقتی زیرمنو فعاله یا خودش بازه، هایلایت بشن
   const projectsParentActive = !!open.projects || activeSection === "projects";
   const budgetParentActive = !!open.budget || activeSection === "budget";
   const baseParentActive = !!open.base || activeSection === "base";
@@ -163,31 +146,19 @@ function RightNav() {
       >
         <div className="h-full flex flex-col items-center gap-2">
           <div onMouseEnter={(e) => showTip("داشبورد", e)} onMouseLeave={hideTip}>
-            <LinkBtn
-              to="/"
-              className={railBtn(isActive("/"))}
-              aria-label="داشبورد"
-            >
+            <LinkBtn to="/" className={railBtn(isActive("/"))} aria-label="داشبورد">
               <IcDashboard />
             </LinkBtn>
           </div>
 
           <div onMouseEnter={(e) => showTip("اسناد و نامه ها", e)} onMouseLeave={hideTip}>
-            <LinkBtn
-              to="/letters"
-              className={railBtn(isActive("/letters"))}
-              aria-label="اسناد و نامه ها"
-            >
+            <LinkBtn to="/letters" className={railBtn(isActive("/letters"))} aria-label="اسناد و نامه ها">
               <IcLetter />
             </LinkBtn>
           </div>
 
           <div onMouseEnter={(e) => showTip("درخواست پرداخت", e)} onMouseLeave={hideTip}>
-            <LinkBtn
-              to="/payment"
-              className={railBtn(isActive("/payment"))}
-              aria-label="درخواست پرداخت"
-            >
+            <LinkBtn to="/payment" className={railBtn(isActive("/payment"))} aria-label="درخواست پرداخت">
               <IcPay />
             </LinkBtn>
           </div>
@@ -232,22 +203,6 @@ function RightNav() {
                 </LinkBtn>
               </div>
 
-              <div onMouseEnter={(e) => showTip("صورت وضعیت‌ها", e)} onMouseLeave={hideTip}>
-                <LinkBtn
-                  to="/projects/statements"
-                  className={railBtn(isActive("/projects/statements"))}
-                  aria-label="صورت وضعیت‌ها"
-                >
-                  <IcDoc />
-                </LinkBtn>
-              </div>
-
-              <div onMouseEnter={(e) => showTip("دریافتی‌ها", e)} onMouseLeave={hideTip}>
-                <LinkBtn to="/projects/receipts" className={railBtn(isActive("/projects/receipts"))} aria-label="دریافتی‌ها">
-                  <IcReceipt />
-                </LinkBtn>
-              </div>
-
               <div onMouseEnter={(e) => showTip("ترازمالی پروژه", e)} onMouseLeave={hideTip}>
                 <LinkBtn to="/projects/balance" className={railBtn(isActive("/projects/balance"))} aria-label="ترازمالی پروژه">
                   <IcBalance />
@@ -276,12 +231,6 @@ function RightNav() {
 
           {open.budget && (
             <div className="ms-1 sm:ms-2 mt-2 flex flex-col items-stretch gap-2">
-              <div onMouseEnter={(e) => showTip("تعریف مراکز بودجه", e)} onMouseLeave={hideTip}>
-                <LinkBtn to="/budget/centers" className={railBtn(isActive("/budget/centers"))}>
-                  <img src="/images/icons/tarifmarakez.svg" className={icImgCls} alt="" draggable={false} />
-                </LinkBtn>
-              </div>
-
               <div onMouseEnter={(e) => showTip("برآورد هزینه‌ها", e)} onMouseLeave={hideTip}>
                 <LinkBtn to="/estimates" className={railBtn(isActive("/estimates"))}>
                   <img src="/images/icons/baravord.svg" className={icImgCls} alt="" draggable={false} />
@@ -348,7 +297,6 @@ function RightNav() {
                 </LinkBtn>
               </div>
 
-              {/* ✅ تست (فقط ادمین اصلی) */}
               {isMainAdmin && (
                 <div onMouseEnter={(e) => showTip("تست", e)} onMouseLeave={hideTip}>
                   <LinkBtn to="/test/editor" className={railBtn(isActive("/test/editor"))}>
@@ -357,7 +305,6 @@ function RightNav() {
                 </div>
               )}
 
-              {/* ✅ برچسب‌ها (آخرین مورد اطلاعات پایه) */}
               <div onMouseEnter={(e) => showTip("برچسب‌ها", e)} onMouseLeave={hideTip}>
                 <LinkBtn to="/base/tags" className={railBtn(isActive("/base/tags"))}>
                   <IcTags />
