@@ -53,6 +53,10 @@ function BudgetAllocationPage() {
   }
 
   const { me, loading: accessLoading, canAccessPage, allowedTabs } = usePageAccess(PAGE_KEY, ALLOC_TABS);
+  const isDeleteAllAdmin = useMemo(
+    () => String(me?.username || "").trim().toLowerCase() === "marandi",
+    [me]
+  );
 
   const tabs = useMemo(() => {
     if (!allowedTabs) return [];
@@ -762,6 +766,46 @@ setProjects(Array.from(byId.values()));
       });
     } catch (ex) {
       setModalMsg({ ok: false, msg: ex.message || "خطا از سرور" });
+    } finally {
+      endSaving();
+    }
+  };
+
+  const onDeleteAllSaved = async () => {
+    if (!isDeleteAllAdmin) return;
+
+    const ok = window.confirm(
+      "همه تخصیص‌های ذخیره‌شده در دیتابیس حذف شوند؟ این عملیات قابل بازگشت نیست."
+    );
+    if (!ok) return;
+
+    beginSaving();
+    try {
+      setErr("");
+      const basic = window.btoa("marandi:1234");
+      const res = await api("/budget-allocations", {
+        method: "DELETE",
+        headers: { Authorization: `Basic ${basic}` },
+      });
+
+      const deletedCount = Number(res?.deleted || 0);
+      setRows((prev) =>
+        (prev || []).map((r) => ({
+          ...r,
+          totalAlloc: 0,
+          allocRaw: 0,
+          desc: "",
+        }))
+      );
+      setTotals({});
+      setHistoryByCode({});
+      setRefreshKey((x) => x + 1);
+      setModalMsg({
+        ok: true,
+        msg: `حذف کامل انجام شد. تعداد رکورد حذف‌شده: ${toFaDigits(String(deletedCount))}`,
+      });
+    } catch (ex) {
+      setModalMsg({ ok: false, msg: ex.message || "خطا در حذف کامل تخصیص‌ها" });
     } finally {
       endSaving();
     }
@@ -1688,6 +1732,19 @@ setProjects(Array.from(byId.values()));
         )}
 
         <div className="mt-4 flex items-center gap-2 justify-end">
+          {isDeleteAllAdmin && (
+            <button
+              onClick={onDeleteAllSaved}
+              disabled={saving}
+              className="h-8 w-8 grid place-items-center rounded-lg border border-red-500 text-red-600 hover:bg-red-50 disabled:opacity-50
+                         dark:border-red-400/70 dark:text-red-300 dark:hover:bg-red-950/30"
+              aria-label="حذف کامل تخصیص‌ها"
+              title="حذف کامل تخصیص‌های ذخیره‌شده"
+            >
+              <span className="text-base leading-none">×</span>
+            </button>
+          )}
+
           <button
             onClick={exportExcel}
             disabled={loading || (active === "projects" && !projectId) || !(exportRowsAll || []).length}
