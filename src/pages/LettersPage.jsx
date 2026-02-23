@@ -2722,23 +2722,15 @@ useEffect(() => {
   const exportLettersExcel = async () => {
     const items = Array.isArray(filteredLetters) ? filteredLetters : [];
     if (!items.length) {
-      alert("موردی برای خروجی اکسل وجود ندارد.");
+      alert("\u0645\u0648\u0631\u062F\u06CC \u0628\u0631\u0627\u06CC \u062E\u0631\u0648\u062C\u06CC \u0627\u06A9\u0633\u0644 \u0648\u062C\u0648\u062F \u0646\u062F\u0627\u0631\u062F.");
       return;
     }
 
-    const escapeHtml = (v) =>
-      String(v ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-
     const kindLabel = (l) => {
       const k = letterKindOf(l);
-      if (k === "outgoing") return "صادره";
-      if (k === "internal") return "داخلی";
-      return "وارده";
+      if (k === "outgoing") return "\u0635\u0627\u062F\u0631\u0647";
+      if (k === "internal") return "\u062F\u0627\u062E\u0644\u06CC";
+      return "\u0648\u0627\u0631\u062F\u0647";
     };
 
     const classificationLabel = (l) =>
@@ -2759,7 +2751,7 @@ useEffect(() => {
 
     const tagsLabelOf = (l) => {
       const ids = tagIdsOf(l).map((x) => String(x || "").trim()).filter(Boolean);
-      if (!ids.length) return "—";
+      if (!ids.length) return "-";
 
       const labels = ids
         .map((id) => tagById.get(id))
@@ -2768,81 +2760,96 @@ useEffect(() => {
         .map((x) => String(x || "").trim())
         .filter(Boolean);
 
-      if (labels.length) return labels.join("، ");
-      return ids.join("، ");
+      if (labels.length) return labels.join("\u060C ");
+      return ids.join("\u060C ");
     };
 
-    const rowsHtml = items
-      .map((l, idx) => {
-        const letterNo = String(letterNoOf(l) || "").trim();
-        const letterDate = String(letterDateOf(l) || "").trim();
-        const subject = String(subjectOf(l) || "").trim();
-        const fromTo = String(fromToOf(l) || "").trim();
-        const org = String(orgOf(l) || "").trim();
-        const classification = classificationLabel(l);
-        const secretariatDate = String(l?.secretariat_date ?? l?.secretariatDate ?? "").trim();
-        const secretariatNo = String(l?.secretariat_no ?? l?.secretariatNo ?? "").trim();
-        const receiverName = String(l?.receiver_name ?? l?.receiverName ?? "").trim();
-        const hasAtt = (l?.has_attachment ?? l?.hasAttachment) ? "دارد" : "ندارد";
-        const tags = tagsLabelOf(l);
+    const asCellText = (v) => {
+      const t = String(v ?? "").trim();
+      return t || "-";
+    };
 
-        return `
-          <tr>
-            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:center;">${idx + 1}</td>
-            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:center;">${escapeHtml(kindLabel(l))}</td>
-            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:center;">${escapeHtml(letterNo || "—")}</td>
-            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:center;">${escapeHtml(letterDate || "—")}</td>
-            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:right;">${escapeHtml(subject || "—")}</td>
-            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:right;">${escapeHtml(fromTo || "—")}</td>
-            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:right;">${escapeHtml(org || "—")}</td>
-            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:center;">${escapeHtml(classification || "—")}</td>
-            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:center;">${escapeHtml(secretariatDate || "—")}</td>
-            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:center;">${escapeHtml(secretariatNo || "—")}</td>
-            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:right;">${escapeHtml(receiverName || "—")}</td>
-            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:center;">${escapeHtml(hasAtt)}</td>
-            <td style="border:1px solid #BFBFBF; padding:6px 8px; text-align:right;">${escapeHtml(tags)}</td>
-          </tr>
-        `;
-      })
-      .join("");
+    const rows = items.map((l, idx) => {
+      const hasAtt =
+        l?.has_attachment ?? l?.hasAttachment
+          ? "\u062F\u0627\u0631\u062F"
+          : "\u0646\u062F\u0627\u0631\u062F";
+      return [
+        idx + 1,
+        kindLabel(l),
+        asCellText(letterNoOf(l)),
+        asCellText(letterDateOf(l)),
+        asCellText(subjectOf(l)),
+        asCellText(fromToOf(l)),
+        asCellText(orgOf(l)),
+        asCellText(classificationLabel(l)),
+        asCellText(l?.secretariat_date ?? l?.secretariatDate),
+        asCellText(l?.secretariat_no ?? l?.secretariatNo),
+        asCellText(l?.receiver_name ?? l?.receiverName),
+        hasAtt,
+        asCellText(tagsLabelOf(l)),
+      ];
+    });
+
+    const headers = [
+      "\u0631\u062F\u06CC\u0641",
+      "\u0646\u0648\u0639",
+      "\u0634\u0645\u0627\u0631\u0647 \u0633\u0646\u062F",
+      "\u062A\u0627\u0631\u06CC\u062E \u0633\u0646\u062F",
+      "\u0645\u0648\u0636\u0648\u0639",
+      "\u0627\u0632/\u0628\u0647",
+      "\u0634\u0631\u06A9\u062A/\u0633\u0627\u0632\u0645\u0627\u0646",
+      "\u0637\u0628\u0642\u0647 \u0628\u0646\u062F\u06CC",
+      "\u062A\u0627\u0631\u06CC\u062E \u062B\u0628\u062A \u062F\u0628\u06CC\u0631\u062E\u0627\u0646\u0647",
+      "\u0634\u0645\u0627\u0631\u0647 \u062B\u0628\u062A \u062F\u0628\u06CC\u0631\u062E\u0627\u0646\u0647",
+      "\u0645\u0633\u0626\u0648\u0644 \u062F\u0628\u06CC\u0631\u062E\u0627\u0646\u0647",
+      "\u0636\u0645\u06CC\u0645\u0647",
+      "\u0628\u0631\u0686\u0633\u0628 \u0647\u0627",
+    ];
 
     const exportDate = new Date().toLocaleDateString("fa-IR");
-    const html = `
-<!doctype html>
-<html lang="fa" dir="rtl">
-  <head>
-    <meta charset="utf-8" />
-    <title>خروجی اسناد و نامه ها</title>
-  </head>
-  <body>
-    <h3 style="margin:0 0 8px 0;">گزارش اسناد و نامه ها</h3>
-    <div style="margin:0 0 12px 0; font-size:12px;">تاریخ خروجی: ${escapeHtml(exportDate)}</div>
-    <table style="border-collapse:collapse; width:100%; font-family:Tahoma, Arial, sans-serif; font-size:12px;">
-      <thead>
-        <tr style="background:#F3F4F6;">
-          <th style="border:1px solid #BFBFBF; padding:6px 8px;">ردیف</th>
-          <th style="border:1px solid #BFBFBF; padding:6px 8px;">نوع</th>
-          <th style="border:1px solid #BFBFBF; padding:6px 8px;">شماره سند</th>
-          <th style="border:1px solid #BFBFBF; padding:6px 8px;">تاریخ سند</th>
-          <th style="border:1px solid #BFBFBF; padding:6px 8px;">موضوع</th>
-          <th style="border:1px solid #BFBFBF; padding:6px 8px;">از/به</th>
-          <th style="border:1px solid #BFBFBF; padding:6px 8px;">شرکت/سازمان</th>
-          <th style="border:1px solid #BFBFBF; padding:6px 8px;">طبقه بندی</th>
-          <th style="border:1px solid #BFBFBF; padding:6px 8px;">تاریخ ثبت دبیرخانه</th>
-          <th style="border:1px solid #BFBFBF; padding:6px 8px;">شماره ثبت دبیرخانه</th>
-          <th style="border:1px solid #BFBFBF; padding:6px 8px;">مسئول دبیرخانه</th>
-          <th style="border:1px solid #BFBFBF; padding:6px 8px;">ضمیمه</th>
-          <th style="border:1px solid #BFBFBF; padding:6px 8px;">برچسب ها</th>
-        </tr>
-      </thead>
-      <tbody>${rowsHtml}</tbody>
-    </table>
-  </body>
-</html>`;
+    const sheetData = [
+      ["\u06AF\u0632\u0627\u0631\u0634 \u0627\u0633\u0646\u0627\u062F \u0648 \u0646\u0627\u0645\u0647 \u0647\u0627"],
+      [`\u062A\u0627\u0631\u06CC\u062E \u062E\u0631\u0648\u062C\u06CC: ${exportDate}`],
+      [],
+      headers,
+      ...rows,
+    ];
 
     const xlsxMod = await import("xlsx");
     const XLSX = xlsxMod?.default || xlsxMod;
-    const wb = XLSX.read(html, { type: "string" });
+
+    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+    ws["!cols"] = [
+      { wch: 7 },
+      { wch: 10 },
+      { wch: 16 },
+      { wch: 14 },
+      { wch: 42 },
+      { wch: 28 },
+      { wch: 28 },
+      { wch: 16 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 24 },
+      { wch: 12 },
+      { wch: 28 },
+    ];
+    ws["!rows"] = [{ hpt: 24 }, { hpt: 18 }, { hpt: 8 }, { hpt: 20 }];
+
+    const lastCol = XLSX.utils.encode_col(headers.length - 1);
+    const lastRow = sheetData.length;
+    ws["!merges"] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: headers.length - 1 } },
+    ];
+    ws["!autofilter"] = { ref: `A4:${lastCol}${lastRow}` };
+
+    const wb = XLSX.utils.book_new();
+    wb.Workbook = wb.Workbook || {};
+    wb.Workbook.Views = [{ RTL: true }];
+    XLSX.utils.book_append_sheet(wb, ws, "Letters");
+
     XLSX.writeFile(wb, `letters-${new Date().toISOString().slice(0, 10)}.xlsx`, {
       bookType: "xlsx",
       compression: true,
