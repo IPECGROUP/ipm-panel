@@ -4,8 +4,7 @@ import { Card } from "../components/ui/Card";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 import {
-  baseCurrenciesTablePreset as tablePreset,
-  hoverSelectableRowPreset,
+  hoverSelectableCrudTablePreset as tablePreset,
   getHoverSelectableRowClass,
 } from "../components/ui/tablePresets";
 import { usePageAccess } from "../hooks/usePageAccess";
@@ -951,13 +950,40 @@ setProjects(Array.from(byId.values()));
     return out;
   }, [active, flatRowsToRender, coreOf, renderDisplayBudgetCode, codeSortDir, openCodes]);
 
-  const selectableRowCodes = useMemo(
+  const [pageSize, setPageSize] = useState(25);
+  const [page, setPage] = useState(0);
+
+  useEffect(() => {
+    setPage(0);
+  }, [active, projectId]);
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil((displayRows.length || 0) / (pageSize || 1)));
+    if (page > totalPages - 1) setPage(totalPages - 1);
+  }, [displayRows.length, pageSize]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const totalRows = displayRows.length;
+  const totalPages = Math.max(1, Math.ceil(totalRows / (pageSize || 1)));
+  const startIdx = totalRows === 0 ? 0 : page * pageSize;
+  const endIdx = Math.min(totalRows, startIdx + pageSize);
+  const pageRows = displayRows.slice(startIdx, endIdx);
+
+  const allSelectableRowCodes = useMemo(
     () =>
       (displayRows || [])
         .filter((node) => !(active === "projects" && !!node?.hasChildren))
         .map((node) => String(node?.row?.code || ""))
         .filter(Boolean),
     [displayRows, active]
+  );
+
+  const selectableRowCodes = useMemo(
+    () =>
+      (pageRows || [])
+        .filter((node) => !(active === "projects" && !!node?.hasChildren))
+        .map((node) => String(node?.row?.code || ""))
+        .filter(Boolean),
+    [pageRows, active]
   );
 
   const allSelectableChecked =
@@ -969,9 +995,9 @@ setProjects(Array.from(byId.values()));
 
   useEffect(() => {
     setSelectedCodes((prev) =>
-      prev.filter((code) => selectableRowCodes.includes(String(code)))
+      prev.filter((code) => allSelectableRowCodes.includes(String(code)))
     );
-  }, [selectableRowCodes]);
+  }, [allSelectableRowCodes]);
 
   useEffect(() => {
     if (selectAllRef.current) {
@@ -1310,6 +1336,37 @@ setProjects(Array.from(byId.values()));
     );
   };
 
+  const tableUi = tablePreset.table;
+  const rowUi = tablePreset.row;
+  const PagerBtn = ({ disabled, onClick, direction }) => (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="h-10 w-10 grid place-items-center rounded-xl bg-transparent
+                 hover:bg-black/5 active:bg-black/10 disabled:opacity-40 disabled:cursor-not-allowed
+                 dark:hover:bg-white/10 dark:active:bg-white/15"
+      aria-label={direction === "prev" ? "صفحه قبل" : "صفحه بعد"}
+      title={direction === "prev" ? "صفحه قبل" : "صفحه بعد"}
+    >
+      {direction === "prev" ? (
+        <svg className="w-5 h-5 text-black/70 dark:text-neutral-200" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M10.7 6.3a1 1 0 0 1 1.4 0l5 5a1 1 0 0 1 0 1.4l-5 5a1 1 0 1 1-1.4-1.4L15.29 12 10.7 7.7a1 1 0 0 1 0-1.4z"
+          />
+        </svg>
+      ) : (
+        <svg className="w-5 h-5 text-black/70 dark:text-neutral-200" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M13.3 17.7a1 1 0 0 1-1.4 0l-5-5a1 1 0 0 1 0-1.4l5-5a1 1 0 1 1 1.4 1.4L8.71 12l4.59 4.3a1 1 0 0 1 0 1.4z"
+          />
+        </svg>
+      )}
+    </button>
+  );
+
   
   // ===== UI states for access =====
   if (accessLoading) {
@@ -1397,18 +1454,18 @@ setProjects(Array.from(byId.values()));
         </div>
 
         <TableWrap>
-          <div className={tablePreset.outer}>
-            <div className={tablePreset.innerPad}>
-              <div className={tablePreset.frame + " shadow-sm"}>
-                <div className="overflow-x-auto">
-                <table className={tablePreset.table + " table-fixed text-[12px] md:text-[13px] min-w-[900px] lg:min-w-[1020px]"} dir="rtl">
+          <div className={tableUi.outer}>
+            <div className={tableUi.innerPad}>
+              <div className={tableUi.frame + " shadow-sm"}>
+                <div className="max-h-[520px] overflow-auto">
+                <table className={tableUi.table + " table-fixed text-[12px] md:text-[13px] min-w-[900px] lg:min-w-[1020px]"} dir="rtl">
               <THead>
-                <tr className={tablePreset.headRow}>
-                  <TH className={`w-12 ${tablePreset.th}`}>
+                <tr className={`sticky top-0 z-20 ${tableUi.headRow}`}>
+                  <TH className={`${tablePreset.columns.select} ${tableUi.th}`}>
                     <input
                       ref={selectAllRef}
                       type="checkbox"
-                      className={hoverSelectableRowPreset.checkbox}
+                      className={rowUi.checkbox}
                       checked={allSelectableChecked}
                       onChange={(e) => {
                         const checked = !!e.target.checked;
@@ -1422,10 +1479,10 @@ setProjects(Array.from(byId.values()));
                       aria-label="انتخاب همه"
                     />
                   </TH>
-                  <TH className={`w-14 sm:w-16 ${tablePreset.th}`}>
+                  <TH className={`${tablePreset.columns.index} ${tableUi.th}`}>
                     #
                   </TH>
-                  <TH className={`w-40 sm:w-44 md:w-56 ${tablePreset.th}`}>
+                  <TH className={`w-40 sm:w-44 md:w-56 ${tableUi.th}`}>
                     <div className="flex items-center justify-center gap-1 w-full">
                       <span>{budgetCodeHeader}</span>
                       <button
@@ -1451,38 +1508,38 @@ setProjects(Array.from(byId.values()));
                       </button>
                     </div>
                   </TH>
-                  <TH className={tablePreset.th}>
+                  <TH className={tableUi.th}>
                     نام بودجه
                   </TH>
-                  <TH className={`w-28 sm:w-32 md:w-40 ${tablePreset.th}`}>
+                  <TH className={`w-28 sm:w-32 md:w-40 ${tableUi.th}`}>
                     آخرین برآورد
                   </TH>
-                  <TH className={`w-36 sm:w-40 md:w-48 ${tablePreset.th}`}>
+                  <TH className={`w-36 sm:w-40 md:w-48 ${tableUi.th}`}>
                     تخصیص جدید
                   </TH>
-                  <TH className={`w-32 sm:w-36 md:w-44 ${tablePreset.th}`}>
+                  <TH className={`w-32 sm:w-36 md:w-44 ${tableUi.th}`}>
                     مجموع تخصیص‌ها
                   </TH>
                 </tr>
               </THead>
 
-              <tbody className={tablePreset.body}>
+              <tbody className={tableUi.body}>
                 {loading ? (
                   <TR>
-                    <TD colSpan={7} className={tablePreset.emptyRow}>
+                    <TD colSpan={7} className={tableUi.emptyRow}>
                       در حال بارگذاری…
                     </TD>
                   </TR>
                 ) : (displayRows || []).length === 0 ? (
                   <TR>
-                    <TD colSpan={7} className={tablePreset.emptyRow}>
+                    <TD colSpan={7} className={tableUi.emptyRow}>
                       {active === "projects" && !projectId
                         ? "ابتدا پروژه را انتخاب کنید"
                         : "موردی یافت نشد."}
                     </TD>
                   </TR>
                 ) : (
-                  (displayRows || []).map((node, idx) => {
+                  (pageRows || []).map((node, idx) => {
                     const r = node.row;
                     const isComputed = active === "projects" && !!node.hasChildren;
                     const toggleKey = node.core || node.key;
@@ -1511,7 +1568,7 @@ setProjects(Array.from(byId.values()));
                         <TD className="px-2.5 pt-1.5 pb-1 align-middle !text-center">
                           <input
                             type="checkbox"
-                            className={hoverSelectableRowPreset.checkbox}
+                            className={rowUi.checkbox}
                             checked={isSelected}
                             disabled={isComputed}
                             onChange={(e) => {
@@ -1522,11 +1579,11 @@ setProjects(Array.from(byId.values()));
                                   : prev.filter((code) => code !== rowCode)
                               );
                             }}
-                            aria-label={`انتخاب ردیف ${toFaDigits(idx + 1)}`}
+                            aria-label={`انتخاب ردیف ${toFaDigits(startIdx + idx + 1)}`}
                           />
                         </TD>
                         <TD className="px-2.5 pt-1.5 pb-1 align-middle !text-center">
-                          {toFaDigits(idx + 1)}
+                          {toFaDigits(startIdx + idx + 1)}
                         </TD>
                         <TD className="px-2.5 pt-1.5 pb-1 align-middle">
                           <div
@@ -1663,6 +1720,46 @@ setProjects(Array.from(byId.values()));
                 )}
               </tbody>
                 </table>
+                </div>
+
+                <div className="border-t border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900">
+                  <div className="px-3 py-2 flex items-center justify-between gap-3" dir="rtl">
+                    <div className="flex items-center gap-2">
+                      <PagerBtn
+                        direction="prev"
+                        disabled={page <= 0}
+                        onClick={() => setPage((p) => Math.max(0, p - 1))}
+                      />
+                      <PagerBtn
+                        direction="next"
+                        disabled={page >= totalPages - 1}
+                        onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                      />
+                      <div className="text-sm text-black/70 dark:text-neutral-300">
+                        {totalRows === 0
+                          ? "۰ از ۰"
+                          : `${toFaDigits(startIdx + 1)}–${toFaDigits(endIdx)} از ${toFaDigits(totalRows)}`}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-black/70 dark:text-neutral-300">تعداد در هر صفحه:</span>
+                      <select
+                        value={pageSize}
+                        onChange={(e) => {
+                          const v = Number(e.target.value) || 25;
+                          setPageSize(v);
+                          setPage(0);
+                        }}
+                        className="h-10 rounded-xl px-3 bg-white text-black border border-black/15
+                                   dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
+                      >
+                        <option value={25}>۲۵</option>
+                        <option value={50}>۵۰</option>
+                        <option value={100}>۱۰۰</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
