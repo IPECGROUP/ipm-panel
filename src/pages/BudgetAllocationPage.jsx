@@ -513,74 +513,6 @@ setProjects(Array.from(byId.values()));
     );
   };
 
-  const removeRows = async (codesInput) => {
-    const codes = Array.from(
-      new Set(
-        (Array.isArray(codesInput) ? codesInput : [codesInput])
-          .map((x) => String(x || "").trim())
-          .filter(Boolean)
-      )
-    );
-    if (!codes.length) return;
-
-    try {
-      setErr("");
-      const removedByCode = {};
-      let removedAny = false;
-
-      for (const code of codes) {
-        const hist = historyByCode?.[code] || [];
-        if (hist.length === 0) continue;
-
-        const last = hist
-          .slice()
-          .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
-          .pop();
-        const lastAmt = Number(last?.amount || 0);
-        if (!lastAmt) continue;
-
-        const next = await getNextSerial();
-        const serial = next?.serial || "";
-        const date_jalali = next?.date_jalali || todayFa;
-
-        const body = {
-          serial,
-          date_jalali,
-          project_id:
-            active === "projects" ? (projectId ? Number(projectId) : null) : null,
-          project_name:
-            active === "projects" && selectedProject ? selectedProject.name : null,
-          kind: active,
-          rows: [{ code, alloc: -lastAmt, desc: "حذف آخرین تخصیص" }],
-        };
-        await api("/budget-allocations", {
-          method: "POST",
-          body: JSON.stringify(body),
-        });
-
-        removedAny = true;
-        removedByCode[code] = Number(removedByCode[code] || 0) + lastAmt;
-      }
-
-      if (!removedAny) {
-        setErr("سابقه‌ای برای حذف یافت نشد.");
-        return;
-      }
-
-      setTotals((prev) => {
-        const next = { ...prev };
-        Object.entries(removedByCode).forEach(([code, amt]) => {
-          next[code] = Number(next[code] || 0) - Number(amt || 0);
-        });
-        return next;
-      });
-      setSelectedCodes((prev) => prev.filter((code) => !codes.includes(code)));
-      setRefreshKey((x) => x + 1);
-    } catch (ex) {
-      setErr(ex.message || "خطا در حذف آخرین تخصیص");
-    }
-  };
-
   const [saving, setSaving] = useState(false);
   const [modalMsg, setModalMsg] = useState(null);
   const [descModal, setDescModal] = useState({
@@ -691,6 +623,51 @@ setProjects(Array.from(byId.values()));
     }
 
     return { ok: true, serial };
+  };
+
+  const resetRowsTotal = async (codesInput) => {
+    const codes = Array.from(
+      new Set(
+        (Array.isArray(codesInput) ? codesInput : [codesInput])
+          .map((x) => String(x || "").trim())
+          .filter(Boolean)
+      )
+    );
+    if (!codes.length) return;
+
+    beginSaving();
+    try {
+      setErr("");
+      await waitForPendingAutoSaves();
+      const snapshot = rowsRef.current || [];
+      const payloadRows = codes
+        .map((code) => {
+          const row = snapshot.find((x) => String(x?.code || "") === code);
+          const currentTotal = Number(row?.totalAlloc || 0);
+          if (!currentTotal) return null;
+          return {
+            code,
+            alloc: -currentTotal,
+            desc: "ریست مجموع تخصیص",
+          };
+        })
+        .filter(Boolean);
+
+      if (!payloadRows.length) {
+        setErr("برای ردیف انتخاب‌شده مقداری برای ریست وجود ندارد.");
+        return;
+      }
+
+      await saveAllocationRows(payloadRows, {
+        showEmptyMsg: false,
+        showSuccessModal: false,
+      });
+      setSelectedCodes((prev) => prev.filter((code) => !codes.includes(code)));
+    } catch (ex) {
+      setErr(ex.message || "خطا در ریست مجموع تخصیص");
+    } finally {
+      endSaving();
+    }
   };
 
   const saveSingleRowOnBlur = async (code, rawInputValue) => {
@@ -1124,18 +1101,6 @@ setProjects(Array.from(byId.values()));
     [active, hierarchyMaps, flatRowsToRender]
   );
 
-  const focusRowForEdit = useCallback((code) => {
-    requestAnimationFrame(() => {
-      const target = moneyRefs.current[code];
-      if (!target) return;
-      target.focus();
-      if (typeof target.setSelectionRange === "function") {
-        const txt = String(target.value ?? "");
-        target.setSelectionRange(txt.length, txt.length);
-      }
-    });
-  }, []);
-
   const openDescModal = (row) => {
     setDescModal({
       open: true,
@@ -1507,7 +1472,7 @@ setProjects(Array.from(byId.values()));
                   <TH className={`w-36 sm:w-40 md:w-48 ${tableUi.th}`}>
                     تخصیص جدید
                   </TH>
-                  <TH className={`w-32 sm:w-36 md:w-44 ${tableUi.th}`}>
+                  <TH className={`w-44 sm:w-52 md:w-60 ${tableUi.th}`}>
                     مجموع تخصیص‌ها
                   </TH>
                 </tr>
@@ -1544,8 +1509,6 @@ setProjects(Array.from(byId.values()));
                     const hasAllocValue = Number(allocRawView || 0) !== 0;
                     const rowCode = String(r.code || "");
                     const isSelected = selectedCodes.includes(rowCode);
-                    const shouldDeleteSelectedOnAction =
-                      isSelected && selectedCodes.length > 1;
                     const newTotal = totalAllocView + allocRawView;
                     const limit = lastAmountView;
                     const isOver = newTotal > limit;
@@ -1656,13 +1619,13 @@ setProjects(Array.from(byId.values()));
                           </div>
                         </TD>
                         <TD className="px-2.5 pt-1.5 pb-1 align-middle">
-                          <div className="relative flex min-h-[34px] items-center justify-center">
-                            <span className="inline-flex items-center justify-center transition-opacity opacity-100 group-hover:opacity-0 group-hover:pointer-events-none">
+                          <div className="relative mx-auto flex min-h-[34px] w-full max-w-[230px] items-center justify-center overflow-visible">
+                            <span className="inline-flex items-center justify-center px-1 transition-transform duration-200 group-hover:translate-x-7">
                               {toFaDigits(formatMoney(totalAllocView || 0))}
                             </span>
                             <div
                               dir="rtl"
-                              className="absolute inset-0 flex items-center justify-center gap-1 transition-opacity opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+                              className="absolute left-1 top-1/2 flex -translate-y-1/2 -translate-x-1 items-center gap-1 opacity-0 pointer-events-none transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100 group-hover:pointer-events-auto"
                             >
                               <RowActionIconBtn
                                 icon="/images/icons/sayer.svg"
@@ -1676,28 +1639,14 @@ setProjects(Array.from(byId.values()));
                                 iconSize={15}
                               />
                               <RowActionIconBtn
-                                action="edit"
+                                icon="/images/icons/reset.svg"
+                                title="ریست مجموع تخصیص"
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  focusRowForEdit(r.code);
+                                  resetRowsTotal([r.code]);
                                 }}
-                                disabled={isComputed}
-                                size={34}
-                                iconSize={15}
-                              />
-                              <RowActionIconBtn
-                                action="delete"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  if (shouldDeleteSelectedOnAction) {
-                                    removeRows(selectedCodes);
-                                    return;
-                                  }
-                                  removeRows([r.code]);
-                                }}
-                                disabled={isComputed}
+                                disabled={isComputed || Number(totalAllocView || 0) === 0}
                                 size={34}
                                 iconSize={16}
                               />
