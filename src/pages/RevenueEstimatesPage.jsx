@@ -1664,6 +1664,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                     {pageRows.map((x, idx) => {
                       const r = x.node;
                       const level = x.depth || 0;
+                      const isChildRow = level > 0;
                       const indentRight = level === 0 ? 8 : 30 + level * 26;
                       const rowTotal = sumNodeMonths(r);
                       const isProjectRoot = level === 0 && r?.projectId != null && r?.isOther !== true;
@@ -1698,16 +1699,20 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                           </TD>
                           <TD className="px-2 py-2">{toFaDigits(idxText || (startIdx + idx + 1))}</TD>
 
-                          <TD className="relative pl-10 py-2 text-right overflow-hidden" style={{ paddingRight: indentRight }}>
-                            <div className="flex w-full min-w-0 items-center gap-2">
+                          <TD
+                            className="relative py-2 overflow-hidden"
+                            style={{ paddingRight: indentRight, paddingLeft: isChildRow ? 18 : 8 }}
+                            title={displayTitle}
+                          >
+                            <div className={`flex w-full min-w-0 items-center gap-2 ${isChildRow ? 'justify-center pr-1' : ''}`}>
                               <button
                                 type="button"
                                 onClick={() => {
                                   if (isComputed) toggleExpand(r.id);
                                   else openEditRowModal(r);
                                 }}
-                                className={`flex-1 min-w-0 truncate px-1 py-0.5 text-right ${titleTextClass} ${isComputed ? 'font-semibold hover:underline' : 'hover:underline'}`}
-                                title={isComputed ? 'باز/بسته کردن زیرمجموعه‌ها' : 'افزودن/ویرایش توضیحات'}
+                                className={`min-w-0 truncate px-1 py-0.5 ${isChildRow ? 'max-w-[88%] text-center' : 'flex-1 text-right'} ${titleTextClass} ${isComputed ? 'font-semibold hover:underline' : 'hover:underline'}`}
+                                title={displayTitle}
                               >
                                 {displayTitle}
                               </button>
