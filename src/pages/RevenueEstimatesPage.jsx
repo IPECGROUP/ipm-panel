@@ -1622,7 +1622,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                             />
                           </TH>
                           <TH className={`${tablePreset.columns.index} ${tableUi.th}`}>#</TH>
-                          <TH className={`w-56 ${tableUi.th}`}>پروژه / مورد</TH>
+                          <TH className={`w-64 lg:w-72 ${tableUi.th}`}>پروژه / مورد</TH>
                       {dynamicMonths.map((m) => (
                         <TH key={m.key} className={`w-24 px-0 ${tableUi.th}`}>
                           {m.label}
@@ -1668,7 +1668,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                       const rowTotal = sumNodeMonths(r);
                       const isProjectRoot = level === 0 && r?.projectId != null && r?.isOther !== true;
                       const isComputed = hasChildren(r) || isProjectRoot;
-                      const titleTextClass = isProjectRoot ? 'text-[13px] md:text-[14px]' : 'text-[12px]';
+                      const titleTextClass = isProjectRoot ? 'text-[14px] md:text-[15px]' : 'text-[13px] md:text-[14px]';
                       const idxText = indexLabel(x.indexPath);
                       const rowId = String(r.id);
                       const isSelected = selectedRowSet.has(rowId);
@@ -1698,15 +1698,15 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                           </TD>
                           <TD className="px-2 py-2">{toFaDigits(idxText || (startIdx + idx + 1))}</TD>
 
-                          <TD className="relative pl-16 px-2 py-2 text-right whitespace-nowrap" style={{ paddingRight: indentRight }}>
-                            <div className="inline-flex items-center gap-2">
+                          <TD className="relative pl-10 py-2 text-right overflow-hidden" style={{ paddingRight: indentRight }}>
+                            <div className="flex w-full min-w-0 items-center gap-2">
                               <button
                                 type="button"
                                 onClick={() => {
                                   if (isComputed) toggleExpand(r.id);
                                   else openEditRowModal(r);
                                 }}
-                                className={`px-1 py-0.5 ${titleTextClass} ${isComputed ? 'font-semibold hover:underline' : 'hover:underline'}`}
+                                className={`flex-1 min-w-0 truncate px-1 py-0.5 text-right ${titleTextClass} ${isComputed ? 'font-semibold hover:underline' : 'hover:underline'}`}
                                 title={isComputed ? 'باز/بسته کردن زیرمجموعه‌ها' : 'افزودن/ویرایش توضیحات'}
                               >
                                 {displayTitle}
@@ -1716,7 +1716,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
                                 <button
                                   type="button"
                                   onClick={() => toggleExpand(r.id)}
-                                  className="h-5 w-5 grid place-items-center rounded-md border border-black/25 bg-white text-black dark:border-neutral-500 dark:bg-white dark:text-black"
+                                  className="h-5 w-5 shrink-0 grid place-items-center rounded-md border border-black/25 bg-white text-black dark:border-neutral-500 dark:bg-white dark:text-black"
                                   aria-label={r.expanded ? 'بستن زیرمجموعه' : 'باز کردن زیرمجموعه'}
                                   title={r.expanded ? 'بستن زیرمجموعه' : 'باز کردن زیرمجموعه'}
                                 >

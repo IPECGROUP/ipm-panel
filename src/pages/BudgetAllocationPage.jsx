@@ -1158,15 +1158,9 @@ setProjects(Array.from(byId.values()));
     closeDescModal();
   };
 
-  const exportExcel = () => {
+  const exportExcel = async () => {
     const rowsForExport = exportRowsAll || [];
     if (!rowsForExport.length) return;
-
-    const escapeHtml = (v) =>
-      String(v ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
 
     const activeLabel = tabs.find((t) => t.id === active)?.label || "";
     const projectLabel =
@@ -1174,99 +1168,95 @@ setProjects(Array.from(byId.values()));
         ? `${selectedProject.code || ""} - ${selectedProject.name || ""}`
         : "";
     const title = `Budget Allocation${activeLabel ? ` - ${activeLabel}` : ""}`;
+    const dash = "-";
 
-    const headerHtml = `
-      <tr>
-        <th>#</th>
-        <th>${escapeHtml(budgetCodeHeader)}</th>
-        <th>نام بودجه</th>
-        <th>آخرین برآورد</th>
-        <th>تخصیص جدید</th>
-        <th>مجموع تخصیص‌ها</th>
-        <th>شرح</th>
-      </tr>
-    `;
+    const headers = [
+      "#",
+      String(budgetCodeHeader || "").trim() || dash,
+      "نام بودجه",
+      "آخرین برآورد",
+      "تخصیص جدید",
+      "مجموع تخصیص‌ها",
+      "شرح",
+    ];
 
-    const bodyHtml = rowsForExport
-      .map((node, idx) => {
-        const r = node.row || {};
-        const depth = Math.max(0, Number(node.depth || 0));
-        const outlineLevel = Math.min(depth, 7);
-        const isParentRow = active === "projects" && !!node.hasChildren;
-        const lastAmountView = valueOfRow(r, "lastAmount");
-        const totalAllocView = valueOfRow(r, "totalAlloc");
-        const allocRawView = isParentRow
-          ? valueOfRow(r, "allocRaw")
-          : Number(r.allocRaw || 0);
+    const bodyRows = rowsForExport.map((node, idx) => {
+      const r = node.row || {};
+      const depth = Math.max(0, Number(node.depth || 0));
+      const isParentRow = active === "projects" && !!node.hasChildren;
+      const lastAmountView = valueOfRow(r, "lastAmount");
+      const totalAllocView = valueOfRow(r, "totalAlloc");
+      const allocRawView = isParentRow
+        ? valueOfRow(r, "allocRaw")
+        : Number(r.allocRaw || 0);
 
-        const rowStyle = [
-          outlineLevel > 0 ? `mso-outline-level:${outlineLevel}` : "",
-          isParentRow ? "font-weight:700;background-color:#f8fafc" : "",
-        ]
-          .filter(Boolean)
-          .join(";");
+      const indentMarker = depth > 0 ? `${"  ".repeat(depth)}↳ ` : "";
+      const nameCell = `${indentMarker}${String(r.name || "").trim() || dash}`;
 
-        const trClass = isParentRow ? "parent-row" : "child-row";
-
-        return `
-          <tr class="${trClass}" style="${rowStyle}">
-            <td>${escapeHtml(toFaDigits(idx + 1))}</td>
-            <td>${escapeHtml(toFaDigits(renderDisplayBudgetCode(r.code) || "—"))}</td>
-            <td style="text-align:right;padding-right:${8 + depth * 16}px">${escapeHtml(
-              r.name || "—"
-            )}</td>
-            <td>${escapeHtml(toFaDigits(formatMoney(lastAmountView || 0)))}</td>
-            <td>${escapeHtml(toFaDigits(formatMoney(allocRawView || 0)))}</td>
-            <td>${escapeHtml(toFaDigits(formatMoney(totalAllocView || 0)))}</td>
-            <td style="text-align:right">${escapeHtml(r.desc || "—")}</td>
-          </tr>
-        `;
-      })
-      .join("");
-
-    const noRowsHtml = `<tr><td colspan="7">موردی برای نمایش نیست.</td></tr>`;
-    const exportDate = new Date().toLocaleDateString("fa-IR");
-
-    const html = `
-      <html lang="fa" dir="rtl">
-        <head>
-          <meta charset="utf-8" />
-          <style>
-            body { font-family: Vazir, Vazirmatn, IRANSans, Segoe UI, Tahoma, sans-serif; direction: rtl; }
-            table { border-collapse: collapse; width: 100%; font-size: 11pt; }
-            th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: center; vertical-align: middle; }
-            thead th { background-color: #f3f4f6; font-weight: 700; }
-            tbody tr.parent-row td { font-weight: 700; }
-            tbody tr.child-row td { background-color: #ffffff; }
-            .meta { margin-bottom: 10px; font-size: 11pt; }
-            .meta div { margin-bottom: 4px; }
-          </style>
-        </head>
-        <body>
-          <div class="meta">
-            <div><strong>${escapeHtml(title)}</strong></div>
-            ${active === "projects" ? `<div>پروژه: ${escapeHtml(projectLabel || "—")}</div>` : ""}
-            <div>تاریخ خروجی: ${escapeHtml(exportDate)}</div>
-          </div>
-          <table>
-            <thead>${headerHtml}</thead>
-            <tbody>${bodyHtml || noRowsHtml}</tbody>
-          </table>
-        </body>
-      </html>
-    `;
-
-    const blob = new Blob(["\ufeff" + html], {
-      type: "application/vnd.ms-excel;charset=utf-8;",
+      return [
+        toFaDigits(idx + 1),
+        toFaDigits(renderDisplayBudgetCode(r.code) || dash),
+        nameCell,
+        toFaDigits(formatMoney(lastAmountView || 0)),
+        toFaDigits(formatMoney(allocRawView || 0)),
+        toFaDigits(formatMoney(totalAllocView || 0)),
+        String(r.desc || "").trim() || dash,
+      ];
     });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `budget-allocation-${active}.xls`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+
+    const exportDate = new Date().toLocaleDateString("fa-IR");
+    const metaRows = [
+      [title],
+      ...(active === "projects" ? [[`پروژه: ${projectLabel || dash}`]] : []),
+      [`تاریخ خروجی: ${exportDate}`],
+    ];
+    const rowsSection = bodyRows.length
+      ? bodyRows
+      : [[dash, dash, "موردی برای نمایش نیست.", dash, dash, dash, dash]];
+    const sheetData = [...metaRows, [], headers, ...rowsSection];
+
+    const xlsxMod = await import("xlsx");
+    const XLSX = xlsxMod?.default || xlsxMod;
+
+    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+    ws["!cols"] = [
+      { wch: 7 },
+      { wch: 20 },
+      { wch: 42 },
+      { wch: 16 },
+      { wch: 16 },
+      { wch: 18 },
+      { wch: 34 },
+    ];
+
+    const headerRowIndex = metaRows.length + 1;
+    ws["!rows"] = Array.from({ length: sheetData.length }, (_, i) => {
+      if (i < metaRows.length) return { hpt: 22 };
+      if (i === metaRows.length) return { hpt: 8 };
+      if (i === headerRowIndex) return { hpt: 20 };
+      return { hpt: 18 };
+    });
+
+    const lastColIndex = headers.length - 1;
+    ws["!merges"] = metaRows.map((_, i) => ({
+      s: { r: i, c: 0 },
+      e: { r: i, c: lastColIndex },
+    }));
+
+    const lastCol = XLSX.utils.encode_col(lastColIndex);
+    const headerRowNum = headerRowIndex + 1;
+    const lastRowNum = sheetData.length;
+    ws["!autofilter"] = { ref: `A${headerRowNum}:${lastCol}${lastRowNum}` };
+
+    const wb = XLSX.utils.book_new();
+    wb.Workbook = wb.Workbook || {};
+    wb.Workbook.Views = [{ RTL: true }];
+    XLSX.utils.book_append_sheet(wb, ws, "BudgetAllocation");
+
+    XLSX.writeFile(wb, `budget-allocation-${active}.xlsx`, {
+      bookType: "xlsx",
+      compression: true,
+    });
   };
 
   const TopButtons = () => (
