@@ -587,6 +587,24 @@ const sortedProjects = useMemo(() => {
     return result;
   }, [rowsToRender, coreOf, renderCode, codeSortDir, openCodes]);
 
+  const [pageSize, setPageSize] = useState(25);
+  const [page, setPage] = useState(0);
+
+  useEffect(() => {
+    setPage(0);
+  }, [active, projectId]);
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil((displayRows.length || 0) / (pageSize || 1)));
+    if (page > totalPages - 1) setPage(totalPages - 1);
+  }, [displayRows.length, pageSize]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const totalRows = displayRows.length;
+  const totalPages = Math.max(1, Math.ceil(totalRows / (pageSize || 1)));
+  const startIdx = totalRows === 0 ? 0 : page * pageSize;
+  const endIdx = Math.min(totalRows, startIdx + pageSize);
+  const pageRows = displayRows.slice(startIdx, endIdx);
+
   const [selectedCodes, setSelectedCodes] = useState([]);
   const setSelected = useCallback((nextOrUpdater) => {
     setSelectedCodes((prev) => {
@@ -602,12 +620,20 @@ const sortedProjects = useMemo(() => {
     });
   }, []);
 
-  const visibleCodes = useMemo(
+  const allRowCodes = useMemo(
     () =>
       (displayRows || [])
         .map((n) => String(n?.row?.code || "").trim())
         .filter(Boolean),
     [displayRows],
+  );
+
+  const visibleCodes = useMemo(
+    () =>
+      (pageRows || [])
+        .map((n) => String(n?.row?.code || "").trim())
+        .filter(Boolean),
+    [pageRows],
   );
 
   const selectedSet = useMemo(
@@ -648,23 +674,23 @@ const sortedProjects = useMemo(() => {
   };
 
   useEffect(() => {
-    if (!visibleCodes.length) {
+    if (!allRowCodes.length) {
       if (selectedCodes.length) setSelected([]);
       return;
     }
-    const valid = new Set(visibleCodes.map((c) => String(c)));
+    const valid = new Set(allRowCodes.map((c) => String(c)));
     setSelected((prev) => (prev || []).filter((code) => valid.has(String(code))));
-  }, [visibleCodes]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [allRowCodes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!visibleCodes.length) {
+    if (!allRowCodes.length) {
       if (editingCodes.length) {
         setEditingCodes([]);
         setEditDraftByCode({});
       }
       return;
     }
-    const valid = new Set(visibleCodes.map((c) => String(c)));
+    const valid = new Set(allRowCodes.map((c) => String(c)));
     setEditingCodes((prev) => (prev || []).filter((code) => valid.has(String(code))));
     setEditDraftByCode((prev) => {
       const next = { ...(prev || {}) };
@@ -673,7 +699,7 @@ const sortedProjects = useMemo(() => {
       });
       return next;
     });
-  }, [visibleCodes]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [allRowCodes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [editingCodes, setEditingCodes] = useState([]);
   const [editDraftByCode, setEditDraftByCode] = useState({});
@@ -1735,6 +1761,34 @@ const sortedProjects = useMemo(() => {
   const tableUi = tablePreset.table;
   const rowUi = tablePreset.row;
   const colCount = 4 + dynamicMonths.length + 1;
+  const PagerBtn = ({ disabled, onClick, direction }) => (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="h-10 w-10 grid place-items-center rounded-xl bg-transparent
+                 hover:bg-black/5 active:bg-black/10 disabled:opacity-40 disabled:cursor-not-allowed
+                 dark:hover:bg-white/10 dark:active:bg-white/15"
+      aria-label={direction === "prev" ? "صفحه قبل" : "صفحه بعد"}
+      title={direction === "prev" ? "صفحه قبل" : "صفحه بعد"}
+    >
+      {direction === "prev" ? (
+        <svg className="w-5 h-5 text-black/70 dark:text-neutral-200" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M10.7 6.3a1 1 0 0 1 1.4 0l5 5a1 1 0 0 1 0 1.4l-5 5a1 1 0 1 1-1.4-1.4L15.29 12 10.7 7.7a1 1 0 0 1 0-1.4z"
+          />
+        </svg>
+      ) : (
+        <svg className="w-5 h-5 text-black/70 dark:text-neutral-200" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M13.3 17.7a1 1 0 0 1-1.4 0l-5-5a1 1 0 0 1 0-1.4l5-5a1 1 0 1 1 1.4 1.4L8.71 12l4.59 4.3a1 1 0 0 1 0 1.4z"
+          />
+        </svg>
+      )}
+    </button>
+  );
 
   // ✅ Guards (مثل DefineBudgetCentersPage)
   if (accessLoading) {
@@ -1893,7 +1947,7 @@ const sortedProjects = useMemo(() => {
                         </TD>
                       </TR>
 
-                      {(displayRows || []).map((node, idx) => {
+                      {(pageRows || []).map((node, idx) => {
                         const r = node.row;
                         const code = r.code;
                         const rowCode = String(code || "").trim();
@@ -1945,7 +1999,7 @@ const sortedProjects = useMemo(() => {
                                 title="انتخاب ردیف"
                               />
                             </TD>
-                            <TD className="px-2 py-3">{toFaDigits(idx + 1)}</TD>
+                            <TD className="px-2 py-3">{toFaDigits(startIdx + idx + 1)}</TD>
 
                             <TD className={`px-2 py-3 whitespace-nowrap ${rowIsEditing ? "text-center" : "text-right"}`}>
                               <div
@@ -2177,6 +2231,46 @@ const sortedProjects = useMemo(() => {
                   )}
                       </tbody>
                     </table>
+                    </div>
+
+                    <div className="border-t border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900">
+                      <div className="px-3 py-2 flex items-center justify-between gap-3" dir="rtl">
+                        <div className="flex items-center gap-2">
+                          <PagerBtn
+                            direction="prev"
+                            disabled={page <= 0}
+                            onClick={() => setPage((p) => Math.max(0, p - 1))}
+                          />
+                          <PagerBtn
+                            direction="next"
+                            disabled={page >= totalPages - 1}
+                            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                          />
+                          <div className="text-sm text-black/70 dark:text-neutral-300">
+                            {totalRows === 0
+                              ? "۰ از ۰"
+                              : `${toFaDigits(startIdx + 1)}–${toFaDigits(endIdx)} از ${toFaDigits(totalRows)}`}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-black/70 dark:text-neutral-300">تعداد در هر صفحه:</span>
+                          <select
+                            value={pageSize}
+                            onChange={(e) => {
+                              const v = Number(e.target.value) || 25;
+                              setPageSize(v);
+                              setPage(0);
+                            }}
+                            className="h-10 rounded-xl px-3 bg-white text-black border border-black/15
+                                   dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
+                          >
+                            <option value={25}>۲۵</option>
+                            <option value={50}>۵۰</option>
+                            <option value={100}>۱۰۰</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
