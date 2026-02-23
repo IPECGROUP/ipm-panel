@@ -2719,7 +2719,7 @@ useEffect(() => {
   const endIdx = Math.min(total, startIdx + rowsPerPage);
   const pageItems = filteredLetters.slice(startIdx, endIdx);
 
-  const exportLettersExcel = () => {
+  const exportLettersExcel = async () => {
     const items = Array.isArray(filteredLetters) ? filteredLetters : [];
     if (!items.length) {
       alert("موردی برای خروجی اکسل وجود ندارد.");
@@ -2840,17 +2840,13 @@ useEffect(() => {
   </body>
 </html>`;
 
-    const blob = new Blob(["\uFEFF" + html], {
-      type: "application/vnd.ms-excel;charset=utf-8;",
+    const xlsxMod = await import("xlsx");
+    const XLSX = xlsxMod?.default || xlsxMod;
+    const wb = XLSX.read(html, { type: "string" });
+    XLSX.writeFile(wb, `letters-${new Date().toISOString().slice(0, 10)}.xlsx`, {
+      bookType: "xlsx",
+      compression: true,
     });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `letters-${new Date().toISOString().slice(0, 10)}.xls`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   useEffect(() => {
