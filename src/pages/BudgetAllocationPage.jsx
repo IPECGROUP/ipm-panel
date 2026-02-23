@@ -42,7 +42,12 @@ function BudgetAllocationPage() {
       data = txt ? JSON.parse(txt) : {};
     } catch {}
     if (!res.ok) {
-      throw new Error(data?.error || data?.message || "request_failed");
+      const e = new Error(
+        data?.message || data?.error || (res.status ? `http_${res.status}` : "request_failed")
+      );
+      e.status = res.status;
+      e.errorCode = data?.error || null;
+      throw e;
     }
     return data;
   }
@@ -178,6 +183,8 @@ setProjects(Array.from(byId.values()));
   const moneyRefs = useRef({});
   const selectAllRef = useRef(null);
   const autoSavingCodesRef = useRef(new Set());
+  const autoSavePromisesRef = useRef(new Map());
+  const rowsRef = useRef([]);
 
   const [codeSortDir, setCodeSortDir] = useState("asc");
   const [openCodes, setOpenCodes] = useState({});
@@ -189,6 +196,10 @@ setProjects(Array.from(byId.values()));
   useEffect(() => {
     setSelectedCodes([]);
   }, [active, projectId]);
+
+  useEffect(() => {
+    rowsRef.current = rows || [];
+  }, [rows]);
 
   // ===== Helpers: تبدیل اعداد =====
   const formatMoney = (n) => {
@@ -261,6 +272,41 @@ setProjects(Array.from(byId.values()));
     qs.set("_", String(Date.now()));
     const r = await api("/budget-allocations/next?" + qs.toString());
     return r || {};
+  };
+
+  const isNotFoundError = (ex) =>
+    Number(ex?.status || 0) === 404 ||
+    String(ex?.errorCode || "").toLowerCase() === "not_found" ||
+    /(^|_)404$|not_found/i.test(String(ex?.message || ""));
+
+  const loadHistoryWithFallback = async (params) => {
+    try {
+      const res = await api("/budget-allocations/history?" + params.toString());
+      return res?.history || {};
+    } catch (ex) {
+      if (!isNotFoundError(ex)) throw ex;
+      const legacy = await api("/budget-estimates?" + params.toString() + "&history=1");
+      return legacy?.history || {};
+    }
+  };
+
+  const loadSummaryWithFallback = async (params) => {
+    try {
+      const res = await api("/budget-allocations/summary?" + params.toString());
+      return res?.totals || {};
+    } catch (ex) {
+      if (!isNotFoundError(ex)) throw ex;
+      const history = await loadHistoryWithFallback(params);
+      const totals = {};
+      Object.keys(history || {}).forEach((code) => {
+        const total = (history[code] || []).reduce(
+          (acc, h) => acc + Number(h?.amount || 0),
+          0
+        );
+        totals[code] = total;
+      });
+      return totals;
+    }
   };
 
   // ===== لود داده‌ها از سرور =====
@@ -377,7 +423,7 @@ setProjects(Array.from(byId.values()));
 
         let sum = { totals: {} };
         try {
-          sum = await api("/budget-allocations/summary?" + qs2.toString());
+          sum = { totals: await loadSummaryWithFallback(qs2) };
         } catch {
           sum = { totals: {} };
         }
@@ -389,8 +435,7 @@ setProjects(Array.from(byId.values()));
           if (active === "projects" && projectId)
             qs3.set("project_id", String(projectId));
           qs3.set("_", String(Date.now()));
-          const hist = await api("/budget-allocations/history?" + qs3.toString());
-          histMap = hist?.history || {};
+          histMap = await loadHistoryWithFallback(qs3);
         } catch {
           histMap = {};
         }
@@ -542,7 +587,22 @@ setProjects(Array.from(byId.values()));
     value: "",
   });
 
-    const saveAllocationRows = async (
+  const saveInFlightCountRef = useRef(0);
+  const beginSaving = useCallback(() => {
+    saveInFlightCountRef.current += 1;
+    setSaving(true);
+  }, []);
+  const endSaving = useCallback(() => {
+    saveInFlightCountRef.current = Math.max(0, saveInFlightCountRef.current - 1);
+    if (saveInFlightCountRef.current === 0) setSaving(false);
+  }, []);
+  const waitForPendingAutoSaves = useCallback(async () => {
+    const pending = Array.from(autoSavePromisesRef.current.values());
+    if (!pending.length) return;
+    await Promise.allSettled(pending);
+  }, []);
+
+  const saveAllocationRows = async (
     payloadRowsInput,
     { showEmptyMsg = false, showSuccessModal = false } = {}
   ) => {
@@ -561,8 +621,9 @@ setProjects(Array.from(byId.values()));
       return { ok: false, reason: "empty" };
     }
 
+    const rowsSnapshot = rowsRef.current || [];
     const viol = payloadRows.find((pr) => {
-      const r = rows.find((x) => x.code === pr.code);
+      const r = rowsSnapshot.find((x) => x.code === pr.code);
       const newTotal = Number(r?.totalAlloc || 0) + Number(pr.alloc || 0);
       return newTotal > Number(r?.lastAmount || 0);
     });
@@ -584,10 +645,28 @@ setProjects(Array.from(byId.values()));
       kind: active,
       rows: payloadRows,
     };
-    await api("/budget-allocations", {
-      method: "POST",
-      body: JSON.stringify(body),
-    });
+    try {
+      await api("/budget-allocations", {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+    } catch (ex) {
+      if (!isNotFoundError(ex)) throw ex;
+
+      await api("/budget-estimates", {
+        method: "POST",
+        body: JSON.stringify({
+          kind: active,
+          project_id:
+            active === "projects" ? (projectId ? Number(projectId) : null) : null,
+          rows: payloadRows.map((r) => ({
+            code: r.code,
+            amount: Number(r.alloc || 0),
+            description: r.desc == null ? null : String(r.desc),
+          })),
+        }),
+      });
+    }
 
     const allocByCode = new Map(payloadRows.map((r) => [r.code, Number(r.alloc || 0)]));
     setRows((prev) =>
@@ -611,45 +690,65 @@ setProjects(Array.from(byId.values()));
     return { ok: true, serial };
   };
 
-  const saveSingleRowOnBlur = async (code) => {
+  const saveSingleRowOnBlur = async (code, rawInputValue) => {
     const rowCode = String(code || "").trim();
     if (!rowCode) return;
     if (autoSavingCodesRef.current.has(rowCode)) return;
-    if (saving) return;
 
-    const row = rows.find((x) => String(x.code) === rowCode);
+    const row = (rowsRef.current || []).find((x) => String(x.code) === rowCode);
     if (!row) return;
 
-    const alloc = Number(row.allocRaw || 0);
+    const allocFromInput =
+      rawInputValue === undefined ? Number(row.allocRaw || 0) : Number(parseMoney(rawInputValue) || 0);
+    const alloc = Number.isFinite(allocFromInput) ? allocFromInput : 0;
     if (!alloc) return;
 
-    autoSavingCodesRef.current.add(rowCode);
-    try {
-      setSaving(true);
-      setErr("");
-      await saveAllocationRows(
-        [
-          {
-            code: rowCode,
-            alloc,
-            desc: (row.desc || "").trim() || null,
-          },
-        ],
-        { showEmptyMsg: false, showSuccessModal: false }
+    // Ensure local row state is synced with the actual blurred value before save.
+    if (Number(row.allocRaw || 0) !== alloc) {
+      setRows((prev) =>
+        prev.map((r) => (String(r.code) === rowCode ? { ...r, allocRaw: alloc } : r))
       );
-    } catch (ex) {
-      setErr(ex.message || "خطا در ذخیره خودکار");
+    }
+
+    autoSavingCodesRef.current.add(rowCode);
+    const run = (async () => {
+      beginSaving();
+      try {
+        setErr("");
+        await saveAllocationRows(
+          [
+            {
+              code: rowCode,
+              alloc,
+              desc: (row.desc || "").trim() || null,
+            },
+          ],
+          { showEmptyMsg: false, showSuccessModal: false }
+        );
+      } catch (ex) {
+        setErr(ex.message || "خطا در ذخیره خودکار");
+      } finally {
+        autoSavingCodesRef.current.delete(rowCode);
+        endSaving();
+      }
+    })();
+
+    autoSavePromisesRef.current.set(rowCode, run);
+    try {
+      await run;
     } finally {
-      autoSavingCodesRef.current.delete(rowCode);
-      setSaving(false);
+      autoSavePromisesRef.current.delete(rowCode);
     }
   };
 
   const onSubmit = async () => {
+    beginSaving();
     try {
-      setSaving(true);
       setErr("");
-      const payloadRows = rows
+      await waitForPendingAutoSaves();
+      // Let React apply auto-save state updates before reading remaining manual rows.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const payloadRows = (rowsRef.current || [])
         .filter((r) => (r.allocRaw || 0) !== 0)
         .map((r) => ({
           code: r.code,
@@ -664,7 +763,7 @@ setProjects(Array.from(byId.values()));
     } catch (ex) {
       setModalMsg({ ok: false, msg: ex.message || "خطا از سرور" });
     } finally {
-      setSaving(false);
+      endSaving();
     }
   };
 
@@ -1438,8 +1537,8 @@ setProjects(Array.from(byId.values()));
                               onChange={(e) =>
                                 !isComputed && onAllocChange(r.code, e.target.value)
                               }
-                              onBlur={() => {
-                                if (!isComputed) void saveSingleRowOnBlur(r.code);
+                              onBlur={(e) => {
+                                if (!isComputed) void saveSingleRowOnBlur(r.code, e.target.value);
                               }}
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") {
