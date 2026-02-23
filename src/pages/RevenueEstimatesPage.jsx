@@ -291,7 +291,7 @@ const projectOptionLabel = useCallback((p) => {
       projectId: p?.id ?? spid,
       months: {},
       children: [],
-      expanded: true,
+      expanded: false,
       isOther: false,
     });
   }, [projectById, getProjectLabel]);
