@@ -4,8 +4,7 @@ import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 import {
-  baseCurrenciesTablePreset as tablePreset,
-  hoverSelectableRowPreset,
+  hoverSelectableCrudTablePreset as tablePreset,
   getHoverSelectableRowClass,
 } from "../components/ui/tablePresets.js";
 import { usePageAccess } from "../hooks/usePageAccess";
@@ -1733,6 +1732,8 @@ const sortedProjects = useMemo(() => {
     </div>
   );
 
+  const tableUi = tablePreset.table;
+  const rowUi = tablePreset.row;
   const colCount = 4 + dynamicMonths.length + 1;
 
   // ✅ Guards (مثل DefineBudgetCentersPage)
@@ -1791,20 +1792,20 @@ const sortedProjects = useMemo(() => {
           {renderProjectsControls()}
           {renderCenterCreateControls(
             <TableWrap>
-              <div className={tablePreset.outer}>
-                <div className={tablePreset.innerPad}>
-                  <div className={tablePreset.frame + " shadow-sm"}>
-                    <div className="overflow-x-auto">
+              <div className={tableUi.outer}>
+                <div className={tableUi.innerPad}>
+                  <div className={`${tableUi.frame} shadow-sm`}>
+                    <div className="max-h-[520px] overflow-auto">
                       <table
-                        className={tablePreset.table + " table-fixed text-[12px] md:text-[13px] min-w-[900px] lg:min-w-[1020px]"}
+                        className={`${tableUi.table} table-fixed text-[12px] md:text-[13px] min-w-[900px] lg:min-w-[1020px]`}
                         dir="rtl"
                       >
                     <THead>
-                      <tr className={tablePreset.headRow + " sticky top-0 z-10"}>
-                        <TH className={`w-12 ${tablePreset.th}`}>
+                      <tr className={`sticky top-0 z-20 ${tableUi.headRow}`}>
+                        <TH className={`${tablePreset.columns.select} ${tableUi.th}`}>
                           <input
                             type="checkbox"
-                            className={hoverSelectableRowPreset.checkbox}
+                            className={rowUi.checkbox}
                             checked={allVisibleSelected}
                             ref={(el) => {
                               if (el) el.indeterminate = someVisibleSelected;
@@ -1814,8 +1815,8 @@ const sortedProjects = useMemo(() => {
                             title="انتخاب همه"
                           />
                         </TH>
-                        <TH className={`w-14 ${tablePreset.th}`}>#</TH>
-                        <TH className={`w-36 md:w-40 ${tablePreset.th}`}>
+                        <TH className={`${tablePreset.columns.index} ${tableUi.th}`}>#</TH>
+                        <TH className={`w-36 md:w-40 ${tableUi.th}`}>
                       <div className="flex items-center justify-center gap-1 w-full">
                         <span>کد بودجه</span>
                         <button
@@ -1832,13 +1833,13 @@ const sortedProjects = useMemo(() => {
                         </button>
                       </div>
                         </TH>
-                        <TH className={`w-32 md:w-40 ${tablePreset.th}`}>نام بودجه</TH>
+                        <TH className={`w-32 md:w-40 ${tableUi.th}`}>نام بودجه</TH>
                     {dynamicMonths.map((m) => (
-                          <TH key={m.key} className={`w-20 md:w-24 px-0 ${tablePreset.th}`}>
+                          <TH key={m.key} className={`w-20 md:w-24 px-0 ${tableUi.th}`}>
                         {m.label}
                       </TH>
                     ))}
-                        <TH className={`w-24 md:w-28 border-l border-r border-black/10 dark:border-neutral-700 ${tablePreset.th}`}>
+                        <TH className={`w-24 md:w-28 border-l border-r border-black/10 dark:border-neutral-700 ${tableUi.th}`}>
                       <div className="flex items-center justify-center gap-1">
                         <span>جمع</span>
                         <button
@@ -1854,16 +1855,16 @@ const sortedProjects = useMemo(() => {
                       </tr>
                     </THead>
 
-                    <tbody className={tablePreset.body}>
+                    <tbody className={tableUi.body}>
                   {loading ? (
                     <TR>
-                          <TD colSpan={colCount} className={tablePreset.emptyRow}>
+                          <TD colSpan={colCount} className={tableUi.emptyRow}>
                         در حال بارگذاری…
                       </TD>
                     </TR>
                   ) : (displayRows || []).length === 0 ? (
                     <TR>
-                          <TD colSpan={colCount} className={tablePreset.emptyRow}>
+                          <TD colSpan={colCount} className={tableUi.emptyRow}>
                         {active === "projects" && !projectId ? "ابتدا پروژه را انتخاب کنید" : "موردی یافت نشد."}
                       </TD>
                     </TR>
@@ -1936,7 +1937,7 @@ const sortedProjects = useMemo(() => {
                             <TD className="px-2 py-3">
                               <input
                                 type="checkbox"
-                                className={hoverSelectableRowPreset.checkbox}
+                                className={rowUi.checkbox}
                                 checked={isSelected}
                                 disabled={!rowCode}
                                 onChange={() => toggleRowSelect(rowCode)}
