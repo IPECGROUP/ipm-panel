@@ -999,14 +999,42 @@ const removeDocFile = (id) => {
     if (!r) return null;
     const m = r.meta && typeof r.meta === 'object' ? r.meta : {};
 
+    const pick = (...vals) => {
+      for (const v of vals) {
+        if (v === undefined || v === null) continue;
+        if (typeof v === 'string' && v.trim() === '') continue;
+        return v;
+      }
+      return null;
+    };
+    const toMoneyNumber = (val) => {
+      if (val == null) return 0;
+      if (typeof val === 'number') return Number.isFinite(val) ? val : 0;
+      if (typeof val === 'bigint') return Number(val);
+      return parseMoney(String(val));
+    };
+
     const statusRaw = (r.status || '').toString().toLowerCase();
     const isDeletedMeta = m.deleted === true || m.is_deleted === true;
     if (statusRaw === 'deleted' || isDeletedMeta) return null;
 
     if (m.form && !String(m.form).startsWith('payment_request')) return null;
 
-    const amount = m.amount != null ? Number(m.amount) : (r.estimated_total != null ? Number(r.estimated_total) : 0);
-    const cashAmount = m.cash_amount != null ? Number(m.cash_amount) : 0;
+    const amount = toMoneyNumber(
+      pick(m.amount, r.amount, r.amountStr, r.estimated_total, r.total_amount, 0)
+    );
+    const cashAmount = toMoneyNumber(
+      pick(m.cash_amount, r.cashAmount, r.cash_amount, r.cashText, r.cash_text, 0)
+    );
+    const creditAmountRaw = pick(
+      m.credit_amount,
+      r.creditAmount,
+      r.credit_amount,
+      r.creditSection,
+      r.credit_section
+    );
+    const creditAmount =
+      creditAmountRaw != null ? toMoneyNumber(creditAmountRaw) : Math.max(0, amount - cashAmount);
 
     const currentAssigneeId =
       r.current_assignee_user_id ??
@@ -1047,8 +1075,10 @@ const removeDocFile = (id) => {
     })();
 
     const historyRaw =
+      r.historyJson ??
       r.history_json ??
       r.history ??
+      m.historyJson ??
       m.history_json ??
       m.history ??
       null;
@@ -1065,43 +1095,59 @@ const removeDocFile = (id) => {
       }
     }
 
-    const createdAt = r.created_at || r.createdAt || null;
+    const createdAt = pick(r.created_at, r.createdAt, m.created_at, m.createdAt, null);
+    const dateFaRaw = pick(r.dateFa, r.date_fa, r.date_jalali, r.dateJalali, m.date_fa, m.date_jalali, null);
+    const scopeVal = pick(m.scope, r.scope, r.type, 'office');
+    const docIdVal = pick(m.doc_id, r.docId, r.doc_id, 'pre_invoice');
+    const docOtherVal = pick(m.doc_other, r.docOther, r.doc_other, '');
 
     return {
       ...r,
-      createdById: r.created_by ?? m.createdById ?? null,
-      createdByName: m.createdByName || r.created_by_username || r.created_by_email || null,
-      serial: m.serial || r.serial || '',
-      scope: m.scope || r.type || 'office',
-      projectId: m.project_id || r.project_id || null,
-      budgetCode: m.budget_code || r.sub_budget || '',
-      title: m.title || m.desc || '',
-      desc: m.desc || '',
+      createdById: pick(r.createdById, r.created_by_user_id, r.created_by, m.createdById, m.created_by, null),
+      createdByName: pick(
+        r.createdByName,
+        m.createdByName,
+        r.created_by_username,
+        r.created_by_email,
+        m.created_by_username,
+        m.created_by_email,
+        null
+      ),
+      serial: pick(m.serial, r.serial, ''),
+      scope: scopeVal,
+      projectId: pick(m.project_id, r.projectId, r.project_id, null),
+      budgetCode: pick(m.budget_code, r.budgetCode, r.budget_code, r.sub_budget, ''),
+      title: pick(m.title, r.title, m.desc, r.description, r.desc, ''),
+      desc: pick(m.desc, m.description, r.description, r.desc, ''),
       amount,
-      cashText: cashAmount ? formatMoney(cashAmount) : '',
-      cashDate: m.cash_date_jalali || '',
-      creditSection: formatMoney(m.credit_amount != null ? m.credit_amount : (amount - cashAmount)),
-      creditPay: m.credit_pay_desc || '',
-      bankInfo: m.bank_info || '',
-      docId: m.doc_id || 'pre_invoice',
-      docOther: m.doc_other || '',
-      docLabel: m.doc_label || (m.doc_id ? (docOptions.find(d => d.id === m.doc_id)?.label || 'سایر') : 'پیش فاکتور'),
-      docNumber: m.doc_number || '',
-      docDate: m.doc_date_jalali || '',
-      currencyId: m.currency_id ?? null,
-      currencyLabel: m.currency_label || 'ریال',
-      currencySourceId: m.currency_source_id ?? null,
-      currencySourceLabel: m.currency_source_label || '',
-      beneficiaryName: m.beneficiary_name || '',
+      cashText: formatMoney(cashAmount),
+      cashDate: pick(m.cash_date_jalali, r.cashDate, r.cashDateJalali, r.cash_date_jalali, ''),
+      creditSection: formatMoney(creditAmount),
+      creditPay: pick(m.credit_pay_desc, r.creditPay, r.credit_pay_desc, ''),
+      bankInfo: pick(m.bank_info, r.bankInfo, r.bank_info, ''),
+      docId: docIdVal,
+      docOther: docOtherVal,
+      docLabel:
+        pick(m.doc_label, r.docLabel, null) ||
+        (docIdVal === 'other'
+          ? (docOtherVal || 'سایر')
+          : (docOptions.find(d => d.id === docIdVal)?.label || 'پیش فاکتور')),
+      docNumber: pick(m.doc_number, r.docNumber, r.doc_number, ''),
+      docDate: pick(m.doc_date_jalali, r.docDate, r.docDateJalali, r.doc_date_jalali, ''),
+      currencyId: pick(m.currency_id, r.currencyTypeId, r.currencyId, r.currency_id, null),
+      currencyLabel: pick(m.currency_label, r.currencyLabel, 'ریال'),
+      currencySourceId: pick(m.currency_source_id, r.currencySourceId, r.currency_source_id, null),
+      currencySourceLabel: pick(m.currency_source_label, r.currencySourceLabel, ''),
+      beneficiaryName: pick(m.beneficiary_name, r.beneficiaryName, r.beneficiary_name, ''),
       createdAt,
-      dateFa: createdAt ? fmtDateFa(createdAt) : '—',
+      dateFa: dateFaRaw || (createdAt ? fmtDateFa(createdAt) : '—'),
       assignedToId: currentAssigneeId,
       assignedRole: currentRole,
       current_role: currentRole,
       currentRole: currentRole,
       workflowUnit: wfUnitNorm,
       stageKey: stageKeyFromServer || wfUnitNorm || guessStageKeyForRow({ ...r, currentRole }),
-      status: r.status || 'pending',
+      status: (r.status || 'pending').toString().toLowerCase(),
       actions,
     };
   };
@@ -1857,24 +1903,24 @@ const isRowForMe = React.useCallback((row) => {
 
   const canTakeActionsFor = React.useCallback((row) => {
     if (!row || !me) return false;
+    if (isAdmin) return false;
 
     const meta = row.meta && typeof row.meta === 'object' ? row.meta : {};
     const creatorId =
       row.createdById ??
+      row.created_by_user_id ??
       row.created_by ??
       meta.createdById ??
       meta.created_by ??
       null;
 
     const st = (row.status || '').toString().toLowerCase();
-    if (row.canAct === true) return st === 'pending' || st === 'returned';
-
     if (myId && creatorId != null && String(creatorId) === myId) {
       return false;
     }
 
+    if (row.canAct === true) return st === 'pending' || st === 'returned';
     if (!isRowForMe(row)) return false;
-    if (isAdmin) return false;
     return st === 'pending';
   }, [me, myId, isRowForMe, isAdmin]);
 
