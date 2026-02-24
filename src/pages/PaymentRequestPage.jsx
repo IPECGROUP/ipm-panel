@@ -604,8 +604,16 @@ if (lastMove && lastMove.to_role) {
     qs2.set('kind', active);
     if (active === 'projects' && projectId) qs2.set('project_id', String(projectId));
     try {
-      const sum = await api('/budget-allocations/summary?' + qs2.toString());
-      setTotals(sum.totals || {});
+      const histRes = await api('/budget-allocations/history?' + qs2.toString());
+      const histMap = histRes?.history || {};
+      const allocTotals = {};
+      Object.keys(histMap).forEach((code) => {
+        allocTotals[code] = (histMap[code] || []).reduce(
+          (acc, h) => acc + Number(h?.amount || 0),
+          0
+        );
+      });
+      setTotals(allocTotals);
     } catch { setTotals({}); }
 
     if (active !== 'projects') {
@@ -1225,12 +1233,10 @@ const removeDocFile = (id) => {
     const src = mapObj && typeof mapObj === 'object' ? mapObj : {};
     if (!code) return 0;
     const normalizeKey = (v) => {
-      const en = toEnDigits(String(v || ''));
-      return en
+      return toEnDigits(String(v || ''))
         .trim()
-        .replace(/\s+/g, '')
-        .replace(/[‐‑‒–—−]/g, '-')
-        .toUpperCase();
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '');
     };
 
     const direct = src[code];
