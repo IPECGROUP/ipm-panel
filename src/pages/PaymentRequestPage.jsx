@@ -1233,13 +1233,26 @@ const removeDocFile = (id) => {
 
   const normalizedTotalsLookup = React.useCallback((code, scope) => {
     if (!code) return 0;
+    const normalizeKey = (v) => {
+      const en = toEnDigits(String(v || ''));
+      return en
+        .trim()
+        .replace(/\s+/g, '')
+        .replace(/[‐‑‒–—−]/g, '-')
+        .toUpperCase();
+    };
+
     const direct = totals[code];
     if (typeof direct === 'number') return direct;
     const rendered = renderBudgetCodeOnce(code, scope);
     const byRendered = totals[rendered];
     if (typeof byRendered === 'number') return byRendered;
+    const codeNorm = normalizeKey(code);
+    const renderedNorm = normalizeKey(rendered);
     for (const [k, v] of Object.entries(totals || {})) {
+      if (normalizeKey(k) === codeNorm || normalizeKey(k) === renderedNorm) return v || 0;
       if (renderBudgetCodeOnce(k, scope) === rendered) return v || 0;
+      if (normalizeKey(renderBudgetCodeOnce(k, scope)) === renderedNorm) return v || 0;
     }
     return 0;
   }, [totals, renderBudgetCodeOnce]);
