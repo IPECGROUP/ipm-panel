@@ -288,7 +288,8 @@ setProjects(Array.from(byId.values()));
       return res?.history || {};
     } catch (ex) {
       if (!isNotFoundError(ex)) throw ex;
-      return {};
+      const legacy = await api("/budget-estimates?" + params.toString() + "&history=1");
+      return legacy?.history || {};
     }
   };
 

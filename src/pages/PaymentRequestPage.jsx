@@ -603,18 +603,27 @@ if (lastMove && lastMove.to_role) {
     const qs2 = new URLSearchParams();
     qs2.set('kind', active);
     if (active === 'projects' && projectId) qs2.set('project_id', String(projectId));
+    let histMap = {};
     try {
       const histRes = await api('/budget-allocations/history?' + qs2.toString());
-      const histMap = histRes?.history || {};
-      const allocTotals = {};
-      Object.keys(histMap).forEach((code) => {
-        allocTotals[code] = (histMap[code] || []).reduce(
-          (acc, h) => acc + Number(h?.amount || 0),
-          0
-        );
-      });
-      setTotals(allocTotals);
-    } catch { setTotals({}); }
+      histMap = histRes?.history || {};
+    } catch {
+      // Fallback for environments that still persist allocation history in budget-estimates
+      try {
+        const legacy = await api('/budget-estimates?' + qs2.toString() + '&history=1');
+        histMap = legacy?.history || {};
+      } catch {
+        histMap = {};
+      }
+    }
+    const allocTotals = {};
+    Object.keys(histMap).forEach((code) => {
+      allocTotals[code] = (histMap[code] || []).reduce(
+        (acc, h) => acc + Number(h?.amount || 0),
+        0
+      );
+    });
+    setTotals(allocTotals);
 
     if (active !== 'projects') {
       // همان الگوی BudgetAllocationPage: اول budget-estimates، بعد fallback روی centers
@@ -1250,6 +1259,8 @@ const removeDocFile = (id) => {
   const findInTotalsMap = React.useCallback((mapObj, code, scope) => {
     const src = mapObj && typeof mapObj === 'object' ? mapObj : {};
     if (!code) return 0;
+    const stripKnownPrefix = (v) =>
+      String(v || '').replace(/^(ob|sb|fb|cb|ib)[\-\.]?/i, '');
     const normalizeKey = (v) => {
       return toEnDigits(String(v || ''))
         .trim()
@@ -1268,10 +1279,25 @@ const removeDocFile = (id) => {
     if (typeof byRendered === 'number') return byRendered;
     const codeNorm = normalizeKey(code);
     const renderedNorm = normalizeKey(rendered);
+    const codeStrippedNorm = normalizeKey(stripKnownPrefix(code));
+    const renderedStrippedNorm = normalizeKey(stripKnownPrefix(rendered));
     for (const [k, v] of Object.entries(src || {})) {
-      if (normalizeKey(k) === codeNorm || normalizeKey(k) === renderedNorm) return v || 0;
-      if (renderBudgetCodeOnce(k, scope) === rendered) return v || 0;
-      if (normalizeKey(renderBudgetCodeOnce(k, scope)) === renderedNorm) return v || 0;
+      const kNorm = normalizeKey(k);
+      const kStrippedNorm = normalizeKey(stripKnownPrefix(k));
+      const kRendered = renderBudgetCodeOnce(k, scope);
+      const kRenderedNorm = normalizeKey(kRendered);
+      const kRenderedStrippedNorm = normalizeKey(stripKnownPrefix(kRendered));
+
+      if (kNorm === codeNorm || kNorm === renderedNorm) return v || 0;
+      if (kStrippedNorm === codeNorm || kStrippedNorm === renderedNorm) return v || 0;
+      if (kNorm === codeStrippedNorm || kNorm === renderedStrippedNorm) return v || 0;
+      if (kStrippedNorm === codeStrippedNorm || kStrippedNorm === renderedStrippedNorm) return v || 0;
+
+      if (kRendered === rendered) return v || 0;
+      if (kRenderedNorm === renderedNorm || kRenderedNorm === codeNorm) return v || 0;
+      if (kRenderedStrippedNorm === renderedNorm || kRenderedStrippedNorm === codeNorm) return v || 0;
+      if (kRenderedNorm === renderedStrippedNorm || kRenderedNorm === codeStrippedNorm) return v || 0;
+      if (kRenderedStrippedNorm === renderedStrippedNorm || kRenderedStrippedNorm === codeStrippedNorm) return v || 0;
     }
     return 0;
   }, [renderBudgetCodeOnce, toEnDigits]);
