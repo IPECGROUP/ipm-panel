@@ -1277,7 +1277,8 @@ const createRequestWithFiles = async (payload) => {
     let newReqErr = {};
     const mark = (k) => { newReqErr[k] = 'این فیلد اجباری است'; };
 
-    if (!titleInput.trim()) mark('title');
+    const normalizedTitle = String(titleInput || titleByDocs || '').trim();
+    if (!normalizedTitle) mark('title');
     if (!budgetCode.trim()) mark('budgetCode');
     if (active === 'projects' && !projectId) mark('projectId');
 
@@ -1347,7 +1348,7 @@ const createRequestWithFiles = async (payload) => {
       scope: active,
       projectId: active === 'projects' ? (projectId || null) : null,
       budgetCode,
-      title: titleInput || titleByDocs,
+      title: normalizedTitle,
       desc: descInput || '',
       amount: amountNum,
       cashText,
@@ -1422,11 +1423,27 @@ const createRequestWithFiles = async (payload) => {
       if (editId) {
         const payloadPatch = {
           id: editId,
+          serial: baseRow.serial,
+          dateJalali: todayFa,
+          scope: baseRow.scope,
+          title: baseRow.title,
+          description: baseRow.desc,
+          amount: baseRow.amount,
+          cashAmount: cashNum,
+          cashDateJalali: baseRow.cashDate || null,
+          creditAmount: amountNum - cashNum,
+          creditPay: creditIsZero ? null : baseRow.creditPay,
+          beneficiaryName: baseRow.beneficiaryName || null,
+          bankInfo: baseRow.bankInfo || null,
+          docId: baseRow.docId || null,
+          docOther: baseRow.docOther || null,
+          docNumber: baseRow.docNumber || null,
+          docDateJalali: baseRow.docDate || null,
+          currencyTypeId: baseRow.currencyId || null,
+          currencySourceId: baseRow.currencySourceId || null,
           projectId: baseRow.projectId,
-          subBudget: baseRow.budgetCode,
-          estimatedTotal: baseRow.amount,
-          items: [],
-          costCentersText: [],
+          budgetCode: baseRow.budgetCode,
+          attachments: doneFilesForMeta,
           meta,
         };
         await api(`/requests/${editId}`, {
@@ -1436,11 +1453,27 @@ const createRequestWithFiles = async (payload) => {
         serverRow = null;
       } else {
         const payload = {
+          serial: baseRow.serial,
+          dateJalali: todayFa,
+          scope: baseRow.scope,
+          title: baseRow.title,
+          description: baseRow.desc,
+          amount: baseRow.amount,
+          cashAmount: cashNum,
+          cashDateJalali: baseRow.cashDate || null,
+          creditAmount: amountNum - cashNum,
+          creditPay: creditIsZero ? null : baseRow.creditPay,
+          beneficiaryName: baseRow.beneficiaryName || null,
+          bankInfo: baseRow.bankInfo || null,
+          docId: baseRow.docId || null,
+          docOther: baseRow.docOther || null,
+          docNumber: baseRow.docNumber || null,
+          docDateJalali: baseRow.docDate || null,
+          currencyTypeId: baseRow.currencyId || null,
+          currencySourceId: baseRow.currencySourceId || null,
           projectId: baseRow.projectId,
-          subBudget: baseRow.budgetCode,
-          estimatedTotal: baseRow.amount,
-          items: [],
-          costCentersText: [],
+          budgetCode: baseRow.budgetCode,
+          attachments: doneFilesForMeta,
           meta,
         };
         const resp = await createRequestWithFiles(payload);
