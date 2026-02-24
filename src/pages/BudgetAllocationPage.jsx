@@ -1,4 +1,4 @@
-﻿// src/pages/BudgetAllocationPage.jsx
+// src/pages/BudgetAllocationPage.jsx
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Card } from "../components/ui/Card";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table";
@@ -282,33 +282,13 @@ setProjects(Array.from(byId.values()));
     String(ex?.errorCode || "").toLowerCase() === "not_found" ||
     /(^|_)404$|not_found/i.test(String(ex?.message || ""));
 
-  const loadHistoryWithFallback = async (params) => {
+  const loadAllocationHistory = async (params) => {
     try {
       const res = await api("/budget-allocations/history?" + params.toString());
       return res?.history || {};
     } catch (ex) {
       if (!isNotFoundError(ex)) throw ex;
-      const legacy = await api("/budget-estimates?" + params.toString() + "&history=1");
-      return legacy?.history || {};
-    }
-  };
-
-  const loadSummaryWithFallback = async (params) => {
-    try {
-      const res = await api("/budget-allocations/summary?" + params.toString());
-      return res?.totals || {};
-    } catch (ex) {
-      if (!isNotFoundError(ex)) throw ex;
-      const history = await loadHistoryWithFallback(params);
-      const totals = {};
-      Object.keys(history || {}).forEach((code) => {
-        const total = (history[code] || []).reduce(
-          (acc, h) => acc + Number(h?.amount || 0),
-          0
-        );
-        totals[code] = total;
-      });
-      return totals;
+      return {};
     }
   };
 
@@ -424,24 +404,19 @@ setProjects(Array.from(byId.values()));
           qs2.set("project_id", String(projectId));
         qs2.set("_", String(Date.now()));
 
-        let sum = { totals: {} };
-        try {
-          sum = { totals: await loadSummaryWithFallback(qs2) };
-        } catch {
-          sum = { totals: {} };
-        }
-
         let histMap = {};
         try {
-          const qs3 = new URLSearchParams();
-          qs3.set("kind", active);
-          if (active === "projects" && projectId)
-            qs3.set("project_id", String(projectId));
-          qs3.set("_", String(Date.now()));
-          histMap = await loadHistoryWithFallback(qs3);
+          histMap = await loadAllocationHistory(qs2);
         } catch {
           histMap = {};
         }
+        const allocTotals = {};
+        Object.keys(histMap || {}).forEach((code) => {
+          allocTotals[code] = (histMap[code] || []).reduce(
+            (acc, h) => acc + Number(h?.amount || 0),
+            0
+          );
+        });
 
         if (abort) return;
 
@@ -458,12 +433,12 @@ setProjects(Array.from(byId.values()));
           code: s.code,
           name: s.center_desc || "",
           lastAmount: s.last_amount || 0,
-          totalAlloc: (sum?.totals || {})[s.code] || 0,
+          totalAlloc: allocTotals[s.code] || 0,
           allocRaw: 0,
           desc: "",
         }));
 
-        setTotals(sum?.totals || {});
+        setTotals(allocTotals);
         setHistoryByCode(histMap);
         setRows(built);
       } catch (ex) {
