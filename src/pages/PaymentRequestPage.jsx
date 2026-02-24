@@ -597,7 +597,6 @@ if (lastMove && lastMove.to_role) {
 
   const [sourceItems, setSourceItems] = React.useState([]);
   const [totals, setTotals] = React.useState({});
-  const [remainingTotals, setRemainingTotals] = React.useState({});
   const [budgetCode, setBudgetCode] = React.useState('');
 
   const reloadBudgetSources = React.useCallback(async () => {
@@ -607,8 +606,7 @@ if (lastMove && lastMove.to_role) {
     try {
       const sum = await api('/budget-allocations/summary?' + qs2.toString());
       setTotals(sum.totals || {});
-      setRemainingTotals(sum.remaining || {});
-    } catch { setTotals({}); setRemainingTotals({}); }
+    } catch { setTotals({}); }
 
     if (active !== 'projects') {
       try {
@@ -1223,16 +1221,6 @@ const removeDocFile = (id) => {
   const amountFilled = amountValue > 0;
   const secondaryDisabled = !amountFilled;
 
-  const usedForSelected = React.useMemo(() => {
-    if (!budgetCode) return 0;
-    return (items || []).reduce((sum, it) => {
-      const sameScope = it.scope === active;
-      const sameProj  = active !== 'projects' ? true : String(it.projectId || '') === String(projectId || '');
-      const sameCode  = String(it.budgetCode || '') === String(budgetCode || '');
-      return sameScope && sameProj && sameCode ? sum + Number(it.amount || 0) : sum;
-    }, 0);
-  }, [items, active, projectId, budgetCode]);
-
   const findInTotalsMap = React.useCallback((mapObj, code, scope) => {
     const src = mapObj && typeof mapObj === 'object' ? mapObj : {};
     if (!code) return 0;
@@ -1265,19 +1253,9 @@ const removeDocFile = (id) => {
   }, [findInTotalsMap, totals]);
 
   const availableForSelected = React.useMemo(() => {
-    const remainingFromServer = findInTotalsMap(remainingTotals, budgetCode, active);
-    if (remainingFromServer > 0) return remainingFromServer;
-
-    const hasRemainingKey = !!budgetCode && Object.keys(remainingTotals || {}).some((k) => {
-      const rv = renderBudgetCodeOnce(k, active);
-      const bv = renderBudgetCodeOnce(budgetCode, active);
-      return String(k || '').trim() === String(budgetCode || '').trim() || String(rv) === String(bv);
-    });
-    if (hasRemainingKey) return Math.max(0, remainingFromServer);
-
     const cap = normalizedTotalsLookup(budgetCode, active);
-    return Math.max(0, cap - usedForSelected);
-  }, [findInTotalsMap, remainingTotals, budgetCode, active, renderBudgetCodeOnce, normalizedTotalsLookup, usedForSelected]);
+    return Math.max(0, cap);
+  }, [budgetCode, active, normalizedTotalsLookup]);
 
   const labelOfDoc = React.useCallback(
     (id, other) => (id === 'other'
@@ -1360,7 +1338,7 @@ const createRequestWithFiles = async (payload) => {
     }
 
     if (amountNum > availableForSelected) {
-      setErr(`مبلغ وارد شده (${formatMoney(amountNum)}) از سقف باقی‌مانده (${formatMoney(availableForSelected)}) بیشتر است.`);
+      setErr(`مبلغ وارد شده (${formatMoney(amountNum)}) از سقف تخصیص (${formatMoney(availableForSelected)}) بیشتر است.`);
       return;
     }
     if (cashNum > amountNum) { setErr('مبلغ نقدی نمی‌تواند از مبلغ درخواست بیشتر باشد.'); return; }
@@ -3842,7 +3820,7 @@ return (
                 )}
                 {amountTooHigh && (
                   <div className="text-xs text-red-600 dark:text-red-400 mt-1">
-                    مبلغ وارد شده از سقف باقی‌مانده بیشتر است.
+                    مبلغ وارد شده از سقف تخصیص بیشتر است.
                   </div>
                 )}
                 {!!budgetCode && (
