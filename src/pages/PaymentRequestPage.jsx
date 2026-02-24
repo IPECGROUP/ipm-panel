@@ -597,6 +597,7 @@ if (lastMove && lastMove.to_role) {
 
   const [sourceItems, setSourceItems] = React.useState([]);
   const [totals, setTotals] = React.useState({});
+  const [remainingTotals, setRemainingTotals] = React.useState({});
   const [budgetCode, setBudgetCode] = React.useState('');
 
   const reloadBudgetSources = React.useCallback(async () => {
@@ -606,7 +607,8 @@ if (lastMove && lastMove.to_role) {
     try {
       const sum = await api('/budget-allocations/summary?' + qs2.toString());
       setTotals(sum.totals || {});
-    } catch { setTotals({}); }
+      setRemainingTotals(sum.remaining || {});
+    } catch { setTotals({}); setRemainingTotals({}); }
 
     if (active !== 'projects') {
       try {
@@ -1231,7 +1233,8 @@ const removeDocFile = (id) => {
     }, 0);
   }, [items, active, projectId, budgetCode]);
 
-  const normalizedTotalsLookup = React.useCallback((code, scope) => {
+  const findInTotalsMap = React.useCallback((mapObj, code, scope) => {
+    const src = mapObj && typeof mapObj === 'object' ? mapObj : {};
     if (!code) return 0;
     const normalizeKey = (v) => {
       const en = toEnDigits(String(v || ''));
@@ -1242,25 +1245,39 @@ const removeDocFile = (id) => {
         .toUpperCase();
     };
 
-    const direct = totals[code];
+    const direct = src[code];
     if (typeof direct === 'number') return direct;
     const rendered = renderBudgetCodeOnce(code, scope);
-    const byRendered = totals[rendered];
+    const byRendered = src[rendered];
     if (typeof byRendered === 'number') return byRendered;
     const codeNorm = normalizeKey(code);
     const renderedNorm = normalizeKey(rendered);
-    for (const [k, v] of Object.entries(totals || {})) {
+    for (const [k, v] of Object.entries(src || {})) {
       if (normalizeKey(k) === codeNorm || normalizeKey(k) === renderedNorm) return v || 0;
       if (renderBudgetCodeOnce(k, scope) === rendered) return v || 0;
       if (normalizeKey(renderBudgetCodeOnce(k, scope)) === renderedNorm) return v || 0;
     }
     return 0;
-  }, [totals, renderBudgetCodeOnce]);
+  }, [renderBudgetCodeOnce, toEnDigits]);
+
+  const normalizedTotalsLookup = React.useCallback((code, scope) => {
+    return findInTotalsMap(totals, code, scope);
+  }, [findInTotalsMap, totals]);
 
   const availableForSelected = React.useMemo(() => {
+    const remainingFromServer = findInTotalsMap(remainingTotals, budgetCode, active);
+    if (remainingFromServer > 0) return remainingFromServer;
+
+    const hasRemainingKey = !!budgetCode && Object.keys(remainingTotals || {}).some((k) => {
+      const rv = renderBudgetCodeOnce(k, active);
+      const bv = renderBudgetCodeOnce(budgetCode, active);
+      return String(k || '').trim() === String(budgetCode || '').trim() || String(rv) === String(bv);
+    });
+    if (hasRemainingKey) return Math.max(0, remainingFromServer);
+
     const cap = normalizedTotalsLookup(budgetCode, active);
     return Math.max(0, cap - usedForSelected);
-  }, [normalizedTotalsLookup, budgetCode, active, usedForSelected]);
+  }, [findInTotalsMap, remainingTotals, budgetCode, active, renderBudgetCodeOnce, normalizedTotalsLookup, usedForSelected]);
 
   const labelOfDoc = React.useCallback(
     (id, other) => (id === 'other'
