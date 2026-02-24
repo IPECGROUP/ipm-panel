@@ -617,6 +617,24 @@ if (lastMove && lastMove.to_role) {
     } catch { setTotals({}); }
 
     if (active !== 'projects') {
+      // همان الگوی BudgetAllocationPage: اول budget-estimates، بعد fallback روی centers
+      try {
+        const est = await api('/budget-estimates?' + qs2.toString());
+        const estItems = Array.isArray(est?.items) ? est.items : [];
+        const mapped = estItems
+          .map((it) => ({
+            code: String(it?.code || '').trim(),
+            name: it?.center_desc || it?.name || it?.last_desc || '',
+            last_amount: Number(it?.last_amount ?? it?.amount ?? 0),
+          }))
+          .filter((it) => it.code);
+
+        if (mapped.length > 0) {
+          setSourceItems(mapped);
+          return;
+        }
+      } catch {}
+
       try {
         const centersRes = await api(`/centers/${active}`);
         const items = (centersRes.items || []).map(c => ({
@@ -1235,8 +1253,12 @@ const removeDocFile = (id) => {
     const normalizeKey = (v) => {
       return toEnDigits(String(v || ''))
         .trim()
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, '');
+        .replace(/\u200c/g, '')
+        .replace(/ي/g, 'ی')
+        .replace(/ك/g, 'ک')
+        .replace(/\s+/g, '')
+        .replace(/[‐‑‒–—−]/g, '-')
+        .toLowerCase();
     };
 
     const direct = src[code];
