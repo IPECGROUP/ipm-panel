@@ -298,10 +298,6 @@ if (lastMove && lastMove.to_role) {
     });
   };
 
-
-
-
-
     const StatusPill = (row) => {
     const steps = getWorkflowStepsForScope(row.scope || 'office');
     const stepKey = getCurrentStepKeyForRow(row);
