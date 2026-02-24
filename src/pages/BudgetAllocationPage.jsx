@@ -1777,7 +1777,15 @@ setProjects(Array.from(byId.values()));
               aria-label="حذف کامل تخصیص‌ها"
               title="حذف کامل تخصیص‌های ذخیره‌شده"
             >
-              <span className="text-base leading-none">×</span>
+              <img
+                src="/images/icons/bastan.svg"
+                alt=""
+                className="w-4 h-4"
+                style={{
+                  filter:
+                    "brightness(0) saturate(100%) invert(17%) sepia(96%) saturate(5345%) hue-rotate(353deg) brightness(97%) contrast(115%)",
+                }}
+              />
             </button>
           )}
 
