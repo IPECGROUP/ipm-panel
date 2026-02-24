@@ -2401,8 +2401,8 @@ const isRowForMe = React.useCallback((row) => {
         </div>
         <div className="w-full px-2 md:px-4" dir="ltr">
           <div className="relative flex items-center justify-between w-full">
-            {/* خط خاکستری اصلی (در مرکز دایره‌ها) */}
-            <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-[2px] bg-neutral-300 dark:bg-neutral-700" />
+            {/* خط خاکستری اصلی (دقیقاً وسط دایره‌ها) */}
+            <div className="absolute left-6 right-6 top-[14px] md:top-4 h-[2px] bg-neutral-300 dark:bg-neutral-700" />
 
             {/* دایره‌ها: انجام‌شده (مشکی) + مرحله جاری (نارنجی) */}
             {steps.map((st, idx) => {
