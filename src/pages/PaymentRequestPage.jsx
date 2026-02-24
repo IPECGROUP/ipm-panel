@@ -2404,11 +2404,13 @@ const isRowForMe = React.useCallback((row) => {
             {/* خط خاکستری اصلی (در مرکز دایره‌ها) */}
             <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-[2px] bg-neutral-300 dark:bg-neutral-700" />
 
-            {/* دایره‌ها + تپش مرحله بعدی */}
+            {/* دایره‌ها: انجام‌شده (مشکی) + مرحله جاری (نارنجی) */}
             {steps.map((st, idx) => {
-              const done = idx <= currentIndex;
-              const isNext = idx === currentIndex + 1 && idx < steps.length;
-              const isEdge = idx === 0 || idx === steps.length - 1;
+              const rowStatus = (row.status || '').toString().toLowerCase();
+              const isFinalApproved =
+                rowStatus === 'approved' && currentIndex === steps.length - 1;
+              const done = isFinalApproved ? idx <= currentIndex : idx < currentIndex;
+              const isCurrent = !isFinalApproved && idx === currentIndex;
 
               return (
                 <div
@@ -2417,10 +2419,12 @@ const isRowForMe = React.useCallback((row) => {
                 >
                   <div
                     className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center shadow-sm z-[1]
-                      ${done
+                      ${isCurrent
+                        ? 'bg-[#f48224] text-white pr-dot-pulse'
+                        : done
                         ? 'bg-neutral-900 text-white'
                         : 'bg-neutral-400 text-white dark:bg-neutral-600 dark:text-white'
-                      } ${(!isEdge && isNext) ? 'pr-dot-pulse' : ''}`}
+                      }`}
                     style={{ fontFamily: vazirFont, fontSize: '13px' }}
                   >
                     {toFaDigits(st.key === 'creator' ? 0 : st.index)}
