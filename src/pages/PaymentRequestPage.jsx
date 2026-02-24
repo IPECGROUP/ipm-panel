@@ -1,4 +1,4 @@
-// src/pages/PaymentRequestPage.jsx
+﻿// src/pages/PaymentRequestPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Card } from "../components/ui/Card";
 import { Btn, LinkBtn } from "../components/ui/Button";
@@ -178,30 +178,43 @@ export default function PaymentRequestPage() {
     const s = (roleInput || '').toString().toLowerCase();
     if (!s) return null;
 
+    if (s === 'creator' || s === 'requester') return 'creator';
+    if (s === 'project_control') return 'project_control';
+    if (s === 'project_manager') return 'project_manager';
+    if (s === 'accounting') return 'accounting_specialist';
+    if (s === 'finance_manager') return 'finance_manager';
+    if (s === 'payment_order') return 'payment_order';
+
     if (
       s.includes('creator') ||
       s.includes('requester') ||
-      s.includes('درخواست‌کننده') ||
-      s.includes('درخواست کننده')
-    ) {
-      return 'creator';
-    }
+      s.includes('درخواست') ||
+      s.includes('request')
+    ) return 'creator';
 
-    if (s.includes('project_control') || s.includes('کنترل پروژه') || s.includes('planning')) {
-      return 'project_control';
-    }
+    if (
+      s.includes('project_control') ||
+      s.includes('control') ||
+      s.includes('planning') ||
+      s.includes('کنترل پروژه')
+    ) return 'project_control';
 
-    if (s.includes('project_manager') || s.includes('مدیر پروژه')) {
-      return 'project_manager';
-    }
+    if (
+      s.includes('project_manager') ||
+      s.includes('مدیر پروژه')
+    ) return 'project_manager';
 
-    if (s.includes('accounting') || s.includes('حسابداری') || s.includes('کارشناس حسابداری')) {
-      return 'accounting_specialist';
-    }
+    if (
+      s.includes('accounting') ||
+      s.includes('حسابداری') ||
+      s.includes('کارشناس حسابداری')
+    ) return 'accounting_specialist';
 
-    if (s.includes('finance_manager') || (s.includes('manager') && s.includes('مالی'))) {
-      return 'finance_manager';
-    }
+    if (
+      s.includes('finance_manager') ||
+      (s.includes('manager') && s.includes('مالی')) ||
+      s.includes('مدیر مالی')
+    ) return 'finance_manager';
 
     if (
       s.includes('executive') ||
@@ -209,42 +222,36 @@ export default function PaymentRequestPage() {
       s.includes('دستور پرداخت') ||
       s.includes('مدیریت') ||
       (s.includes('manager') && !s.includes('مالی'))
-    ) {
-      return 'payment_order';
-    }
+    ) return 'payment_order';
 
     return null;
   };
 
-    const getCurrentStepKeyForRow = (row) => {
-    if (!row) return 'creator';
+  const getCurrentStepKeyFromHistory = (row, steps) => {
+    const list = Array.isArray(row?.actions) ? row.actions : [];
+    for (let i = list.length - 1; i >= 0; i--) {
+      const a = list[i] || {};
+      const t = (a.type || a.action || '').toString().toLowerCase();
 
-    // ۱) اول از current_role استفاده کن (اولویت اول و قطعی)
-    const currentRoleRaw = 
-      row.current_role || 
-      row.currentRole || 
-      row.assigned_user_role || 
-      row.assignedUserRole ||
-      row.current_role_from_action ||  // اگر بعداً اضافه کردی
-      '';
-    
-    if (currentRoleRaw) {
-      const fromCurrent = roleToStepKey(currentRoleRaw);
-      if (fromCurrent) return fromCurrent;
+      if (t === 'step_clear') return null;
+      if (t !== 'step_set') continue;
+
+      const roleRaw = a.roleKey || a.role_key || a.to_role || a.current_role || a.role || '';
+      const byRole = roleToStepKey(roleRaw);
+      if (byRole) return byRole;
+
+      const idxRaw = a.index ?? a.step_index ?? a.stepIndex;
+      const idx = Number(idxRaw);
+      if (Number.isFinite(idx) && idx >= 0 && idx < (steps || []).length) {
+        return steps[idx].key;
+      }
+      return null;
     }
+    return null;
+  };
 
-    // ۲) اگر current_role نبود یا مپ نشد، از history آخرین to_role رو بگیر
-    const lastMove = [...row.actions].reverse().find(a => {
-  const t = (a.action || a.type || '').toString().toLowerCase();
-  return t === 'status' || t === 'approve' || t === 'approved' || t === 'reject' || t === 'rejected' || t === 'returned' || t === 'return';
-});
-if (lastMove && lastMove.to_role) {
-  const fromHistory = roleToStepKey(lastMove.to_role);
-  if (fromHistory) return fromHistory;
-}
-
-
-    // ۳) فقط اگر هیچی نبود، به روش‌های قدیمی فال‌بک کن
+  const getCurrentStepKeyForRow = (row) => {
+    if (!row) return 'creator';
     const steps = getWorkflowStepsForScope(row.scope || 'office');
     const status = (row.status || '').toString().toLowerCase();
 
@@ -252,7 +259,39 @@ if (lastMove && lastMove.to_role) {
       return 'payment_done';
     }
 
-    let roleRaw = 
+    const currentRoleRaw =
+      row.current_role ||
+      row.currentRole ||
+      row.assigned_user_role ||
+      row.assignedUserRole ||
+      row.current_role_from_action ||
+      '';
+    if (currentRoleRaw) {
+      const fromCurrent = roleToStepKey(currentRoleRaw);
+      if (fromCurrent) return fromCurrent;
+    }
+
+    const fromStepSet = getCurrentStepKeyFromHistory(row, steps);
+    if (fromStepSet) return fromStepSet;
+
+    const history = Array.isArray(row.actions) ? row.actions : [];
+    const lastMove = [...history].reverse().find(a => {
+      const t = (a.action || a.type || '').toString().toLowerCase();
+      return t === 'status' || t === 'approve' || t === 'approved' || t === 'reject' || t === 'rejected' || t === 'returned' || t === 'return';
+    });
+    if (lastMove) {
+      const fromHistory = roleToStepKey(
+        lastMove.roleKey ||
+        lastMove.role_key ||
+        lastMove.to_role ||
+        lastMove.current_role ||
+        lastMove.from_role ||
+        ''
+      );
+      if (fromHistory) return fromHistory;
+    }
+
+    const roleRaw =
       row.assignedRole ||
       row.assigned_user_role ||
       row.currentRole ||
@@ -260,21 +299,18 @@ if (lastMove && lastMove.to_role) {
       row.workflow_unit ||
       row.workflowUnit ||
       '';
-
-    let mappedKey = roleToStepKey(roleRaw);
+    const mappedKey = roleToStepKey(roleRaw);
     if (mappedKey) return mappedKey;
 
-    // آخرین تلاش: از scope و مرحله حدس بزن
     const stageKey = row.stageKey || row.workflowUnit || guessStageKeyForRow(row);
     const s = (stageKey || '').toString().toLowerCase();
     if (s.includes('planning') || s.includes('control')) return 'project_control';
     if (s.includes('finance') || s.includes('account')) return 'finance_manager';
     if (s.includes('payment') || s.includes('executive') || s.includes('manager')) return 'payment_order';
 
+    if (status === 'pending' && steps[1]?.key) return steps[1].key;
     return steps[0]?.key || 'creator';
   };
-
-
   const hasPaymentOrderApproved = (row) => {
     if (!row || !Array.isArray(row.actions)) return false;
 
@@ -283,8 +319,8 @@ if (lastMove && lastMove.to_role) {
       const statusVal = (a.status || '').toString().toLowerCase();
       const noteVal = (a.note || a.comment || '').toString().toLowerCase();
 
-      const toKey   = roleToStepKey(a.to_role || a.current_role || '');
-      const fromKey = roleToStepKey(a.from_role || '');
+      const toKey   = roleToStepKey(a.roleKey || a.role_key || a.to_role || a.current_role || '');
+      const fromKey = roleToStepKey(a.from_role || a.by_role || '');
 
       const isPaymentOrderRole =
         toKey === 'payment_order' || fromKey === 'payment_order';
@@ -2108,6 +2144,8 @@ const isRowForMe = React.useCallback((row) => {
     const t = (tRaw || '').toString();
     const s = t.toLowerCase();
     if (!t) return '—';
+    if (s === 'step_set' || s.includes('step_set')) return 'ارجاع مرحله';
+    if (s === 'step_clear' || s.includes('step_clear')) return 'پایان فرایند';
     if (s === 'approved' || s.includes('approved')) return 'تأیید';
     if (s === 'rejected' || s.includes('rejected')) return 'رد';
     if (s === 'returned' || s.includes('returned')) return 'برگشت';
@@ -2228,9 +2266,11 @@ const isRowForMe = React.useCallback((row) => {
                 const label = actionLabel(rawStatus);
                 const actType = (a.action || a.type || '').toString().toLowerCase();
 
+                const roleKeyRaw = a.roleKey || a.role_key || '';
                 let roleForDisplay = '';
                 if (actType === 'create') {
                   roleForDisplay =
+                    roleKeyRaw ||
                     a.to_role ||
                     a.by_role ||
                     a.role ||
@@ -2238,9 +2278,10 @@ const isRowForMe = React.useCallback((row) => {
                     a.current_role ||
                     '';
                 } else if (actType === 'status') {
-                  const toKeyTmp = roleToStepKey(a.to_role || a.current_role || '');
+                  const toKeyTmp = roleToStepKey(roleKeyRaw || a.to_role || a.current_role || '');
                   if (toKeyTmp === 'payment_done') {
                     roleForDisplay =
+                      roleKeyRaw ||
                       a.to_role ||
                       a.current_role ||
                       a.from_role ||
@@ -2249,6 +2290,7 @@ const isRowForMe = React.useCallback((row) => {
                       '';
                   } else {
                     roleForDisplay =
+                      roleKeyRaw ||
                       a.from_role ||
                       a.by_role ||
                       a.role ||
@@ -2258,6 +2300,7 @@ const isRowForMe = React.useCallback((row) => {
                   }
                 } else {
                   roleForDisplay =
+                    roleKeyRaw ||
                     a.by_role ||
                     a.role ||
                     a.from_role ||
@@ -2538,9 +2581,11 @@ const isRowForMe = React.useCallback((row) => {
       const baseLabel = actionLabel(rawStatus);
       const actType = (a.action || a.type || '').toString().toLowerCase();
 
+      const roleKeyRaw = a.roleKey || a.role_key || '';
       let roleForDisplay = '';
       if (actType === 'create') {
         roleForDisplay =
+          roleKeyRaw ||
           a.to_role ||
           a.by_role ||
           a.role ||
@@ -2548,9 +2593,10 @@ const isRowForMe = React.useCallback((row) => {
           a.current_role ||
           '';
       } else if (actType === 'status') {
-        const toKeyTmp = roleToStepKey(a.to_role || a.current_role || '');
+        const toKeyTmp = roleToStepKey(roleKeyRaw || a.to_role || a.current_role || '');
         if (toKeyTmp === 'payment_done') {
           roleForDisplay =
+            roleKeyRaw ||
             a.to_role ||
             a.current_role ||
             a.from_role ||
@@ -2559,6 +2605,7 @@ const isRowForMe = React.useCallback((row) => {
             '';
         } else {
           roleForDisplay =
+            roleKeyRaw ||
             a.from_role ||
             a.by_role ||
             a.role ||
@@ -2568,6 +2615,7 @@ const isRowForMe = React.useCallback((row) => {
         }
       } else {
         roleForDisplay =
+          roleKeyRaw ||
           a.by_role ||
           a.role ||
           a.from_role ||
@@ -4650,3 +4698,4 @@ return (
 </>
 );
 }
+
