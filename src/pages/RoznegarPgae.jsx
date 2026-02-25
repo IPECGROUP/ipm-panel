@@ -507,7 +507,7 @@ export default function RoznegarPgae() {
 
   const relatedPickList = useMemo(() => {
     const q = String(relatedPickQuery || "").trim().toLowerCase();
-    if (!q) return MOCK_RELATED_DOCS;
+    if (!q) return (Array.isArray(MOCK_RELATED_DOCS) ? MOCK_RELATED_DOCS : []).slice(0, 200);
     return MOCK_RELATED_DOCS.filter((d) => {
       const text = `${d.no} ${d.title} ${d.type} ${d.date}`.toLowerCase();
       return text.includes(q);
@@ -1008,138 +1008,134 @@ export default function RoznegarPgae() {
 
       {relatedPickOpen &&
         createPortal(
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" dir="rtl">
-            <div className="absolute inset-0 bg-black/50" onClick={closeRelatedPicker} />
-
-            <div
-              className={
-                "relative w-full max-w-3xl rounded-2xl border shadow-xl overflow-hidden " +
-                (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
-              }
-            >
-              <div className="p-4 flex items-center justify-between gap-3">
-                <div className="font-semibold text-sm">
-                  انتخاب اسناد مرتبط
-                  {relatedPickIds.length ? (
-                    <span className={theme === "dark" ? "text-white/60 mr-2" : "text-neutral-600 mr-2"}>
-                      ({toFaDigits(relatedPickIds.length)})
-                    </span>
-                  ) : null}
+          <div className="fixed inset-0 z-[9999]" dir="rtl">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeRelatedPicker} />
+            <div className="absolute inset-0 p-4 flex items-center justify-center">
+              <div
+                className={
+                  "w-[min(900px,calc(100vw-24px))] h-[min(84vh,760px)] rounded-2xl border shadow-xl overflow-hidden " +
+                  (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
+                }
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-4 flex items-center justify-between gap-3">
+                  <div className="font-bold text-lg md:text-xl">انتخاب اسناد مرتبط</div>
+                  <button
+                    type="button"
+                    onClick={closeRelatedPicker}
+                    className={
+                      "h-10 w-10 rounded-xl border flex items-center justify-center transition " +
+                      (theme === "dark" ? "border-white/15 bg-white/5 hover:bg-white/10" : "border-black/15 bg-white hover:bg-black/[0.04]")
+                    }
+                    aria-label="بستن"
+                    title="بستن"
+                  >
+                    <img src="/images/icons/bastan.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "invert" : "brightness-0")} />
+                  </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={closeRelatedPicker}
-                  className={
-                    "h-9 w-9 rounded-xl border flex items-center justify-center transition " +
-                    (theme === "dark" ? "border-white/10 hover:bg-white/10" : "border-black/10 hover:bg-black/[0.04]")
-                  }
-                  aria-label="بستن"
-                  title="بستن"
-                >
-                  <img src="/images/icons/bastan.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")} />
-                </button>
-              </div>
+                <div className="px-4 pb-3">
+                  <input
+                    value={relatedPickQuery}
+                    onChange={(e) => setRelatedPickQuery(e.target.value)}
+                    className={inputCls + " h-10 text-sm"}
+                    type="text"
+                    placeholder="... جستجو با شماره / موضوع / سازمان"
+                    autoFocus
+                  />
+                </div>
 
-              <div className="px-4 pb-3">
-                <input
-                  value={relatedPickQuery}
-                  onChange={(e) => setRelatedPickQuery(e.target.value)}
-                  className={inputCls + " h-10 text-sm"}
-                  type="text"
-                  placeholder="جستجو با شماره / موضوع / نوع ..."
-                  autoFocus
-                />
-              </div>
+                <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
 
-              <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
+                <div className={theme === "dark" ? "text-white/55 text-xs px-4 py-2 text-center" : "text-neutral-500 text-xs px-4 py-2 text-center"}>
+                  برای نمایش همه موارد، بخشی از شماره/موضوع را جستجو کنید. (نمایش {toFaDigits(200)} مورد اول)
+                </div>
 
-              <div className="max-h-[55vh] overflow-auto p-2">
-                {!relatedPickList.length ? (
-                  <div className={theme === "dark" ? "text-white/60 text-sm p-4" : "text-neutral-600 text-sm p-4"}>
-                    موردی پیدا نشد.
-                  </div>
-                ) : (
-                  relatedPickList.map((l) => {
-                    const id = String(l.id);
-                    const no = String(l.no || "").trim() || id;
-                    const sub = String(l.title || "").trim();
-                    const dt = String(l.date || "").trim();
-                    const checked = relatedPickIds.includes(id);
+                <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
 
-                    return (
-                      <button
-                        key={id}
-                        type="button"
-                        onClick={() => {
-                          setRelatedPickIds((prev) => {
-                            const base = Array.isArray(prev) ? prev.map(String) : [];
-                            if (base.includes(id)) return base.filter((x) => x !== id);
-                            return [...base, id];
-                          });
-                        }}
-                        className={
-                          "w-full text-right px-3 py-2 rounded-xl transition flex items-center justify-between gap-3 " +
-                          (theme === "dark" ? "hover:bg-white/10" : "hover:bg-black/[0.04]")
-                        }
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold">{toFaDigits(no)}</span>
-                            {dt ? (
-                              <span className={theme === "dark" ? "text-white/60 text-xs" : "text-neutral-600 text-xs"}>
-                                {toFaDigits(dt)}
-                              </span>
-                            ) : null}
-                          </div>
-                          <div className={"text-xs truncate mt-0.5 " + (theme === "dark" ? "text-white/60" : "text-neutral-600")}>
-                            {sub || "—"}
-                          </div>
-                        </div>
+                <div className="h-[calc(100%-186px)] overflow-auto p-2">
+                  {!relatedPickList.length ? (
+                    <div className={theme === "dark" ? "text-white/60 text-sm p-4" : "text-neutral-600 text-sm p-4"}>موردی پیدا نشد.</div>
+                  ) : (
+                    relatedPickList.map((l) => {
+                      const id = String(l.id);
+                      const no = String(l.no || "").trim() || id;
+                      const sub = String(l.title || "").trim();
+                      const dt = String(l.date || "").trim();
+                      const checked = relatedPickIds.includes(id);
 
-                        <div
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => {
+                            setRelatedPickIds((prev) => {
+                              const base = Array.isArray(prev) ? prev.map(String) : [];
+                              if (base.includes(id)) return base.filter((x) => x !== id);
+                              return [...base, id];
+                            });
+                          }}
                           className={
-                            "h-5 w-5 rounded-md border grid place-items-center shrink-0 " +
-                            (checked
-                              ? theme === "dark"
-                                ? "bg-white text-black border-white/30"
-                                : "bg-black text-white border-black/20"
-                              : theme === "dark"
-                              ? "border-white/15"
-                              : "border-black/15")
+                            "w-full text-right px-3 py-2 rounded-xl transition flex items-center justify-between gap-3 " +
+                            (theme === "dark" ? "hover:bg-white/10" : "hover:bg-black/[0.03]")
                           }
                         >
-                          {checked ? "✓" : ""}
-                        </div>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 justify-start">
+                              {dt ? (
+                                <span className={theme === "dark" ? "text-white/60 text-xs" : "text-neutral-600 text-xs"}>
+                                  {toFaDigits(dt)}
+                                </span>
+                              ) : null}
+                              <span className="font-bold text-base">{toFaDigits(no)}</span>
+                            </div>
+                            <div className={"text-sm truncate mt-0.5 " + (theme === "dark" ? "text-white/75" : "text-neutral-700")}>{sub || "—"}</div>
+                          </div>
 
-              <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
+                          <div
+                            className={
+                              "h-6 w-6 rounded-md border grid place-items-center shrink-0 " +
+                              (checked
+                                ? theme === "dark"
+                                  ? "bg-white text-black border-white/30"
+                                  : "bg-black text-white border-black/30"
+                                : theme === "dark"
+                                ? "border-white/20 bg-transparent"
+                                : "border-black/20 bg-transparent")
+                            }
+                          >
+                            {checked ? "✓" : ""}
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
 
-              <div className="p-4 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const clean = (Array.isArray(relatedPickIds) ? relatedPickIds : [])
-                      .map((x) => String(x || "").trim())
-                      .filter(Boolean);
-                    updateActiveEntry((curr) => ({ ...curr, relatedDocIds: clean }));
-                    closeRelatedPicker();
-                  }}
-                  className={
-                    "h-10 w-10 rounded-xl border transition inline-flex items-center justify-center " +
-                    (theme === "dark"
-                      ? "border-white/15 bg-white text-black hover:bg-white/90"
-                      : "border-black/10 bg-black text-white hover:bg-black/90")
-                  }
-                  aria-label="تایید"
-                  title="تایید"
-                >
-                  <img src="/images/icons/check.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")} />
-                </button>
+                <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
+
+                <div className="p-4 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const clean = (Array.isArray(relatedPickIds) ? relatedPickIds : [])
+                        .map((x) => String(x || "").trim())
+                        .filter(Boolean);
+                      updateActiveEntry((curr) => ({ ...curr, relatedDocIds: clean }));
+                      closeRelatedPicker();
+                    }}
+                    className={
+                      "h-10 w-10 rounded-xl border transition inline-flex items-center justify-center " +
+                      (theme === "dark"
+                        ? "border-white/15 bg-white text-black hover:bg-white/90"
+                        : "border-black/10 bg-black text-white hover:bg-black/90")
+                    }
+                    aria-label="تایید"
+                    title="تایید"
+                  >
+                    <img src="/images/icons/check.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")} />
+                  </button>
+                </div>
               </div>
             </div>
           </div>,
@@ -1159,7 +1155,7 @@ export default function RoznegarPgae() {
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="p-4 flex items-center justify-between">
-                  <div className="font-bold text-sm">بارگذاری اسناد</div>
+                  <div className="font-bold text-sm">بارگذاری اسناد (وارده)</div>
                   <button
                     type="button"
                     onClick={closeUpload}
@@ -1183,7 +1179,7 @@ export default function RoznegarPgae() {
                     <div className={labelCls}>فایل‌های انتخاب‌شده</div>
                     <div className={"rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
                       <div className={"px-3 py-2 text-xs font-semibold border-b " + (theme === "dark" ? "border-white/10 text-white/80" : "border-black/10 text-neutral-700")}>
-                        روزنگار پروژه
+                        وارده
                       </div>
 
                       <div className="p-3 space-y-2">
