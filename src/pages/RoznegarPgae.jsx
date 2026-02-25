@@ -493,6 +493,8 @@ export default function RoznegarPgae() {
   const [relatedPickOpen, setRelatedPickOpen] = useState(false);
   const [relatedPickQuery, setRelatedPickQuery] = useState("");
   const [relatedPickIds, setRelatedPickIds] = useState([]);
+  const [relatedDocsPool, setRelatedDocsPool] = useState([]);
+  const [relatedDocsLoading, setRelatedDocsLoading] = useState(false);
 
   const [uploadOpen, setUploadOpen] = useState(false);
   const uploadInputRef = useRef(null);
@@ -566,6 +568,48 @@ export default function RoznegarPgae() {
   }, [authUser?.id]);
 
   useEffect(() => {
+    let alive = true;
+    const api = async (path, opt = {}) => {
+      const uid = authUser?.id != null ? String(authUser.id) : "";
+      const res = await fetch("/api" + path, {
+        credentials: "include",
+        ...opt,
+        headers: {
+          "Content-Type": "application/json",
+          ...(uid ? { "x-user-id": uid } : {}),
+          ...(opt.headers || {}),
+        },
+      });
+      const txt = await res.text();
+      let data = {};
+      try {
+        data = txt ? JSON.parse(txt) : {};
+      } catch {}
+      if (!res.ok) throw new Error(data?.error || data?.message || "request_failed");
+      return data;
+    };
+
+    (async () => {
+      setRelatedDocsLoading(true);
+      try {
+        const r = await api("/letters/mine");
+        if (!alive) return;
+        const items = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
+        setRelatedDocsPool(Array.isArray(items) ? items : []);
+      } catch {
+        if (!alive) return;
+        setRelatedDocsPool([]);
+      } finally {
+        if (alive) setRelatedDocsLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [authUser?.id]);
+
+  useEffect(() => {
     const t = window.setTimeout(() => setMounted(true), 30);
     return () => window.clearTimeout(t);
   }, []);
@@ -623,6 +667,43 @@ export default function RoznegarPgae() {
     [activeEntry?.relatedDocIds]
   );
 
+  const docIdOf = (l) =>
+    String(
+      l?.id ??
+        l?.letter_id ??
+        l?.letterId ??
+        l?.doc_id ??
+        ""
+    ).trim();
+
+  const docNoOf = (l) =>
+    String(
+      l?.letter_no ??
+        l?.letterNo ??
+        l?.secretariat_no ??
+        l?.secretariatNo ??
+        l?.no ??
+        ""
+    ).trim();
+
+  const docDateOf = (l) =>
+    String(
+      l?.letter_date ??
+        l?.letterDate ??
+        l?.secretariat_date ??
+        l?.secretariatDate ??
+        l?.date ??
+        ""
+    ).trim();
+
+  const docTitleOf = (l) =>
+    String(
+      l?.subject ??
+        l?.title ??
+        l?.name ??
+        ""
+    ).trim();
+
   const filteredTags = useMemo(() => {
     const q = String(tagSearch || "").trim().toLowerCase();
     return MOCK_TAGS.filter((t) => {
@@ -634,17 +715,24 @@ export default function RoznegarPgae() {
   }, [tagSearch, tagPickKind, tagPickCategory]);
 
   const relatedPickList = useMemo(() => {
+    const base = Array.isArray(relatedDocsPool) && relatedDocsPool.length ? relatedDocsPool : MOCK_RELATED_DOCS;
     const q = String(relatedPickQuery || "").trim().toLowerCase();
-    if (!q) return (Array.isArray(MOCK_RELATED_DOCS) ? MOCK_RELATED_DOCS : []).slice(0, 200);
-    return MOCK_RELATED_DOCS.filter((d) => {
-      const text = `${d.no} ${d.title} ${d.type} ${d.date}`.toLowerCase();
+    if (!q) return (Array.isArray(base) ? base : []).slice(0, 200);
+    return (Array.isArray(base) ? base : []).filter((d) => {
+      const text = `${docNoOf(d)} ${docTitleOf(d)} ${d?.type || d?.kind || ""} ${docDateOf(d)} ${docIdOf(d)}`.toLowerCase();
       return text.includes(q);
     });
-  }, [relatedPickQuery]);
+  }, [relatedPickQuery, relatedDocsPool]);
 
   const letterById = useMemo(
-    () => new Map((Array.isArray(MOCK_RELATED_DOCS) ? MOCK_RELATED_DOCS : []).map((x) => [String(x.id), x])),
-    []
+    () =>
+      new Map(
+        (Array.isArray(relatedDocsPool) && relatedDocsPool.length ? relatedDocsPool : MOCK_RELATED_DOCS).map((x) => [
+          String(docIdOf(x) || x?.id || ""),
+          x,
+        ])
+      ),
+    [relatedDocsPool]
   );
 
   const selectedRelatedDocs = useMemo(() => {
@@ -752,7 +840,7 @@ export default function RoznegarPgae() {
     const XLSX = await import("xlsx");
     const tagsText = (selectedTags || []).map((t) => t.label).join("، ");
     const docsText = (selectedRelatedDocs || [])
-      .map((d) => `${d?.no ? toFaDigits(d.no) : "-"} - ${String(d?.title || "")}`)
+      .map((d) => `${docNoOf(d) ? toFaDigits(docNoOf(d)) : "-"} - ${docTitleOf(d)}`)
       .join(" | ");
 
     const rows = [
@@ -1036,7 +1124,7 @@ export default function RoznegarPgae() {
                           <div className="mt-2 flex flex-wrap items-center gap-1 text-sm">
                             {relatedSelectedIds.map((id, i) => {
                               const l = letterById.get(String(id));
-                              const no = String(l?.no || "").trim() || String(id);
+                              const no = docNoOf(l) || String(id);
                               return (
                                 <span key={String(id)} className="inline-flex items-center gap-1">
                                   {i > 0 && <span className={theme === "dark" ? "text-white/60" : "text-neutral-600"}>و</span>}
@@ -1322,24 +1410,29 @@ export default function RoznegarPgae() {
                 <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
 
                 <div className="flex-1 min-h-0 overflow-auto p-2">
-                  {!relatedPickList.length ? (
+                  {relatedDocsLoading ? (
+                    <div className={theme === "dark" ? "text-white/60 text-sm p-4" : "text-neutral-600 text-sm p-4"}>
+                      در حال دریافت مستندات...
+                    </div>
+                  ) : !relatedPickList.length ? (
                     <div className={theme === "dark" ? "text-white/60 text-sm p-4" : "text-neutral-600 text-sm p-4"}>موردی پیدا نشد.</div>
                   ) : (
                     <div className="space-y-1">
                       {relatedPickList.map((l) => {
-                        const id = String(l.id);
-                        const no = String(l.no || "").trim() || id;
-                        const sub = String(l.title || "").trim();
-                        const dt = String(l.date || "").trim();
+                        const id = String(docIdOf(l) || l?.id || "");
+                        const no = docNoOf(l) || id;
+                        const sub = docTitleOf(l);
+                        const dt = docDateOf(l);
                         const checked = relatedPickIds.includes(id);
 
                         return (
                           <label
                             key={id}
                             className={
-                              "w-full px-3 py-2 rounded-xl transition flex items-center gap-3 cursor-pointer " +
+                              "w-full px-3 py-2 rounded-xl transition flex items-center gap-3 cursor-pointer flex-row-reverse " +
                               (theme === "dark" ? "hover:bg-white/10" : "hover:bg-black/[0.03]")
                             }
+                            dir="ltr"
                           >
                             <input
                               type="checkbox"
@@ -1353,7 +1446,7 @@ export default function RoznegarPgae() {
                               }}
                               className="h-5 w-5 rounded-md border-black/20 accent-black shrink-0"
                             />
-                            <div className="min-w-0 flex-1 text-right">
+                            <div className="min-w-0 flex-1 text-right" dir="rtl">
                               <div className="flex items-center justify-end gap-2">
                                 <span className="font-bold text-[20px] leading-none">{toFaDigits(no)}</span>
                                 {dt ? (
