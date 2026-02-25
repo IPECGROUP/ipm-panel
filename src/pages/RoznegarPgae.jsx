@@ -497,6 +497,7 @@ export default function RoznegarPgae() {
   const [relatedDocsLoading, setRelatedDocsLoading] = useState(false);
 
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [tableFilter, setTableFilter] = useState("");
   const uploadInputRef = useRef(null);
 
   useEffect(() => {
@@ -739,6 +740,77 @@ export default function RoznegarPgae() {
     return relatedSelectedIds.map((id) => letterById.get(String(id))).filter(Boolean);
   }, [relatedSelectedIds, letterById]);
 
+  const tagById = useMemo(() => {
+    return new Map((Array.isArray(MOCK_TAGS) ? MOCK_TAGS : []).map((t) => [String(t.id), t]));
+  }, []);
+
+  const filteredTableRows = useMemo(() => {
+    const toDateLabel = (dateYmd) => {
+      try {
+        return dayjs(String(dateYmd || ""), { jalali: true }).calendar("jalali").format("YYYY/MM/DD");
+      } catch {
+        return String(dateYmd || "").replace(/-/g, "/");
+      }
+    };
+
+    const raw = Object.entries(entriesByDate || {})
+      .map(([dateYmd, entry]) => {
+        const row = entry || makeEntry(dateYmd);
+        const tags = (Array.isArray(row.tagIds) ? row.tagIds : [])
+          .map((id) => tagById.get(String(id))?.label || "")
+          .filter(Boolean);
+        const docs = (Array.isArray(row.relatedDocIds) ? row.relatedDocIds : [])
+          .map((id) => letterById.get(String(id)))
+          .filter(Boolean)
+          .map((d) => {
+            const no = docNoOf(d);
+            const title = docTitleOf(d);
+            return `${no ? toFaDigits(no) : ""}${no && title ? " - " : ""}${title || ""}`.trim();
+          })
+          .filter(Boolean);
+        const files = Array.isArray(row.files) ? row.files : [];
+        const fileNames = files.map((f) => String(f?.name || "")).filter(Boolean);
+        const dateLabel = toDateLabel(dateYmd);
+        const statusText = row.confirmed ? "تایید شده" : "ثبت نشده";
+        const searchText = [
+          activeProject ? `${activeProject.code || ""} ${activeProject.name || ""}` : "",
+          dateLabel,
+          row.dayName || "",
+          row.activity || "",
+          tags.join(" "),
+          docs.join(" "),
+          fileNames.join(" "),
+          String(files.length || 0),
+          statusText,
+        ]
+          .join(" ")
+          .toLowerCase();
+
+        return {
+          dateYmd,
+          dateLabel,
+          dayName: row.dayName || "",
+          activity: String(row.activity || "").trim(),
+          tagsText: tags.join("، "),
+          docsText: docs.join(" | "),
+          filesText: fileNames.join("، "),
+          filesCount: files.length || 0,
+          statusText,
+          searchText,
+        };
+      })
+      .sort((a, b) =>
+        String(b.dateYmd || "").localeCompare(String(a.dateYmd || ""), "en", {
+          numeric: true,
+          sensitivity: "base",
+        })
+      );
+
+    const q = toEnDigits(String(tableFilter || "").trim()).toLowerCase();
+    if (!q) return raw;
+    return raw.filter((r) => toEnDigits(String(r.searchText || "")).toLowerCase().includes(q));
+  }, [entriesByDate, tableFilter, tagById, letterById, activeProject]);
+
   const openTagModal = () => {
     setTagDraftIds((activeEntry?.tagIds || []).map(String));
     setTagSearch("");
@@ -837,30 +909,32 @@ export default function RoznegarPgae() {
   };
 
   const handleExportExcel = async () => {
+    if (!filteredTableRows.length) return;
     const XLSX = await import("xlsx");
-    const tagsText = (selectedTags || []).map((t) => t.label).join("، ");
-    const docsText = (selectedRelatedDocs || [])
-      .map((d) => `${docNoOf(d) ? toFaDigits(docNoOf(d)) : "-"} - ${docTitleOf(d)}`)
-      .join(" | ");
-
     const rows = [
-      ["روزنگار پروژه"],
-      [],
-      ["پروژه", activeProject ? `${activeProject.code} - ${activeProject.name}` : ""],
-      ["روز", activeEntry?.dayName || ""],
-      ["تاریخ", toFaDigits(selectedDateLabel || "")],
-      ["شرح فعالیت‌ها", activeEntry?.activity || ""],
-      ["برچسب‌ها", tagsText],
-      ["مستندات مرتبط", docsText],
-      ["تعداد فایل", toFaDigits((activeEntry?.files || []).length || 0)],
-      ["وضعیت تایید", activeEntry?.confirmed ? "تایید شده (نمایشی)" : "ثبت نشده"],
+      ["روزنگار پروژه - خروجی جدول"],
+      activeProject ? [`پروژه: ${activeProject.code || ""} - ${activeProject.name || ""}`] : [""],
+      [""],
+      ["ردیف", "پروژه", "تاریخ", "روز", "شرح فعالیت‌ها", "برچسب‌ها", "مستندات مرتبط", "فایل‌ها", "تعداد فایل", "وضعیت"],
+      ...filteredTableRows.map((r, idx) => [
+        toFaDigits(idx + 1),
+        activeProject ? `${activeProject.code || ""} - ${activeProject.name || ""}` : "-",
+        toFaDigits(r.dateLabel || ""),
+        r.dayName || "",
+        r.activity || "-",
+        r.tagsText || "-",
+        r.docsText || "-",
+        r.filesText || "-",
+        toFaDigits(r.filesCount || 0),
+        r.statusText || "",
+      ]),
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws["!cols"] = [{ wch: 20 }, { wch: 90 }];
+    ws["!cols"] = [{ wch: 8 }, { wch: 28 }, { wch: 14 }, { wch: 10 }, { wch: 36 }, { wch: 28 }, { wch: 46 }, { wch: 28 }, { wch: 12 }, { wch: 14 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Roznegar");
-    const fileName = `roznegar-${String(selectedDate || todayJalaliYmd()).replace(/[\/]/g, "-")}.xlsx`;
+    const fileName = `roznegar-table-${String(todayJalaliYmd()).replace(/[\/]/g, "-")}.xlsx`;
     XLSX.writeFile(wb, fileName);
   };
 
@@ -1177,22 +1251,6 @@ export default function RoznegarPgae() {
                     <button
                       type="button"
                       disabled={editorDisabled}
-                      onClick={handleExportExcel}
-                      className={
-                        "h-9 w-12 md:h-10 md:w-14 grid place-items-center rounded-xl border border-black/15 hover:bg-black/5 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800 " +
-                        (theme === "dark"
-                          ? "text-white"
-                          : "text-neutral-900")
-                      }
-                      title="خروجی اکسل"
-                      aria-label="خروجی اکسل"
-                    >
-                      <img src="/images/icons8-excel-50.png" alt="" className="w-4 h-4 md:w-5 md:h-5" />
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={editorDisabled}
                       onClick={handlePreviewConfirm}
                       className={
                         "h-9 w-12 md:h-10 md:w-14 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 " +
@@ -1208,6 +1266,88 @@ export default function RoznegarPgae() {
                         alt=""
                         className="w-4 h-4 md:w-5 md:h-5 invert dark:invert"
                       />
+                    </button>
+                  </div>
+
+                  <div className="pt-3">
+                    <div className={labelCls}>فیلتر</div>
+                    <input
+                      value={tableFilter}
+                      onChange={(e) => setTableFilter(e.target.value)}
+                      className={inputCls + " h-10 text-xs md:text-sm"}
+                      placeholder="جستجو در تاریخ، روز، شرح، برچسب‌ها، مستندات و فایل‌ها..."
+                    />
+                  </div>
+
+                  <div className={"rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
+                    <div className="max-h-[360px] overflow-auto">
+                      <table className="w-full text-right">
+                        <thead className={theme === "dark" ? "bg-white/10 text-white/80" : "bg-neutral-100 text-neutral-700"}>
+                          <tr>
+                            <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap">ردیف</th>
+                            <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[170px]">پروژه</th>
+                            <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap">تاریخ</th>
+                            <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap">روز</th>
+                            <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[180px]">شرح فعالیت‌ها</th>
+                            <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[150px]">برچسب‌ها</th>
+                            <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[170px]">مستندات مرتبط</th>
+                            <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[150px]">فایل‌ها</th>
+                            <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap">تعداد فایل</th>
+                            <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap">وضعیت</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {!filteredTableRows.length ? (
+                            <tr>
+                              <td
+                                colSpan={10}
+                                className={theme === "dark" ? "px-3 py-6 text-center text-[11px] md:text-xs text-white/60" : "px-3 py-6 text-center text-[11px] md:text-xs text-neutral-500"}
+                              >
+                                موردی برای نمایش وجود ندارد.
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredTableRows.map((r, idx) => (
+                              <tr key={`${r.dateYmd}_${idx}`} className={theme === "dark" ? "border-t border-white/10" : "border-t border-black/10"}>
+                                <td className="px-3 py-2 text-[11px] md:text-xs align-top">{toFaDigits(idx + 1)}</td>
+                                <td className="px-3 py-2 text-[11px] md:text-xs align-top break-words">
+                                  {activeProject ? `${activeProject.code || ""} - ${activeProject.name || ""}` : "-"}
+                                </td>
+                                <td className="px-3 py-2 text-[11px] md:text-xs align-top whitespace-nowrap">{toFaDigits(r.dateLabel || "")}</td>
+                                <td className="px-3 py-2 text-[11px] md:text-xs align-top whitespace-nowrap">{r.dayName || "-"}</td>
+                                <td className="px-3 py-2 text-[11px] md:text-xs align-top break-words">{r.activity || "-"}</td>
+                                <td className="px-3 py-2 text-[11px] md:text-xs align-top break-words">{r.tagsText || "-"}</td>
+                                <td className="px-3 py-2 text-[11px] md:text-xs align-top break-words">{r.docsText || "-"}</td>
+                                <td className="px-3 py-2 text-[11px] md:text-xs align-top break-words">{r.filesText || "-"}</td>
+                                <td className="px-3 py-2 text-[11px] md:text-xs align-top whitespace-nowrap">{toFaDigits(r.filesCount || 0)}</td>
+                                <td className="px-3 py-2 text-[11px] md:text-xs align-top whitespace-nowrap">{r.statusText || "-"}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2">
+                    <div className={theme === "dark" ? "text-[11px] md:text-xs text-white/60" : "text-[11px] md:text-xs text-neutral-500"}>
+                      تعداد نتایج: {toFaDigits(filteredTableRows.length)}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleExportExcel}
+                      disabled={!filteredTableRows.length}
+                      className={
+                        "h-9 px-3 rounded-xl border transition inline-flex items-center justify-center gap-2 disabled:opacity-50 " +
+                        (theme === "dark"
+                          ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                          : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
+                      }
+                      title="خروجی اکسل جدول"
+                      aria-label="خروجی اکسل جدول"
+                    >
+                      <img src="/images/icons8-excel-50.png" alt="" className="w-4 h-4 md:w-5 md:h-5" />
+                      <span className="text-[11px] md:text-xs">خروجی اکسل</span>
                     </button>
                   </div>
                 </div>
