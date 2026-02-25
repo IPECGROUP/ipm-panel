@@ -91,6 +91,20 @@ function isValidProjectId(v) {
   return /^\d+$/.test(String(v || "").trim());
 }
 
+function isTopProjectCode(code) {
+  const c = toEnDigits(String(code || "")).trim();
+  if (!c || c.includes(".")) return false;
+  return /^\d+$/.test(c);
+}
+
+function isProjectActiveFlag(v1, v2) {
+  const val = v1 !== undefined ? v1 : v2;
+  if (val === false || val === 0) return false;
+  const s = String(val ?? "").trim().toLowerCase();
+  if (s === "false" || s === "0" || s === "off" || s === "no") return false;
+  return true;
+}
+
 function toFaDigits(value) {
   return String(value ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
 }
@@ -561,7 +575,7 @@ export default function RoznegarPgae() {
         id,
         code: toEnDigits(String(p?.code ?? "")).trim(),
         name: String(p?.name ?? p?.title ?? "").trim(),
-        isActive: p?.isActive !== false && p?.is_active !== false,
+        isActive: isProjectActiveFlag(p?.isActive, p?.is_active),
       };
     };
 
@@ -581,14 +595,16 @@ export default function RoznegarPgae() {
           .filter((p) => p && typeof p === "object" && !Array.isArray(p))
           .map(normalizeProject)
           .filter((p) => p && p.id != null)
-          .filter((p) => p.isActive === true);
+          .filter((p) => p.isActive === true)
+          .filter((p) => isTopProjectCode(p.code));
 
-        const byId = new Map();
+        const byCode = new Map();
         clean.forEach((p) => {
-          const k = String(p.id);
-          if (!byId.has(k)) byId.set(k, p);
+          const k = String(p.code || "");
+          if (!k) return;
+          if (!byCode.has(k)) byCode.set(k, p);
         });
-        setActiveProjects(Array.from(byId.values()));
+        setActiveProjects(Array.from(byCode.values()));
       } catch {
         if (!alive) return;
       } finally {
@@ -695,7 +711,6 @@ export default function RoznegarPgae() {
       }
       try {
         const uid = authUser?.id != null ? String(authUser.id) : "";
-        if (!uid) return;
         const url = `/api/roznegar?projectId=${encodeURIComponent(String(projectId))}`;
         const res = await fetch(url, {
           credentials: "include",
