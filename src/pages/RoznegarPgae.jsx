@@ -93,8 +93,7 @@ function isValidProjectId(v) {
 
 function isTopProjectCode(code) {
   const c = toEnDigits(String(code || "")).trim();
-  if (!c || c.includes(".")) return false;
-  return /^\d+$/.test(c);
+  return /^\d{3}$/.test(c);
 }
 
 function isProjectActiveFlag(v1, v2) {
@@ -500,7 +499,7 @@ function JalaliPopupDatePicker({ value, onChange, theme = "light", buttonClassNa
 export default function RoznegarPgae() {
   const { user: authUser, loading: authLoading } = useAuth();
   const [activeProjects, setActiveProjects] = useState([]);
-  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [projectsLoading, setProjectsLoading] = useState(true);
   const sortedActiveProjects = useMemo(() => {
     return (activeProjects || [])
       .slice()
@@ -673,6 +672,8 @@ export default function RoznegarPgae() {
 
   useEffect(() => {
     const list = Array.isArray(sortedActiveProjects) ? sortedActiveProjects : [];
+    if (projectsLoading) return;
+
     if (!list.length) {
       if (projectId) setProjectId("");
       return;
@@ -689,7 +690,7 @@ export default function RoznegarPgae() {
 
     if (!next) next = String(list[0]?.id || "");
     if (next && next !== current) setProjectId(next);
-  }, [sortedActiveProjects, projectId]);
+  }, [sortedActiveProjects, projectId, projectsLoading]);
 
   useEffect(() => {
     setEntriesByDate((prev) => (prev[selectedDate] ? prev : { ...prev, [selectedDate]: makeEntry(selectedDate) }));
