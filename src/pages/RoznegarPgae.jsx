@@ -172,6 +172,7 @@ function normalizeRoznegarEntryFromApi(item) {
     .filter(Boolean);
   const files = (Array.isArray(item?.files) ? item.files : [])
     .map((f) => ({
+      serverId: Number(f?.serverId || f?.server_id || 0) || null,
       name: String(f?.name || "").trim(),
       size: Number(f?.size || 0) || 0,
       type: String(f?.type || "").trim(),
@@ -535,6 +536,7 @@ export default function RoznegarPgae() {
   const [relatedDocsLoading, setRelatedDocsLoading] = useState(false);
 
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [filesUploading, setFilesUploading] = useState(false);
   const [tableFilter, setTableFilter] = useState("");
   const [confirmSaving, setConfirmSaving] = useState(false);
   const [filePreview, setFilePreview] = useState({ open: false, file: null, url: "", isObjectUrl: false });
@@ -996,24 +998,66 @@ export default function RoznegarPgae() {
   };
 
   const handlePickFiles = async (e) => {
-    const incoming = Array.from(e.target.files || []);
+    const target = e?.target;
+    const incoming = Array.from(target?.files || []);
     if (!incoming.length) return;
+    setFilesUploading(true);
+    try {
+      const uid = authUser?.id != null ? String(authUser.id) : "";
+      const fd = new FormData();
+      incoming.forEach((f) => fd.append("files", f));
 
-    updateActiveEntry((curr) => {
-      const base = Array.isArray(curr.files) ? curr.files : [];
-      const seen = new Set(base.map((f) => `${f.name}_${f.size}_${f.lastModified}`));
-      const merged = [...base];
-      incoming.forEach((f) => {
-        const key = `${f.name}_${f.size}_${f.lastModified}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          merged.push(f);
-        }
+      const res = await fetch("/api/roznegar/upload", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          ...(uid ? { "x-user-id": uid } : {}),
+        },
+        body: fd,
       });
-      return { ...curr, files: merged };
-    });
 
-    e.target.value = "";
+      if (!res.ok) {
+        let reason = "roznegar_upload_failed";
+        try {
+          const err = await res.json();
+          reason = String(err?.error || err?.message || reason);
+        } catch {}
+        throw new Error(reason);
+      }
+
+      const data = await res.json();
+      const uploaded = (Array.isArray(data?.items) ? data.items : [])
+        .map((f) => ({
+          serverId: Number(f?.serverId || f?.server_id || 0) || null,
+          name: String(f?.name || "").trim(),
+          size: Number(f?.size || 0) || 0,
+          type: String(f?.type || "").trim(),
+          url: String(f?.url || "").trim() || null,
+          lastModified: Number(f?.lastModified || 0) || 0,
+        }))
+        .filter((f) => f.name);
+
+      if (uploaded.length) {
+        updateActiveEntry((curr) => {
+          const base = Array.isArray(curr.files) ? curr.files : [];
+          const seen = new Set(base.map((f) => String(f?.url || `${f?.name}_${f?.size}_${f?.lastModified}`)));
+          const merged = [...base];
+          uploaded.forEach((f) => {
+            const key = String(f?.url || `${f?.name}_${f?.size}_${f?.lastModified}`);
+            if (!seen.has(key)) {
+              seen.add(key);
+              merged.push(f);
+            }
+          });
+          return { ...curr, files: merged };
+        });
+      }
+    } catch (err) {
+      console.error("roznegar_upload_error", err);
+    } finally {
+      setFilesUploading(false);
+      if (target && "value" in target) target.value = "";
+    }
   };
 
   const theme =
@@ -1076,12 +1120,13 @@ export default function RoznegarPgae() {
   };
 
   const handlePreviewConfirm = async () => {
-    if (editorDisabled || !projectId || confirmSaving) return;
+    if (editorDisabled || !projectId || confirmSaving || filesUploading) return;
     setConfirmSaving(true);
     try {
       const curr = entriesByDate[selectedDate] || makeEntry(selectedDate);
       const filesPayload = (Array.isArray(curr.files) ? curr.files : [])
         .map((f) => ({
+          serverId: Number(f?.serverId || f?.server_id || 0) || null,
           name: String(f?.name || "").trim(),
           size: Number(f?.size || 0) || 0,
           type: String(f?.type || "").trim(),
@@ -1485,13 +1530,14 @@ export default function RoznegarPgae() {
                         <div className={labelCls}>&nbsp;</div>
                         <button
                           type="button"
-                          disabled={editorDisabled}
+                          disabled={editorDisabled || filesUploading}
                           onClick={openUpload}
                           className={uploadTriggerCls + " h-10 w-auto max-w-full whitespace-nowrap"}
                           title="بارگذاری فایل"
                         >
                           <img src="/images/icons/upload.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")} />
                           <span className="text-xs md:text-sm">بارگذاری فایل</span>
+                          {filesUploading ? <span className="mr-2 text-[10px] opacity-80">در حال آپلود...</span> : null}
                           {Array.isArray(activeEntry.files) && activeEntry.files.length > 0 ? (
                             <span className="mr-2 text-xs opacity-80">({toFaDigits(activeEntry.files.length)})</span>
                           ) : null}
@@ -1503,7 +1549,7 @@ export default function RoznegarPgae() {
                   <div className="pt-2 flex items-center justify-end gap-2">
                     <button
                       type="button"
-                      disabled={editorDisabled || confirmSaving}
+                      disabled={editorDisabled || confirmSaving || filesUploading}
                       onClick={handlePreviewConfirm}
                       className={
                         "h-9 w-12 md:h-10 md:w-14 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 " +
@@ -2044,27 +2090,33 @@ export default function RoznegarPgae() {
                           <div className="py-6 text-center text-black/60 dark:text-white/50 text-[11px] md:text-xs">فایلی انتخاب نشده است.</div>
                         )}
 
-                        <div className={uploadBoxCls + " mt-3"} onDrop={onDropUpload} onDragOver={onDragOverUpload}>
+                        <div className={uploadBoxCls + " mt-3 " + (filesUploading ? "opacity-70 pointer-events-none" : "")} onDrop={onDropUpload} onDragOver={onDragOverUpload}>
                           <div className={theme === "dark" ? "text-white/80 text-[11px] md:text-xs font-semibold" : "text-neutral-800 text-[11px] md:text-xs font-semibold"}>
                             فایل را اینجا رها کنید
                           </div>
                           <div className={theme === "dark" ? "text-white/50 text-[11px] md:text-xs mt-1" : "text-neutral-500 text-[11px] md:text-xs mt-1"}>
                             یا با دکمه زیر انتخاب کنید (تصویر / PDF)
                           </div>
+                          {filesUploading ? (
+                            <div className={theme === "dark" ? "text-white/70 text-[10px] md:text-[11px] mt-2" : "text-neutral-600 text-[10px] md:text-[11px] mt-2"}>
+                              در حال آپلود روی سرور...
+                            </div>
+                          ) : null}
 
                           <div className="mt-3 flex items-center justify-center">
                             <button
                               type="button"
+                              disabled={filesUploading}
                               onClick={() => uploadInputRef.current?.click()}
                               className={
-                                "h-9 md:h-10 px-3 md:px-4 rounded-xl border transition inline-flex items-center justify-center gap-2 text-[11px] md:text-xs " +
+                                "h-9 md:h-10 px-3 md:px-4 rounded-xl border transition inline-flex items-center justify-center gap-2 text-[11px] md:text-xs disabled:opacity-60 " +
                                 (theme === "dark"
                                   ? "border-white/15 bg-white text-black hover:bg-white/90"
                                   : "border-black/15 bg-black text-white hover:bg-black/90")
                               }
                             >
                               <img src="/images/icons/upload.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")} />
-                              انتخاب فایل
+                              {filesUploading ? "در حال آپلود..." : "انتخاب فایل"}
                             </button>
                             <input
                               ref={uploadInputRef}
@@ -2072,6 +2124,7 @@ export default function RoznegarPgae() {
                               multiple
                               accept="image/*,application/pdf"
                               className="hidden"
+                              disabled={filesUploading}
                               onChange={handlePickFiles}
                             />
                           </div>
