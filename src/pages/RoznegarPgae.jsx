@@ -1503,7 +1503,7 @@ export default function RoznegarPgae() {
             <div className="absolute inset-0 flex items-start sm:items-center justify-center p-2 sm:p-3 md:p-4 overflow-y-auto">
               <div
                 className={
-                  "w-[min(720px,calc(100vw-16px))] h-[min(86vh,720px)] rounded-2xl border shadow-xl overflow-hidden flex flex-col " +
+                  "w-[min(720px,calc(100vw-16px))] max-h-[86vh] rounded-2xl border shadow-xl overflow-hidden flex flex-col " +
                   (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
                 }
                 onClick={(e) => e.stopPropagation()}
@@ -1532,10 +1532,6 @@ export default function RoznegarPgae() {
                   <div>
                     <div className={labelCls}>فایل‌های انتخاب‌شده</div>
                     <div className={"rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
-                      <div className={"px-3 py-2 text-xs font-semibold border-b " + (theme === "dark" ? "border-white/10 text-white/80" : "border-black/10 text-neutral-700")}>
-                        وارده
-                      </div>
-
                       <div className="p-3 space-y-2">
                         {Array.isArray(activeEntry.files) && activeEntry.files.length > 0 ? (
                           activeEntry.files.map((f, idx) => (
