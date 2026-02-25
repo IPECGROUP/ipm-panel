@@ -38,14 +38,49 @@ const MOCK_ACTIVE_PROJECTS = [
   { id: "p-145", code: "145", name: "به‌روزرسانی زیرساخت اداری", isActive: true },
 ];
 
+const TAG_TABS = [
+  { id: "projects", label: "پروژه‌ها" },
+  { id: "letters", label: "نامه‌ها و مستندات" },
+  { id: "execution", label: "اجرای پروژه‌ها" },
+];
+
+const TAG_CATEGORIES = {
+  projects: ["همه", "اداری", "بازاریابی", "بانک", "بیمه", "پروژه", "کارفرما", "مالیات", "محرمانه"],
+  letters: ["همه", "اداری", "بازاریابی", "بانک", "بیمه", "پروژه", "کارفرما", "مالیات", "محرمانه"],
+  execution: ["همه", "اجرا", "کارگاه", "تدارکات", "کنترل کیفیت", "ایمنی"],
+};
+
 const MOCK_TAGS = [
-  { id: "tg-1", label: "اجرایی" },
-  { id: "tg-2", label: "جلسه" },
-  { id: "tg-3", label: "تاخیر" },
-  { id: "tg-4", label: "مالی" },
-  { id: "tg-5", label: "کنترل پروژه" },
-  { id: "tg-6", label: "فنی" },
-  { id: "tg-7", label: "تجهیزات" },
+  { id: "tg-1", label: "اختتام همکاری", kind: "letters", category: "اداری" },
+  { id: "tg-2", label: "ارزش افزوده", kind: "letters", category: "مالیات" },
+  { id: "tg-3", label: "ارسال مستندات فنی", kind: "letters", category: "پروژه" },
+  { id: "tg-4", label: "اعتراض به بدهی", kind: "letters", category: "مالیات" },
+  { id: "tg-5", label: "اعتراض به رسیدگی", kind: "letters", category: "مالیات" },
+  { id: "tg-6", label: "اعلام آمادگی", kind: "letters", category: "پروژه" },
+  { id: "tg-7", label: "اعلام شماره حساب", kind: "letters", category: "بانک" },
+  { id: "tg-8", label: "افزایش", kind: "letters", category: "پروژه" },
+  { id: "tg-9", label: "انجام تعهدات", kind: "letters", category: "پروژه" },
+  { id: "tg-10", label: "بازاریابی", kind: "letters", category: "بازاریابی" },
+  { id: "tg-11", label: "بانک پاسارگاد", kind: "letters", category: "بانک" },
+  { id: "tg-12", label: "بانک تجارت", kind: "letters", category: "بانک" },
+  { id: "tg-13", label: "بانک شهر", kind: "letters", category: "بانک" },
+  { id: "tg-14", label: "بلیت", kind: "letters", category: "اداری" },
+  { id: "tg-15", label: "پتروپیمایش ایلام", kind: "letters", category: "پروژه" },
+  { id: "tg-16", label: "پرداخت", kind: "letters", category: "مالیات" },
+  { id: "tg-17", label: "پیش پرداخت", kind: "letters", category: "مالیات" },
+  { id: "tg-18", label: "تامین اجتماعی", kind: "letters", category: "اداری" },
+  { id: "tg-19", label: "تایید مستندات فنی", kind: "letters", category: "پروژه" },
+  { id: "tg-20", label: "تجهیزات", kind: "letters", category: "پروژه" },
+  { id: "tg-21", label: "تسهیلات و وام", kind: "letters", category: "بانک" },
+  { id: "tg-22", label: "تکلیف", kind: "letters", category: "اداری" },
+  { id: "tg-23", label: "تکمیلی", kind: "letters", category: "پروژه" },
+  { id: "tg-24", label: "جلسه", kind: "letters", category: "پروژه" },
+  { id: "tg-25", label: "دیوان عدالت اداری", kind: "letters", category: "اداری" },
+  { id: "tg-26", label: "رل", kind: "projects", category: "پروژه" },
+  { id: "tg-27", label: "صورت جلسه", kind: "letters", category: "پروژه" },
+  { id: "tg-28", label: "صورت حساب", kind: "projects", category: "مالیات" },
+  { id: "tg-29", label: "صورت وضعیت", kind: "projects", category: "پروژه" },
+  { id: "tg-30", label: "ضمانت نامه", kind: "letters", category: "بانک" },
 ];
 
 const MOCK_RELATED_DOCS = [
@@ -109,6 +144,7 @@ function makeEntry(dateYmd) {
     tagIds: [],
     relatedDocIds: [],
     files: [],
+    confirmed: false,
   };
 }
 
@@ -433,6 +469,8 @@ export default function RoznegarPgae() {
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState("");
   const [tagDraftIds, setTagDraftIds] = useState([]);
+  const [tagPickKind, setTagPickKind] = useState("letters");
+  const [tagPickCategory, setTagPickCategory] = useState("همه");
 
   const [relatedPickOpen, setRelatedPickOpen] = useState(false);
   const [relatedPickQuery, setRelatedPickQuery] = useState("");
@@ -501,9 +539,13 @@ export default function RoznegarPgae() {
 
   const filteredTags = useMemo(() => {
     const q = String(tagSearch || "").trim().toLowerCase();
-    if (!q) return MOCK_TAGS;
-    return MOCK_TAGS.filter((t) => String(t.label || "").toLowerCase().includes(q));
-  }, [tagSearch]);
+    return MOCK_TAGS.filter((t) => {
+      if (String(t.kind || "") !== String(tagPickKind || "")) return false;
+      if (tagPickCategory && tagPickCategory !== "همه" && String(t.category || "") !== String(tagPickCategory)) return false;
+      if (q && !String(t.label || "").toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [tagSearch, tagPickKind, tagPickCategory]);
 
   const relatedPickList = useMemo(() => {
     const q = String(relatedPickQuery || "").trim().toLowerCase();
@@ -519,9 +561,15 @@ export default function RoznegarPgae() {
     []
   );
 
+  const selectedRelatedDocs = useMemo(() => {
+    return relatedSelectedIds.map((id) => letterById.get(String(id))).filter(Boolean);
+  }, [relatedSelectedIds, letterById]);
+
   const openTagModal = () => {
     setTagDraftIds((activeEntry?.tagIds || []).map(String));
     setTagSearch("");
+    setTagPickKind("letters");
+    setTagPickCategory("همه");
     setTagModalOpen(true);
   };
 
@@ -607,6 +655,39 @@ export default function RoznegarPgae() {
   const onDragOverUpload = (e) => {
     e.preventDefault();
     e.stopPropagation();
+  };
+
+  const handlePreviewConfirm = () => {
+    if (editorDisabled) return;
+    updateActiveEntry((curr) => ({ ...curr, confirmed: true, confirmedAt: new Date().toISOString() }));
+  };
+
+  const handleExportExcel = async () => {
+    const XLSX = await import("xlsx");
+    const tagsText = (selectedTags || []).map((t) => t.label).join("، ");
+    const docsText = (selectedRelatedDocs || [])
+      .map((d) => `${d?.no ? toFaDigits(d.no) : "-"} - ${String(d?.title || "")}`)
+      .join(" | ");
+
+    const rows = [
+      ["روزنگار پروژه"],
+      [],
+      ["پروژه", activeProject ? `${activeProject.code} - ${activeProject.name}` : ""],
+      ["روز", activeEntry?.dayName || ""],
+      ["تاریخ", toFaDigits(selectedDateLabel || "")],
+      ["شرح فعالیت‌ها", activeEntry?.activity || ""],
+      ["برچسب‌ها", tagsText],
+      ["مستندات مرتبط", docsText],
+      ["تعداد فایل", toFaDigits((activeEntry?.files || []).length || 0)],
+      ["وضعیت تایید", activeEntry?.confirmed ? "تایید شده (نمایشی)" : "ثبت نشده"],
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws["!cols"] = [{ wch: 20 }, { wch: 90 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Roznegar");
+    const fileName = `roznegar-${String(selectedDate || todayJalaliYmd()).replace(/[\/]/g, "-")}.xlsx`;
+    XLSX.writeFile(wb, fileName);
   };
 
   const cardReveal = mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3";
@@ -744,6 +825,11 @@ export default function RoznegarPgae() {
                       ابتدا پروژه فعال را انتخاب کنید.
                     </span>
                   )}
+                  {activeEntry?.confirmed ? (
+                    <span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                      تایید شده (نمایشی)
+                    </span>
+                  ) : null}
                 </div>
 
                 <div className="space-y-4" aria-disabled={editorDisabled}>
@@ -795,6 +881,12 @@ export default function RoznegarPgae() {
                   <div className="md:col-span-12 min-w-0">
                     <div className={labelCls}>برچسب‌ها</div>
                     <div className="w-full min-w-0 flex flex-wrap items-center gap-2">
+                      {!selectedTags.length ? (
+                        <span className={theme === "dark" ? "text-white/55 text-xs" : "text-neutral-500 text-xs"}>
+                          برچسبی انتخاب نشده است.
+                        </span>
+                      ) : null}
+
                       {selectedTags.map((tag) => (
                         <button
                           key={tag.id}
@@ -819,15 +911,16 @@ export default function RoznegarPgae() {
                         disabled={editorDisabled}
                         onClick={openTagModal}
                         className={
-                          "h-10 w-10 shrink-0 rounded-full border transition inline-flex items-center justify-center " +
+                          "h-10 px-3 shrink-0 rounded-xl border transition inline-flex items-center justify-center gap-2 " +
                           (theme === "dark"
                             ? "border-white/15 bg-white/5 hover:bg-white/10"
                             : "border-black/10 bg-white hover:bg-black/[0.02]")
                         }
-                        aria-label="افزودن برچسب"
-                        title="افزودن برچسب"
+                        aria-label="انتخاب برچسب"
+                        title="انتخاب برچسب"
                       >
                         <img src="/images/icons/sayer.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")} />
+                        <span className="text-sm">انتخاب برچسب</span>
                       </button>
                     </div>
                   </div>
@@ -835,7 +928,7 @@ export default function RoznegarPgae() {
                   <div className="md:col-span-12 min-w-0">
                     <div className="flex items-start justify-start gap-2">
                       <div className="min-w-0">
-                        <div className={labelCls}>اسناد مرتبط</div>
+                        <div className={labelCls}>مستندات مرتبط</div>
                         <button
                           type="button"
                           disabled={editorDisabled}
@@ -846,8 +939,8 @@ export default function RoznegarPgae() {
                               ? "border-white/15 bg-white/5 hover:bg-white/10"
                               : "border-black/10 bg-white hover:bg-black/[0.02]")
                           }
-                          aria-label="انتخاب اسناد مرتبط"
-                          title="انتخاب اسناد مرتبط"
+                          aria-label="انتخاب مستندات مرتبط"
+                          title="انتخاب مستندات مرتبط"
                         >
                           <img src="/images/icons/sayer.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")} />
                         </button>
@@ -893,16 +986,48 @@ export default function RoznegarPgae() {
                           disabled={editorDisabled}
                           onClick={openUpload}
                           className={uploadTriggerCls + " h-10 w-auto whitespace-nowrap"}
-                          title="بارگذاری اسناد"
+                          title="بارگذاری فایل"
                         >
                           <img src="/images/icons/upload.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")} />
-                          <span>بارگذاری اسناد</span>
+                          <span>بارگذاری فایل</span>
                           {Array.isArray(activeEntry.files) && activeEntry.files.length > 0 ? (
                             <span className="mr-2 text-xs opacity-80">({toFaDigits(activeEntry.files.length)})</span>
                           ) : null}
                         </button>
                       </div>
                     </div>
+                  </div>
+
+                  <div className="pt-2 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      disabled={editorDisabled}
+                      onClick={handleExportExcel}
+                      className={
+                        "h-10 px-4 rounded-xl border transition inline-flex items-center justify-center gap-2 " +
+                        (theme === "dark"
+                          ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                          : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
+                      }
+                      title="خروجی اکسل"
+                    >
+                      خروجی اکسل
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={editorDisabled}
+                      onClick={handlePreviewConfirm}
+                      className={
+                        "h-10 px-4 rounded-xl border transition inline-flex items-center justify-center " +
+                        (theme === "dark"
+                          ? "border-white/15 bg-white text-black hover:bg-white/90"
+                          : "border-black/10 bg-black text-white hover:bg-black/90")
+                      }
+                      title="تایید"
+                    >
+                      تایید
+                    </button>
                   </div>
                 </div>
               </div>
@@ -944,9 +1069,59 @@ export default function RoznegarPgae() {
                   </div>
 
                   <div className="px-4 pt-3">
+                    <div className="flex items-center justify-start gap-2">
+                      {TAG_TABS.map((tab) => {
+                        const active = tagPickKind === tab.id;
+                        return (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => {
+                              setTagPickKind(tab.id);
+                              setTagPickCategory("همه");
+                            }}
+                            className={
+                              "h-10 px-4 rounded-xl border text-sm font-semibold transition " +
+                              (active
+                                ? "bg-black text-white border-black"
+                                : theme === "dark"
+                                ? "bg-transparent text-white border-white/15 hover:bg-white/5"
+                                : "bg-white text-neutral-900 border-black/15 hover:bg-black/[0.02]")
+                            }
+                          >
+                            {tab.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-3">
+                      <div className={labelCls}>دسته‌بندی‌ها</div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {(TAG_CATEGORIES[tagPickKind] || ["همه"]).map((cat) => {
+                          const active = String(tagPickCategory) === String(cat);
+                          return (
+                            <button
+                              key={cat}
+                              type="button"
+                              onClick={() => setTagPickCategory(cat)}
+                              className={(active ? selectedTagChipCls : chipCls) + " h-10"}
+                            >
+                              {cat}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
                     <div className="mt-3">
                       <div className={labelCls}>جستجو</div>
-                      <input value={tagSearch} onChange={(e) => setTagSearch(e.target.value)} className={inputCls} placeholder="جستجو در برچسب‌ها..." />
+                      <input
+                        value={tagSearch}
+                        onChange={(e) => setTagSearch(e.target.value)}
+                        className={inputCls}
+                        placeholder="جستجو در برچسب‌ها..."
+                      />
                     </div>
                   </div>
 
@@ -1019,7 +1194,7 @@ export default function RoznegarPgae() {
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="p-4 flex items-center justify-between gap-3">
-                  <div className="font-bold text-lg md:text-xl">انتخاب اسناد مرتبط</div>
+                  <div className="font-bold text-lg md:text-xl">انتخاب مستندات مرتبط</div>
                   <button
                     type="button"
                     onClick={closeRelatedPicker}
@@ -1155,7 +1330,7 @@ export default function RoznegarPgae() {
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="p-4 flex items-center justify-between">
-                  <div className="font-bold text-sm">بارگذاری اسناد (وارده)</div>
+                  <div className="font-bold text-sm">بارگذاری فایل</div>
                   <button
                     type="button"
                     onClick={closeUpload}
