@@ -259,9 +259,7 @@ export default function RoznegarPgae() {
                 </select>
               </div>
 
-              <div className="rounded-xl border border-dashed border-neutral-300 bg-white/80 px-3 py-2 text-xs text-neutral-600 dark:border-neutral-700 dark:bg-neutral-900/60 dark:text-neutral-300">
-                این صفحه فعلاً فقط UI است و هیچ اتصال بک‌اند یا ذخیره‌سازی ندارد.
-              </div>
+              
             </div>
           </div>
 
