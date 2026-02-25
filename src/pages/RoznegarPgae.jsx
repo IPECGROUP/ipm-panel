@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Card } from "../components/ui/Card";
 import { Portal } from "../components/Portal";
 import { dayjs, todayJalaliYmd } from "../utils/date";
+import { useAuth } from "../components/AuthProvider";
 
 const PERSIAN_MONTHS = [
   "فروردین",
@@ -453,10 +454,27 @@ function JalaliPopupDatePicker({ value, onChange, theme = "light", buttonClassNa
 }
 
 export default function RoznegarPgae() {
-  const activeProjects = useMemo(
-    () => (Array.isArray(MOCK_ACTIVE_PROJECTS) ? MOCK_ACTIVE_PROJECTS.filter((x) => x?.isActive !== false) : []),
-    []
+  const { user: authUser } = useAuth();
+  const [activeProjects, setActiveProjects] = useState(() =>
+    (Array.isArray(MOCK_ACTIVE_PROJECTS) ? MOCK_ACTIVE_PROJECTS.filter((x) => x?.isActive !== false) : []).map((p) => ({
+      ...p,
+      id: String(p.id),
+      code: toEnDigits(String(p.code || "")).trim(),
+      name: String(p.name || "").trim(),
+      isActive: p?.isActive !== false,
+    }))
   );
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const sortedActiveProjects = useMemo(() => {
+    return (activeProjects || [])
+      .slice()
+      .sort((a, b) =>
+        String(b?.code || "").localeCompare(String(a?.code || ""), "fa", {
+          numeric: true,
+          sensitivity: "base",
+        })
+      );
+  }, [activeProjects]);
 
   const [mounted, setMounted] = useState(false);
   const [projectId, setProjectId] = useState("");
@@ -478,6 +496,74 @@ export default function RoznegarPgae() {
 
   const [uploadOpen, setUploadOpen] = useState(false);
   const uploadInputRef = useRef(null);
+
+  useEffect(() => {
+    let alive = true;
+    const api = async (path, opt = {}) => {
+      const uid = authUser?.id != null ? String(authUser.id) : "";
+      const res = await fetch("/api" + path, {
+        credentials: "include",
+        ...opt,
+        headers: {
+          "Content-Type": "application/json",
+          ...(uid ? { "x-user-id": uid } : {}),
+          ...(opt.headers || {}),
+        },
+      });
+      const txt = await res.text();
+      let data = {};
+      try {
+        data = txt ? JSON.parse(txt) : {};
+      } catch {}
+      if (!res.ok) throw new Error(data?.error || data?.message || "request_failed");
+      return data;
+    };
+
+    const normalizeProject = (p) => ({
+      id: p?.id == null ? null : String(p.id),
+      code: toEnDigits(String(p?.code ?? "")).trim(),
+      name: String(p?.name ?? p?.title ?? "").trim(),
+      isActive: p?.isActive !== false && p?.is_active !== false,
+    });
+
+    const isTopProjectCode = (code) => /^\d{3}$/.test(toEnDigits(String(code || "")).trim());
+
+    (async () => {
+      setProjectsLoading(true);
+      try {
+        const r = await api("/projects?isActive=true");
+        if (!alive) return;
+        const raw = Array.isArray(r)
+          ? r
+          : Array.isArray(r?.items)
+          ? r.items
+          : Array.isArray(r?.projects)
+          ? r.projects
+          : [];
+        const clean = (raw || [])
+          .filter((p) => p && typeof p === "object" && !Array.isArray(p))
+          .map(normalizeProject)
+          .filter((p) => p && p.id != null)
+          .filter((p) => p.isActive === true)
+          .filter((p) => isTopProjectCode(p.code));
+
+        const byId = new Map();
+        clean.forEach((p) => {
+          const k = String(p.id);
+          if (!byId.has(k)) byId.set(k, p);
+        });
+        setActiveProjects(Array.from(byId.values()));
+      } catch {
+        if (!alive) return;
+      } finally {
+        if (alive) setProjectsLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [authUser?.id]);
 
   useEffect(() => {
     const t = window.setTimeout(() => setMounted(true), 30);
@@ -714,10 +800,11 @@ export default function RoznegarPgae() {
                   onChange={(e) => setProjectId(e.target.value)}
                   className="h-11 w-full rounded-xl border border-neutral-300 bg-white px-3 text-sm text-right text-neutral-900 outline-none transition focus:ring-2 focus:ring-neutral-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:focus:ring-neutral-600/50"
                 >
-                  <option value="">انتخاب پروژه فعال...</option>
-                  {activeProjects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.code} - {p.name}
+                  <option value="">{projectsLoading ? "در حال دریافت پروژه‌های فعال..." : "انتخاب پروژه فعال..."}</option>
+                  {(sortedActiveProjects || []).map((p) => (
+                    <option key={String(p.id)} value={String(p.id)}>
+                      {String(p.code || "").trim()}
+                      {String(p.name || "").trim() ? ` - ${String(p.name || "").trim()}` : ""}
                     </option>
                   ))}
                 </select>
@@ -1004,14 +1091,15 @@ export default function RoznegarPgae() {
                       disabled={editorDisabled}
                       onClick={handleExportExcel}
                       className={
-                        "h-10 px-4 rounded-xl border transition inline-flex items-center justify-center gap-2 " +
+                        "h-10 w-14 grid place-items-center rounded-xl border border-black/15 hover:bg-black/5 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800 " +
                         (theme === "dark"
-                          ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
-                          : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
+                          ? "text-white"
+                          : "text-neutral-900")
                       }
                       title="خروجی اکسل"
+                      aria-label="خروجی اکسل"
                     >
-                      خروجی اکسل
+                      <img src="/images/icons8-excel-50.png" alt="" className="w-5 h-5" />
                     </button>
 
                     <button
@@ -1019,14 +1107,19 @@ export default function RoznegarPgae() {
                       disabled={editorDisabled}
                       onClick={handlePreviewConfirm}
                       className={
-                        "h-10 px-4 rounded-xl border transition inline-flex items-center justify-center " +
+                        "h-10 w-14 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 " +
                         (theme === "dark"
-                          ? "border-white/15 bg-white text-black hover:bg-white/90"
-                          : "border-black/10 bg-black text-white hover:bg-black/90")
+                          ? ""
+                          : "")
                       }
                       title="تایید"
+                      aria-label="تایید"
                     >
-                      تایید
+                      <img
+                        src="/images/icons/check.svg"
+                        alt=""
+                        className="w-5 h-5 invert dark:invert"
+                      />
                     </button>
                   </div>
                 </div>
@@ -1188,7 +1281,7 @@ export default function RoznegarPgae() {
             <div className="absolute inset-0 p-4 flex items-center justify-center">
               <div
                 className={
-                  "w-[min(900px,calc(100vw-24px))] h-[min(84vh,760px)] rounded-2xl border shadow-xl overflow-hidden " +
+                  "w-[min(900px,calc(100vw-24px))] h-[min(84vh,760px)] rounded-2xl border shadow-xl overflow-hidden flex flex-col " +
                   (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
                 }
                 onClick={(e) => e.stopPropagation()}
@@ -1228,62 +1321,55 @@ export default function RoznegarPgae() {
 
                 <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
 
-                <div className="h-[calc(100%-186px)] overflow-auto p-2">
+                <div className="flex-1 min-h-0 overflow-auto p-2">
                   {!relatedPickList.length ? (
                     <div className={theme === "dark" ? "text-white/60 text-sm p-4" : "text-neutral-600 text-sm p-4"}>موردی پیدا نشد.</div>
                   ) : (
-                    relatedPickList.map((l) => {
-                      const id = String(l.id);
-                      const no = String(l.no || "").trim() || id;
-                      const sub = String(l.title || "").trim();
-                      const dt = String(l.date || "").trim();
-                      const checked = relatedPickIds.includes(id);
+                    <div className="space-y-1">
+                      {relatedPickList.map((l) => {
+                        const id = String(l.id);
+                        const no = String(l.no || "").trim() || id;
+                        const sub = String(l.title || "").trim();
+                        const dt = String(l.date || "").trim();
+                        const checked = relatedPickIds.includes(id);
 
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          onClick={() => {
-                            setRelatedPickIds((prev) => {
-                              const base = Array.isArray(prev) ? prev.map(String) : [];
-                              if (base.includes(id)) return base.filter((x) => x !== id);
-                              return [...base, id];
-                            });
-                          }}
-                          className={
-                            "w-full text-right px-3 py-2 rounded-xl transition flex items-center justify-between gap-3 " +
-                            (theme === "dark" ? "hover:bg-white/10" : "hover:bg-black/[0.03]")
-                          }
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 justify-start">
-                              {dt ? (
-                                <span className={theme === "dark" ? "text-white/60 text-xs" : "text-neutral-600 text-xs"}>
-                                  {toFaDigits(dt)}
-                                </span>
-                              ) : null}
-                              <span className="font-bold text-base">{toFaDigits(no)}</span>
-                            </div>
-                            <div className={"text-sm truncate mt-0.5 " + (theme === "dark" ? "text-white/75" : "text-neutral-700")}>{sub || "—"}</div>
-                          </div>
-
-                          <div
+                        return (
+                          <label
+                            key={id}
                             className={
-                              "h-6 w-6 rounded-md border grid place-items-center shrink-0 " +
-                              (checked
-                                ? theme === "dark"
-                                  ? "bg-white text-black border-white/30"
-                                  : "bg-black text-white border-black/30"
-                                : theme === "dark"
-                                ? "border-white/20 bg-transparent"
-                                : "border-black/20 bg-transparent")
+                              "w-full px-3 py-2 rounded-xl transition flex items-center gap-3 cursor-pointer " +
+                              (theme === "dark" ? "hover:bg-white/10" : "hover:bg-black/[0.03]")
                             }
                           >
-                            {checked ? "✓" : ""}
-                          </div>
-                        </button>
-                      );
-                    })
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => {
+                                setRelatedPickIds((prev) => {
+                                  const base = Array.isArray(prev) ? prev.map(String) : [];
+                                  if (base.includes(id)) return base.filter((x) => x !== id);
+                                  return [...base, id];
+                                });
+                              }}
+                              className="h-5 w-5 rounded-md border-black/20 accent-black shrink-0"
+                            />
+                            <div className="min-w-0 flex-1 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <span className="font-bold text-[20px] leading-none">{toFaDigits(no)}</span>
+                                {dt ? (
+                                  <span className={theme === "dark" ? "text-white/60 text-xs" : "text-neutral-600 text-xs"}>
+                                    {toFaDigits(dt)}
+                                  </span>
+                                ) : null}
+                              </div>
+                              <div className={"text-sm mt-1 break-words " + (theme === "dark" ? "text-white/75" : "text-neutral-700")}>
+                                {sub || "—"}
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
 
