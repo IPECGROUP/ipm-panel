@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Card } from "../components/ui/Card";
 import { Portal } from "../components/Portal";
@@ -336,18 +336,18 @@ function JalaliPopupDatePicker({ value, onChange, theme = "light", buttonClassNa
           <div
             ref={popRef}
             className={
-              "fixed z-[9999] w-[min(420px,calc(100vw-24px))] rounded-2xl border shadow-lg p-4 " +
+              "fixed z-[9999] w-[min(420px,calc(100vw-16px))] rounded-2xl border shadow-lg p-3 md:p-4 " +
               (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
             }
             style={{ top: pos.top, right: pos.right }}
           >
             <div className="flex items-center justify-between mb-3">
-              <div className="font-semibold text-sm">انتخاب تاریخ</div>
+              <div className="font-semibold text-[13px] md:text-sm">انتخاب تاریخ</div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 className={
-                  "h-9 w-9 rounded-xl border flex items-center justify-center transition " +
+                  "h-8 w-8 md:h-9 md:w-9 rounded-xl border flex items-center justify-center transition " +
                   (theme === "dark" ? "border-white/10 hover:bg-white/10" : "border-black/10 hover:bg-black/[0.04]")
                 }
                 aria-label="بستن"
@@ -366,7 +366,7 @@ function JalaliPopupDatePicker({ value, onChange, theme = "light", buttonClassNa
                   value={jd}
                   onChange={(e) => setJd(Number(e.target.value))}
                   className={
-                    "w-full h-11 px-3 rounded-xl border outline-none " +
+                    "w-full h-10 md:h-11 px-2.5 md:px-3 text-sm md:text-[14px] rounded-xl border outline-none " +
                     (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-neutral-900")
                   }
                 >
@@ -384,7 +384,7 @@ function JalaliPopupDatePicker({ value, onChange, theme = "light", buttonClassNa
                   value={jm}
                   onChange={(e) => setJm(Number(e.target.value))}
                   className={
-                    "w-full h-11 px-3 rounded-xl border outline-none " +
+                    "w-full h-10 md:h-11 px-2.5 md:px-3 text-sm md:text-[14px] rounded-xl border outline-none " +
                     (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-neutral-900")
                   }
                 >
@@ -402,7 +402,7 @@ function JalaliPopupDatePicker({ value, onChange, theme = "light", buttonClassNa
                   value={jy}
                   onChange={(e) => setJy(Number(e.target.value))}
                   className={
-                    "w-full h-11 px-3 rounded-xl border outline-none " +
+                    "w-full h-10 md:h-11 px-2.5 md:px-3 text-sm md:text-[14px] rounded-xl border outline-none " +
                     (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-neutral-900")
                   }
                 >
@@ -416,7 +416,7 @@ function JalaliPopupDatePicker({ value, onChange, theme = "light", buttonClassNa
             </div>
 
             <div className="mt-3 flex items-center justify-between gap-3">
-              <div className={theme === "dark" ? "text-white/70 text-xs" : "text-neutral-600 text-xs"}>
+              <div className={theme === "dark" ? "text-white/70 text-[11px] md:text-xs" : "text-neutral-600 text-[11px] md:text-xs"}>
                 پیش نمایش: <span className="font-semibold">{toFaDigits(preview)}</span>
               </div>
 
@@ -428,7 +428,7 @@ function JalaliPopupDatePicker({ value, onChange, theme = "light", buttonClassNa
                     setOpen(false);
                   }}
                   className={
-                    "h-10 px-4 rounded-xl transition " +
+                    "h-9 md:h-10 px-3 md:px-4 text-sm rounded-xl transition " +
                     (theme === "dark" ? "bg-white text-black hover:bg-white/90" : "bg-black text-white hover:bg-black/90")
                   }
                 >
@@ -438,7 +438,7 @@ function JalaliPopupDatePicker({ value, onChange, theme = "light", buttonClassNa
                   type="button"
                   onClick={() => setOpen(false)}
                   className={
-                    "h-10 px-4 rounded-xl border transition " +
+                    "h-9 md:h-10 px-3 md:px-4 text-sm rounded-xl border transition " +
                     (theme === "dark" ? "border-white/15 hover:bg-white/10" : "border-black/10 hover:bg-black/[0.04]")
                   }
                 >
@@ -903,7 +903,7 @@ export default function RoznegarPgae() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
-            <section className="xl:col-span-5">
+            <section className="xl:col-span-5 min-w-0">
               <div
                 className={
                   "rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition-all duration-500 delay-75 dark:border-neutral-800 dark:bg-neutral-900 " +
@@ -976,7 +976,7 @@ export default function RoznegarPgae() {
               </div>
             </section>
 
-            <section className="xl:col-span-7">
+            <section className="xl:col-span-7 min-w-0">
               <div
                 className={
                   "rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition-all duration-500 delay-150 dark:border-neutral-800 dark:bg-neutral-900 " +
@@ -1095,13 +1095,13 @@ export default function RoznegarPgae() {
                         title="انتخاب برچسب"
                       >
                         <img src="/images/icons/sayer.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")} />
-                        <span className="text-sm">انتخاب برچسب</span>
+                        <span className="text-xs md:text-sm">انتخاب برچسب</span>
                       </button>
                     </div>
                   </div>
 
                   <div className="md:col-span-12 min-w-0">
-                    <div className="flex items-start justify-start gap-2">
+                    <div className="flex flex-wrap items-start justify-start gap-2">
                       <div className="min-w-0">
                         <div className={labelCls}>مستندات مرتبط</div>
                         <button
@@ -1121,12 +1121,12 @@ export default function RoznegarPgae() {
                         </button>
 
                         {relatedSelectedIds.length > 0 && (
-                          <div className="mt-2 flex flex-wrap items-center gap-1 text-sm">
+                          <div className="mt-2 flex flex-wrap items-center gap-1 text-xs md:text-sm">
                             {relatedSelectedIds.map((id, i) => {
                               const l = letterById.get(String(id));
                               const no = docNoOf(l) || String(id);
                               return (
-                                <span key={String(id)} className="inline-flex items-center gap-1">
+                                <span key={String(id)} className="inline-flex max-w-full items-center gap-1">
                                   {i > 0 && <span className={theme === "dark" ? "text-white/60" : "text-neutral-600"}>و</span>}
                                   <span className="underline underline-offset-4 font-semibold">{toFaDigits(no)}</span>
                                   <button
@@ -1139,7 +1139,7 @@ export default function RoznegarPgae() {
                                       }))
                                     }
                                     className={
-                                      "h-6 w-6 inline-grid place-items-center bg-transparent border-0 shadow-none p-0 text-lg leading-none transition " +
+                                      "h-6 w-6 inline-grid place-items-center bg-transparent border-0 shadow-none p-0 text-base md:text-lg leading-none transition " +
                                       (theme === "dark" ? "text-white/60 hover:text-white" : "text-neutral-500 hover:text-neutral-900")
                                     }
                                     aria-label="حذف"
@@ -1160,11 +1160,11 @@ export default function RoznegarPgae() {
                           type="button"
                           disabled={editorDisabled}
                           onClick={openUpload}
-                          className={uploadTriggerCls + " h-10 w-auto whitespace-nowrap"}
+                          className={uploadTriggerCls + " h-10 w-auto max-w-full whitespace-nowrap"}
                           title="بارگذاری فایل"
                         >
                           <img src="/images/icons/upload.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")} />
-                          <span>بارگذاری فایل</span>
+                          <span className="text-xs md:text-sm">بارگذاری فایل</span>
                           {Array.isArray(activeEntry.files) && activeEntry.files.length > 0 ? (
                             <span className="mr-2 text-xs opacity-80">({toFaDigits(activeEntry.files.length)})</span>
                           ) : null}
@@ -1179,7 +1179,7 @@ export default function RoznegarPgae() {
                       disabled={editorDisabled}
                       onClick={handleExportExcel}
                       className={
-                        "h-10 w-14 grid place-items-center rounded-xl border border-black/15 hover:bg-black/5 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800 " +
+                        "h-9 w-12 md:h-10 md:w-14 grid place-items-center rounded-xl border border-black/15 hover:bg-black/5 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800 " +
                         (theme === "dark"
                           ? "text-white"
                           : "text-neutral-900")
@@ -1187,7 +1187,7 @@ export default function RoznegarPgae() {
                       title="خروجی اکسل"
                       aria-label="خروجی اکسل"
                     >
-                      <img src="/images/icons8-excel-50.png" alt="" className="w-5 h-5" />
+                      <img src="/images/icons8-excel-50.png" alt="" className="w-4 h-4 md:w-5 md:h-5" />
                     </button>
 
                     <button
@@ -1195,7 +1195,7 @@ export default function RoznegarPgae() {
                       disabled={editorDisabled}
                       onClick={handlePreviewConfirm}
                       className={
-                        "h-10 w-14 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 " +
+                        "h-9 w-12 md:h-10 md:w-14 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 " +
                         (theme === "dark"
                           ? ""
                           : "")
@@ -1206,7 +1206,7 @@ export default function RoznegarPgae() {
                       <img
                         src="/images/icons/check.svg"
                         alt=""
-                        className="w-5 h-5 invert dark:invert"
+                        className="w-4 h-4 md:w-5 md:h-5 invert dark:invert"
                       />
                     </button>
                   </div>
@@ -1222,22 +1222,22 @@ export default function RoznegarPgae() {
           <div className="fixed inset-0 z-[9999]" dir="rtl">
             <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={() => setTagModalOpen(false)} />
 
-            <div className="absolute inset-0 p-3 md:p-6 flex items-center justify-center">
+            <div className="absolute inset-0 p-2 sm:p-3 md:p-6 flex items-start sm:items-center justify-center overflow-y-auto">
               <div
                 className={
-                  "w-[min(980px,calc(100vw-20px))] h-[min(78vh,760px)] rounded-2xl border shadow-2xl overflow-hidden " +
+                  "w-[min(980px,calc(100vw-16px))] h-[min(86vh,760px)] rounded-2xl border shadow-2xl overflow-hidden " +
                   (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
                 }
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="h-full flex flex-col">
-                  <div className="px-4 py-3 flex items-center justify-between gap-3 border-b border-black/10 dark:border-white/10">
-                    <div className="font-bold text-sm">انتخاب برچسب</div>
+                  <div className="px-3 md:px-4 py-2.5 md:py-3 flex items-center justify-between gap-3 border-b border-black/10 dark:border-white/10">
+                    <div className="font-bold text-[12px] md:text-[13px]">انتخاب برچسب</div>
                     <button
                       type="button"
                       onClick={() => setTagModalOpen(false)}
                       className={
-                        "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
+                        "h-9 w-9 md:h-10 md:w-10 rounded-xl flex items-center justify-center transition ring-1 " +
                         (theme === "dark"
                           ? "bg-white text-black ring-white/20 hover:bg-white/90"
                           : "bg-white text-black ring-black/15 hover:bg-black/5")
@@ -1249,7 +1249,7 @@ export default function RoznegarPgae() {
                     </button>
                   </div>
 
-                  <div className="px-4 pt-3">
+                  <div className="px-3 md:px-4 pt-3">
                     <div className="flex items-center justify-start gap-2">
                       {TAG_TABS.map((tab) => {
                         const active = tagPickKind === tab.id;
@@ -1262,7 +1262,7 @@ export default function RoznegarPgae() {
                               setTagPickCategory("همه");
                             }}
                             className={
-                              "h-10 px-4 rounded-xl border text-sm font-semibold transition " +
+                              "h-9 md:h-10 px-3 md:px-4 rounded-xl border text-[11px] md:text-xs font-semibold transition " +
                               (active
                                 ? "bg-black text-white border-black"
                                 : theme === "dark"
@@ -1286,7 +1286,7 @@ export default function RoznegarPgae() {
                               key={cat}
                               type="button"
                               onClick={() => setTagPickCategory(cat)}
-                              className={(active ? selectedTagChipCls : chipCls) + " h-10"}
+                              className={(active ? selectedTagChipCls : chipCls) + " h-9 md:h-10"}
                             >
                               {cat}
                             </button>
@@ -1300,15 +1300,15 @@ export default function RoznegarPgae() {
                       <input
                         value={tagSearch}
                         onChange={(e) => setTagSearch(e.target.value)}
-                        className={inputCls}
+                        className={inputCls + " h-9 md:h-10 text-[11px] md:text-xs"}
                         placeholder="جستجو در برچسب‌ها..."
                       />
                     </div>
                   </div>
 
-                  <div className="px-4 py-3 flex-1 overflow-auto">
+                  <div className="px-3 md:px-4 py-3 flex-1 min-h-0 overflow-auto">
                     {!filteredTags.length ? (
-                      <div className="py-10 text-center text-sm text-neutral-500 dark:text-white/50">چیزی پیدا نشد.</div>
+                      <div className="py-10 text-center text-[11px] md:text-xs text-neutral-500 dark:text-white/50">چیزی پیدا نشد.</div>
                     ) : (
                       <div className="flex flex-wrap gap-2">
                         {filteredTags.map((tag) => {
@@ -1325,7 +1325,7 @@ export default function RoznegarPgae() {
                                     : [...prev, id]
                                 )
                               }
-                              className={(active ? selectedTagChipCls : chipCls) + " h-10"}
+                              className={(active ? selectedTagChipCls : chipCls) + " h-9 md:h-10"}
                               title={tag.label}
                             >
                               <span className="truncate max-w-[240px]">{tag.label}</span>
@@ -1336,7 +1336,7 @@ export default function RoznegarPgae() {
                     )}
                   </div>
 
-                  <div className="px-4 py-3 border-t border-black/10 dark:border-white/10 flex items-center justify-end gap-2">
+                  <div className="px-3 md:px-4 py-3 border-t border-black/10 dark:border-white/10 flex items-center justify-end gap-2">
                     <button
                       type="button"
                       onClick={() => {
@@ -1344,7 +1344,7 @@ export default function RoznegarPgae() {
                         setTagModalOpen(false);
                       }}
                       className={
-                        "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
+                        "h-9 w-9 md:h-10 md:w-10 rounded-xl flex items-center justify-center transition ring-1 " +
                         (theme === "dark"
                           ? "bg-black text-white ring-white/10 hover:bg-black/90"
                           : "bg-black text-white ring-black/15 hover:bg-black/90")
@@ -1366,21 +1366,21 @@ export default function RoznegarPgae() {
         createPortal(
           <div className="fixed inset-0 z-[9999]" dir="rtl">
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeRelatedPicker} />
-            <div className="absolute inset-0 p-4 flex items-center justify-center">
+            <div className="absolute inset-0 p-2 sm:p-3 md:p-4 flex items-start sm:items-center justify-center overflow-y-auto">
               <div
                 className={
-                  "w-[min(900px,calc(100vw-24px))] h-[min(84vh,760px)] rounded-2xl border shadow-xl overflow-hidden flex flex-col " +
+                  "w-[min(900px,calc(100vw-16px))] h-[min(86vh,760px)] rounded-2xl border shadow-xl overflow-hidden flex flex-col " +
                   (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
                 }
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="p-4 flex items-center justify-between gap-3">
-                  <div className="font-bold text-lg md:text-xl">انتخاب مستندات مرتبط</div>
+                <div className="p-3 md:p-4 flex items-center justify-between gap-3">
+                  <div className="font-bold text-sm md:text-base">انتخاب مستندات مرتبط</div>
                   <button
                     type="button"
                     onClick={closeRelatedPicker}
                     className={
-                      "h-10 w-10 rounded-xl border flex items-center justify-center transition " +
+                      "h-9 w-9 md:h-10 md:w-10 rounded-xl border flex items-center justify-center transition " +
                       (theme === "dark" ? "border-white/15 bg-white/5 hover:bg-white/10" : "border-black/15 bg-white hover:bg-black/[0.04]")
                     }
                     aria-label="بستن"
@@ -1390,11 +1390,11 @@ export default function RoznegarPgae() {
                   </button>
                 </div>
 
-                <div className="px-4 pb-3">
+                <div className="px-3 md:px-4 pb-2 md:pb-3">
                   <input
                     value={relatedPickQuery}
                     onChange={(e) => setRelatedPickQuery(e.target.value)}
-                    className={inputCls + " h-10 text-sm"}
+                    className={inputCls + " h-9 md:h-10 text-[11px] md:text-xs"}
                     type="text"
                     placeholder="... جستجو با شماره / موضوع / سازمان"
                     autoFocus
@@ -1403,19 +1403,19 @@ export default function RoznegarPgae() {
 
                 <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
 
-                <div className={theme === "dark" ? "text-white/55 text-xs px-4 py-2 text-center" : "text-neutral-500 text-xs px-4 py-2 text-center"}>
+                <div className={theme === "dark" ? "text-white/55 text-[11px] md:text-xs px-3 md:px-4 py-2 text-center" : "text-neutral-500 text-[11px] md:text-xs px-3 md:px-4 py-2 text-center"}>
                   برای نمایش همه موارد، بخشی از شماره/موضوع را جستجو کنید. (نمایش {toFaDigits(200)} مورد اول)
                 </div>
 
                 <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
 
-                <div className="flex-1 min-h-0 overflow-auto p-2">
+                <div className="flex-1 min-h-0 overflow-auto p-1.5 sm:p-2">
                   {relatedDocsLoading ? (
-                    <div className={theme === "dark" ? "text-white/60 text-sm p-4" : "text-neutral-600 text-sm p-4"}>
+                    <div className={theme === "dark" ? "text-white/60 text-[11px] md:text-xs p-3 md:p-4" : "text-neutral-600 text-[11px] md:text-xs p-3 md:p-4"}>
                       در حال دریافت مستندات...
                     </div>
                   ) : !relatedPickList.length ? (
-                    <div className={theme === "dark" ? "text-white/60 text-sm p-4" : "text-neutral-600 text-sm p-4"}>موردی پیدا نشد.</div>
+                    <div className={theme === "dark" ? "text-white/60 text-[11px] md:text-xs p-3 md:p-4" : "text-neutral-600 text-[11px] md:text-xs p-3 md:p-4"}>موردی پیدا نشد.</div>
                   ) : (
                     <div className="space-y-1">
                       {relatedPickList.map((l) => {
@@ -1429,7 +1429,7 @@ export default function RoznegarPgae() {
                           <label
                             key={id}
                             className={
-                              "w-full px-3 py-2 rounded-xl transition flex items-center gap-3 cursor-pointer flex-row-reverse " +
+                              "w-full px-2.5 md:px-3 py-2 rounded-xl transition flex items-center gap-2 md:gap-3 cursor-pointer flex-row-reverse " +
                               (theme === "dark" ? "hover:bg-white/10" : "hover:bg-black/[0.03]")
                             }
                             dir="ltr"
@@ -1444,18 +1444,18 @@ export default function RoznegarPgae() {
                                   return [...base, id];
                                 });
                               }}
-                              className="h-5 w-5 rounded-md border-black/20 accent-black shrink-0"
+                              className="h-4 w-4 md:h-5 md:w-5 rounded-md border-black/20 accent-black shrink-0"
                             />
                             <div className="min-w-0 flex-1 text-right" dir="rtl">
-                              <div className="flex items-center justify-end gap-2">
-                                <span className="font-bold text-[20px] leading-none">{toFaDigits(no)}</span>
+                              <div className="flex flex-wrap items-center justify-end gap-2">
+                                <span className="font-bold text-sm md:text-base leading-none">{toFaDigits(no)}</span>
                                 {dt ? (
-                                  <span className={theme === "dark" ? "text-white/60 text-xs" : "text-neutral-600 text-xs"}>
+                                  <span className={theme === "dark" ? "text-white/60 text-[11px] md:text-xs" : "text-neutral-600 text-[11px] md:text-xs"}>
                                     {toFaDigits(dt)}
                                   </span>
                                 ) : null}
                               </div>
-                              <div className={"text-sm mt-1 break-words " + (theme === "dark" ? "text-white/75" : "text-neutral-700")}>
+                              <div className={"text-[11px] md:text-xs mt-0.5 md:mt-1 break-words " + (theme === "dark" ? "text-white/75" : "text-neutral-700")}>
                                 {sub || "—"}
                               </div>
                             </div>
@@ -1468,7 +1468,7 @@ export default function RoznegarPgae() {
 
                 <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
 
-                <div className="p-4 flex items-center justify-end gap-2">
+                <div className="p-3 md:p-4 flex items-center justify-end gap-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -1479,7 +1479,7 @@ export default function RoznegarPgae() {
                       closeRelatedPicker();
                     }}
                     className={
-                      "h-10 w-10 rounded-xl border transition inline-flex items-center justify-center " +
+                      "h-9 w-9 md:h-10 md:w-10 rounded-xl border transition inline-flex items-center justify-center " +
                       (theme === "dark"
                         ? "border-white/15 bg-white text-black hover:bg-white/90"
                         : "border-black/10 bg-black text-white hover:bg-black/90")
@@ -1487,7 +1487,7 @@ export default function RoznegarPgae() {
                     aria-label="تایید"
                     title="تایید"
                   >
-                    <img src="/images/icons/check.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")} />
+                    <img src="/images/icons/check.svg" alt="" className={"w-4 h-4 md:w-5 md:h-5 " + (theme === "dark" ? "" : "invert")} />
                   </button>
                 </div>
               </div>
@@ -1500,21 +1500,21 @@ export default function RoznegarPgae() {
         createPortal(
           <div className="fixed inset-0 z-[9999]">
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeUpload} />
-            <div className="absolute inset-0 flex items-center justify-center p-4">
+            <div className="absolute inset-0 flex items-start sm:items-center justify-center p-2 sm:p-3 md:p-4 overflow-y-auto">
               <div
                 className={
-                  "w-[min(720px,calc(100vw-24px))] rounded-2xl border shadow-xl overflow-hidden " +
+                  "w-[min(720px,calc(100vw-16px))] h-[min(86vh,720px)] rounded-2xl border shadow-xl overflow-hidden flex flex-col " +
                   (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
                 }
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="p-4 flex items-center justify-between">
-                  <div className="font-bold text-sm">بارگذاری فایل</div>
+                <div className="p-3 md:p-4 flex items-center justify-between">
+                  <div className="font-bold text-[12px] md:text-[13px]">بارگذاری فایل</div>
                   <button
                     type="button"
                     onClick={closeUpload}
                     className={
-                      "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
+                      "h-9 w-9 md:h-10 md:w-10 rounded-xl flex items-center justify-center transition ring-1 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
                       (theme === "dark"
                         ? "ring-neutral-800 hover:bg-white/10 text-white"
                         : "ring-black/15 hover:bg-black/90 bg-black text-white")
@@ -1528,7 +1528,7 @@ export default function RoznegarPgae() {
 
                 <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
 
-                <div className="p-4 grid grid-cols-1 gap-4">
+                <div className="p-3 md:p-4 grid grid-cols-1 gap-3 md:gap-4 flex-1 min-h-0 overflow-auto">
                   <div>
                     <div className={labelCls}>فایل‌های انتخاب‌شده</div>
                     <div className={"rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
@@ -1547,8 +1547,8 @@ export default function RoznegarPgae() {
                               }
                             >
                               <div className="min-w-0 flex-1">
-                                <div className="text-[13px] font-semibold whitespace-normal break-words leading-6">{f.name}</div>
-                                <div className={theme === "dark" ? "text-white/60 text-[11px] mt-1" : "text-neutral-600 text-[11px] mt-1"}>
+                                <div className="text-[12px] md:text-[13px] font-semibold whitespace-normal break-words leading-6">{f.name}</div>
+                                <div className={theme === "dark" ? "text-white/60 text-[10px] md:text-[11px] mt-1" : "text-neutral-600 text-[10px] md:text-[11px] mt-1"}>
                                   {formatSize(f.size)}
                                 </div>
                               </div>
@@ -1561,7 +1561,7 @@ export default function RoznegarPgae() {
                                     files: (curr.files || []).filter((_, i) => i !== idx),
                                   }))
                                 }
-                                className="h-9 px-3 rounded-xl border border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02] text-sm dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+                                className="h-9 px-3 rounded-xl border border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02] text-[11px] md:text-xs dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
                                 title="حذف"
                                 aria-label="حذف"
                               >
@@ -1570,14 +1570,14 @@ export default function RoznegarPgae() {
                             </div>
                           ))
                         ) : (
-                          <div className="py-6 text-center text-black/60 dark:text-white/50 text-sm">فایلی انتخاب نشده است.</div>
+                          <div className="py-6 text-center text-black/60 dark:text-white/50 text-[11px] md:text-xs">فایلی انتخاب نشده است.</div>
                         )}
 
                         <div className={uploadBoxCls + " mt-3"} onDrop={onDropUpload} onDragOver={onDragOverUpload}>
-                          <div className={theme === "dark" ? "text-white/80 text-sm font-semibold" : "text-neutral-800 text-sm font-semibold"}>
+                          <div className={theme === "dark" ? "text-white/80 text-[11px] md:text-xs font-semibold" : "text-neutral-800 text-[11px] md:text-xs font-semibold"}>
                             فایل را اینجا رها کنید
                           </div>
-                          <div className={theme === "dark" ? "text-white/50 text-xs mt-1" : "text-neutral-500 text-xs mt-1"}>
+                          <div className={theme === "dark" ? "text-white/50 text-[11px] md:text-xs mt-1" : "text-neutral-500 text-[11px] md:text-xs mt-1"}>
                             یا با دکمه زیر انتخاب کنید (تصویر / PDF)
                           </div>
 
@@ -1586,7 +1586,7 @@ export default function RoznegarPgae() {
                               type="button"
                               onClick={() => uploadInputRef.current?.click()}
                               className={
-                                "h-10 px-4 rounded-xl border transition inline-flex items-center justify-center gap-2 " +
+                                "h-9 md:h-10 px-3 md:px-4 rounded-xl border transition inline-flex items-center justify-center gap-2 text-[11px] md:text-xs " +
                                 (theme === "dark"
                                   ? "border-white/15 bg-white text-black hover:bg-white/90"
                                   : "border-black/15 bg-black text-white hover:bg-black/90")
@@ -1611,7 +1611,7 @@ export default function RoznegarPgae() {
                             type="button"
                             onClick={closeUpload}
                             className={
-                              "h-10 w-10 rounded-xl border transition inline-flex items-center justify-center " +
+                              "h-9 w-9 md:h-10 md:w-10 rounded-xl border transition inline-flex items-center justify-center " +
                               (theme === "dark"
                                 ? "border-white/15 bg-white text-black hover:bg-white/90"
                                 : "border-black/10 bg-black text-white hover:bg-black/90")
@@ -1619,7 +1619,7 @@ export default function RoznegarPgae() {
                             aria-label="تایید"
                             title="تایید"
                           >
-                            <img src="/images/icons/check.svg" alt="" className={"w-4 h-4 " + (theme === "dark" ? "" : "invert")} />
+                            <img src="/images/icons/check.svg" alt="" className={"w-4 h-4 md:w-5 md:h-5 " + (theme === "dark" ? "" : "invert")} />
                           </button>
                         </div>
                       </div>
