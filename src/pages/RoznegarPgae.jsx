@@ -498,6 +498,7 @@ export default function RoznegarPgae() {
 
   const [uploadOpen, setUploadOpen] = useState(false);
   const [tableFilter, setTableFilter] = useState("");
+  const [filePreview, setFilePreview] = useState({ open: false, file: null, url: "" });
   const uploadInputRef = useRef(null);
 
   useEffect(() => {
@@ -809,6 +810,7 @@ export default function RoznegarPgae() {
           activity: String(row.activity || "").trim(),
           tagsText: tags.join("، "),
           docsText: docs.join(" | "),
+          files,
           filesText: fileNames.join("، "),
           filesCount: files.length || 0,
           statusText,
@@ -849,6 +851,31 @@ export default function RoznegarPgae() {
 
   const openUpload = () => setUploadOpen(true);
   const closeUpload = () => setUploadOpen(false);
+  const openFilePreview = (file) => {
+    if (!file) return;
+    setFilePreview((prev) => {
+      if (prev?.url) {
+        try {
+          URL.revokeObjectURL(prev.url);
+        } catch {}
+      }
+      let nextUrl = "";
+      try {
+        nextUrl = URL.createObjectURL(file);
+      } catch {}
+      return { open: true, file, url: nextUrl };
+    });
+  };
+  const closeFilePreview = () => {
+    setFilePreview((prev) => {
+      if (prev?.url) {
+        try {
+          URL.revokeObjectURL(prev.url);
+        } catch {}
+      }
+      return { open: false, file: null, url: "" };
+    });
+  };
 
   const handlePickFiles = async (e) => {
     const incoming = Array.from(e.target.files || []);
@@ -875,6 +902,16 @@ export default function RoznegarPgae() {
     typeof document !== "undefined" && document.documentElement.classList.contains("dark")
       ? "dark"
       : "light";
+
+  useEffect(() => {
+    return () => {
+      if (filePreview?.url) {
+        try {
+          URL.revokeObjectURL(filePreview.url);
+        } catch {}
+      }
+    };
+  }, [filePreview?.url]);
 
   const inputBase = "w-full h-11 px-4 rounded-xl border outline-none transition text-right text-[14px]";
   const inputCls =
@@ -958,6 +995,11 @@ export default function RoznegarPgae() {
   };
 
   const cardReveal = mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3";
+  const previewFile = filePreview?.file;
+  const previewName = String(previewFile?.name || "");
+  const previewType = String(previewFile?.type || "").toLowerCase();
+  const previewIsImage = previewType.startsWith("image/");
+  const previewIsPdf = previewType.includes("pdf") || /\.pdf$/i.test(previewName);
 
   return (
     <>
@@ -1361,7 +1403,34 @@ export default function RoznegarPgae() {
                           <td className="px-3 py-2 text-[11px] md:text-xs align-middle text-center break-words">{r.activity || "-"}</td>
                           <td className="px-3 py-2 text-[11px] md:text-xs align-middle text-center break-words">{r.tagsText || "-"}</td>
                           <td className="px-3 py-2 text-[11px] md:text-xs align-middle text-center break-words">{r.docsText || "-"}</td>
-                          <td className="px-3 py-2 text-[11px] md:text-xs align-middle text-center break-words">{r.filesText || "-"}</td>
+                          <td className="px-3 py-2 text-[11px] md:text-xs align-middle text-center break-words">
+                            {Array.isArray(r.files) && r.files.length ? (
+                              <div className="flex flex-wrap items-center justify-center gap-1">
+                                {r.files.map((f, fileIdx) => {
+                                  const name = String(f?.name || `فایل ${fileIdx + 1}`);
+                                  const key = `${name}_${f?.size || 0}_${f?.lastModified || 0}_${fileIdx}`;
+                                  return (
+                                    <button
+                                      key={key}
+                                      type="button"
+                                      onClick={() => openFilePreview(f)}
+                                      className={
+                                        "max-w-[180px] truncate rounded-lg px-1.5 py-0.5 underline underline-offset-4 transition " +
+                                        (theme === "dark"
+                                          ? "text-white/85 hover:text-white"
+                                          : "text-neutral-700 hover:text-black")
+                                      }
+                                      title={name}
+                                    >
+                                      {name}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              "-"
+                            )}
+                          </td>
                           <td className="px-3 py-2 text-[11px] md:text-xs align-middle text-center whitespace-nowrap">{toFaDigits(r.filesCount || 0)}</td>
                         </tr>
                       ))
@@ -1394,6 +1463,61 @@ export default function RoznegarPgae() {
           </div>
         </div>
       </Card>
+
+      {filePreview.open &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999]" dir="rtl">
+            <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={closeFilePreview} />
+            <div className="absolute inset-0 p-2 sm:p-4 flex items-start sm:items-center justify-center overflow-y-auto">
+              <div
+                className={
+                  "w-[min(980px,calc(100vw-16px))] max-h-[88vh] rounded-2xl border shadow-2xl overflow-hidden flex flex-col " +
+                  (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
+                }
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="px-3 md:px-4 py-3 border-b border-black/10 dark:border-white/10 flex items-center justify-between gap-3">
+                  <div className="text-xs md:text-sm font-semibold truncate max-w-[75%]" title={previewName || "پیش نمایش فایل"}>
+                    {previewName || "پیش نمایش فایل"}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeFilePreview}
+                    className={
+                      "h-9 w-9 md:h-10 md:w-10 rounded-xl border flex items-center justify-center transition " +
+                      (theme === "dark" ? "border-white/15 bg-white/5 hover:bg-white/10" : "border-black/15 bg-white hover:bg-black/[0.04]")
+                    }
+                    title="بستن"
+                    aria-label="بستن"
+                  >
+                    <img src="/images/icons/bastan.svg" alt="" className={"w-4 h-4 " + (theme === "dark" ? "invert" : "brightness-0")} />
+                  </button>
+                </div>
+
+                <div className="p-3 md:p-4 min-h-0 overflow-auto">
+                  {filePreview.url && previewIsImage ? (
+                    <img
+                      src={filePreview.url}
+                      alt={previewName || "preview"}
+                      className="max-h-[70vh] w-auto max-w-full object-contain mx-auto rounded-xl border border-black/10 dark:border-white/10"
+                    />
+                  ) : filePreview.url && previewIsPdf ? (
+                    <iframe
+                      src={filePreview.url}
+                      title={previewName || "PDF preview"}
+                      className="w-full h-[70vh] rounded-xl border border-black/10 dark:border-white/10 bg-white"
+                    />
+                  ) : (
+                    <div className={theme === "dark" ? "text-white/70 text-sm text-center py-10" : "text-neutral-600 text-sm text-center py-10"}>
+                      پیش‌نمایش این نوع فایل در دسترس نیست.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {tagModalOpen && (
         <Portal>
