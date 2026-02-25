@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Card } from "../components/ui/Card";
 import { Portal } from "../components/Portal";
-import { JalaliDatePicker } from "../components/JalaliDatePicker";
 import { dayjs, todayJalaliYmd } from "../utils/date";
 
 const PERSIAN_MONTHS = [
@@ -60,6 +60,32 @@ function toFaDigits(value) {
   return String(value ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
 }
 
+function toEnDigits(s) {
+  return String(s ?? "")
+    .replace(/[۰-۹]/g, (d) => "0123456789"["۰۱۲۳۴۵۶۷۸۹".indexOf(d)])
+    .replace(/[٠-٩]/g, (d) => "0123456789"["٠١٢٣٤٥٦٧٨٩".indexOf(d)]);
+}
+
+function pad2(n) {
+  const x = Number(n) || 0;
+  return x < 10 ? `0${x}` : String(x);
+}
+
+function getJalaliPartsFromDate(d) {
+  try {
+    const y = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric" }).format(d);
+    const m = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { month: "numeric" }).format(d);
+    const day = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { day: "numeric" }).format(d);
+    return {
+      jy: Number(toEnDigits(y)) || 1400,
+      jm: Number(toEnDigits(m)) || 1,
+      jd: Number(toEnDigits(day)) || 1,
+    };
+  } catch {
+    return { jy: 1400, jm: 1, jd: 1 };
+  }
+}
+
 function formatSize(size) {
   const kb = Number(size || 0) / 1024;
   if (kb < 1024) return `${kb.toFixed(1)} KB`;
@@ -96,6 +122,300 @@ function hasEntryDetails(entry) {
   );
 }
 
+function JalaliPopupDatePicker({ value, onChange, theme = "light", buttonClassName, hideIcon, disableFuture = false }) {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef(null);
+  const popRef = useRef(null);
+  const [pos, setPos] = useState({ top: 0, right: 0 });
+
+  const nowParts = useMemo(() => getJalaliPartsFromDate(new Date()), []);
+  const initial = useMemo(() => {
+    const v = String(value || "");
+    const m = v.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+    if (m) {
+      return { jy: Number(m[1]), jm: Number(m[2]), jd: Number(m[3]) };
+    }
+    return nowParts;
+  }, [value, nowParts]);
+
+  const [jy, setJy] = useState(initial.jy);
+  const [jm, setJm] = useState(initial.jm);
+  const [jd, setJd] = useState(initial.jd);
+
+  const maxMonthForYear = (y) => {
+    if (!disableFuture) return 12;
+    return Number(y) === Number(nowParts.jy) ? Number(nowParts.jm) : 12;
+  };
+
+  const maxDayForYearMonth = (y, m) => {
+    const maxByMonth = Number(m) <= 6 ? 31 : Number(m) <= 11 ? 30 : 29;
+    if (!disableFuture) return maxByMonth;
+    if (Number(y) === Number(nowParts.jy) && Number(m) === Number(nowParts.jm)) {
+      return Math.min(maxByMonth, Number(nowParts.jd));
+    }
+    return maxByMonth;
+  };
+
+  const isAfterToday = (y, m, d) => {
+    if (!disableFuture) return false;
+    const yy = Number(y);
+    const mm = Number(m);
+    const dd = Number(d);
+    if (yy > Number(nowParts.jy)) return true;
+    if (yy < Number(nowParts.jy)) return false;
+    if (mm > Number(nowParts.jm)) return true;
+    if (mm < Number(nowParts.jm)) return false;
+    return dd > Number(nowParts.jd);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => {
+      const t = e.target;
+      if (popRef.current && popRef.current.contains(t)) return;
+      if (btnRef.current && btnRef.current.contains(t)) return;
+      setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onEsc = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onEsc);
+    return () => document.removeEventListener("keydown", onEsc);
+  }, [open]);
+
+  const years = useMemo(() => {
+    const base = nowParts.jy || 1400;
+    const arr = [];
+    const maxY = disableFuture ? base : base + 10;
+    for (let y = base - 10; y <= maxY; y++) arr.push(y);
+    return arr;
+  }, [disableFuture, nowParts.jy]);
+
+  const months = useMemo(() => {
+    const maxM = maxMonthForYear(jy);
+    const arr = [];
+    for (let m = 1; m <= maxM; m++) arr.push(m);
+    return arr;
+  }, [jy, disableFuture, nowParts.jy, nowParts.jm]);
+
+  const days = useMemo(() => {
+    const max = maxDayForYearMonth(jy, jm);
+    const arr = [];
+    for (let d = 1; d <= max; d++) arr.push(d);
+    return arr;
+  }, [jy, jm, disableFuture, nowParts.jy, nowParts.jm, nowParts.jd]);
+
+  useEffect(() => {
+    const maxM = maxMonthForYear(jy);
+    if (jm > maxM) setJm(maxM);
+  }, [jy, jm, disableFuture, nowParts.jy, nowParts.jm]);
+
+  useEffect(() => {
+    const max = maxDayForYearMonth(jy, jm);
+    if (jd > max) setJd(max);
+  }, [jy, jm, jd, disableFuture, nowParts.jy, nowParts.jm, nowParts.jd]);
+
+  useEffect(() => {
+    if (!disableFuture) return;
+    if (!isAfterToday(jy, jm, jd)) return;
+    setJy(nowParts.jy);
+    setJm(nowParts.jm);
+    setJd(nowParts.jd);
+  }, [disableFuture, jy, jm, jd, nowParts.jy, nowParts.jm, nowParts.jd]);
+
+  const preview = `${jy}/${pad2(jm)}/${pad2(jd)}`;
+
+  const defaultBtnCls =
+    "w-full h-11 px-3 rounded-xl border text-right flex items-center justify-between gap-2 transition " +
+    (theme === "dark"
+      ? "border-white/15 bg-white/5 text-white/90 hover:bg-white/10"
+      : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]");
+
+  const recalcPos = () => {
+    const btn = btnRef.current;
+    if (!btn) return;
+    const r = btn.getBoundingClientRect();
+    const margin = 8;
+    const right = Math.max(margin, window.innerWidth - r.right);
+    let top = r.bottom + margin;
+    const pop = popRef.current;
+    if (pop) {
+      const pr = pop.getBoundingClientRect();
+      const h = pr.height || 0;
+      if (top + h > window.innerHeight - margin) {
+        const above = r.top - h - margin;
+        if (above >= margin) top = above;
+        else top = Math.max(margin, window.innerHeight - h - margin);
+      }
+    }
+    setPos({ top, right });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    recalcPos();
+    const raf = requestAnimationFrame(() => recalcPos());
+    const onResize = () => recalcPos();
+    const onScrollAny = () => recalcPos();
+    window.addEventListener("resize", onResize);
+    document.addEventListener("scroll", onScrollAny, true);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", onResize);
+      document.removeEventListener("scroll", onScrollAny, true);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative">
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={buttonClassName ? buttonClassName : defaultBtnCls}
+      >
+        <span className={value ? "" : theme === "dark" ? "text-white/50" : "text-neutral-400"}>
+          {value ? toFaDigits(value) : ""}
+        </span>
+
+        {!hideIcon && (
+          <span className={theme === "dark" ? "text-white/50" : "text-neutral-500"}>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <path d="M16 2v4M8 2v4M3 10h18" />
+            </svg>
+          </span>
+        )}
+      </button>
+
+      {open &&
+        createPortal(
+          <div
+            ref={popRef}
+            className={
+              "fixed z-[9999] w-[min(420px,calc(100vw-24px))] rounded-2xl border shadow-lg p-4 " +
+              (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
+            }
+            style={{ top: pos.top, right: pos.right }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-semibold text-sm">انتخاب تاریخ</div>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className={
+                  "h-9 w-9 rounded-xl border flex items-center justify-center transition " +
+                  (theme === "dark" ? "border-white/10 hover:bg-white/10" : "border-black/10 hover:bg-black/[0.04]")
+                }
+                aria-label="بستن"
+                title="بستن"
+              >
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>روز</div>
+                <select
+                  value={jd}
+                  onChange={(e) => setJd(Number(e.target.value))}
+                  className={
+                    "w-full h-11 px-3 rounded-xl border outline-none " +
+                    (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-neutral-900")
+                  }
+                >
+                  {days.map((d) => (
+                    <option key={d} value={d}>
+                      {toFaDigits(d)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>ماه</div>
+                <select
+                  value={jm}
+                  onChange={(e) => setJm(Number(e.target.value))}
+                  className={
+                    "w-full h-11 px-3 rounded-xl border outline-none " +
+                    (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-neutral-900")
+                  }
+                >
+                  {months.map((m) => (
+                    <option key={m} value={m}>
+                      {PERSIAN_MONTHS[m - 1]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>سال</div>
+                <select
+                  value={jy}
+                  onChange={(e) => setJy(Number(e.target.value))}
+                  className={
+                    "w-full h-11 px-3 rounded-xl border outline-none " +
+                    (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-neutral-900")
+                  }
+                >
+                  {years.map((y) => (
+                    <option key={y} value={y}>
+                      {toFaDigits(y)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <div className={theme === "dark" ? "text-white/70 text-xs" : "text-neutral-600 text-xs"}>
+                پیش نمایش: <span className="font-semibold">{toFaDigits(preview)}</span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 justify-end w-full">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(preview);
+                    setOpen(false);
+                  }}
+                  className={
+                    "h-10 px-4 rounded-xl transition " +
+                    (theme === "dark" ? "bg-white text-black hover:bg-white/90" : "bg-black text-white hover:bg-black/90")
+                  }
+                >
+                  تایید
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className={
+                    "h-10 px-4 rounded-xl border transition " +
+                    (theme === "dark" ? "border-white/15 hover:bg-white/10" : "border-black/10 hover:bg-black/[0.04]")
+                  }
+                >
+                  بستن
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+    </div>
+  );
+}
+
 export default function RoznegarPgae() {
   const activeProjects = useMemo(
     () => (Array.isArray(MOCK_ACTIVE_PROJECTS) ? MOCK_ACTIVE_PROJECTS.filter((x) => x?.isActive !== false) : []),
@@ -114,11 +434,12 @@ export default function RoznegarPgae() {
   const [tagSearch, setTagSearch] = useState("");
   const [tagDraftIds, setTagDraftIds] = useState([]);
 
-  const [docsModalOpen, setDocsModalOpen] = useState(false);
-  const [docsSearch, setDocsSearch] = useState("");
-  const [docsDraftIds, setDocsDraftIds] = useState([]);
+  const [relatedPickOpen, setRelatedPickOpen] = useState(false);
+  const [relatedPickQuery, setRelatedPickQuery] = useState("");
+  const [relatedPickIds, setRelatedPickIds] = useState([]);
 
-  const fileInputRef = useRef(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const uploadInputRef = useRef(null);
 
   useEffect(() => {
     const t = window.setTimeout(() => setMounted(true), 30);
@@ -173,10 +494,10 @@ export default function RoznegarPgae() {
     return MOCK_TAGS.filter((t) => set.has(String(t.id)));
   }, [activeEntry?.tagIds]);
 
-  const selectedDocs = useMemo(() => {
-    const set = new Set((activeEntry?.relatedDocIds || []).map(String));
-    return MOCK_RELATED_DOCS.filter((d) => set.has(String(d.id)));
-  }, [activeEntry?.relatedDocIds]);
+  const relatedSelectedIds = useMemo(
+    () => (Array.isArray(activeEntry?.relatedDocIds) ? activeEntry.relatedDocIds.map(String) : []),
+    [activeEntry?.relatedDocIds]
+  );
 
   const filteredTags = useMemo(() => {
     const q = String(tagSearch || "").trim().toLowerCase();
@@ -184,14 +505,19 @@ export default function RoznegarPgae() {
     return MOCK_TAGS.filter((t) => String(t.label || "").toLowerCase().includes(q));
   }, [tagSearch]);
 
-  const filteredDocs = useMemo(() => {
-    const q = String(docsSearch || "").trim().toLowerCase();
+  const relatedPickList = useMemo(() => {
+    const q = String(relatedPickQuery || "").trim().toLowerCase();
     if (!q) return MOCK_RELATED_DOCS;
     return MOCK_RELATED_DOCS.filter((d) => {
-      const text = `${d.no} ${d.title} ${d.type}`.toLowerCase();
+      const text = `${d.no} ${d.title} ${d.type} ${d.date}`.toLowerCase();
       return text.includes(q);
     });
-  }, [docsSearch]);
+  }, [relatedPickQuery]);
+
+  const letterById = useMemo(
+    () => new Map((Array.isArray(MOCK_RELATED_DOCS) ? MOCK_RELATED_DOCS : []).map((x) => [String(x.id), x])),
+    []
+  );
 
   const openTagModal = () => {
     setTagDraftIds((activeEntry?.tagIds || []).map(String));
@@ -199,13 +525,21 @@ export default function RoznegarPgae() {
     setTagModalOpen(true);
   };
 
-  const openDocsModal = () => {
-    setDocsDraftIds((activeEntry?.relatedDocIds || []).map(String));
-    setDocsSearch("");
-    setDocsModalOpen(true);
+  const openRelatedPicker = () => {
+    setRelatedPickIds(relatedSelectedIds);
+    setRelatedPickQuery("");
+    setRelatedPickOpen(true);
   };
 
-  const handlePickFiles = (e) => {
+  const closeRelatedPicker = () => {
+    setRelatedPickOpen(false);
+    setRelatedPickQuery("");
+  };
+
+  const openUpload = () => setUploadOpen(true);
+  const closeUpload = () => setUploadOpen(false);
+
+  const handlePickFiles = async (e) => {
     const incoming = Array.from(e.target.files || []);
     if (!incoming.length) return;
 
@@ -224,6 +558,55 @@ export default function RoznegarPgae() {
     });
 
     e.target.value = "";
+  };
+
+  const theme =
+    typeof document !== "undefined" && document.documentElement.classList.contains("dark")
+      ? "dark"
+      : "light";
+
+  const inputBase = "w-full h-11 px-4 rounded-xl border outline-none transition text-right text-[14px]";
+  const inputCls =
+    theme === "dark"
+      ? inputBase + " border-white/15 bg-white/5 text-white placeholder:text-white/40 focus:bg-white/10"
+      : inputBase + " border-black/10 bg-white text-neutral-900 placeholder:text-neutral-400 focus:bg-black/[0.02]";
+
+  const labelCls = theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1";
+  const inputSmCls = inputCls.replace("h-11", "h-10").replace("px-4", "px-3") + " text-[14px] rounded-xl";
+  const chipBase = "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs shadow-sm transition";
+  const chipCls =
+    chipBase +
+    " border-black/10 bg-white !text-neutral-900 hover:bg-black/5 " +
+    "dark:border-neutral-800 dark:bg-neutral-900 dark:!text-neutral-100 dark:hover:bg-white/10";
+  const selectedTagChipCls =
+    chipBase +
+    " border-black bg-black !text-white hover:bg-black/90 " +
+    "dark:border-neutral-200 dark:bg-neutral-100 dark:!text-neutral-900";
+
+  const uploadTriggerCls =
+    "h-11 px-3 rounded-xl border transition flex items-center justify-center gap-2 whitespace-nowrap outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
+    (theme === "dark"
+      ? "border-white/15 bg-white/5 text-white/90 hover:bg-white/10"
+      : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]");
+
+  const uploadBoxCls =
+    "rounded-2xl border border-dashed p-4 text-center transition " +
+    (theme === "dark"
+      ? "border-white/15 bg-white/5 hover:bg-white/10"
+      : "border-black/15 bg-black/[0.02] hover:bg-black/[0.04]");
+
+  const onDropUpload = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const fl = e.dataTransfer?.files;
+    if (fl && fl.length) {
+      await handlePickFiles({ target: { files: fl, value: "" } });
+    }
+  };
+
+  const onDragOverUpload = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
   };
 
   const cardReveal = mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3";
@@ -366,12 +749,12 @@ export default function RoznegarPgae() {
                 <div className="space-y-4" aria-disabled={editorDisabled}>
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
                     <div className="md:col-span-4">
-                      <div className="mb-1 text-xs text-neutral-600 dark:text-neutral-300">روز</div>
+                      <div className={labelCls}>روز</div>
                       <select
                         disabled={editorDisabled}
                         value={activeEntry.dayName}
                         onChange={(e) => updateActiveEntry((curr) => ({ ...curr, dayName: e.target.value }))}
-                        className="h-11 w-full rounded-xl border border-neutral-300 bg-white px-3 text-sm text-right text-neutral-900 outline-none transition focus:ring-2 focus:ring-neutral-300 disabled:cursor-not-allowed disabled:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:focus:ring-neutral-600/50 dark:disabled:bg-neutral-800"
+                        className={inputSmCls}
                       >
                         {WEEKDAY_NAMES.map((d) => (
                           <option key={d} value={d}>
@@ -382,21 +765,23 @@ export default function RoznegarPgae() {
                     </div>
 
                     <div className="md:col-span-8">
-                      <div className="mb-1 text-xs text-neutral-600 dark:text-neutral-300">تاریخ</div>
-                      <div className={editorDisabled ? "pointer-events-none" : ""}>
-                        <JalaliDatePicker
-                          value={selectedDate}
+                      <div className={labelCls}>تاریخ سند</div>
+                      <div className={editorDisabled ? "pointer-events-none opacity-70" : ""}>
+                        <JalaliPopupDatePicker
+                          value={String(selectedDate || "").replace(/-/g, "/")}
                           onChange={(v) => {
                             if (!v) return;
-                            jumpToDate(v);
+                            jumpToDate(String(v).replace(/\//g, "-"));
                           }}
+                          theme={theme}
+                          buttonClassName={inputSmCls + " flex items-center justify-between"}
                         />
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <div className="mb-1 text-xs text-neutral-600 dark:text-neutral-300">شرح فعالیت‌ها</div>
+                    <div className={labelCls}>شرح فعالیت‌ها</div>
                     <textarea
                       disabled={editorDisabled}
                       value={activeEntry.activity}
@@ -407,142 +792,116 @@ export default function RoznegarPgae() {
                     />
                   </div>
 
-                  <div>
-                    <div className="mb-1 text-xs text-neutral-600 dark:text-neutral-300">برچسب</div>
-                    <div className="flex flex-wrap items-start gap-2">
+                  <div className="md:col-span-12 min-w-0">
+                    <div className={labelCls}>برچسب‌ها</div>
+                    <div className="w-full min-w-0 flex flex-wrap items-center gap-2">
+                      {selectedTags.map((tag) => (
+                        <button
+                          key={tag.id}
+                          type="button"
+                          disabled={editorDisabled}
+                          onClick={() =>
+                            updateActiveEntry((curr) => ({
+                              ...curr,
+                              tagIds: (curr.tagIds || []).filter((id) => String(id) !== String(tag.id)),
+                            }))
+                          }
+                          className={selectedTagChipCls + " shrink-0"}
+                          title={tag.label}
+                          aria-label={tag.label}
+                        >
+                          <span className="truncate max-w-[220px]">{tag.label}</span>
+                        </button>
+                      ))}
+
                       <button
                         type="button"
                         disabled={editorDisabled}
                         onClick={openTagModal}
-                        className="h-10 rounded-xl border border-neutral-300 bg-white px-3 text-sm text-neutral-800 transition hover:bg-neutral-100 disabled:cursor-not-allowed disabled:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800 dark:disabled:bg-neutral-800"
+                        className={
+                          "h-10 w-10 shrink-0 rounded-full border transition inline-flex items-center justify-center " +
+                          (theme === "dark"
+                            ? "border-white/15 bg-white/5 hover:bg-white/10"
+                            : "border-black/10 bg-white hover:bg-black/[0.02]")
+                        }
+                        aria-label="افزودن برچسب"
+                        title="افزودن برچسب"
                       >
-                        انتخاب برچسب
+                        <img src="/images/icons/sayer.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")} />
                       </button>
-
-                      <div className="flex flex-1 flex-wrap gap-2">
-                        {selectedTags.length ? (
-                          selectedTags.map((tag) => (
-                            <span
-                              key={tag.id}
-                              className="inline-flex items-center gap-1 rounded-full border border-neutral-300 bg-neutral-100 px-3 py-1 text-xs text-neutral-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
-                            >
-                              {tag.label}
-                              <button
-                                type="button"
-                                disabled={editorDisabled}
-                                onClick={() =>
-                                  updateActiveEntry((curr) => ({
-                                    ...curr,
-                                    tagIds: (curr.tagIds || []).filter((id) => String(id) !== String(tag.id)),
-                                  }))
-                                }
-                                className="text-[11px] text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-100"
-                                aria-label={`حذف ${tag.label}`}
-                              >
-                                ×
-                              </button>
-                            </span>
-                          ))
-                        ) : (
-                          <div className="py-2 text-xs text-neutral-500 dark:text-neutral-400">برچسبی انتخاب نشده است.</div>
-                        )}
-                      </div>
                     </div>
                   </div>
 
-                  <div>
-                    <div className="mb-1 text-xs text-neutral-600 dark:text-neutral-300">مستندات مرتبط</div>
-                    <div className="space-y-2">
-                      <button
-                        type="button"
-                        disabled={editorDisabled}
-                        onClick={openDocsModal}
-                        className="h-10 rounded-xl border border-neutral-300 bg-white px-3 text-sm text-neutral-800 transition hover:bg-neutral-100 disabled:cursor-not-allowed disabled:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800 dark:disabled:bg-neutral-800"
-                      >
-                        انتخاب از نامه‌ها و مستندات
-                      </button>
-
-                      {selectedDocs.length ? (
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                          {selectedDocs.map((doc) => (
-                            <div
-                              key={doc.id}
-                              className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-700 dark:border-neutral-700 dark:bg-neutral-800/70 dark:text-neutral-200"
-                            >
-                              <div className="font-semibold">{doc.title}</div>
-                              <div className="mt-0.5 text-neutral-500 dark:text-neutral-400">
-                                شماره: {toFaDigits(doc.no)} | {doc.type} | {toFaDigits(doc.date)}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-xs text-neutral-500 dark:text-neutral-400">مستندی متصل نشده است.</div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="mb-1 text-xs text-neutral-600 dark:text-neutral-300">بارگذاری فایل</div>
-                    <div
-                      className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 px-3 py-3 dark:border-neutral-700 dark:bg-neutral-800/50"
-                      onClick={() => {
-                        if (!editorDisabled) fileInputRef.current?.click();
-                      }}
-                    >
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        multiple
-                        className="hidden"
-                        onChange={handlePickFiles}
-                        disabled={editorDisabled}
-                      />
-
-                      <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="md:col-span-12 min-w-0">
+                    <div className="flex items-start justify-start gap-2">
+                      <div className="min-w-0">
+                        <div className={labelCls}>اسناد مرتبط</div>
                         <button
                           type="button"
                           disabled={editorDisabled}
-                          className="h-10 rounded-xl bg-neutral-900 px-3 text-xs font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-400 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200 dark:disabled:bg-neutral-700 dark:disabled:text-neutral-300"
+                          onClick={openRelatedPicker}
+                          className={
+                            "h-10 w-10 shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
+                            (theme === "dark"
+                              ? "border-white/15 bg-white/5 hover:bg-white/10"
+                              : "border-black/10 bg-white hover:bg-black/[0.02]")
+                          }
+                          aria-label="انتخاب اسناد مرتبط"
+                          title="انتخاب اسناد مرتبط"
                         >
-                          انتخاب فایل
+                          <img src="/images/icons/sayer.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")} />
                         </button>
-                        <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                          فایل‌ها فقط به‌صورت موقت داخل همین صفحه نگهداری می‌شوند.
-                        </div>
+
+                        {relatedSelectedIds.length > 0 && (
+                          <div className="mt-2 flex flex-wrap items-center gap-1 text-sm">
+                            {relatedSelectedIds.map((id, i) => {
+                              const l = letterById.get(String(id));
+                              const no = String(l?.no || "").trim() || String(id);
+                              return (
+                                <span key={String(id)} className="inline-flex items-center gap-1">
+                                  {i > 0 && <span className={theme === "dark" ? "text-white/60" : "text-neutral-600"}>و</span>}
+                                  <span className="underline underline-offset-4 font-semibold">{toFaDigits(no)}</span>
+                                  <button
+                                    type="button"
+                                    disabled={editorDisabled}
+                                    onClick={() =>
+                                      updateActiveEntry((curr) => ({
+                                        ...curr,
+                                        relatedDocIds: (curr.relatedDocIds || []).filter((x) => String(x) !== String(id)),
+                                      }))
+                                    }
+                                    className={
+                                      "h-6 w-6 inline-grid place-items-center bg-transparent border-0 shadow-none p-0 text-lg leading-none transition " +
+                                      (theme === "dark" ? "text-white/60 hover:text-white" : "text-neutral-500 hover:text-neutral-900")
+                                    }
+                                    aria-label="حذف"
+                                    title="حذف"
+                                  >
+                                    ×
+                                  </button>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
 
-                      {Array.isArray(activeEntry.files) && activeEntry.files.length ? (
-                        <div className="mt-3 space-y-1">
-                          {activeEntry.files.map((f, idx) => (
-                            <div
-                              key={`${f.name}_${f.size}_${f.lastModified}_${idx}`}
-                              className="flex items-center justify-between gap-2 rounded-lg border border-neutral-200 bg-white px-2 py-1.5 text-xs dark:border-neutral-700 dark:bg-neutral-900"
-                            >
-                              <div className="truncate text-neutral-700 dark:text-neutral-200">{f.name}</div>
-                              <div className="flex items-center gap-2">
-                                <span className="whitespace-nowrap text-neutral-500 dark:text-neutral-400">
-                                  {formatSize(f.size)}
-                                </span>
-                                <button
-                                  type="button"
-                                  disabled={editorDisabled}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    updateActiveEntry((curr) => ({
-                                      ...curr,
-                                      files: (curr.files || []).filter((_, i) => i !== idx),
-                                    }));
-                                  }}
-                                  className="rounded-md px-1.5 py-0.5 text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
-                                >
-                                  حذف
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
+                      <div className="shrink-0">
+                        <div className={labelCls}>&nbsp;</div>
+                        <button
+                          type="button"
+                          disabled={editorDisabled}
+                          onClick={openUpload}
+                          className={uploadTriggerCls + " h-10 w-auto whitespace-nowrap"}
+                          title="بارگذاری اسناد"
+                        >
+                          <img src="/images/icons/upload.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")} />
+                          <span>بارگذاری اسناد</span>
+                          {Array.isArray(activeEntry.files) && activeEntry.files.length > 0 ? (
+                            <span className="mr-2 text-xs opacity-80">({toFaDigits(activeEntry.files.length)})</span>
+                          ) : null}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -554,186 +913,376 @@ export default function RoznegarPgae() {
 
       {tagModalOpen && (
         <Portal>
-          <div className="fixed inset-0 z-[1000]" dir="rtl">
-            <button
-              type="button"
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-              onClick={() => setTagModalOpen(false)}
-              aria-label="بستن"
-            />
-            <div className="absolute inset-0 flex items-center justify-center p-3">
-              <div className="w-[min(780px,96vw)] max-h-[86vh] overflow-hidden rounded-2xl border border-black/10 bg-white shadow-2xl dark:border-white/10 dark:bg-neutral-900">
-                <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10">
-                  <div className="text-sm font-bold">انتخاب برچسب</div>
-                  <button
-                    type="button"
-                    onClick={() => setTagModalOpen(false)}
-                    className="h-9 w-9 rounded-xl border border-black/10 text-base transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10"
-                  >
-                    ×
-                  </button>
-                </div>
+          <div className="fixed inset-0 z-[9999]" dir="rtl">
+            <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={() => setTagModalOpen(false)} />
 
-                <div className="space-y-3 p-4">
-                  <input
-                    value={tagSearch}
-                    onChange={(e) => setTagSearch(e.target.value)}
-                    placeholder="جستجو در برچسب‌ها..."
-                    className="h-10 w-full rounded-xl border border-neutral-300 bg-white px-3 text-sm text-right text-neutral-900 outline-none focus:ring-2 focus:ring-neutral-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:focus:ring-neutral-600/50"
-                  />
+            <div className="absolute inset-0 p-3 md:p-6 flex items-center justify-center">
+              <div
+                className={
+                  "w-[min(980px,calc(100vw-20px))] h-[min(78vh,760px)] rounded-2xl border shadow-2xl overflow-hidden " +
+                  (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
+                }
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="h-full flex flex-col">
+                  <div className="px-4 py-3 flex items-center justify-between gap-3 border-b border-black/10 dark:border-white/10">
+                    <div className="font-bold text-sm">انتخاب برچسب</div>
+                    <button
+                      type="button"
+                      onClick={() => setTagModalOpen(false)}
+                      className={
+                        "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
+                        (theme === "dark"
+                          ? "bg-white text-black ring-white/20 hover:bg-white/90"
+                          : "bg-white text-black ring-black/15 hover:bg-black/5")
+                      }
+                      aria-label="بستن"
+                      title="بستن"
+                    >
+                      <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5 brightness-0" />
+                    </button>
+                  </div>
 
-                  <div className="max-h-[42vh] overflow-auto rounded-xl border border-neutral-200 bg-neutral-50 p-2 dark:border-neutral-700 dark:bg-neutral-800/50">
-                    <div className="flex flex-wrap gap-2">
-                      {filteredTags.length ? (
-                        filteredTags.map((tag) => {
-                          const active = tagDraftIds.some((id) => String(id) === String(tag.id));
+                  <div className="px-4 pt-3">
+                    <div className="mt-3">
+                      <div className={labelCls}>جستجو</div>
+                      <input value={tagSearch} onChange={(e) => setTagSearch(e.target.value)} className={inputCls} placeholder="جستجو در برچسب‌ها..." />
+                    </div>
+                  </div>
+
+                  <div className="px-4 py-3 flex-1 overflow-auto">
+                    {!filteredTags.length ? (
+                      <div className="py-10 text-center text-sm text-neutral-500 dark:text-white/50">چیزی پیدا نشد.</div>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {filteredTags.map((tag) => {
+                          const id = String(tag.id);
+                          const active = (tagDraftIds || []).some((x) => String(x) === id);
                           return (
                             <button
-                              key={tag.id}
+                              key={id}
                               type="button"
                               onClick={() =>
                                 setTagDraftIds((prev) =>
-                                  prev.some((id) => String(id) === String(tag.id))
-                                    ? prev.filter((id) => String(id) !== String(tag.id))
-                                    : [...prev, String(tag.id)]
+                                  prev.some((x) => String(x) === id)
+                                    ? prev.filter((x) => String(x) !== id)
+                                    : [...prev, id]
                                 )
                               }
-                              className={
-                                "h-10 rounded-xl border px-3 text-sm transition " +
-                                (active
-                                  ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
-                                  : "border-black/15 bg-white text-neutral-900 hover:bg-black/[0.03] dark:border-white/20 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-white/10")
-                              }
+                              className={(active ? selectedTagChipCls : chipCls) + " h-10"}
+                              title={tag.label}
                             >
-                              {tag.label}
-                            </button>
-                          );
-                        })
-                      ) : (
-                        <div className="w-full py-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
-                          موردی پیدا نشد.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end gap-2 border-t border-black/10 px-4 py-3 dark:border-white/10">
-                  <button
-                    type="button"
-                    onClick={() => setTagModalOpen(false)}
-                    className="h-10 rounded-xl border border-black/15 px-4 text-sm text-neutral-800 transition hover:bg-black/[0.04] dark:border-white/15 dark:text-neutral-100 dark:hover:bg-white/10"
-                  >
-                    انصراف
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      updateActiveEntry((curr) => ({ ...curr, tagIds: [...tagDraftIds] }));
-                      setTagModalOpen(false);
-                    }}
-                    className="h-10 rounded-xl bg-black px-4 text-sm text-white transition hover:bg-black/85 dark:bg-white dark:text-black dark:hover:bg-white/90"
-                  >
-                    تایید انتخاب
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Portal>
-      )}
-
-      {docsModalOpen && (
-        <Portal>
-          <div className="fixed inset-0 z-[1000]" dir="rtl">
-            <button
-              type="button"
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-              onClick={() => setDocsModalOpen(false)}
-              aria-label="بستن"
-            />
-            <div className="absolute inset-0 flex items-center justify-center p-3">
-              <div className="w-[min(920px,96vw)] max-h-[86vh] overflow-hidden rounded-2xl border border-black/10 bg-white shadow-2xl dark:border-white/10 dark:bg-neutral-900">
-                <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10">
-                  <div className="text-sm font-bold">انتخاب مستندات مرتبط</div>
-                  <button
-                    type="button"
-                    onClick={() => setDocsModalOpen(false)}
-                    className="h-9 w-9 rounded-xl border border-black/10 text-base transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10"
-                  >
-                    ×
-                  </button>
-                </div>
-
-                <div className="space-y-3 p-4">
-                  <input
-                    value={docsSearch}
-                    onChange={(e) => setDocsSearch(e.target.value)}
-                    placeholder="جستجو در نامه‌ها و مستندات..."
-                    className="h-10 w-full rounded-xl border border-neutral-300 bg-white px-3 text-sm text-right text-neutral-900 outline-none focus:ring-2 focus:ring-neutral-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:focus:ring-neutral-600/50"
-                  />
-
-                  <div className="max-h-[46vh] overflow-auto rounded-xl border border-neutral-200 bg-neutral-50 p-2 dark:border-neutral-700 dark:bg-neutral-800/50">
-                    {filteredDocs.length ? (
-                      <div className="space-y-2">
-                        {filteredDocs.map((doc) => {
-                          const checked = docsDraftIds.some((id) => String(id) === String(doc.id));
-                          return (
-                            <button
-                              key={doc.id}
-                              type="button"
-                              onClick={() =>
-                                setDocsDraftIds((prev) =>
-                                  prev.some((id) => String(id) === String(doc.id))
-                                    ? prev.filter((id) => String(id) !== String(doc.id))
-                                    : [...prev, String(doc.id)]
-                                )
-                              }
-                              className={
-                                "w-full rounded-xl border px-3 py-2 text-right transition " +
-                                (checked
-                                  ? "border-[#F48B35] bg-[#F48B35]/15"
-                                  : "border-neutral-200 bg-white hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800")
-                              }
-                            >
-                              <div className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{doc.title}</div>
-                              <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                                شماره: {toFaDigits(doc.no)} | {doc.type} | تاریخ: {toFaDigits(doc.date)}
-                              </div>
+                              <span className="truncate max-w-[240px]">{tag.label}</span>
                             </button>
                           );
                         })}
                       </div>
-                    ) : (
-                      <div className="py-6 text-center text-sm text-neutral-500 dark:text-neutral-400">موردی پیدا نشد.</div>
                     )}
                   </div>
-                </div>
 
-                <div className="flex items-center justify-end gap-2 border-t border-black/10 px-4 py-3 dark:border-white/10">
-                  <button
-                    type="button"
-                    onClick={() => setDocsModalOpen(false)}
-                    className="h-10 rounded-xl border border-black/15 px-4 text-sm text-neutral-800 transition hover:bg-black/[0.04] dark:border-white/15 dark:text-neutral-100 dark:hover:bg-white/10"
-                  >
-                    انصراف
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      updateActiveEntry((curr) => ({ ...curr, relatedDocIds: [...docsDraftIds] }));
-                      setDocsModalOpen(false);
-                    }}
-                    className="h-10 rounded-xl bg-black px-4 text-sm text-white transition hover:bg-black/85 dark:bg-white dark:text-black dark:hover:bg-white/90"
-                  >
-                    تایید انتخاب
-                  </button>
+                  <div className="px-4 py-3 border-t border-black/10 dark:border-white/10 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateActiveEntry((curr) => ({ ...curr, tagIds: [...tagDraftIds] }));
+                        setTagModalOpen(false);
+                      }}
+                      className={
+                        "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
+                        (theme === "dark"
+                          ? "bg-black text-white ring-white/10 hover:bg-black/90"
+                          : "bg-black text-white ring-black/15 hover:bg-black/90")
+                      }
+                      aria-label="تایید"
+                      title="تایید"
+                    >
+                      <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </Portal>
       )}
+
+      {relatedPickOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" dir="rtl">
+            <div className="absolute inset-0 bg-black/50" onClick={closeRelatedPicker} />
+
+            <div
+              className={
+                "relative w-full max-w-3xl rounded-2xl border shadow-xl overflow-hidden " +
+                (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
+              }
+            >
+              <div className="p-4 flex items-center justify-between gap-3">
+                <div className="font-semibold text-sm">
+                  انتخاب اسناد مرتبط
+                  {relatedPickIds.length ? (
+                    <span className={theme === "dark" ? "text-white/60 mr-2" : "text-neutral-600 mr-2"}>
+                      ({toFaDigits(relatedPickIds.length)})
+                    </span>
+                  ) : null}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={closeRelatedPicker}
+                  className={
+                    "h-9 w-9 rounded-xl border flex items-center justify-center transition " +
+                    (theme === "dark" ? "border-white/10 hover:bg-white/10" : "border-black/10 hover:bg-black/[0.04]")
+                  }
+                  aria-label="بستن"
+                  title="بستن"
+                >
+                  <img src="/images/icons/bastan.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")} />
+                </button>
+              </div>
+
+              <div className="px-4 pb-3">
+                <input
+                  value={relatedPickQuery}
+                  onChange={(e) => setRelatedPickQuery(e.target.value)}
+                  className={inputCls + " h-10 text-sm"}
+                  type="text"
+                  placeholder="جستجو با شماره / موضوع / نوع ..."
+                  autoFocus
+                />
+              </div>
+
+              <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
+
+              <div className="max-h-[55vh] overflow-auto p-2">
+                {!relatedPickList.length ? (
+                  <div className={theme === "dark" ? "text-white/60 text-sm p-4" : "text-neutral-600 text-sm p-4"}>
+                    موردی پیدا نشد.
+                  </div>
+                ) : (
+                  relatedPickList.map((l) => {
+                    const id = String(l.id);
+                    const no = String(l.no || "").trim() || id;
+                    const sub = String(l.title || "").trim();
+                    const dt = String(l.date || "").trim();
+                    const checked = relatedPickIds.includes(id);
+
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => {
+                          setRelatedPickIds((prev) => {
+                            const base = Array.isArray(prev) ? prev.map(String) : [];
+                            if (base.includes(id)) return base.filter((x) => x !== id);
+                            return [...base, id];
+                          });
+                        }}
+                        className={
+                          "w-full text-right px-3 py-2 rounded-xl transition flex items-center justify-between gap-3 " +
+                          (theme === "dark" ? "hover:bg-white/10" : "hover:bg-black/[0.04]")
+                        }
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold">{toFaDigits(no)}</span>
+                            {dt ? (
+                              <span className={theme === "dark" ? "text-white/60 text-xs" : "text-neutral-600 text-xs"}>
+                                {toFaDigits(dt)}
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className={"text-xs truncate mt-0.5 " + (theme === "dark" ? "text-white/60" : "text-neutral-600")}>
+                            {sub || "—"}
+                          </div>
+                        </div>
+
+                        <div
+                          className={
+                            "h-5 w-5 rounded-md border grid place-items-center shrink-0 " +
+                            (checked
+                              ? theme === "dark"
+                                ? "bg-white text-black border-white/30"
+                                : "bg-black text-white border-black/20"
+                              : theme === "dark"
+                              ? "border-white/15"
+                              : "border-black/15")
+                          }
+                        >
+                          {checked ? "✓" : ""}
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
+
+              <div className="p-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const clean = (Array.isArray(relatedPickIds) ? relatedPickIds : [])
+                      .map((x) => String(x || "").trim())
+                      .filter(Boolean);
+                    updateActiveEntry((curr) => ({ ...curr, relatedDocIds: clean }));
+                    closeRelatedPicker();
+                  }}
+                  className={
+                    "h-10 w-10 rounded-xl border transition inline-flex items-center justify-center " +
+                    (theme === "dark"
+                      ? "border-white/15 bg-white text-black hover:bg-white/90"
+                      : "border-black/10 bg-black text-white hover:bg-black/90")
+                  }
+                  aria-label="تایید"
+                  title="تایید"
+                >
+                  <img src="/images/icons/check.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")} />
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {uploadOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999]">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeUpload} />
+            <div className="absolute inset-0 flex items-center justify-center p-4">
+              <div
+                className={
+                  "w-[min(720px,calc(100vw-24px))] rounded-2xl border shadow-xl overflow-hidden " +
+                  (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
+                }
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-4 flex items-center justify-between">
+                  <div className="font-bold text-sm">بارگذاری اسناد</div>
+                  <button
+                    type="button"
+                    onClick={closeUpload}
+                    className={
+                      "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
+                      (theme === "dark"
+                        ? "ring-neutral-800 hover:bg-white/10 text-white"
+                        : "ring-black/15 hover:bg-black/90 bg-black text-white")
+                    }
+                    aria-label="بستن"
+                    title="بستن"
+                  >
+                    <img src="/images/icons/bastan.svg" alt="" className="w-4 h-4 invert" />
+                  </button>
+                </div>
+
+                <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
+
+                <div className="p-4 grid grid-cols-1 gap-4">
+                  <div>
+                    <div className={labelCls}>فایل‌های انتخاب‌شده</div>
+                    <div className={"rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
+                      <div className={"px-3 py-2 text-xs font-semibold border-b " + (theme === "dark" ? "border-white/10 text-white/80" : "border-black/10 text-neutral-700")}>
+                        روزنگار پروژه
+                      </div>
+
+                      <div className="p-3 space-y-2">
+                        {Array.isArray(activeEntry.files) && activeEntry.files.length > 0 ? (
+                          activeEntry.files.map((f, idx) => (
+                            <div
+                              key={`${f.name}_${f.size}_${f.lastModified}_${idx}`}
+                              className={
+                                "rounded-xl border px-3 py-2 flex items-center justify-between gap-3 " +
+                                (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
+                              }
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="text-[13px] font-semibold whitespace-normal break-words leading-6">{f.name}</div>
+                                <div className={theme === "dark" ? "text-white/60 text-[11px] mt-1" : "text-neutral-600 text-[11px] mt-1"}>
+                                  {formatSize(f.size)}
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  updateActiveEntry((curr) => ({
+                                    ...curr,
+                                    files: (curr.files || []).filter((_, i) => i !== idx),
+                                  }))
+                                }
+                                className="h-9 px-3 rounded-xl border border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02] text-sm dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+                                title="حذف"
+                                aria-label="حذف"
+                              >
+                                حذف
+                              </button>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="py-6 text-center text-black/60 dark:text-white/50 text-sm">فایلی انتخاب نشده است.</div>
+                        )}
+
+                        <div className={uploadBoxCls + " mt-3"} onDrop={onDropUpload} onDragOver={onDragOverUpload}>
+                          <div className={theme === "dark" ? "text-white/80 text-sm font-semibold" : "text-neutral-800 text-sm font-semibold"}>
+                            فایل را اینجا رها کنید
+                          </div>
+                          <div className={theme === "dark" ? "text-white/50 text-xs mt-1" : "text-neutral-500 text-xs mt-1"}>
+                            یا با دکمه زیر انتخاب کنید (تصویر / PDF)
+                          </div>
+
+                          <div className="mt-3 flex items-center justify-center">
+                            <button
+                              type="button"
+                              onClick={() => uploadInputRef.current?.click()}
+                              className={
+                                "h-10 px-4 rounded-xl border transition inline-flex items-center justify-center gap-2 " +
+                                (theme === "dark"
+                                  ? "border-white/15 bg-white text-black hover:bg-white/90"
+                                  : "border-black/15 bg-black text-white hover:bg-black/90")
+                              }
+                            >
+                              <img src="/images/icons/upload.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")} />
+                              انتخاب فایل
+                            </button>
+                            <input
+                              ref={uploadInputRef}
+                              type="file"
+                              multiple
+                              accept="image/*,application/pdf"
+                              className="hidden"
+                              onChange={handlePickFiles}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="pt-2 flex items-center justify-end">
+                          <button
+                            type="button"
+                            onClick={closeUpload}
+                            className={
+                              "h-10 w-10 rounded-xl border transition inline-flex items-center justify-center " +
+                              (theme === "dark"
+                                ? "border-white/15 bg-white text-black hover:bg-white/90"
+                                : "border-black/10 bg-black text-white hover:bg-black/90")
+                            }
+                            aria-label="تایید"
+                            title="تایید"
+                          >
+                            <img src="/images/icons/check.svg" alt="" className={"w-4 h-4 " + (theme === "dark" ? "" : "invert")} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </>
   );
 }
