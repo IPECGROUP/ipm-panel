@@ -932,7 +932,7 @@ export default function RoznegarPgae() {
       ["روزنگار پروژه - خروجی جدول"],
       activeProject ? [`پروژه: ${activeProject.code || ""} - ${activeProject.name || ""}`] : [""],
       [""],
-      ["ردیف", "پروژه", "تاریخ", "روز", "شرح فعالیت‌ها", "برچسب‌ها", "مستندات مرتبط", "فایل‌ها", "تعداد فایل", "وضعیت"],
+      ["ردیف", "پروژه", "تاریخ", "روز", "شرح فعالیت‌ها", "برچسب‌ها", "مستندات مرتبط", "فایل‌ها", "تعداد فایل"],
       ...filteredTableRows.map((r, idx) => [
         toFaDigits(idx + 1),
         activeProject ? `${activeProject.code || ""} - ${activeProject.name || ""}` : "-",
@@ -943,13 +943,15 @@ export default function RoznegarPgae() {
         r.docsText || "-",
         r.filesText || "-",
         toFaDigits(r.filesCount || 0),
-        r.statusText || "",
       ]),
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws["!cols"] = [{ wch: 8 }, { wch: 28 }, { wch: 14 }, { wch: 10 }, { wch: 36 }, { wch: 28 }, { wch: 46 }, { wch: 28 }, { wch: 12 }, { wch: 14 }];
+    ws["!cols"] = [{ wch: 8 }, { wch: 28 }, { wch: 14 }, { wch: 10 }, { wch: 36 }, { wch: 28 }, { wch: 46 }, { wch: 28 }, { wch: 12 }];
+    ws["!rtl"] = true;
     const wb = XLSX.utils.book_new();
+    wb.Workbook = wb.Workbook || {};
+    wb.Workbook.Views = [{ RTL: true }];
     XLSX.utils.book_append_sheet(wb, ws, "Roznegar");
     const fileName = `roznegar-table-${String(todayJalaliYmd()).replace(/[\/]/g, "-")}.xlsx`;
     XLSX.writeFile(wb, fileName);
@@ -1323,26 +1325,25 @@ export default function RoznegarPgae() {
 
             <div className={"rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
               <div className="max-h-[360px] overflow-auto">
-                <table className="w-full text-right">
+                <table className="w-full text-center">
                   <thead className={theme === "dark" ? "bg-white/10 text-white/80" : "bg-neutral-100 text-neutral-700"}>
                     <tr>
-                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap">ردیف</th>
-                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[170px]">پروژه</th>
-                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap">تاریخ</th>
-                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap">روز</th>
-                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[180px]">شرح فعالیت‌ها</th>
-                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[150px]">برچسب‌ها</th>
-                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[170px]">مستندات مرتبط</th>
-                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[150px]">فایل‌ها</th>
-                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap">تعداد فایل</th>
-                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap">وضعیت</th>
+                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap text-center">ردیف</th>
+                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[170px] text-center">پروژه</th>
+                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap text-center">تاریخ</th>
+                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap text-center">روز</th>
+                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[180px] text-center">شرح فعالیت‌ها</th>
+                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[150px] text-center">برچسب‌ها</th>
+                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[170px] text-center">مستندات مرتبط</th>
+                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[150px] text-center">فایل‌ها</th>
+                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap text-center">تعداد فایل</th>
                     </tr>
                   </thead>
                   <tbody>
                     {!filteredTableRows.length ? (
                       <tr>
                         <td
-                          colSpan={10}
+                          colSpan={9}
                           className={theme === "dark" ? "px-3 py-6 text-center text-[11px] md:text-xs text-white/60" : "px-3 py-6 text-center text-[11px] md:text-xs text-neutral-500"}
                         >
                           موردی برای نمایش وجود ندارد.
@@ -1351,18 +1352,17 @@ export default function RoznegarPgae() {
                     ) : (
                       filteredTableRows.map((r, idx) => (
                         <tr key={`${r.dateYmd}_${idx}`} className={theme === "dark" ? "border-t border-white/10" : "border-t border-black/10"}>
-                          <td className="px-3 py-2 text-[11px] md:text-xs align-top">{toFaDigits(idx + 1)}</td>
-                          <td className="px-3 py-2 text-[11px] md:text-xs align-top break-words">
+                          <td className="px-3 py-2 text-[11px] md:text-xs align-middle text-center">{toFaDigits(idx + 1)}</td>
+                          <td className="px-3 py-2 text-[11px] md:text-xs align-middle text-center break-words">
                             {activeProject ? `${activeProject.code || ""} - ${activeProject.name || ""}` : "-"}
                           </td>
-                          <td className="px-3 py-2 text-[11px] md:text-xs align-top whitespace-nowrap">{toFaDigits(r.dateLabel || "")}</td>
-                          <td className="px-3 py-2 text-[11px] md:text-xs align-top whitespace-nowrap">{r.dayName || "-"}</td>
-                          <td className="px-3 py-2 text-[11px] md:text-xs align-top break-words">{r.activity || "-"}</td>
-                          <td className="px-3 py-2 text-[11px] md:text-xs align-top break-words">{r.tagsText || "-"}</td>
-                          <td className="px-3 py-2 text-[11px] md:text-xs align-top break-words">{r.docsText || "-"}</td>
-                          <td className="px-3 py-2 text-[11px] md:text-xs align-top break-words">{r.filesText || "-"}</td>
-                          <td className="px-3 py-2 text-[11px] md:text-xs align-top whitespace-nowrap">{toFaDigits(r.filesCount || 0)}</td>
-                          <td className="px-3 py-2 text-[11px] md:text-xs align-top whitespace-nowrap">{r.statusText || "-"}</td>
+                          <td className="px-3 py-2 text-[11px] md:text-xs align-middle text-center whitespace-nowrap">{toFaDigits(r.dateLabel || "")}</td>
+                          <td className="px-3 py-2 text-[11px] md:text-xs align-middle text-center whitespace-nowrap">{r.dayName || "-"}</td>
+                          <td className="px-3 py-2 text-[11px] md:text-xs align-middle text-center break-words">{r.activity || "-"}</td>
+                          <td className="px-3 py-2 text-[11px] md:text-xs align-middle text-center break-words">{r.tagsText || "-"}</td>
+                          <td className="px-3 py-2 text-[11px] md:text-xs align-middle text-center break-words">{r.docsText || "-"}</td>
+                          <td className="px-3 py-2 text-[11px] md:text-xs align-middle text-center break-words">{r.filesText || "-"}</td>
+                          <td className="px-3 py-2 text-[11px] md:text-xs align-middle text-center whitespace-nowrap">{toFaDigits(r.filesCount || 0)}</td>
                         </tr>
                       ))
                     )}
