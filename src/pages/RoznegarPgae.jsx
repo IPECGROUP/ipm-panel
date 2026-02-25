@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Card } from "../components/ui/Card";
 import { Portal } from "../components/Portal";
@@ -102,6 +102,26 @@ function isProjectActiveFlag(v1, v2) {
   const s = String(val ?? "").trim().toLowerCase();
   if (s === "false" || s === "0" || s === "off" || s === "no") return false;
   return true;
+}
+
+function mapRoznegarErrorText(errLike, fallback = "خطا در ارتباط با سرور") {
+  const raw = String(errLike?.message || errLike || "").trim();
+  if (!raw) return fallback;
+  const map = {
+    unauthorized: "نشست کاربری معتبر نیست. دوباره وارد شوید.",
+    invalid_project_id: "پروژه انتخاب‌شده معتبر نیست.",
+    invalid_date_ymd: "تاریخ روزنگار معتبر نیست.",
+    day_name_required: "فیلد روز الزامی است.",
+    database_unreachable: "ارتباط با پایگاه داده برقرار نیست.",
+    database_auth_failed: "احراز هویت پایگاه داده ناموفق است.",
+    database_permission_denied: "دسترسی پایگاه داده برای ذخیره مجاز نیست.",
+    roznegar_table_not_ready: "جدول روزنگار در پایگاه داده آماده نیست.",
+    invalid_relation_reference: "پروژه انتخاب‌شده در پایگاه داده وجود ندارد.",
+    roznegar_save_failed: "ذخیره روزنگار روی سرور ناموفق بود.",
+    roznegar_load_failed: "دریافت روزنگار از سرور ناموفق بود.",
+    roznegar_upload_failed: "بارگذاری فایل روی سرور ناموفق بود.",
+  };
+  return map[raw] || raw;
 }
 
 function toFaDigits(value) {
@@ -542,6 +562,7 @@ export default function RoznegarPgae() {
   const [filesUploading, setFilesUploading] = useState(false);
   const [tableFilter, setTableFilter] = useState("");
   const [confirmSaving, setConfirmSaving] = useState(false);
+  const [syncState, setSyncState] = useState({ type: "", text: "" });
   const [filePreview, setFilePreview] = useState({ open: false, file: null, url: "", isObjectUrl: false });
   const uploadInputRef = useRef(null);
 
@@ -696,23 +717,23 @@ export default function RoznegarPgae() {
     setEntriesByDate((prev) => (prev[selectedDate] ? prev : { ...prev, [selectedDate]: makeEntry(selectedDate) }));
   }, [selectedDate]);
 
-  useEffect(() => {
-    let alive = true;
-
-    const load = async () => {
-      if (authLoading) return;
-      if (!projectId) {
-        if (alive) setEntriesByDate({});
-        return;
+  const fetchRoznegarEntries = useCallback(
+    async (pid) => {
+      const p = String(pid || "").trim();
+      if (authLoading) return false;
+      if (!p) {
+        setEntriesByDate({});
+        return true;
       }
-      if (!isValidProjectId(projectId)) {
-        if (alive) setEntriesByDate({});
+      if (!isValidProjectId(p)) {
+        setEntriesByDate({});
         setProjectId("");
-        return;
+        setSyncState({ type: "error", text: mapRoznegarErrorText("invalid_project_id") });
+        return false;
       }
       try {
         const uid = authUser?.id != null ? String(authUser.id) : "";
-        const url = `/api/roznegar?projectId=${encodeURIComponent(String(projectId))}`;
+        const url = `/api/roznegar?projectId=${encodeURIComponent(p)}`;
         const res = await fetch(url, {
           credentials: "include",
           headers: {
@@ -734,17 +755,21 @@ export default function RoznegarPgae() {
           const entry = normalizeRoznegarEntryFromApi(raw);
           if (entry?.dateYmd) next[entry.dateYmd] = entry;
         });
-        if (alive) setEntriesByDate(next);
+        setEntriesByDate(next);
+        setSyncState((prev) => (prev?.type === "success" ? prev : { type: "", text: "" }));
+        return true;
       } catch (e) {
         console.error("roznegar_load_error", e);
+        setSyncState({ type: "error", text: mapRoznegarErrorText(e, "دریافت روزنگار از سرور ناموفق بود.") });
+        return false;
       }
-    };
+    },
+    [authLoading, authUser?.id]
+  );
 
-    load();
-    return () => {
-      alive = false;
-    };
-  }, [projectId, authUser?.id, authLoading]);
+  useEffect(() => {
+    fetchRoznegarEntries(projectId);
+  }, [projectId, fetchRoznegarEntries]);
 
   const updateActiveEntry = (updater) => {
     setEntriesByDate((prev) => {
@@ -1063,9 +1088,11 @@ export default function RoznegarPgae() {
           });
           return { ...curr, files: merged };
         });
+        setSyncState((prev) => (prev?.type === "error" ? { type: "", text: "" } : prev));
       }
     } catch (err) {
       console.error("roznegar_upload_error", err);
+      setSyncState({ type: "error", text: mapRoznegarErrorText(err, "بارگذاری فایل روی سرور ناموفق بود.") });
     } finally {
       setFilesUploading(false);
       if (target && "value" in target) target.value = "";
@@ -1136,6 +1163,7 @@ export default function RoznegarPgae() {
     const projectIdNum = Number(projectId);
     if (!Number.isFinite(projectIdNum) || projectIdNum <= 0) return;
     setConfirmSaving(true);
+    setSyncState({ type: "", text: "" });
     try {
       const curr = entriesByDate[selectedDate] || makeEntry(selectedDate);
       const filesPayload = (Array.isArray(curr.files) ? curr.files : [])
@@ -1182,12 +1210,13 @@ export default function RoznegarPgae() {
       const saved = normalizeRoznegarEntryFromApi(data?.item || null);
       if (!saved?.dateYmd) throw new Error("roznegar_save_invalid");
 
-      setEntriesByDate((prev) => ({
-        ...prev,
-        [saved.dateYmd]: saved,
-      }));
+      setEntriesByDate((prev) => ({ ...prev, [saved.dateYmd]: saved }));
+      const synced = await fetchRoznegarEntries(String(projectIdNum));
+      if (!synced) throw new Error("roznegar_sync_after_save_failed");
+      setSyncState({ type: "success", text: "با موفقیت روی سرور ذخیره شد." });
     } catch (e) {
       console.error("roznegar_confirm_error", e);
+      setSyncState({ type: "error", text: mapRoznegarErrorText(e, "ذخیره روزنگار روی سرور ناموفق بود.") });
     } finally {
       setConfirmSaving(false);
     }
@@ -1560,7 +1589,14 @@ export default function RoznegarPgae() {
                     </div>
                   </div>
 
-                  <div className="pt-2 flex items-center justify-end gap-2">
+                  <div className="pt-2 flex items-center justify-between gap-2">
+                    <div className="min-h-5 text-[11px] md:text-xs">
+                      {syncState?.text ? (
+                        <span className={syncState.type === "error" ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}>
+                          {syncState.text}
+                        </span>
+                      ) : null}
+                    </div>
                     <button
                       type="button"
                       disabled={editorDisabled || confirmSaving || filesUploading}
@@ -2174,3 +2210,4 @@ export default function RoznegarPgae() {
     </>
   );
 }
+
