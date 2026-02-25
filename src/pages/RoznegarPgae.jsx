@@ -1269,90 +1269,92 @@ export default function RoznegarPgae() {
                     </button>
                   </div>
 
-                  <div className="pt-3">
-                    <div className={labelCls}>فیلتر</div>
-                    <input
-                      value={tableFilter}
-                      onChange={(e) => setTableFilter(e.target.value)}
-                      className={inputCls + " h-10 text-xs md:text-sm"}
-                      placeholder="جستجو در تاریخ، روز، شرح، برچسب‌ها، مستندات و فایل‌ها..."
-                    />
-                  </div>
-
-                  <div className={"rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
-                    <div className="max-h-[360px] overflow-auto">
-                      <table className="w-full text-right">
-                        <thead className={theme === "dark" ? "bg-white/10 text-white/80" : "bg-neutral-100 text-neutral-700"}>
-                          <tr>
-                            <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap">ردیف</th>
-                            <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[170px]">پروژه</th>
-                            <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap">تاریخ</th>
-                            <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap">روز</th>
-                            <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[180px]">شرح فعالیت‌ها</th>
-                            <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[150px]">برچسب‌ها</th>
-                            <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[170px]">مستندات مرتبط</th>
-                            <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[150px]">فایل‌ها</th>
-                            <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap">تعداد فایل</th>
-                            <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap">وضعیت</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {!filteredTableRows.length ? (
-                            <tr>
-                              <td
-                                colSpan={10}
-                                className={theme === "dark" ? "px-3 py-6 text-center text-[11px] md:text-xs text-white/60" : "px-3 py-6 text-center text-[11px] md:text-xs text-neutral-500"}
-                              >
-                                موردی برای نمایش وجود ندارد.
-                              </td>
-                            </tr>
-                          ) : (
-                            filteredTableRows.map((r, idx) => (
-                              <tr key={`${r.dateYmd}_${idx}`} className={theme === "dark" ? "border-t border-white/10" : "border-t border-black/10"}>
-                                <td className="px-3 py-2 text-[11px] md:text-xs align-top">{toFaDigits(idx + 1)}</td>
-                                <td className="px-3 py-2 text-[11px] md:text-xs align-top break-words">
-                                  {activeProject ? `${activeProject.code || ""} - ${activeProject.name || ""}` : "-"}
-                                </td>
-                                <td className="px-3 py-2 text-[11px] md:text-xs align-top whitespace-nowrap">{toFaDigits(r.dateLabel || "")}</td>
-                                <td className="px-3 py-2 text-[11px] md:text-xs align-top whitespace-nowrap">{r.dayName || "-"}</td>
-                                <td className="px-3 py-2 text-[11px] md:text-xs align-top break-words">{r.activity || "-"}</td>
-                                <td className="px-3 py-2 text-[11px] md:text-xs align-top break-words">{r.tagsText || "-"}</td>
-                                <td className="px-3 py-2 text-[11px] md:text-xs align-top break-words">{r.docsText || "-"}</td>
-                                <td className="px-3 py-2 text-[11px] md:text-xs align-top break-words">{r.filesText || "-"}</td>
-                                <td className="px-3 py-2 text-[11px] md:text-xs align-top whitespace-nowrap">{toFaDigits(r.filesCount || 0)}</td>
-                                <td className="px-3 py-2 text-[11px] md:text-xs align-top whitespace-nowrap">{r.statusText || "-"}</td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-2">
-                    <div className={theme === "dark" ? "text-[11px] md:text-xs text-white/60" : "text-[11px] md:text-xs text-neutral-500"}>
-                      تعداد نتایج: {toFaDigits(filteredTableRows.length)}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleExportExcel}
-                      disabled={!filteredTableRows.length}
-                      className={
-                        "h-9 px-3 rounded-xl border transition inline-flex items-center justify-center gap-2 disabled:opacity-50 " +
-                        (theme === "dark"
-                          ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
-                          : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
-                      }
-                      title="خروجی اکسل جدول"
-                      aria-label="خروجی اکسل جدول"
-                    >
-                      <img src="/images/icons8-excel-50.png" alt="" className="w-4 h-4 md:w-5 md:h-5" />
-                      <span className="text-[11px] md:text-xs">خروجی اکسل</span>
-                    </button>
-                  </div>
                 </div>
               </div>
             </section>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            <div>
+              <div className={labelCls}>فیلتر</div>
+              <input
+                value={tableFilter}
+                onChange={(e) => setTableFilter(e.target.value)}
+                className={inputCls + " h-10 text-xs md:text-sm"}
+                placeholder="جستجو در تاریخ، روز، شرح، برچسب‌ها، مستندات و فایل‌ها..."
+              />
+            </div>
+
+            <div className={"rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
+              <div className="max-h-[360px] overflow-auto">
+                <table className="w-full text-right">
+                  <thead className={theme === "dark" ? "bg-white/10 text-white/80" : "bg-neutral-100 text-neutral-700"}>
+                    <tr>
+                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap">ردیف</th>
+                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[170px]">پروژه</th>
+                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap">تاریخ</th>
+                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap">روز</th>
+                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[180px]">شرح فعالیت‌ها</th>
+                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[150px]">برچسب‌ها</th>
+                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[170px]">مستندات مرتبط</th>
+                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[150px]">فایل‌ها</th>
+                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap">تعداد فایل</th>
+                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap">وضعیت</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {!filteredTableRows.length ? (
+                      <tr>
+                        <td
+                          colSpan={10}
+                          className={theme === "dark" ? "px-3 py-6 text-center text-[11px] md:text-xs text-white/60" : "px-3 py-6 text-center text-[11px] md:text-xs text-neutral-500"}
+                        >
+                          موردی برای نمایش وجود ندارد.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredTableRows.map((r, idx) => (
+                        <tr key={`${r.dateYmd}_${idx}`} className={theme === "dark" ? "border-t border-white/10" : "border-t border-black/10"}>
+                          <td className="px-3 py-2 text-[11px] md:text-xs align-top">{toFaDigits(idx + 1)}</td>
+                          <td className="px-3 py-2 text-[11px] md:text-xs align-top break-words">
+                            {activeProject ? `${activeProject.code || ""} - ${activeProject.name || ""}` : "-"}
+                          </td>
+                          <td className="px-3 py-2 text-[11px] md:text-xs align-top whitespace-nowrap">{toFaDigits(r.dateLabel || "")}</td>
+                          <td className="px-3 py-2 text-[11px] md:text-xs align-top whitespace-nowrap">{r.dayName || "-"}</td>
+                          <td className="px-3 py-2 text-[11px] md:text-xs align-top break-words">{r.activity || "-"}</td>
+                          <td className="px-3 py-2 text-[11px] md:text-xs align-top break-words">{r.tagsText || "-"}</td>
+                          <td className="px-3 py-2 text-[11px] md:text-xs align-top break-words">{r.docsText || "-"}</td>
+                          <td className="px-3 py-2 text-[11px] md:text-xs align-top break-words">{r.filesText || "-"}</td>
+                          <td className="px-3 py-2 text-[11px] md:text-xs align-top whitespace-nowrap">{toFaDigits(r.filesCount || 0)}</td>
+                          <td className="px-3 py-2 text-[11px] md:text-xs align-top whitespace-nowrap">{r.statusText || "-"}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <div className={theme === "dark" ? "text-[11px] md:text-xs text-white/60" : "text-[11px] md:text-xs text-neutral-500"}>
+                تعداد نتایج: {toFaDigits(filteredTableRows.length)}
+              </div>
+              <button
+                type="button"
+                onClick={handleExportExcel}
+                disabled={!filteredTableRows.length}
+                className={
+                  "h-9 w-9 md:h-10 md:w-10 rounded-xl border transition inline-flex items-center justify-center disabled:opacity-50 " +
+                  (theme === "dark"
+                    ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                    : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
+                }
+                title="خروجی اکسل جدول"
+                aria-label="خروجی اکسل جدول"
+              >
+                <img src="/images/icons8-excel-50.png" alt="" className="w-4 h-4 md:w-5 md:h-5" />
+              </button>
+            </div>
           </div>
         </div>
       </Card>
