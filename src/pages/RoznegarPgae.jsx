@@ -648,7 +648,22 @@ export default function RoznegarPgae() {
   }, [startPad, daysInMonth]);
 
   const monthName = PERSIAN_MONTHS[Math.max(0, Number(cursor.format("M")) - 1)] || "";
-  const monthYearLabel = `${monthName} ${toFaDigits(cursor.format("YYYY"))}`;
+  const gregorianMonthLabel = useMemo(() => {
+    try {
+      const start = cursor.startOf("month").toDate();
+      const end = cursor.endOf("month").toDate();
+      const fmtFull = new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" });
+      const fmtMonth = new Intl.DateTimeFormat("en-US", { month: "short" });
+      const sameMonthYear = start.getFullYear() === end.getFullYear() && start.getMonth() === end.getMonth();
+      if (sameMonthYear) return fmtFull.format(start);
+      const startLabel = `${fmtMonth.format(start)} ${start.getFullYear()}`;
+      const endLabel = `${fmtMonth.format(end)} ${end.getFullYear()}`;
+      return `${startLabel} - ${endLabel}`;
+    } catch {
+      return "";
+    }
+  }, [cursor]);
+  const monthYearLabel = `${monthName} ${toFaDigits(cursor.format("YYYY"))}${gregorianMonthLabel ? ` (${gregorianMonthLabel})` : ""}`;
 
   const selectedDateLabel = useMemo(() => {
     try {
@@ -756,6 +771,7 @@ export default function RoznegarPgae() {
     const raw = Object.entries(entriesByDate || {})
       .map(([dateYmd, entry]) => {
         const row = entry || makeEntry(dateYmd);
+        if (!row?.confirmed) return null;
         const tags = (Array.isArray(row.tagIds) ? row.tagIds : [])
           .map((id) => tagById.get(String(id))?.label || "")
           .filter(Boolean);
@@ -771,7 +787,7 @@ export default function RoznegarPgae() {
         const files = Array.isArray(row.files) ? row.files : [];
         const fileNames = files.map((f) => String(f?.name || "")).filter(Boolean);
         const dateLabel = toDateLabel(dateYmd);
-        const statusText = row.confirmed ? "تایید شده" : "ثبت نشده";
+        const statusText = "تایید شده";
         const searchText = [
           activeProject ? `${activeProject.code || ""} ${activeProject.name || ""}` : "",
           dateLabel,
@@ -799,6 +815,7 @@ export default function RoznegarPgae() {
           searchText,
         };
       })
+      .filter(Boolean)
       .sort((a, b) =>
         String(b.dateYmd || "").localeCompare(String(a.dateYmd || ""), "en", {
           numeric: true,
@@ -1017,13 +1034,20 @@ export default function RoznegarPgae() {
                 <div className="grid grid-cols-7 gap-1">
                   {monthCells.map((dayNo, idx) => {
                     if (!dayNo) {
-                      return <div key={`empty-${idx}`} className="h-11 rounded-lg bg-transparent" />;
+                      return <div key={`empty-${idx}`} className="h-12 rounded-lg bg-transparent" />;
                     }
 
                     const dateYmd = cursor.date(dayNo).calendar("jalali").format("YYYY-MM-DD");
                     const isSelected = dateYmd === selectedDate;
                     const isToday = dateYmd === todayJalaliYmd();
                     const hasDetails = hasEntryDetails(entriesByDate[dateYmd]);
+                    const gDay = (() => {
+                      try {
+                        return dayjs(dateYmd, { jalali: true }).toDate().getDate();
+                      } catch {
+                        return "";
+                      }
+                    })();
 
                     return (
                       <button
@@ -1031,7 +1055,7 @@ export default function RoznegarPgae() {
                         type="button"
                         onClick={() => jumpToDate(dateYmd)}
                         className={
-                          "relative h-11 rounded-xl border text-sm transition-all duration-200 " +
+                          "relative h-12 rounded-xl border text-sm transition-all duration-200 flex flex-col items-center justify-center leading-tight " +
                           (isSelected
                             ? "border-[#F48B35] bg-[#F48B35]/15 text-[#ce6b1a] dark:text-[#ffb77f]"
                             : isToday
@@ -1039,7 +1063,19 @@ export default function RoznegarPgae() {
                             : "border-transparent bg-neutral-50 text-neutral-700 hover:border-neutral-300 hover:bg-neutral-100 dark:bg-neutral-800/70 dark:text-neutral-200 dark:hover:border-neutral-700 dark:hover:bg-neutral-800")
                         }
                       >
-                        <span>{toFaDigits(dayNo)}</span>
+                        <span className="leading-none">{toFaDigits(dayNo)}</span>
+                        <span
+                          className={
+                            "mt-0.5 text-[10px] leading-none " +
+                            (isSelected
+                              ? "text-[#ce6b1a]/80 dark:text-[#ffb77f]/80"
+                              : theme === "dark"
+                              ? "text-white/55"
+                              : "text-neutral-500")
+                          }
+                        >
+                          {toFaDigits(gDay)}
+                        </span>
                         {hasDetails ? (
                           <span className="absolute bottom-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-[#F48B35]" />
                         ) : null}
