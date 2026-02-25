@@ -22,6 +22,7 @@ import BudgetAllocationPage from "./pages/BudgetAllocationPage.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
 import LettersPage from "./pages/LettersPage.jsx";
 import TestEditorPage from "./pages/TestEditorPage.jsx";
+import RoznegarPgae from "./pages/RoznegarPgae.jsx";
 
 import BudgetCodesPage, {
   OfficePage,
@@ -86,6 +87,7 @@ export default function App() {
           path="/projects/financial-worksheet"
           element={<FinancialWorksheetPage />}
         />
+        <Route path="/projects/daily-log" element={<RoznegarPgae />} />
         <Route path="/letters" element={<LettersPage />} />
 
         <Route path="/test/editor" element={<TestEditorPage />} />
