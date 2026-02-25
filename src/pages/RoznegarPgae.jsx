@@ -32,13 +32,6 @@ const WEEKDAY_BY_JS_DAY = {
   6: "شنبه",
 };
 
-const MOCK_ACTIVE_PROJECTS = [
-  { id: "p-101", code: "101", name: "احداث ایستگاه مرکزی", isActive: true },
-  { id: "p-117", code: "117", name: "بهسازی شبکه تاسیسات", isActive: true },
-  { id: "p-132", code: "132", name: "توسعه پایانه غرب", isActive: true },
-  { id: "p-145", code: "145", name: "به‌روزرسانی زیرساخت اداری", isActive: true },
-];
-
 const TAG_TABS = [
   { id: "projects", label: "پروژه‌ها" },
   { id: "letters", label: "نامه‌ها و مستندات" },
@@ -93,6 +86,10 @@ const MOCK_RELATED_DOCS = [
 ];
 
 const ROZNEGAR_PROJECT_STORAGE_KEY = "roznegar_selected_project_id";
+
+function isValidProjectId(v) {
+  return /^\d+$/.test(String(v || "").trim());
+}
 
 function toFaDigits(value) {
   return String(value ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
@@ -488,15 +485,7 @@ function JalaliPopupDatePicker({ value, onChange, theme = "light", buttonClassNa
 
 export default function RoznegarPgae() {
   const { user: authUser, loading: authLoading } = useAuth();
-  const [activeProjects, setActiveProjects] = useState(() =>
-    (Array.isArray(MOCK_ACTIVE_PROJECTS) ? MOCK_ACTIVE_PROJECTS.filter((x) => x?.isActive !== false) : []).map((p) => ({
-      ...p,
-      id: String(p.id),
-      code: toEnDigits(String(p.code || "")).trim(),
-      name: String(p.name || "").trim(),
-      isActive: p?.isActive !== false,
-    }))
-  );
+  const [activeProjects, setActiveProjects] = useState([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const sortedActiveProjects = useMemo(() => {
     return (activeProjects || [])
@@ -512,7 +501,8 @@ export default function RoznegarPgae() {
   const [mounted, setMounted] = useState(false);
   const [projectId, setProjectId] = useState(() => {
     try {
-      return String(localStorage.getItem(ROZNEGAR_PROJECT_STORAGE_KEY) || "").trim();
+      const raw = String(localStorage.getItem(ROZNEGAR_PROJECT_STORAGE_KEY) || "").trim();
+      return isValidProjectId(raw) ? raw : "";
     } catch {
       return "";
     }
@@ -564,14 +554,16 @@ export default function RoznegarPgae() {
       return data;
     };
 
-    const normalizeProject = (p) => ({
-      id: p?.id == null ? null : String(p.id),
-      code: toEnDigits(String(p?.code ?? "")).trim(),
-      name: String(p?.name ?? p?.title ?? "").trim(),
-      isActive: p?.isActive !== false && p?.is_active !== false,
-    });
-
-    const isTopProjectCode = (code) => /^\d{3}$/.test(toEnDigits(String(code || "")).trim());
+    const normalizeProject = (p) => {
+      const idNum = Number(p?.id);
+      const id = Number.isFinite(idNum) && idNum > 0 ? String(idNum) : null;
+      return {
+        id,
+        code: toEnDigits(String(p?.code ?? "")).trim(),
+        name: String(p?.name ?? p?.title ?? "").trim(),
+        isActive: p?.isActive !== false && p?.is_active !== false,
+      };
+    };
 
     (async () => {
       setProjectsLoading(true);
@@ -589,8 +581,7 @@ export default function RoznegarPgae() {
           .filter((p) => p && typeof p === "object" && !Array.isArray(p))
           .map(normalizeProject)
           .filter((p) => p && p.id != null)
-          .filter((p) => p.isActive === true)
-          .filter((p) => isTopProjectCode(p.code));
+          .filter((p) => p.isActive === true);
 
         const byId = new Map();
         clean.forEach((p) => {
@@ -659,7 +650,7 @@ export default function RoznegarPgae() {
 
   useEffect(() => {
     try {
-      if (projectId) localStorage.setItem(ROZNEGAR_PROJECT_STORAGE_KEY, String(projectId));
+      if (isValidProjectId(projectId)) localStorage.setItem(ROZNEGAR_PROJECT_STORAGE_KEY, String(projectId));
       else localStorage.removeItem(ROZNEGAR_PROJECT_STORAGE_KEY);
     } catch {}
   }, [projectId]);
@@ -672,12 +663,12 @@ export default function RoznegarPgae() {
     }
 
     const current = String(projectId || "");
-    if (current && list.some((p) => String(p.id) === current)) return;
+    if (isValidProjectId(current) && list.some((p) => String(p.id) === current)) return;
 
     let next = "";
     try {
       const saved = String(localStorage.getItem(ROZNEGAR_PROJECT_STORAGE_KEY) || "").trim();
-      if (saved && list.some((p) => String(p.id) === saved)) next = saved;
+      if (isValidProjectId(saved) && list.some((p) => String(p.id) === saved)) next = saved;
     } catch {}
 
     if (!next) next = String(list[0]?.id || "");
@@ -695,6 +686,11 @@ export default function RoznegarPgae() {
       if (authLoading) return;
       if (!projectId) {
         if (alive) setEntriesByDate({});
+        return;
+      }
+      if (!isValidProjectId(projectId)) {
+        if (alive) setEntriesByDate({});
+        setProjectId("");
         return;
       }
       try {
@@ -1121,6 +1117,8 @@ export default function RoznegarPgae() {
 
   const handlePreviewConfirm = async () => {
     if (editorDisabled || !projectId || confirmSaving || filesUploading) return;
+    const projectIdNum = Number(projectId);
+    if (!Number.isFinite(projectIdNum) || projectIdNum <= 0) return;
     setConfirmSaving(true);
     try {
       const curr = entriesByDate[selectedDate] || makeEntry(selectedDate);
@@ -1137,7 +1135,7 @@ export default function RoznegarPgae() {
 
       const uid = authUser?.id != null ? String(authUser.id) : "";
       const payload = {
-        projectId: Number(projectId),
+        projectId: projectIdNum,
         dateYmd: String(selectedDate || "").trim(),
         dayName: String(curr.dayName || "").trim(),
         activity: String(curr.activity || "").trim(),
