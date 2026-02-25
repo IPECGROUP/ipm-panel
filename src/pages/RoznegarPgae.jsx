@@ -159,6 +159,36 @@ function hasEntryDetails(entry) {
   );
 }
 
+function normalizeRoznegarEntryFromApi(item) {
+  const dateYmd = String(item?.date_ymd ?? item?.dateYmd ?? "").trim().replace(/\//g, "-");
+  if (!dateYmd) return null;
+  const tagIds = (Array.isArray(item?.tag_ids) ? item.tag_ids : Array.isArray(item?.tagIds) ? item.tagIds : [])
+    .map((x) => String(x || "").trim())
+    .filter(Boolean);
+  const relatedDocIds = (Array.isArray(item?.related_doc_ids) ? item.related_doc_ids : Array.isArray(item?.relatedDocIds) ? item.relatedDocIds : [])
+    .map((x) => String(x || "").trim())
+    .filter(Boolean);
+  const files = (Array.isArray(item?.files) ? item.files : [])
+    .map((f) => ({
+      name: String(f?.name || "").trim(),
+      size: Number(f?.size || 0) || 0,
+      type: String(f?.type || "").trim(),
+      url: String(f?.url || "").trim() || null,
+      lastModified: Number(f?.lastModified || 0) || 0,
+    }))
+    .filter((f) => f.name);
+  return {
+    dateYmd,
+    dayName: String(item?.day_name ?? item?.dayName ?? dayNameFromJalali(dateYmd)).trim(),
+    activity: String(item?.activity || "").trim(),
+    tagIds,
+    relatedDocIds,
+    files,
+    confirmed: !!item?.confirmed,
+    confirmedAt: item?.confirmed_at ?? item?.confirmedAt ?? null,
+  };
+}
+
 function JalaliPopupDatePicker({ value, onChange, theme = "light", buttonClassName, hideIcon, disableFuture = false }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
@@ -498,7 +528,8 @@ export default function RoznegarPgae() {
 
   const [uploadOpen, setUploadOpen] = useState(false);
   const [tableFilter, setTableFilter] = useState("");
-  const [filePreview, setFilePreview] = useState({ open: false, file: null, url: "" });
+  const [confirmSaving, setConfirmSaving] = useState(false);
+  const [filePreview, setFilePreview] = useState({ open: false, file: null, url: "", isObjectUrl: false });
   const uploadInputRef = useRef(null);
 
   useEffect(() => {
@@ -619,6 +650,43 @@ export default function RoznegarPgae() {
   useEffect(() => {
     setEntriesByDate((prev) => (prev[selectedDate] ? prev : { ...prev, [selectedDate]: makeEntry(selectedDate) }));
   }, [selectedDate]);
+
+  useEffect(() => {
+    let alive = true;
+
+    const load = async () => {
+      if (!projectId) {
+        if (alive) setEntriesByDate({});
+        return;
+      }
+      try {
+        const uid = authUser?.id != null ? String(authUser.id) : "";
+        const url = `/api/roznegar?projectId=${encodeURIComponent(String(projectId))}`;
+        const res = await fetch(url, {
+          credentials: "include",
+          headers: {
+            ...(uid ? { "x-user-id": uid } : {}),
+          },
+        });
+        if (!res.ok) throw new Error("roznegar_load_failed");
+        const data = await res.json();
+        const items = Array.isArray(data?.items) ? data.items : [];
+        const next = {};
+        items.forEach((raw) => {
+          const entry = normalizeRoznegarEntryFromApi(raw);
+          if (entry?.dateYmd) next[entry.dateYmd] = entry;
+        });
+        if (alive) setEntriesByDate(next);
+      } catch {
+        if (alive) setEntriesByDate({});
+      }
+    };
+
+    load();
+    return () => {
+      alive = false;
+    };
+  }, [projectId, authUser?.id]);
 
   const updateActiveEntry = (updater) => {
     setEntriesByDate((prev) => {
@@ -854,26 +922,32 @@ export default function RoznegarPgae() {
   const openFilePreview = (file) => {
     if (!file) return;
     setFilePreview((prev) => {
-      if (prev?.url) {
+      if (prev?.url && prev?.isObjectUrl) {
         try {
           URL.revokeObjectURL(prev.url);
         } catch {}
       }
+      const directUrl = String(file?.url || "").trim();
+      if (directUrl) {
+        return { open: true, file, url: directUrl, isObjectUrl: false };
+      }
       let nextUrl = "";
+      let isObjectUrl = false;
       try {
         nextUrl = URL.createObjectURL(file);
+        isObjectUrl = true;
       } catch {}
-      return { open: true, file, url: nextUrl };
+      return { open: true, file, url: nextUrl, isObjectUrl };
     });
   };
   const closeFilePreview = () => {
     setFilePreview((prev) => {
-      if (prev?.url) {
+      if (prev?.url && prev?.isObjectUrl) {
         try {
           URL.revokeObjectURL(prev.url);
         } catch {}
       }
-      return { open: false, file: null, url: "" };
+      return { open: false, file: null, url: "", isObjectUrl: false };
     });
   };
 
@@ -905,13 +979,13 @@ export default function RoznegarPgae() {
 
   useEffect(() => {
     return () => {
-      if (filePreview?.url) {
+      if (filePreview?.url && filePreview?.isObjectUrl) {
         try {
           URL.revokeObjectURL(filePreview.url);
         } catch {}
       }
     };
-  }, [filePreview?.url]);
+  }, [filePreview?.url, filePreview?.isObjectUrl]);
 
   const inputBase = "w-full h-11 px-4 rounded-xl border outline-none transition text-right text-[14px]";
   const inputCls =
@@ -957,9 +1031,56 @@ export default function RoznegarPgae() {
     e.stopPropagation();
   };
 
-  const handlePreviewConfirm = () => {
-    if (editorDisabled) return;
-    updateActiveEntry((curr) => ({ ...curr, confirmed: true, confirmedAt: new Date().toISOString() }));
+  const handlePreviewConfirm = async () => {
+    if (editorDisabled || !projectId || confirmSaving) return;
+    setConfirmSaving(true);
+    try {
+      const curr = entriesByDate[selectedDate] || makeEntry(selectedDate);
+      const filesPayload = (Array.isArray(curr.files) ? curr.files : [])
+        .map((f) => ({
+          name: String(f?.name || "").trim(),
+          size: Number(f?.size || 0) || 0,
+          type: String(f?.type || "").trim(),
+          url: String(f?.url || "").trim() || null,
+          lastModified: Number(f?.lastModified || 0) || 0,
+        }))
+        .filter((f) => f.name);
+
+      const uid = authUser?.id != null ? String(authUser.id) : "";
+      const payload = {
+        projectId: Number(projectId),
+        dateYmd: String(selectedDate || "").trim(),
+        dayName: String(curr.dayName || "").trim(),
+        activity: String(curr.activity || "").trim(),
+        tagIds: (Array.isArray(curr.tagIds) ? curr.tagIds : []).map(String),
+        relatedDocIds: (Array.isArray(curr.relatedDocIds) ? curr.relatedDocIds : []).map(String),
+        files: filesPayload,
+        confirmed: true,
+      };
+
+      const res = await fetch("/api/roznegar", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(uid ? { "x-user-id": uid } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("roznegar_save_failed");
+      const data = await res.json();
+      const saved = normalizeRoznegarEntryFromApi(data?.item || null);
+      if (!saved?.dateYmd) throw new Error("roznegar_save_invalid");
+
+      setEntriesByDate((prev) => ({
+        ...prev,
+        [saved.dateYmd]: saved,
+      }));
+    } catch (e) {
+      console.error("roznegar_confirm_error", e);
+    } finally {
+      setConfirmSaving(false);
+    }
   };
 
   const handleExportExcel = async () => {
@@ -997,9 +1118,10 @@ export default function RoznegarPgae() {
   const cardReveal = mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3";
   const previewFile = filePreview?.file;
   const previewName = String(previewFile?.name || "");
+  const previewUrl = String(filePreview?.url || "");
   const previewType = String(previewFile?.type || "").toLowerCase();
   const previewIsImage = previewType.startsWith("image/");
-  const previewIsPdf = previewType.includes("pdf") || /\.pdf$/i.test(previewName);
+  const previewIsPdf = previewType.includes("pdf") || /\.pdf$/i.test(previewName) || /\.pdf($|\?)/i.test(previewUrl);
 
   return (
     <>
@@ -1330,7 +1452,7 @@ export default function RoznegarPgae() {
                   <div className="pt-2 flex items-center justify-end gap-2">
                     <button
                       type="button"
-                      disabled={editorDisabled}
+                      disabled={editorDisabled || confirmSaving}
                       onClick={handlePreviewConfirm}
                       className={
                         "h-9 w-12 md:h-10 md:w-14 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 " +
