@@ -668,7 +668,14 @@ export default function RoznegarPgae() {
             ...(uid ? { "x-user-id": uid } : {}),
           },
         });
-        if (!res.ok) throw new Error("roznegar_load_failed");
+        if (!res.ok) {
+          let reason = "roznegar_load_failed";
+          try {
+            const err = await res.json();
+            reason = String(err?.error || err?.message || reason);
+          } catch {}
+          throw new Error(reason);
+        }
         const data = await res.json();
         const items = Array.isArray(data?.items) ? data.items : [];
         const next = {};
@@ -677,7 +684,8 @@ export default function RoznegarPgae() {
           if (entry?.dateYmd) next[entry.dateYmd] = entry;
         });
         if (alive) setEntriesByDate(next);
-      } catch {
+      } catch (e) {
+        console.error("roznegar_load_error", e);
         if (alive) setEntriesByDate({});
       }
     };
@@ -1067,7 +1075,14 @@ export default function RoznegarPgae() {
         },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error("roznegar_save_failed");
+      if (!res.ok) {
+        let reason = "roznegar_save_failed";
+        try {
+          const err = await res.json();
+          reason = String(err?.error || err?.message || reason);
+        } catch {}
+        throw new Error(reason);
+      }
       const data = await res.json();
       const saved = normalizeRoznegarEntryFromApi(data?.item || null);
       if (!saved?.dateYmd) throw new Error("roznegar_save_invalid");
