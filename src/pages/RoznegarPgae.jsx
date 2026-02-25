@@ -124,6 +124,33 @@ function mapRoznegarErrorText(errLike, fallback = "خطا در ارتباط با
   return map[raw] || raw;
 }
 
+function sameStringArray(a, b) {
+  const aa = Array.isArray(a) ? a.map((x) => String(x || "")) : [];
+  const bb = Array.isArray(b) ? b.map((x) => String(x || "")) : [];
+  if (aa.length !== bb.length) return false;
+  for (let i = 0; i < aa.length; i += 1) {
+    if (aa[i] !== bb[i]) return false;
+  }
+  return true;
+}
+
+function sameFilesArray(a, b) {
+  const aa = Array.isArray(a) ? a : [];
+  const bb = Array.isArray(b) ? b : [];
+  if (aa.length !== bb.length) return false;
+  for (let i = 0; i < aa.length; i += 1) {
+    const x = aa[i] || {};
+    const y = bb[i] || {};
+    if (String(x?.serverId || "") !== String(y?.serverId || "")) return false;
+    if (String(x?.name || "") !== String(y?.name || "")) return false;
+    if (Number(x?.size || 0) !== Number(y?.size || 0)) return false;
+    if (String(x?.type || "") !== String(y?.type || "")) return false;
+    if (String(x?.url || "") !== String(y?.url || "")) return false;
+    if (Number(x?.lastModified || 0) !== Number(y?.lastModified || 0)) return false;
+  }
+  return true;
+}
+
 function toFaDigits(value) {
   return String(value ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
 }
@@ -774,7 +801,21 @@ export default function RoznegarPgae() {
   const updateActiveEntry = (updater) => {
     setEntriesByDate((prev) => {
       const current = prev[selectedDate] || makeEntry(selectedDate);
-      const next = typeof updater === "function" ? updater(current) : { ...current, ...updater };
+      const nextRaw = typeof updater === "function" ? updater(current) : { ...current, ...updater };
+      const changed =
+        String(nextRaw?.dayName || "") !== String(current?.dayName || "") ||
+        String(nextRaw?.activity || "") !== String(current?.activity || "") ||
+        !sameStringArray(nextRaw?.tagIds, current?.tagIds) ||
+        !sameStringArray(nextRaw?.relatedDocIds, current?.relatedDocIds) ||
+        !sameFilesArray(nextRaw?.files, current?.files);
+
+      const next = changed
+        ? {
+            ...nextRaw,
+            confirmed: false,
+            confirmedAt: null,
+          }
+        : nextRaw;
       return { ...prev, [selectedDate]: next };
     });
   };
@@ -923,7 +964,7 @@ export default function RoznegarPgae() {
     const raw = Object.entries(entriesByDate || {})
       .map(([dateYmd, entry]) => {
         const row = entry || makeEntry(dateYmd);
-        if (!row?.confirmed) return null;
+        if (row?.confirmed !== true) return null;
         const tags = (Array.isArray(row.tagIds) ? row.tagIds : [])
           .map((id) => tagById.get(String(id))?.label || "")
           .filter(Boolean);
