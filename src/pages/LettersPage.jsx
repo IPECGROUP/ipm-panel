@@ -1,3 +1,4 @@
+/* eslint-disable no-empty */
 // src/pages/LettersPage.jsx
 import React, { useEffect, useMemo, useRef, useState, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
@@ -469,7 +470,7 @@ const parseAutoCode = (s) => {
 // =====================
 // Auto Code Generator — خارج از کامپوننت
 // =====================
-const computeNextAutoCode = ({ kind, projectId, letters, projectsTopOnly }) => {
+const computeNextAutoCode = ({ projectId, letters, projectsTopOnly }) => {
   const yy = getJalaliYY(new Date());
   const pcode = getProjectCode(projectId, projectsTopOnly);
   if (!pcode) return ""; // تا پروژه انتخاب نشده، کد نساز
@@ -552,7 +553,7 @@ async function runWithLimit(tasks, limit = 2) {
   return Promise.allSettled(results);
 }
 
-async function uploadQueueInBackground({
+async function _uploadQueueInBackground({
   kind,
   queue,
   letterId,
@@ -614,7 +615,7 @@ const [submitTriedByKind, setSubmitTriedByKind] = useState({
   internal: false,
 });
 
-const [isSubmitting, setIsSubmitting] = useState(false);
+const [isSubmitting, _setIsSubmitting] = useState(false);
 
 const fieldHasError = (kind, key) =>
   !!(submitTriedByKind?.[kind] && errorsByKind?.[kind]?.[key]);
@@ -746,17 +747,21 @@ useEffect(() => {
   }, []);
 
   const canSeeMainAdminLogin = useMemo(() => isMainAdminUser(user), [user]);
-const userId = String(user?.id || "0");
  const [filterTab, setFilterTab] = useState("all"); // اول این
  const [filterTagIds, setFilterTagIds] = useState([]); // ✅ global
   const tableScrollRef = useRef(null);
 const [hasYScroll, setHasYScroll] = useState(false);
   const API_BASE = String(import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
   async function api(path, opt = {}) {
+    const uid = user?.id != null ? String(user.id) : "";
     const res = await fetch(API_BASE + path, {
       credentials: "include",
       ...opt,
-      headers: { "Content-Type": "application/json", ...(opt.headers || {}) },
+      headers: {
+        "Content-Type": "application/json",
+        ...(uid ? { "x-user-id": uid } : {}),
+        ...(opt.headers || {}),
+      },
     });
     const txt = await res.text();
     let data = {};
@@ -826,7 +831,7 @@ const [formKind, setFormKind] = useState("incoming"); // نوع نامه داخ�
   // ✅ edit state
   const [editingId, setEditingId] = useState(null);
 // ✅ برچسب‌ها (تنها چیز مشترک بین هر سه تب)
-const [formTagIds, setFormTagIds] = useState([]);
+const [_formTagIds, _setFormTagIds] = useState([]);
 
 // ✅ فرم‌ها جدا (برای جلوگیری از قاطی شدن بین تب‌ها)
 const [incomingForm, setIncomingForm] = useState({
@@ -842,6 +847,7 @@ const [incomingForm, setIncomingForm] = useState({
 
 const [outgoingForm, setOutgoingForm] = useState({
 category: "نامه",
+  classification: "عادی",
   projectId: "",
     letterNo: "",
   letterDate: "",
@@ -852,6 +858,7 @@ category: "نامه",
 });
 
 const [internalForm, setInternalForm] = useState({
+  classification: "عادی",
   projectId: "",     
   letterNo: "",      
   letterDate: "",
@@ -972,7 +979,7 @@ const resolveFileUrl = (u) => {
 };
 
 
-  const loggedInUserName = useMemo(() => {
+const loggedInUserName = useMemo(() => {
     const u = user || {};
     return String(
   u?.name ||
@@ -985,17 +992,17 @@ const resolveFileUrl = (u) => {
 ).trim();
   }, [user]);
 
-  // ✅ فقط این دو نفر + نقش admin دسترسی محرمانه دارند
-const PRIV_USERS = new Set(["marandi1234", "rastegar"]);
+const loggedInUsername = useMemo(() => {
+  const u = user || {};
+  return String(u?.username || u?.user_name || u?.login || u?.name || "").trim().toLowerCase();
+}, [user]);
+
+  // ✅ فقط همین دو کاربر دسترسی محرمانه دارند
+const PRIV_USERS = new Set(["marandi", "rastegar"]);
 
 const canSeeConfidential = useMemo(() => {
-  const uname = String(loggedInUserName || "").trim().toLowerCase();
-  const role = String(user?.role || "").trim().toLowerCase(); // اگر role داری
-  return role === "admin" || PRIV_USERS.has(uname);
-}, [loggedInUserName, user?.role]);
-
-// اگر جاهای دیگه از isAdmin استفاده می‌کنی:
-const isAdmin = canSeeConfidential;
+  return PRIV_USERS.has(loggedInUsername);
+}, [loggedInUsername]);
 
 const canEditSecretariatNo = useMemo(() => {
   const role = String(user?.role || "").trim().toLowerCase();
@@ -1083,19 +1090,19 @@ const DOC_CLASS_BASE = [
 ];
 
 // گزینه‌های سفارشی (وقتی کاربر «سایر» می‌زند)
-const [docClassExtras, setDocClassExtras] = useState([]);
+const [docClassExtras, _setDocClassExtras] = useState([]);
 
 // پاپ‌آپ «سایر»
-const [docClassOtherOpen, setDocClassOtherOpen] = useState(false);
-const [docClassOtherText, setDocClassOtherText] = useState("");
+const [docClassOtherOpen] = useState(false);
+const [_docClassOtherText, _setDocClassOtherText] = useState("");
 
 // طبقه بندی (عادی/محرمانه)
 
   const [projects, setProjects] = useState([]);
   const [hasAttachment, setHasAttachment] = useState(false);
-  const [incomingAttachmentTitle, setIncomingAttachmentTitle] = useState("");
-  const [outgoingAttachmentTitle, setOutgoingAttachmentTitle] = useState("");
-  const [internalAttachmentTitle, setInternalAttachmentTitle] = useState("");
+  const [_incomingAttachmentTitle, setIncomingAttachmentTitle] = useState("");
+  const [_outgoingAttachmentTitle, setOutgoingAttachmentTitle] = useState("");
+  const [_internalAttachmentTitle, setInternalAttachmentTitle] = useState("");
   const [returnToIds, setReturnToIds] = useState([""]);
   const [piroIds, setPiroIds] = useState([""]);
   const [myLetters, setMyLetters] = useState([]);
@@ -1258,7 +1265,7 @@ const isConfidentialLetter = (l) => {
 
   const normalizeDocNo = (v) =>
     toEnDigits(String(v ?? ""))
-      .replace(/[\u200c\u200d\u200e\u200f\u202a-\u202e]/g, "")
+      .replace(/\u200c|\u200d|\u200e|\u200f|[\u202a-\u202e]/g, "")
       .replace(/\s+/g, "")
       .replace(/[\\|,;:_]+/g, "/")
       .trim();
@@ -1347,6 +1354,7 @@ const searchHaystackOf = (l) => {
     l?.receiver_name,
     l?.receiverName,
     l?.classification,
+    l?.classification_label,
     l?.doc_classification,
     l?.confidentiality,
     l?.category,
@@ -1440,7 +1448,7 @@ const letterById = useMemo(() => {
 // کنار بقیه useRef ها
 // کنار بقیه useRef ها
 const relatedWrapRef = useRef(null);
-const relatedInputRef = useRef(null);
+const _relatedInputRef = useRef(null);
 
 // ✅ اول این باید بیاد (قبل از relatedDisplayValue)
 const relatedSelectedIds = useMemo(() => {
@@ -1450,7 +1458,7 @@ const relatedSelectedIds = useMemo(() => {
 }, [returnToIds]);
 
 // متن نمایشی شماره‌های انتخاب شده (وقتی dropdown بسته است)
-const relatedDisplayValue = useMemo(() => {
+const _relatedDisplayValue = useMemo(() => {
   const parts = (Array.isArray(relatedSelectedIds) ? relatedSelectedIds : []).map((id) => {
     const l = letterById.get(String(id));
     const no = String(letterNoOf(l) || "").trim() || String(id);
@@ -1486,7 +1494,7 @@ useEffect(() => {
   };
 }, [relatedOpen]);
 
-const relatedOptions = useMemo(() => {
+const _relatedOptions = useMemo(() => {
   const q = toEnDigits(String(relatedQuery || "").trim());
   const arr = Array.isArray(myLettersSorted) ? myLettersSorted : [];
 
@@ -1503,7 +1511,7 @@ const relatedOptions = useMemo(() => {
 
   // tags
   const [tagCategories, setTagCategories] = useState([]);
-  const [tags, setTags] = useState([]);
+  const [_tags, setTags] = useState([]);
   const [incomingTagIds, setIncomingTagIds] = useState([]);
   const [outgoingTagIds, setOutgoingTagIds] = useState([]);
   const [internalTagIds, setInternalTagIds] = useState([]);
@@ -1559,7 +1567,7 @@ const [filterTagPinnedIds, setFilterTagPinnedIds] = useState([]); // ✅ برچ�
 const TAG_PREFS_SCOPE = "letters_filter"; // اسم کلید برای بک‌اند (بعداً هم همینو استفاده می‌کنیم)
 const TAG_PREFS_LIMIT = 24;
 
-const tagPrefsLsKey = (scope) => `tag_prefs_v1:${scope}:u${String(user?.id || "0")}`;
+const _tagPrefsLsKey = (scope) => `tag_prefs_v1:${scope}:u${String(user?.id || "0")}`;
 
 // ===== Per-user selected tags for FORM (incoming/outgoing/internal) — stored in backend (/tag-prefs) =====
 const FORM_TAG_PREFS_SCOPE = {
@@ -1568,7 +1576,7 @@ const FORM_TAG_PREFS_SCOPE = {
   internal: "letters_form_internal",
 };
 
-const formPrefsLsKey = (which) => `tag_prefs_v1:${FORM_TAG_PREFS_SCOPE[which]}:u${String(user?.id || "0")}`;
+const _formPrefsLsKey = (which) => `tag_prefs_v1:${FORM_TAG_PREFS_SCOPE[which]}:u${String(user?.id || "0")}`;
 
 const [formTagPrefs, setFormTagPrefs] = useState({ incoming: [], outgoing: [], internal: [] });
 const formTagsHydratedRef = useRef({ incoming: false, outgoing: false, internal: false });
@@ -1581,7 +1589,7 @@ const saveFormTagPrefs = async (which, ids) => {
   else await patchLetterPrefs({ internal_tag_ids: clean });
 };
 
-const loadFormTagPrefs = async (_which) => {
+const loadFormTagPrefs = async () => {
   const p = await fetchLetterPrefs();
 
   // ✅ یک منبع واحد برای فرم: incoming_tag_ids (یا هرکدوم که می‌خوای)
@@ -1622,7 +1630,7 @@ const setFormTagsOnly = (which, ids) => {
   setFormTagPrefs((p) => ({ ...p, [which]: next }));
 };
 
-const setFormTagsAndPersist = (which, ids) => {
+const _setFormTagsAndPersist = (which, ids) => {
   const next = normalizeIdList(ids).slice(0, TAG_PREFS_LIMIT);
 
   if (which === "all") {
@@ -1773,7 +1781,7 @@ useEffect(() => {
 
 useEffect(() => {
   if (!user?.id) return;
-  loadFormTagPrefs("incoming"); // ✅ فقط یک بار
+  loadFormTagPrefs(); // ✅ فقط یک بار
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [user?.id]);
 
@@ -1804,7 +1812,7 @@ useEffect(() => {
 }, [formOpen]);
 
 // اضافه کردن/بردن به اول لیست (و ذخیره در بک‌اند)
-const bumpPinnedFilterTag = (id) => {
+const _bumpPinnedFilterTag = (id) => {
   const sid = String(id || "").trim();
   if (!sid) return;
 
@@ -1817,7 +1825,7 @@ const bumpPinnedFilterTag = (id) => {
 };
 
 // وقتی چندتا برچسب از picker انتخاب شد
-const mergePinnedFilterTags = (ids) => {
+const _mergePinnedFilterTags = (ids) => {
   const arr = normalizeIdList(ids);
   setFilterTagPinnedIds((prev) => {
     const next = normalizeIdList([...arr, ...(prev || [])]).slice(0, TAG_PREFS_LIMIT);
@@ -1827,9 +1835,6 @@ const mergePinnedFilterTags = (ids) => {
 };
 
 const resetAllFilters = () => {
-  setFilterSubject("");
-  setFilterOrg("");
-  setFilterLetterNo("");
   setFilterQuick("");
   setFilterFromDate("");
   setFilterToDate("");
@@ -1869,6 +1874,9 @@ const resetAllFilters = () => {
       const xhr = new XMLHttpRequest();
       xhr.open("POST", API_BASE + "/uploads/letters");
       xhr.withCredentials = true;
+      if (user?.id != null) {
+        xhr.setRequestHeader("x-user-id", String(user.id));
+      }
 
       const fd = new FormData();
       fd.append("file", file);
@@ -1900,7 +1908,7 @@ const resetAllFilters = () => {
     });
   };
 
-  const uploadQueuedFiles = async (kind, letterId) => {
+  const _uploadQueuedFiles = async (kind, letterId) => {
   const files = Array.isArray(docFilesByType?.[kind]) ? docFilesByType[kind] : [];
   const queue = files.filter((f) => f && f.status !== "error" && (f.optimizedFile || f.file) && !f.url);
 
@@ -2129,7 +2137,7 @@ const resetAllFilters = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const todayJalaliLong = useMemo(() => {
+  const _todayJalaliLong = useMemo(() => {
     try {
       return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
         weekday: "long",
@@ -2188,10 +2196,10 @@ const tabSmCls = (active) =>
     "rounded-2xl overflow-hidden border " +
     (theme === "dark" ? "border-white/10" : "border-black/10");
 
-  const formGridCls =
+  const _formGridCls =
     "grid gap-px " + (theme === "dark" ? "bg-white/10" : "bg-black/10");
 
-  const formCellCls = "p-2 " + (theme === "dark" ? "bg-neutral-900" : "bg-white");
+  const _formCellCls = "p-2 " + (theme === "dark" ? "bg-neutral-900" : "bg-white");
 
 
  // ✅ Chip style (مثل TagsPage)
@@ -2297,24 +2305,42 @@ useEffect(() => {
   if (!formOpen) return;
   if (editingId) return; // ادیت → کد جدید نساز
 
-  const code = computeNextAutoCode({
+  const setCode = (code) => {
+    if (!code) return;
+    if (formKind === "incoming") setIncomingSecretariatNo(code);
+    else if (formKind === "outgoing") setOutgoingSecretariatNo(code);
+    else setInternalSecretariatNo(code);
+  };
+
+  const fallbackCode = computeNextAutoCode({
     kind: formKind,
     projectId: currentProjectId,
     letters: myLetters,
     projectsTopOnly,
   });
 
-  if (!code) return;
+  let cancelled = false;
 
-  // وارده: شماره ثبت دبیرخانه
- // ✅ در هر سه تب: کد داخل "شماره ثبت دبیرخانه" پر شود
-if (formKind === "incoming") {
-  setIncomingSecretariatNo(code);
-} else if (formKind === "outgoing") {
-  setOutgoingSecretariatNo(code);
-} else {
-  setInternalSecretariatNo(code);
-}
+  (async () => {
+    if (!currentProjectId) {
+      setCode(fallbackCode);
+      return;
+    }
+
+    try {
+      const q = encodeURIComponent(String(currentProjectId || "").trim());
+      const r = await api(`/letters/next-code?project_id=${q}`);
+      if (cancelled) return;
+      setCode(String(r?.code || "").trim() || fallbackCode);
+    } catch {
+      if (cancelled) return;
+      setCode(fallbackCode);
+    }
+  })();
+
+  return () => {
+    cancelled = true;
+  };
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [formOpen, formKind, editingId, currentProjectId, myLetters, projectsTopOnly]);
 const setFormTagsAllAndPersist = (ids) => {
@@ -2331,7 +2357,7 @@ const setFormTagsAllAndPersist = (ids) => {
   saveFormTagPrefs("internal", next);
 };
 
- const toggleTag = (_which, id) => {
+ const _toggleTag = (id) => {
   const sid = String(id || "").trim();
   if (!sid) return;
 
@@ -2350,6 +2376,30 @@ const toggleFilterTag = (id) => {
     const next = cur.includes(sid) ? cur.filter((x) => x !== sid) : [...cur, sid];
     return next;
   });
+};
+
+const toggleFormTag = (sid) => {
+  const cleanId = String(sid || "").trim();
+  if (!cleanId) return;
+
+  if (formKind === "incoming") {
+    setIncomingTagIds((prev) => {
+      const base = Array.isArray(prev) ? prev.map(String) : [];
+      return base.includes(cleanId) ? base.filter((x) => x !== cleanId) : [...base, cleanId];
+    });
+  } else if (formKind === "outgoing") {
+    setOutgoingTagIds((prev) => {
+      const base = Array.isArray(prev) ? prev.map(String) : [];
+      return base.includes(cleanId) ? base.filter((x) => x !== cleanId) : [...base, cleanId];
+    });
+  } else {
+    setInternalTagIds((prev) => {
+      const base = Array.isArray(prev) ? prev.map(String) : [];
+      return base.includes(cleanId) ? base.filter((x) => x !== cleanId) : [...base, cleanId];
+    });
+  }
+
+  clearFieldError("formTags");
 };
 
   const tagLabelOf = (t) =>
@@ -2407,9 +2457,8 @@ const tagsForFormScope = useMemo(() => {
   return arr.slice(0, 14);
 }, [tagsForFormScope]);
 
-  const tagCapsFor = (selectedIds) => {
+  const _tagCapsFor = (selectedIds) => {
   const sel = Array.isArray(selectedIds) ? selectedIds.map(String) : [];
-  const selSet = new Set(sel);
 
   // پایه نمایش: همون latestTags (ثابت)
   const base = Array.isArray(latestTags) ? latestTags : [];
@@ -2537,7 +2586,7 @@ const secretariatLongText = (ymd) => {
 
 
   const categoryOf = (l) => String(l?.category ?? l?.category_name ?? l?.categoryTitle ?? "");
-  const categoryLabelOf = (l) => {
+  const _categoryLabelOf = (l) => {
     const c = String(categoryOf(l) || "");
     if (c === "project") return "پروژه‌ها";
     return c || "—";
@@ -2607,7 +2656,7 @@ const isImageUrl = (url, name = "") =>
   const v = toEnDigits(raw); // ✅ تبدیل ارقام فارسی/عربی به انگلیسی
 
   // اجازه / یا - 
-  const m = v.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  const m = v.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
   if (!m) return "";
   return `${m[1]}/${pad2(m[2])}/${pad2(m[3])}`;
 };
@@ -2997,14 +3046,7 @@ useLayoutEffect(() => {
     "dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700";
 
   const tbodyCls = "[&_td]:text-black dark:[&_td]:text-neutral-100";
-  const confidentialTdCls = " !text-red-600 dark:!text-red-400 font-semibold";
   const rowDividerCls = "border-b border-neutral-300 dark:border-neutral-700";
-  const confidentialRowCls = "[&_td]:!text-red-600 dark:[&_td]:!text-red-400 font-semibold";
-const kindRowTintCls = (kind) => {
-  if (kind === "incoming") return "bg-blue-50 dark:bg-blue-500/10";
-  if (kind === "outgoing") return "bg-emerald-50 dark:bg-emerald-500/10";
-  return "bg-orange-50 dark:bg-orange-500/10"; // ✅ internal
-};
 
  const resetForm = () => {
  setIncomingForm({
@@ -3020,22 +3062,25 @@ const kindRowTintCls = (kind) => {
 
   setOutgoingForm({
     category: "نامه",
+    classification: "عادی",
     projectId: "",
     letterNo: "",
     letterDate: "",
+    fromName: "",
     toName: "",
     orgName: "",
     subject: "",
   });
 
   setInternalForm({
+  classification: "عادی",
      projectId: "",      
   letterNo: "",  
     letterDate: "",
     subject: "",
   });
 
-  setFormTagIds([]);
+  _setFormTagIds([]);
 
   setIncomingAttachmentTitle("");
   setOutgoingAttachmentTitle("");
@@ -3122,7 +3167,13 @@ else setInternalSecretariatNote(sn);
 
     // طبقه بندی (اگر از بک‌اند اومد، وگرنه پیش‌فرض)
     const rawClass =
-      String(l?.classification ?? l?.doc_classification ?? l?.confidentiality ?? "").trim();
+      String(
+        l?.classification ??
+        l?.classification_label ??
+        l?.doc_classification ??
+        l?.confidentiality ??
+        ""
+      ).trim();
 
     const pid = l?.project_id ?? l?.projectId ?? l?.projectID ?? null;
     const projectId = pid ? String(pid) : "";
@@ -3141,6 +3192,7 @@ setInternalUnitId(uid ? String(uid) : "");
       setOutgoingForm((p) => ({
         ...p,
         category: mappedCat,
+        classification: rawClass || "عادی",
         projectId,
         letterNo,
         letterDate,
@@ -3164,6 +3216,7 @@ setInternalUnitId(uid ? String(uid) : "");
     } else {
       setInternalForm((p) => ({
         ...p,
+        classification: rawClass || "عادی",
         projectId,
         letterNo,
         letterDate,
@@ -3273,7 +3326,7 @@ const makeProgressUpdater = (kind, fileId) => {
   };
 };
 
-const uploadQueueInBackground = async (kind, queue, letterId) => {
+const _uploadQueueInBackground = async (kind, queue, letterId) => {
   const tasks = queue.map((f) => async () => {
     const fileToSend = f.optimizedFile || f.file;
 
@@ -3373,8 +3426,7 @@ const payload = {
     : "نامه",
 
   classification:
-    kind === "incoming" ? (incomingForm.classification || "عادی")
-    : "عادی",
+    String(getForm(kind)?.classification || "عادی").trim() || "عادی",
 
   project_id: (() => {
     const pid =
@@ -3601,11 +3653,11 @@ const isImageView = useMemo(() => {
     (theme === "dark" ? "hover:bg-white/10" : "hover:bg-black/5") +
     " disabled:opacity-40 disabled:cursor-not-allowed";
 
-  const addIconBtnCls =
+  const _addIconBtnCls =
     "h-11 w-11 rounded-xl flex items-center justify-center transition ring-1 p-2 " +
     (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5");
 
-  const addIconImgCls = "w-5 h-5 " + (theme === "dark" ? "dark:invert" : "");
+  const _addIconImgCls = "w-5 h-5 " + (theme === "dark" ? "dark:invert" : "");
 
   // ===== Reuse uploaded files (show ALL uploaded files; no letter selection) =====
   const [pickSearch, setPickSearch] = useState("");
@@ -3675,7 +3727,7 @@ const isImageView = useMemo(() => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [uploadOpen, myLettersSorted]);
 
-  const filteredUploadedAttachments = useMemo(() => {
+  const _filteredUploadedAttachments = useMemo(() => {
     const q = String(pickSearch || "").trim().toLowerCase();
     const arr = Array.isArray(allUploadedAttachments) ? allUploadedAttachments : [];
     if (!q) return arr;
@@ -3687,7 +3739,7 @@ const isImageView = useMemo(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pickSearch, allUploadedAttachments]);
 
-  const addExistingAttachmentToCurrent = (which, att) => {
+  const _addExistingAttachmentToCurrent = (which, att) => {
     const url = attachmentUrlOf(att);
     if (!url) return;
     const name = attachmentNameOf(att) || att?.name || "فایل";
@@ -3748,7 +3800,7 @@ const tagById = useMemo(() => {
   return m;
 }, [allTags]);
 
-const latestAllTags = useMemo(() => {
+const _latestAllTags = useMemo(() => {
   const arr = Array.isArray(allTags) ? allTags.slice() : [];
   arr.sort((a, b) => {
     const ai = Number(a?.id);
@@ -3855,6 +3907,49 @@ const ensureTagsForKind = async (kind) => {
   const scope = SCOPE_BY_KIND[kind] || "letters";
   if (loadedScopes[scope]) return;
   await refreshTags(scope);
+};
+
+const createTag = async () => {
+  const scope = SCOPE_BY_KIND[tagPickKind] || "letters";
+  const label = String(newTagLabel || "").trim();
+  const categoryId = Number(newTagCategoryId || 0);
+
+  if (!label) {
+    alert("عنوان برچسب را وارد کنید.");
+    return;
+  }
+
+  if (Array.isArray(tagCategories) && tagCategories.length > 0) {
+    if (!Number.isFinite(categoryId) || categoryId <= 0) {
+      alert("دسته‌بندی برچسب را انتخاب کنید.");
+      return;
+    }
+  }
+
+  try {
+    await api("/tags", {
+      method: "POST",
+      body: JSON.stringify({
+        scope,
+        type: "tag",
+        label,
+        category_id: Number.isFinite(categoryId) && categoryId > 0 ? categoryId : undefined,
+      }),
+    });
+
+    await refreshTags(scope);
+
+    if (scope === "letters") {
+      const r = await api(`/tags?scope=${encodeURIComponent(scope)}`);
+      setTagCategories(Array.isArray(r?.categories) ? r.categories : []);
+    }
+
+    setNewTagLabel("");
+    setNewTagCategoryId("");
+    setAddTagOpen(false);
+  } catch (err) {
+    alert(String(err?.message || "خطا در ثبت برچسب"));
+  }
 };
 
 useEffect(() => {
@@ -4195,18 +4290,18 @@ aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "category") : 
 
   <FieldWrap>
     <select
-      value={incomingForm.classification}
+      value={getForm(formKind).classification || "عادی"}
 onChange={(e) => {
-  setIncomingForm((p) => ({ ...p, classification: e.target.value }));
-  clearFieldError("incoming", "classification");
+  setForm(formKind, { classification: e.target.value });
+  if (formKind === "incoming") clearFieldError("incoming", "classification");
 }}
-className={inputWithError(inputSmCls, "incoming", "classification")}
-aria-invalid={fieldHasError("incoming", "classification")}
+className={formKind === "incoming" ? inputWithError(inputSmCls, "incoming", "classification") : inputSmCls}
+aria-invalid={formKind === "incoming" ? fieldHasError("incoming", "classification") : undefined}
     >
       <option value="عادی">عادی</option>
       <option value="محرمانه">محرمانه</option>
     </select>
-<ErrorTextAbs kind="incoming" k="classification" />
+{formKind === "incoming" ? <ErrorTextAbs kind="incoming" k="classification" /> : null}
   </FieldWrap>
 </div>
 
@@ -4976,30 +5071,8 @@ aria-invalid={fieldHasError(formKind, "subject")}
               key={id}
               type="button"
               onClick={() => {
-  const sid = String(id || "").trim();
-  if (!sid) return;
- const toggleFormTag = (sid) => {
-  if (formKind === "incoming") {
-    setIncomingTagIds((prev) => {
-      const base = Array.isArray(prev) ? prev.map(String) : [];
-      return base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
-    });
-  } else if (formKind === "outgoing") {
-    setOutgoingTagIds((prev) => {
-      const base = Array.isArray(prev) ? prev.map(String) : [];
-      return base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
-    });
-  } else {
-    setInternalTagIds((prev) => {
-      const base = Array.isArray(prev) ? prev.map(String) : [];
-      return base.includes(sid) ? base.filter((x) => x !== sid) : [...base, sid];
-    });
-  }
-  clearFieldError("formTags");
-};
-
-  clearFieldError("formTags");
-}}
+                toggleFormTag(id);
+              }}
 
               className={selectedTagChipCls + " shrink-0"}
               title={label}
@@ -5278,7 +5351,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                 className={
                   "mx-auto inline-flex items-center justify-center gap-2 text-[13px] font-semibold underline-offset-4 hover:underline transition " +
                   (isConf
-                    ? "text-red-600 dark:text-red-400"
+                    ? "text-white"
                     : theme === "dark"
                     ? "text-white"
                     : "text-neutral-900")
