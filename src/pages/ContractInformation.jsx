@@ -1636,13 +1636,14 @@ export default function ContractInformation() {
   }, [activeContractTab, visibleContractTabs]);
 
   const renderFinancialRows = (title, sectionKey, rows, options = {}) => {
+    const showFinancialRowDelete = Boolean(options.showDelete);
     const { bordered = true, showAdd = true, amountLabel = "عدد" } = options;
     const content = (
       <>
       <div className="mb-3 text-sm font-semibold text-black dark:text-neutral-100">{title}</div>
       <div className="space-y-2">
         {rows.map((row, index) => (
-          <div key={row.id} className="grid grid-cols-1 md:grid-cols-[minmax(180px,1fr)_190px_190px_48px] gap-2 md:items-end">
+          <div key={row.id} className="grid grid-cols-1 md:grid-cols-[minmax(180px,1fr)_190px_190px] gap-2 md:items-end">
             <div>
               <div className={labelCls}>{amountLabel}</div>
               <input
@@ -1695,7 +1696,7 @@ export default function ContractInformation() {
                 })}
               </select>
             </div>
-            <button
+            {showFinancialRowDelete ? <button
               type="button"
               onClick={() => removeFinancialRow(sectionKey, row.id)}
               className={`${iconBtnCls} !h-11 !w-11`}
@@ -1703,7 +1704,7 @@ export default function ContractInformation() {
               title="حذف"
             >
               <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5 dark:invert" />
-            </button>
+            </button> : null}
           </div>
         ))}
       </div>
@@ -1731,7 +1732,7 @@ export default function ContractInformation() {
   const renderFinancialBreakdownFiles = () => (
     <div className="mt-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="text-sm font-semibold text-black dark:text-neutral-100">جدول شکست مبلغ قرارداد</div>
+        <div className="text-sm font-normal text-black dark:text-neutral-100">جدول شکست مبلغ قرارداد</div>
         <button
           type="button"
           onClick={() => financialUploadInputRef.current?.click()}
@@ -1939,7 +1940,7 @@ export default function ContractInformation() {
                   <button
                     type="button"
                     onClick={() => setRelatedPickOpen(true)}
-                    className={iconBtnCls}
+                    className={`${iconBtnCls} !h-11 !w-11`}
                     aria-label="انتخاب اسناد مرتبط"
                     title="انتخاب اسناد مرتبط"
                   >
@@ -2811,7 +2812,7 @@ export default function ContractInformation() {
                           </td>
                           <td className={`px-3 ${divider}`}>ثبت نشده</td>
                           <td className={`px-3 ${divider}`}>
-                            <div className="flex min-h-[34px] w-full items-center justify-center">
+                            <div className={centeredRowActionsCls}>
                               <RowActionIconBtn action="edit" onClick={() => openEditForm(row)} size={34} iconSize={15} />
                               <RowActionIconBtn action="delete" onClick={() => deleteRow(row.id)} size={34} iconSize={16} />
                             </div>
