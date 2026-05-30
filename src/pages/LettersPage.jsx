@@ -435,35 +435,7 @@ function formatBytes(n) {
   return `${Math.round(v * 10) / 10} ${units[i]}`;
 }
 
-const LETTER_UPLOAD_ACCEPT = "image/*,.pdf,application/pdf";
-const LETTER_UPLOAD_IMAGE_EXTS = new Set([
-  ".avif",
-  ".bmp",
-  ".gif",
-  ".heic",
-  ".heif",
-  ".ico",
-  ".jfif",
-  ".jpeg",
-  ".jpg",
-  ".pjp",
-  ".pjpeg",
-  ".png",
-  ".svg",
-  ".tif",
-  ".tiff",
-  ".webp",
-]);
-
-const isAllowedLetterUploadFile = (file) => {
-  const type = String(file?.type || "").toLowerCase();
-  if (type.startsWith("image/") || type === "application/pdf") return true;
-
-  const name = String(file?.name || "").toLowerCase();
-  const dot = name.lastIndexOf(".");
-  const ext = dot >= 0 ? name.slice(dot) : "";
-  return ext === ".pdf" || LETTER_UPLOAD_IMAGE_EXTS.has(ext);
-};
+const LETTER_UPLOAD_ACCEPT = "";
 
 const ensureLetterUploadableFile = async (file) => file;
 
@@ -2074,11 +2046,6 @@ const resetAllFilters = () => {
     if (!list.length) return;
 
     for (const rawFile of list) {
-      if (!isAllowedLetterUploadFile(rawFile)) {
-        alert("فقط فایل PDF و فایل های تصویری قابل بارگذاری هستند.");
-        continue;
-      }
-
       const isImg = rawFile.type && rawFile.type.startsWith("image/");
 
       try {
@@ -6420,7 +6387,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                             فایل را اینجا رها کنید
                           </div>
                           <div className={theme === "dark" ? "text-white/50 text-xs mt-1" : "text-neutral-500 text-xs mt-1"}>
-                            یا با دکمه زیر انتخاب کنید (تصویر / PDF)
+                            هر نوع فایلی را می‌توانید انتخاب کنید
                           </div>
 
                           <div className="mt-3 flex items-center justify-center">
