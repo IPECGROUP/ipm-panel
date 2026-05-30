@@ -1539,6 +1539,8 @@ export default function ContractInformation() {
     " border-black/10 bg-white text-neutral-900 hover:bg-black/5 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-white/10";
   const selectedTagChipCls =
     chipBaseCls + " border-black bg-black text-white hover:bg-black/90 dark:border-neutral-200 dark:bg-neutral-100 dark:text-neutral-900";
+  const centeredRowActionsCls =
+    "flex min-h-[34px] items-center justify-center gap-1 transition-opacity opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto";
   const tabStripCls =
     "mx-auto -mb-px flex w-full max-w-[780px] items-stretch justify-center overflow-hidden rounded-t-2xl border border-b-0 border-black/10 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900";
   const topTabBtnClass = (isActive, index, total) =>
@@ -1741,7 +1743,7 @@ export default function ContractInformation() {
 
               <button
                 type="button"
-                className={iconBtnCls}
+                className={`${iconBtnCls} !h-11 !w-11`}
                 onClick={() => {
                   setFilterQuery("");
                   setFilterProjectId("");
@@ -1843,7 +1845,7 @@ export default function ContractInformation() {
               </div>
 
               <div className="mt-6">
-                <div className="px-2 overflow-x-auto" dir="rtl">
+                <div className="px-2 overflow-visible" dir="rtl">
                   <div className={tabStripCls}>
                     {visibleContractTabs.map((tab, index) => (
                     <button
@@ -2134,7 +2136,7 @@ export default function ContractInformation() {
                             <textarea
                               value={form.technical?.serviceScope || ""}
                               onChange={(e) => setTechnicalField("serviceScope", e.target.value)}
-                              className={`${textareaCls} !h-[276px] !min-h-[276px] !resize-none`}
+                              className={`${textareaCls} !h-[273px] !min-h-[273px] !resize-none`}
                             />
                           </div>
 
@@ -2656,9 +2658,9 @@ export default function ContractInformation() {
                         </td>
                         <td className="px-3 py-3 text-right">ثبت نشده</td>
                         <td className="px-3 py-3 text-right">
-                          <div className="relative min-h-[34px] flex items-center justify-center">
+                          <div className="min-h-[34px] flex items-center justify-center">
                             <span className="sr-only">اقدامات</span>
-                            <div className={hoverSelectableRowPreset.rowActions}>
+                            <div className={centeredRowActionsCls}>
                               <RowActionIconBtn action="edit" onClick={() => openEditForm(row)} size={34} iconSize={15} />
                               <RowActionIconBtn action="delete" onClick={() => deleteRow(row.id)} size={34} iconSize={16} />
                             </div>
