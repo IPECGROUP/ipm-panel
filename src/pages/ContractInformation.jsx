@@ -2734,7 +2734,7 @@ export default function ContractInformation() {
               >
                 <colgroup>
                   <col style={{ width: 48 }} />
-                  <col style={{ width: 220 }} />
+                  <col style={{ width: 280 }} />
                   <col style={{ width: 160 }} />
                   <col style={{ width: 130 }} />
                   <col style={{ width: 120 }} />
@@ -2776,6 +2776,7 @@ export default function ContractInformation() {
                       const id = String(row.id);
                       const isLast = index === contractsPageRows.length - 1;
                       const divider = isLast ? "" : contractsRowDividerCls;
+                      const projectLabel = project?.label || "بدون پروژه";
 
                       return (
                         <tr key={row.id} className="group bg-white transition-colors hover:bg-black/[0.04] dark:bg-neutral-900 dark:hover:bg-white/10">
@@ -2790,7 +2791,7 @@ export default function ContractInformation() {
                             />
                           </td>
                           <td className={`px-3 ${divider}`}>
-                            <span className="block truncate">{project?.label || "بدون پروژه"}</span>
+                            <span className="block truncate" title={projectLabel}>{projectLabel}</span>
                           </td>
                           <td className={`px-3 ${divider}`}>
                             <div className="truncate font-semibold">{row.general?.contractType || "ثبت نشده"}</div>
