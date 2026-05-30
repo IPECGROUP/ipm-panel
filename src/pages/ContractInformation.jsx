@@ -5,8 +5,6 @@ import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 import { baseCurrenciesTablePreset as financialTablePreset, hoverSelectableRowPreset } from "../components/ui/tablePresets.js";
 import { dayjs, isJalaliYmd } from "../utils/date";
 
-const STORAGE_KEY = "ipm_contract_information_rows_v1";
-
 const CONTRACT_DOCUMENT_TYPES = [
   { id: "main", label: "اصلی" },
   { id: "sub", label: "فرعی" },
@@ -526,24 +524,6 @@ function fetchJson(path, opt = {}) {
   });
 }
 
-function loadStoredContracts() {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveStoredContracts(rows) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.isArray(rows) ? rows : []));
-  } catch {
-    // localStorage can be unavailable in private or restricted browser contexts.
-  }
-}
-
 function getCurrentJalaliParts() {
   const now = dayjs().calendar("jalali");
   return {
@@ -757,7 +737,7 @@ export default function ContractInformation() {
   const [lettersLoading, setLettersLoading] = React.useState(false);
   const [loadError, setLoadError] = React.useState("");
 
-  const [rows, setRows] = React.useState(() => loadStoredContracts());
+  const [rows, setRows] = React.useState([]);
   const [rowsLoading, setRowsLoading] = React.useState(false);
   const [rowsError, setRowsError] = React.useState("");
   const [formOpen, setFormOpen] = React.useState(false);
@@ -782,10 +762,6 @@ export default function ContractInformation() {
   const financialUploadInputRef = React.useRef(null);
   const [editingGuaranteeId, setEditingGuaranteeId] = React.useState("");
   const [editingGuaranteeDraft, setEditingGuaranteeDraft] = React.useState(() => ({ ...EMPTY_GUARANTEE_ROW }));
-
-  React.useEffect(() => {
-    saveStoredContracts(rows);
-  }, [rows]);
 
   React.useEffect(() => {
     let alive = true;
@@ -1450,6 +1426,17 @@ export default function ContractInformation() {
     setRelatedPickQuery("");
     setActiveContractTab(CONTRACT_SECTION_TABS[0].id);
     setFormOpen(true);
+  };
+
+  const openEditForm = (row) => {
+    const next = normalizeContractRow(row);
+    setForm(next);
+    setRelatedPickQuery("");
+    setActiveContractTab(next.documentType === "appendix" ? "calendar" : CONTRACT_SECTION_TABS[0].id);
+    setFormOpen(true);
+    window.requestAnimationFrame(() => {
+      document.querySelector(".ipm-contract-information")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   const closeForm = () => {
@@ -2644,7 +2631,10 @@ export default function ContractInformation() {
                     const contractNo = contractNoForRow(row, rowById);
 
                     return (
-                      <tr key={row.id} className="border-t border-black/10 dark:border-neutral-800">
+                      <tr
+                        key={row.id}
+                        className={`${hoverSelectableRowPreset.rowBase} ${hoverSelectableRowPreset.rowIdle} border-t border-black/10 dark:border-neutral-800`}
+                      >
                         <td className="px-3 py-3 text-right">{project?.label || "بدون پروژه"}</td>
                         <td className="px-3 py-3 text-right">
                           <div className="font-semibold">{row.general?.contractType || "ثبت نشده"}</div>
@@ -2666,9 +2656,13 @@ export default function ContractInformation() {
                         </td>
                         <td className="px-3 py-3 text-right">ثبت نشده</td>
                         <td className="px-3 py-3 text-right">
-                          <button type="button" onClick={() => deleteRow(row.id)} className={iconBtnCls} title="حذف" aria-label="حذف">
-                            <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5 dark:invert" />
-                          </button>
+                          <div className="relative min-h-[34px] flex items-center justify-center">
+                            <span className="sr-only">اقدامات</span>
+                            <div className={hoverSelectableRowPreset.rowActions}>
+                              <RowActionIconBtn action="edit" onClick={() => openEditForm(row)} size={34} iconSize={15} />
+                              <RowActionIconBtn action="delete" onClick={() => deleteRow(row.id)} size={34} iconSize={16} />
+                            </div>
+                          </div>
                         </td>
                       </tr>
                     );
