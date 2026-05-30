@@ -740,6 +740,9 @@ export default function ContractInformation() {
   const [rows, setRows] = React.useState([]);
   const [rowsLoading, setRowsLoading] = React.useState(false);
   const [rowsError, setRowsError] = React.useState("");
+  const [selectedContractIds, setSelectedContractIds] = React.useState(() => new Set());
+  const [contractsPage, setContractsPage] = React.useState(0);
+  const [contractsRowsPerPage, setContractsRowsPerPage] = React.useState(10);
   const [formOpen, setFormOpen] = React.useState(false);
   const [form, setForm] = React.useState(() => emptyForm());
   const [activeContractTab, setActiveContractTab] = React.useState(CONTRACT_SECTION_TABS[0].id);
@@ -1018,6 +1021,50 @@ export default function ContractInformation() {
       return true;
     });
   }, [filterDocType, filterProjectId, filterQuery, letterById, projectById, rowById, rows]);
+
+  React.useEffect(() => {
+    setSelectedContractIds(new Set());
+    setContractsPage(0);
+  }, [filterDocType, filterProjectId, filterQuery, contractsRowsPerPage]);
+
+  const contractsTotal = filteredRows.length;
+  const contractsPageCount = Math.max(1, Math.ceil(contractsTotal / Math.max(1, contractsRowsPerPage)));
+  const safeContractsPage = Math.min(Math.max(0, contractsPage), contractsPageCount - 1);
+  const contractsStartIdx = safeContractsPage * contractsRowsPerPage;
+  const contractsEndIdx = Math.min(contractsTotal, contractsStartIdx + contractsRowsPerPage);
+  const contractsPageRows = filteredRows.slice(contractsStartIdx, contractsEndIdx);
+  const visibleContractIds = React.useMemo(() => contractsPageRows.map((row) => String(row.id)), [contractsPageRows]);
+  const allVisibleContractsSelected =
+    visibleContractIds.length > 0 && visibleContractIds.every((id) => selectedContractIds.has(String(id)));
+  const someVisibleContractsSelected =
+    visibleContractIds.some((id) => selectedContractIds.has(String(id))) && !allVisibleContractsSelected;
+
+  React.useEffect(() => {
+    if (contractsPage !== safeContractsPage) setContractsPage(safeContractsPage);
+  }, [contractsPage, safeContractsPage]);
+
+  const toggleSelectAllVisibleContracts = () => {
+    setSelectedContractIds((prev) => {
+      const next = new Set(prev);
+      if (allVisibleContractsSelected) {
+        visibleContractIds.forEach((id) => next.delete(String(id)));
+      } else {
+        visibleContractIds.forEach((id) => next.add(String(id)));
+      }
+      return next;
+    });
+  };
+
+  const toggleContractSelect = (id) => {
+    const sid = String(id || "");
+    if (!sid) return;
+    setSelectedContractIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(sid)) next.delete(sid);
+      else next.add(sid);
+      return next;
+    });
+  };
 
   const setField = (field, value) => {
     setForm((prev) => {
@@ -1518,6 +1565,11 @@ export default function ContractInformation() {
     try {
       await fetchJson(`/contracts?id=${encodeURIComponent(sid)}`, { method: "DELETE" });
       setRows((prev) => prev.filter((row) => String(row.id) !== sid && String(row.parentContractId) !== sid));
+      setSelectedContractIds((prev) => {
+        const next = new Set(prev);
+        next.delete(sid);
+        return next;
+      });
       setRowsError("");
     } catch (error) {
       alert(error?.message || "خطا در حذف قرارداد");
@@ -1539,8 +1591,16 @@ export default function ContractInformation() {
     " border-black/10 bg-white text-neutral-900 hover:bg-black/5 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-white/10";
   const selectedTagChipCls =
     chipBaseCls + " border-black bg-black text-white hover:bg-black/90 dark:border-neutral-200 dark:bg-neutral-100 dark:text-neutral-900";
-  const centeredRowActionsCls =
-    "flex min-h-[34px] items-center justify-center gap-1 transition-opacity opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto";
+  const centeredRowActionsCls = "flex min-h-[34px] w-full items-center justify-center gap-1";
+  const contractsTableWrapCls =
+    "mt-4 rounded-2xl border border-black/10 bg-white text-black overflow-hidden dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100";
+  const contractsTableHeadRowCls =
+    "bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700";
+  const contractsTableBodyCls =
+    "[&_td]:text-black dark:[&_td]:text-neutral-100 [&_td]:text-center [&_th]:text-center";
+  const contractsRowDividerCls = "border-b border-neutral-300 dark:border-neutral-700";
+  const paginationIconBtnCls =
+    "h-9 w-9 rounded-lg border border-black/10 bg-white inline-flex items-center justify-center transition hover:bg-black/[0.04] disabled:opacity-40 disabled:cursor-not-allowed dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800";
   const tabStripCls =
     "mx-auto -mb-px flex w-full max-w-[780px] items-stretch justify-center overflow-hidden rounded-t-2xl border border-b-0 border-black/10 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900";
   const topTabBtnClass = (isActive, index, total) =>
@@ -1581,7 +1641,7 @@ export default function ContractInformation() {
       <div className="mb-3 text-sm font-semibold text-black dark:text-neutral-100">{title}</div>
       <div className="space-y-2">
         {rows.map((row, index) => (
-          <div key={row.id} className="grid grid-cols-1 md:grid-cols-[minmax(180px,1fr)_190px_190px_44px] gap-2 md:items-end">
+          <div key={row.id} className="grid grid-cols-1 md:grid-cols-[minmax(180px,1fr)_190px_190px_48px] gap-2 md:items-end">
             <div>
               <div className={labelCls}>{amountLabel}</div>
               <input
@@ -1637,7 +1697,7 @@ export default function ContractInformation() {
             <button
               type="button"
               onClick={() => removeFinancialRow(sectionKey, row.id)}
-              className={iconBtnCls}
+              className={`${iconBtnCls} !h-11 !w-11`}
               aria-label={`حذف ردیف ${toFaDigits(index + 1)}`}
               title="حذف"
             >
@@ -1650,7 +1710,7 @@ export default function ContractInformation() {
         <button
           type="button"
           onClick={() => addFinancialRow(sectionKey)}
-          className={`${iconBtnCls} mt-3`}
+          className={`${iconBtnCls} !h-11 !w-11 mt-3`}
           aria-label={`افزودن ${title}`}
           title={`افزودن ${title}`}
         >
@@ -1666,6 +1726,58 @@ export default function ContractInformation() {
       <div>{content}</div>
     );
   };
+
+  const renderFinancialBreakdownFiles = () => (
+    <div className="mt-3 rounded-xl border border-black/10 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-900">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="text-sm font-semibold text-black dark:text-neutral-100">جدول شکست مبلغ قرارداد</div>
+        <button
+          type="button"
+          onClick={() => financialUploadInputRef.current?.click()}
+          className="h-11 rounded-xl border border-black/15 bg-white px-3 text-sm font-semibold transition inline-flex items-center gap-2 hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+        >
+          <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
+          بارگذاری اسناد
+        </button>
+        <input
+          ref={financialUploadInputRef}
+          type="file"
+          multiple
+          accept=".pdf,image/*,.xls,.xlsx,.doc,.docx"
+          className="hidden"
+          onChange={(e) => {
+            addFinancialBreakdownFiles(e.target.files);
+            e.target.value = "";
+          }}
+        />
+      </div>
+
+      {financialForm.breakdownFiles.length ? (
+        <div className="mt-3 grid grid-cols-1 gap-2">
+          {financialForm.breakdownFiles.map((file, index) => (
+            <div
+              key={file.id || `${file.name}_${index}`}
+              className="flex items-center justify-between gap-2 rounded-xl border border-black/10 bg-black/[0.02] px-3 py-2 dark:border-neutral-700 dark:bg-white/[0.03]"
+            >
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold">{file.name || `فایل ${toFaDigits(index + 1)}`}</div>
+                <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{toFaDigits(formatBytes(file.size || 0))}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => removeFinancialBreakdownFile(file.id)}
+                className={`${iconBtnCls} !h-11 !w-11`}
+                aria-label="حذف فایل"
+                title="حذف فایل"
+              >
+                <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5 dark:invert" />
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
 
   const renderPaymentOption = (field, value, label) => (
     <label className="inline-flex h-8 items-center gap-2 rounded-lg border border-black/10 bg-white px-2.5 text-xs font-semibold transition hover:bg-black/[0.03] dark:border-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-700">
@@ -1863,8 +1975,8 @@ export default function ContractInformation() {
                 <div className={tabbedPanelClass}>
                   {activeContractTab === "general" ? (
                     <div className="p-4 space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                        <div className="min-w-0">
                           <div className={labelCls}>نوع قرارداد</div>
                           {form.general?.customContractType ? (
                             <input
@@ -1891,7 +2003,7 @@ export default function ContractInformation() {
                           )}
                         </div>
 
-                        <div>
+                        <div className="min-w-0">
                           <div className={labelCls}>موضوع قرارداد</div>
                           <input
                             value={form.general?.contractSubject || ""}
@@ -1902,7 +2014,7 @@ export default function ContractInformation() {
                         </div>
 
                         {form.documentType !== "sub" ? (
-                          <div>
+                          <div className="min-w-0">
                             <div className={labelCls}>کارفرمای اصلی</div>
                             <input
                               value={form.general?.mainEmployer || ""}
@@ -1914,12 +2026,12 @@ export default function ContractInformation() {
                         ) : null}
 
                         {form.documentType === "sub" ? (
-                          <div>
+                          <div className="min-w-0">
                             <div className={labelCls}>واگذارنده / کارفرما</div>
                             <input value={FIXED_SUB_ASSIGNOR} className={readonlyInputCls} type="text" readOnly />
                           </div>
                         ) : (
-                          <div>
+                          <div className="min-w-0">
                             <div className={labelCls}>واگذارنده / کارفرما</div>
                             <input
                               value={form.general?.employerAssignor || ""}
@@ -1931,7 +2043,7 @@ export default function ContractInformation() {
                         )}
 
                         {form.documentType !== "main" ? (
-                          <div>
+                          <div className="min-w-0">
                             <div className={labelCls}>مجری</div>
                             <input
                               value={form.general?.executor || ""}
@@ -1993,7 +2105,7 @@ export default function ContractInformation() {
                       <>
                       <div className={calendarCardCls}>
                         <div className="grid grid-cols-1 lg:grid-cols-[minmax(220px,1fr)_minmax(220px,1fr)_minmax(220px,1fr)_170px] gap-3 lg:items-start">
-                          <div>
+                          <div className="min-w-0">
                             <div className={labelCls}>تاریخ ابلاغ کار</div>
                             <div className="flex items-center gap-2">
                               <div className="flex-1">
@@ -2005,7 +2117,7 @@ export default function ContractInformation() {
                               <button
                                 type="button"
                                 onClick={() => setRelatedPickOpen(true)}
-                                className={iconBtnCls}
+                                className={`${iconBtnCls} !h-11 !w-11`}
                                 aria-label="انتخاب اسناد مرتبط"
                                 title="انتخاب اسناد مرتبط"
                               >
@@ -2017,7 +2129,7 @@ export default function ContractInformation() {
                             </div>
                           </div>
 
-                          <div>
+                        <div className="min-w-0">
                             <div className={labelCls}>تاریخ شروع قرارداد</div>
                             <ContractDatePicker value={form.calendar?.startDate || ""} onChange={(value) => setCalendarField("startDate", value)} />
                             <div className="mt-2 text-xs text-black/55 dark:text-neutral-400">
@@ -2025,7 +2137,7 @@ export default function ContractInformation() {
                             </div>
                           </div>
 
-                          <div>
+                        <div className="min-w-0">
                             <div className={labelCls}>تاریخ پایان قرارداد</div>
                             <ContractDatePicker value={form.calendar?.endDate || ""} onChange={(value) => setCalendarField("endDate", value)} />
                             <div className="mt-2 text-xs text-black/55 dark:text-neutral-400">
@@ -2136,7 +2248,7 @@ export default function ContractInformation() {
                             <textarea
                               value={form.technical?.serviceScope || ""}
                               onChange={(e) => setTechnicalField("serviceScope", e.target.value)}
-                              className={`${textareaCls} !h-[273px] !min-h-[273px] !resize-none`}
+                              className={`${textareaCls} !h-[270px] !min-h-[270px] !resize-none`}
                             />
                           </div>
 
@@ -2219,10 +2331,11 @@ export default function ContractInformation() {
                             <textarea
                               value={financialForm.paymentTerms || ""}
                               onChange={(e) => setFinancialField("paymentTerms", e.target.value)}
-                              className={`${textareaCls} !h-[150px] !min-h-[150px] !resize-none`}
+                              className={`${textareaCls} !h-[240px] !min-h-[240px] !resize-none`}
                             />
                           </div>
 
+                          <div className="space-y-3">
                           <div className="mt-6 rounded-xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-700 dark:bg-white/[0.03]">
                             <div className="grid grid-cols-1 gap-3">
                               <div className="grid grid-cols-1 sm:grid-cols-[116px_1fr] gap-2 sm:items-center">
@@ -2285,7 +2398,9 @@ export default function ContractInformation() {
                           </div>
                         </div>
 
-                        <div className="mt-4 pt-1">
+                          {renderFinancialBreakdownFiles()}
+                          </div>
+                        <div className="hidden">
                           <div className="flex flex-wrap items-center gap-2">
                             <div className="text-sm font-semibold text-black dark:text-neutral-100">جدول شکست مبلغ قرارداد</div>
                             <button
@@ -2297,7 +2412,6 @@ export default function ContractInformation() {
                               بارگذاری اسناد
                             </button>
                             <input
-                              ref={financialUploadInputRef}
                               type="file"
                               multiple
                               accept=".pdf,image/*,.xls,.xlsx,.doc,.docx"
@@ -2611,8 +2725,167 @@ export default function ContractInformation() {
             </div>
           ) : null}
 
-          <div className="mt-4 overflow-x-auto rounded-2xl border border-black/10 dark:border-neutral-800">
-            <table className="w-full min-w-[1020px] border-collapse text-sm">
+          <div className={contractsTableWrapCls}>
+            <div dir="ltr" className="relative max-h-[55vh] overflow-y-auto overflow-x-auto">
+              <table
+                dir="rtl"
+                className="w-full min-w-[1120px] table-fixed text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-2 [&_td]:py-2 [&_th]:whitespace-nowrap [&_td]:min-w-0"
+              >
+                <colgroup>
+                  <col style={{ width: 48 }} />
+                  <col style={{ width: 220 }} />
+                  <col style={{ width: 160 }} />
+                  <col style={{ width: 130 }} />
+                  <col style={{ width: 120 }} />
+                  <col />
+                  <col style={{ width: 130 }} />
+                  <col style={{ width: 120 }} />
+                </colgroup>
+                <thead>
+                  <tr className={contractsTableHeadRowCls}>
+                    <th className="sticky top-0 z-40 bg-neutral-200 dark:bg-white/10">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 accent-black dark:accent-neutral-200"
+                        checked={allVisibleContractsSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = someVisibleContractsSelected;
+                        }}
+                        onChange={toggleSelectAllVisibleContracts}
+                        aria-label="انتخاب همه"
+                        title="انتخاب همه"
+                      />
+                    </th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">مرکز/پروژه</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">نوع قرارداد</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">قرارداد</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">الحاقیه‌ها</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">نامه ابلاغ کار</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">مفاصات</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">اقدامات</th>
+                  </tr>
+                </thead>
+                <tbody className={contractsTableBodyCls}>
+                  {contractsPageRows.length ? (
+                    contractsPageRows.map((row, index) => {
+                      const project = projectById.get(String(row.projectId));
+                      const relatedLetter = row.relatedLetterId ? letterById.get(String(row.relatedLetterId)) : null;
+                      const appendicesCount = countAppendices(row, rows);
+                      const contractNo = contractNoForRow(row, rowById);
+                      const id = String(row.id);
+                      const isLast = index === contractsPageRows.length - 1;
+                      const divider = isLast ? "" : contractsRowDividerCls;
+
+                      return (
+                        <tr key={row.id} className="bg-white transition-colors hover:bg-black/[0.04] dark:bg-neutral-900 dark:hover:bg-white/10">
+                          <td className={`px-3 ${divider}`}>
+                            <input
+                              type="checkbox"
+                              className="w-4 h-4 accent-black dark:accent-neutral-200"
+                              checked={selectedContractIds.has(id)}
+                              onChange={() => toggleContractSelect(id)}
+                              aria-label="انتخاب"
+                              title="انتخاب"
+                            />
+                          </td>
+                          <td className={`px-3 ${divider}`}>
+                            <span className="block truncate">{project?.label || "بدون پروژه"}</span>
+                          </td>
+                          <td className={`px-3 ${divider}`}>
+                            <div className="truncate font-semibold">{row.general?.contractType || "ثبت نشده"}</div>
+                            <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{documentTypeLabel(row.documentType)}</div>
+                          </td>
+                          <td className={`px-3 font-semibold ${divider}`}>{contractNo ? toFaDigits(contractNo) : "ثبت نشده"}</td>
+                          <td className={`px-3 ${divider}`}>{appendicesCount ? toFaDigits(appendicesCount) : "بدون الحاقیه"}</td>
+                          <td className={`px-3 ${divider}`}>
+                            {relatedLetter ? (
+                              <div>
+                                <div className="font-semibold">{toFaDigits(secretariatNoOf(relatedLetter) || letterNoOf(relatedLetter) || row.relatedLetterId)}</div>
+                                <div className="mx-auto mt-1 max-w-[260px] truncate text-xs text-black/55 dark:text-neutral-400">
+                                  {subjectOf(relatedLetter) || "بدون موضوع"}
+                                </div>
+                              </div>
+                            ) : (
+                              "ثبت نشده"
+                            )}
+                          </td>
+                          <td className={`px-3 ${divider}`}>ثبت نشده</td>
+                          <td className={`px-3 ${divider}`}>
+                            <div className="flex min-h-[34px] w-full items-center justify-center">
+                              <RowActionIconBtn action="edit" onClick={() => openEditForm(row)} size={34} iconSize={15} />
+                              <RowActionIconBtn action="delete" onClick={() => deleteRow(row.id)} size={34} iconSize={16} />
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={8} className="px-3 py-8 text-center text-black/55 dark:text-neutral-400">
+                        قراردادی برای نمایش وجود ندارد.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="border-t border-neutral-300 px-3 py-2 dark:border-neutral-800">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <button
+                    type="button"
+                    onClick={() => setContractsPage((page) => Math.max(0, page - 1))}
+                    disabled={safeContractsPage <= 0}
+                    className={paginationIconBtnCls}
+                    aria-label="صفحه قبل"
+                    title="صفحه قبل"
+                  >
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setContractsPage((page) => Math.min(contractsPageCount - 1, page + 1))}
+                    disabled={safeContractsPage >= contractsPageCount - 1}
+                    className={paginationIconBtnCls}
+                    aria-label="صفحه بعد"
+                    title="صفحه بعد"
+                  >
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M15 18l-6-6 6-6" />
+                    </svg>
+                  </button>
+                  <div className="whitespace-nowrap text-black/70 dark:text-neutral-400">
+                    {contractsTotal === 0 ? "۰ از ۰" : `${toFaDigits(contractsStartIdx + 1)}-${toFaDigits(contractsEndIdx)} از ${toFaDigits(contractsTotal)}`}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span>
+                  <select
+                    value={contractsRowsPerPage}
+                    onChange={(e) => {
+                      setContractsRowsPerPage(Number(e.target.value) || 10);
+                      setContractsPage(0);
+                    }}
+                    className="h-9 rounded-lg border border-black/10 bg-white px-2 text-black outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                  >
+                    {[10, 25, 100].map((count) => (
+                      <option key={count} value={count}>
+                        {toFaDigits(count)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="hidden">
+            <div dir="ltr" className="relative max-h-[55vh] overflow-y-auto overflow-x-auto">
+            <table dir="rtl" className="w-full min-w-[1120px] table-fixed text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-2 [&_td]:py-2 [&_th]:whitespace-nowrap [&_td]:min-w-0">
               <thead className="bg-black/[0.03] text-black/70 dark:bg-white/[0.05] dark:text-neutral-300">
                 <tr>
                   <th className="px-3 py-3 text-right font-semibold">مرکز/پروژه</th>
@@ -2679,6 +2952,7 @@ export default function ContractInformation() {
               </tbody>
             </table>
           </div>
+        </div>
         </div>
       </Card>
 
