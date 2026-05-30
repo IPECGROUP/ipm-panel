@@ -7,12 +7,12 @@ export default {
   ],
   theme: {
   	extend: {
-  		fontFamily: {
-  			sans: [
-  				'Vazirmatn',
-  				'system-ui',
-  				'-apple-system',
-  				'Segoe UI',
+  			fontFamily: {
+  				sans: [
+  					'Vazir',
+  					'system-ui',
+  					'-apple-system',
+  					'Segoe UI',
   				'sans-serif'
   			]
   		},

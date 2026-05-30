@@ -587,7 +587,10 @@ export default function RoznegarPgae() {
 
   const [uploadOpen, setUploadOpen] = useState(false);
   const [filesUploading, setFilesUploading] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
   const [tableFilter, setTableFilter] = useState("");
+  const [tableFilterTagIds, setTableFilterTagIds] = useState([]);
+  const [tagModalMode, setTagModalMode] = useState("entry");
   const [confirmSaving, setConfirmSaving] = useState(false);
   const [syncState, setSyncState] = useState({ type: "", text: "" });
   const [filePreview, setFilePreview] = useState({ open: false, file: null, url: "", isObjectUrl: false });
@@ -871,6 +874,11 @@ export default function RoznegarPgae() {
     return MOCK_TAGS.filter((t) => set.has(String(t.id)));
   }, [activeEntry?.tagIds]);
 
+  const selectedFilterTags = useMemo(() => {
+    const set = new Set((tableFilterTagIds || []).map(String));
+    return MOCK_TAGS.filter((t) => set.has(String(t.id)));
+  }, [tableFilterTagIds]);
+
   const relatedSelectedIds = useMemo(
     () => (Array.isArray(activeEntry?.relatedDocIds) ? activeEntry.relatedDocIds.map(String) : []),
     [activeEntry?.relatedDocIds]
@@ -968,6 +976,7 @@ export default function RoznegarPgae() {
         const tags = (Array.isArray(row.tagIds) ? row.tagIds : [])
           .map((id) => tagById.get(String(id))?.label || "")
           .filter(Boolean);
+        const tagIds = (Array.isArray(row.tagIds) ? row.tagIds : []).map(String).filter(Boolean);
         const docs = (Array.isArray(row.relatedDocIds) ? row.relatedDocIds : [])
           .map((id) => letterById.get(String(id)))
           .filter(Boolean)
@@ -1000,6 +1009,7 @@ export default function RoznegarPgae() {
           dateLabel,
           dayName: row.dayName || "",
           activity: String(row.activity || "").trim(),
+          tagIds,
           tagsText: tags.join("، "),
           docsText: docs.join(" | "),
           files,
@@ -1018,16 +1028,43 @@ export default function RoznegarPgae() {
       );
 
     const q = toEnDigits(String(tableFilter || "").trim()).toLowerCase();
-    if (!q) return raw;
-    return raw.filter((r) => toEnDigits(String(r.searchText || "")).toLowerCase().includes(q));
-  }, [entriesByDate, tableFilter, tagById, letterById, activeProject]);
+    let rows = raw;
+    if (q) rows = rows.filter((r) => toEnDigits(String(r.searchText || "")).toLowerCase().includes(q));
 
-  const openTagModal = () => {
-    setTagDraftIds((activeEntry?.tagIds || []).map(String));
+    const filterIds = (Array.isArray(tableFilterTagIds) ? tableFilterTagIds : [])
+      .map((x) => String(x || "").trim())
+      .filter(Boolean);
+    if (filterIds.length) {
+      rows = rows.filter((r) => {
+        const set = new Set((Array.isArray(r.tagIds) ? r.tagIds : []).map(String));
+        return filterIds.every((id) => set.has(String(id)));
+      });
+    }
+
+    return rows;
+  }, [entriesByDate, tableFilter, tableFilterTagIds, tagById, letterById, activeProject]);
+
+  const openTagModal = (mode = "entry") => {
+    const safeMode = mode === "filter" ? "filter" : "entry";
+    setTagModalMode(safeMode);
+    setTagDraftIds(
+      safeMode === "filter"
+        ? (tableFilterTagIds || []).map(String)
+        : (activeEntry?.tagIds || []).map(String)
+    );
     setTagSearch("");
     setTagPickKind("letters");
     setTagPickCategory("همه");
     setTagModalOpen(true);
+  };
+
+  const applyPickedTags = () => {
+    const clean = (Array.isArray(tagDraftIds) ? tagDraftIds : [])
+      .map((x) => String(x || "").trim())
+      .filter(Boolean);
+    if (tagModalMode === "filter") setTableFilterTagIds(clean);
+    else updateActiveEntry((curr) => ({ ...curr, tagIds: clean }));
+    setTagModalOpen(false);
   };
 
   const openRelatedPicker = () => {
@@ -1310,12 +1347,32 @@ export default function RoznegarPgae() {
         className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800"
       >
         <div className={"transition-all duration-500 " + cardReveal}>
-          <div className="mb-4 text-base md:text-lg">
-            <span className="text-neutral-700 dark:text-neutral-300">پروژه‌ها</span>
-            <span className="mx-2 text-neutral-500 dark:text-neutral-400">›</span>
-            <span className="font-semibold text-neutral-900 dark:text-neutral-100">روزنگار پروژه</span>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="text-base md:text-lg">
+              <span className="text-neutral-700 dark:text-neutral-300">پروژه‌ها</span>
+              <span className="mx-2 text-neutral-500 dark:text-neutral-400">›</span>
+              <span className="font-semibold text-neutral-900 dark:text-neutral-100">روزنگار پروژه</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFormOpen((open) => !open)}
+              className={
+                "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
+                (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
+              }
+              title={formOpen ? "بستن" : "افزودن"}
+              aria-label={formOpen ? "بستن" : "افزودن"}
+            >
+              <img
+                src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"}
+                alt=""
+                className="w-5 h-5 dark:invert"
+              />
+            </button>
           </div>
 
+          {formOpen ? (
+            <>
           <div className="mb-5 rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-3 dark:border-neutral-800 dark:bg-neutral-800/50">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
               <div className="w-full lg:max-w-md">
@@ -1537,10 +1594,10 @@ export default function RoznegarPgae() {
                         </button>
                       ))}
 
-                      <button
+                        <button
                         type="button"
                         disabled={editorDisabled}
-                        onClick={openTagModal}
+                        onClick={() => openTagModal("entry")}
                         className={
                           "h-10 px-3 shrink-0 rounded-xl border transition inline-flex items-center justify-center gap-2 " +
                           (theme === "dark"
@@ -1663,17 +1720,64 @@ export default function RoznegarPgae() {
               </div>
             </section>
           </div>
+            </>
+          ) : null}
 
           <div className="mt-4 space-y-3">
-            <div>
-              <div className={labelCls}>فیلتر</div>
-              <input
-                value={tableFilter}
-                onChange={(e) => setTableFilter(e.target.value)}
-                className={inputCls + " h-10 text-xs md:text-sm"}
-                placeholder="جستجو در تاریخ، روز، شرح، برچسب‌ها، مستندات و فایل‌ها..."
-              />
+            {!formOpen ? (
+            <div
+              className={
+                "space-y-3 rounded-2xl border p-3 " +
+                (theme === "dark" ? "border-white/10 bg-transparent" : "border-black/10 bg-white")
+              }
+            >
+              <div>
+                <div className={labelCls}>جستجو</div>
+                <input
+                  value={tableFilter}
+                  onChange={(e) => setTableFilter(e.target.value)}
+                  className={inputCls + " h-10 text-xs md:text-sm"}
+                  placeholder="جستجو در تاریخ، روز، شرح، برچسب‌ها، مستندات و فایل‌ها..."
+                />
+              </div>
+
+              <div>
+                <div className={labelCls}>برچسب‌ها</div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {selectedFilterTags.map((tag) => {
+                    const id = String(tag.id);
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setTableFilterTagIds((prev) => (prev || []).filter((x) => String(x) !== id))}
+                        className={selectedTagChipCls + " shrink-0"}
+                        title={tag.label}
+                        aria-label={tag.label}
+                      >
+                        <span className="truncate max-w-[200px]">{tag.label}</span>
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    type="button"
+                    onClick={() => openTagModal("filter")}
+                    className={
+                      "h-10 w-10 shrink-0 rounded-full border transition inline-flex items-center justify-center " +
+                      (theme === "dark"
+                        ? "border-white/15 bg-white/5 hover:bg-white/10"
+                        : "border-black/10 bg-white hover:bg-black/[0.02]")
+                    }
+                    aria-label="افزودن برچسب"
+                    title="افزودن برچسب"
+                  >
+                    <img src="/images/icons/sayer.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")} />
+                  </button>
+                </div>
+              </div>
             </div>
+            ) : null}
 
             <div className={"rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
               <div className="max-h-[360px] overflow-auto">
@@ -1844,7 +1948,9 @@ export default function RoznegarPgae() {
               >
                 <div className="h-full flex flex-col">
                   <div className="px-3 md:px-4 py-2.5 md:py-3 flex items-center justify-between gap-3 border-b border-black/10 dark:border-white/10">
-                    <div className="font-bold text-[12px] md:text-[13px]">انتخاب برچسب</div>
+                    <div className="font-bold text-[12px] md:text-[13px]">
+                      {tagModalMode === "filter" ? "انتخاب برچسب برای فیلتر" : "انتخاب برچسب"}
+                    </div>
                     <button
                       type="button"
                       onClick={() => setTagModalOpen(false)}
@@ -1951,10 +2057,7 @@ export default function RoznegarPgae() {
                   <div className="px-3 md:px-4 py-3 border-t border-black/10 dark:border-white/10 flex items-center justify-end gap-2">
                     <button
                       type="button"
-                      onClick={() => {
-                        updateActiveEntry((curr) => ({ ...curr, tagIds: [...tagDraftIds] }));
-                        setTagModalOpen(false);
-                      }}
+                      onClick={applyPickedTags}
                       className={
                         "h-9 w-9 md:h-10 md:w-10 rounded-xl flex items-center justify-center transition ring-1 " +
                         (theme === "dark"

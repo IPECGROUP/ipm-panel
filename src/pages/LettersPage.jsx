@@ -44,7 +44,6 @@ function disableMainAdmin(setIsMainAdmin) {
 }
 
 const LETTERS_CACHE_KEY = "letters_mine_cache_v1";
-const LETTERS_CACHE_TTL = 1000 * 60 * 10; // 10 دقیقه
 
 const TABS = [
   { id: "all", label: "همه" },
@@ -214,8 +213,10 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
 
     const r = btn.getBoundingClientRect();
     const margin = 8;
+    const popWidth = Math.min(420, Math.max(0, window.innerWidth - 24));
+    const maxRight = Math.max(margin, window.innerWidth - popWidth - margin);
 
-    const right = Math.max(margin, window.innerWidth - r.right);
+    const right = Math.min(maxRight, Math.max(margin, window.innerWidth - r.right));
 
     let top = r.bottom + margin;
 
@@ -292,7 +293,12 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
               "fixed z-[9999] w-[min(420px,calc(100vw-24px))] rounded-2xl border shadow-lg p-4 " +
               (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
             }
-            style={{ top: pos.top, right: pos.right }}
+            style={{
+              top: pos.top,
+              right: pos.right,
+              maxHeight: "calc(100vh - 16px)",
+              overflowY: "auto",
+            }}
           >
             <div className="flex items-center justify-between mb-3">
               <div className="font-semibold text-sm">انتخاب تاریخ</div>
@@ -429,6 +435,38 @@ function formatBytes(n) {
   return `${Math.round(v * 10) / 10} ${units[i]}`;
 }
 
+const LETTER_UPLOAD_ACCEPT = "image/*,.pdf,application/pdf";
+const LETTER_UPLOAD_IMAGE_EXTS = new Set([
+  ".avif",
+  ".bmp",
+  ".gif",
+  ".heic",
+  ".heif",
+  ".ico",
+  ".jfif",
+  ".jpeg",
+  ".jpg",
+  ".pjp",
+  ".pjpeg",
+  ".png",
+  ".svg",
+  ".tif",
+  ".tiff",
+  ".webp",
+]);
+
+const isAllowedLetterUploadFile = (file) => {
+  const type = String(file?.type || "").toLowerCase();
+  if (type.startsWith("image/") || type === "application/pdf") return true;
+
+  const name = String(file?.name || "").toLowerCase();
+  const dot = name.lastIndexOf(".");
+  const ext = dot >= 0 ? name.slice(dot) : "";
+  return ext === ".pdf" || LETTER_UPLOAD_IMAGE_EXTS.has(ext);
+};
+
+const ensureLetterUploadableFile = async (file) => file;
+
 const FieldWrap = React.memo(function FieldWrap({ children }) {
   return <div className="relative pb-4">{children}</div>;
 });
@@ -445,10 +483,15 @@ const toEnDigits = (s) =>
 
 const pad5 = (n) => String(Number(n) || 0).padStart(5, "0");
 
+const normalizeDigits = (s) =>
+  String(s ?? "")
+    .replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06F0))
+    .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660));
+
 // گرفتن ۲ رقم آخر سال شمسی (مثلاً 1404 -> "04")
 const getJalaliYY = (date = new Date()) => {
   const y = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric" }).format(date);
-  const en = toEnDigits(y);
+  const en = normalizeDigits(y);
   return en.slice(-2);
 };
 
@@ -457,36 +500,48 @@ const getProjectCode = (projectId, projectsTopOnly) => {
   const pid = String(projectId || "").trim();
   if (!pid) return "";
   const p = (Array.isArray(projectsTopOnly) ? projectsTopOnly : []).find((x) => String(x?.id) === pid);
-  return String(p?.__baseCode ?? p?.code ?? "").trim();
+  const raw = normalizeDigits(String(p?.__baseCode ?? p?.code ?? "").trim());
+  if (/^\d{3}$/.test(raw)) return raw;
+  const m = raw.match(/^(\d{3})/);
+  return m ? m[1] : "";
 };
 
 // پارس کردن کد 04/156/10403
 const parseAutoCode = (s) => {
-  const m = String(s || "").trim().match(/^(\d{2})\/([^/]+)\/(\d{5})$/);
+  const m = normalizeDigits(String(s || "").trim()).match(/^(\d{2})\/(\d{3})\/(\d{5})$/);
   if (!m) return null;
   return { yy: m[1], pcode: m[2], seq: Number(m[3]) };
+};
+
+const parsePlainSequence = (s) => {
+  const v = normalizeDigits(String(s || "")).trim();
+  if (!/^\d{5}$/.test(v)) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+const parseAutoLetterSequence = (s, yy) => {
+  const normalized = normalizeDigits(String(s || "").trim());
+  if (!normalized) return null;
+
+  const parsed = parseAutoCode(normalized);
+  if (!parsed || parsed.yy !== yy) return null;
+  return Number.isFinite(parsed.seq) ? parsed.seq : null;
 };
 
 // =====================
 // Auto Code Generator — خارج از کامپوننت
 // =====================
-const computeNextAutoCode = ({ projectId, letters, projectsTopOnly }) => {
+const _computeNextAutoCode = ({ projectId, letters, projectsTopOnly }) => {
   const yy = getJalaliYY(new Date());
   const pcode = getProjectCode(projectId, projectsTopOnly);
-  if (!pcode) return ""; // تا پروژه انتخاب نشده، کد نساز
+  if (!pcode) return "";
 
-  // مقدار شروع هر سال را اینجا تنظیم کن. برای سال 1404 از 10536 شروع می‌شود.
-  const startByYearMap = {
-    "04": 10536,
-  };
-  const startByYear = Number(startByYearMap[yy]) || 10000;
+  const startByYear = 10000;
+  let maxAutoSeq = 0;
+  let maxLegacyPlainSeq = 0;
 
-  let maxSeq = 0;
-
-// ✅ این تکه جدید: جایگزین forEach قبلی
-(Array.isArray(letters) ? letters : []).forEach((l) => {
-  // ✅ شماره مشترک بین همه تب‌ها:
-  // هم letter_no و هم secretariat_no رو بررسی کن
+  (Array.isArray(letters) ? letters : []).forEach((l) => {
   const rawCandidates = [
     l?.letter_no,
     l?.letterNo,
@@ -497,27 +552,19 @@ const computeNextAutoCode = ({ projectId, letters, projectsTopOnly }) => {
   if (!rawCandidates.length) return;
 
   for (const rawNo of rawCandidates) {
-    let parsed = parseAutoCode(rawNo);
+    const autoSeq = parseAutoLetterSequence(rawNo, yy);
+    if (Number.isFinite(autoSeq) && autoSeq > maxAutoSeq) maxAutoSeq = autoSeq;
 
-    // ✅ fallback: اگر فقط 10700 ذخیره شده بود یا آخرش 5 رقم داشت
-    if (!parsed) {
-      const v = toEnDigits(String(rawNo ?? "")).trim();
-      const m = v.match(/^(\d{2})\/(\d{3})\/(\d{5})$/);
-      if (m) {
-        parsed = { yy: m[1], pcode: m[2], seq: Number(m[3]) };
-      }
+    const plainSeq = parsePlainSequence(rawNo);
+    if (Number.isFinite(plainSeq) && plainSeq > maxLegacyPlainSeq) {
+      maxLegacyPlainSeq = plainSeq;
     }
-
-    if (!parsed) continue;
-
-    if (parsed.yy !== yy) continue;
-    if (Number.isFinite(parsed.seq) && parsed.seq > maxSeq) maxSeq = parsed.seq;
   }
 });
 
-// ✅ این خط پایین هم باید همون پایینِ computeNextAutoCode باشه
-const nextSeq = maxSeq >= startByYear ? (maxSeq + 1) : startByYear;
-return `${yy}/${pcode}/${pad5(nextSeq)}`;
+  const maxSeq = maxAutoSeq || maxLegacyPlainSeq;
+  const nextSeq = maxSeq >= startByYear ? (maxSeq + 1) : startByYear;
+  return `${yy}/${pcode}/${pad5(nextSeq)}`;
 };
 function makeProgressUpdater(setDocFilesFor, kind, fileId) {
   let lastP = -1;
@@ -664,6 +711,7 @@ const REQUIRED = {
 
   incoming: [
     "classification", // طبقه بندی
+    "projectId",      // شماره از سرور با پروژه ساخته می‌شود
     "letterNo",       // شماره سند
     "letterDate",     // تاریخ سند
     "subject",        // موضوع
@@ -686,6 +734,7 @@ const validate = (kind) => {
   const valuesByKind = {
     incoming: {
       classification: incomingForm.classification,
+      projectId: incomingForm.projectId,
       letterNo: incomingForm.letterNo,
       letterDate: incomingForm.letterDate,
 subject: incomingForm.subject,
@@ -772,11 +821,11 @@ const [hasYScroll, setHasYScroll] = useState(false);
     return data;
   }
 // ===== Letter Prefs (backend) =====
-const LETTER_PREFS_ENDPOINT = "/letters/prefs";
+const LETTER_PREFS_ENDPOINT = "/tag-prefs";
 
 async function fetchLetterPrefs() {
   const r = await api(LETTER_PREFS_ENDPOINT, { method: "GET" });
-  return r?.prefs || {};
+  return r?.item || r?.prefs || {};
 }
 
 // ✅ مهم: برای جلوگیری از missing_id به جای PATCH از POST استفاده کن (upsert)
@@ -785,7 +834,7 @@ async function patchLetterPrefs(patch) {
     method: "POST",
     body: JSON.stringify(patch || {}),
   });
-  return r?.prefs || {};
+  return r?.item || r?.prefs || {};
 }
 
   const [theme, setTheme] = useState(() =>
@@ -823,6 +872,12 @@ useEffect(() => {
     const obs = new MutationObserver(() => apply());
     obs.observe(el, { attributes: true, attributeFilter: ["class"] });
     return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    try {
+      sessionStorage.removeItem(LETTERS_CACHE_KEY);
+    } catch {}
   }, []);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -873,6 +928,24 @@ const setForm = (kind, patch) => {
   if (kind === "outgoing") setOutgoingForm((p) => ({ ...p, ...patch }));
   else if (kind === "internal") setInternalForm((p) => ({ ...p, ...patch }));
   else setIncomingForm((p) => ({ ...p, ...patch }));
+};
+
+const getSecretariatNoForKind = (kind) =>
+  kind === "incoming"
+    ? incomingSecretariatNo
+    : kind === "outgoing"
+    ? outgoingSecretariatNo
+    : internalSecretariatNo;
+
+const getSecretariatNoDisplayForKind = (kind) =>
+  nextCodeLoadingKind === kind
+    ? "\u062f\u0631 \u062d\u0627\u0644 \u062f\u0631\u06cc\u0627\u0641\u062a..."
+    : getSecretariatNoForKind(kind);
+
+const getEffectiveLetterNoForKind = (kind) => {
+  if (kind === "incoming") return String(incomingForm.letterNo || "").trim();
+  if (kind === "internal") return String(internalSecretariatNo || internalForm.letterNo || "").trim();
+  return String(outgoingSecretariatNo || outgoingForm.letterNo || "").trim();
 };
 
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -970,7 +1043,15 @@ const resolveFileUrl = (u) => {
   if (!url) return "";
   if (/^https?:\/\//i.test(url)) return url;
   if (url.startsWith("//")) return window.location.protocol + url;
-  if (url.startsWith("/")) return url;
+  if (url.startsWith("/")) {
+    try {
+      const apiUrl = String(API_BASE || "").trim();
+      const abs = /^https?:\/\//i.test(apiUrl) ? new URL(apiUrl) : new URL(window.location.origin);
+      return new URL(url, abs.origin).toString();
+    } catch {
+      return url;
+    }
+  }
 
   // اگر بک‌اند "public/..." داد
   if (url.startsWith("public/")) return "/" + url.replace(/^public\//, "");
@@ -1005,14 +1086,11 @@ const canSeeConfidential = useMemo(() => {
 }, [loggedInUsername]);
 
 const canEditSecretariatNo = useMemo(() => {
-  const role = String(user?.role || "").trim().toLowerCase();
-  if (role === "admin" || isMainAdminUser(user)) return true;
-
-  const ids = [user?.id, user?.username, user?.user_name, user?.login]
+  const ids = [user?.username, user?.user_name, user?.login, user?.name]
     .map((x) => String(x || "").trim().toLowerCase())
     .filter(Boolean);
 
-  return ids.includes("rastegar");
+  return ids.includes("marandi") || ids.includes("rastegar");
 }, [user]);
 
 // ===== Filters (page-level) =====
@@ -1200,12 +1278,12 @@ const isConfidentialLetter = (l) => {
 
   const letterNoOf = (l) =>
     pickFirstNonEmpty(
+      l?.secretariat_no,
+      l?.secretariatNo,
       l?.letter_no,
       l?.letterNo,
       l?.no,
-      l?.number,
-      l?.secretariat_no,
-      l?.secretariatNo
+      l?.number
     );
 
   const secretariatNoOf = (l) => pickFirstNonEmpty(l?.secretariat_no, l?.secretariatNo);
@@ -1532,6 +1610,7 @@ const formSelectedTagIds =
   const [incomingSecretariatNo, setIncomingSecretariatNo] = useState("");
   const [outgoingSecretariatNo, setOutgoingSecretariatNo] = useState("");
   const [internalSecretariatNo, setInternalSecretariatNo] = useState("");
+  const [nextCodeLoadingKind, setNextCodeLoadingKind] = useState("");
 
   const [incomingReceiverName, setIncomingReceiverName] = useState("");
   const [outgoingReceiverName, setOutgoingReceiverName] = useState("");
@@ -1544,10 +1623,35 @@ const formSelectedTagIds =
 
   
   const closeView = () => setViewOpen(false);
-  const openView = (l) => {
+  const openView = async (l) => {
     setViewLetter(l || null);
     setViewAttIdx(0);
     setViewOpen(true);
+
+    const id = String(letterIdOf(l) || "").trim();
+    if (!id) return;
+
+    try {
+      const r = await api(`/letters/${encodeURIComponent(id)}`);
+      const fresh = r?.item || r;
+      if (fresh) {
+        const localAttachments = attachmentsOf(l);
+        const freshAttachments = attachmentsOf(fresh);
+        const mergedAttachments = mergeAttachmentLists(freshAttachments, localAttachments);
+        setViewLetter({
+          ...(l && typeof l === "object" ? l : {}),
+          ...(fresh && typeof fresh === "object" ? fresh : {}),
+          attachments: mergedAttachments,
+          has_attachment:
+            mergedAttachments.length > 0
+              ? true
+              : !!(fresh?.has_attachment ?? fresh?.hasAttachment ?? l?.has_attachment ?? l?.hasAttachment),
+        });
+        setViewAttIdx(0);
+      }
+    } catch {
+      // keep optimistic local item if server fetch fails
+    }
   };
 
   useEffect(() => {
@@ -1882,6 +1986,23 @@ const resetAllFilters = () => {
       fd.append("file", file);
       fd.append("letter_id", String(letterId));
 
+      const extractUploadError = () => {
+        try {
+          const raw = String(xhr.responseText || "").trim();
+          if (raw) {
+            try {
+              const parsed = JSON.parse(raw);
+              const msg = String(parsed?.error || parsed?.message || "").trim();
+              if (msg) return msg;
+            } catch {}
+          }
+        } catch {}
+        if (xhr.status === 413) {
+          return `\u062f\u0631\u062e\u0648\u0627\u0633\u062a \u0622\u067e\u0644\u0648\u062f \u0628\u0627 \u062e\u0637\u0627\u06cc 413 \u0631\u062f \u0634\u062f. \u0627\u06cc\u0646 \u062e\u0637\u0627 \u0645\u0639\u0645\u0648\u0644\u0627\u064b \u0627\u0632 \u067e\u0631\u0648\u06a9\u0633\u06cc \u06cc\u0627 \u0648\u0628\u200c\u0633\u0631\u0648\u0631 \u0642\u0628\u0644 \u0627\u0632 API \u0645\u06cc\u200c\u0622\u06cc\u062f. \u0645\u0633\u06cc\u0631: ${API_BASE}/uploads/letters`;
+        }
+        return `\u062e\u0637\u0627 \u062f\u0631 \u0622\u067e\u0644\u0648\u062f \u0641\u0627\u06cc\u0644${xhr.status ? ` (${xhr.status})` : ""}`;
+      };
+
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable && typeof onProgress === "function") {
           const p = Math.round((e.loaded / e.total) * 100);
@@ -1899,18 +2020,18 @@ const resetAllFilters = () => {
             resolve({});
           }
         } else {
-          reject(new Error("خطا در آپلود فایل"));
+          reject(new Error(extractUploadError()));
         }
       };
 
-      xhr.onerror = () => reject(new Error("خطا در آپلود فایل"));
+      xhr.onerror = () => reject(new Error("\u0627\u0631\u062a\u0628\u0627\u0637 \u0628\u0627 \u0633\u0631\u0648\u0631 \u0628\u0631\u0627\u06cc \u0622\u067e\u0644\u0648\u062f \u0641\u0627\u06cc\u0644 \u0628\u0631\u0642\u0631\u0627\u0631 \u0646\u0634\u062f."));
       xhr.send(fd);
     });
   };
 
   const _uploadQueuedFiles = async (kind, letterId) => {
   const files = Array.isArray(docFilesByType?.[kind]) ? docFilesByType[kind] : [];
-  const queue = files.filter((f) => f && f.status !== "error" && (f.optimizedFile || f.file) && !f.url);
+  const queue = files.filter((f) => f && (f.optimizedFile || f.file) && !f.url);
 
   if (!queue.length) return;
 
@@ -1953,34 +2074,39 @@ const resetAllFilters = () => {
     if (!list.length) return;
 
     for (const rawFile of list) {
-      const isPdf = rawFile.type === "application/pdf" || rawFile.name.toLowerCase().endsWith(".pdf");
-      const isImg = rawFile.type && rawFile.type.startsWith("image/");
-
-      if (!isImg && !isPdf) {
-        alert("فقط تصویر و PDF مجاز است.");
+      if (!isAllowedLetterUploadFile(rawFile)) {
+        alert("فقط فایل PDF و فایل های تصویری قابل بارگذاری هستند.");
         continue;
       }
 
-      const id = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
-      const previewUrl = isImg ? URL.createObjectURL(rawFile) : null;
+      const isImg = rawFile.type && rawFile.type.startsWith("image/");
 
-      setDocFilesFor(which, (prev) => [
-        ...prev,
-        {
-          id,
-          name: rawFile.name,
-          size: rawFile.size,
-          type: rawFile.type,
-          status: "ready",
-          progress: 0,
-          error: "",
-          serverId: null,
-          url: null,
-          previewUrl,
-          file: rawFile,
-          optimizedFile: rawFile,
-        },
-      ]);
+      try {
+        const preparedFile = await ensureLetterUploadableFile(rawFile);
+        const id = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+        const previewSource = isImg ? preparedFile : rawFile;
+        const previewUrl = previewSource ? URL.createObjectURL(previewSource) : null;
+
+        setDocFilesFor(which, (prev) => [
+          ...prev,
+          {
+            id,
+            name: preparedFile.name || rawFile.name,
+            size: preparedFile.size || rawFile.size,
+            type: preparedFile.type || rawFile.type,
+            status: "ready",
+            progress: 0,
+            error: "",
+            serverId: null,
+            url: null,
+            previewUrl,
+            file: rawFile,
+            optimizedFile: preparedFile,
+          },
+        ]);
+      } catch (e) {
+        alert(e?.message || "\u062e\u0637\u0627 \u062f\u0631 \u0622\u0645\u0627\u062f\u0647\u200c\u0633\u0627\u0632\u06cc \u0641\u0627\u06cc\u0644 \u0628\u0631\u0627\u06cc \u0622\u067e\u0644\u0648\u062f.");
+      }
     }
   };
 
@@ -2015,18 +2141,10 @@ const resetAllFilters = () => {
   }, []);
 
   const refetchLetters = async () => {
-  const r = await api("/letters/mine");
-  const items = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
-  setMyLetters(items);
-
-  // ✅ cache
-  try {
-    sessionStorage.setItem(
-      LETTERS_CACHE_KEY,
-      JSON.stringify({ t: Date.now(), items })
-    );
-  } catch {}
-};
+    const r = await api("/letters/mine");
+    const items = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
+    setMyLetters(items);
+  };
 
 
   useEffect(() => {
@@ -2051,46 +2169,15 @@ const resetAllFilters = () => {
  useEffect(() => {
   let mounted = true;
 
-  // 1) سریع از کش نشون بده
-  try {
-    const raw = sessionStorage.getItem(LETTERS_CACHE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      const t = Number(parsed?.t || 0);
-      const cached = Array.isArray(parsed?.items) ? parsed.items : [];
-
-      if (cached.length && Date.now() - t < LETTERS_CACHE_TTL) {
-        setMyLetters(cached);
-      }
-    }
-  } catch {}
-
-  // 2) بعدش در پس‌زمینه از سرور آپدیت کن
   (async () => {
     try {
       const r = await api("/letters/mine");
       const items = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
       if (!mounted) return;
-
       setMyLetters(items);
-
-      // آپدیت کش
-      try {
-        sessionStorage.setItem(LETTERS_CACHE_KEY, JSON.stringify({ t: Date.now(), items }));
-      } catch {}
     } catch {
-      // اگر کش داشتی، اینجا لازم نیست خالی کنی
       if (!mounted) return;
-
-      // فقط وقتی کش نداشتیم خالی کن (اختیاری ولی بهتر برای UX)
-      try {
-        const raw = sessionStorage.getItem(LETTERS_CACHE_KEY);
-        const parsed = raw ? JSON.parse(raw) : null;
-        const cached = Array.isArray(parsed?.items) ? parsed.items : [];
-        if (!cached.length) setMyLetters([]);
-      } catch {
-        setMyLetters([]);
-      }
+      setMyLetters([]);
     }
   })();
 
@@ -2266,7 +2353,7 @@ const projectsTopOnly = useMemo(() => {
   const seen = new Set();
 
   for (const p of arr) {
-    const raw = String(p?.code ?? "").trim(); // مثال: 159 یا 159.1.1
+    const raw = normalizeDigits(String(p?.code ?? "").trim()); // مثال: 159 یا 159.1.1
     const base = raw.split(".")[0].trim();   // میشه 159
 
     // فقط کد ۳ رقمی
@@ -2301,48 +2388,63 @@ const projectsTopOnly = useMemo(() => {
 // ===== Auto code injection (Create only) =====
 const currentProjectId = getForm(formKind).projectId || "";
 
-useEffect(() => {
-  if (!formOpen) return;
-  if (editingId) return; // ادیت → کد جدید نساز
+const setSecretariatNoForKind = (kind, code) => {
+  if (kind === "incoming") setIncomingSecretariatNo(code);
+  else if (kind === "outgoing") setOutgoingSecretariatNo(code);
+  else setInternalSecretariatNo(code);
+};
 
-  const setCode = (code) => {
-    if (!code) return;
-    if (formKind === "incoming") setIncomingSecretariatNo(code);
-    else if (formKind === "outgoing") setOutgoingSecretariatNo(code);
-    else setInternalSecretariatNo(code);
-  };
+const fetchNextCodeForProject = async (kind, projectId, { silent = false } = {}) => {
+  const pid = String(projectId || "").trim();
+  if (!pid) {
+    setSecretariatNoForKind(kind, "");
+    return "";
+  }
 
-  const fallbackCode = computeNextAutoCode({
-    kind: formKind,
-    projectId: currentProjectId,
+  const fallbackCode = _computeNextAutoCode({
+    projectId: pid,
     letters: myLetters,
     projectsTopOnly,
   });
+
+  if (!silent) setNextCodeLoadingKind(kind);
+  try {
+    const q = encodeURIComponent(pid);
+    const r = await api(`/letters/next-code?project_id=${q}`);
+    const code = String(r?.code || "").trim() || fallbackCode;
+    setSecretariatNoForKind(kind, code);
+    return code;
+  } catch {
+    setSecretariatNoForKind(kind, fallbackCode);
+    return fallbackCode;
+  } finally {
+    setNextCodeLoadingKind((cur) => (cur === kind ? "" : cur));
+  }
+};
+
+useEffect(() => {
+  if (!formOpen) return;
+  if (editingId) return; // ادیت → کد جدید نساز
 
   let cancelled = false;
 
   (async () => {
     if (!currentProjectId) {
-      setCode(fallbackCode);
+      if (cancelled) return;
+      setSecretariatNoForKind(formKind, "");
       return;
     }
 
-    try {
-      const q = encodeURIComponent(String(currentProjectId || "").trim());
-      const r = await api(`/letters/next-code?project_id=${q}`);
-      if (cancelled) return;
-      setCode(String(r?.code || "").trim() || fallbackCode);
-    } catch {
-      if (cancelled) return;
-      setCode(fallbackCode);
-    }
+    const code = await fetchNextCodeForProject(formKind, currentProjectId, { silent: true });
+    if (cancelled) return;
+    setSecretariatNoForKind(formKind, code);
   })();
 
   return () => {
     cancelled = true;
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [formOpen, formKind, editingId, currentProjectId, myLetters, projectsTopOnly]);
+}, [formOpen, formKind, editingId, currentProjectId, user?.id]);
 const setFormTagsAllAndPersist = (ids) => {
   const next = normalizeIdList(ids);
 
@@ -2399,7 +2501,7 @@ const toggleFormTag = (sid) => {
     });
   }
 
-  clearFieldError("formTags");
+  clearFieldError(formKind, "formTags");
 };
 
   const tagLabelOf = (t) =>
@@ -2644,12 +2746,65 @@ const secretariatLongText = (ymd) => {
     return Number.isFinite(n) ? n : 0;
   };
 
- const isPdfUrl = (url, name = "") =>
+const isPdfUrl = (url, name = "") =>
   /(\.pdf)(\?|#|$)/i.test(String(url || "")) || /(\.pdf)$/i.test(String(name || ""));
 
 const isImageUrl = (url, name = "") =>
   /\.(png|jpe?g|gif|webp)(\?|#|$)/i.test(String(url || "")) ||
   /\.(png|jpe?g|gif|webp)$/i.test(String(name || ""));
+
+const isWordFile = (url, name = "", type = "") => {
+  const rawType = String(type || "").toLowerCase();
+  if (rawType.includes("word") || rawType.includes("officedocument.wordprocessingml")) return true;
+  return /\.(docx?|odt)(\?|#|$)/i.test(String(url || "")) || /\.(docx?|odt)$/i.test(String(name || ""));
+};
+
+const isExcelFile = (url, name = "", type = "") => {
+  const rawType = String(type || "").toLowerCase();
+  if (rawType.includes("excel") || rawType.includes("spreadsheetml") || rawType.includes("csv")) return true;
+  return /\.(xlsx?|xlsm|csv|ods)(\?|#|$)/i.test(String(url || "")) || /\.(xlsx?|xlsm|csv|ods)$/i.test(String(name || ""));
+};
+
+const isOfficeFile = (url, name = "", type = "") => isWordFile(url, name, type) || isExcelFile(url, name, type);
+
+const canUseOfficeWebViewer = (url) => {
+  try {
+    const parsed = new URL(String(url || ""), window.location.origin);
+    if (!/^https?:$/i.test(parsed.protocol)) return false;
+    const host = String(parsed.hostname || "").toLowerCase();
+    if (!host) return false;
+    if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") return false;
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const officeViewerUrlOf = (url) => {
+  const src = String(url || "").trim();
+  if (!src || !canUseOfficeWebViewer(src)) return "";
+  return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(src)}`;
+};
+
+const mergeAttachmentLists = (primary, fallback) => {
+  const next = [];
+  const seen = new Set();
+  for (const item of [...(Array.isArray(primary) ? primary : []), ...(Array.isArray(fallback) ? fallback : [])]) {
+    if (!item || typeof item !== "object") continue;
+    const key = String(
+      item?.file_id ??
+      item?.id ??
+      item?.url ??
+      item?.href ??
+      item?.path ??
+      `${item?.name || ""}_${item?.size || ""}`
+    ).trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    next.push(item);
+  }
+  return next;
+};
 
   const normalizeYmd = (s) => {
   const raw = String(s || "").trim();
@@ -3101,6 +3256,10 @@ useLayoutEffect(() => {
   setIncomingSecretariatNo("");
   setOutgoingSecretariatNo("");
   setInternalSecretariatNo("");
+  setNextCodeLoadingKind("");
+  setIncomingSecretariatNote("");
+  setOutgoingSecretariatNote("");
+  setInternalSecretariatNote("");
 
   setIncomingReceiverName(loggedInUserName || "");
   setOutgoingReceiverName(loggedInUserName || "");
@@ -3389,8 +3548,8 @@ const secretariatNote =
     ? outgoingSecretariatNote
     : internalSecretariatNote;
 
-    const secretariatNo =
-      kind === "incoming" ? incomingSecretariatNo : kind === "outgoing" ? outgoingSecretariatNo : internalSecretariatNo;
+    const secretariatNo = getSecretariatNoForKind(kind);
+    const effectiveLetterNo = getEffectiveLetterNoForKind(kind);
 
         const receiverName =
       (loggedInUserName || "").trim() ||
@@ -3411,7 +3570,7 @@ const secretariatNote =
       )
       .filter(Boolean);
 
-    const queue = files.filter((f) => f && f.status !== "error" && (f.optimizedFile || f.file) && !f.url);
+    const queue = files.filter((f) => f && (f.optimizedFile || f.file) && !f.url);
 
   const computedHasAttachment = queue.length > 0 || reused.length > 0 ? true : !!hasAttachment;
 
@@ -3429,15 +3588,12 @@ const payload = {
     String(getForm(kind)?.classification || "عادی").trim() || "عادی",
 
   project_id: (() => {
-    const pid =
-      kind === "outgoing" ? outgoingForm.projectId :
-      kind === "incoming" ? incomingForm.projectId :
-      null;
+    const pid = getForm(kind).projectId;
     const n = pid ? Number(pid) : null;
     return n && Number.isFinite(n) ? n : null;
   })(),
 
-letter_no: String(f.letterNo || "").trim(),
+letter_no: effectiveLetterNo,
   letter_date: f.letterDate || "",
 
   from_name:
@@ -3476,6 +3632,8 @@ subject:
       : null,
 };
 
+    try {
+      _setIsSubmitting(true);
 
     let saved;
     let newId = null;
@@ -3501,6 +3659,7 @@ subject:
 
     if (!newId) throw new Error("save_failed");
     const letterId = Number(newId) || newId;
+    let uploadFailedCount = 0;
     if (queue.length > 0) {
       for (const f of queue) {
         const fileToSend = f.optimizedFile || f.file;
@@ -3525,16 +3684,29 @@ subject:
             )
           );
         } catch (e) {
+          uploadFailedCount += 1;
           setDocFilesFor(kind, (prev) =>
-            prev.map((x) => (x.id === f.id ? { ...x, status: "error", error: e?.message || "خطا در آپلود فایل." } : x))
+            prev.map((x) => (x.id === f.id ? { ...x, status: "error", error: e?.message || "\u062e\u0637\u0627 \u062f\u0631 \u0622\u067e\u0644\u0648\u062f \u0641\u0627\u06cc\u0644." } : x))
           );
         }
       }
     }
     await refetchLetters();
     if (!editingId) setPage(0);
+    if (uploadFailedCount > 0) {
+      setEditingId(String(letterId));
+      setFormKind(kind);
+      setFormOpen(true);
+      alert(`\u0646\u0627\u0645\u0647 \u0630\u062e\u06cc\u0631\u0647 \u0634\u062f\u060c \u0627\u0645\u0627 ${toFaDigits(uploadFailedCount)} \u0641\u0627\u06cc\u0644 \u0628\u0627\u0631\u06af\u0630\u0627\u0631\u06cc \u0646\u0634\u062f. \u0641\u0631\u0645 \u0628\u0627\u0632 \u0645\u06cc\u200c\u0645\u0627\u0646\u062f \u062a\u0627 \u067e\u06cc\u0634\u200c\u0646\u0645\u0627\u06cc\u0634 \u0631\u0627 \u0628\u0628\u06cc\u0646\u06cc\u062f \u0648 \u062f\u0648\u0628\u0627\u0631\u0647 \u062a\u0644\u0627\u0634 \u06a9\u0646\u06cc\u062f.`);
+      return;
+    }
     resetForm();
     setFormOpen(false);
+    } catch (e) {
+      alert("خطا در ثبت نامه: " + (e?.message || "request_failed"));
+    } finally {
+      _setIsSubmitting(false);
+    }
   };
 
 const deleteLetter = async (id) => {
@@ -3596,10 +3768,6 @@ const deleteAllLetters = async () => {
     setSelectedIds(new Set());
     setPage(0);
 
-    try {
-      sessionStorage.removeItem(LETTERS_CACHE_KEY);
-    } catch {}
-
     alert(`✅ ${data.deleted ?? 0} نامه حذف شد`);
   } catch (e) {
     alert("خطا در حذف همه نامه‌ها: " + (e?.message || "delete_all_failed"));
@@ -3640,6 +3808,15 @@ const isImageView = useMemo(() => {
   if (currentViewType.startsWith("image/")) return true;
   return isImageUrl(currentViewUrl);
 }, [currentViewType, currentViewUrl]);
+
+const isOfficeView = useMemo(() => {
+  return isOfficeFile(currentViewUrl, currentViewName, currentViewType);
+}, [currentViewName, currentViewType, currentViewUrl]);
+
+const currentOfficeViewerUrl = useMemo(() => {
+  if (!isOfficeView) return "";
+  return officeViewerUrlOf(currentViewUrl);
+}, [currentViewUrl, isOfficeView]);
 
   const viewHasAttachment = useMemo(() => {
     if (!viewLetter) return false;
@@ -3861,6 +4038,7 @@ setFilterTagIds((prev) => {
    } else {
     // ✅ همیشه روی همون تبِ فرم که بازه اعمال کن
       setFormTagsAllAndPersist(ids);
+      clearFieldError(formKind, "formTags");
   }
 
   setTagPickOpen(false);
@@ -4315,11 +4493,16 @@ aria-invalid={formKind === "incoming" ? fieldHasError("incoming", "classificatio
     <select
       value={getForm(formKind).projectId || ""}
 onChange={(e) => {
-  setForm(formKind, { projectId: e.target.value });
-  if (formKind === "outgoing") clearFieldError("outgoing", "projectId");
+  const nextProjectId = e.target.value;
+  const currentKind = formKind;
+  setForm(currentKind, { projectId: nextProjectId });
+  clearFieldError(formKind, "projectId");
+  if (!editingId) {
+    fetchNextCodeForProject(currentKind, nextProjectId);
+  }
 }}
-className={formKind === "outgoing" ? inputWithError(inputSmCls, "outgoing", "projectId") : inputSmCls}
-aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "projectId") : undefined}
+className={fieldHasError(formKind, "projectId") ? inputWithError(inputSmCls, formKind, "projectId") : inputSmCls}
+aria-invalid={fieldHasError(formKind, "projectId") ? true : undefined}
     >
       <option value=""></option>
       {projectsTopOnly.map((p) => (
@@ -4329,37 +4512,44 @@ aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "projectId") :
       ))}
     </select>
 
-    {formKind === "outgoing" ? <ErrorTextAbs k="projectId" /> : null}
+    <ErrorTextAbs kind={formKind} k="projectId" />
   </FieldWrap>
 </div>
 
 {/* شماره سند */}
+{formKind !== "outgoing" ? (
 <div className="shrink-0 w-[170px]">
   <div className={labelSmCls}>شماره سند</div>
 
   <FieldWrap>
-    <input
-      value={getForm(formKind).letterNo || ""}
-      readOnly={formKind !== "incoming"}  // ✅ صادره/داخلی قفل
-      onChange={(e) => {
-        // ✅ فقط برای وارده اجازه تایپ/تغییر بده (اگر خواستی)
-        if (formKind === "incoming") {
-          setForm(formKind, { letterNo: e.target.value });
-          clearFieldError("incoming", "letterNo");
-        }
-      }}
-      className={
-        (formKind !== "incoming"
-          ? (inputSmCls + " bg-black/5 dark:bg-white/10 cursor-not-allowed")
-          : inputWithError(inputSmCls, "incoming", "letterNo"))
-      }
-      aria-invalid={formKind === "incoming" ? fieldHasError("incoming", "letterNo") : undefined}
-      type="text"
-    />
+    {formKind === "incoming" ? (
+      <>
+        <input
+          value={incomingForm.letterNo}
+          onChange={(e) => {
+            setIncomingForm((p) => ({ ...p, letterNo: e.target.value }));
+            clearFieldError("incoming", "letterNo");
+          }}
+          className={inputWithError(inputSmCls, "incoming", "letterNo")}
+          aria-invalid={fieldHasError("incoming", "letterNo") ? true : undefined}
+          type="text"
+        />
+        <ErrorTextAbs kind="incoming" k="letterNo" />
+      </>
+    ) : (
+      <input
+        value={getSecretariatNoDisplayForKind(formKind)}
+        readOnly
+        tabIndex={-1}
+        onChange={() => {}}
+        className={inputSmCls + " bg-black/5 dark:bg-white/10 cursor-not-allowed select-none"}
+        type="text"
+      />
+    )}
 
-    {formKind === "incoming" ? <ErrorTextAbs kind="incoming" k="letterNo" /> : null}
   </FieldWrap>
 </div>
+) : null}
 
 
   {/* تاریخ */}
@@ -4986,17 +5176,11 @@ aria-invalid={fieldHasError(formKind, "subject")}
           >  {formKind === "outgoing" ? "شماره ثبت دبیرخانه " : "شماره ثبت دبیرخانه"}
           </div>
         <input
-  value={
-    formKind === "incoming"
-      ? incomingSecretariatNo
-      : formKind === "outgoing"
-      ? outgoingSecretariatNo
-      : internalSecretariatNo
-  }
-  readOnly={!canEditSecretariatNo}
-  tabIndex={canEditSecretariatNo ? 0 : -1}
+  value={getSecretariatNoDisplayForKind(formKind)}
+  readOnly={!canEditSecretariatNo || nextCodeLoadingKind === formKind}
+  tabIndex={canEditSecretariatNo && nextCodeLoadingKind !== formKind ? 0 : -1}
   onChange={(e) => {
-    if (!canEditSecretariatNo) return;
+    if (!canEditSecretariatNo || nextCodeLoadingKind === formKind) return;
     const v = e.target.value;
     if (formKind === "incoming") setIncomingSecretariatNo(v);
     else if (formKind === "outgoing") setOutgoingSecretariatNo(v);
@@ -5004,7 +5188,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
   }}
   className={
     inputCls +
-    (canEditSecretariatNo ? "" : " bg-black/5 dark:bg-white/10 cursor-not-allowed select-none")
+    (canEditSecretariatNo && nextCodeLoadingKind !== formKind ? "" : " bg-black/5 dark:bg-white/10 cursor-not-allowed select-none")
   }
   type="text"
 />
@@ -5045,20 +5229,18 @@ aria-invalid={fieldHasError(formKind, "subject")}
   <FieldWrap>
     <div className="w-full min-w-0 flex flex-wrap items-center gap-2">
       {(() => {
-        const scope =
-          formKind === "outgoing" ? "projects" :
-          formKind === "internal" ? "execution" :
-          "letters";
-
        const selectedIds =
   formKind === "outgoing" ? (Array.isArray(outgoingTagIds) ? outgoingTagIds : [])
   : formKind === "internal" ? (Array.isArray(internalTagIds) ? internalTagIds : [])
   : (Array.isArray(incomingTagIds) ? incomingTagIds : []);
 
-        const pool = Array.isArray(tagsByScope?.[scope]) ? tagsByScope[scope] : [];
-
-        const selSet = new Set(selectedIds.map(String));
-        const selectedObjs = pool.filter((t) => selSet.has(String(t?.id)));
+        const selectedObjs = selectedIds
+          .map((id) => {
+            const sid = String(id || "").trim();
+            if (!sid) return null;
+            return tagById.get(sid) || { id: sid, label: `برچسب (${toFaDigits(sid)})`, _missing: true };
+          })
+          .filter(Boolean);
 
         if (selectedObjs.length === 0) return null;
 
@@ -5086,7 +5268,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
 
       <button
         type="button"
-        onClick={() => { openTagPicker("form"); clearFieldError("formTags"); }}
+        onClick={() => { openTagPicker("form"); clearFieldError(formKind, "formTags"); }}
         className={
           "h-10 w-10 shrink-0 rounded-full border transition inline-flex items-center justify-center " +
           (theme === "dark"
@@ -5763,19 +5945,55 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                               )
                               : isImageView ? (
                                   <img key={currentViewUrl} src={currentViewUrl} alt="" className="w-full h-full object-contain bg-transparent" />
+                                ) : isOfficeView && currentOfficeViewerUrl ? (
+                                  <iframe
+                                    key={currentOfficeViewerUrl}
+                                    title="office_preview"
+                                    src={currentOfficeViewerUrl}
+                                    className="w-full h-full bg-white"
+                                  />
                                 ) : (
                                   <div className="h-full w-full grid place-items-center p-6">
-                                    <div className={theme === "dark" ? "text-white/70 text-sm" : "text-neutral-700 text-sm"}>امکان پیش نمایش این نوع فایل نیست.</div>
+                                    <div className="max-w-md text-center space-y-2">
+                                      <div className={theme === "dark" ? "text-white/80 text-sm font-semibold" : "text-neutral-800 text-sm font-semibold"}>
+                                        {isOfficeView
+                                          ? "\u067e\u06cc\u0634\u200c\u0646\u0645\u0627\u06cc\u0634 \u062f\u0627\u062e\u0644\u06cc \u0627\u06cc\u0646 \u0641\u0627\u06cc\u0644 Office \u062f\u0631 \u0627\u06cc\u0646 \u0645\u062d\u06cc\u0637 \u062f\u0631 \u062f\u0633\u062a\u0631\u0633 \u0646\u06cc\u0633\u062a."
+                                          : "\u067e\u06cc\u0634\u200c\u0646\u0645\u0627\u06cc\u0634 \u062f\u0627\u062e\u0644\u06cc \u0627\u06cc\u0646 \u0646\u0648\u0639 \u0641\u0627\u06cc\u0644 \u062f\u0631 \u0645\u0631\u0648\u0631\u06af\u0631 \u0645\u0648\u062c\u0648\u062f \u0646\u06cc\u0633\u062a."}
+                                      </div>
+                                      <div className={theme === "dark" ? "text-white/60 text-xs" : "text-neutral-600 text-xs"}>
+                                        {"\u0627\u0632 \u062f\u06a9\u0645\u0647\u200c\u0647\u0627\u06cc \u00ab\u0628\u0627\u0632 \u06a9\u0631\u062f\u0646 \u0641\u0627\u06cc\u0644\u00bb \u06cc\u0627 \u00ab\u062f\u0627\u0646\u0644\u0648\u062f \u0641\u0627\u06cc\u0644\u00bb \u0627\u0633\u062a\u0641\u0627\u062f\u0647 \u06a9\u0646\u06cc\u062f."}
+                                      </div>
+                                    </div>
                                   </div>
                                 )
                               ) : (
                                 <div className="h-full w-full grid place-items-center p-6">
-                                  <div className={theme === "dark" ? "text-white/60 text-sm" : "text-neutral-600 text-sm"}>فایلی برای پیش نمایش موجود نیست.</div>
+                                  <div className={theme === "dark" ? "text-white/60 text-sm" : "text-neutral-600 text-sm"}>{"\u0641\u0627\u06cc\u0644\u06cc \u0628\u0631\u0627\u06cc \u067e\u06cc\u0634\u200c\u0646\u0645\u0627\u06cc\u0634 \u0645\u0648\u062c\u0648\u062f \u0646\u06cc\u0633\u062a."}</div>
                                 </div>
                               )}
                             </div>
 
-                            <div className="mt-2 flex flex-col gap-1">
+                            <div className="mt-2 flex flex-col gap-2">
+                              <a
+                                href={currentViewUrl || "#"}
+                                target="_blank"
+                                rel="noreferrer"
+                                className={
+                                  "h-11 rounded-xl inline-flex items-center justify-center gap-2 transition " +
+                                  (currentViewUrl
+                                    ? theme === "dark"
+                                      ? "bg-white/10 text-white hover:bg-white/15"
+                                      : "bg-black/10 text-black hover:bg-black/15"
+                                    : theme === "dark"
+                                    ? "bg-white/10 text-white/40 pointer-events-none"
+                                    : "bg-black/10 text-black/40 pointer-events-none")
+                                }
+                                title="\u0628\u0627\u0632 \u06a9\u0631\u062f\u0646 \u0641\u0627\u06cc\u0644"
+                                aria-label="\u0628\u0627\u0632 \u06a9\u0631\u062f\u0646 \u0641\u0627\u06cc\u0644"
+                              >
+                                <img src="/images/icons/namayeshname.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")} />
+                                <span className="text-sm font-semibold">{"\u0628\u0627\u0632 \u06a9\u0631\u062f\u0646 \u0641\u0627\u06cc\u0644"}</span>
+                              </a>
                               <a
                                 href={currentViewUrl || "#"}
                                 target="_blank"
@@ -5791,11 +6009,11 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                                     ? "bg-white/10 text-white/40 pointer-events-none"
                                     : "bg-black/10 text-black/40 pointer-events-none")
                                 }
-                                title="دانلود فایل"
-                                aria-label="دانلود فایل"
+                                title="\u062f\u0627\u0646\u0644\u0648\u062f \u0641\u0627\u06cc\u0644"
+                                aria-label="\u062f\u0627\u0646\u0644\u0648\u062f \u0641\u0627\u06cc\u0644"
                               >
                                 <img src="/images/icons/download.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")} />
-                                <span className="text-sm font-semibold">دانلود فایل</span>
+                                <span className="text-sm font-semibold">{"\u062f\u0627\u0646\u0644\u0648\u062f \u0641\u0627\u06cc\u0644"}</span>
                               </a>
 
                               {currentViewName ? (
@@ -6123,12 +6341,40 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                                 {f.status === "error" && f.error ? (
                                   <div className="text-[11px] mt-1 text-red-500">{f.error}</div>
                                 ) : null}
+
+                                {(() => {
+                                  const previewSrc = f.previewUrl || resolveFileUrl(f.url);
+                                  const fileType = String(f.type || "").toLowerCase();
+                                  const canPreviewPdf = !!previewSrc && (fileType.includes("pdf") || isPdfUrl(previewSrc, f.name));
+                                  const canPreviewImage = !!previewSrc && (fileType.startsWith("image/") || isImageUrl(previewSrc, f.name));
+                                  const canPreviewOffice = !!previewSrc && isOfficeFile(previewSrc, f.name, fileType);
+                                  const officePreviewSrc = canPreviewOffice ? officeViewerUrlOf(previewSrc) : "";
+                                  if (!canPreviewPdf && !canPreviewImage && !canPreviewOffice) return null;
+
+                                  return (
+                                    <div className={"mt-3 rounded-xl overflow-hidden border " + (theme === "dark" ? "border-white/10 bg-black/20" : "border-black/10 bg-black/[0.02]")}>
+                                      {canPreviewPdf ? (
+                                        <object data={(previewSrc || "") + "#view=FitH"} type="application/pdf" className="w-full h-56">
+                                          <iframe title={"preview_" + f.id} src={(previewSrc || "") + "#view=FitH"} className="w-full h-56" />
+                                        </object>
+                                      ) : canPreviewImage ? (
+                                        <img src={previewSrc} alt="" className="w-full h-56 object-contain" />
+                                      ) : officePreviewSrc ? (
+                                        <iframe title={"preview_" + f.id} src={officePreviewSrc} className="w-full h-56 bg-white" />
+                                      ) : (
+                                        <div className={"h-56 grid place-items-center text-center px-4 text-xs " + (theme === "dark" ? "text-white/70" : "text-neutral-700")}>
+                                          {"\u067e\u06cc\u0634\u200c\u0646\u0645\u0627\u06cc\u0634 \u062f\u0627\u062e\u0644\u06cc \u0627\u06cc\u0646 \u0641\u0627\u06cc\u0644 Office \u062f\u0631 \u0627\u06cc\u0646 \u0645\u062d\u06cc\u0637 \u062f\u0631 \u062f\u0633\u062a\u0631\u0633 \u0646\u06cc\u0633\u062a. \u0627\u0632 \u062f\u06a9\u0645\u0647 \u00ab\u0628\u0627\u0632 \u06a9\u0631\u062f\u0646\u00bb \u0627\u0633\u062a\u0641\u0627\u062f\u0647 \u06a9\u0646\u06cc\u062f."}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                               </div>
 
                               <div className="flex items-center gap-2">
-                                {f.url ? (
+                                {(f.previewUrl || f.url) ? (
                                   <a
-                                    href={f.url}
+                                    href={f.previewUrl || resolveFileUrl(f.url)}
                                     target="_blank"
                                     rel="noreferrer"
                                     className={
@@ -6195,7 +6441,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                               ref={uploadInputRef}
                               type="file"
                               multiple
-                              accept="image/*,application/pdf"
+                              accept={LETTER_UPLOAD_ACCEPT}
                               className="hidden"
                               onChange={async (e) => {
                                 const fl = e.target.files;

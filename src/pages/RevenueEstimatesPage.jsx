@@ -1353,7 +1353,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
           <style>
             @page { size: A4; margin: 14mm; }
             *{box-sizing:border-box}
-            body { font-family: Vazirmatn, Vazir, IRANSans, Segoe UI, Tahoma, sans-serif; color:#0f172a; background:#fff; margin:0; }
+            body { font-family: Vazir, IRANSans, Segoe UI, Tahoma, sans-serif; color:#0f172a; background:#fff; margin:0; }
             h2 { margin: 0 0 12px; font-size: 16px; }
             .wrap { max-width: 190mm; margin: 0 auto; }
             .panel { border:1px solid #e5e7eb; border-radius:16px; padding:16px; }
@@ -2179,7 +2179,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
             <div className="absolute inset-0 bg-black/25 dark:bg-neutral-950/55 backdrop-blur-[2px]" onClick={() => setShowModal(false)} />
             <div
               className="relative w-full max-w-3xl bg-white dark:bg-neutral-900 dark:text-neutral-100 rounded-2xl shadow-2xl border border-black/10 dark:border-neutral-800 overflow-hidden max-h-[90vh] flex flex-col"
-              style={{ fontFamily: 'Vazirmatn, Vazir, IRANSans, Segoe UI, Tahoma, sans-serif' }}
+              style={{ fontFamily: 'Vazir, IRANSans, Segoe UI, Tahoma, sans-serif' }}
             >
               <div className="px-4 py-3 border-b border-black/10 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/80 backdrop-blur shrink-0">
                 <div className="flex flex-col items-center justify-center text-center gap-1">

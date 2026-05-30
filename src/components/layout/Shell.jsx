@@ -2,14 +2,12 @@
 import React from "react";
 import { Link, Outlet } from "react-router-dom";
 import { useAuth } from "../AuthProvider.jsx";
-import { isMainAdminUser } from "../../utils/auth.js";
 import RightNav from "../RightNav.jsx";
 
 export default function Shell() {
   // useAuth ممکنه موقتاً null بده → امنش می‌کنیم
   const auth = useAuth() || {};
   const { user, logout } = auth;
-  const isMainAdmin = isMainAdminUser(user);
 
   // ===== تم (dark|light) فقط برای همین سشن، بدون localStorage =====
   const [theme] = React.useState("light"); // همیشه لایت شروع می‌کنه
@@ -30,12 +28,15 @@ export default function Shell() {
 
   const jalaliDate = React.useMemo(() => {
     try {
-      return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
-        weekday: "long",
+      const parts = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
         year: "numeric",
         month: "long",
         day: "numeric",
-      }).format(now);
+      }).formatToParts(now);
+      const getPart = (type) => parts.find((part) => part.type === type)?.value || "";
+      return [getPart("day"), getPart("month"), getPart("year")]
+        .filter(Boolean)
+        .join(" ");
     } catch {
       return "";
     }
@@ -74,7 +75,8 @@ export default function Shell() {
             : "border-black/10 bg-gradient-to-l from-black/5 to-transparent")
         }
       >
-        <div className="mx-auto max-w-[1400px] flex items-center justify-between gap-2 p-2.5 md:p-3 pr-[72px] sm:pr-[88px] lg:pr-[104px] lg:pl-[104px]">
+        <div className="px-2 sm:px-3 md:px-6 py-2.5 md:py-3 pr-[72px] sm:pr-[88px] lg:pr-[104px] lg:pl-[104px]">
+          <div className="mx-auto max-w-[1400px] flex items-center justify-between gap-2">
           <Link
             to="/"
             className="flex items-center justify-start hover:opacity-95 transition shrink-0"
@@ -85,12 +87,12 @@ export default function Shell() {
             <img
               src="/images/light%20mode.png"
               alt="logo"
-              className="h-7 md:h-8 w-auto object-contain block dark:hidden"
+              className="h-8 md:h-9 w-auto object-contain block dark:hidden"
             />
             <img
               src="/images/dark%20mode.png"
               alt="logo (dark)"
-              className="h-7 md:h-8 w-auto object-contain hidden dark:block"
+              className="h-8 md:h-9 w-auto object-contain hidden dark:block"
             />
           </Link>
 
@@ -145,19 +147,6 @@ export default function Shell() {
               ) : null}
             </div>
 
-            {isMainAdmin && (
-              <span
-                className={
-                  "px-2 py-1 rounded-lg border " +
-                  (theme === "dark"
-                    ? "border-white/20 bg-white/5 text-white/90"
-                    : "border-black/10 bg-black/5 text-neutral-700")
-                }
-              >
-                ادمین اصلی
-              </span>
-            )}
-
             {/* دکمه اعلان */}
             <button
               aria-label="اعلان‌ها"
@@ -191,10 +180,12 @@ export default function Shell() {
               خروج
             </button>
           </div>
+          </div>
         </div>
 
         {/* تاریخ برای موبایل/تبلت */}
-        <div className="mx-auto max-w-[1400px] px-3 pb-3 md:px-4 pr-[72px] sm:pr-[88px] lg:hidden">
+        <div className="px-2 sm:px-3 md:px-6 pb-3 pr-[72px] sm:pr-[88px] lg:hidden">
+          <div className="mx-auto max-w-[1400px]">
           <div
             className={
               "w-full flex items-center justify-center gap-2 px-3 py-2 rounded-2xl border text-xs " +
@@ -209,6 +200,7 @@ export default function Shell() {
             </span>
             <span className="whitespace-nowrap">{gregorianDate || "—"}</span>
           </div>
+        </div>
         </div>
       </header>
 

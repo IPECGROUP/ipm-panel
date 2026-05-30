@@ -608,12 +608,15 @@ function OrgStructurePage() {
 
   const topTabBtnClass = (isActive) =>
     [
-      "h-10 px-4 rounded-2xl border text-sm shadow-sm transition",
+      "relative z-10 h-11 min-w-[150px] px-5 text-sm font-medium transition border",
       "focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20",
       isActive
-        ? "bg-black text-white border-black dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-100"
-        : "bg-white text-black border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800",
+        ? "rounded-t-2xl rounded-b-none border-black/10 border-b-white bg-white text-black dark:border-neutral-800 dark:border-b-neutral-900 dark:bg-neutral-900 dark:text-neutral-100"
+        : "rounded-2xl border-black/10 bg-white text-[#1f2937] hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800",
     ].join(" ");
+
+  const tabbedPanelClass =
+    "relative -mt-px rounded-2xl border border-black/10 bg-white overflow-hidden dark:bg-neutral-900 dark:border-neutral-800";
 
   const tableUi = tablePreset.table;
   const rowUi = tablePreset.row;
@@ -699,7 +702,7 @@ function OrgStructurePage() {
           <span className="font-semibold text-black dark:text-neutral-100">ساختار سازمانی</span>
         </div>
         {/* تب‌ها */}
-        <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2" dir="rtl">
+        <div className="mx-auto flex w-full max-w-[520px] items-end justify-center gap-2 px-2" dir="rtl">
           <button
             type="button"
             onClick={() => setActiveTab("units")}
@@ -720,7 +723,7 @@ function OrgStructurePage() {
         {activeTab === "units" && (
           <>
             {/* Section: form + table */}
-            <div className="rounded-2xl border border-black/10 bg-white overflow-hidden dark:bg-neutral-900 dark:border-neutral-800">
+            <div className={tabbedPanelClass}>
               {/* فرم افزودن */}
               <div className="p-4">
                 <div className="flex flex-col sm:flex-row sm:items-end items-stretch gap-2">
@@ -1066,7 +1069,7 @@ function OrgStructurePage() {
         {activeTab === "roles" && (
           <>
             {/* Section (form + table) */}
-            <div className="rounded-2xl border border-black/10 bg-white overflow-hidden dark:bg-neutral-900 dark:border-neutral-800">
+            <div className={tabbedPanelClass}>
               {/* فرم افزودن نقش */}
               <form
                 onSubmit={addRole}

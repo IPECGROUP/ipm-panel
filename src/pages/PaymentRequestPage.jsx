@@ -141,7 +141,7 @@ export default function PaymentRequestPage() {
   };
 
   const vazirFont =
-    "Vazirmatn, Vazir, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+    "Vazir, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
   const workflowStepsByScope = {
     office:   ['creator', 'accounting_specialist', 'finance_manager', 'payment_order', 'payment_done'],
@@ -2678,10 +2678,34 @@ const isRowForMe = React.useCallback((row) => {
     <meta charset="utf-8" />
     <title>درخواست پرداخت</title>
 
-    <!-- فونت وزیرمتن برای چاپ -->
-    <link rel="stylesheet" href="https://cdn.fontcdn.ir/Font/Persian/Vazirmatn/Vazirmatn.css" />
-
     <style>
+      @font-face {
+        font-family: 'Vazir';
+        src: url('${window.location.origin}/fonts/Vazir.woff2') format('woff2'),
+             url('${window.location.origin}/fonts/Vazir.woff') format('woff');
+        font-weight: 400;
+        font-style: normal;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: 'Vazir';
+        src: url('${window.location.origin}/fonts/Vazir-Medium.woff2') format('woff2'),
+             url('${window.location.origin}/fonts/Vazir-Medium.woff') format('woff');
+        font-weight: 500;
+        font-style: normal;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: 'Vazir';
+        src: url('${window.location.origin}/fonts/Vazir-Bold.woff2') format('woff2'),
+             url('${window.location.origin}/fonts/Vazir-Bold.woff') format('woff');
+        font-weight: 700;
+        font-style: normal;
+        font-display: swap;
+      }
+
       @page { size: A4; margin: 14mm; }
       * { box-sizing: border-box; }
 
@@ -2694,7 +2718,7 @@ const isRowForMe = React.useCallback((row) => {
       span,
       p,
       h1, h2, h3, h4, h5, h6 {
-        font-family: 'Vazirmatn', system-ui, -apple-system, 'Segoe UI', sans-serif;
+        font-family: 'Vazir', system-ui, -apple-system, 'Segoe UI', sans-serif;
       }
 
       html, body { margin: 0; padding: 0; direction: rtl; }
@@ -2737,7 +2761,7 @@ const isRowForMe = React.useCallback((row) => {
         vertical-align: top;
       }
       .info-head { background: #f9fafb; font-weight: 600; }
-      .mono { direction: ltr; font-family: 'Vazirmatn', system-ui, -apple-system, 'Segoe UI', sans-serif; }
+      .mono { direction: ltr; font-family: 'Vazir', system-ui, -apple-system, 'Segoe UI', sans-serif; }
 
       .section-title { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
 

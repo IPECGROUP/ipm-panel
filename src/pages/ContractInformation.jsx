@@ -1,25 +1,70 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
-import { dayjs } from "../utils/date";
+import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
+import { baseCurrenciesTablePreset as financialTablePreset, hoverSelectableRowPreset } from "../components/ui/tablePresets.js";
+import { dayjs, isJalaliYmd } from "../utils/date";
 
-const CONTRACT_SCOPE_TABS = [
-  { id: "main", label: "قرارداد اصلی (با کارفرما)" },
-  { id: "sub", label: "قرارداد فرعی (با پیمانکاران/ تامین کنندگان/ مشاوران)" },
+const STORAGE_KEY = "ipm_contract_information_rows_v1";
+
+const CONTRACT_DOCUMENT_TYPES = [
+  { id: "main", label: "اصلی" },
+  { id: "sub", label: "فرعی" },
+  { id: "appendix", label: "الحاقیه" },
 ];
 
-const DETAIL_TABS = [
+const CONTRACT_SECTION_TABS = [
   { id: "general", label: "عمومی" },
-  { id: "technical", label: "فنی" },
-  { id: "financial", label: "مالی" },
+  { id: "calendar", label: "تقویم قرارداد" },
+  { id: "technical", label: "فنی و محدوده کار" },
+  { id: "financial", label: "مالی و تضامین" },
+  { id: "insurance", label: "تامین اجتماعی" },
 ];
 
-const CONTRACT_TYPES = [
+const GENERAL_CONTRACT_TYPES = [
   "مشاوره و مهندسی",
-  "خرید و تامین کالا",
-  "پیمانکاری",
+  "خرید کالا",
+  "خرید خدمات",
+  "اجرا و پیمانکاری",
   "اجاره ماشین آلات و تجهیزات",
+  "مدیریت پیمان",
+  "سایر",
 ];
+
+const FIXED_SUB_ASSIGNOR = "شرکت ایده پویان انرژی IPEC";
+
+const TECHNICAL_SUPPORT_FIELDS = [
+  { key: "fuel", label: "سوخت" },
+  { key: "powerLighting", label: "برق و روشنایی" },
+  { key: "accommodation", label: "اسکان" },
+  { key: "food", label: "خوراک" },
+  { key: "transport", label: "حمل" },
+  { key: "loadingCrane", label: "بارگیری و جرثقیل" },
+  { key: "procurement", label: "تامین کالا" },
+  { key: "customsClearance", label: "ترخیص کالا از گمرک" },
+];
+
+const EMPTY_FINANCIAL_ROW = {
+  id: "",
+  amount: "",
+  currencyId: "",
+  currencyLabel: "",
+  sourceId: "",
+  sourceLabel: "",
+};
+
+const GUARANTEE_NAME_OPTIONS = ["پیش پرداخت", "انجام تعهدات", "علی الحساب", "سایر"];
+
+const EMPTY_GUARANTEE_ROW = {
+  id: "",
+  name: "",
+  customName: false,
+  type: "",
+  bankNo: "",
+  amount: "",
+  currencyId: "",
+  currencyLabel: "",
+};
 
 const PERSIAN_MONTHS = [
   "فروردین",
@@ -36,447 +81,753 @@ const PERSIAN_MONTHS = [
   "اسفند",
 ];
 
-const FUEL_COMMITMENT_OPTIONS = [
-  { id: "custody", label: "عهده" },
-  { id: "cost", label: "هزینه" },
-  { id: "custody_cost", label: "عهده هزینه" },
-];
+const EMPTY_FORM = {
+  id: "",
+  projectId: "",
+  documentType: "main",
+  contractNo: "",
+  parentContractId: "",
+  relatedLetterId: "",
+  general: {
+    contractType: "",
+    customContractType: false,
+    contractSubject: "",
+    mainEmployer: "",
+    employerAssignor: "",
+    executor: "",
+    companyMembers: "",
+    mainContractors: "",
+  },
+  calendar: {
+    notifyDate: "",
+    notifyLetterId: "",
+    startDate: "",
+    endDate: "",
+    extraDates: [],
+  },
+  technical: {
+    serviceScope: "",
+    tagIds: [],
+    duties: "",
+    fuel: "",
+    powerLighting: "",
+    accommodation: "",
+    food: "",
+    transport: "",
+    loadingCrane: "",
+    procurement: "",
+    customsClearance: "",
+  },
+  financial: {
+    contractAmounts: [],
+    appendices: [],
+    paymentTerms: "",
+    advancePayment: "",
+    capitalDeposit: "",
+    capitalDepositAmount: "",
+    performanceBond: "",
+    performanceBondAmount: "",
+    breakdownFiles: [],
+    guaranteeDraft: { ...EMPTY_GUARANTEE_ROW },
+    guarantees: [],
+  },
+  insurance: {},
+};
 
-const TRANSPORT_OPTIONS = [
-  { id: "land", label: "خشکی" },
-  { id: "sea", label: "دریایی" },
-];
-
-function toFaDigits(s) {
-  return String(s || "").replace(/[0-9]/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
+function toFaDigits(value) {
+  return String(value ?? "").replace(/[0-9]/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
 }
 
-function toEnDigits(s) {
-  return String(s ?? "")
+function toEnDigits(value) {
+  return String(value ?? "")
     .replace(/[۰-۹]/g, (d) => "0123456789"["۰۱۲۳۴۵۶۷۸۹".indexOf(d)])
     .replace(/[٠-٩]/g, (d) => "0123456789"["٠١٢٣٤٥٦٧٨٩".indexOf(d)]);
 }
 
-function pad2(n) {
-  const x = Number(n) || 0;
-  return x < 10 ? `0${x}` : String(x);
+function pad2(value) {
+  const n = Number(value) || 0;
+  return n < 10 ? `0${n}` : String(n);
 }
 
-function getJalaliPartsFromDate(d) {
-  try {
-    const y = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric" }).format(d);
-    const m = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { month: "numeric" }).format(d);
-    const day = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { day: "numeric" }).format(d);
-    return {
-      jy: Number(toEnDigits(y)) || 1400,
-      jm: Number(toEnDigits(m)) || 1,
-      jd: Number(toEnDigits(day)) || 1,
-    };
-  } catch {
-    return { jy: 1400, jm: 1, jd: 1 };
+function normalizeJalaliYmd(value) {
+  const raw = toEnDigits(value).trim().replace(/\//g, "-");
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : "";
+}
+
+function pickFirst(...values) {
+  for (const value of values) {
+    const text = String(value ?? "").trim();
+    if (text) return text;
   }
+  return "";
 }
 
-function toGregorianYmd(jalaliYmd) {
-  const raw = String(jalaliYmd || "").trim();
-  if (!raw) return "";
-  const normalized = toEnDigits(raw).replace(/\//g, "-");
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return "";
+function asArray(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.items)) return payload.items;
+  if (Array.isArray(payload?.projects)) return payload.projects;
+  if (Array.isArray(payload?.letters)) return payload.letters;
+  return [];
+}
+
+function normalizeIdList(values) {
+  return Array.from(
+    new Set(
+      (Array.isArray(values) ? values : [])
+        .map((item) => String(item ?? "").trim())
+        .filter(Boolean)
+    )
+  );
+}
+
+function readBooleanFlag(value, fallback = true) {
+  if (value === undefined || value === null || value === "") return fallback;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  const text = String(value).trim().toLowerCase();
+  if (["false", "0", "no", "off", "inactive", "غیرفعال"].includes(text)) return false;
+  if (["true", "1", "yes", "on", "active", "فعال"].includes(text)) return true;
+  return fallback;
+}
+
+function isTopProjectCode(code) {
+  return /^\d{3}$/.test(toEnDigits(code).trim());
+}
+
+function readItemId(item) {
+  return String(item?.id ?? item?.code ?? item?.value ?? item?.currency_id ?? item?.source_id ?? item?.key ?? "").trim();
+}
+
+function readItemLabel(item) {
+  return String(item?.label ?? item?.title ?? item?.name ?? item?.code ?? "").trim();
+}
+
+function listFromPayload(payload, key) {
+  const list = payload?.items || payload?.data || payload?.[key] || payload;
+  return Array.isArray(list) ? list : [];
+}
+
+function formatBytes(bytes) {
+  const number = Number(bytes || 0);
+  if (!number) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  let value = number;
+  let index = 0;
+  while (value >= 1024 && index < units.length - 1) {
+    value /= 1024;
+    index += 1;
+  }
+  return `${Math.round(value * 10) / 10} ${units[index]}`;
+}
+
+function makeFinancialRow() {
+  return {
+    ...EMPTY_FINANCIAL_ROW,
+    id: `${Date.now()}_${Math.random().toString(16).slice(2)}`,
+  };
+}
+
+function makeGuaranteeRow(row = {}) {
+  return {
+    ...EMPTY_GUARANTEE_ROW,
+    ...row,
+    id: String(row?.id || `${Date.now()}_${Math.random().toString(16).slice(2)}`),
+    name: String(row?.name ?? ""),
+    customName: Boolean(row?.customName),
+    type: String(row?.type ?? ""),
+    bankNo: String(row?.bankNo ?? row?.bank_no ?? ""),
+    amount: String(row?.amount ?? ""),
+    currencyId: String(row?.currencyId ?? row?.currency_id ?? ""),
+    currencyLabel: String(row?.currencyLabel ?? row?.currency_label ?? ""),
+  };
+}
+
+function normalizeFinancialRows(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  return list.length
+    ? list.map((row) => ({
+        ...EMPTY_FINANCIAL_ROW,
+        ...row,
+        id: String(row?.id || `${Date.now()}_${Math.random().toString(16).slice(2)}`),
+        amount: String(row?.amount ?? ""),
+        currencyId: String(row?.currencyId ?? row?.currency_id ?? ""),
+        currencyLabel: String(row?.currencyLabel ?? row?.currency_label ?? ""),
+        sourceId: String(row?.sourceId ?? row?.currencySourceId ?? row?.source_id ?? row?.currency_source_id ?? ""),
+        sourceLabel: String(row?.sourceLabel ?? row?.currencySourceLabel ?? row?.source_label ?? row?.currency_source_label ?? ""),
+      }))
+    : [makeFinancialRow()];
+}
+
+function normalizeFinancial(financial = {}) {
+  return {
+    ...(financial || {}),
+    contractAmounts: normalizeFinancialRows(financial?.contractAmounts),
+    appendices: normalizeFinancialRows(financial?.appendices),
+    paymentTerms: String(financial?.paymentTerms ?? ""),
+    advancePayment: String(financial?.advancePayment ?? ""),
+    capitalDeposit: String(financial?.capitalDeposit ?? ""),
+    capitalDepositAmount: String(financial?.capitalDepositAmount ?? ""),
+    performanceBond: String(financial?.performanceBond ?? ""),
+    performanceBondAmount: String(financial?.performanceBondAmount ?? ""),
+    breakdownFiles: Array.isArray(financial?.breakdownFiles) ? financial.breakdownFiles : [],
+    guaranteeDraft: makeGuaranteeRow({ ...(financial?.guaranteeDraft || {}), id: "" }),
+    guarantees: Array.isArray(financial?.guarantees) ? financial.guarantees.map(makeGuaranteeRow) : [],
+  };
+}
+
+function parseFinancialAmount(value) {
+  const normalized = toEnDigits(value)
+    .replace(/[٬,،\s]/g, "")
+    .replace(/٫/g, ".")
+    .replace(/[−–—]/g, "-")
+    .trim();
+  const number = Number.parseFloat(normalized);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function formatFinancialAmount(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return toFaDigits(0);
+  return toFaDigits(
+    new Intl.NumberFormat("en-US", {
+      maximumFractionDigits: 4,
+    }).format(number)
+  );
+}
+
+function formatAmountInput(value) {
+  const text = toEnDigits(value)
+    .replace(/[٬,،\s]/g, "")
+    .replace(/٫/g, ".")
+    .replace(/[^\d.-]/g, "");
+  if (!text || text === "-" || text === "." || text === "-.") return text;
+  const sign = text.startsWith("-") ? "-" : "";
+  const unsigned = sign ? text.slice(1) : text;
+  const [intPart, decimalPart] = unsigned.split(".");
+  const formattedInt = intPart ? new Intl.NumberFormat("en-US").format(Number(intPart) || 0) : "0";
+  return `${sign}${formattedInt}${decimalPart !== undefined ? `.${decimalPart}` : ""}`;
+}
+
+function cleanFinancialAmountInput(value) {
+  return toEnDigits(value).replace(/[^\d.,٫٬\s\-−–—]/g, "");
+}
+
+function CALCULATE_FINANCIAL_TOTALS(financial = {}) {
+  const rows = [...(Array.isArray(financial?.contractAmounts) ? financial.contractAmounts : []), ...(Array.isArray(financial?.appendices) ? financial.appendices : [])];
+  const byCurrency = new Map();
+
+  rows.forEach((row) => {
+    const currencyId = String(row?.currencyId || "").trim();
+    const currencyLabel = String(row?.currencyLabel || "").trim();
+    const sourceId = String(row?.sourceId || "").trim();
+    const sourceLabel = String(row?.sourceLabel || "").trim();
+    if (!currencyId && !currencyLabel) return;
+
+    const key = currencyId || currencyLabel;
+    const current = byCurrency.get(key) || {
+      key,
+      amount: 0,
+      currencyId,
+      currencyLabel: currencyLabel || currencyId,
+      sources: new Map(),
+    };
+    current.amount += parseFinancialAmount(row?.amount);
+    if (sourceId || sourceLabel) current.sources.set(sourceId || sourceLabel, sourceLabel || sourceId);
+    byCurrency.set(key, current);
+  });
+
+  return Array.from(byCurrency.values()).map((item) => {
+    const sourceLabels = Array.from(item.sources.values()).filter(Boolean);
+    return {
+      ...item,
+      sourceLabel: sourceLabels.length > 1 ? "چند منشأ" : sourceLabels[0] || "",
+    };
+  });
+}
+
+function normalizeProject(project) {
+  const id = project?.id == null ? "" : String(project.id);
+  const code = toEnDigits(project?.code ?? "").trim();
+  const name = pickFirst(project?.name, project?.title, project?.label);
+  return {
+    ...project,
+    id,
+    code,
+    name,
+    label: [code, name].filter(Boolean).join(" - ") || "بدون نام",
+    isActive: readBooleanFlag(project?.isActive ?? project?.is_active ?? project?.active ?? project?.enabled, true),
+  };
+}
+
+function compareProjects(a, b) {
+  const ac = toEnDigits(a?.code || "").trim();
+  const bc = toEnDigits(b?.code || "").trim();
+  if (ac === "100" && bc !== "100") return -1;
+  if (bc === "100" && ac !== "100") return 1;
+  return String(ac || a?.name || "").localeCompare(String(bc || b?.name || ""), "fa", {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+function letterIdOf(letter) {
+  return pickFirst(letter?.id, letter?.letter_id, letter?.letterId);
+}
+
+function letterNoOf(letter) {
+  return pickFirst(letter?.letter_no, letter?.letterNo, letter?.no, letter?.number);
+}
+
+function secretariatNoOf(letter) {
+  return pickFirst(letter?.secretariat_no, letter?.secretariatNo);
+}
+
+function subjectOf(letter) {
+  return pickFirst(letter?.subject, letter?.title);
+}
+
+function orgOf(letter) {
+  return pickFirst(letter?.org_name, letter?.orgName, letter?.organization, letter?.company, letter?.from_name, letter?.to_name);
+}
+
+function letterDateOf(letter) {
+  return pickFirst(letter?.letter_date, letter?.letterDate, letter?.date, letter?.secretariat_date, letter?.secretariatDate);
+}
+
+function tagLabelOf(tag) {
+  return pickFirst(tag?.label, tag?.name, tag?.title, tag?.text, tag?.caption, tag?.id);
+}
+
+function documentTypeLabel(type) {
+  return CONTRACT_DOCUMENT_TYPES.find((item) => item.id === type)?.label || "اصلی";
+}
+
+function contractNoForRow(row, rowById) {
+  if (row?.documentType === "main") return row?.contractNo || "";
+  const parent = rowById.get(String(row?.parentContractId || ""));
+  return parent?.contractNo || row?.contractNo || "";
+}
+
+function countAppendices(row, rows) {
+  if (!row) return 0;
+  if (row.documentType === "appendix") return 1;
+  const baseId = row.documentType === "main" ? row.id : row.parentContractId;
+  return rows.filter((item) => item.documentType === "appendix" && String(item.parentContractId) === String(baseId)).length;
+}
+
+function jalaliToGregorianLabel(value) {
+  const normalized = normalizeJalaliYmd(value);
+  if (!isJalaliYmd(normalized)) return "";
   try {
-    return dayjs(normalized, { jalali: true }).calendar("gregory").format("YYYY-MM-DD");
+    return dayjs(normalized, { jalali: true }).calendar("gregory").format("YYYY/MM/DD");
   } catch {
     return "";
   }
 }
 
-function firstStringValue(obj, keys) {
-  for (const key of keys) {
-    const value = obj?.[key];
-    if (value !== undefined && value !== null) {
-      const text = String(value).trim();
-      if (text) return text;
+function daysBetweenJalali(startValue, endValue) {
+  const normalizedStart = normalizeJalaliYmd(startValue);
+  const normalizedEnd = normalizeJalaliYmd(endValue);
+  if (!isJalaliYmd(normalizedStart) || !isJalaliYmd(normalizedEnd)) return 0;
+  try {
+    const start = dayjs(normalizedStart, { jalali: true }).calendar("gregory").startOf("day");
+    const end = dayjs(normalizedEnd, { jalali: true }).calendar("gregory").startOf("day");
+    const diff = end.diff(start, "day");
+    return diff >= 0 ? diff + 1 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function calculateCalendarDays(calendar = {}) {
+  const startDate = calendar?.startDate || "";
+  const endDate = calendar?.endDate || "";
+  const baseDays = daysBetweenJalali(startDate, endDate);
+  const extras = Array.isArray(calendar?.extraDates) ? calendar.extraDates : [];
+  let previous = endDate;
+  let extraDays = 0;
+
+  extras.forEach((date) => {
+    if (!previous || !date) {
+      previous = date || previous;
+      return;
     }
+    const days = daysBetweenJalali(previous, date);
+    if (days > 0) extraDays += Math.max(0, days - 1);
+    previous = date;
+  });
+
+  return { baseDays, extraDays, totalDays: baseDays + extraDays };
+}
+
+function emptyForm() {
+  return {
+    ...EMPTY_FORM,
+    general: { ...EMPTY_FORM.general },
+    calendar: { ...EMPTY_FORM.calendar, extraDates: [] },
+    technical: { ...EMPTY_FORM.technical, tagIds: [] },
+    financial: normalizeFinancial(EMPTY_FORM.financial),
+    insurance: { ...EMPTY_FORM.insurance },
+  };
+}
+
+function normalizeContractRow(row) {
+  const base = emptyForm();
+  const item = row && typeof row === "object" ? row : {};
+  const documentType = String(item.documentType ?? item.document_type ?? base.documentType ?? "main");
+  return {
+    ...base,
+    ...item,
+    id: String(item.id ?? ""),
+    projectId: String(item.projectId ?? item.project_id ?? ""),
+    documentType,
+    contractNo: documentType === "main" ? String(item.contractNo ?? item.contract_no ?? "") : "",
+    parentContractId: documentType === "main" ? "" : String(item.parentContractId ?? item.parent_contract_id ?? ""),
+    relatedLetterId: String(item.relatedLetterId ?? item.related_letter_id ?? ""),
+    general: { ...base.general, ...(item.general && typeof item.general === "object" ? item.general : {}) },
+    calendar: {
+      ...base.calendar,
+      ...(item.calendar && typeof item.calendar === "object" ? item.calendar : {}),
+      extraDates: Array.isArray(item.calendar?.extraDates) ? item.calendar.extraDates : [],
+    },
+    technical: {
+      ...base.technical,
+      ...(item.technical && typeof item.technical === "object" ? item.technical : {}),
+      tagIds: normalizeIdList(item.technical?.tagIds ?? item.technical?.tag_ids),
+    },
+    financial: normalizeFinancial(item.financial || base.financial),
+    insurance: { ...base.insurance, ...(item.insurance && typeof item.insurance === "object" ? item.insurance : {}) },
+    lastSavedSection: String(item.lastSavedSection ?? item.last_saved_section ?? ""),
+    createdAt: item.createdAt ?? item.created_at ?? "",
+    updatedAt: item.updatedAt ?? item.updated_at ?? "",
+  };
+}
+
+function fetchJson(path, opt = {}) {
+  const base = (window.API_URL || "/api").replace(/\/+$/, "");
+  return fetch(base + path, {
+    credentials: "include",
+    cache: "no-store",
+    ...opt,
+    headers: {
+      "Content-Type": "application/json",
+      ...(opt.headers || {}),
+    },
+  }).then(async (res) => {
+    const text = await res.text();
+    let data = {};
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      data = {};
+    }
+    if (!res.ok) throw new Error(data?.error || data?.message || "request_failed");
+    return data;
+  });
+}
+
+function loadStoredContracts() {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
   }
-  return "";
 }
 
-function formatBytes(n) {
-  const num = Number(n || 0);
-  if (!num) return "0 B";
-  const units = ["B", "KB", "MB", "GB"];
-  let v = num;
-  let i = 0;
-  while (v >= 1024 && i < units.length - 1) {
-    v /= 1024;
-    i += 1;
+function saveStoredContracts(rows) {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.isArray(rows) ? rows : []));
+  } catch {
+    // localStorage can be unavailable in private or restricted browser contexts.
   }
-  return `${Math.round(v * 10) / 10} ${units[i]}`;
 }
 
-function tagLabelOf(t) {
-  return String(t?.label ?? t?.name ?? t?.title ?? t?.text ?? t?.id ?? "").trim();
+function getCurrentJalaliParts() {
+  const now = dayjs().calendar("jalali");
+  return {
+    year: Number(now.format("YYYY")),
+    month: Number(now.format("M")),
+    day: Number(now.format("D")),
+  };
 }
 
-function JalaliPopupDatePicker({ value, onChange, buttonClassName }) {
+function getJalaliPartsFromValue(value) {
+  const normalized = normalizeJalaliYmd(value);
+  if (!normalized) return getCurrentJalaliParts();
+  const parts = normalized.split("-").map((item) => Number(item));
+  return {
+    year: parts[0] || getCurrentJalaliParts().year,
+    month: parts[1] || 1,
+    day: parts[2] || 1,
+  };
+}
+
+function ContractDatePicker({ value, onChange }) {
   const [open, setOpen] = React.useState(false);
   const btnRef = React.useRef(null);
   const popRef = React.useRef(null);
   const [pos, setPos] = React.useState({ top: 0, right: 0 });
-
-  const nowParts = React.useMemo(() => getJalaliPartsFromDate(new Date()), []);
-  const initial = React.useMemo(() => {
-    const v = String(value || "");
-    const m = v.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
-    if (m) {
-      return { jy: Number(m[1]), jm: Number(m[2]), jd: Number(m[3]) };
-    }
-    return nowParts;
-  }, [value, nowParts]);
-
-  const [jy, setJy] = React.useState(initial.jy);
-  const [jm, setJm] = React.useState(initial.jm);
-  const [jd, setJd] = React.useState(initial.jd);
+  const currentParts = React.useMemo(() => getCurrentJalaliParts(), []);
+  const initialParts = React.useMemo(() => getJalaliPartsFromValue(value), [value]);
+  const [year, setYear] = React.useState(initialParts.year);
+  const [month, setMonth] = React.useState(initialParts.month);
+  const [day, setDay] = React.useState(initialParts.day);
 
   React.useEffect(() => {
-    const v = String(value || "");
-    const m = v.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
-    if (!m) return;
-    setJy(Number(m[1]));
-    setJm(Number(m[2]));
-    setJd(Number(m[3]));
+    const next = getJalaliPartsFromValue(value);
+    setYear(next.year);
+    setMonth(next.month);
+    setDay(next.day);
   }, [value]);
 
-  React.useEffect(() => {
-    if (!open) return;
-    const onDoc = (e) => {
-      const t = e.target;
-      if (popRef.current && popRef.current.contains(t)) return;
-      if (btnRef.current && btnRef.current.contains(t)) return;
-      setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
-
-  React.useEffect(() => {
-    if (!open) return;
-    const onEsc = (e) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("keydown", onEsc);
-    return () => document.removeEventListener("keydown", onEsc);
-  }, [open]);
+  const daysInMonth = month <= 6 ? 31 : month <= 11 ? 30 : 29;
+  const preview = `${year}-${pad2(month)}-${pad2(Math.min(day, daysInMonth))}`;
+  const display = normalizeJalaliYmd(value).replace(/-/g, "/");
 
   const years = React.useMemo(() => {
-    const base = nowParts.jy || 1400;
-    const arr = [];
-    for (let y = base - 10; y <= base + 10; y += 1) arr.push(y);
-    return arr;
-  }, [nowParts.jy]);
-
-  const days = React.useMemo(() => {
-    const max = jm <= 6 ? 31 : jm <= 11 ? 30 : 29;
-    const arr = [];
-    for (let d = 1; d <= max; d += 1) arr.push(d);
-    return arr;
-  }, [jm]);
+    const list = [];
+    for (let y = currentParts.year - 10; y <= currentParts.year + 10; y += 1) list.push(y);
+    return list;
+  }, [currentParts.year]);
 
   React.useEffect(() => {
-    const max = jm <= 6 ? 31 : jm <= 11 ? 30 : 29;
-    if (jd > max) setJd(max);
-  }, [jm, jd]);
-
-  const preview = `${jy}/${pad2(jm)}/${pad2(jd)}`;
-
-  const defaultBtnCls =
-    "w-full h-11 px-3 rounded-xl border text-right flex items-center justify-between gap-2 transition " +
-    "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]";
-
-  const recalcPos = () => {
-    const btn = btnRef.current;
-    if (!btn) return;
-
-    const r = btn.getBoundingClientRect();
-    const margin = 8;
-    const right = Math.max(margin, window.innerWidth - r.right);
-    let top = r.bottom + margin;
-    const pop = popRef.current;
-    if (pop) {
-      const pr = pop.getBoundingClientRect();
-      const h = pr.height || 0;
-      if (top + h > window.innerHeight - margin) {
-        const above = r.top - h - margin;
-        if (above >= margin) top = above;
-        else top = Math.max(margin, window.innerHeight - h - margin);
-      }
-    }
-    setPos({ top, right });
-  };
+    if (day > daysInMonth) setDay(daysInMonth);
+  }, [day, daysInMonth]);
 
   React.useEffect(() => {
     if (!open) return;
-
-    recalcPos();
-    const raf = requestAnimationFrame(() => recalcPos());
-    const onResize = () => recalcPos();
-    const onScrollAny = () => recalcPos();
-
-    window.addEventListener("resize", onResize);
-    document.addEventListener("scroll", onScrollAny, true);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", onResize);
-      document.removeEventListener("scroll", onScrollAny, true);
+    const onDoc = (event) => {
+      const target = event.target;
+      if (popRef.current?.contains(target) || btnRef.current?.contains(target)) return;
+      setOpen(false);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const onKey = (event) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
   }, [open]);
 
+  const recalcPos = React.useCallback(() => {
+    const btn = btnRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const margin = 8;
+    const width = Math.min(420, window.innerWidth - margin * 2);
+    const right = Math.max(margin, Math.min(window.innerWidth - rect.right, window.innerWidth - width - margin));
+    let top = rect.bottom + margin;
+    const pop = popRef.current;
+    if (pop) {
+      const height = pop.getBoundingClientRect().height || 0;
+      if (top + height > window.innerHeight - margin) top = Math.max(margin, rect.top - height - margin);
+    }
+    setPos({ top, right });
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) return;
+    recalcPos();
+    const raf = requestAnimationFrame(recalcPos);
+    window.addEventListener("resize", recalcPos);
+    document.addEventListener("scroll", recalcPos, true);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", recalcPos);
+      document.removeEventListener("scroll", recalcPos, true);
+    };
+  }, [open, recalcPos]);
+
+  const apply = () => {
+    onChange(preview);
+    setOpen(false);
+  };
+
   return (
-    <div className="relative">
+    <>
       <button
         ref={btnRef}
         type="button"
-        onClick={() => setOpen((o) => !o)}
-        className={buttonClassName || defaultBtnCls}
+        onClick={() => setOpen((prev) => !prev)}
+        className="h-11 w-full rounded-xl border border-black/15 bg-white px-3 text-right text-black outline-none transition hover:bg-black/[0.02] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
       >
-        <span className={value ? "" : "text-neutral-400"}>{value ? toFaDigits(value) : ""}</span>
-        <span className="text-neutral-500">
-          <svg
-            viewBox="0 0 24 24"
-            width="18"
-            height="18"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <rect x="3" y="4" width="18" height="18" rx="2" />
-            <path d="M16 2v4M8 2v4M3 10h18" />
-          </svg>
-        </span>
+        {display ? toFaDigits(display) : <span className="text-black/40 dark:text-neutral-400">انتخاب تاریخ</span>}
       </button>
 
       {open &&
         createPortal(
           <div
             ref={popRef}
-            className="fixed z-[9999] w-[min(420px,calc(100vw-24px))] rounded-2xl border shadow-lg p-4 border-black/10 bg-white text-neutral-900"
+            className="fixed z-[9999] w-[min(420px,calc(100vw-24px))] rounded-2xl border border-black/10 bg-white p-4 text-neutral-900 shadow-xl"
             style={{ top: pos.top, right: pos.right }}
+            dir="rtl"
           >
-            <div className="flex items-center justify-between mb-3">
+            <div className="mb-4 flex items-center justify-between gap-3">
               <div className="font-semibold text-sm">انتخاب تاریخ</div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="h-9 w-9 rounded-xl border flex items-center justify-center transition border-black/10 hover:bg-black/[0.04]"
+                className="h-9 w-9 rounded-xl border border-black/10 flex items-center justify-center hover:bg-black/[0.04] transition"
                 aria-label="بستن"
                 title="بستن"
               >
-                <svg
-                  viewBox="0 0 24 24"
-                  width="18"
-                  height="18"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M18 6 6 18M6 6l12 12" />
-                </svg>
+                <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5" />
               </button>
             </div>
 
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <div className="text-neutral-600 text-xs mb-1">روز</div>
+                <div className="mb-1 text-xs text-neutral-600">روز</div>
                 <select
-                  value={jd}
-                  onChange={(e) => setJd(Number(e.target.value))}
-                  className="w-full h-11 px-3 rounded-xl border outline-none border-black/10 bg-white text-neutral-900"
+                  value={day}
+                  onChange={(event) => setDay(Number(event.target.value))}
+                  className="h-11 w-full rounded-xl border border-black/10 bg-white px-3 outline-none"
                 >
-                  {days.map((d) => (
-                    <option key={d} value={d}>
-                      {toFaDigits(d)}
+                  {Array.from({ length: daysInMonth }, (_, index) => index + 1).map((item) => (
+                    <option key={item} value={item}>
+                      {toFaDigits(item)}
                     </option>
                   ))}
                 </select>
               </div>
-
               <div>
-                <div className="text-neutral-600 text-xs mb-1">ماه</div>
+                <div className="mb-1 text-xs text-neutral-600">ماه</div>
                 <select
-                  value={jm}
-                  onChange={(e) => setJm(Number(e.target.value))}
-                  className="w-full h-11 px-3 rounded-xl border outline-none border-black/10 bg-white text-neutral-900"
+                  value={month}
+                  onChange={(event) => setMonth(Number(event.target.value))}
+                  className="h-11 w-full rounded-xl border border-black/10 bg-white px-3 outline-none"
                 >
-                  {PERSIAN_MONTHS.map((name, idx) => (
-                    <option key={name} value={idx + 1}>
+                  {PERSIAN_MONTHS.map((name, index) => (
+                    <option key={name} value={index + 1}>
                       {name}
                     </option>
                   ))}
                 </select>
               </div>
-
               <div>
-                <div className="text-neutral-600 text-xs mb-1">سال</div>
+                <div className="mb-1 text-xs text-neutral-600">سال</div>
                 <select
-                  value={jy}
-                  onChange={(e) => setJy(Number(e.target.value))}
-                  className="w-full h-11 px-3 rounded-xl border outline-none border-black/10 bg-white text-neutral-900"
+                  value={year}
+                  onChange={(event) => setYear(Number(event.target.value))}
+                  className="h-11 w-full rounded-xl border border-black/10 bg-white px-3 outline-none"
                 >
-                  {years.map((y) => (
-                    <option key={y} value={y}>
-                      {toFaDigits(y)}
+                  {years.map((item) => (
+                    <option key={item} value={item}>
+                      {toFaDigits(item)}
                     </option>
                   ))}
                 </select>
               </div>
             </div>
 
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <div className="text-neutral-600 text-xs">
-                پیش نمایش: <span className="font-semibold">{toFaDigits(preview)}</span>
+            <div className="mt-4 flex items-end justify-between gap-3">
+              <div className="text-xs text-neutral-600">
+                پیش نمایش:
+                <div className="mt-1 font-semibold text-neutral-900">{toFaDigits(preview.replace(/-/g, "/"))}</div>
               </div>
-
-              <div className="flex flex-wrap items-center gap-2 justify-end w-full">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onChange(preview);
-                    setOpen(false);
-                  }}
-                  className="h-10 px-4 rounded-xl transition bg-black text-white hover:bg-black/90"
-                >
-                  تایید
-                </button>
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="h-10 px-4 rounded-xl border transition border-black/10 hover:bg-black/[0.04]"
+                  className="h-10 px-4 rounded-xl border border-black/10 hover:bg-black/[0.04] transition"
                 >
                   بستن
+                </button>
+                <button type="button" onClick={apply} className="h-10 px-4 rounded-xl bg-black text-white hover:bg-black/90 transition">
+                  تایید
                 </button>
               </div>
             </div>
           </div>,
           document.body
         )}
-    </div>
+    </>
   );
 }
 
 export default function ContractInformation() {
   const [projects, setProjects] = React.useState([]);
   const [projectsLoading, setProjectsLoading] = React.useState(false);
-  const [projectId, setProjectId] = React.useState("");
-  const [error, setError] = React.useState("");
+  const [letters, setLetters] = React.useState([]);
+  const [lettersLoading, setLettersLoading] = React.useState(false);
+  const [loadError, setLoadError] = React.useState("");
 
-  const [contractScopeTab, setContractScopeTab] = React.useState(CONTRACT_SCOPE_TABS[0].id);
-  const [detailTab, setDetailTab] = React.useState(DETAIL_TABS[0].id);
-  const [generalForm, setGeneralForm] = React.useState({
-    contractType: "",
-    contractNo: "",
-    contractTitle: "",
-    contractSubject: "",
-    employerAssignor: "",
-    mainEmployer: "",
-    partners: "",
-    mainContractors: "",
-    notifyDateJ: "",
-    notifyDateG: "",
-    startDateJ: "",
-    startDateG: "",
-    duration: "",
-    endDateJ: "",
-    endDateG: "",
-    adjustment: "has",
-  });
-  const [technicalForm, setTechnicalForm] = React.useState({
-    workDescription: "",
-    serviceHeadingTagIds: [],
-    fuelCommitments: [],
-    accommodationService: "",
-    foodSupply: "",
-    transportMode: "",
-    transportDetails: "",
-    water: "",
-    electricityLighting: "",
-    loadingCraneService: "",
-    goodsSupply: "",
-    customsClearance: "",
-    other: "",
-  });
-
-  const [uploadOpen, setUploadOpen] = React.useState(false);
-  const [technicalFiles, setTechnicalFiles] = React.useState([]);
-  const uploadInputRef = React.useRef(null);
-
+  const [rows, setRows] = React.useState(() => loadStoredContracts());
+  const [rowsLoading, setRowsLoading] = React.useState(false);
+  const [rowsError, setRowsError] = React.useState("");
+  const [formOpen, setFormOpen] = React.useState(false);
+  const [form, setForm] = React.useState(() => emptyForm());
+  const [activeContractTab, setActiveContractTab] = React.useState(CONTRACT_SECTION_TABS[0].id);
+  const [filterQuery, setFilterQuery] = React.useState("");
+  const [filterProjectId, setFilterProjectId] = React.useState("");
+  const [filterDocType, setFilterDocType] = React.useState("");
+  const [relatedPickOpen, setRelatedPickOpen] = React.useState(false);
+  const [relatedPickQuery, setRelatedPickQuery] = React.useState("");
+  const [tagCategories, setTagCategories] = React.useState([]);
+  const [tags, setTags] = React.useState([]);
+  const [tagsLoaded, setTagsLoaded] = React.useState(false);
   const [tagPickOpen, setTagPickOpen] = React.useState(false);
   const [tagPickSearch, setTagPickSearch] = React.useState("");
   const [tagPickCategoryId, setTagPickCategoryId] = React.useState("");
   const [tagPickDraftIds, setTagPickDraftIds] = React.useState([]);
-  const [tagCategories, setTagCategories] = React.useState([]);
-  const [tagItems, setTagItems] = React.useState([]);
-  const [tagsLoading, setTagsLoading] = React.useState(false);
-  const [tagsError, setTagsError] = React.useState("");
+  const [currencyItems, setCurrencyItems] = React.useState([]);
+  const [currencySourceItems, setCurrencySourceItems] = React.useState([]);
+  const [currencyLoading, setCurrencyLoading] = React.useState(false);
+  const [currencyError, setCurrencyError] = React.useState("");
+  const financialUploadInputRef = React.useRef(null);
+  const [editingGuaranteeId, setEditingGuaranteeId] = React.useState("");
+  const [editingGuaranteeDraft, setEditingGuaranteeDraft] = React.useState(() => ({ ...EMPTY_GUARANTEE_ROW }));
 
-  const api = React.useCallback(async (path, opt = {}) => {
-    const base = (window.API_URL || "/api").replace(/\/+$/, "");
-    const res = await fetch(base + path, {
-      credentials: "include",
-      cache: "no-store",
-      ...opt,
-      headers: {
-        "Content-Type": "application/json",
-        ...(opt.headers || {}),
-      },
-    });
+  React.useEffect(() => {
+    saveStoredContracts(rows);
+  }, [rows]);
 
-    const txt = await res.text();
-    let data = {};
-    try {
-      data = txt ? JSON.parse(txt) : {};
-    } catch {
-      throw new Error("bad_json_response");
-    }
-    if (!res.ok) throw new Error(data?.error || data?.message || "request_failed");
-    return data;
+  React.useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      setRowsLoading(true);
+      setRowsError("");
+      try {
+        const data = await fetchJson("/contracts");
+        const list = asArray(data)
+          .map(normalizeContractRow)
+          .filter((row) => row.id);
+        if (alive) setRows(list);
+      } catch (error) {
+        if (alive) setRowsError(error?.message || "خطا در دریافت قراردادها");
+      } finally {
+        if (alive) setRowsLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
   }, []);
 
   React.useEffect(() => {
     let alive = true;
+
     (async () => {
       setProjectsLoading(true);
-      setError("");
+      setLoadError("");
       try {
-        const r = await api("/projects");
-        const raw = Array.isArray(r) ? r : Array.isArray(r?.projects) ? r.projects : Array.isArray(r?.items) ? r.items : [];
-
-        const onlyActive = (raw || [])
-          .filter((p) => p && typeof p === "object" && !Array.isArray(p))
-          .map((p) => ({
-            ...p,
-            id: p?.id == null ? null : String(p.id),
-            code: p?.code == null ? "" : String(p.code).trim(),
-            name: p?.name == null ? "" : String(p.name).trim(),
-            isActive: p?.isActive !== false,
-          }))
-          .filter((p) => p.id != null && p.isActive)
-          .sort((a, b) =>
-            String(a.code || "").localeCompare(String(b.code || ""), "fa", {
-              numeric: true,
-              sensitivity: "base",
-            })
-          );
-
-        if (alive) setProjects(onlyActive);
-      } catch (ex) {
+        const data = await fetchJson("/projects");
+        const list = asArray(data)
+          .map(normalizeProject)
+          .filter((project) => project.id && project.isActive && isTopProjectCode(project.code))
+          .sort(compareProjects);
+        if (alive) setProjects(list);
+      } catch (error) {
         if (!alive) return;
         setProjects([]);
-        setError(ex?.message || "خطا در دریافت پروژه‌ها");
+        setLoadError(error?.message || "خطا در دریافت پروژه‌ها");
       } finally {
         if (alive) setProjectsLoading(false);
       }
@@ -485,735 +836,2050 @@ export default function ContractInformation() {
     return () => {
       alive = false;
     };
-  }, [api]);
+  }, []);
 
   React.useEffect(() => {
-    if (!projectId) return;
-    const exists = (projects || []).some((p) => String(p.id) === String(projectId));
-    if (!exists) setProjectId("");
-  }, [projectId, projects]);
-
-  const selectedProject = React.useMemo(
-    () => (projects || []).find((p) => String(p.id) === String(projectId)),
-    [projects, projectId]
-  );
-
-  const selectedProjectNameFa = React.useMemo(() => {
-    if (!selectedProject) return "";
-    return firstStringValue(selectedProject, [
-      "nameFa",
-      "name_fa",
-      "titleFa",
-      "title_fa",
-      "persianName",
-      "persian_name",
-      "name",
-    ]);
-  }, [selectedProject]);
-
-  const selectedProjectNameEn = React.useMemo(() => {
-    if (!selectedProject) return "";
-    return firstStringValue(selectedProject, [
-      "nameEn",
-      "name_en",
-      "titleEn",
-      "title_en",
-      "englishName",
-      "english_name",
-      "nameLatin",
-      "name_latin",
-      "name",
-    ]);
-  }, [selectedProject]);
-
-  const setGeneralField = (field, value) => {
-    setGeneralForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const setGeneralJalaliDate = (jalaliField, gregorianField, value) => {
-    setGeneralForm((prev) => ({
-      ...prev,
-      [jalaliField]: value || "",
-      [gregorianField]: toGregorianYmd(value || ""),
-    }));
-  };
-
-  const setTechnicalField = (field, value) => {
-    setTechnicalForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const toggleFuelCommitment = (optionId) => {
-    setTechnicalForm((prev) => {
-      const current = Array.isArray(prev.fuelCommitments) ? prev.fuelCommitments : [];
-      const next = current.includes(optionId)
-        ? current.filter((x) => x !== optionId)
-        : [...current, optionId];
-      return { ...prev, fuelCommitments: next };
-    });
-  };
-
-  const addFilesToUpload = (fileList) => {
-    const incoming = Array.from(fileList || []);
-    if (!incoming.length) return;
-    const mapped = incoming.map((f) => ({
-      id: `${Date.now()}_${Math.random()}`,
-      name: String(f?.name || "file"),
-      size: Number(f?.size || 0),
-      file: f,
-    }));
-    setTechnicalFiles((prev) => [...prev, ...mapped]);
-  };
-
-  const removeTechnicalFile = (id) => {
-    setTechnicalFiles((prev) => prev.filter((f) => String(f.id) !== String(id)));
-  };
-
-  const onDropUpload = (e) => {
-    e.preventDefault();
-    const fl = e.dataTransfer?.files;
-    if (fl && fl.length) addFilesToUpload(fl);
-  };
-
-  const onDragOverUpload = (e) => {
-    e.preventDefault();
-  };
-
-  const openTagPicker = () => {
-    setTagPickDraftIds(
-      (Array.isArray(technicalForm.serviceHeadingTagIds) ? technicalForm.serviceHeadingTagIds : []).map((x) => String(x))
-    );
-    setTagPickSearch("");
-    setTagPickCategoryId("");
-    setTagPickOpen(true);
-  };
-
-  React.useEffect(() => {
-    if (!tagPickOpen) return;
     let alive = true;
+
     (async () => {
-      setTagsLoading(true);
-      setTagsError("");
+      setLettersLoading(true);
       try {
-        const r = await api("/tags?scope=letters");
-        if (!alive) return;
-
-        const cats = Array.isArray(r?.categories) ? r.categories : [];
-        const tags = Array.isArray(r?.tags)
-          ? r.tags
-          : Array.isArray(r?.items)
-          ? r.items
-          : Array.isArray(r)
-          ? r
-          : [];
-
-        setTagCategories(cats);
-        setTagItems(tags);
-      } catch (ex) {
-        if (!alive) return;
-        setTagCategories([]);
-        setTagItems([]);
-        setTagsError(ex?.message || "خطا در دریافت برچسب‌ها");
+        const data = await fetchJson("/letters");
+        const list = asArray(data)
+          .filter((letter) => letter && typeof letter === "object")
+          .filter((letter) => letterIdOf(letter))
+          .sort((a, b) => String(letterIdOf(b)).localeCompare(String(letterIdOf(a)), "fa", { numeric: true }));
+        if (alive) setLetters(list);
+      } catch {
+        if (alive) setLetters([]);
       } finally {
-        if (alive) setTagsLoading(false);
+        if (alive) setLettersLoading(false);
       }
     })();
 
     return () => {
       alive = false;
     };
-  }, [api, tagPickOpen]);
+  }, []);
 
-  const selectedServiceHeadingTags = React.useMemo(() => {
-    const ids = (Array.isArray(technicalForm.serviceHeadingTagIds) ? technicalForm.serviceHeadingTagIds : []).map((x) =>
-      String(x)
-    );
-    if (!ids.length) return [];
-    const map = new Map((Array.isArray(tagItems) ? tagItems : []).map((t) => [String(t?.id), t]));
-    return ids.map((id) => map.get(id) || { id, label: `برچسب (${toFaDigits(id)})` });
-  }, [tagItems, technicalForm.serviceHeadingTagIds]);
+  const ensureContractTags = React.useCallback(async () => {
+    if (tagsLoaded) return;
+    try {
+      const data = await fetchJson("/tags?scope=letters");
+      setTagCategories(Array.isArray(data?.categories) ? data.categories : []);
+      setTags(Array.isArray(data?.tags) ? data.tags : asArray(data));
+    } catch {
+      try {
+        const data = await fetchJson("/tags");
+        setTagCategories(Array.isArray(data?.categories) ? data.categories : []);
+        setTags(Array.isArray(data?.tags) ? data.tags : asArray(data));
+      } catch {
+        setTagCategories([]);
+        setTags([]);
+      }
+    } finally {
+      setTagsLoaded(true);
+    }
+  }, [tagsLoaded]);
 
-  const filteredTagItems = React.useMemo(() => {
-    const list = Array.isArray(tagItems) ? tagItems : [];
-    const q = String(tagPickSearch || "").trim().toLowerCase();
-    return list.filter((t) => {
-      const label = tagLabelOf(t).toLowerCase();
-      const catId = String(t?.category_id ?? t?.categoryId ?? "");
-      if (tagPickCategoryId && catId !== String(tagPickCategoryId)) return false;
-      if (q && !label.includes(q)) return false;
+  React.useEffect(() => {
+    if (!formOpen) return;
+    ensureContractTags();
+  }, [ensureContractTags, formOpen]);
+
+  const ensureCurrencies = React.useCallback(async () => {
+    if (currencyItems.length || currencySourceItems.length || currencyLoading) return;
+    setCurrencyLoading(true);
+    setCurrencyError("");
+    try {
+      const [typesResp, sourcesResp] = await Promise.all([
+        fetchJson("/base/currencies/types").catch(() => ({ items: [] })),
+        fetchJson("/base/currencies/sources").catch(() => ({ items: [] })),
+      ]);
+      setCurrencyItems(listFromPayload(typesResp, "types"));
+      setCurrencySourceItems(listFromPayload(sourcesResp, "sources"));
+    } catch (error) {
+      setCurrencyItems([]);
+      setCurrencySourceItems([]);
+      setCurrencyError(error?.message || "خطا در دریافت ارزها و منشأ ارز");
+    } finally {
+      setCurrencyLoading(false);
+    }
+  }, [currencyItems.length, currencyLoading, currencySourceItems.length]);
+
+  React.useEffect(() => {
+    if (!formOpen || activeContractTab !== "financial") return;
+    ensureCurrencies();
+  }, [activeContractTab, ensureCurrencies, formOpen]);
+
+  React.useEffect(() => {
+    if (!formOpen || activeContractTab !== "financial") return;
+    setForm((prev) => {
+      const hasContractRows = Array.isArray(prev.financial?.contractAmounts) && prev.financial.contractAmounts.length;
+      const hasAppendixRows = Array.isArray(prev.financial?.appendices) && prev.financial.appendices.length;
+      if (hasContractRows && hasAppendixRows) return prev;
+      return {
+        ...prev,
+        financial: normalizeFinancial(prev.financial || {}),
+      };
+    });
+  }, [activeContractTab, formOpen]);
+
+  const projectById = React.useMemo(() => {
+    const map = new Map();
+    projects.forEach((project) => map.set(String(project.id), project));
+    return map;
+  }, [projects]);
+
+  const rowById = React.useMemo(() => {
+    const map = new Map();
+    rows.forEach((row) => map.set(String(row.id), row));
+    return map;
+  }, [rows]);
+
+  const letterById = React.useMemo(() => {
+    const map = new Map();
+    letters.forEach((letter) => map.set(String(letterIdOf(letter)), letter));
+    return map;
+  }, [letters]);
+
+  const mainContracts = React.useMemo(
+    () => rows.filter((row) => row.documentType === "main" && String(row.contractNo || "").trim()),
+    [rows]
+  );
+
+  const selectedLetter = form.relatedLetterId ? letterById.get(String(form.relatedLetterId)) : null;
+  const technicalTagIds = React.useMemo(() => normalizeIdList(form.technical?.tagIds), [form.technical?.tagIds]);
+  const tagById = React.useMemo(() => {
+    const map = new Map();
+    tags.forEach((tag) => {
+      const id = String(tag?.id ?? "");
+      if (id) map.set(id, tag);
+    });
+    return map;
+  }, [tags]);
+  const currencyById = React.useMemo(() => {
+    const map = new Map();
+    currencyItems.forEach((item) => {
+      const id = readItemId(item);
+      if (id) map.set(id, item);
+    });
+    return map;
+  }, [currencyItems]);
+  const currencySourceById = React.useMemo(() => {
+    const map = new Map();
+    currencySourceItems.forEach((item) => {
+      const id = readItemId(item);
+      if (id) map.set(id, item);
+    });
+    return map;
+  }, [currencySourceItems]);
+  const financialForm = React.useMemo(() => normalizeFinancial(form.financial || {}), [form.financial]);
+  const filteredLetters = React.useMemo(() => {
+    const q = toEnDigits(relatedPickQuery).trim().toLowerCase();
+    const list = Array.isArray(letters) ? letters : [];
+    if (!q) return list.slice(0, 80);
+    return list.filter((letter) => {
+      const haystack = [
+        letterNoOf(letter),
+        secretariatNoOf(letter),
+        subjectOf(letter),
+        orgOf(letter),
+        letterDateOf(letter),
+      ]
+        .map((item) => toEnDigits(item).toLowerCase())
+        .join(" ");
+      return haystack.includes(q);
+    });
+  }, [letters, relatedPickQuery]);
+
+  const filteredRows = React.useMemo(() => {
+    const q = toEnDigits(filterQuery).trim().toLowerCase();
+    return rows.filter((row) => {
+      const project = projectById.get(String(row.projectId));
+      const letter = row.relatedLetterId ? letterById.get(String(row.relatedLetterId)) : null;
+      const cNo = contractNoForRow(row, rowById);
+      const haystack = [
+        project?.label,
+        documentTypeLabel(row.documentType),
+        cNo,
+        row.general?.contractType,
+        row.general?.contractSubject,
+        row.general?.mainEmployer,
+        row.general?.employerAssignor,
+        row.general?.executor,
+        row.general?.companyMembers,
+        row.general?.mainContractors,
+        row.technical?.serviceScope,
+        row.technical?.duties,
+        ...TECHNICAL_SUPPORT_FIELDS.map((item) => row.technical?.[item.key]),
+        ...(Array.isArray(row.financial?.contractAmounts) ? row.financial.contractAmounts : []).flatMap((item) => [
+          item.amount,
+          item.currencyLabel,
+          item.sourceLabel,
+        ]),
+        ...(Array.isArray(row.financial?.appendices) ? row.financial.appendices : []).flatMap((item) => [
+          item.amount,
+          item.currencyLabel,
+          item.sourceLabel,
+        ]),
+        ...(Array.isArray(row.financial?.guarantees) ? row.financial.guarantees : []).flatMap((item) => [
+          item.name,
+          item.type,
+          item.bankNo,
+          item.amount,
+          item.currencyLabel,
+        ]),
+        secretariatNoOf(letter),
+        subjectOf(letter),
+      ]
+        .map((item) => toEnDigits(item).toLowerCase())
+        .join(" ");
+
+      if (filterProjectId && String(row.projectId) !== String(filterProjectId)) return false;
+      if (filterDocType && String(row.documentType) !== String(filterDocType)) return false;
+      if (q && !haystack.includes(q)) return false;
       return true;
     });
-  }, [tagItems, tagPickCategoryId, tagPickSearch]);
+  }, [filterDocType, filterProjectId, filterQuery, letterById, projectById, rowById, rows]);
 
-  const togglePickDraftTag = (id) => {
+  const setField = (field, value) => {
+    setForm((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === "documentType") {
+        next.contractNo = "";
+        next.parentContractId = "";
+        next.general = {
+          ...(prev.general || {}),
+          employerAssignor: value === "sub" ? FIXED_SUB_ASSIGNOR : prev.general?.employerAssignor || "",
+        };
+      }
+      return next;
+    });
+  };
+
+  const setGeneralField = (field, value) => {
+    setForm((prev) => ({
+      ...prev,
+      general: {
+        ...(prev.general || {}),
+        [field]: value,
+      },
+    }));
+  };
+
+  const setContractTypeField = (value) => {
+    setForm((prev) => ({
+      ...prev,
+      general: {
+        ...(prev.general || {}),
+        contractType: value === "سایر" ? "" : value,
+        customContractType: value === "سایر",
+      },
+    }));
+  };
+
+  const setCustomContractType = (value) => {
+    setForm((prev) => ({
+      ...prev,
+      general: {
+        ...(prev.general || {}),
+        contractType: value,
+        customContractType: true,
+      },
+    }));
+  };
+
+  const setCalendarField = (field, value) => {
+    setForm((prev) => ({
+      ...prev,
+      calendar: {
+        ...(prev.calendar || {}),
+        [field]: value,
+      },
+    }));
+  };
+
+  const setTechnicalField = (field, value) => {
+    setForm((prev) => ({
+      ...prev,
+      technical: {
+        ...(prev.technical || {}),
+        tagIds: normalizeIdList(prev.technical?.tagIds),
+        [field]: value,
+      },
+    }));
+  };
+
+  const updateFinancialRow = (sectionKey, rowId, field, value) => {
+    setForm((prev) => {
+      const financial = normalizeFinancial(prev.financial || {});
+      const rows = financial[sectionKey].map((row) => {
+        if (String(row.id) !== String(rowId)) return row;
+
+        if (field === "currencyId") {
+          const item = currencyById.get(String(value));
+          return {
+            ...row,
+            currencyId: String(value || ""),
+            currencyLabel: item ? readItemLabel(item) : "",
+          };
+        }
+
+        if (field === "sourceId") {
+          const item = currencySourceById.get(String(value));
+          return {
+            ...row,
+            sourceId: String(value || ""),
+            sourceLabel: item ? readItemLabel(item) : "",
+          };
+        }
+
+        return {
+          ...row,
+          [field]: field === "amount" ? cleanFinancialAmountInput(value) : value,
+        };
+      });
+
+      return {
+        ...prev,
+        financial: {
+          ...financial,
+          [sectionKey]: rows,
+        },
+      };
+    });
+  };
+
+  const addFinancialRow = (sectionKey) => {
+    setForm((prev) => {
+      const financial = normalizeFinancial(prev.financial || {});
+      return {
+        ...prev,
+        financial: {
+          ...financial,
+          [sectionKey]: [...financial[sectionKey], makeFinancialRow()],
+        },
+      };
+    });
+  };
+
+  const setFinancialField = (field, value) => {
+    setForm((prev) => {
+      const financial = normalizeFinancial(prev.financial || {});
+      return {
+        ...prev,
+        financial: {
+          ...financial,
+          [field]: value,
+        },
+      };
+    });
+  };
+
+  const setFinancialOption = (field, value) => {
+    setForm((prev) => {
+      const financial = normalizeFinancial(prev.financial || {});
+      const nextValue = financial[field] === value ? "" : value;
+      const nextFinancial = {
+        ...financial,
+        [field]: nextValue,
+      };
+      if (field === "capitalDeposit" && nextValue !== "has") nextFinancial.capitalDepositAmount = "";
+      if (field === "performanceBond" && nextValue !== "has") nextFinancial.performanceBondAmount = "";
+      return {
+        ...prev,
+        financial: nextFinancial,
+      };
+    });
+  };
+
+  const addFinancialBreakdownFiles = (fileList) => {
+    const incoming = Array.from(fileList || [])
+      .filter(Boolean)
+      .map((file) => ({
+        id: `${Date.now()}_${Math.random().toString(16).slice(2)}`,
+        name: String(file?.name || "فایل"),
+        size: Number(file?.size || 0),
+        type: String(file?.type || ""),
+        addedAt: new Date().toISOString(),
+      }));
+    if (!incoming.length) return;
+    setForm((prev) => {
+      const financial = normalizeFinancial(prev.financial || {});
+      return {
+        ...prev,
+        financial: {
+          ...financial,
+          breakdownFiles: [...financial.breakdownFiles, ...incoming],
+        },
+      };
+    });
+  };
+
+  const removeFinancialBreakdownFile = (fileId) => {
+    setForm((prev) => {
+      const financial = normalizeFinancial(prev.financial || {});
+      return {
+        ...prev,
+        financial: {
+          ...financial,
+          breakdownFiles: financial.breakdownFiles.filter((file) => String(file?.id) !== String(fileId)),
+        },
+      };
+    });
+  };
+
+  const updateGuaranteeDraft = (field, value) => {
+    setForm((prev) => {
+      const financial = normalizeFinancial(prev.financial || {});
+      const draft = makeGuaranteeRow(financial.guaranteeDraft || {});
+      let nextDraft = { ...draft };
+
+      if (field === "customNameValue") {
+        nextDraft = { ...nextDraft, name: value, customName: true };
+      } else if (field === "name") {
+        if (value === "سایر") {
+          nextDraft = { ...nextDraft, name: "", customName: true };
+        } else {
+          nextDraft = { ...nextDraft, name: value, customName: false };
+        }
+      } else if (field === "currencyId") {
+        const item = currencyById.get(String(value));
+        nextDraft = {
+          ...nextDraft,
+          currencyId: String(value || ""),
+          currencyLabel: item ? readItemLabel(item) : "",
+        };
+      } else {
+        nextDraft = {
+          ...nextDraft,
+          [field]: field === "amount" ? cleanFinancialAmountInput(value) : value,
+        };
+      }
+
+      return {
+        ...prev,
+        financial: {
+          ...financial,
+          guaranteeDraft: nextDraft,
+        },
+      };
+    });
+  };
+
+  const addGuaranteeRow = () => {
+    setForm((prev) => {
+      const financial = normalizeFinancial(prev.financial || {});
+      const draft = makeGuaranteeRow(financial.guaranteeDraft || {});
+      const hasAnyValue = [draft.name, draft.type, draft.bankNo, draft.amount, draft.currencyId].some((item) => String(item || "").trim());
+      if (!hasAnyValue) return prev;
+
+      return {
+        ...prev,
+        financial: {
+          ...financial,
+          guaranteeDraft: { ...EMPTY_GUARANTEE_ROW },
+          guarantees: [...financial.guarantees, makeGuaranteeRow({ ...draft, id: "" })],
+        },
+      };
+    });
+  };
+
+  const removeGuaranteeRow = (rowId) => {
+    setForm((prev) => {
+      const financial = normalizeFinancial(prev.financial || {});
+      return {
+        ...prev,
+        financial: {
+          ...financial,
+          guarantees: financial.guarantees.filter((row) => String(row.id) !== String(rowId)),
+        },
+      };
+    });
+    if (String(editingGuaranteeId) === String(rowId)) {
+      setEditingGuaranteeId("");
+      setEditingGuaranteeDraft({ ...EMPTY_GUARANTEE_ROW });
+    }
+  };
+
+  const startEditGuaranteeRow = (row) => {
+    const draft = makeGuaranteeRow(row || {});
+    setEditingGuaranteeId(String(draft.id || ""));
+    setEditingGuaranteeDraft(draft);
+  };
+
+  const cancelEditGuaranteeRow = () => {
+    setEditingGuaranteeId("");
+    setEditingGuaranteeDraft({ ...EMPTY_GUARANTEE_ROW });
+  };
+
+  const updateGuaranteeEdit = (field, value) => {
+    setEditingGuaranteeDraft((prev) => {
+      let next = makeGuaranteeRow(prev || {});
+      if (field === "customNameValue") {
+        next = { ...next, name: value, customName: true };
+      } else if (field === "name") {
+        next = value === "سایر" ? { ...next, name: "", customName: true } : { ...next, name: value, customName: false };
+      } else if (field === "currencyId") {
+        const item = currencyById.get(String(value));
+        next = {
+          ...next,
+          currencyId: String(value || ""),
+          currencyLabel: item ? readItemLabel(item) : "",
+        };
+      } else {
+        next = {
+          ...next,
+          [field]: field === "amount" ? cleanFinancialAmountInput(value) : value,
+        };
+      }
+      return next;
+    });
+  };
+
+  const saveEditGuaranteeRow = () => {
+    const id = String(editingGuaranteeId || "");
+    if (!id) return;
+    setForm((prev) => {
+      const financial = normalizeFinancial(prev.financial || {});
+      return {
+        ...prev,
+        financial: {
+          ...financial,
+          guarantees: financial.guarantees.map((row) =>
+            String(row.id) === id ? makeGuaranteeRow({ ...editingGuaranteeDraft, id }) : row
+          ),
+        },
+      };
+    });
+    cancelEditGuaranteeRow();
+  };
+
+  const removeFinancialRow = (sectionKey, rowId) => {
+    setForm((prev) => {
+      const financial = normalizeFinancial(prev.financial || {});
+      const rows = financial[sectionKey].filter((row) => String(row.id) !== String(rowId));
+      return {
+        ...prev,
+        financial: {
+          ...financial,
+          [sectionKey]: rows.length ? rows : [makeFinancialRow()],
+        },
+      };
+    });
+  };
+
+  const setTechnicalTagIds = (ids) => {
+    setForm((prev) => ({
+      ...prev,
+      technical: {
+        ...(prev.technical || {}),
+        tagIds: normalizeIdList(ids),
+      },
+    }));
+  };
+
+  const toggleTechnicalTag = (id) => {
     const sid = String(id || "").trim();
     if (!sid) return;
-    setTagPickDraftIds((prev) => {
-      const base = Array.isArray(prev) ? prev.map((x) => String(x)) : [];
-      if (base.includes(sid)) return base.filter((x) => x !== sid);
-      return [...base, sid];
-    });
+    const current = normalizeIdList(form.technical?.tagIds);
+    setTechnicalTagIds(current.includes(sid) ? current.filter((item) => item !== sid) : [...current, sid]);
+  };
+
+  const openTechnicalTagPicker = async () => {
+    await ensureContractTags();
+    setTagPickDraftIds(technicalTagIds);
+    setTagPickCategoryId("");
+    setTagPickSearch("");
+    setTagPickOpen(true);
+  };
+
+  const togglePickDraft = (id) => {
+    const sid = String(id || "").trim();
+    if (!sid) return;
+    setTagPickDraftIds((prev) => (prev.includes(sid) ? prev.filter((item) => item !== sid) : [...prev, sid]));
   };
 
   const applyPickedTags = () => {
-    const clean = (Array.isArray(tagPickDraftIds) ? tagPickDraftIds : [])
-      .map((x) => String(x || "").trim())
-      .filter(Boolean);
-    setTechnicalForm((prev) => ({ ...prev, serviceHeadingTagIds: clean }));
+    setTechnicalTagIds(tagPickDraftIds);
     setTagPickOpen(false);
   };
 
-  const tabBtnClass = (isActive) =>
-    `h-10 px-4 rounded-2xl border text-sm shadow-sm transition ${
+  const addCalendarExtraDate = () => {
+    setForm((prev) => ({
+      ...prev,
+      calendar: {
+        ...(prev.calendar || {}),
+        extraDates: [...(Array.isArray(prev.calendar?.extraDates) ? prev.calendar.extraDates : []), ""],
+      },
+    }));
+  };
+
+  const setCalendarExtraDate = (index, value) => {
+    setForm((prev) => {
+      const extraDates = Array.isArray(prev.calendar?.extraDates) ? [...prev.calendar.extraDates] : [];
+      extraDates[index] = value;
+      return {
+        ...prev,
+        calendar: {
+          ...(prev.calendar || {}),
+          extraDates,
+        },
+      };
+    });
+  };
+
+  const removeCalendarExtraDate = (index) => {
+    setForm((prev) => {
+      const extraDates = (Array.isArray(prev.calendar?.extraDates) ? prev.calendar.extraDates : []).filter(
+        (_, itemIndex) => itemIndex !== index
+      );
+      return {
+        ...prev,
+        calendar: {
+          ...(prev.calendar || {}),
+          extraDates,
+        },
+      };
+    });
+  };
+
+  const openFreshForm = () => {
+    setForm(emptyForm());
+    setRelatedPickQuery("");
+    setActiveContractTab(CONTRACT_SECTION_TABS[0].id);
+    setFormOpen(true);
+  };
+
+  const closeForm = () => {
+    setForm(emptyForm());
+    setRelatedPickQuery("");
+    setActiveContractTab(CONTRACT_SECTION_TABS[0].id);
+    setFormOpen(false);
+  };
+
+  const saveContractSection = async (sectionId = activeContractTab) => {
+    const projectId = String(form.projectId || "").trim();
+    const documentType = String(form.documentType || "main");
+    const relatedLetterId = String(form.relatedLetterId || "").trim();
+    const contractNo = String(form.contractNo || "").trim();
+    const parentContractId = String(form.parentContractId || "").trim();
+
+    if (!projectId) {
+      alert("مرکز/پروژه را انتخاب کنید.");
+      return;
+    }
+
+    if (documentType === "main" && !contractNo) {
+      alert("شماره قرارداد را وارد کنید.");
+      return;
+    }
+
+    if (documentType !== "main" && !parentContractId) {
+      alert("شماره قرارداد اصلی را انتخاب کنید.");
+      return;
+    }
+
+    const id = String(form.id || "").trim() || `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    const rowPayload = {
+      ...form,
+      id,
+      projectId,
+      documentType,
+      contractNo: documentType === "main" ? contractNo : "",
+      parentContractId: documentType === "main" ? "" : parentContractId,
+      relatedLetterId,
+      general: {
+        ...(form.general || {}),
+        employerAssignor: documentType === "sub" ? FIXED_SUB_ASSIGNOR : form.general?.employerAssignor || "",
+      },
+      calendar: { ...(form.calendar || {}) },
+      technical: { ...(form.technical || {}), tagIds: normalizeIdList(form.technical?.tagIds) },
+      financial: normalizeFinancial(form.financial || {}),
+      insurance: { ...(form.insurance || {}) },
+      lastSavedSection: sectionId,
+      updatedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      const data = await fetchJson("/contracts", {
+        method: "POST",
+        body: JSON.stringify(rowPayload),
+      });
+      const savedRow = normalizeContractRow(data?.item || rowPayload);
+
+      setRows((prev) => {
+        const exists = prev.some((row) => String(row.id) === savedRow.id);
+        if (exists) {
+          return prev.map((row) => (String(row.id) === savedRow.id ? savedRow : row));
+        }
+        return [savedRow, ...prev];
+      });
+      setForm((prev) => ({ ...prev, id: savedRow.id }));
+      setRowsError("");
+    } catch (error) {
+      alert(error?.message || "خطا در ذخیره قرارداد");
+    }
+  };
+
+  const deleteRow = async (id) => {
+    const sid = String(id || "");
+    if (!sid) return;
+    if (!window.confirm("حذف شود؟")) return;
+    try {
+      await fetchJson(`/contracts?id=${encodeURIComponent(sid)}`, { method: "DELETE" });
+      setRows((prev) => prev.filter((row) => String(row.id) !== sid && String(row.parentContractId) !== sid));
+      setRowsError("");
+    } catch (error) {
+      alert(error?.message || "خطا در حذف قرارداد");
+    }
+  };
+
+  const inputCls =
+    "w-full h-11 rounded-xl px-3 bg-white text-black border border-black/15 outline-none transition focus:border-black/35 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:border-neutral-500";
+  const textareaCls =
+    "w-full min-h-[150px] rounded-xl px-3 py-2 bg-white text-black border border-black/15 outline-none transition resize-y leading-7 focus:border-black/35 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:border-neutral-500";
+  const labelCls = "text-xs font-semibold text-black/60 mb-1 dark:text-neutral-300";
+  const iconBtnCls =
+    "h-10 w-10 rounded-xl border border-black/15 bg-white hover:bg-black/[0.04] transition inline-flex items-center justify-center dark:bg-neutral-900 dark:border-neutral-700 dark:hover:bg-neutral-800";
+  const saveIconBtnCls =
+    "h-11 w-11 rounded-xl bg-black text-white hover:bg-black/90 transition inline-flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed";
+  const chipBaseCls = "inline-flex h-10 items-center gap-2 rounded-full border px-3 text-xs shadow-sm transition";
+  const chipCls =
+    chipBaseCls +
+    " border-black/10 bg-white text-neutral-900 hover:bg-black/5 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-white/10";
+  const selectedTagChipCls =
+    chipBaseCls + " border-black bg-black text-white hover:bg-black/90 dark:border-neutral-200 dark:bg-neutral-100 dark:text-neutral-900";
+  const tabStripCls =
+    "mx-auto -mb-px flex w-full max-w-[780px] items-stretch justify-center overflow-hidden rounded-t-2xl border border-b-0 border-black/10 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900";
+  const topTabBtnClass = (isActive, index, total) =>
+    [
+      "relative z-10 h-11 min-w-[132px] flex-1 px-4 text-sm font-semibold transition whitespace-nowrap",
+      index > 0 ? "border-r border-black/10 dark:border-neutral-800" : "",
+      index === 0 ? "rounded-tr-2xl" : "",
+      index === total - 1 ? "rounded-tl-2xl" : "",
+      "focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20",
       isActive
-        ? "bg-neutral-100 text-neutral-900 border-neutral-100"
-        : "bg-white text-black border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800"
-    }`;
+        ? "bg-black text-white shadow-sm dark:bg-black dark:text-white"
+        : "bg-white text-[#1f2937] hover:bg-neutral-50 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800",
+    ].join(" ");
+  const tabbedPanelClass =
+    "relative rounded-2xl border border-black/10 bg-white overflow-hidden shadow-sm dark:bg-neutral-900 dark:border-neutral-800";
+  const calendarCardCls =
+    "rounded-2xl border border-black/10 bg-white p-3 min-h-[114px] dark:border-neutral-800 dark:bg-neutral-900";
+  const calendarTotals = calculateCalendarDays(form.calendar || {});
+  const isAppendixDocument = form.documentType === "appendix";
+  const showCalendarExtraDates = isAppendixDocument;
+  const visibleContractTabs = React.useMemo(
+    () => CONTRACT_SECTION_TABS.filter((tab) => !isAppendixDocument || !["general", "insurance"].includes(tab.id)),
+    [isAppendixDocument]
+  );
+  const readonlyInputCls =
+    "w-full h-11 rounded-xl px-3 bg-black/[0.04] text-black border border-black/10 outline-none dark:bg-white/[0.06] dark:text-neutral-100 dark:border-neutral-700";
 
-  const adjustmentBtnClass = (isActive) =>
-    `h-10 px-4 rounded-2xl border text-sm shadow-sm transition ${
-      isActive
-        ? "bg-black text-white border-black"
-        : "bg-white text-black border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800"
-    }`;
+  React.useEffect(() => {
+    if (!visibleContractTabs.some((tab) => tab.id === activeContractTab)) {
+      setActiveContractTab(visibleContractTabs[0]?.id || CONTRACT_SECTION_TABS[0].id);
+    }
+  }, [activeContractTab, visibleContractTabs]);
 
-  const selectorBtnClass = (isActive) =>
-    `h-10 px-4 rounded-2xl border text-sm shadow-sm transition ${
-      isActive
-        ? "bg-black text-white border-black"
-        : "bg-white text-black border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800"
-    }`;
-
-  return (
-    <Card
-      className="p-5 md:p-6 rounded-2xl border bg-white text-black border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800"
-      dir="rtl"
-    >
-      <div className="mb-5 text-base md:text-lg">
-        <span className="text-black/70 dark:text-neutral-300">پروژه‌ها</span>
-        <span className="mx-2 text-black/50 dark:text-neutral-400">›</span>
-        <span className="font-semibold text-black dark:text-neutral-100">اطلاعات قراردادی</span>
-      </div>
-
-      <div className="rounded-2xl border border-black/10 bg-white p-4 md:p-5 space-y-4 dark:bg-neutral-900 dark:border-neutral-800">
-        <div className="flex flex-col gap-1">
-          <label className="text-sm text-black/70 dark:text-neutral-300">پروژه</label>
-          <select
-            className="w-full h-11 rounded-xl px-3 ltr font-[inherit] bg-white text-black placeholder-black/40 border border-black/15 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700"
-            value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
-          >
-            <option className="bg-white text-black dark:bg-neutral-900 dark:text-neutral-100" value="">
-              {projectsLoading ? "در حال بارگذاری پروژه‌ها..." : "انتخاب پروژه فعال"}
-            </option>
-            {(projects || []).map((p) => (
-              <option
-                className="bg-white text-black dark:bg-neutral-900 dark:text-neutral-100"
-                key={p.id}
-                value={p.id}
-              >
-                {p.code ? `${p.code} - ` : ""}
-                {p.name || "بدون نام"}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {error && <div className="text-sm text-red-600 dark:text-red-400">{error}</div>}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {CONTRACT_SCOPE_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setContractScopeTab(tab.id)}
-              className={tabBtnClass(contractScopeTab === tab.id)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-3 gap-2">
-          {DETAIL_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setDetailTab(tab.id)}
-              className={tabBtnClass(detailTab === tab.id)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {detailTab === "general" ? (
-          <div className="space-y-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-black/70 dark:text-neutral-300">نوع قرارداد</label>
+  const renderFinancialRows = (title, sectionKey, rows, options = {}) => {
+    const { bordered = true, showAdd = true, amountLabel = "عدد" } = options;
+    const content = (
+      <>
+      <div className="mb-3 text-sm font-semibold text-black dark:text-neutral-100">{title}</div>
+      <div className="space-y-2">
+        {rows.map((row, index) => (
+          <div key={row.id} className="grid grid-cols-1 md:grid-cols-[minmax(180px,1fr)_190px_190px_44px] gap-2 md:items-end">
+            <div>
+              <div className={labelCls}>{amountLabel}</div>
+              <input
+                value={row.amount || ""}
+                onChange={(e) => updateFinancialRow(sectionKey, row.id, "amount", e.target.value)}
+                className={inputCls}
+                type="text"
+                inputMode="decimal"
+                dir="ltr"
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <div className={labelCls}>ارز</div>
               <select
-                className="w-full h-11 rounded-xl px-3 bg-white text-black border border-black/15 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                value={generalForm.contractType}
-                onChange={(e) => setGeneralField("contractType", e.target.value)}
+                value={row.currencyId || ""}
+                onChange={(e) => updateFinancialRow(sectionKey, row.id, "currencyId", e.target.value)}
+                className={inputCls}
+                disabled={currencyLoading}
               >
-                <option className="bg-white text-black dark:bg-neutral-900 dark:text-neutral-100" value="">
-                  انتخاب کنید
-                </option>
-                {CONTRACT_TYPES.map((item) => (
-                  <option
-                    className="bg-white text-black dark:bg-neutral-900 dark:text-neutral-100"
-                    key={item}
-                    value={item}
-                  >
-                    {item}
-                  </option>
-                ))}
+                <option value="">{currencyLoading ? "در حال بارگذاری..." : "انتخاب ارز"}</option>
+                {currencyItems.map((item) => {
+                  const id = readItemId(item);
+                  if (!id) return null;
+                  return (
+                    <option key={id} value={id}>
+                      {readItemLabel(item) || id}
+                    </option>
+                  );
+                })}
               </select>
             </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-black/70 dark:text-neutral-300">شماره قرارداد</label>
-              <input
-                className="w-full h-11 rounded-xl px-3 bg-white text-black border border-black/15 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                value={generalForm.contractNo}
-                onChange={(e) => setGeneralField("contractNo", e.target.value)}
-              />
+            <div>
+              <div className={labelCls}>منشأ</div>
+              <select
+                value={row.sourceId || ""}
+                onChange={(e) => updateFinancialRow(sectionKey, row.id, "sourceId", e.target.value)}
+                className={inputCls}
+                disabled={currencyLoading}
+              >
+                <option value="">{currencyLoading ? "در حال بارگذاری..." : "انتخاب منشأ"}</option>
+                {currencySourceItems.map((item) => {
+                  const id = readItemId(item);
+                  if (!id) return null;
+                  return (
+                    <option key={id} value={id}>
+                      {readItemLabel(item) || id}
+                    </option>
+                  );
+                })}
+              </select>
             </div>
+            <button
+              type="button"
+              onClick={() => removeFinancialRow(sectionKey, row.id)}
+              className={iconBtnCls}
+              aria-label={`حذف ردیف ${toFaDigits(index + 1)}`}
+              title="حذف"
+            >
+              <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5 dark:invert" />
+            </button>
+          </div>
+        ))}
+      </div>
+      {showAdd ? (
+        <button
+          type="button"
+          onClick={() => addFinancialRow(sectionKey)}
+          className={`${iconBtnCls} mt-3`}
+          aria-label={`افزودن ${title}`}
+          title={`افزودن ${title}`}
+        >
+          <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
+        </button>
+      ) : null}
+      </>
+    );
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-black/70 dark:text-neutral-300">نام پروژه (فارسی)</label>
+    return bordered ? (
+      <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">{content}</div>
+    ) : (
+      <div>{content}</div>
+    );
+  };
+
+  const renderPaymentOption = (field, value, label) => (
+    <label className="inline-flex h-8 items-center gap-2 rounded-lg border border-black/10 bg-white px-2.5 text-xs font-semibold transition hover:bg-black/[0.03] dark:border-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-700">
+      <input
+        type="checkbox"
+        checked={financialForm[field] === value}
+        onChange={() => setFinancialOption(field, value)}
+        className="h-4 w-4 accent-black"
+      />
+      {label}
+    </label>
+  );
+
+  return (
+    <div dir="rtl" className="ipm-contract-information mx-auto max-w-[1400px] font-sans">
+      <Card className="rounded-2xl border overflow-hidden border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
+        <div className="p-3 md:p-4">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="text-base md:text-lg">
+              <span className="text-neutral-700 dark:text-neutral-300">پروژه‌ها</span>
+              <span className="mx-2 text-neutral-500 dark:text-neutral-400">›</span>
+              <span className="font-semibold text-neutral-900 dark:text-neutral-100">قراردادها</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => (formOpen ? closeForm() : openFreshForm())}
+              className={iconBtnCls}
+              title={formOpen ? "بستن" : "افزودن"}
+              aria-label={formOpen ? "بستن" : "افزودن"}
+            >
+              <img
+                src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"}
+                alt=""
+                className="w-5 h-5 dark:invert"
+              />
+            </button>
+          </div>
+
+          <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="min-w-[260px] flex-1">
+                <div className={labelCls}>جست و جو</div>
                 <input
-                  className="w-full h-11 rounded-xl px-3 bg-black/5 text-black border border-black/15 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                  value={selectedProjectNameFa}
-                  readOnly
+                  value={filterQuery}
+                  onChange={(e) => setFilterQuery(e.target.value)}
+                  className={inputCls}
+                  type="text"
+                  placeholder="جستجو در مرکز/پروژه، قرارداد، نوع قرارداد و شماره ثبت دبیرخانه"
                 />
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-black/70 dark:text-neutral-300">نام پروژه (انگلیسی)</label>
-                <input
-                  dir="ltr"
-                  className="w-full h-11 rounded-xl px-3 bg-black/5 text-black border border-black/15 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                  value={selectedProjectNameEn}
-                  readOnly
-                />
+
+              <div className="min-w-[220px]">
+                <div className={labelCls}>مرکز/پروژه</div>
+                <select value={filterProjectId} onChange={(e) => setFilterProjectId(e.target.value)} className={inputCls}>
+                  <option value="">همه پروژه‌ها</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.label}
+                    </option>
+                  ))}
+                </select>
               </div>
-            </div>
 
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-black/70 dark:text-neutral-300">عنوان قرارداد</label>
-              <input
-                className="w-full h-11 rounded-xl px-3 bg-white text-black border border-black/15 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                value={generalForm.contractTitle}
-                onChange={(e) => setGeneralField("contractTitle", e.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-black/70 dark:text-neutral-300">موضوع قرارداد</label>
-              <input
-                className="w-full h-11 rounded-xl px-3 bg-white text-black border border-black/15 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                value={generalForm.contractSubject}
-                onChange={(e) => setGeneralField("contractSubject", e.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-black/70 dark:text-neutral-300">واگذارنده‌ی کارفرما</label>
-              <input
-                className="w-full h-11 rounded-xl px-3 bg-white text-black border border-black/15 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                value={generalForm.employerAssignor}
-                onChange={(e) => setGeneralField("employerAssignor", e.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-black/70 dark:text-neutral-300">کارفرمای اصلی</label>
-              <input
-                className="w-full h-11 rounded-xl px-3 bg-white text-black border border-black/15 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                value={generalForm.mainEmployer}
-                onChange={(e) => setGeneralField("mainEmployer", e.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-black/70 dark:text-neutral-300">اعضای مشارکت</label>
-              <textarea
-                className="w-full min-h-24 rounded-xl px-3 py-2 bg-white text-black border border-black/15 outline-none resize-y dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                value={generalForm.partners}
-                onChange={(e) => setGeneralField("partners", e.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-black/70 dark:text-neutral-300">پیمانکاران اصلی</label>
-              <textarea
-                className="w-full min-h-24 rounded-xl px-3 py-2 bg-white text-black border border-black/15 outline-none resize-y dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                value={generalForm.mainContractors}
-                onChange={(e) => setGeneralField("mainContractors", e.target.value)}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-black/70 dark:text-neutral-300">تاریخ ابلاغ (شمسی)</label>
-                <JalaliPopupDatePicker
-                  value={generalForm.notifyDateJ}
-                  onChange={(v) => setGeneralJalaliDate("notifyDateJ", "notifyDateG", v)}
-                  buttonClassName="w-full h-11 px-3 rounded-xl border text-right flex items-center justify-between gap-2 transition border-black/15 bg-white text-neutral-900 hover:bg-black/[0.02] dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                />
+              <div className="min-w-[160px]">
+                <div className={labelCls}>سند قراردادی</div>
+                <select value={filterDocType} onChange={(e) => setFilterDocType(e.target.value)} className={inputCls}>
+                  <option value="">همه</option>
+                  {CONTRACT_DOCUMENT_TYPES.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-black/70 dark:text-neutral-300">معادل میلادی</label>
-                <input
-                  dir="ltr"
-                  className="w-full h-11 rounded-xl px-3 bg-black/5 text-black border border-black/15 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                  value={generalForm.notifyDateG}
-                  readOnly
-                />
-              </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-black/70 dark:text-neutral-300">تاریخ شروع قرارداد (شمسی)</label>
-                <JalaliPopupDatePicker
-                  value={generalForm.startDateJ}
-                  onChange={(v) => setGeneralJalaliDate("startDateJ", "startDateG", v)}
-                  buttonClassName="w-full h-11 px-3 rounded-xl border text-right flex items-center justify-between gap-2 transition border-black/15 bg-white text-neutral-900 hover:bg-black/[0.02] dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-black/70 dark:text-neutral-300">معادل میلادی</label>
-                <input
-                  dir="ltr"
-                  className="w-full h-11 rounded-xl px-3 bg-black/5 text-black border border-black/15 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                  value={generalForm.startDateG}
-                  readOnly
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-black/70 dark:text-neutral-300">مدت</label>
-              <input
-                className="w-full h-11 rounded-xl px-3 bg-white text-black border border-black/15 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                value={generalForm.duration}
-                onChange={(e) => setGeneralField("duration", e.target.value)}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-black/70 dark:text-neutral-300">تاریخ پایان قرارداد (شمسی)</label>
-                <JalaliPopupDatePicker
-                  value={generalForm.endDateJ}
-                  onChange={(v) => setGeneralJalaliDate("endDateJ", "endDateG", v)}
-                  buttonClassName="w-full h-11 px-3 rounded-xl border text-right flex items-center justify-between gap-2 transition border-black/15 bg-white text-neutral-900 hover:bg-black/[0.02] dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-black/70 dark:text-neutral-300">معادل میلادی</label>
-                <input
-                  dir="ltr"
-                  className="w-full h-11 rounded-xl px-3 bg-black/5 text-black border border-black/15 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                  value={generalForm.endDateG}
-                  readOnly
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label className="text-sm text-black/70 dark:text-neutral-300">تعدیل</label>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { id: "has", label: "دارد" },
-                  { id: "none", label: "ندارد" },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setGeneralField("adjustment", item.id)}
-                    className={adjustmentBtnClass(generalForm.adjustment === item.id)}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
+              <button
+                type="button"
+                className={iconBtnCls}
+                onClick={() => {
+                  setFilterQuery("");
+                  setFilterProjectId("");
+                  setFilterDocType("");
+                }}
+                aria-label="پاک کردن فیلتر"
+                title="پاک کردن فیلتر"
+              >
+                <img src="/images/icons/reset.svg" alt="" className="w-5 h-5 dark:invert" />
+              </button>
             </div>
           </div>
-        ) : detailTab === "technical" ? (
-          <div className="space-y-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-black/70 dark:text-neutral-300">شرح کار قراردادی</label>
-              <textarea
-                className="w-full min-h-32 rounded-xl px-3 py-2 bg-white text-black border border-black/15 outline-none resize-y dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                value={technicalForm.workDescription}
-                onChange={(e) => setTechnicalField("workDescription", e.target.value)}
-              />
-            </div>
 
-            <div className="flex items-center">
-              <button
-                type="button"
-                onClick={() => setUploadOpen(true)}
-                className="h-10 px-4 rounded-xl border border-black/15 bg-black text-white hover:bg-black/90 transition inline-flex items-center justify-center gap-2"
-                title="آپلود فایل"
-              >
-                <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 invert" />
-                <span>آپلود فایل</span>
-                {technicalFiles.length > 0 ? (
-                  <span className="text-xs opacity-85">({toFaDigits(technicalFiles.length)})</span>
-                ) : null}
-              </button>
-            </div>
+          {loadError ? <div className="mt-3 text-sm text-red-600 dark:text-red-400">{loadError}</div> : null}
+          {rowsError ? <div className="mt-3 text-sm text-red-600 dark:text-red-400">{rowsError}</div> : null}
+          {rowsLoading ? <div className="mt-3 text-sm text-black/55 dark:text-neutral-400">در حال بارگذاری قراردادها...</div> : null}
 
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-black/70 dark:text-neutral-300">سرفصل خدمات</label>
-              <button
-                type="button"
-                onClick={openTagPicker}
-                className="w-full h-11 rounded-xl px-3 text-right bg-white text-black border border-black/15 outline-none hover:bg-black/[0.02] dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-              >
-                انتخاب برچسب
-              </button>
+          {formOpen ? (
+            <div className="mt-4 rounded-2xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-800 dark:bg-white/[0.03]">
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="min-w-[260px] flex-1">
+                  <div className={labelCls}>مرکز/پروژه</div>
+                  <select
+                    value={form.projectId}
+                    onChange={(e) => setField("projectId", e.target.value)}
+                    className={inputCls}
+                    disabled={projectsLoading}
+                  >
+                    <option value="">{projectsLoading ? "در حال بارگذاری پروژه‌ها..." : "انتخاب پروژه فعال"}</option>
+                    {projects.map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              {selectedServiceHeadingTags.length > 0 ? (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {selectedServiceHeadingTags.map((t) => (
-                    <span
-                      key={String(t?.id)}
-                      className="h-9 px-3 rounded-full border border-black/15 bg-white text-black inline-flex items-center text-sm dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-700"
+                <div className="min-w-[170px]">
+                  <div className={labelCls}>سند قراردادی</div>
+                  <select value={form.documentType} onChange={(e) => setField("documentType", e.target.value)} className={inputCls}>
+                    {CONTRACT_DOCUMENT_TYPES.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="min-w-[230px] flex-1">
+                  <div className={labelCls}>شماره قرارداد</div>
+                  {form.documentType === "main" ? (
+                    <input
+                      value={form.contractNo}
+                      onChange={(e) => setField("contractNo", e.target.value)}
+                      className={inputCls}
+                      type="text"
+                    />
+                  ) : (
+                    <select
+                      value={form.parentContractId}
+                      onChange={(e) => setField("parentContractId", e.target.value)}
+                      className={inputCls}
                     >
-                      {tagLabelOf(t)}
+                      <option value="">انتخاب قرارداد اصلی</option>
+                      {mainContracts.map((contract) => {
+                        const project = projectById.get(String(contract.projectId));
+                        return (
+                          <option key={contract.id} value={contract.id}>
+                            {contract.contractNo}
+                            {project?.label ? ` - ${project.label}` : ""}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  )}
+                </div>
+
+                <div>
+                  <div className={labelCls}>اسناد مرتبط</div>
+                  <button
+                    type="button"
+                    onClick={() => setRelatedPickOpen(true)}
+                    className={iconBtnCls}
+                    aria-label="انتخاب اسناد مرتبط"
+                    title="انتخاب اسناد مرتبط"
+                  >
+                    <img src="/images/icons/sayer.svg" alt="" className="w-5 h-5 dark:invert" />
+                  </button>
+                </div>
+
+                <div className="min-w-[240px] flex-1 pb-2">
+                  <div className="text-sm text-black/70 dark:text-neutral-300">
+                    شماره ثبت دبیرخانه:{" "}
+                    <span className="font-semibold text-black dark:text-neutral-100">
+                      {selectedLetter ? toFaDigits(secretariatNoOf(selectedLetter) || "ثبت نشده") : "سندی انتخاب نشده است"}
                     </span>
-                  ))}
+                  </div>
                 </div>
-              ) : null}
-            </div>
+              </div>
 
-            <div className="rounded-2xl border border-black/10 bg-black/[0.02] p-4 space-y-3 dark:border-neutral-700 dark:bg-white/[0.03]">
-              <div className="text-sm font-semibold text-black dark:text-neutral-100">تعهدات کارفرما</div>
-
-              <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-2 md:items-center">
-                <label className="text-sm text-black/70 dark:text-neutral-300">تامین سوخت</label>
-                <div className="flex flex-wrap gap-2">
-                  {FUEL_COMMITMENT_OPTIONS.map((opt) => (
+              <div className="mt-6">
+                <div className="px-2 overflow-x-auto" dir="rtl">
+                  <div className={tabStripCls}>
+                    {visibleContractTabs.map((tab, index) => (
                     <button
-                      key={opt.id}
+                      key={tab.id}
                       type="button"
-                      onClick={() => toggleFuelCommitment(opt.id)}
-                      className={selectorBtnClass((technicalForm.fuelCommitments || []).includes(opt.id))}
+                      onClick={() => setActiveContractTab(tab.id)}
+                      className={topTabBtnClass(activeContractTab === tab.id, index, visibleContractTabs.length)}
                     >
-                      {opt.label}
+                      {tab.label}
                     </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-2 md:items-center">
-                <label className="text-sm text-black/70 dark:text-neutral-300">خدمات اسکان</label>
-                <input
-                  className="w-full h-11 rounded-xl px-3 bg-white text-black border border-black/15 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                  value={technicalForm.accommodationService}
-                  onChange={(e) => setTechnicalField("accommodationService", e.target.value)}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-2 md:items-center">
-                <label className="text-sm text-black/70 dark:text-neutral-300">تامین خوراک</label>
-                <input
-                  className="w-full h-11 rounded-xl px-3 bg-white text-black border border-black/15 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                  value={technicalForm.foodSupply}
-                  onChange={(e) => setTechnicalField("foodSupply", e.target.value)}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-2">
-                <label className="text-sm text-black/70 dark:text-neutral-300 md:pt-2">خدمات حمل</label>
-                <div className="space-y-2">
-                  <div className="flex flex-wrap gap-2">
-                    {TRANSPORT_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => setTechnicalField("transportMode", opt.id)}
-                        className={selectorBtnClass(technicalForm.transportMode === opt.id)}
-                      >
-                        {opt.label}
-                      </button>
                     ))}
                   </div>
-                  <input
-                    className="w-full h-11 rounded-xl px-3 bg-white text-black border border-black/15 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                    value={technicalForm.transportDetails}
-                    onChange={(e) => setTechnicalField("transportDetails", e.target.value)}
-                  />
+                </div>
+
+                <div className={tabbedPanelClass}>
+                  {activeContractTab === "general" ? (
+                    <div className="p-4 space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <div className={labelCls}>نوع قرارداد</div>
+                          {form.general?.customContractType ? (
+                            <input
+                              value={form.general?.contractType || ""}
+                              onChange={(e) => setCustomContractType(e.target.value)}
+                              className={inputCls}
+                              type="text"
+                              placeholder="نوع قرارداد"
+                              autoFocus
+                            />
+                          ) : (
+                            <select
+                              value={form.general?.contractType || ""}
+                              onChange={(e) => setContractTypeField(e.target.value)}
+                              className={inputCls}
+                            >
+                              <option value="">انتخاب کنید</option>
+                              {GENERAL_CONTRACT_TYPES.map((item) => (
+                                <option key={item} value={item}>
+                                  {item}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+
+                        <div>
+                          <div className={labelCls}>موضوع قرارداد</div>
+                          <input
+                            value={form.general?.contractSubject || ""}
+                            onChange={(e) => setGeneralField("contractSubject", e.target.value)}
+                            className={inputCls}
+                            type="text"
+                          />
+                        </div>
+
+                        {form.documentType !== "sub" ? (
+                          <div>
+                            <div className={labelCls}>کارفرمای اصلی</div>
+                            <input
+                              value={form.general?.mainEmployer || ""}
+                              onChange={(e) => setGeneralField("mainEmployer", e.target.value)}
+                              className={inputCls}
+                              type="text"
+                            />
+                          </div>
+                        ) : null}
+
+                        {form.documentType === "sub" ? (
+                          <div>
+                            <div className={labelCls}>واگذارنده / کارفرما</div>
+                            <input value={FIXED_SUB_ASSIGNOR} className={readonlyInputCls} type="text" readOnly />
+                          </div>
+                        ) : (
+                          <div>
+                            <div className={labelCls}>واگذارنده / کارفرما</div>
+                            <input
+                              value={form.general?.employerAssignor || ""}
+                              onChange={(e) => setGeneralField("employerAssignor", e.target.value)}
+                              className={inputCls}
+                              type="text"
+                            />
+                          </div>
+                        )}
+
+                        {form.documentType !== "main" ? (
+                          <div>
+                            <div className={labelCls}>مجری</div>
+                            <input
+                              value={form.general?.executor || ""}
+                              onChange={(e) => setGeneralField("executor", e.target.value)}
+                              className={inputCls}
+                              type="text"
+                            />
+                          </div>
+                        ) : null}
+
+                        <div>
+                          <div className={labelCls}>اعضای مشارکت</div>
+                          <input
+                            value={form.general?.companyMembers || ""}
+                            onChange={(e) => setGeneralField("companyMembers", e.target.value)}
+                            className={inputCls}
+                            type="text"
+                          />
+                        </div>
+
+                        <div>
+                          <div className={labelCls}>پیمانکاران اصلی</div>
+                          <input
+                            value={form.general?.mainContractors || ""}
+                            onChange={(e) => setGeneralField("mainContractors", e.target.value)}
+                            className={inputCls}
+                            type="text"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end">
+                        <button type="button" onClick={() => saveContractSection("general")} className={saveIconBtnCls} title="ذخیره" aria-label="ذخیره">
+                          <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : activeContractTab === "calendar" ? (
+                    <div className="p-4 space-y-4">
+                      {isAppendixDocument ? (
+                        <div className={calendarCardCls}>
+                          <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(260px,1fr)] gap-3 md:items-end">
+                            <div className="pb-3 text-sm font-semibold text-black dark:text-neutral-100">تمدید مدت قرارداد تا تاریخ</div>
+                            <div>
+                              <ContractDatePicker
+                                value={form.calendar?.endDate || ""}
+                                onChange={(value) => setCalendarField("endDate", value)}
+                              />
+                              <div className="mt-2 text-xs text-black/55 dark:text-neutral-400">
+                                میلادی:{" "}
+                                <span className="font-semibold text-black dark:text-neutral-100">
+                                  {jalaliToGregorianLabel(form.calendar?.endDate) || "انتخاب نشده"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                      <>
+                      <div className={calendarCardCls}>
+                        <div className="grid grid-cols-1 lg:grid-cols-[minmax(220px,1fr)_minmax(220px,1fr)_minmax(220px,1fr)_170px] gap-3 lg:items-start">
+                          <div>
+                            <div className={labelCls}>تاریخ ابلاغ کار</div>
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1">
+                                <ContractDatePicker
+                                  value={form.calendar?.notifyDate || ""}
+                                  onChange={(value) => setCalendarField("notifyDate", value)}
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setRelatedPickOpen(true)}
+                                className={iconBtnCls}
+                                aria-label="انتخاب اسناد مرتبط"
+                                title="انتخاب اسناد مرتبط"
+                              >
+                                <img src="/images/icons/sayer.svg" alt="" className="w-5 h-5 dark:invert" />
+                              </button>
+                            </div>
+                            <div className="mt-2 text-xs text-black/55 dark:text-neutral-400">
+                              میلادی: <span className="font-semibold text-black dark:text-neutral-100">{jalaliToGregorianLabel(form.calendar?.notifyDate) || "انتخاب نشده"}</span>
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className={labelCls}>تاریخ شروع قرارداد</div>
+                            <ContractDatePicker value={form.calendar?.startDate || ""} onChange={(value) => setCalendarField("startDate", value)} />
+                            <div className="mt-2 text-xs text-black/55 dark:text-neutral-400">
+                              میلادی: <span className="font-semibold text-black dark:text-neutral-100">{jalaliToGregorianLabel(form.calendar?.startDate) || "انتخاب نشده"}</span>
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className={labelCls}>تاریخ پایان قرارداد</div>
+                            <ContractDatePicker value={form.calendar?.endDate || ""} onChange={(value) => setCalendarField("endDate", value)} />
+                            <div className="mt-2 text-xs text-black/55 dark:text-neutral-400">
+                              میلادی: <span className="font-semibold text-black dark:text-neutral-100">{jalaliToGregorianLabel(form.calendar?.endDate) || "انتخاب نشده"}</span>
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className={labelCls}>مدت قرارداد</div>
+                            <div className="h-11 rounded-xl border border-black/10 bg-black/[0.03] px-3 text-sm font-bold flex items-center dark:border-neutral-700 dark:bg-white/[0.04]">
+                              {calendarTotals.baseDays ? `${toFaDigits(calendarTotals.baseDays)} روز` : "محاسبه نشده"}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {showCalendarExtraDates ? (
+                      <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
+                        <div className="flex items-center justify-between gap-3 mb-3">
+                          <div className="text-sm font-semibold">تاریخ‌های افزوده</div>
+                          <button
+                            type="button"
+                            onClick={addCalendarExtraDate}
+                            className={iconBtnCls}
+                            aria-label="افزودن تاریخ"
+                            title="افزودن تاریخ"
+                          >
+                            <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
+                          </button>
+                        </div>
+
+                        {(Array.isArray(form.calendar?.extraDates) ? form.calendar.extraDates : []).length ? (
+                          <div className="space-y-2">
+                            {form.calendar.extraDates.map((date, index) => (
+                              <div key={index} className="grid grid-cols-1 md:grid-cols-[1fr_220px_44px] gap-2 md:items-end">
+                                <div>
+                                  <div className={labelCls}>تاریخ {toFaDigits(index + 1)}</div>
+                                  <ContractDatePicker value={date || ""} onChange={(value) => setCalendarExtraDate(index, value)} />
+                                </div>
+                                <div className="h-11 rounded-xl border border-black/10 bg-black/[0.02] px-3 text-sm flex items-center dark:border-neutral-700 dark:bg-white/[0.03]">
+                                  میلادی: {jalaliToGregorianLabel(date) || "انتخاب نشده"}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => removeCalendarExtraDate(index)}
+                                  className={iconBtnCls}
+                                  aria-label="حذف تاریخ"
+                                  title="حذف تاریخ"
+                                >
+                                  <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5 dark:invert" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-black/55 dark:text-neutral-400">برای افزودن تاریخ جدید، دکمه افزودن را بزنید.</div>
+                        )}
+
+                        <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2">
+                          <div className="rounded-xl border border-black/10 bg-black/[0.02] px-4 py-3 dark:border-neutral-700 dark:bg-white/[0.03]">
+                            <div className="text-xs text-black/55 dark:text-neutral-400">روزهای بازه اصلی</div>
+                            <div className="mt-1 font-bold">{calendarTotals.baseDays ? `${toFaDigits(calendarTotals.baseDays)} روز` : "۰ روز"}</div>
+                          </div>
+                          <div className="rounded-xl border border-black/10 bg-black/[0.02] px-4 py-3 dark:border-neutral-700 dark:bg-white/[0.03]">
+                            <div className="text-xs text-black/55 dark:text-neutral-400">روزهای افزوده</div>
+                            <div className="mt-1 font-bold">{toFaDigits(calendarTotals.extraDays)} روز</div>
+                          </div>
+                          <div className="rounded-xl border border-black bg-black px-4 py-3 text-white">
+                            <div className="text-xs text-white/70">جمع کل تقویم قرارداد</div>
+                            <div className="mt-1 font-bold">{calendarTotals.totalDays ? `${toFaDigits(calendarTotals.totalDays)} روز` : "۰ روز"}</div>
+                          </div>
+                        </div>
+                      </div>
+                      ) : null}
+                      </>
+                      )}
+
+                      <div className="flex items-center justify-end">
+                        <button type="button" onClick={() => saveContractSection("calendar")} className={saveIconBtnCls} title="ذخیره" aria-label="ذخیره">
+                          <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : activeContractTab === "technical" ? (
+                    <div className="p-4 space-y-4">
+                      {isAppendixDocument ? (
+                        <div className="space-y-4">
+                          <div>
+                            <div className={labelCls}>شرح</div>
+                            <textarea
+                              value={form.technical?.serviceScope || ""}
+                              onChange={(e) => setTechnicalField("serviceScope", e.target.value)}
+                              className={`${textareaCls} !h-[180px] !min-h-[180px] !resize-none`}
+                            />
+                          </div>
+                          <div className="flex items-center justify-end">
+                            <button type="button" onClick={() => saveContractSection("technical")} className={saveIconBtnCls} title="ثبت" aria-label="ثبت">
+                              <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                      <>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+                        <div className="space-y-4">
+                          <div className="pt-1.5">
+                            <div className={labelCls}>شرح خدمات و محدوده کار</div>
+                            <textarea
+                              value={form.technical?.serviceScope || ""}
+                              onChange={(e) => setTechnicalField("serviceScope", e.target.value)}
+                              className={`${textareaCls} !h-[276px] !min-h-[276px] !resize-none`}
+                            />
+                          </div>
+
+                          <div>
+                            <div className={labelCls}>برچسب ها</div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              {technicalTagIds.map((id) => {
+                                const tag = tagById.get(String(id)) || { id, label: `برچسب (${toFaDigits(id)})` };
+                                const label = tagLabelOf(tag);
+                                return (
+                                  <button
+                                    key={id}
+                                    type="button"
+                                    onClick={() => toggleTechnicalTag(id)}
+                                    className={selectedTagChipCls + " shrink-0"}
+                                    title={label}
+                                    aria-label={label}
+                                  >
+                                    <span className="max-w-[220px] truncate">{label}</span>
+                                  </button>
+                                );
+                              })}
+
+                              <button
+                                type="button"
+                                onClick={openTechnicalTagPicker}
+                                className="h-10 w-10 shrink-0 rounded-full border border-black/10 bg-white transition inline-flex items-center justify-center hover:bg-black/[0.02] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
+                                aria-label="افزودن برچسب"
+                                title="افزودن برچسب"
+                              >
+                                <img src="/images/icons/sayer.svg" alt="" className="w-5 h-5 dark:invert" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {TECHNICAL_SUPPORT_FIELDS.map((item) => (
+                            <div key={item.key} className="min-w-0">
+                              <div className={labelCls}>{item.label}</div>
+                              <input
+                                value={form.technical?.[item.key] || ""}
+                                onChange={(e) => setTechnicalField(item.key, e.target.value)}
+                                className={inputCls}
+                                type="text"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end">
+                        <button type="button" onClick={() => saveContractSection("technical")} className={saveIconBtnCls} title="ذخیره" aria-label="ذخیره">
+                          <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
+                        </button>
+                      </div>
+                      </>
+                      )}
+                    </div>
+                  ) : activeContractTab === "financial" ? (
+                    <div className="p-4 space-y-4">
+                      {currencyError ? (
+                        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
+                          {currencyError}
+                        </div>
+                      ) : null}
+
+                      <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
+                        {renderFinancialRows("مبلغ قرارداد", "contractAmounts", financialForm.contractAmounts, {
+                          bordered: false,
+                          showAdd: false,
+                          amountLabel: "مبلغ قرارداد",
+                        })}
+
+                        {!isAppendixDocument ? (
+                          <>
+                        <div className="mt-4 grid grid-cols-1 lg:grid-cols-[minmax(280px,0.95fr)_minmax(360px,1.05fr)] gap-4 items-start">
+                          <div>
+                            <div className="mb-2 text-sm font-semibold text-black dark:text-neutral-100">شرایط پرداخت</div>
+                            <textarea
+                              value={financialForm.paymentTerms || ""}
+                              onChange={(e) => setFinancialField("paymentTerms", e.target.value)}
+                              className={`${textareaCls} !h-[150px] !min-h-[150px] !resize-none`}
+                            />
+                          </div>
+
+                          <div className="mt-6 rounded-xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-700 dark:bg-white/[0.03]">
+                            <div className="grid grid-cols-1 gap-3">
+                              <div className="grid grid-cols-1 sm:grid-cols-[116px_1fr] gap-2 sm:items-center">
+                                <div className="text-sm font-semibold text-black/75 dark:text-neutral-200">پیش پرداخت</div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  {renderPaymentOption("advancePayment", "has", "دارد")}
+                                  {renderPaymentOption("advancePayment", "none", "ندارد")}
+                                </div>
+                              </div>
+
+                              <div className="border-t border-black/10 pt-3 dark:border-neutral-700">
+                                <div className="mb-2 text-sm font-semibold text-black/70 dark:text-neutral-200">کسور</div>
+                                <div className="space-y-3">
+                                  <div className="grid grid-cols-1 sm:grid-cols-[116px_1fr] gap-2 sm:items-center">
+                                    <div className="text-sm text-black/70 dark:text-neutral-300">سپرده بیمه</div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      {renderPaymentOption("capitalDeposit", "has", "دارد")}
+                                      {renderPaymentOption("capitalDeposit", "none", "ندارد")}
+                                      {financialForm.capitalDeposit === "has" ? (
+                                        <div className="relative">
+                                          <input
+                                            value={financialForm.capitalDepositAmount || ""}
+                                            onChange={(e) => setFinancialField("capitalDepositAmount", cleanFinancialAmountInput(e.target.value))}
+                                            className={`${inputCls} !h-8 !w-20 !pl-7 !pr-2 text-center`}
+                                            type="text"
+                                            inputMode="decimal"
+                                            dir="ltr"
+                                            placeholder="0"
+                                          />
+                                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-black/55 dark:text-neutral-300">%</span>
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 sm:grid-cols-[116px_1fr] gap-2 sm:items-center">
+                                    <div className="text-sm text-black/70 dark:text-neutral-300">حسن انجام کار</div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      {renderPaymentOption("performanceBond", "has", "دارد")}
+                                      {renderPaymentOption("performanceBond", "none", "ندارد")}
+                                      {financialForm.performanceBond === "has" ? (
+                                        <div className="relative">
+                                          <input
+                                            value={financialForm.performanceBondAmount || ""}
+                                            onChange={(e) => setFinancialField("performanceBondAmount", cleanFinancialAmountInput(e.target.value))}
+                                            className={`${inputCls} !h-8 !w-20 !pl-7 !pr-2 text-center`}
+                                            type="text"
+                                            inputMode="decimal"
+                                            dir="ltr"
+                                            placeholder="0"
+                                          />
+                                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-black/55 dark:text-neutral-300">%</span>
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 pt-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="text-sm font-semibold text-black dark:text-neutral-100">جدول شکست مبلغ قرارداد</div>
+                            <button
+                              type="button"
+                              onClick={() => financialUploadInputRef.current?.click()}
+                              className="h-10 rounded-xl border border-black/15 bg-white px-3 text-sm font-semibold transition inline-flex items-center gap-2 hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+                            >
+                              <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
+                              بارگذاری اسناد
+                            </button>
+                            <input
+                              ref={financialUploadInputRef}
+                              type="file"
+                              multiple
+                              accept=".pdf,image/*,.xls,.xlsx,.doc,.docx"
+                              className="hidden"
+                              onChange={(e) => {
+                                addFinancialBreakdownFiles(e.target.files);
+                                e.target.value = "";
+                              }}
+                            />
+                          </div>
+
+                          {financialForm.breakdownFiles.length ? (
+                            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+                              {financialForm.breakdownFiles.map((file, index) => (
+                                <div
+                                  key={file.id || `${file.name}_${index}`}
+                                  className="flex items-center justify-between gap-2 rounded-xl border border-black/10 bg-black/[0.02] px-3 py-2 dark:border-neutral-700 dark:bg-white/[0.03]"
+                                >
+                                  <div className="min-w-0">
+                                    <div className="truncate text-sm font-semibold">{file.name || `فایل ${toFaDigits(index + 1)}`}</div>
+                                    <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{toFaDigits(formatBytes(file.size || 0))}</div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeFinancialBreakdownFile(file.id)}
+                                    className={iconBtnCls}
+                                    aria-label="حذف فایل"
+                                    title="حذف فایل"
+                                  >
+                                    <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5 dark:invert" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                          </>
+                        ) : null}
+                      </div>
+
+                      {!isAppendixDocument ? (
+                        <>
+                      <div className="border-t border-black/10 pt-4 dark:border-neutral-800">
+                        <div className="mb-3 text-sm font-semibold text-black dark:text-neutral-100">تضامین</div>
+
+                        <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
+                          <div className="grid grid-cols-1 md:grid-cols-[140px_140px_minmax(190px,1.05fr)_minmax(240px,1.45fr)_120px_48px] gap-2 md:items-end">
+                            <div>
+                              <div className={labelCls}>نام تضمین</div>
+                              {financialForm.guaranteeDraft?.customName ? (
+                                <input
+                                  value={financialForm.guaranteeDraft?.name || ""}
+                                  onChange={(e) => updateGuaranteeDraft("customNameValue", e.target.value)}
+                                  className={inputCls}
+                                  type="text"
+                                  placeholder="نام تضمین"
+                                  autoFocus
+                                />
+                              ) : (
+                                <select
+                                  value={financialForm.guaranteeDraft?.name || ""}
+                                  onChange={(e) => updateGuaranteeDraft("name", e.target.value)}
+                                  className={inputCls}
+                                >
+                                  <option value="">انتخاب کنید</option>
+                                  {GUARANTEE_NAME_OPTIONS.map((item) => (
+                                    <option key={item} value={item}>
+                                      {item}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
+                            </div>
+
+                            <div>
+                              <div className={labelCls}>نوع</div>
+                              <input
+                                value={financialForm.guaranteeDraft?.type || ""}
+                                onChange={(e) => updateGuaranteeDraft("type", e.target.value)}
+                                className={inputCls}
+                                type="text"
+                              />
+                            </div>
+
+                            <div>
+                              <div className={labelCls}>عهده بانک/شماره</div>
+                              <input
+                                value={financialForm.guaranteeDraft?.bankNo || ""}
+                                onChange={(e) => updateGuaranteeDraft("bankNo", e.target.value)}
+                                className={inputCls}
+                                type="text"
+                              />
+                            </div>
+
+                            <div>
+                              <div className={labelCls}>مبلغ</div>
+                              <input
+                                value={formatAmountInput(financialForm.guaranteeDraft?.amount || "")}
+                                onChange={(e) => updateGuaranteeDraft("amount", e.target.value)}
+                                className={inputCls}
+                                type="text"
+                                inputMode="decimal"
+                                dir="ltr"
+                                placeholder="0"
+                              />
+                            </div>
+
+                            <div>
+                              <div className={labelCls}>ارز</div>
+                              <select
+                                value={financialForm.guaranteeDraft?.currencyId || ""}
+                                onChange={(e) => updateGuaranteeDraft("currencyId", e.target.value)}
+                                className={inputCls}
+                                disabled={currencyLoading}
+                              >
+                                <option value="">{currencyLoading ? "در حال بارگذاری..." : "انتخاب ارز"}</option>
+                                {currencyItems.map((item) => {
+                                  const id = readItemId(item);
+                                  if (!id) return null;
+                                  return (
+                                    <option key={id} value={id}>
+                                      {readItemLabel(item) || id}
+                                    </option>
+                                  );
+                                })}
+                              </select>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={addGuaranteeRow}
+                              className="h-11 w-full rounded-xl border border-black/15 bg-white px-1 transition inline-flex items-center justify-center hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+                              aria-label="افزودن تضمین"
+                              title="افزودن تضمین"
+                            >
+                              <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5 dark:invert" />
+                            </button>
+                          </div>
+
+                          <div className={`mt-3 ${financialTablePreset.frame}`}>
+                            <div className="overflow-x-auto">
+                              <table className={`${financialTablePreset.table} min-w-[900px]`} dir="rtl">
+                                <colgroup>
+                                  <col className="w-[18%]" />
+                                  <col className="w-[14%]" />
+                                  <col className="w-[24%]" />
+                                  <col className="w-[28%]" />
+                                  <col className="w-[16%]" />
+                                </colgroup>
+                                <thead>
+                                  <tr className={financialTablePreset.headRow}>
+                                    <th className={`${financialTablePreset.th} !text-right pr-5`}>نام تضمین</th>
+                                    <th className={financialTablePreset.th}>نوع</th>
+                                    <th className={financialTablePreset.th}>عهده بانک/شماره</th>
+                                    <th className={financialTablePreset.th}>مبلغ</th>
+                                    <th className={financialTablePreset.th}>ارز</th>
+                                  </tr>
+                                </thead>
+                                <tbody className={financialTablePreset.body}>
+                                  {financialForm.guarantees.length ? (
+                                    financialForm.guarantees.map((row) => {
+                                      const isEditing = String(editingGuaranteeId) === String(row.id);
+                                      return (
+                                        <tr key={row.id} className={`${hoverSelectableRowPreset.rowBase} ${hoverSelectableRowPreset.rowIdle}`}>
+                                          <td className="px-5 py-2 !text-right">
+                                            {isEditing ? (
+                                              <div className="flex min-h-[34px] items-center justify-start">
+                                                {editingGuaranteeDraft.customName ? (
+                                                  <input
+                                                    value={editingGuaranteeDraft.name || ""}
+                                                    onChange={(e) => updateGuaranteeEdit("customNameValue", e.target.value)}
+                                                    className="w-full max-w-[220px] rounded-xl border border-black/15 bg-white px-2 py-1 text-right text-black outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                                                    type="text"
+                                                    autoFocus
+                                                  />
+                                                ) : (
+                                                  <select
+                                                    value={editingGuaranteeDraft.name || ""}
+                                                    onChange={(e) => updateGuaranteeEdit("name", e.target.value)}
+                                                    className="w-full max-w-[220px] rounded-xl border border-black/15 bg-white px-2 py-1 text-right text-black outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                                                  >
+                                                    <option value="">انتخاب کنید</option>
+                                                    {GUARANTEE_NAME_OPTIONS.map((item) => (
+                                                      <option key={item} value={item}>
+                                                        {item}
+                                                      </option>
+                                                    ))}
+                                                  </select>
+                                                )}
+                                              </div>
+                                            ) : (
+                                              <span className="block truncate text-right">{row.name || "—"}</span>
+                                            )}
+                                          </td>
+                                          <td className="px-3 py-2">
+                                            {isEditing ? (
+                                              <input
+                                                value={editingGuaranteeDraft.type || ""}
+                                                onChange={(e) => updateGuaranteeEdit("type", e.target.value)}
+                                                className="w-full max-w-[150px] rounded-xl border border-black/15 bg-white px-2 py-1 text-center text-black outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                                                type="text"
+                                              />
+                                            ) : (
+                                              row.type || "—"
+                                            )}
+                                          </td>
+                                          <td className="px-3 py-2">
+                                            {isEditing ? (
+                                              <input
+                                                value={editingGuaranteeDraft.bankNo || ""}
+                                                onChange={(e) => updateGuaranteeEdit("bankNo", e.target.value)}
+                                                className="w-full max-w-[220px] rounded-xl border border-black/15 bg-white px-2 py-1 text-center text-black outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                                                type="text"
+                                              />
+                                            ) : row.bankNo ? (
+                                              toFaDigits(row.bankNo)
+                                            ) : (
+                                              "—"
+                                            )}
+                                          </td>
+                                          <td className="px-3 py-2">
+                                            {isEditing ? (
+                                              <input
+                                                value={formatAmountInput(editingGuaranteeDraft.amount || "")}
+                                                onChange={(e) => updateGuaranteeEdit("amount", e.target.value)}
+                                                className="w-full max-w-[140px] rounded-xl border border-black/15 bg-white px-2 py-1 text-center text-black outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                                                type="text"
+                                                inputMode="decimal"
+                                                dir="ltr"
+                                              />
+                                            ) : row.amount ? (
+                                              formatFinancialAmount(parseFinancialAmount(row.amount))
+                                            ) : (
+                                              "—"
+                                            )}
+                                          </td>
+                                          <td className="px-3 py-2 relative">
+                                            {isEditing ? (
+                                              <div className="relative min-h-[34px] flex items-center justify-center pl-20">
+                                                <select
+                                                  value={editingGuaranteeDraft.currencyId || ""}
+                                                  onChange={(e) => updateGuaranteeEdit("currencyId", e.target.value)}
+                                                  className="w-full max-w-[150px] rounded-xl border border-black/15 bg-white px-2 py-1 text-center text-black outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                                                >
+                                                  <option value="">انتخاب ارز</option>
+                                                  {currencyItems.map((item) => {
+                                                    const id = readItemId(item);
+                                                    if (!id) return null;
+                                                    return (
+                                                      <option key={id} value={id}>
+                                                        {readItemLabel(item) || id}
+                                                      </option>
+                                                    );
+                                                  })}
+                                                </select>
+                                                <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-1 shrink-0">
+                                                  <RowActionIconBtn action="save" onClick={saveEditGuaranteeRow} size={34} iconSize={15} />
+                                                  <RowActionIconBtn action="cancel" onClick={cancelEditGuaranteeRow} size={34} iconSize={14} />
+                                                </div>
+                                              </div>
+                                            ) : (
+                                              <div className="relative min-h-[34px] flex items-center justify-center pl-20">
+                                                <span className="block truncate">{row.currencyLabel || row.currencyId || "—"}</span>
+                                                <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-1 shrink-0 transition-opacity opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto">
+                                                  <RowActionIconBtn action="edit" onClick={() => startEditGuaranteeRow(row)} size={34} iconSize={15} />
+                                                  <RowActionIconBtn action="delete" onClick={() => removeGuaranteeRow(row.id)} size={34} iconSize={16} />
+                                                </div>
+                                              </div>
+                                            )}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })
+                                  ) : (
+                                    <tr>
+                                      <td colSpan={5} className={financialTablePreset.emptyRow}>
+                                        تضمینی ثبت نشده.
+                                      </td>
+                                    </tr>
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                        </>
+                      ) : null}
+
+                      <div className="flex items-center justify-end">
+                        <button type="button" onClick={() => saveContractSection("financial")} className={saveIconBtnCls} title="ذخیره" aria-label="ذخیره">
+                          <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 min-h-[180px] flex flex-col justify-between gap-4">
+                      <div className="rounded-xl border border-black/10 bg-black/[0.02] px-4 py-3 text-sm text-black/60 dark:border-neutral-700 dark:bg-white/[0.03] dark:text-neutral-300">
+                        بخش {CONTRACT_SECTION_TABS.find((tab) => tab.id === activeContractTab)?.label} در مرحله بعد تکمیل می‌شود.
+                      </div>
+
+                      <div className="flex items-center justify-end">
+                        <button type="button" onClick={() => saveContractSection(activeContractTab)} className={saveIconBtnCls} title="ذخیره" aria-label="ذخیره">
+                          <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
+            </div>
+          ) : null}
 
-              <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-2 md:items-center">
-                <label className="text-sm text-black/70 dark:text-neutral-300">آب</label>
+          <div className="mt-4 overflow-x-auto rounded-2xl border border-black/10 dark:border-neutral-800">
+            <table className="w-full min-w-[1020px] border-collapse text-sm">
+              <thead className="bg-black/[0.03] text-black/70 dark:bg-white/[0.05] dark:text-neutral-300">
+                <tr>
+                  <th className="px-3 py-3 text-right font-semibold">مرکز/پروژه</th>
+                  <th className="px-3 py-3 text-right font-semibold">نوع قرارداد</th>
+                  <th className="px-3 py-3 text-right font-semibold">قرارداد</th>
+                  <th className="px-3 py-3 text-right font-semibold">الحاقیه‌ها</th>
+                  <th className="px-3 py-3 text-right font-semibold">نامه ابلاغ کار</th>
+                  <th className="px-3 py-3 text-right font-semibold">مفاصات</th>
+                  <th className="px-3 py-3 text-right font-semibold">اقدامات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.length ? (
+                  filteredRows.map((row) => {
+                    const project = projectById.get(String(row.projectId));
+                    const relatedLetter = row.relatedLetterId ? letterById.get(String(row.relatedLetterId)) : null;
+                    const appendicesCount = countAppendices(row, rows);
+                    const contractNo = contractNoForRow(row, rowById);
+
+                    return (
+                      <tr key={row.id} className="border-t border-black/10 dark:border-neutral-800">
+                        <td className="px-3 py-3 text-right">{project?.label || "بدون پروژه"}</td>
+                        <td className="px-3 py-3 text-right">
+                          <div className="font-semibold">{row.general?.contractType || "ثبت نشده"}</div>
+                          <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{documentTypeLabel(row.documentType)}</div>
+                        </td>
+                        <td className="px-3 py-3 text-right font-semibold">{contractNo ? toFaDigits(contractNo) : "ثبت نشده"}</td>
+                        <td className="px-3 py-3 text-right">{appendicesCount ? toFaDigits(appendicesCount) : "بدون الحاقیه"}</td>
+                        <td className="px-3 py-3 text-right">
+                          {relatedLetter ? (
+                            <div>
+                              <div className="font-semibold">{toFaDigits(secretariatNoOf(relatedLetter) || letterNoOf(relatedLetter) || row.relatedLetterId)}</div>
+                              <div className="mt-1 max-w-[220px] truncate text-xs text-black/55 dark:text-neutral-400">
+                                {subjectOf(relatedLetter) || "بدون موضوع"}
+                              </div>
+                            </div>
+                          ) : (
+                            "ثبت نشده"
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-right">ثبت نشده</td>
+                        <td className="px-3 py-3 text-right">
+                          <button type="button" onClick={() => deleteRow(row.id)} className={iconBtnCls} title="حذف" aria-label="حذف">
+                            <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5 dark:invert" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="px-3 py-8 text-center text-black/55 dark:text-neutral-400">
+                      قراردادی برای نمایش وجود ندارد.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Card>
+
+      {relatedPickOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50" onClick={() => setRelatedPickOpen(false)} />
+            <div className="relative w-full max-w-3xl rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-xl overflow-hidden dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
+              <div className="p-4 flex items-center justify-between gap-3">
+                <div className="font-semibold text-sm">انتخاب اسناد مرتبط</div>
+                <button
+                  type="button"
+                  onClick={() => setRelatedPickOpen(false)}
+                  className={iconBtnCls}
+                  aria-label="بستن"
+                  title="بستن"
+                >
+                  <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5 dark:invert" />
+                </button>
+              </div>
+
+              <div className="px-4 pb-3">
                 <input
-                  className="w-full h-11 rounded-xl px-3 bg-white text-black border border-black/15 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                  value={technicalForm.water}
-                  onChange={(e) => setTechnicalField("water", e.target.value)}
+                  value={relatedPickQuery}
+                  onChange={(e) => setRelatedPickQuery(e.target.value)}
+                  className={inputCls}
+                  type="text"
+                  placeholder="جستجو با شماره / موضوع / سازمان / شماره ثبت دبیرخانه"
+                  autoFocus
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-2 md:items-center">
-                <label className="text-sm text-black/70 dark:text-neutral-300">برق و روشنایی</label>
-                <input
-                  className="w-full h-11 rounded-xl px-3 bg-white text-black border border-black/15 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                  value={technicalForm.electricityLighting}
-                  onChange={(e) => setTechnicalField("electricityLighting", e.target.value)}
-                />
-              </div>
+              <div className="h-px bg-black/10 dark:bg-white/10" />
 
-              <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-2 md:items-center">
-                <label className="text-sm text-black/70 dark:text-neutral-300">خدمات بارگیری و جرثقیل</label>
-                <input
-                  className="w-full h-11 rounded-xl px-3 bg-white text-black border border-black/15 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                  value={technicalForm.loadingCraneService}
-                  onChange={(e) => setTechnicalField("loadingCraneService", e.target.value)}
-                />
-              </div>
+              <div className="max-h-[55vh] overflow-auto p-2">
+                {lettersLoading ? (
+                  <div className="p-4 text-sm text-black/55 dark:text-neutral-400">در حال بارگذاری نامه‌ها...</div>
+                ) : filteredLetters.length ? (
+                  filteredLetters.map((letter) => {
+                    const id = String(letterIdOf(letter));
+                    const checked = String(form.relatedLetterId) === id;
+                    const no = letterNoOf(letter) || id;
+                    const secretariatNo = secretariatNoOf(letter);
 
-              <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-2 md:items-center">
-                <label className="text-sm text-black/70 dark:text-neutral-300">تامین کالا</label>
-                <input
-                  className="w-full h-11 rounded-xl px-3 bg-white text-black border border-black/15 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                  value={technicalForm.goodsSupply}
-                  onChange={(e) => setTechnicalField("goodsSupply", e.target.value)}
-                />
-              </div>
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => {
+                          setField("relatedLetterId", checked ? "" : id);
+                          setRelatedPickOpen(false);
+                        }}
+                        className="w-full text-right px-3 py-2 rounded-xl transition flex items-center justify-between gap-3 hover:bg-black/[0.04] dark:hover:bg-white/10"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold">{toFaDigits(no)}</span>
+                            {secretariatNo ? (
+                              <span className="text-xs text-black/55 dark:text-neutral-400">
+                                شماره ثبت دبیرخانه: {toFaDigits(secretariatNo)}
+                              </span>
+                            ) : null}
+                            {letterDateOf(letter) ? (
+                              <span className="text-xs text-black/45 dark:text-neutral-500">{toFaDigits(letterDateOf(letter))}</span>
+                            ) : null}
+                          </div>
+                          <div className="mt-1 truncate text-xs text-black/60 dark:text-neutral-400">
+                            {subjectOf(letter) || orgOf(letter) || "بدون شرح"}
+                          </div>
+                        </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-2 md:items-center">
-                <label className="text-sm text-black/70 dark:text-neutral-300">ترخیص کالا از گمرگ</label>
-                <input
-                  className="w-full h-11 rounded-xl px-3 bg-white text-black border border-black/15 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                  value={technicalForm.customsClearance}
-                  onChange={(e) => setTechnicalField("customsClearance", e.target.value)}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-2 md:items-center">
-                <label className="text-sm text-black/70 dark:text-neutral-300">سایر</label>
-                <input
-                  className="w-full h-11 rounded-xl px-3 bg-white text-black border border-black/15 outline-none dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                  value={technicalForm.other}
-                  onChange={(e) => setTechnicalField("other", e.target.value)}
-                />
+                        <div className="h-5 w-5 rounded-md border border-black/15 grid place-items-center shrink-0 dark:border-neutral-700">
+                          {checked ? <span className="text-xs">✓</span> : null}
+                        </div>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="p-4 text-sm text-black/55 dark:text-neutral-400">موردی پیدا نشد.</div>
+                )}
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="rounded-xl border border-black/10 bg-black/[0.02] px-4 py-3 text-sm text-black/70 dark:border-neutral-700 dark:bg-white/[0.03] dark:text-neutral-300">
-            محتوای تب {detailTab === "technical" ? "فنی" : "مالی"} در مرحله بعد تکمیل می‌شود.
-          </div>
+          </div>,
+          document.body
         )}
 
-        {tagPickOpen &&
-          createPortal(
-            <div className="fixed inset-0 z-[9999]">
-              <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setTagPickOpen(false)} />
-              <div className="absolute inset-0 p-4 flex items-center justify-center">
-                <div
-                  className="w-[min(980px,calc(100vw-24px))] h-[min(85vh,760px)] rounded-2xl border shadow-xl overflow-hidden border-black/10 bg-white text-neutral-900"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="p-4 flex items-center justify-between">
+      {tagPickOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999]" dir="rtl">
+            <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={() => setTagPickOpen(false)} />
+
+            <div className="absolute inset-0 p-3 md:p-6 flex items-center justify-center">
+              <div className="w-[min(780px,calc(100vw-20px))] h-[min(72vh,680px)] rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl overflow-hidden dark:border-white/10 dark:bg-neutral-900 dark:text-white">
+                <div className="h-full flex flex-col">
+                  <div className="px-4 py-3 flex items-center justify-between gap-3 border-b border-black/10 dark:border-white/10">
                     <div className="font-bold text-sm">انتخاب برچسب</div>
                     <button
                       type="button"
                       onClick={() => setTagPickOpen(false)}
-                      className="h-10 w-10 rounded-xl border border-black/10 flex items-center justify-center hover:bg-black/[0.04] transition"
+                      className="h-10 w-10 rounded-xl bg-white text-black ring-1 ring-black/15 transition flex items-center justify-center hover:bg-black/5 dark:ring-white/20 dark:hover:bg-white/90"
                       aria-label="بستن"
                       title="بستن"
                     >
-                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M18 6 6 18M6 6l12 12" />
-                      </svg>
+                      <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5 brightness-0" />
                     </button>
                   </div>
 
-                  <div className="h-px bg-black/10" />
-
-                  <div className="px-4 pt-3">
-                    <div className="text-xs text-neutral-600 mb-2">دسته‌بندی‌ها</div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setTagPickCategoryId("")}
-                        className={selectorBtnClass(!tagPickCategoryId)}
-                      >
-                        همه
-                      </button>
-                      {(tagCategories || []).map((c) => {
-                        const cid = String(c?.id ?? "");
-                        const lbl = String(c?.label || c?.name || c?.title || cid);
-                        return (
+                  <div className="px-4 pt-3 space-y-3">
+                    {Array.isArray(tagCategories) && tagCategories.length ? (
+                      <div>
+                        <div className={labelCls}>دسته‌بندی‌ها</div>
+                        <div className="flex flex-wrap items-center gap-2">
                           <button
-                            key={cid}
                             type="button"
-                            onClick={() => setTagPickCategoryId(cid)}
-                            className={selectorBtnClass(tagPickCategoryId === cid)}
+                            onClick={() => setTagPickCategoryId("")}
+                            className={(tagPickCategoryId ? chipCls : selectedTagChipCls) + " shrink-0"}
                           >
-                            {lbl}
+                            همه
                           </button>
-                        );
-                      })}
+
+                          {tagCategories.map((category) => {
+                            const id = String(category?.id ?? "");
+                            const label = pickFirst(category?.label, category?.name, category?.title);
+                            const active = tagPickCategoryId === id;
+                            return (
+                              <button
+                                key={id}
+                                type="button"
+                                onClick={() => setTagPickCategoryId(active ? "" : id)}
+                                className={(active ? selectedTagChipCls : chipCls) + " shrink-0"}
+                                title={label}
+                              >
+                                <span className="max-w-[220px] truncate">{label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <div>
+                      <div className={labelCls}>جستجو</div>
+                      <input
+                        value={tagPickSearch}
+                        onChange={(e) => setTagPickSearch(e.target.value)}
+                        className={inputCls}
+                        type="text"
+                        placeholder="جستجو در برچسب‌ها..."
+                        autoFocus
+                      />
                     </div>
                   </div>
 
-                  <div className="px-4 pt-3">
-                    <input
-                      value={tagPickSearch}
-                      onChange={(e) => setTagPickSearch(e.target.value)}
-                      className="w-full h-11 rounded-xl px-3 bg-white text-black border border-black/15 outline-none"
-                      placeholder="جستجو در برچسب‌ها..."
-                    />
+                  <div className="px-4 py-3 flex-1 overflow-auto">
+                    {(() => {
+                      const q = String(tagPickSearch || "").trim().toLowerCase();
+                      const filtered = (Array.isArray(tags) ? tags : []).filter((tag) => {
+                        const label = tagLabelOf(tag).toLowerCase();
+                        const categoryId = String(tag?.category_id ?? tag?.categoryId ?? "");
+                        if (tagPickCategoryId && categoryId !== String(tagPickCategoryId)) return false;
+                        if (q && !label.includes(q)) return false;
+                        return true;
+                      });
+
+                      if (!filtered.length) {
+                        return <div className="py-10 text-center text-sm text-neutral-500 dark:text-white/50">چیزی پیدا نشد.</div>;
+                      }
+
+                      return (
+                        <div className="flex flex-wrap gap-2">
+                          {filtered.map((tag) => {
+                            const id = String(tag?.id ?? "");
+                            const label = tagLabelOf(tag);
+                            const active = tagPickDraftIds.some((item) => String(item) === id);
+
+                            return (
+                              <button
+                                key={id}
+                                type="button"
+                                onClick={() => togglePickDraft(id)}
+                                className={(active ? selectedTagChipCls : chipCls) + " shrink-0"}
+                                title={label}
+                              >
+                                <span className="max-w-[240px] truncate">{label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
 
-                  <div className="px-4 py-3 h-[calc(100%-212px)] overflow-auto">
-                    {tagsLoading ? (
-                      <div className="py-10 text-center text-sm text-neutral-500">در حال دریافت برچسب‌ها...</div>
-                    ) : tagsError ? (
-                      <div className="py-10 text-center text-sm text-red-600">{tagsError}</div>
-                    ) : filteredTagItems.length === 0 ? (
-                      <div className="py-10 text-center text-sm text-neutral-500">چیزی پیدا نشد.</div>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {filteredTagItems.map((t) => {
-                          const id = String(t?.id ?? "");
-                          const label = tagLabelOf(t);
-                          const active = (tagPickDraftIds || []).some((x) => String(x) === id);
-                          return (
-                            <button
-                              key={id}
-                              type="button"
-                              onClick={() => togglePickDraftTag(id)}
-                              className={
-                                (active
-                                  ? "h-10 px-3 rounded-full border bg-black text-white border-black"
-                                  : "h-10 px-3 rounded-full border bg-white text-black border-black/15 hover:bg-black/[0.04]") +
-                                " transition"
-                              }
-                              title={label}
-                            >
-                              {label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="h-px bg-black/10" />
-                  <div className="p-3 flex items-center justify-start">
+                  <div className="px-4 py-3 border-t border-black/10 dark:border-white/10 flex items-center justify-end">
                     <button
                       type="button"
                       onClick={applyPickedTags}
-                      className="h-10 w-10 rounded-xl bg-black text-white hover:bg-black/90 transition inline-flex items-center justify-center"
+                      className="h-10 w-10 rounded-xl bg-black text-white ring-1 ring-black/15 transition flex items-center justify-center hover:bg-black/90 dark:ring-white/10"
                       aria-label="تایید"
                       title="تایید"
                     >
@@ -1222,125 +2888,10 @@ export default function ContractInformation() {
                   </div>
                 </div>
               </div>
-            </div>,
-            document.body
-          )}
-
-        {uploadOpen &&
-          createPortal(
-            <div className="fixed inset-0 z-[9999]">
-              <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setUploadOpen(false)} />
-              <div className="absolute inset-0 flex items-center justify-center p-4">
-                <div
-                  className="w-[min(760px,calc(100vw-24px))] rounded-2xl border shadow-xl overflow-hidden border-black/10 bg-white text-neutral-900"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="p-4 flex items-center justify-between">
-                    <div className="font-bold text-sm">آپلود فایل</div>
-                    <button
-                      type="button"
-                      onClick={() => setUploadOpen(false)}
-                      className="h-10 w-10 rounded-xl bg-black text-white hover:bg-black/90 transition inline-flex items-center justify-center"
-                      aria-label="بستن"
-                      title="بستن"
-                    >
-                      <img src="/images/icons/bastan.svg" alt="" className="w-4 h-4 invert" />
-                    </button>
-                  </div>
-
-                  <div className="h-px bg-black/10" />
-
-                  <div className="p-4 space-y-4">
-                    <div>
-                      <div className="text-xs font-semibold text-neutral-700 mb-2">فایل های انتخاب‌شده</div>
-                      <div className="rounded-2xl border border-black/10 bg-white">
-                        <div className="p-3 space-y-2">
-                          {technicalFiles.length === 0 ? (
-                            <div className="py-6 text-center text-black/60 text-sm">فایلی انتخاب نشده است.</div>
-                          ) : (
-                            technicalFiles.map((f) => (
-                              <div
-                                key={f.id}
-                                className="rounded-xl border border-black/10 px-3 py-2 flex items-center justify-between gap-3"
-                              >
-                                <div className="min-w-0 flex-1">
-                                  <div className="text-[13px] font-semibold whitespace-normal break-words leading-6">{f.name}</div>
-                                  <div className="text-neutral-600 text-[11px] mt-1">{formatBytes(f.size)}</div>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => removeTechnicalFile(f.id)}
-                                  className="h-9 w-9 rounded-xl border border-black/10 hover:bg-black/[0.04] transition inline-flex items-center justify-center"
-                                  title="حذف"
-                                  aria-label="حذف"
-                                >
-                                  <img
-                                    src="/images/icons/hazf.svg"
-                                    alt=""
-                                    className="w-5 h-5"
-                                    style={{
-                                      filter:
-                                        "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
-                                    }}
-                                  />
-                                </button>
-                              </div>
-                            ))
-                          )}
-
-                          <div
-                            className="mt-3 rounded-2xl border border-dashed border-black/15 p-5 text-center"
-                            onDrop={onDropUpload}
-                            onDragOver={onDragOverUpload}
-                          >
-                            <div className="text-neutral-800 text-sm font-semibold">فایل را اینجا رها کنید</div>
-                            <div className="text-neutral-500 text-xs mt-1">یا با دکمه زیر انتخاب کنید (تصویر / PDF)</div>
-
-                            <div className="mt-3 flex items-center justify-center">
-                              <button
-                                type="button"
-                                onClick={() => uploadInputRef.current?.click()}
-                                className="h-10 px-4 rounded-xl border border-black/15 bg-black text-white hover:bg-black/90 transition inline-flex items-center justify-center gap-2"
-                              >
-                                <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 invert" />
-                                انتخاب فایل
-                              </button>
-                              <input
-                                ref={uploadInputRef}
-                                type="file"
-                                multiple
-                                accept="image/*,application/pdf"
-                                className="hidden"
-                                onChange={(e) => {
-                                  const fl = e.target.files;
-                                  if (fl && fl.length) addFilesToUpload(fl);
-                                  e.target.value = "";
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="pt-1 flex items-center justify-start">
-                      <button
-                        type="button"
-                        onClick={() => setUploadOpen(false)}
-                        className="h-10 w-10 rounded-xl bg-black text-white hover:bg-black/90 transition inline-flex items-center justify-center"
-                        aria-label="تایید"
-                        title="تایید"
-                      >
-                        <img src="/images/icons/check.svg" alt="" className="w-4 h-4 invert" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>,
-            document.body
-          )}
-      </div>
-    </Card>
+            </div>
+          </div>,
+          document.body
+        )}
+    </div>
   );
 }

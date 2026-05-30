@@ -27,24 +27,16 @@ const IcWorksheet = () => (
   </svg>
 );
 
-const IcBalance = () => (
-  <svg viewBox="0 0 24 24" className={svgCls} fill="none" stroke="currentColor" strokeWidth={sw}>
-    <path d="M4 20h16M12 4v16M6 8l6 4 6-4" />
-  </svg>
-);
-
 const IcDaily = () => <img src="/images/icons/calendar.svg" className={icImgCls} alt="" draggable={false} />;
 
 function RightNav() {
   const { user } = useAuth();
   const isMainAdmin = isMainAdminUser(user);
-
   const { pathname } = useLocation();
 
   const clean = (p) => (p || "").replace(/\/+$/, "") || "/";
-
-  // اگر پروژه با BASE_URL (ساب‌پث) بالا بیاید، مسیر را normalize کن
   const base = (import.meta?.env?.BASE_URL || "/").replace(/\/+$/, "");
+
   const stripBase = (p) => {
     const cp = clean(p);
     if (!base || base === "/" || base === "") return cp;
@@ -56,7 +48,7 @@ function RightNav() {
   const isActive = (to) => {
     const p = clean(pNow);
     const t = clean(stripBase(to));
-    return p === t || (t !== "/" && p.startsWith(t + "/"));
+    return p === t || (t !== "/" && p.startsWith(`${t}/`));
   };
 
   const [open, setOpen] = useState(() => {
@@ -75,7 +67,6 @@ function RightNav() {
       return next;
     });
 
-  // تشخیص سکشن فعال بر اساس مسیر
   const sectionFromPath = (p) => {
     const path = clean(p);
 
@@ -85,14 +76,17 @@ function RightNav() {
       path === "/revenue-estimates" ||
       path === "/budget-allocation" ||
       path === "/budget/reports"
-    )
+    ) {
       return "budget";
+    }
 
-    if (path.startsWith("/base/") || path === "/centers/projects" || path.startsWith("/admin/"))
+    if (path.startsWith("/base/") || path === "/centers/projects" || path.startsWith("/admin/")) {
       return "base";
+    }
 
-    if (path.startsWith("/centers/contract-info") || path.startsWith("/projects/"))
+    if (path.startsWith("/centers/contract-info") || path.startsWith("/projects/")) {
       return "projects";
+    }
 
     return null;
   };
@@ -120,6 +114,7 @@ function RightNav() {
     const rect = e.currentTarget.getBoundingClientRect();
     setTip({ show: true, y: rect.top + rect.height / 2, label });
   };
+
   const hideTip = () => setTip({ show: false, y: 0, label: "" });
 
   const RailDivider = () => (
@@ -152,14 +147,6 @@ function RightNav() {
             </LinkBtn>
           </div>
 
-          <div onMouseEnter={(e) => showTip("درخواست پرداخت", e)} onMouseLeave={hideTip}>
-            <LinkBtn to="/payment" className={railBtn(isActive("/payment"))} aria-label="درخواست پرداخت">
-              <IcPay />
-            </LinkBtn>
-          </div>
-
-          <RailDivider />
-
           <Btn
             className={railBtn(projectsParentActive)}
             onClick={() => toggle("projects")}
@@ -172,11 +159,11 @@ function RightNav() {
 
           {open.projects && (
             <div className="ms-1 sm:ms-2 mt-2 flex flex-col items-stretch gap-2">
-              <div onMouseEnter={(e) => showTip("اطلاعات قراردادی", e)} onMouseLeave={hideTip}>
+              <div onMouseEnter={(e) => showTip("قراردادها", e)} onMouseLeave={hideTip}>
                 <LinkBtn
                   to="/centers/contract-info"
                   className={railBtn(isActive("/centers/contract-info"))}
-                  aria-label="اطلاعات قراردادی"
+                  aria-label="قراردادها"
                 >
                   <IcContract />
                 </LinkBtn>
@@ -192,25 +179,23 @@ function RightNav() {
                 </LinkBtn>
               </div>
 
-              <div onMouseEnter={(e) => showTip("گزارش‌ها", e)} onMouseLeave={hideTip}>
-                <LinkBtn to="/projects/reports" className={railBtn(isActive("/projects/reports"))} aria-label="گزارش‌ها">
-                  <img src="/images/icons/gozareshrozane.svg" className={icImgCls} alt="" draggable={false} />
-                </LinkBtn>
-              </div>
-
-              <div onMouseEnter={(e) => showTip("ترازمالی پروژه", e)} onMouseLeave={hideTip}>
-                <LinkBtn to="/projects/balance" className={railBtn(isActive("/projects/balance"))} aria-label="ترازمالی پروژه">
-                  <IcBalance />
-                </LinkBtn>
-              </div>
-
               <div onMouseEnter={(e) => showTip("روزنگار پروژه", e)} onMouseLeave={hideTip}>
-                <LinkBtn to="/projects/daily-log" className={railBtn(isActive("/projects/daily-log"))} aria-label="روزنگار پروژه">
+                <LinkBtn
+                  to="/projects/daily-log"
+                  className={railBtn(isActive("/projects/daily-log"))}
+                  aria-label="روزنگار پروژه"
+                >
                   <IcDaily />
                 </LinkBtn>
               </div>
             </div>
           )}
+
+          <div onMouseEnter={(e) => showTip("درخواست پرداخت", e)} onMouseLeave={hideTip}>
+            <LinkBtn to="/payment" className={railBtn(isActive("/payment"))} aria-label="درخواست پرداخت">
+              <IcPay />
+            </LinkBtn>
+          </div>
 
           <RailDivider />
 
@@ -291,14 +276,6 @@ function RightNav() {
                   <IcCurrency />
                 </LinkBtn>
               </div>
-
-              {isMainAdmin && (
-                <div onMouseEnter={(e) => showTip("تست", e)} onMouseLeave={hideTip}>
-                  <LinkBtn to="/test/editor" className={railBtn(isActive("/test/editor"))}>
-                    <img src="/images/icons/dashbaord.svg" className={icImgCls} alt="" draggable={false} />
-                  </LinkBtn>
-                </div>
-              )}
 
               <div onMouseEnter={(e) => showTip("برچسب‌ها", e)} onMouseLeave={hideTip}>
                 <LinkBtn to="/base/tags" className={railBtn(isActive("/base/tags"))}>

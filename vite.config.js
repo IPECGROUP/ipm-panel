@@ -5,7 +5,18 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      "/api": "http://localhost:3000",
+      "/api": {
+        target: process.env.VITE_DEV_API_TARGET || "http://localhost:3000",
+        changeOrigin: true,
+        timeout: 0,
+        proxyTimeout: 0,
+      },
+      "/uploads": {
+        target: process.env.VITE_DEV_API_TARGET || "http://localhost:3000",
+        changeOrigin: true,
+        timeout: 0,
+        proxyTimeout: 0,
+      },
     },
     host: true,
     allowedHosts: [

@@ -321,7 +321,7 @@ export default function TestEditorPage() {
           color: #171717;
           direction: rtl;
           text-align: right;
-          font-family: Vazirmatn, system-ui, -apple-system, "Segoe UI", sans-serif;
+          font-family: Vazir, system-ui, -apple-system, "Segoe UI", sans-serif;
           background: #fff;
         }
 
