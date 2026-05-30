@@ -1591,7 +1591,8 @@ export default function ContractInformation() {
     " border-black/10 bg-white text-neutral-900 hover:bg-black/5 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-white/10";
   const selectedTagChipCls =
     chipBaseCls + " border-black bg-black text-white hover:bg-black/90 dark:border-neutral-200 dark:bg-neutral-100 dark:text-neutral-900";
-  const centeredRowActionsCls = "flex min-h-[34px] w-full items-center justify-center gap-1";
+  const centeredRowActionsCls =
+    "flex min-h-[34px] w-full items-center justify-center gap-1 transition-opacity opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto";
   const contractsTableWrapCls =
     "mt-4 rounded-2xl border border-black/10 bg-white text-black overflow-hidden dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100";
   const contractsTableHeadRowCls =
@@ -1728,7 +1729,7 @@ export default function ContractInformation() {
   };
 
   const renderFinancialBreakdownFiles = () => (
-    <div className="mt-3 rounded-xl border border-black/10 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-900">
+    <div className="mt-3">
       <div className="flex flex-wrap items-center gap-2">
         <div className="text-sm font-semibold text-black dark:text-neutral-100">جدول شکست مبلغ قرارداد</div>
         <button
@@ -2248,7 +2249,7 @@ export default function ContractInformation() {
                             <textarea
                               value={form.technical?.serviceScope || ""}
                               onChange={(e) => setTechnicalField("serviceScope", e.target.value)}
-                              className={`${textareaCls} !h-[270px] !min-h-[270px] !resize-none`}
+                              className={`${textareaCls} !h-[268px] !min-h-[268px] !resize-none`}
                             />
                           </div>
 
@@ -2324,7 +2325,7 @@ export default function ContractInformation() {
                         })}
 
                         {!isAppendixDocument ? (
-                          <>
+                          <React.Fragment>
                         <div className="mt-4 grid grid-cols-1 lg:grid-cols-[minmax(280px,0.95fr)_minmax(360px,1.05fr)] gap-4 items-start">
                           <div>
                             <div className="mb-2 text-sm font-semibold text-black dark:text-neutral-100">شرایط پرداخت</div>
@@ -2396,10 +2397,8 @@ export default function ContractInformation() {
                               </div>
                             </div>
                           </div>
-                        </div>
-
                           {renderFinancialBreakdownFiles()}
-                          </div>
+                        </div>
                         <div className="hidden">
                           <div className="flex flex-wrap items-center gap-2">
                             <div className="text-sm font-semibold text-black dark:text-neutral-100">جدول شکست مبلغ قرارداد</div>
@@ -2448,7 +2447,8 @@ export default function ContractInformation() {
                             </div>
                           ) : null}
                         </div>
-                          </>
+                        </div>
+                          </React.Fragment>
                         ) : null}
                       </div>
 
@@ -2777,7 +2777,7 @@ export default function ContractInformation() {
                       const divider = isLast ? "" : contractsRowDividerCls;
 
                       return (
-                        <tr key={row.id} className="bg-white transition-colors hover:bg-black/[0.04] dark:bg-neutral-900 dark:hover:bg-white/10">
+                        <tr key={row.id} className="group bg-white transition-colors hover:bg-black/[0.04] dark:bg-neutral-900 dark:hover:bg-white/10">
                           <td className={`px-3 ${divider}`}>
                             <input
                               type="checkbox"
