@@ -146,8 +146,8 @@ function RightNav() {
 
   const mobileSubItemCls =
     "!grid !grid-cols-[2.75rem_minmax(0,1fr)] !items-center gap-2.5 !rounded-[1.15rem] !border !border-white/[0.10] " +
-    "!bg-neutral-950/82 !px-2 !py-2 !text-right !text-white hover:!bg-neutral-900/92 active:scale-[0.985] " +
-    "!shadow-[0_8px_22px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.08)]";
+    "!bg-neutral-900/96 !px-2 !py-2 !text-right !text-white hover:!bg-neutral-800/98 active:scale-[0.985] " +
+    "!shadow-[0_10px_24px_rgba(0,0,0,0.26),inset_0_1px_0_rgba(255,255,255,0.10)]";
 
   const mobileMenuKey = open.projects ? "projects" : open.budget ? "budget" : open.base ? "base" : null;
   const mobileMenus = {
@@ -371,7 +371,7 @@ function RightNav() {
       {mobileMenu && (
         <button
           type="button"
-          className="fixed inset-0 z-40 bg-black/[0.18] backdrop-blur-[2px] lg:hidden"
+          className="fixed inset-0 z-40 bg-black/[0.07] backdrop-blur-[0.5px] lg:hidden"
           aria-label="بستن منو"
           onClick={closeMobileMenu}
         />
@@ -392,9 +392,9 @@ function RightNav() {
             ].join(" ")}
           >
             {mobileMenu && (
-              <div className="relative max-h-[min(58dvh,390px)] overflow-hidden rounded-[1.55rem] border border-white/[0.12] bg-neutral-950/96 p-2.5 text-white shadow-[0_18px_48px_rgba(0,0,0,0.42)] backdrop-blur-2xl sm:p-3">
-                <div className="pointer-events-none absolute inset-0 rounded-[1.55rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.10),rgba(255,255,255,0.018)_44%,rgba(244,139,53,0.07)_100%)]" />
-                <div className="relative mb-1.5 rounded-[0.9rem] border border-white/[0.08] bg-white/[0.06] px-2.5 py-1.5 text-[11px] font-bold text-white/90 sm:text-xs">
+              <div className="relative max-h-[min(58dvh,390px)] overflow-hidden rounded-[1.55rem] border border-white/[0.14] bg-neutral-950/94 p-2.5 text-white shadow-[0_18px_48px_rgba(0,0,0,0.40)] backdrop-blur-md sm:p-3">
+                <div className="pointer-events-none absolute inset-0 rounded-[1.55rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.08),rgba(255,255,255,0.015)_48%,rgba(0,0,0,0.12)_100%)]" />
+                <div className="relative mb-1.5 rounded-[0.9rem] border border-white/[0.10] bg-neutral-900/88 px-2.5 py-1.5 text-[11px] font-bold text-white/92 sm:text-xs">
                   {mobileMenu.title}
                 </div>
                 <div className="relative grid max-h-[min(48dvh,310px)] gap-1.5 overflow-y-auto pr-0.5">
@@ -405,17 +405,19 @@ function RightNav() {
                       onClick={closeMobileMenu}
                       className={[
                         mobileSubItemCls,
-                        isActive(item.to) ? "!bg-[#F48B35]/92 !border-[#F48B35]/70" : "",
+                        isActive(item.to)
+                          ? "!bg-neutral-800/98 !border-[#F48B35]/75 !shadow-[0_10px_26px_rgba(0,0,0,0.30),inset_3px_0_0_rgba(244,139,53,0.95),inset_0_1px_0_rgba(255,255,255,0.12)]"
+                          : "",
                       ].join(" ")}
                     >
-                      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.95rem] border border-white/[0.12] bg-neutral-800/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_8px_18px_rgba(0,0,0,0.20)]">
+                      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.95rem] border border-white/[0.14] bg-neutral-950/92 shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_8px_18px_rgba(0,0,0,0.24)]">
                         {item.icon}
                       </span>
                       <span className="relative min-w-0">
-                        <span className="block truncate text-sm font-bold leading-5 text-white sm:text-[15px]">
+                        <span className="block truncate text-sm font-bold leading-5 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)] sm:text-[15px]">
                           {item.label}
                         </span>
-                        <span className="mt-0.5 block truncate text-[11px] leading-4 text-white/72 sm:text-xs">
+                        <span className="mt-0.5 block truncate text-[11px] leading-4 text-white/76 drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)] sm:text-xs">
                           {item.hint}
                         </span>
                       </span>
