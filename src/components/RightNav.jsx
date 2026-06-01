@@ -52,20 +52,24 @@ const LiquidGlassFilter = () => (
         <fePointLight x="-200" y="-200" z="300" />
       </feSpecularLighting>
       <feComposite in="specLight" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="litImage" />
-      <feDisplacementMap in="SourceGraphic" in2="softMap" scale="36" xChannelSelector="R" yChannelSelector="G" />
+      <feDisplacementMap in="SourceGraphic" in2="softMap" scale="90" xChannelSelector="R" yChannelSelector="G" />
     </filter>
   </svg>
 );
 
-const LiquidGlassLayers = ({ rounded = "rounded-[1.55rem]" }) => (
+const LiquidGlassLayers = ({
+  rounded = "rounded-[1.55rem]",
+  blur = "backdrop-blur-[12px]",
+  tint = "bg-white/[0.50]",
+}) => (
   <>
     <div
-      className={`pointer-events-none absolute inset-0 z-0 ${rounded} backdrop-blur-[4px]`}
+      className={`pointer-events-none absolute inset-0 z-0 ${rounded} ${blur}`}
       style={{ filter: "url(#rightnav-glass-distortion)" }}
     />
-    <div className={`pointer-events-none absolute inset-0 z-[1] ${rounded} bg-white/[0.42]`} />
+    <div className={`pointer-events-none absolute inset-0 z-[1] ${rounded} ${tint}`} />
     <div
-      className={`pointer-events-none absolute inset-0 z-[2] ${rounded} shadow-[inset_2px_2px_1px_rgba(255,255,255,0.45),inset_-1px_-1px_1px_rgba(255,255,255,0.38)]`}
+      className={`pointer-events-none absolute inset-0 z-[2] ${rounded} shadow-[inset_2px_2px_1px_rgba(255,255,255,0.52),inset_-1px_-1px_1px_rgba(255,255,255,0.48)]`}
     />
   </>
 );
@@ -434,8 +438,8 @@ function RightNav() {
             ].join(" ")}
           >
             {mobileMenu && (
-              <div className="relative max-h-[min(58dvh,390px)] overflow-hidden rounded-[1.55rem] border border-white/[0.30] p-2.5 shadow-[0_18px_52px_rgba(0,0,0,0.24)] sm:p-3">
-                <LiquidGlassLayers />
+              <div className="relative max-h-[min(58dvh,390px)] overflow-hidden rounded-[1.55rem] border border-white/[0.34] p-2.5 shadow-[0_18px_52px_rgba(0,0,0,0.26)] sm:p-3">
+                <LiquidGlassLayers blur="backdrop-blur-[16px]" tint="bg-white/[0.56]" />
                 <div className="relative z-[3] grid max-h-[min(48dvh,310px)] gap-1 overflow-y-auto pr-0.5">
                   {mobileMenu.items.map((item) => (
                     <LinkBtn
@@ -467,8 +471,8 @@ function RightNav() {
             )}
           </div>
 
-          <div className="relative w-full overflow-hidden rounded-[1.55rem] border border-white/[0.30] p-2 shadow-[0_10px_18px_rgba(0,0,0,0.22),0_0_28px_rgba(0,0,0,0.10)] transition-all duration-300">
-            <LiquidGlassLayers />
+          <div className="relative w-full overflow-hidden rounded-[1.55rem] border border-white/[0.32] p-2 shadow-[0_10px_18px_rgba(0,0,0,0.22),0_0_28px_rgba(0,0,0,0.10)] transition-all duration-300">
+            <LiquidGlassLayers blur="backdrop-blur-[12px]" tint="bg-white/[0.50]" />
             <div className="relative z-[3] grid grid-cols-6 items-center gap-1.5 min-[390px]:gap-2">
               <LinkBtn to="/" onClick={closeMobileMenu} className={mobileDockBtn(dashboardActive)} aria-label="داشبورد">
                 <IcDashboard />
