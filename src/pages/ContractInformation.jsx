@@ -2855,15 +2855,20 @@ export default function ContractInformation() {
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:items-end">
                               <div className="min-w-0">
                                 <div className={labelCls}>کارکرد ناخالص نهایی قرارداد</div>
-                                <input
-                                  value={formatAmountInput(insuranceForm.finalGrossPerformance || "")}
-                                  onChange={(e) => setInsuranceField("finalGrossPerformance", cleanFinancialAmountInput(e.target.value))}
-                                  className={inputCls}
-                                  type="text"
-                                  inputMode="decimal"
-                                  dir="ltr"
-                                  placeholder="0"
-                                />
+                                <div className="relative">
+                                  <input
+                                    value={formatAmountInput(insuranceForm.finalGrossPerformance || "")}
+                                    onChange={(e) => setInsuranceField("finalGrossPerformance", cleanFinancialAmountInput(e.target.value))}
+                                    className={`${inputCls} !pl-14`}
+                                    type="text"
+                                    inputMode="decimal"
+                                    dir="ltr"
+                                    placeholder="0"
+                                  />
+                                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-black/55 dark:text-neutral-300">
+                                    ریال
+                                  </span>
+                                </div>
                               </div>
 
                               <div className="min-w-0">
