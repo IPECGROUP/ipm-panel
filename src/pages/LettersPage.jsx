@@ -2220,14 +2220,14 @@ const resetAllFilters = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [todayJalaliYmd]);
 
-    const inputBase = "w-full h-11 px-4 rounded-xl border outline-none transition text-right text-[14px]";
+    const inputBase = "w-full h-11 px-4 rounded-xl border outline-none transition text-right text-[13px] md:text-[14px]";
 
   const inputCls =
     theme === "dark"
       ? inputBase + " border-white/15 bg-white/5 text-white placeholder:text-white/40 focus:bg-white/10"
       : inputBase + " border-black/10 bg-white text-neutral-900 placeholder:text-neutral-400 focus:bg-black/[0.02]";
 
-  const labelCls = theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1";
+  const labelCls = theme === "dark" ? "text-white/70 text-[11px] md:text-xs mb-1" : "text-neutral-600 text-[11px] md:text-xs mb-1";
 
   // compact versions (for one-line top row)
 const inputSmCls = inputCls
@@ -2239,7 +2239,7 @@ const labelSmCls = (theme === "dark"
   : "text-neutral-600 text-[11px] mb-1");
 
 const tabSmCls = (active) =>
-  "h-10 flex-1 md:flex-none justify-center px-3 md:px-4 rounded-xl border transition text-[13px] font-semibold inline-flex items-center gap-2 whitespace-nowrap " +
+  "h-10 flex-1 md:flex-none justify-center px-3 md:px-4 rounded-xl border transition text-[12px] md:text-[13px] font-semibold inline-flex items-center gap-2 whitespace-nowrap " +
   (active
     ? "text-white"
     : theme === "dark"
@@ -4144,7 +4144,7 @@ useEffect(() => {
 
   }
 >
-              <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-end gap-2">
+              <div className="flex flex-wrap items-end gap-2">
                 {/* Tabs first */}
                 <div className="flex w-full md:w-auto flex-wrap items-center gap-1 justify-start">
 
@@ -4155,7 +4155,7 @@ useEffect(() => {
   const activeColor = isKind ? TAB_ACTIVE_BG[t.id] : null;
 
                     const cls =
-  "h-10 flex-1 md:flex-none justify-center px-3 md:px-5 rounded-xl border transition text-sm font-semibold inline-flex items-center gap-2 " +
+  "h-10 flex-1 md:flex-none justify-center px-3 md:px-5 rounded-xl border transition text-[13px] md:text-sm font-semibold inline-flex items-center gap-2 " +
   (isAll
     ? active
       ? "bg-black text-white border-black"
@@ -4222,7 +4222,7 @@ useEffect(() => {
     placeholder="جستجو در همه فیلدها (شماره، موضوع، تاریخ، سازمان و ...)"
   />
 </div>
-                <div className="w-full min-[420px]:w-[calc(50%-0.25rem)] md:w-auto md:min-w-[140px]">
+                <div className="w-[calc(50%-0.25rem)] md:w-auto md:min-w-[140px]">
 
                   <div className={labelCls}>از</div>
                   <JalaliPopupDatePicker
@@ -4232,10 +4232,11 @@ useEffect(() => {
                       setFilterQuick(""); // ✅
                     }}
                     theme={theme}
+                    buttonClassName={inputCls + " h-10 md:h-11 px-3 md:px-4 text-[12px] md:text-[14px] flex items-center justify-between gap-2"}
                   />
                 </div>
 
-                <div className="w-full min-[420px]:w-[calc(50%-0.25rem)] md:w-auto md:min-w-[140px]">
+                <div className="w-[calc(50%-0.25rem)] md:w-auto md:min-w-[140px]">
                   <div className={labelCls}>تا</div>
                   <JalaliPopupDatePicker
                     value={filterToDate}
@@ -4244,6 +4245,7 @@ useEffect(() => {
                       setFilterQuick(""); // ✅
                     }}
                     theme={theme}
+                    buttonClassName={inputCls + " h-10 md:h-11 px-3 md:px-4 text-[12px] md:text-[14px] flex items-center justify-between gap-2"}
                   />
                 </div>
               </div>
