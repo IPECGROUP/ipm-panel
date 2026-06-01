@@ -1890,7 +1890,7 @@ export default function ContractInformation() {
   );
 
   return (
-    <div dir="rtl" className="ipm-contract-information mx-auto w-full max-w-[1400px] px-2 font-sans sm:px-0">
+    <div dir="rtl" className="ipm-contract-information mx-auto w-full max-w-[1400px] px-2 font-sans text-[13px] sm:px-0 sm:text-sm">
       <Card className="!p-0 rounded-xl border overflow-hidden border-black/10 bg-white text-black sm:rounded-2xl dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
         <div className="p-2.5 sm:p-3 md:p-4">
           <div className="flex items-center justify-between gap-3 mb-3">
@@ -2969,7 +2969,115 @@ export default function ContractInformation() {
           ) : null}
 
           <div className={contractsTableWrapCls}>
-            <div dir="ltr" className="relative max-h-[55vh] overflow-y-auto overflow-x-auto">
+            <div className="md:hidden">
+              {contractsPageRows.length ? (
+                <div className="divide-y divide-neutral-200 dark:divide-neutral-800">
+                  {contractsPageRows.map((row) => {
+                    const project = projectById.get(String(row.projectId));
+                    const relatedLetter = row.relatedLetterId ? letterById.get(String(row.relatedLetterId)) : null;
+                    const appendicesCount = countAppendices(row, rows);
+                    const contractNo = contractNoForRow(row, rowById);
+                    const id = String(row.id);
+                    const projectLabel = project?.label || "بدون پروژه";
+                    const docLabel = documentTypeLabel(row.documentType);
+                    const typeText = row.general?.contractType || "ثبت نشده";
+                    const relatedNo = relatedLetter
+                      ? secretariatNoOf(relatedLetter) || letterNoOf(relatedLetter) || row.relatedLetterId
+                      : "";
+                    const docColor =
+                      row.documentType === "appendix"
+                        ? "#FF8040"
+                        : row.documentType === "sub"
+                        ? "#8BAE66"
+                        : "#0046FF";
+
+                    return (
+                      <div
+                        key={row.id}
+                        className="border-r-4 bg-white p-3 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100"
+                        style={{ borderRightColor: docColor }}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 shrink-0 accent-black dark:accent-neutral-200"
+                                checked={selectedContractIds.has(id)}
+                                onChange={() => toggleContractSelect(id)}
+                                aria-label="انتخاب"
+                                title="انتخاب"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => openEditForm(row)}
+                                className="min-w-0 truncate text-right text-sm font-bold underline-offset-4 hover:underline"
+                                title="ویرایش"
+                                aria-label="ویرایش"
+                              >
+                                {contractNo ? toFaDigits(contractNo) : "ثبت نشده"}
+                              </button>
+                              <span className="shrink-0 rounded-full bg-black/[0.05] px-2 py-0.5 text-[11px] text-neutral-700 dark:bg-white/10 dark:text-white/80">
+                                {docLabel}
+                              </span>
+                            </div>
+                            <div className="mt-1 truncate text-xs text-black/55 dark:text-neutral-400">{projectLabel}</div>
+                          </div>
+
+                          <div className="flex shrink-0 items-center gap-1">
+                            <RowActionIconBtn action="edit" onClick={() => openEditForm(row)} size={34} iconSize={15} />
+                            <RowActionIconBtn action="delete" onClick={() => deleteRow(row.id)} size={34} iconSize={16} />
+                          </div>
+                        </div>
+
+                        <div className="mt-3 space-y-2 text-[13px]">
+                          <div>
+                            <div className="text-[11px] text-black/45 dark:text-neutral-500">نوع قرارداد</div>
+                            <div className="line-clamp-2 break-words leading-6 font-semibold">{typeText}</div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="min-w-0">
+                              <div className="text-[11px] text-black/45 dark:text-neutral-500">الحاقیه‌ها</div>
+                              <div className="truncate">{appendicesCount ? toFaDigits(appendicesCount) : "بدون الحاقیه"}</div>
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-[11px] text-black/45 dark:text-neutral-500">مفاصات</div>
+                              <div className="truncate font-semibold">{row.insurance?.branchStatus || "ثبت نشده"}</div>
+                              {row.insurance?.lastStatus ? (
+                                <div className="mt-0.5 truncate text-[11px] text-black/50 dark:text-neutral-400">
+                                  {row.insurance.lastStatus}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className="text-[11px] text-black/45 dark:text-neutral-500">نامه ابلاغ کار</div>
+                            {relatedLetter ? (
+                              <div className="min-w-0">
+                                <div className="font-semibold">{toFaDigits(relatedNo)}</div>
+                                <div className="mt-0.5 truncate text-[11px] text-black/55 dark:text-neutral-400">
+                                  {subjectOf(relatedLetter) || "بدون موضوع"}
+                                </div>
+                              </div>
+                            ) : (
+                              <div>ثبت نشده</div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="px-3 py-8 text-center text-sm text-black/55 dark:text-neutral-400">
+                  قراردادی برای نمایش وجود ندارد.
+                </div>
+              )}
+            </div>
+
+            <div dir="ltr" className="hidden md:block relative max-h-[55vh] overflow-y-auto overflow-x-auto">
               <table
                 dir="rtl"
                 className="w-full min-w-[900px] table-fixed text-xs sm:min-w-[1120px] sm:text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-2 [&_td]:py-2 [&_th]:whitespace-nowrap [&_td]:min-w-0"
@@ -3082,8 +3190,8 @@ export default function ContractInformation() {
             </div>
 
             <div className="border-t border-neutral-300 px-3 py-2 dark:border-neutral-800">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-sm">
+              <div className="flex flex-col items-stretch gap-2 md:flex-row md:flex-wrap md:items-center md:justify-between">
+                <div className="flex items-center justify-between gap-2 text-xs md:justify-start md:text-sm">
                   <button
                     type="button"
                     onClick={() => setContractsPage((page) => Math.max(0, page - 1))}
@@ -3113,7 +3221,7 @@ export default function ContractInformation() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 text-sm">
+                <div className="flex items-center justify-between gap-2 text-xs md:justify-start md:text-sm">
                   <span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span>
                   <select
                     value={contractsRowsPerPage}
