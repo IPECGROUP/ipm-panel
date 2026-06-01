@@ -365,9 +365,14 @@ function RightNav() {
         aria-label="منوی اصلی"
       >
         <div className="pointer-events-auto mx-auto flex max-w-[440px] flex-col items-center gap-2">
-          {mobileMenu && (
-            <div className="w-full origin-bottom animate-in fade-in slide-in-from-bottom-2 duration-200">
-              <div className="max-h-[min(56dvh,360px)] overflow-y-auto rounded-[1.75rem] border border-white/20 bg-neutral-950/55 p-3 text-white shadow-[0_18px_60px_rgba(0,0,0,0.36)] backdrop-blur-2xl supports-[backdrop-filter]:bg-neutral-950/45">
+          <div
+            className={[
+              "w-full origin-bottom overflow-hidden transition-all duration-300 ease-out will-change-[transform,opacity,max-height]",
+              mobileMenu ? "max-h-[min(58dvh,390px)] translate-y-0 scale-100 opacity-100" : "max-h-0 translate-y-3 scale-[0.98] opacity-0 pointer-events-none",
+            ].join(" ")}
+          >
+            {mobileMenu && (
+              <div className="max-h-[min(56dvh,360px)] overflow-y-auto rounded-[1.5rem] border border-white/15 bg-neutral-950/55 p-3 text-white shadow-[0_18px_60px_rgba(0,0,0,0.36)] backdrop-blur-2xl supports-[backdrop-filter]:bg-neutral-950/45">
                 <div className="mb-2 px-1 text-[11px] font-semibold text-white/65">{mobileMenu.title}</div>
                 <div className="grid grid-cols-1 gap-2">
                   {mobileMenu.items.map((item) => (
@@ -380,10 +385,10 @@ function RightNav() {
                   ))}
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          <div className="w-full rounded-[2rem] border border-white/20 bg-neutral-950/55 px-2 py-2 shadow-[0_18px_60px_rgba(0,0,0,0.38)] backdrop-blur-2xl supports-[backdrop-filter]:bg-neutral-950/45">
+          <div className="w-full rounded-[1.65rem] border border-white/15 bg-neutral-950/55 px-2 py-2 shadow-[0_18px_60px_rgba(0,0,0,0.38)] backdrop-blur-2xl supports-[backdrop-filter]:bg-neutral-950/45">
             <div className="flex items-center justify-between gap-1.5">
               <LinkBtn to="/" onClick={closeMobileMenu} className={mobileDockBtn(isActive("/"))} aria-label="داشبورد">
                 <IcDashboard />
