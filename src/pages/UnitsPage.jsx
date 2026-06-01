@@ -1028,22 +1028,22 @@ function OrgStructurePage() {
 
             {/* پاپ‌آپ سطح دسترسی */}
             {accessOpen && (
-              <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-2 pt-3 sm:items-center sm:p-6 bg-black/40 backdrop-blur-sm">
+              <div className="fixed inset-0 z-[80] flex items-center justify-center overflow-hidden bg-black/50 p-2 backdrop-blur-sm sm:p-6">
                 <div
-                  className="flex w-full max-w-[820px] max-h-[94vh] flex-col overflow-hidden
+                  className="flex w-[min(820px,calc(100vw-1rem))] max-h-[calc(100dvh-1rem)] flex-col overflow-hidden
                          rounded-2xl sm:rounded-3xl shadow-2xl ring-1 ring-black/10 dark:ring-neutral-800
                          bg-white text-black dark:bg-neutral-900 dark:text-neutral-100"
                   dir="rtl"
                 >
-                  <div className="flex shrink-0 items-center justify-between gap-2 border-b border-black/10 px-3 py-2 dark:border-neutral-800 sm:px-4">
-                    <h2 className="min-w-0 truncate text-xs md:text-base font-bold">
+                  <div className="flex shrink-0 items-center justify-between gap-2 border-b border-black/10 px-3 py-2.5 dark:border-neutral-800 sm:px-4">
+                    <h2 className="min-w-0 truncate text-[11px] font-bold md:text-base">
                       سطح دسترسی {accessUnit ? `— ${accessUnit.name}` : ""}
                     </h2>
 
                     <button
                       type="button"
                       onClick={closeAccess}
-                      className="h-8 w-8 grid place-items-center rounded-lg
+                      className="h-8 w-8 shrink-0 grid place-items-center rounded-lg
                              ring-1 ring-black/15 hover:bg-black/5 transition
                              dark:ring-neutral-800 dark:hover:bg-white/10"
                       aria-label="بستن"
@@ -1096,7 +1096,7 @@ function OrgStructurePage() {
                                           >
                                             <span className="text-sm leading-none">{isOpen ? "−" : "+"}</span>
                                           </button>
-                                          <span className="min-w-0 truncate font-medium text-xs md:text-[14px]">{opt.label}</span>
+                                          <span className="min-w-0 truncate text-right font-semibold text-[11px] md:text-[14px]">{opt.label}</span>
                                         </div>
 
                                         <input
@@ -1154,12 +1154,12 @@ function OrgStructurePage() {
                     </div>
                   )}
 
-                  <div className="shrink-0 flex items-center justify-end gap-2 px-3 py-3 sm:px-4">
+                  <div className="shrink-0 flex items-center justify-end gap-2 border-t border-black/10 px-3 py-3 dark:border-neutral-800 sm:px-4">
                     <PrimaryBtn
                       type="button"
                       onClick={saveUnitAccess}
                       disabled={!isAdmin || accessSaving || accessLoading}
-                      className="!bg-neutral-900 !text-white dark:!bg-neutral-100 dark:!text-neutral-900 !h-10"
+                      className="!h-9 !rounded-xl !bg-neutral-900 !px-4 !text-xs !text-white dark:!bg-neutral-100 dark:!text-neutral-900 md:!h-10 md:!text-sm"
                     >
                       {accessSaving ? "..." : "ذخیره"}
                     </PrimaryBtn>
