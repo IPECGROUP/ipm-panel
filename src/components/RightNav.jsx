@@ -177,6 +177,15 @@ function RightNav() {
       return {};
     });
 
+  const mobileGlassBoxCls =
+    "relative w-full overflow-hidden rounded-[1.55rem] border border-white/[0.32] p-2 " +
+    "shadow-[0_10px_18px_rgba(0,0,0,0.22),0_0_28px_rgba(0,0,0,0.10)] transition-all duration-300";
+
+  const mobileGlassLayerProps = {
+    blur: "backdrop-blur-[16px]",
+    tint: "bg-white/[0.48]",
+  };
+
   const mobileDockBtn = (active) =>
     [
       "!h-[3.45rem] sm:!h-[3.65rem] !w-full !min-w-0 !rounded-[1.15rem] !p-0",
@@ -438,8 +447,8 @@ function RightNav() {
             ].join(" ")}
           >
             {mobileMenu && (
-              <div className="relative max-h-[min(58dvh,390px)] overflow-hidden rounded-[1.55rem] border border-white/[0.32] p-2 shadow-[0_10px_18px_rgba(0,0,0,0.22),0_0_28px_rgba(0,0,0,0.10)] transition-all duration-300">
-                <LiquidGlassLayers blur="backdrop-blur-[16px]" tint="bg-white/[0.48]" />
+              <div className={`${mobileGlassBoxCls} max-h-[min(58dvh,390px)]`}>
+                <LiquidGlassLayers {...mobileGlassLayerProps} />
                 <div className="relative z-[3] grid max-h-[min(48dvh,310px)] gap-1 overflow-y-auto pr-0.5">
                   {mobileMenu.items.map((item) => (
                     <LinkBtn
@@ -471,8 +480,8 @@ function RightNav() {
             )}
           </div>
 
-          <div className="relative w-full overflow-hidden rounded-[1.55rem] border border-white/[0.32] p-2 shadow-[0_10px_18px_rgba(0,0,0,0.22),0_0_28px_rgba(0,0,0,0.10)] transition-all duration-300">
-            <LiquidGlassLayers blur="backdrop-blur-[16px]" tint="bg-white/[0.48]" />
+          <div className={mobileGlassBoxCls}>
+            <LiquidGlassLayers {...mobileGlassLayerProps} />
             <div className="relative z-[3] grid grid-cols-6 items-center gap-1.5 min-[390px]:gap-2">
               <LinkBtn to="/" onClick={closeMobileMenu} className={mobileDockBtn(dashboardActive)} aria-label="داشبورد">
                 <IcDashboard />
