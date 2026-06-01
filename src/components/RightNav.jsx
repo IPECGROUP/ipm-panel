@@ -31,6 +31,45 @@ const IcWorksheet = () => (
 const IcDaily = () => <img src="/images/icons/calendar.svg" className={icImgCls} alt="" draggable={false} />;
 const IcClose = () => <X className={svgCls} strokeWidth={2.4} />;
 
+const LiquidGlassFilter = () => (
+  <svg aria-hidden="true" focusable="false" className="fixed h-0 w-0 overflow-hidden">
+    <filter id="rightnav-glass-distortion" x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.012" numOctaves="1" seed="5" result="turbulence" />
+      <feComponentTransfer in="turbulence" result="mapped">
+        <feFuncR type="gamma" amplitude="1" exponent="10" offset="0.5" />
+        <feFuncG type="gamma" amplitude="0" exponent="1" offset="0" />
+        <feFuncB type="gamma" amplitude="0" exponent="1" offset="0.5" />
+      </feComponentTransfer>
+      <feGaussianBlur in="turbulence" stdDeviation="3" result="softMap" />
+      <feSpecularLighting
+        in="softMap"
+        surfaceScale="5"
+        specularConstant="1"
+        specularExponent="80"
+        lightingColor="white"
+        result="specLight"
+      >
+        <fePointLight x="-200" y="-200" z="300" />
+      </feSpecularLighting>
+      <feComposite in="specLight" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="litImage" />
+      <feDisplacementMap in="SourceGraphic" in2="softMap" scale="36" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+  </svg>
+);
+
+const LiquidGlassLayers = ({ rounded = "rounded-[1.55rem]" }) => (
+  <>
+    <div
+      className={`pointer-events-none absolute inset-0 z-0 ${rounded} backdrop-blur-[4px]`}
+      style={{ filter: "url(#rightnav-glass-distortion)" }}
+    />
+    <div className={`pointer-events-none absolute inset-0 z-[1] ${rounded} bg-white/[0.42]`} />
+    <div
+      className={`pointer-events-none absolute inset-0 z-[2] ${rounded} shadow-[inset_2px_2px_1px_rgba(255,255,255,0.45),inset_-1px_-1px_1px_rgba(255,255,255,0.38)]`}
+    />
+  </>
+);
+
 function RightNav() {
   const { user } = useAuth();
   const isMainAdmin = isMainAdminUser(user);
@@ -137,11 +176,11 @@ function RightNav() {
   const mobileDockBtn = (active) =>
     [
       "!h-[3.45rem] sm:!h-[3.65rem] !w-full !min-w-0 !rounded-[1.15rem] !p-0",
-      "!flex !flex-col !items-center !justify-center gap-1 !border transition-all duration-200",
-      "shadow-[inset_0_1px_0_rgba(255,255,255,0.11)] active:scale-[0.96]",
+      "!flex !flex-col !items-center !justify-center gap-1 !border transition-all duration-200 backdrop-blur-[10px]",
+      "active:scale-[0.96]",
       active
-        ? "!bg-white/[0.22] !border-white/35 !text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.30),0_8px_20px_rgba(0,0,0,0.18)]"
-        : "!bg-white/[0.10] !text-white/86 !border-white/[0.12] hover:!bg-white/[0.18] hover:!text-white",
+        ? "!bg-black/[0.38] !border-white/35 !text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_8px_20px_rgba(0,0,0,0.18)]"
+        : "!bg-black/[0.22] !text-white/90 !border-white/[0.16] shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] hover:!bg-black/[0.32] hover:!text-white",
     ].join(" ");
 
   const mobileSubItemCls =
@@ -209,6 +248,8 @@ function RightNav() {
 
   return (
     <>
+      <LiquidGlassFilter />
+
       <aside
         dir="rtl"
         className="hidden lg:block fixed right-0 top-0 bottom-0 z-50 w-[64px] sm:w-[76px] lg:w-[92px] rounded-none
@@ -429,10 +470,9 @@ function RightNav() {
             )}
           </div>
 
-          <div className="relative w-full overflow-hidden rounded-[1.55rem] border border-white/[0.28] bg-white/[0.14] px-2 py-2 shadow-[0_14px_42px_rgba(0,0,0,0.24)] backdrop-blur-[22px]">
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.30),rgba(255,255,255,0.11)_42%,rgba(22,22,26,0.28))]" />
-            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-white/35" />
-            <div className="relative grid grid-cols-6 items-center gap-1.5 min-[390px]:gap-2">
+          <div className="relative w-full overflow-hidden rounded-[1.55rem] border border-white/[0.30] p-2 shadow-[0_10px_18px_rgba(0,0,0,0.22),0_0_28px_rgba(0,0,0,0.10)] transition-all duration-300">
+            <LiquidGlassLayers />
+            <div className="relative z-[3] grid grid-cols-6 items-center gap-1.5 min-[390px]:gap-2">
               <LinkBtn to="/" onClick={closeMobileMenu} className={mobileDockBtn(dashboardActive)} aria-label="داشبورد">
                 <IcDashboard />
                 <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current min-[390px]:text-[10px] sm:text-[11px]">
