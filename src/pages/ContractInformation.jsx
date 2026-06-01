@@ -1688,7 +1688,7 @@ export default function ContractInformation() {
   const selectedTagChipCls =
     chipBaseCls + " border-black bg-black text-white hover:bg-black/90 dark:border-neutral-200 dark:bg-neutral-100 dark:text-neutral-900";
   const centeredRowActionsCls =
-    "flex min-h-[34px] w-full items-center justify-center gap-1 transition-opacity opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto";
+    "flex min-h-[34px] w-full items-center justify-center gap-1 transition-opacity opacity-100 pointer-events-auto sm:opacity-0 sm:pointer-events-none sm:group-hover:opacity-100 sm:group-hover:pointer-events-auto";
   const contractsTableWrapCls =
     "mt-4 rounded-2xl border border-black/10 bg-white text-black overflow-hidden dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100";
   const contractsTableHeadRowCls =
@@ -1699,10 +1699,10 @@ export default function ContractInformation() {
   const paginationIconBtnCls =
     "h-9 w-9 rounded-lg border border-black/10 bg-white inline-flex items-center justify-center transition hover:bg-black/[0.04] disabled:opacity-40 disabled:cursor-not-allowed dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800";
   const tabStripCls =
-    "mx-auto -mb-px flex w-full max-w-[780px] items-stretch justify-center overflow-hidden rounded-t-2xl border border-b-0 border-black/10 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900";
+    "mx-auto -mb-px flex w-full max-w-[780px] items-stretch justify-start overflow-x-auto overflow-y-hidden rounded-t-2xl border border-b-0 border-black/10 bg-white shadow-sm [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:justify-center dark:border-neutral-800 dark:bg-neutral-900";
   const topTabBtnClass = (isActive, index, total) =>
     [
-      "relative z-10 h-11 min-w-[132px] flex-1 px-4 text-sm font-semibold transition whitespace-nowrap",
+      "relative z-10 h-11 min-w-[112px] flex-none px-3 text-xs font-semibold transition whitespace-nowrap sm:min-w-[132px] sm:px-4 sm:text-sm md:flex-1",
       index > 0 ? "border-r border-black/10 dark:border-neutral-800" : "",
       index === 0 ? "rounded-tr-2xl" : "",
       index === total - 1 ? "rounded-tl-2xl" : "",
@@ -1714,7 +1714,7 @@ export default function ContractInformation() {
   const tabbedPanelClass =
     "relative rounded-2xl border border-black/10 bg-white overflow-hidden shadow-sm dark:bg-neutral-900 dark:border-neutral-800";
   const calendarCardCls =
-    "rounded-2xl border border-black/10 bg-white p-3 min-h-[114px] dark:border-neutral-800 dark:bg-neutral-900";
+    "rounded-2xl border border-black/10 bg-white p-3 sm:min-h-[114px] dark:border-neutral-800 dark:bg-neutral-900";
   const calendarTotals = calculateCalendarDays(form.calendar || {});
   const isAppendixDocument = form.documentType === "appendix";
   const showCalendarExtraDates = isAppendixDocument;
@@ -1890,9 +1890,9 @@ export default function ContractInformation() {
   );
 
   return (
-    <div dir="rtl" className="ipm-contract-information mx-auto max-w-[1400px] font-sans">
-      <Card className="rounded-2xl border overflow-hidden border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
-        <div className="p-3 md:p-4">
+    <div dir="rtl" className="ipm-contract-information mx-auto w-full max-w-[1400px] px-2 font-sans sm:px-0">
+      <Card className="!p-0 rounded-xl border overflow-hidden border-black/10 bg-white text-black sm:rounded-2xl dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
+        <div className="p-2.5 sm:p-3 md:p-4">
           <div className="flex items-center justify-between gap-3 mb-3">
             <div className="text-base md:text-lg">
               <span className="text-neutral-700 dark:text-neutral-300">پروژه‌ها</span>
@@ -1916,7 +1916,7 @@ export default function ContractInformation() {
 
           <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
             <div className="flex flex-wrap items-end gap-2">
-              <div className="min-w-[260px] flex-1">
+              <div className="w-full sm:min-w-[260px] sm:flex-1">
                 <div className={labelCls}>جست و جو</div>
                 <input
                   value={filterQuery}
@@ -1927,7 +1927,7 @@ export default function ContractInformation() {
                 />
               </div>
 
-              <div className="min-w-[220px]">
+              <div className="w-full sm:w-auto sm:min-w-[220px]">
                 <div className={labelCls}>مرکز/پروژه</div>
                 <select value={filterProjectId} onChange={(e) => setFilterProjectId(e.target.value)} className={inputCls}>
                   <option value="">همه پروژه‌ها</option>
@@ -1939,7 +1939,7 @@ export default function ContractInformation() {
                 </select>
               </div>
 
-              <div className="min-w-[160px]">
+              <div className="w-full sm:w-auto sm:min-w-[160px]">
                 <div className={labelCls}>سند قراردادی</div>
                 <select value={filterDocType} onChange={(e) => setFilterDocType(e.target.value)} className={inputCls}>
                   <option value="">همه</option>
@@ -1972,9 +1972,9 @@ export default function ContractInformation() {
           {rowsLoading ? <div className="mt-3 text-sm text-black/55 dark:text-neutral-400">در حال بارگذاری قراردادها...</div> : null}
 
           {formOpen ? (
-            <div className="mt-4 rounded-2xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-800 dark:bg-white/[0.03]">
+            <div className="mt-4 rounded-2xl border border-black/10 bg-black/[0.02] p-2.5 sm:p-3 dark:border-neutral-800 dark:bg-white/[0.03]">
               <div className="flex flex-wrap items-end gap-2">
-                <div className="min-w-[260px] flex-1">
+                <div className="w-full sm:min-w-[260px] sm:flex-1">
                   <div className={labelCls}>مرکز/پروژه</div>
                   <select
                     value={form.projectId}
@@ -1991,7 +1991,7 @@ export default function ContractInformation() {
                   </select>
                 </div>
 
-                <div className="min-w-[170px]">
+                <div className="w-full sm:w-auto sm:min-w-[170px]">
                   <div className={labelCls}>سند قراردادی</div>
                   <select value={form.documentType} onChange={(e) => setField("documentType", e.target.value)} className={inputCls}>
                     {CONTRACT_DOCUMENT_TYPES.map((item) => (
@@ -2002,7 +2002,7 @@ export default function ContractInformation() {
                   </select>
                 </div>
 
-                <div className="min-w-[230px] flex-1">
+                <div className="w-full sm:min-w-[230px] sm:flex-1">
                   <div className={labelCls}>شماره قرارداد</div>
                   {form.documentType === "main" ? (
                     <input
@@ -2044,7 +2044,7 @@ export default function ContractInformation() {
                   </button>
                 </div>
 
-                <div className="min-w-[240px] flex-1 pb-2">
+                <div className="w-full pb-1 sm:min-w-[240px] sm:flex-1 sm:pb-2">
                   <div className="text-sm text-black/70 dark:text-neutral-300">
                     شماره ثبت دبیرخانه:{" "}
                     <span className="font-semibold text-black dark:text-neutral-100">
@@ -2054,8 +2054,8 @@ export default function ContractInformation() {
                 </div>
               </div>
 
-              <div className="mt-6">
-                <div className="px-2 overflow-visible" dir="rtl">
+              <div className="mt-5 sm:mt-6">
+                <div className="overflow-visible px-0 sm:px-2" dir="rtl">
                   <div className={tabStripCls}>
                     {visibleContractTabs.map((tab, index) => (
                     <button
@@ -2072,7 +2072,7 @@ export default function ContractInformation() {
 
                 <div className={tabbedPanelClass}>
                   {activeContractTab === "general" ? (
-                    <div className="p-4 space-y-4">
+                    <div className="space-y-4 p-3 sm:p-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         <div className="min-w-0">
                           <div className={labelCls}>نوع قرارداد</div>
@@ -2180,7 +2180,7 @@ export default function ContractInformation() {
                       </div>
                     </div>
                   ) : activeContractTab === "calendar" ? (
-                    <div className="p-4 space-y-4">
+                    <div className="space-y-4 p-3 sm:p-4">
                       {isAppendixDocument ? (
                         <div className={calendarCardCls}>
                           <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(260px,1fr)] gap-3 md:items-end">
@@ -2320,7 +2320,7 @@ export default function ContractInformation() {
                       </div>
                     </div>
                   ) : activeContractTab === "technical" ? (
-                    <div className="p-4 space-y-4">
+                    <div className="space-y-4 p-3 sm:p-4">
                       {isAppendixDocument ? (
                         <div className="space-y-4">
                           <div>
@@ -2328,7 +2328,7 @@ export default function ContractInformation() {
                             <textarea
                               value={form.technical?.serviceScope || ""}
                               onChange={(e) => setTechnicalField("serviceScope", e.target.value)}
-                              className={`${textareaCls} !h-[180px] !min-h-[180px] !resize-none`}
+                              className={`${textareaCls} !h-[150px] !min-h-[150px] !resize-none sm:!h-[180px] sm:!min-h-[180px]`}
                             />
                           </div>
                           <div className="flex items-center justify-end">
@@ -2339,14 +2339,14 @@ export default function ContractInformation() {
                         </div>
                       ) : (
                       <>
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+                      <div className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2 items-start">
                         <div className="space-y-4">
                           <div className="pt-1.5">
                             <div className={labelCls}>شرح خدمات و محدوده کار</div>
                             <textarea
                               value={form.technical?.serviceScope || ""}
                               onChange={(e) => setTechnicalField("serviceScope", e.target.value)}
-                              className={`${textareaCls} !h-[268px] !min-h-[268px] !resize-none`}
+                              className={`${textareaCls} !h-[190px] !min-h-[190px] !resize-none sm:!h-[268px] sm:!min-h-[268px]`}
                             />
                           </div>
 
@@ -2407,7 +2407,7 @@ export default function ContractInformation() {
                       )}
                     </div>
                   ) : activeContractTab === "financial" ? (
-                    <div className="p-4 space-y-4">
+                    <div className="space-y-4 p-3 sm:p-4">
                       {currencyError ? (
                         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
                           {currencyError}
@@ -2423,18 +2423,18 @@ export default function ContractInformation() {
 
                         {!isAppendixDocument ? (
                           <React.Fragment>
-                        <div className="mt-4 grid grid-cols-1 lg:grid-cols-[minmax(280px,0.95fr)_minmax(360px,1.05fr)] gap-4 items-start">
+                        <div className="mt-4 grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-[minmax(280px,0.95fr)_minmax(360px,1.05fr)] items-start">
                           <div>
                             <div className="mb-2 text-sm font-semibold text-black dark:text-neutral-100">شرایط پرداخت</div>
                             <textarea
                               value={financialForm.paymentTerms || ""}
                               onChange={(e) => setFinancialField("paymentTerms", e.target.value)}
-                              className={`${textareaCls} !h-[240px] !min-h-[240px] !resize-none`}
+                              className={`${textareaCls} !h-[170px] !min-h-[170px] !resize-none sm:!h-[240px] sm:!min-h-[240px]`}
                             />
                           </div>
 
                           <div className="space-y-3">
-                          <div className="mt-6 rounded-xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-700 dark:bg-white/[0.03]">
+                          <div className="mt-2 rounded-xl border border-black/10 bg-black/[0.02] p-3 lg:mt-6 dark:border-neutral-700 dark:bg-white/[0.03]">
                             <div className="grid grid-cols-1 gap-3">
                               <div className="grid grid-cols-1 sm:grid-cols-[116px_1fr] gap-2 sm:items-center">
                                 <div className="text-sm font-semibold text-black/75 dark:text-neutral-200">پیش پرداخت</div>
@@ -2650,7 +2650,7 @@ export default function ContractInformation() {
 
                           <div className={`mt-3 ${financialTablePreset.frame}`}>
                             <div className="overflow-x-auto">
-                              <table className={`${financialTablePreset.table} min-w-[900px]`} dir="rtl">
+                              <table className={`${financialTablePreset.table} min-w-[760px] text-xs sm:min-w-[900px] sm:text-sm`} dir="rtl">
                                 <colgroup>
                                   <col className="w-[18%]" />
                                   <col className="w-[14%]" />
@@ -2772,7 +2772,7 @@ export default function ContractInformation() {
                                             ) : (
                                               <div className="relative min-h-[34px] flex items-center justify-center pl-20">
                                                 <span className="block truncate">{row.currencyLabel || row.currencyId || "—"}</span>
-                                                <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-1 shrink-0 transition-opacity opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto">
+                                                <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-1 shrink-0 transition-opacity opacity-100 pointer-events-auto sm:opacity-0 sm:pointer-events-none sm:group-hover:opacity-100 sm:group-hover:pointer-events-auto">
                                                   <RowActionIconBtn action="edit" onClick={() => startEditGuaranteeRow(row)} size={34} iconSize={15} />
                                                   <RowActionIconBtn action="delete" onClick={() => removeGuaranteeRow(row.id)} size={34} iconSize={16} />
                                                 </div>
@@ -2805,7 +2805,7 @@ export default function ContractInformation() {
                       </div>
                     </div>
                   ) : activeContractTab === "insurance" ? (
-                    <div className="p-4 space-y-4">
+                    <div className="space-y-4 p-3 sm:p-4">
                       <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                           <div className="min-w-0">
@@ -2951,7 +2951,7 @@ export default function ContractInformation() {
                       </div>
                     </div>
                   ) : (
-                    <div className="p-4 min-h-[180px] flex flex-col justify-between gap-4">
+                    <div className="flex min-h-[160px] flex-col justify-between gap-4 p-3 sm:min-h-[180px] sm:p-4">
                       <div className="rounded-xl border border-black/10 bg-black/[0.02] px-4 py-3 text-sm text-black/60 dark:border-neutral-700 dark:bg-white/[0.03] dark:text-neutral-300">
                         بخش {CONTRACT_SECTION_TABS.find((tab) => tab.id === activeContractTab)?.label} در مرحله بعد تکمیل می‌شود.
                       </div>
@@ -2972,7 +2972,7 @@ export default function ContractInformation() {
             <div dir="ltr" className="relative max-h-[55vh] overflow-y-auto overflow-x-auto">
               <table
                 dir="rtl"
-                className="w-full min-w-[1120px] table-fixed text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-2 [&_td]:py-2 [&_th]:whitespace-nowrap [&_td]:min-w-0"
+                className="w-full min-w-[900px] table-fixed text-xs sm:min-w-[1120px] sm:text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-2 [&_td]:py-2 [&_th]:whitespace-nowrap [&_td]:min-w-0"
               >
                 <colgroup>
                   <col style={{ width: 48 }} />
@@ -3136,7 +3136,7 @@ export default function ContractInformation() {
 
           <div className="hidden">
             <div dir="ltr" className="relative max-h-[55vh] overflow-y-auto overflow-x-auto">
-            <table dir="rtl" className="w-full min-w-[1120px] table-fixed text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-2 [&_td]:py-2 [&_th]:whitespace-nowrap [&_td]:min-w-0">
+            <table dir="rtl" className="w-full min-w-[900px] table-fixed text-xs sm:min-w-[1120px] sm:text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-2 [&_td]:py-2 [&_th]:whitespace-nowrap [&_td]:min-w-0">
               <thead className="bg-black/[0.03] text-black/70 dark:bg-white/[0.05] dark:text-neutral-300">
                 <tr>
                   <th className="px-3 py-3 text-right font-semibold">مرکز/پروژه</th>
