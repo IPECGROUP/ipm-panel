@@ -87,12 +87,12 @@ export default function Shell() {
             <img
               src="/images/light%20mode.png"
               alt="logo"
-              className="h-7 sm:h-8 md:h-9 max-w-[112px] sm:max-w-none w-auto object-contain block dark:hidden"
+              className="h-9 sm:h-8 md:h-9 max-w-[136px] sm:max-w-none w-auto object-contain block dark:hidden"
             />
             <img
               src="/images/dark%20mode.png"
               alt="logo (dark)"
-              className="h-7 sm:h-8 md:h-9 max-w-[112px] sm:max-w-none w-auto object-contain hidden dark:block"
+              className="h-9 sm:h-8 md:h-9 max-w-[136px] sm:max-w-none w-auto object-contain hidden dark:block"
             />
           </Link>
 
@@ -117,7 +117,7 @@ export default function Shell() {
             {/* خوش‌آمد + نقش */}
             <div
               className={
-                "flex min-w-0 max-w-[9.5rem] items-center gap-1.5 sm:max-w-none sm:gap-2 px-2 sm:px-3 py-1.5 rounded-xl border " +
+                "hidden md:flex min-w-0 max-w-[9.5rem] items-center gap-1.5 sm:max-w-none sm:gap-2 px-2 sm:px-3 py-1.5 rounded-xl border " +
                 (theme === "dark"
                   ? "border-white/15 bg-white/5 text-white/90"
                   : "border-black/10 bg-white/70 text-neutral-800")
@@ -147,12 +147,33 @@ export default function Shell() {
               ) : null}
             </div>
 
+            {/* تاریخ داخل هدر موبایل */}
+            <div
+              className={
+                "flex md:hidden min-w-0 items-center gap-1 px-2 py-1.5 rounded-xl border text-[10px] leading-none " +
+                (theme === "dark"
+                  ? "border-white/10 bg-white/5 text-white/80"
+                  : "border-black/10 bg-white/70 text-neutral-700")
+              }
+              title="تاریخ امروز"
+            >
+              <span className="min-w-0 max-w-[5.25rem] truncate whitespace-nowrap">
+                {jalaliDate || "—"}
+              </span>
+              <span className={theme === "dark" ? "text-white/30" : "text-black/20"}>
+                •
+              </span>
+              <span className="hidden min-[380px]:inline shrink-0 whitespace-nowrap">
+                {gregorianDate || "—"}
+              </span>
+            </div>
+
             {/* دکمه اعلان */}
             <button
               aria-label="اعلان‌ها"
               title="اعلان‌ها"
               className={
-                "h-9 w-9 shrink-0 rounded-xl border flex items-center justify-center transition " +
+                "h-8 w-8 sm:h-9 sm:w-9 shrink-0 rounded-xl border flex items-center justify-center transition " +
                 (theme === "dark"
                   ? "border-neutral-700 text-neutral-200 hover:bg-neutral-800/60"
                   : "border-neutral-300 text-neutral-800 hover:bg-neutral-50")
@@ -162,7 +183,7 @@ export default function Shell() {
               <img
                 src="/images/icons/notif.svg"
                 alt="اعلان"
-                className="w-5 h-5 dark:invert"
+                className="w-4 h-4 sm:w-5 sm:h-5 dark:invert"
               />
             </button>
 
@@ -170,7 +191,7 @@ export default function Shell() {
             <button
               onClick={logout || (() => {})}
               className={
-                "h-9 shrink-0 px-2.5 sm:px-4 rounded-xl text-xs sm:text-sm transition " +
+                "h-8 sm:h-9 shrink-0 px-2 sm:px-4 rounded-xl text-[11px] sm:text-sm transition " +
                 (theme === "dark"
                   ? "ring-1 ring-neutral-700 text-neutral-100 hover:bg-white/10"
                   : "ring-1 ring-neutral-300 text-neutral-800 hover:bg-neutral-100")
@@ -184,7 +205,7 @@ export default function Shell() {
         </div>
 
         {/* تاریخ برای موبایل/تبلت */}
-        <div className="px-2 sm:px-3 md:px-6 pb-3 pr-[72px] sm:pr-[88px] lg:hidden">
+        <div className="hidden md:block px-2 sm:px-3 md:px-6 pb-3 pr-[72px] sm:pr-[88px] lg:hidden">
           <div className="mx-auto max-w-[1400px]">
           <div
             className={
