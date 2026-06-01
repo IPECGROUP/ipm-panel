@@ -177,17 +177,17 @@ function RightNav() {
     [
       "!h-[3.45rem] sm:!h-[3.65rem] !w-full !min-w-0 !rounded-[1.15rem] !p-0",
       "!flex !flex-col !items-center !justify-center gap-1 !border transition-all duration-200 backdrop-blur-[10px]",
+      "[&_img]:!filter-none [&_svg]:!text-neutral-950",
       "active:scale-[0.96]",
       active
-        ? "!bg-black/[0.38] !border-white/35 !text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_8px_20px_rgba(0,0,0,0.18)]"
-        : "!bg-black/[0.22] !text-white/90 !border-white/[0.16] shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] hover:!bg-black/[0.32] hover:!text-white",
+        ? "!bg-white/[0.62] !border-white/60 !text-neutral-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_8px_20px_rgba(0,0,0,0.16)]"
+        : "!bg-white/[0.34] !text-neutral-950 !border-white/[0.34] shadow-[inset_0_1px_0_rgba(255,255,255,0.34)] hover:!bg-white/[0.52]",
     ].join(" ");
 
   const mobileSubItemCls =
-    "!grid !grid-cols-[2.75rem_minmax(0,1fr)] !items-center gap-2.5 !rounded-[1.15rem] !border !border-white/[0.22] " +
-    "!bg-[linear-gradient(135deg,rgba(255,255,255,0.22),rgba(255,255,255,0.11)_42%,rgba(18,18,22,0.42))] " +
-    "backdrop-blur-[18px] !px-2 !py-2 !text-right !text-white hover:!bg-white/[0.20] active:scale-[0.985] " +
-    "!shadow-[0_12px_30px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.24)]";
+    "!grid !grid-cols-[2.75rem_minmax(0,1fr)] !items-center gap-2.5 !rounded-[1rem] !border !border-transparent " +
+    "!bg-transparent !px-2 !py-2 !text-right !text-neutral-950 hover:!bg-white/[0.24] active:scale-[0.985] " +
+    "[&_img]:!filter-none [&_svg]:!text-neutral-950 !shadow-none";
 
   const mobileMenuKey = open.projects ? "projects" : open.budget ? "budget" : open.base ? "base" : null;
   const mobileMenus = {
@@ -434,12 +434,9 @@ function RightNav() {
             ].join(" ")}
           >
             {mobileMenu && (
-              <div className="relative max-h-[min(58dvh,390px)] overflow-hidden rounded-[1.55rem] border border-white/[0.26] bg-white/[0.13] p-2.5 text-white shadow-[0_18px_52px_rgba(0,0,0,0.30)] backdrop-blur-[22px] sm:p-3">
-                <div className="pointer-events-none absolute inset-0 rounded-[1.55rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.28),rgba(255,255,255,0.10)_38%,rgba(13,13,18,0.35)_100%)]" />
-                <div className="relative mb-1.5 rounded-[0.9rem] border border-white/[0.18] bg-white/[0.14] px-2.5 py-1.5 text-[11px] font-bold text-white/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.22)] backdrop-blur-[14px] sm:text-xs">
-                  {mobileMenu.title}
-                </div>
-                <div className="relative grid max-h-[min(48dvh,310px)] gap-1.5 overflow-y-auto pr-0.5">
+              <div className="relative max-h-[min(58dvh,390px)] overflow-hidden rounded-[1.55rem] border border-white/[0.30] p-2.5 shadow-[0_18px_52px_rgba(0,0,0,0.24)] sm:p-3">
+                <LiquidGlassLayers />
+                <div className="relative z-[3] grid max-h-[min(48dvh,310px)] gap-1 overflow-y-auto pr-0.5">
                   {mobileMenu.items.map((item) => (
                     <LinkBtn
                       key={item.to}
@@ -448,18 +445,18 @@ function RightNav() {
                       className={[
                         mobileSubItemCls,
                         isActive(item.to)
-                          ? "!border-[#F48B35]/80 !bg-[linear-gradient(135deg,rgba(244,139,53,0.30),rgba(255,255,255,0.16)_44%,rgba(18,18,22,0.46))] !shadow-[0_12px_32px_rgba(0,0,0,0.26),inset_3px_0_0_rgba(244,139,53,0.95),inset_0_1px_0_rgba(255,255,255,0.25)]"
+                          ? "!border-white/35 !bg-white/[0.30] !shadow-[inset_3px_0_0_rgba(244,139,53,0.95),inset_0_1px_0_rgba(255,255,255,0.30)]"
                           : "",
                       ].join(" ")}
                     >
-                      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.95rem] border border-white/[0.26] bg-black/[0.24] shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_8px_18px_rgba(0,0,0,0.20)] backdrop-blur-[12px]">
+                      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.95rem] border border-white/[0.34] bg-white/[0.34] shadow-[inset_0_1px_0_rgba(255,255,255,0.38),0_6px_14px_rgba(0,0,0,0.10)] backdrop-blur-[10px]">
                         {item.icon}
                       </span>
                       <span className="relative min-w-0">
-                        <span className="block truncate text-sm font-bold leading-5 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)] sm:text-[15px]">
+                        <span className="block truncate text-sm font-bold leading-5 text-neutral-950 sm:text-[15px]">
                           {item.label}
                         </span>
-                        <span className="mt-0.5 block truncate text-[11px] leading-4 text-white/76 drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)] sm:text-xs">
+                        <span className="mt-0.5 block truncate text-[11px] leading-4 text-neutral-700/90 sm:text-xs">
                           {item.hint}
                         </span>
                       </span>
