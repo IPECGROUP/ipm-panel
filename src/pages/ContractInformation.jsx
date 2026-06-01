@@ -964,7 +964,6 @@ export default function ContractInformation() {
 
   const insuranceForm = React.useMemo(() => normalizeInsurance(form.insurance || {}), [form.insurance]);
   const selectedLetter = form.relatedLetterId ? letterById.get(String(form.relatedLetterId)) : null;
-  const selectedInsuranceLetter = insuranceForm.relatedLetterId ? letterById.get(String(insuranceForm.relatedLetterId)) : null;
   const technicalTagIds = React.useMemo(() => normalizeIdList(form.technical?.tagIds), [form.technical?.tagIds]);
   const tagById = React.useMemo(() => {
     const map = new Map();
@@ -2869,58 +2868,36 @@ export default function ContractInformation() {
 
                               <div className="min-w-0">
                                 <div className={labelCls}>مفاصا حساب بیمه تامین اجتماعی</div>
-                                <input
-                                  value={formatAmountInput(insuranceForm.clearanceAmount || "")}
-                                  onChange={(e) => setInsuranceField("clearanceAmount", cleanFinancialAmountInput(e.target.value))}
-                                  className={inputCls}
-                                  type="text"
-                                  inputMode="decimal"
-                                  dir="ltr"
-                                  placeholder="0"
-                                />
-                              </div>
-                            </div>
-
-                            <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => insuranceUploadInputRef.current?.click()}
-                                  className="h-10 rounded-xl border border-black/15 bg-white px-3 text-xs font-semibold transition inline-flex items-center gap-2 hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
-                                >
-                                  <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
-                                  بارگذاری اسناد
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => openRelatedPicker("insurance")}
-                                  className="h-10 rounded-xl border border-black/15 bg-white px-3 text-xs font-semibold transition inline-flex items-center gap-2 hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
-                                  aria-label="انتخاب سند مرتبط"
-                                  title="انتخاب سند مرتبط"
-                                >
-                                  <img src="/images/icons/sayer.svg" alt="" className="w-5 h-5 dark:invert" />
-                                  انتخاب سند مرتبط
-                                </button>
-                                <input
-                                  ref={insuranceUploadInputRef}
-                                  type="file"
-                                  multiple
-                                  accept=".pdf,image/*,.xls,.xlsx,.doc,.docx"
-                                  className="hidden"
-                                  onChange={(e) => {
-                                    addInsuranceClearanceFiles(e.target.files);
-                                    e.target.value = "";
-                                  }}
-                                />
-                              </div>
-
-                              <div className="rounded-xl border border-black/10 bg-white px-3 py-2 text-xs text-black/55 md:min-w-[260px] md:text-left dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
-                                سند مرتبط:{" "}
-                                <span className="font-semibold text-black dark:text-neutral-100">
-                                  {selectedInsuranceLetter
-                                    ? toFaDigits(secretariatNoOf(selectedInsuranceLetter) || letterNoOf(selectedInsuranceLetter) || insuranceForm.relatedLetterId)
-                                    : "سندی انتخاب نشده است"}
-                                </span>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => insuranceUploadInputRef.current?.click()}
+                                    className="h-11 rounded-xl border border-black/15 bg-white px-3 text-xs font-semibold transition inline-flex items-center gap-2 hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+                                  >
+                                    <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
+                                    بارگذاری اسناد
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => openRelatedPicker("insurance")}
+                                    className="h-11 w-11 rounded-xl border border-black/15 bg-white transition inline-flex items-center justify-center hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+                                    aria-label="انتخاب سند مرتبط"
+                                    title="انتخاب سند مرتبط"
+                                  >
+                                    <img src="/images/icons/sayer.svg" alt="" className="w-5 h-5 dark:invert" />
+                                  </button>
+                                  <input
+                                    ref={insuranceUploadInputRef}
+                                    type="file"
+                                    multiple
+                                    accept=".pdf,image/*,.xls,.xlsx,.doc,.docx"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      addInsuranceClearanceFiles(e.target.files);
+                                      e.target.value = "";
+                                    }}
+                                  />
+                                </div>
                               </div>
                             </div>
 
@@ -2953,10 +2930,11 @@ export default function ContractInformation() {
 
                         <div className="mt-4">
                           <div className={labelCls}>آخرین وضعیت قرارداد</div>
-                          <textarea
+                          <input
                             value={insuranceForm.lastStatus || ""}
                             onChange={(e) => setInsuranceField("lastStatus", e.target.value)}
-                            className={`${textareaCls} !h-[140px] !min-h-[140px] !resize-none`}
+                            className={inputCls}
+                            type="text"
                           />
                         </div>
                       </div>
