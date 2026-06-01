@@ -2853,7 +2853,7 @@ export default function ContractInformation() {
 
                         {insuranceForm.branchStatus === SOCIAL_INSURANCE_CLEARANCE_STATUS ? (
                           <div className="mt-4 rounded-2xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-700 dark:bg-white/[0.03]">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:items-start">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:items-end">
                               <div className="min-w-0">
                                 <div className={labelCls}>کارکرد ناخالص نهایی قرارداد</div>
                                 <input
@@ -2868,42 +2868,7 @@ export default function ContractInformation() {
                               </div>
 
                               <div className="min-w-0">
-                                <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-                                  <div className="text-xs font-semibold text-black/60 dark:text-neutral-300">
-                                    مفاصا حساب بیمه تامین اجتماعی
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => insuranceUploadInputRef.current?.click()}
-                                      className="h-10 rounded-xl border border-black/15 bg-white px-3 text-xs font-semibold transition inline-flex items-center gap-2 hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
-                                    >
-                                      <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
-                                      بارگذاری اسناد
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => openRelatedPicker("insurance")}
-                                      className="h-10 rounded-xl border border-black/15 bg-white px-3 text-xs font-semibold transition inline-flex items-center gap-2 hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
-                                      aria-label="انتخاب سند مرتبط"
-                                      title="انتخاب سند مرتبط"
-                                    >
-                                      <img src="/images/icons/sayer.svg" alt="" className="w-5 h-5 dark:invert" />
-                                      انتخاب سند مرتبط
-                                    </button>
-                                    <input
-                                      ref={insuranceUploadInputRef}
-                                      type="file"
-                                      multiple
-                                      accept=".pdf,image/*,.xls,.xlsx,.doc,.docx"
-                                      className="hidden"
-                                      onChange={(e) => {
-                                        addInsuranceClearanceFiles(e.target.files);
-                                        e.target.value = "";
-                                      }}
-                                    />
-                                  </div>
-                                </div>
+                                <div className={labelCls}>مفاصا حساب بیمه تامین اجتماعی</div>
                                 <input
                                   value={formatAmountInput(insuranceForm.clearanceAmount || "")}
                                   onChange={(e) => setInsuranceField("clearanceAmount", cleanFinancialAmountInput(e.target.value))}
@@ -2913,42 +2878,76 @@ export default function ContractInformation() {
                                   dir="ltr"
                                   placeholder="0"
                                 />
-
-                                <div className="mt-2 text-xs text-black/55 dark:text-neutral-400">
-                                  سند مرتبط:{" "}
-                                  <span className="font-semibold text-black dark:text-neutral-100">
-                                    {selectedInsuranceLetter
-                                      ? toFaDigits(secretariatNoOf(selectedInsuranceLetter) || letterNoOf(selectedInsuranceLetter) || insuranceForm.relatedLetterId)
-                                      : "سندی انتخاب نشده است"}
-                                  </span>
-                                </div>
-
-                                {insuranceForm.clearanceFiles.length ? (
-                                  <div className="mt-3 grid grid-cols-1 gap-2">
-                                    {insuranceForm.clearanceFiles.map((file, index) => (
-                                      <div
-                                        key={file.id || `${file.name}_${index}`}
-                                        className="flex items-center justify-between gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
-                                      >
-                                        <div className="min-w-0">
-                                          <div className="truncate text-sm font-semibold">{file.name || `فایل ${toFaDigits(index + 1)}`}</div>
-                                          <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{toFaDigits(formatBytes(file.size || 0))}</div>
-                                        </div>
-                                        <button
-                                          type="button"
-                                          onClick={() => removeInsuranceClearanceFile(file.id)}
-                                          className={`${iconBtnCls} !h-10 !w-10`}
-                                          aria-label="حذف فایل"
-                                          title="حذف فایل"
-                                        >
-                                          <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5 dark:invert" />
-                                        </button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : null}
                               </div>
                             </div>
+
+                            <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => insuranceUploadInputRef.current?.click()}
+                                  className="h-10 rounded-xl border border-black/15 bg-white px-3 text-xs font-semibold transition inline-flex items-center gap-2 hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+                                >
+                                  <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
+                                  بارگذاری اسناد
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => openRelatedPicker("insurance")}
+                                  className="h-10 rounded-xl border border-black/15 bg-white px-3 text-xs font-semibold transition inline-flex items-center gap-2 hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+                                  aria-label="انتخاب سند مرتبط"
+                                  title="انتخاب سند مرتبط"
+                                >
+                                  <img src="/images/icons/sayer.svg" alt="" className="w-5 h-5 dark:invert" />
+                                  انتخاب سند مرتبط
+                                </button>
+                                <input
+                                  ref={insuranceUploadInputRef}
+                                  type="file"
+                                  multiple
+                                  accept=".pdf,image/*,.xls,.xlsx,.doc,.docx"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    addInsuranceClearanceFiles(e.target.files);
+                                    e.target.value = "";
+                                  }}
+                                />
+                              </div>
+
+                              <div className="rounded-xl border border-black/10 bg-white px-3 py-2 text-xs text-black/55 md:min-w-[260px] md:text-left dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
+                                سند مرتبط:{" "}
+                                <span className="font-semibold text-black dark:text-neutral-100">
+                                  {selectedInsuranceLetter
+                                    ? toFaDigits(secretariatNoOf(selectedInsuranceLetter) || letterNoOf(selectedInsuranceLetter) || insuranceForm.relatedLetterId)
+                                    : "سندی انتخاب نشده است"}
+                                </span>
+                              </div>
+                            </div>
+
+                            {insuranceForm.clearanceFiles.length ? (
+                              <div className="mt-3 grid grid-cols-1 gap-2">
+                                {insuranceForm.clearanceFiles.map((file, index) => (
+                                  <div
+                                    key={file.id || `${file.name}_${index}`}
+                                    className="flex items-center justify-between gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
+                                  >
+                                    <div className="min-w-0">
+                                      <div className="truncate text-sm font-semibold">{file.name || `فایل ${toFaDigits(index + 1)}`}</div>
+                                      <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{toFaDigits(formatBytes(file.size || 0))}</div>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeInsuranceClearanceFile(file.id)}
+                                      className={`${iconBtnCls} !h-10 !w-10`}
+                                      aria-label="حذف فایل"
+                                      title="حذف فایل"
+                                    >
+                                      <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5 dark:invert" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
                           </div>
                         ) : null}
 
