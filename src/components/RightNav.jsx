@@ -52,7 +52,7 @@ const LiquidGlassFilter = () => (
         <fePointLight x="-200" y="-200" z="300" />
       </feSpecularLighting>
       <feComposite in="specLight" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="litImage" />
-      <feDisplacementMap in="SourceGraphic" in2="softMap" scale="90" xChannelSelector="R" yChannelSelector="G" />
+      <feDisplacementMap in="SourceGraphic" in2="softMap" scale="130" xChannelSelector="R" yChannelSelector="G" />
     </filter>
   </svg>
 );
@@ -184,8 +184,8 @@ function RightNav() {
       "[&_img]:!filter-none [&_svg]:!text-neutral-950",
       "active:scale-[0.96]",
       active
-        ? "!bg-white/[0.62] !border-white/60 !text-neutral-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_8px_20px_rgba(0,0,0,0.16)]"
-        : "!bg-white/[0.34] !text-neutral-950 !border-white/[0.34] shadow-[inset_0_1px_0_rgba(255,255,255,0.34)] hover:!bg-white/[0.52]",
+        ? "!bg-black/[0.16] !border-white/45 !text-neutral-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.42),0_8px_20px_rgba(0,0,0,0.15)]"
+        : "!bg-black/[0.09] !text-neutral-950 !border-white/[0.26] shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] hover:!bg-black/[0.14]",
     ].join(" ");
 
   const mobileSubItemCls =
@@ -439,7 +439,7 @@ function RightNav() {
           >
             {mobileMenu && (
               <div className="relative max-h-[min(58dvh,390px)] overflow-hidden rounded-[1.55rem] border border-white/[0.34] p-2.5 shadow-[0_18px_52px_rgba(0,0,0,0.26)] sm:p-3">
-                <LiquidGlassLayers blur="backdrop-blur-[16px]" tint="bg-white/[0.56]" />
+                <LiquidGlassLayers blur="backdrop-blur-[28px]" tint="bg-white/[0.46]" />
                 <div className="relative z-[3] grid max-h-[min(48dvh,310px)] gap-1 overflow-y-auto pr-0.5">
                   {mobileMenu.items.map((item) => (
                     <LinkBtn
@@ -472,7 +472,7 @@ function RightNav() {
           </div>
 
           <div className="relative w-full overflow-hidden rounded-[1.55rem] border border-white/[0.32] p-2 shadow-[0_10px_18px_rgba(0,0,0,0.22),0_0_28px_rgba(0,0,0,0.10)] transition-all duration-300">
-            <LiquidGlassLayers blur="backdrop-blur-[12px]" tint="bg-white/[0.50]" />
+            <LiquidGlassLayers blur="backdrop-blur-[16px]" tint="bg-white/[0.48]" />
             <div className="relative z-[3] grid grid-cols-6 items-center gap-1.5 min-[390px]:gap-2">
               <LinkBtn to="/" onClick={closeMobileMenu} className={mobileDockBtn(dashboardActive)} aria-label="داشبورد">
                 <IcDashboard />
