@@ -1,6 +1,7 @@
 // src/components/RightNav.jsx
 import React, { useState } from "react";
 import { useLocation } from "react-router-dom";
+import { X } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { isMainAdminUser } from "../utils/auth";
 import { Btn, LinkBtn } from "./ui/Button";
@@ -28,6 +29,7 @@ const IcWorksheet = () => (
 );
 
 const IcDaily = () => <img src="/images/icons/calendar.svg" className={icImgCls} alt="" draggable={false} />;
+const IcClose = () => <X className={svgCls} strokeWidth={2.4} />;
 
 function RightNav() {
   const { user } = useAuth();
@@ -124,6 +126,7 @@ function RightNav() {
   const projectsParentActive = !!open.projects || activeSection === "projects";
   const budgetParentActive = !!open.budget || activeSection === "budget";
   const baseParentActive = !!open.base || activeSection === "base";
+  const dashboardActive = isActive("/") || isActive("/dashboard");
 
   const closeMobileMenu = () =>
     setOpen(() => {
@@ -133,26 +136,26 @@ function RightNav() {
 
   const mobileDockBtn = (active) =>
     [
-      "!h-10 !w-10 min-[360px]:!h-11 min-[360px]:!w-11 min-[390px]:!h-[3.25rem] min-[390px]:!w-[3.25rem] sm:!h-14 sm:!w-14 !rounded-2xl !p-0",
-      "!flex !items-center !justify-center !border transition-all duration-200",
-      "shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] active:scale-95",
+      "!h-[3.7rem] !w-full !min-w-0 !rounded-[1.35rem] !p-0",
+      "!flex !flex-col !items-center !justify-center gap-1 !border transition-all duration-200",
+      "shadow-[inset_0_1px_0_rgba(255,255,255,0.16)] active:scale-[0.96]",
       active
-        ? "!bg-[#F48B35] !border-[#F48B35] !text-neutral-950"
-        : "!bg-neutral-900/50 !text-white !border-white/20 hover:!bg-neutral-800/60",
+        ? "!bg-white/[0.13] !border-white/28 !text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_26px_rgba(0,0,0,0.28)]"
+        : "!bg-transparent !text-white/72 !border-transparent hover:!bg-white/[0.08] hover:!text-white",
     ].join(" ");
 
   const mobileSubItemCls =
-    "!flex !items-center !justify-start gap-3 !rounded-2xl !border-transparent !bg-transparent !px-2 !py-2.5 " +
-    "!text-white hover:!bg-white/10 active:scale-[0.98] text-xs sm:text-sm font-bold !shadow-none";
+    "!grid !grid-cols-[3.25rem_minmax(0,1fr)] !items-center gap-3 !rounded-[1.35rem] !border-transparent " +
+    "!bg-transparent !px-2 !py-2.5 !text-right !text-white hover:!bg-white/[0.08] active:scale-[0.985] !shadow-none";
 
   const mobileMenuKey = open.projects ? "projects" : open.budget ? "budget" : open.base ? "base" : null;
   const mobileMenus = {
     projects: {
       title: "پروژه‌ها",
       items: [
-        { to: "/centers/contract-info", label: "قراردادها", icon: <IcContract /> },
-        { to: "/projects/financial-worksheet", label: "کاربرگ مالی", icon: <IcWorksheet /> },
-        { to: "/projects/daily-log", label: "روزنگار پروژه", icon: <IcDaily /> },
+        { to: "/centers/contract-info", label: "قراردادها", hint: "اطلاعات و پیگیری قراردادها", icon: <IcContract /> },
+        { to: "/projects/financial-worksheet", label: "کاربرگ مالی", hint: "جزئیات مالی پروژه", icon: <IcWorksheet /> },
+        { to: "/projects/daily-log", label: "روزنگار پروژه", hint: "ثبت گزارش‌های روزانه", icon: <IcDaily /> },
       ],
     },
     budget: {
@@ -161,21 +164,25 @@ function RightNav() {
         {
           to: "/estimates",
           label: "برآورد هزینه‌ها",
+          hint: "پیش‌بینی و کنترل هزینه",
           icon: <img src="/images/icons/baravord.svg" className={icImgCls} alt="" draggable={false} />,
         },
         {
           to: "/revenue-estimates",
           label: "برآورد درآمد",
+          hint: "پیش‌بینی جریان درآمد",
           icon: <img src="/images/icons/baravordhazine.svg" className={icImgCls} alt="" draggable={false} />,
         },
         {
           to: "/budget-allocation",
           label: "تخصیص بودجه",
+          hint: "تقسیم منابع بودجه‌ای",
           icon: <img src="/images/icons/taksisbodge.svg" className={icImgCls} alt="" draggable={false} />,
         },
         {
           to: "/budget/reports",
           label: "گزارش‌ها",
+          hint: "خلاصه‌ها و خروجی‌ها",
           icon: <img src="/images/icons/gozareshha.svg" className={icImgCls} alt="" draggable={false} />,
         },
       ],
@@ -186,12 +193,13 @@ function RightNav() {
         {
           to: "/base/units",
           label: "ساختار سازمانی",
+          hint: "واحدها و چارت سازمانی",
           icon: <img src="/images/icons/unit.svg" className={icImgCls} alt="" draggable={false} />,
         },
-        ...(isMainAdmin ? [{ to: "/admin/users", label: "کاربران", icon: <IcUsers /> }] : []),
-        { to: "/centers/projects", label: "پروژه‌ها", icon: <IcProjects /> },
-        { to: "/base/currencies", label: "ارزها", icon: <IcCurrency /> },
-        { to: "/base/tags", label: "برچسب‌ها", icon: <IcTags /> },
+        ...(isMainAdmin ? [{ to: "/admin/users", label: "کاربران", hint: "مدیریت دسترسی‌ها", icon: <IcUsers /> }] : []),
+        { to: "/centers/projects", label: "پروژه‌ها", hint: "تعریف و ویرایش پروژه‌ها", icon: <IcProjects /> },
+        { to: "/base/currencies", label: "ارزها", hint: "نرخ‌ها و واحدهای پولی", icon: <IcCurrency /> },
+        { to: "/base/tags", label: "برچسب‌ها", hint: "دسته‌بندی داده‌ها", icon: <IcTags /> },
       ],
     },
   };
@@ -208,7 +216,7 @@ function RightNav() {
       >
         <div className="h-full flex flex-col items-center gap-2">
           <div onMouseEnter={(e) => showTip("داشبورد", e)} onMouseLeave={hideTip}>
-            <LinkBtn to="/" className={railBtn(isActive("/"))} aria-label="داشبورد">
+            <LinkBtn to="/" className={railBtn(dashboardActive)} aria-label="داشبورد">
               <IcDashboard />
             </LinkBtn>
           </div>
@@ -359,29 +367,62 @@ function RightNav() {
         </div>
       </aside>
 
+      {mobileMenu && (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-black/[0.08] backdrop-blur-[1px] lg:hidden"
+          aria-label="بستن منو"
+          onClick={closeMobileMenu}
+        />
+      )}
+
       <nav
         dir="rtl"
         className="fixed inset-x-0 bottom-0 z-50 lg:hidden pointer-events-none px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
         aria-label="منوی اصلی"
       >
-        <div className="pointer-events-auto mx-auto flex max-w-[440px] flex-col items-center gap-2">
+        <div className="pointer-events-auto mx-auto flex max-w-[29rem] flex-col items-center gap-3 sm:max-w-[35rem] md:max-w-[40rem]">
           <div
             className={[
-              "w-full origin-bottom overflow-hidden transition-all duration-300 ease-out will-change-[transform,opacity,max-height]",
-              mobileMenu ? "max-h-[min(58dvh,390px)] translate-y-0 scale-100 opacity-100" : "max-h-0 translate-y-3 scale-[0.98] opacity-0 pointer-events-none",
+              "w-full origin-bottom overflow-hidden px-1 transition-all duration-300 ease-out will-change-[transform,opacity,max-height]",
+              mobileMenu
+                ? "max-h-[min(62dvh,430px)] translate-y-0 scale-100 opacity-100"
+                : "max-h-0 translate-y-4 scale-[0.97] opacity-0 pointer-events-none",
             ].join(" ")}
           >
             {mobileMenu && (
-              <div className="relative max-h-[min(56dvh,360px)] overflow-y-auto rounded-[1.75rem] border border-white/22 bg-neutral-900/72 p-4 text-white shadow-[0_18px_60px_rgba(0,0,0,0.42)] backdrop-blur-2xl supports-[backdrop-filter]:bg-neutral-900/66">
-                <div className="pointer-events-none absolute inset-0 rounded-[1.75rem] bg-gradient-to-br from-white/12 via-transparent to-black/25" />
-                <div className="relative mb-2 px-2 text-[11px] font-semibold text-white/78">{mobileMenu.title}</div>
-                <div className="grid grid-cols-1 gap-1">
+              <div className="relative max-h-[min(58dvh,390px)] overflow-hidden rounded-[2rem] border border-white/18 bg-neutral-950/72 p-3 text-white shadow-[0_22px_70px_rgba(0,0,0,0.46)] backdrop-blur-2xl supports-[backdrop-filter]:bg-neutral-950/62 sm:p-4">
+                <div className="pointer-events-none absolute inset-0 rounded-[2rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.18),rgba(255,255,255,0.035)_34%,rgba(244,139,53,0.12)_70%,rgba(0,0,0,0.24))]" />
+                <div className="relative mb-2 flex items-center justify-between px-2">
+                  <div className="text-[11px] font-bold text-white/72 sm:text-xs">{mobileMenu.title}</div>
+                  <button
+                    type="button"
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-white/14 bg-white/[0.06] text-white/80 transition hover:bg-white/[0.12]"
+                    aria-label="بستن منو"
+                    onClick={closeMobileMenu}
+                  >
+                    <IcClose />
+                  </button>
+                </div>
+                <div className="relative max-h-[min(48dvh,310px)] overflow-y-auto pr-0.5">
                   {mobileMenu.items.map((item) => (
-                    <LinkBtn key={item.to} to={item.to} onClick={closeMobileMenu} className={mobileSubItemCls}>
-                      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-neutral-800/62 shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_8px_20px_rgba(0,0,0,0.22)]">
+                    <LinkBtn
+                      key={item.to}
+                      to={item.to}
+                      onClick={closeMobileMenu}
+                      className={[mobileSubItemCls, isActive(item.to) ? "!bg-white/[0.12]" : ""].join(" ")}
+                    >
+                      <span className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-[1.05rem] border border-white/16 bg-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_24px_rgba(0,0,0,0.24)]">
                         {item.icon}
                       </span>
-                      <span className="relative min-w-0 truncate text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]">{item.label}</span>
+                      <span className="relative min-w-0">
+                        <span className="block truncate text-sm font-bold leading-5 text-white sm:text-[15px]">
+                          {item.label}
+                        </span>
+                        <span className="mt-0.5 block truncate text-[11px] leading-4 text-white/58 sm:text-xs">
+                          {item.hint}
+                        </span>
+                      </span>
                     </LinkBtn>
                   ))}
                 </div>
@@ -389,11 +430,15 @@ function RightNav() {
             )}
           </div>
 
-          <div className="relative w-full overflow-hidden rounded-[1.6rem] border border-white/22 bg-neutral-900/68 px-2 py-2 shadow-[0_18px_60px_rgba(0,0,0,0.42)] backdrop-blur-2xl supports-[backdrop-filter]:bg-neutral-900/60">
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/12 via-transparent to-black/25" />
-            <div className="relative flex items-center justify-between gap-1.5">
-              <LinkBtn to="/" onClick={closeMobileMenu} className={mobileDockBtn(isActive("/"))} aria-label="داشبورد">
+          <div className="relative w-full overflow-hidden rounded-[2rem] border border-white/18 bg-neutral-950/70 px-2 py-2 shadow-[0_18px_58px_rgba(0,0,0,0.42)] backdrop-blur-2xl supports-[backdrop-filter]:bg-neutral-950/60">
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.16),rgba(255,255,255,0.035)_38%,rgba(0,0,0,0.22))]" />
+            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-white/28" />
+            <div className="relative grid grid-cols-6 items-center gap-1">
+              <LinkBtn to="/" onClick={closeMobileMenu} className={mobileDockBtn(dashboardActive)} aria-label="داشبورد">
                 <IcDashboard />
+                <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current min-[390px]:text-[10px] sm:text-[11px]">
+                  داشبورد
+                </span>
               </LinkBtn>
 
               <LinkBtn
@@ -403,6 +448,9 @@ function RightNav() {
                 aria-label="اسناد و نامه ها"
               >
                 <IcLetter />
+                <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current min-[390px]:text-[10px] sm:text-[11px]">
+                  نامه‌ها
+                </span>
               </LinkBtn>
 
               <Btn
@@ -411,7 +459,10 @@ function RightNav() {
                 onClick={() => toggle("projects")}
                 aria-label="پروژه‌ها"
               >
-                <IcProjects />
+                {open.projects ? <IcClose /> : <IcProjects />}
+                <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current min-[390px]:text-[10px] sm:text-[11px]">
+                  پروژه
+                </span>
               </Btn>
 
               <LinkBtn
@@ -421,6 +472,9 @@ function RightNav() {
                 aria-label="درخواست پرداخت"
               >
                 <IcPay />
+                <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current min-[390px]:text-[10px] sm:text-[11px]">
+                  پرداخت
+                </span>
               </LinkBtn>
 
               <Btn
@@ -429,7 +483,10 @@ function RightNav() {
                 onClick={() => toggle("budget")}
                 aria-label="بودجه‌بندی"
               >
-                <IcBudget />
+                {open.budget ? <IcClose /> : <IcBudget />}
+                <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current min-[390px]:text-[10px] sm:text-[11px]">
+                  بودجه
+                </span>
               </Btn>
 
               <Btn
@@ -438,7 +495,10 @@ function RightNav() {
                 onClick={() => toggle("base")}
                 aria-label="اطلاعات پایه"
               >
-                <IcBase />
+                {open.base ? <IcClose /> : <IcBase />}
+                <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current min-[390px]:text-[10px] sm:text-[11px]">
+                  پایه
+                </span>
               </Btn>
             </div>
           </div>
