@@ -608,7 +608,7 @@ function OrgStructurePage() {
 
   const topTabBtnClass = (isActive, index, total) =>
     [
-      "relative z-10 h-10 flex-1 rounded-lg px-3 text-xs font-semibold transition whitespace-nowrap md:h-11 md:min-w-[132px] md:rounded-none md:px-4 md:text-sm",
+      "relative z-10 h-10 flex-1 rounded-lg px-3 text-[11px] font-semibold transition whitespace-nowrap md:h-11 md:min-w-[132px] md:rounded-none md:px-4 md:text-sm",
       index > 0 ? "md:border-r md:border-black/10 md:dark:border-neutral-800" : "",
       index === 0 ? "md:rounded-tr-2xl" : "",
       index === total - 1 ? "md:rounded-tl-2xl" : "",
@@ -698,8 +698,8 @@ function OrgStructurePage() {
 
   return (
     <>
-      <Card className="rounded-2xl border bg-white text-black border-black/10 text-xs md:text-sm dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-        <div className="mb-3 text-[13px] md:text-lg">
+      <Card className="rounded-2xl border bg-white text-black border-black/10 text-[11px] md:text-sm dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+        <div className="mb-3 text-xs md:text-lg">
           <span className="text-black/70 dark:text-neutral-300">اطلاعات پایه</span>
           <span className="mx-2 text-black/50 dark:text-neutral-400">›</span>
           <span className="font-semibold text-black dark:text-neutral-100">ساختار سازمانی</span>
@@ -1028,15 +1028,15 @@ function OrgStructurePage() {
 
             {/* پاپ‌آپ سطح دسترسی */}
             {accessOpen && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 bg-black/40 backdrop-blur-sm">
+              <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-2 pt-3 sm:items-center sm:p-6 bg-black/40 backdrop-blur-sm">
                 <div
-                  className="w-full max-w-[820px] max-h-[92vh] overflow-auto
-                         rounded-3xl shadow-2xl ring-1 ring-black/10 dark:ring-neutral-800
-                         p-3 sm:p-4 bg-white text-black dark:bg-neutral-900 dark:text-neutral-100"
+                  className="flex w-full max-w-[820px] max-h-[94vh] flex-col overflow-hidden
+                         rounded-2xl sm:rounded-3xl shadow-2xl ring-1 ring-black/10 dark:ring-neutral-800
+                         bg-white text-black dark:bg-neutral-900 dark:text-neutral-100"
                   dir="rtl"
                 >
-                  <div className="flex items-center justify-between mb-2 gap-2">
-                    <h2 className="text-[14px] md:text-base font-bold">
+                  <div className="flex shrink-0 items-center justify-between gap-2 border-b border-black/10 px-3 py-2 dark:border-neutral-800 sm:px-4">
+                    <h2 className="min-w-0 truncate text-xs md:text-base font-bold">
                       سطح دسترسی {accessUnit ? `— ${accessUnit.name}` : ""}
                     </h2>
 
@@ -1053,9 +1053,10 @@ function OrgStructurePage() {
                     </button>
                   </div>
 
+                  <div className="min-h-0 flex-1 overflow-auto p-2 sm:p-3">
                   <div className="overflow-hidden rounded-2xl border border-black/10 dark:border-neutral-800">
-                    <table className="w-full text-[13px] md:text-sm">
-                      <thead className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
+                    <table className="w-full text-xs md:text-sm">
+                      <thead className="hidden sm:table-header-group bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
                         <tr>
                           <th className="py-1.5 px-4 text-center !font-semibold">صفحه</th>
                         </tr>
@@ -1063,11 +1064,11 @@ function OrgStructurePage() {
 
                       <tbody>
                         <tr className="border-t border-black/10 dark:border-neutral-800">
-                          <td className="py-2 px-3 sm:px-4">
+                          <td className="py-2 px-2 sm:px-4">
                             {accessLoading ? (
                               <div className="text-center text-black/60 dark:text-neutral-400 py-4">در حال بارگذاری…</div>
                             ) : (
-                              <div className="grid gap-1">
+                              <div className="grid gap-1.5 sm:gap-1">
                                 {pageOptions.map((opt) => {
                                   const isOpen = !!openPages[opt.key];
                                   const pageTabs = checkedTabsByPage[opt.key] || {};
@@ -1080,14 +1081,14 @@ function OrgStructurePage() {
                                   return (
                                     <div
                                       key={opt.key}
-                                      className="rounded-2xl border border-black/10 dark:border-neutral-800 overflow-hidden"
+                                      className="rounded-xl sm:rounded-2xl border border-black/10 dark:border-neutral-800 overflow-hidden"
                                     >
                                       <div className="flex items-center justify-between gap-2 px-2.5 py-2 md:gap-3 md:px-3 md:py-1 hover:bg-black/[0.04] dark:hover:bg-white/10">
                                         <div className="flex min-w-0 items-center gap-2">
                                           <button
                                             type="button"
                                             onClick={() => togglePageOpen(opt.key)}
-                                            className="h-8 w-8 grid place-items-center rounded-lg
+                                            className="h-7 w-7 sm:h-8 sm:w-8 grid place-items-center rounded-lg
                                                    bg-transparent hover:opacity-80 active:opacity-70 transition
                                                    ring-1 ring-black/15 dark:ring-neutral-800"
                                             aria-label="باز/بستن"
@@ -1095,12 +1096,12 @@ function OrgStructurePage() {
                                           >
                                             <span className="text-sm leading-none">{isOpen ? "−" : "+"}</span>
                                           </button>
-                                          <span className="min-w-0 truncate font-medium text-[13px] md:text-[14px]">{opt.label}</span>
+                                          <span className="min-w-0 truncate font-medium text-xs md:text-[14px]">{opt.label}</span>
                                         </div>
 
                                         <input
                                           type="checkbox"
-                                          className="w-3.5 h-3.5 accent-black dark:accent-neutral-200"
+                                          className="w-3.5 h-3.5 shrink-0 accent-black dark:accent-neutral-200"
                                           checked={isAllChecked}
                                           ref={(el) => {
                                             if (el) el.indeterminate = isSomeChecked;
@@ -1111,7 +1112,7 @@ function OrgStructurePage() {
 
                                       {isOpen && (
                                         <div className="px-3 py-2 bg-black/[0.02] dark:bg-white/5">
-                                          <div className="text-[11px] text-black/60 dark:text-neutral-400 mb-1.5 text-center">
+                                          <div className="text-[10px] sm:text-[11px] text-black/60 dark:text-neutral-400 mb-1.5 text-center">
                                             تب‌ها
                                           </div>
 
@@ -1119,14 +1120,14 @@ function OrgStructurePage() {
                                             {tabOptions.map((t) => (
                                               <label
                                                 key={t.key}
-                                                className="flex items-center justify-between gap-3 rounded-xl
-                                                       border border-black/10 px-3 py-1 hover:bg-black/[0.04]
+                                                className="flex items-center justify-between gap-2 rounded-xl
+                                                       border border-black/10 px-2.5 py-1.5 sm:px-3 sm:py-1 hover:bg-black/[0.04]
                                                        dark:border-neutral-800 dark:hover:bg-white/10"
                                               >
-                                                <span className="text-xs md:text-[13px]">{t.label}</span>
+                                                <span className="min-w-0 truncate text-[11px] md:text-[13px]">{t.label}</span>
                                                 <input
                                                   type="checkbox"
-                                                  className="w-3.5 h-3.5 accent-black dark:accent-neutral-200"
+                                                  className="w-3.5 h-3.5 shrink-0 accent-black dark:accent-neutral-200"
                                                   checked={!!pageTabs[t.key]}
                                                   onChange={() => toggleTabInPage(opt.key, t.key)}
                                                 />
@@ -1145,14 +1146,15 @@ function OrgStructurePage() {
                       </tbody>
                     </table>
                   </div>
+                  </div>
 
                   {(accessError || accessOk) && (
-                    <div className={`mt-3 text-sm ${accessError ? "text-red-600 dark:text-red-400" : "text-green-600"}`}>
+                    <div className={`shrink-0 px-3 pt-2 text-xs md:text-sm ${accessError ? "text-red-600 dark:text-red-400" : "text-green-600"}`}>
                       {accessError || accessOk}
                     </div>
                   )}
 
-                  <div className="mt-3 flex items-center justify-end gap-2">
+                  <div className="shrink-0 flex items-center justify-end gap-2 px-3 py-3 sm:px-4">
                     <PrimaryBtn
                       type="button"
                       onClick={saveUnitAccess}
