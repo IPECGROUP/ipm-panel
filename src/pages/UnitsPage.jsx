@@ -608,7 +608,7 @@ function OrgStructurePage() {
 
   const topTabBtnClass = (isActive) =>
     [
-      "relative z-10 h-10 flex-1 rounded-lg px-3 text-[13px] font-semibold transition whitespace-nowrap md:h-11 md:min-w-[150px] md:rounded-none md:px-5 md:text-sm",
+      "relative z-10 h-10 flex-1 rounded-lg px-3 text-xs font-semibold transition whitespace-nowrap md:h-11 md:min-w-[150px] md:rounded-none md:px-5 md:text-sm",
       "focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20",
       isActive
         ? "bg-black text-white shadow-sm dark:bg-black dark:text-white"
@@ -695,15 +695,15 @@ function OrgStructurePage() {
 
   return (
     <>
-      <Card className="rounded-2xl border bg-white text-black border-black/10 text-[13px] md:text-sm dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-        <div className="mb-3 text-sm md:text-lg">
+      <Card className="rounded-2xl border bg-white text-black border-black/10 text-xs md:text-sm dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+        <div className="mb-3 text-[13px] md:text-lg">
           <span className="text-black/70 dark:text-neutral-300">اطلاعات پایه</span>
           <span className="mx-2 text-black/50 dark:text-neutral-400">›</span>
           <span className="font-semibold text-black dark:text-neutral-100">ساختار سازمانی</span>
         </div>
         {/* تب‌ها */}
         <div
-          className="mx-auto -mb-px flex w-full max-w-[520px] items-center justify-start gap-1 overflow-x-auto rounded-xl border border-black/10 bg-black/[0.03] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:justify-center md:gap-0 md:rounded-b-none md:rounded-t-2xl md:border-b-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900"
+          className="mx-auto mb-2 flex w-full max-w-[520px] items-center justify-start gap-1 overflow-x-auto rounded-xl border border-black/10 bg-black/[0.03] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mb-3 md:justify-center md:gap-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900"
           dir="rtl"
         >
           <button
