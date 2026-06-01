@@ -608,7 +608,7 @@ function OrgStructurePage() {
 
   const topTabBtnClass = (isActive) =>
     [
-      "relative z-10 h-11 min-w-[150px] px-5 text-sm font-medium transition border",
+      "relative z-10 h-10 flex-1 px-3 text-[13px] font-medium transition border md:h-11 md:min-w-[150px] md:flex-none md:px-5 md:text-sm",
       "focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20",
       isActive
         ? "rounded-t-2xl rounded-b-none border-black/10 border-b-white bg-white text-black dark:border-neutral-800 dark:border-b-neutral-900 dark:bg-neutral-900 dark:text-neutral-100"
@@ -695,14 +695,14 @@ function OrgStructurePage() {
 
   return (
     <>
-      <Card className="rounded-2xl border bg-white text-black border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-        <div className="mb-3 text-base md:text-lg">
+      <Card className="rounded-2xl border bg-white text-black border-black/10 text-[13px] md:text-sm dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+        <div className="mb-3 text-sm md:text-lg">
           <span className="text-black/70 dark:text-neutral-300">اطلاعات پایه</span>
           <span className="mx-2 text-black/50 dark:text-neutral-400">›</span>
           <span className="font-semibold text-black dark:text-neutral-100">ساختار سازمانی</span>
         </div>
         {/* تب‌ها */}
-        <div className="mx-auto flex w-full max-w-[520px] items-end justify-center gap-2 px-2" dir="rtl">
+        <div className="mx-auto flex w-full max-w-[520px] items-end justify-center gap-1.5 px-1 md:gap-2 md:px-2" dir="rtl">
           <button
             type="button"
             onClick={() => setActiveTab("units")}
@@ -725,14 +725,14 @@ function OrgStructurePage() {
             {/* Section: form + table */}
             <div className={tabbedPanelClass}>
               {/* فرم افزودن */}
-              <div className="p-4">
+              <div className="p-3 md:p-4">
                 <div className="flex flex-col sm:flex-row sm:items-end items-stretch gap-2">
                   <input
                     disabled={!isAdmin}
                     value={adding}
                     onChange={(e) => setAdding(e.target.value)}
                     placeholder="نام واحد..."
-                    className="h-10 w-full flex-1 rounded-xl px-3 text-right bg-white text-black placeholder-black/40 border border-black/15 outline-none
+                    className="h-10 w-full flex-1 rounded-xl px-3 text-right text-[13px] md:text-sm bg-white text-black placeholder-black/40 border border-black/15 outline-none
                            focus:ring-2 focus:ring-black/10 disabled:opacity-60
                            dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
                   />
@@ -741,7 +741,7 @@ function OrgStructurePage() {
                     type="button"
                     disabled={!isAdmin || saving}
                     onClick={addUnit}
-                    className="h-10 w-10 grid place-items-center rounded-xl bg-white text-black border border-black/15 hover:bg-black/5 disabled:opacity-50 transition
+                    className="h-10 w-full sm:w-10 grid place-items-center rounded-xl bg-white text-black border border-black/15 hover:bg-black/5 disabled:opacity-50 transition
                            dark:bg-neutral-100 dark:text-neutral-900"
                     aria-label="افزودن"
                     title="افزودن"
@@ -758,7 +758,103 @@ function OrgStructurePage() {
                 <div className={tableUi.outer}>
                   <div className={tableUi.innerPad}>
                     <div className={tableUi.frame}>
-                    <div className="overflow-x-auto">
+                    <div className="md:hidden">
+                      {(sortedList || []).length === 0 ? (
+                        <div className="px-3 py-8 text-center text-sm text-black/55 dark:text-neutral-400">
+                          واحدی ثبت نشده.
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-neutral-200 dark:divide-neutral-800">
+                          {sortedList.map((u, idx) => {
+                            const rowId = unitRowId(u, idx);
+                            const isSelected = selectedUnitSet.has(rowId);
+                            const isEditing = !!editingUnitsById[rowId];
+                            const shouldDeleteSelectedOnAction = isSelected && selectedUnitIds.length > 1;
+
+                            return (
+                              <div key={rowId || idx} className="border-r-4 border-neutral-900 bg-white p-3 dark:border-neutral-100 dark:bg-neutral-900">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex min-w-0 items-center gap-2">
+                                      <input
+                                        type="checkbox"
+                                        className={rowUi.checkbox + " shrink-0"}
+                                        checked={isSelected}
+                                        onChange={() => toggleUnitRowSelect(rowId)}
+                                        aria-label="انتخاب"
+                                        title="انتخاب"
+                                      />
+                                      <span className="shrink-0 rounded-full bg-black/[0.05] px-2 py-0.5 text-[11px] text-neutral-700 dark:bg-white/10 dark:text-white/80">
+                                        {idx + 1}
+                                      </span>
+                                      <span className="min-w-0 truncate text-sm font-bold">{u.name || "—"}</span>
+                                    </div>
+                                  </div>
+
+                                  {!isEditing ? (
+                                    <div className="flex shrink-0 items-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          openAccess(u);
+                                        }}
+                                        disabled={!isAdmin}
+                                        className="inline-grid h-[34px] w-[34px] place-items-center rounded-xl !bg-transparent !ring-0 !border-0 !shadow-none hover:opacity-80 active:opacity-70 disabled:opacity-50"
+                                        aria-label="سطح دسترسی"
+                                        title="سطح دسترسی"
+                                      >
+                                        <img src="/images/icons/sath.svg" alt="" className="h-[18px] w-[18px] dark:invert" />
+                                      </button>
+
+                                      <RowActionIconBtn
+                                        action="edit"
+                                        onClick={() => startEdit(u)}
+                                        disabled={!isAdmin}
+                                        size={34}
+                                        iconSize={15}
+                                      />
+
+                                      <RowActionIconBtn
+                                        action="delete"
+                                        onClick={() => {
+                                          if (shouldDeleteSelectedOnAction) {
+                                            removeUnitRows(selectedUnitIds);
+                                            return;
+                                          }
+                                          removeUnitRows([rowId]);
+                                        }}
+                                        disabled={!isAdmin}
+                                        size={34}
+                                        iconSize={16}
+                                      />
+                                    </div>
+                                  ) : null}
+                                </div>
+
+                                {isEditing ? (
+                                  <div className="mt-3 flex items-center gap-2">
+                                    <input
+                                      className="min-w-0 flex-1 rounded-xl border border-black/15 bg-white px-3 py-2 text-center text-[13px] text-black outline-none focus:ring-2 focus:ring-black/10 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:ring-neutral-600/50"
+                                      value={editingUnitsById?.[rowId]?.name || ""}
+                                      onChange={(e) => setUnitDraftName(rowId, e.target.value)}
+                                      autoFocus
+                                    />
+                                    <div className="flex shrink-0 items-center gap-1">
+                                      <RowActionIconBtn action="save" onClick={() => saveEdit(rowId)} size={34} iconSize={15} />
+                                      <RowActionIconBtn action="cancel" onClick={() => cancelEdit(rowId)} size={34} iconSize={15} />
+                                    </div>
+                                  </div>
+                                ) : null}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="hidden overflow-x-auto md:block">
                       <table className={`${tableUi.table} min-w-[560px]`} dir="rtl">
                         <THead>
                           <tr className={tableUi.headRow}>
@@ -926,9 +1022,9 @@ function OrgStructurePage() {
 
             {/* پاپ‌آپ سطح دسترسی */}
             {accessOpen && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/40 backdrop-blur-sm">
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 bg-black/40 backdrop-blur-sm">
                 <div
-                  className="w-full max-w-[820px] max-h-[90vh] overflow-auto
+                  className="w-full max-w-[820px] max-h-[92vh] overflow-auto
                          rounded-3xl shadow-2xl ring-1 ring-black/10 dark:ring-neutral-800
                          p-3 sm:p-4 bg-white text-black dark:bg-neutral-900 dark:text-neutral-100"
                   dir="rtl"
@@ -952,7 +1048,7 @@ function OrgStructurePage() {
                   </div>
 
                   <div className="overflow-hidden rounded-2xl border border-black/10 dark:border-neutral-800">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-[13px] md:text-sm">
                       <thead className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
                         <tr>
                           <th className="py-1.5 px-4 text-center !font-semibold">صفحه</th>
@@ -980,8 +1076,8 @@ function OrgStructurePage() {
                                       key={opt.key}
                                       className="rounded-2xl border border-black/10 dark:border-neutral-800 overflow-hidden"
                                     >
-                                      <div className="flex items-center justify-between gap-3 px-3 py-1 hover:bg-black/[0.04] dark:hover:bg-white/10">
-                                        <div className="flex items-center gap-2">
+                                      <div className="flex items-center justify-between gap-2 px-2.5 py-2 md:gap-3 md:px-3 md:py-1 hover:bg-black/[0.04] dark:hover:bg-white/10">
+                                        <div className="flex min-w-0 items-center gap-2">
                                           <button
                                             type="button"
                                             onClick={() => togglePageOpen(opt.key)}
@@ -993,7 +1089,7 @@ function OrgStructurePage() {
                                           >
                                             <span className="text-sm leading-none">{isOpen ? "−" : "+"}</span>
                                           </button>
-                                          <span className="font-medium text-sm md:text-[14px]">{opt.label}</span>
+                                          <span className="min-w-0 truncate font-medium text-[13px] md:text-[14px]">{opt.label}</span>
                                         </div>
 
                                         <input
@@ -1013,7 +1109,7 @@ function OrgStructurePage() {
                                             تب‌ها
                                           </div>
 
-                                          <div className="grid sm:grid-cols-2 gap-1">
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                                             {tabOptions.map((t) => (
                                               <label
                                                 key={t.key}
@@ -1021,7 +1117,7 @@ function OrgStructurePage() {
                                                        border border-black/10 px-3 py-1 hover:bg-black/[0.04]
                                                        dark:border-neutral-800 dark:hover:bg-white/10"
                                               >
-                                                <span className="text-[13px]">{t.label}</span>
+                                                <span className="text-xs md:text-[13px]">{t.label}</span>
                                                 <input
                                                   type="checkbox"
                                                   className="w-3.5 h-3.5 accent-black dark:accent-neutral-200"
@@ -1073,11 +1169,11 @@ function OrgStructurePage() {
               {/* فرم افزودن نقش */}
               <form
                 onSubmit={addRole}
-                className="p-4 flex flex-col sm:flex-row-reverse sm:items-center items-stretch gap-3"
+                className="p-3 md:p-4 flex flex-col sm:flex-row-reverse sm:items-center items-stretch gap-2 md:gap-3"
               >
                 <button
                   type="submit"
-                  className="h-10 w-10 grid place-items-center rounded-xl bg-white text-black border border-black/15 hover:bg-black/5
+                  className="h-10 w-full sm:w-10 grid place-items-center rounded-xl bg-white text-black border border-black/15 hover:bg-black/5
                        dark:bg-neutral-100 dark:text-neutral-900"
                   aria-label="افزودن نقش"
                   title="افزودن نقش"
@@ -1089,14 +1185,14 @@ function OrgStructurePage() {
                   value={roleName}
                   onChange={(e) => setRoleName(e.target.value)}
                   placeholder="نام نقش..."
-                  className="w-full flex-1 h-10 rounded-xl px-3 bg-white text-black placeholder-black/40 border border-black/15 outline-none
+                  className="w-full flex-1 h-10 rounded-xl px-3 text-[13px] md:text-sm bg-white text-black placeholder-black/40 border border-black/15 outline-none
                        focus:ring-2 focus:ring-black/10
                        dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
                 />
               </form>
 
               {(rolesErr || rolesLoading) && (
-                <div className="px-4 pb-2 text-sm -mt-2">
+                <div className="px-3 pb-2 text-[13px] md:px-4 md:text-sm -mt-2">
                   {rolesLoading ? (
                     <span className="text-black/60 dark:text-neutral-400">در حال بارگذاری…</span>
                   ) : (
@@ -1110,7 +1206,80 @@ function OrgStructurePage() {
                 <div className={tableUi.outer}>
                   <div className={tableUi.innerPad}>
                     <div className={tableUi.frame}>
-                    <div className="overflow-x-auto">
+                    <div className="md:hidden">
+                      {rolesList.length === 0 && !rolesLoading ? (
+                        <div className="px-3 py-8 text-center text-sm text-black/55 dark:text-neutral-400">
+                          آیتمی ثبت نشده است.
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-neutral-200 dark:divide-neutral-800">
+                          {rolesList.map((it, idx) => {
+                            const rowId = String(it.id);
+                            const isSelected = selectedRoleSet.has(rowId);
+                            const isEditing = !!editingRolesById[rowId];
+                            const shouldDeleteSelectedOnAction = isSelected && selectedRoleIds.length > 1;
+
+                            return (
+                              <div key={it.id} className="border-r-4 border-neutral-900 bg-white p-3 dark:border-neutral-100 dark:bg-neutral-900">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex min-w-0 items-center gap-2">
+                                      <input
+                                        type="checkbox"
+                                        className={rowUi.checkbox + " shrink-0"}
+                                        checked={isSelected}
+                                        onChange={() => toggleRoleRowSelect(rowId)}
+                                        aria-label="انتخاب"
+                                        title="انتخاب"
+                                      />
+                                      <span className="shrink-0 rounded-full bg-black/[0.05] px-2 py-0.5 text-[11px] text-neutral-700 dark:bg-white/10 dark:text-white/80">
+                                        {idx + 1}
+                                      </span>
+                                      <span className="min-w-0 truncate text-sm font-bold">{it.name || "—"}</span>
+                                    </div>
+                                  </div>
+
+                                  {!isEditing ? (
+                                    <div className="flex shrink-0 items-center gap-1">
+                                      <RowActionIconBtn action="edit" onClick={() => startRoleEdit(it)} size={34} iconSize={15} />
+                                      <RowActionIconBtn
+                                        action="delete"
+                                        onClick={() => {
+                                          if (shouldDeleteSelectedOnAction) {
+                                            removeRoleRows(selectedRoleIds);
+                                            return;
+                                          }
+                                          removeRoleRows([rowId]);
+                                        }}
+                                        size={34}
+                                        iconSize={16}
+                                      />
+                                    </div>
+                                  ) : null}
+                                </div>
+
+                                {isEditing ? (
+                                  <div className="mt-3 flex items-center gap-2">
+                                    <input
+                                      value={editingRolesById?.[rowId]?.name || ""}
+                                      onChange={(e) => setRoleDraftName(rowId, e.target.value)}
+                                      className="min-w-0 flex-1 rounded-xl border border-black/15 bg-white px-3 py-2 text-center text-[13px] text-black outline-none focus:ring-2 focus:ring-black/10 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:ring-neutral-600/50"
+                                      autoFocus
+                                    />
+                                    <div className="flex shrink-0 items-center gap-1">
+                                      <RowActionIconBtn action="save" onClick={() => saveRoleEdit(rowId)} size={34} iconSize={15} />
+                                      <RowActionIconBtn action="cancel" onClick={() => cancelRoleEdit(rowId)} size={34} iconSize={15} />
+                                    </div>
+                                  </div>
+                                ) : null}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="hidden overflow-x-auto md:block">
                       <table className={`${tableUi.table} min-w-[520px]`} dir="rtl">
                         <thead>
                           <tr className={tableUi.headRow}>
