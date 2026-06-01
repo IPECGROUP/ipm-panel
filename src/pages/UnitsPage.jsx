@@ -608,11 +608,11 @@ function OrgStructurePage() {
 
   const topTabBtnClass = (isActive) =>
     [
-      "relative z-10 h-10 flex-1 px-3 text-[13px] font-medium transition border md:h-11 md:min-w-[150px] md:flex-none md:px-5 md:text-sm",
+      "relative z-10 h-10 flex-1 rounded-lg px-3 text-[13px] font-semibold transition whitespace-nowrap md:h-11 md:min-w-[150px] md:rounded-none md:px-5 md:text-sm",
       "focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20",
       isActive
-        ? "rounded-t-2xl rounded-b-none border-black/10 border-b-white bg-white text-black dark:border-neutral-800 dark:border-b-neutral-900 dark:bg-neutral-900 dark:text-neutral-100"
-        : "rounded-2xl border-black/10 bg-white text-[#1f2937] hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800",
+        ? "bg-black text-white shadow-sm dark:bg-black dark:text-white"
+        : "bg-white text-[#1f2937] hover:bg-neutral-50 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800",
     ].join(" ");
 
   const tabbedPanelClass =
@@ -702,7 +702,10 @@ function OrgStructurePage() {
           <span className="font-semibold text-black dark:text-neutral-100">ساختار سازمانی</span>
         </div>
         {/* تب‌ها */}
-        <div className="mx-auto flex w-full max-w-[520px] items-end justify-center gap-1.5 px-1 md:gap-2 md:px-2" dir="rtl">
+        <div
+          className="mx-auto -mb-px flex w-full max-w-[520px] items-center justify-start gap-1 overflow-x-auto rounded-xl border border-black/10 bg-black/[0.03] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:justify-center md:gap-0 md:rounded-b-none md:rounded-t-2xl md:border-b-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900"
+          dir="rtl"
+        >
           <button
             type="button"
             onClick={() => setActiveTab("units")}
@@ -726,13 +729,13 @@ function OrgStructurePage() {
             <div className={tabbedPanelClass}>
               {/* فرم افزودن */}
               <div className="p-3 md:p-4">
-                <div className="flex flex-col sm:flex-row sm:items-end items-stretch gap-2">
+                <div className="flex items-center gap-2">
                   <input
                     disabled={!isAdmin}
                     value={adding}
                     onChange={(e) => setAdding(e.target.value)}
                     placeholder="نام واحد..."
-                    className="h-10 w-full flex-1 rounded-xl px-3 text-right text-[13px] md:text-sm bg-white text-black placeholder-black/40 border border-black/15 outline-none
+                    className="h-10 min-w-0 flex-1 rounded-xl px-3 text-right text-[13px] md:text-sm bg-white text-black placeholder-black/40 border border-black/15 outline-none
                            focus:ring-2 focus:ring-black/10 disabled:opacity-60
                            dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
                   />
@@ -741,7 +744,7 @@ function OrgStructurePage() {
                     type="button"
                     disabled={!isAdmin || saving}
                     onClick={addUnit}
-                    className="h-10 w-full sm:w-10 grid place-items-center rounded-xl bg-white text-black border border-black/15 hover:bg-black/5 disabled:opacity-50 transition
+                    className="h-10 w-10 shrink-0 grid place-items-center rounded-xl bg-white text-black border border-black/15 hover:bg-black/5 disabled:opacity-50 transition
                            dark:bg-neutral-100 dark:text-neutral-900"
                     aria-label="افزودن"
                     title="افزودن"
@@ -1169,11 +1172,11 @@ function OrgStructurePage() {
               {/* فرم افزودن نقش */}
               <form
                 onSubmit={addRole}
-                className="p-3 md:p-4 flex flex-col sm:flex-row-reverse sm:items-center items-stretch gap-2 md:gap-3"
+                className="p-3 md:p-4 flex items-center gap-2"
               >
                 <button
                   type="submit"
-                  className="h-10 w-full sm:w-10 grid place-items-center rounded-xl bg-white text-black border border-black/15 hover:bg-black/5
+                  className="order-2 h-10 w-10 shrink-0 grid place-items-center rounded-xl bg-white text-black border border-black/15 hover:bg-black/5
                        dark:bg-neutral-100 dark:text-neutral-900"
                   aria-label="افزودن نقش"
                   title="افزودن نقش"
@@ -1185,7 +1188,7 @@ function OrgStructurePage() {
                   value={roleName}
                   onChange={(e) => setRoleName(e.target.value)}
                   placeholder="نام نقش..."
-                  className="w-full flex-1 h-10 rounded-xl px-3 text-[13px] md:text-sm bg-white text-black placeholder-black/40 border border-black/15 outline-none
+                  className="order-1 min-w-0 flex-1 h-10 rounded-xl px-3 text-[13px] md:text-sm bg-white text-black placeholder-black/40 border border-black/15 outline-none
                        focus:ring-2 focus:ring-black/10
                        dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
                 />
