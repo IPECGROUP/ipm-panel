@@ -10,7 +10,7 @@ import {
   hoverSelectableCrudTablePreset as tablePreset,
   getHoverSelectableRowClass,
 } from "../components/ui/tablePresets.js";
-import { api } from "../utils/api"; // 👈 فقط این خط اضافه شد
+import { api } from "../utils/api"; // 
 
 function OrgStructurePage() {
   const { user } = useAuth();

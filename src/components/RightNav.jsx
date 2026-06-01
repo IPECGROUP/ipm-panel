@@ -125,11 +125,83 @@ function RightNav() {
   const budgetParentActive = !!open.budget || activeSection === "budget";
   const baseParentActive = !!open.base || activeSection === "base";
 
+  const closeMobileMenu = () =>
+    setOpen(() => {
+      localStorage.setItem("nav_open", "{}");
+      return {};
+    });
+
+  const mobileDockBtn = (active) =>
+    [
+      "!h-10 !w-10 min-[360px]:!h-11 min-[360px]:!w-11 min-[390px]:!h-[3.25rem] min-[390px]:!w-[3.25rem] sm:!h-14 sm:!w-14 !rounded-2xl !p-0",
+      "!flex !items-center !justify-center !border transition-all duration-200",
+      "shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] active:scale-95",
+      active
+        ? "!bg-[#F48B35] !border-[#F48B35] !text-neutral-950"
+        : "!bg-white/10 !text-white/90 !border-white/15 hover:!bg-white/15",
+    ].join(" ");
+
+  const mobileSubItemCls =
+    "!flex !items-center !justify-start gap-3 !rounded-2xl !border-white/15 !bg-white/10 !px-3 !py-2.5 " +
+    "!text-white hover:!bg-white/15 active:scale-[0.98] text-[11px] sm:text-xs font-semibold";
+
+  const mobileMenuKey = open.projects ? "projects" : open.budget ? "budget" : open.base ? "base" : null;
+  const mobileMenus = {
+    projects: {
+      title: "پروژه‌ها",
+      items: [
+        { to: "/centers/contract-info", label: "قراردادها", icon: <IcContract /> },
+        { to: "/projects/financial-worksheet", label: "کاربرگ مالی", icon: <IcWorksheet /> },
+        { to: "/projects/daily-log", label: "روزنگار پروژه", icon: <IcDaily /> },
+      ],
+    },
+    budget: {
+      title: "بودجه‌بندی",
+      items: [
+        {
+          to: "/estimates",
+          label: "برآورد هزینه‌ها",
+          icon: <img src="/images/icons/baravord.svg" className={icImgCls} alt="" draggable={false} />,
+        },
+        {
+          to: "/revenue-estimates",
+          label: "برآورد درآمد",
+          icon: <img src="/images/icons/baravordhazine.svg" className={icImgCls} alt="" draggable={false} />,
+        },
+        {
+          to: "/budget-allocation",
+          label: "تخصیص بودجه",
+          icon: <img src="/images/icons/taksisbodge.svg" className={icImgCls} alt="" draggable={false} />,
+        },
+        {
+          to: "/budget/reports",
+          label: "گزارش‌ها",
+          icon: <img src="/images/icons/gozareshha.svg" className={icImgCls} alt="" draggable={false} />,
+        },
+      ],
+    },
+    base: {
+      title: "اطلاعات پایه",
+      items: [
+        {
+          to: "/base/units",
+          label: "ساختار سازمانی",
+          icon: <img src="/images/icons/unit.svg" className={icImgCls} alt="" draggable={false} />,
+        },
+        ...(isMainAdmin ? [{ to: "/admin/users", label: "کاربران", icon: <IcUsers /> }] : []),
+        { to: "/centers/projects", label: "پروژه‌ها", icon: <IcProjects /> },
+        { to: "/base/currencies", label: "ارزها", icon: <IcCurrency /> },
+        { to: "/base/tags", label: "برچسب‌ها", icon: <IcTags /> },
+      ],
+    },
+  };
+  const mobileMenu = mobileMenuKey ? mobileMenus[mobileMenuKey] : null;
+
   return (
     <>
       <aside
         dir="rtl"
-        className="fixed right-0 top-0 bottom-0 z-50 w-[64px] sm:w-[76px] lg:w-[92px] rounded-none
+        className="hidden lg:block fixed right-0 top-0 bottom-0 z-50 w-[64px] sm:w-[76px] lg:w-[92px] rounded-none
                    bg-neutral-900/85 backdrop-blur-xl border-s border-neutral-800 shadow-2xl
                    px-1.5 sm:px-2 lg:px-3 overflow-y-auto overscroll-contain
                    pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))]"
@@ -286,6 +358,85 @@ function RightNav() {
           )}
         </div>
       </aside>
+
+      <nav
+        dir="rtl"
+        className="fixed inset-x-0 bottom-0 z-50 lg:hidden pointer-events-none px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+        aria-label="منوی اصلی"
+      >
+        <div className="pointer-events-auto mx-auto flex max-w-[440px] flex-col items-center gap-2">
+          {mobileMenu && (
+            <div className="w-full origin-bottom animate-in fade-in slide-in-from-bottom-2 duration-200">
+              <div className="max-h-[min(56dvh,360px)] overflow-y-auto rounded-[1.75rem] border border-white/20 bg-neutral-950/55 p-3 text-white shadow-[0_18px_60px_rgba(0,0,0,0.36)] backdrop-blur-2xl supports-[backdrop-filter]:bg-neutral-950/45">
+                <div className="mb-2 px-1 text-[11px] font-semibold text-white/65">{mobileMenu.title}</div>
+                <div className="grid grid-cols-1 gap-2">
+                  {mobileMenu.items.map((item) => (
+                    <LinkBtn key={item.to} to={item.to} onClick={closeMobileMenu} className={mobileSubItemCls}>
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/10">
+                        {item.icon}
+                      </span>
+                      <span className="min-w-0 truncate">{item.label}</span>
+                    </LinkBtn>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="w-full rounded-[2rem] border border-white/20 bg-neutral-950/55 px-2 py-2 shadow-[0_18px_60px_rgba(0,0,0,0.38)] backdrop-blur-2xl supports-[backdrop-filter]:bg-neutral-950/45">
+            <div className="flex items-center justify-between gap-1.5">
+              <LinkBtn to="/" onClick={closeMobileMenu} className={mobileDockBtn(isActive("/"))} aria-label="داشبورد">
+                <IcDashboard />
+              </LinkBtn>
+
+              <LinkBtn
+                to="/letters"
+                onClick={closeMobileMenu}
+                className={mobileDockBtn(isActive("/letters"))}
+                aria-label="اسناد و نامه ها"
+              >
+                <IcLetter />
+              </LinkBtn>
+
+              <Btn
+                type="button"
+                className={mobileDockBtn(projectsParentActive)}
+                onClick={() => toggle("projects")}
+                aria-label="پروژه‌ها"
+              >
+                <IcProjects />
+              </Btn>
+
+              <LinkBtn
+                to="/payment"
+                onClick={closeMobileMenu}
+                className={mobileDockBtn(isActive("/payment"))}
+                aria-label="درخواست پرداخت"
+              >
+                <IcPay />
+              </LinkBtn>
+
+              <Btn
+                type="button"
+                className={mobileDockBtn(budgetParentActive)}
+                onClick={() => toggle("budget")}
+                aria-label="بودجه‌بندی"
+              >
+                <IcBudget />
+              </Btn>
+
+              <Btn
+                type="button"
+                className={mobileDockBtn(baseParentActive)}
+                onClick={() => toggle("base")}
+                aria-label="اطلاعات پایه"
+              >
+                <IcBase />
+              </Btn>
+            </div>
+          </div>
+        </div>
+      </nav>
 
       {canHover && tip.show && (
         <div
