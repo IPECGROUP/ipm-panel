@@ -449,7 +449,7 @@ function RightNav() {
             {mobileMenu && (
               <div className={`${mobileGlassBoxCls} max-h-[min(58dvh,390px)]`}>
                 <LiquidGlassLayers {...mobileGlassLayerProps} />
-                <div className="relative z-[3] grid max-h-[min(48dvh,310px)] gap-1 overflow-y-auto pr-0.5">
+                <div className="relative z-[3] grid max-h-[min(48dvh,310px)] gap-1 overflow-y-auto rounded-[1.2rem] border border-white/[0.26] bg-black/[0.09] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_18px_rgba(0,0,0,0.10)] backdrop-blur-[12px]">
                   {mobileMenu.items.map((item) => (
                     <LinkBtn
                       key={item.to}
