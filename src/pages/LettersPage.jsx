@@ -2272,7 +2272,7 @@ const selectedTagChipCls =
   "dark:border-neutral-200 dark:bg-neutral-100 dark:!text-neutral-900";
 
   const sendBtnCls =
-  "h-12 w-12 rounded-xl flex items-center justify-center transition ring-1 " +
+  "h-10 w-10 md:h-12 md:w-12 rounded-xl flex items-center justify-center transition ring-1 " +
   (theme === "dark"
     ? "bg-white text-black ring-white/15 hover:bg-white/90"
     : "bg-black text-white ring-black/15 hover:bg-black/90");
@@ -2283,7 +2283,7 @@ const selectedTagChipCls =
     (theme === "dark" ? "border-white/10 bg-transparent" : "border-black/10 bg-white");
 
 
-  const sendIconCls = "w-5 h-5 " + (theme === "dark" ? "invert-0" : "invert");
+  const sendIconCls = "w-4 h-4 md:w-5 md:h-5 " + (theme === "dark" ? "invert-0" : "invert");
 
   const findProject = (id) => projects.find((p) => String(p?.id) === String(id));
 
@@ -4359,7 +4359,7 @@ useEffect(() => {
   <div className={formOuterBoxCls}>
     <div
   className="
-    flex flex-col md:flex-row items-stretch md:items-start gap-2
+    flex flex-wrap md:flex-nowrap items-stretch md:items-start gap-2
     overflow-visible
     md:flex-nowrap
     pb-1
@@ -4407,7 +4407,7 @@ useEffect(() => {
   </div>
 
   {/* کلاس سند */}
-<div className="w-full md:shrink-0 md:w-[190px]">
+<div className="w-[calc(50%-0.25rem)] md:shrink-0 md:w-[190px]">
   <div className={labelSmCls}>کلاس سند</div>
 
   <FieldWrap>
@@ -4432,7 +4432,7 @@ aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "category") : 
 
 
   {/* طبقه بندی */}
-  <div className="w-full md:shrink-0 md:w-[140px]">
+  <div className="w-[calc(50%-0.25rem)] md:shrink-0 md:w-[140px]">
   <div className={labelSmCls}>طبقه بندی</div>
 
   <FieldWrap>
@@ -4543,11 +4543,11 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
 
 {formKind !== "internal" && (
   <div className={formGridWrapCls + " p-2 border-0"}>
-    <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
+    <div className="grid grid-cols-2 md:grid-cols-12 gap-2">
       {formKind === "outgoing" ? (
         <>
           {/* از (کمی کوچکتر) */}
-          <div className="md:col-span-3 md:col-start-1">
+          <div className="col-span-1 order-1 md:order-none md:col-span-3 md:col-start-1">
             <div className={labelCls}>از</div>
             <input
   value={outgoingForm.fromName}
@@ -4560,19 +4560,19 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
           </div>
 
           {/* آیکن وسط */}
-          <div className="md:col-span-1 md:col-start-4 flex flex-col items-center">
-            <div className={labelCls + " opacity-0 select-none"}>_</div>
+          <div className="col-span-2 order-3 md:order-none md:col-span-1 md:col-start-4 flex flex-col items-center">
+            <div className={labelCls + " hidden md:block opacity-0 select-none"}>_</div>
             <div className="h-10 flex items-center justify-center">
               <img
                 src="/images/icons/arrow-left.svg"
                 alt=""
-                className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
+                className={"w-5 h-5 -rotate-90 md:rotate-0 " + (theme === "dark" ? "invert" : "")}
               />
             </div>
           </div>
 
           {/* به (کمی کوچکتر) */}
-          <div className="md:col-span-3 md:col-start-5">
+          <div className="col-span-2 order-4 md:order-none md:col-span-3 md:col-start-5">
             <div className={labelCls}>به</div>
             <FieldWrap>
  <input
@@ -4591,7 +4591,7 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
           </div>
 
           {/* شرکت/سازمان (باقی فضا) */}
-          <div className="md:col-span-5 md:col-start-8">
+          <div className="col-span-1 order-2 md:order-none md:col-span-5 md:col-start-8">
             <div className={labelCls}>شرکت/سازمان</div>
      <FieldWrap>
   <input
@@ -4611,7 +4611,7 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
       ) : (
         <>
           {/* وارده (مثل قبل) */}
-          <div className="md:col-span-4 md:col-start-1">
+          <div className="col-span-1 md:col-span-4 md:col-start-1">
   <div className={labelCls}>از</div>
 
   <input
@@ -4624,7 +4624,7 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
 </div>
 
           {/* شرکت/سازمان (باقی فضا) */}
-<div className="md:col-span-4 md:col-start-5">
+<div className="col-span-1 md:col-span-4 md:col-start-5">
   <div className={labelCls}>شرکت/سازمان</div>
 
     <input
@@ -4642,19 +4642,19 @@ onChange={(e) => {
 
 
 
-         <div className="md:col-span-1 md:col-start-9 flex flex-col items-center">
-            <div className={labelCls + " opacity-0 select-none"}>_</div>
+         <div className="col-span-2 md:col-span-1 md:col-start-9 flex flex-col items-center">
+            <div className={labelCls + " hidden md:block opacity-0 select-none"}>_</div>
             <div className="h-10 flex items-center justify-center">
               <img
                 src="/images/icons/arrow-left.svg"
                 alt=""
-                className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
+                className={"w-5 h-5 -rotate-90 md:rotate-0 " + (theme === "dark" ? "invert" : "")}
               />
             </div>
           </div>
 
           {/* به (کمی کوچکتر) */}
-<div className="md:col-span-3 md:col-start-10">
+<div className="col-span-2 md:col-span-3 md:col-start-10">
   <div className={labelCls}>به</div>
 
     <input
@@ -4678,9 +4678,9 @@ onChange={(e) => {
 )}
    {/* موضوع + ضمیمه + (برای داخلی: واحد) */}
 {formKind === "internal" ? (
-  <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start">
+  <div className="grid grid-cols-2 md:grid-cols-12 gap-2 items-start">
     {/* موضوع */}
-    <div className="md:col-span-7 md:col-start-1">
+    <div className="col-span-2 md:col-span-7 md:col-start-1">
       <div className={labelCls}>موضوع</div>
 
       <FieldWrap>
@@ -4699,7 +4699,7 @@ onChange={(e) => {
     </div>
 
     {/* واحد (کنار ضمیمه) */}
-    <div className="md:col-span-3 md:col-start-8">
+    <div className="col-span-2 md:col-span-3 md:col-start-8">
       <div className={labelCls}>واحد</div>
       <select
         value={internalUnitId}
@@ -4723,9 +4723,10 @@ onChange={(e) => {
     </div>
 
     {/* ضمیمه (کنار واحد و در همان خط) */}
-    <div className="md:col-span-2 md:col-start-11 flex flex-col items-center">
+    <div className="col-span-2 md:col-span-2 md:col-start-11 flex items-start gap-2 md:flex-col md:items-center">
+      <div className="w-1/2 md:w-auto">
       <div className={labelCls}>ضمیمه</div>
-      <div className="flex items-center justify-center gap-4 mt-0 h-10">
+      <div className="flex items-center justify-center gap-3 md:gap-4 mt-0 h-10">
         <label className="inline-flex items-center gap-2 cursor-pointer select-none">
           <input
             type="radio"
@@ -4748,13 +4749,14 @@ onChange={(e) => {
           <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>ندارد</span>
         </label>
       </div>
+      </div>
     </div>
   </div>
 ) : (
 
   <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start">
     {/* موضوع */}
-   <div className="md:col-span-10">
+   <div className="col-span-2 md:col-span-10">
   <div className={labelCls}>موضوع</div>
 
   <FieldWrap>
@@ -4774,9 +4776,10 @@ aria-invalid={fieldHasError(formKind, "subject")}
 
 
     {/* ضمیمه (کنار موضوع) */}
-    <div className="md:col-span-2 flex flex-col items-center">
+    <div className="col-span-2 md:col-span-2 flex items-start gap-2 md:flex-col md:items-center">
+      <div className="w-1/2 md:w-auto">
       <div className={labelCls}>ضمیمه</div>
-      <div className="flex items-center justify-center gap-4 mt-0 h-10">
+      <div className="flex items-center justify-center gap-3 md:gap-4 mt-0 h-10">
         <label className="inline-flex items-center gap-2 cursor-pointer select-none">
           <input
             type="radio"
@@ -4799,8 +4802,30 @@ aria-invalid={fieldHasError(formKind, "subject")}
           <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>ندارد</span>
         </label>
       </div>
+      </div>
+      <div className="w-1/2 md:hidden">
+        <div className={labelCls}>اسناد مرتبط</div>
+        <button
+          type="button"
+          onClick={openRelatedPicker}
+          className={
+            "h-10 w-full shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
+            (theme === "dark"
+              ? "border-white/15 bg-white/5 hover:bg-white/10"
+              : "border-black/10 bg-white hover:bg-black/[0.02]")
+          }
+          aria-label="انتخاب اسناد مرتبط"
+          title="انتخاب اسناد مرتبط"
+        >
+          <img
+            src="/images/icons/sayer.svg"
+            alt=""
+            className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
+          />
+        </button>
+      </div>
+      </div>
     </div>
-  </div>
 )}
 
 {/* ضمیمه (رادیویی دارد/ندارد) + عنوان ضمیمه + بازگشت/پیرو کنار عنوان — بدون شرط نمایش */}
@@ -4812,7 +4837,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
 <div className="md:col-span-12 min-w-0">
   <div className="flex flex-col md:flex-row items-stretch md:items-start justify-start gap-2">
     {/* اسناد مرتبط */}
-    <div className="w-full min-w-0 md:w-auto">
+    <div className="hidden md:block w-full min-w-0 md:w-auto">
       <div className={labelCls}>اسناد مرتبط</div>
 
       <button
