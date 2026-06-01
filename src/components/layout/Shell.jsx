@@ -76,10 +76,10 @@ export default function Shell() {
         }
       >
         <div className="px-2 sm:px-3 md:px-6 py-2.5 md:py-3 pr-[72px] sm:pr-[88px] lg:pr-[104px] lg:pl-[104px]">
-          <div className="mx-auto max-w-[1400px] flex items-center justify-between gap-2">
+          <div className="mx-auto max-w-[1400px] flex min-w-0 items-center justify-between gap-2">
           <Link
             to="/"
-            className="flex items-center justify-start hover:opacity-95 transition shrink-0"
+            className="flex min-w-0 shrink-0 items-center justify-start hover:opacity-95 transition"
             aria-label="خانه"
             title="خانه"
           >
@@ -87,16 +87,16 @@ export default function Shell() {
             <img
               src="/images/light%20mode.png"
               alt="logo"
-              className="h-8 md:h-9 w-auto object-contain block dark:hidden"
+              className="h-7 sm:h-8 md:h-9 max-w-[112px] sm:max-w-none w-auto object-contain block dark:hidden"
             />
             <img
               src="/images/dark%20mode.png"
               alt="logo (dark)"
-              className="h-8 md:h-9 w-auto object-contain hidden dark:block"
+              className="h-7 sm:h-8 md:h-9 max-w-[112px] sm:max-w-none w-auto object-contain hidden dark:block"
             />
           </Link>
 
-          <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm">
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5 sm:gap-2 md:gap-3 text-xs md:text-sm">
             {/* تاریخ */}
             <div
               className={
@@ -117,25 +117,25 @@ export default function Shell() {
             {/* خوش‌آمد + نقش */}
             <div
               className={
-                "flex items-center gap-2 px-3 py-1.5 rounded-xl border " +
+                "flex min-w-0 max-w-[9.5rem] items-center gap-1.5 sm:max-w-none sm:gap-2 px-2 sm:px-3 py-1.5 rounded-xl border " +
                 (theme === "dark"
                   ? "border-white/15 bg-white/5 text-white/90"
                   : "border-black/10 bg-white/70 text-neutral-800")
               }
               title="حساب کاربری"
             >
-              <span className={theme === "dark" ? "text-white/70" : "text-neutral-600"}>
+              <span className={(theme === "dark" ? "text-white/70" : "text-neutral-600") + " hidden sm:inline"}>
                 خوش آمدید،
               </span>
-              <span className="font-semibold">{displayName}</span>
+              <span className="min-w-0 truncate font-semibold">{displayName}</span>
               {displayRole ? (
                 <>
-                  <span className={theme === "dark" ? "text-white/30" : "text-black/20"}>
+                  <span className={(theme === "dark" ? "text-white/30" : "text-black/20") + " hidden md:inline"}>
                     •
                   </span>
                   <span
                     className={
-                      "px-2 py-0.5 rounded-lg text-[11px] border " +
+                      "hidden md:inline-flex px-2 py-0.5 rounded-lg text-[11px] border " +
                       (theme === "dark"
                         ? "border-white/15 bg-white/5 text-white/80"
                         : "border-black/10 bg-black/[0.03] text-neutral-700")
@@ -152,7 +152,7 @@ export default function Shell() {
               aria-label="اعلان‌ها"
               title="اعلان‌ها"
               className={
-                "h-9 w-9 rounded-xl border flex items-center justify-center transition " +
+                "h-9 w-9 shrink-0 rounded-xl border flex items-center justify-center transition " +
                 (theme === "dark"
                   ? "border-neutral-700 text-neutral-200 hover:bg-neutral-800/60"
                   : "border-neutral-300 text-neutral-800 hover:bg-neutral-50")
@@ -170,7 +170,7 @@ export default function Shell() {
             <button
               onClick={logout || (() => {})}
               className={
-                "h-9 px-4 rounded-xl transition " +
+                "h-9 shrink-0 px-2.5 sm:px-4 rounded-xl text-xs sm:text-sm transition " +
                 (theme === "dark"
                   ? "ring-1 ring-neutral-700 text-neutral-100 hover:bg-white/10"
                   : "ring-1 ring-neutral-300 text-neutral-800 hover:bg-neutral-100")
@@ -188,17 +188,17 @@ export default function Shell() {
           <div className="mx-auto max-w-[1400px]">
           <div
             className={
-              "w-full flex items-center justify-center gap-2 px-3 py-2 rounded-2xl border text-xs " +
+              "w-full min-w-0 flex items-center justify-center gap-1.5 sm:gap-2 overflow-hidden px-2 sm:px-3 py-2 rounded-2xl border text-[11px] sm:text-xs " +
               (theme === "dark"
                 ? "border-white/10 bg-white/5 text-white/80"
                 : "border-black/10 bg-white/70 text-neutral-700")
             }
           >
-            <span className="whitespace-nowrap">{jalaliDate || "—"}</span>
+            <span className="min-w-0 truncate whitespace-nowrap">{jalaliDate || "—"}</span>
             <span className={theme === "dark" ? "text-white/30" : "text-black/20"}>
               •
             </span>
-            <span className="whitespace-nowrap">{gregorianDate || "—"}</span>
+            <span className="shrink-0 whitespace-nowrap">{gregorianDate || "—"}</span>
           </div>
         </div>
         </div>
