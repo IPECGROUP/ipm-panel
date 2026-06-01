@@ -135,15 +135,15 @@ function RightNav() {
     [
       "!h-10 !w-10 min-[360px]:!h-11 min-[360px]:!w-11 min-[390px]:!h-[3.25rem] min-[390px]:!w-[3.25rem] sm:!h-14 sm:!w-14 !rounded-2xl !p-0",
       "!flex !items-center !justify-center !border transition-all duration-200",
-      "!shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] active:scale-95",
+      "shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] active:scale-95",
       active
         ? "!bg-[#F48B35] !border-[#F48B35] !text-neutral-950"
-        : "!bg-white/12 !text-white/90 !border-white/15 hover:!bg-white/18",
+        : "!bg-white/10 !text-white/90 !border-white/15 hover:!bg-white/15",
     ].join(" ");
 
   const mobileSubItemCls =
-    "!flex !items-center !justify-start gap-3 !rounded-2xl !border-white/15 !bg-neutral-900/75 !px-3 !py-2.5 " +
-    "!text-white hover:!bg-neutral-800/80 active:scale-[0.98] text-[11px] sm:text-xs font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]";
+    "!flex !items-center !justify-start gap-3 !rounded-2xl !border-transparent !bg-transparent !px-2 !py-2.5 " +
+    "!text-white hover:!bg-white/10 active:scale-[0.98] text-xs sm:text-sm font-bold !shadow-none";
 
   const mobileMenuKey = open.projects ? "projects" : open.budget ? "budget" : open.base ? "base" : null;
   const mobileMenus = {
@@ -372,15 +372,15 @@ function RightNav() {
             ].join(" ")}
           >
             {mobileMenu && (
-              <div className="max-h-[min(56dvh,360px)] overflow-y-auto rounded-[1.5rem] border border-white/15 bg-neutral-950/82 p-3 text-white shadow-[0_18px_60px_rgba(0,0,0,0.46)] backdrop-blur-2xl supports-[backdrop-filter]:bg-neutral-950/78">
-                <div className="mb-2 px-1 text-[11px] font-semibold text-white/80">{mobileMenu.title}</div>
-                <div className="grid grid-cols-1 gap-2">
+              <div className="max-h-[min(56dvh,360px)] overflow-y-auto rounded-[1.75rem] border border-white/20 bg-neutral-950/62 p-3 text-white shadow-[0_18px_60px_rgba(0,0,0,0.38)] backdrop-blur-2xl supports-[backdrop-filter]:bg-neutral-950/56">
+                <div className="mb-2 px-2 text-[11px] font-semibold text-white/65">{mobileMenu.title}</div>
+                <div className="grid grid-cols-1 gap-1">
                   {mobileMenu.items.map((item) => (
                     <LinkBtn key={item.to} to={item.to} onClick={closeMobileMenu} className={mobileSubItemCls}>
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/12">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]">
                         {item.icon}
                       </span>
-                      <span className="min-w-0 truncate">{item.label}</span>
+                      <span className="min-w-0 truncate drop-shadow-[0_1px_6px_rgba(0,0,0,0.65)]">{item.label}</span>
                     </LinkBtn>
                   ))}
                 </div>
@@ -388,7 +388,7 @@ function RightNav() {
             )}
           </div>
 
-          <div className="w-full rounded-[1.65rem] border border-white/15 bg-neutral-950/78 px-2 py-2 shadow-[0_18px_60px_rgba(0,0,0,0.46)] backdrop-blur-2xl supports-[backdrop-filter]:bg-neutral-950/72">
+          <div className="w-full rounded-[1.85rem] border border-white/20 bg-neutral-950/58 px-2 py-2 shadow-[0_18px_60px_rgba(0,0,0,0.38)] backdrop-blur-2xl supports-[backdrop-filter]:bg-neutral-950/50">
             <div className="flex items-center justify-between gap-1.5">
               <LinkBtn to="/" onClick={closeMobileMenu} className={mobileDockBtn(isActive("/"))} aria-label="داشبورد">
                 <IcDashboard />
