@@ -3191,7 +3191,7 @@ export default function ContractInformation() {
 
             <div className="border-t border-neutral-300 px-3 py-2 dark:border-neutral-800">
               <div className="flex flex-col items-stretch gap-2 md:flex-row md:flex-wrap md:items-center md:justify-between">
-                <div className="flex items-center justify-between gap-2 text-xs md:justify-start md:text-sm">
+                <div className="flex items-center justify-start gap-2 text-xs md:text-sm">
                   <button
                     type="button"
                     onClick={() => setContractsPage((page) => Math.max(0, page - 1))}
