@@ -87,12 +87,12 @@ export default function Shell() {
             <img
               src="/images/light%20mode.png"
               alt="logo"
-              className="h-9 sm:h-8 md:h-9 max-w-[136px] sm:max-w-none w-auto object-contain block dark:hidden"
+              className="h-10 sm:h-8 md:h-9 max-w-[152px] sm:max-w-none w-auto object-contain block dark:hidden"
             />
             <img
               src="/images/dark%20mode.png"
               alt="logo (dark)"
-              className="h-9 sm:h-8 md:h-9 max-w-[136px] sm:max-w-none w-auto object-contain hidden dark:block"
+              className="h-10 sm:h-8 md:h-9 max-w-[152px] sm:max-w-none w-auto object-contain hidden dark:block"
             />
           </Link>
 
@@ -150,14 +150,14 @@ export default function Shell() {
             {/* تاریخ داخل هدر موبایل */}
             <div
               className={
-                "flex md:hidden min-w-0 items-center gap-1 px-2 py-1.5 rounded-xl border text-[10px] leading-none " +
+                "flex md:hidden min-w-0 h-8 items-center gap-1.5 px-2.5 rounded-xl border text-[11px] leading-none " +
                 (theme === "dark"
                   ? "border-white/10 bg-white/5 text-white/80"
                   : "border-black/10 bg-white/70 text-neutral-700")
               }
               title="تاریخ امروز"
             >
-              <span className="min-w-0 max-w-[5.25rem] truncate whitespace-nowrap">
+              <span className="min-w-0 max-w-[5.75rem] truncate whitespace-nowrap">
                 {jalaliDate || "—"}
               </span>
               <span className={theme === "dark" ? "text-white/30" : "text-black/20"}>
@@ -173,7 +173,7 @@ export default function Shell() {
               aria-label="اعلان‌ها"
               title="اعلان‌ها"
               className={
-                "h-8 w-8 sm:h-9 sm:w-9 shrink-0 rounded-xl border flex items-center justify-center transition " +
+                "h-8 w-8 sm:h-9 sm:w-9 shrink-0 rounded-xl border flex items-center justify-center p-0 transition " +
                 (theme === "dark"
                   ? "border-neutral-700 text-neutral-200 hover:bg-neutral-800/60"
                   : "border-neutral-300 text-neutral-800 hover:bg-neutral-50")
@@ -191,7 +191,7 @@ export default function Shell() {
             <button
               onClick={logout || (() => {})}
               className={
-                "h-8 sm:h-9 shrink-0 px-2 sm:px-4 rounded-xl text-[11px] sm:text-sm transition " +
+                "hidden sm:inline-flex h-8 sm:h-9 shrink-0 items-center px-2 sm:px-4 rounded-xl text-[11px] sm:text-sm transition " +
                 (theme === "dark"
                   ? "ring-1 ring-neutral-700 text-neutral-100 hover:bg-white/10"
                   : "ring-1 ring-neutral-300 text-neutral-800 hover:bg-neutral-100")
