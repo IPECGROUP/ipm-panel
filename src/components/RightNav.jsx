@@ -138,7 +138,7 @@ function RightNav() {
       "shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] active:scale-95",
       active
         ? "!bg-[#F48B35] !border-[#F48B35] !text-neutral-950"
-        : "!bg-white/10 !text-white/90 !border-white/15 hover:!bg-white/15",
+        : "!bg-white/12 !text-white/90 !border-white/18 hover:!bg-white/20",
     ].join(" ");
 
   const mobileSubItemCls =
@@ -372,16 +372,16 @@ function RightNav() {
             ].join(" ")}
           >
             {mobileMenu && (
-              <div className="relative max-h-[min(56dvh,360px)] overflow-y-auto rounded-[1.5rem] border border-white/18 bg-neutral-950/78 p-3 text-white shadow-[0_18px_60px_rgba(0,0,0,0.44)] backdrop-blur-2xl supports-[backdrop-filter]:bg-neutral-950/70">
-                <div className="pointer-events-none absolute inset-0 rounded-[1.5rem] bg-gradient-to-br from-white/10 via-transparent to-black/20" />
-                <div className="relative mb-2 px-2 text-[11px] font-semibold text-white/75">{mobileMenu.title}</div>
+              <div className="relative max-h-[min(56dvh,360px)] overflow-y-auto rounded-[1.75rem] border border-white/25 bg-zinc-700/45 p-4 text-white shadow-[0_18px_60px_rgba(0,0,0,0.34)] backdrop-blur-2xl supports-[backdrop-filter]:bg-zinc-700/35">
+                <div className="pointer-events-none absolute inset-0 rounded-[1.75rem] bg-gradient-to-br from-white/18 via-white/5 to-stone-900/20" />
+                <div className="relative mb-2 px-2 text-[11px] font-semibold text-white/70">{mobileMenu.title}</div>
                 <div className="grid grid-cols-1 gap-1">
                   {mobileMenu.items.map((item) => (
                     <LinkBtn key={item.to} to={item.to} onClick={closeMobileMenu} className={mobileSubItemCls}>
-                      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]">
+                      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/18 bg-white/14 shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_8px_20px_rgba(0,0,0,0.16)]">
                         {item.icon}
                       </span>
-                      <span className="relative min-w-0 truncate drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">{item.label}</span>
+                      <span className="relative min-w-0 truncate drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)]">{item.label}</span>
                     </LinkBtn>
                   ))}
                 </div>
@@ -389,8 +389,9 @@ function RightNav() {
             )}
           </div>
 
-          <div className="w-full rounded-[1.35rem] border border-white/16 bg-neutral-950/62 px-2 py-2 shadow-[0_18px_60px_rgba(0,0,0,0.38)] backdrop-blur-2xl supports-[backdrop-filter]:bg-neutral-950/54">
-            <div className="flex items-center justify-between gap-1.5">
+          <div className="relative w-full overflow-hidden rounded-[1.75rem] border border-white/24 bg-zinc-700/42 px-2 py-2 shadow-[0_18px_60px_rgba(0,0,0,0.32)] backdrop-blur-2xl supports-[backdrop-filter]:bg-zinc-700/32">
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/20 via-white/5 to-stone-900/20" />
+            <div className="relative flex items-center justify-between gap-1.5">
               <LinkBtn to="/" onClick={closeMobileMenu} className={mobileDockBtn(isActive("/"))} aria-label="داشبورد">
                 <IcDashboard />
               </LinkBtn>
