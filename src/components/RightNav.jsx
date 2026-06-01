@@ -136,17 +136,17 @@ function RightNav() {
 
   const mobileDockBtn = (active) =>
     [
-      "!h-[3.7rem] !w-full !min-w-0 !rounded-[1.35rem] !p-0",
+      "!h-[3.45rem] sm:!h-[3.65rem] !w-full !min-w-0 !rounded-[1.15rem] !p-0",
       "!flex !flex-col !items-center !justify-center gap-1 !border transition-all duration-200",
-      "shadow-[inset_0_1px_0_rgba(255,255,255,0.16)] active:scale-[0.96]",
+      "shadow-[inset_0_1px_0_rgba(255,255,255,0.11)] active:scale-[0.96]",
       active
-        ? "!bg-white/[0.13] !border-white/28 !text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_10px_26px_rgba(0,0,0,0.28)]"
-        : "!bg-transparent !text-white/72 !border-transparent hover:!bg-white/[0.08] hover:!text-white",
+        ? "!bg-white/[0.12] !border-white/20 !text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_8px_20px_rgba(0,0,0,0.22)]"
+        : "!bg-transparent !text-white/74 !border-white/[0.04] hover:!bg-white/[0.07] hover:!text-white",
     ].join(" ");
 
   const mobileSubItemCls =
-    "!grid !grid-cols-[3.25rem_minmax(0,1fr)] !items-center gap-3 !rounded-[1.35rem] !border-transparent " +
-    "!bg-transparent !px-2 !py-2.5 !text-right !text-white hover:!bg-white/[0.08] active:scale-[0.985] !shadow-none";
+    "!grid !grid-cols-[2.75rem_minmax(0,1fr)] !items-center gap-2.5 !rounded-[1.15rem] !border !border-white/[0.08] " +
+    "!bg-white/[0.075] !px-2 !py-2 !text-right !text-white hover:!bg-white/[0.13] active:scale-[0.985] !shadow-none";
 
   const mobileMenuKey = open.projects ? "projects" : open.budget ? "budget" : open.base ? "base" : null;
   const mobileMenus = {
@@ -381,7 +381,7 @@ function RightNav() {
         className="fixed inset-x-0 bottom-0 z-50 lg:hidden pointer-events-none px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
         aria-label="منوی اصلی"
       >
-        <div className="pointer-events-auto mx-auto flex max-w-[29rem] flex-col items-center gap-3 sm:max-w-[35rem] md:max-w-[40rem]">
+        <div className="pointer-events-auto mx-auto flex max-w-[29rem] flex-col items-center gap-2.5 sm:max-w-[35rem] md:max-w-[40rem]">
           <div
             className={[
               "w-full origin-bottom overflow-hidden px-1 transition-all duration-300 ease-out will-change-[transform,opacity,max-height]",
@@ -391,28 +391,20 @@ function RightNav() {
             ].join(" ")}
           >
             {mobileMenu && (
-              <div className="relative max-h-[min(58dvh,390px)] overflow-hidden rounded-[2rem] border border-white/18 bg-neutral-950/72 p-3 text-white shadow-[0_22px_70px_rgba(0,0,0,0.46)] backdrop-blur-2xl supports-[backdrop-filter]:bg-neutral-950/62 sm:p-4">
-                <div className="pointer-events-none absolute inset-0 rounded-[2rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.18),rgba(255,255,255,0.035)_34%,rgba(244,139,53,0.12)_70%,rgba(0,0,0,0.24))]" />
-                <div className="relative mb-2 flex items-center justify-between px-2">
-                  <div className="text-[11px] font-bold text-white/72 sm:text-xs">{mobileMenu.title}</div>
-                  <button
-                    type="button"
-                    className="flex h-8 w-8 items-center justify-center rounded-full border border-white/14 bg-white/[0.06] text-white/80 transition hover:bg-white/[0.12]"
-                    aria-label="بستن منو"
-                    onClick={closeMobileMenu}
-                  >
-                    <IcClose />
-                  </button>
+              <div className="relative max-h-[min(58dvh,390px)] overflow-hidden rounded-[1.55rem] border border-white/[0.09] bg-neutral-950/88 p-2.5 text-white shadow-[0_18px_48px_rgba(0,0,0,0.38)] backdrop-blur-2xl supports-[backdrop-filter]:bg-neutral-950/82 sm:p-3">
+                <div className="pointer-events-none absolute inset-0 rounded-[1.55rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.12),rgba(255,255,255,0.025)_42%,rgba(244,139,53,0.09)_100%)]" />
+                <div className="relative mb-1.5 px-2 text-[11px] font-bold text-white/82 sm:text-xs">
+                  {mobileMenu.title}
                 </div>
-                <div className="relative max-h-[min(48dvh,310px)] overflow-y-auto pr-0.5">
+                <div className="relative grid max-h-[min(48dvh,310px)] gap-1.5 overflow-y-auto pr-0.5">
                   {mobileMenu.items.map((item) => (
                     <LinkBtn
                       key={item.to}
                       to={item.to}
                       onClick={closeMobileMenu}
-                      className={[mobileSubItemCls, isActive(item.to) ? "!bg-white/[0.12]" : ""].join(" ")}
+                      className={[mobileSubItemCls, isActive(item.to) ? "!bg-white/[0.16] !border-white/16" : ""].join(" ")}
                     >
-                      <span className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-[1.05rem] border border-white/16 bg-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_10px_24px_rgba(0,0,0,0.24)]">
+                      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.95rem] border border-white/[0.10] bg-neutral-800/78 shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_8px_18px_rgba(0,0,0,0.20)]">
                         {item.icon}
                       </span>
                       <span className="relative min-w-0">
@@ -430,10 +422,10 @@ function RightNav() {
             )}
           </div>
 
-          <div className="relative w-full overflow-hidden rounded-[2rem] border border-white/18 bg-neutral-950/70 px-2 py-2 shadow-[0_18px_58px_rgba(0,0,0,0.42)] backdrop-blur-2xl supports-[backdrop-filter]:bg-neutral-950/60">
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.16),rgba(255,255,255,0.035)_38%,rgba(0,0,0,0.22))]" />
-            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-white/28" />
-            <div className="relative grid grid-cols-6 items-center gap-1">
+          <div className="relative w-full overflow-hidden rounded-[1.55rem] border border-white/[0.09] bg-neutral-950/72 px-2 py-2 shadow-[0_14px_42px_rgba(0,0,0,0.34)] backdrop-blur-2xl supports-[backdrop-filter]:bg-neutral-950/64">
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.11),rgba(255,255,255,0.025)_42%,rgba(0,0,0,0.20))]" />
+            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-white/18" />
+            <div className="relative grid grid-cols-6 items-center gap-1.5 min-[390px]:gap-2">
               <LinkBtn to="/" onClick={closeMobileMenu} className={mobileDockBtn(dashboardActive)} aria-label="داشبورد">
                 <IcDashboard />
                 <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current min-[390px]:text-[10px] sm:text-[11px]">
