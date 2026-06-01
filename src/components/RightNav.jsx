@@ -140,14 +140,15 @@ function RightNav() {
       "!flex !flex-col !items-center !justify-center gap-1 !border transition-all duration-200",
       "shadow-[inset_0_1px_0_rgba(255,255,255,0.11)] active:scale-[0.96]",
       active
-        ? "!bg-[#8f5d63]/88 !border-white/22 !text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_8px_20px_rgba(0,0,0,0.22)]"
-        : "!bg-neutral-900/58 !text-white/82 !border-white/[0.06] hover:!bg-neutral-800/78 hover:!text-white",
+        ? "!bg-white/[0.22] !border-white/35 !text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.30),0_8px_20px_rgba(0,0,0,0.18)]"
+        : "!bg-white/[0.10] !text-white/86 !border-white/[0.12] hover:!bg-white/[0.18] hover:!text-white",
     ].join(" ");
 
   const mobileSubItemCls =
-    "!grid !grid-cols-[2.75rem_minmax(0,1fr)] !items-center gap-2.5 !rounded-[1.15rem] !border !border-white/[0.10] " +
-    "!bg-neutral-900/96 !px-2 !py-2 !text-right !text-white hover:!bg-neutral-800/98 active:scale-[0.985] " +
-    "!shadow-[0_10px_24px_rgba(0,0,0,0.26),inset_0_1px_0_rgba(255,255,255,0.10)]";
+    "!grid !grid-cols-[2.75rem_minmax(0,1fr)] !items-center gap-2.5 !rounded-[1.15rem] !border !border-white/[0.22] " +
+    "!bg-[linear-gradient(135deg,rgba(255,255,255,0.22),rgba(255,255,255,0.11)_42%,rgba(18,18,22,0.42))] " +
+    "backdrop-blur-[18px] !px-2 !py-2 !text-right !text-white hover:!bg-white/[0.20] active:scale-[0.985] " +
+    "!shadow-[0_12px_30px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.24)]";
 
   const mobileMenuKey = open.projects ? "projects" : open.budget ? "budget" : open.base ? "base" : null;
   const mobileMenus = {
@@ -371,7 +372,7 @@ function RightNav() {
       {mobileMenu && (
         <button
           type="button"
-          className="fixed inset-0 z-40 bg-black/[0.07] backdrop-blur-[0.5px] lg:hidden"
+          className="fixed inset-0 z-40 bg-black/[0.02] lg:hidden"
           aria-label="بستن منو"
           onClick={closeMobileMenu}
         />
@@ -392,9 +393,9 @@ function RightNav() {
             ].join(" ")}
           >
             {mobileMenu && (
-              <div className="relative max-h-[min(58dvh,390px)] overflow-hidden rounded-[1.55rem] border border-white/[0.14] bg-neutral-950/94 p-2.5 text-white shadow-[0_18px_48px_rgba(0,0,0,0.40)] backdrop-blur-md sm:p-3">
-                <div className="pointer-events-none absolute inset-0 rounded-[1.55rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.08),rgba(255,255,255,0.015)_48%,rgba(0,0,0,0.12)_100%)]" />
-                <div className="relative mb-1.5 rounded-[0.9rem] border border-white/[0.10] bg-neutral-900/88 px-2.5 py-1.5 text-[11px] font-bold text-white/92 sm:text-xs">
+              <div className="relative max-h-[min(58dvh,390px)] overflow-hidden rounded-[1.55rem] border border-white/[0.26] bg-white/[0.13] p-2.5 text-white shadow-[0_18px_52px_rgba(0,0,0,0.30)] backdrop-blur-[22px] sm:p-3">
+                <div className="pointer-events-none absolute inset-0 rounded-[1.55rem] bg-[linear-gradient(145deg,rgba(255,255,255,0.28),rgba(255,255,255,0.10)_38%,rgba(13,13,18,0.35)_100%)]" />
+                <div className="relative mb-1.5 rounded-[0.9rem] border border-white/[0.18] bg-white/[0.14] px-2.5 py-1.5 text-[11px] font-bold text-white/95 shadow-[inset_0_1px_0_rgba(255,255,255,0.22)] backdrop-blur-[14px] sm:text-xs">
                   {mobileMenu.title}
                 </div>
                 <div className="relative grid max-h-[min(48dvh,310px)] gap-1.5 overflow-y-auto pr-0.5">
@@ -406,11 +407,11 @@ function RightNav() {
                       className={[
                         mobileSubItemCls,
                         isActive(item.to)
-                          ? "!bg-neutral-800/98 !border-[#F48B35]/75 !shadow-[0_10px_26px_rgba(0,0,0,0.30),inset_3px_0_0_rgba(244,139,53,0.95),inset_0_1px_0_rgba(255,255,255,0.12)]"
+                          ? "!border-[#F48B35]/80 !bg-[linear-gradient(135deg,rgba(244,139,53,0.30),rgba(255,255,255,0.16)_44%,rgba(18,18,22,0.46))] !shadow-[0_12px_32px_rgba(0,0,0,0.26),inset_3px_0_0_rgba(244,139,53,0.95),inset_0_1px_0_rgba(255,255,255,0.25)]"
                           : "",
                       ].join(" ")}
                     >
-                      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.95rem] border border-white/[0.14] bg-neutral-950/92 shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_8px_18px_rgba(0,0,0,0.24)]">
+                      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.95rem] border border-white/[0.26] bg-black/[0.24] shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_8px_18px_rgba(0,0,0,0.20)] backdrop-blur-[12px]">
                         {item.icon}
                       </span>
                       <span className="relative min-w-0">
@@ -428,9 +429,9 @@ function RightNav() {
             )}
           </div>
 
-          <div className="relative w-full overflow-hidden rounded-[1.55rem] border border-white/[0.12] bg-neutral-950/88 px-2 py-2 shadow-[0_14px_42px_rgba(0,0,0,0.38)] backdrop-blur-2xl">
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.10),rgba(255,255,255,0.02)_42%,rgba(0,0,0,0.24))]" />
-            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-white/18" />
+          <div className="relative w-full overflow-hidden rounded-[1.55rem] border border-white/[0.28] bg-white/[0.14] px-2 py-2 shadow-[0_14px_42px_rgba(0,0,0,0.24)] backdrop-blur-[22px]">
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.30),rgba(255,255,255,0.11)_42%,rgba(22,22,26,0.28))]" />
+            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-white/35" />
             <div className="relative grid grid-cols-6 items-center gap-1.5 min-[390px]:gap-2">
               <LinkBtn to="/" onClick={closeMobileMenu} className={mobileDockBtn(dashboardActive)} aria-label="داشبورد">
                 <IcDashboard />

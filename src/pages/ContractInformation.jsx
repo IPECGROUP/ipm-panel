@@ -64,7 +64,8 @@ const EMPTY_GUARANTEE_ROW = {
   currencyLabel: "",
 };
 
-const SOCIAL_INSURANCE_CLEARANCE_STATUS = "مفاصا حساب";
+const SOCIAL_INSURANCE_CLEARANCE_STATUS = "مفاصا حساب دریافت شده و خاتمه قرارداد";
+const SOCIAL_INSURANCE_OLD_CLEARANCE_STATUS = "مفاصا حساب";
 
 const SOCIAL_INSURANCE_STATUS_OPTIONS = [
   "قرارداد درحال انجام است",
@@ -74,6 +75,10 @@ const SOCIAL_INSURANCE_STATUS_OPTIONS = [
   "درحال صدور مفاصا حساب",
   SOCIAL_INSURANCE_CLEARANCE_STATUS,
 ];
+
+function isSocialInsuranceClearanceStatus(value) {
+  return [SOCIAL_INSURANCE_CLEARANCE_STATUS, SOCIAL_INSURANCE_OLD_CLEARANCE_STATUS].includes(String(value || ""));
+}
 
 const PERSIAN_MONTHS = [
   "فروردین",
@@ -2831,7 +2836,7 @@ export default function ContractInformation() {
                                     insurance: {
                                       ...insurance,
                                       branchStatus: value,
-                                      ...(value === SOCIAL_INSURANCE_CLEARANCE_STATUS
+                                      ...(isSocialInsuranceClearanceStatus(value)
                                         ? {}
                                         : { finalGrossPerformance: "", clearanceAmount: "", clearanceFiles: [], relatedLetterId: "" }),
                                     },
@@ -2850,7 +2855,7 @@ export default function ContractInformation() {
                           </div>
                         </div>
 
-                        {insuranceForm.branchStatus === SOCIAL_INSURANCE_CLEARANCE_STATUS ? (
+                        {isSocialInsuranceClearanceStatus(insuranceForm.branchStatus) ? (
                           <div className="mt-4 rounded-2xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-700 dark:bg-white/[0.03]">
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:items-end">
                               <div className="min-w-0">
