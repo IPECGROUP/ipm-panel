@@ -606,9 +606,12 @@ function OrgStructurePage() {
     }
   };
 
-  const topTabBtnClass = (isActive) =>
+  const topTabBtnClass = (isActive, index, total) =>
     [
-      "relative z-10 h-10 flex-1 rounded-lg px-3 text-xs font-semibold transition whitespace-nowrap md:h-11 md:min-w-[150px] md:rounded-none md:px-5 md:text-sm",
+      "relative z-10 h-10 min-w-[118px] flex-none rounded-lg px-3 text-xs font-semibold transition whitespace-nowrap md:h-11 md:min-w-[132px] md:flex-1 md:rounded-none md:px-4 md:text-sm",
+      index > 0 ? "md:border-r md:border-black/10 md:dark:border-neutral-800" : "",
+      index === 0 ? "md:rounded-tr-2xl" : "",
+      index === total - 1 ? "md:rounded-tl-2xl" : "",
       "focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20",
       isActive
         ? "bg-black text-white shadow-sm dark:bg-black dark:text-white"
@@ -616,7 +619,7 @@ function OrgStructurePage() {
     ].join(" ");
 
   const tabbedPanelClass =
-    "relative -mt-px rounded-2xl border border-black/10 bg-white overflow-hidden dark:bg-neutral-900 dark:border-neutral-800";
+    "relative rounded-2xl border border-black/10 bg-white overflow-hidden dark:bg-neutral-900 dark:border-neutral-800";
 
   const tableUi = tablePreset.table;
   const rowUi = tablePreset.row;
@@ -703,13 +706,13 @@ function OrgStructurePage() {
         </div>
         {/* تب‌ها */}
         <div
-          className="mx-auto mb-2 flex w-full max-w-[520px] items-center justify-start gap-1 overflow-x-auto rounded-xl border border-black/10 bg-black/[0.03] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mb-3 md:justify-center md:gap-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900"
+          className="mb-2 flex w-full items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-black/10 bg-black/[0.03] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-auto md:-mb-px md:max-w-[780px] md:items-stretch md:justify-center md:gap-0 md:rounded-b-none md:rounded-t-2xl md:border-b-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900"
           dir="rtl"
         >
           <button
             type="button"
             onClick={() => setActiveTab("units")}
-            className={topTabBtnClass(activeTab === "units")}
+            className={topTabBtnClass(activeTab === "units", 0, 2)}
           >
             واحد ها
           </button>
@@ -717,7 +720,7 @@ function OrgStructurePage() {
           <button
             type="button"
             onClick={() => setActiveTab("roles")}
-            className={topTabBtnClass(activeTab === "roles")}
+            className={topTabBtnClass(activeTab === "roles", 1, 2)}
           >
             نقش ها
           </button>
