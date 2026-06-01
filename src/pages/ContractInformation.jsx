@@ -64,6 +64,17 @@ const EMPTY_GUARANTEE_ROW = {
   currencyLabel: "",
 };
 
+const SOCIAL_INSURANCE_CLEARANCE_STATUS = "مفاصا حساب";
+
+const SOCIAL_INSURANCE_STATUS_OPTIONS = [
+  "قرارداد درحال انجام است",
+  "در انتظار نتیجه رسیدگی شعبه به نام مبانی محاسباتی",
+  "اعتراض ثبت شده در انتظار جلسه هیات",
+  "در انتظار جلسه رای هیات",
+  "درحال صدور مفاصا حساب",
+  SOCIAL_INSURANCE_CLEARANCE_STATUS,
+];
+
 const PERSIAN_MONTHS = [
   "فروردین",
   "اردیبهشت",
@@ -129,7 +140,15 @@ const EMPTY_FORM = {
     guaranteeDraft: { ...EMPTY_GUARANTEE_ROW },
     guarantees: [],
   },
-  insurance: {},
+  insurance: {
+    contractRow: "",
+    branchStatus: "",
+    finalGrossPerformance: "",
+    clearanceAmount: "",
+    clearanceFiles: [],
+    relatedLetterId: "",
+    lastStatus: "",
+  },
 };
 
 function toFaDigits(value) {
@@ -270,6 +289,20 @@ function normalizeFinancial(financial = {}) {
     breakdownFiles: Array.isArray(financial?.breakdownFiles) ? financial.breakdownFiles : [],
     guaranteeDraft: makeGuaranteeRow({ ...(financial?.guaranteeDraft || {}), id: "" }),
     guarantees: Array.isArray(financial?.guarantees) ? financial.guarantees.map(makeGuaranteeRow) : [],
+  };
+}
+
+function normalizeInsurance(insurance = {}) {
+  return {
+    ...(EMPTY_FORM.insurance || {}),
+    ...(insurance || {}),
+    contractRow: String(insurance?.contractRow ?? insurance?.contract_row ?? ""),
+    branchStatus: String(insurance?.branchStatus ?? insurance?.branch_status ?? ""),
+    finalGrossPerformance: String(insurance?.finalGrossPerformance ?? insurance?.final_gross_performance ?? ""),
+    clearanceAmount: String(insurance?.clearanceAmount ?? insurance?.clearance_amount ?? ""),
+    clearanceFiles: Array.isArray(insurance?.clearanceFiles) ? insurance.clearanceFiles : [],
+    relatedLetterId: String(insurance?.relatedLetterId ?? insurance?.related_letter_id ?? ""),
+    lastStatus: String(insurance?.lastStatus ?? insurance?.last_status ?? ""),
   };
 }
 
@@ -465,7 +498,7 @@ function emptyForm() {
     calendar: { ...EMPTY_FORM.calendar, extraDates: [] },
     technical: { ...EMPTY_FORM.technical, tagIds: [] },
     financial: normalizeFinancial(EMPTY_FORM.financial),
-    insurance: { ...EMPTY_FORM.insurance },
+    insurance: normalizeInsurance(EMPTY_FORM.insurance),
   };
 }
 
@@ -494,7 +527,7 @@ function normalizeContractRow(row) {
       tagIds: normalizeIdList(item.technical?.tagIds ?? item.technical?.tag_ids),
     },
     financial: normalizeFinancial(item.financial || base.financial),
-    insurance: { ...base.insurance, ...(item.insurance && typeof item.insurance === "object" ? item.insurance : {}) },
+    insurance: normalizeInsurance({ ...base.insurance, ...(item.insurance && typeof item.insurance === "object" ? item.insurance : {}) }),
     lastSavedSection: String(item.lastSavedSection ?? item.last_saved_section ?? ""),
     createdAt: item.createdAt ?? item.created_at ?? "",
     updatedAt: item.updatedAt ?? item.updated_at ?? "",
@@ -751,6 +784,7 @@ export default function ContractInformation() {
   const [filterDocType, setFilterDocType] = React.useState("");
   const [relatedPickOpen, setRelatedPickOpen] = React.useState(false);
   const [relatedPickQuery, setRelatedPickQuery] = React.useState("");
+  const [relatedPickTarget, setRelatedPickTarget] = React.useState("contract");
   const [tagCategories, setTagCategories] = React.useState([]);
   const [tags, setTags] = React.useState([]);
   const [tagsLoaded, setTagsLoaded] = React.useState(false);
@@ -763,6 +797,7 @@ export default function ContractInformation() {
   const [currencyLoading, setCurrencyLoading] = React.useState(false);
   const [currencyError, setCurrencyError] = React.useState("");
   const financialUploadInputRef = React.useRef(null);
+  const insuranceUploadInputRef = React.useRef(null);
   const [editingGuaranteeId, setEditingGuaranteeId] = React.useState("");
   const [editingGuaranteeDraft, setEditingGuaranteeDraft] = React.useState(() => ({ ...EMPTY_GUARANTEE_ROW }));
 
@@ -927,7 +962,9 @@ export default function ContractInformation() {
     [rows]
   );
 
+  const insuranceForm = React.useMemo(() => normalizeInsurance(form.insurance || {}), [form.insurance]);
   const selectedLetter = form.relatedLetterId ? letterById.get(String(form.relatedLetterId)) : null;
+  const selectedInsuranceLetter = insuranceForm.relatedLetterId ? letterById.get(String(insuranceForm.relatedLetterId)) : null;
   const technicalTagIds = React.useMemo(() => normalizeIdList(form.technical?.tagIds), [form.technical?.tagIds]);
   const tagById = React.useMemo(() => {
     const map = new Map();
@@ -1009,6 +1046,11 @@ export default function ContractInformation() {
           item.amount,
           item.currencyLabel,
         ]),
+        row.insurance?.contractRow,
+        row.insurance?.branchStatus,
+        row.insurance?.finalGrossPerformance,
+        row.insurance?.clearanceAmount,
+        row.insurance?.lastStatus,
         secretariatNoOf(letter),
         subjectOf(letter),
       ]
@@ -1081,6 +1123,12 @@ export default function ContractInformation() {
     });
   };
 
+  const openRelatedPicker = (target = "contract") => {
+    setRelatedPickTarget(target);
+    setRelatedPickQuery("");
+    setRelatedPickOpen(true);
+  };
+
   const setGeneralField = (field, value) => {
     setForm((prev) => ({
       ...prev,
@@ -1132,6 +1180,52 @@ export default function ContractInformation() {
         [field]: value,
       },
     }));
+  };
+
+  const setInsuranceField = (field, value) => {
+    setForm((prev) => ({
+      ...prev,
+      insurance: {
+        ...normalizeInsurance(prev.insurance || {}),
+        [field]: value,
+      },
+    }));
+  };
+
+  const addInsuranceClearanceFiles = (fileList) => {
+    const incoming = Array.from(fileList || [])
+      .filter(Boolean)
+      .map((file) => ({
+        id: `${Date.now()}_${Math.random().toString(16).slice(2)}`,
+        name: String(file?.name || "فایل"),
+        size: Number(file?.size || 0),
+        type: String(file?.type || ""),
+        addedAt: new Date().toISOString(),
+      }));
+    if (!incoming.length) return;
+    setForm((prev) => {
+      const insurance = normalizeInsurance(prev.insurance || {});
+      return {
+        ...prev,
+        insurance: {
+          ...insurance,
+          clearanceFiles: [...insurance.clearanceFiles, ...incoming],
+        },
+      };
+    });
+  };
+
+  const removeInsuranceClearanceFile = (fileId) => {
+    setForm((prev) => {
+      const insurance = normalizeInsurance(prev.insurance || {});
+      return {
+        ...prev,
+        insurance: {
+          ...insurance,
+          clearanceFiles: insurance.clearanceFiles.filter((file) => String(file?.id) !== String(fileId)),
+        },
+      };
+    });
   };
 
   const updateFinancialRow = (sectionKey, rowId, field, value) => {
@@ -1471,6 +1565,7 @@ export default function ContractInformation() {
   const openFreshForm = () => {
     setForm(emptyForm());
     setRelatedPickQuery("");
+    setRelatedPickTarget("contract");
     setActiveContractTab(CONTRACT_SECTION_TABS[0].id);
     setFormOpen(true);
   };
@@ -1479,6 +1574,7 @@ export default function ContractInformation() {
     const next = normalizeContractRow(row);
     setForm(next);
     setRelatedPickQuery("");
+    setRelatedPickTarget("contract");
     setActiveContractTab(next.documentType === "appendix" ? "calendar" : CONTRACT_SECTION_TABS[0].id);
     setFormOpen(true);
     window.requestAnimationFrame(() => {
@@ -1489,6 +1585,7 @@ export default function ContractInformation() {
   const closeForm = () => {
     setForm(emptyForm());
     setRelatedPickQuery("");
+    setRelatedPickTarget("contract");
     setActiveContractTab(CONTRACT_SECTION_TABS[0].id);
     setFormOpen(false);
   };
@@ -1531,7 +1628,7 @@ export default function ContractInformation() {
       calendar: { ...(form.calendar || {}) },
       technical: { ...(form.technical || {}), tagIds: normalizeIdList(form.technical?.tagIds) },
       financial: normalizeFinancial(form.financial || {}),
-      insurance: { ...(form.insurance || {}) },
+      insurance: normalizeInsurance(form.insurance || {}),
       lastSavedSection: sectionId,
       updatedAt: new Date().toISOString(),
       createdAt: new Date().toISOString(),
@@ -1939,7 +2036,7 @@ export default function ContractInformation() {
                   <div className={labelCls}>اسناد مرتبط</div>
                   <button
                     type="button"
-                    onClick={() => setRelatedPickOpen(true)}
+                    onClick={() => openRelatedPicker("contract")}
                     className={`${iconBtnCls} !h-11 !w-11`}
                     aria-label="انتخاب اسناد مرتبط"
                     title="انتخاب اسناد مرتبط"
@@ -2118,7 +2215,7 @@ export default function ContractInformation() {
                               </div>
                               <button
                                 type="button"
-                                onClick={() => setRelatedPickOpen(true)}
+                                onClick={() => openRelatedPicker("contract")}
                                 className={`${iconBtnCls} !h-11 !w-11`}
                                 aria-label="انتخاب اسناد مرتبط"
                                 title="انتخاب اسناد مرتبط"
@@ -2708,6 +2805,169 @@ export default function ContractInformation() {
                         </button>
                       </div>
                     </div>
+                  ) : activeContractTab === "insurance" ? (
+                    <div className="p-4 space-y-4">
+                      <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                          <div className="min-w-0">
+                            <div className={labelCls}>ردیف پیمان</div>
+                            <input
+                              value={insuranceForm.contractRow || ""}
+                              onChange={(e) => setInsuranceField("contractRow", e.target.value)}
+                              className={inputCls}
+                              type="text"
+                            />
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className={labelCls}>شعبه سازمان تامین اجتماعی</div>
+                            <select
+                              value={insuranceForm.branchStatus || ""}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setForm((prev) => {
+                                  const insurance = normalizeInsurance(prev.insurance || {});
+                                  return {
+                                    ...prev,
+                                    insurance: {
+                                      ...insurance,
+                                      branchStatus: value,
+                                      ...(value === SOCIAL_INSURANCE_CLEARANCE_STATUS
+                                        ? {}
+                                        : { finalGrossPerformance: "", clearanceAmount: "", clearanceFiles: [], relatedLetterId: "" }),
+                                    },
+                                  };
+                                });
+                              }}
+                              className={inputCls}
+                            >
+                              <option value="">انتخاب وضعیت</option>
+                              {SOCIAL_INSURANCE_STATUS_OPTIONS.map((item) => (
+                                <option key={item} value={item}>
+                                  {item}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        {insuranceForm.branchStatus === SOCIAL_INSURANCE_CLEARANCE_STATUS ? (
+                          <div className="mt-4 rounded-2xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-700 dark:bg-white/[0.03]">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:items-start">
+                              <div className="min-w-0">
+                                <div className={labelCls}>کارکرد ناخالص نهایی قرارداد</div>
+                                <input
+                                  value={formatAmountInput(insuranceForm.finalGrossPerformance || "")}
+                                  onChange={(e) => setInsuranceField("finalGrossPerformance", cleanFinancialAmountInput(e.target.value))}
+                                  className={inputCls}
+                                  type="text"
+                                  inputMode="decimal"
+                                  dir="ltr"
+                                  placeholder="0"
+                                />
+                              </div>
+
+                              <div className="min-w-0">
+                                <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                                  <div className="text-xs font-semibold text-black/60 dark:text-neutral-300">
+                                    مفاصا حساب بیمه تامین اجتماعی
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => insuranceUploadInputRef.current?.click()}
+                                      className="h-10 rounded-xl border border-black/15 bg-white px-3 text-xs font-semibold transition inline-flex items-center gap-2 hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+                                    >
+                                      <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
+                                      بارگذاری اسناد
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => openRelatedPicker("insurance")}
+                                      className="h-10 rounded-xl border border-black/15 bg-white px-3 text-xs font-semibold transition inline-flex items-center gap-2 hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+                                      aria-label="انتخاب سند مرتبط"
+                                      title="انتخاب سند مرتبط"
+                                    >
+                                      <img src="/images/icons/sayer.svg" alt="" className="w-5 h-5 dark:invert" />
+                                      انتخاب سند مرتبط
+                                    </button>
+                                    <input
+                                      ref={insuranceUploadInputRef}
+                                      type="file"
+                                      multiple
+                                      accept=".pdf,image/*,.xls,.xlsx,.doc,.docx"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        addInsuranceClearanceFiles(e.target.files);
+                                        e.target.value = "";
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                                <input
+                                  value={formatAmountInput(insuranceForm.clearanceAmount || "")}
+                                  onChange={(e) => setInsuranceField("clearanceAmount", cleanFinancialAmountInput(e.target.value))}
+                                  className={inputCls}
+                                  type="text"
+                                  inputMode="decimal"
+                                  dir="ltr"
+                                  placeholder="0"
+                                />
+
+                                <div className="mt-2 text-xs text-black/55 dark:text-neutral-400">
+                                  سند مرتبط:{" "}
+                                  <span className="font-semibold text-black dark:text-neutral-100">
+                                    {selectedInsuranceLetter
+                                      ? toFaDigits(secretariatNoOf(selectedInsuranceLetter) || letterNoOf(selectedInsuranceLetter) || insuranceForm.relatedLetterId)
+                                      : "سندی انتخاب نشده است"}
+                                  </span>
+                                </div>
+
+                                {insuranceForm.clearanceFiles.length ? (
+                                  <div className="mt-3 grid grid-cols-1 gap-2">
+                                    {insuranceForm.clearanceFiles.map((file, index) => (
+                                      <div
+                                        key={file.id || `${file.name}_${index}`}
+                                        className="flex items-center justify-between gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
+                                      >
+                                        <div className="min-w-0">
+                                          <div className="truncate text-sm font-semibold">{file.name || `فایل ${toFaDigits(index + 1)}`}</div>
+                                          <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{toFaDigits(formatBytes(file.size || 0))}</div>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => removeInsuranceClearanceFile(file.id)}
+                                          className={`${iconBtnCls} !h-10 !w-10`}
+                                          aria-label="حذف فایل"
+                                          title="حذف فایل"
+                                        >
+                                          <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5 dark:invert" />
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
+
+                        <div className="mt-4">
+                          <div className={labelCls}>آخرین وضعیت قرارداد</div>
+                          <textarea
+                            value={insuranceForm.lastStatus || ""}
+                            onChange={(e) => setInsuranceField("lastStatus", e.target.value)}
+                            className={`${textareaCls} !h-[140px] !min-h-[140px] !resize-none`}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end">
+                        <button type="button" onClick={() => saveContractSection("insurance")} className={saveIconBtnCls} title="ذخیره" aria-label="ذخیره">
+                          <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
+                        </button>
+                      </div>
+                    </div>
                   ) : (
                     <div className="p-4 min-h-[180px] flex flex-col justify-between gap-4">
                       <div className="rounded-xl border border-black/10 bg-black/[0.02] px-4 py-3 text-sm text-black/60 dark:border-neutral-700 dark:bg-white/[0.03] dark:text-neutral-300">
@@ -2811,7 +3071,14 @@ export default function ContractInformation() {
                               "ثبت نشده"
                             )}
                           </td>
-                          <td className={`px-3 ${divider}`}>ثبت نشده</td>
+                          <td className={`px-3 ${divider}`}>
+                            <div className="truncate font-semibold">{row.insurance?.branchStatus || "ثبت نشده"}</div>
+                            {row.insurance?.lastStatus ? (
+                              <div className="mx-auto mt-1 max-w-[160px] truncate text-xs text-black/50 dark:text-neutral-400">
+                                {row.insurance.lastStatus}
+                              </div>
+                            ) : null}
+                          </td>
                           <td className={`px-3 ${divider}`}>
                             <div className={centeredRowActionsCls}>
                               <RowActionIconBtn action="edit" onClick={() => openEditForm(row)} size={34} iconSize={15} />
@@ -2995,7 +3262,9 @@ export default function ContractInformation() {
                 ) : filteredLetters.length ? (
                   filteredLetters.map((letter) => {
                     const id = String(letterIdOf(letter));
-                    const checked = String(form.relatedLetterId) === id;
+                    const currentRelatedLetterId =
+                      relatedPickTarget === "insurance" ? insuranceForm.relatedLetterId : form.relatedLetterId;
+                    const checked = String(currentRelatedLetterId || "") === id;
                     const no = letterNoOf(letter) || id;
                     const secretariatNo = secretariatNoOf(letter);
 
@@ -3004,7 +3273,11 @@ export default function ContractInformation() {
                         key={id}
                         type="button"
                         onClick={() => {
-                          setField("relatedLetterId", checked ? "" : id);
+                          if (relatedPickTarget === "insurance") {
+                            setInsuranceField("relatedLetterId", checked ? "" : id);
+                          } else {
+                            setField("relatedLetterId", checked ? "" : id);
+                          }
                           setRelatedPickOpen(false);
                         }}
                         className="w-full text-right px-3 py-2 rounded-xl transition flex items-center justify-between gap-3 hover:bg-black/[0.04] dark:hover:bg-white/10"
