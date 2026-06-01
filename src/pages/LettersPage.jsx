@@ -2239,7 +2239,7 @@ const labelSmCls = (theme === "dark"
   : "text-neutral-600 text-[11px] mb-1");
 
 const tabSmCls = (active) =>
-  "h-10 px-4 rounded-xl border transition text-[13px] font-semibold inline-flex items-center gap-2 whitespace-nowrap " +
+  "h-10 flex-1 md:flex-none justify-center px-3 md:px-4 rounded-xl border transition text-[13px] font-semibold inline-flex items-center gap-2 whitespace-nowrap " +
   (active
     ? "text-white"
     : theme === "dark"
@@ -4144,9 +4144,9 @@ useEffect(() => {
 
   }
 >
-              <div className="flex flex-wrap items-end gap-2">
+              <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-end gap-2">
                 {/* Tabs first */}
-                <div className="flex flex-wrap items-center gap-1 justify-start">
+                <div className="flex w-full md:w-auto flex-wrap items-center gap-1 justify-start">
 
                   {TABS.map((t) => {
                     const active = filterTab === t.id;
@@ -4155,7 +4155,7 @@ useEffect(() => {
   const activeColor = isKind ? TAB_ACTIVE_BG[t.id] : null;
 
                     const cls =
-  "h-10 px-5 rounded-xl border transition text-sm font-semibold inline-flex items-center gap-2 " +
+  "h-10 flex-1 md:flex-none justify-center px-3 md:px-5 rounded-xl border transition text-sm font-semibold inline-flex items-center gap-2 " +
   (isAll
     ? active
       ? "bg-black text-white border-black"
@@ -4212,7 +4212,7 @@ useEffect(() => {
                   })}
                 </div>
 
-                <div className="min-w-[260px] flex-1">
+                <div className="w-full md:min-w-[260px] md:flex-1">
   <div className={labelCls}>جست و جو</div>
   <input
     value={filterQuery}
@@ -4222,7 +4222,7 @@ useEffect(() => {
     placeholder="جستجو در همه فیلدها (شماره، موضوع، تاریخ، سازمان و ...)"
   />
 </div>
-                <div className="min-w-[140px]">
+                <div className="w-full min-[420px]:w-[calc(50%-0.25rem)] md:w-auto md:min-w-[140px]">
 
                   <div className={labelCls}>از</div>
                   <JalaliPopupDatePicker
@@ -4235,7 +4235,7 @@ useEffect(() => {
                   />
                 </div>
 
-                <div className="min-w-[140px]">
+                <div className="w-full min-[420px]:w-[calc(50%-0.25rem)] md:w-auto md:min-w-[140px]">
                   <div className={labelCls}>تا</div>
                   <JalaliPopupDatePicker
                     value={filterToDate}
@@ -4357,14 +4357,14 @@ useEffect(() => {
   <div className={formOuterBoxCls}>
     <div
   className="
-    flex items-start gap-2
-    overflow-x-auto md:overflow-visible
-    flex-nowrap
+    flex flex-col md:flex-row items-stretch md:items-start gap-2
+    overflow-visible
+    md:flex-nowrap
     pb-1
   "
 >
   {/* نوع نامه */}
-  <div className="shrink-0 w-[320px]">
+  <div className="w-full md:shrink-0 md:w-[320px]">
     <div className={labelSmCls}>نوع سند</div>
     <div className="flex items-center gap-1">
       {TABS.filter((x) => x.id !== "all").map((t) => {
@@ -4405,7 +4405,7 @@ useEffect(() => {
   </div>
 
   {/* کلاس سند */}
-<div className="shrink-0 w-[190px]">
+<div className="w-full md:shrink-0 md:w-[190px]">
   <div className={labelSmCls}>کلاس سند</div>
 
   <FieldWrap>
@@ -4430,7 +4430,7 @@ aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "category") : 
 
 
   {/* طبقه بندی */}
-  <div className="shrink-0 w-[140px]">
+  <div className="w-full md:shrink-0 md:w-[140px]">
   <div className={labelSmCls}>طبقه بندی</div>
 
   <FieldWrap>
@@ -4453,7 +4453,7 @@ aria-invalid={formKind === "incoming" ? fieldHasError("incoming", "classificatio
 
   {/* مرکز/پروژه */}
   {/* مرکز/پروژه */}
-<div className="flex-1 min-w-[260px]">
+<div className="w-full md:flex-1 md:min-w-[260px]">
   <div className={labelSmCls}>مرکز/پروژه</div>
 
   <FieldWrap>
@@ -4485,7 +4485,7 @@ aria-invalid={fieldHasError(formKind, "projectId") ? true : undefined}
 
 {/* شماره سند */}
 {formKind !== "outgoing" ? (
-<div className="shrink-0 w-[170px]">
+<div className="w-full md:shrink-0 md:w-[170px]">
   <div className={labelSmCls}>شماره سند</div>
 
   <FieldWrap>
@@ -4520,7 +4520,7 @@ aria-invalid={fieldHasError(formKind, "projectId") ? true : undefined}
 
 
   {/* تاریخ */}
-  <div className="shrink-0 w-[170px]">
+  <div className="w-full md:shrink-0 md:w-[170px]">
   <div className={labelSmCls}>تاریخ سند</div>
 
   <FieldWrap>
@@ -4808,9 +4808,9 @@ aria-invalid={fieldHasError(formKind, "subject")}
 
 {/* اسناد مرتبط + بارگذاری اسناد (کنار هم و چسبیده) */}
 <div className="md:col-span-12 min-w-0">
-  <div className="flex items-start justify-start gap-2">
+  <div className="flex flex-col md:flex-row items-stretch md:items-start justify-start gap-2">
     {/* اسناد مرتبط */}
-    <div className="min-w-0">
+    <div className="w-full min-w-0 md:w-auto">
       <div className={labelCls}>اسناد مرتبط</div>
 
       <button
@@ -4881,12 +4881,12 @@ aria-invalid={fieldHasError(formKind, "subject")}
     </div>
 
     {/* بارگذاری اسناد (چسبیده کنار اسناد مرتبط) */}
-    <div className="shrink-0">
-      <div className={labelCls}>&nbsp;</div> {/* هم‌تراز با لیبل بالا */}
+    <div className="w-full md:shrink-0 md:w-auto">
+      <div className={labelCls + " hidden md:block"}>&nbsp;</div> {/* هم‌تراز با لیبل بالا */}
       <button
   type="button"
   onClick={() => openUpload(formKind)}
-  className={uploadTriggerCls + " h-10 w-auto whitespace-nowrap"}
+  className={uploadTriggerCls + " h-10 w-full md:w-auto whitespace-nowrap"}
   title="بارگذاری اسناد"
 >
   <img
@@ -4904,7 +4904,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
 </button>
     </div>
      {/* ✅ توضیح کنار بارگذاری اسناد */}
-<div className="flex-1 min-w-[260px]">
+<div className="w-full md:flex-1 md:min-w-[260px]">
   <div className={labelCls}>توضیح</div>
   <input
     value={
@@ -5280,11 +5280,152 @@ aria-invalid={fieldHasError(formKind, "subject")}
           {/* Table */}
           <div className="mt-5">
             <div className={tableWrapCls}>
+              <div className="md:hidden">
+                {pageItems.length === 0 ? (
+                  <div className="py-8 px-4 text-center text-sm text-black/60 dark:text-neutral-400">
+                    آیتمی ثبت نشده است.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-neutral-200 dark:divide-neutral-800">
+                    {pageItems.map((l, idx) => {
+                      const id = String(letterIdOf(l));
+                      const absIdx = startIdx + idx;
+                      const kind = letterKindOf(l);
+                      const isOutgoing = kind === "outgoing";
+                      const isIncoming = kind === "incoming";
+                      const isInternal = kind === "internal";
+                      const isConf = isConfidentialLetter(l);
+                      const activeColor = isOutgoing
+                        ? TAB_ACTIVE_BG.outgoing
+                        : isIncoming
+                        ? TAB_ACTIVE_BG.incoming
+                        : isInternal
+                        ? TAB_ACTIVE_BG.internal
+                        : "#737373";
+                      const cardBg = isConf
+                        ? "bg-[#F75270] text-white"
+                        : isOutgoing
+                        ? theme === "dark"
+                          ? "bg-[#8BAE66]/15"
+                          : "bg-[#8BAE66]/[0.06]"
+                        : isIncoming
+                        ? theme === "dark"
+                          ? "bg-[#0046FF]/15"
+                          : "bg-[#0046FF]/[0.06]"
+                        : isInternal
+                        ? theme === "dark"
+                          ? "bg-orange-500/10"
+                          : "bg-orange-50"
+                        : theme === "dark"
+                        ? "bg-white/5"
+                        : "bg-black/[0.02]";
+                      const mutedText = isConf
+                        ? "text-white/80"
+                        : theme === "dark"
+                        ? "text-white/60"
+                        : "text-neutral-600";
+                      const labelText = isConf
+                        ? "text-white/70"
+                        : theme === "dark"
+                        ? "text-white/50"
+                        : "text-neutral-500";
+                      const kindLabel = TABS.find((x) => x.id === kind)?.label || "";
+
+                      return (
+                        <div key={id} className={"border-r-4 p-3 " + cardBg} style={{ borderRightColor: activeColor }}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex min-w-0 items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  className="w-4 h-4 shrink-0 accent-black dark:accent-neutral-200"
+                                  checked={selectedIds.has(id)}
+                                  onChange={() => toggleRowSelect(id)}
+                                  aria-label="انتخاب"
+                                  title="انتخاب"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setKbdAbsIdx(absIdx);
+                                    openView(l);
+                                  }}
+                                  className="min-w-0 truncate text-right text-sm font-bold underline-offset-4 hover:underline"
+                                  title="نمایش"
+                                  aria-label="نمایش"
+                                >
+                                  {toFaDigits(letterNoOf(l) || "—")}
+                                </button>
+                                {kindLabel ? (
+                                  <span className={"shrink-0 rounded-full px-2 py-0.5 text-[11px] " + (isConf ? "bg-white/15 text-white" : "bg-white/70 text-neutral-800 dark:bg-white/10 dark:text-white/80")}>
+                                    {kindLabel}
+                                  </span>
+                                ) : null}
+                              </div>
+                              <div className={"mt-1 text-xs " + mutedText}>
+                                {letterDateOf(l) ? toFaDigits(letterDateOf(l)) : "—"}
+                              </div>
+                            </div>
+
+                            <div className="flex shrink-0 items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setKbdAbsIdx(absIdx);
+                                  openView(l);
+                                }}
+                                className={iconBtnCls + " !h-9 !w-9"}
+                                aria-label="نمایش"
+                                title="نمایش"
+                              >
+                                <img src="/images/icons/namayeshname.svg" alt="" className={"w-5 h-5 " + (isConf ? "invert" : "dark:invert")} />
+                              </button>
+                              <button type="button" onClick={() => startEdit(l)} className={iconBtnCls + " !h-9 !w-9"} aria-label="ویرایش" title="ویرایش">
+                                <img src="/images/icons/pencil.svg" alt="" className={"w-5 h-5 " + (isConf ? "invert" : "dark:invert")} />
+                              </button>
+                              <button type="button" onClick={() => deleteLetter(id)} className={iconBtnCls + " !h-9 !w-9"} aria-label="حذف" title="حذف">
+                                <img
+                                  src="/images/icons/hazf.svg"
+                                  alt=""
+                                  className="w-5 h-5"
+                                  style={{
+                                    filter: isConf
+                                      ? "brightness(0) invert(1)"
+                                      : "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
+                                  }}
+                                />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 space-y-2 text-sm">
+                            <div>
+                              <div className={"text-[11px] " + labelText}>موضوع</div>
+                              <div className="line-clamp-2 break-words leading-6">{subjectOf(l) || "—"}</div>
+                            </div>
+                            <div className="grid grid-cols-1 min-[430px]:grid-cols-2 gap-2">
+                              <div className="min-w-0">
+                                <div className={"text-[11px] " + labelText}>از/به</div>
+                                <div className="truncate">{fromToOf(l) || "—"}</div>
+                              </div>
+                              <div className="min-w-0">
+                                <div className={"text-[11px] " + labelText}>شرکت/سازمان</div>
+                                <div className="truncate">{orgOf(l) || "—"}</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
     <div
   ref={tableScrollRef}
   dir="ltr"
   className={
-  "relative max-h-[55vh] overflow-y-auto overflow-x-hidden " +
+  "hidden md:block relative max-h-[55vh] overflow-y-auto overflow-x-hidden " +
   (hasYScroll ? "pr-2" : "pr-0") +
   " pb-0"
 }
@@ -5569,8 +5710,8 @@ const rowBg = isConf ? confRowBg : normalRowBg;
 
               {/* Pagination footer */}
               <div className="border-t border-neutral-300 dark:border-neutral-800 px-3 py-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-sm">
+                <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center md:justify-between gap-2">
+                  <div className="flex items-center justify-between md:justify-start gap-2 text-sm">
                     <button
                       type="button"
                       onClick={() => setPage((p) => Math.max(0, p - 1))}
@@ -5602,7 +5743,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 text-sm">
+                  <div className="flex items-center justify-between md:justify-start gap-2 text-sm">
                     <span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span>
                     <select
                       value={rowsPerPage}
