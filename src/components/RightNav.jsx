@@ -141,8 +141,8 @@ function RightNav() {
 
   const mobileButtonSurface = (active) =>
     active
-      ? "!border-black/10 !bg-gradient-to-l !from-black/5 !to-transparent !text-neutral-950 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.55),0_6px_16px_rgba(0,0,0,0.10)] dark:!border-white/15 dark:!from-white/10 dark:!text-white"
-      : "!border-transparent !bg-transparent !text-neutral-800 hover:!bg-gradient-to-l hover:!from-black/5 hover:!to-transparent dark:!text-white/85 dark:hover:!from-white/10";
+      ? "!border-black/10 !bg-gradient-to-l !from-black/10 !to-transparent !text-neutral-950 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.62),0_6px_16px_rgba(0,0,0,0.12)] dark:!border-white/15 dark:!from-white/12 dark:!text-white"
+      : "!border-black/10 !bg-gradient-to-l !from-black/5 !to-transparent !text-neutral-800 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.50),0_5px_14px_rgba(0,0,0,0.09)] hover:!from-black/10 dark:!border-white/10 dark:!from-white/10 dark:!text-white/85 dark:hover:!from-white/15";
 
   const mobileDockBtn = (active) =>
     [
