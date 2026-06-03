@@ -19,6 +19,24 @@ const CONTRACT_SECTION_TABS = [
   { id: "insurance", label: "تامین اجتماعی" },
 ];
 
+const CONTRACT_DRAFT_STORAGE_KEY = "ipm_contract_information_form_draft_v1";
+const CONTRACT_DRAFT_SERVER_KEY = "contract_information_form";
+const CONTRACT_DRAFT_SAVE_DELAY_MS = 3000;
+const CONTRACT_DRAFT_IGNORED_KEYS = new Set([
+  "id",
+  "createdAt",
+  "created_at",
+  "updatedAt",
+  "updated_at",
+  "lastSavedSection",
+  "last_saved_section",
+  "currencyLabel",
+  "currency_label",
+  "sourceLabel",
+  "source_label",
+  "customName",
+]);
+
 const GENERAL_CONTRACT_TYPES = [
   "مشاوره و مهندسی",
   "خرید کالا",
@@ -539,6 +557,115 @@ function normalizeContractRow(row) {
   };
 }
 
+function hasMeaningfulContractDraftValue(value, key = "") {
+  if (CONTRACT_DRAFT_IGNORED_KEYS.has(key)) return false;
+
+  if (key === "documentType") {
+    return String(value || "main") !== "main";
+  }
+
+  if (typeof value === "string") return value.trim() !== "";
+  if (typeof value === "number") return Number.isFinite(value);
+  if (typeof value === "boolean") return value === true;
+  if (Array.isArray(value)) return value.some((item) => hasMeaningfulContractDraftValue(item));
+  if (value && typeof value === "object") {
+    return Object.entries(value).some(([childKey, childValue]) => hasMeaningfulContractDraftValue(childValue, childKey));
+  }
+
+  return false;
+}
+
+function hasContractDraftContent(form) {
+  const item = form && typeof form === "object" ? form : {};
+  return hasMeaningfulContractDraftValue({
+    projectId: item.projectId,
+    documentType: item.documentType,
+    contractNo: item.contractNo,
+    parentContractId: item.parentContractId,
+    relatedLetterId: item.relatedLetterId,
+    general: item.general,
+    calendar: item.calendar,
+    technical: item.technical,
+    financial: item.financial,
+    insurance: item.insurance,
+  });
+}
+
+function contractDraftPayloadFromForm(form, lastSavedSection = "") {
+  const payload = normalizeContractRow({
+    ...(form || {}),
+    lastSavedSection,
+  });
+  return {
+    ...payload,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function contractDraftSignature(payload) {
+  const item = normalizeContractRow(payload || {});
+  return JSON.stringify({
+    ...item,
+    createdAt: "",
+    updatedAt: "",
+  });
+}
+
+function getContractDraftKey() {
+  try {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const identity = String(user?.id ?? user?.username ?? user?.email ?? "").trim();
+    if (identity) return `${CONTRACT_DRAFT_SERVER_KEY}:${identity}`;
+  } catch {
+    // Fall back to the shared key when user identity is not available.
+  }
+  return CONTRACT_DRAFT_SERVER_KEY;
+}
+
+function readLocalContractDraft() {
+  try {
+    const raw = localStorage.getItem(CONTRACT_DRAFT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const payload = parsed?.payload && typeof parsed.payload === "object" ? parsed.payload : parsed;
+    if (!hasContractDraftContent(payload)) return null;
+    return {
+      draftKey: String(parsed?.draftKey || getContractDraftKey()),
+      contractId: String(parsed?.contractId || payload?.id || ""),
+      payload: normalizeContractRow(payload),
+      lastSavedSection: String(parsed?.lastSavedSection || payload?.lastSavedSection || ""),
+      savedAt: String(parsed?.savedAt || ""),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalContractDraft(draft) {
+  try {
+    localStorage.setItem(
+      CONTRACT_DRAFT_STORAGE_KEY,
+      JSON.stringify({
+        draftKey: getContractDraftKey(),
+        contractId: String(draft?.contractId || draft?.payload?.id || ""),
+        payload: normalizeContractRow(draft?.payload || {}),
+        lastSavedSection: String(draft?.lastSavedSection || draft?.payload?.lastSavedSection || ""),
+        savedAt: new Date().toISOString(),
+      })
+    );
+  } catch {
+    // localStorage is a safety net; server draft still runs if this fails.
+  }
+}
+
+function removeLocalContractDraft() {
+  try {
+    localStorage.removeItem(CONTRACT_DRAFT_STORAGE_KEY);
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
 function fetchJson(path, opt = {}) {
   const base = (window.API_URL || "/api").replace(/\/+$/, "");
   return fetch(base + path, {
@@ -805,6 +932,9 @@ export default function ContractInformation() {
   const insuranceUploadInputRef = React.useRef(null);
   const [editingGuaranteeId, setEditingGuaranteeId] = React.useState("");
   const [editingGuaranteeDraft, setEditingGuaranteeDraft] = React.useState(() => ({ ...EMPTY_GUARANTEE_ROW }));
+  const draftSaveTimerRef = React.useRef(null);
+  const lastDraftSignatureRef = React.useRef("");
+  const finalSavedDraftSignatureRef = React.useRef("");
 
   React.useEffect(() => {
     let alive = true;
@@ -943,6 +1073,118 @@ export default function ContractInformation() {
       };
     });
   }, [activeContractTab, formOpen]);
+
+  const clearDraftSaveTimer = React.useCallback(() => {
+    if (draftSaveTimerRef.current) {
+      clearTimeout(draftSaveTimerRef.current);
+      draftSaveTimerRef.current = null;
+    }
+  }, []);
+
+  const loadSavedContractDraft = React.useCallback(async () => {
+    const localDraft = readLocalContractDraft();
+    if (localDraft) return localDraft;
+
+    try {
+      const draftKey = getContractDraftKey();
+      const data = await fetchJson(`/contracts/draft?draftKey=${encodeURIComponent(draftKey)}`);
+      const item = data?.item;
+      const payload = item?.payload && typeof item.payload === "object" ? item.payload : null;
+      if (!payload || !hasContractDraftContent(payload)) return null;
+
+      const draft = {
+        draftKey: String(item?.draftKey || draftKey),
+        contractId: String(item?.contractId || payload?.id || ""),
+        payload: normalizeContractRow(payload),
+        lastSavedSection: String(item?.lastSavedSection || payload?.lastSavedSection || ""),
+        savedAt: String(item?.updatedAt || ""),
+      };
+      writeLocalContractDraft(draft);
+      return draft;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const deleteContractDraft = React.useCallback(async () => {
+    clearDraftSaveTimer();
+    removeLocalContractDraft();
+    try {
+      await fetchJson(`/contracts/draft?draftKey=${encodeURIComponent(getContractDraftKey())}`, { method: "DELETE" });
+    } catch {
+      // Draft cleanup should never block a successful final save.
+    }
+  }, [clearDraftSaveTimer]);
+
+  const saveContractDraft = React.useCallback(
+    async ({ sectionId = activeContractTab, immediate = false } = {}) => {
+      const payload = contractDraftPayloadFromForm(form, sectionId);
+
+      if (!hasContractDraftContent(payload)) {
+        clearDraftSaveTimer();
+        removeLocalContractDraft();
+        lastDraftSignatureRef.current = "";
+        return true;
+      }
+
+      const signature = contractDraftSignature(payload);
+      if (!immediate && (signature === lastDraftSignatureRef.current || signature === finalSavedDraftSignatureRef.current)) {
+        return true;
+      }
+
+      clearDraftSaveTimer();
+      writeLocalContractDraft({
+        contractId: payload.id,
+        payload,
+        lastSavedSection: sectionId,
+      });
+      lastDraftSignatureRef.current = signature;
+
+      try {
+        await fetchJson("/contracts/draft", {
+          method: "POST",
+          body: JSON.stringify({
+            draftKey: getContractDraftKey(),
+            contractId: payload.id || "",
+            payload,
+            lastSavedSection: sectionId,
+          }),
+        });
+        return true;
+      } catch (error) {
+        console.error("contract_draft_save_failed", error);
+        return false;
+      }
+    },
+    [activeContractTab, clearDraftSaveTimer, form]
+  );
+
+  React.useEffect(() => {
+    if (!formOpen) {
+      clearDraftSaveTimer();
+      return;
+    }
+
+    const payload = contractDraftPayloadFromForm(form, activeContractTab);
+    if (!hasContractDraftContent(payload)) {
+      clearDraftSaveTimer();
+      removeLocalContractDraft();
+      lastDraftSignatureRef.current = "";
+      return;
+    }
+
+    const signature = contractDraftSignature(payload);
+    if (signature === lastDraftSignatureRef.current || signature === finalSavedDraftSignatureRef.current) return;
+
+    clearDraftSaveTimer();
+    draftSaveTimerRef.current = setTimeout(() => {
+      void saveContractDraft({ sectionId: activeContractTab });
+    }, CONTRACT_DRAFT_SAVE_DELAY_MS);
+
+    return clearDraftSaveTimer;
+  }, [activeContractTab, clearDraftSaveTimer, form, formOpen, saveContractDraft]);
+
+  React.useEffect(() => clearDraftSaveTimer, [clearDraftSaveTimer]);
 
   const projectById = React.useMemo(() => {
     const map = new Map();
@@ -1566,12 +1808,20 @@ export default function ContractInformation() {
     });
   };
 
-  const openFreshForm = () => {
-    setForm(emptyForm());
+  const openFreshForm = async () => {
+    const draft = await loadSavedContractDraft();
+    const next = draft?.payload ? normalizeContractRow(draft.payload) : emptyForm();
+    const draftSection = String(draft?.lastSavedSection || next.lastSavedSection || "");
+    const nextTab = CONTRACT_SECTION_TABS.some((tab) => tab.id === draftSection) ? draftSection : CONTRACT_SECTION_TABS[0].id;
+
+    setForm(next);
     setRelatedPickQuery("");
     setRelatedPickTarget("contract");
-    setActiveContractTab(CONTRACT_SECTION_TABS[0].id);
+    setActiveContractTab(next.documentType === "appendix" && ["general", "insurance"].includes(nextTab) ? "calendar" : nextTab);
     setFormOpen(true);
+    const signature = draft?.payload ? contractDraftSignature(contractDraftPayloadFromForm(next, nextTab)) : "";
+    lastDraftSignatureRef.current = signature;
+    finalSavedDraftSignatureRef.current = "";
   };
 
   const openEditForm = (row) => {
@@ -1581,12 +1831,15 @@ export default function ContractInformation() {
     setRelatedPickTarget("contract");
     setActiveContractTab(next.documentType === "appendix" ? "calendar" : CONTRACT_SECTION_TABS[0].id);
     setFormOpen(true);
+    lastDraftSignatureRef.current = contractDraftSignature(contractDraftPayloadFromForm(next, next.lastSavedSection || ""));
+    finalSavedDraftSignatureRef.current = "";
     window.requestAnimationFrame(() => {
       document.querySelector(".ipm-contract-information")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   };
 
   const closeForm = () => {
+    clearDraftSaveTimer();
     setForm(emptyForm());
     setRelatedPickQuery("");
     setRelatedPickTarget("contract");
@@ -1595,6 +1848,12 @@ export default function ContractInformation() {
   };
 
   const saveContractSection = async (sectionId = activeContractTab) => {
+    if (sectionId !== "financial") {
+      const draftSaved = await saveContractDraft({ sectionId, immediate: true });
+      if (!draftSaved) alert("خطا در ذخیره پیش نویس قرارداد");
+      return;
+    }
+
     const projectId = String(form.projectId || "").trim();
     const documentType = String(form.documentType || "main");
     const relatedLetterId = String(form.relatedLetterId || "").trim();
@@ -1652,7 +1911,10 @@ export default function ContractInformation() {
         }
         return [savedRow, ...prev];
       });
-      setForm((prev) => ({ ...prev, id: savedRow.id }));
+      finalSavedDraftSignatureRef.current = contractDraftSignature(contractDraftPayloadFromForm({ ...form, id: savedRow.id }, sectionId));
+      lastDraftSignatureRef.current = finalSavedDraftSignatureRef.current;
+      await deleteContractDraft();
+      setForm((prev) => ({ ...prev, id: savedRow.id, lastSavedSection: sectionId }));
       setRowsError("");
     } catch (error) {
       alert(error?.message || "خطا در ذخیره قرارداد");
