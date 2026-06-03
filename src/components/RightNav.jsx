@@ -135,9 +135,14 @@ function RightNav() {
     });
 
   const mobileHeaderPanelCls =
-    "relative w-full overflow-hidden rounded-[1.35rem] border border-black/10 bg-white/45 bg-gradient-to-l from-black/5 to-transparent " +
+    "relative w-full overflow-hidden rounded-[1.35rem] border border-black/10 bg-white/25 bg-gradient-to-l from-black/5 to-transparent " +
     "p-1.5 shadow-[0_10px_24px_rgba(0,0,0,0.16),inset_0_1px_0_rgba(255,255,255,0.55)] backdrop-blur-xl backdrop-saturate-150 transition-all duration-300 " +
-    "min-[390px]:rounded-[1.55rem] min-[390px]:p-2 dark:border-white/10 dark:bg-neutral-900/45 dark:from-white/10";
+    "min-[390px]:rounded-[1.55rem] min-[390px]:p-2 dark:border-white/10 dark:bg-neutral-900/35 dark:from-white/10";
+
+  const mobilePanelStyle = {
+    WebkitBackdropFilter: "blur(30px) saturate(165%)",
+    backdropFilter: "blur(30px) saturate(165%)",
+  };
 
   const mobileButtonSurface = (active) =>
     active
@@ -406,7 +411,7 @@ function RightNav() {
             ].join(" ")}
           >
             {mobileMenu && (
-              <div className={`${mobileHeaderPanelCls} max-h-[min(58dvh,390px)]`}>
+              <div className={`${mobileHeaderPanelCls} max-h-[min(58dvh,390px)]`} style={mobilePanelStyle}>
                 <div className="relative z-[3] grid max-h-[min(48dvh,310px)] grid-cols-1 gap-0.5 overflow-y-auto rounded-[1.05rem] min-[390px]:rounded-[1.2rem] sm:grid-cols-2 sm:gap-x-2">
                   {mobileMenu.items.map((item) => (
                     <LinkBtn
@@ -436,7 +441,7 @@ function RightNav() {
             )}
           </div>
 
-          <div className={mobileHeaderPanelCls}>
+          <div className={mobileHeaderPanelCls} style={mobilePanelStyle}>
             <div className="relative z-[3] grid grid-cols-6 items-center gap-1.5 min-[390px]:gap-2">
               <LinkBtn to="/" onClick={closeMobileMenu} className={mobileDockBtn(dashboardActive)} aria-label="داشبورد">
                 <IcDashboard />
