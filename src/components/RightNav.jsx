@@ -135,9 +135,10 @@ function RightNav() {
     });
 
   const mobileHeaderPanelCls =
-    "relative w-full overflow-hidden rounded-[1.35rem] border border-black/10 bg-gradient-to-l from-black/5 to-transparent " +
-    "p-1.5 shadow-[0_10px_24px_rgba(0,0,0,0.12)] backdrop-blur transition-all duration-300 " +
-    "min-[390px]:rounded-[1.55rem] min-[390px]:p-2 dark:border-white/10 dark:from-white/10";
+    "relative w-full overflow-hidden rounded-[1.35rem] border border-black/10 bg-white/75 " +
+    "p-1.5 shadow-[0_10px_24px_rgba(0,0,0,0.18)] backdrop-blur transition-all duration-300 " +
+    "before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-l before:from-black/5 before:to-transparent " +
+    "min-[390px]:rounded-[1.55rem] min-[390px]:p-2 dark:border-white/10 dark:bg-neutral-900/70 dark:before:from-white/10";
 
   const mobileDockBtn = (active) =>
     [
@@ -153,7 +154,7 @@ function RightNav() {
   const mobileSubItemCls =
     "!grid !grid-cols-[2.65rem_minmax(0,1fr)] sm:!grid-cols-[2.85rem_minmax(0,1fr)] !items-center gap-2.5 " +
     "!min-h-[3.45rem] !rounded-xl !border !border-transparent !bg-transparent !px-2 !py-2 !text-right !text-neutral-900 " +
-    "!shadow-none transition-all duration-200 hover:!bg-transparent active:scale-[0.985] " +
+    "!shadow-none transition-all duration-200 hover:!bg-black/[0.035] active:scale-[0.985] " +
     "dark:!text-white [&_img]:!filter-none [&_svg]:!text-neutral-950 dark:[&_img]:!invert dark:[&_svg]:!text-white";
 
   const mobileSubIconCls =
