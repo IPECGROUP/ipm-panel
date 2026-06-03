@@ -31,49 +31,6 @@ const IcWorksheet = () => (
 const IcDaily = () => <img src="/images/icons/calendar.svg" className={icImgCls} alt="" draggable={false} />;
 const IcClose = () => <X className={svgCls} strokeWidth={2.4} />;
 
-const LiquidGlassFilter = () => (
-  <svg aria-hidden="true" focusable="false" className="fixed h-0 w-0 overflow-hidden">
-    <filter id="rightnav-glass-distortion" x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox">
-      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.012" numOctaves="1" seed="5" result="turbulence" />
-      <feComponentTransfer in="turbulence" result="mapped">
-        <feFuncR type="gamma" amplitude="1" exponent="10" offset="0.5" />
-        <feFuncG type="gamma" amplitude="0" exponent="1" offset="0" />
-        <feFuncB type="gamma" amplitude="0" exponent="1" offset="0.5" />
-      </feComponentTransfer>
-      <feGaussianBlur in="turbulence" stdDeviation="3" result="softMap" />
-      <feSpecularLighting
-        in="softMap"
-        surfaceScale="5"
-        specularConstant="1"
-        specularExponent="80"
-        lightingColor="white"
-        result="specLight"
-      >
-        <fePointLight x="-200" y="-200" z="300" />
-      </feSpecularLighting>
-      <feComposite in="specLight" operator="arithmetic" k1="0" k2="1" k3="1" k4="0" result="litImage" />
-      <feDisplacementMap in="SourceGraphic" in2="softMap" scale="130" xChannelSelector="R" yChannelSelector="G" />
-    </filter>
-  </svg>
-);
-
-const LiquidGlassLayers = ({
-  rounded = "rounded-[1.55rem]",
-  blur = "backdrop-blur-[12px]",
-  tint = "bg-white/[0.50]",
-}) => (
-  <>
-    <div
-      className={`pointer-events-none absolute inset-0 z-0 ${rounded} ${blur}`}
-      style={{ filter: "url(#rightnav-glass-distortion)" }}
-    />
-    <div className={`pointer-events-none absolute inset-0 z-[1] ${rounded} ${tint}`} />
-    <div
-      className={`pointer-events-none absolute inset-0 z-[2] ${rounded} shadow-[inset_2px_2px_1px_rgba(255,255,255,0.52),inset_-1px_-1px_1px_rgba(255,255,255,0.48)]`}
-    />
-  </>
-);
-
 function RightNav() {
   const { user } = useAuth();
   const isMainAdmin = isMainAdminUser(user);
@@ -177,38 +134,30 @@ function RightNav() {
       return {};
     });
 
-  const mobileGlassBoxCls =
-    "relative w-full overflow-hidden rounded-[1.35rem] border border-white/[0.32] p-1.5 " +
-    "min-[390px]:rounded-[1.55rem] min-[390px]:p-2 " +
-    "shadow-[0_10px_18px_rgba(0,0,0,0.22),0_0_28px_rgba(0,0,0,0.10)] transition-all duration-300";
-
-  const mobileGlassLayerProps = {
-    blur: "backdrop-blur-[16px]",
-    tint: "bg-white/[0.48]",
-  };
+  const mobileHeaderPanelCls =
+    "relative w-full overflow-hidden rounded-[1.35rem] border border-black/10 bg-gradient-to-l from-black/5 to-transparent " +
+    "p-1.5 shadow-[0_10px_24px_rgba(0,0,0,0.12)] backdrop-blur transition-all duration-300 " +
+    "min-[390px]:rounded-[1.55rem] min-[390px]:p-2 dark:border-white/10 dark:from-white/10";
 
   const mobileDockBtn = (active) =>
     [
       "!h-[3.3rem] min-[390px]:!h-[3.45rem] sm:!h-[3.65rem] !w-full !min-w-0 !rounded-[1.05rem] min-[390px]:!rounded-[1.15rem] !p-0",
-      "!flex !flex-col !items-center !justify-center gap-1 !border transition-all duration-200 backdrop-blur-[10px]",
-      "[&_img]:!filter-none [&_svg]:!text-neutral-950",
+      "!flex !flex-col !items-center !justify-center gap-1 !border transition-all duration-200",
+      "[&_img]:!filter-none [&_svg]:!text-neutral-950 dark:[&_img]:!invert dark:[&_svg]:!text-white",
       "active:scale-[0.96]",
       active
-        ? "!bg-black/[0.16] !border-white/45 !text-neutral-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.42),0_8px_20px_rgba(0,0,0,0.15)]"
-        : "!bg-black/[0.09] !text-neutral-950 !border-white/[0.26] shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] hover:!bg-black/[0.14]",
+        ? "!border-black/10 !bg-white/70 !text-neutral-950 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.55),0_6px_16px_rgba(0,0,0,0.10)] dark:!border-white/15 dark:!bg-white/10 dark:!text-white"
+        : "!border-transparent !bg-transparent !text-neutral-800 hover:!bg-white/55 dark:!text-white/85 dark:hover:!bg-white/10",
     ].join(" ");
 
   const mobileSubItemCls =
     "!grid !grid-cols-[2.65rem_minmax(0,1fr)] sm:!grid-cols-[2.85rem_minmax(0,1fr)] !items-center gap-2.5 " +
-    "!min-h-[3.55rem] !rounded-[1.05rem] min-[390px]:!rounded-[1.15rem] !border !border-white/[0.26] " +
-    "!bg-black/[0.09] !px-2 !py-2 !text-right !text-neutral-950 backdrop-blur-[10px] " +
-    "shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] transition-all duration-200 " +
-    "hover:!bg-black/[0.14] active:scale-[0.985] [&_img]:!filter-none [&_svg]:!text-neutral-950";
+    "!min-h-[3.45rem] !rounded-xl !border !border-transparent !bg-transparent !px-2 !py-2 !text-right !text-neutral-900 " +
+    "!shadow-none transition-all duration-200 hover:!bg-transparent active:scale-[0.985] " +
+    "dark:!text-white [&_img]:!filter-none [&_svg]:!text-neutral-950 dark:[&_img]:!invert dark:[&_svg]:!text-white";
 
   const mobileSubIconCls =
-    "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.95rem] border border-white/[0.30] " +
-    "bg-black/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_6px_14px_rgba(0,0,0,0.10)] backdrop-blur-[10px] " +
-    "sm:h-11 sm:w-11 sm:rounded-[1rem]";
+    "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl sm:h-11 sm:w-11";
 
   const mobileMenuKey = open.projects ? "projects" : open.budget ? "budget" : open.base ? "base" : null;
   const mobileMenus = {
@@ -269,8 +218,6 @@ function RightNav() {
 
   return (
     <>
-      <LiquidGlassFilter />
-
       <aside
         dir="rtl"
         className="hidden lg:block fixed right-0 top-0 bottom-0 z-50 w-[64px] sm:w-[76px] lg:w-[92px] rounded-none
@@ -455,9 +402,8 @@ function RightNav() {
             ].join(" ")}
           >
             {mobileMenu && (
-              <div className={`${mobileGlassBoxCls} max-h-[min(58dvh,390px)]`}>
-                <LiquidGlassLayers {...mobileGlassLayerProps} />
-                <div className="relative z-[3] grid max-h-[min(48dvh,310px)] grid-cols-1 gap-1.5 overflow-y-auto rounded-[1.05rem] p-0.5 min-[390px]:rounded-[1.2rem] sm:grid-cols-2 sm:gap-2 sm:p-1">
+              <div className={`${mobileHeaderPanelCls} max-h-[min(58dvh,390px)]`}>
+                <div className="relative z-[3] grid max-h-[min(48dvh,310px)] grid-cols-1 gap-0.5 overflow-y-auto rounded-[1.05rem] min-[390px]:rounded-[1.2rem] sm:grid-cols-2 sm:gap-x-2">
                   {mobileMenu.items.map((item) => (
                     <LinkBtn
                       key={item.to}
@@ -466,7 +412,7 @@ function RightNav() {
                       className={[
                         mobileSubItemCls,
                         isActive(item.to)
-                          ? "!border-white/45 !bg-black/[0.16] !shadow-[inset_3px_0_0_rgba(244,139,53,0.95),inset_0_1px_0_rgba(255,255,255,0.42),0_8px_20px_rgba(0,0,0,0.15)]"
+                          ? "!bg-transparent !shadow-[inset_3px_0_0_rgba(244,139,53,0.95)]"
                           : "",
                       ].join(" ")}
                     >
@@ -488,8 +434,7 @@ function RightNav() {
             )}
           </div>
 
-          <div className={mobileGlassBoxCls}>
-            <LiquidGlassLayers {...mobileGlassLayerProps} />
+          <div className={mobileHeaderPanelCls}>
             <div className="relative z-[3] grid grid-cols-6 items-center gap-1.5 min-[390px]:gap-2">
               <LinkBtn to="/" onClick={closeMobileMenu} className={mobileDockBtn(dashboardActive)} aria-label="داشبورد">
                 <IcDashboard />
