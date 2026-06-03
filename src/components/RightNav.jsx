@@ -157,8 +157,9 @@ function RightNav() {
 
   const mobileSubItemCls =
     "!grid !grid-cols-[2.65rem_minmax(0,1fr)] sm:!grid-cols-[2.85rem_minmax(0,1fr)] !items-center gap-2.5 " +
-    "!min-h-[3.45rem] !rounded-[1.05rem] min-[390px]:!rounded-[1.15rem] !border !px-2 !py-2 !text-right " +
-    "transition-all duration-200 active:scale-[0.985] " +
+    "!min-h-[3.45rem] !rounded-[1.05rem] min-[390px]:!rounded-[1.15rem] !border !border-transparent " +
+    "!bg-transparent !px-2 !py-2 !text-right !text-neutral-900 !shadow-none hover:!bg-transparent " +
+    "focus:!ring-0 transition-all duration-200 active:scale-[0.985] " +
     "dark:!text-white [&_img]:!filter-none [&_svg]:!text-neutral-950 dark:[&_img]:!invert dark:[&_svg]:!text-white";
 
   const mobileSubIconCls =
@@ -416,10 +417,7 @@ function RightNav() {
                       onClick={closeMobileMenu}
                       className={[
                         mobileSubItemCls,
-                        mobileButtonSurface(isActive(item.to)),
-                        isActive(item.to)
-                          ? "!shadow-[inset_3px_0_0_rgba(244,139,53,0.95),inset_0_0_0_1px_rgba(255,255,255,0.55),0_6px_16px_rgba(0,0,0,0.10)]"
-                          : "",
+                        isActive(item.to) ? "!shadow-[inset_3px_0_0_rgba(244,139,53,0.95)]" : "",
                       ].join(" ")}
                     >
                       <span className={mobileSubIconCls}>
