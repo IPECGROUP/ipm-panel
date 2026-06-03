@@ -773,6 +773,11 @@ useEffect(() => {
   const tableScrollRef = useRef(null);
 const [hasYScroll, setHasYScroll] = useState(false);
   const API_BASE = String(import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
+  const uploadedFileApiUrlOf = (id) => {
+    const value = String(id ?? "").trim();
+    if (!/^\d+$/.test(value)) return "";
+    return `${API_BASE}/files/${encodeURIComponent(value)}`;
+  };
   async function api(path, opt = {}) {
     const uid = user?.id != null ? String(user.id) : "";
     const res = await fetch(API_BASE + path, {
@@ -1011,7 +1016,7 @@ useEffect(() => {
 }, []);
 
 const resolveFileUrl = (u) => {
-  const url = String(u || "").trim();
+  const url = String(u || "").trim().replace(/\\/g, "/").replace(/#/g, "%23");
   if (!url) return "";
   if (/^https?:\/\//i.test(url)) return url;
   if (url.startsWith("//")) return window.location.protocol + url;
@@ -2697,6 +2702,9 @@ const secretariatLongText = (ymd) => {
   };
 
   const attachmentUrlOf = (a) => {
+    const fileId = a?.file_id ?? a?.fileId ?? a?.serverId;
+    const apiUrl = uploadedFileApiUrlOf(fileId);
+    if (apiUrl) return apiUrl;
     const u = a?.url ?? a?.href ?? a?.path ?? a?.public_url ?? a?.publicUrl ?? a?.file_url ?? a?.fileUrl;
     return String(u || "");
   };
