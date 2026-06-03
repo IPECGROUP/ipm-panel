@@ -54,7 +54,7 @@ const TECHNICAL_SUPPORT_FIELDS = [
   { key: "powerLighting", label: "برق و روشنایی" },
   { key: "accommodation", label: "اسکان" },
   { key: "food", label: "خوراک" },
-  { key: "transport", label: "حمل" },
+  { key: "transport", label: "حمل و نقل" },
   { key: "loadingCrane", label: "بارگیری و جرثقیل" },
   { key: "procurement", label: "تامین کالا" },
   { key: "customsClearance", label: "ترخیص کالا از گمرک" },
@@ -1877,7 +1877,10 @@ export default function ContractInformation() {
   };
 
   const saveContractSection = async (sectionId = activeContractTab) => {
-    if (sectionId !== "financial") {
+    const formId = String(form.id || "").trim();
+    const isEditingSavedContract = formId && rowById.has(formId);
+
+    if (sectionId !== "financial" && !isEditingSavedContract) {
       const draftSaved = await saveContractDraft({ sectionId, immediate: true });
       if (!draftSaved) alert("خطا در ذخیره پیش نویس قرارداد");
       return;
@@ -1904,7 +1907,7 @@ export default function ContractInformation() {
       return;
     }
 
-    const id = String(form.id || "").trim() || `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    const id = formId || `${Date.now()}_${Math.random().toString(16).slice(2)}`;
     const rowPayload = {
       ...form,
       id,
@@ -1927,6 +1930,8 @@ export default function ContractInformation() {
     };
 
     try {
+      if (sectionId !== "financial") markDraftSaveStatus(sectionId, "saving");
+
       const data = await fetchJson("/contracts", {
         method: "POST",
         body: JSON.stringify(rowPayload),
@@ -1942,10 +1947,12 @@ export default function ContractInformation() {
       });
       finalSavedDraftSignatureRef.current = contractDraftSignature(contractDraftPayloadFromForm({ ...form, id: savedRow.id }, sectionId));
       lastDraftSignatureRef.current = finalSavedDraftSignatureRef.current;
-      await deleteContractDraft();
+      if (sectionId === "financial") await deleteContractDraft();
+      else markDraftSaveStatus(sectionId, "saved");
       setForm((prev) => ({ ...prev, id: savedRow.id, lastSavedSection: sectionId }));
       setRowsError("");
     } catch (error) {
+      if (sectionId !== "financial") markDraftSaveStatus(sectionId, "error");
       alert(error?.message || "خطا در ذخیره قرارداد");
     }
   };
@@ -2647,7 +2654,7 @@ export default function ContractInformation() {
                       {isAppendixDocument ? (
                         <div className="space-y-4">
                           <div>
-                            <div className={labelCls}>شرح</div>
+                            <div className={labelCls}>شرح خدمات و محدوده کار</div>
                             <textarea
                               value={form.technical?.serviceScope || ""}
                               onChange={(e) => setTechnicalField("serviceScope", e.target.value)}
