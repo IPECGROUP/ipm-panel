@@ -689,6 +689,37 @@ function fetchJson(path, opt = {}) {
   });
 }
 
+async function uploadContractFiles(fileList) {
+  const files = Array.from(fileList || []).filter(Boolean);
+  if (!files.length) return [];
+  const base = (window.API_URL || "/api").replace(/\/+$/, "");
+  const fd = new FormData();
+  files.forEach((file) => fd.append("files", file));
+
+  const res = await fetch(`${base}/uploads/contracts`, {
+    method: "POST",
+    credentials: "include",
+    body: fd,
+  });
+  const text = await res.text();
+  let data = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = {};
+  }
+  if (!res.ok) throw new Error(data?.error || data?.message || "upload_failed");
+  return asArray(data).map((file) => ({
+    id: String(file?.id ?? file?.serverId ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`),
+    serverId: file?.serverId ?? file?.id ?? null,
+    name: String(file?.name || "فایل"),
+    size: Number(file?.size || 0),
+    type: String(file?.type || ""),
+    url: String(file?.url || ""),
+    addedAt: String(file?.addedAt || new Date().toISOString()),
+  }));
+}
+
 function getCurrentJalaliParts() {
   const now = dayjs().calendar("jalali");
   return {
@@ -1455,32 +1486,30 @@ export default function ContractInformation() {
   };
 
   const setField = (field, value) => {
-    if (field === "documentType") {
+    if (field === "documentType" && String(form.documentType || "") !== String(value || "")) {
       const currentId = String(form.id || "");
       const isEditingExisting = currentId && rowById.has(currentId);
-      if (isEditingExisting && String(form.documentType || "") !== String(value || "")) {
-        void deleteContractDraft();
-        removeLocalContractDraft();
-        lastDraftSignatureRef.current = "";
-        finalSavedDraftSignatureRef.current = "";
-        documentTypeChangedFromEditRef.current = true;
-        editOriginalDocumentTypeRef.current = "";
-        setFinalSaveStatus({ sectionId: "", message: "" });
-        setRelatedPickQuery("");
-        setRelatedPickTarget("contract");
-        setActiveContractTab(value === "appendix" ? "calendar" : CONTRACT_SECTION_TABS[0].id);
-        const reset = emptyForm();
-        setForm({
-          ...reset,
-          id: "",
-          documentType: value,
-          general: {
-            ...reset.general,
-            employerAssignor: value === "sub" ? FIXED_SUB_ASSIGNOR : "",
-          },
-        });
-        return;
-      }
+      void deleteContractDraft();
+      removeLocalContractDraft();
+      lastDraftSignatureRef.current = "";
+      finalSavedDraftSignatureRef.current = "";
+      documentTypeChangedFromEditRef.current = Boolean(isEditingExisting);
+      editOriginalDocumentTypeRef.current = "";
+      setFinalSaveStatus({ sectionId: "", message: "" });
+      setRelatedPickQuery("");
+      setRelatedPickTarget("contract");
+      setActiveContractTab(value === "appendix" ? "calendar" : CONTRACT_SECTION_TABS[0].id);
+      const reset = emptyForm();
+      setForm({
+        ...reset,
+        id: "",
+        documentType: value,
+        general: {
+          ...reset.general,
+          employerAssignor: value === "sub" ? FIXED_SUB_ASSIGNOR : "",
+        },
+      });
+      return;
     }
 
     setForm((prev) => {
@@ -1573,16 +1602,14 @@ export default function ContractInformation() {
     }));
   };
 
-  const addInsuranceClearanceFiles = (fileList) => {
-    const incoming = Array.from(fileList || [])
-      .filter(Boolean)
-      .map((file) => ({
-        id: `${Date.now()}_${Math.random().toString(16).slice(2)}`,
-        name: String(file?.name || "فایل"),
-        size: Number(file?.size || 0),
-        type: String(file?.type || ""),
-        addedAt: new Date().toISOString(),
-      }));
+  const addInsuranceClearanceFiles = async (fileList) => {
+    let incoming = [];
+    try {
+      incoming = await uploadContractFiles(fileList);
+    } catch (error) {
+      alert(error?.message || "خطا در بارگذاری فایل");
+      return;
+    }
     if (!incoming.length) return;
     setForm((prev) => {
       const insurance = normalizeInsurance(prev.insurance || {});
@@ -1692,16 +1719,14 @@ export default function ContractInformation() {
     });
   };
 
-  const addFinancialBreakdownFiles = (fileList) => {
-    const incoming = Array.from(fileList || [])
-      .filter(Boolean)
-      .map((file) => ({
-        id: `${Date.now()}_${Math.random().toString(16).slice(2)}`,
-        name: String(file?.name || "فایل"),
-        size: Number(file?.size || 0),
-        type: String(file?.type || ""),
-        addedAt: new Date().toISOString(),
-      }));
+  const addFinancialBreakdownFiles = async (fileList) => {
+    let incoming = [];
+    try {
+      incoming = await uploadContractFiles(fileList);
+    } catch (error) {
+      alert(error?.message || "خطا در بارگذاری فایل");
+      return;
+    }
     if (!incoming.length) return;
     setForm((prev) => {
       const financial = normalizeFinancial(prev.financial || {});
