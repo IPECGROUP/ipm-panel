@@ -913,6 +913,7 @@ export default function ContractInformation() {
   const [activeContractTab, setActiveContractTab] = React.useState(CONTRACT_SECTION_TABS[0].id);
   const [expandedContractIds, setExpandedContractIds] = React.useState(() => new Set());
   const [previewContractId, setPreviewContractId] = React.useState("");
+  const [previewFileIndex, setPreviewFileIndex] = React.useState(0);
   const [finalSaveStatus, setFinalSaveStatus] = React.useState({ sectionId: "", message: "" });
   const [filterQuery, setFilterQuery] = React.useState("");
   const [filterProjectId, setFilterProjectId] = React.useState("");
@@ -1454,6 +1455,34 @@ export default function ContractInformation() {
   };
 
   const setField = (field, value) => {
+    if (field === "documentType") {
+      const currentId = String(form.id || "");
+      const isEditingExisting = currentId && rowById.has(currentId);
+      if (isEditingExisting && String(form.documentType || "") !== String(value || "")) {
+        void deleteContractDraft();
+        removeLocalContractDraft();
+        lastDraftSignatureRef.current = "";
+        finalSavedDraftSignatureRef.current = "";
+        documentTypeChangedFromEditRef.current = true;
+        editOriginalDocumentTypeRef.current = "";
+        setFinalSaveStatus({ sectionId: "", message: "" });
+        setRelatedPickQuery("");
+        setRelatedPickTarget("contract");
+        setActiveContractTab(value === "appendix" ? "calendar" : CONTRACT_SECTION_TABS[0].id);
+        const reset = emptyForm();
+        setForm({
+          ...reset,
+          id: "",
+          documentType: value,
+          general: {
+            ...reset.general,
+            employerAssignor: value === "sub" ? FIXED_SUB_ASSIGNOR : "",
+          },
+        });
+        return;
+      }
+    }
+
     setForm((prev) => {
       const next = { ...prev, [field]: value };
       if (field === "documentType") {
@@ -2124,6 +2153,54 @@ export default function ContractInformation() {
   const previewLetter = previewContract?.relatedLetterId ? letterById.get(String(previewContract.relatedLetterId)) : null;
   const previewFinancial = previewContract ? normalizeFinancial(previewContract.financial || {}) : normalizeFinancial({});
   const previewInsurance = previewContract ? normalizeInsurance(previewContract.insurance || {}) : normalizeInsurance({});
+  const previewLetterAttachments = React.useMemo(() => {
+    const raw =
+      previewLetter?.attachments ??
+      previewLetter?.attachments_json ??
+      previewLetter?.attachmentsJson ??
+      [];
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === "string") {
+      try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }, [previewLetter]);
+  const previewFiles = React.useMemo(() => {
+    const normalizeFile = (file, group) => ({
+      id: String(file?.id ?? file?.file_id ?? file?.fileId ?? `${group}_${Math.random().toString(16).slice(2)}`),
+      name: String(file?.name ?? file?.originalName ?? file?.original_name ?? file?.filename ?? file?.fileName ?? "فایل"),
+      size: Number(file?.size ?? file?.bytes ?? 0),
+      type: String(file?.type ?? file?.mimeType ?? file?.mime_type ?? ""),
+      url: String(file?.url ?? file?.href ?? file?.path ?? ""),
+      group,
+    });
+
+    return [
+      ...(Array.isArray(previewFinancial.breakdownFiles) ? previewFinancial.breakdownFiles.map((file) => normalizeFile(file, "جدول شکست مبلغ")) : []),
+      ...(Array.isArray(previewInsurance.clearanceFiles) ? previewInsurance.clearanceFiles.map((file) => normalizeFile(file, "مفاصا حساب")) : []),
+      ...(Array.isArray(previewLetterAttachments) ? previewLetterAttachments.map((file) => normalizeFile(file, "سند مرتبط")) : []),
+    ];
+  }, [previewFinancial.breakdownFiles, previewInsurance.clearanceFiles, previewLetterAttachments]);
+  const activePreviewFile = previewFiles[Math.min(Math.max(0, previewFileIndex), Math.max(0, previewFiles.length - 1))] || null;
+  const resolvePreviewFileUrl = (file) => {
+    const url = String(file?.url || "").trim();
+    if (!url) return "";
+    if (/^(https?:|blob:|data:)/i.test(url)) return url;
+    if (url.startsWith("/")) return url;
+    return `/${url.replace(/^\/+/, "")}`;
+  };
+  const activePreviewFileUrl = resolvePreviewFileUrl(activePreviewFile);
+  const activePreviewFileType = String(activePreviewFile?.type || "").toLowerCase();
+  const activePreviewFileName = String(activePreviewFile?.name || "").toLowerCase();
+  const activePreviewIsPdf = Boolean(activePreviewFileUrl) && (activePreviewFileType.includes("pdf") || activePreviewFileName.endsWith(".pdf"));
+  const activePreviewIsImage =
+    Boolean(activePreviewFileUrl) &&
+    (activePreviewFileType.startsWith("image/") || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(activePreviewFileName));
   const previewInfoItemCls = "rounded-xl border border-black/10 bg-black/[0.02] px-3 py-2 dark:border-neutral-700 dark:bg-white/[0.03]";
   const previewLabelCls = "text-[11px] font-semibold text-black/45 dark:text-neutral-400";
   const previewValueCls = "mt-1 break-words text-sm font-semibold text-black dark:text-neutral-100";
@@ -2197,6 +2274,10 @@ export default function ContractInformation() {
       setActiveContractTab(visibleContractTabs[0]?.id || CONTRACT_SECTION_TABS[0].id);
     }
   }, [activeContractTab, visibleContractTabs]);
+
+  React.useEffect(() => {
+    setPreviewFileIndex(0);
+  }, [previewContractId]);
 
   const renderFinancialRows = (title, sectionKey, rows, options = {}) => {
     const showFinancialRowDelete = Boolean(options.showDelete);
@@ -3829,7 +3910,9 @@ export default function ContractInformation() {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4">
+              <div className="flex-1 overflow-hidden">
+                <div className="flex h-full flex-col lg:flex-row">
+                  <div className="h-full overflow-y-auto p-4 lg:w-[58%]">
                 {renderPreviewSectionTitle("اطلاعات اصلی")}
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                   {renderPreviewInfo("مرکز/پروژه", previewProject?.label)}
@@ -3901,6 +3984,95 @@ export default function ContractInformation() {
                   {renderPreviewInfo("شعبه سازمان تامین اجتماعی", previewInsurance.branchStatus)}
                   {renderPreviewInfo("کارکرد ناخالص نهایی قرارداد", previewInsurance.finalGrossPerformance ? `${formatFinancialAmount(parseFinancialAmount(previewInsurance.finalGrossPerformance))} ریال` : "")}
                   {renderPreviewInfo("آخرین وضعیت قرارداد", previewInsurance.lastStatus)}
+                </div>
+                  </div>
+
+                  <div className="flex min-h-[320px] flex-col border-t border-black/10 bg-black/[0.015] lg:w-[42%] lg:border-r lg:border-t-0 dark:border-neutral-800 dark:bg-white/[0.02]">
+                    <div className="flex items-center justify-between gap-2 border-b border-black/10 px-4 py-3 dark:border-neutral-800">
+                      <div className="text-sm font-bold">فایل‌ها و اسناد</div>
+                      <div className="rounded-full bg-black/[0.06] px-2 py-0.5 text-xs font-semibold dark:bg-white/10">
+                        {toFaDigits(previewFiles.length)}
+                      </div>
+                    </div>
+
+                    <div className="flex-1 overflow-hidden p-3">
+                      <div className="flex h-full flex-col gap-3">
+                        <div className="min-h-[220px] flex-1 overflow-hidden rounded-2xl border border-black/10 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+                          {activePreviewFileUrl ? (
+                            activePreviewIsPdf ? (
+                              <object data={`${activePreviewFileUrl}#view=FitH`} type="application/pdf" className="h-full min-h-[260px] w-full">
+                                <iframe title="contract_file_preview" src={`${activePreviewFileUrl}#view=FitH`} className="h-full min-h-[260px] w-full" />
+                              </object>
+                            ) : activePreviewIsImage ? (
+                              <img src={activePreviewFileUrl} alt="" className="h-full min-h-[260px] w-full object-contain" />
+                            ) : (
+                              <div className="grid h-full min-h-[260px] place-items-center p-6 text-center">
+                                <div>
+                                  <div className="text-sm font-bold">پیش نمایش این نوع فایل در دسترس نیست.</div>
+                                  <div className="mt-2 text-xs text-black/55 dark:text-neutral-400">از دکمه باز کردن فایل استفاده کنید.</div>
+                                </div>
+                              </div>
+                            )
+                          ) : (
+                            <div className="grid h-full min-h-[260px] place-items-center p-6 text-center">
+                              <div>
+                                <div className="text-sm font-bold">{activePreviewFile ? activePreviewFile.name : "فایلی ثبت نشده است"}</div>
+                                <div className="mt-2 text-xs text-black/55 dark:text-neutral-400">
+                                  {activePreviewFile ? "برای این فایل آدرس پیش نمایش ذخیره نشده است." : "در این قرارداد فایلی برای نمایش وجود ندارد."}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {activePreviewFile ? (
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            <a
+                              href={activePreviewFileUrl || "#"}
+                              target="_blank"
+                              rel="noreferrer"
+                              className={`h-10 rounded-xl border border-black/10 inline-flex items-center justify-center gap-2 text-xs font-bold transition dark:border-neutral-800 ${activePreviewFileUrl ? "bg-white hover:bg-black/[0.04] dark:bg-neutral-900 dark:hover:bg-neutral-800" : "pointer-events-none bg-black/[0.03] text-black/35 dark:bg-white/[0.04] dark:text-white/35"}`}
+                            >
+                              <img src="/images/icons/namayeshname.svg" alt="" className="h-4 w-4 dark:invert" />
+                              باز کردن فایل
+                            </a>
+                            <a
+                              href={activePreviewFileUrl || "#"}
+                              download
+                              className={`h-10 rounded-xl inline-flex items-center justify-center gap-2 text-xs font-bold transition ${activePreviewFileUrl ? "bg-black text-white hover:bg-black/90" : "pointer-events-none bg-black/[0.06] text-black/35 dark:bg-white/[0.06] dark:text-white/35"}`}
+                            >
+                              <img src="/images/icons/download.svg" alt="" className="h-4 w-4 invert" />
+                              دانلود فایل
+                            </a>
+                          </div>
+                        ) : null}
+
+                        {previewFiles.length ? (
+                          <div className="max-h-40 overflow-y-auto rounded-2xl border border-black/10 bg-white p-2 dark:border-neutral-800 dark:bg-neutral-900">
+                            <div className="grid grid-cols-1 gap-2">
+                              {previewFiles.map((file, index) => {
+                                const active = index === previewFileIndex;
+                                return (
+                                  <button
+                                    key={`${file.group}_${file.id}_${index}`}
+                                    type="button"
+                                    onClick={() => setPreviewFileIndex(index)}
+                                    className={`min-w-0 rounded-xl border px-3 py-2 text-right transition ${active ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-black/[0.02] hover:bg-black/[0.04] dark:border-neutral-800 dark:bg-white/[0.03] dark:hover:bg-white/[0.07]"}`}
+                                  >
+                                    <div className="truncate text-xs font-bold">{file.name}</div>
+                                    <div className={`mt-1 flex items-center justify-between gap-2 text-[11px] ${active ? "text-white/70 dark:text-black/60" : "text-black/50 dark:text-neutral-400"}`}>
+                                      <span className="truncate">{file.group}</span>
+                                      <span>{file.size ? toFaDigits(formatBytes(file.size)) : ""}</span>
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
