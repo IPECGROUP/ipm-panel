@@ -178,7 +178,8 @@ function RightNav() {
     });
 
   const mobileGlassBoxCls =
-    "relative w-full overflow-hidden rounded-[1.55rem] border border-white/[0.32] p-2 " +
+    "relative w-full overflow-hidden rounded-[1.35rem] border border-white/[0.32] p-1.5 " +
+    "min-[390px]:rounded-[1.55rem] min-[390px]:p-2 " +
     "shadow-[0_10px_18px_rgba(0,0,0,0.22),0_0_28px_rgba(0,0,0,0.10)] transition-all duration-300";
 
   const mobileGlassLayerProps = {
@@ -188,7 +189,7 @@ function RightNav() {
 
   const mobileDockBtn = (active) =>
     [
-      "!h-[3.45rem] sm:!h-[3.65rem] !w-full !min-w-0 !rounded-[1.15rem] !p-0",
+      "!h-[3.3rem] min-[390px]:!h-[3.45rem] sm:!h-[3.65rem] !w-full !min-w-0 !rounded-[1.05rem] min-[390px]:!rounded-[1.15rem] !p-0",
       "!flex !flex-col !items-center !justify-center gap-1 !border transition-all duration-200 backdrop-blur-[10px]",
       "[&_img]:!filter-none [&_svg]:!text-neutral-950",
       "active:scale-[0.96]",
@@ -198,9 +199,16 @@ function RightNav() {
     ].join(" ");
 
   const mobileSubItemCls =
-    "!grid !grid-cols-[2.75rem_minmax(0,1fr)] !items-center gap-2.5 !rounded-[1rem] !border !border-transparent " +
-    "!bg-transparent !px-2 !py-2 !text-right !text-neutral-950 hover:!bg-white/[0.24] active:scale-[0.985] " +
-    "[&_img]:!filter-none [&_svg]:!text-neutral-950 !shadow-none";
+    "!grid !grid-cols-[2.65rem_minmax(0,1fr)] sm:!grid-cols-[2.85rem_minmax(0,1fr)] !items-center gap-2.5 " +
+    "!min-h-[3.55rem] !rounded-[1.05rem] min-[390px]:!rounded-[1.15rem] !border !border-white/[0.26] " +
+    "!bg-black/[0.09] !px-2 !py-2 !text-right !text-neutral-950 backdrop-blur-[10px] " +
+    "shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] transition-all duration-200 " +
+    "hover:!bg-black/[0.14] active:scale-[0.985] [&_img]:!filter-none [&_svg]:!text-neutral-950";
+
+  const mobileSubIconCls =
+    "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.95rem] border border-white/[0.30] " +
+    "bg-black/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_6px_14px_rgba(0,0,0,0.10)] backdrop-blur-[10px] " +
+    "sm:h-11 sm:w-11 sm:rounded-[1rem]";
 
   const mobileMenuKey = open.projects ? "projects" : open.budget ? "budget" : open.base ? "base" : null;
   const mobileMenus = {
@@ -434,10 +442,10 @@ function RightNav() {
 
       <nav
         dir="rtl"
-        className="fixed inset-x-0 bottom-0 z-50 lg:hidden pointer-events-none px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+        className="fixed inset-x-0 bottom-0 z-50 lg:hidden pointer-events-none px-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] min-[390px]:px-3 sm:px-4"
         aria-label="منوی اصلی"
       >
-        <div className="pointer-events-auto mx-auto flex max-w-[29rem] flex-col items-center gap-2.5 sm:max-w-[35rem] md:max-w-[40rem]">
+        <div className="pointer-events-auto mx-auto flex max-w-[29rem] flex-col items-center gap-2 min-[390px]:gap-2.5 sm:max-w-[35rem] md:max-w-[40rem]">
           <div
             className={[
               "w-full origin-bottom overflow-hidden px-1 transition-all duration-300 ease-out will-change-[transform,opacity,max-height]",
@@ -449,7 +457,7 @@ function RightNav() {
             {mobileMenu && (
               <div className={`${mobileGlassBoxCls} max-h-[min(58dvh,390px)]`}>
                 <LiquidGlassLayers {...mobileGlassLayerProps} />
-                <div className="relative z-[3] grid max-h-[min(48dvh,310px)] gap-1 overflow-y-auto rounded-[1.2rem] border border-white/[0.26] bg-black/[0.09] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.24),0_8px_18px_rgba(0,0,0,0.10)] backdrop-blur-[12px]">
+                <div className="relative z-[3] grid max-h-[min(48dvh,310px)] grid-cols-1 gap-1.5 overflow-y-auto rounded-[1.05rem] p-0.5 min-[390px]:rounded-[1.2rem] sm:grid-cols-2 sm:gap-2 sm:p-1">
                   {mobileMenu.items.map((item) => (
                     <LinkBtn
                       key={item.to}
@@ -458,11 +466,11 @@ function RightNav() {
                       className={[
                         mobileSubItemCls,
                         isActive(item.to)
-                          ? "!border-white/35 !bg-white/[0.30] !shadow-[inset_3px_0_0_rgba(244,139,53,0.95),inset_0_1px_0_rgba(255,255,255,0.30)]"
+                          ? "!border-white/45 !bg-black/[0.16] !shadow-[inset_3px_0_0_rgba(244,139,53,0.95),inset_0_1px_0_rgba(255,255,255,0.42),0_8px_20px_rgba(0,0,0,0.15)]"
                           : "",
                       ].join(" ")}
                     >
-                      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.95rem] border border-white/[0.34] bg-white/[0.34] shadow-[inset_0_1px_0_rgba(255,255,255,0.38),0_6px_14px_rgba(0,0,0,0.10)] backdrop-blur-[10px]">
+                      <span className={mobileSubIconCls}>
                         {item.icon}
                       </span>
                       <span className="relative min-w-0">
