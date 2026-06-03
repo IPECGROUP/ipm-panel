@@ -139,21 +139,24 @@ function RightNav() {
     "p-1.5 shadow-[0_10px_24px_rgba(0,0,0,0.16),inset_0_1px_0_rgba(255,255,255,0.55)] backdrop-blur transition-all duration-300 " +
     "min-[390px]:rounded-[1.55rem] min-[390px]:p-2 dark:border-white/10 dark:from-white/10";
 
+  const mobileButtonSurface = (active) =>
+    active
+      ? "!border-black/10 !bg-gradient-to-l !from-black/5 !to-transparent !text-neutral-950 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.55),0_6px_16px_rgba(0,0,0,0.10)] dark:!border-white/15 dark:!from-white/10 dark:!text-white"
+      : "!border-transparent !bg-transparent !text-neutral-800 hover:!bg-gradient-to-l hover:!from-black/5 hover:!to-transparent dark:!text-white/85 dark:hover:!from-white/10";
+
   const mobileDockBtn = (active) =>
     [
       "!h-[3.3rem] min-[390px]:!h-[3.45rem] sm:!h-[3.65rem] !w-full !min-w-0 !rounded-[1.05rem] min-[390px]:!rounded-[1.15rem] !p-0",
       "!flex !flex-col !items-center !justify-center gap-1 !border transition-all duration-200",
       "[&_img]:!filter-none [&_svg]:!text-neutral-950 dark:[&_img]:!invert dark:[&_svg]:!text-white",
       "active:scale-[0.96]",
-      active
-        ? "!border-black/10 !bg-gradient-to-l !from-black/5 !to-transparent !text-neutral-950 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.55),0_6px_16px_rgba(0,0,0,0.10)] dark:!border-white/15 dark:!from-white/10 dark:!text-white"
-        : "!border-transparent !bg-transparent !text-neutral-800 hover:!bg-gradient-to-l hover:!from-black/5 hover:!to-transparent dark:!text-white/85 dark:hover:!from-white/10",
+      mobileButtonSurface(active),
     ].join(" ");
 
   const mobileSubItemCls =
     "!grid !grid-cols-[2.65rem_minmax(0,1fr)] sm:!grid-cols-[2.85rem_minmax(0,1fr)] !items-center gap-2.5 " +
-    "!min-h-[3.45rem] !rounded-xl !border !border-transparent !bg-transparent !px-2 !py-2 !text-right !text-neutral-900 " +
-    "!shadow-none transition-all duration-200 hover:!bg-gradient-to-l hover:!from-black/5 hover:!to-transparent active:scale-[0.985] " +
+    "!min-h-[3.45rem] !rounded-[1.05rem] min-[390px]:!rounded-[1.15rem] !border !px-2 !py-2 !text-right " +
+    "transition-all duration-200 active:scale-[0.985] " +
     "dark:!text-white [&_img]:!filter-none [&_svg]:!text-neutral-950 dark:[&_img]:!invert dark:[&_svg]:!text-white";
 
   const mobileSubIconCls =
@@ -411,8 +414,9 @@ function RightNav() {
                       onClick={closeMobileMenu}
                       className={[
                         mobileSubItemCls,
+                        mobileButtonSurface(isActive(item.to)),
                         isActive(item.to)
-                          ? "!bg-transparent !shadow-[inset_3px_0_0_rgba(244,139,53,0.95)]"
+                          ? "!shadow-[inset_3px_0_0_rgba(244,139,53,0.95),inset_0_0_0_1px_rgba(255,255,255,0.55),0_6px_16px_rgba(0,0,0,0.10)]"
                           : "",
                       ].join(" ")}
                     >
