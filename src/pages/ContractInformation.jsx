@@ -911,6 +911,9 @@ export default function ContractInformation() {
   const [formOpen, setFormOpen] = React.useState(false);
   const [form, setForm] = React.useState(() => emptyForm());
   const [activeContractTab, setActiveContractTab] = React.useState(CONTRACT_SECTION_TABS[0].id);
+  const [expandedContractIds, setExpandedContractIds] = React.useState(() => new Set());
+  const [previewContractId, setPreviewContractId] = React.useState("");
+  const [finalSaveStatus, setFinalSaveStatus] = React.useState({ sectionId: "", message: "" });
   const [filterQuery, setFilterQuery] = React.useState("");
   const [filterProjectId, setFilterProjectId] = React.useState("");
   const [filterDocType, setFilterDocType] = React.useState("");
@@ -936,6 +939,9 @@ export default function ContractInformation() {
   const draftStatusTimerRef = React.useRef(null);
   const lastDraftSignatureRef = React.useRef("");
   const finalSavedDraftSignatureRef = React.useRef("");
+  const editOriginalDocumentTypeRef = React.useRef("");
+  const documentTypeChangedFromEditRef = React.useRef(false);
+  const finalSaveStatusTimerRef = React.useRef(null);
   const [draftSaveStatus, setDraftSaveStatus] = React.useState({ sectionId: "", state: "" });
 
   React.useEffect(() => {
@@ -1211,6 +1217,7 @@ export default function ContractInformation() {
     () => () => {
       clearDraftSaveTimer();
       if (draftStatusTimerRef.current) clearTimeout(draftStatusTimerRef.current);
+      if (finalSaveStatusTimerRef.current) clearTimeout(finalSaveStatusTimerRef.current);
     },
     [clearDraftSaveTimer]
   );
@@ -1224,6 +1231,18 @@ export default function ContractInformation() {
   const rowById = React.useMemo(() => {
     const map = new Map();
     rows.forEach((row) => map.set(String(row.id), row));
+    return map;
+  }, [rows]);
+
+  const childRowsByParentId = React.useMemo(() => {
+    const map = new Map();
+    rows.forEach((row) => {
+      const parentId = String(row?.parentContractId || "");
+      if (!parentId) return;
+      const list = map.get(parentId) || [];
+      list.push(row);
+      map.set(parentId, list);
+    });
     return map;
   }, [rows]);
 
@@ -1344,12 +1363,40 @@ export default function ContractInformation() {
     setContractsPage(0);
   }, [filterDocType, filterProjectId, filterQuery, contractsRowsPerPage]);
 
-  const contractsTotal = filteredRows.length;
+  const contractsDisplayRows = React.useMemo(() => {
+    const filteredIds = new Set(filteredRows.map((row) => String(row.id)));
+    const usedIds = new Set();
+    const list = [];
+
+    filteredRows.forEach((row) => {
+      const id = String(row.id || "");
+      if (!id || usedIds.has(id)) return;
+      const parentId = String(row.parentContractId || "");
+      if (parentId && filteredIds.has(parentId)) return;
+
+      list.push({ ...row, __depth: parentId ? 1 : 0 });
+      usedIds.add(id);
+
+      const children = childRowsByParentId.get(id) || [];
+      if (expandedContractIds.has(id)) {
+        children.forEach((child) => {
+          const childId = String(child.id || "");
+          if (!childId || usedIds.has(childId)) return;
+          list.push({ ...child, __depth: 1 });
+          usedIds.add(childId);
+        });
+      }
+    });
+
+    return list;
+  }, [childRowsByParentId, expandedContractIds, filteredRows]);
+
+  const contractsTotal = contractsDisplayRows.length;
   const contractsPageCount = Math.max(1, Math.ceil(contractsTotal / Math.max(1, contractsRowsPerPage)));
   const safeContractsPage = Math.min(Math.max(0, contractsPage), contractsPageCount - 1);
   const contractsStartIdx = safeContractsPage * contractsRowsPerPage;
   const contractsEndIdx = Math.min(contractsTotal, contractsStartIdx + contractsRowsPerPage);
-  const contractsPageRows = filteredRows.slice(contractsStartIdx, contractsEndIdx);
+  const contractsPageRows = contractsDisplayRows.slice(contractsStartIdx, contractsEndIdx);
   const visibleContractIds = React.useMemo(() => contractsPageRows.map((row) => String(row.id)), [contractsPageRows]);
   const allVisibleContractsSelected =
     visibleContractIds.length > 0 && visibleContractIds.every((id) => selectedContractIds.has(String(id)));
@@ -1383,10 +1430,40 @@ export default function ContractInformation() {
     });
   };
 
+  const toggleContractChildren = (id) => {
+    const sid = String(id || "");
+    if (!sid) return;
+    setExpandedContractIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(sid)) next.delete(sid);
+      else next.add(sid);
+      return next;
+    });
+  };
+
+  const showFinalSaveMessage = (sectionId, message) => {
+    if (finalSaveStatusTimerRef.current) {
+      clearTimeout(finalSaveStatusTimerRef.current);
+      finalSaveStatusTimerRef.current = null;
+    }
+    setFinalSaveStatus({ sectionId: String(sectionId || ""), message: String(message || "") });
+    finalSaveStatusTimerRef.current = setTimeout(() => {
+      setFinalSaveStatus((prev) => (prev.sectionId === String(sectionId || "") ? { sectionId: "", message: "" } : prev));
+      finalSaveStatusTimerRef.current = null;
+    }, 3200);
+  };
+
   const setField = (field, value) => {
     setForm((prev) => {
       const next = { ...prev, [field]: value };
       if (field === "documentType") {
+        const currentId = String(prev.id || "");
+        const isEditingExisting = currentId && rowById.has(currentId);
+        if (isEditingExisting && String(prev.documentType || "") !== String(value || "")) {
+          next.id = "";
+          next.lastSavedSection = "";
+          documentTypeChangedFromEditRef.current = true;
+        }
         next.contractNo = "";
         next.parentContractId = "";
         next.general = {
@@ -1851,6 +1928,8 @@ export default function ContractInformation() {
     const signature = draft?.payload ? contractDraftSignature(contractDraftPayloadFromForm(next, nextTab)) : "";
     lastDraftSignatureRef.current = signature;
     finalSavedDraftSignatureRef.current = "";
+    editOriginalDocumentTypeRef.current = "";
+    documentTypeChangedFromEditRef.current = false;
   };
 
   const openEditForm = (row) => {
@@ -1862,6 +1941,8 @@ export default function ContractInformation() {
     setFormOpen(true);
     lastDraftSignatureRef.current = contractDraftSignature(contractDraftPayloadFromForm(next, next.lastSavedSection || ""));
     finalSavedDraftSignatureRef.current = "";
+    editOriginalDocumentTypeRef.current = String(next.documentType || "");
+    documentTypeChangedFromEditRef.current = false;
     window.requestAnimationFrame(() => {
       document.querySelector(".ipm-contract-information")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
@@ -1874,13 +1955,16 @@ export default function ContractInformation() {
     setRelatedPickTarget("contract");
     setActiveContractTab(CONTRACT_SECTION_TABS[0].id);
     setFormOpen(false);
+    editOriginalDocumentTypeRef.current = "";
+    documentTypeChangedFromEditRef.current = false;
   };
 
   const saveContractSection = async (sectionId = activeContractTab) => {
     const formId = String(form.id || "").trim();
     const isEditingSavedContract = formId && rowById.has(formId);
+    const saveAsNewFromDocumentTypeChange = documentTypeChangedFromEditRef.current;
 
-    if (sectionId !== "financial" && !isEditingSavedContract) {
+    if (sectionId !== "financial" && !isEditingSavedContract && !saveAsNewFromDocumentTypeChange) {
       const draftSaved = await saveContractDraft({ sectionId, immediate: true });
       if (!draftSaved) alert("خطا در ذخیره پیش نویس قرارداد");
       return;
@@ -1950,6 +2034,14 @@ export default function ContractInformation() {
       if (sectionId === "financial") await deleteContractDraft();
       else markDraftSaveStatus(sectionId, "saved");
       setForm((prev) => ({ ...prev, id: savedRow.id, lastSavedSection: sectionId }));
+      showFinalSaveMessage(
+        sectionId,
+        isEditingSavedContract && !saveAsNewFromDocumentTypeChange
+          ? "اطلاعات با موفقیت ویرایش شد"
+          : "اطلاعات با موفقیت ثبت شد"
+      );
+      documentTypeChangedFromEditRef.current = false;
+      editOriginalDocumentTypeRef.current = String(savedRow.documentType || "");
       setRowsError("");
     } catch (error) {
       if (sectionId !== "financial") markDraftSaveStatus(sectionId, "error");
@@ -2027,9 +2119,50 @@ export default function ContractInformation() {
   );
   const readonlyInputCls =
     "w-full h-11 rounded-xl px-3 bg-black/[0.04] text-black border border-black/10 outline-none dark:bg-white/[0.06] dark:text-neutral-100 dark:border-neutral-700";
+  const previewContract = previewContractId ? rowById.get(String(previewContractId)) : null;
+  const previewProject = previewContract ? projectById.get(String(previewContract.projectId)) : null;
+  const previewLetter = previewContract?.relatedLetterId ? letterById.get(String(previewContract.relatedLetterId)) : null;
+  const previewFinancial = previewContract ? normalizeFinancial(previewContract.financial || {}) : normalizeFinancial({});
+  const previewInsurance = previewContract ? normalizeInsurance(previewContract.insurance || {}) : normalizeInsurance({});
+  const previewInfoItemCls = "rounded-xl border border-black/10 bg-black/[0.02] px-3 py-2 dark:border-neutral-700 dark:bg-white/[0.03]";
+  const previewLabelCls = "text-[11px] font-semibold text-black/45 dark:text-neutral-400";
+  const previewValueCls = "mt-1 break-words text-sm font-semibold text-black dark:text-neutral-100";
+  const previewValue = (value, fallback = "ثبت نشده") => {
+    const text = String(value ?? "").trim();
+    return text ? text : fallback;
+  };
+  const renderPreviewInfo = (label, value) => (
+    <div className={previewInfoItemCls}>
+      <div className={previewLabelCls}>{label}</div>
+      <div className={previewValueCls}>{previewValue(value)}</div>
+    </div>
+  );
+  const renderPreviewSectionTitle = (title) => (
+    <div className="mt-4 mb-2 text-sm font-bold text-black dark:text-neutral-100">{title}</div>
+  );
+  const renderPreviewFinancialRows = (rows) => {
+    const list = Array.isArray(rows) ? rows : [];
+    const filled = list.filter((row) => [row.amount, row.currencyLabel, row.currencyId, row.sourceLabel, row.sourceId].some((item) => String(item || "").trim()));
+    return filled.length ? (
+      <div className="grid grid-cols-1 gap-2">
+        {filled.map((row, index) => (
+          <div key={row.id || index} className={previewInfoItemCls}>
+            <div className={previewLabelCls}>ردیف {toFaDigits(index + 1)}</div>
+            <div className={previewValueCls}>
+              {row.amount ? formatFinancialAmount(parseFinancialAmount(row.amount)) : "۰"} {row.currencyLabel || row.currencyId || ""}
+              {row.sourceLabel || row.sourceId ? ` - ${row.sourceLabel || row.sourceId}` : ""}
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <div className="text-sm text-black/50 dark:text-neutral-400">موردی ثبت نشده است.</div>
+    );
+  };
 
   const renderSaveButton = (sectionId, title = "ذخیره") => {
     const isDraftSection = sectionId !== "financial";
+    const showFinalStatus = finalSaveStatus.sectionId === sectionId && finalSaveStatus.message;
     const showDraftStatus = isDraftSection && draftSaveStatus.sectionId === sectionId && draftSaveStatus.state;
     const draftStatusText =
       draftSaveStatus.state === "saving" ? "در حال ذخیره..." : draftSaveStatus.state === "saved" ? "ذخیره شد" : "خطا در ذخیره";
@@ -2048,12 +2181,12 @@ export default function ContractInformation() {
         <div
           className={[
             "h-4 text-[10px] font-semibold leading-4 transition-all duration-200",
-            showDraftStatus ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0",
-            draftSaveStatus.state === "saving" ? "animate-pulse" : "",
-            draftStatusCls,
+            showFinalStatus || showDraftStatus ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0",
+            !showFinalStatus && draftSaveStatus.state === "saving" ? "animate-pulse" : "",
+            showFinalStatus ? "text-emerald-600 dark:text-emerald-400" : draftStatusCls,
           ].join(" ")}
         >
-          {showDraftStatus ? draftStatusText : ""}
+          {showFinalStatus ? finalSaveStatus.message : showDraftStatus ? draftStatusText : ""}
         </div>
       </div>
     );
@@ -3298,6 +3431,10 @@ export default function ContractInformation() {
                     const appendicesCount = countAppendices(row, rows);
                     const contractNo = contractNoForRow(row, rowById);
                     const id = String(row.id);
+                    const childRows = childRowsByParentId.get(id) || [];
+                    const hasChildren = childRows.length > 0;
+                    const isExpanded = expandedContractIds.has(id);
+                    const depth = Number(row.__depth || 0);
                     const projectLabel = project?.label || "بدون پروژه";
                     const docLabel = documentTypeLabel(row.documentType);
                     const typeText = row.general?.contractType || "ثبت نشده";
@@ -3314,7 +3451,7 @@ export default function ContractInformation() {
                     return (
                       <div
                         key={row.id}
-                        className="border-r-4 bg-white p-3 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100"
+                        className={`border-r-4 bg-white p-3 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100 ${depth ? "mr-4 bg-black/[0.02] dark:bg-white/[0.03]" : ""}`}
                         style={{ borderRightColor: docColor }}
                       >
                         <div className="flex items-start justify-between gap-3">
@@ -3341,10 +3478,24 @@ export default function ContractInformation() {
                                 {docLabel}
                               </span>
                             </div>
-                            <div className="mt-1 truncate text-xs text-black/55 dark:text-neutral-400">{projectLabel}</div>
+                            <div className="mt-1 flex items-center gap-2 text-xs text-black/55 dark:text-neutral-400">
+                              {hasChildren ? (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleContractChildren(id)}
+                                  className="grid h-5 w-5 shrink-0 place-items-center rounded-md border border-black/15 bg-white text-sm font-bold leading-none dark:border-neutral-700 dark:bg-neutral-900"
+                                  aria-label={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
+                                  title={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
+                                >
+                                  {isExpanded ? "−" : "+"}
+                                </button>
+                              ) : null}
+                              <span className="truncate">{projectLabel}</span>
+                            </div>
                           </div>
 
                           <div className="flex shrink-0 items-center gap-1">
+                            <RowActionIconBtn icon="/images/icons/namayeshname.svg" title="پیش نمایش" onClick={() => setPreviewContractId(id)} size={34} iconSize={16} />
                             <RowActionIconBtn action="edit" onClick={() => openEditForm(row)} size={34} iconSize={15} />
                             <RowActionIconBtn action="delete" onClick={() => deleteRow(row.id)} size={34} iconSize={16} />
                           </div>
@@ -3444,12 +3595,16 @@ export default function ContractInformation() {
                       const appendicesCount = countAppendices(row, rows);
                       const contractNo = contractNoForRow(row, rowById);
                       const id = String(row.id);
+                      const childRows = childRowsByParentId.get(id) || [];
+                      const hasChildren = childRows.length > 0;
+                      const isExpanded = expandedContractIds.has(id);
+                      const depth = Number(row.__depth || 0);
                       const isLast = index === contractsPageRows.length - 1;
                       const divider = isLast ? "" : contractsRowDividerCls;
                       const projectLabel = project?.label || "بدون پروژه";
 
                       return (
-                        <tr key={row.id} className="group bg-white transition-colors hover:bg-black/[0.04] dark:bg-neutral-900 dark:hover:bg-white/10">
+                        <tr key={row.id} className={`group bg-white transition-colors hover:bg-black/[0.04] dark:bg-neutral-900 dark:hover:bg-white/10 ${depth ? "bg-black/[0.025] dark:bg-white/[0.035]" : ""}`}>
                           <td className={`px-3 ${divider}`}>
                             <input
                               type="checkbox"
@@ -3461,7 +3616,22 @@ export default function ContractInformation() {
                             />
                           </td>
                           <td className={`px-3 ${divider}`}>
-                            <span className="block truncate" title={projectLabel}>{projectLabel}</span>
+                            <div className={`flex items-center gap-2 ${depth ? "pr-7" : ""}`}>
+                              {hasChildren ? (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleContractChildren(id)}
+                                  className="grid h-5 w-5 shrink-0 place-items-center rounded-md border border-black/15 bg-white text-sm font-bold leading-none dark:border-neutral-700 dark:bg-neutral-900"
+                                  aria-label={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
+                                  title={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
+                                >
+                                  {isExpanded ? "−" : "+"}
+                                </button>
+                              ) : (
+                                <span className="h-5 w-5 shrink-0" />
+                              )}
+                              <span className="block truncate text-right" title={projectLabel}>{projectLabel}</span>
+                            </div>
                           </td>
                           <td className={`px-3 ${divider}`}>
                             <div className="truncate font-semibold">{row.general?.contractType || "ثبت نشده"}</div>
@@ -3491,6 +3661,7 @@ export default function ContractInformation() {
                           </td>
                           <td className={`px-3 ${divider}`}>
                             <div className={centeredRowActionsCls}>
+                              <RowActionIconBtn icon="/images/icons/namayeshname.svg" title="پیش نمایش" onClick={() => setPreviewContractId(id)} size={34} iconSize={16} />
                               <RowActionIconBtn action="edit" onClick={() => openEditForm(row)} size={34} iconSize={15} />
                               <RowActionIconBtn action="delete" onClick={() => deleteRow(row.id)} size={34} iconSize={16} />
                             </div>
@@ -3634,6 +3805,108 @@ export default function ContractInformation() {
         </div>
         </div>
       </Card>
+
+      {previewContract &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 md:p-6" dir="rtl">
+            <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={() => setPreviewContractId("")} />
+            <div className="relative flex h-[min(86vh,760px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-black shadow-2xl dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
+              <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3 dark:border-neutral-800">
+                <div className="min-w-0">
+                  <div className="text-base font-bold">پیش نمایش قرارداد</div>
+                  <div className="mt-1 truncate text-xs text-black/55 dark:text-neutral-400">
+                    {previewProject?.label || "بدون پروژه"} - {contractNoForRow(previewContract, rowById) || "بدون شماره"}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPreviewContractId("")}
+                  className={iconBtnCls}
+                  aria-label="بستن"
+                  title="بستن"
+                >
+                  <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5 dark:invert" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4">
+                {renderPreviewSectionTitle("اطلاعات اصلی")}
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                  {renderPreviewInfo("مرکز/پروژه", previewProject?.label)}
+                  {renderPreviewInfo("سند قراردادی", documentTypeLabel(previewContract.documentType))}
+                  {renderPreviewInfo("شماره قرارداد", contractNoForRow(previewContract, rowById))}
+                  {renderPreviewInfo("نوع قرارداد", previewContract.general?.contractType)}
+                  {renderPreviewInfo("موضوع قرارداد", previewContract.general?.contractSubject)}
+                  {renderPreviewInfo("کارفرما/واگذارنده", previewContract.general?.employerAssignor || previewContract.general?.mainEmployer)}
+                  {renderPreviewInfo("اعضای مشارکت", previewContract.general?.companyMembers)}
+                  {renderPreviewInfo("پیمانکاران اصلی", previewContract.general?.mainContractors)}
+                  {renderPreviewInfo("سند مرتبط", previewLetter ? secretariatNoOf(previewLetter) || letterNoOf(previewLetter) : "")}
+                </div>
+
+                {renderPreviewSectionTitle("تقویم قرارداد")}
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+                  {renderPreviewInfo("تاریخ ابلاغ کار", previewContract.calendar?.notifyDate ? toFaDigits(previewContract.calendar.notifyDate) : "")}
+                  {renderPreviewInfo("تاریخ شروع قرارداد", previewContract.calendar?.startDate ? toFaDigits(previewContract.calendar.startDate) : "")}
+                  {renderPreviewInfo("تاریخ پایان قرارداد", previewContract.calendar?.endDate ? toFaDigits(previewContract.calendar.endDate) : "")}
+                  {renderPreviewInfo("مدت قرارداد", calculateCalendarDays(previewContract.calendar || {}).baseDays ? `${toFaDigits(calculateCalendarDays(previewContract.calendar || {}).baseDays)} روز` : "")}
+                </div>
+
+                {renderPreviewSectionTitle("فنی و محدوده کار")}
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                  <div className={`${previewInfoItemCls} md:col-span-2`}>
+                    <div className={previewLabelCls}>شرح خدمات و محدوده کار</div>
+                    <div className="mt-1 whitespace-pre-wrap text-sm leading-7">{previewValue(previewContract.technical?.serviceScope)}</div>
+                  </div>
+                  {TECHNICAL_SUPPORT_FIELDS.map((item) => renderPreviewInfo(item.label, previewContract.technical?.[item.key]))}
+                </div>
+
+                {renderPreviewSectionTitle("مالی و تضامین")}
+                {renderPreviewFinancialRows(previewFinancial.contractAmounts)}
+                <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
+                  {renderPreviewInfo("شرایط پرداخت", previewFinancial.paymentTerms)}
+                  {renderPreviewInfo("پیش پرداخت", previewFinancial.advancePayment === "has" ? "دارد" : previewFinancial.advancePayment === "none" ? "ندارد" : "")}
+                  {renderPreviewInfo("سپرده بیمه", previewFinancial.capitalDeposit === "has" ? `${toFaDigits(previewFinancial.capitalDepositAmount || 0)}%` : previewFinancial.capitalDeposit === "none" ? "ندارد" : "")}
+                  {renderPreviewInfo("حسن انجام کار", previewFinancial.performanceBond === "has" ? `${toFaDigits(previewFinancial.performanceBondAmount || 0)}%` : previewFinancial.performanceBond === "none" ? "ندارد" : "")}
+                </div>
+                {previewFinancial.guarantees.length ? (
+                  <div className="mt-3 overflow-x-auto rounded-xl border border-black/10 dark:border-neutral-800">
+                    <table className="w-full min-w-[680px] text-sm">
+                      <thead className="bg-neutral-100 dark:bg-white/10">
+                        <tr>
+                          <th className="px-3 py-2 text-right">نام تضمین</th>
+                          <th className="px-3 py-2">نوع</th>
+                          <th className="px-3 py-2">عهده بانک/شماره</th>
+                          <th className="px-3 py-2">مبلغ</th>
+                          <th className="px-3 py-2">ارز</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {previewFinancial.guarantees.map((item) => (
+                          <tr key={item.id} className="border-t border-black/10 dark:border-neutral-800">
+                            <td className="px-3 py-2 text-right">{previewValue(item.name, "—")}</td>
+                            <td className="px-3 py-2 text-center">{previewValue(item.type, "—")}</td>
+                            <td className="px-3 py-2 text-center">{previewValue(item.bankNo, "—")}</td>
+                            <td className="px-3 py-2 text-center">{item.amount ? formatFinancialAmount(parseFinancialAmount(item.amount)) : "—"}</td>
+                            <td className="px-3 py-2 text-center">{previewValue(item.currencyLabel || item.currencyId, "—")}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : null}
+
+                {renderPreviewSectionTitle("تامین اجتماعی")}
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                  {renderPreviewInfo("ردیف پیمان", previewInsurance.contractRow)}
+                  {renderPreviewInfo("شعبه سازمان تامین اجتماعی", previewInsurance.branchStatus)}
+                  {renderPreviewInfo("کارکرد ناخالص نهایی قرارداد", previewInsurance.finalGrossPerformance ? `${formatFinancialAmount(parseFinancialAmount(previewInsurance.finalGrossPerformance))} ریال` : "")}
+                  {renderPreviewInfo("آخرین وضعیت قرارداد", previewInsurance.lastStatus)}
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {relatedPickOpen &&
         createPortal(

@@ -185,6 +185,7 @@ setProjects(Array.from(byId.values()));
 
   const moneyRefs = useRef({});
   const selectAllRef = useRef(null);
+  const selectAllMobileRef = useRef(null);
   const autoSavingCodesRef = useRef(new Set());
   const autoSavePromisesRef = useRef(new Map());
   const rowsRef = useRef([]);
@@ -957,6 +958,10 @@ setProjects(Array.from(byId.values()));
       selectAllRef.current.indeterminate =
         !allSelectableChecked && someSelectableChecked;
     }
+    if (selectAllMobileRef.current) {
+      selectAllMobileRef.current.indeterminate =
+        !allSelectableChecked && someSelectableChecked;
+    }
   }, [allSelectableChecked, someSelectableChecked]);
 
   const exportRowsAll = useMemo(() => {
@@ -1201,14 +1206,14 @@ setProjects(Array.from(byId.values()));
   };
 
   const TopButtons = () => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
       {tabs.map((t) => (
         <button
           key={t.id}
           onClick={() => {
             setActive(t.id);
           }}
-          className={`h-10 px-4 rounded-2xl border text-sm shadow-sm transition
+          className={`h-10 min-w-0 truncate px-3 rounded-2xl border text-xs shadow-sm transition sm:px-4 sm:text-sm
             ${
               active === t.id
                 ? "bg-black text-white border-black"
@@ -1224,7 +1229,7 @@ setProjects(Array.from(byId.values()));
   const ProjectsControls = () => {
     if (active !== "projects") return null;
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <div className="flex min-w-0 flex-col gap-1">
           <label className="text-xs sm:text-sm text-black/70 dark:text-neutral-300">
             کد پروژه
@@ -1388,7 +1393,207 @@ setProjects(Array.from(byId.values()));
           <div className={tableUi.outer}>
             <div className={tableUi.innerPad}>
               <div className={tableUi.frame + " shadow-sm"}>
-                <div className="max-h-[520px] overflow-auto">
+                <div className="md:hidden">
+                  {loading ? (
+                    <div className="px-3 py-8 text-center text-sm text-black/60 dark:text-neutral-400">
+                      در حال بارگذاری...
+                    </div>
+                  ) : (displayRows || []).length === 0 ? (
+                    <div className="px-3 py-8 text-center text-sm text-black/60 dark:text-neutral-400">
+                      {active === "projects" && !projectId ? "ابتدا پروژه را انتخاب کنید" : "موردی یافت نشد."}
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-neutral-200 dark:divide-neutral-800">
+                      <div className="flex items-center justify-between gap-2 bg-black/[0.03] px-3 py-2 dark:bg-white/[0.05]">
+                        <label className="flex min-w-0 items-center gap-2 text-xs text-black/70 dark:text-neutral-300">
+                          <input
+                            ref={selectAllMobileRef}
+                            type="checkbox"
+                            className={rowUi.checkbox + " shrink-0"}
+                            checked={allSelectableChecked}
+                            onChange={(e) => {
+                              const checked = !!e.target.checked;
+                              setSelectedCodes((prev) => {
+                                if (checked) return Array.from(new Set([...prev, ...selectableRowCodes]));
+                                return prev.filter((code) => !selectableRowCodes.includes(code));
+                              });
+                            }}
+                            aria-label="انتخاب همه"
+                          />
+                          <span>انتخاب صفحه</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setCodeSortDir((prev) => (prev === "asc" ? "desc" : "asc"))}
+                          className="h-9 w-9 grid place-items-center rounded-xl border border-black/10 bg-white hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-white/10"
+                          aria-label="مرتب سازی کد بودجه"
+                          title="مرتب سازی کد بودجه"
+                        >
+                          <img
+                            src={codeSortDir === "asc" ? "/images/icons/kochikbebozorg.svg" : "/images/icons/bozorgbekochik.svg"}
+                            alt=""
+                            className="h-5 w-5 dark:invert"
+                          />
+                        </button>
+                      </div>
+
+                      {(pageRows || []).map((node, idx) => {
+                        const r = node.row;
+                        const isComputed = active === "projects" && !!node.hasChildren;
+                        const toggleKey = node.core || node.key;
+                        const isOpen = !!openCodes[toggleKey];
+                        const depthPad = Math.min(Math.max(0, Number(node.depth || 0)) * 10, 32);
+
+                        const lastAmountView = valueOfRow(r, "lastAmount");
+                        const totalAllocView = valueOfRow(r, "totalAlloc");
+                        const allocRawView = isComputed ? valueOfRow(r, "allocRaw") : Number(r.allocRaw || 0);
+                        const hasAllocValue = Number(allocRawView || 0) !== 0;
+                        const rowCode = String(r.code || "");
+                        const isSelected = selectedCodes.includes(rowCode);
+                        const newTotal = totalAllocView + allocRawView;
+                        const limit = lastAmountView;
+                        const isOver = newTotal > limit;
+
+                        return (
+                          <article
+                            key={node.key || r.code || idx}
+                            className={
+                              "p-3 transition-colors " +
+                              (isSelected ? "bg-black/[0.05] dark:bg-white/10" : "bg-white dark:bg-neutral-900")
+                            }
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0 flex-1" style={{ paddingRight: depthPad }}>
+                                <div className="flex min-w-0 items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    className={rowUi.checkbox + " shrink-0"}
+                                    checked={isSelected}
+                                    disabled={isComputed}
+                                    onChange={(e) => {
+                                      const checked = !!e.target.checked;
+                                      setSelectedCodes((prev) =>
+                                        checked
+                                          ? Array.from(new Set([...prev, rowCode]))
+                                          : prev.filter((code) => code !== rowCode)
+                                      );
+                                    }}
+                                    aria-label={`انتخاب ردیف ${toFaDigits(startIdx + idx + 1)}`}
+                                  />
+                                  <span className="shrink-0 rounded-lg bg-black/[0.04] px-2 py-0.5 text-[11px] text-black/65 dark:bg-white/10 dark:text-neutral-300">
+                                    {toFaDigits(startIdx + idx + 1)}
+                                  </span>
+                                  {node.hasChildren ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => setOpenCodes((p) => ({ ...p, [toggleKey]: !p[toggleKey] }))}
+                                      className="h-7 w-7 shrink-0 grid place-items-center rounded-lg border border-black/20 bg-white text-black dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100"
+                                      aria-label={isOpen ? "بستن زیرمجموعه" : "باز کردن زیرمجموعه"}
+                                      title={isOpen ? "بستن زیرمجموعه" : "باز کردن زیرمجموعه"}
+                                    >
+                                      {isOpen ? (
+                                        <span className="text-sm leading-none">−</span>
+                                      ) : (
+                                        <img src="/images/icons/afzodan.svg" alt="" className="h-3.5 w-3.5 dark:invert" />
+                                      )}
+                                    </button>
+                                  ) : null}
+                                  <span className="ltr min-w-0 truncate text-sm font-bold text-black dark:text-neutral-100">
+                                    {toFaDigits(renderDisplayBudgetCode(r.code))}
+                                  </span>
+                                </div>
+                                <div className="mt-2 line-clamp-2 break-words text-[13px] leading-6 text-black/80 dark:text-neutral-200">
+                                  {r.name || "—"}
+                                </div>
+                              </div>
+
+                              <div className="shrink-0 text-left">
+                                <div className="text-[11px] text-black/50 dark:text-neutral-400">مجموع</div>
+                                <div className="ltr mt-1 rounded-xl border border-black/10 bg-black/[0.03] px-2 py-1 text-xs font-semibold text-black dark:border-neutral-700 dark:bg-white/5 dark:text-neutral-100">
+                                  {toFaDigits(formatMoney(totalAllocView || 0))}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="mt-3 grid grid-cols-1 gap-2 min-[430px]:grid-cols-2">
+                              <div className="rounded-xl border border-black/10 bg-black/[0.02] px-3 py-2 dark:border-neutral-700 dark:bg-white/[0.04]">
+                                <div className="text-[11px] text-black/55 dark:text-neutral-400">آخرین برآورد</div>
+                                <div className="ltr mt-1 text-sm font-semibold text-black dark:text-neutral-100">
+                                  {toFaDigits(formatMoney(lastAmountView || 0))}
+                                </div>
+                              </div>
+
+                              <div>
+                                <div className="mb-1 text-[11px] text-black/55 dark:text-neutral-400">تخصیص جدید</div>
+                                <input
+                                  ref={(el) => {
+                                    if (!isComputed) moneyRefs.current[r.code] = el;
+                                  }}
+                                  dir="ltr"
+                                  disabled={isComputed}
+                                  className={`h-10 w-full rounded-xl border px-2 text-center text-xs shadow-sm outline-none transition ${
+                                    isOver
+                                      ? "border-red-500 bg-red-50 text-red-700 ring-2 ring-red-300 placeholder-red-400 dark:bg-red-600/10 dark:text-red-200"
+                                      : hasAllocValue
+                                      ? "border-[#edaf7c]/90 bg-[#edaf7c] text-black focus:ring-2 focus:ring-[#edaf7c]/50"
+                                      : "border-black/10 bg-black/5 text-black/70 focus:ring-2 focus:ring-black/10 dark:border-neutral-700 dark:bg-white/5 dark:text-neutral-100 dark:focus:ring-neutral-600/50"
+                                  } ${isComputed ? "cursor-default opacity-70" : ""}`}
+                                  value={toFaDigits(formatMoney(allocRawView))}
+                                  onChange={(e) => !isComputed && onAllocChange(r.code, e.target.value)}
+                                  onBlur={(e) => {
+                                    if (!isComputed) void saveSingleRowOnBlur(r.code, e.target.value);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      e.currentTarget.blur();
+                                    }
+                                  }}
+                                  placeholder={isComputed ? "—" : "۰"}
+                                  title={isOver ? "تخصیص جدید از آخرین برآورد بیشتر می‌شود" : ""}
+                                  aria-invalid={isOver ? "true" : "false"}
+                                />
+                                {isOver && !isComputed ? (
+                                  <div className="mt-1 text-[11px] leading-5 text-red-600 dark:text-red-400">
+                                    مقدار تخصیص جدید از آخرین برآورد بیشتر می‌شود
+                                  </div>
+                                ) : null}
+                              </div>
+                            </div>
+
+                            <div className="mt-3 flex items-center justify-end gap-1">
+                              <RowActionIconBtn
+                                icon="/images/icons/sayer.svg"
+                                title="ثبت شرح"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  openDescModal(r);
+                                }}
+                                size={34}
+                                iconSize={15}
+                              />
+                              <RowActionIconBtn
+                                icon="/images/icons/reset.svg"
+                                title="ریست مجموع تخصیص"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  resetRowsTotal([r.code]);
+                                }}
+                                disabled={isComputed || Number(totalAllocView || 0) === 0}
+                                size={34}
+                                iconSize={16}
+                              />
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="hidden max-h-[520px] overflow-auto md:block">
                 <table className={tableUi.table + " table-fixed text-[12px] md:text-[13px] min-w-[900px] lg:min-w-[1020px]"} dir="rtl">
               <THead>
                 <tr className={`sticky top-0 z-20 ${tableUi.headRow}`}>
@@ -1637,9 +1842,9 @@ setProjects(Array.from(byId.values()));
                 </table>
                 </div>
 
-                <div className="border-t border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900">
-                  <div className="px-3 py-2 flex items-center justify-between gap-3" dir="rtl">
-                    <div className="flex items-center gap-2">
+                <div className="border-t border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-900">
+                  <div className="flex flex-col items-stretch gap-2 px-3 py-2 md:flex-row md:flex-wrap md:items-center md:justify-between" dir="rtl">
+                    <div className="flex items-center justify-between gap-2 md:justify-start">
                       <PagerBtn
                         direction="prev"
                         disabled={page <= 0}
@@ -1650,15 +1855,15 @@ setProjects(Array.from(byId.values()));
                         disabled={page >= totalPages - 1}
                         onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                       />
-                      <div className="text-sm text-black/70 dark:text-neutral-300">
+                      <div className="whitespace-nowrap text-xs text-black/70 dark:text-neutral-300 md:text-sm">
                         {totalRows === 0
                           ? "۰ از ۰"
                           : `${toFaDigits(startIdx + 1)}–${toFaDigits(endIdx)} از ${toFaDigits(totalRows)}`}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-black/70 dark:text-neutral-300">تعداد در هر صفحه:</span>
+                    <div className="flex items-center justify-between gap-2 md:justify-start">
+                      <span className="text-xs text-black/70 dark:text-neutral-300 md:text-sm">تعداد در هر صفحه:</span>
                       <select
                         value={pageSize}
                         onChange={(e) => {
@@ -1743,12 +1948,12 @@ setProjects(Array.from(byId.values()));
           </div>
         )}
 
-        <div className="mt-4 flex items-center gap-2 justify-end">
+        <div className="mt-4 flex flex-col items-stretch gap-2 min-[430px]:flex-row min-[430px]:items-center min-[430px]:justify-end">
           {isDeleteAllAdmin && (
             <button
               onClick={onDeleteAllSaved}
               disabled={saving}
-              className="h-8 w-8 grid place-items-center rounded-lg border border-red-500 text-red-600 hover:bg-red-50 disabled:opacity-50
+              className="h-10 w-full grid place-items-center rounded-xl border border-red-500 text-red-600 hover:bg-red-50 disabled:opacity-50 min-[430px]:w-10
                          dark:border-red-400/70 dark:text-red-300 dark:hover:bg-red-950/30"
               aria-label="حذف کامل تخصیص‌ها"
               title="حذف کامل تخصیص‌های ذخیره‌شده"
@@ -1768,7 +1973,7 @@ setProjects(Array.from(byId.values()));
           <button
             onClick={exportExcel}
             disabled={loading || (active === "projects" && !projectId) || !(exportRowsAll || []).length}
-            className="h-10 w-14 grid place-items-center rounded-xl border border-black/15 hover:bg-black/5 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
+            className="h-10 w-full grid place-items-center rounded-xl border border-black/15 hover:bg-black/5 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800 min-[430px]:w-14"
             aria-label="خروجی اکسل"
             title="خروجی اکسل"
           >
@@ -1778,7 +1983,7 @@ setProjects(Array.from(byId.values()));
           <button
             onClick={onSubmit}
             disabled={saving || (active === "projects" && !projectId)}
-            className="h-10 w-14 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50
+            className="h-10 w-full grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 min-[430px]:w-14
                        dark:bg-neutral-100 dark:text-neutral-900"
             aria-label="ثبت دستی"
             title="ثبت دستی (اطمینان)"
