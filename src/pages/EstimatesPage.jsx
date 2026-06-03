@@ -1604,12 +1604,12 @@ const sortedProjects = useMemo(() => {
   ]);
 
   const renderTopButtons = () => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
       {tabs.map((t) => (
         <button
           key={t.id}
           onClick={() => setActive(t.id)}
-          className={`h-10 px-4 rounded-2xl border text-sm shadow-sm transition ${
+          className={`h-10 min-w-0 truncate px-3 rounded-2xl border text-xs shadow-sm transition sm:px-4 sm:text-sm ${
             active === t.id
               ? "bg-black text-white border-black"
               : "bg-white text-black border border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800"
@@ -1624,7 +1624,7 @@ const sortedProjects = useMemo(() => {
   const renderProjectsControls = () => {
     if (active !== "projects") return null;
     return (
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
         <div className="flex min-w-0 flex-col gap-1">
           <label className="text-xs sm:text-sm text-black/70 dark:text-neutral-300">کد/نام پروژه</label>
           <div className="relative">
@@ -1673,17 +1673,17 @@ const sortedProjects = useMemo(() => {
     >
       <div className="px-[15px]">
         <form
-          className="flex flex-col md:flex-row-reverse md:items-end gap-3"
+          className="flex flex-col gap-3 md:flex-row-reverse md:items-end"
           onSubmit={(e) => {
             e.preventDefault();
             addCenterRow();
           }}
         >
-          <div className="md:w-auto md:translate-x-[2px]">
+          <div className="w-full md:w-auto md:translate-x-[2px]">
             <button
               type="submit"
               disabled={creatingCenter || (active === "projects" && !projectId)}
-              className="h-10 w-12 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
+              className="h-10 w-full grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 md:w-12"
               title={active === "projects" && !projectId ? "ابتدا پروژه را انتخاب کنید" : "تأیید"}
               aria-label="تأیید"
             >
@@ -1691,7 +1691,7 @@ const sortedProjects = useMemo(() => {
             </button>
           </div>
 
-          <div className="flex-1 min-w-[240px] flex flex-col gap-1">
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
             <label className="text-xs sm:text-sm text-black/70 dark:text-neutral-300">شرح بودجه</label>
             <input
               className="w-full h-11 rounded-2xl px-3 sm:px-4 text-sm text-center bg-white text-black border border-black/15 outline-none placeholder:text-black/40 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
@@ -1832,7 +1832,308 @@ const sortedProjects = useMemo(() => {
               <div className={tableUi.outer}>
                 <div className={tableUi.innerPad}>
                   <div className={`${tableUi.frame} shadow-sm`}>
-                    <div className="max-h-[520px] overflow-auto">
+                    <div className="md:hidden">
+                      {loading ? (
+                        <div className="px-3 py-8 text-center text-sm text-black/60 dark:text-neutral-400">
+                          در حال بارگذاری...
+                        </div>
+                      ) : (displayRows || []).length === 0 ? (
+                        <div className="px-3 py-8 text-center text-sm text-black/60 dark:text-neutral-400">
+                          {active === "projects" && !projectId ? "ابتدا پروژه را انتخاب کنید" : "موردی یافت نشد."}
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-neutral-200 dark:divide-neutral-800">
+                          <div className="bg-black/[0.03] p-3 dark:bg-white/[0.05]">
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                              <div className="text-sm font-bold text-black dark:text-neutral-100">جمع کل</div>
+                              <div className="ltr rounded-xl border border-black/10 bg-white px-2.5 py-1 text-xs font-semibold text-black dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100">
+                                {toFaDigits(formatMoney(totalGrand || 0))}
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 min-[430px]:grid-cols-3">
+                              {dynamicMonths.map((m) => (
+                                <div
+                                  key={m.key}
+                                  className="rounded-xl border border-black/10 bg-white px-2 py-2 text-center dark:border-neutral-700 dark:bg-neutral-900"
+                                >
+                                  <div className="text-[11px] text-black/55 dark:text-neutral-400">{m.label}</div>
+                                  <div className="ltr mt-1 text-xs font-semibold text-black dark:text-neutral-100">
+                                    {totalsComputed[m.key] ? toFaDigits(formatMoney(totalsComputed[m.key])) : "—"}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {(pageRows || []).map((node, idx) => {
+                            const r = node.row;
+                            const code = r.code;
+                            const rowCode = String(code || "").trim();
+                            const isSelected = rowCode ? selectedSet.has(rowCode) : false;
+                            const shouldDeleteSelectedOnAction = isSelected && selectedCodes.length > 1;
+                            const rowIsEditing = rowCode ? editingSet.has(rowCode) : false;
+                            const rowDraft = rowCode
+                              ? (editDraftByCode[rowCode] || { code: active === "projects" ? rowCode : normalizeBudgetCode(rowCode) || rowCode, name: String(r?.name || "") })
+                              : { code: "", name: String(r?.name || "") };
+                            const isParent = !!code && !hierarchyMaps.isLeafByCode[r.code];
+                            const hasChildren = !!node.hasChildren || isParent;
+                            const toggleKey = node.core || node.key;
+                            const isOpen = !!openCodes[toggleKey];
+                            const depthPad = Math.min(Math.max(0, Number(node.depth || 0)) * 10, 32);
+
+                            const finalTotal = (() => {
+                              if (!code || !isParent) return finalPreviewOf(r);
+                              const core = hierarchyMaps.coreByCode[code];
+                              if (!core) return finalPreviewOf(r);
+                              const prefix = core + ".";
+                              let sum = 0;
+                              (rowsToRender || []).forEach((rr) => {
+                                if (!rr?.code) return;
+                                const c2 = hierarchyMaps.coreByCode[rr.code];
+                                if (!c2 || !hierarchyMaps.isLeafByCode[rr.code]) return;
+                                if (!c2.startsWith(prefix)) return;
+                                sum += finalPreviewOf(rr);
+                              });
+                              return sum;
+                            })();
+
+                            return (
+                              <article
+                                key={code || idx}
+                                className={
+                                  "p-3 transition-colors " +
+                                  (isSelected
+                                    ? "bg-black/[0.05] dark:bg-white/10"
+                                    : "bg-white dark:bg-neutral-900")
+                                }
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0 flex-1" style={{ paddingRight: depthPad }}>
+                                    <div className="flex min-w-0 items-center gap-2">
+                                      <input
+                                        type="checkbox"
+                                        className={rowUi.checkbox + " shrink-0"}
+                                        checked={isSelected}
+                                        disabled={!rowCode}
+                                        onChange={() => toggleRowSelect(rowCode)}
+                                        aria-label="انتخاب ردیف"
+                                        title="انتخاب ردیف"
+                                      />
+                                      <span className="shrink-0 rounded-lg bg-black/[0.04] px-2 py-0.5 text-[11px] text-black/65 dark:bg-white/10 dark:text-neutral-300">
+                                        {toFaDigits(startIdx + idx + 1)}
+                                      </span>
+                                      {hasChildren ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => setOpenCodes((p) => ({ ...p, [toggleKey]: !p[toggleKey] }))}
+                                          className="h-7 w-7 shrink-0 grid place-items-center rounded-lg border border-black/20 bg-white text-black dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100"
+                                          aria-label={isOpen ? "بستن زیرمجموعه" : "باز کردن زیرمجموعه"}
+                                          title={isOpen ? "بستن زیرمجموعه" : "باز کردن زیرمجموعه"}
+                                        >
+                                          {isOpen ? (
+                                            <span className="text-sm leading-none">−</span>
+                                          ) : (
+                                            <img src="/images/icons/afzodan.svg" alt="" className="h-3.5 w-3.5 dark:invert" />
+                                          )}
+                                        </button>
+                                      ) : null}
+                                      {rowIsEditing ? (
+                                        active === "projects" ? (
+                                          <input
+                                            className="h-9 min-w-0 flex-1 rounded-xl border border-black/15 bg-white px-2 text-center font-mono text-xs text-black outline-none focus:ring-2 focus:ring-black/10 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                                            value={rowDraft.code}
+                                            onChange={(e) => onEditCodeChange(rowCode, e.target.value)}
+                                            spellCheck={false}
+                                            autoFocus
+                                          />
+                                        ) : (
+                                          <div className="flex h-9 min-w-0 flex-1 items-center overflow-hidden rounded-xl border border-black/15 bg-white text-black ltr dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100">
+                                            <span className="h-full shrink-0 inline-flex items-center bg-black/[0.04] px-2 font-mono text-[11px] ring-1 ring-black/10 dark:bg-neutral-900 dark:ring-neutral-800">
+                                              {visualPrefix(active)}
+                                            </span>
+                                            <input
+                                              className="min-w-0 flex-1 bg-transparent px-2 text-center font-mono text-xs outline-none"
+                                              value={rowDraft.code}
+                                              onChange={(e) => onEditCodeChange(rowCode, e.target.value)}
+                                              spellCheck={false}
+                                              autoFocus
+                                            />
+                                          </div>
+                                        )
+                                      ) : (
+                                        <span className="ltr min-w-0 truncate text-sm font-bold text-black dark:text-neutral-100">
+                                          {renderCode(code)}
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <div className="mt-2">
+                                      {rowIsEditing ? (
+                                        <input
+                                          className="h-10 w-full rounded-xl border border-black/15 bg-white px-3 text-right text-sm text-black outline-none focus:ring-2 focus:ring-black/10 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                                          value={rowDraft.name}
+                                          onChange={(e) => onEditNameChange(rowCode, e.target.value)}
+                                          placeholder="نام بودجه..."
+                                        />
+                                      ) : (
+                                        <div className="line-clamp-2 break-words text-[13px] leading-6 text-black/80 dark:text-neutral-200">
+                                          {r.name || "—"}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="shrink-0 text-left">
+                                    <div className="text-[11px] text-black/50 dark:text-neutral-400">جمع</div>
+                                    <div className="ltr mt-1 rounded-xl border border-black/10 bg-black/[0.03] px-2 py-1 text-xs font-semibold text-black dark:border-neutral-700 dark:bg-white/5 dark:text-neutral-100">
+                                      {toFaDigits(formatMoney(finalTotal || 0))}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="mt-3 grid grid-cols-2 gap-2 min-[430px]:grid-cols-3">
+                                  {dynamicMonths.map((m) => {
+                                    let val = 0;
+
+                                    if (!isParent) {
+                                      if (r.months && r.months[m.key] != null) val = Number(r.months[m.key] || 0);
+                                      else val = Number((r.lastMonths && r.lastMonths[m.key]) || 0);
+                                    } else {
+                                      const core = hierarchyMaps.coreByCode[code];
+                                      if (core) {
+                                        const prefix = core + ".";
+                                        (rowsToRender || []).forEach((rr) => {
+                                          if (!rr?.code) return;
+                                          const c2 = hierarchyMaps.coreByCode[rr.code];
+                                          if (!c2 || !hierarchyMaps.isLeafByCode[rr.code]) return;
+                                          if (!c2.startsWith(prefix)) return;
+                                          let childVal = 0;
+                                          if (rr.months && rr.months[m.key] != null) childVal = Number(rr.months[m.key] || 0);
+                                          else childVal = Number((rr.lastMonths && rr.lastMonths[m.key]) || 0);
+                                          if (childVal) val += childVal;
+                                        });
+                                      }
+                                    }
+
+                                    const hasVal = !!val;
+                                    const isEditing =
+                                      !isParent &&
+                                      String(editingCell.code || "") === String(r.code || "") &&
+                                      editingCell.monthKey === m.key;
+
+                                    return (
+                                      <div key={m.key} className="min-w-0">
+                                        <div className="mb-1 text-center text-[11px] text-black/55 dark:text-neutral-400">{m.label}</div>
+                                        {isEditing ? (
+                                          <input
+                                            ref={editingInputRef}
+                                            dir="ltr"
+                                            value={editingCell.value ? toFaDigits(editingCell.value) : ""}
+                                            onChange={(e) => handleInlineEditChange(e.target.value)}
+                                            onBlur={() => {
+                                              if (skipBlurSaveRef.current) {
+                                                skipBlurSaveRef.current = false;
+                                                return;
+                                              }
+                                              saveInlineEdit();
+                                            }}
+                                            onKeyDown={(e) => {
+                                              if (e.key === "Enter") {
+                                                e.preventDefault();
+                                                skipBlurSaveRef.current = true;
+                                                saveInlineEdit();
+                                              }
+                                              if (e.key === "Escape") {
+                                                e.preventDefault();
+                                                skipBlurSaveRef.current = true;
+                                                closeInlineEdit();
+                                              }
+                                            }}
+                                            className="h-10 w-full rounded-xl border border-black/20 bg-white px-2 text-center text-xs text-black outline-none ring-2 ring-black/10 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:ring-white/20"
+                                            placeholder="0"
+                                          />
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              if (!isParent) startInlineEdit(r, m.key);
+                                            }}
+                                            disabled={isParent}
+                                            className={`h-10 w-full rounded-xl border px-1 text-[11px] shadow-sm transition ${
+                                              hasVal
+                                                ? "border-[#edaf7c]/90 bg-[#edaf7c] text-black"
+                                                : "border-black/10 bg-black/5 text-black/70 dark:border-neutral-700 dark:bg-white/5 dark:text-neutral-100"
+                                            } ${isParent ? "cursor-default" : "cursor-pointer"}`}
+                                          >
+                                            {hasVal ? toFaDigits(formatMoney(val)) : "—"}
+                                          </button>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+
+                                <div className="mt-3 flex items-center justify-end gap-1">
+                                  {rowIsEditing ? (
+                                    <>
+                                      <RowActionIconBtn
+                                        action="save"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          saveInlineRow(rowCode);
+                                        }}
+                                        size={34}
+                                        iconSize={15}
+                                      />
+                                      <RowActionIconBtn
+                                        action="cancel"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          cancelEdit(rowCode);
+                                        }}
+                                        size={34}
+                                        iconSize={14}
+                                      />
+                                    </>
+                                  ) : (
+                                    <>
+                                      <RowActionIconBtn
+                                        action="edit"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          beginEdit(r);
+                                        }}
+                                        size={34}
+                                        iconSize={15}
+                                      />
+                                      <RowActionIconBtn
+                                        action="delete"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          if (shouldDeleteSelectedOnAction) {
+                                            removeRows(selectedCodes);
+                                            return;
+                                          }
+                                          removeRows([rowCode]);
+                                        }}
+                                        size={34}
+                                        iconSize={16}
+                                      />
+                                    </>
+                                  )}
+                                </div>
+                              </article>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="hidden max-h-[520px] overflow-auto md:block">
                       <table
                         className={`${tableUi.table} table-fixed text-[12px] md:text-[13px] min-w-[900px] lg:min-w-[1020px]`}
                         dir="rtl"
@@ -2216,9 +2517,9 @@ const sortedProjects = useMemo(() => {
                     </table>
                     </div>
 
-                    <div className="border-t border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900">
-                      <div className="px-3 py-2 flex items-center justify-between gap-3" dir="rtl">
-                        <div className="flex items-center gap-2">
+                    <div className="border-t border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-900">
+                      <div className="flex flex-col items-stretch gap-2 px-3 py-2 md:flex-row md:flex-wrap md:items-center md:justify-between" dir="rtl">
+                        <div className="flex items-center justify-between gap-2 md:justify-start">
                           <PagerBtn
                             direction="prev"
                             disabled={page <= 0}
@@ -2229,15 +2530,15 @@ const sortedProjects = useMemo(() => {
                             disabled={page >= totalPages - 1}
                             onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                           />
-                          <div className="text-sm text-black/70 dark:text-neutral-300">
+                          <div className="whitespace-nowrap text-xs text-black/70 dark:text-neutral-300 md:text-sm">
                             {totalRows === 0
                               ? "۰ از ۰"
                               : `${toFaDigits(startIdx + 1)}–${toFaDigits(endIdx)} از ${toFaDigits(totalRows)}`}
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-black/70 dark:text-neutral-300">تعداد در هر صفحه:</span>
+                        <div className="flex items-center justify-between gap-2 md:justify-start">
+                          <span className="text-xs text-black/70 dark:text-neutral-300 md:text-sm">تعداد در هر صفحه:</span>
                           <select
                             value={pageSize}
                             onChange={(e) => {
@@ -2264,11 +2565,11 @@ const sortedProjects = useMemo(() => {
 
         {err && <div className="text-sm text-red-600 dark:text-red-400 mt-3">{err}</div>}
 
-        <div className="mt-4 flex items-center gap-2 justify-end">
+        <div className="mt-4 flex flex-col items-stretch gap-2 min-[430px]:flex-row min-[430px]:items-center min-[430px]:justify-end">
           <button
             onClick={exportExcel}
             disabled={loading || (active === "projects" && !projectId) || !(rowsToRender || []).length}
-            className="h-10 w-14 grid place-items-center rounded-xl border border-black/15 hover:bg-black/5 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
+            className="h-10 w-full grid place-items-center rounded-xl border border-black/15 hover:bg-black/5 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800 min-[430px]:w-14"
             aria-label="خروجی اکسل"
             title="خروجی اکسل"
           >
@@ -2278,7 +2579,7 @@ const sortedProjects = useMemo(() => {
           <button
             onClick={openHistoryModal}
             disabled={historyLoading || (active === "projects" && !projectId)}
-            className="h-10 px-3 inline-flex items-center justify-center gap-2 rounded-xl border border-black/15 hover:bg-black/5 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
+            className="h-10 w-full px-3 inline-flex items-center justify-center gap-2 rounded-xl border border-black/15 hover:bg-black/5 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800 min-[430px]:w-auto"
             aria-label="تاریخچه"
             title="تاریخچه"
           >
@@ -2289,7 +2590,7 @@ const sortedProjects = useMemo(() => {
           <button
             onClick={onUpdate}
             disabled={saving || (active === "projects" && !projectId)}
-            className="h-10 w-14 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
+            className="h-10 w-full grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 min-[430px]:w-14"
             aria-label="بروزرسانی"
             title="بروزرسانی"
           >
