@@ -2638,7 +2638,7 @@ const secretariatLongText = (ymd) => {
       : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]");
 
   const uploadBoxCls =
-    "rounded-2xl border border-dashed p-4 text-center transition " +
+    "rounded-2xl border border-dashed p-4 sm:p-5 text-center transition " +
     (theme === "dark"
       ? "border-white/15 bg-white/5 hover:bg-white/10"
       : "border-black/15 bg-black/[0.02] hover:bg-black/[0.04]");
@@ -6415,16 +6415,16 @@ const rowBg = isConf ? confRowBg : normalRowBg;
   createPortal(
     <div className="fixed inset-0 z-[9999]">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeUpload} />
-      <div className="absolute inset-0 flex items-center justify-center p-4">
+      <div className="absolute inset-0 flex items-center justify-center p-2 sm:p-4">
         <div
           className={
-            "w-[min(720px,calc(100vw-24px))] rounded-2xl border shadow-xl overflow-hidden " +
+            "w-[min(720px,calc(100vw-16px))] max-h-[calc(100dvh-16px)] sm:max-h-[calc(100dvh-32px)] rounded-2xl border shadow-xl overflow-hidden flex flex-col " +
             (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
           }
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="p-4 flex items-center justify-between">
-            <div className="font-bold text-sm">
+          <div className="p-3 sm:p-4 flex items-center justify-between gap-3 shrink-0">
+            <div className="font-bold text-sm leading-6 min-w-0 truncate">
   بارگذاری اسناد{" "}
   {uploadFor === "incoming" ? "(وارده)" : uploadFor === "outgoing" ? "(صادره)" : "(داخلی)"}
 </div>
@@ -6451,7 +6451,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
 
           <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
 
-          <div className="p-4 grid grid-cols-1 gap-4">
+          <div className="p-3 sm:p-4 grid grid-cols-1 gap-4 overflow-y-auto overscroll-contain">
                   {/* Right: pick new + selected list */}
                   <div>
                     <div className={labelCls}>فایل‌های انتخاب‌شده</div>
@@ -6461,7 +6461,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                         {uploadFor === "incoming" ? "وارده" : uploadFor === "outgoing" ? "صادره" : "داخلی"}
                       </div>
 
-                      <div className="p-3 space-y-2">
+                      <div className="p-2 sm:p-3 space-y-2">
                         {currentDocFiles.length === 0 ? (
                           <div className="py-6 text-center text-black/60 dark:text-white/50 text-sm">فایلی انتخاب نشده است.</div>
                         ) : (
@@ -6469,7 +6469,7 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                             <div
                               key={f.id}
                               className={
-                                "rounded-xl border px-3 py-2 flex items-center justify-between gap-3 " +
+                                "rounded-xl border px-3 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 " +
                                 (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
                               }
                             >
@@ -6495,17 +6495,17 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                                   if (!canPreviewPdf && !canPreviewImage && !canPreviewOffice) return null;
 
                                   return (
-                                    <div className={"mt-3 rounded-xl overflow-hidden border " + (theme === "dark" ? "border-white/10 bg-black/20" : "border-black/10 bg-black/[0.02]")}>
+                                    <div className={"mt-3 rounded-xl overflow-hidden border max-w-full sm:max-w-[520px] " + (theme === "dark" ? "border-white/10 bg-black/20" : "border-black/10 bg-black/[0.02]")}>
                                       {canPreviewPdf ? (
-                                        <object data={(previewSrc || "") + "#view=FitH"} type="application/pdf" className="w-full h-56">
-                                          <iframe title={"preview_" + f.id} src={(previewSrc || "") + "#view=FitH"} className="w-full h-56" />
+                                        <object data={(previewSrc || "") + "#view=FitH"} type="application/pdf" className="w-full h-36 sm:h-40">
+                                          <iframe title={"preview_" + f.id} src={(previewSrc || "") + "#view=FitH"} className="w-full h-36 sm:h-40" />
                                         </object>
                                       ) : canPreviewImage ? (
-                                        <img src={previewSrc} alt="" className="w-full h-56 object-contain" />
+                                        <img src={previewSrc} alt="" className="w-full h-36 sm:h-40 object-contain" />
                                       ) : officePreviewSrc ? (
-                                        <iframe title={"preview_" + f.id} src={officePreviewSrc} className="w-full h-56 bg-white" />
+                                        <iframe title={"preview_" + f.id} src={officePreviewSrc} className="w-full h-36 sm:h-40 bg-white" />
                                       ) : (
-                                        <div className={"h-56 grid place-items-center text-center px-4 text-xs " + (theme === "dark" ? "text-white/70" : "text-neutral-700")}>
+                                        <div className={"h-36 sm:h-40 grid place-items-center text-center px-4 text-xs " + (theme === "dark" ? "text-white/70" : "text-neutral-700")}>
                                           {"\u067e\u06cc\u0634\u200c\u0646\u0645\u0627\u06cc\u0634 \u062f\u0627\u062e\u0644\u06cc \u0627\u06cc\u0646 \u0641\u0627\u06cc\u0644 Office \u062f\u0631 \u0627\u06cc\u0646 \u0645\u062d\u06cc\u0637 \u062f\u0631 \u062f\u0633\u062a\u0631\u0633 \u0646\u06cc\u0633\u062a. \u0627\u0632 \u062f\u06a9\u0645\u0647 \u00ab\u0628\u0627\u0632 \u06a9\u0631\u062f\u0646\u00bb \u0627\u0633\u062a\u0641\u0627\u062f\u0647 \u06a9\u0646\u06cc\u062f."}
                                         </div>
                                       )}
@@ -6514,14 +6514,14 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                                 })()}
                               </div>
 
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center justify-end gap-2 self-end sm:self-center shrink-0">
                                 {(f.previewUrl || f.url) ? (
                                   <a
                                     href={f.previewUrl || resolveFileUrl(f.url)}
                                     target="_blank"
                                     rel="noreferrer"
                                     className={
-                                      "h-9 px-3 rounded-xl border transition text-sm inline-flex items-center justify-center " +
+                                      "h-9 px-3 rounded-xl border transition text-sm inline-flex items-center justify-center whitespace-nowrap " +
                                       (theme === "dark"
                                         ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
                                         : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
