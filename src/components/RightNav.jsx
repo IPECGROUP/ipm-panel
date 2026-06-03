@@ -135,9 +135,9 @@ function RightNav() {
     });
 
   const mobileHeaderPanelCls =
-    "relative w-full overflow-hidden rounded-[1.35rem] border border-black/10 bg-white/[0.58] " +
-    "p-1.5 shadow-[0_10px_24px_rgba(0,0,0,0.16),inset_0_1px_0_rgba(255,255,255,0.55)] backdrop-blur-[24px] backdrop-saturate-150 transition-all duration-300 " +
-    "min-[390px]:rounded-[1.55rem] min-[390px]:p-2 dark:border-white/10 dark:bg-neutral-900/[0.58]";
+    "relative w-full overflow-hidden rounded-[1.35rem] border border-black/10 bg-gradient-to-l from-black/5 to-transparent " +
+    "p-1.5 shadow-[0_10px_24px_rgba(0,0,0,0.16),inset_0_1px_0_rgba(255,255,255,0.55)] backdrop-blur transition-all duration-300 " +
+    "min-[390px]:rounded-[1.55rem] min-[390px]:p-2 dark:border-white/10 dark:from-white/10";
 
   const mobileButtonSurface = (active) =>
     active
