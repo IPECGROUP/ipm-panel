@@ -135,11 +135,12 @@ function RightNav() {
     });
 
   const mobileHeaderPanelCls =
-    "relative w-full overflow-hidden rounded-[1.35rem] border border-black/10 bg-white/25 bg-gradient-to-l from-black/5 to-transparent " +
-    "p-1.5 shadow-[0_10px_24px_rgba(0,0,0,0.16),inset_0_1px_0_rgba(255,255,255,0.55)] backdrop-blur-xl backdrop-saturate-150 transition-all duration-300 " +
-    "min-[390px]:rounded-[1.55rem] min-[390px]:p-2 dark:border-white/10 dark:bg-neutral-900/35 dark:from-white/10";
+    "relative w-full overflow-hidden rounded-[1.35rem] border border-black/10 p-1.5 " +
+    "shadow-[0_10px_24px_rgba(0,0,0,0.16),inset_0_1px_0_rgba(255,255,255,0.55)] transition-all duration-300 " +
+    "min-[390px]:rounded-[1.55rem] min-[390px]:p-2 dark:border-white/10";
 
   const mobilePanelStyle = {
+    backgroundColor: "rgba(255, 255, 255, 0.28)",
     WebkitBackdropFilter: "blur(30px) saturate(165%)",
     backdropFilter: "blur(30px) saturate(165%)",
   };
@@ -404,10 +405,10 @@ function RightNav() {
         <div className="pointer-events-auto mx-auto flex max-w-[29rem] flex-col items-center gap-2 min-[390px]:gap-2.5 sm:max-w-[35rem] md:max-w-[40rem]">
           <div
             className={[
-              "w-full origin-bottom overflow-hidden px-1 transition-all duration-300 ease-out will-change-[transform,opacity,max-height]",
+              "w-full origin-bottom overflow-hidden transition-all duration-300 ease-out will-change-[opacity,max-height]",
               mobileMenu
-                ? "max-h-[min(62dvh,430px)] translate-y-0 scale-100 opacity-100"
-                : "max-h-0 translate-y-4 scale-[0.97] opacity-0 pointer-events-none",
+                ? "max-h-[min(62dvh,430px)] opacity-100"
+                : "max-h-0 opacity-0 pointer-events-none",
             ].join(" ")}
           >
             {mobileMenu && (
