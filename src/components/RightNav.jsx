@@ -136,13 +136,13 @@ function RightNav() {
 
   const mobileHeaderPanelCls =
     "relative w-full overflow-hidden rounded-[1.35rem] border border-black/10 bg-gradient-to-l from-black/5 to-transparent " +
-    "p-1.5 shadow-[0_10px_24px_rgba(0,0,0,0.16),inset_0_1px_0_rgba(255,255,255,0.55)] backdrop-blur transition-all duration-300 " +
+    "p-1.5 shadow-[0_10px_24px_rgba(0,0,0,0.16),inset_0_1px_0_rgba(255,255,255,0.55)] backdrop-blur-[18px] backdrop-saturate-150 transition-all duration-300 " +
     "min-[390px]:rounded-[1.55rem] min-[390px]:p-2 dark:border-white/10 dark:from-white/10";
 
   const mobileButtonSurface = (active) =>
     active
-      ? "!border-black/10 !bg-gradient-to-l !from-black/10 !to-transparent !text-neutral-950 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.62),0_6px_16px_rgba(0,0,0,0.12)] dark:!border-white/15 dark:!from-white/12 dark:!text-white"
-      : "!border-black/10 !bg-gradient-to-l !from-black/5 !to-transparent !text-neutral-800 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.50),0_5px_14px_rgba(0,0,0,0.09)] hover:!from-black/10 dark:!border-white/10 dark:!from-white/10 dark:!text-white/85 dark:hover:!from-white/15";
+      ? "!border-black/10 !bg-gradient-to-l !from-black/10 !to-transparent !text-neutral-950 !backdrop-blur-[18px] !backdrop-saturate-150 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.62),0_6px_16px_rgba(0,0,0,0.12)] dark:!border-white/15 dark:!from-white/12 dark:!text-white"
+      : "!border-black/10 !bg-gradient-to-l !from-black/5 !to-transparent !text-neutral-800 !backdrop-blur-[18px] !backdrop-saturate-150 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.50),0_5px_14px_rgba(0,0,0,0.09)] hover:!from-black/10 dark:!border-white/10 dark:!from-white/10 dark:!text-white/85 dark:hover:!from-white/15";
 
   const mobileDockBtn = (active) =>
     [
