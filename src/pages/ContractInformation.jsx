@@ -120,6 +120,7 @@ const EMPTY_FORM = {
   contractNo: "",
   parentContractId: "",
   relatedLetterId: "",
+  relatedLetterIds: [],
   general: {
     contractType: "",
     customContractType: false,
@@ -211,9 +212,22 @@ function asArray(payload) {
 }
 
 function normalizeIdList(values) {
+  const list = (() => {
+    if (Array.isArray(values)) return values;
+    if (typeof values === "string" && values.trim().startsWith("[")) {
+      try {
+        const parsed = JSON.parse(values);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return values ? [values] : [];
+  })();
+
   return Array.from(
     new Set(
-      (Array.isArray(values) ? values : [])
+      list
         .map((item) => String(item ?? "").trim())
         .filter(Boolean)
     )
@@ -538,6 +552,7 @@ function normalizeContractRow(row) {
     contractNo: documentType === "main" ? String(item.contractNo ?? item.contract_no ?? "") : "",
     parentContractId: documentType === "main" ? "" : String(item.parentContractId ?? item.parent_contract_id ?? ""),
     relatedLetterId: String(item.relatedLetterId ?? item.related_letter_id ?? ""),
+    relatedLetterIds: normalizeIdList(item.relatedLetterIds ?? item.related_letter_ids ?? (item.relatedLetterId || item.related_letter_id ? [item.relatedLetterId ?? item.related_letter_id] : [])),
     general: { ...base.general, ...(item.general && typeof item.general === "object" ? item.general : {}) },
     calendar: {
       ...base.calendar,
@@ -583,6 +598,7 @@ function hasContractDraftContent(form) {
     contractNo: item.contractNo,
     parentContractId: item.parentContractId,
     relatedLetterId: item.relatedLetterId,
+    relatedLetterIds: item.relatedLetterIds,
     general: item.general,
     calendar: item.calendar,
     technical: item.technical,
@@ -1288,9 +1304,20 @@ export default function ContractInformation() {
     () => rows.filter((row) => row.documentType === "main" && String(row.contractNo || "").trim()),
     [rows]
   );
+  const filteredMainContracts = React.useMemo(() => {
+    const projectId = String(form.projectId || "");
+    return mainContracts.filter((contract) => !projectId || String(contract.projectId) === projectId);
+  }, [form.projectId, mainContracts]);
 
   const insuranceForm = React.useMemo(() => normalizeInsurance(form.insurance || {}), [form.insurance]);
-  const selectedLetter = form.relatedLetterId ? letterById.get(String(form.relatedLetterId)) : null;
+  const selectedRelatedLetterIds = React.useMemo(
+    () => normalizeIdList(form.relatedLetterIds?.length ? form.relatedLetterIds : form.relatedLetterId ? [form.relatedLetterId] : []),
+    [form.relatedLetterId, form.relatedLetterIds]
+  );
+  const selectedRelatedLetters = React.useMemo(
+    () => selectedRelatedLetterIds.map((id) => letterById.get(String(id))).filter(Boolean),
+    [letterById, selectedRelatedLetterIds]
+  );
   const technicalTagIds = React.useMemo(() => normalizeIdList(form.technical?.tagIds), [form.technical?.tagIds]);
   const tagById = React.useMemo(() => {
     const map = new Map();
@@ -1514,6 +1541,18 @@ export default function ContractInformation() {
 
     setForm((prev) => {
       const next = { ...prev, [field]: value };
+      if (field === "projectId" && prev.documentType !== "main" && prev.parentContractId) {
+        const parent = rowById.get(String(prev.parentContractId));
+        if (parent && String(parent.projectId) !== String(value || "")) {
+          next.parentContractId = "";
+        }
+      }
+      if (field === "parentContractId" && prev.documentType !== "main") {
+        const parent = rowById.get(String(value || ""));
+        if (parent) {
+          next.projectId = String(parent.projectId || "");
+        }
+      }
       if (field === "documentType") {
         const currentId = String(prev.id || "");
         const isEditingExisting = currentId && rowById.has(currentId);
@@ -2026,7 +2065,8 @@ export default function ContractInformation() {
 
     const projectId = String(form.projectId || "").trim();
     const documentType = String(form.documentType || "main");
-    const relatedLetterId = String(form.relatedLetterId || "").trim();
+    const relatedLetterIds = normalizeIdList(form.relatedLetterIds?.length ? form.relatedLetterIds : form.relatedLetterId ? [form.relatedLetterId] : []);
+    const relatedLetterId = String(relatedLetterIds[0] || "").trim();
     const contractNo = String(form.contractNo || "").trim();
     const parentContractId = String(form.parentContractId || "").trim();
 
@@ -2054,6 +2094,7 @@ export default function ContractInformation() {
       contractNo: documentType === "main" ? contractNo : "",
       parentContractId: documentType === "main" ? "" : parentContractId,
       relatedLetterId,
+      relatedLetterIds,
       general: {
         ...(form.general || {}),
         employerAssignor: documentType === "sub" ? FIXED_SUB_ASSIGNOR : form.general?.employerAssignor || "",
@@ -2175,26 +2216,46 @@ export default function ContractInformation() {
     "w-full h-11 rounded-xl px-3 bg-black/[0.04] text-black border border-black/10 outline-none dark:bg-white/[0.06] dark:text-neutral-100 dark:border-neutral-700";
   const previewContract = previewContractId ? rowById.get(String(previewContractId)) : null;
   const previewProject = previewContract ? projectById.get(String(previewContract.projectId)) : null;
-  const previewLetter = previewContract?.relatedLetterId ? letterById.get(String(previewContract.relatedLetterId)) : null;
+  const previewRelatedLetterIds = React.useMemo(
+    () =>
+      previewContract
+        ? normalizeIdList(
+            previewContract.relatedLetterIds?.length
+              ? previewContract.relatedLetterIds
+              : previewContract.relatedLetterId
+                ? [previewContract.relatedLetterId]
+                : []
+          )
+        : [],
+    [previewContract]
+  );
+  const previewRelatedLetters = React.useMemo(
+    () => previewRelatedLetterIds.map((id) => letterById.get(String(id))).filter(Boolean),
+    [letterById, previewRelatedLetterIds]
+  );
+  const previewRelatedLetterLabel = previewRelatedLetters.length
+    ? previewRelatedLetters
+        .map((letter) => toFaDigits(secretariatNoOf(letter) || letterNoOf(letter) || letterIdOf(letter)))
+        .join("، ")
+    : "";
   const previewFinancial = previewContract ? normalizeFinancial(previewContract.financial || {}) : normalizeFinancial({});
   const previewInsurance = previewContract ? normalizeInsurance(previewContract.insurance || {}) : normalizeInsurance({});
   const previewLetterAttachments = React.useMemo(() => {
-    const raw =
-      previewLetter?.attachments ??
-      previewLetter?.attachments_json ??
-      previewLetter?.attachmentsJson ??
-      [];
-    if (Array.isArray(raw)) return raw;
-    if (typeof raw === "string") {
-      try {
-        const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return [];
+    const readAttachments = (letter) => {
+      const raw = letter?.attachments ?? letter?.attachments_json ?? letter?.attachmentsJson ?? [];
+      if (Array.isArray(raw)) return raw;
+      if (typeof raw === "string") {
+        try {
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
       }
-    }
-    return [];
-  }, [previewLetter]);
+      return [];
+    };
+    return previewRelatedLetters.flatMap(readAttachments);
+  }, [previewRelatedLetters]);
   const previewFiles = React.useMemo(() => {
     const normalizeFile = (file, group) => ({
       id: String(file?.id ?? file?.file_id ?? file?.fileId ?? `${group}_${Math.random().toString(16).slice(2)}`),
@@ -2590,8 +2651,8 @@ export default function ContractInformation() {
                       onChange={(e) => setField("parentContractId", e.target.value)}
                       className={inputCls}
                     >
-                      <option value="">انتخاب قرارداد اصلی</option>
-                      {mainContracts.map((contract) => {
+                      <option value="">{form.projectId ? "انتخاب قرارداد اصلی" : "ابتدا مرکز/پروژه را انتخاب کنید"}</option>
+                      {filteredMainContracts.map((contract) => {
                         const project = projectById.get(String(contract.projectId));
                         return (
                           <option key={contract.id} value={contract.id}>
@@ -2621,7 +2682,11 @@ export default function ContractInformation() {
                   <div className="text-sm text-black/70 dark:text-neutral-300">
                     شماره ثبت دبیرخانه:{" "}
                     <span className="font-semibold text-black dark:text-neutral-100">
-                      {selectedLetter ? toFaDigits(secretariatNoOf(selectedLetter) || "ثبت نشده") : "سندی انتخاب نشده است"}
+                      {selectedRelatedLetters.length
+                        ? selectedRelatedLetters
+                            .map((letter) => toFaDigits(secretariatNoOf(letter) || letterNoOf(letter) || letterIdOf(letter)))
+                            .join("، ")
+                        : "سندی انتخاب نشده است"}
                     </span>
                   </div>
                 </div>
@@ -3945,10 +4010,12 @@ export default function ContractInformation() {
                   {renderPreviewInfo("شماره قرارداد", contractNoForRow(previewContract, rowById))}
                   {renderPreviewInfo("نوع قرارداد", previewContract.general?.contractType)}
                   {renderPreviewInfo("موضوع قرارداد", previewContract.general?.contractSubject)}
-                  {renderPreviewInfo("کارفرما/واگذارنده", previewContract.general?.employerAssignor || previewContract.general?.mainEmployer)}
+                  {renderPreviewInfo("کارفرمای اصلی", previewContract.general?.mainEmployer)}
+                  {renderPreviewInfo("واگذارنده / کارفرما", previewContract.general?.employerAssignor)}
+                  {renderPreviewInfo("مجری", previewContract.general?.executor)}
                   {renderPreviewInfo("اعضای مشارکت", previewContract.general?.companyMembers)}
                   {renderPreviewInfo("پیمانکاران اصلی", previewContract.general?.mainContractors)}
-                  {renderPreviewInfo("سند مرتبط", previewLetter ? secretariatNoOf(previewLetter) || letterNoOf(previewLetter) : "")}
+                  {renderPreviewInfo("اسناد مرتبط", previewRelatedLetterLabel)}
                 </div>
 
                 {renderPreviewSectionTitle("تقویم قرارداد")}
@@ -4144,7 +4211,10 @@ export default function ContractInformation() {
                     const id = String(letterIdOf(letter));
                     const currentRelatedLetterId =
                       relatedPickTarget === "insurance" ? insuranceForm.relatedLetterId : form.relatedLetterId;
-                    const checked = String(currentRelatedLetterId || "") === id;
+                    const checked =
+                      relatedPickTarget === "insurance"
+                        ? String(currentRelatedLetterId || "") === id
+                        : selectedRelatedLetterIds.includes(id);
                     const no = letterNoOf(letter) || id;
                     const secretariatNo = secretariatNoOf(letter);
 
@@ -4155,10 +4225,18 @@ export default function ContractInformation() {
                         onClick={() => {
                           if (relatedPickTarget === "insurance") {
                             setInsuranceField("relatedLetterId", checked ? "" : id);
+                            setRelatedPickOpen(false);
                           } else {
-                            setField("relatedLetterId", checked ? "" : id);
+                            setForm((prev) => {
+                              const current = normalizeIdList(prev.relatedLetterIds?.length ? prev.relatedLetterIds : prev.relatedLetterId ? [prev.relatedLetterId] : []);
+                              const nextIds = current.includes(id) ? current.filter((item) => item !== id) : [...current, id];
+                              return {
+                                ...prev,
+                                relatedLetterIds: nextIds,
+                                relatedLetterId: nextIds[0] || "",
+                              };
+                            });
                           }
-                          setRelatedPickOpen(false);
                         }}
                         className="w-full text-right px-3 py-2 rounded-xl transition flex items-center justify-between gap-3 hover:bg-black/[0.04] dark:hover:bg-white/10"
                       >
