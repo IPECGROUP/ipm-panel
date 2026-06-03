@@ -1679,7 +1679,7 @@ const sortedProjects = useMemo(() => {
             addCenterRow();
           }}
         >
-          <div className="w-full md:w-auto md:translate-x-[2px]">
+          <div className="order-3 w-full md:order-none md:w-auto md:translate-x-[2px]">
             <button
               type="submit"
               disabled={creatingCenter || (active === "projects" && !projectId)}
@@ -1691,7 +1691,7 @@ const sortedProjects = useMemo(() => {
             </button>
           </div>
 
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <div className="order-1 flex min-w-0 flex-1 flex-col gap-1 md:order-none">
             <label className="text-xs sm:text-sm text-black/70 dark:text-neutral-300">شرح بودجه</label>
             <input
               className="w-full h-11 rounded-2xl px-3 sm:px-4 text-sm text-center bg-white text-black border border-black/15 outline-none placeholder:text-black/40 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
@@ -1701,7 +1701,7 @@ const sortedProjects = useMemo(() => {
             />
           </div>
 
-          <div className="w-full md:w-[280px] flex flex-col gap-1">
+          <div className="order-2 w-full flex flex-col gap-1 md:order-none md:w-[280px]">
             <label className="text-xs sm:text-sm text-black/70 dark:text-neutral-300">کد بودجه</label>
 
             {active !== "projects" ? (
