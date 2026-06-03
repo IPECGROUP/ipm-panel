@@ -1347,8 +1347,8 @@ export default function RoznegarPgae() {
         className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800"
       >
         <div className={"transition-all duration-500 " + cardReveal}>
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div className="text-base md:text-lg">
+          <div className="mb-4 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 text-sm leading-7 md:text-lg">
               <span className="text-neutral-700 dark:text-neutral-300">پروژه‌ها</span>
               <span className="mx-2 text-neutral-500 dark:text-neutral-400">›</span>
               <span className="font-semibold text-neutral-900 dark:text-neutral-100">روزنگار پروژه</span>
@@ -1357,7 +1357,7 @@ export default function RoznegarPgae() {
               type="button"
               onClick={() => setFormOpen((open) => !open)}
               className={
-                "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
+                "h-10 w-10 shrink-0 self-end rounded-xl flex items-center justify-center transition ring-1 sm:self-auto " +
                 (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
               }
               title={formOpen ? "بستن" : "افزودن"}
@@ -1373,7 +1373,7 @@ export default function RoznegarPgae() {
 
           {formOpen ? (
             <>
-          <div className="mb-5 rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-3 dark:border-neutral-800 dark:bg-neutral-800/50">
+          <div className="mb-5 rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-3 dark:border-neutral-800 dark:bg-neutral-800/50 sm:px-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
               <div className="w-full lg:max-w-md">
                 <div className="mb-1 text-xs text-neutral-600 dark:text-neutral-300">پروژه فعال</div>
@@ -1400,7 +1400,7 @@ export default function RoznegarPgae() {
             <section className="xl:col-span-5 min-w-0">
               <div
                 className={
-                  "rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition-all duration-500 delay-75 dark:border-neutral-800 dark:bg-neutral-900 " +
+                  "rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm transition-all duration-500 delay-75 dark:border-neutral-800 dark:bg-neutral-900 sm:p-4 " +
                   cardReveal
                 }
               >
@@ -1408,7 +1408,7 @@ export default function RoznegarPgae() {
                   <button
                     type="button"
                     onClick={() => setCursor((c) => c.subtract(1, "month"))}
-                    className="h-10 w-10 rounded-xl border border-neutral-300 text-base text-neutral-700 transition hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
+                    className="h-9 w-9 rounded-xl border border-neutral-300 text-base text-neutral-700 transition hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800 sm:h-10 sm:w-10"
                     aria-label="ماه قبل"
                   >
                     ‹
@@ -1419,7 +1419,7 @@ export default function RoznegarPgae() {
                   <button
                     type="button"
                     onClick={() => setCursor((c) => c.add(1, "month"))}
-                    className="h-10 w-10 rounded-xl border border-neutral-300 text-base text-neutral-700 transition hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
+                    className="h-9 w-9 rounded-xl border border-neutral-300 text-base text-neutral-700 transition hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800 sm:h-10 sm:w-10"
                     aria-label="ماه بعد"
                   >
                     ›
@@ -1437,7 +1437,7 @@ export default function RoznegarPgae() {
                 <div className="grid grid-cols-7 gap-1">
                   {monthCells.map((dayNo, idx) => {
                     if (!dayNo) {
-                      return <div key={`empty-${idx}`} className="h-12 rounded-lg bg-transparent" />;
+                      return <div key={`empty-${idx}`} className="aspect-square min-h-10 rounded-lg bg-transparent sm:h-12 sm:aspect-auto" />;
                     }
 
                     const dateYmd = cursor.date(dayNo).calendar("jalali").format("YYYY-MM-DD");
@@ -1458,7 +1458,7 @@ export default function RoznegarPgae() {
                         type="button"
                         onClick={() => jumpToDate(dateYmd)}
                         className={
-                          "relative h-12 rounded-xl border text-sm transition-all duration-200 flex flex-col items-center justify-center leading-tight " +
+                          "relative aspect-square min-h-10 rounded-xl border text-xs transition-all duration-200 flex flex-col items-center justify-center leading-tight sm:h-12 sm:aspect-auto sm:text-sm " +
                           (isSelected
                             ? "border-[#F48B35] bg-[#F48B35]/15 text-[#ce6b1a] dark:text-[#ffb77f]"
                             : isToday
@@ -1492,7 +1492,7 @@ export default function RoznegarPgae() {
             <section className="xl:col-span-7 min-w-0">
               <div
                 className={
-                  "rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm transition-all duration-500 delay-150 dark:border-neutral-800 dark:bg-neutral-900 " +
+                  "rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm transition-all duration-500 delay-150 dark:border-neutral-800 dark:bg-neutral-900 sm:p-4 " +
                   cardReveal +
                   (editorDisabled ? " opacity-75" : "")
                 }
@@ -1599,7 +1599,7 @@ export default function RoznegarPgae() {
                         disabled={editorDisabled}
                         onClick={() => openTagModal("entry")}
                         className={
-                          "h-10 px-3 shrink-0 rounded-xl border transition inline-flex items-center justify-center gap-2 " +
+                          "h-10 w-full px-3 shrink-0 rounded-xl border transition inline-flex items-center justify-center gap-2 min-[430px]:w-auto " +
                           (theme === "dark"
                             ? "border-white/15 bg-white/5 hover:bg-white/10"
                             : "border-black/10 bg-white hover:bg-black/[0.02]")
@@ -1614,66 +1614,70 @@ export default function RoznegarPgae() {
                   </div>
 
                   <div className="md:col-span-12 min-w-0">
-                    <div className="flex flex-wrap items-start justify-start gap-2">
+                    <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
                       <div className="min-w-0">
                         <div className={labelCls}>مستندات مرتبط</div>
-                        <button
-                          type="button"
-                          disabled={editorDisabled}
-                          onClick={openRelatedPicker}
-                          className={
-                            "h-10 w-10 shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
-                            (theme === "dark"
-                              ? "border-white/15 bg-white/5 hover:bg-white/10"
-                              : "border-black/10 bg-white hover:bg-black/[0.02]")
-                          }
-                          aria-label="انتخاب مستندات مرتبط"
-                          title="انتخاب مستندات مرتبط"
-                        >
-                          <img src="/images/icons/sayer.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")} />
-                        </button>
+                        <div className="flex flex-wrap items-start gap-2">
+                          <button
+                            type="button"
+                            disabled={editorDisabled}
+                            onClick={openRelatedPicker}
+                            className={
+                              "h-10 w-10 shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
+                              (theme === "dark"
+                                ? "border-white/15 bg-white/5 hover:bg-white/10"
+                                : "border-black/10 bg-white hover:bg-black/[0.02]")
+                            }
+                            aria-label="انتخاب مستندات مرتبط"
+                            title="انتخاب مستندات مرتبط"
+                          >
+                            <img src="/images/icons/sayer.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")} />
+                          </button>
 
-                        {relatedSelectedIds.length > 0 && (
-                          <div className="mt-2 flex flex-wrap items-center gap-1 text-xs md:text-sm">
-                            {relatedSelectedIds.map((id, i) => {
-                              const l = letterById.get(String(id));
-                              const no = docNoOf(l) || String(id);
-                              return (
-                                <span key={String(id)} className="inline-flex max-w-full items-center gap-1">
-                                  {i > 0 && <span className={theme === "dark" ? "text-white/60" : "text-neutral-600"}>و</span>}
-                                  <span className="underline underline-offset-4 font-semibold">{toFaDigits(no)}</span>
-                                  <button
-                                    type="button"
-                                    disabled={editorDisabled}
-                                    onClick={() =>
-                                      updateActiveEntry((curr) => ({
-                                        ...curr,
-                                        relatedDocIds: (curr.relatedDocIds || []).filter((x) => String(x) !== String(id)),
-                                      }))
-                                    }
-                                    className={
-                                      "h-6 w-6 inline-grid place-items-center bg-transparent border-0 shadow-none p-0 text-base md:text-lg leading-none transition " +
-                                      (theme === "dark" ? "text-white/60 hover:text-white" : "text-neutral-500 hover:text-neutral-900")
-                                    }
-                                    aria-label="حذف"
-                                    title="حذف"
-                                  >
-                                    ×
-                                  </button>
-                                </span>
-                              );
-                            })}
-                          </div>
-                        )}
+                          {relatedSelectedIds.length > 0 && (
+                            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1 text-xs md:text-sm">
+                              {relatedSelectedIds.map((id, i) => {
+                                const l = letterById.get(String(id));
+                                const no = docNoOf(l) || String(id);
+                                return (
+                                  <span key={String(id)} className="inline-flex max-w-full items-center gap-1">
+                                    {i > 0 && <span className={theme === "dark" ? "text-white/60" : "text-neutral-600"}>و</span>}
+                                    <span className="font-semibold underline underline-offset-4">{toFaDigits(no)}</span>
+                                    <button
+                                      type="button"
+                                      disabled={editorDisabled}
+                                      onClick={() =>
+                                        updateActiveEntry((curr) => ({
+                                          ...curr,
+                                          relatedDocIds: (curr.relatedDocIds || []).filter((x) => String(x) !== String(id)),
+                                        }))
+                                      }
+                                      className={
+                                        "h-6 w-6 inline-grid place-items-center bg-transparent border-0 shadow-none p-0 text-base md:text-lg leading-none transition " +
+                                        (theme === "dark" ? "text-white/60 hover:text-white" : "text-neutral-500 hover:text-neutral-900")
+                                      }
+                                      aria-label="حذف"
+                                      title="حذف"
+                                    >
+                                      ×
+                                    </button>
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="shrink-0">
-                        <div className={labelCls}>&nbsp;</div>
+                      <div className="min-w-0 sm:shrink-0">
+                        <div className="hidden sm:block">
+                          <div className={labelCls}>&nbsp;</div>
+                        </div>
                         <button
                           type="button"
                           disabled={editorDisabled || filesUploading}
                           onClick={openUpload}
-                          className={uploadTriggerCls + " h-10 w-auto max-w-full whitespace-nowrap"}
+                          className={uploadTriggerCls + " h-10 w-full max-w-full sm:w-auto"}
                           title="بارگذاری فایل"
                         >
                           <img src="/images/icons/upload.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")} />
@@ -1687,7 +1691,7 @@ export default function RoznegarPgae() {
                     </div>
                   </div>
 
-                  <div className="pt-2 flex items-center justify-between gap-2">
+                  <div className="pt-2 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-h-5 text-[11px] md:text-xs">
                       {syncState?.text ? (
                         <span className={syncState.type === "error" ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}>
@@ -1700,7 +1704,7 @@ export default function RoznegarPgae() {
                       disabled={editorDisabled || confirmSaving || filesUploading}
                       onClick={handlePreviewConfirm}
                       className={
-                        "h-9 w-12 md:h-10 md:w-14 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 " +
+                        "h-9 w-full md:h-10 md:w-14 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 sm:w-12 " +
                         (theme === "dark"
                           ? ""
                           : "")
@@ -1780,19 +1784,109 @@ export default function RoznegarPgae() {
             ) : null}
 
             <div className={"rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
-              <div className="max-h-[360px] overflow-auto">
-                <table className="w-full text-center">
+              <div className="md:hidden">
+                {!filteredTableRows.length ? (
+                  <div className={theme === "dark" ? "px-3 py-8 text-center text-[12px] text-white/60" : "px-3 py-8 text-center text-[12px] text-neutral-500"}>
+                    موردی برای نمایش وجود ندارد.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-black/10 dark:divide-white/10">
+                    {filteredTableRows.map((r, idx) => {
+                      const projectLabel = activeProject ? `${activeProject.code || ""} - ${activeProject.name || ""}` : "-";
+                      return (
+                        <article key={`${r.dateYmd}_${idx}`} className="p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className={theme === "dark" ? "rounded-lg bg-white/10 px-2 py-0.5 text-[11px] text-white/75" : "rounded-lg bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-600"}>
+                                  {toFaDigits(idx + 1)}
+                                </span>
+                                <span className="text-sm font-bold text-neutral-900 dark:text-neutral-100">{toFaDigits(r.dateLabel || "")}</span>
+                                <span className={theme === "dark" ? "text-xs text-white/60" : "text-xs text-neutral-500"}>{r.dayName || "-"}</span>
+                              </div>
+                              <div className={theme === "dark" ? "mt-1 truncate text-[11px] text-white/60" : "mt-1 truncate text-[11px] text-neutral-500"} title={projectLabel}>
+                                {projectLabel}
+                              </div>
+                            </div>
+                            <div className={theme === "dark" ? "shrink-0 rounded-xl border border-white/10 px-2.5 py-1 text-center text-[11px] text-white/70" : "shrink-0 rounded-xl border border-black/10 px-2.5 py-1 text-center text-[11px] text-neutral-600"}>
+                              <div>{toFaDigits(r.filesCount || 0)}</div>
+                              <div>فایل</div>
+                            </div>
+                          </div>
+
+                          <div className="mt-3">
+                            <div className={theme === "dark" ? "text-[11px] text-white/50" : "text-[11px] text-neutral-500"}>شرح فعالیت‌ها</div>
+                            <div className="mt-1 line-clamp-3 break-words text-[13px] leading-6 text-neutral-900 dark:text-neutral-100">
+                              {r.activity || "-"}
+                            </div>
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-1 gap-2 min-[430px]:grid-cols-2">
+                            <div className="min-w-0">
+                              <div className={theme === "dark" ? "text-[11px] text-white/50" : "text-[11px] text-neutral-500"}>برچسب‌ها</div>
+                              <div className="mt-1 line-clamp-2 break-words text-[12px] leading-5 text-neutral-800 dark:text-white/85">{r.tagsText || "-"}</div>
+                            </div>
+                            <div className="min-w-0">
+                              <div className={theme === "dark" ? "text-[11px] text-white/50" : "text-[11px] text-neutral-500"}>مستندات مرتبط</div>
+                              <div className="mt-1 line-clamp-2 break-words text-[12px] leading-5 text-neutral-800 dark:text-white/85">{r.docsText || "-"}</div>
+                            </div>
+                          </div>
+
+                          {Array.isArray(r.files) && r.files.length ? (
+                            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                              {r.files.map((f, fileIdx) => {
+                                const name = String(f?.name || `فایل ${fileIdx + 1}`);
+                                const key = `${name}_${f?.size || 0}_${f?.lastModified || 0}_${fileIdx}`;
+                                return (
+                                  <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => openFilePreview(f)}
+                                    className={
+                                      "max-w-full truncate rounded-lg border px-2 py-1 text-[11px] underline underline-offset-4 transition " +
+                                      (theme === "dark"
+                                        ? "border-white/10 text-white/85 hover:text-white"
+                                        : "border-black/10 text-neutral-700 hover:text-black")
+                                    }
+                                    title={name}
+                                  >
+                                    {name}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : null}
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div dir="ltr" className="hidden max-h-[min(58vh,520px)] overflow-auto md:block">
+                <table dir="rtl" className="w-full min-w-[980px] table-fixed text-center text-sm">
+                  <colgroup>
+                    <col style={{ width: 64 }} />
+                    <col style={{ width: 180 }} />
+                    <col style={{ width: 112 }} />
+                    <col style={{ width: 88 }} />
+                    <col />
+                    <col style={{ width: 170 }} />
+                    <col style={{ width: 190 }} />
+                    <col style={{ width: 170 }} />
+                    <col style={{ width: 92 }} />
+                  </colgroup>
                   <thead className={theme === "dark" ? "bg-white/10 text-white/80" : "bg-neutral-100 text-neutral-700"}>
                     <tr>
-                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap text-center">ردیف</th>
-                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[170px] text-center">پروژه</th>
-                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap text-center">تاریخ</th>
-                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap text-center">روز</th>
-                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[180px] text-center">شرح فعالیت‌ها</th>
-                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[150px] text-center">برچسب‌ها</th>
-                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[170px] text-center">مستندات مرتبط</th>
-                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold min-w-[150px] text-center">فایل‌ها</th>
-                      <th className="px-3 py-2 text-[11px] md:text-xs font-semibold whitespace-nowrap text-center">تعداد فایل</th>
+                      <th className="sticky top-0 z-10 bg-neutral-100 px-3 py-2 text-center text-xs font-semibold dark:bg-neutral-800">ردیف</th>
+                      <th className="sticky top-0 z-10 bg-neutral-100 px-3 py-2 text-center text-xs font-semibold dark:bg-neutral-800">پروژه</th>
+                      <th className="sticky top-0 z-10 bg-neutral-100 px-3 py-2 text-center text-xs font-semibold dark:bg-neutral-800">تاریخ</th>
+                      <th className="sticky top-0 z-10 bg-neutral-100 px-3 py-2 text-center text-xs font-semibold dark:bg-neutral-800">روز</th>
+                      <th className="sticky top-0 z-10 bg-neutral-100 px-3 py-2 text-center text-xs font-semibold dark:bg-neutral-800">شرح فعالیت‌ها</th>
+                      <th className="sticky top-0 z-10 bg-neutral-100 px-3 py-2 text-center text-xs font-semibold dark:bg-neutral-800">برچسب‌ها</th>
+                      <th className="sticky top-0 z-10 bg-neutral-100 px-3 py-2 text-center text-xs font-semibold dark:bg-neutral-800">مستندات مرتبط</th>
+                      <th className="sticky top-0 z-10 bg-neutral-100 px-3 py-2 text-center text-xs font-semibold dark:bg-neutral-800">فایل‌ها</th>
+                      <th className="sticky top-0 z-10 bg-neutral-100 px-3 py-2 text-center text-xs font-semibold dark:bg-neutral-800">تعداد فایل</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1800,7 +1894,7 @@ export default function RoznegarPgae() {
                       <tr>
                         <td
                           colSpan={9}
-                          className={theme === "dark" ? "px-3 py-6 text-center text-[11px] md:text-xs text-white/60" : "px-3 py-6 text-center text-[11px] md:text-xs text-neutral-500"}
+                          className={theme === "dark" ? "px-3 py-6 text-center text-xs text-white/60" : "px-3 py-6 text-center text-xs text-neutral-500"}
                         >
                           موردی برای نمایش وجود ندارد.
                         </td>
@@ -1808,18 +1902,26 @@ export default function RoznegarPgae() {
                     ) : (
                       filteredTableRows.map((r, idx) => (
                         <tr key={`${r.dateYmd}_${idx}`} className={theme === "dark" ? "border-t border-white/10" : "border-t border-black/10"}>
-                          <td className="px-3 py-2 text-[11px] md:text-xs align-middle text-center">{toFaDigits(idx + 1)}</td>
-                          <td className="px-3 py-2 text-[11px] md:text-xs align-middle text-center break-words">
-                            {activeProject ? `${activeProject.code || ""} - ${activeProject.name || ""}` : "-"}
+                          <td className="px-3 py-2 align-middle text-xs text-center">{toFaDigits(idx + 1)}</td>
+                          <td className="px-3 py-2 align-middle text-xs text-center">
+                            <span className="mx-auto block truncate" title={activeProject ? `${activeProject.code || ""} - ${activeProject.name || ""}` : "-"}>
+                              {activeProject ? `${activeProject.code || ""} - ${activeProject.name || ""}` : "-"}
+                            </span>
                           </td>
-                          <td className="px-3 py-2 text-[11px] md:text-xs align-middle text-center whitespace-nowrap">{toFaDigits(r.dateLabel || "")}</td>
-                          <td className="px-3 py-2 text-[11px] md:text-xs align-middle text-center whitespace-nowrap">{r.dayName || "-"}</td>
-                          <td className="px-3 py-2 text-[11px] md:text-xs align-middle text-center break-words">{r.activity || "-"}</td>
-                          <td className="px-3 py-2 text-[11px] md:text-xs align-middle text-center break-words">{r.tagsText || "-"}</td>
-                          <td className="px-3 py-2 text-[11px] md:text-xs align-middle text-center break-words">{r.docsText || "-"}</td>
-                          <td className="px-3 py-2 text-[11px] md:text-xs align-middle text-center break-words">
+                          <td className="px-3 py-2 align-middle text-xs text-center whitespace-nowrap">{toFaDigits(r.dateLabel || "")}</td>
+                          <td className="px-3 py-2 align-middle text-xs text-center whitespace-nowrap">{r.dayName || "-"}</td>
+                          <td className="px-3 py-2 align-middle text-xs text-center">
+                            <span className="mx-auto block truncate" title={r.activity || "-"}>{r.activity || "-"}</span>
+                          </td>
+                          <td className="px-3 py-2 align-middle text-xs text-center">
+                            <span className="mx-auto block truncate" title={r.tagsText || "-"}>{r.tagsText || "-"}</span>
+                          </td>
+                          <td className="px-3 py-2 align-middle text-xs text-center">
+                            <span className="mx-auto block truncate" title={r.docsText || "-"}>{r.docsText || "-"}</span>
+                          </td>
+                          <td className="px-3 py-2 align-middle text-xs text-center">
                             {Array.isArray(r.files) && r.files.length ? (
-                              <div className="flex flex-wrap items-center justify-center gap-1">
+                              <div className="flex min-w-0 flex-wrap items-center justify-center gap-1">
                                 {r.files.map((f, fileIdx) => {
                                   const name = String(f?.name || `فایل ${fileIdx + 1}`);
                                   const key = `${name}_${f?.size || 0}_${f?.lastModified || 0}_${fileIdx}`;
@@ -1829,7 +1931,7 @@ export default function RoznegarPgae() {
                                       type="button"
                                       onClick={() => openFilePreview(f)}
                                       className={
-                                        "max-w-[180px] truncate rounded-lg px-1.5 py-0.5 underline underline-offset-4 transition " +
+                                        "max-w-[145px] truncate rounded-lg px-1.5 py-0.5 underline underline-offset-4 transition " +
                                         (theme === "dark"
                                           ? "text-white/85 hover:text-white"
                                           : "text-neutral-700 hover:text-black")
@@ -1845,7 +1947,7 @@ export default function RoznegarPgae() {
                               "-"
                             )}
                           </td>
-                          <td className="px-3 py-2 text-[11px] md:text-xs align-middle text-center whitespace-nowrap">{toFaDigits(r.filesCount || 0)}</td>
+                          <td className="px-3 py-2 align-middle text-xs text-center whitespace-nowrap">{toFaDigits(r.filesCount || 0)}</td>
                         </tr>
                       ))
                     )}
@@ -1854,7 +1956,7 @@ export default function RoznegarPgae() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-1">
+            <div className="flex flex-col items-stretch gap-2 pt-1 min-[430px]:flex-row min-[430px]:items-center min-[430px]:justify-between">
               <div className={theme === "dark" ? "text-[11px] md:text-xs text-white/60" : "text-[11px] md:text-xs text-neutral-500"}>
                 تعداد نتایج: {toFaDigits(filteredTableRows.length)}
               </div>
