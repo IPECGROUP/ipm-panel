@@ -38,6 +38,7 @@ const TAG_TABS = [
   { id: "execution", label: "اجرای پروژه‌ها" },
 ];
 
+
 const TAG_CATEGORIES = {
   projects: ["همه", "اداری", "بازاریابی", "بانک", "بیمه", "پروژه", "کارفرما", "مالیات", "محرمانه"],
   letters: ["همه", "اداری", "بازاریابی", "بانک", "بیمه", "پروژه", "کارفرما", "مالیات", "محرمانه"],
@@ -590,6 +591,8 @@ export default function RoznegarPgae() {
   const [formOpen, setFormOpen] = useState(false);
   const [tableFilter, setTableFilter] = useState("");
   const [tableFilterTagIds, setTableFilterTagIds] = useState([]);
+  const [tablePage, setTablePage] = useState(0);
+  const [tableRowsPerPage, setTableRowsPerPage] = useState(10);
   const [tagModalMode, setTagModalMode] = useState("entry");
   const [confirmSaving, setConfirmSaving] = useState(false);
   const [syncState, setSyncState] = useState({ type: "", text: "" });
@@ -1043,6 +1046,21 @@ export default function RoznegarPgae() {
 
     return rows;
   }, [entriesByDate, tableFilter, tableFilterTagIds, tagById, letterById, activeProject]);
+
+  const tableTotal = filteredTableRows.length;
+  const tablePageCount = Math.max(1, Math.ceil(tableTotal / tableRowsPerPage));
+  const safeTablePage = Math.min(tablePage, tablePageCount - 1);
+  const tableStartIdx = tableTotal === 0 ? 0 : safeTablePage * tableRowsPerPage;
+  const tableEndIdx = Math.min(tableTotal, tableStartIdx + tableRowsPerPage);
+  const pagedTableRows = filteredTableRows.slice(tableStartIdx, tableEndIdx);
+
+  useEffect(() => {
+    setTablePage(0);
+  }, [tableFilter, tableFilterTagIds, projectId]);
+
+  useEffect(() => {
+    if (tablePage > tablePageCount - 1) setTablePage(tablePageCount - 1);
+  }, [tablePage, tablePageCount]);
 
   const openTagModal = (mode = "entry") => {
     const safeMode = mode === "filter" ? "filter" : "entry";
@@ -1785,21 +1803,22 @@ export default function RoznegarPgae() {
 
             <div className={"rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
               <div className="md:hidden">
-                {!filteredTableRows.length ? (
+                {!pagedTableRows.length ? (
                   <div className={theme === "dark" ? "px-3 py-8 text-center text-[12px] text-white/60" : "px-3 py-8 text-center text-[12px] text-neutral-500"}>
                     موردی برای نمایش وجود ندارد.
                   </div>
                 ) : (
                   <div className="divide-y divide-black/10 dark:divide-white/10">
-                    {filteredTableRows.map((r, idx) => {
+                    {pagedTableRows.map((r, idx) => {
                       const projectLabel = activeProject ? `${activeProject.code || ""} - ${activeProject.name || ""}` : "-";
+                      const absIdx = tableStartIdx + idx;
                       return (
                         <article key={`${r.dateYmd}_${idx}`} className="p-3">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className={theme === "dark" ? "rounded-lg bg-white/10 px-2 py-0.5 text-[11px] text-white/75" : "rounded-lg bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-600"}>
-                                  {toFaDigits(idx + 1)}
+                                  {toFaDigits(absIdx + 1)}
                                 </span>
                                 <span className="text-sm font-bold text-neutral-900 dark:text-neutral-100">{toFaDigits(r.dateLabel || "")}</span>
                                 <span className={theme === "dark" ? "text-xs text-white/60" : "text-xs text-neutral-500"}>{r.dayName || "-"}</span>
@@ -1890,7 +1909,7 @@ export default function RoznegarPgae() {
                     </tr>
                   </thead>
                   <tbody>
-                    {!filteredTableRows.length ? (
+                    {!pagedTableRows.length ? (
                       <tr>
                         <td
                           colSpan={9}
@@ -1900,9 +1919,9 @@ export default function RoznegarPgae() {
                         </td>
                       </tr>
                     ) : (
-                      filteredTableRows.map((r, idx) => (
+                      pagedTableRows.map((r, idx) => (
                         <tr key={`${r.dateYmd}_${idx}`} className={theme === "dark" ? "border-t border-white/10" : "border-t border-black/10"}>
-                          <td className="px-3 py-2 align-middle text-xs text-center">{toFaDigits(idx + 1)}</td>
+                          <td className="px-3 py-2 align-middle text-xs text-center">{toFaDigits(tableStartIdx + idx + 1)}</td>
                           <td className="px-3 py-2 align-middle text-xs text-center">
                             <span className="mx-auto block truncate" title={activeProject ? `${activeProject.code || ""} - ${activeProject.name || ""}` : "-"}>
                               {activeProject ? `${activeProject.code || ""} - ${activeProject.name || ""}` : "-"}
@@ -1953,6 +1972,79 @@ export default function RoznegarPgae() {
                     )}
                   </tbody>
                 </table>
+              </div>
+
+              <div className="border-t border-neutral-300 px-3 py-2 dark:border-neutral-800">
+                <div className="flex flex-col items-stretch gap-2 md:flex-row md:flex-wrap md:items-center md:justify-between">
+                  <div className="flex items-center justify-between gap-2 text-xs md:justify-start md:text-sm">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setTablePage((page) => Math.max(0, page - 1))}
+                        disabled={safeTablePage <= 0}
+                        className={
+                          "h-9 w-9 grid place-items-center rounded-xl border transition disabled:opacity-45 " +
+                          (theme === "dark"
+                            ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                            : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.04]")
+                        }
+                        aria-label="صفحه قبل"
+                        title="صفحه قبل"
+                      >
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M9 18l6-6-6-6" />
+                        </svg>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setTablePage((page) => Math.min(tablePageCount - 1, page + 1))}
+                        disabled={safeTablePage >= tablePageCount - 1}
+                        className={
+                          "h-9 w-9 grid place-items-center rounded-xl border transition disabled:opacity-45 " +
+                          (theme === "dark"
+                            ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                            : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.04]")
+                        }
+                        aria-label="صفحه بعد"
+                        title="صفحه بعد"
+                      >
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M15 18l-6-6 6-6" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    <div className={theme === "dark" ? "whitespace-nowrap text-white/60" : "whitespace-nowrap text-neutral-600"}>
+                      {tableTotal === 0
+                        ? `${toFaDigits(0)} از ${toFaDigits(0)}`
+                        : `${toFaDigits(tableStartIdx + 1)}-${toFaDigits(tableEndIdx)} از ${toFaDigits(tableTotal)}`}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 text-xs md:justify-start md:text-sm">
+                    <span className={theme === "dark" ? "text-white/60" : "text-neutral-600"}>تعداد در هر صفحه:</span>
+                    <select
+                      value={tableRowsPerPage}
+                      onChange={(e) => {
+                        setTableRowsPerPage(Number(e.target.value) || 10);
+                        setTablePage(0);
+                      }}
+                      className={
+                        "h-9 rounded-lg border px-2 outline-none " +
+                        (theme === "dark"
+                          ? "border-white/15 bg-neutral-900 text-white"
+                          : "border-black/10 bg-white text-neutral-900")
+                      }
+                    >
+                      {[10, 25, 100].map((count) => (
+                        <option key={count} value={count}>
+                          {toFaDigits(count)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
 
