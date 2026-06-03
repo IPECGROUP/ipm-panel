@@ -933,8 +933,10 @@ export default function ContractInformation() {
   const [editingGuaranteeId, setEditingGuaranteeId] = React.useState("");
   const [editingGuaranteeDraft, setEditingGuaranteeDraft] = React.useState(() => ({ ...EMPTY_GUARANTEE_ROW }));
   const draftSaveTimerRef = React.useRef(null);
+  const draftStatusTimerRef = React.useRef(null);
   const lastDraftSignatureRef = React.useRef("");
   const finalSavedDraftSignatureRef = React.useRef("");
+  const [draftSaveStatus, setDraftSaveStatus] = React.useState({ sectionId: "", state: "" });
 
   React.useEffect(() => {
     let alive = true;
@@ -1081,6 +1083,22 @@ export default function ContractInformation() {
     }
   }, []);
 
+  const markDraftSaveStatus = React.useCallback((sectionId, state) => {
+    if (draftStatusTimerRef.current) {
+      clearTimeout(draftStatusTimerRef.current);
+      draftStatusTimerRef.current = null;
+    }
+
+    setDraftSaveStatus({ sectionId: String(sectionId || ""), state });
+
+    if (state === "saved" || state === "error") {
+      draftStatusTimerRef.current = setTimeout(() => {
+        setDraftSaveStatus((prev) => (prev.sectionId === String(sectionId || "") ? { sectionId: "", state: "" } : prev));
+        draftStatusTimerRef.current = null;
+      }, 2600);
+    }
+  }, []);
+
   const loadSavedContractDraft = React.useCallback(async () => {
     const localDraft = readLocalContractDraft();
     if (localDraft) return localDraft;
@@ -1109,6 +1127,7 @@ export default function ContractInformation() {
   const deleteContractDraft = React.useCallback(async () => {
     clearDraftSaveTimer();
     removeLocalContractDraft();
+    setDraftSaveStatus({ sectionId: "", state: "" });
     try {
       await fetchJson(`/contracts/draft?draftKey=${encodeURIComponent(getContractDraftKey())}`, { method: "DELETE" });
     } catch {
@@ -1124,6 +1143,7 @@ export default function ContractInformation() {
         clearDraftSaveTimer();
         removeLocalContractDraft();
         lastDraftSignatureRef.current = "";
+        setDraftSaveStatus({ sectionId: "", state: "" });
         return true;
       }
 
@@ -1132,6 +1152,7 @@ export default function ContractInformation() {
         return true;
       }
 
+      markDraftSaveStatus(sectionId, "saving");
       clearDraftSaveTimer();
       writeLocalContractDraft({
         contractId: payload.id,
@@ -1150,13 +1171,15 @@ export default function ContractInformation() {
             lastSavedSection: sectionId,
           }),
         });
+        markDraftSaveStatus(sectionId, "saved");
         return true;
       } catch (error) {
         console.error("contract_draft_save_failed", error);
+        markDraftSaveStatus(sectionId, "error");
         return false;
       }
     },
-    [activeContractTab, clearDraftSaveTimer, form]
+    [activeContractTab, clearDraftSaveTimer, form, markDraftSaveStatus]
   );
 
   React.useEffect(() => {
@@ -1184,7 +1207,13 @@ export default function ContractInformation() {
     return clearDraftSaveTimer;
   }, [activeContractTab, clearDraftSaveTimer, form, formOpen, saveContractDraft]);
 
-  React.useEffect(() => clearDraftSaveTimer, [clearDraftSaveTimer]);
+  React.useEffect(
+    () => () => {
+      clearDraftSaveTimer();
+      if (draftStatusTimerRef.current) clearTimeout(draftStatusTimerRef.current);
+    },
+    [clearDraftSaveTimer]
+  );
 
   const projectById = React.useMemo(() => {
     const map = new Map();
@@ -1992,6 +2021,37 @@ export default function ContractInformation() {
   const readonlyInputCls =
     "w-full h-11 rounded-xl px-3 bg-black/[0.04] text-black border border-black/10 outline-none dark:bg-white/[0.06] dark:text-neutral-100 dark:border-neutral-700";
 
+  const renderSaveButton = (sectionId, title = "ذخیره") => {
+    const isDraftSection = sectionId !== "financial";
+    const showDraftStatus = isDraftSection && draftSaveStatus.sectionId === sectionId && draftSaveStatus.state;
+    const draftStatusText =
+      draftSaveStatus.state === "saving" ? "در حال ذخیره..." : draftSaveStatus.state === "saved" ? "ذخیره شد" : "خطا در ذخیره";
+    const draftStatusCls =
+      draftSaveStatus.state === "error"
+        ? "text-red-600 dark:text-red-400"
+        : draftSaveStatus.state === "saved"
+          ? "text-emerald-600 dark:text-emerald-400"
+          : "text-black/50 dark:text-neutral-400";
+
+    return (
+      <div className="flex min-w-[70px] flex-col items-center gap-1">
+        <button type="button" onClick={() => saveContractSection(sectionId)} className={saveIconBtnCls} title={title} aria-label={title}>
+          <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
+        </button>
+        <div
+          className={[
+            "h-4 text-[10px] font-semibold leading-4 transition-all duration-200",
+            showDraftStatus ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0",
+            draftSaveStatus.state === "saving" ? "animate-pulse" : "",
+            draftStatusCls,
+          ].join(" ")}
+        >
+          {showDraftStatus ? draftStatusText : ""}
+        </div>
+      </div>
+    );
+  };
+
   React.useEffect(() => {
     if (!visibleContractTabs.some((tab) => tab.id === activeContractTab)) {
       setActiveContractTab(visibleContractTabs[0]?.id || CONTRACT_SECTION_TABS[0].id);
@@ -2441,9 +2501,7 @@ export default function ContractInformation() {
                       </div>
 
                       <div className="flex items-center justify-end">
-                        <button type="button" onClick={() => saveContractSection("general")} className={saveIconBtnCls} title="ذخیره" aria-label="ذخیره">
-                          <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
-                        </button>
+                        {renderSaveButton("general")}
                       </div>
                     </div>
                   ) : activeContractTab === "calendar" ? (
@@ -2581,9 +2639,7 @@ export default function ContractInformation() {
                       )}
 
                       <div className="flex items-center justify-end">
-                        <button type="button" onClick={() => saveContractSection("calendar")} className={saveIconBtnCls} title="ذخیره" aria-label="ذخیره">
-                          <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
-                        </button>
+                        {renderSaveButton("calendar")}
                       </div>
                     </div>
                   ) : activeContractTab === "technical" ? (
@@ -2599,9 +2655,7 @@ export default function ContractInformation() {
                             />
                           </div>
                           <div className="flex items-center justify-end">
-                            <button type="button" onClick={() => saveContractSection("technical")} className={saveIconBtnCls} title="ثبت" aria-label="ثبت">
-                              <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
-                            </button>
+                            {renderSaveButton("technical", "ثبت")}
                           </div>
                         </div>
                       ) : (
@@ -2666,9 +2720,7 @@ export default function ContractInformation() {
                       </div>
 
                       <div className="flex items-center justify-end">
-                        <button type="button" onClick={() => saveContractSection("technical")} className={saveIconBtnCls} title="ذخیره" aria-label="ذخیره">
-                          <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
-                        </button>
+                        {renderSaveButton("technical")}
                       </div>
                       </>
                       )}
@@ -3066,9 +3118,7 @@ export default function ContractInformation() {
                       ) : null}
 
                       <div className="flex items-center justify-end">
-                        <button type="button" onClick={() => saveContractSection("financial")} className={saveIconBtnCls} title="ذخیره" aria-label="ذخیره">
-                          <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
-                        </button>
+                        {renderSaveButton("financial")}
                       </div>
                     </div>
                   ) : activeContractTab === "insurance" ? (
@@ -3212,9 +3262,7 @@ export default function ContractInformation() {
                       </div>
 
                       <div className="flex items-center justify-end">
-                        <button type="button" onClick={() => saveContractSection("insurance")} className={saveIconBtnCls} title="ذخیره" aria-label="ذخیره">
-                          <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
-                        </button>
+                        {renderSaveButton("insurance")}
                       </div>
                     </div>
                   ) : (
@@ -3224,9 +3272,7 @@ export default function ContractInformation() {
                       </div>
 
                       <div className="flex items-center justify-end">
-                        <button type="button" onClick={() => saveContractSection(activeContractTab)} className={saveIconBtnCls} title="ذخیره" aria-label="ذخیره">
-                          <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
-                        </button>
+                        {renderSaveButton(activeContractTab)}
                       </div>
                     </div>
                   )}
