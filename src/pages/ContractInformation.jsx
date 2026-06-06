@@ -466,6 +466,16 @@ function letterKindOf(letter) {
   return pickFirst(letter?.kind, letter?.type, letter?.letter_kind, letter?.letterKind);
 }
 
+function letterKindLabelOf(letter) {
+  const raw = String(letterKindOf(letter) || "").trim();
+  const normalized = raw.toLowerCase();
+  if (!raw) return "";
+  if (normalized.includes("incoming") || normalized === "in" || normalized === "i" || raw.includes("وارده")) return "وارده";
+  if (normalized.includes("outgoing") || normalized.includes("out") || normalized === "o" || raw.includes("صادر")) return "صادره";
+  if (normalized.includes("internal") || normalized.includes("dakheli") || raw.includes("داخلی")) return "داخلی";
+  return raw;
+}
+
 function letterDescriptionOf(letter) {
   return pickFirst(letter?.description, letter?.body, letter?.text, letter?.summary, letter?.note, letter?.notes);
 }
@@ -4427,7 +4437,7 @@ export default function ContractInformation() {
                       {renderPreviewInfo("تاریخ نامه", toFaDigits(letterDateOf(relatedLetterPreview)))}
                       {renderPreviewInfo("شماره ثبت دبیرخانه", toFaDigits(secretariatNoOf(relatedLetterPreview)))}
                       {renderPreviewInfo("تاریخ ثبت دبیرخانه", toFaDigits(letterSecretariatDateOf(relatedLetterPreview)))}
-                      {renderPreviewInfo("نوع سند", letterKindOf(relatedLetterPreview))}
+                      {renderPreviewInfo("نوع سند", letterKindLabelOf(relatedLetterPreview))}
                       {renderPreviewInfo("از", letterSenderOf(relatedLetterPreview))}
                       {renderPreviewInfo("به", letterReceiverOf(relatedLetterPreview))}
                       {renderPreviewInfo("سازمان / شرکت", orgOf(relatedLetterPreview))}
