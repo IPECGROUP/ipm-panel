@@ -298,7 +298,7 @@ function RightNav() {
   };
 
   const renderCollapsedSection = (item) => (
-    <div key={item.key} className="relative">
+    <div key={item.key} className="relative flex w-full justify-center">
       <button
         type="button"
         className={desktopItemCls(item.active, true)}
@@ -312,7 +312,7 @@ function RightNav() {
       </button>
 
       {open[item.key] && (
-        <div className="absolute right-[calc(100%+0.75rem)] top-0 z-[70] w-64 rounded-xl border border-neutral-200 bg-white p-2 shadow-[0_18px_45px_rgba(15,23,42,0.16)]">
+        <div className="absolute right-[calc(100%+1rem)] top-0 z-[70] w-64 rounded-xl border border-neutral-200 bg-white p-2 shadow-[0_18px_45px_rgba(15,23,42,0.16)] ring-1 ring-black/[0.03] before:absolute before:-right-4 before:top-0 before:h-full before:w-4 before:content-[''] after:absolute after:-right-1.5 after:top-4 after:h-3 after:w-3 after:rotate-45 after:border-r after:border-t after:border-neutral-200 after:bg-white">
           <div className="px-2 pb-2 pt-1 text-right text-xs font-semibold text-neutral-500">{item.label}</div>
           <div className="space-y-1">
             {item.items.map((child) => (
