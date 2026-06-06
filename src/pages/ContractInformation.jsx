@@ -2612,6 +2612,194 @@ export default function ContractInformation() {
     );
   };
 
+  const printContractSummary = () => {
+    if (!previewContract) return;
+
+    const escapeHtml = (value) =>
+      String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    const text = (value, fallback = "ثبت نشده") => escapeHtml(String(value ?? "").trim() || fallback);
+    const multiline = (value) => text(value).replace(/\n/g, "<br />");
+    const infoGrid = (items) =>
+      `<div class="info-grid">${items
+        .map(([label, value]) => `<div class="info-card"><div class="label">${escapeHtml(label)}</div><div class="value">${multiline(value)}</div></div>`)
+        .join("")}</div>`;
+    const table = (headers, rows) =>
+      `<table><thead><tr>${headers.map((item) => `<th>${escapeHtml(item)}</th>`).join("")}</tr></thead><tbody>${
+        rows.length
+          ? rows.map((row) => `<tr>${row.map((item) => `<td>${multiline(item)}</td>`).join("")}</tr>`).join("")
+          : `<tr><td colspan="${headers.length}">موردی ثبت نشده است.</td></tr>`
+      }</tbody></table>`;
+    const section = (title, body) => `<section><h2>${escapeHtml(title)}</h2>${body}</section>`;
+
+    const calendar = calculateCalendarDays(previewContract.calendar || {});
+    const amountRows = (Array.isArray(previewFinancial.contractAmounts) ? previewFinancial.contractAmounts : [])
+      .filter((row) => [row.amount, row.currencyLabel, row.currencyId, row.sourceLabel, row.sourceId].some((item) => String(item || "").trim()))
+      .map((row, index) => [
+        toFaDigits(index + 1),
+        row.amount ? formatFinancialAmount(parseFinancialAmount(row.amount)) : "۰",
+        row.currencyLabel || row.currencyId || "ثبت نشده",
+        row.sourceLabel || row.sourceId || "ثبت نشده",
+      ]);
+    const guaranteeRows = (Array.isArray(previewFinancial.guarantees) ? previewFinancial.guarantees : []).map((row, index) => [
+      toFaDigits(index + 1),
+      row.name || "ثبت نشده",
+      row.type || "ثبت نشده",
+      row.bankNo ? toFaDigits(row.bankNo) : "ثبت نشده",
+      row.amount ? formatFinancialAmount(parseFinancialAmount(row.amount)) : "ثبت نشده",
+      row.currencyLabel || row.currencyId || "ثبت نشده",
+    ]);
+    const relatedLetterRows = previewRelatedLetters.map((letter, index) => [
+      toFaDigits(index + 1),
+      toFaDigits(secretariatNoOf(letter) || letterNoOf(letter) || letterIdOf(letter)),
+      subjectOf(letter) || "بدون موضوع",
+      letterKindLabelOf(letter),
+      letterDateOf(letter) ? toFaDigits(letterDateOf(letter)) : "ثبت نشده",
+    ]);
+    const fileRows = previewFiles.map((file, index) => {
+      const url = resolvePreviewFileUrl(file);
+      return [
+        toFaDigits(index + 1),
+        file.group || "پیوست",
+        file.name || "فایل",
+        file.size ? toFaDigits(formatBytes(file.size)) : "ثبت نشده",
+        url || "آدرس ثبت نشده",
+      ];
+    });
+    const imagePreviews = previewFiles
+      .map((file) => ({ ...file, url: resolvePreviewFileUrl(file) }))
+      .filter((file) => file.url && (String(file.type || "").toLowerCase().startsWith("image/") || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(String(file.name || ""))));
+
+    const html = `<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <title>خلاصه قرارداد ${text(contractNoForRow(previewContract, rowById), "")}</title>
+  <style>
+    @page { size: A4; margin: 13mm; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: #171717; background: #fff; font-family: Tahoma, Arial, sans-serif; font-size: 12px; line-height: 1.8; }
+    .page { max-width: 190mm; margin: 0 auto; }
+    .print-actions { position: sticky; top: 0; z-index: 10; display: flex; justify-content: flex-start; gap: 8px; padding: 10px 0; background: #fff; }
+    .print-actions button { height: 34px; border: 1px solid #111; border-radius: 8px; background: #111; color: #fff; padding: 0 14px; font-weight: 700; cursor: pointer; }
+    .print-actions .ghost { background: #fff; color: #111; }
+    header { border: 2px solid #111; border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; }
+    h1 { margin: 0; font-size: 20px; line-height: 1.5; }
+    .subtitle { margin-top: 6px; color: #525252; font-size: 12px; }
+    .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+    section { break-inside: avoid; margin-top: 12px; }
+    h2 { margin: 0 0 8px; padding: 7px 10px; border-radius: 10px; background: #f2f2f2; border: 1px solid #ddd; font-size: 14px; }
+    .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+    .info-card { min-height: 52px; border: 1px solid #ddd; border-radius: 10px; padding: 7px 9px; break-inside: avoid; }
+    .label { color: #666; font-size: 10px; font-weight: 700; }
+    .value { margin-top: 2px; color: #111; font-size: 12px; font-weight: 700; white-space: normal; overflow-wrap: anywhere; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; overflow: hidden; border: 1px solid #d8d8d8; border-radius: 10px; }
+    th, td { border-bottom: 1px solid #e5e5e5; border-left: 1px solid #e5e5e5; padding: 6px 8px; text-align: right; vertical-align: top; overflow-wrap: anywhere; }
+    th { background: #f2f2f2; font-weight: 800; color: #222; }
+    tr:last-child td { border-bottom: 0; }
+    th:last-child, td:last-child { border-left: 0; }
+    .attachments-note { margin: 6px 0 8px; color: #666; font-size: 11px; }
+    .image-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 8px; }
+    .image-card { border: 1px solid #ddd; border-radius: 10px; padding: 8px; break-inside: avoid; }
+    .image-card img { width: 100%; max-height: 170mm; object-fit: contain; display: block; }
+    .image-card div { margin-bottom: 5px; font-weight: 700; font-size: 11px; color: #444; }
+    footer { margin-top: 16px; padding-top: 8px; border-top: 1px solid #ddd; color: #666; font-size: 10px; display: flex; justify-content: space-between; }
+    @media print {
+      .print-actions { display: none; }
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      section { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="print-actions">
+      <button onclick="window.print()">چاپ خلاصه قرارداد</button>
+      <button class="ghost" onclick="window.close()">بستن</button>
+    </div>
+    <header>
+      <h1>خلاصه قرارداد</h1>
+      <div class="subtitle">${text(previewProject?.label)} - شماره قرارداد: ${text(contractNoForRow(previewContract, rowById))}</div>
+      <div class="meta">
+        <div><strong>سند قراردادی:</strong> ${text(documentTypeLabel(previewContract.documentType))}</div>
+        <div><strong>نوع قرارداد:</strong> ${text(previewContract.general?.contractType)}</div>
+        <div><strong>تاریخ چاپ:</strong> ${toFaDigits(new Date().toLocaleDateString("fa-IR"))}</div>
+      </div>
+    </header>
+    ${section("اطلاعات اصلی", infoGrid([
+      ["مرکز/پروژه", previewProject?.label],
+      ["سند قراردادی", documentTypeLabel(previewContract.documentType)],
+      ["شماره قرارداد", contractNoForRow(previewContract, rowById)],
+      ["نوع قرارداد", previewContract.general?.contractType],
+      ["موضوع قرارداد", previewContract.general?.contractSubject],
+      ["کارفرمای اصلی", previewContract.general?.mainEmployer],
+      ["واگذارنده / کارفرما", previewContract.general?.employerAssignor],
+      ["مجری", previewContract.general?.executor],
+      ["اعضای مشارکت", previewContract.general?.companyMembers],
+      ["پیمانکاران اصلی", previewContract.general?.mainContractors],
+      ["اسناد مرتبط", previewRelatedLetterLabel],
+    ]))}
+    ${section("تقویم قرارداد", infoGrid([
+      [previewContract.documentType === "appendix" ? "تمدید مدت قرارداد تا تاریخ" : "تاریخ پایان قرارداد", previewContract.calendar?.endDate ? toFaDigits(previewContract.calendar.endDate) : ""],
+      ["میلادی تاریخ پایان", jalaliToGregorianLabel(previewContract.calendar?.endDate)],
+      ["تاریخ ابلاغ کار", previewContract.calendar?.notifyDate ? toFaDigits(previewContract.calendar.notifyDate) : ""],
+      ["میلادی تاریخ ابلاغ", jalaliToGregorianLabel(previewContract.calendar?.notifyDate)],
+      ["تاریخ شروع قرارداد", previewContract.calendar?.startDate ? toFaDigits(previewContract.calendar.startDate) : ""],
+      ["میلادی تاریخ شروع", jalaliToGregorianLabel(previewContract.calendar?.startDate)],
+      ["مدت قرارداد", calendar.baseDays ? `${toFaDigits(calendar.baseDays)} روز` : ""],
+      ["روزهای افزوده", `${toFaDigits(calendar.extraDays || 0)} روز`],
+      ["جمع کل تقویم قرارداد", `${toFaDigits(calendar.totalDays || 0)} روز`],
+      ["تاریخ‌های افزوده", Array.isArray(previewContract.calendar?.extraDates) && previewContract.calendar.extraDates.length ? previewContract.calendar.extraDates.map((date) => toFaDigits(date)).join("، ") : ""],
+    ]))}
+    ${section("فنی و محدوده کار", infoGrid([
+      ["شرح خدمات و محدوده کار", previewContract.technical?.serviceScope],
+      ["برچسب‌ها", previewTechnicalTagLabels],
+      ...TECHNICAL_SUPPORT_FIELDS.map((item) => [item.label, previewContract.technical?.[item.key]]),
+    ]))}
+    ${section("مبلغ قرارداد", table(["#", "مبلغ", "ارز", "منشأ"], amountRows))}
+    ${section("شرایط پرداخت", infoGrid([
+      ["شرایط پرداخت", previewFinancial.paymentTerms],
+      ["پیش پرداخت", previewPaymentStatus(previewFinancial.advancePayment)],
+      ["سپرده بیمه", previewPaymentStatus(previewFinancial.capitalDeposit)],
+      ["درصد سپرده بیمه", previewFinancial.capitalDeposit === "has" ? `${toFaDigits(previewFinancial.capitalDepositAmount || 0)}%` : ""],
+      ["حسن انجام کار", previewPaymentStatus(previewFinancial.performanceBond)],
+      ["درصد حسن انجام کار", previewFinancial.performanceBond === "has" ? `${toFaDigits(previewFinancial.performanceBondAmount || 0)}%` : ""],
+    ]))}
+    ${section("تضامین", table(["#", "نام تضمین", "نوع", "عهده بانک/شماره", "مبلغ", "ارز"], guaranteeRows))}
+    ${section("تامین اجتماعی", infoGrid([
+      ["ردیف پیمان", previewInsurance.contractRow],
+      ["شعبه سازمان تامین اجتماعی", previewInsurance.branchStatus],
+      ["کارکرد ناخالص نهایی قرارداد", previewInsurance.finalGrossPerformance ? `${formatFinancialAmount(parseFinancialAmount(previewInsurance.finalGrossPerformance))} ریال` : ""],
+      ["مفاصا حساب بیمه تامین اجتماعی", previewFileNames(previewInsurance.clearanceFiles)],
+      ["سند مرتبط تامین اجتماعی", previewInsuranceLetterLabel],
+      ["آخرین وضعیت قرارداد", previewInsurance.lastStatus],
+    ]))}
+    ${section("اسناد مرتبط", table(["#", "شماره سند", "موضوع", "نوع سند", "تاریخ"], relatedLetterRows))}
+    ${section("فایل‌ها و پیوست‌ها", `<div class="attachments-note">پیوست‌ها در این خلاصه فهرست شده‌اند. فایل‌های تصویری در ادامه همین بخش برای چاپ نمایش داده می‌شوند و سایر فایل‌ها از طریق آدرس درج‌شده قابل باز شدن هستند.</div>${table(["#", "گروه", "نام فایل", "حجم", "آدرس"], fileRows)}${imagePreviews.length ? `<div class="image-grid">${imagePreviews.map((file) => `<div class="image-card"><div>${text(`${file.group || "پیوست"} - ${file.name || "فایل"}`)}</div><img src="${escapeHtml(file.url)}" alt="" /></div>`).join("")}</div>` : ""}`)}
+    <footer><span>سامانه مدیریت قراردادها</span><span>این نسخه برای چاپ و بایگانی تولید شده است.</span></footer>
+  </div>
+  <script>
+    window.addEventListener("load", function () {
+      setTimeout(function () { window.focus(); window.print(); }, 350);
+    });
+  </script>
+</body>
+</html>`;
+
+    const printWindow = window.open("", "_blank", "width=1100,height=800");
+    if (!printWindow) {
+      alert("امکان باز کردن پنجره چاپ وجود ندارد. لطفا popup مرورگر را برای این سایت فعال کنید.");
+      return;
+    }
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
   const renderSaveButton = (sectionId, title = "ذخیره") => {
     const isDraftSection = sectionId !== "financial";
     const showFinalStatus = finalSaveStatus.sectionId === sectionId && finalSaveStatus.message;
@@ -4327,15 +4515,27 @@ export default function ContractInformation() {
                     {previewProject?.label || "بدون پروژه"} - {contractNoForRow(previewContract, rowById) || "بدون شماره"}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setPreviewContractId("")}
-                  className={iconBtnCls}
-                  aria-label="بستن"
-                  title="بستن"
-                >
-                  <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5 dark:invert" />
-                </button>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={printContractSummary}
+                    className="h-10 rounded-xl border border-black/15 bg-white px-3 text-xs font-bold transition inline-flex items-center gap-2 hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+                    aria-label="چاپ خلاصه قرارداد"
+                    title="چاپ خلاصه قرارداد"
+                  >
+                    <img src="/images/icons/namayeshname.svg" alt="" className="h-4 w-4 dark:invert" />
+                    چاپ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewContractId("")}
+                    className={iconBtnCls}
+                    aria-label="بستن"
+                    title="بستن"
+                  >
+                    <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5 dark:invert" />
+                  </button>
+                </div>
               </div>
 
               <div className="flex-1 overflow-hidden">
