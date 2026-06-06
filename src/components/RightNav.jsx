@@ -63,7 +63,7 @@ function RightNav() {
   });
 
   useEffect(() => {
-    const space = expanded ? "272px" : "96px";
+    const space = expanded ? "304px" : "96px";
     document.documentElement.style.setProperty("--right-nav-space", space);
   }, [expanded]);
 
@@ -359,7 +359,7 @@ function RightNav() {
           "hidden lg:flex fixed right-4 top-4 bottom-4 z-50 flex-col rounded-2xl border border-neutral-200 bg-white/96 text-neutral-800",
           "shadow-[0_18px_50px_rgba(15,23,42,0.12)] backdrop-blur-xl transition-all duration-300",
           "overflow-visible",
-          expanded ? "w-[248px] px-3 py-3" : "w-[76px] px-2.5 py-3",
+          expanded ? "w-[280px] py-3 pl-5 pr-3" : "w-[76px] px-2.5 py-3",
         ].join(" ")}
       >
         <div className={["flex items-center", expanded ? "justify-between gap-3 px-1" : "justify-center"].join(" ")}>
