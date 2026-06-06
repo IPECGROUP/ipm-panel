@@ -733,7 +733,7 @@ function readLocalContractDraft() {
   try {
     const raw = localStorage.getItem(CONTRACT_DRAFT_STORAGE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(raw); 
     const payload = parsed?.payload && typeof parsed.payload === "object" ? parsed.payload : parsed;
     if (!hasContractDraftContent(payload)) return null;
     return {

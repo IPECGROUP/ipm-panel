@@ -12,8 +12,6 @@ const TAB_ACTIVE_BG = {
   internal: "#FF8040",
 };
 
-const CONFIDENTIAL_ICON_FILTER =
-  "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)";
 const CONFIDENTIAL_TEXT_CLS = "text-red-600 dark:text-red-500";
 
 const MAIN_ADMIN_USER = "marandi";
@@ -5398,14 +5396,6 @@ aria-invalid={fieldHasError(formKind, "subject")}
                                     {kindLabel}
                                   </span>
                                 ) : null}
-                                {isConf ? (
-                                  <img
-                                    src="/images/icons/confidential-letter.svg"
-                                    alt=""
-                                    className="h-4 w-4 shrink-0"
-                                    style={{ filter: CONFIDENTIAL_ICON_FILTER }}
-                                  />
-                                ) : null}
                               </div>
                               <div className={"mt-1 text-xs " + mutedText}>
                                 {letterDateOf(l) ? toFaDigits(letterDateOf(l)) : "—"}
@@ -5673,15 +5663,7 @@ const rowBg = normalRowBg;
               />
             </td>
 
-            <td className={"relative px-3 " + divider}>
-              {isConf ? (
-                <img
-                  src="/images/icons/confidential-letter.svg"
-                  alt=""
-                  className="pointer-events-none absolute -right-2 top-1/2 h-4 w-4 -translate-y-1/2"
-                  style={{ filter: CONFIDENTIAL_ICON_FILTER }}
-                />
-              ) : null}
+            <td className={"px-3 " + divider}>
               <button
                 type="button"
                 onClick={() => {
@@ -5795,23 +5777,39 @@ const rowBg = normalRowBg;
 
                   <div className="flex items-center justify-between md:justify-start gap-2 text-sm">
                     <span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span>
-                    <select
-                      value={rowsPerPage}
-                      onChange={(e) => {
-                        setRowsPerPage(Number(e.target.value) || 10);
-                        setPage(0);
-                      }}
+                    <div
                       className={
-                        "h-9 px-2 rounded-lg border outline-none " +
-                        (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-black")
+                        "inline-flex h-9 overflow-hidden rounded-lg border " +
+                        (theme === "dark" ? "border-white/15 bg-white/5" : "border-black/10 bg-white")
                       }
                     >
-                      {[10, 25, 100].map((n) => (
-                        <option key={n} value={n}>
-                          {toFaDigits(n)}
-                        </option>
-                      ))}
-                    </select>
+                      {[10, 25, 100].map((n) => {
+                        const active = rowsPerPage === n;
+                        return (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => {
+                              setRowsPerPage(n);
+                              setPage(0);
+                            }}
+                            className={
+                              "min-w-10 px-3 text-sm font-semibold transition " +
+                              (active
+                                ? theme === "dark"
+                                  ? "bg-white text-neutral-900"
+                                  : "bg-neutral-900 text-white"
+                                : theme === "dark"
+                                ? "text-white/75 hover:bg-white/10"
+                                : "text-neutral-700 hover:bg-black/[0.04]")
+                            }
+                            aria-pressed={active}
+                          >
+                            {toFaDigits(n)}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>
