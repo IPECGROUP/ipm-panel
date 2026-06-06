@@ -380,6 +380,11 @@ function cleanFinancialAmountInput(value) {
   return toEnDigits(value).replace(/[^\d.,٫٬\s\-−–—]/g, "");
 }
 
+function hasFinancialAmount(value) {
+  const text = toEnDigits(value).replace(/[^\d.-]/g, "").trim();
+  return Boolean(text && text !== "-" && text !== "." && text !== "-.");
+}
+
 function CALCULATE_FINANCIAL_TOTALS(financial = {}) {
   const rows = [...(Array.isArray(financial?.contractAmounts) ? financial.contractAmounts : []), ...(Array.isArray(financial?.appendices) ? financial.appendices : [])];
   const byCurrency = new Map();
@@ -1959,6 +1964,16 @@ export default function ContractInformation() {
       const draft = makeGuaranteeRow(financial.guaranteeDraft || {});
       const hasAnyValue = [draft.name, draft.type, draft.bankNo, draft.amount, draft.currencyId].some((item) => String(item || "").trim());
       if (!hasAnyValue) return prev;
+      const missing = [];
+      if (!String(draft.name || "").trim()) missing.push("نام تضمین");
+      if (!String(draft.type || "").trim()) missing.push("نوع");
+      if (!String(draft.bankNo || "").trim()) missing.push("عهده بانک/شماره");
+      if (!hasFinancialAmount(draft.amount)) missing.push("مبلغ");
+      if (!String(draft.currencyId || "").trim()) missing.push("ارز");
+      if (missing.length) {
+        alert(`فیلدهای تضمین اجباری هستند: ${missing.join("، ")}`);
+        return prev;
+      }
 
       return {
         ...prev,
@@ -2026,6 +2041,17 @@ export default function ContractInformation() {
   const saveEditGuaranteeRow = () => {
     const id = String(editingGuaranteeId || "");
     if (!id) return;
+    const draft = makeGuaranteeRow(editingGuaranteeDraft || {});
+    const missing = [];
+    if (!String(draft.name || "").trim()) missing.push("نام تضمین");
+    if (!String(draft.type || "").trim()) missing.push("نوع");
+    if (!String(draft.bankNo || "").trim()) missing.push("عهده بانک/شماره");
+    if (!hasFinancialAmount(draft.amount)) missing.push("مبلغ");
+    if (!String(draft.currencyId || "").trim()) missing.push("ارز");
+    if (missing.length) {
+      alert(`فیلدهای تضمین اجباری هستند: ${missing.join("، ")}`);
+      return;
+    }
     setForm((prev) => {
       const financial = normalizeFinancial(prev.financial || {});
       return {
@@ -2033,7 +2059,7 @@ export default function ContractInformation() {
         financial: {
           ...financial,
           guarantees: financial.guarantees.map((row) =>
-            String(row.id) === id ? makeGuaranteeRow({ ...editingGuaranteeDraft, id }) : row
+            String(row.id) === id ? makeGuaranteeRow({ ...draft, id }) : row
           ),
         },
       };
@@ -2211,6 +2237,29 @@ export default function ContractInformation() {
     if (documentType !== "main" && !parentContractId) {
       alert("شماره قرارداد اصلی را انتخاب کنید.");
       return;
+    }
+
+    if (sectionId === "financial") {
+      const financial = normalizeFinancial(form.financial || {});
+      const invalidAmountRow = financial.contractAmounts.find(
+        (row) => !hasFinancialAmount(row.amount) || !String(row.currencyId || "").trim() || !String(row.sourceId || "").trim()
+      );
+      if (invalidAmountRow) {
+        alert("در بخش مبلغ قرارداد، مبلغ، ارز و منشأ اجباری هستند.");
+        return;
+      }
+      const invalidGuarantee = financial.guarantees.find(
+        (row) =>
+          !String(row.name || "").trim() ||
+          !String(row.type || "").trim() ||
+          !String(row.bankNo || "").trim() ||
+          !hasFinancialAmount(row.amount) ||
+          !String(row.currencyId || "").trim()
+      );
+      if (invalidGuarantee) {
+        alert("در جدول تضامین، همه فیلدها اجباری هستند.");
+        return;
+      }
     }
 
     const id = formId || `${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -2542,9 +2591,9 @@ export default function ContractInformation() {
         {rows.map((row, index) => (
           <div key={row.id} className="grid grid-cols-1 md:grid-cols-[minmax(180px,1fr)_190px_190px] gap-2 md:items-end">
             <div>
-              <div className={labelCls}>{amountLabel}</div>
+              <div className={labelCls}>{amountLabel} *</div>
               <input
-                value={row.amount || ""}
+                value={formatAmountInput(row.amount || "")}
                 onChange={(e) => updateFinancialRow(sectionKey, row.id, "amount", e.target.value)}
                 className={inputCls}
                 type="text"
@@ -2554,7 +2603,7 @@ export default function ContractInformation() {
               />
             </div>
             <div>
-              <div className={labelCls}>ارز</div>
+              <div className={labelCls}>ارز *</div>
               <select
                 value={row.currencyId || ""}
                 onChange={(e) => updateFinancialRow(sectionKey, row.id, "currencyId", e.target.value)}
@@ -2574,7 +2623,7 @@ export default function ContractInformation() {
               </select>
             </div>
             <div>
-              <div className={labelCls}>منشأ</div>
+              <div className={labelCls}>منشأ *</div>
               <select
                 value={row.sourceId || ""}
                 onChange={(e) => updateFinancialRow(sectionKey, row.id, "sourceId", e.target.value)}
@@ -3402,7 +3451,7 @@ export default function ContractInformation() {
                         <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
                           <div className="grid grid-cols-1 md:grid-cols-[140px_140px_minmax(190px,1.05fr)_minmax(240px,1.45fr)_120px_48px] gap-2 md:items-end">
                             <div>
-                              <div className={labelCls}>نام تضمین</div>
+                              <div className={labelCls}>نام تضمین *</div>
                               {financialForm.guaranteeDraft?.customName ? (
                                 <input
                                   value={financialForm.guaranteeDraft?.name || ""}
@@ -3429,7 +3478,7 @@ export default function ContractInformation() {
                             </div>
 
                             <div>
-                              <div className={labelCls}>نوع</div>
+                              <div className={labelCls}>نوع *</div>
                               <input
                                 value={financialForm.guaranteeDraft?.type || ""}
                                 onChange={(e) => updateGuaranteeDraft("type", e.target.value)}
@@ -3439,7 +3488,7 @@ export default function ContractInformation() {
                             </div>
 
                             <div>
-                              <div className={labelCls}>عهده بانک/شماره</div>
+                              <div className={labelCls}>عهده بانک/شماره *</div>
                               <input
                                 value={financialForm.guaranteeDraft?.bankNo || ""}
                                 onChange={(e) => updateGuaranteeDraft("bankNo", e.target.value)}
@@ -3449,7 +3498,7 @@ export default function ContractInformation() {
                             </div>
 
                             <div>
-                              <div className={labelCls}>مبلغ</div>
+                              <div className={labelCls}>مبلغ *</div>
                               <input
                                 value={formatAmountInput(financialForm.guaranteeDraft?.amount || "")}
                                 onChange={(e) => updateGuaranteeDraft("amount", e.target.value)}
@@ -3462,7 +3511,7 @@ export default function ContractInformation() {
                             </div>
 
                             <div>
-                              <div className={labelCls}>ارز</div>
+                              <div className={labelCls}>ارز *</div>
                               <select
                                 value={financialForm.guaranteeDraft?.currencyId || ""}
                                 onChange={(e) => updateGuaranteeDraft("currencyId", e.target.value)}
