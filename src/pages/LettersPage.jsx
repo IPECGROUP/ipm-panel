@@ -5678,7 +5678,7 @@ const rowBg = normalRowBg;
                 <img
                   src="/images/icons/confidential-letter.svg"
                   alt=""
-                  className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2"
+                  className="pointer-events-none absolute -right-2 top-1/2 h-4 w-4 -translate-y-1/2"
                   style={{ filter: CONFIDENTIAL_ICON_FILTER }}
                 />
               ) : null}
