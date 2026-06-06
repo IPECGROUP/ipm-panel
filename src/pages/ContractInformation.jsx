@@ -462,6 +462,82 @@ function letterDateOf(letter) {
   return pickFirst(letter?.letter_date, letter?.letterDate, letter?.date, letter?.secretariat_date, letter?.secretariatDate);
 }
 
+function letterKindOf(letter) {
+  return pickFirst(letter?.kind, letter?.type, letter?.letter_kind, letter?.letterKind);
+}
+
+function letterDescriptionOf(letter) {
+  return pickFirst(letter?.description, letter?.body, letter?.text, letter?.summary, letter?.note, letter?.notes);
+}
+
+function letterSecretariatDateOf(letter) {
+  return pickFirst(letter?.secretariat_date, letter?.secretariatDate);
+}
+
+function letterReceiverOf(letter) {
+  return pickFirst(letter?.receiver_name, letter?.receiverName, letter?.receiver, letter?.to_name, letter?.toName);
+}
+
+function letterSenderOf(letter) {
+  return pickFirst(letter?.sender_name, letter?.senderName, letter?.sender, letter?.from_name, letter?.fromName);
+}
+
+function letterAttachmentsOf(letter) {
+  const raw =
+    letter?.attachments ??
+    letter?.attachment ??
+    letter?.files ??
+    letter?.files_json ??
+    letter?.attachments_json ??
+    letter?.attachment_json ??
+    letter?.attachmentsJson;
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  if (raw && typeof raw === "object" && Array.isArray(raw.items)) return raw.items;
+  return [];
+}
+
+function letterAttachmentUrlOf(file) {
+  const fileId = file?.file_id ?? file?.fileId ?? file?.serverId;
+  if (fileId) return `/api/files/${encodeURIComponent(String(fileId))}`;
+  return String(file?.url ?? file?.href ?? file?.path ?? file?.public_url ?? file?.publicUrl ?? file?.file_url ?? file?.fileUrl ?? "");
+}
+
+function letterAttachmentNameOf(file) {
+  return String(file?.name ?? file?.filename ?? file?.file_name ?? file?.fileName ?? file?.original_name ?? file?.originalName ?? "فایل");
+}
+
+function letterAttachmentTypeOf(file) {
+  return String(file?.type ?? file?.mime ?? file?.mime_type ?? file?.mimeType ?? "");
+}
+
+function resolvePublicUrl(url) {
+  const text = String(url || "").trim().replace(/\\/g, "/");
+  if (!text) return "";
+  if (/^(https?:|blob:|data:)/i.test(text)) return text;
+  if (text.startsWith("//")) return `${window.location.protocol}${text}`;
+  if (text.startsWith("/")) return text;
+  if (text.startsWith("public/")) return `/${text.replace(/^public\//, "")}`;
+  return `/${text.replace(/^\/+/, "")}`;
+}
+
+function isPreviewPdf(url, name = "", type = "") {
+  const rawType = String(type || "").toLowerCase();
+  return rawType.includes("pdf") || /\.pdf(\?|#|$)/i.test(String(url || "")) || /\.pdf$/i.test(String(name || ""));
+}
+
+function isPreviewImage(url, name = "", type = "") {
+  const rawType = String(type || "").toLowerCase();
+  return rawType.startsWith("image/") || /\.(png|jpe?g|gif|webp|bmp|svg)(\?|#|$)/i.test(String(url || "")) || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(String(name || ""));
+}
+
 function tagLabelOf(tag) {
   return pickFirst(tag?.label, tag?.name, tag?.title, tag?.text, tag?.caption, tag?.id);
 }
@@ -961,6 +1037,7 @@ export default function ContractInformation() {
   const [expandedContractIds, setExpandedContractIds] = React.useState(() => new Set());
   const [previewContractId, setPreviewContractId] = React.useState("");
   const [previewFileIndex, setPreviewFileIndex] = React.useState(0);
+  const [relatedLetterPreviewId, setRelatedLetterPreviewId] = React.useState("");
   const [finalSaveStatus, setFinalSaveStatus] = React.useState({ sectionId: "", message: "" });
   const [filterQuery, setFilterQuery] = React.useState("");
   const [filterProjectId, setFilterProjectId] = React.useState("");
@@ -1317,6 +1394,21 @@ export default function ContractInformation() {
         return documentTypeLabel(a.documentType).localeCompare(documentTypeLabel(b.documentType), "fa");
       });
   }, [form.id, form.projectId, rowById, rows]);
+  const existingMainContractForProject = React.useMemo(() => {
+    const projectId = String(form.projectId || "");
+    const currentId = String(form.id || "");
+    if (!projectId) return null;
+    return (
+      rows.find(
+        (row) =>
+          row?.documentType === "main" &&
+          String(row.projectId || "") === projectId &&
+          String(row.id || "") !== currentId
+      ) || null
+    );
+  }, [form.id, form.projectId, rows]);
+  const projectAlreadyHasMainContract = Boolean(existingMainContractForProject);
+  const mainContractBlockedForProject = form.documentType === "main" && projectAlreadyHasMainContract;
 
   const insuranceForm = React.useMemo(() => normalizeInsurance(form.insurance || {}), [form.insurance]);
   const selectedRelatedLetterIds = React.useMemo(
@@ -1327,13 +1419,17 @@ export default function ContractInformation() {
     () => selectedRelatedLetterIds.map((id) => letterById.get(String(id))).filter(Boolean),
     [letterById, selectedRelatedLetterIds]
   );
-  const selectedRelatedLetterLabels = React.useMemo(
-    () => selectedRelatedLetters.map((letter) => toFaDigits(secretariatNoOf(letter) || letterNoOf(letter) || letterIdOf(letter))),
+  const selectedRelatedLetterSummaryItems = React.useMemo(
+    () =>
+      selectedRelatedLetters.map((letter) => ({
+        id: String(letterIdOf(letter)),
+        label: toFaDigits(secretariatNoOf(letter) || letterNoOf(letter) || letterIdOf(letter)),
+      })),
     [selectedRelatedLetters]
   );
   React.useEffect(() => {
-    if (selectedRelatedLetterLabels.length <= 2) setRelatedSummaryOpen(false);
-  }, [selectedRelatedLetterLabels.length]);
+    if (selectedRelatedLetterSummaryItems.length <= 2) setRelatedSummaryOpen(false);
+  }, [selectedRelatedLetterSummaryItems.length]);
   const technicalTagIds = React.useMemo(() => normalizeIdList(form.technical?.tagIds), [form.technical?.tagIds]);
   const tagById = React.useMemo(() => {
     const map = new Map();
@@ -2097,6 +2193,11 @@ export default function ContractInformation() {
       return;
     }
 
+    if (documentType === "main" && existingMainContractForProject) {
+      alert("برای این پروژه قبلا قرارداد اصلی ثبت شده است. برای این پروژه فقط می‌توانید قرارداد فرعی یا الحاقیه ثبت کنید.");
+      return;
+    }
+
     if (documentType !== "main" && !parentContractId) {
       alert("شماره قرارداد اصلی را انتخاب کنید.");
       return;
@@ -2157,7 +2258,11 @@ export default function ContractInformation() {
       setRowsError("");
     } catch (error) {
       if (sectionId !== "financial") markDraftSaveStatus(sectionId, "error");
-      alert(error?.message || "خطا در ذخیره قرارداد");
+      alert(
+        error?.message === "main_contract_exists_for_project"
+          ? "برای این پروژه قبلا قرارداد اصلی ثبت شده است. برای این پروژه فقط می‌توانید قرارداد فرعی یا الحاقیه ثبت کنید."
+          : error?.message || "خطا در ذخیره قرارداد"
+      );
     }
   };
 
@@ -2304,6 +2409,25 @@ export default function ContractInformation() {
   const activePreviewIsImage =
     Boolean(activePreviewFileUrl) &&
     (activePreviewFileType.startsWith("image/") || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(activePreviewFileName));
+  const relatedLetterPreview = relatedLetterPreviewId ? letterById.get(String(relatedLetterPreviewId)) : null;
+  const relatedLetterPreviewFiles = React.useMemo(
+    () =>
+      letterAttachmentsOf(relatedLetterPreview).map((file, index) => {
+        const url = resolvePublicUrl(letterAttachmentUrlOf(file));
+        const name = letterAttachmentNameOf(file) || `فایل ${toFaDigits(index + 1)}`;
+        const type = letterAttachmentTypeOf(file);
+        return {
+          id: String(file?.id ?? file?.file_id ?? file?.fileId ?? file?.serverId ?? `${name}_${index}`),
+          name,
+          type,
+          url,
+          isPdf: isPreviewPdf(url, name, type),
+          isImage: isPreviewImage(url, name, type),
+        };
+      }),
+    [relatedLetterPreview]
+  );
+  const relatedLetterPreviewFile = relatedLetterPreviewFiles.find((file) => file.isPdf || file.isImage) || relatedLetterPreviewFiles[0] || null;
   const previewInfoItemCls = "rounded-xl border border-black/10 bg-black/[0.02] px-3 py-2 dark:border-neutral-700 dark:bg-white/[0.03]";
   const previewLabelCls = "text-[11px] font-semibold text-black/45 dark:text-neutral-400";
   const previewValueCls = "mt-1 break-words text-sm font-semibold text-black dark:text-neutral-100";
@@ -2320,6 +2444,22 @@ export default function ContractInformation() {
   const renderPreviewSectionTitle = (title) => (
     <div className="mt-4 mb-2 text-sm font-bold text-black dark:text-neutral-100">{title}</div>
   );
+  const previewPaymentStatus = (value) => (value === "has" ? "دارد" : value === "none" ? "ندارد" : "");
+  const previewFileNames = (files) => {
+    const list = Array.isArray(files) ? files : [];
+    return list.length ? list.map((file, index) => file?.name || file?.filename || `فایل ${toFaDigits(index + 1)}`).join("، ") : "";
+  };
+  const previewTechnicalTagLabels = React.useMemo(
+    () =>
+      normalizeIdList(previewContract?.technical?.tagIds)
+        .map((id) => tagLabelOf(tagById.get(String(id)) || { id, label: id }))
+        .join("، "),
+    [previewContract?.technical?.tagIds, tagById]
+  );
+  const previewInsuranceLetter = previewInsurance.relatedLetterId ? letterById.get(String(previewInsurance.relatedLetterId)) : null;
+  const previewInsuranceLetterLabel = previewInsuranceLetter
+    ? toFaDigits(secretariatNoOf(previewInsuranceLetter) || letterNoOf(previewInsuranceLetter) || letterIdOf(previewInsuranceLetter))
+    : "";
   const renderPreviewFinancialRows = (rows) => {
     const list = Array.isArray(rows) ? rows : [];
     const filled = list.filter((row) => [row.amount, row.currencyLabel, row.currencyId, row.sourceLabel, row.sourceId].some((item) => String(item || "").trim()));
@@ -2646,7 +2786,7 @@ export default function ContractInformation() {
                   <div className={labelCls}>سند قراردادی</div>
                   <select value={form.documentType} onChange={(e) => setField("documentType", e.target.value)} className={inputCls}>
                     {CONTRACT_DOCUMENT_TYPES.map((item) => (
-                      <option key={item.id} value={item.id}>
+                      <option key={item.id} value={item.id} disabled={item.id === "main" && projectAlreadyHasMainContract}>
                         {item.label}
                       </option>
                     ))}
@@ -2661,6 +2801,7 @@ export default function ContractInformation() {
                       onChange={(e) => setField("contractNo", e.target.value)}
                       className={inputCls}
                       type="text"
+                      disabled={mainContractBlockedForProject}
                     />
                   ) : (
                     <select
@@ -2685,6 +2826,11 @@ export default function ContractInformation() {
                       })}
                     </select>
                   )}
+                  {mainContractBlockedForProject ? (
+                    <div className="mt-1 text-xs font-semibold text-red-600 dark:text-red-400">
+                      برای این پروژه قبلا قرارداد اصلی ثبت شده است؛ فقط قرارداد فرعی یا الحاقیه قابل ثبت است.
+                    </div>
+                  ) : null}
                 </div>
 
                 <div>
@@ -2701,16 +2847,27 @@ export default function ContractInformation() {
                 </div>
 
                 <div className="relative w-full pb-1 sm:min-w-[240px] sm:flex-1 sm:pb-2">
-                  <div className="text-[12px] leading-6 text-black/65 dark:text-neutral-300">
+                  <div className="text-[13px] leading-6 text-black/65 dark:text-neutral-300">
                     اسناد مرتبط:{" "}
-                    {selectedRelatedLetterLabels.length ? (
-                      <span className="font-semibold text-black dark:text-neutral-100">
-                        {selectedRelatedLetterLabels.slice(0, 2).join(" و ")}
-                        {selectedRelatedLetterLabels.length > 2 ? (
+                    {selectedRelatedLetterSummaryItems.length ? (
+                      <span className="inline-flex flex-wrap items-center gap-x-1 font-semibold text-black dark:text-neutral-100">
+                        {selectedRelatedLetterSummaryItems.slice(0, 2).map((item, index) => (
+                          <React.Fragment key={item.id}>
+                            {index > 0 ? <span>و</span> : null}
+                            <button
+                              type="button"
+                              onClick={() => setRelatedLetterPreviewId(item.id)}
+                              className="rounded-lg px-1 py-0.5 underline decoration-black/20 underline-offset-4 transition hover:bg-black/[0.04] hover:decoration-black/60 dark:hover:bg-white/10"
+                            >
+                              {item.label}
+                            </button>
+                          </React.Fragment>
+                        ))}
+                        {selectedRelatedLetterSummaryItems.length > 2 ? (
                           <button
                             type="button"
                             onClick={() => setRelatedSummaryOpen((open) => !open)}
-                            className="mx-1 rounded-lg px-1.5 py-0.5 text-[11px] font-bold text-black underline decoration-black/25 underline-offset-4 hover:bg-black/[0.04] dark:text-neutral-100 dark:hover:bg-white/10"
+                            className="mx-1 rounded-lg px-1.5 py-0.5 text-[12px] font-bold text-black underline decoration-black/25 underline-offset-4 hover:bg-black/[0.04] dark:text-neutral-100 dark:hover:bg-white/10"
                           >
                             و...
                           </button>
@@ -2720,12 +2877,20 @@ export default function ContractInformation() {
                       <span className="font-semibold text-black dark:text-neutral-100">سندی انتخاب نشده است</span>
                     )}
                   </div>
-                  {relatedSummaryOpen && selectedRelatedLetterLabels.length > 2 ? (
-                    <div className="absolute right-0 top-full z-40 mt-1 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-black/10 bg-white p-2 text-[12px] leading-6 text-black shadow-xl dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100">
-                      {selectedRelatedLetterLabels.map((label, index) => (
-                        <div key={`${label}_${index}`} className="rounded-lg px-2 py-1 hover:bg-black/[0.04] dark:hover:bg-white/10">
-                          {label}
-                        </div>
+                  {relatedSummaryOpen && selectedRelatedLetterSummaryItems.length > 2 ? (
+                    <div className="absolute right-0 top-full z-40 mt-1 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-black/10 bg-white p-2 text-[13px] leading-6 text-black shadow-xl dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100">
+                      {selectedRelatedLetterSummaryItems.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            setRelatedLetterPreviewId(item.id);
+                            setRelatedSummaryOpen(false);
+                          }}
+                          className="block w-full rounded-lg px-2 py-1 text-right font-semibold hover:bg-black/[0.04] dark:hover:bg-white/10"
+                        >
+                          {item.label}
+                        </button>
                       ))}
                     </div>
                   ) : null}
@@ -4056,14 +4221,23 @@ export default function ContractInformation() {
                   {renderPreviewInfo("اعضای مشارکت", previewContract.general?.companyMembers)}
                   {renderPreviewInfo("پیمانکاران اصلی", previewContract.general?.mainContractors)}
                   {renderPreviewInfo("اسناد مرتبط", previewRelatedLetterLabel)}
+                  {renderPreviewInfo("آخرین بخش ذخیره شده", CONTRACT_SECTION_TABS.find((tab) => tab.id === previewContract.lastSavedSection)?.label || previewContract.lastSavedSection)}
                 </div>
 
                 {renderPreviewSectionTitle("تقویم قرارداد")}
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+                  {previewContract.documentType === "appendix"
+                    ? renderPreviewInfo("تمدید مدت قرارداد تا تاریخ", previewContract.calendar?.endDate ? toFaDigits(previewContract.calendar.endDate) : "")
+                    : renderPreviewInfo("تاریخ پایان قرارداد", previewContract.calendar?.endDate ? toFaDigits(previewContract.calendar.endDate) : "")}
+                  {renderPreviewInfo("میلادی تاریخ پایان", jalaliToGregorianLabel(previewContract.calendar?.endDate))}
                   {renderPreviewInfo("تاریخ ابلاغ کار", previewContract.calendar?.notifyDate ? toFaDigits(previewContract.calendar.notifyDate) : "")}
+                  {renderPreviewInfo("میلادی تاریخ ابلاغ", jalaliToGregorianLabel(previewContract.calendar?.notifyDate))}
                   {renderPreviewInfo("تاریخ شروع قرارداد", previewContract.calendar?.startDate ? toFaDigits(previewContract.calendar.startDate) : "")}
-                  {renderPreviewInfo("تاریخ پایان قرارداد", previewContract.calendar?.endDate ? toFaDigits(previewContract.calendar.endDate) : "")}
+                  {renderPreviewInfo("میلادی تاریخ شروع", jalaliToGregorianLabel(previewContract.calendar?.startDate))}
                   {renderPreviewInfo("مدت قرارداد", calculateCalendarDays(previewContract.calendar || {}).baseDays ? `${toFaDigits(calculateCalendarDays(previewContract.calendar || {}).baseDays)} روز` : "")}
+                  {renderPreviewInfo("روزهای افزوده", `${toFaDigits(calculateCalendarDays(previewContract.calendar || {}).extraDays || 0)} روز`)}
+                  {renderPreviewInfo("جمع کل تقویم قرارداد", `${toFaDigits(calculateCalendarDays(previewContract.calendar || {}).totalDays || 0)} روز`)}
+                  {renderPreviewInfo("تاریخ‌های افزوده", Array.isArray(previewContract.calendar?.extraDates) && previewContract.calendar.extraDates.length ? previewContract.calendar.extraDates.map((date) => toFaDigits(date)).join("، ") : "")}
                 </div>
 
                 {renderPreviewSectionTitle("فنی و محدوده کار")}
@@ -4072,6 +4246,7 @@ export default function ContractInformation() {
                     <div className={previewLabelCls}>شرح خدمات و محدوده کار</div>
                     <div className="mt-1 whitespace-pre-wrap text-sm leading-7">{previewValue(previewContract.technical?.serviceScope)}</div>
                   </div>
+                  {renderPreviewInfo("برچسب‌ها", previewTechnicalTagLabels)}
                   {TECHNICAL_SUPPORT_FIELDS.map((item) => renderPreviewInfo(item.label, previewContract.technical?.[item.key]))}
                 </div>
 
@@ -4079,9 +4254,12 @@ export default function ContractInformation() {
                 {renderPreviewFinancialRows(previewFinancial.contractAmounts)}
                 <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
                   {renderPreviewInfo("شرایط پرداخت", previewFinancial.paymentTerms)}
-                  {renderPreviewInfo("پیش پرداخت", previewFinancial.advancePayment === "has" ? "دارد" : previewFinancial.advancePayment === "none" ? "ندارد" : "")}
-                  {renderPreviewInfo("سپرده بیمه", previewFinancial.capitalDeposit === "has" ? `${toFaDigits(previewFinancial.capitalDepositAmount || 0)}%` : previewFinancial.capitalDeposit === "none" ? "ندارد" : "")}
-                  {renderPreviewInfo("حسن انجام کار", previewFinancial.performanceBond === "has" ? `${toFaDigits(previewFinancial.performanceBondAmount || 0)}%` : previewFinancial.performanceBond === "none" ? "ندارد" : "")}
+                  {renderPreviewInfo("پیش پرداخت", previewPaymentStatus(previewFinancial.advancePayment))}
+                  {renderPreviewInfo("سپرده بیمه", previewPaymentStatus(previewFinancial.capitalDeposit))}
+                  {renderPreviewInfo("درصد سپرده بیمه", previewFinancial.capitalDeposit === "has" ? `${toFaDigits(previewFinancial.capitalDepositAmount || 0)}%` : "")}
+                  {renderPreviewInfo("حسن انجام کار", previewPaymentStatus(previewFinancial.performanceBond))}
+                  {renderPreviewInfo("درصد حسن انجام کار", previewFinancial.performanceBond === "has" ? `${toFaDigits(previewFinancial.performanceBondAmount || 0)}%` : "")}
+                  {renderPreviewInfo("جدول شکست مبلغ قرارداد", previewFileNames(previewFinancial.breakdownFiles))}
                 </div>
                 {previewFinancial.guarantees.length ? (
                   <div className="mt-3 overflow-x-auto rounded-xl border border-black/10 dark:border-neutral-800">
@@ -4108,13 +4286,17 @@ export default function ContractInformation() {
                       </tbody>
                     </table>
                   </div>
-                ) : null}
+                ) : (
+                  <div className="mt-3">{renderPreviewInfo("تضامین", "تضمینی ثبت نشده است.")}</div>
+                )}
 
                 {renderPreviewSectionTitle("تامین اجتماعی")}
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                   {renderPreviewInfo("ردیف پیمان", previewInsurance.contractRow)}
                   {renderPreviewInfo("شعبه سازمان تامین اجتماعی", previewInsurance.branchStatus)}
                   {renderPreviewInfo("کارکرد ناخالص نهایی قرارداد", previewInsurance.finalGrossPerformance ? `${formatFinancialAmount(parseFinancialAmount(previewInsurance.finalGrossPerformance))} ریال` : "")}
+                  {renderPreviewInfo("مفاصا حساب بیمه تامین اجتماعی", previewFileNames(previewInsurance.clearanceFiles))}
+                  {renderPreviewInfo("سند مرتبط تامین اجتماعی", previewInsuranceLetterLabel)}
                   {renderPreviewInfo("آخرین وضعیت قرارداد", previewInsurance.lastStatus)}
                 </div>
                   </div>
@@ -4203,6 +4385,118 @@ export default function ContractInformation() {
                           </div>
                         ) : null}
                       </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {relatedLetterPreview &&
+        createPortal(
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-3 md:p-6" dir="rtl">
+            <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={() => setRelatedLetterPreviewId("")} />
+            <div className="relative flex h-[min(84vh,720px)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-black shadow-2xl dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
+              <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3 dark:border-neutral-800">
+                <div className="min-w-0">
+                  <div className="text-base font-bold">پیش نمایش سند مرتبط</div>
+                  <div className="mt-1 truncate text-xs text-black/55 dark:text-neutral-400">
+                    {toFaDigits(secretariatNoOf(relatedLetterPreview) || letterNoOf(relatedLetterPreview) || letterIdOf(relatedLetterPreview))}
+                    {subjectOf(relatedLetterPreview) ? ` - ${subjectOf(relatedLetterPreview)}` : ""}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setRelatedLetterPreviewId("")}
+                  className={iconBtnCls}
+                  aria-label="بستن"
+                  title="بستن"
+                >
+                  <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5 dark:invert" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-hidden">
+                <div className="flex h-full flex-col lg:flex-row">
+                  <div className="h-full overflow-y-auto p-4 lg:w-[52%]">
+                    {renderPreviewSectionTitle("اطلاعات نامه")}
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {renderPreviewInfo("شماره نامه", toFaDigits(letterNoOf(relatedLetterPreview)))}
+                      {renderPreviewInfo("تاریخ نامه", toFaDigits(letterDateOf(relatedLetterPreview)))}
+                      {renderPreviewInfo("شماره ثبت دبیرخانه", toFaDigits(secretariatNoOf(relatedLetterPreview)))}
+                      {renderPreviewInfo("تاریخ ثبت دبیرخانه", toFaDigits(letterSecretariatDateOf(relatedLetterPreview)))}
+                      {renderPreviewInfo("نوع سند", letterKindOf(relatedLetterPreview))}
+                      {renderPreviewInfo("از", letterSenderOf(relatedLetterPreview))}
+                      {renderPreviewInfo("به", letterReceiverOf(relatedLetterPreview))}
+                      {renderPreviewInfo("سازمان / شرکت", orgOf(relatedLetterPreview))}
+                    </div>
+                    <div className={`${previewInfoItemCls} mt-2`}>
+                      <div className={previewLabelCls}>موضوع</div>
+                      <div className="mt-1 whitespace-pre-wrap text-sm font-semibold leading-7 text-black dark:text-neutral-100">
+                        {previewValue(subjectOf(relatedLetterPreview))}
+                      </div>
+                    </div>
+                    <div className={`${previewInfoItemCls} mt-2`}>
+                      <div className={previewLabelCls}>شرح</div>
+                      <div className="mt-1 whitespace-pre-wrap text-sm leading-7 text-black dark:text-neutral-100">
+                        {previewValue(letterDescriptionOf(relatedLetterPreview))}
+                      </div>
+                    </div>
+
+                    <div className="mt-3 rounded-2xl border border-black/10 bg-black/[0.02] p-2 dark:border-neutral-800 dark:bg-white/[0.03]">
+                      <div className="mb-2 text-xs font-bold text-black/55 dark:text-neutral-400">پیوست‌ها</div>
+                      {relatedLetterPreviewFiles.length ? (
+                        <div className="grid grid-cols-1 gap-2">
+                          {relatedLetterPreviewFiles.map((file) => (
+                            <a
+                              key={file.id}
+                              href={file.url || "#"}
+                              target="_blank"
+                              rel="noreferrer"
+                              className={`rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-semibold transition dark:border-neutral-800 dark:bg-neutral-900 ${file.url ? "hover:bg-black/[0.04] dark:hover:bg-neutral-800" : "pointer-events-none text-black/40 dark:text-white/40"}`}
+                            >
+                              {file.name}
+                            </a>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="py-3 text-center text-xs text-black/50 dark:text-neutral-400">پیوستی ثبت نشده است.</div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex min-h-[280px] flex-col border-t border-black/10 bg-black/[0.015] p-3 lg:w-[48%] lg:border-r lg:border-t-0 dark:border-neutral-800 dark:bg-white/[0.02]">
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <div className="text-sm font-bold">فایل نامه</div>
+                      <div className="rounded-full bg-black/[0.06] px-2 py-0.5 text-xs font-semibold dark:bg-white/10">
+                        {toFaDigits(relatedLetterPreviewFiles.length)}
+                      </div>
+                    </div>
+                    <div className="min-h-[260px] flex-1 overflow-hidden rounded-2xl border border-black/10 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+                      {relatedLetterPreviewFile?.url ? (
+                        relatedLetterPreviewFile.isPdf ? (
+                          <object data={`${relatedLetterPreviewFile.url}#view=FitH`} type="application/pdf" className="h-full min-h-[300px] w-full">
+                            <iframe title="related_letter_pdf_preview" src={`${relatedLetterPreviewFile.url}#view=FitH`} className="h-full min-h-[300px] w-full" />
+                          </object>
+                        ) : relatedLetterPreviewFile.isImage ? (
+                          <img src={relatedLetterPreviewFile.url} alt="" className="h-full min-h-[300px] w-full object-contain" />
+                        ) : (
+                          <div className="grid h-full min-h-[300px] place-items-center p-6 text-center">
+                            <div>
+                              <div className="text-sm font-bold">پیش نمایش این نوع فایل در دسترس نیست.</div>
+                              <a href={relatedLetterPreviewFile.url} target="_blank" rel="noreferrer" className="mt-3 inline-flex h-10 items-center justify-center rounded-xl bg-black px-4 text-xs font-bold text-white">
+                                باز کردن فایل
+                              </a>
+                            </div>
+                          </div>
+                        )
+                      ) : (
+                        <div className="grid h-full min-h-[300px] place-items-center p-6 text-center text-sm font-bold text-black/55 dark:text-neutral-400">
+                          فایلی برای پیش نمایش وجود ندارد.
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
