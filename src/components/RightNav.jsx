@@ -21,7 +21,7 @@ const IcContract = () => <img src="/images/icons/gharadad.svg" className={icImgC
 const IcTags = () => <img src="/images/icons/tags.svg" className={icImgCls} alt="" draggable={false} />;
 
 const IcWorksheet = () => <img src="/images/icons/karbarg-mali.svg" className={icImgCls} alt="" draggable={false} />;
-const IcDaily = () => <img src="/images/icons/role.svg" className={icImgCls} alt="" draggable={false} />;
+const IcDaily = () => <img src="/images/icons/roznegar.svg" className={icImgCls} alt="" draggable={false} />;
 const IcClose = () => <X className={svgCls} strokeWidth={2.4} />;
 
 function RightNav() {
