@@ -968,6 +968,7 @@ export default function ContractInformation() {
   const [relatedPickOpen, setRelatedPickOpen] = React.useState(false);
   const [relatedPickQuery, setRelatedPickQuery] = React.useState("");
   const [relatedPickTarget, setRelatedPickTarget] = React.useState("contract");
+  const [relatedSummaryOpen, setRelatedSummaryOpen] = React.useState(false);
   const [tagCategories, setTagCategories] = React.useState([]);
   const [tags, setTags] = React.useState([]);
   const [tagsLoaded, setTagsLoaded] = React.useState(false);
@@ -1300,14 +1301,22 @@ export default function ContractInformation() {
     return map;
   }, [letters]);
 
-  const mainContracts = React.useMemo(
-    () => rows.filter((row) => row.documentType === "main" && String(row.contractNo || "").trim()),
-    [rows]
-  );
-  const filteredMainContracts = React.useMemo(() => {
+  const projectContractOptions = React.useMemo(() => {
     const projectId = String(form.projectId || "");
-    return mainContracts.filter((contract) => !projectId || String(contract.projectId) === projectId);
-  }, [form.projectId, mainContracts]);
+    const currentId = String(form.id || "");
+    if (!projectId) return [];
+    return rows
+      .filter((row) => {
+        if (!row?.id || String(row.id) === currentId) return false;
+        if (String(row.projectId || "") !== projectId) return false;
+        return Boolean(contractNoForRow(row, rowById));
+      })
+      .sort((a, b) => {
+        const noCompare = contractNoForRow(a, rowById).localeCompare(contractNoForRow(b, rowById), "fa", { numeric: true });
+        if (noCompare) return noCompare;
+        return documentTypeLabel(a.documentType).localeCompare(documentTypeLabel(b.documentType), "fa");
+      });
+  }, [form.id, form.projectId, rowById, rows]);
 
   const insuranceForm = React.useMemo(() => normalizeInsurance(form.insurance || {}), [form.insurance]);
   const selectedRelatedLetterIds = React.useMemo(
@@ -1318,6 +1327,13 @@ export default function ContractInformation() {
     () => selectedRelatedLetterIds.map((id) => letterById.get(String(id))).filter(Boolean),
     [letterById, selectedRelatedLetterIds]
   );
+  const selectedRelatedLetterLabels = React.useMemo(
+    () => selectedRelatedLetters.map((letter) => toFaDigits(secretariatNoOf(letter) || letterNoOf(letter) || letterIdOf(letter))),
+    [selectedRelatedLetters]
+  );
+  React.useEffect(() => {
+    if (selectedRelatedLetterLabels.length <= 2) setRelatedSummaryOpen(false);
+  }, [selectedRelatedLetterLabels.length]);
   const technicalTagIds = React.useMemo(() => normalizeIdList(form.technical?.tagIds), [form.technical?.tagIds]);
   const tagById = React.useMemo(() => {
     const map = new Map();
@@ -1575,6 +1591,7 @@ export default function ContractInformation() {
   const openRelatedPicker = (target = "contract") => {
     setRelatedPickTarget(target);
     setRelatedPickQuery("");
+    setRelatedSummaryOpen(false);
     setRelatedPickOpen(true);
   };
 
@@ -2236,7 +2253,7 @@ export default function ContractInformation() {
   const previewRelatedLetterLabel = previewRelatedLetters.length
     ? previewRelatedLetters
         .map((letter) => toFaDigits(secretariatNoOf(letter) || letterNoOf(letter) || letterIdOf(letter)))
-        .join("، ")
+        .join(" و ")
     : "";
   const previewFinancial = previewContract ? normalizeFinancial(previewContract.financial || {}) : normalizeFinancial({});
   const previewInsurance = previewContract ? normalizeInsurance(previewContract.insurance || {}) : normalizeInsurance({});
@@ -2651,13 +2668,18 @@ export default function ContractInformation() {
                       onChange={(e) => setField("parentContractId", e.target.value)}
                       className={inputCls}
                     >
-                      <option value="">{form.projectId ? "انتخاب قرارداد اصلی" : "ابتدا مرکز/پروژه را انتخاب کنید"}</option>
-                      {filteredMainContracts.map((contract) => {
-                        const project = projectById.get(String(contract.projectId));
+                      <option value="">
+                        {form.projectId
+                          ? projectContractOptions.length
+                            ? "انتخاب شماره قرارداد"
+                            : "موردی برای این پروژه ثبت نشده است"
+                          : "ابتدا مرکز/پروژه را انتخاب کنید"}
+                      </option>
+                      {projectContractOptions.map((contract) => {
+                        const contractNo = contractNoForRow(contract, rowById);
                         return (
                           <option key={contract.id} value={contract.id}>
-                            {contract.contractNo}
-                            {project?.label ? ` - ${project.label}` : ""}
+                            {contractNo} - {documentTypeLabel(contract.documentType)}
                           </option>
                         );
                       })}
@@ -2678,17 +2700,35 @@ export default function ContractInformation() {
                   </button>
                 </div>
 
-                <div className="w-full pb-1 sm:min-w-[240px] sm:flex-1 sm:pb-2">
-                  <div className="text-sm text-black/70 dark:text-neutral-300">
-                    شماره ثبت دبیرخانه:{" "}
-                    <span className="font-semibold text-black dark:text-neutral-100">
-                      {selectedRelatedLetters.length
-                        ? selectedRelatedLetters
-                            .map((letter) => toFaDigits(secretariatNoOf(letter) || letterNoOf(letter) || letterIdOf(letter)))
-                            .join("، ")
-                        : "سندی انتخاب نشده است"}
-                    </span>
+                <div className="relative w-full pb-1 sm:min-w-[240px] sm:flex-1 sm:pb-2">
+                  <div className="text-[12px] leading-6 text-black/65 dark:text-neutral-300">
+                    اسناد مرتبط:{" "}
+                    {selectedRelatedLetterLabels.length ? (
+                      <span className="font-semibold text-black dark:text-neutral-100">
+                        {selectedRelatedLetterLabels.slice(0, 2).join(" و ")}
+                        {selectedRelatedLetterLabels.length > 2 ? (
+                          <button
+                            type="button"
+                            onClick={() => setRelatedSummaryOpen((open) => !open)}
+                            className="mx-1 rounded-lg px-1.5 py-0.5 text-[11px] font-bold text-black underline decoration-black/25 underline-offset-4 hover:bg-black/[0.04] dark:text-neutral-100 dark:hover:bg-white/10"
+                          >
+                            و...
+                          </button>
+                        ) : null}
+                      </span>
+                    ) : (
+                      <span className="font-semibold text-black dark:text-neutral-100">سندی انتخاب نشده است</span>
+                    )}
                   </div>
+                  {relatedSummaryOpen && selectedRelatedLetterLabels.length > 2 ? (
+                    <div className="absolute right-0 top-full z-40 mt-1 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-black/10 bg-white p-2 text-[12px] leading-6 text-black shadow-xl dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100">
+                      {selectedRelatedLetterLabels.map((label, index) => (
+                        <div key={`${label}_${index}`} className="rounded-lg px-2 py-1 hover:bg-black/[0.04] dark:hover:bg-white/10">
+                          {label}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
