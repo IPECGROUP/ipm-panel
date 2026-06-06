@@ -64,6 +64,16 @@ html, body {
   font-family: Vazir, system-ui, -apple-system, "Segoe UI", sans-serif !important;
 }
 
+.ipm-right-nav-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.ipm-right-nav-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
 /* صفحه کامل پر بشه */
 html,
 body,

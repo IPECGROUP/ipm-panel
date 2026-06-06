@@ -211,7 +211,7 @@ function RightNav() {
     [
       "group relative !flex !h-10 !items-center !border !border-transparent !bg-transparent !py-0 !shadow-none",
       "!box-border !text-sm !leading-none !transition-all !duration-200 focus:!ring-2 focus:!ring-[#DB843D]/25",
-      collapsed ? "!w-10 !justify-center !rounded-xl !px-0" : "!w-full !justify-start !gap-3 !rounded-lg !px-2.5",
+      collapsed ? "!w-10 !justify-center !rounded-xl !px-0" : "!mx-auto !w-[calc(100%-0.75rem)] !justify-start !gap-3 !rounded-lg !px-2.5",
       active
         ? "!border-[#DB843D]/35 !bg-[#FFF4EC] !text-[#DB843D] !font-semibold !ring-1 !ring-inset !ring-[#DB843D]/20 before:absolute before:right-0 before:top-2 before:bottom-2 before:w-[3px] before:rounded-full before:bg-[#DB843D]"
         : "!text-neutral-600 hover:!bg-neutral-50 hover:!text-neutral-900",
@@ -395,7 +395,7 @@ function RightNav() {
           </button>
         )}
 
-        <div className={["mt-5 min-h-0 flex-1 space-y-4", expanded ? "overflow-y-auto overflow-x-visible pr-0.5" : "overflow-visible"].join(" ")}>
+        <div className={["mt-5 min-h-0 flex-1 space-y-4", expanded ? "ipm-right-nav-scroll overflow-y-auto overflow-x-visible px-0.5" : "overflow-visible"].join(" ")}>
           {navGroups.map((group) => (
             <div key={group.title} className="space-y-1.5">
               {expanded && (
