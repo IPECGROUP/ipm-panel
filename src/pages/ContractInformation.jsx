@@ -118,6 +118,7 @@ const EMPTY_FORM = {
   projectId: "",
   documentType: "main",
   contractNo: "",
+  subContractNo: "",
   parentContractId: "",
   relatedLetterId: "",
   relatedLetterIds: [],
@@ -641,6 +642,7 @@ function normalizeContractRow(row) {
     projectId: String(item.projectId ?? item.project_id ?? ""),
     documentType,
     contractNo: documentType === "main" ? String(item.contractNo ?? item.contract_no ?? "") : "",
+    subContractNo: documentType === "sub" ? String(item.subContractNo ?? item.sub_contract_no ?? "") : "",
     parentContractId: documentType === "main" ? "" : String(item.parentContractId ?? item.parent_contract_id ?? ""),
     relatedLetterId: String(item.relatedLetterId ?? item.related_letter_id ?? ""),
     relatedLetterIds: normalizeIdList(item.relatedLetterIds ?? item.related_letter_ids ?? (item.relatedLetterId || item.related_letter_id ? [item.relatedLetterId ?? item.related_letter_id] : [])),
@@ -687,6 +689,7 @@ function hasContractDraftContent(form) {
     projectId: item.projectId,
     documentType: item.documentType,
     contractNo: item.contractNo,
+    subContractNo: item.subContractNo,
     parentContractId: item.parentContractId,
     relatedLetterId: item.relatedLetterId,
     relatedLetterIds: item.relatedLetterIds,
@@ -1689,6 +1692,7 @@ export default function ContractInformation() {
           documentTypeChangedFromEditRef.current = true;
         }
         next.contractNo = "";
+        next.subContractNo = "";
         next.parentContractId = "";
         next.general = {
           ...(prev.general || {}),
@@ -2211,6 +2215,7 @@ export default function ContractInformation() {
     const relatedLetterIds = normalizeIdList(form.relatedLetterIds?.length ? form.relatedLetterIds : form.relatedLetterId ? [form.relatedLetterId] : []);
     const relatedLetterId = String(relatedLetterIds[0] || "").trim();
     const contractNo = String(form.contractNo || "").trim();
+    const subContractNo = String(form.subContractNo || "").trim();
     const parentContractId = String(form.parentContractId || "").trim();
 
     if (!projectId) {
@@ -2230,6 +2235,11 @@ export default function ContractInformation() {
 
     if (documentType !== "main" && !parentContractId) {
       alert("شماره قرارداد اصلی را انتخاب کنید.");
+      return;
+    }
+
+    if (documentType === "sub" && !subContractNo) {
+      alert("شماره قرارداد فرعی را وارد کنید.");
       return;
     }
 
@@ -2342,6 +2352,7 @@ export default function ContractInformation() {
       projectId,
       documentType,
       contractNo: documentType === "main" ? contractNo : "",
+      subContractNo: documentType === "sub" ? subContractNo : "",
       parentContractId: documentType === "main" ? "" : parentContractId,
       relatedLetterId,
       relatedLetterIds,
@@ -2746,6 +2757,7 @@ export default function ContractInformation() {
       ["مرکز/پروژه", previewProject?.label],
       ["سند قراردادی", documentTypeLabel(previewContract.documentType)],
       ["شماره قرارداد", contractNoForRow(previewContract, rowById)],
+      ...(previewContract.documentType === "sub" ? [["شماره قرارداد فرعی", previewContract.subContractNo]] : []),
       ["نوع قرارداد", previewContract.general?.contractType],
       ["موضوع قرارداد", previewContract.general?.contractSubject],
       ["کارفرمای اصلی", previewContract.general?.mainEmployer],
@@ -3163,6 +3175,18 @@ export default function ContractInformation() {
                     </div>
                   ) : null}
                 </div>
+
+                {form.documentType === "sub" ? (
+                  <div className="w-full sm:min-w-[220px] sm:flex-1">
+                    <div className={labelCls}>شماره قرارداد فرعی *</div>
+                    <input
+                      value={form.subContractNo || ""}
+                      onChange={(e) => setField("subContractNo", e.target.value)}
+                      className={inputCls}
+                      type="text"
+                    />
+                  </div>
+                ) : null}
 
                 <div>
                   <div className={labelCls}>اسناد مرتبط</div>
@@ -4557,6 +4581,7 @@ export default function ContractInformation() {
                   {renderPreviewInfo("مرکز/پروژه", previewProject?.label)}
                   {renderPreviewInfo("سند قراردادی", documentTypeLabel(previewContract.documentType))}
                   {renderPreviewInfo("شماره قرارداد", contractNoForRow(previewContract, rowById))}
+                  {previewContract.documentType === "sub" ? renderPreviewInfo("شماره قرارداد فرعی", previewContract.subContractNo) : null}
                   {renderPreviewInfo("نوع قرارداد", previewContract.general?.contractType)}
                   {renderPreviewInfo("موضوع قرارداد", previewContract.general?.contractSubject)}
                   {renderPreviewInfo("کارفرمای اصلی", previewContract.general?.mainEmployer)}
