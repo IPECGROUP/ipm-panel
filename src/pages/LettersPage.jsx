@@ -14,6 +14,7 @@ const TAB_ACTIVE_BG = {
 
 const CONFIDENTIAL_ICON_FILTER =
   "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)";
+const CONFIDENTIAL_TEXT_CLS = "text-red-600 dark:text-red-500";
 
 const MAIN_ADMIN_USER = "marandi";
 const MAIN_ADMIN_PASS = "1234";
@@ -5355,16 +5356,20 @@ aria-invalid={fieldHasError(formKind, "subject")}
                         : theme === "dark"
                         ? "bg-white/5"
                         : "bg-black/[0.02]";
-                      const mutedText = theme === "dark"
+                      const mutedText = isConf
+                        ? CONFIDENTIAL_TEXT_CLS
+                        : theme === "dark"
                         ? "text-white/60"
                         : "text-neutral-600";
-                      const labelText = theme === "dark"
+                      const labelText = isConf
+                        ? CONFIDENTIAL_TEXT_CLS
+                        : theme === "dark"
                         ? "text-white/50"
                         : "text-neutral-500";
                       const kindLabel = TABS.find((x) => x.id === kind)?.label || "";
 
                       return (
-                        <div key={id} className={"border-r-4 p-3 " + cardBg} style={{ borderRightColor: activeColor }}>
+                        <div key={id} className={"border-r-4 p-3 " + cardBg + (isConf ? " " + CONFIDENTIAL_TEXT_CLS : "")} style={{ borderRightColor: activeColor }}>
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 flex-1">
                               <div className="relative flex min-w-0 items-center gap-2">
@@ -5390,14 +5395,14 @@ aria-invalid={fieldHasError(formKind, "subject")}
                                     setKbdAbsIdx(absIdx);
                                     openView(l);
                                   }}
-                                  className="min-w-0 truncate text-right text-sm font-bold underline-offset-4 hover:underline"
+                                  className={"min-w-0 truncate text-right text-sm font-bold underline-offset-4 hover:underline" + (isConf ? " " + CONFIDENTIAL_TEXT_CLS : "")}
                                   title="نمایش"
                                   aria-label="نمایش"
                                 >
                                   {toFaDigits(letterNoOf(l) || "—")}
                                 </button>
                                 {kindLabel ? (
-                                  <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] bg-white/70 text-neutral-800 dark:bg-white/10 dark:text-white/80">
+                                  <span className={"shrink-0 rounded-full px-2 py-0.5 text-[11px] bg-white/70 dark:bg-white/10 " + (isConf ? CONFIDENTIAL_TEXT_CLS : "text-neutral-800 dark:text-white/80")}>
                                     {kindLabel}
                                   </span>
                                 ) : null}
@@ -5653,6 +5658,7 @@ const rowBg = normalRowBg;
           className={
             rowBg +
             " transition-colors" +
+            (isConf ? " [&_td]:!text-red-600 dark:[&_td]:!text-red-500" : "") +
             (isKeyboardActive ? " outline outline-2 -outline-offset-2 outline-black/40 dark:outline-white/50" : "")
           }
         >
@@ -5672,7 +5678,7 @@ const rowBg = normalRowBg;
                 <img
                   src="/images/icons/confidential-letter.svg"
                   alt=""
-                  className="pointer-events-none absolute right-1.5 top-1/2 h-4 w-4 -translate-y-1/2"
+                  className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2"
                   style={{ filter: CONFIDENTIAL_ICON_FILTER }}
                 />
               ) : null}
@@ -5684,7 +5690,9 @@ const rowBg = normalRowBg;
                 }}
                 className={
                   "mx-auto inline-flex items-center justify-center gap-2 text-[13px] font-semibold underline-offset-4 hover:underline transition " +
-                  (theme === "dark"
+                  (isConf
+                    ? CONFIDENTIAL_TEXT_CLS
+                    : theme === "dark"
                     ? "text-white"
                     : "text-neutral-900")
                 }
