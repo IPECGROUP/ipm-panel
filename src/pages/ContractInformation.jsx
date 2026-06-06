@@ -2206,12 +2206,6 @@ export default function ContractInformation() {
     const isEditingSavedContract = formId && rowById.has(formId);
     const saveAsNewFromDocumentTypeChange = documentTypeChangedFromEditRef.current;
 
-    if (sectionId !== "financial" && !isEditingSavedContract && !saveAsNewFromDocumentTypeChange) {
-      const draftSaved = await saveContractDraft({ sectionId, immediate: true });
-      if (!draftSaved) alert("خطا در ذخیره پیش نویس قرارداد");
-      return;
-    }
-
     const projectId = String(form.projectId || "").trim();
     const documentType = String(form.documentType || "main");
     const relatedLetterIds = normalizeIdList(form.relatedLetterIds?.length ? form.relatedLetterIds : form.relatedLetterId ? [form.relatedLetterId] : []);
@@ -2239,8 +2233,61 @@ export default function ContractInformation() {
       return;
     }
 
+    if (sectionId === "general") {
+      const missing = [];
+      if (!String(form.general?.contractType || "").trim()) missing.push("نوع قرارداد");
+      if (!String(form.general?.contractSubject || "").trim()) missing.push("موضوع قرارداد");
+      if (documentType === "sub") {
+        if (!String(form.general?.executor || "").trim()) missing.push("مجری قرارداد");
+      } else {
+        if (!String(form.general?.employerAssignor || "").trim()) missing.push("واگذارنده / کارفرما");
+      }
+      if (missing.length) {
+        alert(`فیلدهای اجباری تب عمومی: ${missing.join("، ")}`);
+        return;
+      }
+    }
+
+    if (sectionId === "calendar") {
+      const missing = [];
+      if (documentType === "appendix") {
+        if (!String(form.calendar?.endDate || "").trim()) missing.push("تمدید مدت قرارداد تا تاریخ");
+      } else {
+        if (!String(form.calendar?.notifyDate || "").trim()) missing.push("تاریخ ابلاغ کار");
+        if (!String(form.calendar?.startDate || "").trim()) missing.push("تاریخ شروع قرارداد");
+        if (!String(form.calendar?.endDate || "").trim()) missing.push("تاریخ پایان قرارداد");
+      }
+      if (missing.length) {
+        alert(`فیلدهای اجباری تب تقویم قرارداد: ${missing.join("، ")}`);
+        return;
+      }
+    }
+
+    if (sectionId === "technical") {
+      const missing = [];
+      if (!String(form.technical?.serviceScope || "").trim()) missing.push("شرح خدمات و محدوده کار");
+      if (documentType !== "appendix" && !normalizeIdList(form.technical?.tagIds).length) missing.push("برچسب");
+      if (missing.length) {
+        alert(`فیلدهای اجباری تب فنی و محدوده کار: ${missing.join("، ")}`);
+        return;
+      }
+    }
+
     if (sectionId === "financial") {
       const financial = normalizeFinancial(form.financial || {});
+      const missing = [];
+      if (documentType !== "appendix") {
+        if (!String(financial.paymentTerms || "").trim()) missing.push("شرایط پرداخت");
+        if (!String(financial.advancePayment || "").trim()) missing.push("پیش پرداخت");
+        if (!String(financial.capitalDeposit || "").trim()) missing.push("سپرده بیمه");
+        if (financial.capitalDeposit === "has" && !hasFinancialAmount(financial.capitalDepositAmount)) missing.push("درصد سپرده بیمه");
+        if (!String(financial.performanceBond || "").trim()) missing.push("حسن انجام کار");
+        if (financial.performanceBond === "has" && !hasFinancialAmount(financial.performanceBondAmount)) missing.push("درصد حسن انجام کار");
+      }
+      if (missing.length) {
+        alert(`فیلدهای اجباری تب مالی و تضامین: ${missing.join("، ")}`);
+        return;
+      }
       const invalidAmountRow = financial.contractAmounts.find(
         (row) => !hasFinancialAmount(row.amount) || !String(row.currencyId || "").trim() || !String(row.sourceId || "").trim()
       );
@@ -2248,18 +2295,44 @@ export default function ContractInformation() {
         alert("در بخش مبلغ قرارداد، مبلغ، ارز و منشأ اجباری هستند.");
         return;
       }
-      const invalidGuarantee = financial.guarantees.find(
-        (row) =>
-          !String(row.name || "").trim() ||
-          !String(row.type || "").trim() ||
-          !String(row.bankNo || "").trim() ||
-          !hasFinancialAmount(row.amount) ||
-          !String(row.currencyId || "").trim()
-      );
-      if (invalidGuarantee) {
-        alert("در جدول تضامین، همه فیلدها اجباری هستند.");
+      if (documentType !== "appendix") {
+        const invalidGuarantee = financial.guarantees.find(
+          (row) =>
+            !String(row.name || "").trim() ||
+            !String(row.type || "").trim() ||
+            !String(row.bankNo || "").trim() ||
+            !hasFinancialAmount(row.amount) ||
+            !String(row.currencyId || "").trim()
+        );
+        if (invalidGuarantee) {
+          alert("در جدول تضامین، همه فیلدها اجباری هستند.");
+          return;
+        }
+      }
+    }
+
+    if (sectionId === "insurance") {
+      const insurance = normalizeInsurance(form.insurance || {});
+      const missing = [];
+      if (!String(insurance.contractRow || "").trim()) missing.push("ردیف پیمان");
+      if (!String(insurance.branchStatus || "").trim()) missing.push("شعبه سازمان تامین اجتماعی");
+      if (isSocialInsuranceClearanceStatus(insurance.branchStatus)) {
+        if (!hasFinancialAmount(insurance.finalGrossPerformance)) missing.push("کارکرد ناخالص نهایی قرارداد");
+        if (!insurance.clearanceFiles.length && !String(insurance.relatedLetterId || "").trim()) {
+          missing.push("مفاصا حساب بیمه تامین اجتماعی");
+        }
+      }
+      if (!String(insurance.lastStatus || "").trim()) missing.push("آخرین وضعیت قرارداد");
+      if (missing.length) {
+        alert(`فیلدهای اجباری تب تامین اجتماعی: ${missing.join("، ")}`);
         return;
       }
+    }
+
+    if (sectionId !== "financial" && !isEditingSavedContract && !saveAsNewFromDocumentTypeChange) {
+      const draftSaved = await saveContractDraft({ sectionId, immediate: true });
+      if (!draftSaved) alert("خطا در ذخیره پیش نویس قرارداد");
+      return;
     }
 
     const id = formId || `${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -2825,7 +2898,7 @@ export default function ContractInformation() {
             <div className="mt-4 rounded-2xl border border-black/10 bg-black/[0.02] p-2.5 sm:p-3 dark:border-neutral-800 dark:bg-white/[0.03]">
               <div className="flex flex-wrap items-end gap-2">
                 <div className="w-full sm:min-w-[260px] sm:flex-1">
-                  <div className={labelCls}>مرکز/پروژه</div>
+                  <div className={labelCls}>مرکز/پروژه *</div>
                   <select
                     value={form.projectId}
                     onChange={(e) => setField("projectId", e.target.value)}
@@ -2842,7 +2915,7 @@ export default function ContractInformation() {
                 </div>
 
                 <div className="w-full sm:w-auto sm:min-w-[170px]">
-                  <div className={labelCls}>سند قراردادی</div>
+                  <div className={labelCls}>سند قراردادی *</div>
                   <select value={form.documentType} onChange={(e) => setField("documentType", e.target.value)} className={inputCls}>
                     {CONTRACT_DOCUMENT_TYPES.map((item) => (
                       <option key={item.id} value={item.id} disabled={item.id === "main" && projectAlreadyHasMainContract}>
@@ -2853,7 +2926,7 @@ export default function ContractInformation() {
                 </div>
 
                 <div className="w-full sm:min-w-[230px] sm:flex-1">
-                  <div className={labelCls}>شماره قرارداد</div>
+                  <div className={labelCls}>شماره قرارداد *</div>
                   {form.documentType === "main" ? (
                     <input
                       value={form.contractNo}
@@ -2977,7 +3050,7 @@ export default function ContractInformation() {
                     <div className="space-y-4 p-3 sm:p-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         <div className="min-w-0">
-                          <div className={labelCls}>نوع قرارداد</div>
+                          <div className={labelCls}>نوع قرارداد *</div>
                           {form.general?.customContractType ? (
                             <input
                               value={form.general?.contractType || ""}
@@ -3004,7 +3077,7 @@ export default function ContractInformation() {
                         </div>
 
                         <div className="min-w-0">
-                          <div className={labelCls}>موضوع قرارداد</div>
+                          <div className={labelCls}>موضوع قرارداد *</div>
                           <input
                             value={form.general?.contractSubject || ""}
                             onChange={(e) => setGeneralField("contractSubject", e.target.value)}
@@ -3027,12 +3100,12 @@ export default function ContractInformation() {
 
                         {form.documentType === "sub" ? (
                           <div className="min-w-0">
-                            <div className={labelCls}>واگذارنده / کارفرما</div>
+                            <div className={labelCls}>واگذارنده / کارفرما *</div>
                             <input value={FIXED_SUB_ASSIGNOR} className={readonlyInputCls} type="text" readOnly />
                           </div>
                         ) : (
                           <div className="min-w-0">
-                            <div className={labelCls}>واگذارنده / کارفرما</div>
+                            <div className={labelCls}>واگذارنده / کارفرما *</div>
                             <input
                               value={form.general?.employerAssignor || ""}
                               onChange={(e) => setGeneralField("employerAssignor", e.target.value)}
@@ -3044,7 +3117,7 @@ export default function ContractInformation() {
 
                         {form.documentType !== "main" ? (
                           <div className="min-w-0">
-                            <div className={labelCls}>مجری</div>
+                            <div className={labelCls}>مجری قرارداد *</div>
                             <input
                               value={form.general?.executor || ""}
                               onChange={(e) => setGeneralField("executor", e.target.value)}
@@ -3084,7 +3157,7 @@ export default function ContractInformation() {
                       {isAppendixDocument ? (
                         <div className={calendarCardCls}>
                           <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(260px,1fr)] gap-3 md:items-end">
-                            <div className="pb-3 text-sm font-semibold text-black dark:text-neutral-100">تمدید مدت قرارداد تا تاریخ</div>
+                            <div className="pb-3 text-sm font-semibold text-black dark:text-neutral-100">تمدید مدت قرارداد تا تاریخ *</div>
                             <div>
                               <ContractDatePicker
                                 value={form.calendar?.endDate || ""}
@@ -3104,7 +3177,7 @@ export default function ContractInformation() {
                       <div className={calendarCardCls}>
                         <div className="grid grid-cols-1 lg:grid-cols-[minmax(220px,1fr)_minmax(220px,1fr)_minmax(220px,1fr)_170px] gap-3 lg:items-start">
                           <div className="min-w-0">
-                            <div className={labelCls}>تاریخ ابلاغ کار</div>
+                            <div className={labelCls}>تاریخ ابلاغ کار *</div>
                             <div className="flex items-center gap-2">
                               <div className="flex-1">
                                 <ContractDatePicker
@@ -3128,7 +3201,7 @@ export default function ContractInformation() {
                           </div>
 
                         <div className="min-w-0">
-                            <div className={labelCls}>تاریخ شروع قرارداد</div>
+                            <div className={labelCls}>تاریخ شروع قرارداد *</div>
                             <ContractDatePicker value={form.calendar?.startDate || ""} onChange={(value) => setCalendarField("startDate", value)} />
                             <div className="mt-2 text-xs text-black/55 dark:text-neutral-400">
                               میلادی: <span className="font-semibold text-black dark:text-neutral-100">{jalaliToGregorianLabel(form.calendar?.startDate) || "انتخاب نشده"}</span>
@@ -3136,7 +3209,7 @@ export default function ContractInformation() {
                           </div>
 
                         <div className="min-w-0">
-                            <div className={labelCls}>تاریخ پایان قرارداد</div>
+                            <div className={labelCls}>تاریخ پایان قرارداد *</div>
                             <ContractDatePicker value={form.calendar?.endDate || ""} onChange={(value) => setCalendarField("endDate", value)} />
                             <div className="mt-2 text-xs text-black/55 dark:text-neutral-400">
                               میلادی: <span className="font-semibold text-black dark:text-neutral-100">{jalaliToGregorianLabel(form.calendar?.endDate) || "انتخاب نشده"}</span>
@@ -3222,7 +3295,7 @@ export default function ContractInformation() {
                       {isAppendixDocument ? (
                         <div className="space-y-4">
                           <div>
-                            <div className={labelCls}>شرح خدمات و محدوده کار</div>
+                            <div className={labelCls}>شرح خدمات و محدوده کار *</div>
                             <textarea
                               value={form.technical?.serviceScope || ""}
                               onChange={(e) => setTechnicalField("serviceScope", e.target.value)}
@@ -3238,7 +3311,7 @@ export default function ContractInformation() {
                       <div className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2 items-start">
                         <div className="space-y-4">
                           <div className="pt-1.5">
-                            <div className={labelCls}>شرح خدمات و محدوده کار</div>
+                            <div className={labelCls}>شرح خدمات و محدوده کار *</div>
                             <textarea
                               value={form.technical?.serviceScope || ""}
                               onChange={(e) => setTechnicalField("serviceScope", e.target.value)}
@@ -3247,7 +3320,7 @@ export default function ContractInformation() {
                           </div>
 
                           <div>
-                            <div className={labelCls}>برچسب ها</div>
+                            <div className={labelCls}>برچسب ها *</div>
                             <div className="flex flex-wrap items-center gap-2">
                               {technicalTagIds.map((id) => {
                                 const tag = tagById.get(String(id)) || { id, label: `برچسب (${toFaDigits(id)})` };
@@ -3319,7 +3392,7 @@ export default function ContractInformation() {
                           <React.Fragment>
                         <div className="mt-4 grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-[minmax(280px,0.95fr)_minmax(360px,1.05fr)] items-start">
                           <div>
-                            <div className="mb-2 text-sm font-semibold text-black dark:text-neutral-100">شرایط پرداخت</div>
+                            <div className="mb-2 text-sm font-semibold text-black dark:text-neutral-100">شرایط پرداخت *</div>
                             <textarea
                               value={financialForm.paymentTerms || ""}
                               onChange={(e) => setFinancialField("paymentTerms", e.target.value)}
@@ -3331,7 +3404,7 @@ export default function ContractInformation() {
                           <div className="mt-2 rounded-xl border border-black/10 bg-black/[0.02] p-3 lg:mt-6 dark:border-neutral-700 dark:bg-white/[0.03]">
                             <div className="grid grid-cols-1 gap-3">
                               <div className="grid grid-cols-1 sm:grid-cols-[116px_1fr] gap-2 sm:items-center">
-                                <div className="text-sm font-semibold text-black/75 dark:text-neutral-200">پیش پرداخت</div>
+                                <div className="text-sm font-semibold text-black/75 dark:text-neutral-200">پیش پرداخت *</div>
                                 <div className="flex flex-wrap items-center gap-2">
                                   {renderPaymentOption("advancePayment", "has", "دارد")}
                                   {renderPaymentOption("advancePayment", "none", "ندارد")}
@@ -3342,7 +3415,7 @@ export default function ContractInformation() {
                                 <div className="mb-2 text-sm font-semibold text-black/70 dark:text-neutral-200">کسور</div>
                                 <div className="space-y-3">
                                   <div className="grid grid-cols-1 sm:grid-cols-[116px_1fr] gap-2 sm:items-center">
-                                    <div className="text-sm text-black/70 dark:text-neutral-300">سپرده بیمه</div>
+                                    <div className="text-sm text-black/70 dark:text-neutral-300">سپرده بیمه *</div>
                                     <div className="flex flex-wrap items-center gap-2">
                                       {renderPaymentOption("capitalDeposit", "has", "دارد")}
                                       {renderPaymentOption("capitalDeposit", "none", "ندارد")}
@@ -3364,7 +3437,7 @@ export default function ContractInformation() {
                                   </div>
 
                                   <div className="grid grid-cols-1 sm:grid-cols-[116px_1fr] gap-2 sm:items-center">
-                                    <div className="text-sm text-black/70 dark:text-neutral-300">حسن انجام کار</div>
+                                    <div className="text-sm text-black/70 dark:text-neutral-300">حسن انجام کار *</div>
                                     <div className="flex flex-wrap items-center gap-2">
                                       {renderPaymentOption("performanceBond", "has", "دارد")}
                                       {renderPaymentOption("performanceBond", "none", "ندارد")}
@@ -3701,7 +3774,7 @@ export default function ContractInformation() {
                       <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                           <div className="min-w-0">
-                            <div className={labelCls}>ردیف پیمان</div>
+                            <div className={labelCls}>ردیف پیمان *</div>
                             <input
                               value={insuranceForm.contractRow || ""}
                               onChange={(e) => setInsuranceField("contractRow", e.target.value)}
@@ -3711,7 +3784,7 @@ export default function ContractInformation() {
                           </div>
 
                           <div className="min-w-0">
-                            <div className={labelCls}>شعبه سازمان تامین اجتماعی</div>
+                            <div className={labelCls}>شعبه سازمان تامین اجتماعی *</div>
                             <select
                               value={insuranceForm.branchStatus || ""}
                               onChange={(e) => {
@@ -3746,7 +3819,7 @@ export default function ContractInformation() {
                           <div className="mt-4 rounded-2xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-700 dark:bg-white/[0.03]">
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:items-end">
                               <div className="min-w-0">
-                                <div className={labelCls}>کارکرد ناخالص نهایی قرارداد</div>
+                                <div className={labelCls}>کارکرد ناخالص نهایی قرارداد *</div>
                                 <div className="relative">
                                   <input
                                     value={formatAmountInput(insuranceForm.finalGrossPerformance || "")}
@@ -3764,7 +3837,7 @@ export default function ContractInformation() {
                               </div>
 
                               <div className="min-w-0">
-                                <div className={labelCls}>مفاصا حساب بیمه تامین اجتماعی</div>
+                                <div className={labelCls}>مفاصا حساب بیمه تامین اجتماعی *</div>
                                 <div className="flex flex-wrap items-center gap-2">
                                   <button
                                     type="button"
@@ -3826,7 +3899,7 @@ export default function ContractInformation() {
                         ) : null}
 
                         <div className="mt-4">
-                          <div className={labelCls}>آخرین وضعیت قرارداد</div>
+                          <div className={labelCls}>آخرین وضعیت قرارداد *</div>
                           <input
                             value={insuranceForm.lastStatus || ""}
                             onChange={(e) => setInsuranceField("lastStatus", e.target.value)}
@@ -3863,7 +3936,6 @@ export default function ContractInformation() {
                   {contractsPageRows.map((row) => {
                     const project = projectById.get(String(row.projectId));
                     const relatedLetter = row.relatedLetterId ? letterById.get(String(row.relatedLetterId)) : null;
-                    const appendicesCount = countAppendices(row, rows);
                     const contractNo = contractNoForRow(row, rowById);
                     const id = String(row.id);
                     const childRows = childRowsByParentId.get(id) || [];
@@ -3944,8 +4016,8 @@ export default function ContractInformation() {
 
                           <div className="grid grid-cols-2 gap-2">
                             <div className="min-w-0">
-                              <div className="text-[11px] text-black/45 dark:text-neutral-500">الحاقیه‌ها</div>
-                              <div className="truncate">{appendicesCount ? toFaDigits(appendicesCount) : "بدون الحاقیه"}</div>
+                              <div className="text-[11px] text-black/45 dark:text-neutral-500">موضوع قرارداد</div>
+                              <div className="truncate">{row.general?.contractSubject || "ثبت نشده"}</div>
                             </div>
                             <div className="min-w-0">
                               <div className="text-[11px] text-black/45 dark:text-neutral-500">مفاصات</div>
@@ -4015,8 +4087,8 @@ export default function ContractInformation() {
                     </th>
                     <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">مرکز/پروژه</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">نوع قرارداد</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">قرارداد</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">الحاقیه‌ها</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">شماره قرارداد</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">موضوع قرارداد</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">نامه ابلاغ کار</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">مفاصات</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">اقدامات</th>
@@ -4027,7 +4099,6 @@ export default function ContractInformation() {
                     contractsPageRows.map((row, index) => {
                       const project = projectById.get(String(row.projectId));
                       const relatedLetter = row.relatedLetterId ? letterById.get(String(row.relatedLetterId)) : null;
-                      const appendicesCount = countAppendices(row, rows);
                       const contractNo = contractNoForRow(row, rowById);
                       const id = String(row.id);
                       const childRows = childRowsByParentId.get(id) || [];
@@ -4073,7 +4144,11 @@ export default function ContractInformation() {
                             <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{documentTypeLabel(row.documentType)}</div>
                           </td>
                           <td className={`px-3 font-semibold ${divider}`}>{contractNo ? toFaDigits(contractNo) : "ثبت نشده"}</td>
-                          <td className={`px-3 ${divider}`}>{appendicesCount ? toFaDigits(appendicesCount) : "بدون الحاقیه"}</td>
+                          <td className={`px-3 ${divider}`}>
+                            <div className="mx-auto max-w-[240px] truncate" title={row.general?.contractSubject || ""}>
+                              {row.general?.contractSubject || "ثبت نشده"}
+                            </div>
+                          </td>
                           <td className={`px-3 ${divider}`}>
                             {relatedLetter ? (
                               <div>
@@ -4175,8 +4250,8 @@ export default function ContractInformation() {
                 <tr>
                   <th className="px-3 py-3 text-right font-semibold">مرکز/پروژه</th>
                   <th className="px-3 py-3 text-right font-semibold">نوع قرارداد</th>
-                  <th className="px-3 py-3 text-right font-semibold">قرارداد</th>
-                  <th className="px-3 py-3 text-right font-semibold">الحاقیه‌ها</th>
+                  <th className="px-3 py-3 text-right font-semibold">شماره قرارداد</th>
+                  <th className="px-3 py-3 text-right font-semibold">موضوع قرارداد</th>
                   <th className="px-3 py-3 text-right font-semibold">نامه ابلاغ کار</th>
                   <th className="px-3 py-3 text-right font-semibold">مفاصات</th>
                   <th className="px-3 py-3 text-right font-semibold">اقدامات</th>
@@ -4187,7 +4262,6 @@ export default function ContractInformation() {
                   filteredRows.map((row) => {
                     const project = projectById.get(String(row.projectId));
                     const relatedLetter = row.relatedLetterId ? letterById.get(String(row.relatedLetterId)) : null;
-                    const appendicesCount = countAppendices(row, rows);
                     const contractNo = contractNoForRow(row, rowById);
 
                     return (
@@ -4201,7 +4275,7 @@ export default function ContractInformation() {
                           <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{documentTypeLabel(row.documentType)}</div>
                         </td>
                         <td className="px-3 py-3 text-right font-semibold">{contractNo ? toFaDigits(contractNo) : "ثبت نشده"}</td>
-                        <td className="px-3 py-3 text-right">{appendicesCount ? toFaDigits(appendicesCount) : "بدون الحاقیه"}</td>
+                        <td className="px-3 py-3 text-right">{row.general?.contractSubject || "ثبت نشده"}</td>
                         <td className="px-3 py-3 text-right">
                           {relatedLetter ? (
                             <div>
