@@ -204,16 +204,16 @@ function RightNav() {
   const iconShellCls = (active) =>
     [
       "grid h-8 w-8 shrink-0 place-items-center rounded-lg transition",
-      active ? "bg-[#E7FAFA] text-[#11AEB5] [&_img]:opacity-90" : "bg-transparent text-neutral-500 [&_img]:opacity-55 group-hover:text-neutral-800 group-hover:[&_img]:opacity-85",
+      active ? "bg-[#FFF4EC] text-[#DB843D] [&_img]:opacity-90" : "bg-transparent text-neutral-500 [&_img]:opacity-55 group-hover:text-neutral-800 group-hover:[&_img]:opacity-85",
     ].join(" ");
 
   const desktopItemCls = (active, collapsed = false) =>
     [
       "group relative !flex !h-10 !items-center !border !border-transparent !bg-transparent !py-0 !shadow-none",
-      "!text-sm !leading-none !transition-all !duration-200 focus:!ring-2 focus:!ring-[#25C3C8]/25",
+      "!box-border !text-sm !leading-none !transition-all !duration-200 focus:!ring-2 focus:!ring-[#DB843D]/25",
       collapsed ? "!w-10 !justify-center !rounded-xl !px-0" : "!w-full !justify-start !gap-3 !rounded-lg !px-2.5",
       active
-        ? "!bg-[#EAFBFC] !text-[#0FA4AB] !font-semibold before:absolute before:right-0 before:top-2 before:bottom-2 before:w-[3px] before:rounded-full before:bg-[#22C4C9]"
+        ? "!border-[#DB843D]/35 !bg-[#FFF4EC] !text-[#DB843D] !font-semibold !ring-1 !ring-inset !ring-[#DB843D]/20 before:absolute before:right-0 before:top-2 before:bottom-2 before:w-[3px] before:rounded-full before:bg-[#DB843D]"
         : "!text-neutral-600 hover:!bg-neutral-50 hover:!text-neutral-900",
     ].join(" ");
 
@@ -222,7 +222,7 @@ function RightNav() {
       "group relative !grid !items-center !border !border-transparent !bg-transparent !shadow-none !transition-all !duration-200",
       compact ? "!grid-cols-[2rem_minmax(0,1fr)] !gap-2 !rounded-lg !px-2 !py-2" : "!grid-cols-[2rem_minmax(0,1fr)] !gap-2.5 !rounded-lg !px-2.5 !py-2",
       active
-        ? "!bg-[#EAFBFC] !text-[#0FA4AB] before:absolute before:right-0 before:top-2 before:bottom-2 before:w-[3px] before:rounded-full before:bg-[#22C4C9]"
+        ? "!border-[#DB843D]/35 !bg-[#FFF4EC] !text-[#DB843D] !ring-1 !ring-inset !ring-[#DB843D]/20 before:absolute before:right-0 before:top-2 before:bottom-2 before:w-[3px] before:rounded-full before:bg-[#DB843D]"
         : "!text-neutral-600 hover:!bg-neutral-50 hover:!text-neutral-900",
       "[&_img]:opacity-60 hover:[&_img]:opacity-90",
     ].join(" ");
@@ -232,7 +232,7 @@ function RightNav() {
 
   const mobileButtonSurface = (active) =>
     active
-      ? "!border-[#22C4C9]/25 !bg-[#EAFBFC] !text-[#0FA4AB] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.72),0_6px_16px_rgba(34,196,201,0.12)] dark:!border-[#22C4C9]/35 dark:!bg-[#103C40] dark:!text-[#72F2F4]"
+      ? "!border-[#DB843D]/30 !bg-[#FFF4EC] !text-[#DB843D] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.72),0_6px_16px_rgba(219,132,61,0.14)] dark:!border-[#DB843D]/45 dark:!bg-[#4A2C1B] dark:!text-[#F4B477]"
       : "!border-black/10 !bg-white !text-neutral-700 shadow-[0_5px_14px_rgba(15,23,42,0.08)] hover:!bg-neutral-50 dark:!border-white/10 dark:!bg-neutral-800 dark:!text-white/85";
 
   const mobileDockBtn = (active) =>
@@ -247,7 +247,7 @@ function RightNav() {
   const mobileSubItemCls =
     "!grid !grid-cols-[2.55rem_minmax(0,1fr)] sm:!grid-cols-[2.75rem_minmax(0,1fr)] !items-center gap-2.5 " +
     "!min-h-[3.35rem] !rounded-xl !border !border-transparent !bg-transparent !px-2 !py-2 !text-right " +
-    "!text-neutral-900 !shadow-none hover:!bg-neutral-50 focus:!ring-2 focus:!ring-[#25C3C8]/25 transition-all duration-200 active:scale-[0.985] " +
+    "!text-neutral-900 !shadow-none hover:!bg-neutral-50 focus:!ring-2 focus:!ring-[#DB843D]/25 transition-all duration-200 active:scale-[0.985] " +
     "dark:!text-white dark:hover:!bg-white/[0.08] [&_img]:!filter-none dark:[&_img]:!invert";
 
   const renderIcon = (icon, active) => <span className={iconShellCls(active)}>{icon}</span>;
@@ -268,7 +268,7 @@ function RightNav() {
           <ChevronLeft
             className={[
               "h-3.5 w-3.5 shrink-0 text-neutral-400 transition-transform",
-              sectionOpen ? "-rotate-90 text-[#0FA4AB]" : "",
+              sectionOpen ? "-rotate-90 text-[#DB843D]" : "",
             ].join(" ")}
             strokeWidth={2.2}
           />
@@ -363,22 +363,19 @@ function RightNav() {
         ].join(" ")}
       >
         <div className={["flex items-center", expanded ? "justify-between gap-3 px-1" : "justify-center"].join(" ")}>
-          <div className={["flex min-w-0 items-center", expanded ? "gap-2.5" : ""].join(" ")}>
-            <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl border border-neutral-100 bg-neutral-50">
-              <img src="/images/light%20mode.png" alt="logo" className="h-7 w-7 object-contain" draggable={false} />
-            </span>
-            {expanded && (
-              <span className="min-w-0 text-right">
-                <span className="block truncate text-sm font-bold text-neutral-900">IPM Panel</span>
-                <span className="block truncate text-[11px] leading-4 text-neutral-400">مدیریت پروژه و بودجه</span>
-              </span>
-            )}
+          <div className={["flex min-w-0 items-center", expanded ? "flex-1 justify-start" : "justify-center"].join(" ")}>
+            <img
+              src="/images/light%20mode.png"
+              alt="logo"
+              className={expanded ? "h-10 max-w-[152px] object-contain" : "h-8 w-8 object-contain"}
+              draggable={false}
+            />
           </div>
 
           {expanded && (
             <button
               type="button"
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white text-neutral-500 transition hover:bg-neutral-50 hover:text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#25C3C8]/25"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white text-neutral-500 transition hover:bg-neutral-50 hover:text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#DB843D]/25"
               onClick={toggleExpanded}
               aria-label="جمع کردن منو"
             >
@@ -390,7 +387,7 @@ function RightNav() {
         {!expanded && (
           <button
             type="button"
-            className="mx-auto mt-3 grid h-8 w-8 place-items-center rounded-lg border border-neutral-200 bg-white text-neutral-500 transition hover:bg-neutral-50 hover:text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#25C3C8]/25"
+            className="mx-auto mt-3 grid h-8 w-8 place-items-center rounded-lg border border-neutral-200 bg-white text-neutral-500 transition hover:bg-neutral-50 hover:text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#DB843D]/25"
             onClick={toggleExpanded}
             aria-label="باز کردن منو"
           >
@@ -416,7 +413,7 @@ function RightNav() {
         <div className={["border-t border-neutral-100 pt-3", expanded ? "mt-3" : "mt-4"].join(" ")}>
           {expanded ? (
             <div className="flex items-center gap-2 rounded-xl border border-neutral-100 bg-neutral-50/80 p-2">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-sm font-bold text-[#0FA4AB] shadow-sm">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-sm font-bold text-[#DB843D] shadow-sm">
                 {initials}
               </span>
               <span className="min-w-0 flex-1 text-right">
@@ -425,7 +422,7 @@ function RightNav() {
               </span>
               <button
                 type="button"
-                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-neutral-400 transition hover:bg-white hover:text-neutral-700 focus:outline-none focus:ring-2 focus:ring-[#25C3C8]/25"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-neutral-400 transition hover:bg-white hover:text-neutral-700 focus:outline-none focus:ring-2 focus:ring-[#DB843D]/25"
                 onClick={logout || (() => {})}
                 aria-label="خروج"
               >
@@ -435,7 +432,7 @@ function RightNav() {
           ) : (
             <button
               type="button"
-              className="mx-auto grid h-10 w-10 place-items-center rounded-full border border-neutral-100 bg-neutral-50 text-sm font-bold text-[#0FA4AB] transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#25C3C8]/25"
+              className="mx-auto grid h-10 w-10 place-items-center rounded-full border border-neutral-100 bg-neutral-50 text-sm font-bold text-[#DB843D] transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-[#DB843D]/25"
               onClick={logout || (() => {})}
               onMouseEnter={(e) => showTip(displayName, e)}
               onMouseLeave={hideTip}
@@ -470,7 +467,7 @@ function RightNav() {
                     key={item.to}
                     to={item.to}
                     onClick={closeMobileMenu}
-                    className={[mobileSubItemCls, isActive(item.to) ? "!bg-[#EAFBFC] !text-[#0FA4AB]" : ""].join(" ")}
+                    className={[mobileSubItemCls, isActive(item.to) ? "!border-[#DB843D]/35 !bg-[#FFF4EC] !text-[#DB843D] !ring-1 !ring-inset !ring-[#DB843D]/20" : ""].join(" ")}
                   >
                     <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-neutral-50 dark:bg-white/10">
                       {item.icon}
