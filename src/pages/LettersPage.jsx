@@ -12,6 +12,9 @@ const TAB_ACTIVE_BG = {
   internal: "#FF8040",
 };
 
+const CONFIDENTIAL_ICON_FILTER =
+  "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)";
+
 const MAIN_ADMIN_USER = "marandi";
 const MAIN_ADMIN_PASS = "1234";
 const ADMIN_FLAG_KEY = "main_admin_ok";
@@ -5364,7 +5367,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
                         <div key={id} className={"border-r-4 p-3 " + cardBg} style={{ borderRightColor: activeColor }}>
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 flex-1">
-                              <div className="flex min-w-0 items-center gap-2">
+                              <div className="relative flex min-w-0 items-center gap-2">
                                 <input
                                   type="checkbox"
                                   className="w-4 h-4 shrink-0 accent-black dark:accent-neutral-200"
@@ -5374,7 +5377,12 @@ aria-invalid={fieldHasError(formKind, "subject")}
                                   title="انتخاب"
                                 />
                                 {isConf ? (
-                                  <img src="/images/icons/confidential-letter.svg" alt="" className="h-4 w-4 shrink-0 dark:invert" />
+                                  <img
+                                    src="/images/icons/confidential-letter.svg"
+                                    alt=""
+                                    className="pointer-events-none absolute right-5 top-1/2 h-4 w-4 -translate-y-1/2"
+                                    style={{ filter: CONFIDENTIAL_ICON_FILTER }}
+                                  />
                                 ) : null}
                                 <button
                                   type="button"
@@ -5659,7 +5667,15 @@ const rowBg = normalRowBg;
               />
             </td>
 
-            <td className={"px-3 " + divider}>
+            <td className={"relative px-3 " + divider}>
+              {isConf ? (
+                <img
+                  src="/images/icons/confidential-letter.svg"
+                  alt=""
+                  className="pointer-events-none absolute right-1.5 top-1/2 h-4 w-4 -translate-y-1/2"
+                  style={{ filter: CONFIDENTIAL_ICON_FILTER }}
+                />
+              ) : null}
               <button
                 type="button"
                 onClick={() => {
@@ -5675,9 +5691,6 @@ const rowBg = normalRowBg;
                 title="نمایش"
                 aria-label="نمایش"
               >
-                {isConf ? (
-                  <img src="/images/icons/confidential-letter.svg" alt="" className="h-4 w-4 shrink-0 dark:invert" />
-                ) : null}
                 {toFaDigits(letterNoOf(l) || "—")}
               </button>
             </td>
