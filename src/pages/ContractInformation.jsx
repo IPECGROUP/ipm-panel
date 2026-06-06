@@ -735,8 +735,9 @@ function getContractDraftKey() {
 function readLocalContractDraft() {
   try {
     const raw = localStorage.getItem(CONTRACT_DRAFT_STORAGE_KEY);
+    localStorage.removeItem(CONTRACT_DRAFT_STORAGE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw); 
+    const parsed = JSON.parse(raw);
     const payload = parsed?.payload && typeof parsed.payload === "object" ? parsed.payload : parsed;
     if (!hasContractDraftContent(payload)) return null;
     return {
@@ -747,25 +748,12 @@ function readLocalContractDraft() {
       savedAt: String(parsed?.savedAt || ""),
     };
   } catch {
-    return null;
+    try {
+      localStorage.removeItem(CONTRACT_DRAFT_STORAGE_KEY);
+    } catch {
+    }
   }
-}
-
-function writeLocalContractDraft(draft) {
-  try {
-    localStorage.setItem(
-      CONTRACT_DRAFT_STORAGE_KEY,
-      JSON.stringify({
-        draftKey: getContractDraftKey(),
-        contractId: String(draft?.contractId || draft?.payload?.id || ""),
-        payload: normalizeContractRow(draft?.payload || {}),
-        lastSavedSection: String(draft?.lastSavedSection || draft?.payload?.lastSavedSection || ""),
-        savedAt: new Date().toISOString(),
-      })
-    );
-  } catch {
-    // localStorage is a safety net; server draft still runs if this fails.
-  }
+  return null;
 }
 
 function removeLocalContractDraft() {
@@ -1267,7 +1255,6 @@ export default function ContractInformation() {
         lastSavedSection: String(item?.lastSavedSection || payload?.lastSavedSection || ""),
         savedAt: String(item?.updatedAt || ""),
       };
-      writeLocalContractDraft(draft);
       return draft;
     } catch {
       return null;
@@ -1304,11 +1291,6 @@ export default function ContractInformation() {
 
       markDraftSaveStatus(sectionId, "saving");
       clearDraftSaveTimer();
-      writeLocalContractDraft({
-        contractId: payload.id,
-        payload,
-        lastSavedSection: sectionId,
-      });
       lastDraftSignatureRef.current = signature;
 
       try {
@@ -2339,12 +2321,6 @@ export default function ContractInformation() {
       }
     }
 
-    if (sectionId !== "financial" && !isEditingSavedContract && !saveAsNewFromDocumentTypeChange) {
-      const draftSaved = await saveContractDraft({ sectionId, immediate: true });
-      if (!draftSaved) alert("خطا در ذخیره پیش نویس قرارداد");
-      return;
-    }
-
     const id = formId || `${Date.now()}_${Math.random().toString(16).slice(2)}`;
     const rowPayload = {
       ...form,
@@ -2387,8 +2363,7 @@ export default function ContractInformation() {
       });
       finalSavedDraftSignatureRef.current = contractDraftSignature(contractDraftPayloadFromForm({ ...form, id: savedRow.id }, sectionId));
       lastDraftSignatureRef.current = finalSavedDraftSignatureRef.current;
-      if (sectionId === "financial") await deleteContractDraft();
-      else markDraftSaveStatus(sectionId, "saved");
+      await deleteContractDraft();
       setForm((prev) => ({ ...prev, id: savedRow.id, lastSavedSection: sectionId }));
       showFinalSaveMessage(
         sectionId,
