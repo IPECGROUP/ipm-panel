@@ -8,7 +8,6 @@ import { Btn, LinkBtn } from "./ui/Button";
 
 const icImgCls = "w-5 h-5 block m-0 filter invert pointer-events-none select-none";
 const svgCls = "w-5 h-5 block m-0 text-white pointer-events-none select-none";
-const sw = 2.2;
 
 const IcDashboard = () => <img src="/images/icons/dashbaord.svg" className={icImgCls} alt="" draggable={false} />;
 const IcPay = () => <img src="/images/icons/darkastpardakht.svg" className={icImgCls} alt="" draggable={false} />;
@@ -21,14 +20,8 @@ const IcUsers = () => <img src="/images/icons/users.svg" className={icImgCls} al
 const IcContract = () => <img src="/images/icons/gharadad.svg" className={icImgCls} alt="" draggable={false} />;
 const IcTags = () => <img src="/images/icons/tags.svg" className={icImgCls} alt="" draggable={false} />;
 
-const IcWorksheet = () => (
-  <svg viewBox="0 0 24 24" className={svgCls} fill="none" stroke="currentColor" strokeWidth={sw}>
-    <rect x="3" y="4" width="18" height="16" rx="2" />
-    <path d="M8 4v16M3 10h18" />
-  </svg>
-);
-
-const IcDaily = () => <img src="/images/icons/calendar.svg" className={icImgCls} alt="" draggable={false} />;
+const IcWorksheet = () => <img src="/images/icons/karbarg-mali.svg" className={icImgCls} alt="" draggable={false} />;
+const IcDaily = () => <img src="/images/icons/role.svg" className={icImgCls} alt="" draggable={false} />;
 const IcClose = () => <X className={svgCls} strokeWidth={2.4} />;
 
 function RightNav() {
