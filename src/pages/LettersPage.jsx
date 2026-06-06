@@ -5381,14 +5381,6 @@ aria-invalid={fieldHasError(formKind, "subject")}
                                   aria-label="انتخاب"
                                   title="انتخاب"
                                 />
-                                {isConf ? (
-                                  <img
-                                    src="/images/icons/confidential-letter.svg"
-                                    alt=""
-                                    className="pointer-events-none absolute right-5 top-1/2 h-4 w-4 -translate-y-1/2"
-                                    style={{ filter: CONFIDENTIAL_ICON_FILTER }}
-                                  />
-                                ) : null}
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -5405,6 +5397,14 @@ aria-invalid={fieldHasError(formKind, "subject")}
                                   <span className={"shrink-0 rounded-full px-2 py-0.5 text-[11px] bg-white/70 dark:bg-white/10 " + (isConf ? CONFIDENTIAL_TEXT_CLS : "text-neutral-800 dark:text-white/80")}>
                                     {kindLabel}
                                   </span>
+                                ) : null}
+                                {isConf ? (
+                                  <img
+                                    src="/images/icons/confidential-letter.svg"
+                                    alt=""
+                                    className="h-4 w-4 shrink-0"
+                                    style={{ filter: CONFIDENTIAL_ICON_FILTER }}
+                                  />
                                 ) : null}
                               </div>
                               <div className={"mt-1 text-xs " + mutedText}>
