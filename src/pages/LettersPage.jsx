@@ -5337,9 +5337,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
                         : isInternal
                         ? TAB_ACTIVE_BG.internal
                         : "#737373";
-                      const cardBg = isConf
-                        ? "bg-[#F75270] text-white"
-                        : isOutgoing
+                      const cardBg = isOutgoing
                         ? theme === "dark"
                           ? "bg-[#8BAE66]/15"
                           : "bg-[#8BAE66]/[0.06]"
@@ -5354,14 +5352,10 @@ aria-invalid={fieldHasError(formKind, "subject")}
                         : theme === "dark"
                         ? "bg-white/5"
                         : "bg-black/[0.02]";
-                      const mutedText = isConf
-                        ? "text-white/80"
-                        : theme === "dark"
+                      const mutedText = theme === "dark"
                         ? "text-white/60"
                         : "text-neutral-600";
-                      const labelText = isConf
-                        ? "text-white/70"
-                        : theme === "dark"
+                      const labelText = theme === "dark"
                         ? "text-white/50"
                         : "text-neutral-500";
                       const kindLabel = TABS.find((x) => x.id === kind)?.label || "";
@@ -5379,6 +5373,9 @@ aria-invalid={fieldHasError(formKind, "subject")}
                                   aria-label="انتخاب"
                                   title="انتخاب"
                                 />
+                                {isConf ? (
+                                  <img src="/images/icons/confidential-letter.svg" alt="" className="h-4 w-4 shrink-0 dark:invert" />
+                                ) : null}
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -5392,7 +5389,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
                                   {toFaDigits(letterNoOf(l) || "—")}
                                 </button>
                                 {kindLabel ? (
-                                  <span className={"shrink-0 rounded-full px-2 py-0.5 text-[11px] " + (isConf ? "bg-white/15 text-white" : "bg-white/70 text-neutral-800 dark:bg-white/10 dark:text-white/80")}>
+                                  <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] bg-white/70 text-neutral-800 dark:bg-white/10 dark:text-white/80">
                                     {kindLabel}
                                   </span>
                                 ) : null}
@@ -5413,10 +5410,10 @@ aria-invalid={fieldHasError(formKind, "subject")}
                                 aria-label="نمایش"
                                 title="نمایش"
                               >
-                                <img src="/images/icons/namayeshname.svg" alt="" className={"w-5 h-5 " + (isConf ? "invert" : "dark:invert")} />
+                                <img src="/images/icons/namayeshname.svg" alt="" className="w-5 h-5 dark:invert" />
                               </button>
                               <button type="button" onClick={() => startEdit(l)} className={iconBtnCls + " !h-9 !w-9"} aria-label="ویرایش" title="ویرایش">
-                                <img src="/images/icons/pencil.svg" alt="" className={"w-5 h-5 " + (isConf ? "invert" : "dark:invert")} />
+                                <img src="/images/icons/pencil.svg" alt="" className="w-5 h-5 dark:invert" />
                               </button>
                               <button type="button" onClick={() => deleteLetter(id)} className={iconBtnCls + " !h-9 !w-9"} aria-label="حذف" title="حذف">
                                 <img
@@ -5424,9 +5421,8 @@ aria-invalid={fieldHasError(formKind, "subject")}
                                   alt=""
                                   className="w-5 h-5"
                                   style={{
-                                    filter: isConf
-                                      ? "brightness(0) invert(1)"
-                                      : "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
+                                    filter:
+                                      "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
                                   }}
                                 />
                               </button>
@@ -5635,10 +5631,8 @@ const normalRowBg = isOutgoing
   ? "bg-white/5 hover:bg-white/10"
   : "bg-black/[0.02] hover:bg-black/[0.04]";
 
-// ✅ محرمانه: بک‌گراند ثابت با رنگ مدنظر
-const confRowBg = "bg-[#F75270] hover:bg-[#F75270]";
-
-const rowBg = isConf ? confRowBg : normalRowBg;
+// ✅ محرمانه: نمایش با آیکن، بدون بک‌گراند جداگانه
+const rowBg = normalRowBg;
 
         return (  
          <tr
@@ -5651,7 +5645,6 @@ const rowBg = isConf ? confRowBg : normalRowBg;
           className={
             rowBg +
             " transition-colors" +
-            (isConf ? " font-semibold [&_td]:!text-white" : "") +
             (isKeyboardActive ? " outline outline-2 -outline-offset-2 outline-black/40 dark:outline-white/50" : "")
           }
         >
@@ -5675,15 +5668,16 @@ const rowBg = isConf ? confRowBg : normalRowBg;
                 }}
                 className={
                   "mx-auto inline-flex items-center justify-center gap-2 text-[13px] font-semibold underline-offset-4 hover:underline transition " +
-                  (isConf
-                    ? "text-white"
-                    : theme === "dark"
+                  (theme === "dark"
                     ? "text-white"
                     : "text-neutral-900")
                 }
                 title="نمایش"
                 aria-label="نمایش"
               >
+                {isConf ? (
+                  <img src="/images/icons/confidential-letter.svg" alt="" className="h-4 w-4 shrink-0 dark:invert" />
+                ) : null}
                 {toFaDigits(letterNoOf(l) || "—")}
               </button>
             </td>
