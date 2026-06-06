@@ -2680,9 +2680,23 @@ export default function ContractInformation() {
   <meta charset="utf-8" />
   <title>خلاصه قرارداد ${text(contractNoForRow(previewContract, rowById), "")}</title>
   <style>
+    @font-face {
+      font-family: "Vazir";
+      src: url("/fonts/Vazir.woff2") format("woff2"), url("/fonts/Vazir.woff") format("woff");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: "Vazir";
+      src: url("/fonts/Vazir-Bold.woff2") format("woff2"), url("/fonts/Vazir-Bold.woff") format("woff");
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
     @page { size: A4; margin: 13mm; }
     * { box-sizing: border-box; }
-    body { margin: 0; color: #171717; background: #fff; font-family: Tahoma, Arial, sans-serif; font-size: 12px; line-height: 1.8; }
+    body { margin: 0; color: #171717; background: #fff; font-family: "Vazir", Tahoma, Arial, sans-serif; font-size: 12px; line-height: 1.8; }
     .page { max-width: 190mm; margin: 0 auto; }
     .print-actions { position: sticky; top: 0; z-index: 10; display: flex; justify-content: flex-start; gap: 8px; padding: 10px 0; background: #fff; }
     .print-actions button { height: 34px; border: 1px solid #111; border-radius: 8px; background: #111; color: #fff; padding: 0 14px; font-weight: 700; cursor: pointer; }
@@ -2702,12 +2716,10 @@ export default function ContractInformation() {
     th { background: #f2f2f2; font-weight: 800; color: #222; }
     tr:last-child td { border-bottom: 0; }
     th:last-child, td:last-child { border-left: 0; }
-    .attachments-note { margin: 6px 0 8px; color: #666; font-size: 11px; }
     .image-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 8px; }
     .image-card { border: 1px solid #ddd; border-radius: 10px; padding: 8px; break-inside: avoid; }
     .image-card img { width: 100%; max-height: 170mm; object-fit: contain; display: block; }
     .image-card div { margin-bottom: 5px; font-weight: 700; font-size: 11px; color: #444; }
-    footer { margin-top: 16px; padding-top: 8px; border-top: 1px solid #ddd; color: #666; font-size: 10px; display: flex; justify-content: space-between; }
     @media print {
       .print-actions { display: none; }
       body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -2779,8 +2791,7 @@ export default function ContractInformation() {
       ["آخرین وضعیت قرارداد", previewInsurance.lastStatus],
     ]))}
     ${section("اسناد مرتبط", table(["#", "شماره سند", "موضوع", "نوع سند", "تاریخ"], relatedLetterRows))}
-    ${section("فایل‌ها و پیوست‌ها", `<div class="attachments-note">پیوست‌ها در این خلاصه فهرست شده‌اند. فایل‌های تصویری در ادامه همین بخش برای چاپ نمایش داده می‌شوند و سایر فایل‌ها از طریق آدرس درج‌شده قابل باز شدن هستند.</div>${table(["#", "گروه", "نام فایل", "حجم", "آدرس"], fileRows)}${imagePreviews.length ? `<div class="image-grid">${imagePreviews.map((file) => `<div class="image-card"><div>${text(`${file.group || "پیوست"} - ${file.name || "فایل"}`)}</div><img src="${escapeHtml(file.url)}" alt="" /></div>`).join("")}</div>` : ""}`)}
-    <footer><span>سامانه مدیریت قراردادها</span><span>این نسخه برای چاپ و بایگانی تولید شده است.</span></footer>
+    ${section("فایل‌ها و پیوست‌ها", `${table(["#", "گروه", "نام فایل", "حجم", "آدرس"], fileRows)}${imagePreviews.length ? `<div class="image-grid">${imagePreviews.map((file) => `<div class="image-card"><div>${text(`${file.group || "پیوست"} - ${file.name || "فایل"}`)}</div><img src="${escapeHtml(file.url)}" alt="" /></div>`).join("")}</div>` : ""}`)}
   </div>
   <script>
     window.addEventListener("load", function () {
