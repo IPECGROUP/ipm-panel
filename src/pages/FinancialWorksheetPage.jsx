@@ -46,6 +46,48 @@ function formatAmountInput(value) {
   return `${sign}${formattedInteger}${decimal !== undefined ? `.${decimal}` : ""}`;
 }
 
+function parseAmountInput(value) {
+  const raw = cleanAmountInput(value);
+  const number = Number.parseFloat(raw);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function percentOf(amount, percent) {
+  return (Number(amount) || 0) * (Number(percent) || 0) / 100;
+}
+
+function pickFirst(...values) {
+  for (const value of values) {
+    const text = String(value ?? "").trim();
+    if (text) return text;
+  }
+  return "";
+}
+
+function letterIdOf(letter) {
+  return pickFirst(letter?.id, letter?.letter_id, letter?.letterId);
+}
+
+function letterNoOf(letter) {
+  return pickFirst(letter?.letter_no, letter?.letterNo, letter?.no, letter?.number);
+}
+
+function secretariatNoOf(letter) {
+  return pickFirst(letter?.secretariat_no, letter?.secretariatNo);
+}
+
+function subjectOf(letter) {
+  return pickFirst(letter?.subject, letter?.title);
+}
+
+function orgOf(letter) {
+  return pickFirst(letter?.org_name, letter?.orgName, letter?.organization, letter?.company, letter?.from_name, letter?.to_name);
+}
+
+function letterDateOf(letter) {
+  return pickFirst(letter?.letter_date, letter?.letterDate, letter?.date, letter?.secretariat_date, letter?.secretariatDate);
+}
+
 function formatBytes(bytes) {
   const b = Number(bytes || 0);
   if (!b) return "0 B";
@@ -284,6 +326,8 @@ export default function FinancialWorksheetPage() {
   const [projects, setProjects] = useState([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [projectId, setProjectId] = useState("");
+  const [contractRows, setContractRows] = useState([]);
+  const [contractId, setContractId] = useState("");
 
   const [tab, setTab] = useState("statement");
   const [formOpen, setFormOpen] = useState(false);
@@ -297,11 +341,17 @@ export default function FinancialWorksheetPage() {
   const [insuranceDeposit, setInsuranceDeposit] = useState("");
   const [performanceDeposit, setPerformanceDeposit] = useState("");
   const [otherDebts, setOtherDebts] = useState([{ id: Date.now(), amount: "", description: "" }]);
-  const [vatPercent, setVatPercent] = useState("10");
+  const [vatStatus, setVatStatus] = useState("none");
+  const [vatPercent, setVatPercent] = useState("");
 
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadDraftFiles, setUploadDraftFiles] = useState([]);
+  const [letters, setLetters] = useState([]);
+  const [lettersLoading, setLettersLoading] = useState(false);
+  const [uploadLetterQuery, setUploadLetterQuery] = useState("");
+  const [relatedLetterIds, setRelatedLetterIds] = useState([]);
+  const [uploadDraftLetterIds, setUploadDraftLetterIds] = useState([]);
   const uploadInputRef = useRef(null);
 
   const [currencyItems, setCurrencyItems] = useState([]);
@@ -327,11 +377,14 @@ export default function FinancialWorksheetPage() {
     (async () => {
       setErr("");
       setProjectsLoading(true);
+      setLettersLoading(true);
       try {
-        const [pResp, tResp, sResp] = await Promise.all([
+        const [pResp, tResp, sResp, cResp, lResp] = await Promise.all([
           api("/projects").catch(() => ({ items: [] })),
           api("/base/currencies/types").catch(() => ({ items: [] })),
           api("/base/currencies/sources").catch(() => ({ items: [] })),
+          api("/contracts").catch(() => ({ items: [] })),
+          api("/letters").catch(() => ({ items: [] })),
         ]);
 
         if (stop) return;
@@ -341,12 +394,21 @@ export default function FinancialWorksheetPage() {
 
         const tList = tResp?.items || tResp?.data || tResp?.types || [];
         const sList = sResp?.items || sResp?.data || sResp?.sources || [];
+        const cList = cResp?.items || cResp?.data || cResp?.contracts || [];
+        const lList = lResp?.items || lResp?.data || lResp?.letters || [];
         setCurrencyItems(Array.isArray(tList) ? tList : []);
         setCurrencySourceItems(Array.isArray(sList) ? sList : []);
+        setContractRows(Array.isArray(cList) ? cList : []);
+        setLetters(
+          (Array.isArray(lList) ? lList : [])
+            .filter((letter) => letter && typeof letter === "object" && letterIdOf(letter))
+            .sort((a, b) => String(letterIdOf(b)).localeCompare(String(letterIdOf(a)), "fa", { numeric: true })),
+        );
       } catch (e) {
         if (!stop) setErr(e.message || "خطا در بارگذاری اطلاعات");
       } finally {
         if (!stop) setProjectsLoading(false);
+        if (!stop) setLettersLoading(false);
       }
     })();
     return () => {
@@ -366,6 +428,50 @@ export default function FinancialWorksheetPage() {
         }),
       );
   }, [projects]);
+
+  const contractById = useMemo(() => {
+    const map = new Map();
+    (Array.isArray(contractRows) ? contractRows : []).forEach((row) => {
+      if (row?.id) map.set(String(row.id), row);
+    });
+    return map;
+  }, [contractRows]);
+
+  const contractNoForRow = useCallback(
+    (row) => {
+      if (!row) return "";
+      if (row.documentType === "main") return String(row.contractNo || row.contract_no || "").trim();
+      const parent = contractById.get(String(row.parentContractId || row.parent_contract_id || ""));
+      return String(parent?.contractNo || parent?.contract_no || row.contractNo || row.contract_no || "").trim();
+    },
+    [contractById],
+  );
+
+  const documentTypeLabel = (type) => {
+    if (type === "sub") return "فرعی";
+    if (type === "appendix") return "الحاقیه";
+    return "اصلی";
+  };
+
+  const projectContractOptions = useMemo(() => {
+    const list = Array.isArray(contractRows) ? contractRows : [];
+    return list
+      .filter((row) => String(row?.projectId ?? row?.project_id ?? "") === String(projectId || ""))
+      .map((row) => ({
+        row,
+        id: String(row?.id || ""),
+        no: contractNoForRow(row),
+        subject: String(row?.general?.contractSubject || ""),
+        typeLabel: documentTypeLabel(row?.documentType || row?.document_type),
+      }))
+      .filter((item) => item.id && item.no)
+      .sort((a, b) => a.no.localeCompare(b.no, "fa", { numeric: true }));
+  }, [contractNoForRow, contractRows, projectId]);
+
+  useEffect(() => {
+    if (!contractId) return;
+    if (!projectContractOptions.some((item) => item.id === String(contractId))) setContractId("");
+  }, [contractId, projectContractOptions]);
 
   const normalizeRows = useCallback((items) => {
     const list = Array.isArray(items) ? items : [];
@@ -438,6 +544,33 @@ export default function FinancialWorksheetPage() {
   const sumVat = useMemo(() => (worksheetRows || []).reduce((s, r) => s + Number(r.vatAmount || 0), 0), [worksheetRows]);
   const sumReceiptAmount = useMemo(() => (worksheetRows || []).reduce((s, r) => s + Number(r.receiptAmount || 0), 0), [worksheetRows]);
   const sumReceiptForeignAmount = useMemo(() => (worksheetRows || []).reduce((s, r) => s + Number(r.receiptForeignAmount || 0), 0), [worksheetRows]);
+
+  const selectedContract = useMemo(() => contractById.get(String(contractId || "")) || null, [contractById, contractId]);
+  const selectedContractFinancial = selectedContract?.financial && typeof selectedContract.financial === "object" ? selectedContract.financial : {};
+  const grossAmountNumber = useMemo(() => parseAmountInput(grossAmount), [grossAmount]);
+  const prepaymentDepreciationNumber = useMemo(() => parseAmountInput(prepaymentDepreciation), [prepaymentDepreciation]);
+  const otherDeductionsNumber = useMemo(
+    () => (otherDebts || []).reduce((sum, row) => sum + parseAmountInput(row?.amount), 0),
+    [otherDebts],
+  );
+  const insuranceDepositPercent = selectedContractFinancial?.capitalDeposit === "has" ? parseAmountInput(selectedContractFinancial?.capitalDepositAmount) : 0;
+  const performanceDepositPercent = selectedContractFinancial?.performanceBond === "has" ? parseAmountInput(selectedContractFinancial?.performanceBondAmount) : 0;
+  const insuranceDepositNumber = useMemo(
+    () => percentOf(grossAmountNumber, insuranceDepositPercent),
+    [grossAmountNumber, insuranceDepositPercent],
+  );
+  const performanceDepositNumber = useMemo(
+    () => percentOf(grossAmountNumber, performanceDepositPercent),
+    [grossAmountNumber, performanceDepositPercent],
+  );
+  const netWithoutVatNumber = useMemo(
+    () => grossAmountNumber - prepaymentDepreciationNumber - insuranceDepositNumber - performanceDepositNumber - otherDeductionsNumber,
+    [grossAmountNumber, insuranceDepositNumber, otherDeductionsNumber, performanceDepositNumber, prepaymentDepreciationNumber],
+  );
+  const vatPercentNumber = vatStatus === "has" ? parseAmountInput(vatPercent) : 0;
+  const vatAmountNumber = useMemo(() => percentOf(grossAmountNumber, vatPercentNumber), [grossAmountNumber, vatPercentNumber]);
+  const netWithVatNumber = useMemo(() => netWithoutVatNumber + vatAmountNumber, [netWithoutVatNumber, vatAmountNumber]);
+  const formatComputedAmount = (value) => formatAmountInput(String(Math.round((Number(value) || 0) * 100) / 100));
 
   const gregorianDate = useMemo(() => {
     const m = String(jalaliDate || "").match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
@@ -533,12 +666,35 @@ export default function FinancialWorksheetPage() {
 
   const openUploadModal = () => {
     setUploadDraftFiles(Array.isArray(uploadedFiles) ? uploadedFiles : []);
+    setUploadDraftLetterIds(Array.isArray(relatedLetterIds) ? relatedLetterIds : []);
+    setUploadLetterQuery("");
     setUploadOpen(true);
   };
   const addFilesToDraft = (fileList) => {
     const incoming = Array.from(fileList || []).filter(Boolean);
     if (!incoming.length) return;
     setUploadDraftFiles((prev) => [...(Array.isArray(prev) ? prev : []), ...incoming]);
+  };
+  const filteredUploadLetters = useMemo(() => {
+    const q = toEnDigits(uploadLetterQuery).trim().toLowerCase();
+    const list = Array.isArray(letters) ? letters : [];
+    if (!q) return list.slice(0, 80);
+    return list.filter((letter) => {
+      const haystack = [letterNoOf(letter), secretariatNoOf(letter), subjectOf(letter), orgOf(letter), letterDateOf(letter)]
+        .map((item) => toEnDigits(item).toLowerCase())
+        .join(" ");
+      return haystack.includes(q);
+    });
+  }, [letters, uploadLetterQuery]);
+  const selectedRelatedLetters = useMemo(() => {
+    const ids = new Set((relatedLetterIds || []).map(String));
+    return (letters || []).filter((letter) => ids.has(String(letterIdOf(letter))));
+  }, [letters, relatedLetterIds]);
+  const toggleUploadDraftLetter = (id) => {
+    setUploadDraftLetterIds((prev) => {
+      const list = Array.isArray(prev) ? prev.map(String) : [];
+      return list.includes(String(id)) ? list.filter((item) => item !== String(id)) : [...list, String(id)];
+    });
   };
 
   const iconBtnCls =
@@ -610,6 +766,90 @@ export default function FinancialWorksheetPage() {
     }
   };
 
+  const resetStatementForm = () => {
+    setStatementNo("");
+    setJalaliDate("");
+    setDescription("");
+    setGrossAmount("");
+    setPrepaymentDepreciation("");
+    setInsuranceDeposit("");
+    setPerformanceDeposit("");
+    setOtherDebts([{ id: Date.now(), amount: "", description: "" }]);
+    setVatStatus("none");
+    setVatPercent("");
+    setUploadedFiles([]);
+    setRelatedLetterIds([]);
+  };
+
+  const handleSaveStatement = async () => {
+    setErr("");
+    if (!projectId) {
+      setErr("ابتدا پروژه را انتخاب کنید.");
+      return;
+    }
+    if (!contractId) {
+      setErr("ابتدا شماره قرارداد را انتخاب کنید.");
+      return;
+    }
+    if (!statementNo.trim()) {
+      setErr("شماره صورت وضعیت را وارد کنید.");
+      return;
+    }
+    if (!jalaliDate) {
+      setErr("تاریخ را انتخاب کنید.");
+      return;
+    }
+
+    const payload = {
+      kind: "statement",
+      project_id: projectId,
+      contract_id: contractId,
+      contract_no: contractNoForRow(selectedContract),
+      statement_no: statementNo.trim(),
+      jalali_date: jalaliDate,
+      gregorian_date: gregorianDate,
+      description,
+      gross_amount: grossAmountNumber,
+      currency_id: currencyId,
+      currency_label: selectedCurrencyLabel,
+      currency_source_id: currencySourceId,
+      currency_source_label: selectedCurrencySourceLabel,
+      prepayment_depreciation: prepaymentDepreciationNumber,
+      insurance_deposit_percent: insuranceDepositPercent,
+      insurance_deposit: insuranceDepositNumber,
+      performance_deposit_percent: performanceDepositPercent,
+      performance_deposit: performanceDepositNumber,
+      other_deductions: (otherDebts || []).map((row) => ({
+        amount: parseAmountInput(row?.amount),
+        description: String(row?.description || "").trim(),
+      })),
+      net_without_vat: netWithoutVatNumber,
+      vat_status: vatStatus,
+      vat_percent: vatPercentNumber,
+      vat_amount: vatAmountNumber,
+      net_with_vat: netWithVatNumber,
+      related_letter_ids: relatedLetterIds,
+      uploaded_files: (uploadedFiles || []).map((file) => ({
+        name: file?.name || "فایل",
+        size: file?.size || 0,
+        type: file?.type || "",
+      })),
+    };
+
+    try {
+      const saved = await api("/financial-worksheet", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      const item = saved?.item || saved?.data || payload;
+      setWorksheetRows((prev) => [...normalizeRows([item]), ...(Array.isArray(prev) ? prev : [])]);
+      resetStatementForm();
+      setFormOpen(false);
+    } catch (e) {
+      setErr(e.message || "خطا در ثبت صورت وضعیت");
+    }
+  };
+
   return (
     <>
       <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
@@ -620,21 +860,43 @@ export default function FinancialWorksheetPage() {
         </div>
 
         <div className="space-y-4">
-          <div>
-            <label className="text-xs text-neutral-600 dark:text-white/60">پروژه</label>
-            <select
-              value={projectId}
-              onChange={(e) => setProjectId(e.target.value)}
-              disabled={projectsLoading}
-              className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
-            >
-              <option value="">{projectsLoading ? "در حال بارگذاری..." : "انتخاب پروژه فعال"}</option>
-              {activeProjects.map((p) => (
-                <option key={String(p?.id)} value={String(p?.id)}>
-                  {projectLabel(p)}
-                </option>
-              ))}
-            </select>
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <div>
+              <label className="text-xs text-neutral-600 dark:text-white/60">پروژه</label>
+              <select
+                value={projectId}
+                onChange={(e) => {
+                  setProjectId(e.target.value);
+                  setContractId("");
+                }}
+                disabled={projectsLoading}
+                className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+              >
+                <option value="">{projectsLoading ? "در حال بارگذاری..." : "انتخاب پروژه فعال"}</option>
+                {activeProjects.map((p) => (
+                  <option key={String(p?.id)} value={String(p?.id)}>
+                    {projectLabel(p)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs text-neutral-600 dark:text-white/60">شماره قرارداد</label>
+              <select
+                value={contractId}
+                onChange={(e) => setContractId(e.target.value)}
+                disabled={!projectId}
+                className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15 disabled:opacity-60"
+              >
+                <option value="">{projectId ? "انتخاب قرارداد" : "ابتدا پروژه را انتخاب کنید"}</option>
+                {projectContractOptions.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {toFaDigits(item.no)} - {item.typeLabel}{item.subject ? ` - ${item.subject}` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="flex items-start gap-2">
@@ -914,25 +1176,31 @@ export default function FinancialWorksheetPage() {
                 <div>
                   <label className="text-xs text-neutral-600 dark:text-white/60">سپرده بیمه</label>
                   <AmountInputWithMeta
-                    value={insuranceDeposit}
-                    onChange={(e) => setInsuranceDeposit(formatAmountInput(e.target.value))}
+                    value={formatComputedAmount(insuranceDepositNumber)}
+                    readOnly
                     metaLabel={selectedCurrencyMetaLabel}
                   />
+                  <div className="mt-1 text-[11px] text-black/50 dark:text-neutral-400">
+                    درصد قرارداد: {toFaDigits(insuranceDepositPercent || 0)}%
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs text-neutral-600 dark:text-white/60">سپرده حسن انجام کار</label>
                   <AmountInputWithMeta
-                    value={performanceDeposit}
-                    onChange={(e) => setPerformanceDeposit(formatAmountInput(e.target.value))}
+                    value={formatComputedAmount(performanceDepositNumber)}
+                    readOnly
                     metaLabel={selectedCurrencyMetaLabel}
                   />
+                  <div className="mt-1 text-[11px] text-black/50 dark:text-neutral-400">
+                    درصد قرارداد: {toFaDigits(performanceDepositPercent || 0)}%
+                  </div>
                 </div>
               </div>
 
               {(otherDebts || []).map((row, idx) => (
                 <div key={row.id} className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-end">
                   <div className="xl:col-span-4">
-                    <label className="text-xs text-neutral-600 dark:text-white/60">سایر بدهی</label>
+                    <label className="text-xs text-neutral-600 dark:text-white/60">سایر کسور</label>
                     <AmountInputWithMeta
                       value={row.amount}
                       onChange={(e) => updateOtherDebtRow(row.id, { amount: formatAmountInput(e.target.value) })}
@@ -964,22 +1232,53 @@ export default function FinancialWorksheetPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3 items-end">
                 <div className="xl:col-span-5">
                   <label className="text-xs text-neutral-600 dark:text-white/60">جمع خالص تایید شده بدون VAT</label>
-                  <AmountInputWithMeta value="" readOnly metaLabel={selectedCurrencyMetaLabel} />
+                  <AmountInputWithMeta value={formatComputedAmount(netWithoutVatNumber)} readOnly metaLabel={selectedCurrencyMetaLabel} />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3 items-end">
                 <div className="xl:col-span-5">
                   <label className="text-xs text-neutral-600 dark:text-white/60">VAT</label>
-                  <div className="mt-1 h-10 rounded-xl border border-black/10 dark:border-white/15 bg-white dark:bg-white/5 px-3 flex items-center gap-2">
-                    <span className="text-sm text-neutral-600 dark:text-white/70">(</span>
-                    <input value={vatPercent} onChange={(e) => setVatPercent(e.target.value)} className="w-16 text-center bg-transparent outline-none text-neutral-900 dark:text-white" type="text" dir="ltr" />
-                    <span className="text-sm text-neutral-600 dark:text-white/70">%)</span>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    {[
+                      { value: "has", label: "دارد" },
+                      { value: "none", label: "ندارد" },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => {
+                          setVatStatus(option.value);
+                          if (option.value !== "has") setVatPercent("");
+                        }}
+                        className={`h-10 rounded-xl border px-4 text-sm font-semibold transition ${
+                          vatStatus === option.value
+                            ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
+                            : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.04] dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                    {vatStatus === "has" ? (
+                      <div className="flex h-10 items-center gap-1 rounded-xl border border-black/10 bg-white px-3 dark:border-white/15 dark:bg-white/5">
+                        <input
+                          value={vatPercent}
+                          onChange={(e) => setVatPercent(formatAmountInput(e.target.value))}
+                          className="w-16 bg-transparent text-center outline-none text-neutral-900 dark:text-white"
+                          type="text"
+                          inputMode="decimal"
+                          dir="ltr"
+                          placeholder="0"
+                        />
+                        <span className="text-sm text-neutral-600 dark:text-white/70">%</span>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
                 <div className="xl:col-span-4">
                   <label className="text-xs text-neutral-600 dark:text-white/60">مبلغ VAT</label>
-                  <AmountInputWithMeta value="" readOnly metaLabel={selectedCurrencyMetaLabel} />
+                  <AmountInputWithMeta value={formatComputedAmount(vatAmountNumber)} readOnly metaLabel={selectedCurrencyMetaLabel} />
                 </div>
               </div>
 
@@ -988,19 +1287,43 @@ export default function FinancialWorksheetPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3 items-end">
                 <div className="xl:col-span-5">
                   <label className="text-xs text-neutral-600 dark:text-white/60">جمع خالص تایید شده با احتساب VAT</label>
-                  <AmountInputWithMeta value="" readOnly metaLabel={selectedCurrencyMetaLabel} />
+                  <AmountInputWithMeta value={formatComputedAmount(netWithVatNumber)} readOnly metaLabel={selectedCurrencyMetaLabel} />
                 </div>
               </div>
 
               <div className="h-px bg-gradient-to-r from-transparent via-black/20 to-transparent dark:via-white/20" />
 
-              <div className="flex items-center justify-start">
-                <button type="button" onClick={openUploadModal} className="h-11 px-3 rounded-xl border transition flex items-center justify-center gap-2 whitespace-nowrap border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02] dark:border-white/15 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10" title="آپلود فایل" aria-label="آپلود فایل">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <button type="button" onClick={openUploadModal} className="h-11 px-3 rounded-xl border transition flex items-center justify-center gap-2 whitespace-nowrap border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02] dark:border-white/15 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10" title="بارگذاری اسناد" aria-label="بارگذاری اسناد">
                   <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
-                  آپلود فایل
-                  {uploadedFiles.length ? <span className="text-xs opacity-80">({toFaDigits(uploadedFiles.length)})</span> : null}
+                  بارگذاری اسناد
+                  {uploadedFiles.length || relatedLetterIds.length ? <span className="text-xs opacity-80">({toFaDigits(uploadedFiles.length + relatedLetterIds.length)})</span> : null}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveStatement}
+                  className="h-11 w-11 rounded-xl bg-black text-white ring-1 ring-black/15 transition flex items-center justify-center hover:bg-black/90 dark:bg-white dark:text-black dark:ring-white/10"
+                  aria-label="تایید و ثبت"
+                  title="تایید و ثبت"
+                >
+                  <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
                 </button>
               </div>
+              {selectedRelatedLetters.length || uploadedFiles.length ? (
+                <div className="flex flex-wrap items-center gap-2 text-xs text-black/55 dark:text-white/60">
+                  {selectedRelatedLetters.map((letter) => (
+                    <span key={String(letterIdOf(letter))} className="max-w-[240px] truncate rounded-lg bg-black/[0.05] px-2 py-1 dark:bg-white/10">
+                      {toFaDigits(secretariatNoOf(letter) || letterNoOf(letter) || letterIdOf(letter))}
+                      {subjectOf(letter) ? ` - ${subjectOf(letter)}` : ""}
+                    </span>
+                  ))}
+                  {uploadedFiles.map((file, index) => (
+                    <span key={`${file?.name || "file"}_${index}`} className="max-w-[220px] truncate rounded-lg bg-black/[0.05] px-2 py-1 dark:bg-white/10">
+                      {file?.name || `فایل ${toFaDigits(index + 1)}`}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
                 </>
               )}
             </div>
@@ -1159,7 +1482,57 @@ export default function FinancialWorksheetPage() {
                   <div className="font-semibold text-sm md:text-base">بارگذاری اسناد</div>
                 </div>
 
-                <div className="p-4">
+                <div className="max-h-[78vh] overflow-y-auto p-4 space-y-4">
+                  <div className="rounded-2xl border border-black/10 dark:border-white/10 p-3 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-sm font-semibold text-neutral-700 dark:text-white/80">اسناد مرتبط</div>
+                      <div className="rounded-full bg-black/[0.06] px-2 py-0.5 text-xs font-semibold dark:bg-white/10">
+                        {toFaDigits(uploadDraftLetterIds.length)}
+                      </div>
+                    </div>
+                    <input
+                      value={uploadLetterQuery}
+                      onChange={(e) => setUploadLetterQuery(e.target.value)}
+                      className="w-full h-10 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                      type="text"
+                      placeholder="جستجو با شماره / موضوع / سازمان / شماره ثبت دبیرخانه"
+                    />
+                    <div className="max-h-56 overflow-auto rounded-xl border border-black/10 p-2 dark:border-white/10">
+                      {lettersLoading ? (
+                        <div className="p-3 text-center text-sm text-neutral-500 dark:text-white/60">در حال بارگذاری نامه‌ها...</div>
+                      ) : filteredUploadLetters.length ? (
+                        filteredUploadLetters.map((letter) => {
+                          const id = String(letterIdOf(letter));
+                          const checked = uploadDraftLetterIds.map(String).includes(id);
+                          const no = secretariatNoOf(letter) || letterNoOf(letter) || id;
+                          return (
+                            <button
+                              key={id}
+                              type="button"
+                              onClick={() => toggleUploadDraftLetter(id)}
+                              className="w-full rounded-xl px-3 py-2 text-right transition flex items-center justify-between gap-3 hover:bg-black/[0.04] dark:hover:bg-white/10"
+                            >
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="font-semibold">{toFaDigits(no)}</span>
+                                  {letterDateOf(letter) ? <span className="text-xs text-black/45 dark:text-white/45">{toFaDigits(letterDateOf(letter))}</span> : null}
+                                </div>
+                                <div className="mt-1 truncate text-xs text-black/60 dark:text-white/60">
+                                  {subjectOf(letter) || orgOf(letter) || "بدون شرح"}
+                                </div>
+                              </div>
+                              <div className="h-5 w-5 rounded-md border border-black/15 grid place-items-center shrink-0 dark:border-white/20">
+                                {checked ? <span className="text-xs">✓</span> : null}
+                              </div>
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div className="p-3 text-center text-sm text-neutral-500 dark:text-white/60">موردی پیدا نشد.</div>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="rounded-2xl border border-black/10 dark:border-white/10 p-3 space-y-3">
                     <div className="text-sm text-neutral-700 dark:text-white/80">فایل های انتخاب‌شده</div>
                     <div className="rounded-xl border border-black/10 dark:border-white/10 p-2 max-h-44 overflow-y-auto">
@@ -1209,6 +1582,7 @@ export default function FinancialWorksheetPage() {
                       type="button"
                       onClick={() => {
                         setUploadedFiles(uploadDraftFiles);
+                        setRelatedLetterIds(uploadDraftLetterIds);
                         setUploadOpen(false);
                       }}
                       className="h-10 w-10 rounded-xl bg-black text-white dark:bg-white dark:text-black grid place-items-center"
