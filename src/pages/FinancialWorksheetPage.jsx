@@ -64,6 +64,11 @@ function pickFirst(...values) {
   return "";
 }
 
+function isMainProjectCode(code) {
+  const normalized = toEnDigits(code).trim();
+  return /^\d+$/.test(normalized);
+}
+
 function letterIdOf(letter) {
   return pickFirst(letter?.id, letter?.letter_id, letter?.letterId);
 }
@@ -420,6 +425,7 @@ export default function FinancialWorksheetPage() {
     const list = Array.isArray(projects) ? projects : [];
     return list
       .filter((p) => p?.isActive !== false && p?.is_active !== false)
+      .filter((p) => isMainProjectCode(p?.code ?? ""))
       .slice()
       .sort((a, b) =>
         String(a?.code || "").localeCompare(String(b?.code || ""), "fa", {
@@ -1164,82 +1170,81 @@ export default function FinancialWorksheetPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-                <div>
-                  <label className="text-xs text-neutral-600 dark:text-white/60">استهلاک پیش پرداخت</label>
-                  <AmountInputWithMeta
-                    value={prepaymentDepreciation}
-                    onChange={(e) => setPrepaymentDepreciation(formatAmountInput(e.target.value))}
-                    metaLabel={selectedCurrencyMetaLabel}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-neutral-600 dark:text-white/60">سپرده بیمه</label>
-                  <AmountInputWithMeta
-                    value={formatComputedAmount(insuranceDepositNumber)}
-                    readOnly
-                    metaLabel={selectedCurrencyMetaLabel}
-                  />
-                  <div className="mt-1 text-[11px] text-black/50 dark:text-neutral-400">
-                    درصد قرارداد: {toFaDigits(insuranceDepositPercent || 0)}%
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs text-neutral-600 dark:text-white/60">سپرده حسن انجام کار</label>
-                  <AmountInputWithMeta
-                    value={formatComputedAmount(performanceDepositNumber)}
-                    readOnly
-                    metaLabel={selectedCurrencyMetaLabel}
-                  />
-                  <div className="mt-1 text-[11px] text-black/50 dark:text-neutral-400">
-                    درصد قرارداد: {toFaDigits(performanceDepositPercent || 0)}%
-                  </div>
-                </div>
-              </div>
-
-              {(otherDebts || []).map((row, idx) => (
-                <div key={row.id} className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-end">
-                  <div className="xl:col-span-4">
-                    <label className="text-xs text-neutral-600 dark:text-white/60">سایر کسور</label>
+              <div className="rounded-2xl border border-black/10 bg-black/[0.025] p-3 space-y-3 dark:border-white/10 dark:bg-white/[0.04]">
+                <div className="text-sm font-semibold text-neutral-800 dark:text-white/85">کسور</div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
+                  <div>
+                    <label className="text-xs text-neutral-600 dark:text-white/60">استهلاک پیش پرداخت</label>
                     <AmountInputWithMeta
-                      value={row.amount}
-                      onChange={(e) => updateOtherDebtRow(row.id, { amount: formatAmountInput(e.target.value) })}
+                      value={prepaymentDepreciation}
+                      onChange={(e) => setPrepaymentDepreciation(formatAmountInput(e.target.value))}
                       metaLabel={selectedCurrencyMetaLabel}
                     />
+                    <div className="mt-1 h-4 text-[11px] text-transparent">.</div>
                   </div>
-
-                  <div className="xl:col-span-7">
-                    <label className="text-xs text-neutral-600 dark:text-white/60">شرح</label>
-                    <input value={row.description} onChange={(e) => updateOtherDebtRow(row.id, { description: e.target.value })} className="mt-1 w-full h-10 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15" type="text" placeholder="شرح..." />
+                  <div>
+                    <label className="text-xs text-neutral-600 dark:text-white/60">سپرده بیمه</label>
+                    <AmountInputWithMeta
+                      value={formatComputedAmount(insuranceDepositNumber)}
+                      readOnly
+                      metaLabel={selectedCurrencyMetaLabel}
+                    />
+                    <div className="mt-1 h-4 text-[11px] text-black/50 dark:text-neutral-400">
+                      درصد قرارداد: {toFaDigits(insuranceDepositPercent || 0)}%
+                    </div>
                   </div>
-
-                  <div className="xl:col-span-1 flex xl:justify-end gap-2">
-                    {idx === 0 ? (
-                      <button type="button" onClick={addOtherDebtRow} className="h-10 w-10 rounded-xl border border-black/15 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10 grid place-items-center" aria-label="افزودن ردیف سایر بدهی" title="افزودن">
-                        <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
-                      </button>
-                    ) : (
-                      <button type="button" onClick={() => removeOtherDebtRow(row.id)} className="h-10 w-10 rounded-xl border border-red-300 text-red-600 hover:bg-red-50 dark:border-red-500/50 dark:text-red-400 dark:hover:bg-red-500/10 grid place-items-center" aria-label="حذف این ردیف" title="حذف">
-                        <span className="text-xl leading-none">−</span>
-                      </button>
-                    )}
+                  <div>
+                    <label className="text-xs text-neutral-600 dark:text-white/60">سپرده حسن انجام کار</label>
+                    <AmountInputWithMeta
+                      value={formatComputedAmount(performanceDepositNumber)}
+                      readOnly
+                      metaLabel={selectedCurrencyMetaLabel}
+                    />
+                    <div className="mt-1 h-4 text-[11px] text-black/50 dark:text-neutral-400">
+                      درصد قرارداد: {toFaDigits(performanceDepositPercent || 0)}%
+                    </div>
                   </div>
                 </div>
-              ))}
 
-              <div className="h-px bg-gradient-to-r from-transparent via-black/20 to-transparent dark:via-white/20" />
+                {(otherDebts || []).map((row, idx) => (
+                  <div key={row.id} className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-end">
+                    <div className="xl:col-span-4">
+                      <label className="text-xs text-neutral-600 dark:text-white/60">سایر کسور</label>
+                      <AmountInputWithMeta
+                        value={row.amount}
+                        onChange={(e) => updateOtherDebtRow(row.id, { amount: formatAmountInput(e.target.value) })}
+                        metaLabel={selectedCurrencyMetaLabel}
+                      />
+                    </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3 items-end">
-                <div className="xl:col-span-5">
+                    <div className="xl:col-span-7">
+                      <label className="text-xs text-neutral-600 dark:text-white/60">شرح</label>
+                      <input value={row.description} onChange={(e) => updateOtherDebtRow(row.id, { description: e.target.value })} className="mt-1 w-full h-10 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15" type="text" placeholder="شرح..." />
+                    </div>
+
+                    <div className="xl:col-span-1 flex xl:justify-end gap-2">
+                      {idx === 0 ? (
+                        <button type="button" onClick={addOtherDebtRow} className="h-10 w-10 rounded-xl border border-black/15 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10 grid place-items-center" aria-label="افزودن ردیف سایر کسور" title="افزودن">
+                          <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
+                        </button>
+                      ) : (
+                        <button type="button" onClick={() => removeOtherDebtRow(row.id)} className="h-10 w-10 rounded-xl border border-red-300 text-red-600 hover:bg-red-50 dark:border-red-500/50 dark:text-red-400 dark:hover:bg-red-500/10 grid place-items-center" aria-label="حذف این ردیف" title="حذف">
+                          <span className="text-xl leading-none">−</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
+                <div className="lg:col-span-4">
                   <label className="text-xs text-neutral-600 dark:text-white/60">جمع خالص تایید شده بدون VAT</label>
                   <AmountInputWithMeta value={formatComputedAmount(netWithoutVatNumber)} readOnly metaLabel={selectedCurrencyMetaLabel} />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3 items-end">
-                <div className="xl:col-span-5">
+                <div className="lg:col-span-4">
                   <label className="text-xs text-neutral-600 dark:text-white/60">VAT</label>
-                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <div className="mt-1 flex h-10 flex-wrap items-center gap-2">
                     {[
                       { value: "has", label: "دارد" },
                       { value: "none", label: "ندارد" },
@@ -1276,38 +1281,36 @@ export default function FinancialWorksheetPage() {
                     ) : null}
                   </div>
                 </div>
-                <div className="xl:col-span-4">
+                <div className="lg:col-span-4">
                   <label className="text-xs text-neutral-600 dark:text-white/60">مبلغ VAT</label>
                   <AmountInputWithMeta value={formatComputedAmount(vatAmountNumber)} readOnly metaLabel={selectedCurrencyMetaLabel} />
                 </div>
               </div>
 
-              <div className="h-px bg-gradient-to-r from-transparent via-black/20 to-transparent dark:via-white/20" />
-
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3 items-end">
-                <div className="xl:col-span-5">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
+                <div className="lg:col-span-5">
                   <label className="text-xs text-neutral-600 dark:text-white/60">جمع خالص تایید شده با احتساب VAT</label>
                   <AmountInputWithMeta value={formatComputedAmount(netWithVatNumber)} readOnly metaLabel={selectedCurrencyMetaLabel} />
                 </div>
-              </div>
-
-              <div className="h-px bg-gradient-to-r from-transparent via-black/20 to-transparent dark:via-white/20" />
-
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <button type="button" onClick={openUploadModal} className="h-11 px-3 rounded-xl border transition flex items-center justify-center gap-2 whitespace-nowrap border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02] dark:border-white/15 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10" title="بارگذاری اسناد" aria-label="بارگذاری اسناد">
-                  <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
-                  بارگذاری اسناد
-                  {uploadedFiles.length || relatedLetterIds.length ? <span className="text-xs opacity-80">({toFaDigits(uploadedFiles.length + relatedLetterIds.length)})</span> : null}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveStatement}
-                  className="h-11 w-11 rounded-xl bg-black text-white ring-1 ring-black/15 transition flex items-center justify-center hover:bg-black/90 dark:bg-white dark:text-black dark:ring-white/10"
-                  aria-label="تایید و ثبت"
-                  title="تایید و ثبت"
-                >
-                  <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
-                </button>
+                <div className="lg:col-span-5">
+                  <label className="text-xs text-neutral-600 dark:text-white/60">اسناد</label>
+                  <button type="button" onClick={openUploadModal} className="mt-1 h-10 w-full px-3 rounded-xl border transition flex items-center justify-center gap-2 whitespace-nowrap border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02] dark:border-white/15 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10" title="بارگذاری اسناد" aria-label="بارگذاری اسناد">
+                    <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
+                    بارگذاری اسناد
+                    {uploadedFiles.length || relatedLetterIds.length ? <span className="text-xs opacity-80">({toFaDigits(uploadedFiles.length + relatedLetterIds.length)})</span> : null}
+                  </button>
+                </div>
+                <div className="lg:col-span-2 flex justify-start lg:justify-end">
+                  <button
+                    type="button"
+                    onClick={handleSaveStatement}
+                    className="h-10 w-10 rounded-xl bg-black text-white ring-1 ring-black/15 transition flex items-center justify-center hover:bg-black/90 dark:bg-white dark:text-black dark:ring-white/10"
+                    aria-label="تایید و ثبت"
+                    title="تایید و ثبت"
+                  >
+                    <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
+                  </button>
+                </div>
               </div>
               {selectedRelatedLetters.length || uploadedFiles.length ? (
                 <div className="flex flex-wrap items-center gap-2 text-xs text-black/55 dark:text-white/60">
