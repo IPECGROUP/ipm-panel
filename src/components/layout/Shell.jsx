@@ -1,14 +1,9 @@
 // src/components/layout/Shell.jsx
 import React from "react";
 import { Link, Outlet } from "react-router-dom";
-import { useAuth } from "../AuthProvider.jsx";
 import RightNav from "../RightNav.jsx";
 
 export default function Shell() {
-  // useAuth ممکنه موقتاً null بده → امنش می‌کنیم
-  const auth = useAuth() || {};
-  const { user, logout } = auth;
-
   // ===== تم (dark|light) فقط برای همین سشن، بدون localStorage =====
   const [theme] = React.useState("light"); // همیشه لایت شروع می‌کنه
 
@@ -54,9 +49,6 @@ export default function Shell() {
     }
   }, [now]);
 
-  const displayName = user?.name || user?.username || user?.email || "کاربر";
-  const displayRole = user?.role ? String(user.role) : "";
-
   return (
     <div
       dir="rtl"
@@ -100,7 +92,7 @@ export default function Shell() {
             {/* تاریخ */}
             <div
               className={
-                "hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl border " +
+                "hidden lg:flex h-9 items-center gap-2 px-3 rounded-xl border " +
                 (theme === "dark"
                   ? "border-white/15 bg-white/5 text-white/85"
                   : "border-black/10 bg-white/70 text-neutral-700")
@@ -114,43 +106,10 @@ export default function Shell() {
               <span className="whitespace-nowrap">{gregorianDate || "—"}</span>
             </div>
 
-            {/* خوش‌آمد + نقش */}
-            <div
-              className={
-                "hidden md:flex min-w-0 max-w-[9.5rem] items-center gap-1.5 sm:max-w-none sm:gap-2 px-2 sm:px-3 py-1.5 rounded-xl border " +
-                (theme === "dark"
-                  ? "border-white/15 bg-white/5 text-white/90"
-                  : "border-black/10 bg-white/70 text-neutral-800")
-              }
-              title="حساب کاربری"
-            >
-              <span className={(theme === "dark" ? "text-white/70" : "text-neutral-600") + " hidden sm:inline"}>
-                خوش آمدید،
-              </span>
-              <span className="min-w-0 truncate font-semibold">{displayName}</span>
-              {displayRole ? (
-                <>
-                  <span className={(theme === "dark" ? "text-white/30" : "text-black/20") + " hidden md:inline"}>
-                    •
-                  </span>
-                  <span
-                    className={
-                      "hidden md:inline-flex px-2 py-0.5 rounded-lg text-[11px] border " +
-                      (theme === "dark"
-                        ? "border-white/15 bg-white/5 text-white/80"
-                        : "border-black/10 bg-black/[0.03] text-neutral-700")
-                    }
-                  >
-                    {displayRole}
-                  </span>
-                </>
-              ) : null}
-            </div>
-
             {/* تاریخ داخل هدر موبایل */}
             <div
               className={
-                "flex md:hidden min-w-0 h-8 items-center gap-1.5 px-2.5 rounded-xl border text-[11px] leading-none " +
+                "flex md:hidden min-w-0 h-8 sm:h-9 items-center gap-1.5 px-2.5 rounded-xl border text-[11px] leading-none " +
                 (theme === "dark"
                   ? "border-white/10 bg-white/5 text-white/80"
                   : "border-black/10 bg-white/70 text-neutral-700")
@@ -187,19 +146,6 @@ export default function Shell() {
               />
             </button>
 
-            {/* دکمه خروج با کنتراست بالا (خوانا در هر دو تم) */}
-            <button
-              onClick={logout || (() => {})}
-              className={
-                "hidden sm:inline-flex h-8 sm:h-9 shrink-0 items-center px-2 sm:px-4 rounded-xl text-[11px] sm:text-sm transition " +
-                (theme === "dark"
-                  ? "ring-1 ring-neutral-700 text-neutral-100 hover:bg-white/10"
-                  : "ring-1 ring-neutral-300 text-neutral-800 hover:bg-neutral-100")
-              }
-              title="خروج از حساب"
-            >
-              خروج
-            </button>
           </div>
           </div>
         </div>
