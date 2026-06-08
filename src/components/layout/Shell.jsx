@@ -5,7 +5,7 @@ import RightNav from "../RightNav.jsx";
 
 export default function Shell() {
   // ===== تم (dark|light) فقط برای همین سشن، بدون localStorage =====
-  const [theme] = React.useState("light"); // همیشه لایت شروع می‌کنه
+  const [theme] = React.useState("light"); 
 
   React.useEffect(() => {
     const root = document.documentElement;
