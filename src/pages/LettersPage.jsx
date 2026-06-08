@@ -3171,7 +3171,6 @@ useLayoutEffect(() => {
   const rowActionsRevealCls =
     "w-full flex items-center justify-start gap-2 pl-3 opacity-0 pointer-events-none transition-opacity " +
     "group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto";
-  const tableActionBtnCls = iconBtnCls + " !h-[34px] !w-[34px]";
 
   const tableWrapCls =
     "bg-white text-black rounded-2xl border border-black/10 overflow-hidden " +
@@ -5712,18 +5711,18 @@ const rowBg = normalRowBg;
                     setKbdAbsIdx(absIdx);
                     openView(l);
                   }}
-                  className={tableActionBtnCls}
+                  className={iconBtnCls}
                   aria-label="نمایش"
                   title="نمایش"
                 >
                   <img src="/images/icons/namayeshname.svg" alt="" className="w-4 h-4 dark:invert" />
                 </button>
 
-                <button type="button" onClick={() => startEdit(l)} className={tableActionBtnCls} aria-label="ویرایش" title="ویرایش">
+                <button type="button" onClick={() => startEdit(l)} className={iconBtnCls} aria-label="ویرایش" title="ویرایش">
                   <img src="/images/icons/pencil.svg" alt="" className="w-[17px] h-[17px] dark:invert" />
                 </button>
 
-                <button type="button" onClick={() => deleteLetter(id)} className={tableActionBtnCls} aria-label="حذف" title="حذف">
+                <button type="button" onClick={() => deleteLetter(id)} className={iconBtnCls} aria-label="حذف" title="حذف">
                   <img
                     src="/images/icons/hazf.svg"
                     alt=""
