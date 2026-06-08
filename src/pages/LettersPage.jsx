@@ -3168,6 +3168,9 @@ useLayoutEffect(() => {
   const iconBtnCls =
     "h-10 w-10 inline-grid place-items-center !bg-transparent !ring-0 !border-0 !shadow-none " +
     "hover:opacity-80 active:opacity-70 transition disabled:opacity-50";
+  const rowActionsRevealCls =
+    "w-full flex items-center justify-start gap-2 pl-3 opacity-0 pointer-events-none transition-opacity " +
+    "group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto";
 
   const tableWrapCls =
     "bg-white text-black rounded-2xl border border-black/10 overflow-hidden " +
@@ -5646,6 +5649,7 @@ const rowBg = normalRowBg;
           }}
           onClick={() => setKbdAbsIdx(absIdx)}
           className={
+            "group " +
             rowBg +
             " transition-colors" +
             (isConf ? " [&_td]:!text-red-600 dark:[&_td]:!text-red-500" : "") +
@@ -5700,7 +5704,7 @@ const rowBg = normalRowBg;
             </td>
 
             <td className={"!pl-6 !pr-3 " + divider}>
-              <div className="w-full flex items-center justify-start gap-2 pl-3">
+              <div className={rowActionsRevealCls}>
                 <button
                   type="button"
                   onClick={() => {
