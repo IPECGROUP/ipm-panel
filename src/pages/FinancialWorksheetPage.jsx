@@ -9,6 +9,12 @@ function toFaDigits(s) {
   return String(s ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
 }
 
+function toEnDigits(s) {
+  return String(s ?? "")
+    .replace(/[۰-۹]/g, (d) => "0123456789"["۰۱۲۳۴۵۶۷۸۹".indexOf(d)])
+    .replace(/[٠-٩]/g, (d) => "0123456789"["٠١٢٣٤٥٦٧٨٩".indexOf(d)]);
+}
+
 function pad2(n) {
   const x = Number(n) || 0;
   return x < 10 ? `0${x}` : String(x);
@@ -20,6 +26,24 @@ function formatMoney(n) {
   const sign = Number(n) < 0 ? "-" : "";
   const digits = String(Math.abs(Number(n) || 0));
   return sign + digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function cleanAmountInput(value) {
+  return toEnDigits(value)
+    .replace(/[٬,،\s]/g, "")
+    .replace(/٫/g, ".")
+    .replace(/[−–—]/g, "-")
+    .replace(/[^\d.-]/g, "");
+}
+
+function formatAmountInput(value) {
+  const raw = cleanAmountInput(value);
+  if (!raw || raw === "-" || raw === "." || raw === "-.") return raw;
+  const sign = raw.startsWith("-") ? "-" : "";
+  const unsigned = sign ? raw.slice(1) : raw;
+  const [integer = "", decimal] = unsigned.split(".");
+  const formattedInteger = integer ? new Intl.NumberFormat("en-US").format(Number(integer) || 0) : "0";
+  return `${sign}${formattedInteger}${decimal !== undefined ? `.${decimal}` : ""}`;
 }
 
 function formatBytes(bytes) {
@@ -194,6 +218,45 @@ function JalaliPopupDatePicker({ value, onChange }) {
   );
 }
 
+function AmountInputWithMeta({
+  value,
+  onChange,
+  metaLabel,
+  readOnly = false,
+  placeholder = "0",
+  className = "",
+}) {
+  return (
+    <div
+      dir="ltr"
+      className={`mt-1 flex h-10 w-full items-center gap-2 rounded-xl border px-3 text-neutral-900 outline-none ${
+        readOnly
+          ? "border-black/10 bg-black/5 dark:border-white/15 dark:bg-white/10 dark:text-white"
+          : "border-black/10 bg-white dark:border-white/15 dark:bg-white/5 dark:text-white"
+      } ${className}`}
+    >
+      <input
+        value={value}
+        onChange={onChange}
+        readOnly={readOnly}
+        className="min-w-0 flex-1 bg-transparent text-left outline-none"
+        type="text"
+        inputMode="decimal"
+        placeholder={placeholder}
+      />
+      {metaLabel ? (
+        <span
+          dir="rtl"
+          className="max-w-[52%] shrink-0 truncate rounded-lg bg-black/[0.06] px-2 py-1 text-[11px] font-semibold text-neutral-600 dark:bg-white/10 dark:text-white/70"
+          title={metaLabel}
+        >
+          {metaLabel}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 export default function FinancialWorksheetPage() {
   const API_BASE = (window.API_URL || "/api").replace(/\/+$/, "");
 
@@ -231,11 +294,8 @@ export default function FinancialWorksheetPage() {
   const [description, setDescription] = useState("");
   const [grossAmount, setGrossAmount] = useState("");
   const [prepaymentDepreciation, setPrepaymentDepreciation] = useState("");
-  const [prepaymentCurrencyId, setPrepaymentCurrencyId] = useState("");
   const [insuranceDeposit, setInsuranceDeposit] = useState("");
-  const [insuranceCurrencyId, setInsuranceCurrencyId] = useState("");
   const [performanceDeposit, setPerformanceDeposit] = useState("");
-  const [performanceCurrencyId, setPerformanceCurrencyId] = useState("");
   const [otherDebts, setOtherDebts] = useState([{ id: Date.now(), amount: "", description: "" }]);
   const [vatPercent, setVatPercent] = useState("10");
 
@@ -384,7 +444,7 @@ export default function FinancialWorksheetPage() {
     if (!m) return "";
     const g = jalaliToGregorian(Number(m[1]), Number(m[2]), Number(m[3]));
     if (!g) return "";
-    return `${g.gy}-${pad2(g.gm)}-${pad2(g.gd)}`;
+    return `${g.gy}/${pad2(g.gm)}/${pad2(g.gd)}`;
   }, [jalaliDate]);
 
   const projectLabel = (p) => {
@@ -395,6 +455,18 @@ export default function FinancialWorksheetPage() {
 
   const readItemId = (it) => String(it?.id ?? it?.code ?? it?.value ?? it?.key ?? "");
   const readItemLabel = (it) => String(it?.label ?? it?.title ?? it?.name ?? it?.code ?? "").trim();
+  const selectedCurrencyLabel = useMemo(
+    () => readItemLabel((currencyItems || []).find((it) => readItemId(it) === String(currencyId))),
+    [currencyItems, currencyId],
+  );
+  const selectedCurrencySourceLabel = useMemo(
+    () => readItemLabel((currencySourceItems || []).find((it) => readItemId(it) === String(currencySourceId))),
+    [currencySourceItems, currencySourceId],
+  );
+  const selectedCurrencyMetaLabel = useMemo(() => {
+    const parts = [selectedCurrencyLabel, selectedCurrencySourceLabel].filter(Boolean);
+    return parts.length ? parts.join(" / ") : "";
+  }, [selectedCurrencyLabel, selectedCurrencySourceLabel]);
   const receiptTypeOptions = [
     { value: "prepayment", label: "پیش پرداخت" },
     { value: "statement", label: "صورت وضعیت" },
@@ -471,6 +543,23 @@ export default function FinancialWorksheetPage() {
 
   const iconBtnCls =
     "h-10 w-10 inline-grid place-items-center !bg-transparent !ring-0 !border-0 !shadow-none hover:opacity-80 active:opacity-70 transition disabled:opacity-50";
+  const worksheetTabs = [
+    { id: "statement", label: "صورت وضعیت" },
+    { id: "receipts", label: "دریافتی‌ها" },
+  ];
+  const tabStripCls =
+    "mb-2 flex w-full items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-black/10 bg-black/[0.03] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-auto md:-mb-px md:max-w-[780px] md:items-stretch md:justify-center md:gap-0 md:rounded-b-none md:rounded-t-2xl md:border-b-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900";
+  const topTabBtnClass = (isActive, index, total) =>
+    [
+      "relative z-10 h-10 min-w-[118px] flex-none rounded-lg px-3 text-xs font-semibold transition whitespace-nowrap md:h-11 md:min-w-[132px] md:flex-1 md:rounded-none md:px-4 md:text-sm",
+      index > 0 ? "md:border-r md:border-black/10 md:dark:border-neutral-800" : "",
+      index === 0 ? "md:rounded-tr-2xl" : "",
+      index === total - 1 ? "md:rounded-tl-2xl" : "",
+      "focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20",
+      isActive
+        ? "bg-black text-white shadow-sm dark:bg-black dark:text-white"
+        : "bg-white text-[#1f2937] hover:bg-neutral-50 md:bg-white dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800 md:dark:bg-neutral-900",
+    ].join(" ");
 
   const handleViewRow = (row) => {
     const dt = row?.date ? toFaDigits(row.date) : "—";
@@ -505,7 +594,7 @@ export default function FinancialWorksheetPage() {
     }
     setStatementNo(String(row?.number || ""));
     setJalaliDate(String(row?.date || ""));
-    setGrossAmount(String(row?.grossAmount || ""));
+    setGrossAmount(formatAmountInput(row?.grossAmount || ""));
   };
 
   const handleDeleteRow = async (row) => {
@@ -548,29 +637,21 @@ export default function FinancialWorksheetPage() {
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setTab("statement")}
-              className={`h-10 flex-1 px-4 rounded-xl border text-sm transition ${
-                tab === "statement"
-                  ? "bg-black text-white border-black dark:bg-white dark:text-black dark:border-white"
-                  : "bg-white text-black border-black/15 hover:bg-black/5 dark:bg-white/5 dark:text-white dark:border-white/15 dark:hover:bg-white/10"
-              }`}
-            >
-              صورت وضعیت
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("receipts")}
-              className={`h-10 flex-1 px-4 rounded-xl border text-sm transition ${
-                tab === "receipts"
-                  ? "bg-black text-white border-black dark:bg-white dark:text-black dark:border-white"
-                  : "bg-white text-black border-black/15 hover:bg-black/5 dark:bg-white/5 dark:text-white dark:border-white/15 dark:hover:bg-white/10"
-              }`}
-            >
-              دریافتی‌ها
-            </button>
+          <div className="flex items-start gap-2">
+            <div className={tabStripCls} role="tablist" aria-label="بخش‌های کاربرگ مالی">
+              {worksheetTabs.map((item, index) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === item.id}
+                  onClick={() => setTab(item.id)}
+                  className={topTabBtnClass(tab === item.id, index, worksheetTabs.length)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
             <button
               type="button"
               onClick={() => setFormOpen((v) => !v)}
@@ -670,34 +751,36 @@ export default function FinancialWorksheetPage() {
                   </div>
                 </>
               ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
-                  <div className="lg:col-span-4">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
+                  <div className="lg:col-span-3">
                     <label className="text-xs text-neutral-600 dark:text-white/60">شماره صورت وضعیت</label>
                     <input
                       value={statementNo}
                       onChange={(e) => setStatementNo(e.target.value)}
-                      className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                      className="mt-1 w-full h-10 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
                       type="text"
                       placeholder="شماره صورت وضعیت"
                     />
                   </div>
 
-                  <div className="lg:col-span-4">
-                    <label className="text-xs text-neutral-600 dark:text-white/60">تاریخ شمسی</label>
+                  <div className="lg:col-span-3">
+                    <label className="text-xs text-neutral-600 dark:text-white/60">تاریخ</label>
                     <div className="mt-1">
                       <JalaliPopupDatePicker value={jalaliDate} onChange={setJalaliDate} />
                     </div>
+                    <div className="mt-2 text-xs text-black/55 dark:text-neutral-400">
+                      میلادی: <span className="font-semibold text-black dark:text-neutral-100">{gregorianDate || "انتخاب نشده"}</span>
+                    </div>
                   </div>
 
-                  <div className="lg:col-span-4">
-                    <label className="text-xs text-neutral-600 dark:text-white/60">تاریخ میلادی (خودکار)</label>
+                  <div className="lg:col-span-6">
+                    <label className="text-xs text-neutral-600 dark:text-white/60">عنوان صورت وضعیت دوره عملکرد</label>
                     <input
-                      value={gregorianDate}
-                      readOnly
-                      className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-black/5 text-neutral-900 border-black/10 dark:bg-white/10 dark:text-white dark:border-white/15"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      className="mt-1 w-full h-10 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
                       type="text"
-                      dir="ltr"
-                      placeholder="YYYY-MM-DD"
+                      placeholder="عنوان صورت وضعیت..."
                     />
                   </div>
                 </div>
@@ -785,35 +868,18 @@ export default function FinancialWorksheetPage() {
                 </>
               ) : (
                 <>
-              <div className="grid grid-cols-1 gap-3">
-                <div>
-                  <label className="text-xs text-neutral-600 dark:text-white/60">شرح بابت</label>
-                  <input
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
-                    type="text"
-                    placeholder="شرح بابت..."
-                  />
-                </div>
-              </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3">
                 <div className="xl:col-span-5">
                   <label className="text-xs text-neutral-600 dark:text-white/60">مبلغ ناخالص تایید شده</label>
-                  <input
+                  <AmountInputWithMeta
                     value={grossAmount}
-                    onChange={(e) => setGrossAmount(e.target.value)}
-                    className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
-                    type="text"
-                    dir="ltr"
-                    placeholder="0"
+                    onChange={(e) => setGrossAmount(formatAmountInput(e.target.value))}
                   />
                 </div>
 
                 <div className="xl:col-span-3">
                   <label className="text-xs text-neutral-600 dark:text-white/60">ارز</label>
-                  <select value={currencyId} onChange={(e) => setCurrencyId(e.target.value)} className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15">
+                  <select value={currencyId} onChange={(e) => setCurrencyId(e.target.value)} className="mt-1 w-full h-10 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15">
                     <option value="">انتخاب ارز</option>
                     {(currencyItems || []).map((it) => {
                       const id = readItemId(it);
@@ -825,7 +891,7 @@ export default function FinancialWorksheetPage() {
 
                 <div className="xl:col-span-4">
                   <label className="text-xs text-neutral-600 dark:text-white/60">منشا ارز</label>
-                  <select value={currencySourceId} onChange={(e) => setCurrencySourceId(e.target.value)} className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15">
+                  <select value={currencySourceId} onChange={(e) => setCurrencySourceId(e.target.value)} className="mt-1 w-full h-10 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15">
                     <option value="">انتخاب منشا</option>
                     {(currencySourceItems || []).map((it) => {
                       const id = readItemId(it);
@@ -836,57 +902,30 @@ export default function FinancialWorksheetPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-end">
-                <div className="xl:col-span-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                <div>
                   <label className="text-xs text-neutral-600 dark:text-white/60">استهلاک پیش پرداخت</label>
-                  <input value={prepaymentDepreciation} onChange={(e) => setPrepaymentDepreciation(e.target.value)} className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15" type="text" dir="ltr" placeholder="0" />
+                  <AmountInputWithMeta
+                    value={prepaymentDepreciation}
+                    onChange={(e) => setPrepaymentDepreciation(formatAmountInput(e.target.value))}
+                    metaLabel={selectedCurrencyMetaLabel}
+                  />
                 </div>
-                <div className="xl:col-span-3">
-                  <label className="text-xs text-neutral-600 dark:text-white/60">ارز</label>
-                  <select value={prepaymentCurrencyId} onChange={(e) => setPrepaymentCurrencyId(e.target.value)} className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15">
-                    <option value="">انتخاب ارز</option>
-                    {(currencyItems || []).map((it) => {
-                      const id = readItemId(it);
-                      if (!id) return null;
-                      return <option key={id} value={id}>{readItemLabel(it) || id}</option>;
-                    })}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-end">
-                <div className="xl:col-span-4">
+                <div>
                   <label className="text-xs text-neutral-600 dark:text-white/60">سپرده بیمه</label>
-                  <input value={insuranceDeposit} onChange={(e) => setInsuranceDeposit(e.target.value)} className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15" type="text" dir="ltr" placeholder="0" />
+                  <AmountInputWithMeta
+                    value={insuranceDeposit}
+                    onChange={(e) => setInsuranceDeposit(formatAmountInput(e.target.value))}
+                    metaLabel={selectedCurrencyMetaLabel}
+                  />
                 </div>
-                <div className="xl:col-span-3">
-                  <label className="text-xs text-neutral-600 dark:text-white/60">ارز</label>
-                  <select value={insuranceCurrencyId} onChange={(e) => setInsuranceCurrencyId(e.target.value)} className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15">
-                    <option value="">انتخاب ارز</option>
-                    {(currencyItems || []).map((it) => {
-                      const id = readItemId(it);
-                      if (!id) return null;
-                      return <option key={id} value={id}>{readItemLabel(it) || id}</option>;
-                    })}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-end">
-                <div className="xl:col-span-4">
+                <div>
                   <label className="text-xs text-neutral-600 dark:text-white/60">سپرده حسن انجام کار</label>
-                  <input value={performanceDeposit} onChange={(e) => setPerformanceDeposit(e.target.value)} className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15" type="text" dir="ltr" placeholder="0" />
-                </div>
-                <div className="xl:col-span-3">
-                  <label className="text-xs text-neutral-600 dark:text-white/60">ارز</label>
-                  <select value={performanceCurrencyId} onChange={(e) => setPerformanceCurrencyId(e.target.value)} className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15">
-                    <option value="">انتخاب ارز</option>
-                    {(currencyItems || []).map((it) => {
-                      const id = readItemId(it);
-                      if (!id) return null;
-                      return <option key={id} value={id}>{readItemLabel(it) || id}</option>;
-                    })}
-                  </select>
+                  <AmountInputWithMeta
+                    value={performanceDeposit}
+                    onChange={(e) => setPerformanceDeposit(formatAmountInput(e.target.value))}
+                    metaLabel={selectedCurrencyMetaLabel}
+                  />
                 </div>
               </div>
 
@@ -894,12 +933,16 @@ export default function FinancialWorksheetPage() {
                 <div key={row.id} className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-end">
                   <div className="xl:col-span-4">
                     <label className="text-xs text-neutral-600 dark:text-white/60">سایر بدهی</label>
-                    <input value={row.amount} onChange={(e) => updateOtherDebtRow(row.id, { amount: e.target.value })} className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15" type="text" dir="ltr" placeholder="0" />
+                    <AmountInputWithMeta
+                      value={row.amount}
+                      onChange={(e) => updateOtherDebtRow(row.id, { amount: formatAmountInput(e.target.value) })}
+                      metaLabel={selectedCurrencyMetaLabel}
+                    />
                   </div>
 
                   <div className="xl:col-span-7">
                     <label className="text-xs text-neutral-600 dark:text-white/60">شرح</label>
-                    <input value={row.description} onChange={(e) => updateOtherDebtRow(row.id, { description: e.target.value })} className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15" type="text" placeholder="شرح..." />
+                    <input value={row.description} onChange={(e) => updateOtherDebtRow(row.id, { description: e.target.value })} className="mt-1 w-full h-10 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15" type="text" placeholder="شرح..." />
                   </div>
 
                   <div className="xl:col-span-1 flex xl:justify-end gap-2">
@@ -918,21 +961,17 @@ export default function FinancialWorksheetPage() {
 
               <div className="h-px bg-gradient-to-r from-transparent via-black/20 to-transparent dark:via-white/20" />
 
-              <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-end">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3 items-end">
                 <div className="xl:col-span-5">
                   <label className="text-xs text-neutral-600 dark:text-white/60">جمع خالص تایید شده بدون VAT</label>
-                  <input value="" readOnly className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-black/5 text-neutral-900 border-black/10 dark:bg-white/10 dark:text-white dark:border-white/15" type="text" />
-                </div>
-                <div className="xl:col-span-3">
-                  <label className="text-xs text-neutral-600 dark:text-white/60">ارز منشا</label>
-                  <div className="mt-1 h-11 rounded-xl border border-black/10 bg-black/5 dark:border-white/15 dark:bg-white/10 flex items-center px-3 text-sm text-neutral-600 dark:text-white/70">ارز منشا</div>
+                  <AmountInputWithMeta value="" readOnly metaLabel={selectedCurrencyMetaLabel} />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-end">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3 items-end">
                 <div className="xl:col-span-5">
                   <label className="text-xs text-neutral-600 dark:text-white/60">VAT</label>
-                  <div className="mt-1 h-11 rounded-xl border border-black/10 dark:border-white/15 bg-white dark:bg-white/5 px-3 flex items-center gap-2">
+                  <div className="mt-1 h-10 rounded-xl border border-black/10 dark:border-white/15 bg-white dark:bg-white/5 px-3 flex items-center gap-2">
                     <span className="text-sm text-neutral-600 dark:text-white/70">(</span>
                     <input value={vatPercent} onChange={(e) => setVatPercent(e.target.value)} className="w-16 text-center bg-transparent outline-none text-neutral-900 dark:text-white" type="text" dir="ltr" />
                     <span className="text-sm text-neutral-600 dark:text-white/70">%)</span>
@@ -940,24 +979,16 @@ export default function FinancialWorksheetPage() {
                 </div>
                 <div className="xl:col-span-4">
                   <label className="text-xs text-neutral-600 dark:text-white/60">مبلغ VAT</label>
-                  <input value="" readOnly className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-black/5 text-neutral-900 border-black/10 dark:bg-white/10 dark:text-white dark:border-white/15" type="text" />
-                </div>
-                <div className="xl:col-span-3">
-                  <label className="text-xs text-neutral-600 dark:text-white/60">ارز منشا</label>
-                  <div className="mt-1 h-11 rounded-xl border border-black/10 bg-black/5 dark:border-white/15 dark:bg-white/10 flex items-center px-3 text-sm text-neutral-600 dark:text-white/70">ارز منشا</div>
+                  <AmountInputWithMeta value="" readOnly metaLabel={selectedCurrencyMetaLabel} />
                 </div>
               </div>
 
               <div className="h-px bg-gradient-to-r from-transparent via-black/20 to-transparent dark:via-white/20" />
 
-              <div className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-end">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3 items-end">
                 <div className="xl:col-span-5">
                   <label className="text-xs text-neutral-600 dark:text-white/60">جمع خالص تایید شده با احتساب VAT</label>
-                  <input value="" readOnly className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-black/5 text-neutral-900 border-black/10 dark:bg-white/10 dark:text-white dark:border-white/15" type="text" />
-                </div>
-                <div className="xl:col-span-3">
-                  <label className="text-xs text-neutral-600 dark:text-white/60">ارز منشا</label>
-                  <div className="mt-1 h-11 rounded-xl border border-black/10 bg-black/5 dark:border-white/15 dark:bg-white/10 flex items-center px-3 text-sm text-neutral-600 dark:text-white/70">ارز منشا</div>
+                  <AmountInputWithMeta value="" readOnly metaLabel={selectedCurrencyMetaLabel} />
                 </div>
               </div>
 
