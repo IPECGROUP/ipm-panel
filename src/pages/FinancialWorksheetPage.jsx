@@ -370,9 +370,6 @@ export default function FinancialWorksheetPage() {
   const [receiptCurrencySourceId, setReceiptCurrencySourceId] = useState("");
   const [receiptRialDescription, setReceiptRialDescription] = useState("");
   const [receiptDescription, setReceiptDescription] = useState("");
-  const [receiptOtherOpen, setReceiptOtherOpen] = useState(false);
-  const [receiptOtherRowId, setReceiptOtherRowId] = useState(null);
-  const [receiptOtherDraft, setReceiptOtherDraft] = useState("");
 
   const [worksheetRows, setWorksheetRows] = useState([]);
   const [rowsLoading, setRowsLoading] = useState(false);
@@ -620,50 +617,23 @@ export default function FinancialWorksheetPage() {
   const updateReceiptTypeRow = (id, patch) =>
     setReceiptTypeRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
 
-  const openReceiptOtherPopup = (rowId, initialValue = "") => {
-    setReceiptOtherRowId(rowId);
-    setReceiptOtherDraft(initialValue);
-    setReceiptOtherOpen(true);
-  };
-  const closeReceiptOtherPopup = () => {
-    setReceiptOtherOpen(false);
-    setReceiptOtherRowId(null);
-    setReceiptOtherDraft("");
-  };
-  const saveReceiptOtherPopup = () => {
-    if (receiptOtherRowId != null) {
-      updateReceiptTypeRow(receiptOtherRowId, { otherDescription: receiptOtherDraft });
-    }
-    closeReceiptOtherPopup();
-  };
-
   const receiptGregorianDate = useMemo(() => {
     const m = String(receiptJalaliDate || "").match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
     if (!m) return "";
     const g = jalaliToGregorian(Number(m[1]), Number(m[2]), Number(m[3]));
     if (!g) return "";
-    return `${g.gy}-${pad2(g.gm)}-${pad2(g.gd)}`;
+    return `${g.gy}/${pad2(g.gm)}/${pad2(g.gd)}`;
   }, [receiptJalaliDate]);
 
   const selectedReceiptCurrency = useMemo(
     () => (currencyItems || []).find((it) => readItemId(it) === String(receiptCurrencyId)),
     [currencyItems, receiptCurrencyId],
   );
-  const selectedReceiptCurrencyLabel = useMemo(
-    () => readItemLabel(selectedReceiptCurrency),
-    [selectedReceiptCurrency],
-  );
   const isRialCurrency = useMemo(() => {
     const id = readItemId(selectedReceiptCurrency).toLowerCase();
     const label = readItemLabel(selectedReceiptCurrency).toLowerCase();
     return label.includes("ریال") || label.includes("irr") || label.includes("rial") || id.includes("irr") || id.includes("rial");
   }, [selectedReceiptCurrency]);
-  const receiptAmountDisplay = useMemo(() => {
-    const raw = String(receiptReceivedAmount || "").replace(/,/g, "").trim();
-    if (!raw) return "";
-    return toFaDigits(formatMoney(Number(raw) || 0));
-  }, [receiptReceivedAmount]);
-
   const addOtherDebtRow = () =>
     setOtherDebts((prev) => [...prev, { id: Date.now() + Math.random(), amount: "", description: "" }]);
   const removeOtherDebtRow = (id) => setOtherDebts((prev) => prev.filter((r) => r.id !== id));
@@ -935,20 +905,25 @@ export default function FinancialWorksheetPage() {
             <div className="rounded-2xl border border-black/10 p-3 md:p-4 space-y-3 dark:border-white/10">
               {tab === "receipts" ? (
                 <>
-                  {(receiptTypeRows || []).map((row, idx) => (
+                  {(receiptTypeRows || []).map((row, idx) => {
+                    const showReceiptNumber = row.type === "statement";
+                    return (
                     <div key={row.id} className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-end">
-                      <div className="xl:col-span-5">
-                        <label className="text-xs text-neutral-600 dark:text-white/60">نوع دریافتی</label>
+                      <div className={showReceiptNumber ? "xl:col-span-5" : "xl:col-span-10"}>
+                        <label className="text-xs text-neutral-600 dark:text-white/60">بابت دریافتی</label>
                         <select
                           value={row.type}
                           onChange={(e) => {
                             const nextType = e.target.value;
-                            updateReceiptTypeRow(row.id, { type: nextType, ...(nextType !== "other" ? { otherDescription: "" } : {}) });
-                            if (nextType === "other") openReceiptOtherPopup(row.id, row.otherDescription || "");
+                            updateReceiptTypeRow(row.id, {
+                              type: nextType,
+                              ...(nextType !== "statement" ? { number: "" } : {}),
+                              ...(nextType !== "other" ? { otherDescription: "" } : {}),
+                            });
                           }}
                           className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
                         >
-                          <option value="">انتخاب نوع دریافتی</option>
+                          <option value="">انتخاب بابت دریافتی</option>
                           {receiptTypeOptions.map((op) => (
                             <option key={op.value} value={op.value}>
                               {op.label}
@@ -956,36 +931,33 @@ export default function FinancialWorksheetPage() {
                           ))}
                         </select>
                         {row.type === "other" ? (
-                          <div className="mt-1 flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => openReceiptOtherPopup(row.id, row.otherDescription || "")}
-                              className="h-8 px-3 rounded-lg border text-xs border-black/15 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
-                            >
-                              شرح سایر
-                            </button>
-                            <span className="text-xs text-neutral-500 dark:text-white/60 truncate">
-                              {row.otherDescription ? row.otherDescription : "شرح ثبت نشده است"}
-                            </span>
-                          </div>
+                          <input
+                            value={row.otherDescription}
+                            onChange={(e) => updateReceiptTypeRow(row.id, { otherDescription: e.target.value })}
+                            className="mt-2 w-full h-10 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                            type="text"
+                            placeholder="بابت دریافتی را وارد کنید..."
+                          />
                         ) : null}
                       </div>
 
-                      <div className="xl:col-span-5">
-                        <label className="text-xs text-neutral-600 dark:text-white/60">شماره</label>
-                        <input
-                          value={row.number}
-                          onChange={(e) => updateReceiptTypeRow(row.id, { number: e.target.value })}
-                          className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="شماره دریافتی"
-                        />
-                      </div>
+                      {showReceiptNumber ? (
+                        <div className="xl:col-span-5">
+                          <label className="text-xs text-neutral-600 dark:text-white/60">شماره</label>
+                          <input
+                            value={row.number}
+                            onChange={(e) => updateReceiptTypeRow(row.id, { number: e.target.value })}
+                            className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                            type="text"
+                            inputMode="numeric"
+                            placeholder="شماره صورت وضعیت"
+                          />
+                        </div>
+                      ) : null}
 
                       <div className="xl:col-span-2 flex xl:justify-end gap-2">
                         {idx === 0 ? (
-                          <button type="button" onClick={addReceiptTypeRow} className="h-10 w-10 rounded-xl border border-black/15 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10 grid place-items-center" aria-label="افزودن نوع دریافتی" title="افزودن">
+                          <button type="button" onClick={addReceiptTypeRow} className="h-10 w-10 rounded-xl border border-black/15 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10 grid place-items-center" aria-label="افزودن بابت دریافتی" title="افزودن">
                             <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
                           </button>
                         ) : (
@@ -995,26 +967,18 @@ export default function FinancialWorksheetPage() {
                         )}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
 
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
                     <div className="lg:col-span-4">
-                      <label className="text-xs text-neutral-600 dark:text-white/60">تاریخ دریافت (شمسی)</label>
+                      <label className="text-xs text-neutral-600 dark:text-white/60">تاریخ دریافت</label>
                       <div className="mt-1">
                         <JalaliPopupDatePicker value={receiptJalaliDate} onChange={setReceiptJalaliDate} />
                       </div>
-                    </div>
-
-                    <div className="lg:col-span-4">
-                      <label className="text-xs text-neutral-600 dark:text-white/60">تاریخ میلادی (خودکار)</label>
-                      <input
-                        value={receiptGregorianDate}
-                        readOnly
-                        className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-black/5 text-neutral-900 border-black/10 dark:bg-white/10 dark:text-white dark:border-white/15"
-                        type="text"
-                        dir="ltr"
-                        placeholder="YYYY-MM-DD"
-                      />
+                      <div className="mt-2 text-xs text-black/55 dark:text-neutral-400">
+                        میلادی: <span className="font-semibold text-black dark:text-neutral-100">{receiptGregorianDate || "انتخاب نشده"}</span>
+                      </div>
                     </div>
                   </div>
                 </>
@@ -1108,19 +1072,6 @@ export default function FinancialWorksheetPage() {
                       </div>
                     </div>
                   ) : null}
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3">
-                    <div className="xl:col-span-5">
-                      <label className="text-xs text-neutral-600 dark:text-white/60">مبلغ دریافت شده (نمایش)</label>
-                      <input value={receiptAmountDisplay} readOnly className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-black/5 text-neutral-900 border-black/10 dark:bg-white/10 dark:text-white dark:border-white/15" type="text" />
-                    </div>
-                    <div className="xl:col-span-3">
-                      <label className="text-xs text-neutral-600 dark:text-white/60">ارز</label>
-                      <div className="mt-1 h-11 rounded-xl border border-black/10 bg-black/5 dark:border-white/15 dark:bg-white/10 flex items-center px-3 text-sm text-neutral-600 dark:text-white/70">
-                        {selectedReceiptCurrencyLabel || "—"}
-                      </div>
-                    </div>
-                  </div>
 
                   <div className="grid grid-cols-1 gap-3">
                     <div>
@@ -1442,39 +1393,6 @@ export default function FinancialWorksheetPage() {
           {err ? <div className="text-sm text-red-600 dark:text-red-400">{err}</div> : null}
         </div>
       </Card>
-
-      {receiptOtherOpen &&
-        createPortal(
-          <div className="fixed inset-0 z-[10000]">
-            <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={closeReceiptOtherPopup} />
-            <div className="absolute inset-0 p-3 md:p-6 flex items-center justify-center">
-              <div className="w-[min(560px,calc(100vw-20px))] rounded-2xl border shadow-2xl overflow-hidden border-black/10 bg-white text-neutral-900 dark:border-white/10 dark:bg-neutral-900 dark:text-white">
-                <div className="p-4 border-b border-black/10 dark:border-white/10 flex items-center justify-between">
-                  <button type="button" onClick={closeReceiptOtherPopup} className="h-10 w-10 rounded-xl bg-black text-white dark:bg-white dark:text-black grid place-items-center" aria-label="بستن" title="بستن">
-                    <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
-                  </button>
-                  <div className="font-semibold text-sm md:text-base">شرح نوع دریافتی (سایر)</div>
-                </div>
-
-                <div className="p-4 space-y-3">
-                  <label className="text-xs text-neutral-600 dark:text-white/60">شرح</label>
-                  <textarea
-                    value={receiptOtherDraft}
-                    onChange={(e) => setReceiptOtherDraft(e.target.value)}
-                    className="w-full min-h-[100px] rounded-xl px-3 py-2 border outline-none resize-y bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
-                    placeholder="شرح را وارد کنید..."
-                  />
-
-                  <div className="flex items-center justify-start gap-2">
-                    <button type="button" onClick={saveReceiptOtherPopup} className="h-10 px-4 rounded-xl bg-black text-white dark:bg-white dark:text-black">ثبت</button>
-                    <button type="button" onClick={closeReceiptOtherPopup} className="h-10 px-4 rounded-xl border border-black/15 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10">انصراف</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>,
-          document.body,
-        )}
 
       {uploadOpen &&
         createPortal(
