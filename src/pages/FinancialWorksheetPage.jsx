@@ -474,6 +474,9 @@ export default function FinancialWorksheetPage() {
       }))
       .filter((item) => item.id && item.no)
       .sort((a, b) => {
+        const typeOrder = { main: 0, sub: 1 };
+        const typeCompare = (typeOrder[a.documentType] ?? 9) - (typeOrder[b.documentType] ?? 9);
+        if (typeCompare) return typeCompare;
         const noCompare = a.no.localeCompare(b.no, "fa", { numeric: true });
         if (noCompare) return noCompare;
         return a.typeLabel.localeCompare(b.typeLabel, "fa");
@@ -705,6 +708,29 @@ export default function FinancialWorksheetPage() {
     ],
     [isSelectedSubContract],
   );
+  const receiptUi = useMemo(
+    () =>
+      isSelectedSubContract
+        ? {
+            noun: "پرداختی",
+            basis: "بابت پرداختی",
+            basisSelect: "انتخاب بابت پرداختی",
+            basisOther: "بابت پرداختی را وارد کنید...",
+            date: "تاریخ پرداخت",
+            amount: "مبلغ پرداختی",
+            foreignAmount: "مبلغ پرداختی ارزی",
+          }
+        : {
+            noun: "دریافتی",
+            basis: "بابت دریافتی",
+            basisSelect: "انتخاب بابت دریافتی",
+            basisOther: "بابت دریافتی را وارد کنید...",
+            date: "تاریخ دریافت",
+            amount: "مبلغ دریافت شده",
+            foreignAmount: "مبلغ دریافت شده ارزی",
+          },
+    [isSelectedSubContract],
+  );
   const tabStripCls =
     "mb-2 flex w-full items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-black/10 bg-black/[0.03] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-auto md:-mb-px md:max-w-[780px] md:items-stretch md:justify-center md:gap-0 md:rounded-b-none md:rounded-t-2xl md:border-b-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900";
   const topTabBtnClass = (isActive, index, total) =>
@@ -718,13 +744,27 @@ export default function FinancialWorksheetPage() {
         ? "bg-black text-white shadow-sm dark:bg-black dark:text-white"
         : "bg-white text-[#1f2937] hover:bg-neutral-50 md:bg-white dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800 md:dark:bg-neutral-900",
     ].join(" ");
+  const renderVatOption = (value, label) => (
+    <label className="inline-flex h-8 items-center gap-2 rounded-lg border border-black/10 bg-white px-2.5 text-xs font-semibold transition hover:bg-black/[0.03] dark:border-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-700">
+      <input
+        type="checkbox"
+        checked={vatStatus === value}
+        onChange={() => {
+          setVatStatus(value);
+          if (value !== "has") setVatPercent("");
+        }}
+        className="h-4 w-4 accent-black"
+      />
+      {label}
+    </label>
+  );
 
   const handleViewRow = (row) => {
     const dt = row?.date ? toFaDigits(row.date) : "—";
     if (tab === "receipts") {
       const amount = toFaDigits(formatMoney(row?.receiptAmount || 0));
       const amountForeign = toFaDigits(formatMoney(row?.receiptForeignAmount || 0));
-      window.alert(`تاریخ: ${dt}\nمبلغ دریافت شده: ${amount}\nمبلغ دریافت شده ارزی: ${amountForeign}`);
+      window.alert(`تاریخ: ${dt}\n${receiptUi.amount}: ${amount}\n${receiptUi.foreignAmount}: ${amountForeign}`);
       return;
     }
     const no = row?.number ? toFaDigits(row.number) : "—";
@@ -880,7 +920,7 @@ export default function FinancialWorksheetPage() {
       }))
       .filter((row) => row.type);
     if (!cleanedTypeRows.length) {
-      setErr("بابت دریافتی را انتخاب کنید.");
+      setErr(`${receiptUi.basis} را انتخاب کنید.`);
       return;
     }
     if (cleanedTypeRows.some((row) => row.type === "statement" && !row.number)) {
@@ -888,11 +928,11 @@ export default function FinancialWorksheetPage() {
       return;
     }
     if (cleanedTypeRows.some((row) => row.type === "other" && !row.otherDescription)) {
-      setErr("بابت دریافتی سایر را وارد کنید.");
+      setErr(`${receiptUi.basis} سایر را وارد کنید.`);
       return;
     }
     if (!receiptJalaliDate) {
-      setErr("تاریخ دریافت را انتخاب کنید.");
+      setErr(`${receiptUi.date} را انتخاب کنید.`);
       return;
     }
 
@@ -928,7 +968,7 @@ export default function FinancialWorksheetPage() {
       resetReceiptForm();
       setFormOpen(false);
     } catch (e) {
-      setErr(e.message || "خطا در ثبت دریافتی");
+      setErr(e.message || `خطا در ثبت ${receiptUi.noun}`);
     }
   };
 
@@ -1020,7 +1060,7 @@ export default function FinancialWorksheetPage() {
                     return (
                     <div key={row.id} className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-end">
                       <div className={showReceiptNumber ? "xl:col-span-5" : "xl:col-span-10"}>
-                        <label className="text-xs text-neutral-600 dark:text-white/60">بابت دریافتی</label>
+                        <label className="text-xs text-neutral-600 dark:text-white/60">{receiptUi.basis}</label>
                         {row.type === "other" ? (
                           <div className="mt-1 flex h-11 w-full items-center gap-2 rounded-xl border border-black/10 bg-white px-3 text-neutral-900 dark:border-white/15 dark:bg-white/5 dark:text-white">
                             <input
@@ -1028,7 +1068,7 @@ export default function FinancialWorksheetPage() {
                               onChange={(e) => updateReceiptTypeRow(row.id, { otherDescription: e.target.value })}
                               className="min-w-0 flex-1 bg-transparent outline-none"
                               type="text"
-                              placeholder="بابت دریافتی را وارد کنید..."
+                              placeholder={receiptUi.basisOther}
                               autoFocus
                             />
                             <button
@@ -1053,7 +1093,7 @@ export default function FinancialWorksheetPage() {
                             }}
                             className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
                           >
-                            <option value="">انتخاب بابت دریافتی</option>
+                            <option value="">{receiptUi.basisSelect}</option>
                             {receiptTypeOptions.map((op) => (
                               <option key={op.value} value={op.value}>
                                 {op.label}
@@ -1079,7 +1119,7 @@ export default function FinancialWorksheetPage() {
 
                       <div className="xl:col-span-2 flex xl:justify-end gap-2">
                         {idx === 0 ? (
-                          <button type="button" onClick={addReceiptTypeRow} className="h-10 w-10 rounded-xl border border-black/15 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10 grid place-items-center" aria-label="افزودن بابت دریافتی" title="افزودن">
+                          <button type="button" onClick={addReceiptTypeRow} className="h-10 w-10 rounded-xl border border-black/15 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10 grid place-items-center" aria-label={`افزودن ${receiptUi.basis}`} title="افزودن">
                             <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
                           </button>
                         ) : (
@@ -1094,7 +1134,7 @@ export default function FinancialWorksheetPage() {
 
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
                     <div className="lg:col-span-4">
-                      <label className="text-xs text-neutral-600 dark:text-white/60">تاریخ دریافت</label>
+                      <label className="text-xs text-neutral-600 dark:text-white/60">{receiptUi.date}</label>
                       <div className="mt-1">
                         <JalaliPopupDatePicker value={receiptJalaliDate} onChange={setReceiptJalaliDate} />
                       </div>
@@ -1144,7 +1184,7 @@ export default function FinancialWorksheetPage() {
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3">
                     <div className="xl:col-span-5">
-                      <label className="text-xs text-neutral-600 dark:text-white/60">مبلغ دریافت شده</label>
+                      <label className="text-xs text-neutral-600 dark:text-white/60">{receiptUi.amount}</label>
                       <input
                         value={receiptReceivedAmount}
                         onChange={(e) => setReceiptReceivedAmount(formatAmountInput(e.target.value))}
@@ -1207,7 +1247,7 @@ export default function FinancialWorksheetPage() {
                     </div>
                   </div>
 
-                  <div className="flex justify-start">
+                  <div className="flex justify-end">
                     <button
                       type="button"
                       onClick={handleSaveReceipt}
@@ -1221,8 +1261,8 @@ export default function FinancialWorksheetPage() {
                 </>
               ) : (
                 <>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3">
-                <div className="xl:col-span-5">
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(280px,420px)_minmax(220px,280px)_minmax(220px,280px)]">
+                <div>
                   <label className="text-xs text-neutral-600 dark:text-white/60">مبلغ ناخالص تایید شده</label>
                   <AmountInputWithMeta
                     value={grossAmount}
@@ -1230,7 +1270,7 @@ export default function FinancialWorksheetPage() {
                   />
                 </div>
 
-                <div className="xl:col-span-3">
+                <div>
                   <label className="text-xs text-neutral-600 dark:text-white/60">ارز</label>
                   <select value={currencyId} onChange={(e) => setCurrencyId(e.target.value)} className="mt-1 w-full h-10 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15">
                     <option value="">انتخاب ارز</option>
@@ -1242,7 +1282,7 @@ export default function FinancialWorksheetPage() {
                   </select>
                 </div>
 
-                <div className="xl:col-span-4">
+                <div>
                   <label className="text-xs text-neutral-600 dark:text-white/60">منشا ارز</label>
                   <select value={currencySourceId} onChange={(e) => setCurrencySourceId(e.target.value)} className="mt-1 w-full h-10 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15">
                     <option value="">انتخاب منشا</option>
@@ -1257,7 +1297,7 @@ export default function FinancialWorksheetPage() {
 
               <div className="rounded-2xl border border-black/10 bg-black/[0.025] p-3 space-y-3 dark:border-white/10 dark:bg-white/[0.04]">
                 <div className="text-sm font-semibold text-neutral-800 dark:text-white/85">کسور</div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
+                <div className="grid grid-cols-1 gap-3 items-start md:max-w-[420px]">
                   <div>
                     <label className="text-xs text-neutral-600 dark:text-white/60">استهلاک پیش پرداخت</label>
                     <AmountInputWithMeta
@@ -1292,8 +1332,8 @@ export default function FinancialWorksheetPage() {
                 </div>
 
                 {(otherDebts || []).map((row, idx) => (
-                  <div key={row.id} className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-end">
-                    <div className="xl:col-span-4">
+                  <div key={row.id} className="grid grid-cols-1 xl:grid-cols-[minmax(280px,420px)_minmax(260px,1fr)_auto] gap-3 items-end">
+                    <div>
                       <label className="text-xs text-neutral-600 dark:text-white/60">سایر کسور</label>
                       <AmountInputWithMeta
                         value={row.amount}
@@ -1302,12 +1342,12 @@ export default function FinancialWorksheetPage() {
                       />
                     </div>
 
-                    <div className="xl:col-span-7">
+                    <div>
                       <label className="text-xs text-neutral-600 dark:text-white/60">شرح</label>
                       <input value={row.description} onChange={(e) => updateOtherDebtRow(row.id, { description: e.target.value })} className="mt-1 w-full h-10 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15" type="text" placeholder="شرح..." />
                     </div>
 
-                    <div className="xl:col-span-1 flex xl:justify-end gap-2">
+                    <div className="flex xl:justify-end gap-2">
                       {idx === 0 ? (
                         <button type="button" onClick={addOtherDebtRow} className="h-10 w-10 rounded-xl border border-black/15 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10 grid place-items-center" aria-label="افزودن ردیف سایر کسور" title="افزودن">
                           <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
@@ -1322,64 +1362,44 @@ export default function FinancialWorksheetPage() {
                 ))}
               </div>
 
-              <div className="grid grid-cols-1 gap-3 items-start lg:grid-cols-[minmax(280px,360px)_minmax(0,560px)] lg:justify-start">
+              <div className="grid max-w-[420px] grid-cols-1 gap-3 items-start">
                 <div>
                   <label className="text-xs text-neutral-600 dark:text-white/60">جمع خالص تایید شده بدون VAT</label>
                   <AmountInputWithMeta value={formatComputedAmount(netWithoutVatNumber)} readOnly metaLabel={selectedCurrencyMetaLabel} />
                 </div>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[auto_260px] sm:items-start sm:justify-start">
-                  <div>
-                    <label className="text-xs text-neutral-600 dark:text-white/60">VAT</label>
-                    <div className="mt-1 flex h-10 flex-wrap items-center gap-2">
-                      {[
-                        { value: "has", label: "دارد" },
-                        { value: "none", label: "ندارد" },
-                      ].map((option) => (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => {
-                            setVatStatus(option.value);
-                            if (option.value !== "has") setVatPercent("");
-                          }}
-                          className={`h-10 rounded-xl border px-4 text-sm font-semibold transition ${
-                            vatStatus === option.value
-                              ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
-                              : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.04] dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
-                          }`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                      {vatStatus === "has" ? (
-                        <div className="flex h-10 items-center gap-1 rounded-xl border border-black/10 bg-white px-3 dark:border-white/15 dark:bg-white/5">
-                          <input
-                            value={vatPercent}
-                            onChange={(e) => setVatPercent(formatAmountInput(e.target.value))}
-                            className="w-16 bg-transparent text-center outline-none text-neutral-900 dark:text-white"
-                            type="text"
-                            inputMode="decimal"
-                            dir="ltr"
-                            placeholder="0"
-                          />
-                          <span className="text-sm text-neutral-600 dark:text-white/70">%</span>
-                        </div>
-                      ) : null}
-                    </div>
+                <div>
+                  <label className="text-xs text-neutral-600 dark:text-white/60">VAT</label>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    {renderVatOption("has", "دارد")}
+                    {renderVatOption("none", "ندارد")}
+                    {vatStatus === "has" ? (
+                      <div className="flex h-8 items-center gap-1 rounded-lg border border-black/10 bg-white px-2.5 dark:border-white/15 dark:bg-white/5">
+                        <input
+                          value={vatPercent}
+                          onChange={(e) => setVatPercent(formatAmountInput(e.target.value))}
+                          className="w-14 bg-transparent text-center text-xs font-semibold outline-none text-neutral-900 dark:text-white"
+                          type="text"
+                          inputMode="decimal"
+                          dir="ltr"
+                          placeholder="0"
+                        />
+                        <span className="text-xs font-semibold text-neutral-600 dark:text-white/70">%</span>
+                      </div>
+                    ) : null}
                   </div>
-                  <div>
-                    <label className="text-xs text-neutral-600 dark:text-white/60">مبلغ VAT</label>
-                    <AmountInputWithMeta value={formatComputedAmount(vatAmountNumber)} readOnly metaLabel={selectedCurrencyMetaLabel} />
-                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-neutral-600 dark:text-white/60">مبلغ VAT</label>
+                  <AmountInputWithMeta value={formatComputedAmount(vatAmountNumber)} readOnly metaLabel={selectedCurrencyMetaLabel} />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
-                <div className="lg:col-span-5">
+              <div className="grid grid-cols-1 xl:grid-cols-[minmax(280px,420px)_auto_1fr] gap-3 items-end">
+                <div>
                   <label className="text-xs text-neutral-600 dark:text-white/60">جمع خالص تایید شده با احتساب VAT</label>
                   <AmountInputWithMeta value={formatComputedAmount(netWithVatNumber)} readOnly metaLabel={selectedCurrencyMetaLabel} />
                 </div>
-                <div className="lg:col-span-3 flex items-end">
+                <div className="flex items-end">
                   <div className="flex items-center gap-1">
                     <span className="text-xs text-neutral-600 dark:text-white/60">اسناد</span>
                     <button type="button" onClick={openUploadModal} className="h-10 px-4 rounded-xl border transition inline-flex items-center justify-center gap-2 whitespace-nowrap border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02] dark:border-white/15 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10" title="بارگذاری اسناد" aria-label="بارگذاری اسناد">
@@ -1389,7 +1409,7 @@ export default function FinancialWorksheetPage() {
                     </button>
                   </div>
                 </div>
-                <div className="lg:col-span-4 flex justify-start lg:justify-end">
+                <div className="flex justify-start xl:justify-end">
                   <button
                     type="button"
                     onClick={handleSaveStatement}
@@ -1431,9 +1451,9 @@ export default function FinancialWorksheetPage() {
                         {tab === "receipts" ? (
                           <tr className={tablePreset.headRow + " sticky top-0 z-10"}>
                             <TH className={`w-14 ${tablePreset.th}`}>#</TH>
-                            <TH className={`w-36 ${tablePreset.th}`}>تاریخ</TH>
-                            <TH className={`w-44 ${tablePreset.th}`}>مبلغ دریافت شده</TH>
-                            <TH className={`w-44 ${tablePreset.th}`}>مبلغ دریافت شده ارزی</TH>
+                            <TH className={`w-36 ${tablePreset.th}`}>{receiptUi.date}</TH>
+                            <TH className={`w-44 ${tablePreset.th}`}>{receiptUi.amount}</TH>
+                            <TH className={`w-44 ${tablePreset.th}`}>{receiptUi.foreignAmount}</TH>
                             <TH className={`w-36 ${tablePreset.th}`}>اقدامات</TH>
                           </tr>
                         ) : (
