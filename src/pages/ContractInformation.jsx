@@ -562,6 +562,15 @@ function documentTypeLabel(type) {
   return CONTRACT_DOCUMENT_TYPES.find((item) => item.id === type)?.label || "اصلی";
 }
 
+function resolveContractDocumentType(item = {}) {
+  const parentContractId = String(item.parentContractId ?? item.parent_contract_id ?? "").trim();
+  const subContractNo = String(item.subContractNo ?? item.sub_contract_no ?? "").trim();
+  const type = String(item.documentType ?? item.document_type ?? "main");
+  if (parentContractId && subContractNo) return "sub";
+  if (type === "main" && parentContractId) return subContractNo ? "sub" : "appendix";
+  return CONTRACT_DOCUMENT_TYPES.some((entry) => entry.id === type) ? type : "main";
+}
+
 function contractNoForRow(row, rowById) {
   if (row?.documentType === "main") return row?.contractNo || "";
   if (row?.documentType === "sub") return row?.subContractNo || row?.contractNo || "";
@@ -635,7 +644,7 @@ function emptyForm() {
 function normalizeContractRow(row) {
   const base = emptyForm();
   const item = row && typeof row === "object" ? row : {};
-  const documentType = String(item.documentType ?? item.document_type ?? base.documentType ?? "main");
+  const documentType = resolveContractDocumentType(item);
   return {
     ...base,
     ...item,
@@ -2216,12 +2225,18 @@ export default function ContractInformation() {
     const saveAsNewFromDocumentTypeChange = documentTypeChangedFromEditRef.current;
 
     const projectId = String(form.projectId || "").trim();
-    const documentType = String(form.documentType || "main");
+    const rawDocumentType = String(form.documentType || "main");
     const relatedLetterIds = normalizeIdList(form.relatedLetterIds?.length ? form.relatedLetterIds : form.relatedLetterId ? [form.relatedLetterId] : []);
     const relatedLetterId = String(relatedLetterIds[0] || "").trim();
     const contractNo = String(form.contractNo || "").trim();
     const subContractNo = String(form.subContractNo || "").trim();
     const parentContractId = String(form.parentContractId || "").trim();
+    const documentType = resolveContractDocumentType({
+      ...form,
+      documentType: rawDocumentType,
+      parentContractId,
+      subContractNo,
+    });
 
     if (!projectId) {
       alert("مرکز/پروژه را انتخاب کنید.");
@@ -2375,15 +2390,21 @@ export default function ContractInformation() {
         method: "POST",
         body: JSON.stringify(rowPayload),
       });
-      const savedRow = normalizeContractRow(data?.item || rowPayload);
+      const savedFromPost = normalizeContractRow(data?.item || rowPayload);
+      const verifiedData = await fetchJson(`/contracts?id=${encodeURIComponent(savedFromPost.id)}`);
+      const savedRow = normalizeContractRow(verifiedData?.item || savedFromPost);
+      if (!savedRow.id || (documentType === "sub" && savedRow.documentType !== "sub")) {
+        throw new Error("contract_save_not_persisted");
+      }
+      const refreshedData = await fetchJson("/contracts");
+      const refreshedRows = asArray(refreshedData)
+        .map(normalizeContractRow)
+        .filter((row) => row.id);
+      if (!refreshedRows.some((row) => String(row.id) === String(savedRow.id))) {
+        throw new Error("contract_save_not_persisted");
+      }
 
-      setRows((prev) => {
-        const exists = prev.some((row) => String(row.id) === savedRow.id);
-        if (exists) {
-          return prev.map((row) => (String(row.id) === savedRow.id ? savedRow : row));
-        }
-        return [savedRow, ...prev];
-      });
+      setRows(refreshedRows);
       if (savedRow.parentContractId) {
         setExpandedContractIds((prev) => {
           const parentId = String(savedRow.parentContractId || "");
@@ -2411,6 +2432,8 @@ export default function ContractInformation() {
       alert(
         error?.message === "main_contract_exists_for_project"
           ? "برای این پروژه قبلا قرارداد اصلی ثبت شده است. برای این پروژه فقط می‌توانید قرارداد فرعی یا الحاقیه ثبت کنید."
+          : error?.message === "contract_save_not_persisted"
+            ? "ثبت قرارداد در سرور تایید نشد. لطفا دوباره ذخیره کنید و اگر تکرار شد، اتصال/API قراردادها را بررسی کنید."
           : error?.message || "خطا در ذخیره قرارداد"
       );
     }
