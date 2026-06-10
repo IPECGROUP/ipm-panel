@@ -1237,53 +1237,55 @@ export default function FinancialWorksheetPage() {
                 ))}
               </div>
 
-              <div className="grid grid-cols-1 gap-3 items-start lg:grid-cols-[minmax(260px,360px)_minmax(280px,340px)_minmax(260px,360px)] lg:justify-start">
+              <div className="grid grid-cols-1 gap-3 items-start lg:grid-cols-[minmax(280px,360px)_minmax(0,560px)] lg:justify-start">
                 <div>
                   <label className="text-xs text-neutral-600 dark:text-white/60">جمع خالص تایید شده بدون VAT</label>
                   <AmountInputWithMeta value={formatComputedAmount(netWithoutVatNumber)} readOnly metaLabel={selectedCurrencyMetaLabel} />
                 </div>
-                <div>
-                  <label className="text-xs text-neutral-600 dark:text-white/60">VAT</label>
-                  <div className="mt-1 flex h-10 flex-wrap items-center gap-2">
-                    {[
-                      { value: "has", label: "دارد" },
-                      { value: "none", label: "ندارد" },
-                    ].map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => {
-                          setVatStatus(option.value);
-                          if (option.value !== "has") setVatPercent("");
-                        }}
-                        className={`h-10 rounded-xl border px-4 text-sm font-semibold transition ${
-                          vatStatus === option.value
-                            ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
-                            : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.04] dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                    {vatStatus === "has" ? (
-                      <div className="flex h-10 items-center gap-1 rounded-xl border border-black/10 bg-white px-3 dark:border-white/15 dark:bg-white/5">
-                        <input
-                          value={vatPercent}
-                          onChange={(e) => setVatPercent(formatAmountInput(e.target.value))}
-                          className="w-16 bg-transparent text-center outline-none text-neutral-900 dark:text-white"
-                          type="text"
-                          inputMode="decimal"
-                          dir="ltr"
-                          placeholder="0"
-                        />
-                        <span className="text-sm text-neutral-600 dark:text-white/70">%</span>
-                      </div>
-                    ) : null}
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[auto_260px] sm:items-start sm:justify-start">
+                  <div>
+                    <label className="text-xs text-neutral-600 dark:text-white/60">VAT</label>
+                    <div className="mt-1 flex h-10 flex-wrap items-center gap-2">
+                      {[
+                        { value: "has", label: "دارد" },
+                        { value: "none", label: "ندارد" },
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => {
+                            setVatStatus(option.value);
+                            if (option.value !== "has") setVatPercent("");
+                          }}
+                          className={`h-10 rounded-xl border px-4 text-sm font-semibold transition ${
+                            vatStatus === option.value
+                              ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
+                              : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.04] dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                      {vatStatus === "has" ? (
+                        <div className="flex h-10 items-center gap-1 rounded-xl border border-black/10 bg-white px-3 dark:border-white/15 dark:bg-white/5">
+                          <input
+                            value={vatPercent}
+                            onChange={(e) => setVatPercent(formatAmountInput(e.target.value))}
+                            className="w-16 bg-transparent text-center outline-none text-neutral-900 dark:text-white"
+                            type="text"
+                            inputMode="decimal"
+                            dir="ltr"
+                            placeholder="0"
+                          />
+                          <span className="text-sm text-neutral-600 dark:text-white/70">%</span>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <label className="text-xs text-neutral-600 dark:text-white/60">مبلغ VAT</label>
-                  <AmountInputWithMeta value={formatComputedAmount(vatAmountNumber)} readOnly metaLabel={selectedCurrencyMetaLabel} />
+                  <div>
+                    <label className="text-xs text-neutral-600 dark:text-white/60">مبلغ VAT</label>
+                    <AmountInputWithMeta value={formatComputedAmount(vatAmountNumber)} readOnly metaLabel={selectedCurrencyMetaLabel} />
+                  </div>
                 </div>
               </div>
 
@@ -1292,13 +1294,15 @@ export default function FinancialWorksheetPage() {
                   <label className="text-xs text-neutral-600 dark:text-white/60">جمع خالص تایید شده با احتساب VAT</label>
                   <AmountInputWithMeta value={formatComputedAmount(netWithVatNumber)} readOnly metaLabel={selectedCurrencyMetaLabel} />
                 </div>
-                <div className="lg:col-span-3">
-                  <label className="text-xs text-neutral-600 dark:text-white/60">اسناد</label>
-                  <button type="button" onClick={openUploadModal} className="mt-1 h-10 min-w-[180px] px-4 rounded-xl border transition inline-flex items-center justify-center gap-2 whitespace-nowrap border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02] dark:border-white/15 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10" title="بارگذاری اسناد" aria-label="بارگذاری اسناد">
+                <div className="lg:col-span-3 flex items-end">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-neutral-600 dark:text-white/60">اسناد</span>
+                    <button type="button" onClick={openUploadModal} className="h-10 px-4 rounded-xl border transition inline-flex items-center justify-center gap-2 whitespace-nowrap border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02] dark:border-white/15 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10" title="بارگذاری اسناد" aria-label="بارگذاری اسناد">
                     <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
                     بارگذاری اسناد
                     {uploadedFiles.length || relatedLetterIds.length ? <span className="text-xs opacity-80">({toFaDigits(uploadedFiles.length + relatedLetterIds.length)})</span> : null}
-                  </button>
+                    </button>
+                  </div>
                 </div>
                 <div className="lg:col-span-4 flex justify-start lg:justify-end">
                   <button
