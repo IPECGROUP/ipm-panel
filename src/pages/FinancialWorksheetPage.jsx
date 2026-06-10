@@ -776,8 +776,8 @@ export default function FinancialWorksheetPage() {
             basisSelect: "انتخاب بابت پرداختی",
             basisOther: "بابت پرداختی را وارد کنید...",
             date: "تاریخ پرداخت",
-            amount: "مبلغ پرداختی",
-            foreignAmount: "مبلغ پرداختی ارزی",
+            amount: "مبلغ خالص پرداخت شده",
+            foreignAmount: "مبلغ خالص پرداخت شده ارزی",
           }
         : {
             noun: "دریافتی",
@@ -785,8 +785,8 @@ export default function FinancialWorksheetPage() {
             basisSelect: "انتخاب بابت دریافتی",
             basisOther: "بابت دریافتی را وارد کنید...",
             date: "تاریخ دریافت",
-            amount: "مبلغ دریافت شده",
-            foreignAmount: "مبلغ دریافت شده ارزی",
+            amount: "مبلغ خالص دریافت شده",
+            foreignAmount: "مبلغ خالص دریافت شده ارزی",
           },
     [isSelectedSubContract],
   );
@@ -1320,7 +1320,7 @@ export default function FinancialWorksheetPage() {
                 </>
               ) : (
                 <>
-              <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(280px,420px)_minmax(220px,280px)_minmax(220px,280px)]">
+              <div className="grid grid-cols-1 gap-3 px-3 xl:grid-cols-[minmax(280px,420px)_minmax(220px,280px)_minmax(220px,280px)]">
                 <div>
                   <label className="text-xs text-neutral-600 dark:text-white/60">مبلغ ناخالص تایید شده</label>
                   <AmountInputWithMeta
@@ -1421,7 +1421,7 @@ export default function FinancialWorksheetPage() {
                 ))}
               </div>
 
-              <div className="grid max-w-[420px] grid-cols-1 gap-3 items-start">
+              <div className="mx-3 grid max-w-[420px] grid-cols-1 gap-3 items-start">
                 <div>
                   <label className="text-xs text-neutral-600 dark:text-white/60">جمع خالص تایید شده بدون VAT</label>
                   <AmountInputWithMeta value={formatComputedAmount(netWithoutVatNumber)} readOnly metaLabel={selectedCurrencyMetaLabel} />
@@ -1453,7 +1453,7 @@ export default function FinancialWorksheetPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 xl:grid-cols-[minmax(280px,420px)_auto_1fr] gap-3 items-end">
+              <div className="grid grid-cols-1 px-3 xl:grid-cols-[minmax(280px,420px)_auto_1fr] gap-3 items-end">
                 <div>
                   <label className="text-xs text-neutral-600 dark:text-white/60">جمع خالص تایید شده با احتساب VAT</label>
                   <AmountInputWithMeta value={formatComputedAmount(netWithVatNumber)} readOnly metaLabel={selectedCurrencyMetaLabel} />
