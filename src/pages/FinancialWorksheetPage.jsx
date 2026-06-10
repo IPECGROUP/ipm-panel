@@ -5,6 +5,8 @@ import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
 import { baseCurrenciesTablePreset as tablePreset } from "../components/ui/tablePresets.js";
 
+const CONTRACT_VERIFIED_STORAGE_KEY = "ipm_contract_information_verified_rows_v1";
+
 function toFaDigits(s) {
   return String(s ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
 }
@@ -62,6 +64,27 @@ function pickFirst(...values) {
     if (text) return text;
   }
   return "";
+}
+
+function readVerifiedContractCache() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(CONTRACT_VERIFIED_STORAGE_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed.filter((row) => row && typeof row === "object" && row.id) : [];
+  } catch {
+    return [];
+  }
+}
+
+function mergeContractRowsById(...groups) {
+  const map = new Map();
+  groups.flat().forEach((row) => {
+    if (row?.id) map.set(String(row.id), row);
+  });
+  return Array.from(map.values()).sort((a, b) => {
+    const at = Date.parse(a?.updatedAt || a?.updated_at || a?.createdAt || a?.created_at || "") || 0;
+    const bt = Date.parse(b?.updatedAt || b?.updated_at || b?.createdAt || b?.created_at || "") || 0;
+    return bt - at;
+  });
 }
 
 function isMainProjectCode(code) {
@@ -398,9 +421,23 @@ export default function FinancialWorksheetPage() {
         const sList = sResp?.items || sResp?.data || sResp?.sources || [];
         const cList = cResp?.items || cResp?.data || cResp?.contracts || [];
         const lList = lResp?.items || lResp?.data || lResp?.letters || [];
+        const baseContracts = Array.isArray(cList) ? cList : [];
+        const knownContractIds = new Set(baseContracts.map((row) => String(row?.id || "")).filter(Boolean));
+        const cachedContracts = readVerifiedContractCache().filter((row) => row?.id && !knownContractIds.has(String(row.id)));
+        const verifiedCachedContracts = (
+          await Promise.all(
+            cachedContracts.map((row) =>
+              api(`/contracts?id=${encodeURIComponent(row.id)}`)
+                .then((payload) => payload?.item || row)
+                .catch(() => null),
+            ),
+          )
+        ).filter((row) => row?.id);
+        if (stop) return;
+
         setCurrencyItems(Array.isArray(tList) ? tList : []);
         setCurrencySourceItems(Array.isArray(sList) ? sList : []);
-        setContractRows(Array.isArray(cList) ? cList : []);
+        setContractRows(mergeContractRowsById(baseContracts, verifiedCachedContracts));
         setLetters(
           (Array.isArray(lList) ? lList : [])
             .filter((letter) => letter && typeof letter === "object" && letterIdOf(letter))
