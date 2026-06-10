@@ -443,7 +443,9 @@ export default function FinancialWorksheetPage() {
   const contractNoForRow = useCallback(
     (row) => {
       if (!row) return "";
-      if (row.documentType === "main") return String(row.contractNo || row.contract_no || "").trim();
+      const documentType = String(row.documentType ?? row.document_type ?? "main");
+      if (documentType === "main") return String(row.contractNo || row.contract_no || "").trim();
+      if (documentType === "sub") return String(row.subContractNo || row.sub_contract_no || "").trim();
       const parent = contractById.get(String(row.parentContractId || row.parent_contract_id || ""));
       return String(parent?.contractNo || parent?.contract_no || row.contractNo || row.contract_no || "").trim();
     },
@@ -460,16 +462,23 @@ export default function FinancialWorksheetPage() {
     const list = Array.isArray(contractRows) ? contractRows : [];
     return list
       .filter((row) => String(row?.projectId ?? row?.project_id ?? "") === String(projectId || ""))
+      .filter((row) => ["main", "sub"].includes(String(row?.documentType ?? row?.document_type ?? "main")))
       .map((row) => ({
         row,
         id: String(row?.id || ""),
         no: contractNoForRow(row),
+        parentNo: contractNoForRow(contractById.get(String(row?.parentContractId || row?.parent_contract_id || ""))),
         subject: String(row?.general?.contractSubject || ""),
         typeLabel: documentTypeLabel(row?.documentType || row?.document_type),
+        documentType: String(row?.documentType ?? row?.document_type ?? "main"),
       }))
       .filter((item) => item.id && item.no)
-      .sort((a, b) => a.no.localeCompare(b.no, "fa", { numeric: true }));
-  }, [contractNoForRow, contractRows, projectId]);
+      .sort((a, b) => {
+        const noCompare = a.no.localeCompare(b.no, "fa", { numeric: true });
+        if (noCompare) return noCompare;
+        return a.typeLabel.localeCompare(b.typeLabel, "fa");
+      });
+  }, [contractById, contractNoForRow, contractRows, projectId]);
 
   useEffect(() => {
     if (!contractId) return;
@@ -480,6 +489,7 @@ export default function FinancialWorksheetPage() {
     const list = Array.isArray(items) ? items : [];
     return list.map((r, i) => ({
       id: String(r?.id ?? r?.worksheet_id ?? r?.record_id ?? `tmp_${i}`),
+      contractId: String(r?.contract_id ?? r?.contractId ?? ""),
       number: String(r?.statement_no ?? r?.statementNo ?? r?.receipt_no ?? r?.receiptNo ?? r?.no ?? ""),
       date: String(r?.jalali_date ?? r?.date_jalali ?? r?.date ?? ""),
       grossAmount: Number(r?.gross_amount ?? r?.grossAmount ?? r?.gross ?? 0) || 0,
@@ -518,7 +528,7 @@ export default function FinancialWorksheetPage() {
   useEffect(() => {
     let dead = false;
     (async () => {
-      if (!projectId) {
+      if (!projectId || !contractId) {
         setWorksheetRows([]);
         setRowsLoading(false);
         return;
@@ -527,11 +537,12 @@ export default function FinancialWorksheetPage() {
       try {
         const q = new URLSearchParams();
         q.set("project_id", String(projectId));
+        q.set("contract_id", String(contractId));
         q.set("kind", tab === "receipts" ? "receipts" : "statement");
         const r = await api("/financial-worksheet?" + q.toString());
         if (dead) return;
         const rows = r?.items || r?.data || r?.rows || [];
-        setWorksheetRows(normalizeRows(rows));
+        setWorksheetRows(normalizeRows(rows).filter((row) => !row.contractId || String(row.contractId) === String(contractId)));
       } catch {
         if (!dead) setWorksheetRows([]);
       } finally {
@@ -541,7 +552,7 @@ export default function FinancialWorksheetPage() {
     return () => {
       dead = true;
     };
-  }, [api, projectId, tab, normalizeRows]);
+  }, [api, contractId, projectId, tab, normalizeRows]);
 
   const sumGross = useMemo(() => (worksheetRows || []).reduce((s, r) => s + Number(r.grossAmount || 0), 0), [worksheetRows]);
   const sumVat = useMemo(() => (worksheetRows || []).reduce((s, r) => s + Number(r.vatAmount || 0), 0), [worksheetRows]);
@@ -550,6 +561,9 @@ export default function FinancialWorksheetPage() {
 
   const selectedContract = useMemo(() => contractById.get(String(contractId || "")) || null, [contractById, contractId]);
   const selectedContractFinancial = selectedContract?.financial && typeof selectedContract.financial === "object" ? selectedContract.financial : {};
+  const selectedContractDocumentType = String(selectedContract?.documentType ?? selectedContract?.document_type ?? "main");
+  const isSelectedSubContract = selectedContractDocumentType === "sub";
+  const canShowWorksheet = Boolean(projectId && contractId);
   const grossAmountNumber = useMemo(() => parseAmountInput(grossAmount), [grossAmount]);
   const prepaymentDepreciationNumber = useMemo(() => parseAmountInput(prepaymentDepreciation), [prepaymentDepreciation]);
   const otherDeductionsNumber = useMemo(
@@ -629,11 +643,20 @@ export default function FinancialWorksheetPage() {
     () => (currencyItems || []).find((it) => readItemId(it) === String(receiptCurrencyId)),
     [currencyItems, receiptCurrencyId],
   );
+  const selectedReceiptCurrencyLabel = useMemo(
+    () => readItemLabel(selectedReceiptCurrency),
+    [selectedReceiptCurrency],
+  );
+  const selectedReceiptCurrencySourceLabel = useMemo(
+    () => readItemLabel((currencySourceItems || []).find((it) => readItemId(it) === String(receiptCurrencySourceId))),
+    [currencySourceItems, receiptCurrencySourceId],
+  );
   const isRialCurrency = useMemo(() => {
     const id = readItemId(selectedReceiptCurrency).toLowerCase();
     const label = readItemLabel(selectedReceiptCurrency).toLowerCase();
     return label.includes("ریال") || label.includes("irr") || label.includes("rial") || id.includes("irr") || id.includes("rial");
   }, [selectedReceiptCurrency]);
+  const receiptReceivedAmountNumber = useMemo(() => parseAmountInput(receiptReceivedAmount), [receiptReceivedAmount]);
   const addOtherDebtRow = () =>
     setOtherDebts((prev) => [...prev, { id: Date.now() + Math.random(), amount: "", description: "" }]);
   const removeOtherDebtRow = (id) => setOtherDebts((prev) => prev.filter((r) => r.id !== id));
@@ -675,10 +698,13 @@ export default function FinancialWorksheetPage() {
 
   const iconBtnCls =
     "h-10 w-10 inline-grid place-items-center !bg-transparent !ring-0 !border-0 !shadow-none hover:opacity-80 active:opacity-70 transition disabled:opacity-50";
-  const worksheetTabs = [
-    { id: "statement", label: "صورت وضعیت" },
-    { id: "receipts", label: "دریافتی‌ها" },
-  ];
+  const worksheetTabs = useMemo(
+    () => [
+      { id: "statement", label: isSelectedSubContract ? "صورت وضعیت‌ها / صورت حساب‌ها" : "صورت وضعیت‌ها" },
+      { id: "receipts", label: isSelectedSubContract ? "پرداختی‌ها" : "دریافتی‌ها" },
+    ],
+    [isSelectedSubContract],
+  );
   const tabStripCls =
     "mb-2 flex w-full items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-black/10 bg-black/[0.03] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-auto md:-mb-px md:max-w-[780px] md:items-stretch md:justify-center md:gap-0 md:rounded-b-none md:rounded-t-2xl md:border-b-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900";
   const topTabBtnClass = (isActive, index, total) =>
@@ -717,7 +743,7 @@ export default function FinancialWorksheetPage() {
         },
       ]);
       setReceiptJalaliDate(String(row?.date || ""));
-      setReceiptReceivedAmount(String(row?.receiptAmount || ""));
+      setReceiptReceivedAmount(formatAmountInput(row?.receiptAmount || ""));
       setReceiptCurrencyId(String(row?.currencyId || ""));
       setReceiptCurrencySourceId(String(row?.currencySourceId || ""));
       setReceiptRialDescription(String(row?.rialDescription || ""));
@@ -755,6 +781,16 @@ export default function FinancialWorksheetPage() {
     setVatPercent("");
     setUploadedFiles([]);
     setRelatedLetterIds([]);
+  };
+
+  const resetReceiptForm = () => {
+    setReceiptTypeRows([{ id: Date.now() + Math.random(), type: "", number: "", otherDescription: "" }]);
+    setReceiptJalaliDate("");
+    setReceiptReceivedAmount("");
+    setReceiptCurrencyId("");
+    setReceiptCurrencySourceId("");
+    setReceiptRialDescription("");
+    setReceiptDescription("");
   };
 
   const handleSaveStatement = async () => {
@@ -826,6 +862,76 @@ export default function FinancialWorksheetPage() {
     }
   };
 
+  const handleSaveReceipt = async () => {
+    setErr("");
+    if (!projectId) {
+      setErr("ابتدا پروژه را انتخاب کنید.");
+      return;
+    }
+    if (!contractId) {
+      setErr("ابتدا شماره قرارداد را انتخاب کنید.");
+      return;
+    }
+    const cleanedTypeRows = (receiptTypeRows || [])
+      .map((row) => ({
+        type: String(row?.type || "").trim(),
+        number: String(row?.type === "statement" ? row?.number || "" : "").trim(),
+        otherDescription: String(row?.type === "other" ? row?.otherDescription || "" : "").trim(),
+      }))
+      .filter((row) => row.type);
+    if (!cleanedTypeRows.length) {
+      setErr("بابت دریافتی را انتخاب کنید.");
+      return;
+    }
+    if (cleanedTypeRows.some((row) => row.type === "statement" && !row.number)) {
+      setErr("شماره صورت وضعیت را وارد کنید.");
+      return;
+    }
+    if (cleanedTypeRows.some((row) => row.type === "other" && !row.otherDescription)) {
+      setErr("بابت دریافتی سایر را وارد کنید.");
+      return;
+    }
+    if (!receiptJalaliDate) {
+      setErr("تاریخ دریافت را انتخاب کنید.");
+      return;
+    }
+
+    const firstType = cleanedTypeRows[0] || {};
+    const payload = {
+      kind: "receipts",
+      project_id: projectId,
+      contract_id: contractId,
+      contract_no: contractNoForRow(selectedContract),
+      receipt_type: firstType.type,
+      receipt_types: cleanedTypeRows,
+      receipt_type_other_description: firstType.otherDescription || "",
+      receipt_no: firstType.number || "",
+      jalali_date: receiptJalaliDate,
+      gregorian_date: receiptGregorianDate,
+      received_amount: receiptReceivedAmountNumber,
+      received_amount_foreign: isRialCurrency ? 0 : receiptReceivedAmountNumber,
+      currency_id: receiptCurrencyId,
+      currency_label: selectedReceiptCurrencyLabel,
+      currency_source_id: receiptCurrencySourceId,
+      currency_source_label: selectedReceiptCurrencySourceLabel,
+      rial_description: receiptRialDescription,
+      description: receiptDescription,
+    };
+
+    try {
+      const saved = await api("/financial-worksheet", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      const item = saved?.item || saved?.data || payload;
+      setWorksheetRows((prev) => [...normalizeRows([item]), ...(Array.isArray(prev) ? prev : [])]);
+      resetReceiptForm();
+      setFormOpen(false);
+    } catch (e) {
+      setErr(e.message || "خطا در ثبت دریافتی");
+    }
+  };
+
   return (
     <>
       <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
@@ -868,13 +974,17 @@ export default function FinancialWorksheetPage() {
                 <option value="">{projectId ? "انتخاب قرارداد" : "ابتدا پروژه را انتخاب کنید"}</option>
                 {projectContractOptions.map((item) => (
                   <option key={item.id} value={item.id}>
-                    {toFaDigits(item.no)} - {item.typeLabel}{item.subject ? ` - ${item.subject}` : ""}
+                    {toFaDigits(item.no)} - {item.typeLabel}
+                    {item.documentType === "sub" && item.parentNo ? ` - اصلی: ${toFaDigits(item.parentNo)}` : ""}
+                    {item.subject ? ` - ${item.subject}` : ""}
                   </option>
                 ))}
               </select>
             </div>
           </div>
 
+          {canShowWorksheet ? (
+            <>
           <div className="flex items-start gap-2">
             <div className={tabStripCls} role="tablist" aria-label="بخش‌های کاربرگ مالی">
               {worksheetTabs.map((item, index) => (
@@ -911,34 +1021,46 @@ export default function FinancialWorksheetPage() {
                     <div key={row.id} className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-end">
                       <div className={showReceiptNumber ? "xl:col-span-5" : "xl:col-span-10"}>
                         <label className="text-xs text-neutral-600 dark:text-white/60">بابت دریافتی</label>
-                        <select
-                          value={row.type}
-                          onChange={(e) => {
-                            const nextType = e.target.value;
-                            updateReceiptTypeRow(row.id, {
-                              type: nextType,
-                              ...(nextType !== "statement" ? { number: "" } : {}),
-                              ...(nextType !== "other" ? { otherDescription: "" } : {}),
-                            });
-                          }}
-                          className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
-                        >
-                          <option value="">انتخاب بابت دریافتی</option>
-                          {receiptTypeOptions.map((op) => (
-                            <option key={op.value} value={op.value}>
-                              {op.label}
-                            </option>
-                          ))}
-                        </select>
                         {row.type === "other" ? (
-                          <input
-                            value={row.otherDescription}
-                            onChange={(e) => updateReceiptTypeRow(row.id, { otherDescription: e.target.value })}
-                            className="mt-2 w-full h-10 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
-                            type="text"
-                            placeholder="بابت دریافتی را وارد کنید..."
-                          />
-                        ) : null}
+                          <div className="mt-1 flex h-11 w-full items-center gap-2 rounded-xl border border-black/10 bg-white px-3 text-neutral-900 dark:border-white/15 dark:bg-white/5 dark:text-white">
+                            <input
+                              value={row.otherDescription}
+                              onChange={(e) => updateReceiptTypeRow(row.id, { otherDescription: e.target.value })}
+                              className="min-w-0 flex-1 bg-transparent outline-none"
+                              type="text"
+                              placeholder="بابت دریافتی را وارد کنید..."
+                              autoFocus
+                            />
+                            <button
+                              type="button"
+                              onClick={() => updateReceiptTypeRow(row.id, { type: "", otherDescription: "" })}
+                              className="h-7 shrink-0 rounded-lg border border-black/10 px-2 text-xs text-neutral-600 hover:bg-black/[0.04] dark:border-white/15 dark:text-white/70 dark:hover:bg-white/10"
+                              title="انتخاب مجدد"
+                            >
+                              انتخاب
+                            </button>
+                          </div>
+                        ) : (
+                          <select
+                            value={row.type}
+                            onChange={(e) => {
+                              const nextType = e.target.value;
+                              updateReceiptTypeRow(row.id, {
+                                type: nextType,
+                                ...(nextType !== "statement" ? { number: "" } : {}),
+                                ...(nextType !== "other" ? { otherDescription: "" } : {}),
+                              });
+                            }}
+                            className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
+                          >
+                            <option value="">انتخاب بابت دریافتی</option>
+                            {receiptTypeOptions.map((op) => (
+                              <option key={op.value} value={op.value}>
+                                {op.label}
+                              </option>
+                            ))}
+                          </select>
+                        )}
                       </div>
 
                       {showReceiptNumber ? (
@@ -1025,7 +1147,7 @@ export default function FinancialWorksheetPage() {
                       <label className="text-xs text-neutral-600 dark:text-white/60">مبلغ دریافت شده</label>
                       <input
                         value={receiptReceivedAmount}
-                        onChange={(e) => setReceiptReceivedAmount(e.target.value)}
+                        onChange={(e) => setReceiptReceivedAmount(formatAmountInput(e.target.value))}
                         className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
                         type="text"
                         dir="ltr"
@@ -1083,6 +1205,18 @@ export default function FinancialWorksheetPage() {
                         placeholder="توضیحات..."
                       />
                     </div>
+                  </div>
+
+                  <div className="flex justify-start">
+                    <button
+                      type="button"
+                      onClick={handleSaveReceipt}
+                      className="h-10 w-10 rounded-xl bg-black text-white ring-1 ring-black/15 transition flex items-center justify-center hover:bg-black/90 dark:bg-white dark:text-black dark:ring-white/10"
+                      aria-label="تایید و ثبت"
+                      title="تایید و ثبت"
+                    >
+                      <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
+                    </button>
                   </div>
                 </>
               ) : (
@@ -1389,6 +1523,8 @@ export default function FinancialWorksheetPage() {
               </div>
             </div>
           </TableWrap>
+            </>
+          ) : null}
 
           {err ? <div className="text-sm text-red-600 dark:text-red-400">{err}</div> : null}
         </div>
