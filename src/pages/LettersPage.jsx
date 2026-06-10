@@ -780,6 +780,12 @@ const [hasYScroll, setHasYScroll] = useState(false);
     if (!/^\d+$/.test(value)) return "";
     return `${API_BASE}/files/${encodeURIComponent(value)}`;
   };
+  const letterAttachmentApiUrlOf = (letterId, index) => {
+    const id = String(letterId ?? "").trim();
+    const idx = Number(index);
+    if (!/^\d+$/.test(id) || !Number.isInteger(idx) || idx < 0) return "";
+    return `${API_BASE}/letter-attachments/${encodeURIComponent(id)}/${encodeURIComponent(String(idx))}`;
+  };
   async function api(path, opt = {}) {
     const uid = user?.id != null ? String(user.id) : "";
     const res = await fetch(API_BASE + path, {
@@ -2703,12 +2709,28 @@ const secretariatLongText = (ymd) => {
     return [];
   };
 
+  const attachmentRawUrlOf = (a) => {
+    const u = a?.url ?? a?.href ?? a?.path ?? a?.public_url ?? a?.publicUrl ?? a?.file_url ?? a?.fileUrl;
+    return String(u || "");
+  };
+
   const attachmentUrlOf = (a) => {
     const fileId = a?.file_id ?? a?.fileId ?? a?.serverId;
     const apiUrl = uploadedFileApiUrlOf(fileId);
     if (apiUrl) return apiUrl;
-    const u = a?.url ?? a?.href ?? a?.path ?? a?.public_url ?? a?.publicUrl ?? a?.file_url ?? a?.fileUrl;
-    return String(u || "");
+    return attachmentRawUrlOf(a);
+  };
+
+  const attachmentViewUrlOf = (a, letterId, index) => {
+    const fileId = a?.file_id ?? a?.fileId ?? a?.serverId;
+    const apiUrl = uploadedFileApiUrlOf(fileId);
+    if (apiUrl) return apiUrl;
+
+    const raw = attachmentRawUrlOf(a).trim();
+    if (/^https?:\/\//i.test(raw) || raw.startsWith("//")) return raw;
+
+    const legacyApiUrl = letterAttachmentApiUrlOf(letterId, index);
+    return legacyApiUrl || raw;
   };
 
   const attachmentNameOf = (a) => {
@@ -2751,6 +2773,10 @@ const canUseOfficeWebViewer = (url) => {
     const host = String(parsed.hostname || "").toLowerCase();
     if (!host) return false;
     if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") return false;
+    if (parsed.origin === window.location.origin) {
+      const path = parsed.pathname || "";
+      if (path.startsWith("/api/") || path.startsWith("/uploads/")) return false;
+    }
     return true;
   } catch {
     return false;
@@ -3763,15 +3789,20 @@ const deleteAllLetters = async () => {
     </div>
   );
   const viewAttachments = useMemo(() => attachmentsOf(viewLetter), [viewLetter]); // eslint-disable-line react-hooks/exhaustive-deps
+  const currentViewAttachmentIndex = useMemo(() => {
+    const arr = Array.isArray(viewAttachments) ? viewAttachments : [];
+    const idx = Number(viewAttIdx || 0);
+    return arr[idx] ? idx : 0;
+  }, [viewAttachments, viewAttIdx]);
   const currentViewAttachment = useMemo(() => {
     const arr = Array.isArray(viewAttachments) ? viewAttachments : [];
-    const a = arr[viewAttIdx] || arr[0] || null;
+    const a = arr[currentViewAttachmentIndex] || arr[0] || null;
     return a;
-  }, [viewAttachments, viewAttIdx]);
+  }, [viewAttachments, currentViewAttachmentIndex]);
 
  const currentViewUrl = useMemo(
-  () => resolveFileUrl(attachmentUrlOf(currentViewAttachment)),
-  [currentViewAttachment]
+  () => resolveFileUrl(attachmentViewUrlOf(currentViewAttachment, viewLetter?.id, currentViewAttachmentIndex)),
+  [currentViewAttachment, currentViewAttachmentIndex, viewLetter?.id]
 );  // eslint-disable-line react-hooks/exhaustive-deps
   const currentViewName = useMemo(() => attachmentNameOf(currentViewAttachment), [currentViewAttachment]); // eslint-disable-line react-hooks/exhaustive-deps
   const currentViewType = useMemo(
