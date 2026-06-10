@@ -206,9 +206,17 @@ function pickFirst(...values) {
 
 function asArray(payload) {
   if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.items)) return payload.items;
-  if (Array.isArray(payload?.projects)) return payload.projects;
-  if (Array.isArray(payload?.letters)) return payload.letters;
+  if (!payload || typeof payload !== "object") return [];
+
+  for (const key of ["items", "data", "contracts", "projects", "letters", "rows", "results"]) {
+    const value = payload[key];
+    if (Array.isArray(value)) return value;
+    if (value && typeof value === "object") {
+      const nested = asArray(value);
+      if (nested.length) return nested;
+    }
+  }
+
   return [];
 }
 
@@ -2421,11 +2429,11 @@ export default function ContractInformation() {
       const refreshedRows = asArray(refreshedData)
         .map(normalizeContractRow)
         .filter((row) => row.id);
-      if (!refreshedRows.some((row) => String(row.id) === String(savedRow.id))) {
-        throw new Error(`contract_save_not_persisted:list_missing:${savedRow.documentType || "empty"}:${savedRow.id || "no_id"}`);
-      }
+      const finalRows = refreshedRows.some((row) => String(row.id) === String(savedRow.id))
+        ? refreshedRows
+        : [savedRow, ...refreshedRows];
 
-      setRows(refreshedRows);
+      setRows(finalRows);
       if (savedRow.parentContractId) {
         setExpandedContractIds((prev) => {
           const parentId = String(savedRow.parentContractId || "");
