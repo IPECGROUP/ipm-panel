@@ -440,16 +440,28 @@ export default function FinancialWorksheetPage() {
     return map;
   }, [contractRows]);
 
+  const documentTypeForContract = useCallback((row) => {
+    if (!row) return "main";
+    const rawType = String(row.documentType ?? row.document_type ?? "main");
+    const parentId = String(row.parentContractId ?? row.parent_contract_id ?? "").trim();
+    const subNo = String(row.subContractNo ?? row.sub_contract_no ?? "").trim();
+    if (parentId && subNo) return "sub";
+    if (rawType === "main" && parentId) return subNo ? "sub" : "appendix";
+    return rawType;
+  }, []);
+
   const contractNoForRow = useCallback(
     (row) => {
       if (!row) return "";
-      const documentType = String(row.documentType ?? row.document_type ?? "main");
+      const documentType = documentTypeForContract(row);
       if (documentType === "main") return String(row.contractNo || row.contract_no || "").trim();
-      if (documentType === "sub") return String(row.subContractNo || row.sub_contract_no || row.contractNo || row.contract_no || "").trim();
       const parent = contractById.get(String(row.parentContractId || row.parent_contract_id || ""));
+      if (documentType === "sub") {
+        return String(row.subContractNo || row.sub_contract_no || row.contractNo || row.contract_no || parent?.contractNo || parent?.contract_no || "").trim();
+      }
       return String(parent?.contractNo || parent?.contract_no || row.contractNo || row.contract_no || "").trim();
     },
-    [contractById],
+    [contractById, documentTypeForContract],
   );
 
   const documentTypeLabel = (type) => {
@@ -468,17 +480,18 @@ export default function FinancialWorksheetPage() {
         const parentProjectId = String(parent?.projectId ?? parent?.project_id ?? "");
         return ownProjectId === selectedProjectId || parentProjectId === selectedProjectId;
       })
-      .filter((row) => ["main", "sub"].includes(String(row?.documentType ?? row?.document_type ?? "main")))
+      .filter((row) => ["main", "sub"].includes(documentTypeForContract(row)))
       .map((row) => {
         const parent = contractById.get(String(row?.parentContractId || row?.parent_contract_id || ""));
+        const documentType = documentTypeForContract(row);
         return {
           row,
           id: String(row?.id || ""),
           no: contractNoForRow(row),
           parentNo: contractNoForRow(parent),
           subject: String(row?.general?.contractSubject || parent?.general?.contractSubject || ""),
-          typeLabel: documentTypeLabel(row?.documentType || row?.document_type),
-          documentType: String(row?.documentType ?? row?.document_type ?? "main"),
+          typeLabel: documentTypeLabel(documentType),
+          documentType,
         };
       })
       .filter((item) => item.id && item.no)
@@ -490,7 +503,7 @@ export default function FinancialWorksheetPage() {
         if (noCompare) return noCompare;
         return a.typeLabel.localeCompare(b.typeLabel, "fa");
       });
-  }, [contractById, contractNoForRow, contractRows, projectId]);
+  }, [contractById, contractNoForRow, contractRows, documentTypeForContract, projectId]);
 
   useEffect(() => {
     if (!contractId) return;
@@ -573,7 +586,7 @@ export default function FinancialWorksheetPage() {
 
   const selectedContract = useMemo(() => contractById.get(String(contractId || "")) || null, [contractById, contractId]);
   const selectedContractFinancial = selectedContract?.financial && typeof selectedContract.financial === "object" ? selectedContract.financial : {};
-  const selectedContractDocumentType = String(selectedContract?.documentType ?? selectedContract?.document_type ?? "main");
+  const selectedContractDocumentType = documentTypeForContract(selectedContract);
   const isSelectedSubContract = selectedContractDocumentType === "sub";
   const canShowWorksheet = Boolean(projectId && contractId);
   const grossAmountNumber = useMemo(() => parseAmountInput(grossAmount), [grossAmount]);

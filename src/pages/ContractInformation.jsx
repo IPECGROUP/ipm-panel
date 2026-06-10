@@ -564,6 +564,7 @@ function documentTypeLabel(type) {
 
 function contractNoForRow(row, rowById) {
   if (row?.documentType === "main") return row?.contractNo || "";
+  if (row?.documentType === "sub") return row?.subContractNo || row?.contractNo || "";
   const parent = rowById.get(String(row?.parentContractId || ""));
   return parent?.contractNo || row?.contractNo || "";
 }
@@ -1386,7 +1387,7 @@ export default function ContractInformation() {
       .filter((row) => {
         if (!row?.id || String(row.id) === currentId) return false;
         if (String(row.projectId || "") !== projectId) return false;
-        return Boolean(contractNoForRow(row, rowById));
+        return row.documentType === "main" && Boolean(row.contractNo);
       })
       .sort((a, b) => {
         const noCompare = contractNoForRow(a, rowById).localeCompare(contractNoForRow(b, rowById), "fa", { numeric: true });
@@ -1663,6 +1664,7 @@ export default function ContractInformation() {
       setForm({
         ...reset,
         id: "",
+        projectId: String(form.projectId || ""),
         documentType: value,
         general: {
           ...reset.general,
