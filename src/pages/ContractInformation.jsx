@@ -1093,6 +1093,7 @@ export default function ContractInformation() {
   const documentTypeChangedFromEditRef = React.useRef(false);
   const finalSaveStatusTimerRef = React.useRef(null);
   const [draftSaveStatus, setDraftSaveStatus] = React.useState({ sectionId: "", state: "" });
+  const [finalSavingSection, setFinalSavingSection] = React.useState("");
 
   React.useEffect(() => {
     let alive = true;
@@ -2393,6 +2394,7 @@ export default function ContractInformation() {
 
     try {
       if (sectionId !== "financial") markDraftSaveStatus(sectionId, "saving");
+      setFinalSavingSection(sectionId);
 
       const data = await fetchJson("/contracts", {
         method: "POST",
@@ -2465,6 +2467,8 @@ export default function ContractInformation() {
             ? `ثبت قرارداد در سرور تایید نشد. جزئیات: ${String(error?.message || "").replace("contract_save_not_persisted:", "")}`
           : error?.message || "خطا در ذخیره قرارداد"
       );
+    } finally {
+      setFinalSavingSection((current) => (current === sectionId ? "" : current));
     }
   };
 
@@ -2884,10 +2888,11 @@ export default function ContractInformation() {
 
   const renderSaveButton = (sectionId, title = "ذخیره") => {
     const isDraftSection = sectionId !== "financial";
+    const isFinalSaving = finalSavingSection === sectionId;
     const showFinalStatus = finalSaveStatus.sectionId === sectionId && finalSaveStatus.message;
     const showDraftStatus = isDraftSection && draftSaveStatus.sectionId === sectionId && draftSaveStatus.state;
     const draftStatusText =
-      draftSaveStatus.state === "saving" ? "در حال ذخیره..." : draftSaveStatus.state === "saved" ? "ذخیره شد" : "خطا در ذخیره";
+      draftSaveStatus.state === "saving" ? "در حال ذخیره پیش‌نویس..." : draftSaveStatus.state === "saved" ? "پیش‌نویس ذخیره شد" : "خطا در ذخیره پیش‌نویس";
     const draftStatusCls =
       draftSaveStatus.state === "error"
         ? "text-red-600 dark:text-red-400"
@@ -2896,19 +2901,27 @@ export default function ContractInformation() {
           : "text-black/50 dark:text-neutral-400";
 
     return (
-      <div className="flex min-w-[70px] flex-col items-center gap-1">
-        <button type="button" onClick={() => saveContractSection(sectionId)} className={saveIconBtnCls} title={title} aria-label={title}>
+      <div className="flex min-w-[130px] flex-col items-center gap-1">
+        <button
+          type="button"
+          onClick={() => saveContractSection(sectionId)}
+          disabled={isFinalSaving}
+          className={`${saveIconBtnCls} !w-auto gap-2 px-4 text-xs font-bold`}
+          title="ثبت نهایی قرارداد"
+          aria-label="ثبت نهایی قرارداد"
+        >
           <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
+          <span>{isFinalSaving ? "در حال ثبت..." : "ثبت نهایی"}</span>
         </button>
         <div
           className={[
             "h-4 text-[10px] font-semibold leading-4 transition-all duration-200",
-            showFinalStatus || showDraftStatus ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0",
+            isFinalSaving || showFinalStatus || showDraftStatus ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0",
             !showFinalStatus && draftSaveStatus.state === "saving" ? "animate-pulse" : "",
-            showFinalStatus ? "text-emerald-600 dark:text-emerald-400" : draftStatusCls,
+            isFinalSaving || showFinalStatus ? "text-emerald-600 dark:text-emerald-400" : draftStatusCls,
           ].join(" ")}
         >
-          {showFinalStatus ? finalSaveStatus.message : showDraftStatus ? draftStatusText : ""}
+          {isFinalSaving ? "در حال ثبت نهایی..." : showFinalStatus ? finalSaveStatus.message : showDraftStatus ? draftStatusText : ""}
         </div>
       </div>
     );
