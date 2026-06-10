@@ -2431,11 +2431,11 @@ export default function ContractInformation() {
       const refreshedRows = asArray(refreshedData)
         .map(normalizeContractRow)
         .filter((row) => row.id);
-      const finalRows = refreshedRows.some((row) => String(row.id) === String(savedRow.id))
-        ? refreshedRows
-        : [savedRow, ...refreshedRows];
+      if (!refreshedRows.some((row) => String(row.id) === String(savedRow.id))) {
+        throw new Error(`contract_save_not_persisted:list_missing:${savedRow.documentType || "empty"}:${savedRow.id || "no_id"}`);
+      }
 
-      setRows(finalRows);
+      setRows(refreshedRows);
       if (savedRow.parentContractId) {
         setExpandedContractIds((prev) => {
           const parentId = String(savedRow.parentContractId || "");
