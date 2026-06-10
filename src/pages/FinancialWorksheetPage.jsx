@@ -445,7 +445,7 @@ export default function FinancialWorksheetPage() {
       if (!row) return "";
       const documentType = String(row.documentType ?? row.document_type ?? "main");
       if (documentType === "main") return String(row.contractNo || row.contract_no || "").trim();
-      if (documentType === "sub") return String(row.subContractNo || row.sub_contract_no || "").trim();
+      if (documentType === "sub") return String(row.subContractNo || row.sub_contract_no || row.contractNo || row.contract_no || "").trim();
       const parent = contractById.get(String(row.parentContractId || row.parent_contract_id || ""));
       return String(parent?.contractNo || parent?.contract_no || row.contractNo || row.contract_no || "").trim();
     },
@@ -461,17 +461,26 @@ export default function FinancialWorksheetPage() {
   const projectContractOptions = useMemo(() => {
     const list = Array.isArray(contractRows) ? contractRows : [];
     return list
-      .filter((row) => String(row?.projectId ?? row?.project_id ?? "") === String(projectId || ""))
+      .filter((row) => {
+        const selectedProjectId = String(projectId || "");
+        const ownProjectId = String(row?.projectId ?? row?.project_id ?? "");
+        const parent = contractById.get(String(row?.parentContractId || row?.parent_contract_id || ""));
+        const parentProjectId = String(parent?.projectId ?? parent?.project_id ?? "");
+        return ownProjectId === selectedProjectId || parentProjectId === selectedProjectId;
+      })
       .filter((row) => ["main", "sub"].includes(String(row?.documentType ?? row?.document_type ?? "main")))
-      .map((row) => ({
-        row,
-        id: String(row?.id || ""),
-        no: contractNoForRow(row),
-        parentNo: contractNoForRow(contractById.get(String(row?.parentContractId || row?.parent_contract_id || ""))),
-        subject: String(row?.general?.contractSubject || ""),
-        typeLabel: documentTypeLabel(row?.documentType || row?.document_type),
-        documentType: String(row?.documentType ?? row?.document_type ?? "main"),
-      }))
+      .map((row) => {
+        const parent = contractById.get(String(row?.parentContractId || row?.parent_contract_id || ""));
+        return {
+          row,
+          id: String(row?.id || ""),
+          no: contractNoForRow(row),
+          parentNo: contractNoForRow(parent),
+          subject: String(row?.general?.contractSubject || parent?.general?.contractSubject || ""),
+          typeLabel: documentTypeLabel(row?.documentType || row?.document_type),
+          documentType: String(row?.documentType ?? row?.document_type ?? "main"),
+        };
+      })
       .filter((item) => item.id && item.no)
       .sort((a, b) => {
         const typeOrder = { main: 0, sub: 1 };
