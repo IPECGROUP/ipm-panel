@@ -2391,17 +2391,38 @@ export default function ContractInformation() {
         body: JSON.stringify(rowPayload),
       });
       const savedFromPost = normalizeContractRow(data?.item || rowPayload);
-      const verifiedData = await fetchJson(`/contracts?id=${encodeURIComponent(savedFromPost.id)}`);
-      const savedRow = normalizeContractRow(verifiedData?.item || savedFromPost);
+      let verifiedData = await fetchJson(`/contracts?id=${encodeURIComponent(savedFromPost.id)}`);
+      let savedRow = normalizeContractRow(verifiedData?.item || savedFromPost);
+      if (documentType === "sub" && savedRow.documentType !== "sub") {
+        const forcedSubPayload = {
+          ...rowPayload,
+          id: savedRow.id || savedFromPost.id || rowPayload.id,
+          documentType: "sub",
+          document_type: "sub",
+          contractNo: "",
+          contract_no: "",
+          subContractNo,
+          sub_contract_no: subContractNo,
+          parentContractId,
+          parent_contract_id: parentContractId,
+        };
+        const retryData = await fetchJson("/contracts", {
+          method: "POST",
+          body: JSON.stringify(forcedSubPayload),
+        });
+        const retryRow = normalizeContractRow(retryData?.item || forcedSubPayload);
+        verifiedData = await fetchJson(`/contracts?id=${encodeURIComponent(retryRow.id)}`);
+        savedRow = normalizeContractRow(verifiedData?.item || retryRow);
+      }
       if (!savedRow.id || (documentType === "sub" && savedRow.documentType !== "sub")) {
-        throw new Error("contract_save_not_persisted");
+        throw new Error(`contract_save_not_persisted:${documentType}:${savedRow.documentType || "empty"}:${savedRow.id ? "has_id" : "no_id"}`);
       }
       const refreshedData = await fetchJson("/contracts");
       const refreshedRows = asArray(refreshedData)
         .map(normalizeContractRow)
         .filter((row) => row.id);
       if (!refreshedRows.some((row) => String(row.id) === String(savedRow.id))) {
-        throw new Error("contract_save_not_persisted");
+        throw new Error(`contract_save_not_persisted:list_missing:${savedRow.documentType || "empty"}:${savedRow.id || "no_id"}`);
       }
 
       setRows(refreshedRows);
@@ -2432,8 +2453,8 @@ export default function ContractInformation() {
       alert(
         error?.message === "main_contract_exists_for_project"
           ? "برای این پروژه قبلا قرارداد اصلی ثبت شده است. برای این پروژه فقط می‌توانید قرارداد فرعی یا الحاقیه ثبت کنید."
-          : error?.message === "contract_save_not_persisted"
-            ? "ثبت قرارداد در سرور تایید نشد. لطفا دوباره ذخیره کنید و اگر تکرار شد، اتصال/API قراردادها را بررسی کنید."
+          : String(error?.message || "").startsWith("contract_save_not_persisted")
+            ? `ثبت قرارداد در سرور تایید نشد. جزئیات: ${String(error?.message || "").replace("contract_save_not_persisted:", "")}`
           : error?.message || "خطا در ذخیره قرارداد"
       );
     }
