@@ -1578,6 +1578,27 @@ export default function ContractInformation() {
     if (contractsPage !== safeContractsPage) setContractsPage(safeContractsPage);
   }, [contractsPage, safeContractsPage]);
 
+  React.useEffect(() => {
+    const parentIds = new Set(
+      rows
+        .map((row) => String(row?.parentContractId || ""))
+        .filter(Boolean)
+    );
+    if (!parentIds.size) return;
+
+    setExpandedContractIds((prev) => {
+      let changed = false;
+      const next = new Set(prev);
+      parentIds.forEach((id) => {
+        if (!next.has(id)) {
+          next.add(id);
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [rows]);
+
   const toggleSelectAllVisibleContracts = () => {
     setSelectedContractIds((prev) => {
       const next = new Set(prev);
@@ -2361,6 +2382,15 @@ export default function ContractInformation() {
         }
         return [savedRow, ...prev];
       });
+      if (savedRow.parentContractId) {
+        setExpandedContractIds((prev) => {
+          const parentId = String(savedRow.parentContractId || "");
+          if (!parentId || prev.has(parentId)) return prev;
+          const next = new Set(prev);
+          next.add(parentId);
+          return next;
+        });
+      }
       finalSavedDraftSignatureRef.current = contractDraftSignature(contractDraftPayloadFromForm({ ...form, id: savedRow.id }, sectionId));
       lastDraftSignatureRef.current = finalSavedDraftSignatureRef.current;
       await deleteContractDraft();
