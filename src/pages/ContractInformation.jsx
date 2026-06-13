@@ -1616,7 +1616,6 @@ export default function ContractInformation() {
   }, [filterDocType, filterProjectId, filterQuery, letterById, projectById, rowById, rows]);
 
   React.useEffect(() => {
-    setSelectedContractIds(new Set());
     setContractsPage(0);
   }, [filterDocType, filterProjectId, filterQuery, contractsRowsPerPage]);
 
