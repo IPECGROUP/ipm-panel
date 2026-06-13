@@ -93,6 +93,7 @@ const SOCIAL_INSURANCE_STATUS_OPTIONS = [
   "اعتراض ثبت شده در انتظار جلسه هیات",
   "در انتظار جلسه رای هیات",
   "درحال صدور مفاصا حساب",
+  "خاتمه قرارداد",
   SOCIAL_INSURANCE_CLEARANCE_STATUS,
 ];
 
