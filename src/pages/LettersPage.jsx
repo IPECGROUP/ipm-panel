@@ -1627,7 +1627,7 @@ const formSelectedTagIds =
           ...(l && typeof l === "object" ? l : {}),
           ...(fresh && typeof fresh === "object" ? fresh : {}),
           attachments: mergedAttachments,
-          has_attachment: mergedAttachments.length > 0,
+          has_attachment: !!(fresh?.has_attachment ?? fresh?.hasAttachment ?? l?.has_attachment ?? l?.hasAttachment),
         });
         setViewAttIdx(0);
       }
@@ -1949,6 +1949,10 @@ const resetAllFilters = () => {
       const next = typeof updater === "function" ? updater(cur) : updater;
       return { ...prev, [which]: next };
     });
+  };
+
+  const setAttachmentChoice = (value) => {
+    setHasAttachment(value === true);
   };
 
   const currentDocFiles = useMemo(() => {
@@ -2742,8 +2746,6 @@ const secretariatLongText = (ymd) => {
     return Number.isFinite(n) ? n : 0;
   };
 
-  const hasRealAttachments = (l) => attachmentsOf(l).length > 0;
-
 const isPdfUrl = (url, name = "") =>
   /(\.pdf)(\?|#|$)/i.test(String(url || "")) || /(\.pdf)$/i.test(String(name || ""));
 
@@ -2976,7 +2978,10 @@ useEffect(() => {
     };
 
     const rows = items.map((l, idx) => {
-      const hasAtt = hasRealAttachments(l) ? "\u062F\u0627\u0631\u062F" : "\u0646\u062F\u0627\u0631\u062F";
+      const hasAtt =
+        l?.has_attachment ?? l?.hasAttachment
+          ? "\u062F\u0627\u0631\u062F"
+          : "\u0646\u062F\u0627\u0631\u062F";
       return [
         idx + 1,
         kindLabel(l),
@@ -3388,8 +3393,8 @@ setInternalUnitId(uid ? String(uid) : "");
     }
 
 
-    const ha = hasRealAttachments(l);
-    setHasAttachment(ha);
+    const ha = l?.has_attachment ?? l?.hasAttachment ?? false;
+    setHasAttachment(!!ha);
 
     const rids = Array.isArray(l?.return_to_ids) ? l.return_to_ids : Array.isArray(l?.returnToIds) ? l.returnToIds : [];
     setReturnToIds(rids.length ? rids.map((x) => String(x)) : [""]);
@@ -3577,7 +3582,7 @@ const secretariatNote =
 
     const queue = files.filter((f) => f && (f.optimizedFile || f.file) && !f.url);
 
-  const computedHasAttachment = queue.length > 0 || reused.length > 0;
+  const computedHasAttachment = hasAttachment === true;
 
 const f = getForm(kind);
 
@@ -3830,7 +3835,8 @@ const currentOfficeViewerUrl = useMemo(() => {
 
   const viewHasAttachment = useMemo(() => {
     if (!viewLetter) return false;
-    return viewAttachments.length > 0;
+    const ha = viewLetter?.has_attachment ?? viewLetter?.hasAttachment;
+    return !!ha;
   }, [viewLetter, viewAttachments]);
 
   const paginationIconBtnCls =
@@ -4774,7 +4780,7 @@ onChange={(e) => {
             type="radio"
             name={"hasAttachment_" + formKind}
             checked={hasAttachment === true}
-            onChange={() => setHasAttachment(true)}
+            onChange={() => setAttachmentChoice(true)}
             className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
           />
           <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>دارد</span>
@@ -4785,7 +4791,7 @@ onChange={(e) => {
             type="radio"
             name={"hasAttachment_" + formKind}
             checked={hasAttachment === false}
-            onChange={() => setHasAttachment(false)}
+            onChange={() => setAttachmentChoice(false)}
             className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
           />
           <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>ندارد</span>
@@ -4827,7 +4833,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
             type="radio"
             name="hasAttachment"
             checked={hasAttachment === true}
-            onChange={() => setHasAttachment(true)}
+            onChange={() => setAttachmentChoice(true)}
             className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
           />
           <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>دارد</span>
@@ -4838,7 +4844,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
             type="radio"
             name="hasAttachment"
             checked={hasAttachment === false}
-            onChange={() => setHasAttachment(false)}
+            onChange={() => setAttachmentChoice(false)}
             className={"h-4 w-4 " + (theme === "dark" ? "accent-white" : "accent-black")}
           />
           <span className={theme === "dark" ? "text-white/80 text-sm" : "text-neutral-800 text-sm"}>ندارد</span>
