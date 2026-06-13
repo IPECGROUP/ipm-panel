@@ -246,6 +246,18 @@ function normalizeIdList(values) {
   );
 }
 
+function mergeContractRowsById(...groups) {
+  const map = new Map();
+  groups.flat().forEach((row) => {
+    if (row?.id) map.set(String(row.id), row);
+  });
+  return Array.from(map.values()).sort((a, b) => {
+    const at = Date.parse(a?.updatedAt || a?.createdAt || "") || 0;
+    const bt = Date.parse(b?.updatedAt || b?.createdAt || "") || 0;
+    return bt - at;
+  });
+}
+
 function readBooleanFlag(value, fallback = true) {
   if (value === undefined || value === null || value === "") return fallback;
   if (typeof value === "boolean") return value;
@@ -827,6 +839,22 @@ function fetchJson(path, opt = {}) {
   });
 }
 
+async function fetchContractRows() {
+  const payloads = await Promise.all([
+    fetchJson("/contracts"),
+    fetchJson("/contracts?documentType=sub").catch(() => ({ items: [] })),
+    fetchJson("/contracts?documentType=appendix").catch(() => ({ items: [] })),
+  ]);
+
+  return mergeContractRowsById(
+    ...payloads.map((payload) =>
+      asArray(payload)
+        .map(normalizeContractRow)
+        .filter((row) => row.id)
+    )
+  );
+}
+
 async function uploadContractFiles(fileList) {
   const files = Array.from(fileList || []).filter(Boolean);
   if (!files.length) return [];
@@ -1123,10 +1151,7 @@ export default function ContractInformation() {
       setRowsLoading(true);
       setRowsError("");
       try {
-        const data = await fetchJson("/contracts");
-        const list = asArray(data)
-          .map(normalizeContractRow)
-          .filter((row) => row.id);
+        const list = await fetchContractRows();
         if (alive) setRows(list);
       } catch (error) {
         if (alive) setRowsError(error?.message || "خطا در دریافت قراردادها");
@@ -2410,11 +2435,18 @@ export default function ContractInformation() {
       if (!savedRow.id || (documentType === "sub" && savedRow.documentType !== "sub")) {
         throw new Error(`contract_save_not_persisted:${documentType}:${savedRow.documentType || "empty"}:${savedRow.id ? "has_id" : "no_id"}`);
       }
-      const refreshedData = await fetchJson("/contracts");
-      const refreshedRows = asArray(refreshedData)
-        .map(normalizeContractRow)
-        .filter((row) => row.id);
-      const savedIsVisibleInServerList = refreshedRows.some((row) => String(row.id) === String(savedRow.id));
+      let refreshedRows = await fetchContractRows();
+      let savedIsVisibleInServerList = refreshedRows.some((row) => String(row.id) === String(savedRow.id));
+      if (!savedIsVisibleInServerList) {
+        const focusedPayload = await fetchJson(
+          `/contracts?projectId=${encodeURIComponent(projectId)}&documentType=${encodeURIComponent(documentType)}`
+        ).catch(() => ({ items: [] }));
+        const focusedRows = asArray(focusedPayload)
+          .map(normalizeContractRow)
+          .filter((row) => row.id);
+        refreshedRows = mergeContractRowsById(refreshedRows, focusedRows);
+        savedIsVisibleInServerList = refreshedRows.some((row) => String(row.id) === String(savedRow.id));
+      }
       if (!savedIsVisibleInServerList) {
         throw new Error("contract_saved_but_not_listed");
       }
