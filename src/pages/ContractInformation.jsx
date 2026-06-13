@@ -2222,6 +2222,13 @@ export default function ContractInformation() {
   };
 
   const saveContractSection = async (sectionId = activeContractTab) => {
+    if (sectionId !== "financial") {
+      await saveContractDraft({ sectionId, immediate: true });
+      return;
+    }
+
+    await saveContractDraft({ sectionId, immediate: true });
+
     const formId = String(form.id || "").trim();
     const isEditingSavedContract = formId && rowById.has(formId);
     const saveAsNewFromDocumentTypeChange = documentTypeChangedFromEditRef.current;
@@ -2265,7 +2272,7 @@ export default function ContractInformation() {
       return;
     }
 
-    if (sectionId === "general") {
+    if (documentType !== "appendix") {
       const missing = [];
       if (!String(form.general?.contractType || "").trim()) missing.push("نوع قرارداد");
       if (!String(form.general?.contractTitle || "").trim()) missing.push("عنوان قرارداد");
@@ -2281,7 +2288,7 @@ export default function ContractInformation() {
       }
     }
 
-    if (sectionId === "calendar") {
+    {
       const missing = [];
       if (documentType === "appendix") {
         if (!String(form.calendar?.endDate || "").trim()) missing.push("تمدید مدت قرارداد تا تاریخ");
@@ -2296,7 +2303,7 @@ export default function ContractInformation() {
       }
     }
 
-    if (sectionId === "technical") {
+    {
       const missing = [];
       if (!String(form.technical?.serviceScope || "").trim()) missing.push("شرح خدمات و محدوده کار");
       if (documentType !== "appendix" && !normalizeIdList(form.technical?.tagIds).length) missing.push("برچسب");
@@ -2306,7 +2313,7 @@ export default function ContractInformation() {
       }
     }
 
-    if (sectionId === "financial") {
+    {
       const financial = normalizeFinancial(form.financial || {});
       const missing = [];
       if (documentType !== "appendix") {
@@ -2341,24 +2348,6 @@ export default function ContractInformation() {
           alert("در جدول تضامین، همه فیلدها اجباری هستند.");
           return;
         }
-      }
-    }
-
-    if (sectionId === "insurance") {
-      const insurance = normalizeInsurance(form.insurance || {});
-      const missing = [];
-      if (!String(insurance.contractRow || "").trim()) missing.push("ردیف پیمان");
-      if (!String(insurance.branchStatus || "").trim()) missing.push("شعبه سازمان تامین اجتماعی");
-      if (isSocialInsuranceClearanceStatus(insurance.lastStatus)) {
-        if (!hasFinancialAmount(insurance.finalGrossPerformance)) missing.push("کارکرد ناخالص نهایی قرارداد");
-        if (!insurance.clearanceFiles.length && !String(insurance.relatedLetterId || "").trim()) {
-          missing.push("مفاصا حساب بیمه تامین اجتماعی");
-        }
-      }
-      if (!String(insurance.lastStatus || "").trim()) missing.push("آخرین وضعیت قرارداد");
-      if (missing.length) {
-        alert(`فیلدهای اجباری تب تامین اجتماعی: ${missing.join("، ")}`);
-        return;
       }
     }
 
@@ -2885,6 +2874,7 @@ export default function ContractInformation() {
     const isFinalSaving = finalSavingSection === sectionId;
     const showFinalStatus = finalSaveStatus.sectionId === sectionId && finalSaveStatus.message;
     const showDraftStatus = isDraftSection && draftSaveStatus.sectionId === sectionId && draftSaveStatus.state;
+    const buttonTitle = sectionId === "financial" ? "ثبت نهایی قرارداد" : "ذخیره پیش‌نویس";
     const draftStatusText =
       draftSaveStatus.state === "saving" ? "در حال ذخیره پیش‌نویس..." : draftSaveStatus.state === "saved" ? "پیش‌نویس ذخیره شد" : "خطا در ذخیره پیش‌نویس";
     const draftStatusCls =
@@ -2901,8 +2891,8 @@ export default function ContractInformation() {
           onClick={() => saveContractSection(sectionId)}
           disabled={isFinalSaving}
           className={saveIconBtnCls}
-          title="ثبت نهایی قرارداد"
-          aria-label="ثبت نهایی قرارداد"
+          title={buttonTitle}
+          aria-label={buttonTitle}
         >
           <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
         </button>
