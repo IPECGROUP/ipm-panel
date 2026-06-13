@@ -1106,7 +1106,6 @@ export default function ContractInformation() {
   const [rows, setRows] = React.useState([]);
   const [rowsLoading, setRowsLoading] = React.useState(false);
   const [rowsError, setRowsError] = React.useState("");
-  const [selectedContractIds, setSelectedContractIds] = React.useState(() => new Set());
   const [contractsPage, setContractsPage] = React.useState(0);
   const [contractsRowsPerPage, setContractsRowsPerPage] = React.useState(10);
   const [formOpen, setFormOpen] = React.useState(false);
@@ -1655,11 +1654,6 @@ export default function ContractInformation() {
   const contractsStartIdx = safeContractsPage * contractsRowsPerPage;
   const contractsEndIdx = Math.min(contractsTotal, contractsStartIdx + contractsRowsPerPage);
   const contractsPageRows = contractsDisplayRows.slice(contractsStartIdx, contractsEndIdx);
-  const visibleContractIds = React.useMemo(() => contractsPageRows.map((row) => String(row.id)), [contractsPageRows]);
-  const allVisibleContractsSelected =
-    visibleContractIds.length > 0 && visibleContractIds.every((id) => selectedContractIds.has(String(id)));
-  const someVisibleContractsSelected =
-    visibleContractIds.some((id) => selectedContractIds.has(String(id))) && !allVisibleContractsSelected;
 
   React.useEffect(() => {
     if (contractsPage !== safeContractsPage) setContractsPage(safeContractsPage);
@@ -1685,29 +1679,6 @@ export default function ContractInformation() {
       return changed ? next : prev;
     });
   }, [rows]);
-
-  const toggleSelectAllVisibleContracts = () => {
-    setSelectedContractIds((prev) => {
-      const next = new Set(prev);
-      if (allVisibleContractsSelected) {
-        visibleContractIds.forEach((id) => next.delete(String(id)));
-      } else {
-        visibleContractIds.forEach((id) => next.add(String(id)));
-      }
-      return next;
-    });
-  };
-
-  const toggleContractSelect = (id) => {
-    const sid = String(id || "");
-    if (!sid) return;
-    setSelectedContractIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(sid)) next.delete(sid);
-      else next.add(sid);
-      return next;
-    });
-  };
 
   const toggleContractChildren = (id) => {
     const sid = String(id || "");
@@ -2549,11 +2520,6 @@ export default function ContractInformation() {
     try {
       await fetchJson(`/contracts?id=${encodeURIComponent(sid)}`, { method: "DELETE" });
       setRows((prev) => prev.filter((row) => String(row.id) !== sid && String(row.parentContractId) !== sid));
-      setSelectedContractIds((prev) => {
-        const next = new Set(prev);
-        next.delete(sid);
-        return next;
-      });
       setRowsError("");
     } catch (error) {
       alert(error?.message || "خطا در حذف قرارداد");
@@ -3476,7 +3442,9 @@ export default function ContractInformation() {
                             type="text"
                           />
                         </div>
+                      </div>
 
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                         {form.documentType !== "sub" ? (
                           <div className="min-w-0">
                             <div className={labelCls}>کارفرمای اصلی</div>
@@ -4185,6 +4153,37 @@ export default function ContractInformation() {
                           </div>
                         </div>
 
+                        <div className="mt-4">
+                          <div className={labelCls}>آخرین وضعیت قرارداد *</div>
+                          <select
+                            value={insuranceForm.lastStatus || ""}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setForm((prev) => {
+                                const insurance = normalizeInsurance(prev.insurance || {});
+                                return {
+                                  ...prev,
+                                  insurance: {
+                                    ...insurance,
+                                    lastStatus: value,
+                                    ...(isSocialInsuranceClearanceStatus(value)
+                                      ? {}
+                                      : { finalGrossPerformance: "", clearanceAmount: "", clearanceFiles: [], relatedLetterId: "" }),
+                                  },
+                                };
+                              });
+                            }}
+                            className={inputCls}
+                          >
+                            <option value="">انتخاب وضعیت</option>
+                            {SOCIAL_INSURANCE_STATUS_OPTIONS.map((item) => (
+                              <option key={item} value={item}>
+                                {item}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
                         {isSocialInsuranceClearanceStatus(insuranceForm.lastStatus) ? (
                           <div className="mt-4 rounded-2xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-700 dark:bg-white/[0.03]">
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:items-end">
@@ -4267,37 +4266,6 @@ export default function ContractInformation() {
                             ) : null}
                           </div>
                         ) : null}
-
-                        <div className="mt-4">
-                          <div className={labelCls}>آخرین وضعیت قرارداد *</div>
-                          <select
-                            value={insuranceForm.lastStatus || ""}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              setForm((prev) => {
-                                const insurance = normalizeInsurance(prev.insurance || {});
-                                return {
-                                  ...prev,
-                                  insurance: {
-                                    ...insurance,
-                                    lastStatus: value,
-                                    ...(isSocialInsuranceClearanceStatus(value)
-                                      ? {}
-                                      : { finalGrossPerformance: "", clearanceAmount: "", clearanceFiles: [], relatedLetterId: "" }),
-                                  },
-                                };
-                              });
-                            }}
-                            className={inputCls}
-                          >
-                            <option value="">انتخاب وضعیت</option>
-                            {SOCIAL_INSURANCE_STATUS_OPTIONS.map((item) => (
-                              <option key={item} value={item}>
-                                {item}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
                       </div>
 
                       <div className="flex items-center justify-end">
@@ -4357,14 +4325,6 @@ export default function ContractInformation() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
                             <div className="flex min-w-0 items-center gap-2">
-                              <input
-                                type="checkbox"
-                                className="h-4 w-4 shrink-0 accent-black dark:accent-neutral-200"
-                                checked={selectedContractIds.has(id)}
-                                onChange={() => toggleContractSelect(id)}
-                                aria-label="انتخاب"
-                                title="انتخاب"
-                              />
                               <button
                                 type="button"
                                 onClick={() => openEditForm(row)}
@@ -4465,37 +4425,23 @@ export default function ContractInformation() {
                 className="w-full min-w-[900px] table-fixed text-xs sm:min-w-[1120px] sm:text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-2 [&_td]:py-2 [&_th]:whitespace-nowrap [&_td]:min-w-0"
               >
                 <colgroup>
+                  <col style={{ width: 260 }} />
                   <col style={{ width: 150 }} />
                   <col style={{ width: 160 }} />
                   <col />
                   <col style={{ width: 220 }} />
-                  <col style={{ width: 260 }} />
                   <col style={{ width: 180 }} />
                   <col style={{ width: 130 }} />
-                  <col style={{ width: 48 }} />
                 </colgroup>
                 <thead>
                   <tr className={contractsTableHeadRowCls}>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">مرکز/پروژه</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">شماره قرارداد</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">نوع قرارداد</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">موضوع قرارداد</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">شرکت</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">مرکز/پروژه</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">وضعیت تامین اجتماعی</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">اقدامات</th>
-                    <th className="sticky top-0 z-40 bg-neutral-200 dark:bg-white/10">
-                      <input
-                        type="checkbox"
-                        className="w-4 h-4 accent-black dark:accent-neutral-200"
-                        checked={allVisibleContractsSelected}
-                        ref={(el) => {
-                          if (el) el.indeterminate = someVisibleContractsSelected;
-                        }}
-                        onChange={toggleSelectAllVisibleContracts}
-                        aria-label="انتخاب همه"
-                        title="انتخاب همه"
-                      />
-                    </th>
                   </tr>
                 </thead>
                 <tbody className={contractsTableBodyCls}>
@@ -4516,6 +4462,24 @@ export default function ContractInformation() {
 
                       return (
                         <tr key={row.id} className={`group bg-white transition-colors hover:bg-black/[0.04] dark:bg-neutral-900 dark:hover:bg-white/10 ${depth ? "bg-black/[0.025] dark:bg-white/[0.035]" : ""}`}>
+                          <td className={`px-3 ${divider}`}>
+                            <div className={`flex items-center gap-2 ${depth ? "pr-7" : ""}`}>
+                              {hasChildren ? (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleContractChildren(id)}
+                                  className="grid h-5 w-5 shrink-0 place-items-center rounded-md border border-black/15 bg-white text-sm font-bold leading-none dark:border-neutral-700 dark:bg-neutral-900"
+                                  aria-label={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
+                                  title={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
+                                >
+                                  {isExpanded ? "−" : "+"}
+                                </button>
+                              ) : (
+                                <span className="h-5 w-5 shrink-0" />
+                              )}
+                              <span className="block truncate text-right" title={projectLabel}>{projectLabel}</span>
+                            </div>
+                          </td>
                           <td className={`px-3 font-semibold ${divider}`}>{contractNo ? toFaDigits(contractNo) : "ثبت نشده"}</td>
                           <td className={`px-3 ${divider}`}>
                             <div className="truncate font-semibold">{row.general?.contractType || "ثبت نشده"}</div>
@@ -4538,24 +4502,6 @@ export default function ContractInformation() {
                             <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{companyRole}</div>
                           </td>
                           <td className={`px-3 ${divider}`}>
-                            <div className={`flex items-center gap-2 ${depth ? "pr-7" : ""}`}>
-                              {hasChildren ? (
-                                <button
-                                  type="button"
-                                  onClick={() => toggleContractChildren(id)}
-                                  className="grid h-5 w-5 shrink-0 place-items-center rounded-md border border-black/15 bg-white text-sm font-bold leading-none dark:border-neutral-700 dark:bg-neutral-900"
-                                  aria-label={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
-                                  title={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
-                                >
-                                  {isExpanded ? "−" : "+"}
-                                </button>
-                              ) : (
-                                <span className="h-5 w-5 shrink-0" />
-                              )}
-                              <span className="block truncate text-right" title={projectLabel}>{projectLabel}</span>
-                            </div>
-                          </td>
-                          <td className={`px-3 ${divider}`}>
                             <div className="truncate font-semibold">{row.insurance?.lastStatus || "ثبت نشده"}</div>
                             {row.insurance?.branchStatus ? (
                               <div className="mx-auto mt-1 max-w-[160px] truncate text-xs text-black/50 dark:text-neutral-400">
@@ -4570,22 +4516,12 @@ export default function ContractInformation() {
                               <RowActionIconBtn action="delete" onClick={() => deleteRow(row.id)} size={34} iconSize={16} />
                             </div>
                           </td>
-                          <td className={`px-3 ${divider}`}>
-                            <input
-                              type="checkbox"
-                              className="w-4 h-4 accent-black dark:accent-neutral-200"
-                              checked={selectedContractIds.has(id)}
-                              onChange={() => toggleContractSelect(id)}
-                              aria-label="انتخاب"
-                              title="انتخاب"
-                            />
-                          </td>
                         </tr>
                       );
                     })
                   ) : (
                     <tr>
-                      <td colSpan={8} className="px-3 py-8 text-center text-black/55 dark:text-neutral-400">
+                      <td colSpan={7} className="px-3 py-8 text-center text-black/55 dark:text-neutral-400">
                         قراردادی برای نمایش وجود ندارد.
                       </td>
                     </tr>
@@ -4630,20 +4566,30 @@ export default function ContractInformation() {
 
                 <div className="flex items-center justify-between gap-2 text-xs md:justify-start md:text-sm">
                   <span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span>
-                  <select
-                    value={contractsRowsPerPage}
-                    onChange={(e) => {
-                      setContractsRowsPerPage(Number(e.target.value) || 10);
-                      setContractsPage(0);
-                    }}
-                    className="h-9 rounded-lg border border-black/10 bg-white px-2 text-black outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
-                  >
-                    {[10, 25, 100].map((count) => (
-                      <option key={count} value={count}>
-                        {toFaDigits(count)}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="inline-flex h-9 overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">
+                    {[10, 25, 100].map((count) => {
+                      const active = contractsRowsPerPage === count;
+                      return (
+                        <button
+                          key={count}
+                          type="button"
+                          onClick={() => {
+                            setContractsRowsPerPage(count);
+                            setContractsPage(0);
+                          }}
+                          className={
+                            "min-w-10 px-3 text-sm font-semibold transition " +
+                            (active
+                              ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
+                              : "text-neutral-700 hover:bg-black/[0.04] dark:text-white/75 dark:hover:bg-white/10")
+                          }
+                          aria-pressed={active}
+                        >
+                          {toFaDigits(count)}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
