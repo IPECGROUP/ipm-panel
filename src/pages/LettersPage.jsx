@@ -875,6 +875,7 @@ const [_formTagIds, _setFormTagIds] = useState([]);
 
 // ✅ فرم‌ها جدا (برای جلوگیری از قاطی شدن بین تب‌ها)
 const [incomingForm, setIncomingForm] = useState({
+  category: "نامه",
   classification: "عادی",
   projectId: "",
   letterNo: "",
@@ -898,6 +899,7 @@ category: "نامه",
 });
 
 const [internalForm, setInternalForm] = useState({
+  category: "نامه",
   classification: "عادی",
   projectId: "",     
   letterNo: "",      
@@ -3212,6 +3214,7 @@ useLayoutEffect(() => {
 
  const resetForm = () => {
  setIncomingForm({
+  category: "نامه",
   classification: "عادی",
   projectId: "",
   letterNo: "",
@@ -3235,6 +3238,7 @@ useLayoutEffect(() => {
   });
 
   setInternalForm({
+  category: "نامه",
   classification: "عادی",
      projectId: "",      
   letterNo: "",  
@@ -3372,6 +3376,7 @@ setInternalUnitId(uid ? String(uid) : "");
     } else if (kind === "incoming") {
       setIncomingForm((p) => ({
         ...p,
+        category: mappedCat,
         classification: rawClass || "عادی",
         projectId,
         letterNo,
@@ -3384,6 +3389,7 @@ setInternalUnitId(uid ? String(uid) : "");
     } else {
       setInternalForm((p) => ({
         ...p,
+        category: mappedCat,
         classification: rawClass || "عادی",
         projectId,
         letterNo,
@@ -3590,9 +3596,7 @@ const payload = {
   kind,
 
   // ✅ category + classification از فرم درست
-  category:
-    kind === "outgoing" ? String(outgoingForm.category || "نامه").trim()
-    : "نامه",
+  category: String(getForm(kind)?.category || "نامه").trim() || "نامه",
 
   classification:
     String(getForm(kind)?.classification || "عادی").trim() || "عادی",
@@ -4460,13 +4464,13 @@ useEffect(() => {
 
   <FieldWrap>
     <select
-      value={outgoingForm.category}
+      value={getForm(formKind).category || "نامه"}
 onChange={(e) => {
-  setOutgoingForm((p) => ({ ...p, category: e.target.value }));
-  if (formKind === "outgoing") clearFieldError("outgoing", "category");
+  setForm(formKind, { category: e.target.value });
+  clearFieldError(formKind, "category");
 }}
-      className={formKind === "outgoing" ? inputWithError(inputSmCls, "outgoing", "category") : inputSmCls}
-aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "category") : undefined}
+      className={inputWithError(inputSmCls, formKind, "category")}
+aria-invalid={fieldHasError(formKind, "category") ? true : undefined}
     >
       {([...DOC_CLASS_BASE, ...(Array.isArray(docClassExtras) ? docClassExtras : [])]).map((lab) => (
         <option key={lab} value={lab}>{lab}</option>
@@ -4474,7 +4478,7 @@ aria-invalid={formKind === "outgoing" ? fieldHasError("outgoing", "category") : 
       <option value="سایر">سایر</option>
     </select>
 
-    {formKind === "outgoing" ? <ErrorTextAbs k="category" /> : null}
+    <ErrorTextAbs kind={formKind} k="category" />
   </FieldWrap>
 </div>
 
@@ -4679,13 +4683,13 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
       value={incomingForm.orgName}
 onChange={(e) => {
   setIncomingForm((p) => ({ ...p, orgName: e.target.value }));
-  clearFieldError("orgName");
+  clearFieldError("incoming", "orgName");
 }}
-      className={inputWithError(inputCls, "orgName")}
-      aria-invalid={fieldHasError("orgName")}
+      className={inputWithError(inputCls, "incoming", "orgName")}
+      aria-invalid={fieldHasError("incoming", "orgName")}
       type="text"
     />
-    <ErrorTextAbs k="orgName" />
+    <ErrorTextAbs kind="incoming" k="orgName" />
 </div>
 
 
@@ -4709,14 +4713,14 @@ onChange={(e) => {
   value={incomingForm.toName}
   onChange={(e) => {
     setIncomingForm((p) => ({ ...p, toName: e.target.value }));
-    clearFieldError("toName");
+    clearFieldError("incoming", "toName");
   }}
-  className={inputWithError(inputCls, "toName")}
-  aria-invalid={fieldHasError("toName")}
+  className={inputWithError(inputCls, "incoming", "toName")}
+  aria-invalid={fieldHasError("incoming", "toName")}
   type="text"
 />
 
-    <ErrorTextAbs k="toName" />
+    <ErrorTextAbs kind="incoming" k="toName" />
 </div>
 
         </>
@@ -4736,13 +4740,13 @@ onChange={(e) => {
           value={internalForm.subject}
           onChange={(e) => {
             setInternalForm((p) => ({ ...p, subject: e.target.value }));
-            clearFieldError("subject");
+            clearFieldError("internal", "subject");
           }}
           className={inputWithError(inputCls, "internal", "subject")}
           aria-invalid={fieldHasError("internal", "subject")}
           type="text"
         />
-        <ErrorTextAbs k="subject" />
+        <ErrorTextAbs kind="internal" k="subject" />
       </FieldWrap>
     </div>
 
