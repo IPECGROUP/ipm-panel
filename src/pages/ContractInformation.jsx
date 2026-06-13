@@ -2582,20 +2582,17 @@ export default function ContractInformation() {
   const previewFinancial = previewContract ? normalizeFinancial(previewContract.financial || {}) : normalizeFinancial({});
   const previewInsurance = previewContract ? normalizeInsurance(previewContract.insurance || {}) : normalizeInsurance({});
   const previewLetterAttachments = React.useMemo(() => {
-    const readAttachments = (letter) => {
-      const raw = letter?.attachments ?? letter?.attachments_json ?? letter?.attachmentsJson ?? [];
-      if (Array.isArray(raw)) return raw;
-      if (typeof raw === "string") {
-        try {
-          const parsed = JSON.parse(raw);
-          return Array.isArray(parsed) ? parsed : [];
-        } catch {
-          return [];
-        }
-      }
-      return [];
-    };
-    return previewRelatedLetters.flatMap(readAttachments);
+    return previewRelatedLetters.flatMap((letter) => {
+      const letterLabel = toFaDigits(secretariatNoOf(letter) || letterNoOf(letter) || letterIdOf(letter));
+      return letterAttachmentsOf(letter).map((file, index) => ({
+        ...file,
+        id: String(file?.id ?? file?.file_id ?? file?.fileId ?? file?.serverId ?? `${letterIdOf(letter)}_${index}`),
+        name: letterAttachmentNameOf(file) || `فایل ${toFaDigits(index + 1)}`,
+        type: letterAttachmentTypeOf(file),
+        url: resolvePublicUrl(letterAttachmentUrlOf(file)),
+        relatedLetterLabel: letterLabel,
+      }));
+    });
   }, [previewRelatedLetters]);
   const previewFiles = React.useMemo(() => {
     const normalizeFile = (file, group) => ({
@@ -2604,7 +2601,7 @@ export default function ContractInformation() {
       size: Number(file?.size ?? file?.bytes ?? 0),
       type: String(file?.type ?? file?.mimeType ?? file?.mime_type ?? ""),
       url: String(file?.url ?? file?.href ?? file?.path ?? ""),
-      group,
+      group: file?.relatedLetterLabel ? `${group} ${file.relatedLetterLabel}` : group,
     });
 
     return [
