@@ -21,7 +21,6 @@ const CONTRACT_SECTION_TABS = [
 ];
 
 const CONTRACT_DRAFT_STORAGE_KEY = "ipm_contract_information_form_draft_v1";
-const CONTRACT_VERIFIED_STORAGE_KEY = "ipm_contract_information_verified_rows_v1";
 const CONTRACT_DRAFT_SERVER_KEY = "contract_information_form";
 const CONTRACT_DRAFT_SAVE_DELAY_MS = 3000;
 const CONTRACT_DRAFT_IGNORED_KEYS = new Set([
@@ -222,38 +221,6 @@ function asArray(payload) {
   }
 
   return [];
-}
-
-function readVerifiedContractCache() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(CONTRACT_VERIFIED_STORAGE_KEY) || "[]");
-    return Array.isArray(parsed) ? parsed.filter((row) => row && typeof row === "object" && row.id) : [];
-  } catch {
-    return [];
-  }
-}
-
-function rememberVerifiedContract(row) {
-  if (!row?.id) return;
-  try {
-    const current = readVerifiedContractCache();
-    const next = [row, ...current.filter((item) => String(item.id) !== String(row.id))].slice(0, 100);
-    localStorage.setItem(CONTRACT_VERIFIED_STORAGE_KEY, JSON.stringify(next));
-  } catch {
-    // Cache is only a read-through helper; failures should not block saves.
-  }
-}
-
-function mergeContractRowsById(...groups) {
-  const map = new Map();
-  groups.flat().forEach((row) => {
-    if (row?.id) map.set(String(row.id), row);
-  });
-  return Array.from(map.values()).sort((a, b) => {
-    const at = Date.parse(a?.updatedAt || a?.createdAt || "") || 0;
-    const bt = Date.parse(b?.updatedAt || b?.createdAt || "") || 0;
-    return bt - at;
-  });
 }
 
 function normalizeIdList(values) {
@@ -1160,20 +1127,7 @@ export default function ContractInformation() {
         const list = asArray(data)
           .map(normalizeContractRow)
           .filter((row) => row.id);
-        const knownIds = new Set(list.map((row) => String(row.id)));
-        const cached = readVerifiedContractCache()
-          .map(normalizeContractRow)
-          .filter((row) => row.id && !knownIds.has(String(row.id)));
-        const verifiedCached = (
-          await Promise.all(
-            cached.map((row) =>
-              fetchJson(`/contracts?id=${encodeURIComponent(row.id)}`)
-                .then((payload) => normalizeContractRow(payload?.item || row))
-                .catch(() => null)
-            )
-          )
-        ).filter((row) => row?.id);
-        if (alive) setRows(mergeContractRowsById(list, verifiedCached));
+        if (alive) setRows(list);
       } catch (error) {
         if (alive) setRowsError(error?.message || "خطا در دریافت قراردادها");
       } finally {
@@ -2467,16 +2421,16 @@ export default function ContractInformation() {
       if (!savedRow.id || (documentType === "sub" && savedRow.documentType !== "sub")) {
         throw new Error(`contract_save_not_persisted:${documentType}:${savedRow.documentType || "empty"}:${savedRow.id ? "has_id" : "no_id"}`);
       }
-      rememberVerifiedContract(savedRow);
       const refreshedData = await fetchJson("/contracts");
       const refreshedRows = asArray(refreshedData)
         .map(normalizeContractRow)
         .filter((row) => row.id);
-      const finalRows = refreshedRows.some((row) => String(row.id) === String(savedRow.id))
-        ? refreshedRows
-        : mergeContractRowsById(refreshedRows, [savedRow]);
+      const savedIsVisibleInServerList = refreshedRows.some((row) => String(row.id) === String(savedRow.id));
+      if (!savedIsVisibleInServerList) {
+        throw new Error("contract_saved_but_not_listed");
+      }
 
-      setRows(finalRows);
+      setRows(refreshedRows);
       if (savedRow.parentContractId) {
         setExpandedContractIds((prev) => {
           const parentId = String(savedRow.parentContractId || "");
@@ -2506,6 +2460,8 @@ export default function ContractInformation() {
           ? "برای این پروژه قبلا قرارداد اصلی ثبت شده است. برای این پروژه فقط می‌توانید قرارداد فرعی یا الحاقیه ثبت کنید."
           : String(error?.message || "").startsWith("contract_save_not_persisted")
             ? `ثبت قرارداد در سرور تایید نشد. جزئیات: ${String(error?.message || "").replace("contract_save_not_persisted:", "")}`
+          : error?.message === "contract_saved_but_not_listed"
+            ? "قرارداد در تایید تکی سرور دیده شد، اما در فهرست اصلی قراردادها برنگشت. لطفا صفحه را تازه‌سازی کنید و اگر نمایش داده نشد، مشکل از API فهرست/دیتابیس است."
           : error?.message || "خطا در ذخیره قرارداد"
       );
     } finally {
