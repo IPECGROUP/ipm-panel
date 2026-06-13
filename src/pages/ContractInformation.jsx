@@ -1,3 +1,4 @@
+// قراردادها
 import React from "react";
 import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
@@ -125,6 +126,7 @@ const EMPTY_FORM = {
   relatedLetterIds: [],
   general: {
     contractType: "",
+    contractTitle: "",
     customContractType: false,
     contractSubject: "",
     mainEmployer: "",
@@ -372,17 +374,30 @@ function normalizeFinancial(financial = {}) {
 }
 
 function normalizeInsurance(insurance = {}) {
+  const rawBranchStatus = String(insurance?.branchStatus ?? insurance?.branch_status ?? "");
+  const rawLastStatus = String(insurance?.lastStatus ?? insurance?.last_status ?? "");
+  const branchLooksLikeOldStatus = !rawLastStatus && SOCIAL_INSURANCE_STATUS_OPTIONS.includes(rawBranchStatus);
   return {
     ...(EMPTY_FORM.insurance || {}),
     ...(insurance || {}),
     contractRow: String(insurance?.contractRow ?? insurance?.contract_row ?? ""),
-    branchStatus: String(insurance?.branchStatus ?? insurance?.branch_status ?? ""),
+    branchStatus: branchLooksLikeOldStatus ? "" : rawBranchStatus,
     finalGrossPerformance: String(insurance?.finalGrossPerformance ?? insurance?.final_gross_performance ?? ""),
     clearanceAmount: String(insurance?.clearanceAmount ?? insurance?.clearance_amount ?? ""),
     clearanceFiles: Array.isArray(insurance?.clearanceFiles) ? insurance.clearanceFiles : [],
     relatedLetterId: String(insurance?.relatedLetterId ?? insurance?.related_letter_id ?? ""),
-    lastStatus: String(insurance?.lastStatus ?? insurance?.last_status ?? ""),
+    lastStatus: rawLastStatus || (branchLooksLikeOldStatus ? rawBranchStatus : ""),
   };
+}
+
+function contractCompanyForRow(row = {}) {
+  const general = row?.general || {};
+  if (row?.documentType === "sub") return pickFirst(general.executor);
+  return pickFirst(general.employerAssignor, general.mainEmployer);
+}
+
+function contractCompanyRoleForRow(row = {}) {
+  return row?.documentType === "sub" ? "مجری" : "کارفرما";
 }
 
 function parseFinancialAmount(value) {
@@ -697,7 +712,13 @@ function normalizeContractRow(row) {
     parentContractId: documentType === "main" ? "" : String(item.parentContractId ?? item.parent_contract_id ?? ""),
     relatedLetterId: String(item.relatedLetterId ?? item.related_letter_id ?? ""),
     relatedLetterIds: normalizeIdList(item.relatedLetterIds ?? item.related_letter_ids ?? (item.relatedLetterId || item.related_letter_id ? [item.relatedLetterId ?? item.related_letter_id] : [])),
-    general: { ...base.general, ...(item.general && typeof item.general === "object" ? item.general : {}) },
+    general: (() => {
+      const general = { ...base.general, ...(item.general && typeof item.general === "object" ? item.general : {}) };
+      return {
+        ...general,
+        contractTitle: String(general.contractTitle ?? general.contract_title ?? ""),
+      };
+    })(),
     calendar: {
       ...base.calendar,
       ...(item.calendar && typeof item.calendar === "object" ? item.calendar : {}),
@@ -1550,6 +1571,7 @@ export default function ContractInformation() {
         documentTypeLabel(row.documentType),
         cNo,
         row.general?.contractType,
+        row.general?.contractTitle,
         row.general?.contractSubject,
         row.general?.mainEmployer,
         row.general?.employerAssignor,
@@ -2321,6 +2343,7 @@ export default function ContractInformation() {
     if (sectionId === "general") {
       const missing = [];
       if (!String(form.general?.contractType || "").trim()) missing.push("نوع قرارداد");
+      if (!String(form.general?.contractTitle || "").trim()) missing.push("عنوان قرارداد");
       if (!String(form.general?.contractSubject || "").trim()) missing.push("موضوع قرارداد");
       if (documentType === "sub") {
         if (!String(form.general?.executor || "").trim()) missing.push("مجری قرارداد");
@@ -2401,7 +2424,7 @@ export default function ContractInformation() {
       const missing = [];
       if (!String(insurance.contractRow || "").trim()) missing.push("ردیف پیمان");
       if (!String(insurance.branchStatus || "").trim()) missing.push("شعبه سازمان تامین اجتماعی");
-      if (isSocialInsuranceClearanceStatus(insurance.branchStatus)) {
+      if (isSocialInsuranceClearanceStatus(insurance.lastStatus)) {
         if (!hasFinancialAmount(insurance.finalGrossPerformance)) missing.push("کارکرد ناخالص نهایی قرارداد");
         if (!insurance.clearanceFiles.length && !String(insurance.relatedLetterId || "").trim()) {
           missing.push("مفاصا حساب بیمه تامین اجتماعی");
@@ -2860,6 +2883,7 @@ export default function ContractInformation() {
       <div class="meta">
         <div><strong>سند قراردادی:</strong> ${text(documentTypeLabel(previewContract.documentType))}</div>
         <div><strong>نوع قرارداد:</strong> ${text(previewContract.general?.contractType)}</div>
+        <div><strong>عنوان قرارداد:</strong> ${text(previewContract.general?.contractTitle)}</div>
         <div><strong>تاریخ چاپ:</strong> ${toFaDigits(new Date().toLocaleDateString("fa-IR"))}</div>
       </div>
     </header>
@@ -2869,6 +2893,7 @@ export default function ContractInformation() {
       ["شماره قرارداد", contractNoForRow(previewContract, rowById)],
       ...(previewContract.documentType === "sub" ? [["شماره قرارداد فرعی", previewContract.subContractNo]] : []),
       ["نوع قرارداد", previewContract.general?.contractType],
+      ["عنوان قرارداد", previewContract.general?.contractTitle],
       ["موضوع قرارداد", previewContract.general?.contractSubject],
       ["کارفرمای اصلی", previewContract.general?.mainEmployer],
       ["واگذارنده / کارفرما", previewContract.general?.employerAssignor],
@@ -2983,6 +3008,20 @@ export default function ContractInformation() {
   React.useEffect(() => {
     setPreviewFileIndex(0);
   }, [previewContractId]);
+
+  React.useEffect(() => {
+    if (!previewContractId && !relatedLetterPreviewId) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key !== "Escape") return;
+      if (relatedLetterPreviewId) {
+        setRelatedLetterPreviewId("");
+        return;
+      }
+      setPreviewContractId("");
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [previewContractId, relatedLetterPreviewId]);
 
   const renderFinancialRows = (title, sectionKey, rows, options = {}) => {
     const showFinancialRowDelete = Boolean(options.showDelete);
@@ -3416,6 +3455,16 @@ export default function ContractInformation() {
                               ))}
                             </select>
                           )}
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className={labelCls}>عنوان قرارداد *</div>
+                          <input
+                            value={form.general?.contractTitle || ""}
+                            onChange={(e) => setGeneralField("contractTitle", e.target.value)}
+                            className={inputCls}
+                            type="text"
+                          />
                         </div>
 
                         <div className="min-w-0">
@@ -4127,37 +4176,16 @@ export default function ContractInformation() {
 
                           <div className="min-w-0">
                             <div className={labelCls}>شعبه سازمان تامین اجتماعی *</div>
-                            <select
+                            <input
                               value={insuranceForm.branchStatus || ""}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                setForm((prev) => {
-                                  const insurance = normalizeInsurance(prev.insurance || {});
-                                  return {
-                                    ...prev,
-                                    insurance: {
-                                      ...insurance,
-                                      branchStatus: value,
-                                      ...(isSocialInsuranceClearanceStatus(value)
-                                        ? {}
-                                        : { finalGrossPerformance: "", clearanceAmount: "", clearanceFiles: [], relatedLetterId: "" }),
-                                    },
-                                  };
-                                });
-                              }}
+                              onChange={(e) => setInsuranceField("branchStatus", e.target.value)}
                               className={inputCls}
-                            >
-                              <option value="">انتخاب وضعیت</option>
-                              {SOCIAL_INSURANCE_STATUS_OPTIONS.map((item) => (
-                                <option key={item} value={item}>
-                                  {item}
-                                </option>
-                              ))}
-                            </select>
+                              type="text"
+                            />
                           </div>
                         </div>
 
-                        {isSocialInsuranceClearanceStatus(insuranceForm.branchStatus) ? (
+                        {isSocialInsuranceClearanceStatus(insuranceForm.lastStatus) ? (
                           <div className="mt-4 rounded-2xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-700 dark:bg-white/[0.03]">
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:items-end">
                               <div className="min-w-0">
@@ -4242,12 +4270,33 @@ export default function ContractInformation() {
 
                         <div className="mt-4">
                           <div className={labelCls}>آخرین وضعیت قرارداد *</div>
-                          <input
+                          <select
                             value={insuranceForm.lastStatus || ""}
-                            onChange={(e) => setInsuranceField("lastStatus", e.target.value)}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setForm((prev) => {
+                                const insurance = normalizeInsurance(prev.insurance || {});
+                                return {
+                                  ...prev,
+                                  insurance: {
+                                    ...insurance,
+                                    lastStatus: value,
+                                    ...(isSocialInsuranceClearanceStatus(value)
+                                      ? {}
+                                      : { finalGrossPerformance: "", clearanceAmount: "", clearanceFiles: [], relatedLetterId: "" }),
+                                  },
+                                };
+                              });
+                            }}
                             className={inputCls}
-                            type="text"
-                          />
+                          >
+                            <option value="">انتخاب وضعیت</option>
+                            {SOCIAL_INSURANCE_STATUS_OPTIONS.map((item) => (
+                              <option key={item} value={item}>
+                                {item}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       </div>
 
@@ -4287,6 +4336,8 @@ export default function ContractInformation() {
                     const projectLabel = project?.label || "بدون پروژه";
                     const docLabel = documentTypeLabel(row.documentType);
                     const typeText = row.general?.contractType || "ثبت نشده";
+                    const companyText = contractCompanyForRow(row) || "ثبت نشده";
+                    const companyRole = contractCompanyRoleForRow(row);
                     const relatedNo = relatedLetter
                       ? secretariatNoOf(relatedLetter) || letterNoOf(relatedLetter) || row.relatedLetterId
                       : "";
@@ -4362,13 +4413,24 @@ export default function ContractInformation() {
                               <div className="truncate">{row.general?.contractSubject || "ثبت نشده"}</div>
                             </div>
                             <div className="min-w-0">
-                              <div className="text-[11px] text-black/45 dark:text-neutral-500">مفاصات</div>
-                              <div className="truncate font-semibold">{row.insurance?.branchStatus || "ثبت نشده"}</div>
+                              <div className="text-[11px] text-black/45 dark:text-neutral-500">شرکت ({companyRole})</div>
+                              <div className="truncate font-semibold">{companyText}</div>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="min-w-0">
+                              <div className="text-[11px] text-black/45 dark:text-neutral-500">وضعیت تامین اجتماعی</div>
+                              <div className="truncate font-semibold">{row.insurance?.lastStatus || "ثبت نشده"}</div>
                               {row.insurance?.lastStatus ? (
                                 <div className="mt-0.5 truncate text-[11px] text-black/50 dark:text-neutral-400">
-                                  {row.insurance.lastStatus}
+                                  {row.insurance?.branchStatus || ""}
                                 </div>
                               ) : null}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-[11px] text-black/45 dark:text-neutral-500">عنوان قرارداد</div>
+                              <div className="truncate">{row.general?.contractTitle || "ثبت نشده"}</div>
                             </div>
                           </div>
 
@@ -4403,17 +4465,24 @@ export default function ContractInformation() {
                 className="w-full min-w-[900px] table-fixed text-xs sm:min-w-[1120px] sm:text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-2 [&_td]:py-2 [&_th]:whitespace-nowrap [&_td]:min-w-0"
               >
                 <colgroup>
-                  <col style={{ width: 48 }} />
-                  <col style={{ width: 280 }} />
+                  <col style={{ width: 150 }} />
                   <col style={{ width: 160 }} />
-                  <col style={{ width: 130 }} />
-                  <col style={{ width: 120 }} />
                   <col />
+                  <col style={{ width: 220 }} />
+                  <col style={{ width: 260 }} />
+                  <col style={{ width: 180 }} />
                   <col style={{ width: 130 }} />
-                  <col style={{ width: 120 }} />
+                  <col style={{ width: 48 }} />
                 </colgroup>
                 <thead>
                   <tr className={contractsTableHeadRowCls}>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">شماره قرارداد</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">نوع قرارداد</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">موضوع قرارداد</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">شرکت</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">مرکز/پروژه</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">وضعیت تامین اجتماعی</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">اقدامات</th>
                     <th className="sticky top-0 z-40 bg-neutral-200 dark:bg-white/10">
                       <input
                         type="checkbox"
@@ -4427,20 +4496,12 @@ export default function ContractInformation() {
                         title="انتخاب همه"
                       />
                     </th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">مرکز/پروژه</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">نوع قرارداد</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">شماره قرارداد</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">موضوع قرارداد</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">نامه ابلاغ کار</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">مفاصات</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">اقدامات</th>
                   </tr>
                 </thead>
                 <tbody className={contractsTableBodyCls}>
                   {contractsPageRows.length ? (
                     contractsPageRows.map((row, index) => {
                       const project = projectById.get(String(row.projectId));
-                      const relatedLetter = row.relatedLetterId ? letterById.get(String(row.relatedLetterId)) : null;
                       const contractNo = contractNoForRow(row, rowById);
                       const id = String(row.id);
                       const childRows = childRowsByParentId.get(id) || [];
@@ -4450,18 +4511,31 @@ export default function ContractInformation() {
                       const isLast = index === contractsPageRows.length - 1;
                       const divider = isLast ? "" : contractsRowDividerCls;
                       const projectLabel = project?.label || "بدون پروژه";
+                      const companyText = contractCompanyForRow(row) || "ثبت نشده";
+                      const companyRole = contractCompanyRoleForRow(row);
 
                       return (
                         <tr key={row.id} className={`group bg-white transition-colors hover:bg-black/[0.04] dark:bg-neutral-900 dark:hover:bg-white/10 ${depth ? "bg-black/[0.025] dark:bg-white/[0.035]" : ""}`}>
+                          <td className={`px-3 font-semibold ${divider}`}>{contractNo ? toFaDigits(contractNo) : "ثبت نشده"}</td>
                           <td className={`px-3 ${divider}`}>
-                            <input
-                              type="checkbox"
-                              className="w-4 h-4 accent-black dark:accent-neutral-200"
-                              checked={selectedContractIds.has(id)}
-                              onChange={() => toggleContractSelect(id)}
-                              aria-label="انتخاب"
-                              title="انتخاب"
-                            />
+                            <div className="truncate font-semibold">{row.general?.contractType || "ثبت نشده"}</div>
+                            <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{documentTypeLabel(row.documentType)}</div>
+                          </td>
+                          <td className={`px-3 ${divider}`}>
+                            <div className="mx-auto max-w-[260px] truncate" title={row.general?.contractSubject || ""}>
+                              {row.general?.contractSubject || "ثبت نشده"}
+                            </div>
+                            {row.general?.contractTitle ? (
+                              <div className="mx-auto mt-1 max-w-[260px] truncate text-xs text-black/50 dark:text-neutral-400" title={row.general.contractTitle}>
+                                {row.general.contractTitle}
+                              </div>
+                            ) : null}
+                          </td>
+                          <td className={`px-3 ${divider}`}>
+                            <div className="mx-auto max-w-[220px] truncate font-semibold" title={companyText}>
+                              {companyText}
+                            </div>
+                            <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{companyRole}</div>
                           </td>
                           <td className={`px-3 ${divider}`}>
                             <div className={`flex items-center gap-2 ${depth ? "pr-7" : ""}`}>
@@ -4482,32 +4556,10 @@ export default function ContractInformation() {
                             </div>
                           </td>
                           <td className={`px-3 ${divider}`}>
-                            <div className="truncate font-semibold">{row.general?.contractType || "ثبت نشده"}</div>
-                            <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{documentTypeLabel(row.documentType)}</div>
-                          </td>
-                          <td className={`px-3 font-semibold ${divider}`}>{contractNo ? toFaDigits(contractNo) : "ثبت نشده"}</td>
-                          <td className={`px-3 ${divider}`}>
-                            <div className="mx-auto max-w-[240px] truncate" title={row.general?.contractSubject || ""}>
-                              {row.general?.contractSubject || "ثبت نشده"}
-                            </div>
-                          </td>
-                          <td className={`px-3 ${divider}`}>
-                            {relatedLetter ? (
-                              <div>
-                                <div className="font-semibold">{toFaDigits(secretariatNoOf(relatedLetter) || letterNoOf(relatedLetter) || row.relatedLetterId)}</div>
-                                <div className="mx-auto mt-1 max-w-[260px] truncate text-xs text-black/55 dark:text-neutral-400">
-                                  {subjectOf(relatedLetter) || "بدون موضوع"}
-                                </div>
-                              </div>
-                            ) : (
-                              "ثبت نشده"
-                            )}
-                          </td>
-                          <td className={`px-3 ${divider}`}>
-                            <div className="truncate font-semibold">{row.insurance?.branchStatus || "ثبت نشده"}</div>
-                            {row.insurance?.lastStatus ? (
+                            <div className="truncate font-semibold">{row.insurance?.lastStatus || "ثبت نشده"}</div>
+                            {row.insurance?.branchStatus ? (
                               <div className="mx-auto mt-1 max-w-[160px] truncate text-xs text-black/50 dark:text-neutral-400">
-                                {row.insurance.lastStatus}
+                                {row.insurance.branchStatus}
                               </div>
                             ) : null}
                           </td>
@@ -4517,6 +4569,16 @@ export default function ContractInformation() {
                               <RowActionIconBtn action="edit" onClick={() => openEditForm(row)} size={34} iconSize={15} />
                               <RowActionIconBtn action="delete" onClick={() => deleteRow(row.id)} size={34} iconSize={16} />
                             </div>
+                          </td>
+                          <td className={`px-3 ${divider}`}>
+                            <input
+                              type="checkbox"
+                              className="w-4 h-4 accent-black dark:accent-neutral-200"
+                              checked={selectedContractIds.has(id)}
+                              onChange={() => toggleContractSelect(id)}
+                              aria-label="انتخاب"
+                              title="انتخاب"
+                            />
                           </td>
                         </tr>
                       );
@@ -4534,31 +4596,33 @@ export default function ContractInformation() {
 
             <div className="border-t border-neutral-300 px-3 py-2 dark:border-neutral-800">
               <div className="flex flex-col items-stretch gap-2 md:flex-row md:flex-wrap md:items-center md:justify-between">
-                <div className="flex items-center justify-start gap-2 text-xs md:text-sm">
-                  <button
-                    type="button"
-                    onClick={() => setContractsPage((page) => Math.max(0, page - 1))}
-                    disabled={safeContractsPage <= 0}
-                    className={paginationIconBtnCls}
-                    aria-label="صفحه قبل"
-                    title="صفحه قبل"
-                  >
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M9 18l6-6-6-6" />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setContractsPage((page) => Math.min(contractsPageCount - 1, page + 1))}
-                    disabled={safeContractsPage >= contractsPageCount - 1}
-                    className={paginationIconBtnCls}
-                    aria-label="صفحه بعد"
-                    title="صفحه بعد"
-                  >
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M15 18l-6-6 6-6" />
-                    </svg>
-                  </button>
+                <div className="flex items-center justify-between gap-2 text-xs md:justify-start md:text-sm">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setContractsPage((page) => Math.max(0, page - 1))}
+                      disabled={safeContractsPage <= 0}
+                      className={paginationIconBtnCls}
+                      aria-label="صفحه قبل"
+                      title="صفحه قبل"
+                    >
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9 18l6-6-6-6" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setContractsPage((page) => Math.min(contractsPageCount - 1, page + 1))}
+                      disabled={safeContractsPage >= contractsPageCount - 1}
+                      className={paginationIconBtnCls}
+                      aria-label="صفحه بعد"
+                      title="صفحه بعد"
+                    >
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M15 18l-6-6 6-6" />
+                      </svg>
+                    </button>
+                  </div>
                   <div className="whitespace-nowrap text-black/70 dark:text-neutral-400">
                     {contractsTotal === 0 ? "۰ از ۰" : `${toFaDigits(contractsStartIdx + 1)}-${toFaDigits(contractsEndIdx)} از ${toFaDigits(contractsTotal)}`}
                   </div>
@@ -4702,6 +4766,7 @@ export default function ContractInformation() {
                   {renderPreviewInfo("شماره قرارداد", contractNoForRow(previewContract, rowById))}
                   {previewContract.documentType === "sub" ? renderPreviewInfo("شماره قرارداد فرعی", previewContract.subContractNo) : null}
                   {renderPreviewInfo("نوع قرارداد", previewContract.general?.contractType)}
+                  {renderPreviewInfo("عنوان قرارداد", previewContract.general?.contractTitle)}
                   {renderPreviewInfo("موضوع قرارداد", previewContract.general?.contractSubject)}
                   {renderPreviewInfo("کارفرمای اصلی", previewContract.general?.mainEmployer)}
                   {renderPreviewInfo("واگذارنده / کارفرما", previewContract.general?.employerAssignor)}
