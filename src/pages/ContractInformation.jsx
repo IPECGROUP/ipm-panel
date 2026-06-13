@@ -2923,7 +2923,7 @@ export default function ContractInformation() {
     printWindow.document.close();
   };
 
-  const renderSaveButton = (sectionId, title = "ذخیره") => {
+  const renderSaveButton = (sectionId) => {
     const isDraftSection = sectionId !== "financial";
     const isFinalSaving = finalSavingSection === sectionId;
     const showFinalStatus = finalSaveStatus.sectionId === sectionId && finalSaveStatus.message;
@@ -2943,12 +2943,11 @@ export default function ContractInformation() {
           type="button"
           onClick={() => saveContractSection(sectionId)}
           disabled={isFinalSaving}
-          className={`${saveIconBtnCls} !w-auto gap-2 px-4 text-xs font-bold`}
+          className={saveIconBtnCls}
           title="ثبت نهایی قرارداد"
           aria-label="ثبت نهایی قرارداد"
         >
           <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
-          <span>{isFinalSaving ? "در حال ثبت..." : "ثبت نهایی"}</span>
         </button>
         <div
           className={[
@@ -3394,7 +3393,7 @@ export default function ContractInformation() {
                 <div className={tabbedPanelClass}>
                   {activeContractTab === "general" ? (
                     <div className="space-y-4 p-3 sm:p-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[220px_minmax(280px,1fr)_minmax(360px,1.35fr)]">
                         <div className="min-w-0">
                           <div className={labelCls}>نوع قرارداد *</div>
                           {form.general?.customContractType ? (
@@ -4429,7 +4428,6 @@ export default function ContractInformation() {
                   <col style={{ width: 160 }} />
                   <col />
                   <col style={{ width: 220 }} />
-                  <col style={{ width: 180 }} />
                   <col style={{ width: 130 }} />
                 </colgroup>
                 <thead>
@@ -4439,7 +4437,6 @@ export default function ContractInformation() {
                     <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">نوع قرارداد</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">موضوع قرارداد</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">شرکت</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">وضعیت تامین اجتماعی</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">اقدامات</th>
                   </tr>
                 </thead>
@@ -4501,14 +4498,6 @@ export default function ContractInformation() {
                             <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{companyRole}</div>
                           </td>
                           <td className={`px-3 ${divider}`}>
-                            <div className="truncate font-semibold">{row.insurance?.lastStatus || "ثبت نشده"}</div>
-                            {row.insurance?.branchStatus ? (
-                              <div className="mx-auto mt-1 max-w-[160px] truncate text-xs text-black/50 dark:text-neutral-400">
-                                {row.insurance.branchStatus}
-                              </div>
-                            ) : null}
-                          </td>
-                          <td className={`px-3 ${divider}`}>
                             <div className={centeredRowActionsCls}>
                               <RowActionIconBtn icon="/images/icons/namayeshname.svg" title="پیش نمایش" onClick={() => setPreviewContractId(id)} size={34} iconSize={16} />
                               <RowActionIconBtn action="edit" onClick={() => openEditForm(row)} size={34} iconSize={15} />
@@ -4520,7 +4509,7 @@ export default function ContractInformation() {
                     })
                   ) : (
                     <tr>
-                      <td colSpan={7} className="px-3 py-8 text-center text-black/55 dark:text-neutral-400">
+                      <td colSpan={6} className="px-3 py-8 text-center text-black/55 dark:text-neutral-400">
                         قراردادی برای نمایش وجود ندارد.
                       </td>
                     </tr>
