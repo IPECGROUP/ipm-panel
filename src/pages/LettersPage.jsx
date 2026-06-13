@@ -1627,10 +1627,7 @@ const formSelectedTagIds =
           ...(l && typeof l === "object" ? l : {}),
           ...(fresh && typeof fresh === "object" ? fresh : {}),
           attachments: mergedAttachments,
-          has_attachment:
-            mergedAttachments.length > 0
-              ? true
-              : !!(fresh?.has_attachment ?? fresh?.hasAttachment ?? l?.has_attachment ?? l?.hasAttachment),
+          has_attachment: mergedAttachments.length > 0,
         });
         setViewAttIdx(0);
       }
@@ -2722,15 +2719,15 @@ const secretariatLongText = (ymd) => {
   };
 
   const attachmentViewUrlOf = (a, letterId, index) => {
-    const fileId = a?.file_id ?? a?.fileId ?? a?.serverId;
-    const apiUrl = uploadedFileApiUrlOf(fileId);
-    if (apiUrl) return apiUrl;
-
     const raw = attachmentRawUrlOf(a).trim();
     if (/^https?:\/\//i.test(raw) || raw.startsWith("//")) return raw;
 
     const legacyApiUrl = letterAttachmentApiUrlOf(letterId, index);
-    return legacyApiUrl || raw;
+    if (legacyApiUrl) return legacyApiUrl;
+
+    const fileId = a?.file_id ?? a?.fileId ?? a?.serverId;
+    const apiUrl = uploadedFileApiUrlOf(fileId);
+    return apiUrl || raw;
   };
 
   const attachmentNameOf = (a) => {
@@ -2744,6 +2741,8 @@ const secretariatLongText = (ymd) => {
     const n = Number(v);
     return Number.isFinite(n) ? n : 0;
   };
+
+  const hasRealAttachments = (l) => attachmentsOf(l).length > 0;
 
 const isPdfUrl = (url, name = "") =>
   /(\.pdf)(\?|#|$)/i.test(String(url || "")) || /(\.pdf)$/i.test(String(name || ""));
@@ -2977,10 +2976,7 @@ useEffect(() => {
     };
 
     const rows = items.map((l, idx) => {
-      const hasAtt =
-        l?.has_attachment ?? l?.hasAttachment
-          ? "\u062F\u0627\u0631\u062F"
-          : "\u0646\u062F\u0627\u0631\u062F";
+      const hasAtt = hasRealAttachments(l) ? "\u062F\u0627\u0631\u062F" : "\u0646\u062F\u0627\u0631\u062F";
       return [
         idx + 1,
         kindLabel(l),
@@ -3299,10 +3295,12 @@ const switchFormKindAndReset = (nextKind) => {
   const normalizeAttachmentForPayload = (x) => {
     const url = String(x?.url || "");
     if (!url) return null;
+    const fileId = x?.file_id ?? x?.fileId ?? x?.serverId;
     const name = String(x?.name || "");
     const type = String(x?.type || "");
     const size = Number(x?.size || 0) || 0;
     const out = {};
+    if (fileId != null && String(fileId).trim()) out.file_id = fileId;
     if (name) out.name = name;
     if (url) out.url = url;
     if (type) out.type = type;
@@ -3390,8 +3388,8 @@ setInternalUnitId(uid ? String(uid) : "");
     }
 
 
-    const ha = l?.has_attachment ?? l?.hasAttachment ?? false;
-    setHasAttachment(!!ha);
+    const ha = hasRealAttachments(l);
+    setHasAttachment(ha);
 
     const rids = Array.isArray(l?.return_to_ids) ? l.return_to_ids : Array.isArray(l?.returnToIds) ? l.returnToIds : [];
     setReturnToIds(rids.length ? rids.map((x) => String(x)) : [""]);
@@ -3568,6 +3566,7 @@ const secretariatNote =
       .filter((f) => f && f.status === "done" && !!f.url && !f.file && !f.optimizedFile)
       .map((f) =>
         normalizeAttachmentForPayload({
+          file_id: f.serverId,
           name: f.name,
           url: f.url,
           type: f.type,
@@ -3578,7 +3577,7 @@ const secretariatNote =
 
     const queue = files.filter((f) => f && (f.optimizedFile || f.file) && !f.url);
 
-  const computedHasAttachment = queue.length > 0 || reused.length > 0 ? true : !!hasAttachment;
+  const computedHasAttachment = queue.length > 0 || reused.length > 0;
 
 const f = getForm(kind);
 
@@ -3831,9 +3830,7 @@ const currentOfficeViewerUrl = useMemo(() => {
 
   const viewHasAttachment = useMemo(() => {
     if (!viewLetter) return false;
-    if (viewAttachments.length > 0) return true;
-    const ha = viewLetter?.has_attachment ?? viewLetter?.hasAttachment;
-    return !!ha;
+    return viewAttachments.length > 0;
   }, [viewLetter, viewAttachments]);
 
   const paginationIconBtnCls =
@@ -3930,6 +3927,7 @@ const currentOfficeViewerUrl = useMemo(() => {
   const _addExistingAttachmentToCurrent = (which, att) => {
     const url = attachmentUrlOf(att);
     if (!url) return;
+    const fileId = att?.file_id ?? att?.fileId ?? att?.serverId ?? att?.id;
     const name = attachmentNameOf(att) || att?.name || "فایل";
     const type = attachmentTypeOf(att) || att?.type || (isPdfUrl(url) ? "application/pdf" : "");
     const size = attachmentSizeOf(att) || Number(att?.size || 0) || 0;
@@ -3947,7 +3945,7 @@ const currentOfficeViewerUrl = useMemo(() => {
           status: "done",
           progress: 100,
           error: "",
-          serverId: null,
+          serverId: fileId ?? null,
           url,
           previewUrl: null,
           file: null,
