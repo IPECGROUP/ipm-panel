@@ -126,7 +126,6 @@ const EMPTY_FORM = {
   relatedLetterIds: [],
   general: {
     contractType: "",
-    contractTitle: "",
     customContractType: false,
     contractSubject: "",
     mainEmployer: "",
@@ -694,10 +693,10 @@ function normalizeContractRow(row) {
     relatedLetterIds: normalizeIdList(item.relatedLetterIds ?? item.related_letter_ids ?? (item.relatedLetterId || item.related_letter_id ? [item.relatedLetterId ?? item.related_letter_id] : [])),
     general: (() => {
       const general = { ...base.general, ...(item.general && typeof item.general === "object" ? item.general : {}) };
-      return {
-        ...general,
-        contractTitle: String(general.contractTitle ?? general.contract_title ?? ""),
-      };
+      const rest = { ...general };
+      delete rest.contractTitle;
+      delete rest.contract_title;
+      return rest;
     })(),
     calendar: {
       ...base.calendar,
@@ -1550,7 +1549,6 @@ export default function ContractInformation() {
         documentTypeLabel(row.documentType),
         cNo,
         row.general?.contractType,
-        row.general?.contractTitle,
         row.general?.contractSubject,
         row.general?.mainEmployer,
         row.general?.employerAssignor,
@@ -2300,7 +2298,6 @@ export default function ContractInformation() {
     if (documentType !== "appendix") {
       const missing = [];
       if (!String(form.general?.contractType || "").trim()) missing.push("نوع قرارداد");
-      if (!String(form.general?.contractTitle || "").trim()) missing.push("عنوان قرارداد");
       if (!String(form.general?.contractSubject || "").trim()) missing.push("موضوع قرارداد");
       if (documentType === "sub") {
         if (!String(form.general?.executor || "").trim()) missing.push("مجری قرارداد");
@@ -2823,7 +2820,6 @@ export default function ContractInformation() {
       <div class="meta">
         <div><strong>سند قراردادی:</strong> ${text(documentTypeLabel(previewContract.documentType))}</div>
         <div><strong>نوع قرارداد:</strong> ${text(previewContract.general?.contractType)}</div>
-        <div><strong>عنوان قرارداد:</strong> ${text(previewContract.general?.contractTitle)}</div>
         <div><strong>تاریخ چاپ:</strong> ${toFaDigits(new Date().toLocaleDateString("fa-IR"))}</div>
       </div>
     </header>
@@ -2833,7 +2829,6 @@ export default function ContractInformation() {
       ["شماره قرارداد", contractNoForRow(previewContract, rowById)],
       ...(previewContract.documentType === "sub" ? [["شماره قرارداد فرعی", previewContract.subContractNo]] : []),
       ["نوع قرارداد", previewContract.general?.contractType],
-      ["عنوان قرارداد", previewContract.general?.contractTitle],
       ["موضوع قرارداد", previewContract.general?.contractSubject],
       ["کارفرمای اصلی", previewContract.general?.mainEmployer],
       ["واگذارنده / کارفرما", previewContract.general?.employerAssignor],
@@ -3369,7 +3364,7 @@ export default function ContractInformation() {
                 <div className={tabbedPanelClass}>
                   {activeContractTab === "general" ? (
                     <div className="space-y-4 p-3 sm:p-4">
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[220px_minmax(280px,1fr)_minmax(360px,1.35fr)]">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-[220px_minmax(360px,1fr)]">
                         <div className="min-w-0">
                           <div className={labelCls}>نوع قرارداد *</div>
                           {form.general?.customContractType ? (
@@ -3395,16 +3390,6 @@ export default function ContractInformation() {
                               ))}
                             </select>
                           )}
-                        </div>
-
-                        <div className="min-w-0">
-                          <div className={labelCls}>عنوان قرارداد *</div>
-                          <input
-                            value={form.general?.contractTitle || ""}
-                            onChange={(e) => setGeneralField("contractTitle", e.target.value)}
-                            className={inputCls}
-                            type="text"
-                          />
                         </div>
 
                         <div className="min-w-0">
@@ -4352,22 +4337,6 @@ export default function ContractInformation() {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="min-w-0">
-                              <div className="text-[11px] text-black/45 dark:text-neutral-500">وضعیت تامین اجتماعی</div>
-                              <div className="truncate font-semibold">{row.insurance?.lastStatus || "ثبت نشده"}</div>
-                              {row.insurance?.lastStatus ? (
-                                <div className="mt-0.5 truncate text-[11px] text-black/50 dark:text-neutral-400">
-                                  {row.insurance?.branchStatus || ""}
-                                </div>
-                              ) : null}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="text-[11px] text-black/45 dark:text-neutral-500">عنوان قرارداد</div>
-                              <div className="truncate">{row.general?.contractTitle || "ثبت نشده"}</div>
-                            </div>
-                          </div>
-
                           <div>
                             <div className="text-[11px] text-black/45 dark:text-neutral-500">نامه ابلاغ کار</div>
                             {relatedLetter ? (
@@ -4461,11 +4430,6 @@ export default function ContractInformation() {
                             <div className="mx-auto max-w-[260px] truncate" title={row.general?.contractSubject || ""}>
                               {row.general?.contractSubject || "ثبت نشده"}
                             </div>
-                            {row.general?.contractTitle ? (
-                              <div className="mx-auto mt-1 max-w-[260px] truncate text-xs text-black/50 dark:text-neutral-400" title={row.general.contractTitle}>
-                                {row.general.contractTitle}
-                              </div>
-                            ) : null}
                           </td>
                           <td className={`px-3 ${divider}`}>
                             <div className="mx-auto max-w-[220px] truncate font-semibold" title={companyText}>
@@ -4676,7 +4640,6 @@ export default function ContractInformation() {
                   {renderPreviewInfo("شماره قرارداد", contractNoForRow(previewContract, rowById))}
                   {previewContract.documentType === "sub" ? renderPreviewInfo("شماره قرارداد فرعی", previewContract.subContractNo) : null}
                   {renderPreviewInfo("نوع قرارداد", previewContract.general?.contractType)}
-                  {renderPreviewInfo("عنوان قرارداد", previewContract.general?.contractTitle)}
                   {renderPreviewInfo("موضوع قرارداد", previewContract.general?.contractSubject)}
                   {renderPreviewInfo("کارفرمای اصلی", previewContract.general?.mainEmployer)}
                   {renderPreviewInfo("واگذارنده / کارفرما", previewContract.general?.employerAssignor)}
