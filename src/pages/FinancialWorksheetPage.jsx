@@ -377,6 +377,7 @@ export default function FinancialWorksheetPage() {
   const [uploadDraftFiles, setUploadDraftFiles] = useState([]);
   const [letters, setLetters] = useState([]);
   const [lettersLoading, setLettersLoading] = useState(false);
+  const lettersLoadedRef = useRef(false);
   const [uploadLetterQuery, setUploadLetterQuery] = useState("");
   const [relatedLetterIds, setRelatedLetterIds] = useState([]);
   const [uploadDraftLetterIds, setUploadDraftLetterIds] = useState([]);
@@ -402,14 +403,12 @@ export default function FinancialWorksheetPage() {
     (async () => {
       setErr("");
       setProjectsLoading(true);
-      setLettersLoading(true);
       try {
-        const [pResp, tResp, sResp, cResp, lResp] = await Promise.all([
+        const [pResp, tResp, sResp, cResp] = await Promise.all([
           api("/projects").catch(() => ({ items: [] })),
           api("/base/currencies/types").catch(() => ({ items: [] })),
           api("/base/currencies/sources").catch(() => ({ items: [] })),
           api("/contracts").catch(() => ({ items: [] })),
-          api("/letters").catch(() => ({ items: [] })),
         ]);
 
         if (stop) return;
@@ -420,10 +419,11 @@ export default function FinancialWorksheetPage() {
         const tList = tResp?.items || tResp?.data || tResp?.types || [];
         const sList = sResp?.items || sResp?.data || sResp?.sources || [];
         const cList = cResp?.items || cResp?.data || cResp?.contracts || [];
-        const lList = lResp?.items || lResp?.data || lResp?.letters || [];
         const baseContracts = Array.isArray(cList) ? cList : [];
         const knownContractIds = new Set(baseContracts.map((row) => String(row?.id || "")).filter(Boolean));
-        const cachedContracts = readVerifiedContractCache().filter((row) => row?.id && !knownContractIds.has(String(row.id)));
+        const cachedContracts = readVerifiedContractCache()
+          .filter((row) => row?.id && !knownContractIds.has(String(row.id)))
+          .slice(0, 40);
         const verifiedCachedContracts = (
           await Promise.all(
             cachedContracts.map((row) =>
@@ -438,16 +438,10 @@ export default function FinancialWorksheetPage() {
         setCurrencyItems(Array.isArray(tList) ? tList : []);
         setCurrencySourceItems(Array.isArray(sList) ? sList : []);
         setContractRows(mergeContractRowsById(baseContracts, verifiedCachedContracts));
-        setLetters(
-          (Array.isArray(lList) ? lList : [])
-            .filter((letter) => letter && typeof letter === "object" && letterIdOf(letter))
-            .sort((a, b) => String(letterIdOf(b)).localeCompare(String(letterIdOf(a)), "fa", { numeric: true })),
-        );
       } catch (e) {
         if (!stop) setErr(e.message || "خطا در بارگذاری اطلاعات");
       } finally {
         if (!stop) setProjectsLoading(false);
-        if (!stop) setLettersLoading(false);
       }
     })();
     return () => {
@@ -616,10 +610,22 @@ export default function FinancialWorksheetPage() {
     };
   }, [api, contractId, projectId, tab, normalizeRows]);
 
-  const sumGross = useMemo(() => (worksheetRows || []).reduce((s, r) => s + Number(r.grossAmount || 0), 0), [worksheetRows]);
-  const sumVat = useMemo(() => (worksheetRows || []).reduce((s, r) => s + Number(r.vatAmount || 0), 0), [worksheetRows]);
-  const sumReceiptAmount = useMemo(() => (worksheetRows || []).reduce((s, r) => s + Number(r.receiptAmount || 0), 0), [worksheetRows]);
-  const sumReceiptForeignAmount = useMemo(() => (worksheetRows || []).reduce((s, r) => s + Number(r.receiptForeignAmount || 0), 0), [worksheetRows]);
+  const worksheetTotals = useMemo(() => {
+    return (worksheetRows || []).reduce(
+      (acc, row) => {
+        acc.gross += Number(row.grossAmount || 0);
+        acc.vat += Number(row.vatAmount || 0);
+        acc.receipt += Number(row.receiptAmount || 0);
+        acc.receiptForeign += Number(row.receiptForeignAmount || 0);
+        return acc;
+      },
+      { gross: 0, vat: 0, receipt: 0, receiptForeign: 0 },
+    );
+  }, [worksheetRows]);
+  const sumGross = worksheetTotals.gross;
+  const sumVat = worksheetTotals.vat;
+  const sumReceiptAmount = worksheetTotals.receipt;
+  const sumReceiptForeignAmount = worksheetTotals.receiptForeign;
 
   const selectedContract = useMemo(() => contractById.get(String(contractId || "")) || null, [contractById, contractId]);
   const selectedContractFinancial = selectedContract?.financial && typeof selectedContract.financial === "object" ? selectedContract.financial : {};
@@ -667,13 +673,29 @@ export default function FinancialWorksheetPage() {
 
   const readItemId = (it) => String(it?.id ?? it?.code ?? it?.value ?? it?.key ?? "");
   const readItemLabel = (it) => String(it?.label ?? it?.title ?? it?.name ?? it?.code ?? "").trim();
+  const currencyById = useMemo(() => {
+    const map = new Map();
+    (currencyItems || []).forEach((item) => {
+      const id = readItemId(item);
+      if (id) map.set(id, item);
+    });
+    return map;
+  }, [currencyItems]);
+  const currencySourceById = useMemo(() => {
+    const map = new Map();
+    (currencySourceItems || []).forEach((item) => {
+      const id = readItemId(item);
+      if (id) map.set(id, item);
+    });
+    return map;
+  }, [currencySourceItems]);
   const selectedCurrencyLabel = useMemo(
-    () => readItemLabel((currencyItems || []).find((it) => readItemId(it) === String(currencyId))),
-    [currencyItems, currencyId],
+    () => readItemLabel(currencyById.get(String(currencyId))),
+    [currencyById, currencyId],
   );
   const selectedCurrencySourceLabel = useMemo(
-    () => readItemLabel((currencySourceItems || []).find((it) => readItemId(it) === String(currencySourceId))),
-    [currencySourceItems, currencySourceId],
+    () => readItemLabel(currencySourceById.get(String(currencySourceId))),
+    [currencySourceById, currencySourceId],
   );
   const selectedCurrencyMetaLabel = useMemo(() => {
     const parts = [selectedCurrencyLabel, selectedCurrencySourceLabel].filter(Boolean);
@@ -702,16 +724,16 @@ export default function FinancialWorksheetPage() {
   }, [receiptJalaliDate]);
 
   const selectedReceiptCurrency = useMemo(
-    () => (currencyItems || []).find((it) => readItemId(it) === String(receiptCurrencyId)),
-    [currencyItems, receiptCurrencyId],
+    () => currencyById.get(String(receiptCurrencyId)),
+    [currencyById, receiptCurrencyId],
   );
   const selectedReceiptCurrencyLabel = useMemo(
     () => readItemLabel(selectedReceiptCurrency),
     [selectedReceiptCurrency],
   );
   const selectedReceiptCurrencySourceLabel = useMemo(
-    () => readItemLabel((currencySourceItems || []).find((it) => readItemId(it) === String(receiptCurrencySourceId))),
-    [currencySourceItems, receiptCurrencySourceId],
+    () => readItemLabel(currencySourceById.get(String(receiptCurrencySourceId))),
+    [currencySourceById, receiptCurrencySourceId],
   );
   const isRialCurrency = useMemo(() => {
     const id = readItemId(selectedReceiptCurrency).toLowerCase();
@@ -725,11 +747,29 @@ export default function FinancialWorksheetPage() {
   const updateOtherDebtRow = (id, patch) =>
     setOtherDebts((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
 
+  const loadLettersForUpload = useCallback(async () => {
+    if (lettersLoadedRef.current || lettersLoading) return;
+    setLettersLoading(true);
+    try {
+      const lResp = await api("/letters");
+      const lList = lResp?.items || lResp?.data || lResp?.letters || [];
+      setLetters(
+        (Array.isArray(lList) ? lList : [])
+          .filter((letter) => letter && typeof letter === "object" && letterIdOf(letter))
+          .sort((a, b) => String(letterIdOf(b)).localeCompare(String(letterIdOf(a)), "fa", { numeric: true })),
+      );
+      lettersLoadedRef.current = true;
+    } finally {
+      setLettersLoading(false);
+    }
+  }, [api, lettersLoading]);
+
   const openUploadModal = () => {
     setUploadDraftFiles(Array.isArray(uploadedFiles) ? uploadedFiles : []);
     setUploadDraftLetterIds(Array.isArray(relatedLetterIds) ? relatedLetterIds : []);
     setUploadLetterQuery("");
     setUploadOpen(true);
+    void loadLettersForUpload();
   };
   const addFilesToDraft = (fileList) => {
     const incoming = Array.from(fileList || []).filter(Boolean);
@@ -747,10 +787,20 @@ export default function FinancialWorksheetPage() {
       return haystack.includes(q);
     });
   }, [letters, uploadLetterQuery]);
+  const letterById = useMemo(() => {
+    const map = new Map();
+    (letters || []).forEach((letter) => {
+      const id = String(letterIdOf(letter) || "");
+      if (id) map.set(id, letter);
+    });
+    return map;
+  }, [letters]);
   const selectedRelatedLetters = useMemo(() => {
-    const ids = new Set((relatedLetterIds || []).map(String));
-    return (letters || []).filter((letter) => ids.has(String(letterIdOf(letter))));
-  }, [letters, relatedLetterIds]);
+    return (relatedLetterIds || [])
+      .map((id) => letterById.get(String(id)))
+      .filter(Boolean);
+  }, [letterById, relatedLetterIds]);
+  const uploadDraftLetterIdSet = useMemo(() => new Set((uploadDraftLetterIds || []).map(String)), [uploadDraftLetterIds]);
   const toggleUploadDraftLetter = (id) => {
     setUploadDraftLetterIds((prev) => {
       const list = Array.isArray(prev) ? prev.map(String) : [];
@@ -1648,7 +1698,7 @@ export default function FinancialWorksheetPage() {
                       ) : filteredUploadLetters.length ? (
                         filteredUploadLetters.map((letter) => {
                           const id = String(letterIdOf(letter));
-                          const checked = uploadDraftLetterIds.map(String).includes(id);
+                          const checked = uploadDraftLetterIdSet.has(id);
                           const no = secretariatNoOf(letter) || letterNoOf(letter) || id;
                           return (
                             <button
