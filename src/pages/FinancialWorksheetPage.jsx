@@ -1033,7 +1033,7 @@ export default function FinancialWorksheetPage() {
 
   const confirmActionWrapCls = "flex items-center justify-end pt-2";
   const confirmActionBtnCls =
-    "h-10 w-10 md:h-12 md:w-12 rounded-xl bg-black text-white ring-1 ring-black/15 transition flex items-center justify-center hover:bg-black/90 dark:bg-white dark:text-black dark:ring-white/10 dark:hover:bg-white/90";
+    "h-10 w-10 -translate-x-2 rounded-xl bg-black text-white ring-1 ring-black/15 transition flex items-center justify-center hover:bg-black/90 md:h-12 md:w-12 md:-translate-x-3 dark:bg-white dark:text-black dark:ring-white/10 dark:hover:bg-white/90";
   const confirmActionIconCls = "w-4 h-4 md:w-5 md:h-5 invert dark:invert-0";
 
   return (
