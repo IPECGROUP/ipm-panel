@@ -2508,7 +2508,7 @@ export default function ContractInformation() {
   const iconBtnCls =
     "h-10 w-10 rounded-xl border border-black/15 bg-white hover:bg-black/[0.04] transition inline-flex items-center justify-center dark:bg-neutral-900 dark:border-neutral-700 dark:hover:bg-neutral-800";
   const saveIconBtnCls =
-    "h-11 w-11 rounded-xl bg-black text-white hover:bg-black/90 transition inline-flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed";
+    "h-10 w-10 md:h-12 md:w-12 rounded-xl bg-black text-white ring-1 ring-black/15 hover:bg-black/90 transition inline-flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed dark:ring-white/10";
   const chipBaseCls = "inline-flex h-10 items-center gap-2 rounded-full border px-3 text-xs shadow-sm transition";
   const chipCls =
     chipBaseCls +
@@ -2909,7 +2909,7 @@ export default function ContractInformation() {
           : "text-black/50 dark:text-neutral-400";
 
     return (
-      <div className="flex min-w-[130px] flex-col items-center gap-1">
+      <div className="relative flex items-center justify-center">
         <button
           type="button"
           onClick={() => saveContractSection(sectionId)}
@@ -2918,11 +2918,11 @@ export default function ContractInformation() {
           title={buttonTitle}
           aria-label={buttonTitle}
         >
-          <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
+          <img src="/images/icons/check.svg" alt="" className="w-4 h-4 invert md:w-5 md:h-5" />
         </button>
         <div
           className={[
-            "h-4 text-[10px] font-semibold leading-4 transition-all duration-200",
+            "pointer-events-none absolute top-full left-1/2 mt-1 h-4 -translate-x-1/2 whitespace-nowrap text-[10px] font-semibold leading-4 transition-all duration-200",
             isFinalSaving || showFinalStatus || showDraftStatus ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0",
             !showFinalStatus && draftSaveStatus.state === "saving" ? "animate-pulse" : "",
             isFinalSaving || showFinalStatus ? "text-emerald-600 dark:text-emerald-400" : draftStatusCls,
@@ -3466,7 +3466,7 @@ export default function ContractInformation() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-end">
+                      <div className="flex items-center justify-end pt-2">
                         {renderSaveButton("general")}
                       </div>
                     </div>
@@ -3604,7 +3604,7 @@ export default function ContractInformation() {
                       </>
                       )}
 
-                      <div className="flex items-center justify-end">
+                      <div className="flex items-center justify-end pt-2">
                         {renderSaveButton("calendar")}
                       </div>
                     </div>
@@ -3620,7 +3620,7 @@ export default function ContractInformation() {
                               className={`${textareaCls} !h-[150px] !min-h-[150px] !resize-none sm:!h-[180px] sm:!min-h-[180px]`}
                             />
                           </div>
-                          <div className="flex items-center justify-end">
+                          <div className="flex items-center justify-end pt-2">
                             {renderSaveButton("technical", "ثبت")}
                           </div>
                         </div>
@@ -3685,7 +3685,7 @@ export default function ContractInformation() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-end">
+                      <div className="flex items-center justify-end pt-2">
                         {renderSaveButton("technical")}
                       </div>
                       </>
@@ -4083,7 +4083,7 @@ export default function ContractInformation() {
                         </>
                       ) : null}
 
-                      <div className="flex items-center justify-end">
+                      <div className="flex items-center justify-end pt-2">
                         {renderSaveButton("financial")}
                       </div>
                     </div>
@@ -4227,7 +4227,7 @@ export default function ContractInformation() {
                         ) : null}
                       </div>
 
-                      <div className="flex items-center justify-end">
+                      <div className="flex items-center justify-end pt-2">
                         {renderSaveButton("insurance")}
                       </div>
                     </div>
@@ -4237,7 +4237,7 @@ export default function ContractInformation() {
                         بخش {CONTRACT_SECTION_TABS.find((tab) => tab.id === activeContractTab)?.label} در مرحله بعد تکمیل می‌شود.
                       </div>
 
-                      <div className="flex items-center justify-end">
+                      <div className="flex items-center justify-end pt-2">
                         {renderSaveButton(activeContractTab)}
                       </div>
                     </div>

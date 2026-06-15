@@ -1031,6 +1031,11 @@ export default function FinancialWorksheetPage() {
     }
   };
 
+  const confirmActionWrapCls = "flex items-center justify-end pt-2";
+  const confirmActionBtnCls =
+    "h-10 w-10 md:h-12 md:w-12 rounded-xl bg-black text-white ring-1 ring-black/15 transition flex items-center justify-center hover:bg-black/90 dark:bg-white dark:text-black dark:ring-white/10 dark:hover:bg-white/90";
+  const confirmActionIconCls = "w-4 h-4 md:w-5 md:h-5 invert dark:invert-0";
+
   return (
     <>
       <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
@@ -1306,15 +1311,15 @@ export default function FinancialWorksheetPage() {
                     </div>
                   </div>
 
-                  <div className="flex justify-end">
+                  <div className={confirmActionWrapCls}>
                     <button
                       type="button"
                       onClick={handleSaveReceipt}
-                      className="h-10 w-10 rounded-xl bg-black text-white ring-1 ring-black/15 transition flex items-center justify-center hover:bg-black/90 dark:bg-white dark:text-black dark:ring-white/10"
+                      className={confirmActionBtnCls}
                       aria-label="تایید و ثبت"
                       title="تایید و ثبت"
                     >
-                      <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
+                      <img src="/images/icons/check.svg" alt="" className={confirmActionIconCls} />
                     </button>
                   </div>
                 </>
@@ -1468,15 +1473,15 @@ export default function FinancialWorksheetPage() {
                     </button>
                   </div>
                 </div>
-                <div className="flex justify-start xl:justify-end">
+                <div className={confirmActionWrapCls}>
                   <button
                     type="button"
                     onClick={handleSaveStatement}
-                    className="h-10 w-10 rounded-xl bg-black text-white ring-1 ring-black/15 transition flex items-center justify-center hover:bg-black/90 dark:bg-white dark:text-black dark:ring-white/10"
+                    className={confirmActionBtnCls}
                     aria-label="تایید و ثبت"
                     title="تایید و ثبت"
                   >
-                    <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
+                    <img src="/images/icons/check.svg" alt="" className={confirmActionIconCls} />
                   </button>
                 </div>
               </div>
@@ -1717,7 +1722,7 @@ export default function FinancialWorksheetPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 flex items-center justify-start">
+                  <div className="mt-4 flex items-center justify-end">
                     <button
                       type="button"
                       onClick={() => {
@@ -1725,11 +1730,11 @@ export default function FinancialWorksheetPage() {
                         setRelatedLetterIds(uploadDraftLetterIds);
                         setUploadOpen(false);
                       }}
-                      className="h-10 w-10 rounded-xl bg-black text-white dark:bg-white dark:text-black grid place-items-center"
+                      className={confirmActionBtnCls}
                       aria-label="تایید"
                       title="تایید"
                     >
-                      <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
+                      <img src="/images/icons/check.svg" alt="" className={confirmActionIconCls} />
                     </button>
                   </div>
                 </div>
