@@ -1,7 +1,7 @@
 // src/pages/TagsPage.jsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Card from "../components/ui/Card.jsx";
-import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
+import { THead, TH, TR, TD } from "../components/ui/Table.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 
 /* ===================== UI helpers (OUTSIDE main component to avoid remount/focus loss) ===================== */
@@ -32,17 +32,22 @@ const AddIconBtn = React.memo(function AddIconBtn({ title, disabled }) {
 
 const TabButtons = React.memo(function TabButtons({ tabs, activeId, onChange }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-      {tabs.map((t) => (
+    <div className="mb-2 flex w-full items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-black/10 bg-black/[0.03] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-auto md:-mb-px md:max-w-[780px] md:items-stretch md:justify-center md:gap-0 md:rounded-b-none md:rounded-t-2xl md:border-b-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900">
+      {tabs.map((t, index) => (
         <button
           key={t.id}
           type="button"
           onClick={() => onChange(t.id)}
-          className={`h-10 px-4 rounded-2xl border text-sm shadow-sm transition ${
+          className={[
+            "relative z-10 h-10 min-w-[118px] flex-none rounded-lg px-3 text-xs font-semibold transition whitespace-nowrap md:h-11 md:min-w-[132px] md:flex-1 md:rounded-none md:px-4 md:text-sm",
+            index > 0 ? "md:border-r md:border-black/10 md:dark:border-neutral-800" : "",
+            index === 0 ? "md:rounded-tr-2xl" : "",
+            index === tabs.length - 1 ? "md:rounded-tl-2xl" : "",
+            "focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20",
             activeId === t.id
-              ? "bg-black text-white border-black"
-              : "bg-white text-black border border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800"
-          }`}
+              ? "bg-black text-white shadow-sm dark:bg-black dark:text-white"
+              : "bg-white text-[#1f2937] hover:bg-neutral-50 md:bg-white dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800 md:dark:bg-neutral-900",
+          ].join(" ")}
         >
           {t.label}
         </button>
@@ -54,20 +59,16 @@ const TabButtons = React.memo(function TabButtons({ tabs, activeId, onChange }) 
 // ✅ دقیقا مثل BaseCurrenciesPage
 const TableShell = React.memo(function TableShell({ children }) {
   return (
-    <TableWrap>
-      <div className="bg-white text-black overflow-hidden dark:bg-neutral-900 dark:text-neutral-100">
-        <div className="px-[15px] pb-4">
-          <div className="rounded-2xl border border-black/10 overflow-hidden bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-            <table
-              className="w-full text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5"
-              dir="rtl"
-            >
-              {children}
-            </table>
-          </div>
-        </div>
+    <div className="rounded-2xl border border-black/10 bg-white text-black overflow-hidden dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
+      <div dir="ltr" className="overflow-x-auto">
+        <table
+          className="w-full min-w-[700px] table-fixed text-xs sm:text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-2 [&_td]:py-2 [&_th]:whitespace-nowrap [&_td]:min-w-0"
+          dir="rtl"
+        >
+          {children}
+        </table>
       </div>
-    </TableWrap>
+    </div>
   );
 });
 
@@ -575,7 +576,7 @@ function TagsPage() {
   /* ===================== Sections ===================== */
 
   const CategoriesBar = (
-    <div className="px-[15px]">
+    <div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <form
           onSubmit={addCategory}
@@ -640,10 +641,10 @@ function TagsPage() {
   );
 
   const ProjectsBar = (
-    <div className="px-[15px]">
+    <div>
       <form
         onSubmit={addProjectTag}
-        className="rounded-2xl border border-black/10 bg-white p-3 dark:bg-neutral-900 dark:border-neutral-800"
+        className="rounded-2xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-800 dark:bg-white/[0.03]"
       >
         <FieldLabel>افزودن پروژه به برچسب‌ها</FieldLabel>
         <div className="flex items-center gap-2 flex-row-reverse">
@@ -697,11 +698,9 @@ function TagsPage() {
           </THead>
 
           <tbody
-            className="[&_td]:text-black dark:[&_td]:text-neutral-100
-                       [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50
-                       dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50"
+            className="[&_td]:text-black dark:[&_td]:text-neutral-100 [&_td]:text-center [&_th]:text-center"
           >
-            <TR>
+            <TR className="group border-t-0 bg-white transition-colors hover:bg-black/[0.04] dark:bg-neutral-900 dark:hover:bg-white/10">
               <TD className="px-3 font-semibold">پروژه‌ها</TD>
 
               {/* ✅ دقیقاً 6px فاصله بالا/پایین */}
@@ -756,18 +755,16 @@ function TagsPage() {
         </THead>
 
         <tbody
-          className="[&_td]:text-black dark:[&_td]:text-neutral-100
-                     [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50
-                     dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50"
+          className="[&_td]:text-black dark:[&_td]:text-neutral-100 [&_td]:text-center [&_th]:text-center"
         >
           {lettersLoading ? (
-            <TR className="bg-white dark:bg-transparent">
+            <TR className="border-t-0 bg-white dark:bg-neutral-900">
               <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-3">
                 در حال بارگذاری…
               </TD>
             </TR>
           ) : (categoriesSorted || []).length === 0 ? (
-            <TR className="bg-white dark:bg-transparent">
+            <TR className="border-t-0 bg-white dark:bg-neutral-900">
               <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-3">
                 دسته‌بندی‌ای ثبت نشده است.
               </TD>
@@ -780,7 +777,7 @@ function TagsPage() {
               const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
 
               return (
-                <TR key={catId ?? c?.label}>
+                <TR key={catId ?? c?.label} className="group border-t-0 bg-white transition-colors hover:bg-black/[0.04] dark:bg-neutral-900 dark:hover:bg-white/10">
                   <TD className={`px-3 font-semibold ${tdBorder}`}>{c?.label || "—"}</TD>
 
                   {/* ✅ دقیقاً 6px فاصله بالا/پایین (برای تب اجرای پروژه‌ها هم همین جدول استفاده میشه) */}
@@ -847,12 +844,18 @@ function TagsPage() {
         <span className="font-semibold text-neutral-900 dark:text-neutral-100">برچسب‌ها</span>
       </div>
 
-      <div className="space-y-4">
-        <TabButtons tabs={TABS} activeId={activeTab} onChange={setActiveTab} />
+      <div className="mt-5 sm:mt-6">
+        <div className="overflow-visible px-0 sm:px-2" dir="rtl">
+          <TabButtons tabs={TABS} activeId={activeTab} onChange={setActiveTab} />
+        </div>
 
-        {activeTab === "projects" ? ProjectsTab : null}
-        {activeTab === "letters" ? LettersTab : null}
-        {activeTab === "execution" ? ExecutionTab : null}
+        <div className="relative rounded-2xl border border-black/10 bg-white overflow-hidden shadow-sm dark:bg-neutral-900 dark:border-neutral-800">
+          <div className="space-y-4 p-3 sm:p-4">
+            {activeTab === "projects" ? ProjectsTab : null}
+            {activeTab === "letters" ? LettersTab : null}
+            {activeTab === "execution" ? ExecutionTab : null}
+          </div>
+        </div>
       </div>
     </Card>
   );
