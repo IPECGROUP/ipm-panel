@@ -230,6 +230,22 @@ function TagsPage() {
   const [projLoading, setProjLoading] = useState(false);
   const [projErr, setProjErr] = useState("");
 
+  const toEnDigits = useCallback(
+    (s) =>
+      String(s || "")
+        .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d))
+        .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d)),
+    [],
+  );
+
+  const isTopProjectCode = useCallback(
+    (code) => {
+      const c = toEnDigits(String(code || "")).trim();
+      return /^\d{3}$/.test(c);
+    },
+    [toEnDigits],
+  );
+
   useEffect(() => {
     if (activeTab !== "projects") return;
 
@@ -259,17 +275,13 @@ function TagsPage() {
   const projectsSorted = useMemo(() => {
     return (projects || [])
       .slice()
-      .sort((a, b) => String(b?.code || "").localeCompare(String(a?.code || ""), "fa", { numeric: true }));
+      .sort((a, b) => String(a?.code || "").localeCompare(String(b?.code || ""), "fa", { numeric: true }));
   }, [projects]);
 
-  // ✅ فقط پروژه‌های سطح اول (مثل 159) - شبیه صفحه پروژه‌ها
+  // فقط پروژه‌های واقعی صفحه پروژه‌ها: کد دقیقاً سه‌رقمی مثل 159
   const projectsTopLevel = useMemo(() => {
-    return (projectsSorted || []).filter((p) => {
-      const code = String(p?.code || "").trim();
-      if (!code) return false;
-      return !code.includes(".");
-    });
-  }, [projectsSorted]);
+    return (projectsSorted || []).filter((p) => isTopProjectCode(p?.code));
+  }, [isTopProjectCode, projectsSorted]);
 
   // ====== Scoped categories + tags (letters/execution/projects) ======
   const [lettersLoading, setLettersLoading] = useState(false);
@@ -580,7 +592,7 @@ function TagsPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <form
           onSubmit={addCategory}
-          className="rounded-2xl border border-black/10 bg-white p-3 dark:bg-neutral-900 dark:border-neutral-800"
+          className="rounded-2xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-800 dark:bg-white/[0.03]"
         >
           <FieldLabel>دسته‌بندی جدید</FieldLabel>
           <div className="flex items-center gap-2 flex-row-reverse">
@@ -597,7 +609,7 @@ function TagsPage() {
           </div>
         </form>
 
-        <div className="md:col-span-2 rounded-2xl border border-black/10 bg-white p-3 dark:bg-neutral-900 dark:border-neutral-800">
+        <div className="md:col-span-2 rounded-2xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-800 dark:bg-white/[0.03]">
           <div className="flex flex-col md:flex-row-reverse gap-3">
             <form onSubmit={addLetterTag} className="md:flex-1">
               <FieldLabel>برچسب جدید</FieldLabel>
