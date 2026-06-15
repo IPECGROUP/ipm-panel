@@ -1604,20 +1604,28 @@ const sortedProjects = useMemo(() => {
   ]);
 
   const renderTopButtons = () => (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
-      {tabs.map((t) => (
+    <div className="overflow-visible px-0 sm:px-2" dir="rtl">
+      <div className="mb-2 flex w-full items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-black/10 bg-black/[0.03] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-auto md:-mb-px md:max-w-[780px] md:items-stretch md:justify-center md:gap-0 md:rounded-b-none md:rounded-t-2xl md:border-b-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900">
+      {tabs.map((t, index) => (
         <button
           key={t.id}
+          type="button"
           onClick={() => setActive(t.id)}
-          className={`h-10 min-w-0 truncate px-3 rounded-2xl border text-xs shadow-sm transition sm:px-4 sm:text-sm ${
+          className={[
+            "relative z-10 h-10 min-w-[118px] flex-none rounded-lg px-3 text-xs font-semibold transition whitespace-nowrap md:h-11 md:min-w-[132px] md:flex-1 md:rounded-none md:px-4 md:text-sm",
+            index > 0 ? "md:border-r md:border-black/10 md:dark:border-neutral-800" : "",
+            index === 0 ? "md:rounded-tr-2xl" : "",
+            index === tabs.length - 1 ? "md:rounded-tl-2xl" : "",
+            "focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20",
             active === t.id
-              ? "bg-black text-white border-black"
-              : "bg-white text-black border border-black/15 hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800 dark:hover:bg-neutral-800"
-          }`}
+              ? "bg-black text-white shadow-sm dark:bg-black dark:text-white"
+              : "bg-white text-[#1f2937] hover:bg-neutral-50 md:bg-white dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800 md:dark:bg-neutral-900",
+          ].join(" ")}
         >
           {t.label}
         </button>
       ))}
+      </div>
     </div>
   );
 
