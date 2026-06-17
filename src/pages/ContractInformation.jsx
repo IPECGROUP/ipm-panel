@@ -555,10 +555,72 @@ function letterAttachmentsOf(letter) {
   return [];
 }
 
+function apiBaseUrl() {
+  const base = typeof window !== "undefined" ? window.API_URL || "/api" : "/api";
+  return String(base || "/api").replace(/\/+$/, "");
+}
+
+function apiPathUrl(path) {
+  const suffix = String(path || "")
+    .trim()
+    .replace(/^\/api(?=\/|$)/, "")
+    .replace(/^\/+/, "");
+  return `${apiBaseUrl()}/${suffix}`;
+}
+
+function resolveServerUrl(url) {
+  const text = String(url || "").trim().replace(/\\/g, "/");
+  if (!text) return "";
+  if (/^(https?:|blob:|data:)/i.test(text)) return text;
+  if (text.startsWith("//")) return `${window.location.protocol}${text}`;
+  if (text.startsWith("/api/")) return apiPathUrl(text);
+  if (text.startsWith("/")) {
+    const base = apiBaseUrl();
+    if (/^https?:\/\//i.test(base)) {
+      try {
+        return new URL(text, new URL(base).origin).toString();
+      } catch {
+        return text;
+      }
+    }
+    return text;
+  }
+  if (text.startsWith("public/")) return resolveServerUrl(`/${text.replace(/^public\//, "")}`);
+  return resolveServerUrl(`/${text.replace(/^\/+/, "")}`);
+}
+
+function uploadedFileApiUrlOf(id) {
+  const value = String(id ?? "").trim();
+  if (!/^\d+$/.test(value)) return "";
+  return apiPathUrl(`/files/${encodeURIComponent(value)}`);
+}
+
+function letterAttachmentApiUrlOf(letterId, index) {
+  const id = String(letterId ?? "").trim();
+  const idx = Number(index);
+  if (!/^\d+$/.test(id) || !Number.isInteger(idx) || idx < 0) return "";
+  return apiPathUrl(`/letter-attachments/${encodeURIComponent(id)}/${encodeURIComponent(String(idx))}`);
+}
+
+function letterAttachmentRawUrlOf(file) {
+  return String(file?.url ?? file?.href ?? file?.path ?? file?.public_url ?? file?.publicUrl ?? file?.file_url ?? file?.fileUrl ?? "");
+}
+
 function letterAttachmentUrlOf(file) {
   const fileId = file?.file_id ?? file?.fileId ?? file?.serverId;
-  if (fileId) return `/api/files/${encodeURIComponent(String(fileId))}`;
-  return String(file?.url ?? file?.href ?? file?.path ?? file?.public_url ?? file?.publicUrl ?? file?.file_url ?? file?.fileUrl ?? "");
+  const apiUrl = uploadedFileApiUrlOf(fileId);
+  if (apiUrl) return apiUrl;
+  return letterAttachmentRawUrlOf(file);
+}
+
+function letterAttachmentViewUrlOf(file, letterId, index) {
+  const raw = letterAttachmentRawUrlOf(file).trim();
+  if (/^https?:\/\//i.test(raw) || raw.startsWith("//")) return raw;
+
+  const legacyApiUrl = letterAttachmentApiUrlOf(letterId, index);
+  if (legacyApiUrl) return legacyApiUrl;
+
+  return letterAttachmentUrlOf(file);
 }
 
 function letterAttachmentNameOf(file) {
@@ -570,13 +632,7 @@ function letterAttachmentTypeOf(file) {
 }
 
 function resolvePublicUrl(url) {
-  const text = String(url || "").trim().replace(/\\/g, "/");
-  if (!text) return "";
-  if (/^(https?:|blob:|data:)/i.test(text)) return text;
-  if (text.startsWith("//")) return `${window.location.protocol}${text}`;
-  if (text.startsWith("/")) return text;
-  if (text.startsWith("public/")) return `/${text.replace(/^public\//, "")}`;
-  return `/${text.replace(/^\/+/, "")}`;
+  return resolveServerUrl(url);
 }
 
 function isPreviewPdf(url, name = "", type = "") {
@@ -1523,8 +1579,12 @@ export default function ContractInformation() {
   const filteredLetters = React.useMemo(() => {
     const q = toEnDigits(relatedPickQuery).trim().toLowerCase();
     const list = Array.isArray(letters) ? letters : [];
-    if (!q) return list.slice(0, 80);
-    return list.filter((letter) => {
+    const selectedIds =
+      relatedPickTarget === "insurance"
+        ? normalizeIdList(insuranceForm.relatedLetterId ? [insuranceForm.relatedLetterId] : [])
+        : selectedRelatedLetterIds;
+    const selectedSet = new Set(selectedIds.map(String));
+    const filtered = q ? list.filter((letter) => {
       const haystack = [
         letterNoOf(letter),
         secretariatNoOf(letter),
@@ -1535,8 +1595,19 @@ export default function ContractInformation() {
         .map((item) => toEnDigits(item).toLowerCase())
         .join(" ");
       return haystack.includes(q);
-    });
-  }, [letters, relatedPickQuery]);
+    }) : list;
+
+    return filtered
+      .map((letter, index) => ({ letter, index }))
+      .sort((a, b) => {
+        const aSelected = selectedSet.has(String(letterIdOf(a.letter)));
+        const bSelected = selectedSet.has(String(letterIdOf(b.letter)));
+        if (aSelected !== bSelected) return aSelected ? -1 : 1;
+        return a.index - b.index;
+      })
+      .slice(0, q ? filtered.length : 80)
+      .map((item) => item.letter);
+  }, [insuranceForm.relatedLetterId, letters, relatedPickQuery, relatedPickTarget, selectedRelatedLetterIds]);
 
   const filteredRows = React.useMemo(() => {
     const q = toEnDigits(filterQuery).trim().toLowerCase();
@@ -2595,13 +2666,14 @@ export default function ContractInformation() {
   const previewInsurance = previewContract ? normalizeInsurance(previewContract.insurance || {}) : normalizeInsurance({});
   const previewLetterAttachments = React.useMemo(() => {
     return previewRelatedLetters.flatMap((letter) => {
+      const letterId = letterIdOf(letter);
       const letterLabel = toFaDigits(secretariatNoOf(letter) || letterNoOf(letter) || letterIdOf(letter));
       return letterAttachmentsOf(letter).map((file, index) => ({
         ...file,
         id: String(file?.id ?? file?.file_id ?? file?.fileId ?? file?.serverId ?? `${letterIdOf(letter)}_${index}`),
         name: letterAttachmentNameOf(file) || `فایل ${toFaDigits(index + 1)}`,
         type: letterAttachmentTypeOf(file),
-        url: resolvePublicUrl(letterAttachmentUrlOf(file)),
+        url: resolvePublicUrl(letterAttachmentViewUrlOf(file, letterId, index)),
         relatedLetterLabel: letterLabel,
       }));
     });
@@ -2612,7 +2684,7 @@ export default function ContractInformation() {
       name: String(file?.name ?? file?.originalName ?? file?.original_name ?? file?.filename ?? file?.fileName ?? "فایل"),
       size: Number(file?.size ?? file?.bytes ?? 0),
       type: String(file?.type ?? file?.mimeType ?? file?.mime_type ?? ""),
-      url: String(file?.url ?? file?.href ?? file?.path ?? ""),
+      url: resolvePublicUrl(file?.url ?? file?.href ?? file?.path ?? ""),
       group: file?.relatedLetterLabel ? `${group} ${file.relatedLetterLabel}` : group,
     });
 
@@ -2624,11 +2696,7 @@ export default function ContractInformation() {
   }, [previewFinancial.breakdownFiles, previewInsurance.clearanceFiles, previewLetterAttachments]);
   const activePreviewFile = previewFiles[Math.min(Math.max(0, previewFileIndex), Math.max(0, previewFiles.length - 1))] || null;
   const resolvePreviewFileUrl = (file) => {
-    const url = String(file?.url || "").trim();
-    if (!url) return "";
-    if (/^(https?:|blob:|data:)/i.test(url)) return url;
-    if (url.startsWith("/")) return url;
-    return `/${url.replace(/^\/+/, "")}`;
+    return resolvePublicUrl(file?.url || "");
   };
   const activePreviewFileUrl = resolvePreviewFileUrl(activePreviewFile);
   const activePreviewFileType = String(activePreviewFile?.type || "").toLowerCase();
@@ -2641,7 +2709,7 @@ export default function ContractInformation() {
   const relatedLetterPreviewFiles = React.useMemo(
     () =>
       letterAttachmentsOf(relatedLetterPreview).map((file, index) => {
-        const url = resolvePublicUrl(letterAttachmentUrlOf(file));
+        const url = resolvePublicUrl(letterAttachmentViewUrlOf(file, letterIdOf(relatedLetterPreview), index));
         const name = letterAttachmentNameOf(file) || `فایل ${toFaDigits(index + 1)}`;
         const type = letterAttachmentTypeOf(file);
         return {
