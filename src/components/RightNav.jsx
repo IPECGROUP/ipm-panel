@@ -6,22 +6,33 @@ import { useAuth } from "./AuthProvider";
 import { isMainAdminUser } from "../utils/auth";
 import { Btn, LinkBtn } from "./ui/Button";
 
-const icImgCls = "h-5 w-5 block m-0 object-contain brightness-0 invert pointer-events-none select-none";
+const iconMaskCls = "nav-icon block h-5 w-5 shrink-0 bg-white pointer-events-none select-none";
 const svgCls = "h-5 w-5 block m-0 pointer-events-none select-none";
 
-const IcDashboard = () => <img src="/images/icons/dashbaord.svg" className={icImgCls} alt="" draggable={false} />;
-const IcPay = () => <img src="/images/icons/modirait-darkast.svg" className={icImgCls} alt="" draggable={false} />;
-const IcLetter = () => <img src="/images/icons/nameha.svg" className={icImgCls} alt="" draggable={false} />;
-const IcProjects = () => <img src="/images/icons/project.svg" className={icImgCls} alt="" draggable={false} />;
-const IcBudget = () => <img src="/images/icons/busgebandi.svg" className={icImgCls} alt="" draggable={false} />;
-const IcBase = () => <img src="/images/icons/atelaatpaye.svg" className={icImgCls} alt="" draggable={false} />;
-const IcCurrency = () => <img src="/images/icons/arz.svg" className={icImgCls} alt="" draggable={false} />;
-const IcUsers = () => <img src="/images/icons/users.svg" className={icImgCls} alt="" draggable={false} />;
-const IcContract = () => <img src="/images/icons/gharadad.svg" className={icImgCls} alt="" draggable={false} />;
-const IcTags = () => <img src="/images/icons/tags.svg" className={icImgCls} alt="" draggable={false} />;
-const IcWorksheet = () => <img src="/images/icons/karbarg-mali.svg" className={icImgCls} alt="" draggable={false} />;
-const IcDaily = () => <img src="/images/icons/roznegar.svg" className={icImgCls} alt="" draggable={false} />;
-const IcQuality = () => <img src="/images/icons/modiritkeyfiat.svg" className={icImgCls} alt="" draggable={false} />;
+const NavIcon = ({ src }) => (
+  <span
+    className={iconMaskCls}
+    aria-hidden="true"
+    style={{
+      WebkitMask: `url(${src}) center / contain no-repeat`,
+      mask: `url(${src}) center / contain no-repeat`,
+    }}
+  />
+);
+
+const IcDashboard = () => <NavIcon src="/images/icons/dashbaord.svg" />;
+const IcPay = () => <NavIcon src="/images/icons/modirait-darkast.svg" />;
+const IcLetter = () => <NavIcon src="/images/icons/nameha.svg" />;
+const IcProjects = () => <NavIcon src="/images/icons/project.svg" />;
+const IcBudget = () => <NavIcon src="/images/icons/busgebandi.svg" />;
+const IcBase = () => <NavIcon src="/images/icons/atelaatpaye.svg" />;
+const IcCurrency = () => <NavIcon src="/images/icons/arz.svg" />;
+const IcUsers = () => <NavIcon src="/images/icons/users.svg" />;
+const IcContract = () => <NavIcon src="/images/icons/gharadad.svg" />;
+const IcTags = () => <NavIcon src="/images/icons/tags.svg" />;
+const IcWorksheet = () => <NavIcon src="/images/icons/karbarg-mali.svg" />;
+const IcDaily = () => <NavIcon src="/images/icons/roznegar.svg" />;
+const IcQuality = () => <NavIcon src="/images/icons/modiritkeyfiat.svg" />;
 const IcClose = () => <X className="h-5 w-5" strokeWidth={2.4} />;
 
 function RightNav() {
@@ -182,10 +193,10 @@ function RightNav() {
           icon: <IcBudget />,
           active: budgetParentActive,
           items: [
-            { to: "/estimates", label: "برآورد هزینه ها", hint: "پیش بینی و کنترل هزینه", icon: <img src="/images/icons/baravord.svg" className={icImgCls} alt="" draggable={false} /> },
-            { to: "/revenue-estimates", label: "برآورد درآمد", hint: "پیش بینی جریان درآمد", icon: <img src="/images/icons/baravordhazine.svg" className={icImgCls} alt="" draggable={false} /> },
-            { to: "/budget-allocation", label: "تخصیص بودجه", hint: "تقسیم منابع بودجه ای", icon: <img src="/images/icons/taksisbodge.svg" className={icImgCls} alt="" draggable={false} /> },
-            { to: "/budget/reports", label: "گزارش ها", hint: "خلاصه ها و خروجی ها", icon: <img src="/images/icons/gozareshha.svg" className={icImgCls} alt="" draggable={false} /> },
+            { to: "/estimates", label: "برآورد هزینه ها", hint: "پیش بینی و کنترل هزینه", icon: <NavIcon src="/images/icons/baravord.svg" /> },
+            { to: "/revenue-estimates", label: "برآورد درآمد", hint: "پیش بینی جریان درآمد", icon: <NavIcon src="/images/icons/baravordhazine.svg" /> },
+            { to: "/budget-allocation", label: "تخصیص بودجه", hint: "تقسیم منابع بودجه ای", icon: <NavIcon src="/images/icons/taksisbodge.svg" /> },
+            { to: "/budget/reports", label: "گزارش ها", hint: "خلاصه ها و خروجی ها", icon: <NavIcon src="/images/icons/gozareshha.svg" /> },
           ],
         },
       ],
@@ -206,7 +217,7 @@ function RightNav() {
           icon: <IcBase />,
           active: baseParentActive,
           items: [
-            { to: "/base/units", label: "ساختار سازمانی", hint: "واحدها و چارت سازمانی", icon: <img src="/images/icons/unit.svg" className={icImgCls} alt="" draggable={false} /> },
+            { to: "/base/units", label: "ساختار سازمانی", hint: "واحدها و چارت سازمانی", icon: <NavIcon src="/images/icons/unit.svg" /> },
             ...(isMainAdmin ? [{ to: "/admin/users", label: "کاربران", hint: "مدیریت دسترسی ها", icon: <IcUsers /> }] : []),
             { to: "/centers/projects", label: "پروژه ها", hint: "تعریف و ویرایش پروژه ها", icon: <IcProjects /> },
             { to: "/base/currencies", label: "ارزها", hint: "نرخ ها و واحدهای پولی", icon: <IcCurrency /> },
@@ -235,7 +246,7 @@ function RightNav() {
   const iconShellCls = (active) =>
     [
       "grid h-9 w-9 shrink-0 place-items-center rounded-lg text-white transition",
-      active ? "bg-[#DB843D]/20 [&_img]:opacity-100" : "bg-transparent [&_img]:opacity-80 group-hover:bg-white/[0.07] group-hover:[&_img]:opacity-100",
+      active ? "bg-[#DB843D]/20" : "bg-transparent group-hover:bg-white/[0.07]",
     ].join(" ");
 
   const desktopItemCls = (active, collapsed = false) =>
@@ -255,7 +266,6 @@ function RightNav() {
       active
         ? "!border-[#DB843D]/[0.55] !bg-[#DB843D]/[0.16] !text-white !ring-1 !ring-inset !ring-[#DB843D]/25 before:absolute before:right-0 before:top-2 before:bottom-2 before:w-[3px] before:rounded-full before:bg-[#DB843D]"
         : "!text-white/[0.72] hover:!bg-white/[0.07] hover:!text-white",
-      "[&_img]:opacity-80 hover:[&_img]:opacity-100",
     ].join(" ");
 
   const mobileHeaderPanelCls =
@@ -270,7 +280,7 @@ function RightNav() {
     [
       "!h-[3.25rem] sm:!h-[3.55rem] !w-full !min-w-0 !rounded-xl !p-0",
       "!flex !flex-col !items-center !justify-center gap-1 !border transition-all duration-200",
-      "[&_img]:brightness-0 [&_img]:invert [&_svg]:!text-current",
+      "[&_svg]:!text-current",
       "active:scale-[0.97]",
       mobileButtonSurface(active),
     ].join(" ");
@@ -278,8 +288,7 @@ function RightNav() {
   const mobileSubItemCls =
     "!grid !grid-cols-[2.55rem_minmax(0,1fr)] sm:!grid-cols-[2.75rem_minmax(0,1fr)] !items-center gap-2.5 " +
     "!min-h-[3.35rem] !rounded-xl !border !border-transparent !bg-transparent !px-2 !py-2 !text-right " +
-    "!text-white/80 !shadow-none hover:!bg-white/[0.07] hover:!text-white focus:!ring-2 focus:!ring-[#DB843D]/25 transition-all duration-200 active:scale-[0.985] " +
-    "[&_img]:brightness-0 [&_img]:invert";
+    "!text-white/80 !shadow-none hover:!bg-white/[0.07] hover:!text-white focus:!ring-2 focus:!ring-[#DB843D]/25 transition-all duration-200 active:scale-[0.985]";
 
   const renderIcon = (icon, active) => <span className={iconShellCls(active)}>{icon}</span>;
 
