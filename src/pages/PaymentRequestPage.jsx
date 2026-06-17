@@ -3615,7 +3615,7 @@ return (
         <span className="text-neutral-700 dark:text-white/70">درخواست‌ها</span>
         <span className="mx-2 text-neutral-500 dark:text-white/60">›</span>
         <span className="font-semibold text-neutral-900 dark:text-white">
-          درخواست پرداخت
+          مدیریت درخواست
         </span>
       </div>
 
@@ -3663,8 +3663,8 @@ return (
           className="h-10 w-10 grid place-items-center rounded-xl border text-neutral-800 border-black/10 bg-white hover:bg-black/5 transition
                      dark:border-white/20 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
           aria-expanded={showForm}
-          aria-label={showForm ? "نمایش لیست درخواست‌ها" : "درخواست پرداخت جدید"}
-          title={showForm ? "نمایش لیست درخواست‌ها" : "درخواست پرداخت جدید"}
+          aria-label={showForm ? "نمایش لیست درخواست‌ها" : "درخواست جدید"}
+          title={showForm ? "نمایش لیست درخواست‌ها" : "درخواست جدید"}
         >
           {showForm ? (
             <img

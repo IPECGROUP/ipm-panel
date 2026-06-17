@@ -700,7 +700,7 @@ function OrgStructurePage() {
     <>
       <Card className="rounded-2xl border bg-white text-black border-black/10 text-[11px] md:text-sm dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
         <div className="mb-3 text-xs md:text-lg">
-          <span className="text-black/70 dark:text-neutral-300">اطلاعات پایه</span>
+          <span className="text-black/70 dark:text-neutral-300">تنظیمات</span>
           <span className="mx-2 text-black/50 dark:text-neutral-400">›</span>
           <span className="font-semibold text-black dark:text-neutral-100">ساختار سازمانی</span>
         </div>

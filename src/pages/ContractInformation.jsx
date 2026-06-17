@@ -1749,6 +1749,21 @@ export default function ContractInformation() {
     setRelatedPickOpen(true);
   };
 
+  const removeRelatedLetter = (id) => {
+    const sid = String(id || "");
+    if (!sid) return;
+    setForm((prev) => {
+      const current = normalizeIdList(prev.relatedLetterIds?.length ? prev.relatedLetterIds : prev.relatedLetterId ? [prev.relatedLetterId] : []);
+      const nextIds = current.filter((item) => String(item) !== sid);
+      return {
+        ...prev,
+        relatedLetterIds: nextIds,
+        relatedLetterId: nextIds[0] || "",
+      };
+    });
+    setRelatedLetterPreviewId((current) => (String(current || "") === sid ? "" : current));
+  };
+
   const setGeneralField = (field, value) => {
     setForm((prev) => ({
       ...prev,
@@ -3302,13 +3317,24 @@ export default function ContractInformation() {
                         {selectedRelatedLetterSummaryItems.slice(0, 2).map((item, index) => (
                           <React.Fragment key={item.id}>
                             {index > 0 ? <span>و</span> : null}
-                            <button
-                              type="button"
-                              onClick={() => setRelatedLetterPreviewId(item.id)}
-                              className="rounded-lg px-1 py-0.5 underline decoration-black/20 underline-offset-4 transition hover:bg-black/[0.04] hover:decoration-black/60 dark:hover:bg-white/10"
-                            >
-                              {item.label}
-                            </button>
+                            <span className="inline-flex items-center gap-1 rounded-lg border border-black/10 bg-black/[0.03] px-1 py-0.5 dark:border-white/10 dark:bg-white/[0.06]">
+                              <button
+                                type="button"
+                                onClick={() => setRelatedLetterPreviewId(item.id)}
+                                className="px-0.5 underline decoration-black/20 underline-offset-4 transition hover:decoration-black/60"
+                              >
+                                {item.label}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeRelatedLetter(item.id)}
+                                className="grid h-4 w-4 place-items-center rounded-full text-[11px] leading-none text-red-600 transition hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-500/15"
+                                aria-label={`حذف ${item.label}`}
+                                title="حذف"
+                              >
+                                ×
+                              </button>
+                            </span>
                           </React.Fragment>
                         ))}
                         {selectedRelatedLetterSummaryItems.length > 2 ? (
@@ -3328,17 +3354,30 @@ export default function ContractInformation() {
                   {relatedSummaryOpen && selectedRelatedLetterSummaryItems.length > 2 ? (
                     <div className="absolute right-0 top-full z-40 mt-1 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-black/10 bg-white p-2 text-[13px] leading-6 text-black shadow-xl dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100">
                       {selectedRelatedLetterSummaryItems.map((item) => (
-                        <button
+                        <div
                           key={item.id}
-                          type="button"
-                          onClick={() => {
-                            setRelatedLetterPreviewId(item.id);
-                            setRelatedSummaryOpen(false);
-                          }}
-                          className="block w-full rounded-lg px-2 py-1 text-right font-semibold hover:bg-black/[0.04] dark:hover:bg-white/10"
+                          className="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1 hover:bg-black/[0.04] dark:hover:bg-white/10"
                         >
-                          {item.label}
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRelatedLetterPreviewId(item.id);
+                              setRelatedSummaryOpen(false);
+                            }}
+                            className="min-w-0 flex-1 truncate text-right font-semibold"
+                          >
+                            {item.label}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeRelatedLetter(item.id)}
+                            className="grid h-5 w-5 shrink-0 place-items-center rounded-full text-xs leading-none text-red-600 transition hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-500/15"
+                            aria-label={`حذف ${item.label}`}
+                            title="حذف"
+                          >
+                            ×
+                          </button>
+                        </div>
                       ))}
                     </div>
                   ) : null}

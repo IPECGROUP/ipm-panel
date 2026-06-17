@@ -49,7 +49,7 @@ function BudgetCodesPage({ title, apiKey, prefix, api }) {
       <Card>
         <div className="flex items-center justify-between mb-3">
           <h1 className="font-bold text-neutral-100">
-            اطلاعات پایه • مراکز هزینه • {title}
+            تنظیمات • مراکز هزینه • {title}
           </h1>
         </div>
 

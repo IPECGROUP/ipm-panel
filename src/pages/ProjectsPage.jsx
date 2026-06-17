@@ -460,7 +460,7 @@ function ProjectsPage() {
       dir="rtl"
     >
       <div className="mb-5 text-base md:text-lg">
-        <span className="text-black/70 dark:text-neutral-300">اطلاعات پایه</span>
+        <span className="text-black/70 dark:text-neutral-300">تنظیمات</span>
         <span className="mx-2 text-black/50 dark:text-neutral-400">›</span>
         <span className="font-semibold text-black dark:text-neutral-100">پروژه‌ها</span>
       </div>

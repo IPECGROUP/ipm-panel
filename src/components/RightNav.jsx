@@ -21,6 +21,7 @@ const IcContract = () => <img src="/images/icons/gharadad.svg" className={icImgC
 const IcTags = () => <img src="/images/icons/tags.svg" className={icImgCls} alt="" draggable={false} />;
 const IcWorksheet = () => <img src="/images/icons/karbarg-mali.svg" className={icImgCls} alt="" draggable={false} />;
 const IcDaily = () => <img src="/images/icons/roznegar.svg" className={icImgCls} alt="" draggable={false} />;
+const IcQuality = () => <img src="/images/icons/check.svg" className={icImgCls} alt="" draggable={false} />;
 const IcClose = () => <X className="h-5 w-5" strokeWidth={2.4} />;
 
 function RightNav() {
@@ -122,7 +123,7 @@ function RightNav() {
       return "base";
     }
 
-    if (path.startsWith("/centers/contract-info") || path.startsWith("/projects/")) {
+    if (path.startsWith("/projects/")) {
       return "projects";
     }
 
@@ -131,6 +132,7 @@ function RightNav() {
 
   const activeSection = sectionFromPath(pNow);
   const dashboardActive = isActive("/") || isActive("/dashboard");
+  const requestManagementActive = isActive("/payment") || isActive("/requests");
   const projectsParentActive = !!open.projects || activeSection === "projects";
   const budgetParentActive = !!open.budget || activeSection === "budget";
   const baseParentActive = !!open.base || activeSection === "base";
@@ -155,6 +157,7 @@ function RightNav() {
       items: [
         { type: "link", to: "/", label: "داشبورد", icon: <IcDashboard />, active: dashboardActive },
         { type: "link", to: "/letters", label: "اسناد و نامه ها", icon: <IcLetter />, active: isActive("/letters") },
+        { type: "link", to: "/centers/contract-info", label: "قراردادها", icon: <IcContract />, active: isActive("/centers/contract-info") || isActive("/contracts/info") },
         {
           type: "section",
           key: "projects",
@@ -162,12 +165,11 @@ function RightNav() {
           icon: <IcProjects />,
           active: projectsParentActive,
           items: [
-            { to: "/centers/contract-info", label: "قراردادها", hint: "اطلاعات و پیگیری قراردادها", icon: <IcContract /> },
             { to: "/projects/financial-worksheet", label: "کاربرگ مالی", hint: "جزئیات مالی پروژه", icon: <IcWorksheet /> },
             { to: "/projects/daily-log", label: "روزنگار پروژه", hint: "ثبت گزارش های روزانه", icon: <IcDaily /> },
           ],
         },
-        { type: "link", to: "/payment", label: "درخواست پرداخت", icon: <IcPay />, active: isActive("/payment") },
+        { type: "link", to: "/payment", label: "مدیریت درخواست", icon: <IcPay />, active: requestManagementActive },
       ],
     },
     {
@@ -189,12 +191,18 @@ function RightNav() {
       ],
     },
     {
-      title: "اطلاعات پایه",
+      title: "سیستم مدیریت کیفیت",
+      items: [
+        { type: "link", to: "/quality-management", label: "سیستم مدیریت کیفیت", icon: <IcQuality />, active: isActive("/quality-management") },
+      ],
+    },
+    {
+      title: "تنظیمات",
       items: [
         {
           type: "section",
           key: "base",
-          label: "اطلاعات پایه",
+          label: "تنظیمات",
           icon: <IcBase />,
           active: baseParentActive,
           items: [
@@ -499,7 +507,7 @@ function RightNav() {
           )}
 
           <div className={mobileHeaderPanelCls}>
-            <div className="relative z-[3] grid grid-cols-6 items-center gap-1.5 sm:gap-2">
+            <div className="relative z-[3] grid grid-cols-4 items-center gap-1.5 sm:gap-2">
               <LinkBtn to="/" onClick={closeMobileMenu} className={mobileDockBtn(dashboardActive)} aria-label="داشبورد">
                 <IcDashboard />
                 <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
@@ -519,6 +527,18 @@ function RightNav() {
                 </span>
               </LinkBtn>
 
+              <LinkBtn
+                to="/centers/contract-info"
+                onClick={closeMobileMenu}
+                className={mobileDockBtn(isActive("/centers/contract-info") || isActive("/contracts/info"))}
+                aria-label="قراردادها"
+              >
+                <IcContract />
+                <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
+                  قرارداد
+                </span>
+              </LinkBtn>
+
               <Btn
                 type="button"
                 className={mobileDockBtn(projectsParentActive)}
@@ -534,12 +554,12 @@ function RightNav() {
               <LinkBtn
                 to="/payment"
                 onClick={closeMobileMenu}
-                className={mobileDockBtn(isActive("/payment"))}
-                aria-label="درخواست پرداخت"
+                className={mobileDockBtn(requestManagementActive)}
+                aria-label="مدیریت درخواست"
               >
                 <IcPay />
                 <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
-                  پرداخت
+                  درخواست
                 </span>
               </LinkBtn>
 
@@ -555,15 +575,27 @@ function RightNav() {
                 </span>
               </Btn>
 
+              <LinkBtn
+                to="/quality-management"
+                onClick={closeMobileMenu}
+                className={mobileDockBtn(isActive("/quality-management"))}
+                aria-label="سیستم مدیریت کیفیت"
+              >
+                <IcQuality />
+                <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
+                  کیفیت
+                </span>
+              </LinkBtn>
+
               <Btn
                 type="button"
                 className={mobileDockBtn(baseParentActive)}
                 onClick={() => toggle("base")}
-                aria-label="اطلاعات پایه"
+                aria-label="تنظیمات"
               >
                 {open.base ? <IcClose /> : <IcBase />}
                 <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
-                  پایه
+                  تنظیمات
                 </span>
               </Btn>
             </div>
