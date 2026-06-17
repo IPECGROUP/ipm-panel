@@ -46,6 +46,9 @@ function disableMainAdmin(setIsMainAdmin) {
 }
 
 const LETTERS_CACHE_KEY = "letters_mine_cache_v1";
+const LETTER_DRAFT_STORAGE_KEY = "ipm_letters_form_drafts_v1";
+const LETTER_DRAFT_SAVE_DELAY_MS = 3000;
+const LETTER_FORM_KINDS = ["incoming", "outgoing", "internal"];
 
 const TABS = [
   { id: "all", label: "همه" },
@@ -866,6 +869,10 @@ useEffect(() => {
   }, []);
 
   const [formOpen, setFormOpen] = useState(false);
+  const letterDraftSaveTimerRef = useRef(null);
+  const lastLetterDraftSignatureRef = useRef("");
+  const lastSavedLetterDraftKeyRef = useRef("");
+  const letterDraftHydratingRef = useRef(false);
 const [formKind, setFormKind] = useState("incoming"); // نوع نامه داخل فرم: وارده/صادره/داخلی
 
   // ✅ edit state
@@ -2370,6 +2377,7 @@ const projectsTopOnly = useMemo(() => {
 
 // ===== Auto code injection (Create only) =====
 const currentProjectId = getForm(formKind).projectId || "";
+const currentEffectiveLetterNo = getEffectiveLetterNoForKind(formKind);
 
 const setSecretariatNoForKind = (kind, code) => {
   if (kind === "incoming") setIncomingSecretariatNo(code);
@@ -2406,8 +2414,83 @@ const fetchNextCodeForProject = async (kind, projectId, { silent = false } = {})
 };
 
 useEffect(() => {
+  if (!formOpen) {
+    if (letterDraftSaveTimerRef.current) {
+      clearTimeout(letterDraftSaveTimerRef.current);
+      letterDraftSaveTimerRef.current = null;
+    }
+    return;
+  }
+  if (letterDraftHydratingRef.current) return;
+
+  const payload = buildLetterDraftPayload();
+  const key = letterDraftKeyFromPayload(payload);
+  if (!hasLetterDraftContent(payload)) {
+    if (letterDraftSaveTimerRef.current) {
+      clearTimeout(letterDraftSaveTimerRef.current);
+      letterDraftSaveTimerRef.current = null;
+    }
+    return;
+  }
+
+  const signature = JSON.stringify({ key, payload });
+  if (signature === lastLetterDraftSignatureRef.current) return;
+
+  if (letterDraftSaveTimerRef.current) clearTimeout(letterDraftSaveTimerRef.current);
+  letterDraftSaveTimerRef.current = setTimeout(() => {
+    saveLetterDraftNow(payload);
+    lastLetterDraftSignatureRef.current = signature;
+    letterDraftSaveTimerRef.current = null;
+  }, LETTER_DRAFT_SAVE_DELAY_MS);
+
+  return () => {
+    if (letterDraftSaveTimerRef.current) {
+      clearTimeout(letterDraftSaveTimerRef.current);
+      letterDraftSaveTimerRef.current = null;
+    }
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [
+  formOpen,
+  formKind,
+  editingId,
+  incomingForm,
+  outgoingForm,
+  internalForm,
+  incomingTagIds,
+  outgoingTagIds,
+  internalTagIds,
+  incomingSecretariatDate,
+  outgoingSecretariatDate,
+  internalSecretariatDate,
+  incomingSecretariatNo,
+  outgoingSecretariatNo,
+  internalSecretariatNo,
+  incomingSecretariatNote,
+  outgoingSecretariatNote,
+  internalSecretariatNote,
+  incomingReceiverName,
+  outgoingReceiverName,
+  internalReceiverName,
+  internalUnitId,
+  hasAttachment,
+  returnToIds,
+  piroIds,
+  docFilesByType,
+]);
+
+useEffect(
+  () => () => {
+    if (letterDraftSaveTimerRef.current) clearTimeout(letterDraftSaveTimerRef.current);
+  },
+  []
+);
+
+useEffect(() => {
   if (!formOpen) return;
   if (editingId) return; // ادیت → کد جدید نساز
+
+  if (currentEffectiveLetterNo) return;
 
   let cancelled = false;
 
@@ -2427,7 +2510,7 @@ useEffect(() => {
     cancelled = true;
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [formOpen, formKind, editingId, currentProjectId, user?.id]);
+}, [formOpen, formKind, editingId, currentProjectId, currentEffectiveLetterNo, user?.id]);
 const setFormTagsAllAndPersist = (ids) => {
   const next = normalizeIdList(ids);
 
@@ -3212,6 +3295,261 @@ useLayoutEffect(() => {
   const tbodyCls = "[&_td]:text-black dark:[&_td]:text-neutral-100";
   const rowDividerCls = "border-b border-neutral-300 dark:border-neutral-700";
 
+  const readLetterDraftStore = () => {
+    try {
+      const raw = localStorage.getItem(LETTER_DRAFT_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      return {
+        latestNewKey: String(parsed?.latestNewKey || ""),
+        items: parsed?.items && typeof parsed.items === "object" ? parsed.items : {},
+      };
+    } catch {
+      return { latestNewKey: "", items: {} };
+    }
+  };
+
+  const writeLetterDraftStore = (store) => {
+    try {
+      localStorage.setItem(
+        LETTER_DRAFT_STORAGE_KEY,
+        JSON.stringify({
+          latestNewKey: String(store?.latestNewKey || ""),
+          items: store?.items && typeof store.items === "object" ? store.items : {},
+        })
+      );
+    } catch {
+      // Browser storage can fail in private mode or when quota is full.
+    }
+  };
+
+  const letterDraftUserKey = () => {
+    const u = user || {};
+    return String(u?.id ?? u?.username ?? u?.user_name ?? u?.login ?? loggedInUsername ?? "guest").trim() || "guest";
+  };
+
+  const cleanDraftFiles = (files) =>
+    (Array.isArray(files) ? files : [])
+      .filter((file) => file && file.url && file.status === "done")
+      .map((file) => ({
+        id: String(file.id || file.serverId || file.url || ""),
+        name: String(file.name || ""),
+        size: Number(file.size || 0) || 0,
+        type: String(file.type || ""),
+        status: "done",
+        progress: 100,
+        error: "",
+        serverId: file.serverId ?? null,
+        url: String(file.url || ""),
+        previewUrl: null,
+        file: null,
+        optimizedFile: null,
+      }));
+
+  const buildLetterDraftPayload = () => ({
+    formKind,
+    editingId: editingId ? String(editingId) : "",
+    forms: {
+      incoming: { ...incomingForm },
+      outgoing: { ...outgoingForm },
+      internal: { ...internalForm },
+    },
+    tagIds: {
+      incoming: normalizeIdList(incomingTagIds),
+      outgoing: normalizeIdList(outgoingTagIds),
+      internal: normalizeIdList(internalTagIds),
+    },
+    secretariatDates: {
+      incoming: incomingSecretariatDate || "",
+      outgoing: outgoingSecretariatDate || "",
+      internal: internalSecretariatDate || "",
+    },
+    secretariatNos: {
+      incoming: incomingSecretariatNo || "",
+      outgoing: outgoingSecretariatNo || "",
+      internal: internalSecretariatNo || "",
+    },
+    secretariatNotes: {
+      incoming: incomingSecretariatNote || "",
+      outgoing: outgoingSecretariatNote || "",
+      internal: internalSecretariatNote || "",
+    },
+    receiverNames: {
+      incoming: incomingReceiverName || "",
+      outgoing: outgoingReceiverName || "",
+      internal: internalReceiverName || "",
+    },
+    internalUnitId: String(internalUnitId || ""),
+    hasAttachment: hasAttachment === true,
+    returnToIds: normalizeIdList(returnToIds),
+    piroIds: normalizeIdList(piroIds),
+    docFilesByType: {
+      incoming: cleanDraftFiles(docFilesByType?.incoming),
+      outgoing: cleanDraftFiles(docFilesByType?.outgoing),
+      internal: cleanDraftFiles(docFilesByType?.internal),
+    },
+  });
+
+  const draftLetterNoFromPayload = (payload) => {
+    const kind = LETTER_FORM_KINDS.includes(payload?.formKind) ? payload.formKind : "incoming";
+    const form = payload?.forms?.[kind] || {};
+    const no =
+      kind === "incoming"
+        ? form.letterNo
+        : payload?.secretariatNos?.[kind] || form.letterNo;
+    return String(no || "").trim();
+  };
+
+  const letterDraftKeyFromPayload = (payload) => {
+    const kind = LETTER_FORM_KINDS.includes(payload?.formKind) ? payload.formKind : "incoming";
+    const mode = payload?.editingId ? "edit" : "new";
+    const no = draftLetterNoFromPayload(payload);
+    const identity = no || String(payload?.editingId || "pending").trim() || "pending";
+    return [letterDraftUserKey(), mode, kind, identity].map((part) => encodeURIComponent(String(part))).join(":");
+  };
+
+  const hasLetterDraftContent = (payload) => {
+    if (!payload || typeof payload !== "object") return false;
+    if (draftLetterNoFromPayload(payload)) return true;
+    if (String(payload.internalUnitId || "").trim()) return true;
+    if (payload.hasAttachment === true) return true;
+    if (normalizeIdList(payload.returnToIds).length || normalizeIdList(payload.piroIds).length) return true;
+    if (Object.values(payload.tagIds || {}).some((ids) => normalizeIdList(ids).length)) return true;
+    if (Object.values(payload.secretariatNotes || {}).some((value) => String(value || "").trim())) return true;
+    if (Object.values(payload.docFilesByType || {}).some((files) => Array.isArray(files) && files.length)) return true;
+
+    return LETTER_FORM_KINDS.some((kind) => {
+      const form = payload.forms?.[kind] || {};
+      return ["projectId", "letterNo", "letterDate", "fromName", "toName", "orgName", "subject"].some((key) =>
+        String(form?.[key] || "").trim()
+      );
+    });
+  };
+
+  const saveLetterDraftNow = (payload) => {
+    if (!hasLetterDraftContent(payload)) return "";
+    const key = letterDraftKeyFromPayload(payload);
+    const store = readLetterDraftStore();
+    const previousKey = lastSavedLetterDraftKeyRef.current;
+    const previousPayload = previousKey && store.items?.[previousKey]?.payload;
+    const sameDraftMode = !!previousPayload && Boolean(previousPayload.editingId) === Boolean(payload.editingId);
+    if (sameDraftMode && previousKey !== key) {
+      delete store.items[previousKey];
+    }
+    store.items[key] = {
+      key,
+      savedAt: new Date().toISOString(),
+      letterNo: draftLetterNoFromPayload(payload),
+      payload,
+    };
+    if (!payload.editingId) store.latestNewKey = key;
+    writeLetterDraftStore(store);
+    lastSavedLetterDraftKeyRef.current = key;
+    return key;
+  };
+
+  const removeLetterDraftByKey = (key) => {
+    const cleanKey = String(key || "").trim();
+    if (!cleanKey) return;
+    const store = readLetterDraftStore();
+    if (store.items?.[cleanKey]) delete store.items[cleanKey];
+    if (store.latestNewKey === cleanKey) store.latestNewKey = "";
+    writeLetterDraftStore(store);
+    if (lastSavedLetterDraftKeyRef.current === cleanKey) lastSavedLetterDraftKeyRef.current = "";
+    if (lastLetterDraftSignatureRef.current.includes(cleanKey)) lastLetterDraftSignatureRef.current = "";
+  };
+
+  const readLetterDraftByKey = (key) => {
+    const cleanKey = String(key || "").trim();
+    if (!cleanKey) return null;
+    const item = readLetterDraftStore().items?.[cleanKey];
+    return item?.payload ? item : null;
+  };
+
+  const readLatestNewLetterDraft = () => {
+    const store = readLetterDraftStore();
+    const latest = store.latestNewKey ? store.items?.[store.latestNewKey] : null;
+    if (latest?.payload) return latest;
+    return Object.values(store.items || {})
+      .filter((item) => item?.payload && !item.payload.editingId)
+      .sort((a, b) => String(b?.savedAt || "").localeCompare(String(a?.savedAt || "")))[0] || null;
+  };
+
+  const applyLetterDraftPayload = (payload) => {
+    if (!payload || typeof payload !== "object") return false;
+    const nextKind = LETTER_FORM_KINDS.includes(payload.formKind) ? payload.formKind : "incoming";
+    const forms = payload.forms || {};
+    const tags = payload.tagIds || {};
+    const dates = payload.secretariatDates || {};
+    const nos = payload.secretariatNos || {};
+    const notes = payload.secretariatNotes || {};
+    const receivers = payload.receiverNames || {};
+    const files = payload.docFilesByType || {};
+
+    letterDraftHydratingRef.current = true;
+    setFormKind(nextKind);
+    setEditingId(payload.editingId ? String(payload.editingId) : null);
+    setIncomingForm((prev) => ({ ...prev, ...(forms.incoming || {}) }));
+    setOutgoingForm((prev) => ({ ...prev, ...(forms.outgoing || {}) }));
+    setInternalForm((prev) => ({ ...prev, ...(forms.internal || {}) }));
+    setIncomingTagIds(normalizeIdList(tags.incoming));
+    setOutgoingTagIds(normalizeIdList(tags.outgoing));
+    setInternalTagIds(normalizeIdList(tags.internal));
+    setIncomingSecretariatDate(String(dates.incoming || todayJalaliYmd || ""));
+    setOutgoingSecretariatDate(String(dates.outgoing || todayJalaliYmd || ""));
+    setInternalSecretariatDate(String(dates.internal || todayJalaliYmd || ""));
+    setIncomingSecretariatNo(String(nos.incoming || ""));
+    setOutgoingSecretariatNo(String(nos.outgoing || ""));
+    setInternalSecretariatNo(String(nos.internal || ""));
+    setIncomingSecretariatNote(String(notes.incoming || ""));
+    setOutgoingSecretariatNote(String(notes.outgoing || ""));
+    setInternalSecretariatNote(String(notes.internal || ""));
+    setIncomingReceiverName(String(receivers.incoming || loggedInUserName || ""));
+    setOutgoingReceiverName(String(receivers.outgoing || loggedInUserName || ""));
+    setInternalReceiverName(String(receivers.internal || loggedInUserName || ""));
+    setInternalUnitId(String(payload.internalUnitId || ""));
+    setHasAttachment(payload.hasAttachment === true);
+    setReturnToIds(normalizeIdList(payload.returnToIds).length ? normalizeIdList(payload.returnToIds) : [""]);
+    setPiroIds(normalizeIdList(payload.piroIds).length ? normalizeIdList(payload.piroIds) : [""]);
+    setDocFilesByType({
+      incoming: cleanDraftFiles(files.incoming),
+      outgoing: cleanDraftFiles(files.outgoing),
+      internal: cleanDraftFiles(files.internal),
+    });
+    setErrorsByKind({ incoming: {}, outgoing: {}, internal: {} });
+    setSubmitTriedByKind({ incoming: false, outgoing: false, internal: false });
+    formTagsHydratedRef.current = { incoming: true, outgoing: true, internal: true };
+    window.setTimeout(() => {
+      letterDraftHydratingRef.current = false;
+      lastLetterDraftSignatureRef.current = JSON.stringify({
+        key: letterDraftKeyFromPayload(payload),
+        payload,
+      });
+      lastSavedLetterDraftKeyRef.current = letterDraftKeyFromPayload(payload);
+    }, 0);
+    return true;
+  };
+
+  const seedFormKindFromCurrent = (nextKind) => {
+    const nk = LETTER_FORM_KINDS.includes(nextKind) ? nextKind : "incoming";
+    const current = getForm(formKind) || {};
+    const target = getForm(nk) || {};
+    const patch = {};
+    ["category", "classification", "projectId", "letterNo", "letterDate", "fromName", "toName", "orgName", "subject"].forEach((key) => {
+      if (!String(target?.[key] || "").trim() && String(current?.[key] || "").trim()) {
+        patch[key] = current[key];
+      }
+    });
+    if (Object.keys(patch).length) setForm(nk, patch);
+
+    const currentTags = formKind === "outgoing" ? outgoingTagIds : formKind === "internal" ? internalTagIds : incomingTagIds;
+    const nextTags = nk === "outgoing" ? outgoingTagIds : nk === "internal" ? internalTagIds : incomingTagIds;
+    if (!normalizeIdList(nextTags).length && normalizeIdList(currentTags).length) {
+      if (nk === "outgoing") setOutgoingTagIds(normalizeIdList(currentTags));
+      else if (nk === "internal") setInternalTagIds(normalizeIdList(currentTags));
+      else setIncomingTagIds(normalizeIdList(currentTags));
+    }
+  };
+
  const resetForm = () => {
  setIncomingForm({
   category: "نامه",
@@ -3290,14 +3628,25 @@ const closeFormAndReset = () => {
 
 const openFreshForm = () => {
   resetForm();
+  const draft = readLatestNewLetterDraft();
+  if (draft?.payload) {
+    applyLetterDraftPayload(draft.payload);
+    lastSavedLetterDraftKeyRef.current = String(draft.key || letterDraftKeyFromPayload(draft.payload));
+  } else {
+    lastSavedLetterDraftKeyRef.current = "";
+    lastLetterDraftSignatureRef.current = "";
+  }
   setFormKind("incoming");
+  if (draft?.payload?.formKind && LETTER_FORM_KINDS.includes(draft.payload.formKind)) {
+    setFormKind(draft.payload.formKind);
+  }
   setFormOpen(true);
 };
 
 const switchFormKindAndReset = (nextKind) => {
   const nk = String(nextKind || "").trim();
   if (!nk || nk === formKind) return;
-  resetForm();
+  seedFormKindFromCurrent(nk);
   setFormKind(nk);
 };
 
@@ -3464,6 +3813,22 @@ setInternalUnitId(uid ? String(uid) : "");
     });
 
     setDocFilesByType((prev) => ({ ...prev, [kind]: mapped }));
+    const editDraftKey = letterDraftKeyFromPayload({
+      formKind: kind,
+      editingId: id,
+      forms: { [kind]: { letterNo } },
+      secretariatNos: { [kind]: sNo || (kind === "incoming" ? "" : letterNo) },
+    });
+    const editDraft = readLetterDraftByKey(editDraftKey);
+    if (editDraft?.payload) {
+      window.setTimeout(() => {
+        applyLetterDraftPayload(editDraft.payload);
+        lastSavedLetterDraftKeyRef.current = String(editDraft.key || editDraftKey);
+      }, 0);
+    } else {
+      lastSavedLetterDraftKeyRef.current = editDraftKey;
+      lastLetterDraftSignatureRef.current = "";
+    }
   };
 const runWithLimit = async (tasks, limit = 2) => {
   const executing = new Set();
@@ -3714,6 +4079,7 @@ subject:
       alert(`\u0646\u0627\u0645\u0647 \u0630\u062e\u06cc\u0631\u0647 \u0634\u062f\u060c \u0627\u0645\u0627 ${toFaDigits(uploadFailedCount)} \u0641\u0627\u06cc\u0644 \u0628\u0627\u0631\u06af\u0630\u0627\u0631\u06cc \u0646\u0634\u062f. \u0641\u0631\u0645 \u0628\u0627\u0632 \u0645\u06cc\u200c\u0645\u0627\u0646\u062f \u062a\u0627 \u067e\u06cc\u0634\u200c\u0646\u0645\u0627\u06cc\u0634 \u0631\u0627 \u0628\u0628\u06cc\u0646\u06cc\u062f \u0648 \u062f\u0648\u0628\u0627\u0631\u0647 \u062a\u0644\u0627\u0634 \u06a9\u0646\u06cc\u062f.`);
       return;
     }
+    removeLetterDraftByKey(letterDraftKeyFromPayload(buildLetterDraftPayload()));
     resetForm();
     setFormOpen(false);
     } catch (e) {
