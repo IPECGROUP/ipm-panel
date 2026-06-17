@@ -10,7 +10,7 @@ const icImgCls = "h-5 w-5 block m-0 object-contain brightness-0 invert pointer-e
 const svgCls = "h-5 w-5 block m-0 pointer-events-none select-none";
 
 const IcDashboard = () => <img src="/images/icons/dashbaord.svg" className={icImgCls} alt="" draggable={false} />;
-const IcPay = () => <img src="/images/icons/darkastpardakht.svg" className={icImgCls} alt="" draggable={false} />;
+const IcPay = () => <img src="/images/icons/modirait-darkast.svg" className={icImgCls} alt="" draggable={false} />;
 const IcLetter = () => <img src="/images/icons/nameha.svg" className={icImgCls} alt="" draggable={false} />;
 const IcProjects = () => <img src="/images/icons/project.svg" className={icImgCls} alt="" draggable={false} />;
 const IcBudget = () => <img src="/images/icons/busgebandi.svg" className={icImgCls} alt="" draggable={false} />;
@@ -21,7 +21,7 @@ const IcContract = () => <img src="/images/icons/gharadad.svg" className={icImgC
 const IcTags = () => <img src="/images/icons/tags.svg" className={icImgCls} alt="" draggable={false} />;
 const IcWorksheet = () => <img src="/images/icons/karbarg-mali.svg" className={icImgCls} alt="" draggable={false} />;
 const IcDaily = () => <img src="/images/icons/roznegar.svg" className={icImgCls} alt="" draggable={false} />;
-const IcQuality = () => <img src="/images/icons/check.svg" className={icImgCls} alt="" draggable={false} />;
+const IcQuality = () => <img src="/images/icons/modiritkeyfiat.svg" className={icImgCls} alt="" draggable={false} />;
 const IcClose = () => <X className="h-5 w-5" strokeWidth={2.4} />;
 
 function RightNav() {
@@ -169,7 +169,7 @@ function RightNav() {
             { to: "/projects/daily-log", label: "روزنگار پروژه", hint: "ثبت گزارش های روزانه", icon: <IcDaily /> },
           ],
         },
-        { type: "link", to: "/payment", label: "مدیریت درخواست", icon: <IcPay />, active: requestManagementActive },
+        { type: "link", to: "/payment", label: "مدیریت درخواست ها", icon: <IcPay />, active: requestManagementActive },
       ],
     },
     {
@@ -555,7 +555,7 @@ function RightNav() {
                 to="/payment"
                 onClick={closeMobileMenu}
                 className={mobileDockBtn(requestManagementActive)}
-                aria-label="مدیریت درخواست"
+                aria-label="مدیریت درخواست ها"
               >
                 <IcPay />
                 <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
