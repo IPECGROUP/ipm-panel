@@ -1,4 +1,4 @@
-﻿// src/pages/PaymentRequestPage.jsx
+// src/pages/PaymentRequestPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Card } from "../components/ui/Card";
 import { Btn, LinkBtn } from "../components/ui/Button";
@@ -34,13 +34,13 @@ export default function PaymentRequestPage() {
     return data;
   };
 
-  const toEnDigits = (s) => String(s || '')
+  const toEnDigits = React.useCallback((s) => String(s || '')
     .replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
-    .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+    .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)), []);
 
   // تبدیل هر رقم انگلیسی به رقم فارسی برای نمایش
-  const toFaDigits = (s) =>
-    String(s ?? '').replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[Number(d)]);
+  const toFaDigits = React.useCallback((s) =>
+    String(s ?? '').replace(/\d/g, d => '۰۱۲۳۴۵۶۷۸۹'[Number(d)]), []);
 
   const formatMoney = (n) => {
     if (n === null || n === undefined) return '';
@@ -384,7 +384,7 @@ export default function PaymentRequestPage() {
     } catch {
       return new Intl.DateTimeFormat('fa-IR', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
     }
-  }, []);
+  }, [toEnDigits]);
 
   const computeSerialParts = React.useCallback(() => {
     let y4 = '1400', y2 = '00', m2 = '01';
@@ -407,7 +407,7 @@ export default function PaymentRequestPage() {
       m2 = String(m).padStart(2,'0');
     }
     return { y4, y2, m2 };
-  }, []);
+  }, [toEnDigits]);
 
   const getNextSerialPR = React.useCallback(() => {
     const { y4, y2, m2 } = computeSerialParts();
@@ -441,7 +441,28 @@ export default function PaymentRequestPage() {
   const [active, setActive] = React.useState('office');
 
   const [projects, setProjects] = React.useState([]);
+  const [projectsLoading, setProjectsLoading] = React.useState(false);
+  const [projectsError, setProjectsError] = React.useState('');
   const [projectId, setProjectId] = React.useState('');
+
+  const readActiveFlag = React.useCallback((value, defaultValue = true) => {
+    if (value == null) return defaultValue;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value !== 0;
+    const s = String(value).trim().toLowerCase();
+    if (['true', '1', 'yes', 'on', 'active', 'فعال'].includes(s)) return true;
+    if (['false', '0', 'no', 'off', 'inactive', 'غیرفعال'].includes(s)) return false;
+    return defaultValue;
+  }, [toEnDigits]);
+
+  const normalizeProject = React.useCallback((p) => ({
+    ...p,
+    id: p?.id == null ? '' : String(p.id),
+    code: toEnDigits(p?.code ?? p?.projectCode ?? p?.project_code ?? '').trim(),
+    name: String(p?.name ?? p?.title ?? p?.label ?? p?.projectName ?? p?.project_name ?? '').trim(),
+    isActive: readActiveFlag(p?.isActive ?? p?.is_active ?? p?.active ?? p?.enabled, true),
+  }), [readActiveFlag, toEnDigits]);
+
   const selectedProject = React.useMemo(
     () => (projects || []).find(p => String(p.id) === String(projectId)),
     [projects, projectId]
@@ -456,13 +477,47 @@ export default function PaymentRequestPage() {
     });
   }, [projects]);
 
+  const projectOptionLabel = React.useCallback((p) => {
+    const code = p?.code ? toFaDigits(p.code) : '—';
+    const name = p?.name || 'بدون نام';
+    return `${code} — ${name}`;
+  }, [toFaDigits]);
+
   React.useEffect(() => {
     let stop = false;
     (async () => {
-      try { const r = await api('/projects'); if (!stop) setProjects(r.projects || []); } catch {}
+      setProjectsLoading(true);
+      setProjectsError('');
+      try {
+        const r = await api('/projects?isActive=true');
+        if (stop) return;
+        const raw = Array.isArray(r)
+          ? r
+          : Array.isArray(r?.items)
+            ? r.items
+            : Array.isArray(r?.projects)
+              ? r.projects
+              : [];
+        const byId = new Map();
+        raw
+          .filter((p) => p && typeof p === 'object' && !Array.isArray(p))
+          .map(normalizeProject)
+          .filter((p) => p.id && p.isActive)
+          .forEach((p) => {
+            if (!byId.has(String(p.id))) byId.set(String(p.id), p);
+          });
+        setProjects(Array.from(byId.values()));
+      } catch {
+        if (!stop) {
+          setProjects([]);
+          setProjectsError('خطا در دریافت پروژه‌ها');
+        }
+      } finally {
+        if (!stop) setProjectsLoading(false);
+      }
     })();
     return () => { stop = true; };
-  }, []);
+  }, [normalizeProject]);
 
   const [me, setMe] = React.useState(null);
   React.useEffect(() => {
@@ -2975,19 +3030,38 @@ const isRowForMe = React.useCallback((row) => {
         {active === 'projects' && (
           <div className="flex flex-col gap-1">
             <label className="text-xs text-neutral-600 dark:text-white/60">پروژه</label>
-            <select
-              className="w-full border rounded-xl px-3 py-2 ltr font-[inherit] bg-white text-neutral-900 border-black/10
-                         dark:border-white/15 dark:bg-white/5 dark:text-white"
-              value={projectId}
-              onChange={e => { setProjectId(e.target.value); setBudgetCode(''); setReqErr(prev => ({ ...prev, projectId: '' })); }}
-            >
-              <option value="" className="bg-white text-neutral-900 dark:bg-zinc-900 dark:text-white">انتخاب کنید</option>
-              {(sortedProjects || []).map(p => (
-                <option key={p.id} value={p.id} className="bg-white text-neutral-900 dark:bg-zinc-900 dark:text-white">
-                  {(p.code ? p.code : '—') + ' — ' + (p.name || '')}
+            <div className="relative">
+              <select
+                dir="rtl"
+                className="w-full h-11 appearance-none rounded-xl border px-3 py-2 pl-9 text-right font-[inherit] bg-white text-neutral-900 border-black/10 disabled:opacity-60
+                           dark:border-white/15 dark:bg-white/5 dark:text-white"
+                value={projectId}
+                disabled={projectsLoading || sortedProjects.length === 0}
+                onChange={e => { setProjectId(e.target.value); setBudgetCode(''); setReqErr(prev => ({ ...prev, projectId: '' })); }}
+              >
+                <option value="" className="bg-white text-neutral-900 dark:bg-zinc-900 dark:text-white">
+                  {projectsLoading ? 'در حال بارگذاری پروژه‌ها...' : sortedProjects.length ? 'انتخاب کنید' : 'پروژه فعال ثبت نشده است'}
                 </option>
-              ))}
-            </select>
+                {(sortedProjects || []).map(p => (
+                  <option key={p.id} value={p.id} className="bg-white text-neutral-900 dark:bg-zinc-900 dark:text-white">
+                    {projectOptionLabel(p)}
+                  </option>
+                ))}
+              </select>
+              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-neutral-500 dark:text-neutral-300">
+                <svg viewBox="0 0 20 20" width="16" height="16" fill="currentColor" aria-hidden="true">
+                  <path d="M5.5 7.5 10 12l4.5-4.5" />
+                </svg>
+              </span>
+            </div>
+            {selectedProject && (
+              <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                {projectOptionLabel(selectedProject)}
+              </div>
+            )}
+            {projectsError && (
+              <div className="mt-1 text-xs text-red-600 dark:text-red-400">{projectsError}</div>
+            )}
             {reqErr.projectId && (
               <div className="mt-1 text-xs text-red-600 dark:text-red-400">{reqErr.projectId}</div>
             )}
