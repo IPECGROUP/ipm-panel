@@ -4,7 +4,6 @@ import { Card } from "../components/ui/Card";
 import { useAuth } from "../components/AuthProvider";
 import { todayJalaliYmd } from "../utils/date";
 import { toEnglishDigits } from "../utils/format";
-import { baseCurrenciesTablePreset as tablePreset } from "../components/ui/tablePresets.js";
 
 const SCOPE_OPTIONS = [
   ["office", "دفتر مرکزی"], ["site", "سایت"], ["finance", "مالی"],
@@ -137,6 +136,9 @@ export default function PaymentRequestPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [selected, setSelected] = useState(null);
+  const [actionNote, setActionNote] = useState("");
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionError, setActionError] = useState("");
   const mainAdmin = useMemo(() => isMarandi(user), [user]);
   const serial = useMemo(() => `PR-${Date.now().toString().slice(-8)}`, [showForm]);
   const amount = parseAmount(form.amount);
@@ -302,6 +304,31 @@ export default function PaymentRequestPage() {
     finally { setSubmitting(false); }
   };
 
+  const openPreview = (item) => {
+    setSelected(item);
+    setActionNote("");
+    setActionError("");
+  };
+
+  const recordAction = async (status) => {
+    if (!selected || actionBusy) return;
+    setActionBusy(true);
+    setActionError("");
+    try {
+      const data = await api("/requests/status", {
+        method: "POST",
+        body: JSON.stringify({ id: selected.id, status, note: actionNote.trim() }),
+      });
+      setSelected((current) => current ? { ...current, ...(data.item || {}) } : current);
+      setActionNote("");
+      await loadItems();
+    } catch (err) {
+      setActionError(err?.message === "forbidden" ? "شما اجازه انجام این اقدام را ندارید." : "ثبت اقدام انجام نشد.");
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
   return <div dir="rtl" className="mx-auto max-w-[1400px]">
     <Card className="overflow-hidden rounded-2xl border border-black/10 bg-white p-0 dark:border-white/10 dark:bg-neutral-900">
       <div className="p-3 md:p-4">
@@ -355,25 +382,127 @@ export default function PaymentRequestPage() {
           <div className="flex justify-end"><button type="submit" disabled={submitting || uploading} className="h-10 w-12 rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900" title="ثبت"><img src="/images/icons/sabtdarkhast.svg" alt="ثبت" className="mx-auto h-5 w-5 invert dark:invert-0" /></button></div>
         </form>}
 
-        {!showForm && <div className={tablePreset.frame}>
-          <div className="overflow-x-auto"><table className={`${tablePreset.table} min-w-[850px]`} dir="rtl">
-            <thead><tr className={tablePreset.headRow}>
-              <th className={tablePreset.th}>#</th><th className={tablePreset.th}>تاریخ</th>{mainAdmin && <th className={tablePreset.th}>ثبت کننده</th>}<th className={tablePreset.th}>موضوع</th><th className={tablePreset.th}>ذینفع</th><th className={tablePreset.th}>مبلغ</th><th className={tablePreset.th}>وضعیت</th><th className={tablePreset.th}>اقدامات</th>
+        {!showForm && <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
+          <div className="max-h-[58vh] overflow-auto" dir="ltr"><table dir="rtl" className="w-full min-w-[980px] table-fixed text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-2 [&_td]:py-2">
+            <colgroup><col style={{ width: 54 }} /><col style={{ width: 145 }} /><col style={{ width: 105 }} />{mainAdmin && <col style={{ width: 145 }} />}<col style={{ width: 125 }} /><col /><col style={{ width: 170 }} /><col style={{ width: 145 }} /><col style={{ width: 105 }} /></colgroup>
+            <thead><tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100">
+              <th className="sticky top-0 z-20 bg-neutral-200 font-semibold dark:bg-neutral-800">#</th><th className="sticky top-0 z-20 bg-neutral-200 font-semibold dark:bg-neutral-800">شماره</th><th className="sticky top-0 z-20 bg-neutral-200 font-semibold dark:bg-neutral-800">تاریخ</th>{mainAdmin && <th className="sticky top-0 z-20 bg-neutral-200 font-semibold dark:bg-neutral-800">ثبت کننده</th>}<th className="sticky top-0 z-20 bg-neutral-200 font-semibold dark:bg-neutral-800">مرکز بودجه</th><th className="sticky top-0 z-20 bg-neutral-200 font-semibold dark:bg-neutral-800">عنوان درخواست</th><th className="sticky top-0 z-20 bg-neutral-200 font-semibold dark:bg-neutral-800">مبلغ درخواست</th><th className="sticky top-0 z-20 bg-neutral-200 font-semibold dark:bg-neutral-800">آخرین وضعیت</th><th className="sticky top-0 z-20 bg-neutral-200 font-semibold dark:bg-neutral-800">اقدامات</th>
             </tr></thead>
-            <tbody className={tablePreset.body}>
-              {loading ? <tr><td colSpan={mainAdmin ? 8 : 7} className={tablePreset.emptyRow}>در حال دریافت...</td></tr> : items.length === 0 ? <tr><td colSpan={mainAdmin ? 8 : 7} className={tablePreset.emptyRow}>هنوز درخواستی ثبت نشده است.</td></tr> : items.map((item, index) => <tr key={item.id}>
-                <td>{toFa(index + 1)}</td><td>{toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))}</td>{mainAdmin && <td>{item.createdByName || `کاربر #${toFa(item.createdById)}`}</td>}<td>{item.title}</td><td>{item.beneficiaryName || "—"}</td><td>{toFa(Number(item.amount || 0).toLocaleString("en-US"))}</td><td>{STATUS_LABELS[item.status] || item.status}</td><td><button type="button" onClick={() => setSelected(item)} className="rounded-lg border border-black/10 px-3 py-1 text-xs hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10">مشاهده</button></td>
+            <tbody className="text-black dark:text-neutral-100">
+              {loading ? <tr><td colSpan={mainAdmin ? 9 : 8} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td></tr> : items.length === 0 ? <tr><td colSpan={mainAdmin ? 9 : 8} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواستی ثبت نشده است.</td></tr> : items.map((item, index) => <tr key={item.id} className="group border-b border-neutral-300 transition-colors hover:bg-black/[0.04] dark:border-neutral-700 dark:hover:bg-white/10">
+                <td className="px-3">{toFa(index + 1)}</td>
+                <td className="px-3"><button type="button" onClick={() => openPreview(item)} className="font-semibold underline-offset-4 hover:underline" title="نمایش درخواست">{item.serial || "—"}</button></td>
+                <td className="px-3">{toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))}</td>
+                {mainAdmin && <td className="truncate px-3">{item.createdByName || `کاربر #${toFa(item.createdById)}`}</td>}
+                <td className="px-3">{SCOPE_OPTIONS.find(([value]) => value === item.scope)?.[1] || "—"}</td>
+                <td className="truncate px-3">{item.title || "—"}</td>
+                <td className="px-3 ltr">{toFa(Number(item.amount || 0).toLocaleString("en-US"))}</td>
+                <td className="px-3"><StatusBadge status={item.status} /></td>
+                <td className="px-3"><div className="flex items-center justify-start gap-2 pl-3 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"><button type="button" onClick={() => openPreview(item)} className="inline-grid h-10 w-10 place-items-center bg-transparent transition hover:opacity-80" aria-label="نمایش" title="نمایش"><img src="/images/icons/namayeshname.svg" alt="" className="h-4 w-4 dark:invert" /></button></div></td>
               </tr>)}
             </tbody>
           </table></div>
         </div>}
       </div>
     </Card>
-    {selected && <div className="fixed inset-0 z-[100] grid place-items-center bg-black/50 p-4" onClick={() => setSelected(null)}><div className="w-full max-w-xl rounded-2xl bg-white p-5 dark:bg-neutral-900" onClick={(e) => e.stopPropagation()}><div className="flex justify-between"><b>{selected.title}</b><button onClick={() => setSelected(null)}>×</button></div><div className="mt-4 grid gap-3 text-sm md:grid-cols-2"><Detail label="مبلغ" value={toFa(Number(selected.amount || 0).toLocaleString("en-US"))} /><Detail label="ذینفع" value={selected.beneficiaryName || "—"} /><Detail label="اطلاعات بانکی" value={selected.bankInfo || "—"} /><Detail label="شماره سند" value={selected.docNumber || "—"} /><div className="md:col-span-2"><Detail label="شرح" value={selected.description || "—"} /></div></div></div></div>}
+    {selected && <PaymentPreview
+      item={selected}
+      projects={projects}
+      currencyTypes={currencyTypes}
+      currencySources={currencySources}
+      mainAdmin={mainAdmin}
+      actionNote={actionNote}
+      setActionNote={setActionNote}
+      actionBusy={actionBusy}
+      actionError={actionError}
+      onAction={recordAction}
+      onClose={() => setSelected(null)}
+    />}
   </div>;
 }
 
 function Field({ label, required, children }) { return <label className="block text-xs text-neutral-600 dark:text-neutral-300">{label}{required && <span className="mr-1 text-red-500">*</span>}<div className="mt-1">{children}</div></label>; }
 function ReadField({ label, value, ltr }) { return <Field label={label}><div dir={ltr ? "ltr" : "rtl"} className={`${inputClass} flex items-center ${ltr ? "justify-end" : ""}`}>{value || "—"}</div></Field>; }
 function MoneyInput({ value, onChange }) { return <input dir="ltr" inputMode="numeric" className={inputClass} value={toFa(value)} onChange={(e) => onChange(money(e.target.value))} placeholder="۰" />; }
-function Detail({ label, value }) { return <div><div className="text-xs text-neutral-500">{label}</div><div className="mt-1 break-words">{value}</div></div>; }
+function StatusBadge({ status }) {
+  const colors = status === "approved" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" : status === "rejected" ? "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300" : status === "returned" ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" : "bg-neutral-100 text-neutral-700 dark:bg-white/10 dark:text-neutral-200";
+  return <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs ${colors}`}>{STATUS_LABELS[status] || status || "—"}</span>;
+}
+
+function PaymentPreview({ item, projects, currencyTypes, currencySources, mainAdmin, actionNote, setActionNote, actionBusy, actionError, onAction, onClose }) {
+  const scopeLabel = SCOPE_OPTIONS.find(([value]) => value === item.scope)?.[1] || "—";
+  const project = projects.find((row) => String(row.id) === String(item.projectId));
+  const currency = currencyTypes.find((row) => String(row.id) === String(item.currencyTypeId));
+  const source = currencySources.find((row) => String(row.id) === String(item.currencySourceId));
+  const currencyName = currency ? itemLabel(currency) : "ریال";
+  const cash = Number(item.cashText ?? item.cashAmount ?? 0);
+  const credit = Number(item.creditSection ?? item.creditAmount ?? Math.max(0, Number(item.amount || 0) - cash));
+  const docName = item.docId === "other" ? (item.docOther || "سایر") : (DOC_OPTIONS.find(([value]) => value === item.docId)?.[1] || "—");
+  const attachments = Array.isArray(item.attachments) ? item.attachments : [];
+  const history = Array.isArray(item.historyJson) ? item.historyJson : Array.isArray(item.history_json) ? item.history_json : [];
+  const canDecide = mainAdmin && item.status === "pending" && item.canAct !== false;
+
+  return createPortal(<div className="fixed inset-0 z-[9999]">
+    <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
+    <div className="absolute inset-0 flex items-center justify-center p-3 md:p-6">
+      <div dir="rtl" className="flex h-[min(88vh,840px)] w-[min(1100px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
+        <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3 dark:border-white/10">
+          <div className="text-sm font-bold">نمایش درخواست پرداخت <span className="font-normal text-neutral-500">— {item.serial || "—"}</span></div>
+          <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white ring-1 ring-black/15 transition hover:bg-black/80 dark:bg-transparent dark:ring-neutral-800 dark:hover:bg-white/10" aria-label="بستن" title="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 md:p-5">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.25fr]">
+            <div className="space-y-4">
+              <PreviewSection title="مشخصات درخواست">
+                <PreviewRow label="شماره درخواست" value={item.serial || "—"} ltr />
+                <PreviewRow label="تاریخ درخواست" value={toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))} />
+                <PreviewRow label="درخواست کننده" value={item.createdByName || `کاربر #${toFa(item.createdById)}`} />
+                <PreviewRow label="مرکز بودجه" value={scopeLabel} />
+                {item.scope === "projects" && <PreviewRow label="پروژه" value={project ? `${normalizeCode(project.code)} - ${project.name || ""}` : (item.projectId || "—")} />}
+                <PreviewRow label="کد بودجه" value={item.budgetCode || "—"} ltr />
+                <PreviewRow label="آخرین وضعیت" value={<StatusBadge status={item.status} />} />
+              </PreviewSection>
+              <PreviewSection title="اطلاعات سند">
+                <PreviewRow label="نوع سند" value={docName} />
+                <PreviewRow label="شماره سند" value={item.docNumber || "—"} />
+                <PreviewRow label="تاریخ سند" value={toFa(item.docDate || item.docDateJalali || "—")} />
+                <PreviewRow label="پیوست‌ها" value={attachments.length ? <div className="flex flex-wrap justify-end gap-2">{attachments.map((file, index) => <a key={file.id || file.serverId || index} href={file.url || "#"} target="_blank" rel="noreferrer" className="rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFa(index + 1)}`}</a>)}</div> : "—"} />
+              </PreviewSection>
+            </div>
+            <div className="space-y-4">
+              <PreviewSection title="جزئیات پرداخت">
+                <PreviewRow label="عنوان درخواست" value={item.title || "—"} />
+                <PreviewRow label="شرح" value={item.description || "—"} />
+                <PreviewRow label={`مبلغ درخواست (${currencyName})`} value={toFa(Number(item.amount || 0).toLocaleString("en-US"))} ltr />
+                <PreviewRow label={`مبلغ نقدی (${currencyName})`} value={toFa(cash.toLocaleString("en-US"))} ltr />
+                <PreviewRow label={`مانده اعتباری (${currencyName})`} value={toFa(credit.toLocaleString("en-US"))} ltr />
+                <PreviewRow label="تاریخ پرداخت" value={toFa(item.cashDate || item.cashDateJalali || "—")} />
+                <PreviewRow label="شرح پرداخت اعتباری" value={item.creditPay || "—"} />
+                <PreviewRow label="منشا ارز" value={source ? itemLabel(source) : "—"} />
+                <PreviewRow label="نام ذینفع" value={item.beneficiaryName || "—"} />
+                <PreviewRow label="اطلاعات بانکی ذینفع" value={item.bankInfo || "—"} />
+              </PreviewSection>
+            </div>
+          </div>
+
+          {!!history.length && <div className="mt-4"><PreviewSection title="سوابق درخواست"><div className="overflow-x-auto"><table className="w-full min-w-[620px] text-sm"><thead><tr className="bg-neutral-100 dark:bg-white/10"><th className="p-2 text-right">اقدام</th><th className="p-2 text-right">شرح</th><th className="p-2 text-right">تاریخ و ساعت</th></tr></thead><tbody>{history.filter((entry) => !["step_set", "step_clear"].includes(entry?.type)).map((entry, index) => <tr key={index} className="border-t border-black/10 dark:border-white/10"><td className="p-2">{historyLabel(entry?.type || entry?.status)}</td><td className="p-2">{entry?.note || "—"}</td><td className="p-2">{formatDateTime(entry?.at)}</td></tr>)}</tbody></table></div></PreviewSection></div>}
+
+          {canDecide && <div className="mt-4 rounded-2xl border border-black/10 p-4 dark:border-white/10">
+            <div className="mb-2 text-sm font-semibold">اقدام روی درخواست</div>
+            <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className="min-h-20 w-full rounded-xl border border-black/10 bg-white p-3 text-sm outline-none dark:border-white/15 dark:bg-white/5" placeholder="شرح اقدام (اختیاری)" />
+            {actionError && <div className="mt-2 text-xs text-red-600 dark:text-red-400">{actionError}</div>}
+            <div className="mt-3 flex justify-end gap-2">
+              <button type="button" onClick={() => onAction("rejected")} disabled={actionBusy} className="inline-flex h-10 items-center gap-2 rounded-xl bg-red-600 px-4 text-sm text-white transition hover:bg-red-700 disabled:opacity-50"><img src="/images/icons/raddarkhast.svg" alt="" className="h-5 w-5 invert" />رد درخواست</button>
+              <button type="button" onClick={() => onAction("approved")} disabled={actionBusy} className="inline-flex h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm text-white transition hover:bg-emerald-700 disabled:opacity-50"><img src="/images/icons/taeid.svg" alt="" className="h-5 w-5 invert" />تأیید درخواست</button>
+            </div>
+          </div>}
+        </div>
+      </div>
+    </div>
+  </div>, document.body);
+}
+
+function PreviewSection({ title, children }) { return <section className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">{title}</div><div className="divide-y divide-black/10 px-4 dark:divide-white/10">{children}</div></section>; }
+function PreviewRow({ label, value, ltr }) { return <div className="grid grid-cols-[135px_1fr] gap-3 py-2.5 text-sm"><div className="text-neutral-500 dark:text-neutral-400">{label}</div><div dir={ltr ? "ltr" : "rtl"} className={`break-words font-medium ${ltr ? "text-left" : "text-right"}`}>{value}</div></div>; }
+function historyLabel(value) { return ({ created: "ثبت درخواست", approved: "تأیید", rejected: "رد", returned: "برگشت", edited: "ویرایش" })[value] || value || "—"; }
+function formatDateTime(value) { if (!value) return "—"; try { return new Intl.DateTimeFormat("fa-IR-u-ca-persian", { dateStyle: "short", timeStyle: "short" }).format(new Date(value)); } catch { return "—"; } }
