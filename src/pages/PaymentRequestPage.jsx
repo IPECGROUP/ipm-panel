@@ -33,6 +33,12 @@ function parseAmount(value) {
   return digits ? Number(digits) : 0;
 }
 function money(value) { const amount = parseAmount(value); return amount ? amount.toLocaleString("en-US") : ""; }
+function normalizeCode(value) { return toEnglishDigits(String(value || "")).trim(); }
+function isActiveProject(project) {
+  const value = project?.isActive ?? project?.is_active ?? project?.active;
+  return value === undefined || value === null || value === true || value === 1 || String(value).toLowerCase() === "true" || String(value) === "1";
+}
+function isMainProject(project) { return /^\d{3}$/.test(normalizeCode(project?.code)); }
 function isMarandi(user) {
   return String(user?.username || "").toLowerCase() === "marandi" || String(user?.email || "").toLowerCase() === "marandi@ipecgroup.net";
 }
@@ -156,7 +162,13 @@ export default function PaymentRequestPage() {
   useEffect(() => { loadItems(); }, [loadItems]);
   useEffect(() => {
     Promise.allSettled([api("/projects?isActive=true"), api("/base/currencies/types"), api("/base/currencies/sources")]).then(([p, t, s]) => {
-      if (p.status === "fulfilled") setProjects(p.value.items || p.value.projects || []);
+      if (p.status === "fulfilled") {
+        const rawProjects = p.value.items || p.value.projects || [];
+        const mainProjects = rawProjects
+          .filter((project) => isActiveProject(project) && isMainProject(project))
+          .sort((a, b) => normalizeCode(a.code).localeCompare(normalizeCode(b.code), "fa", { numeric: true }));
+        setProjects(mainProjects);
+      }
       if (t.status === "fulfilled") setCurrencyTypes(t.value.items || []);
       if (s.status === "fulfilled") setCurrencySources(s.value.items || []);
     });
@@ -169,8 +181,18 @@ export default function PaymentRequestPage() {
       if (form.projectId) query.set("project_id", form.projectId);
       try {
         const data = await api(`/budget-estimates?${query}`);
-        if (Array.isArray(data.items) && data.items.length) {
-          if (!cancelled) setBudgetItems(data.items);
+        const estimateItems = Array.isArray(data.items) ? data.items : [];
+        if (form.scope === "projects") {
+          const project = projects.find((item) => String(item.id) === String(form.projectId));
+          const projectPrefix = `${normalizeCode(project?.code)}.`;
+          const projectBudgetItems = estimateItems
+            .filter((item) => normalizeCode(item?.code).startsWith(projectPrefix))
+            .sort((a, b) => normalizeCode(a.code).localeCompare(normalizeCode(b.code), "fa", { numeric: true }));
+          if (!cancelled) setBudgetItems(projectBudgetItems);
+          return;
+        }
+        if (estimateItems.length) {
+          if (!cancelled) setBudgetItems(estimateItems);
           return;
         }
       } catch {}
@@ -178,11 +200,6 @@ export default function PaymentRequestPage() {
       try {
         const data = await api(`/centers/${form.scope}`);
         let rows = Array.isArray(data.items) ? data.items : [];
-        if (form.scope === "projects") {
-          const project = projects.find((item) => String(item.id) === String(form.projectId));
-          const projectCode = String(project?.code || "").trim();
-          rows = rows.filter((item) => String(item.suffix || item.code || "").startsWith(projectCode));
-        }
         const mapped = rows.map((item) => ({
           ...item,
           code: item.code || item.center_code || item.suffix || "",
@@ -256,8 +273,8 @@ export default function PaymentRequestPage() {
             {SCOPE_OPTIONS.map(([value, label]) => <button key={value} type="button" onClick={() => changeScope(value)} className={`rounded-xl border px-4 py-2 text-sm transition ${form.scope === value ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-neutral-900" : "border-black/10 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"}`}>{label}</button>)}
           </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {form.scope === "projects" && <Field label="پروژه"><select className={inputClass} value={form.projectId} onChange={(e) => setForm((old) => ({ ...old, projectId: e.target.value, budgetCode: "" }))}><option value="">انتخاب پروژه</option>{projects.map((item) => <option key={item.id} value={item.id}>{item.code ? `${item.code} - ` : ""}{item.name || item.title}</option>)}</select></Field>}
-            <Field label="کد بودجه" required><select className={inputClass} value={form.budgetCode} onChange={(e) => setField("budgetCode", e.target.value)}><option value="">انتخاب کد بودجه</option>{budgetItems.map((item) => <option key={item.code || item.id} value={item.code || item.center_code}>{item.code || item.center_code} - {item.center_desc || item.name || item.description || ""}</option>)}</select></Field>
+            {form.scope === "projects" && <Field label="پروژه"><select className={inputClass} value={form.projectId} onChange={(e) => setForm((old) => ({ ...old, projectId: e.target.value, budgetCode: "" }))}><option value="">انتخاب پروژه</option>{projects.map((item) => <option key={item.id} value={item.id}>{normalizeCode(item.code)}{item.name || item.title ? ` - ${item.name || item.title}` : ""}</option>)}</select></Field>}
+            <Field label="کد بودجه" required><select className={inputClass} value={form.budgetCode} disabled={form.scope === "projects" && !form.projectId} onChange={(e) => setField("budgetCode", e.target.value)}><option value="">{form.scope === "projects" && !form.projectId ? "ابتدا پروژه را انتخاب کنید" : "انتخاب کد بودجه"}</option>{budgetItems.map((item) => { const code = normalizeCode(item.code || item.center_code); const description = item.center_desc || item.last_desc || item.name || item.description || ""; return <option key={code || item.id} value={code}>{code}{description ? ` - ${description}` : ""}</option>; })}</select></Field>
           </div>
           <Field label="عنوان درخواست" required><input className={inputClass} value={form.title} onChange={(e) => setField("title", e.target.value)} /></Field>
           <Field label="شرح"><textarea className={`${inputClass} min-h-24 py-2`} value={form.description} onChange={(e) => setField("description", e.target.value)} /></Field>
