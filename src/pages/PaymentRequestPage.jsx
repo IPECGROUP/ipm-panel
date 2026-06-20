@@ -34,6 +34,12 @@ function parseAmount(value) {
 }
 function money(value) { const amount = parseAmount(value); return amount ? amount.toLocaleString("en-US") : ""; }
 function normalizeCode(value) { return toEnglishDigits(String(value || "")).trim(); }
+function coreOf(value) {
+  const raw = normalizeCode(value);
+  const noPrefix = raw.replace(/^[A-Za-z]+[^0-9]*/, "");
+  const normalized = noPrefix.replace(/[^0-9.]+/g, ".");
+  return normalized.replace(/\.+/g, ".").replace(/^\./, "").replace(/\.$/, "");
+}
 function isActiveProject(project) {
   const value = project?.isActive ?? project?.is_active ?? project?.active;
   return value === undefined || value === null || value === true || value === 1 || String(value).toLowerCase() === "true" || String(value) === "1";
@@ -179,18 +185,60 @@ export default function PaymentRequestPage() {
     (async () => {
       const query = new URLSearchParams({ kind: form.scope });
       if (form.projectId) query.set("project_id", form.projectId);
+
+      if (form.scope === "projects") {
+        const selectedProject = projects.find((item) => String(item.id) === String(form.projectId));
+        const projectCore = coreOf(selectedProject?.code);
+        try {
+          const [estimateData, centersData] = await Promise.all([
+            api(`/budget-estimates?${query}`).catch(() => ({ items: [] })),
+            api("/centers/projects").catch(() => ({ items: [] })),
+          ]);
+          const estimateItems = Array.isArray(estimateData?.items) ? estimateData.items : [];
+          const centerItems = Array.isArray(centersData?.items) ? centersData.items : [];
+          const byCode = new Map();
+
+          centerItems.forEach((item) => {
+            const code = normalizeCode(item?.suffix ?? item?.code);
+            const codeCore = coreOf(code);
+            if (!code || !projectCore || (codeCore !== projectCore && !codeCore.startsWith(`${projectCore}.`))) return;
+            byCode.set(code, {
+              code,
+              center_desc: String(item?.description ?? item?.center_desc ?? item?.name ?? ""),
+              last_amount: Number(item?.last_amount || 0),
+            });
+          });
+
+          estimateItems.forEach((item) => {
+            const code = normalizeCode(item?.code);
+            const codeCore = coreOf(code);
+            if (!code || !projectCore || (codeCore !== projectCore && !codeCore.startsWith(`${projectCore}.`))) return;
+            const previous = byCode.get(code) || { code, center_desc: "", last_amount: 0 };
+            byCode.set(code, {
+              ...previous,
+              center_desc: previous.center_desc || String(item?.center_desc ?? item?.last_desc ?? item?.name ?? ""),
+              last_amount: Number(item?.last_amount ?? item?.amount ?? previous.last_amount ?? 0),
+            });
+          });
+
+          if (!byCode.size && selectedProject?.code) {
+            const code = normalizeCode(selectedProject.code);
+            byCode.set(code, { code, center_desc: selectedProject.name || "", last_amount: 0 });
+          }
+
+          const merged = Array.from(byCode.values()).sort((a, b) =>
+            coreOf(a.code).localeCompare(coreOf(b.code), "fa", { numeric: true, sensitivity: "base" })
+          );
+          if (!cancelled) setBudgetItems(merged);
+        } catch {
+          if (!cancelled) setBudgetItems([]);
+        }
+        return;
+      }
+
       try {
         const data = await api(`/budget-estimates?${query}`);
         const estimateItems = Array.isArray(data.items) ? data.items : [];
-        if (form.scope === "projects") {
-          const project = projects.find((item) => String(item.id) === String(form.projectId));
-          const projectPrefix = `${normalizeCode(project?.code)}.`;
-          const projectBudgetItems = estimateItems
-            .filter((item) => normalizeCode(item?.code).startsWith(projectPrefix))
-            .sort((a, b) => normalizeCode(a.code).localeCompare(normalizeCode(b.code), "fa", { numeric: true }));
-          if (!cancelled) setBudgetItems(projectBudgetItems);
-          return;
-        }
         if (estimateItems.length) {
           if (!cancelled) setBudgetItems(estimateItems);
           return;
