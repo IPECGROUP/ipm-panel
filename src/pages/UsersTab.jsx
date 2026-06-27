@@ -804,7 +804,7 @@ function UsersTab({ embedded = false }) {
             <div className="px-[15px] pb-4">
               <div className={tableUi.frame}>
                 <div className="w-full overflow-x-auto">
-                  <table className={`${tableUi.table} min-w-[1000px]`} dir="rtl">
+                  <table className={`${tableUi.table} min-w-[760px]`} dir="rtl">
                     <THead>
                       <tr className={tableUi.headRow}>
                         <TH className={`w-12 ${tableUi.th}`}>
@@ -851,38 +851,16 @@ function UsersTab({ embedded = false }) {
                           </div>
                         </TH>
 
-                        <TH className={`min-w-[160px] ${tableUi.th}`}>
-                          <div className="flex items-center justify-center gap-2">
-                            <span>واحد</span>
-                            <button
-                              type="button"
-                              onClick={() => toggleSort("department")}
-                              className="h-7 w-7 inline-grid place-items-center bg-transparent p-0
-                                         text-neutral-500 hover:text-neutral-600 active:text-neutral-700
-                                         dark:text-neutral-400 dark:hover:text-neutral-300"
-                              title="مرتب‌سازی واحد"
-                              aria-label="مرتب‌سازی واحد"
-                            >
-                              <svg
-                                className={`w-[14px] h-[14px] transition-transform ${
-                                  sortKey === "department" && sortDir === "asc" ? "rotate-180" : ""
-                                }`}
-                                focusable="false"
-                                aria-hidden="true"
-                                viewBox="0 0 24 24"
-                              >
-                                <path d="M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z"></path>
-                              </svg>
-                            </button>
-                          </div>
+                        <TH className={`min-w-[180px] ${tableUi.th}`}>
+                          نام کاربری
                         </TH>
 
                         <TH className={`min-w-[140px] ${tableUi.th}`}>
                           اعتبار تا
                         </TH>
 
-                        <TH className={`min-w-[320px] ${tableUi.th}`}>
-                          سطح دسترسی‌ها
+                        <TH className={`min-w-[160px] ${tableUi.th}`}>
+                          نوع
                         </TH>
                       </tr>
                     </THead>
@@ -922,14 +900,14 @@ function UsersTab({ embedded = false }) {
                               </TD>
 
                               <TD className={`px-3 ${tdBorder}`}>{idx + 1}</TD>
-                              <TD className={`px-3 ${tdBorder}`}>{u.name || u.username || "—"}</TD>
-                              <TD className={`px-3 ${tdBorder}`}>{u.department || "—"}</TD>
+                              <TD className={`px-3 ${tdBorder}`}>{u.name || "—"}</TD>
+                              <TD className={`px-3 ${tdBorder}`} dir="ltr">{u.username || "—"}</TD>
                               <TD className={`px-3 ${tdBorder} ${isExpired(u.expiresAt || u.expires_at) ? "text-red-600 dark:text-red-400" : ""}`}>
                                 {formatExpiresAt(u.expiresAt || u.expires_at)}
                               </TD>
                               <TD className={`px-3 ${rowUi.valueCell} ${tdBorder} text-black/80 dark:text-neutral-300`}>
                                 <div className={rowUi.valueWrap}>
-                                  <span className={rowUi.valueText}>{renderAccessText(u)}</span>
+                                  <span className={rowUi.valueText}>{u.role || "user"}</span>
                                   <div className={rowUi.rowActions}>
                                     <RowActionIconBtn
                                       action="edit"
