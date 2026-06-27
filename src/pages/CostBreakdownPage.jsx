@@ -81,6 +81,9 @@ export default function CostBreakdownPage() {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
   const [autoSaveStatus, setAutoSaveStatus] = useState({});
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [page, setPage] = useState(0);
 
   const [editId, setEditId] = useState(null);
   const [editDraft, setEditDraft] = useState({
@@ -108,6 +111,56 @@ export default function CostBreakdownPage() {
   );
 
   const selectedProjectCode = normalizeCode(selectedProject?.code || "");
+
+  const tableRows = useMemo(() => {
+    const pending = pendingRows.map((row, idx) => ({
+      kind: "pending",
+      key: `pending:${row.tempId}`,
+      row,
+      label: `جدید ${idx + 1}`,
+    }));
+
+    const saved = rows.map((row, idx) => ({
+      kind: "saved",
+      key: `saved:${row.id}`,
+      row,
+      label: String(idx + 1),
+    }));
+
+    return [...pending, ...saved];
+  }, [pendingRows, rows]);
+
+  const safeRowsPerPage = Number(rowsPerPage) || 10;
+  const totalRows = tableRows.length;
+  const totalPages = Math.max(1, Math.ceil(totalRows / safeRowsPerPage));
+  const safePage = Math.min(page, totalPages - 1);
+  const startIdx = safePage * safeRowsPerPage;
+  const endIdx = Math.min(totalRows, startIdx + safeRowsPerPage);
+  const pageItems = tableRows.slice(startIdx, endIdx);
+  const visibleIds = pageItems.map((item) => item.key);
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
+  const someVisibleSelected = visibleIds.some((id) => selectedIds.has(id)) && !allVisibleSelected;
+
+  const toggleSelectAllVisible = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) {
+        visibleIds.forEach((id) => next.delete(id));
+      } else {
+        visibleIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const toggleRowSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const budgetCenterByCode = useMemo(() => {
     const map = new Map();
@@ -205,13 +258,31 @@ export default function CostBreakdownPage() {
       setRows([]);
       setBudgetCenters([]);
       setPendingRows([]);
+      setSelectedIds(new Set());
       return;
     }
     clearDraft();
     setPendingRows([]);
+    setSelectedIds(new Set());
+    setPage(0);
     loadRows(projectId);
     loadBudgetCenters(selectedProject);
   }, [projectId, loadRows]);
+
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      const valid = new Set(tableRows.map((item) => item.key));
+      const next = new Set();
+      prev.forEach((id) => {
+        if (valid.has(id)) next.add(id);
+      });
+      return next;
+    });
+  }, [tableRows]);
+
+  useEffect(() => {
+    if (page !== safePage) setPage(safePage);
+  }, [page, safePage]);
 
   useEffect(() => {
     pendingRowsRef.current = pendingRows;
@@ -465,6 +536,27 @@ export default function CostBreakdownPage() {
     "h-9 w-full max-w-[180px] rounded-xl border border-neutral-300 bg-white px-2 text-center text-neutral-900 outline-none ltr " +
     "dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
 
+  const PagerBtn = ({ direction, disabled, onClick }) => (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="h-9 w-9 grid place-items-center rounded-lg bg-transparent hover:bg-black/5 active:bg-black/10 disabled:opacity-40 disabled:cursor-not-allowed dark:hover:bg-white/10 dark:active:bg-white/15"
+      aria-label={direction === "prev" ? "صفحه قبل" : "صفحه بعد"}
+      title={direction === "prev" ? "صفحه قبل" : "صفحه بعد"}
+    >
+      {direction === "prev" ? (
+        <svg className="w-5 h-5 text-black/70 dark:text-neutral-200" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="currentColor" d="M10.7 6.3a1 1 0 0 1 1.4 0l5 5a1 1 0 0 1 0 1.4l-5 5a1 1 0 1 1-1.4-1.4L15.29 12 10.7 7.7a1 1 0 0 1 0-1.4z" />
+        </svg>
+      ) : (
+        <svg className="w-5 h-5 text-black/70 dark:text-neutral-200" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="currentColor" d="M13.3 17.7a1 1 0 0 1-1.4 0l-5-5a1 1 0 0 1 0-1.4l5-5a1 1 0 1 1 1.4 1.4L8.71 12l4.59 4.3a1 1 0 0 1 0 1.4z" />
+        </svg>
+      )}
+    </button>
+  );
+
   return (
     <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
       <div className="mb-5 flex min-w-0 items-center gap-3">
@@ -546,6 +638,7 @@ export default function CostBreakdownPage() {
                 className="w-full min-w-[760px] table-fixed text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-2 [&_td]:py-1.5"
               >
                 <colgroup>
+                  <col style={{ width: 48 }} />
                   <col style={{ width: 76 }} />
                   <col style={{ width: 176 }} />
                   <col />
@@ -554,6 +647,19 @@ export default function CostBreakdownPage() {
                 </colgroup>
                 <thead>
                   <tr className={theadRowCls}>
+                    <th className="!text-[14px] md:!text-[15px] !font-semibold">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 accent-black dark:accent-neutral-200"
+                        checked={allVisibleSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = someVisibleSelected;
+                        }}
+                        onChange={toggleSelectAllVisible}
+                        aria-label="انتخاب همه"
+                        title="انتخاب همه"
+                      />
+                    </th>
                     <th className="!text-[14px] md:!text-[15px] !font-semibold">#</th>
                     <th className="!text-[14px] md:!text-[15px] !font-semibold">کد بودجه</th>
                     <th className="!text-[14px] md:!text-[15px] !font-semibold">نام بودجه</th>
@@ -565,29 +671,44 @@ export default function CostBreakdownPage() {
                 <tbody className={tbodyCls}>
                   {!projectId ? (
                     <tr>
-                      <td colSpan={5} className="py-6 text-black/60 dark:text-neutral-400">
+                      <td colSpan={6} className="py-6 text-black/60 dark:text-neutral-400">
                         مرکز/پروژه را انتخاب کنید.
                       </td>
                     </tr>
                   ) : loading ? (
                     <tr>
-                      <td colSpan={5} className="py-6 text-black/60 dark:text-neutral-400">
+                      <td colSpan={6} className="py-6 text-black/60 dark:text-neutral-400">
                         در حال بارگذاری...
                       </td>
                     </tr>
-                  ) : !pendingRows.length && rows.length === 0 ? (
+                  ) : tableRows.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-6 text-black/60 dark:text-neutral-400">
+                      <td colSpan={6} className="py-6 text-black/60 dark:text-neutral-400">
                         موردی ثبت نشده.
                       </td>
                     </tr>
                   ) : (
-                    <>
-                      {pendingRows.map((row, pendingIdx) => {
-                        const divider = rows.length || pendingIdx < pendingRows.length - 1 ? rowDividerCls : "";
+                    pageItems.map((item, pageIdx) => {
+                      const row = item.row;
+                      const isPending = item.kind === "pending";
+                      const isEditing = !isPending && editId === row.id;
+                      const divider = startIdx + pageIdx === tableRows.length - 1 ? "" : rowDividerCls;
+                      const rowSelected = selectedIds.has(item.key);
+
+                      if (isPending) {
                         return (
-                          <tr key={row.tempId} className="group transition-colors hover:bg-black/[0.04] dark:hover:bg-white/10">
-                            <td className={`px-3 ${divider}`}>جدید {pendingIdx + 1}</td>
+                          <tr key={item.key} className="group transition-colors hover:bg-black/[0.04] dark:hover:bg-white/10">
+                            <td className={`px-3 ${divider}`}>
+                              <input
+                                type="checkbox"
+                                className="w-4 h-4 accent-black dark:accent-neutral-200"
+                                checked={rowSelected}
+                                onChange={() => toggleRowSelect(item.key)}
+                                aria-label="انتخاب"
+                                title="انتخاب"
+                              />
+                            </td>
+                            <td className={`px-3 ${divider}`}>{item.label}</td>
                             <td className={`px-3 ${divider}`}>
                               <span dir="ltr" className="inline-block w-full text-center font-sans tabular-nums">
                                 {displayCode(row.budgetCode) || "—"}
@@ -603,24 +724,6 @@ export default function CostBreakdownPage() {
                                 placeholder="0"
                                 inputMode="numeric"
                               />
-                              {autoSaveStatus[row.tempId] ? (
-                                <div
-                                  className={
-                                    "mt-1 text-[11px] leading-4 " +
-                                    (autoSaveStatus[row.tempId] === "error"
-                                      ? "text-red-600 dark:text-red-400"
-                                      : "text-black/45 dark:text-neutral-400")
-                                  }
-                                >
-                                  {autoSaveStatus[row.tempId] === "queued"
-                                    ? "ذخیره خودکار تا ۳ ثانیه دیگر"
-                                    : autoSaveStatus[row.tempId] === "saving"
-                                      ? "در حال ذخیره..."
-                                      : autoSaveStatus[row.tempId] === "error"
-                                        ? "خطا در ذخیره"
-                                        : ""}
-                                </div>
-                              ) : null}
                             </td>
                             <td className={`px-3 ${divider}`}>
                               <div className="relative flex min-h-[34px] items-center justify-center">
@@ -633,14 +736,21 @@ export default function CostBreakdownPage() {
                             </td>
                           </tr>
                         );
-                      })}
+                      }
 
-                      {rows.map((row, idx) => {
-                        const isEditing = editId === row.id;
-                        const divider = idx === rows.length - 1 ? "" : rowDividerCls;
-                        return (
-                          <tr key={row.id} className="group transition-colors hover:bg-black/[0.04] dark:hover:bg-white/10">
-                            <td className={`px-3 ${divider}`}>{idx + 1}</td>
+                      return (
+                          <tr key={item.key} className="group transition-colors hover:bg-black/[0.04] dark:hover:bg-white/10">
+                            <td className={`px-3 ${divider}`}>
+                              <input
+                                type="checkbox"
+                                className="w-4 h-4 accent-black dark:accent-neutral-200"
+                                checked={rowSelected}
+                                onChange={() => toggleRowSelect(item.key)}
+                                aria-label="انتخاب"
+                                title="انتخاب"
+                              />
+                            </td>
+                            <td className={`px-3 ${divider}`}>{item.label}</td>
                             <td className={`px-3 ${divider}`}>
                               {isEditing ? (
                                 <input
@@ -716,11 +826,57 @@ export default function CostBreakdownPage() {
                             </td>
                           </tr>
                         );
-                      })}
-                    </>
+                    })
                   )}
                 </tbody>
               </table>
+            </div>
+            <div className="border-t border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-900">
+              <div className="flex flex-col items-stretch gap-2 px-3 py-2 md:flex-row md:items-center md:justify-between" dir="rtl">
+                <div className="flex items-center justify-between gap-2 md:justify-start">
+                  <div className="flex items-center gap-1">
+                    <PagerBtn
+                      direction="prev"
+                      disabled={safePage <= 0}
+                      onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    />
+                    <PagerBtn
+                      direction="next"
+                      disabled={safePage >= totalPages - 1}
+                      onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                    />
+                  </div>
+                  <div className="whitespace-nowrap text-sm text-black/70 dark:text-neutral-300">
+                    {totalRows === 0
+                      ? "۰ از ۰"
+                      : `${toFaDigits(startIdx + 1)}–${toFaDigits(endIdx)} از ${toFaDigits(totalRows)}`}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 md:justify-start">
+                  <span className="text-sm text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span>
+                  <div className="inline-flex h-9 overflow-hidden rounded-lg border border-black/15 dark:border-neutral-700">
+                    {[10, 25, 100].map((size) => (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => {
+                          setRowsPerPage(size);
+                          setPage(0);
+                        }}
+                        className={
+                          "min-w-10 px-3 text-sm transition " +
+                          (safeRowsPerPage === size
+                            ? "bg-black text-white dark:bg-neutral-100 dark:text-neutral-900"
+                            : "bg-white text-black hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-white/10")
+                        }
+                      >
+                        {toFaDigits(size)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
