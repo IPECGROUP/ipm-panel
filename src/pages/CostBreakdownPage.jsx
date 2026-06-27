@@ -59,6 +59,12 @@ const normalizeCode = (value = "") =>
     .replace(/^\./, "")
     .replace(/\.$/, "");
 
+const coreOf = (value = "") => {
+  const raw = toEnDigits(String(value || "")).trim();
+  const noPrefix = raw.replace(/^[A-Za-z]+[^0-9]*/, "");
+  return noPrefix.replace(/[^0-9.]+/g, ".").replace(/\.+/g, ".").replace(/^\./, "").replace(/\.$/, "");
+};
+
 const isTopProjectCode = (code) => /^\d{3}$/.test(toEnDigits(String(code || "")).trim());
 
 const displayCode = (value = "") => toEnDigits(String(value || "")).trim();
@@ -67,7 +73,7 @@ export default function CostBreakdownPage() {
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState("");
   const [projectsLoading, setProjectsLoading] = useState(false);
-  const [budgetCenters, setBudgetCenters] = useState([]);
+  const [budgetCodeOptions, setBudgetCodeOptions] = useState([]);
 
   const [budgetCode, setBudgetCode] = useState("");
   const [budgetName, setBudgetName] = useState("");
@@ -164,23 +170,32 @@ export default function CostBreakdownPage() {
 
   const budgetCenterByCode = useMemo(() => {
     const map = new Map();
-    for (const center of budgetCenters || []) {
-      const raw = normalizeCode(center?.suffix ?? center?.code ?? "");
+    for (const center of budgetCodeOptions || []) {
+      const raw = normalizeCode(center?.code ?? "");
       if (!raw) continue;
-      const name = String(center?.description ?? center?.name ?? center?.center_desc ?? "").trim();
+      const name = String(center?.name ?? "").trim();
       map.set(raw, name);
       if (selectedProjectCode && raw.startsWith(selectedProjectCode + ".")) {
         map.set(raw.slice(selectedProjectCode.length + 1), name);
       }
     }
     return map;
-  }, [budgetCenters, selectedProjectCode]);
+  }, [budgetCodeOptions, selectedProjectCode]);
 
   const resolvedBudgetName = useMemo(() => {
     const code = normalizeCode(budgetCode);
     if (!code) return "";
     return budgetCenterByCode.get(code) || "";
   }, [budgetCenterByCode, budgetCode]);
+
+  const handleBudgetCodeChange = (value) => {
+    const nextCode = normalizeCode(value);
+    const nextName = budgetCenterByCode.get(nextCode) || "";
+    setBudgetCode(nextCode);
+    if (nextName && (!budgetName || budgetName === resolvedBudgetName)) {
+      setBudgetName(nextName);
+    }
+  };
 
   const loadProjects = useCallback(async () => {
     setProjectsLoading(true);
@@ -227,27 +242,66 @@ export default function CostBreakdownPage() {
     }
   }, [projectId]);
 
-  const loadBudgetCenters = useCallback(async (nextProject = selectedProject) => {
-    const baseCode = normalizeCode(nextProject?.code || "");
+  const loadBudgetCenters = useCallback(async (nextProject) => {
+    const baseCode = coreOf(nextProject?.code || "");
     if (!baseCode) {
-      setBudgetCenters([]);
+      setBudgetCodeOptions([]);
       return;
     }
 
     try {
-      const res = await api("/centers/projects");
-      const raw = Array.isArray(res) ? res : Array.isArray(res?.items) ? res.items : [];
-      const scoped = raw
+      const qs = new URLSearchParams();
+      qs.set("kind", "projects");
+      if (nextProject?.id) qs.set("project_id", String(nextProject.id));
+
+      const [centersRes, estimatesRes] = await Promise.all([
+        api("/centers/projects").catch(() => ({ items: [] })),
+        api("/budget-estimates?" + qs.toString()).catch(() => ({ items: [] })),
+      ]);
+
+      const rawCenters = centersRes?.items || centersRes?.centers || centersRes?.data || centersRes || [];
+      const centers = Array.isArray(rawCenters) ? rawCenters : [];
+      const estimates = Array.isArray(estimatesRes?.items) ? estimatesRes.items : [];
+
+      const scoped = centers
         .filter((item) => item && typeof item === "object")
         .filter((item) => {
-          const code = normalizeCode(item?.suffix ?? item?.code ?? "");
+          const code = coreOf(item?.suffix ?? item?.code ?? "");
           return code === baseCode || code.startsWith(baseCode + ".");
         });
-      setBudgetCenters(scoped);
+
+      const byCode = new Map();
+      for (const center of scoped) {
+        const code = normalizeCode(center?.suffix ?? center?.code ?? "");
+        if (!code) continue;
+        byCode.set(code, {
+          code,
+          name: String(center?.description ?? center?.name ?? center?.center_desc ?? "").trim(),
+        });
+      }
+
+      for (const item of estimates) {
+        const code = normalizeCode(item?.code ?? "");
+        if (!code) continue;
+        const prev = byCode.get(code) || { code, name: "" };
+        byCode.set(code, {
+          code,
+          name: prev.name || String(item?.center_desc ?? item?.name ?? "").trim(),
+        });
+      }
+
+      const options = Array.from(byCode.values()).sort((a, b) =>
+        displayCode(a.code).localeCompare(displayCode(b.code), "fa", {
+          numeric: true,
+          sensitivity: "base",
+        })
+      );
+
+      setBudgetCodeOptions(options);
     } catch {
-      setBudgetCenters([]);
+      setBudgetCodeOptions([]);
     }
-  }, [selectedProject]);
+  }, []);
 
   useEffect(() => {
     loadProjects();
@@ -256,7 +310,7 @@ export default function CostBreakdownPage() {
   useEffect(() => {
     if (!projectId) {
       setRows([]);
-      setBudgetCenters([]);
+      setBudgetCodeOptions([]);
       setPendingRows([]);
       setSelectedIds(new Set());
       return;
@@ -266,7 +320,6 @@ export default function CostBreakdownPage() {
     setSelectedIds(new Set());
     setPage(0);
     loadRows(projectId);
-    loadBudgetCenters(selectedProject);
   }, [projectId, loadRows]);
 
   useEffect(() => {
@@ -597,13 +650,20 @@ export default function CostBreakdownPage() {
 
             <label className="flex min-w-0 flex-col gap-1">
               <span className="text-sm text-neutral-700 dark:text-neutral-300">کد بودجه</span>
-              <input
+              <select
                 value={budgetCode}
-                onChange={(e) => setBudgetCode(normalizeCode(e.target.value))}
-                className={inputCls + " ltr text-left font-sans tabular-nums"}
-                placeholder="01.02"
-                spellCheck={false}
-              />
+                onChange={(e) => handleBudgetCodeChange(e.target.value)}
+                disabled={!projectId}
+                className={inputCls + " font-sans tabular-nums"}
+              >
+                <option value=""></option>
+                {budgetCodeOptions.map((item) => (
+                  <option key={item.code} value={normalizeCode(item.code)}>
+                    {displayCode(item.code)}
+                    {item.name ? ` - ${item.name}` : ""}
+                  </option>
+                ))}
+              </select>
             </label>
 
             <label className="flex min-w-0 flex-col gap-1">
@@ -639,7 +699,6 @@ export default function CostBreakdownPage() {
               >
                 <colgroup>
                   <col style={{ width: 48 }} />
-                  <col style={{ width: 76 }} />
                   <col style={{ width: 176 }} />
                   <col />
                   <col style={{ width: 176 }} />
@@ -660,7 +719,6 @@ export default function CostBreakdownPage() {
                         title="انتخاب همه"
                       />
                     </th>
-                    <th className="!text-[14px] md:!text-[15px] !font-semibold">#</th>
                     <th className="!text-[14px] md:!text-[15px] !font-semibold">کد بودجه</th>
                     <th className="!text-[14px] md:!text-[15px] !font-semibold">نام بودجه</th>
                     <th className="!text-[14px] md:!text-[15px] !font-semibold">بودجه مبنا</th>
@@ -671,19 +729,19 @@ export default function CostBreakdownPage() {
                 <tbody className={tbodyCls}>
                   {!projectId ? (
                     <tr>
-                      <td colSpan={6} className="py-6 text-black/60 dark:text-neutral-400">
+                      <td colSpan={5} className="py-6 text-black/60 dark:text-neutral-400">
                         مرکز/پروژه را انتخاب کنید.
                       </td>
                     </tr>
                   ) : loading ? (
                     <tr>
-                      <td colSpan={6} className="py-6 text-black/60 dark:text-neutral-400">
+                      <td colSpan={5} className="py-6 text-black/60 dark:text-neutral-400">
                         در حال بارگذاری...
                       </td>
                     </tr>
                   ) : tableRows.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-6 text-black/60 dark:text-neutral-400">
+                      <td colSpan={5} className="py-6 text-black/60 dark:text-neutral-400">
                         موردی ثبت نشده.
                       </td>
                     </tr>
@@ -708,7 +766,6 @@ export default function CostBreakdownPage() {
                                 title="انتخاب"
                               />
                             </td>
-                            <td className={`px-3 ${divider}`}>{item.label}</td>
                             <td className={`px-3 ${divider}`}>
                               <span dir="ltr" className="inline-block w-full text-center font-sans tabular-nums">
                                 {displayCode(row.budgetCode) || "—"}
@@ -750,7 +807,6 @@ export default function CostBreakdownPage() {
                                 title="انتخاب"
                               />
                             </td>
-                            <td className={`px-3 ${divider}`}>{item.label}</td>
                             <td className={`px-3 ${divider}`}>
                               {isEditing ? (
                                 <input
