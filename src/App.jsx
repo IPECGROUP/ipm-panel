@@ -24,6 +24,7 @@ import LettersPage from "./pages/LettersPage.jsx";
 import TestEditorPage from "./pages/TestEditorPage.jsx";
 import RoznegarPgae from "./pages/RoznegarPgae.jsx";
 import QualityManagementPage from "./pages/QualityManagementPage.jsx";
+import NavPlaceholderPage from "./pages/NavPlaceholderPage.jsx";
 
 import BudgetCodesPage, {
   OfficePage,
@@ -83,11 +84,14 @@ export default function App() {
         {/* پروژه‌ها */}
         <Route path="/projects/simple" element={<Projects2Page />} />
         <Route path="/centers/projects" element={<ProjectsPage />} />
+        <Route path="/projects/cost-breakdown" element={<NavPlaceholderPage title="ساختار شکست هزینه ها" />} />
+        <Route path="/projects/financial-commitments" element={<NavPlaceholderPage title="تعهدات و مصارف مالی" />} />
         <Route path="/projects/daily-report" element={<DailyReportPage />} />
         <Route
           path="/projects/financial-worksheet"
           element={<FinancialWorksheetPage />}
         />
+        <Route path="/projects/project-management-dashboard" element={<NavPlaceholderPage title="داشبورد مدیریت پروژه" />} />
         <Route path="/projects/daily-log" element={<RoznegarPgae />} />
         <Route path="/letters" element={<LettersPage />} />
         <Route path="/quality-management" element={<QualityManagementPage />} />
@@ -100,6 +104,17 @@ export default function App() {
         <Route path="/revenue-estimates" element={<RevenueEstimatesPage />} />
         <Route path="/budget-allocation" element={<BudgetAllocationPage />} />
         <Route path="/budget/reports" element={<ReportsPage />} />
+        <Route path="/finance/payment-request" element={<PaymentRequestPage />} />
+        <Route path="/finance/liquidity-allocation" element={<NavPlaceholderPage title="تخصیص نقدینگی" />} />
+        <Route path="/finance/cash-flow-forecast" element={<NavPlaceholderPage title="پیش بینی جریان نقدی" />} />
+        <Route path="/finance/financial-management-dashboard" element={<NavPlaceholderPage title="داشبورد مدیریت مالی" />} />
+
+        <Route path="/supply/request" element={<NavPlaceholderPage title="درخواست تامین" />} />
+        <Route path="/supply/actions" element={<NavPlaceholderPage title="اقدامات تامین" />} />
+        <Route path="/supply/dashboard" element={<NavPlaceholderPage title="داشبورد مدیریت تامین و پشتیبانی" />} />
+
+        <Route path="/operations/equipment" element={<NavPlaceholderPage title="ماشین آلات و تجهیزات" />} />
+        <Route path="/operations/history" element={<NavPlaceholderPage title="سوابق عملیات" />} />
 
         {/* اطلاعات پایه */}
         <Route path="/base/units" element={<UnitsPage />} />

@@ -21,10 +21,9 @@ const NavIcon = ({ src }) => (
 );
 
 const IcDashboard = () => <NavIcon src="/images/icons/dashbaord.svg" />;
-const IcPay = () => <NavIcon src="/images/icons/modirait-darkast.svg" />;
 const IcLetter = () => <NavIcon src="/images/icons/nameha.svg" />;
-const IcProjects = () => <NavIcon src="/images/icons/project.svg" />;
-const IcBudget = () => <NavIcon src="/images/icons/busgebandi.svg" />;
+const IcProjects = () => <NavIcon src="/images/icons/modiriat-projects.svg" />;
+const IcBudget = () => <NavIcon src="/images/icons/modiriat-nagdinegi.svg" />;
 const IcBase = () => <NavIcon src="/images/icons/atelaatpaye.svg" />;
 const IcCurrency = () => <NavIcon src="/images/icons/arz.svg" />;
 const IcUsers = () => <NavIcon src="/images/icons/users.svg" />;
@@ -33,6 +32,15 @@ const IcTags = () => <NavIcon src="/images/icons/tags.svg" />;
 const IcWorksheet = () => <NavIcon src="/images/icons/karbarg-mali.svg" />;
 const IcDaily = () => <NavIcon src="/images/icons/roznegar.svg" />;
 const IcQuality = () => <NavIcon src="/images/icons/modiritkeyfiat.svg" />;
+const IcCostBreakdown = () => <NavIcon src="/images/icons/sakhtar-shekast.svg" />;
+const IcFinancialCommitments = () => <NavIcon src="/images/icons/masaref-mali.svg" />;
+const IcProjectDashboard = () => <NavIcon src="/images/icons/dashboard-modirirat.svg" />;
+const IcPaymentRequest = () => <NavIcon src="/images/icons/darkhast-pardakht.svg" />;
+const IcLiquidity = () => <NavIcon src="/images/icons/modiriat-nagdinegi.svg" />;
+const IcCashForecast = () => <NavIcon src="/images/icons/pishbini-naghdi.svg" />;
+const IcSupply = () => <NavIcon src="/images/icons/modirat-taminposhtibami.svg" />;
+const IcSupplyRequest = () => <NavIcon src="/images/icons/darkhast-tamin.svg" />;
+const IcOperations = () => <NavIcon src="/images/icons/modriat-amaliat.svg" />;
 const IcClose = () => <X className="h-5 w-5" strokeWidth={2.4} />;
 
 function RightNav() {
@@ -122,12 +130,23 @@ function RightNav() {
 
     if (
       path.startsWith("/budget/") ||
+      path.startsWith("/finance/") ||
       path === "/estimates" ||
       path === "/revenue-estimates" ||
       path === "/budget-allocation" ||
+      path === "/payment" ||
+      path === "/requests" ||
       path === "/budget/reports"
     ) {
       return "budget";
+    }
+
+    if (path.startsWith("/supply/")) {
+      return "supply";
+    }
+
+    if (path.startsWith("/operations/")) {
+      return "operations";
     }
 
     if (path.startsWith("/base/") || path === "/centers/projects" || path.startsWith("/admin/")) {
@@ -143,9 +162,10 @@ function RightNav() {
 
   const activeSection = sectionFromPath(pNow);
   const dashboardActive = isActive("/") || isActive("/dashboard");
-  const requestManagementActive = isActive("/payment") || isActive("/requests");
   const projectsParentActive = !!open.projects || activeSection === "projects";
   const budgetParentActive = !!open.budget || activeSection === "budget";
+  const supplyParentActive = !!open.supply || activeSection === "supply";
+  const operationsParentActive = !!open.operations || activeSection === "operations";
   const baseParentActive = !!open.base || activeSection === "base";
 
   const [tip, setTip] = useState({ show: false, y: 0, label: "" });
@@ -172,31 +192,70 @@ function RightNav() {
         {
           type: "section",
           key: "projects",
-          label: "پروژه ها",
+          label: "مدیریت پروژه ها",
           icon: <IcProjects />,
           active: projectsParentActive,
           items: [
+            { to: "/projects/cost-breakdown", label: "ساختار شکست هزینه ها", hint: "ساختار و اجزای هزینه پروژه", icon: <IcCostBreakdown /> },
+            { to: "/projects/financial-commitments", label: "تعهدات و مصارف مالی", hint: "تعهدات و مصرف های پروژه", icon: <IcFinancialCommitments /> },
             { to: "/projects/financial-worksheet", label: "کاربرگ مالی", hint: "جزئیات مالی پروژه", icon: <IcWorksheet /> },
+            { to: "/projects/project-management-dashboard", label: "داشبورد مدیریت پروژه", hint: "نمای کلی وضعیت پروژه", icon: <IcProjectDashboard /> },
             { to: "/projects/daily-log", label: "روزنگار پروژه", hint: "ثبت گزارش های روزانه", icon: <IcDaily /> },
           ],
         },
-        { type: "link", to: "/payment", label: "مدیریت درخواست ها", icon: <IcPay />, active: requestManagementActive },
       ],
     },
     {
-      title: "بودجه",
+      title: "مدیریت مالی",
       items: [
         {
           type: "section",
           key: "budget",
-          label: "بودجه بندی",
+          label: "مدیریت مالی",
           icon: <IcBudget />,
           active: budgetParentActive,
           items: [
+            { to: "/finance/payment-request", label: "درخواست پرداخت", hint: "ثبت و پیگیری درخواست پرداخت", icon: <IcPaymentRequest /> },
+            { to: "/finance/liquidity-allocation", label: "تخصیص نقدینگی", hint: "مدیریت و توزیع نقدینگی", icon: <IcLiquidity /> },
+            { to: "/finance/cash-flow-forecast", label: "پیش بینی جریان نقدی", hint: "برآورد جریان نقدی آینده", icon: <IcCashForecast /> },
+            { to: "/finance/financial-management-dashboard", label: "داشبورد مدیریت مالی", hint: "نمای کلی شاخص های مالی", icon: <IcProjectDashboard /> },
             { to: "/estimates", label: "برآورد هزینه ها", hint: "پیش بینی و کنترل هزینه", icon: <NavIcon src="/images/icons/baravord.svg" /> },
             { to: "/revenue-estimates", label: "برآورد درآمد", hint: "پیش بینی جریان درآمد", icon: <NavIcon src="/images/icons/baravordhazine.svg" /> },
             { to: "/budget-allocation", label: "تخصیص بودجه", hint: "تقسیم منابع بودجه ای", icon: <NavIcon src="/images/icons/taksisbodge.svg" /> },
             { to: "/budget/reports", label: "گزارش ها", hint: "خلاصه ها و خروجی ها", icon: <NavIcon src="/images/icons/gozareshha.svg" /> },
+          ],
+        },
+      ],
+    },
+    {
+      title: "مدیریت تامین و پشتیبانی",
+      items: [
+        {
+          type: "section",
+          key: "supply",
+          label: "مدیریت تامین و پشتیبانی",
+          icon: <IcSupply />,
+          active: supplyParentActive,
+          items: [
+            { to: "/supply/request", label: "درخواست تامین", hint: "ثبت و پیگیری درخواست تامین", icon: <IcSupplyRequest /> },
+            { to: "/supply/actions", label: "اقدامات تامین", hint: "پیگیری اقدامات تامین", icon: <NavIcon src="/images/icons/berozresani.svg" /> },
+            { to: "/supply/dashboard", label: "داشبورد مدیریت تامین و پشتیبانی", hint: "نمای کلی تامین و پشتیبانی", icon: <IcProjectDashboard /> },
+          ],
+        },
+      ],
+    },
+    {
+      title: "مدیریت عملیات",
+      items: [
+        {
+          type: "section",
+          key: "operations",
+          label: "مدیریت عملیات",
+          icon: <IcOperations />,
+          active: operationsParentActive,
+          items: [
+            { to: "/operations/equipment", label: "ماشین آلات و تجهیزات", hint: "مدیریت ماشین آلات و تجهیزات", icon: <NavIcon src="/images/icons/tanzimat.svg" /> },
+            { to: "/operations/history", label: "سوابق عملیات", hint: "مرور سوابق عملیات", icon: <NavIcon src="/images/icons/gozareshrozane.svg" /> },
           ],
         },
       ],
@@ -228,7 +287,17 @@ function RightNav() {
     },
   ];
 
-  const mobileMenuKey = open.projects ? "projects" : open.budget ? "budget" : open.base ? "base" : null;
+  const mobileMenuKey = open.projects
+    ? "projects"
+    : open.budget
+      ? "budget"
+      : open.supply
+        ? "supply"
+        : open.operations
+          ? "operations"
+          : open.base
+            ? "base"
+            : null;
   const mobileMenu = navGroups
     .flatMap((group) => group.items)
     .find((item) => item.type === "section" && item.key === mobileMenuKey);
@@ -552,35 +621,47 @@ function RightNav() {
                 type="button"
                 className={mobileDockBtn(projectsParentActive)}
                 onClick={() => toggle("projects")}
-                aria-label="پروژه ها"
+                aria-label="مدیریت پروژه ها"
               >
                 {open.projects ? <IcClose /> : <IcProjects />}
                 <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
-                  پروژه
+                  پروژه ها
                 </span>
               </Btn>
-
-              <LinkBtn
-                to="/payment"
-                onClick={closeMobileMenu}
-                className={mobileDockBtn(requestManagementActive)}
-                aria-label="مدیریت درخواست ها"
-              >
-                <IcPay />
-                <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
-                  درخواست
-                </span>
-              </LinkBtn>
 
               <Btn
                 type="button"
                 className={mobileDockBtn(budgetParentActive)}
                 onClick={() => toggle("budget")}
-                aria-label="بودجه بندی"
+                aria-label="مدیریت مالی"
               >
                 {open.budget ? <IcClose /> : <IcBudget />}
                 <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
-                  بودجه
+                  مالی
+                </span>
+              </Btn>
+
+              <Btn
+                type="button"
+                className={mobileDockBtn(supplyParentActive)}
+                onClick={() => toggle("supply")}
+                aria-label="مدیریت تامین و پشتیبانی"
+              >
+                {open.supply ? <IcClose /> : <IcSupply />}
+                <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
+                  تامین
+                </span>
+              </Btn>
+
+              <Btn
+                type="button"
+                className={mobileDockBtn(operationsParentActive)}
+                onClick={() => toggle("operations")}
+                aria-label="مدیریت عملیات"
+              >
+                {open.operations ? <IcClose /> : <IcOperations />}
+                <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
+                  عملیات
                 </span>
               </Btn>
 
