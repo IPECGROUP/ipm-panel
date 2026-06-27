@@ -5,14 +5,6 @@ import { api } from "../utils/api.js";
 
 const PAGE_ICON = "/images/icons/sakhtar-shekast.svg";
 
-const SHARED_ESTIMATE_TABS = [
-  { id: "office", label: "دفتر", prefix: "OB" },
-  { id: "site", label: "سایت", prefix: "SB" },
-  { id: "finance", label: "مالی", prefix: "FB" },
-  { id: "cash", label: "نقدی", prefix: "CB" },
-  { id: "capex", label: "سرمایه‌ای", prefix: "IB" },
-];
-
 const tableWrapCls =
   "rounded-2xl border border-black/10 overflow-hidden bg-white text-black " +
   "dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800";
@@ -61,28 +53,11 @@ const normalizeItem = (item) => ({
 
 const normalizeCode = (value = "") => {
   const raw = toEnDigits(value).trim().toUpperCase();
-  const prefixed = raw.match(/^(OB|SB|FB|CB|IB)[-.]?\s*(.*)$/i);
-  if (prefixed) {
-    const suffix = String(prefixed[2] || "")
-      .replace(/[^\d.-]/g, "-")
-      .replace(/[.-]+/g, "-")
-      .replace(/^-/, "")
-      .replace(/-$/, "");
-    return suffix ? `${prefixed[1].toUpperCase()}-${suffix}` : "";
-  }
-
   return raw
-    .replace(/^PB[-.]?/i, "")
     .replace(/[^\d.-]/g, "-")
     .replace(/[.-]+/g, "-")
     .replace(/^-/, "")
     .replace(/-$/, "");
-};
-
-const coreOf = (value = "") => {
-  const raw = toEnDigits(String(value || "")).trim();
-  const noPrefix = raw.replace(/^[A-Za-z]+[^0-9]*/, "");
-  return noPrefix.replace(/[^0-9.]+/g, ".").replace(/\.+/g, ".").replace(/^\./, "").replace(/\.$/, "");
 };
 
 const isTopProjectCode = (code) => /^\d{3}$/.test(toEnDigits(String(code || "")).trim());
@@ -94,28 +69,10 @@ const cleanBudgetCodeInput = (value = "") =>
     .toUpperCase()
     .replace(/[^0-9A-Z.-]/g, "");
 
-const sharedEstimateCode = (baseCode, value = "") => {
-  const suffix = normalizeCode(String(value || "").replace(/^[A-Za-z]+[-.]?/i, ""));
-  return baseCode && suffix ? `${baseCode}-${suffix}` : suffix;
-};
-
-const estimateNameOf = (item) => {
-  const direct = String(item?.center_desc ?? item?.name ?? "").trim();
-  if (direct) return direct;
-  const rawDesc = item?.last_desc ?? item?.description ?? "";
-  try {
-    const parsed = JSON.parse(String(rawDesc || ""));
-    return String(parsed?.desc || "").trim();
-  } catch {
-    return String(rawDesc || "").trim();
-  }
-};
-
 export default function CostBreakdownPage() {
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState("");
   const [projectsLoading, setProjectsLoading] = useState(false);
-  const [budgetCodeOptions, setBudgetCodeOptions] = useState([]);
 
   const [budgetCode, setBudgetCode] = useState("");
   const [budgetName, setBudgetName] = useState("");
@@ -128,6 +85,7 @@ export default function CostBreakdownPage() {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
   const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [expandedCodes, setExpandedCodes] = useState(() => new Set());
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
 
@@ -137,11 +95,6 @@ export default function CostBreakdownPage() {
     budgetName: "",
     baseBudget: "",
   });
-
-  const selectedProject = useMemo(
-    () => (projects || []).find((p) => String(p.id) === String(projectId)),
-    [projects, projectId]
-  );
 
   const sortedProjects = useMemo(
     () =>
@@ -156,17 +109,7 @@ export default function CostBreakdownPage() {
     [projects]
   );
 
-  const selectedProjectCode = normalizeCode(selectedProject?.code || "");
-
-  const projectBudgetCode = useCallback(
-    (value = "") => {
-      const code = normalizeCode(value);
-      const sharedMatch = code.match(/^(OB|SB|FB|CB|IB)-(.+)$/i);
-      if (selectedProjectCode === "100" && sharedMatch) return `${selectedProjectCode}-${sharedMatch[2]}`;
-      return code;
-    },
-    [selectedProjectCode]
-  );
+  const projectBudgetCode = useCallback((value = "") => normalizeCode(value), []);
 
   const tableRows = useMemo(() => {
     const pending = pendingRows.map((row, idx) => ({
@@ -186,13 +129,63 @@ export default function CostBreakdownPage() {
     return [...pending, ...saved];
   }, [pendingRows, rows]);
 
+  const childRowsByParentCode = useMemo(() => {
+    const codes = new Set(tableRows.map((item) => projectBudgetCode(item.row?.budgetCode)));
+    const map = new Map();
+    for (const item of tableRows) {
+      const code = projectBudgetCode(item.row?.budgetCode);
+      const parts = code.split("-").filter(Boolean);
+      let parentCode = "";
+      for (let i = parts.length - 1; i > 0; i -= 1) {
+        const candidate = parts.slice(0, i).join("-");
+        if (codes.has(candidate)) {
+          parentCode = candidate;
+          break;
+        }
+      }
+      if (!parentCode) continue;
+      const list = map.get(parentCode) || [];
+      list.push(item);
+      map.set(parentCode, list);
+    }
+    return map;
+  }, [projectBudgetCode, tableRows]);
+
+  const displayRows = useMemo(() => {
+    const childKeys = new Set();
+    childRowsByParentCode.forEach((children) => {
+      children.forEach((child) => childKeys.add(child.key));
+    });
+
+    const result = [];
+    const used = new Set();
+
+    const pushRow = (item, depth = 0) => {
+      if (!item || used.has(item.key)) return;
+      used.add(item.key);
+      const code = projectBudgetCode(item.row?.budgetCode);
+      const children = childRowsByParentCode.get(code) || [];
+      result.push({ ...item, depth, hasChildren: children.length > 0 });
+      if (expandedCodes.has(code)) {
+        children.forEach((child) => pushRow(child, depth + 1));
+      }
+    };
+
+    tableRows.forEach((item) => {
+      if (!childKeys.has(item.key)) pushRow(item, 0);
+    });
+
+    tableRows.forEach((item) => pushRow(item, 0));
+    return result;
+  }, [childRowsByParentCode, expandedCodes, projectBudgetCode, tableRows]);
+
   const safeRowsPerPage = Number(rowsPerPage) || 10;
-  const totalRows = tableRows.length;
+  const totalRows = displayRows.length;
   const totalPages = Math.max(1, Math.ceil(totalRows / safeRowsPerPage));
   const safePage = Math.min(page, totalPages - 1);
   const startIdx = safePage * safeRowsPerPage;
   const endIdx = Math.min(totalRows, startIdx + safeRowsPerPage);
-  const pageItems = tableRows.slice(startIdx, endIdx);
+  const pageItems = displayRows.slice(startIdx, endIdx);
   const visibleIds = pageItems.map((item) => item.key);
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
   const someVisibleSelected = visibleIds.some((id) => selectedIds.has(id)) && !allVisibleSelected;
@@ -218,25 +211,16 @@ export default function CostBreakdownPage() {
     });
   };
 
-  const budgetCenterByCode = useMemo(() => {
-    const map = new Map();
-    for (const center of budgetCodeOptions || []) {
-      const raw = projectBudgetCode(center?.code ?? "");
-      if (!raw) continue;
-      const name = String(center?.name ?? "").trim();
-      map.set(raw, name);
-      if (selectedProjectCode && raw.startsWith(selectedProjectCode + "-")) {
-        map.set(raw.slice(selectedProjectCode.length + 1), name);
-      }
-    }
-    return map;
-  }, [budgetCodeOptions, projectBudgetCode, selectedProjectCode]);
-
-  const resolvedBudgetName = useMemo(() => {
-    const code = projectBudgetCode(budgetCode);
-    if (!code) return "";
-    return budgetCenterByCode.get(code) || "";
-  }, [budgetCenterByCode, budgetCode, projectBudgetCode]);
+  const toggleExpandedCode = (code) => {
+    const normalized = projectBudgetCode(code);
+    if (!normalized) return;
+    setExpandedCodes((prev) => {
+      const next = new Set(prev);
+      if (next.has(normalized)) next.delete(normalized);
+      else next.add(normalized);
+      return next;
+    });
+  };
 
   const handleBudgetCodeChange = (value) => {
     setBudgetCode(cleanBudgetCodeInput(value));
@@ -287,95 +271,6 @@ export default function CostBreakdownPage() {
     }
   }, [projectId]);
 
-  const loadBudgetCenters = useCallback(async (nextProject) => {
-    const baseCode = coreOf(nextProject?.code || "");
-    if (!baseCode) {
-      setBudgetCodeOptions([]);
-      return;
-    }
-
-    try {
-      const qs = new URLSearchParams();
-      qs.set("kind", "projects");
-      if (nextProject?.id) qs.set("project_id", String(nextProject.id));
-
-      const shouldLoadSharedTabs = baseCode === "100";
-      const [centersRes, estimatesRes, ...sharedResponses] = await Promise.all([
-        api("/centers/projects").catch(() => ({ items: [] })),
-        api("/budget-estimates?" + qs.toString()).catch(() => ({ items: [] })),
-        ...(shouldLoadSharedTabs
-          ? SHARED_ESTIMATE_TABS.map((tab) =>
-              api(`/budget-estimates?kind=${encodeURIComponent(tab.id)}`).catch(() => ({ items: [] }))
-            )
-          : []),
-      ]);
-
-      const rawCenters = centersRes?.items || centersRes?.centers || centersRes?.data || centersRes || [];
-      const centers = Array.isArray(rawCenters) ? rawCenters : [];
-      const estimates = Array.isArray(estimatesRes?.items) ? estimatesRes.items : [];
-
-      const scoped = centers
-        .filter((item) => item && typeof item === "object")
-        .filter((item) => {
-          const code = coreOf(item?.suffix ?? item?.code ?? "");
-          return code === baseCode || code.startsWith(baseCode + ".");
-        });
-
-      const byCode = new Map();
-      for (const center of scoped) {
-        const code = normalizeCode(center?.suffix ?? center?.code ?? "");
-        if (!code) continue;
-        byCode.set(code, {
-          code,
-          name: String(center?.description ?? center?.name ?? center?.center_desc ?? "").trim(),
-          sourceLabel: "پروژه‌ها",
-          baseAmount: 0,
-        });
-      }
-
-      for (const item of estimates) {
-        const code = normalizeCode(item?.code ?? "");
-        if (!code) continue;
-        const prev = byCode.get(code) || { code, name: "" };
-        byCode.set(code, {
-          code,
-          name: prev.name || estimateNameOf(item),
-          sourceLabel: prev.sourceLabel || "پروژه‌ها",
-          baseAmount: item?.last_amount ?? item?.amount ?? prev.baseAmount ?? 0,
-        });
-      }
-
-      if (shouldLoadSharedTabs) {
-        SHARED_ESTIMATE_TABS.forEach((tab, index) => {
-          const response = sharedResponses[index] || {};
-          const items = Array.isArray(response?.items) ? response.items : [];
-          for (const item of items) {
-            const code = sharedEstimateCode(baseCode, item?.code ?? "");
-            if (!code) continue;
-            byCode.set(code, {
-              code,
-              name: estimateNameOf(item),
-              sourceLabel: tab.label,
-              baseAmount: item?.last_amount ?? item?.amount ?? 0,
-              autoFromEstimate: true,
-            });
-          }
-        });
-      }
-
-      const options = Array.from(byCode.values()).sort((a, b) =>
-        displayCode(a.code).localeCompare(displayCode(b.code), "fa", {
-          numeric: true,
-          sensitivity: "base",
-        })
-      );
-
-      setBudgetCodeOptions(options);
-    } catch {
-      setBudgetCodeOptions([]);
-    }
-  }, []);
-
   useEffect(() => {
     loadProjects();
   }, [loadProjects]);
@@ -383,7 +278,6 @@ export default function CostBreakdownPage() {
   useEffect(() => {
     if (!projectId) {
       setRows([]);
-      setBudgetCodeOptions([]);
       setPendingRows([]);
       setSelectedIds(new Set());
       return;
@@ -415,41 +309,6 @@ export default function CostBreakdownPage() {
   }, [pendingRows]);
 
   useEffect(() => {
-    loadBudgetCenters(selectedProject);
-  }, [selectedProject, loadBudgetCenters]);
-
-  useEffect(() => {
-    if (selectedProjectCode !== "100") return;
-
-    const estimateOptions = (budgetCodeOptions || []).filter((item) => item?.autoFromEstimate);
-    if (!estimateOptions.length) return;
-
-    setPendingRows((prev) => {
-      const savedCodes = new Set(rows.map((row) => projectBudgetCode(row.budgetCode)));
-      const manualRows = prev.filter((row) => !row.autoFromEstimate);
-      const next = [...manualRows];
-      const usedCodes = new Set(manualRows.map((row) => projectBudgetCode(row.budgetCode)));
-
-      for (const item of estimateOptions) {
-        const code = projectBudgetCode(item.code);
-        if (!code || savedCodes.has(code) || usedCodes.has(code)) continue;
-        usedCodes.add(code);
-        next.push({
-          tempId: `estimate-${code}`,
-          budgetCode: code,
-          budgetName: String(item.name || item.sourceLabel || code).trim(),
-          baseBudget: parseMoney(item.baseAmount ?? 0),
-          autoFromEstimate: true,
-        });
-      }
-
-      const prevSig = prev.map((row) => `${row.tempId}:${projectBudgetCode(row.budgetCode)}:${row.baseBudget}`).join("|");
-      const nextSig = next.map((row) => `${row.tempId}:${projectBudgetCode(row.budgetCode)}:${row.baseBudget}`).join("|");
-      return prevSig === nextSig ? prev : next;
-    });
-  }, [budgetCodeOptions, projectBudgetCode, rows, selectedProjectCode]);
-
-  useEffect(() => {
     if (!projectId) return;
     const exists = (projects || []).some((p) => String(p.id) === String(projectId));
     if (!exists) setProjectId("");
@@ -464,7 +323,7 @@ export default function CostBreakdownPage() {
 
   const addPendingRow = () => {
     const code = projectBudgetCode(budgetCode);
-    const name = String(budgetName || resolvedBudgetName || "").trim();
+    const name = String(budgetName || "").trim();
 
     setErr("");
     if (!projectId) {
@@ -493,6 +352,14 @@ export default function CostBreakdownPage() {
       },
     ]);
     clearDraft();
+  };
+
+  const canAddDraft = Boolean(projectId && !saving && projectBudgetCode(budgetCode) && String(budgetName || "").trim());
+
+  const handleDraftEnter = (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    if (canAddDraft) addPendingRow();
   };
 
   const removePendingRow = (tempId) => {
@@ -698,7 +565,7 @@ export default function CostBreakdownPage() {
 
       <div className="rounded-2xl border border-black/10 bg-white overflow-hidden dark:bg-neutral-900 dark:border-neutral-800">
         <div className="px-[15px] py-4">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(220px,1.2fr)_minmax(160px,0.8fr)_minmax(180px,1fr)] md:items-end">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(220px,1.15fr)_minmax(130px,0.65fr)_minmax(260px,1.45fr)] md:items-end">
             <label className="flex min-w-0 flex-col gap-1">
               <span className="text-sm text-neutral-700 dark:text-neutral-300">مرکز/پروژه</span>
               <select
@@ -727,6 +594,7 @@ export default function CostBreakdownPage() {
               <input
                 value={budgetCode}
                 onChange={(e) => handleBudgetCodeChange(e.target.value)}
+                onKeyDown={handleDraftEnter}
                 disabled={!projectId}
                 className={inputCls + " ltr text-left font-sans tabular-nums"}
                 spellCheck={false}
@@ -739,13 +607,14 @@ export default function CostBreakdownPage() {
                 <input
                   value={budgetName}
                   onChange={(e) => setBudgetName(e.target.value)}
+                  onKeyDown={handleDraftEnter}
                   className={inputCls}
-                  placeholder={resolvedBudgetName || "نام بودجه"}
+                  placeholder="نام بودجه"
                 />
                 <button
                   type="button"
                   onClick={addPendingRow}
-                  disabled={!projectId || saving || !projectBudgetCode(budgetCode) || !budgetName}
+                  disabled={!canAddDraft}
                   className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/15 bg-white text-black transition hover:bg-black/5 disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-200/20"
                   aria-label="افزودن به جدول"
                   title="افزودن به جدول"
@@ -817,8 +686,11 @@ export default function CostBreakdownPage() {
                       const row = item.row;
                       const isPending = item.kind === "pending";
                       const isEditing = !isPending && editId === row.id;
-                      const divider = startIdx + pageIdx === tableRows.length - 1 ? "" : rowDividerCls;
+                      const divider = startIdx + pageIdx === displayRows.length - 1 ? "" : rowDividerCls;
                       const rowSelected = selectedIds.has(item.key);
+                      const displayBudgetCode = projectBudgetCode(row.budgetCode);
+                      const isExpanded = expandedCodes.has(displayBudgetCode);
+                      const codeIndent = `${Math.min(Number(item.depth || 0), 4) * 24}px`;
 
                       if (isPending) {
                         return (
@@ -834,9 +706,24 @@ export default function CostBreakdownPage() {
                               />
                             </td>
                             <td className={`px-3 ${divider}`}>
-                              <span dir="ltr" className="inline-block w-full text-center font-sans tabular-nums">
-                                {projectBudgetCode(row.budgetCode) || "—"}
-                              </span>
+                              <div className="flex items-center justify-center gap-2" dir="rtl" style={{ paddingRight: codeIndent }}>
+                                {item.hasChildren ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleExpandedCode(displayBudgetCode)}
+                                    className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-black/15 bg-white text-base leading-none text-black transition hover:bg-black/5 dark:border-white/15 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10"
+                                    aria-label={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
+                                    title={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
+                                  >
+                                    {isExpanded ? "−" : "+"}
+                                  </button>
+                                ) : (
+                                  <span className="h-7 w-7 shrink-0" />
+                                )}
+                                <span dir="ltr" className="inline-block min-w-0 text-center font-sans tabular-nums">
+                                  {displayBudgetCode || "—"}
+                                </span>
+                              </div>
                             </td>
                             <td className={`px-3 whitespace-normal break-words leading-6 ${divider}`}>{row.budgetName || "—"}</td>
                             <td className={`px-3 ${divider}`}>
@@ -885,9 +772,24 @@ export default function CostBreakdownPage() {
                                   spellCheck={false}
                                 />
                               ) : (
-                                <span dir="ltr" className="inline-block w-full text-center font-sans tabular-nums">
-                                  {projectBudgetCode(row.budgetCode) || "—"}
-                                </span>
+                                <div className="flex items-center justify-center gap-2" dir="rtl" style={{ paddingRight: codeIndent }}>
+                                  {item.hasChildren ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleExpandedCode(displayBudgetCode)}
+                                      className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-black/15 bg-white text-base leading-none text-black transition hover:bg-black/5 dark:border-white/15 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10"
+                                      aria-label={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
+                                      title={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
+                                    >
+                                      {isExpanded ? "−" : "+"}
+                                    </button>
+                                  ) : (
+                                    <span className="h-7 w-7 shrink-0" />
+                                  )}
+                                  <span dir="ltr" className="inline-block min-w-0 text-center font-sans tabular-nums">
+                                    {displayBudgetCode || "—"}
+                                  </span>
+                                </div>
                               )}
                             </td>
                             <td className={`px-3 whitespace-normal break-words leading-6 ${divider}`}>
