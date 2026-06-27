@@ -18,6 +18,7 @@ import EstimatesPage from "./pages/EstimatesPage.jsx";
 import RevenueEstimatesPage from "./pages/RevenueEstimatesPage.jsx";
 import DailyReportPage from "./pages/DailyReportPage.jsx";
 import FinancialWorksheetPage from "./pages/FinancialWorksheetPage.jsx";
+import CostBreakdownPage from "./pages/CostBreakdownPage.jsx";
 import BudgetAllocationPage from "./pages/BudgetAllocationPage.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
 import LettersPage from "./pages/LettersPage.jsx";
@@ -84,7 +85,7 @@ export default function App() {
         {/* پروژه‌ها */}
         <Route path="/projects/simple" element={<Projects2Page />} />
         <Route path="/centers/projects" element={<ProjectsPage />} />
-        <Route path="/projects/cost-breakdown" element={<NavPlaceholderPage title="ساختار شکست هزینه ها" />} />
+        <Route path="/projects/cost-breakdown" element={<CostBreakdownPage />} />
         <Route path="/projects/financial-commitments" element={<NavPlaceholderPage title="تعهدات و مصارف مالی" />} />
         <Route path="/projects/daily-report" element={<DailyReportPage />} />
         <Route
