@@ -64,19 +64,19 @@ const normalizeCode = (value = "") => {
   const prefixed = raw.match(/^(OB|SB|FB|CB|IB)[-.]?\s*(.*)$/i);
   if (prefixed) {
     const suffix = String(prefixed[2] || "")
-      .replace(/[^\d.]/g, ".")
-      .replace(/\.+/g, ".")
-      .replace(/^\./, "")
-      .replace(/\.$/, "");
+      .replace(/[^\d.-]/g, "-")
+      .replace(/[.-]+/g, "-")
+      .replace(/^-/, "")
+      .replace(/-$/, "");
     return suffix ? `${prefixed[1].toUpperCase()}-${suffix}` : "";
   }
 
   return raw
     .replace(/^PB[-.]?/i, "")
-    .replace(/[^\d.]/g, ".")
-    .replace(/\.+/g, ".")
-    .replace(/^\./, "")
-    .replace(/\.$/, "");
+    .replace(/[^\d.-]/g, "-")
+    .replace(/[.-]+/g, "-")
+    .replace(/^-/, "")
+    .replace(/-$/, "");
 };
 
 const coreOf = (value = "") => {
@@ -87,12 +87,11 @@ const coreOf = (value = "") => {
 
 const isTopProjectCode = (code) => /^\d{3}$/.test(toEnDigits(String(code || "")).trim());
 
-const displayCode = (value = "") => toEnDigits(String(value || "")).trim();
+const displayCode = (value = "") => normalizeCode(value);
 
-const sharedEstimateCode = (kind, value = "") => {
-  const tab = SHARED_ESTIMATE_TABS.find((item) => item.id === kind);
+const sharedEstimateCode = (baseCode, value = "") => {
   const suffix = normalizeCode(String(value || "").replace(/^[A-Za-z]+[-.]?/i, ""));
-  return tab?.prefix && suffix ? `${tab.prefix}-${suffix}` : suffix;
+  return baseCode && suffix ? `${baseCode}-${suffix}` : suffix;
 };
 
 const estimateNameOf = (item) => {
@@ -154,6 +153,16 @@ export default function CostBreakdownPage() {
 
   const selectedProjectCode = normalizeCode(selectedProject?.code || "");
 
+  const projectBudgetCode = useCallback(
+    (value = "") => {
+      const code = normalizeCode(value);
+      const sharedMatch = code.match(/^(OB|SB|FB|CB|IB)-(.+)$/i);
+      if (selectedProjectCode === "100" && sharedMatch) return `${selectedProjectCode}-${sharedMatch[2]}`;
+      return code;
+    },
+    [selectedProjectCode]
+  );
+
   const tableRows = useMemo(() => {
     const pending = pendingRows.map((row, idx) => ({
       kind: "pending",
@@ -207,26 +216,26 @@ export default function CostBreakdownPage() {
   const budgetCenterByCode = useMemo(() => {
     const map = new Map();
     for (const center of budgetCodeOptions || []) {
-      const raw = normalizeCode(center?.code ?? "");
+      const raw = projectBudgetCode(center?.code ?? "");
       if (!raw) continue;
       const name = String(center?.name ?? "").trim();
       map.set(raw, name);
-      if (selectedProjectCode && raw.startsWith(selectedProjectCode + ".")) {
+      if (selectedProjectCode && raw.startsWith(selectedProjectCode + "-")) {
         map.set(raw.slice(selectedProjectCode.length + 1), name);
       }
     }
     return map;
-  }, [budgetCodeOptions, selectedProjectCode]);
+  }, [budgetCodeOptions, projectBudgetCode, selectedProjectCode]);
 
   const resolvedBudgetName = useMemo(() => {
-    const code = normalizeCode(budgetCode);
+    const code = projectBudgetCode(budgetCode);
     if (!code) return "";
     return budgetCenterByCode.get(code) || "";
-  }, [budgetCenterByCode, budgetCode]);
+  }, [budgetCenterByCode, budgetCode, projectBudgetCode]);
 
   const handleBudgetCodeChange = (value) => {
-    const nextCode = normalizeCode(value);
-    const selectedOption = (budgetCodeOptions || []).find((item) => normalizeCode(item.code) === nextCode);
+    const nextCode = projectBudgetCode(value);
+    const selectedOption = (budgetCodeOptions || []).find((item) => projectBudgetCode(item.code) === nextCode);
     const nextName = selectedOption?.name || budgetCenterByCode.get(nextCode) || "";
     setBudgetCode(nextCode);
     if (nextName && (!budgetName || budgetName === resolvedBudgetName)) {
@@ -345,7 +354,7 @@ export default function CostBreakdownPage() {
           const response = sharedResponses[index] || {};
           const items = Array.isArray(response?.items) ? response.items : [];
           for (const item of items) {
-            const code = sharedEstimateCode(tab.id, item?.code ?? "");
+            const code = sharedEstimateCode(baseCode, item?.code ?? "");
             if (!code) continue;
             byCode.set(code, {
               code,
@@ -426,7 +435,7 @@ export default function CostBreakdownPage() {
   };
 
   const addPendingRow = () => {
-    const code = normalizeCode(budgetCode);
+    const code = projectBudgetCode(budgetCode);
     const name = String(budgetName || resolvedBudgetName || "").trim();
 
     setErr("");
@@ -439,8 +448,8 @@ export default function CostBreakdownPage() {
       return;
     }
 
-    const existsSaved = rows.some((row) => normalizeCode(row.budgetCode) === code);
-    const existsPending = pendingRows.some((row) => normalizeCode(row.budgetCode) === code);
+    const existsSaved = rows.some((row) => projectBudgetCode(row.budgetCode) === code);
+    const existsPending = pendingRows.some((row) => projectBudgetCode(row.budgetCode) === code);
     if (existsSaved || existsPending) {
       setErr("این کد بودجه قبلاً در جدول وجود دارد.");
       return;
@@ -483,7 +492,7 @@ export default function CostBreakdownPage() {
       const exists = prev.some((row) => String(row.id) === String(normalized.id));
       if (exists) return prev.map((row) => (String(row.id) === String(normalized.id) ? normalized : row));
       return [...prev, normalized].sort((a, b) =>
-        displayCode(a.budgetCode).localeCompare(displayCode(b.budgetCode), "fa", {
+        projectBudgetCode(a.budgetCode).localeCompare(projectBudgetCode(b.budgetCode), "fa", {
           numeric: true,
           sensitivity: "base",
         })
@@ -494,7 +503,7 @@ export default function CostBreakdownPage() {
   const savePendingRow = async (row, { silent = false } = {}) => {
     if (!projectId || !row?.tempId) return false;
 
-    const code = normalizeCode(row.budgetCode);
+    const code = projectBudgetCode(row.budgetCode);
     const name = String(row.budgetName || "").trim();
     if (!code || !name) return false;
 
@@ -559,7 +568,7 @@ export default function CostBreakdownPage() {
   const beginEdit = (row) => {
     setEditId(row.id);
     setEditDraft({
-      budgetCode: row.budgetCode,
+      budgetCode: projectBudgetCode(row.budgetCode),
       budgetName: row.budgetName,
       baseBudget: row.baseBudget,
     });
@@ -574,7 +583,7 @@ export default function CostBreakdownPage() {
   const saveEdit = async () => {
     if (!editId) return;
 
-    const code = String(editDraft.budgetCode || "").trim();
+    const code = projectBudgetCode(editDraft.budgetCode);
     const name = String(editDraft.budgetName || "").trim();
     if (!code || !name) {
       setErr("کد بودجه و نام بودجه را وارد کنید.");
@@ -695,9 +704,9 @@ export default function CostBreakdownPage() {
               >
                 <option value=""></option>
                 {budgetCodeOptions.map((item) => (
-                  <option key={item.code} value={normalizeCode(item.code)}>
+                  <option key={item.code} value={projectBudgetCode(item.code)}>
                     {item.sourceLabel ? `${item.sourceLabel} - ` : ""}
-                    {displayCode(item.code)}
+                    {projectBudgetCode(item.code)}
                     {item.name ? ` - ${item.name}` : ""}
                   </option>
                 ))}
@@ -716,7 +725,7 @@ export default function CostBreakdownPage() {
                 <button
                   type="button"
                   onClick={addPendingRow}
-                  disabled={!projectId || saving || !normalizeCode(budgetCode) || !budgetName}
+                  disabled={!projectId || saving || !projectBudgetCode(budgetCode) || !budgetName}
                   className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/15 bg-white text-black transition hover:bg-black/5 disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-200/20"
                   aria-label="افزودن به جدول"
                   title="افزودن به جدول"
@@ -806,7 +815,7 @@ export default function CostBreakdownPage() {
                             </td>
                             <td className={`px-3 ${divider}`}>
                               <span dir="ltr" className="inline-block w-full text-center font-sans tabular-nums">
-                                {displayCode(row.budgetCode) || "—"}
+                                {projectBudgetCode(row.budgetCode) || "—"}
                               </span>
                             </td>
                             <td className={`px-3 whitespace-normal break-words leading-6 ${divider}`}>{row.budgetName || "—"}</td>
@@ -850,14 +859,14 @@ export default function CostBreakdownPage() {
                                 <input
                                   value={editDraft.budgetCode}
                                   onChange={(e) =>
-                                    setEditDraft((prev) => ({ ...prev, budgetCode: normalizeCode(e.target.value) }))
+                                    setEditDraft((prev) => ({ ...prev, budgetCode: projectBudgetCode(e.target.value) }))
                                   }
                                   className={moneyInputCls + " font-sans tabular-nums"}
                                   spellCheck={false}
                                 />
                               ) : (
                                 <span dir="ltr" className="inline-block w-full text-center font-sans tabular-nums">
-                                  {displayCode(row.budgetCode) || "—"}
+                                  {projectBudgetCode(row.budgetCode) || "—"}
                                 </span>
                               )}
                             </td>
