@@ -89,6 +89,11 @@ const isTopProjectCode = (code) => /^\d{3}$/.test(toEnDigits(String(code || ""))
 
 const displayCode = (value = "") => normalizeCode(value);
 
+const cleanBudgetCodeInput = (value = "") =>
+  toEnDigits(value)
+    .toUpperCase()
+    .replace(/[^0-9A-Z.-]/g, "");
+
 const sharedEstimateCode = (baseCode, value = "") => {
   const suffix = normalizeCode(String(value || "").replace(/^[A-Za-z]+[-.]?/i, ""));
   return baseCode && suffix ? `${baseCode}-${suffix}` : suffix;
@@ -234,16 +239,7 @@ export default function CostBreakdownPage() {
   }, [budgetCenterByCode, budgetCode, projectBudgetCode]);
 
   const handleBudgetCodeChange = (value) => {
-    const nextCode = projectBudgetCode(value);
-    const selectedOption = (budgetCodeOptions || []).find((item) => projectBudgetCode(item.code) === nextCode);
-    const nextName = selectedOption?.name || budgetCenterByCode.get(nextCode) || "";
-    setBudgetCode(nextCode);
-    if (nextName && (!budgetName || budgetName === resolvedBudgetName)) {
-      setBudgetName(nextName);
-    }
-    if (selectedOption?.baseAmount != null) {
-      setBaseBudget(parseMoney(selectedOption.baseAmount));
-    }
+    setBudgetCode(cleanBudgetCodeInput(value));
   };
 
   const loadProjects = useCallback(async () => {
@@ -732,19 +728,9 @@ export default function CostBreakdownPage() {
                 value={budgetCode}
                 onChange={(e) => handleBudgetCodeChange(e.target.value)}
                 disabled={!projectId}
-                list="cost-breakdown-budget-codes"
                 className={inputCls + " ltr text-left font-sans tabular-nums"}
                 spellCheck={false}
               />
-              <datalist id="cost-breakdown-budget-codes">
-                {budgetCodeOptions.map((item) => (
-                  <option key={item.code} value={projectBudgetCode(item.code)}>
-                    {item.sourceLabel ? `${item.sourceLabel} - ` : ""}
-                    {projectBudgetCode(item.code)}
-                    {item.name ? ` - ${item.name}` : ""}
-                  </option>
-                ))}
-              </datalist>
             </label>
 
             <label className="flex min-w-0 flex-col gap-1">
