@@ -118,13 +118,11 @@ export default function CostBreakdownPage() {
   const [baseBudget, setBaseBudget] = useState("");
   const [pendingRows, setPendingRows] = useState([]);
   const pendingRowsRef = useRef([]);
-  const autoSaveTimersRef = useRef(new Map());
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
-  const [autoSaveStatus, setAutoSaveStatus] = useState({});
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
@@ -411,15 +409,6 @@ export default function CostBreakdownPage() {
   }, [pendingRows]);
 
   useEffect(() => {
-    return () => {
-      for (const timerId of autoSaveTimersRef.current.values()) {
-        clearTimeout(timerId);
-      }
-      autoSaveTimersRef.current.clear();
-    };
-  }, []);
-
-  useEffect(() => {
     loadBudgetCenters(selectedProject);
   }, [selectedProject, loadBudgetCenters]);
 
@@ -470,14 +459,6 @@ export default function CostBreakdownPage() {
   };
 
   const removePendingRow = (tempId) => {
-    const timerId = autoSaveTimersRef.current.get(tempId);
-    if (timerId) clearTimeout(timerId);
-    autoSaveTimersRef.current.delete(tempId);
-    setAutoSaveStatus((prev) => {
-      const next = { ...prev };
-      delete next[tempId];
-      return next;
-    });
     setPendingRows((prev) => prev.filter((row) => row.tempId !== tempId));
   };
 
@@ -518,7 +499,6 @@ export default function CostBreakdownPage() {
     if (!code || !name) return false;
 
     if (!silent) setSaving(true);
-    setAutoSaveStatus((prev) => ({ ...prev, [row.tempId]: "saving" }));
 
     try {
       const res = await api("/cost-breakdown", {
@@ -533,10 +513,8 @@ export default function CostBreakdownPage() {
 
       if (res?.item) upsertSavedRow(res.item);
       removePendingRow(row.tempId);
-      setAutoSaveStatus((prev) => ({ ...prev, [row.tempId]: "saved" }));
       return true;
     } catch (ex) {
-      setAutoSaveStatus((prev) => ({ ...prev, [row.tempId]: "error" }));
       if (!silent) {
         setErr(ex.message === "duplicate_budget_code" ? "این کد بودجه برای پروژه انتخاب‌شده قبلاً ثبت شده است." : ex.message || "خطا در ثبت");
       }
@@ -546,20 +524,10 @@ export default function CostBreakdownPage() {
     }
   };
 
-  const schedulePendingAutoSave = (tempId) => {
-    const currentTimer = autoSaveTimersRef.current.get(tempId);
-    if (currentTimer) clearTimeout(currentTimer);
-
-    setAutoSaveStatus((prev) => ({ ...prev, [tempId]: "queued" }));
-
-    const timerId = setTimeout(async () => {
-      autoSaveTimersRef.current.delete(tempId);
-      const row = pendingRowsRef.current.find((item) => item.tempId === tempId);
-      if (!row) return;
-      await savePendingRow(row, { silent: true });
-    }, 3000);
-
-    autoSaveTimersRef.current.set(tempId, timerId);
+  const savePendingOnBlur = async (tempId) => {
+    const row = pendingRowsRef.current.find((item) => item.tempId === tempId);
+    if (!row) return;
+    await savePendingRow(row, { silent: true });
   };
 
   const saveDraft = async () => {
@@ -846,7 +814,7 @@ export default function CostBreakdownPage() {
                               <input
                                 value={row.baseBudget ? toFaDigits(formatMoney(row.baseBudget)) : ""}
                                 onChange={(e) => updatePendingBaseBudget(row.tempId, e.target.value)}
-                                onBlur={() => schedulePendingAutoSave(row.tempId)}
+                                onBlur={() => savePendingOnBlur(row.tempId)}
                                 className={moneyInputCls}
                                 placeholder="0"
                                 inputMode="numeric"
