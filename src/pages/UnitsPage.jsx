@@ -21,10 +21,11 @@ function OrgStructurePage() {
   const requestedTab = searchParams.get("tab");
 
   const [activeTab, setActiveTab] = useState(() => {
+    if (requestedTab === "assignments" && isAdmin) return "assignments";
     if (requestedTab === "users" && isAdmin) return "users";
     if (requestedTab === "roles") return "roles";
     return "units";
-  }); // "units" | "roles" | "users"
+  }); // "units" | "roles" | "users" | "assignments"
 
   const [list, setList] = useState([]);
   const [adding, setAdding] = useState("");
@@ -211,6 +212,10 @@ function OrgStructurePage() {
   useEffect(() => {
     if (requestedTab === "users" && isAdmin) {
       setActiveTab("users");
+      return;
+    }
+    if (requestedTab === "assignments" && isAdmin) {
+      setActiveTab("assignments");
       return;
     }
     if (requestedTab === "roles") {
@@ -628,7 +633,7 @@ function OrgStructurePage() {
     }
   };
 
-  const visibleTabCount = isAdmin ? 3 : 2;
+  const visibleTabCount = isAdmin ? 4 : 2;
 
   const topTabBtnClass = (isActive, index, total) =>
     [
@@ -730,7 +735,7 @@ function OrgStructurePage() {
         </div>
         {/* تب‌ها */}
         <div
-          className="mx-auto mb-2 flex w-full max-w-[360px] items-center justify-center gap-1 overflow-hidden rounded-xl border border-black/10 bg-black/[0.03] p-1 md:-mb-px md:max-w-[780px] md:items-stretch md:gap-0 md:rounded-b-none md:rounded-t-2xl md:border-b-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900"
+          className="mx-auto mb-2 flex w-full max-w-[360px] items-center justify-center gap-1 overflow-hidden rounded-xl border border-black/10 bg-black/[0.03] p-1 md:-mb-px md:max-w-[900px] md:items-stretch md:gap-0 md:rounded-b-none md:rounded-t-2xl md:border-b-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900"
           dir="rtl"
         >
           <button
@@ -750,13 +755,23 @@ function OrgStructurePage() {
           </button>
 
           {isAdmin && (
-            <button
-              type="button"
-              onClick={() => setActiveTab("users")}
-              className={topTabBtnClass(activeTab === "users", 2, visibleTabCount)}
-            >
-              کاربران
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setActiveTab("users")}
+                className={topTabBtnClass(activeTab === "users", 2, visibleTabCount)}
+              >
+                کاربران
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("assignments")}
+                className={topTabBtnClass(activeTab === "assignments", 3, visibleTabCount)}
+              >
+                انتصاب ها
+              </button>
+            </>
           )}
         </div>
 
@@ -1443,6 +1458,12 @@ function OrgStructurePage() {
         {activeTab === "users" && isAdmin && (
           <div className={tabbedPanelClass}>
             <UsersTab embedded />
+          </div>
+        )}
+
+        {activeTab === "assignments" && isAdmin && (
+          <div className={tabbedPanelClass}>
+            <div className="p-4 text-sm font-semibold text-black dark:text-neutral-100">انتصاب ها</div>
           </div>
         )}
       </Card>

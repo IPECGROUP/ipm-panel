@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from "react";
 import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
-import { Btn } from "../components/ui/Button.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
@@ -340,10 +339,9 @@ function UsersTab({ embedded = false }) {
   }
 };
 
-  // ترتیب درست: اول نقش‌ها، بعد کاربران (تا نگاشت آماده باشد)
+  // بارگذاری داده‌های مورد نیاز تب کاربران
   useEffect(() => {
     (async () => {
-      await loadRoles().catch(() => {});
       await Promise.all([reload().catch(() => {}), loadUnits().catch(() => {})]);
     })();
   }, []);
@@ -367,15 +365,8 @@ function UsersTab({ embedded = false }) {
       setAddErr("نام کاربری و گذرواژه الزامی است.");
       return;
     }
-    if ((addForm.positions || []).length && (rolesLoading || (roleItems || []).length === 0)) {
-      setAddErr("نقش‌ها هنوز بارگذاری نشده‌اند. چند ثانیه بعد دوباره ذخیره کنید.");
-      return;
-    }
     try {
       setAddSaving(true);
-      const positionsIds = (addForm.positions || [])
-        .map((n) => nameToId[n])
-        .filter((v) => v != null);
       await api("/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -387,9 +378,6 @@ function UsersTab({ embedded = false }) {
           expiresAt: jalaliYmdToIsoEndOfDay(addForm.expiresAt),
           department: addForm.department || null,
           role: addForm.role || "user",
-          access: buildAccessArrayFromAddForm(),
-          positions: positionsIds,
-          roles: positionsIds,
         }),
       });
       setAddSaving(false);
@@ -492,10 +480,6 @@ function UsersTab({ embedded = false }) {
     });
 
   const saveEdit = async () => {
-    if ((form.positions || []).length && (rolesLoading || (roleItems || []).length === 0)) {
-      alert("نقش‌ها هنوز بارگذاری نشده‌اند. لطفاً چند ثانیه بعد دوباره ذخیره کنید.");
-      return;
-    }
     const isBatchEdit = (editIds || []).length > 1;
     const targetIds = (editIds || []).length
       ? editIds.map((id) => String(id))
@@ -504,26 +488,15 @@ function UsersTab({ embedded = false }) {
       : [];
     if (!targetIds.length) return;
 
-    const payloadBase = { ...form };
-    payloadBase.expiresAt = jalaliYmdToIsoEndOfDay(form.expiresAt);
-    if (payloadBase.role !== "admin") {
-      const base = Array.isArray(payloadBase.access)
-        ? payloadBase.access.filter((x) => !String(x).startsWith("contracts:"))
-        : [];
-      if (contractsSel) base.push(contractsSel);
-      payloadBase.access = sanitizeAccess(base);
-    } else {
-      delete payloadBase.access;
+    const payloadBase = {
+      role: form.role || "user",
+      expiresAt: jalaliYmdToIsoEndOfDay(form.expiresAt),
+    };
+    if (!isBatchEdit) {
+      payloadBase.name = form.name || null;
+      payloadBase.username = String(form.username || "").trim();
+      if (form.password) payloadBase.password = form.password;
     }
-    if (!payloadBase.password || isBatchEdit) delete payloadBase.password;
-    if (isBatchEdit) {
-      delete payloadBase.name;
-      delete payloadBase.email;
-      delete payloadBase.username;
-    }
-    const positionsIds = (form.positions || []).map((n) => nameToId[n]).filter((v) => v != null);
-    payloadBase.positions = positionsIds;
-    payloadBase.roles = positionsIds;
 
     try {
       const idMap = new Map((list || []).map((it) => [String(it.id), it.id]));
@@ -738,7 +711,7 @@ function UsersTab({ embedded = false }) {
             </div>
           )}
 
-          <AddPlusBtn onClick={() => setAddOpen((s) => !s)} title="افزودن کاربر" />
+          <AddPlusBtn onClick={() => setAddOpen((s) => !s)} title="افزودن کاربر" className="ml-[15px]" />
         </div>
 
         {/* Add form (ریسپانسیو + دارک/لایت) */}
@@ -750,7 +723,7 @@ function UsersTab({ embedded = false }) {
             dir="rtl"
           >
             <div className="p-4">
-              <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-[repeat(5,minmax(0,1fr))_auto] lg:items-end">
                 <div className="flex flex-col gap-1">
                   <label className="text-sm text-black/70 dark:text-neutral-300">نام</label>
                   <input
@@ -805,163 +778,22 @@ function UsersTab({ embedded = false }) {
                     <option value="admin">admin</option>
                   </select>
                 </div>
-              </div>
 
-              {/* نقش کاربری */}
-              <div className="mt-4 text-black dark:text-neutral-100">
-                <label className="block mb-2 text-sm text-black/70 dark:text-neutral-300">نقش کاربری</label>
-
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {(addForm.positions || []).map((slug) => (
-                    <span
-                      key={slug}
-                      className="inline-flex items-center gap-2 px-3 py-1 rounded-full
-                                 bg-neutral-100 text-black border border-black/10
-                                 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                    >
-                      {slugToLabel[slug] || slug}
-                      <button
-                        type="button"
-                        onClick={() => removePositionFromAdd(slug)}
-                        className="text-black/50 hover:text-black dark:text-neutral-400 dark:hover:text-neutral-200"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                  {(!addForm.positions || addForm.positions.length === 0) && (
-                    <span className="text-sm text-black/50 dark:text-neutral-400">نقشی انتخاب نشده است</span>
-                  )}
-                </div>
-
-                <div className="relative">
+                <div className="flex items-end justify-end">
                   <button
-                    type="button"
-                    onClick={() => setAddRolesOpen((s) => !s)}
-                    className="w-full h-10 text-right rounded-2xl px-3 bg-white text-black border border-black/15 outline-none
-                               hover:bg-black/[0.02]
-                               dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-white/10"
+                    type="submit"
+                    disabled={addSaving}
+                    className="h-10 w-10 grid place-items-center rounded-xl bg-neutral-900 text-white hover:opacity-90 transition disabled:opacity-50
+                               dark:bg-neutral-100 dark:text-neutral-900"
+                    aria-label="ثبت"
+                    title="ثبت"
                   >
-                    {rolesLoading ? "در حال بارگذاری نقش‌ها…" : "انتخاب از نقش‌های کاربری"}
+                    <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
                   </button>
-
-                  {addRolesOpen && (
-                    <div className="absolute z-20 mt-2 w-full max-h-56 overflow-auto rounded-xl border border-black/10 bg-white shadow
-                                    text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-                      {roleItems.length === 0 ? (
-                        <div className="px-3 py-2 text-sm text-black/50 dark:text-neutral-400">نقشی ثبت نشده است.</div>
-                      ) : (
-                        roleItems.map((r) => (
-                          <button
-                            type="button"
-                            key={r.name}
-                            onClick={() => {
-                              addPositionToAdd(r.name);
-                            }}
-                            className={`w-full text-right px-3 py-2 text-sm hover:bg-black/[0.04] dark:hover:bg-white/10
-                                      ${(addForm.positions || []).includes(r.name) ? "bg-black/[0.02] dark:bg-white/10" : ""}`}
-                          >
-                            {r.label || r.name}
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* دسترسی‌های بودجه و قرارداد */}
-              <div
-                className={`mt-4 grid md:grid-cols-2 gap-6 ${addForm.role === "admin" ? "opacity-50 pointer-events-none" : ""}`}
-              >
-                <div className="rounded-2xl p-3 border border-black/10 bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-                  <div className="font-medium mb-2">بودجه‌بندی</div>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      ["budget:projects", "پروژه‌ها"],
-                      ["budget:office", "دفتر مرکزی"],
-                      ["budget:site", "سایت"],
-                      ["budget:finance", "مالی"],
-                      ["budget:cash", "نقدی"],
-                      ["budget:capex", "سرمایه‌ای"],
-                    ].map(([key, label]) => (
-                      <label
-                        key={key}
-                        className="inline-flex items-center gap-2 rounded-full px-3 py-1 cursor-pointer select-none
-                                   ring-1 ring-black/15 hover:bg-black/5
-                                   dark:ring-neutral-800 dark:hover:bg-white/10"
-                      >
-                        <input
-                          type="checkbox"
-                          className="accent-neutral-900 dark:accent-neutral-200"
-                          checked={!!addForm.accessBudget[key]}
-                          onChange={() =>
-                            setAddForm((s) => ({
-                              ...s,
-                              accessBudget: { ...s.accessBudget, [key]: !s.accessBudget[key] },
-                            }))
-                          }
-                        />
-                        <span className="text-black dark:text-neutral-200">{label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl p-3 border border-black/10 bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-                  <div className="font-medium mb-2">قراردادها</div>
-                  <div className="flex flex-wrap gap-3">
-                    <label
-                      className="inline-flex items-center gap-2 rounded-full px-3 py-1 cursor-pointer select-none
-                                 ring-1 ring-black/15 hover:bg-black/5
-                                 dark:ring-neutral-800 dark:hover:bg-white/10"
-                    >
-                      <input
-                        type="radio"
-                        name="contracts-add"
-                        className="accent-neutral-900 dark:accent-neutral-200"
-                        checked={addForm.contracts === "contracts:all"}
-                        onChange={() => setAddForm((s) => ({ ...s, contracts: "contracts:all" }))}
-                      />
-                      <span className="text-black dark:text-neutral-200">همه اطلاعات</span>
-                    </label>
-
-                    <label
-                      className="inline-flex items-center gap-2 rounded-full px-3 py-1 cursor-pointer select-none
-                                 ring-1 ring-black/15 hover:bg-black/5
-                                 dark:ring-neutral-800 dark:hover:bg-white/10"
-                    >
-                      <input
-                        type="radio"
-                        name="contracts-add"
-                        className="accent-neutral-900 dark:accent-neutral-200"
-                        checked={addForm.contracts === "contracts:nonfinancial"}
-                        onChange={() => setAddForm((s) => ({ ...s, contracts: "contracts:nonfinancial" }))}
-                      />
-                      <span className="text-black dark:text-neutral-200">صرفاً اطلاعات غیرمالی</span>
-                    </label>
-                  </div>
                 </div>
               </div>
 
               {addErr && <div className="text-sm text-red-600 dark:text-red-400 mt-3">{addErr}</div>}
-
-              <div className="mt-4 flex items-center gap-2">
-                <button
-                  type="submit"
-                  disabled={addSaving}
-                  className="h-10 w-10 grid place-items-center rounded-xl bg-neutral-900 text-white hover:opacity-90 transition disabled:opacity-50
-                             dark:bg-neutral-100 dark:text-neutral-900"
-                  aria-label="ثبت"
-                  title="ثبت"
-                >
-                  <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
-                </button>
-
-                <Btn type="button" onClick={() => setAddOpen(false)}>
-                  بستن
-                </Btn>
-              </div>
             </div>
           </form>
         )}
@@ -1211,139 +1043,6 @@ function UsersTab({ embedded = false }) {
                   <option value="user">user</option>
                   <option value="admin">admin</option>
                 </select>
-              </div>
-            </div>
-
-            {/* نقش کاربری در ویرایش */}
-            <div className="mt-5 text-black dark:text-neutral-100" dir="rtl">
-              <div className="font-medium mb-2">نقش کاربری</div>
-
-              <div className="flex flex-wrap gap-2 mb-2">
-                {(form.positions || []).map((slug) => (
-                  <span
-                    key={slug}
-                    className="inline-flex items-center gap-2 px-3 py-1 rounded-full
-                               bg-neutral-100 text-black border border-black/10
-                               dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                  >
-                    {slugToLabel[slug] || slug}
-                    <button
-                      type="button"
-                      onClick={() => removePositionFromEdit(slug)}
-                      className="text-black/50 hover:text-black dark:text-neutral-400 dark:hover:text-neutral-200"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-                {(!form.positions || form.positions.length === 0) && (
-                  <span className="text-sm text-black/50 dark:text-neutral-400">نقشی انتخاب نشده است</span>
-                )}
-              </div>
-
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setEditRolesOpen((s) => !s)}
-                  className="w-full h-10 text-right rounded-2xl px-3 bg-white text-black border border-black/15 outline-none
-                             hover:bg-black/[0.02]
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:hover:bg-white/10"
-                >
-                  {rolesLoading ? "در حال بارگذاری نقش‌ها…" : "انتخاب از نقش‌های کاربری"}
-                </button>
-
-                {editRolesOpen && (
-                  <div className="absolute z-20 mt-2 w-full max-h-56 overflow-auto rounded-xl border border-black/10 bg-white shadow
-                                  text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-                    {roleItems.length === 0 ? (
-                      <div className="px-3 py-2 text-sm text-black/50 dark:text-neutral-400">نقشی ثبت نشده است.</div>
-                    ) : (
-                      roleItems.map((r) => (
-                        <button
-                          type="button"
-                          key={r.name}
-                          onClick={() => {
-                            addPositionToEdit(r.name);
-                          }}
-                          className={`w-full text-right px-3 py-2 text-sm hover:bg-black/[0.04] dark:hover:bg-white/10
-                                    ${(form.positions || []).includes(r.name) ? "bg-black/[0.02] dark:bg-white/10" : ""}`}
-                        >
-                          {r.label || r.name}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* دسترسی‌ها در ویرایش */}
-            <div
-              className={`mt-5 grid md:grid-cols-2 gap-6 ${form.role === "admin" ? "opacity-50 pointer-events-none" : ""}`}
-              dir="rtl"
-            >
-              <div className="rounded-2xl p-3 border border-black/10 bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-                <div className="font-medium mb-2">بودجه‌بندی</div>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    ["budget:projects", "پروژه‌ها"],
-                    ["budget:office", "دفتر مرکزی"],
-                    ["budget:site", "سایت"],
-                    ["budget:finance", "مالی"],
-                    ["budget:cash", "نقدی"],
-                    ["budget:capex", "سرمایه‌ای"],
-                  ].map(([key, label]) => (
-                    <label
-                      key={key}
-                      className="inline-flex items-center gap-2 rounded-full px-3 py-1 cursor-pointer select-none
-                                 ring-1 ring-black/15 hover:bg-black/5
-                                 dark:ring-neutral-800 dark:hover:bg-white/10"
-                    >
-                      <input
-                        type="checkbox"
-                        className="accent-neutral-900 dark:accent-neutral-200"
-                        checked={has(key)}
-                        onChange={() => toggleBudget(key)}
-                      />
-                      <span className="text-black dark:text-neutral-200">{label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-2xl p-3 border border-black/10 bg-white text-black dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-                <div className="font-medium mb-2">قراردادها</div>
-                <div className="flex flex-wrap gap-3">
-                  <label
-                    className="inline-flex items-center gap-2 rounded-full px-3 py-1 cursor-pointer select-none
-                               ring-1 ring-black/15 hover:bg-black/5
-                               dark:ring-neutral-800 dark:hover:bg-white/10"
-                  >
-                    <input
-                      type="radio"
-                      name={`contracts-${editIds.join("-") || editId}`}
-                      className="accent-neutral-900 dark:accent-neutral-200"
-                      checked={contractsSel === "contracts:all"}
-                      onChange={() => setContracts("contracts:all")}
-                    />
-                    <span className="text-black dark:text-neutral-200">همه اطلاعات</span>
-                  </label>
-
-                  <label
-                    className="inline-flex items-center gap-2 rounded-full px-3 py-1 cursor-pointer select-none
-                               ring-1 ring-black/15 hover:bg-black/5
-                               dark:ring-neutral-800 dark:hover:bg-white/10"
-                  >
-                    <input
-                      type="radio"
-                      name={`contracts-${editIds.join("-") || editId}`}
-                      className="accent-neutral-900 dark:accent-neutral-200"
-                      checked={contractsSel === "contracts:nonfinancial"}
-                      onChange={() => setContracts("contracts:nonfinancial")}
-                    />
-                    <span className="text-black dark:text-neutral-200">صرفاً اطلاعات غیرمالی</span>
-                  </label>
-                </div>
               </div>
             </div>
 
