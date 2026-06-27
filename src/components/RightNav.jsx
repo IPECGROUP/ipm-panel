@@ -238,7 +238,7 @@ function RightNav() {
           active: supplyParentActive,
           items: [
             { to: "/supply/request", label: "درخواست تامین", hint: "ثبت و پیگیری درخواست تامین", icon: <IcSupplyRequest /> },
-            { to: "/supply/actions", label: "اقدامات تامین", hint: "پیگیری اقدامات تامین", icon: <NavIcon src="/images/icons/berozresani.svg" /> },
+            { to: "/supply/actions", label: "اقدامات تامین", hint: "پیگیری اقدامات تامین", icon: <NavIcon src="/images/icons/egdamat-tamin.svg" /> },
             { to: "/supply/dashboard", label: "داشبورد مدیریت تامین و پشتیبانی", hint: "نمای کلی تامین و پشتیبانی", icon: <IcProjectDashboard /> },
           ],
         },
@@ -320,9 +320,9 @@ function RightNav() {
 
   const desktopItemCls = (active, collapsed = false) =>
     [
-      "group relative !flex !h-10 !items-center !border !border-transparent !bg-transparent !py-0 !shadow-none",
-      "!box-border !text-sm !leading-none !transition-all !duration-200 focus:!ring-2 focus:!ring-[#DB843D]/25",
-      collapsed ? "!w-10 !justify-center !rounded-xl !px-0" : "!mx-auto !w-[calc(100%-0.75rem)] !justify-start !gap-3 !rounded-lg !px-2.5",
+      "group relative !flex !items-center !border !border-transparent !bg-transparent !shadow-none",
+      "!box-border !text-sm !leading-6 !transition-all !duration-200 focus:!ring-2 focus:!ring-[#DB843D]/25",
+      collapsed ? "!h-10 !w-10 !justify-center !rounded-xl !px-0 !py-0" : "!min-h-11 !mx-auto !w-[calc(100%-0.75rem)] !justify-start !gap-3 !rounded-lg !px-2.5 !py-1",
       active
         ? "!border-[#DB843D]/[0.55] !bg-[#DB843D]/[0.16] !text-white !font-semibold !ring-1 !ring-inset !ring-[#DB843D]/25 before:absolute before:right-0 before:top-2 before:bottom-2 before:w-[3px] before:rounded-full before:bg-[#DB843D]"
         : "!text-white/[0.72] hover:!bg-white/[0.07] hover:!text-white",
@@ -373,7 +373,7 @@ function RightNav() {
           aria-expanded={sectionOpen}
         >
           {renderIcon(item.icon, item.active)}
-          <span className="min-w-0 flex-1 truncate text-right">{item.label}</span>
+          <span className="min-w-0 flex-1 truncate py-0.5 text-right leading-6">{item.label}</span>
           <ChevronLeft
             className={[
               "h-4 w-4 shrink-0 text-white/[0.45] transition-transform",
@@ -456,7 +456,7 @@ function RightNav() {
       <div key={item.to} onMouseEnter={(e) => showTip(item.label, e)} onMouseLeave={hideTip}>
         <LinkBtn to={item.to} onClick={closeOpenMenus} className={desktopItemCls(item.active, !expanded)} aria-label={item.label}>
           {renderIcon(item.icon, item.active)}
-          {expanded && <span className="min-w-0 flex-1 truncate text-right">{item.label}</span>}
+          {expanded && <span className="min-w-0 flex-1 truncate py-0.5 text-right leading-6">{item.label}</span>}
         </LinkBtn>
       </div>
     );
