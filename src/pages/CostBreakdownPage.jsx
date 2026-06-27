@@ -5,6 +5,14 @@ import { api } from "../utils/api.js";
 
 const PAGE_ICON = "/images/icons/sakhtar-shekast.svg";
 
+const SHARED_ESTIMATE_TABS = [
+  { id: "office", label: "دفتر", prefix: "OB" },
+  { id: "site", label: "سایت", prefix: "SB" },
+  { id: "finance", label: "مالی", prefix: "FB" },
+  { id: "cash", label: "نقدی", prefix: "CB" },
+  { id: "capex", label: "سرمایه‌ای", prefix: "IB" },
+];
+
 const tableWrapCls =
   "rounded-2xl border border-black/10 overflow-hidden bg-white text-black " +
   "dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800";
@@ -51,13 +59,25 @@ const normalizeItem = (item) => ({
   baseBudget: parseMoney(item?.baseBudget ?? item?.base_budget ?? 0),
 });
 
-const normalizeCode = (value = "") =>
-  toEnDigits(value)
+const normalizeCode = (value = "") => {
+  const raw = toEnDigits(value).trim().toUpperCase();
+  const prefixed = raw.match(/^(OB|SB|FB|CB|IB)[-.]?\s*(.*)$/i);
+  if (prefixed) {
+    const suffix = String(prefixed[2] || "")
+      .replace(/[^\d.]/g, ".")
+      .replace(/\.+/g, ".")
+      .replace(/^\./, "")
+      .replace(/\.$/, "");
+    return suffix ? `${prefixed[1].toUpperCase()}-${suffix}` : "";
+  }
+
+  return raw
     .replace(/^PB[-.]?/i, "")
     .replace(/[^\d.]/g, ".")
     .replace(/\.+/g, ".")
     .replace(/^\./, "")
     .replace(/\.$/, "");
+};
 
 const coreOf = (value = "") => {
   const raw = toEnDigits(String(value || "")).trim();
@@ -68,6 +88,24 @@ const coreOf = (value = "") => {
 const isTopProjectCode = (code) => /^\d{3}$/.test(toEnDigits(String(code || "")).trim());
 
 const displayCode = (value = "") => toEnDigits(String(value || "")).trim();
+
+const sharedEstimateCode = (kind, value = "") => {
+  const tab = SHARED_ESTIMATE_TABS.find((item) => item.id === kind);
+  const suffix = normalizeCode(String(value || "").replace(/^[A-Za-z]+[-.]?/i, ""));
+  return tab?.prefix && suffix ? `${tab.prefix}-${suffix}` : suffix;
+};
+
+const estimateNameOf = (item) => {
+  const direct = String(item?.center_desc ?? item?.name ?? "").trim();
+  if (direct) return direct;
+  const rawDesc = item?.last_desc ?? item?.description ?? "";
+  try {
+    const parsed = JSON.parse(String(rawDesc || ""));
+    return String(parsed?.desc || "").trim();
+  } catch {
+    return String(rawDesc || "").trim();
+  }
+};
 
 export default function CostBreakdownPage() {
   const [projects, setProjects] = useState([]);
@@ -190,10 +228,14 @@ export default function CostBreakdownPage() {
 
   const handleBudgetCodeChange = (value) => {
     const nextCode = normalizeCode(value);
-    const nextName = budgetCenterByCode.get(nextCode) || "";
+    const selectedOption = (budgetCodeOptions || []).find((item) => normalizeCode(item.code) === nextCode);
+    const nextName = selectedOption?.name || budgetCenterByCode.get(nextCode) || "";
     setBudgetCode(nextCode);
     if (nextName && (!budgetName || budgetName === resolvedBudgetName)) {
       setBudgetName(nextName);
+    }
+    if (selectedOption?.baseAmount != null) {
+      setBaseBudget(parseMoney(selectedOption.baseAmount));
     }
   };
 
@@ -254,9 +296,15 @@ export default function CostBreakdownPage() {
       qs.set("kind", "projects");
       if (nextProject?.id) qs.set("project_id", String(nextProject.id));
 
-      const [centersRes, estimatesRes] = await Promise.all([
+      const shouldLoadSharedTabs = baseCode === "100";
+      const [centersRes, estimatesRes, ...sharedResponses] = await Promise.all([
         api("/centers/projects").catch(() => ({ items: [] })),
         api("/budget-estimates?" + qs.toString()).catch(() => ({ items: [] })),
+        ...(shouldLoadSharedTabs
+          ? SHARED_ESTIMATE_TABS.map((tab) =>
+              api(`/budget-estimates?kind=${encodeURIComponent(tab.id)}`).catch(() => ({ items: [] }))
+            )
+          : []),
       ]);
 
       const rawCenters = centersRes?.items || centersRes?.centers || centersRes?.data || centersRes || [];
@@ -277,6 +325,8 @@ export default function CostBreakdownPage() {
         byCode.set(code, {
           code,
           name: String(center?.description ?? center?.name ?? center?.center_desc ?? "").trim(),
+          sourceLabel: "پروژه‌ها",
+          baseAmount: 0,
         });
       }
 
@@ -286,7 +336,26 @@ export default function CostBreakdownPage() {
         const prev = byCode.get(code) || { code, name: "" };
         byCode.set(code, {
           code,
-          name: prev.name || String(item?.center_desc ?? item?.name ?? "").trim(),
+          name: prev.name || estimateNameOf(item),
+          sourceLabel: prev.sourceLabel || "پروژه‌ها",
+          baseAmount: item?.last_amount ?? item?.amount ?? prev.baseAmount ?? 0,
+        });
+      }
+
+      if (shouldLoadSharedTabs) {
+        SHARED_ESTIMATE_TABS.forEach((tab, index) => {
+          const response = sharedResponses[index] || {};
+          const items = Array.isArray(response?.items) ? response.items : [];
+          for (const item of items) {
+            const code = sharedEstimateCode(tab.id, item?.code ?? "");
+            if (!code) continue;
+            byCode.set(code, {
+              code,
+              name: estimateNameOf(item),
+              sourceLabel: tab.label,
+              baseAmount: item?.last_amount ?? item?.amount ?? 0,
+            });
+          }
         });
       }
 
@@ -659,6 +728,7 @@ export default function CostBreakdownPage() {
                 <option value=""></option>
                 {budgetCodeOptions.map((item) => (
                   <option key={item.code} value={normalizeCode(item.code)}>
+                    {item.sourceLabel ? `${item.sourceLabel} - ` : ""}
                     {displayCode(item.code)}
                     {item.name ? ` - ${item.name}` : ""}
                   </option>
