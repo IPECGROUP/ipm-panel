@@ -199,10 +199,6 @@ export default function CostBreakdownPage() {
   }, [selectedProject, loadBudgetCenters]);
 
   useEffect(() => {
-    setBudgetName(resolvedBudgetName);
-  }, [resolvedBudgetName]);
-
-  useEffect(() => {
     if (!projectId) return;
     const exists = (projects || []).some((p) => String(p.id) === String(projectId));
     if (!exists) setProjectId("");
@@ -413,9 +409,9 @@ export default function CostBreakdownPage() {
           <span className="flex min-w-0 items-center gap-2">
             <input
               value={budgetName}
-              readOnly
-              className={inputCls + " bg-neutral-50 dark:bg-neutral-800"}
-              placeholder="بر اساس کد بودجه پر می‌شود"
+              onChange={(e) => setBudgetName(e.target.value)}
+              className={inputCls}
+              placeholder={resolvedBudgetName || "نام بودجه"}
             />
             <button
               type="button"
