@@ -13,7 +13,6 @@ import TagsPage from "./pages/TagsPage.jsx";
 import DefineBudgetCentersPage from "./pages/DefineBudgetCentersPage.jsx";
 import UnitsPage from "./pages/UnitsPage.jsx";
 import BaseCurrenciesPage from "./pages/BaseCurrenciesPage.jsx";
-import UsersPage from "./pages/UsersPage.jsx";
 import EstimatesPage from "./pages/EstimatesPage.jsx";
 import RevenueEstimatesPage from "./pages/RevenueEstimatesPage.jsx";
 import DailyReportPage from "./pages/DailyReportPage.jsx";
@@ -133,8 +132,8 @@ export default function App() {
           }
         />
 
-        {/* مدیریت کاربران (ادمین) */}
-        <Route path="/admin/users" element={<UsersPage />} />
+        {/* مدیریت کاربران به تب کاربران در ساختار سازمانی منتقل شده است */}
+        <Route path="/admin/users" element={<Navigate to="/base/units?tab=users" replace />} />
 
         {/* ریدایرکت ریشه به داشبورد */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />

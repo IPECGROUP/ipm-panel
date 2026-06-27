@@ -3,7 +3,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { ChevronLeft, ChevronRight, LogOut, X } from "lucide-react";
 import { useAuth } from "./AuthProvider";
-import { isMainAdminUser } from "../utils/auth";
 import { Btn, LinkBtn } from "./ui/Button";
 
 const iconMaskCls = "nav-icon block h-5 w-5 shrink-0 bg-white pointer-events-none select-none";
@@ -26,7 +25,6 @@ const IcProjects = () => <NavIcon src="/images/icons/modiriat-projects.svg" />;
 const IcBudget = () => <NavIcon src="/images/icons/modiriat-nagdinegi.svg" />;
 const IcBase = () => <NavIcon src="/images/icons/atelaatpaye.svg" />;
 const IcCurrency = () => <NavIcon src="/images/icons/arz.svg" />;
-const IcUsers = () => <NavIcon src="/images/icons/users.svg" />;
 const IcContract = () => <NavIcon src="/images/icons/gharadad.svg" />;
 const IcTags = () => <NavIcon src="/images/icons/tags.svg" />;
 const IcWorksheet = () => <NavIcon src="/images/icons/karbarg-mali.svg" />;
@@ -46,7 +44,6 @@ const IcClose = () => <X className="h-5 w-5" strokeWidth={2.4} />;
 function RightNav() {
   const auth = useAuth() || {};
   const { user, logout } = auth;
-  const isMainAdmin = isMainAdminUser(user);
   const { pathname } = useLocation();
   const navRef = useRef(null);
 
@@ -276,8 +273,7 @@ function RightNav() {
           icon: <IcBase />,
           active: baseParentActive,
           items: [
-            { to: "/base/units", label: "ساختار سازمانی", hint: "واحدها و چارت سازمانی", icon: <NavIcon src="/images/icons/unit.svg" /> },
-            ...(isMainAdmin ? [{ to: "/admin/users", label: "کاربران", hint: "مدیریت دسترسی ها", icon: <IcUsers /> }] : []),
+            { to: "/base/units", label: "ساختار سازمانی", hint: "واحدها، نقش ها و کاربران", icon: <NavIcon src="/images/icons/unit.svg" /> },
             { to: "/centers/projects", label: "پروژه ها", hint: "تعریف و ویرایش پروژه ها", icon: <IcProjects /> },
             { to: "/base/currencies", label: "ارزها", hint: "نرخ ها و واحدهای پولی", icon: <IcCurrency /> },
             { to: "/base/tags", label: "برچسب ها", hint: "دسته بندی داده ها", icon: <IcTags /> },

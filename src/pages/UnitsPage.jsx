@@ -1,6 +1,7 @@
 // ساختار سازمانی
 // src/pages/OrgStructurePage.jsx
 import React, { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
@@ -11,12 +12,19 @@ import {
   getHoverSelectableRowClass,
 } from "../components/ui/tablePresets.js";
 import { api } from "../utils/api"; // 
+import UsersTab from "./UsersTab.jsx";
 
 function OrgStructurePage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const [searchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab");
 
-  const [activeTab, setActiveTab] = useState("units"); // "units" | "roles"
+  const [activeTab, setActiveTab] = useState(() => {
+    if (requestedTab === "users" && isAdmin) return "users";
+    if (requestedTab === "roles") return "roles";
+    return "units";
+  }); // "units" | "roles" | "users"
 
   const [list, setList] = useState([]);
   const [adding, setAdding] = useState("");
@@ -199,6 +207,20 @@ function OrgStructurePage() {
       loadRoles().catch(console.error);
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    if (requestedTab === "users" && isAdmin) {
+      setActiveTab("users");
+      return;
+    }
+    if (requestedTab === "roles") {
+      setActiveTab("roles");
+      return;
+    }
+    if (requestedTab === "units") {
+      setActiveTab("units");
+    }
+  }, [requestedTab, isAdmin]);
 
   // --- پاپ‌آپ سطح دسترسی ---
   const [accessUnit, setAccessUnit] = useState(null);
@@ -606,6 +628,8 @@ function OrgStructurePage() {
     }
   };
 
+  const visibleTabCount = isAdmin ? 3 : 2;
+
   const topTabBtnClass = (isActive, index, total) =>
     [
       "relative z-10 h-10 flex-1 rounded-lg px-3 text-[11px] font-semibold transition whitespace-nowrap md:h-11 md:min-w-[132px] md:rounded-none md:px-4 md:text-sm",
@@ -712,7 +736,7 @@ function OrgStructurePage() {
           <button
             type="button"
             onClick={() => setActiveTab("units")}
-            className={topTabBtnClass(activeTab === "units", 0, 2)}
+            className={topTabBtnClass(activeTab === "units", 0, visibleTabCount)}
           >
             واحد ها
           </button>
@@ -720,10 +744,20 @@ function OrgStructurePage() {
           <button
             type="button"
             onClick={() => setActiveTab("roles")}
-            className={topTabBtnClass(activeTab === "roles", 1, 2)}
+            className={topTabBtnClass(activeTab === "roles", 1, visibleTabCount)}
           >
             نقش ها
           </button>
+
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setActiveTab("users")}
+              className={topTabBtnClass(activeTab === "users", 2, visibleTabCount)}
+            >
+              کاربران
+            </button>
+          )}
         </div>
 
         {activeTab === "units" && (
@@ -1404,6 +1438,12 @@ function OrgStructurePage() {
               </TableWrap>
             </div>
           </>
+        )}
+
+        {activeTab === "users" && isAdmin && (
+          <div className={tabbedPanelClass}>
+            <UsersTab embedded />
+          </div>
         )}
       </Card>
     </>

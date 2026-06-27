@@ -1,4 +1,4 @@
-// src/pages/UsersPage.jsx
+// src/pages/UsersTab.jsx
 import React, { useState, useEffect } from "react";
 import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
@@ -29,11 +29,21 @@ const api = async (path, opt = {}) => {
   return data;
 };
 
-function UsersPage() {
+function UsersTab({ embedded = false }) {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
 
   if (!isAdmin) {
+    const deniedContent = (
+      <div className="p-6 rounded-2xl border border-black/10 bg-white text-center text-black/80 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
+        دسترسی به این بخش فقط برای مدیر سیستم مجاز است.
+      </div>
+    );
+
+    if (embedded) {
+      return <div className="p-3 md:p-4">{deniedContent}</div>;
+    }
+
     return (
       <>
         <Card className="rounded-2xl border bg-white text-black border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
@@ -42,9 +52,7 @@ function UsersPage() {
             <span className="mx-2 text-black/50 dark:text-neutral-400">›</span>
             <span className="font-semibold text-black dark:text-neutral-100">کاربران</span>
           </div>
-          <div className="p-6 rounded-2xl border border-black/10 bg-white text-center text-black/80 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
-            دسترسی به این بخش فقط برای مدیر سیستم مجاز است.
-          </div>
+          {deniedContent}
         </Card>
       </>
     );
@@ -647,16 +655,25 @@ function UsersPage() {
     </button>
   );
 
+  const Container = embedded ? "div" : Card;
+  const containerClass = embedded
+    ? "p-3 md:p-4"
+    : "rounded-2xl border bg-white text-black border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800";
+
   return (
     <>
-      <Card className="rounded-2xl border bg-white text-black border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+      <Container className={containerClass}>
         {/* Header + Add button */}
         <div className="mb-3 flex items-center justify-between gap-3">
-          <div className="text-base md:text-lg">
-            <span className="text-black/70 dark:text-neutral-300">تنظیمات</span>
-            <span className="mx-2 text-black/50 dark:text-neutral-400">›</span>
-            <span className="font-semibold text-black dark:text-neutral-100">کاربران</span>
-          </div>
+          {embedded ? (
+            <div className="text-sm font-semibold text-black dark:text-neutral-100">کاربران</div>
+          ) : (
+            <div className="text-base md:text-lg">
+              <span className="text-black/70 dark:text-neutral-300">تنظیمات</span>
+              <span className="mx-2 text-black/50 dark:text-neutral-400">›</span>
+              <span className="font-semibold text-black dark:text-neutral-100">کاربران</span>
+            </div>
+          )}
 
           <AddPlusBtn onClick={() => setAddOpen((s) => !s)} title="افزودن کاربر" />
         </div>
@@ -1071,7 +1088,7 @@ function UsersPage() {
             </div>
           </div>
         </TableWrap>
-      </Card>
+      </Container>
 
       {/* ===== Edit Modal (دارک/لایت + ریسپانسیو) ===== */}
       {editOpen && (
@@ -1355,4 +1372,4 @@ function UsersPage() {
   );
 }
 
-export default UsersPage;
+export default UsersTab;
