@@ -37,14 +37,24 @@ const normalizeItem = (item) => ({
   baseBudget: parseMoney(item?.baseBudget ?? item?.base_budget ?? 0),
 });
 
+const normalizeCode = (value = "") =>
+  toEnDigits(value)
+    .replace(/^PB[-.]?/i, "")
+    .replace(/[^\d.]/g, ".")
+    .replace(/\.+/g, ".")
+    .replace(/^\./, "")
+    .replace(/\.$/, "");
+
 export default function CostBreakdownPage() {
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState("");
   const [projectsLoading, setProjectsLoading] = useState(false);
+  const [budgetCenters, setBudgetCenters] = useState([]);
 
   const [budgetCode, setBudgetCode] = useState("");
   const [budgetName, setBudgetName] = useState("");
   const [baseBudget, setBaseBudget] = useState("");
+  const [pendingRows, setPendingRows] = useState([]);
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -76,7 +86,27 @@ export default function CostBreakdownPage() {
     [projects]
   );
 
-  const hasDraftRow = !!(String(budgetCode).trim() || String(budgetName).trim());
+  const selectedProjectCode = normalizeCode(selectedProject?.code || "");
+
+  const budgetCenterByCode = useMemo(() => {
+    const map = new Map();
+    for (const center of budgetCenters || []) {
+      const raw = normalizeCode(center?.suffix ?? center?.code ?? "");
+      if (!raw) continue;
+      const name = String(center?.description ?? center?.name ?? center?.center_desc ?? "").trim();
+      map.set(raw, name);
+      if (selectedProjectCode && raw.startsWith(selectedProjectCode + ".")) {
+        map.set(raw.slice(selectedProjectCode.length + 1), name);
+      }
+    }
+    return map;
+  }, [budgetCenters, selectedProjectCode]);
+
+  const resolvedBudgetName = useMemo(() => {
+    const code = normalizeCode(budgetCode);
+    if (!code) return "";
+    return budgetCenterByCode.get(code) || "";
+  }, [budgetCenterByCode, budgetCode]);
 
   const loadProjects = useCallback(async () => {
     setProjectsLoading(true);
@@ -87,11 +117,12 @@ export default function CostBreakdownPage() {
         .filter((p) => p && typeof p === "object")
         .map((p) => ({
           id: String(p.id),
-          code: String(p.code ?? "").trim(),
+          code: normalizeCode(p.code ?? ""),
           name: String(p.name ?? "").trim(),
           isActive: p.isActive !== false,
         }))
-        .filter((p) => p.id && p.isActive);
+        .filter((p) => p.id && p.code && p.isActive)
+        .filter((p) => !p.code.includes("."));
 
       setProjects(clean);
     } catch {
@@ -121,6 +152,28 @@ export default function CostBreakdownPage() {
     }
   }, [projectId]);
 
+  const loadBudgetCenters = useCallback(async (nextProject = selectedProject) => {
+    const baseCode = normalizeCode(nextProject?.code || "");
+    if (!baseCode) {
+      setBudgetCenters([]);
+      return;
+    }
+
+    try {
+      const res = await api("/centers/projects");
+      const raw = Array.isArray(res) ? res : Array.isArray(res?.items) ? res.items : [];
+      const scoped = raw
+        .filter((item) => item && typeof item === "object")
+        .filter((item) => {
+          const code = normalizeCode(item?.suffix ?? item?.code ?? "");
+          return code === baseCode || code.startsWith(baseCode + ".");
+        });
+      setBudgetCenters(scoped);
+    } catch {
+      setBudgetCenters([]);
+    }
+  }, [selectedProject]);
+
   useEffect(() => {
     loadProjects();
   }, [loadProjects]);
@@ -128,10 +181,23 @@ export default function CostBreakdownPage() {
   useEffect(() => {
     if (!projectId) {
       setRows([]);
+      setBudgetCenters([]);
+      setPendingRows([]);
       return;
     }
+    clearDraft();
+    setPendingRows([]);
     loadRows(projectId);
+    loadBudgetCenters(selectedProject);
   }, [projectId, loadRows]);
+
+  useEffect(() => {
+    loadBudgetCenters(selectedProject);
+  }, [selectedProject, loadBudgetCenters]);
+
+  useEffect(() => {
+    setBudgetName(resolvedBudgetName);
+  }, [resolvedBudgetName]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -146,9 +212,9 @@ export default function CostBreakdownPage() {
     setErr("");
   };
 
-  const saveDraft = async () => {
-    const code = String(budgetCode || "").trim();
-    const name = String(budgetName || "").trim();
+  const addPendingRow = () => {
+    const code = normalizeCode(budgetCode);
+    const name = String(budgetName || resolvedBudgetName || "").trim();
 
     setErr("");
     if (!projectId) {
@@ -156,22 +222,64 @@ export default function CostBreakdownPage() {
       return;
     }
     if (!code || !name) {
-      setErr("کد بودجه و نام بودجه را وارد کنید.");
+      setErr("کد بودجه معتبر وارد کنید تا نام بودجه به‌صورت خودکار پر شود.");
+      return;
+    }
+
+    const existsSaved = rows.some((row) => normalizeCode(row.budgetCode) === code);
+    const existsPending = pendingRows.some((row) => normalizeCode(row.budgetCode) === code);
+    if (existsSaved || existsPending) {
+      setErr("این کد بودجه قبلاً در جدول وجود دارد.");
+      return;
+    }
+
+    setPendingRows((prev) => [
+      ...prev,
+      {
+        tempId: `tmp-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        budgetCode: code,
+        budgetName: name,
+        baseBudget: parseMoney(baseBudget),
+      },
+    ]);
+    clearDraft();
+  };
+
+  const removePendingRow = (tempId) => {
+    setPendingRows((prev) => prev.filter((row) => row.tempId !== tempId));
+  };
+
+  const updatePendingBaseBudget = (tempId, value) => {
+    setPendingRows((prev) =>
+      prev.map((row) => (row.tempId === tempId ? { ...row, baseBudget: parseMoney(value) } : row))
+    );
+  };
+
+  const saveDraft = async () => {
+    setErr("");
+    if (!projectId) {
+      setErr("مرکز/پروژه را انتخاب کنید.");
+      return;
+    }
+    if (!pendingRows.length) {
+      setErr("ابتدا با دکمه افزودن، ردیف را به جدول اضافه کنید.");
       return;
     }
 
     setSaving(true);
     try {
-      await api("/cost-breakdown", {
-        method: "POST",
-        body: JSON.stringify({
-          project_id: Number(projectId),
-          budget_code: code,
-          budget_name: name,
-          base_budget: parseMoney(baseBudget),
-        }),
-      });
-      clearDraft();
+      for (const row of pendingRows) {
+        await api("/cost-breakdown", {
+          method: "POST",
+          body: JSON.stringify({
+            project_id: Number(projectId),
+            budget_code: row.budgetCode,
+            budget_name: row.budgetName,
+            base_budget: parseMoney(row.baseBudget),
+          }),
+        });
+      }
+      setPendingRows([]);
       await loadRows(projectId);
     } catch (ex) {
       setErr(ex.message === "duplicate_budget_code" ? "این کد بودجه برای پروژه انتخاب‌شده قبلاً ثبت شده است." : ex.message || "خطا در ثبت");
@@ -270,6 +378,8 @@ export default function CostBreakdownPage() {
             onChange={(e) => {
               setProjectId(e.target.value);
               cancelEdit();
+              clearDraft();
+              setPendingRows([]);
               setErr("");
             }}
             className={inputCls}
@@ -288,7 +398,7 @@ export default function CostBreakdownPage() {
           <span className="text-sm text-neutral-700 dark:text-neutral-300">کد بودجه</span>
           <input
             value={budgetCode}
-            onChange={(e) => setBudgetCode(toEnDigits(e.target.value))}
+            onChange={(e) => setBudgetCode(normalizeCode(e.target.value))}
             className={inputCls + " ltr text-left"}
             placeholder="مثلا 01.02"
             spellCheck={false}
@@ -297,12 +407,24 @@ export default function CostBreakdownPage() {
 
         <label className="flex min-w-0 flex-col gap-1">
           <span className="text-sm text-neutral-700 dark:text-neutral-300">نام بودجه</span>
-          <input
-            value={budgetName}
-            onChange={(e) => setBudgetName(e.target.value)}
-            className={inputCls}
-            placeholder="نام بودجه"
-          />
+          <span className="flex min-w-0 items-center gap-2">
+            <input
+              value={budgetName}
+              readOnly
+              className={inputCls + " bg-neutral-50 dark:bg-neutral-800"}
+              placeholder="بر اساس کد بودجه پر می‌شود"
+            />
+            <button
+              type="button"
+              onClick={addPendingRow}
+              disabled={!projectId || saving || !normalizeCode(budgetCode) || !budgetName}
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-neutral-900 text-white transition disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
+              aria-label="افزودن به جدول"
+              title="افزودن به جدول"
+            >
+              <img src="/images/icons/afzodan.svg" alt="" className="h-5 w-5 invert dark:invert-0" />
+            </button>
+          </span>
         </label>
       </div>
 
@@ -334,7 +456,7 @@ export default function CostBreakdownPage() {
                         در حال بارگذاری...
                       </TD>
                     </TR>
-                  ) : !hasDraftRow && rows.length === 0 ? (
+                  ) : !pendingRows.length && rows.length === 0 ? (
                     <TR>
                       <TD colSpan={5} className={tablePreset.emptyRow}>
                         موردی ثبت نشده.
@@ -342,17 +464,17 @@ export default function CostBreakdownPage() {
                     </TR>
                   ) : (
                     <>
-                      {hasDraftRow && (
-                        <TR className={getHoverSelectableRowClass(false)}>
-                          <TD className="px-2.5 py-2 text-center">جدید</TD>
+                      {pendingRows.map((row, pendingIdx) => (
+                        <TR key={row.tempId} className={getHoverSelectableRowClass(false)}>
+                          <TD className="px-2.5 py-2 text-center">جدید {toFaDigits(pendingIdx + 1)}</TD>
                           <TD className="px-2.5 py-2 text-center font-mono ltr">
-                            {toFaDigits(budgetCode || "—")}
+                            {toFaDigits(row.budgetCode || "—")}
                           </TD>
-                          <TD className="px-2.5 py-2 text-center">{budgetName || "—"}</TD>
+                          <TD className="px-2.5 py-2 text-center">{row.budgetName || "—"}</TD>
                           <TD className="px-2.5 py-2 text-center">
                             <input
-                              value={baseBudget ? toFaDigits(formatMoney(baseBudget)) : ""}
-                              onChange={(e) => setBaseBudget(parseMoney(e.target.value))}
+                              value={row.baseBudget ? toFaDigits(formatMoney(row.baseBudget)) : ""}
+                              onChange={(e) => updatePendingBaseBudget(row.tempId, e.target.value)}
                               className={moneyInputCls}
                               placeholder="0"
                               inputMode="numeric"
@@ -360,11 +482,11 @@ export default function CostBreakdownPage() {
                           </TD>
                           <TD className="px-2.5 py-2 text-center">
                             <div className="flex min-h-[34px] items-center justify-center">
-                              <RowActionIconBtn action="delete" onClick={clearDraft} size={34} iconSize={16} />
+                              <RowActionIconBtn action="delete" onClick={() => removePendingRow(row.tempId)} size={34} iconSize={16} />
                             </div>
                           </TD>
                         </TR>
-                      )}
+                      ))}
 
                       {rows.map((row, idx) => {
                         const isEditing = editId === row.id;
@@ -462,7 +584,7 @@ export default function CostBreakdownPage() {
         <button
           type="button"
           onClick={saveDraft}
-          disabled={saving || !projectId || !hasDraftRow}
+          disabled={saving || !projectId || !pendingRows.length}
           className="grid h-10 w-14 place-items-center rounded-xl bg-neutral-900 text-white transition disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
           aria-label="ثبت"
           title="ثبت"
