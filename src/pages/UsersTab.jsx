@@ -4,11 +4,13 @@ import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
 import { Btn } from "../components/ui/Button.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
+import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 import {
   hoverSelectableCrudTablePreset as tablePreset,
   getHoverSelectableRowClass,
 } from "../components/ui/tablePresets.js";
+import { dayjs } from "../utils/date";
 
 // اگر api جدا داری، می‌تونی این بخش رو حذف و از util خودت ایمپورت کنی
 const api = async (path, opt = {}) => {
@@ -28,6 +30,61 @@ const api = async (path, opt = {}) => {
   if (!res.ok) throw new Error(data?.error || data?.message || "request_failed");
   return data;
 };
+
+const inputCls =
+  "h-10 rounded-2xl px-3 bg-white text-black placeholder-black/40 border border-black/15 outline-none " +
+  "focus:ring-2 focus:ring-black/10 disabled:opacity-60 " +
+  "dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50";
+
+const selectCls =
+  "h-10 rounded-2xl px-3 bg-white text-black border border-black/15 outline-none " +
+  "dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700";
+
+const dateButtonCls =
+  "h-10 w-full rounded-2xl px-3 bg-white text-black border border-black/15 outline-none " +
+  "focus:ring-2 focus:ring-black/10 flex items-center justify-between gap-2 " +
+  "dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50";
+
+function toFaDigits(s) {
+  return String(s || "").replace(/[0-9]/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
+}
+
+function normalizeJalaliYmd(v) {
+  const s = String(v || "").trim().replace(/-/g, "/");
+  const m = s.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+  if (!m) return "";
+  return `${m[1]}/${String(m[2]).padStart(2, "0")}/${String(m[3]).padStart(2, "0")}`;
+}
+
+function jalaliYmdToIsoEndOfDay(v) {
+  const normalized = normalizeJalaliYmd(v);
+  if (!normalized) return null;
+  const d = dayjs(normalized.replace(/\//g, "-"), { jalali: true })
+    .calendar("gregory")
+    .hour(23)
+    .minute(59)
+    .second(59)
+    .millisecond(999);
+  return d.isValid() ? d.toISOString() : null;
+}
+
+function dateTimeToJalaliYmd(v) {
+  if (!v) return "";
+  const d = dayjs(v);
+  if (!d.isValid()) return "";
+  return d.calendar("jalali").format("YYYY/MM/DD");
+}
+
+function formatExpiresAt(v) {
+  const ymd = dateTimeToJalaliYmd(v);
+  return ymd ? toFaDigits(ymd) : "بدون محدودیت";
+}
+
+function isExpired(v) {
+  if (!v) return false;
+  const ts = new Date(v).getTime();
+  return Number.isFinite(ts) && ts < Date.now();
+}
 
 function UsersTab({ embedded = false }) {
   const { user } = useAuth();
@@ -145,6 +202,7 @@ function UsersTab({ embedded = false }) {
     department: "",
     role: "user",
     password: "",
+    expiresAt: "",
     access: [],
     positions: [],
   });
@@ -156,6 +214,7 @@ function UsersTab({ embedded = false }) {
     email: "",
     username: "",
     password: "",
+    expiresAt: "",
     department: "",
     role: "user",
     unitPack: "",
@@ -325,6 +384,7 @@ function UsersTab({ embedded = false }) {
           email: addForm.email?.trim() || null,
           username: addForm.username.trim(),
           password: addForm.password,
+          expiresAt: jalaliYmdToIsoEndOfDay(addForm.expiresAt),
           department: addForm.department || null,
           role: addForm.role || "user",
           access: buildAccessArrayFromAddForm(),
@@ -339,6 +399,7 @@ function UsersTab({ embedded = false }) {
         email: "",
         username: "",
         password: "",
+        expiresAt: "",
         department: "",
         role: "user",
         unitPack: "",
@@ -406,6 +467,7 @@ function UsersTab({ embedded = false }) {
       department: u.department || "",
       role: u.role || "user",
       password: "",
+      expiresAt: dateTimeToJalaliYmd(u.expiresAt || u.expires_at || u.validUntil || u.valid_until),
       access: acc.filter((x) => !String(x).startsWith("contracts:")),
       positions: positionsNorm,
     });
@@ -443,6 +505,7 @@ function UsersTab({ embedded = false }) {
     if (!targetIds.length) return;
 
     const payloadBase = { ...form };
+    payloadBase.expiresAt = jalaliYmdToIsoEndOfDay(form.expiresAt);
     if (payloadBase.role !== "admin") {
       const base = Array.isArray(payloadBase.access)
         ? payloadBase.access.filter((x) => !String(x).startsWith("contracts:"))
@@ -687,37 +750,20 @@ function UsersTab({ embedded = false }) {
             dir="rtl"
           >
             <div className="p-4">
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
                 <div className="flex flex-col gap-1">
                   <label className="text-sm text-black/70 dark:text-neutral-300">نام</label>
                   <input
-                    className="h-10 rounded-2xl px-3 bg-white text-black placeholder-black/40 border border-black/15
-                               outline-none focus:ring-2 focus:ring-black/10
-                               dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                    className={inputCls}
                     value={addForm.name}
                     onChange={(e) => setAddForm((s) => ({ ...s, name: e.target.value }))}
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm text-black/70 dark:text-neutral-300 text-left">Email</label>
+                  <label className="text-sm text-black/70 dark:text-neutral-300">نام کاربری*</label>
                   <input
-                    type="email"
-                    className="h-10 rounded-2xl px-3 bg-white text-black placeholder-black/40 border border-black/15
-                               outline-none text-left focus:ring-2 focus:ring-black/10
-                               dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
-                    dir="ltr"
-                    value={addForm.email}
-                    onChange={(e) => setAddForm((s) => ({ ...s, email: e.target.value }))}
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm text-black/70 dark:text-neutral-300 text-left">Username*</label>
-                  <input
-                    className="h-10 rounded-2xl px-3 bg-white text-black placeholder-black/40 border border-black/15
-                               outline-none text-left focus:ring-2 focus:ring-black/10
-                               dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                    className={inputCls + " text-left"}
                     dir="ltr"
                     required
                     value={addForm.username}
@@ -726,13 +772,11 @@ function UsersTab({ embedded = false }) {
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm text-black/70 dark:text-neutral-300 text-left">Password* (حداکثر ۸)</label>
+                  <label className="text-sm text-black/70 dark:text-neutral-300">کلمه عبور* (حداکثر ۸)</label>
                   <input
                     type="password"
                     maxLength={8}
-                    className="h-10 rounded-2xl px-3 bg-white text-black placeholder-black/40 border border-black/15
-                               outline-none text-left focus:ring-2 focus:ring-black/10
-                               dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-600/50"
+                    className={inputCls + " text-left"}
                     dir="ltr"
                     required
                     value={addForm.password}
@@ -741,27 +785,19 @@ function UsersTab({ embedded = false }) {
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm text-black/70 dark:text-neutral-300">واحد</label>
-                  <select
-                    className="h-10 rounded-2xl px-3 bg-white text-black border border-black/15 outline-none
-                               dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                    value={addForm.department}
-                    onChange={(e) => setAddForm((s) => ({ ...s, department: e.target.value }))}
-                  >
-                    <option value="">— انتخاب کنید —</option>
-                    {(units || []).map((u) => (
-                      <option key={u.id} value={u.name}>
-                        {u.name}
-                      </option>
-                    ))}
-                  </select>
+                  <label className="text-sm text-black/70 dark:text-neutral-300">اعتبار تا</label>
+                  <JalaliPopupDatePicker
+                    value={addForm.expiresAt}
+                    onChange={(v) => setAddForm((s) => ({ ...s, expiresAt: normalizeJalaliYmd(v) }))}
+                    buttonClassName={dateButtonCls}
+                    placeholder="بدون محدودیت"
+                  />
                 </div>
 
                 <div className="flex flex-col gap-1">
                   <label className="text-sm text-black/70 dark:text-neutral-300">نوع</label>
                   <select
-                    className="h-10 rounded-2xl px-3 bg-white text-black border border-black/15 outline-none
-                               dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
+                    className={selectCls}
                     value={addForm.role}
                     onChange={(e) => setAddForm((s) => ({ ...s, role: e.target.value }))}
                   >
@@ -936,7 +972,7 @@ function UsersTab({ embedded = false }) {
             <div className="px-[15px] pb-4">
               <div className={tableUi.frame}>
                 <div className="w-full overflow-x-auto">
-                  <table className={`${tableUi.table} min-w-[860px]`} dir="rtl">
+                  <table className={`${tableUi.table} min-w-[1000px]`} dir="rtl">
                     <THead>
                       <tr className={tableUi.headRow}>
                         <TH className={`w-12 ${tableUi.th}`}>
@@ -1009,6 +1045,10 @@ function UsersTab({ embedded = false }) {
                           </div>
                         </TH>
 
+                        <TH className={`min-w-[140px] ${tableUi.th}`}>
+                          اعتبار تا
+                        </TH>
+
                         <TH className={`min-w-[320px] ${tableUi.th}`}>
                           سطح دسترسی‌ها
                         </TH>
@@ -1018,13 +1058,13 @@ function UsersTab({ embedded = false }) {
                     <tbody className={tableUi.body}>
                       {loading ? (
                         <TR>
-                          <TD colSpan={5} className={tableUi.emptyRow}>
+                          <TD colSpan={6} className={tableUi.emptyRow}>
                             در حال بارگذاری...
                           </TD>
                         </TR>
                       ) : (sortedList || []).length === 0 ? (
                         <TR>
-                          <TD colSpan={5} className={tableUi.emptyRow}>
+                          <TD colSpan={6} className={tableUi.emptyRow}>
                             کاربری ثبت نشده است.
                           </TD>
                         </TR>
@@ -1052,6 +1092,9 @@ function UsersTab({ embedded = false }) {
                               <TD className={`px-3 ${tdBorder}`}>{idx + 1}</TD>
                               <TD className={`px-3 ${tdBorder}`}>{u.name || u.username || "—"}</TD>
                               <TD className={`px-3 ${tdBorder}`}>{u.department || "—"}</TD>
+                              <TD className={`px-3 ${tdBorder} ${isExpired(u.expiresAt || u.expires_at) ? "text-red-600 dark:text-red-400" : ""}`}>
+                                {formatExpiresAt(u.expiresAt || u.expires_at)}
+                              </TD>
                               <TD className={`px-3 ${rowUi.valueCell} ${tdBorder} text-black/80 dark:text-neutral-300`}>
                                 <div className={rowUi.valueWrap}>
                                   <span className={rowUi.valueText}>{renderAccessText(u)}</span>
@@ -1095,7 +1138,7 @@ function UsersTab({ embedded = false }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={cancelEdit} />
 
-          <div className="relative w-full max-w-3xl rounded-2xl shadow-2xl p-5 bg-white text-black border border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+          <div className="relative w-full max-w-6xl rounded-2xl shadow-2xl p-5 bg-white text-black border border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
             <div className="mb-3 flex items-center justify-between gap-3">
               <h3 className="text-lg md:text-xl font-bold">
                 {isBatchEdit ? `ویرایش گروهی کاربران (${editIds.length} مورد)` : "ویرایش کاربر"}
@@ -1117,89 +1160,57 @@ function UsersTab({ embedded = false }) {
               </div>
             )}
 
-            <div className="grid md:grid-cols-2 gap-4" dir="rtl">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-5" dir="rtl">
               <div className="flex flex-col gap-1">
                 <label className="text-sm text-black/70 dark:text-neutral-300">نام</label>
                 <input
                   value={form.name}
                   onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
                   disabled={isBatchEdit}
-                  className="h-10 rounded-2xl px-3 bg-white text-black placeholder-black/40 border border-black/15 outline-none
-                             focus:ring-2 focus:ring-black/10 disabled:opacity-60
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
+                  className={inputCls}
                 />
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-sm text-black/70 dark:text-neutral-300">واحد</label>
-                <select
-                  className="h-10 rounded-2xl px-3 bg-white text-black border border-black/15 outline-none
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                  value={form.department}
-                  onChange={(e) => setForm((s) => ({ ...s, department: e.target.value }))}
-                >
-                  <option value="">— انتخاب کنید —</option>
-                  {(units || []).map((u) => (
-                    <option key={u.id} value={u.name}>
-                      {u.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-black/70 dark:text-neutral-300 text-left">Email</label>
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
-                  disabled={isBatchEdit}
-                  className="h-10 rounded-2xl px-3 bg-white text-black placeholder-black/40 border border-black/15 outline-none text-left
-                             focus:ring-2 focus:ring-black/10 disabled:opacity-60
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
-                  dir="ltr"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-black/70 dark:text-neutral-300 text-left">Username</label>
+                <label className="text-sm text-black/70 dark:text-neutral-300">نام کاربری</label>
                 <input
                   value={form.username}
                   onChange={(e) => setForm((s) => ({ ...s, username: e.target.value }))}
                   disabled={isBatchEdit}
-                  className="h-10 rounded-2xl px-3 bg-white text-black placeholder-black/40 border border-black/15 outline-none text-left
-                             focus:ring-2 focus:ring-black/10 disabled:opacity-60
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
+                  className={inputCls + " text-left"}
                   dir="ltr"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-black/70 dark:text-neutral-300">کلمه عبور جدید</label>
+                <input
+                  value={form.password}
+                  onChange={(e) => setForm((s) => ({ ...s, password: e.target.value.slice(0, 8) }))}
+                  disabled={isBatchEdit}
+                  className={inputCls + " text-left"}
+                  dir="ltr"
+                  type="password"
+                  maxLength={8}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-sm text-black/70 dark:text-neutral-300">اعتبار تا</label>
+                <JalaliPopupDatePicker
+                  value={form.expiresAt}
+                  onChange={(v) => setForm((s) => ({ ...s, expiresAt: normalizeJalaliYmd(v) }))}
+                  buttonClassName={dateButtonCls}
+                  placeholder="بدون محدودیت"
                 />
               </div>
 
               <div className="flex flex-col gap-1">
                 <label className="text-sm text-black/70 dark:text-neutral-300">نوع</label>
-                <select
-                  value={form.role}
-                  onChange={(e) => setForm((s) => ({ ...s, role: e.target.value }))}
-                  className="h-10 rounded-2xl px-3 bg-white text-black border border-black/15 outline-none
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                >
+                <select value={form.role} onChange={(e) => setForm((s) => ({ ...s, role: e.target.value }))} className={selectCls}>
                   <option value="user">user</option>
                   <option value="admin">admin</option>
                 </select>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-black/70 dark:text-neutral-300 text-left">New password (حداکثر ۸)</label>
-                <input
-                  value={form.password}
-                  onChange={(e) => setForm((s) => ({ ...s, password: e.target.value.slice(0, 8) }))}
-                  disabled={isBatchEdit}
-                  className="h-10 rounded-2xl px-3 bg-white text-black placeholder-black/40 border border-black/15 outline-none text-left
-                             focus:ring-2 focus:ring-black/10 disabled:opacity-60
-                             dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder-neutral-400 dark:focus:ring-neutral-600/50"
-                  dir="ltr"
-                  type="password"
-                  maxLength={8}
-                />
               </div>
             </div>
 

@@ -46,6 +46,7 @@ function mapAuthError(err) {
   if (m === "invalid_credentials") return "نام کاربری یا رمز عبور اشتباه است";
   if (m === "username_password_required") return "نام کاربری و رمز عبور الزامی است";
   if (m === "user_has_no_password") return "برای این کاربر رمز تعریف نشده است";
+  if (m === "user_expired") return "اعتبار این کاربر منقضی شده است";
   if (m === "request_failed") return "خطا در ارتباط با سرور";
   return m || "خطای ورود";
 }

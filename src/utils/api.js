@@ -7,6 +7,7 @@ function mapError(data, fallback = "request_failed") {
   if (e === "invalid_credentials") return "نام کاربری یا رمز اشتباه است";
   if (e === "username_password_required") return "نام کاربری و رمز را وارد کنید";
   if (e === "user_has_no_password") return "برای این کاربر رمز ثبت نشده است";
+  if (e === "user_expired") return "اعتبار این کاربر منقضی شده است";
   if (e === "not_found") return "سرویس مورد نظر روی سرور پیدا نشد";
 
   return String(e);
