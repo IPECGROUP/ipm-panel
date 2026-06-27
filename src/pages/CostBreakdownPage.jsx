@@ -45,6 +45,8 @@ const normalizeCode = (value = "") =>
     .replace(/^\./, "")
     .replace(/\.$/, "");
 
+const isTopProjectCode = (code) => /^\d{3}$/.test(toEnDigits(String(code || "")).trim());
+
 export default function CostBreakdownPage() {
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState("");
@@ -111,18 +113,19 @@ export default function CostBreakdownPage() {
   const loadProjects = useCallback(async () => {
     setProjectsLoading(true);
     try {
-      const res = await api("/projects?isActive=true");
+      // Same source as ProjectsPage; this page only keeps active, top-level projects.
+      const res = await api("/projects");
       const raw = Array.isArray(res) ? res : Array.isArray(res?.items) ? res.items : [];
       const clean = raw
         .filter((p) => p && typeof p === "object")
         .map((p) => ({
           id: String(p.id),
-          code: normalizeCode(p.code ?? ""),
+          code: toEnDigits(String(p.code ?? "")).trim(),
           name: String(p.name ?? "").trim(),
-          isActive: p.isActive !== false,
+          isActive: Boolean(p.isActive ?? true),
         }))
         .filter((p) => p.id && p.code && p.isActive)
-        .filter((p) => !p.code.includes("."));
+        .filter((p) => isTopProjectCode(p.code));
 
       setProjects(clean);
     } catch {
