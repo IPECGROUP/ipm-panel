@@ -175,7 +175,6 @@ export default function CostBreakdownPage() {
       if (!childKeys.has(item.key)) pushRow(item, 0);
     });
 
-    tableRows.forEach((item) => pushRow(item, 0));
     return result;
   }, [childRowsByParentCode, expandedCodes, projectBudgetCode, tableRows]);
 
