@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Card from "../components/ui/Card.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 import { api } from "../utils/api.js";
@@ -73,11 +73,14 @@ export default function CostBreakdownPage() {
   const [budgetName, setBudgetName] = useState("");
   const [baseBudget, setBaseBudget] = useState("");
   const [pendingRows, setPendingRows] = useState([]);
+  const pendingRowsRef = useRef([]);
+  const autoSaveTimersRef = useRef(new Map());
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
+  const [autoSaveStatus, setAutoSaveStatus] = useState({});
 
   const [editId, setEditId] = useState(null);
   const [editDraft, setEditDraft] = useState({
@@ -211,6 +214,19 @@ export default function CostBreakdownPage() {
   }, [projectId, loadRows]);
 
   useEffect(() => {
+    pendingRowsRef.current = pendingRows;
+  }, [pendingRows]);
+
+  useEffect(() => {
+    return () => {
+      for (const timerId of autoSaveTimersRef.current.values()) {
+        clearTimeout(timerId);
+      }
+      autoSaveTimersRef.current.clear();
+    };
+  }, []);
+
+  useEffect(() => {
     loadBudgetCenters(selectedProject);
   }, [selectedProject, loadBudgetCenters]);
 
@@ -261,6 +277,14 @@ export default function CostBreakdownPage() {
   };
 
   const removePendingRow = (tempId) => {
+    const timerId = autoSaveTimersRef.current.get(tempId);
+    if (timerId) clearTimeout(timerId);
+    autoSaveTimersRef.current.delete(tempId);
+    setAutoSaveStatus((prev) => {
+      const next = { ...prev };
+      delete next[tempId];
+      return next;
+    });
     setPendingRows((prev) => prev.filter((row) => row.tempId !== tempId));
   };
 
@@ -278,6 +302,73 @@ export default function CostBreakdownPage() {
     );
   };
 
+  const upsertSavedRow = (item) => {
+    const normalized = normalizeItem(item);
+    if (!normalized.id) return;
+    setRows((prev) => {
+      const exists = prev.some((row) => String(row.id) === String(normalized.id));
+      if (exists) return prev.map((row) => (String(row.id) === String(normalized.id) ? normalized : row));
+      return [...prev, normalized].sort((a, b) =>
+        displayCode(a.budgetCode).localeCompare(displayCode(b.budgetCode), "fa", {
+          numeric: true,
+          sensitivity: "base",
+        })
+      );
+    });
+  };
+
+  const savePendingRow = async (row, { silent = false } = {}) => {
+    if (!projectId || !row?.tempId) return false;
+
+    const code = normalizeCode(row.budgetCode);
+    const name = String(row.budgetName || "").trim();
+    if (!code || !name) return false;
+
+    if (!silent) setSaving(true);
+    setAutoSaveStatus((prev) => ({ ...prev, [row.tempId]: "saving" }));
+
+    try {
+      const res = await api("/cost-breakdown", {
+        method: "POST",
+        body: JSON.stringify({
+          project_id: Number(projectId),
+          budget_code: code,
+          budget_name: name,
+          base_budget: parseMoney(row.baseBudget),
+        }),
+      });
+
+      if (res?.item) upsertSavedRow(res.item);
+      removePendingRow(row.tempId);
+      setAutoSaveStatus((prev) => ({ ...prev, [row.tempId]: "saved" }));
+      return true;
+    } catch (ex) {
+      setAutoSaveStatus((prev) => ({ ...prev, [row.tempId]: "error" }));
+      if (!silent) {
+        setErr(ex.message === "duplicate_budget_code" ? "این کد بودجه برای پروژه انتخاب‌شده قبلاً ثبت شده است." : ex.message || "خطا در ثبت");
+      }
+      return false;
+    } finally {
+      if (!silent) setSaving(false);
+    }
+  };
+
+  const schedulePendingAutoSave = (tempId) => {
+    const currentTimer = autoSaveTimersRef.current.get(tempId);
+    if (currentTimer) clearTimeout(currentTimer);
+
+    setAutoSaveStatus((prev) => ({ ...prev, [tempId]: "queued" }));
+
+    const timerId = setTimeout(async () => {
+      autoSaveTimersRef.current.delete(tempId);
+      const row = pendingRowsRef.current.find((item) => item.tempId === tempId);
+      if (!row) return;
+      await savePendingRow(row, { silent: true });
+    }, 3000);
+
+    autoSaveTimersRef.current.set(tempId, timerId);
+  };
+
   const saveDraft = async () => {
     setErr("");
     if (!projectId) {
@@ -292,15 +383,8 @@ export default function CostBreakdownPage() {
     setSaving(true);
     try {
       for (const row of pendingRows) {
-        await api("/cost-breakdown", {
-          method: "POST",
-          body: JSON.stringify({
-            project_id: Number(projectId),
-            budget_code: row.budgetCode,
-            budget_name: row.budgetName,
-            base_budget: parseMoney(row.baseBudget),
-          }),
-        });
+        const ok = await savePendingRow(row, { silent: true });
+        if (!ok) throw new Error("خطا در ثبت");
       }
       setPendingRows([]);
       await loadRows(projectId);
@@ -514,10 +598,29 @@ export default function CostBreakdownPage() {
                               <input
                                 value={row.baseBudget ? toFaDigits(formatMoney(row.baseBudget)) : ""}
                                 onChange={(e) => updatePendingBaseBudget(row.tempId, e.target.value)}
+                                onBlur={() => schedulePendingAutoSave(row.tempId)}
                                 className={moneyInputCls}
                                 placeholder="0"
                                 inputMode="numeric"
                               />
+                              {autoSaveStatus[row.tempId] ? (
+                                <div
+                                  className={
+                                    "mt-1 text-[11px] leading-4 " +
+                                    (autoSaveStatus[row.tempId] === "error"
+                                      ? "text-red-600 dark:text-red-400"
+                                      : "text-black/45 dark:text-neutral-400")
+                                  }
+                                >
+                                  {autoSaveStatus[row.tempId] === "queued"
+                                    ? "ذخیره خودکار تا ۳ ثانیه دیگر"
+                                    : autoSaveStatus[row.tempId] === "saving"
+                                      ? "در حال ذخیره..."
+                                      : autoSaveStatus[row.tempId] === "error"
+                                        ? "خطا در ذخیره"
+                                        : ""}
+                                </div>
+                              ) : null}
                             </td>
                             <td className={`px-3 ${divider}`}>
                               <div className="relative flex min-h-[34px] items-center justify-center">
