@@ -361,6 +361,7 @@ export default function CostBreakdownPage() {
               name: estimateNameOf(item),
               sourceLabel: tab.label,
               baseAmount: item?.last_amount ?? item?.amount ?? 0,
+              autoFromEstimate: true,
             });
           }
         });
@@ -420,6 +421,37 @@ export default function CostBreakdownPage() {
   useEffect(() => {
     loadBudgetCenters(selectedProject);
   }, [selectedProject, loadBudgetCenters]);
+
+  useEffect(() => {
+    if (selectedProjectCode !== "100") return;
+
+    const estimateOptions = (budgetCodeOptions || []).filter((item) => item?.autoFromEstimate);
+    if (!estimateOptions.length) return;
+
+    setPendingRows((prev) => {
+      const savedCodes = new Set(rows.map((row) => projectBudgetCode(row.budgetCode)));
+      const manualRows = prev.filter((row) => !row.autoFromEstimate);
+      const next = [...manualRows];
+      const usedCodes = new Set(manualRows.map((row) => projectBudgetCode(row.budgetCode)));
+
+      for (const item of estimateOptions) {
+        const code = projectBudgetCode(item.code);
+        if (!code || savedCodes.has(code) || usedCodes.has(code)) continue;
+        usedCodes.add(code);
+        next.push({
+          tempId: `estimate-${code}`,
+          budgetCode: code,
+          budgetName: String(item.name || item.sourceLabel || code).trim(),
+          baseBudget: parseMoney(item.baseAmount ?? 0),
+          autoFromEstimate: true,
+        });
+      }
+
+      const prevSig = prev.map((row) => `${row.tempId}:${projectBudgetCode(row.budgetCode)}:${row.baseBudget}`).join("|");
+      const nextSig = next.map((row) => `${row.tempId}:${projectBudgetCode(row.budgetCode)}:${row.baseBudget}`).join("|");
+      return prevSig === nextSig ? prev : next;
+    });
+  }, [budgetCodeOptions, projectBudgetCode, rows, selectedProjectCode]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -696,13 +728,15 @@ export default function CostBreakdownPage() {
 
             <label className="flex min-w-0 flex-col gap-1">
               <span className="text-sm text-neutral-700 dark:text-neutral-300">کد بودجه</span>
-              <select
+              <input
                 value={budgetCode}
                 onChange={(e) => handleBudgetCodeChange(e.target.value)}
                 disabled={!projectId}
-                className={inputCls + " font-sans tabular-nums"}
-              >
-                <option value=""></option>
+                list="cost-breakdown-budget-codes"
+                className={inputCls + " ltr text-left font-sans tabular-nums"}
+                spellCheck={false}
+              />
+              <datalist id="cost-breakdown-budget-codes">
                 {budgetCodeOptions.map((item) => (
                   <option key={item.code} value={projectBudgetCode(item.code)}>
                     {item.sourceLabel ? `${item.sourceLabel} - ` : ""}
@@ -710,7 +744,7 @@ export default function CostBreakdownPage() {
                     {item.name ? ` - ${item.name}` : ""}
                   </option>
                 ))}
-              </select>
+              </datalist>
             </label>
 
             <label className="flex min-w-0 flex-col gap-1">
