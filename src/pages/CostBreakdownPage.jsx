@@ -1,14 +1,28 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Card from "../components/ui/Card.jsx";
-import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
-import {
-  baseCurrenciesTablePreset as tablePreset,
-  getHoverSelectableRowClass,
-} from "../components/ui/tablePresets.js";
 import { api } from "../utils/api.js";
 
 const PAGE_ICON = "/images/icons/sakhtar-shekast.svg";
+
+const tableWrapCls =
+  "rounded-2xl border border-black/10 overflow-hidden bg-white text-black " +
+  "dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800";
+
+const theadRowCls =
+  "bg-neutral-200 text-black border-b border-neutral-300 " +
+  "dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700";
+
+const tbodyCls =
+  "[&_td]:text-black dark:[&_td]:text-neutral-100 " +
+  "[&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50 " +
+  "dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50";
+
+const rowDividerCls = "border-b border-neutral-300 dark:border-neutral-700";
+
+const rowActionsRevealCls =
+  "w-full flex items-center justify-center gap-1 opacity-0 pointer-events-none transition-opacity " +
+  "group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto";
 
 const toEnDigits = (value = "") =>
   String(value)
@@ -46,6 +60,8 @@ const normalizeCode = (value = "") =>
     .replace(/\.$/, "");
 
 const isTopProjectCode = (code) => /^\d{3}$/.test(toEnDigits(String(code || "")).trim());
+
+const displayCode = (value = "") => toEnDigits(String(value || "")).trim();
 
 export default function CostBreakdownPage() {
   const [projects, setProjects] = useState([]);
@@ -248,6 +264,14 @@ export default function CostBreakdownPage() {
     setPendingRows((prev) => prev.filter((row) => row.tempId !== tempId));
   };
 
+  const editPendingRow = (row) => {
+    setBudgetCode(row.budgetCode || "");
+    setBudgetName(row.budgetName || "");
+    setBaseBudget(row.baseBudget || "");
+    removePendingRow(row.tempId);
+    setErr("");
+  };
+
   const updatePendingBaseBudget = (tempId, value) => {
     setPendingRows((prev) =>
       prev.map((row) => (row.tempId === tempId ? { ...row, baseBudget: parseMoney(value) } : row))
@@ -369,144 +393,168 @@ export default function CostBreakdownPage() {
         </span>
       </div>
 
-      <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-[minmax(220px,1.2fr)_minmax(160px,0.8fr)_minmax(180px,1fr)]">
-        <label className="flex min-w-0 flex-col gap-1">
-          <span className="text-sm text-neutral-700 dark:text-neutral-300">مرکز/پروژه</span>
-          <select
-            value={projectId}
-            onChange={(e) => {
-              setProjectId(e.target.value);
-              cancelEdit();
-              clearDraft();
-              setPendingRows([]);
-              setErr("");
-            }}
-            className={inputCls}
-          >
-            <option value="">{projectsLoading ? "در حال دریافت..." : "انتخاب کنید"}</option>
-            {sortedProjects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {toFaDigits(p.code)}
-                {p.name ? ` - ${p.name}` : ""}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div className="rounded-2xl border border-black/10 bg-white overflow-hidden dark:bg-neutral-900 dark:border-neutral-800">
+        <div className="px-[15px] py-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(220px,1.2fr)_minmax(160px,0.8fr)_minmax(180px,1fr)] md:items-end">
+            <label className="flex min-w-0 flex-col gap-1">
+              <span className="text-sm text-neutral-700 dark:text-neutral-300">مرکز/پروژه</span>
+              <select
+                value={projectId}
+                onChange={(e) => {
+                  setProjectId(e.target.value);
+                  cancelEdit();
+                  clearDraft();
+                  setPendingRows([]);
+                  setErr("");
+                }}
+                className={inputCls}
+              >
+                <option value="">{projectsLoading ? "در حال دریافت..." : "انتخاب کنید"}</option>
+                {sortedProjects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.code}
+                    {p.name ? ` - ${p.name}` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-        <label className="flex min-w-0 flex-col gap-1">
-          <span className="text-sm text-neutral-700 dark:text-neutral-300">کد بودجه</span>
-          <input
-            value={budgetCode}
-            onChange={(e) => setBudgetCode(normalizeCode(e.target.value))}
-            className={inputCls + " ltr text-left"}
-            placeholder="مثلا 01.02"
-            spellCheck={false}
-          />
-        </label>
+            <label className="flex min-w-0 flex-col gap-1">
+              <span className="text-sm text-neutral-700 dark:text-neutral-300">کد بودجه</span>
+              <input
+                value={budgetCode}
+                onChange={(e) => setBudgetCode(normalizeCode(e.target.value))}
+                className={inputCls + " ltr text-left font-sans tabular-nums"}
+                placeholder="01.02"
+                spellCheck={false}
+              />
+            </label>
 
-        <label className="flex min-w-0 flex-col gap-1">
-          <span className="text-sm text-neutral-700 dark:text-neutral-300">نام بودجه</span>
-          <span className="flex min-w-0 items-center gap-2">
-            <input
-              value={budgetName}
-              onChange={(e) => setBudgetName(e.target.value)}
-              className={inputCls}
-              placeholder={resolvedBudgetName || "نام بودجه"}
-            />
-            <button
-              type="button"
-              onClick={addPendingRow}
-              disabled={!projectId || saving || !normalizeCode(budgetCode) || !budgetName}
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-neutral-900 text-white transition disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
-              aria-label="افزودن به جدول"
-              title="افزودن به جدول"
-            >
-              <img src="/images/icons/afzodan.svg" alt="" className="h-5 w-5 invert dark:invert-0" />
-            </button>
-          </span>
-        </label>
-      </div>
+            <label className="flex min-w-0 flex-col gap-1">
+              <span className="text-sm text-neutral-700 dark:text-neutral-300">نام بودجه</span>
+              <span className="flex min-w-0 items-center gap-2">
+                <input
+                  value={budgetName}
+                  onChange={(e) => setBudgetName(e.target.value)}
+                  className={inputCls}
+                  placeholder={resolvedBudgetName || "نام بودجه"}
+                />
+                <button
+                  type="button"
+                  onClick={addPendingRow}
+                  disabled={!projectId || saving || !normalizeCode(budgetCode) || !budgetName}
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/15 bg-white text-black transition hover:bg-black/5 disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-200/20"
+                  aria-label="افزودن به جدول"
+                  title="افزودن به جدول"
+                >
+                  <img src="/images/icons/afzodan.svg" alt="" className="h-5 w-5" />
+                </button>
+              </span>
+            </label>
+          </div>
+        </div>
 
-      <TableWrap>
-        <div className={tablePreset.outer}>
-          <div className={tablePreset.innerPad}>
-            <div className={tablePreset.frame}>
-              <table className={tablePreset.table + " text-[13px] md:text-sm"} dir="rtl">
-                <THead>
-                  <tr className={tablePreset.headRow}>
-                    <TH className={`w-20 ${tablePreset.th}`}>#</TH>
-                    <TH className={`w-52 ${tablePreset.th}`}>کد بودجه</TH>
-                    <TH className={tablePreset.th}>نام بودجه</TH>
-                    <TH className={`w-52 ${tablePreset.th}`}>بودجه مبنا</TH>
-                    <TH className={`w-36 ${tablePreset.th}`}>اقدامات</TH>
+        <div className="px-[15px] pb-4">
+          <div className={tableWrapCls}>
+            <div className="overflow-x-auto">
+              <table
+                dir="rtl"
+                className="w-full min-w-[760px] table-fixed text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-2 [&_td]:py-1.5"
+              >
+                <colgroup>
+                  <col style={{ width: 76 }} />
+                  <col style={{ width: 176 }} />
+                  <col />
+                  <col style={{ width: 176 }} />
+                  <col style={{ width: 136 }} />
+                </colgroup>
+                <thead>
+                  <tr className={theadRowCls}>
+                    <th className="!text-[14px] md:!text-[15px] !font-semibold">#</th>
+                    <th className="!text-[14px] md:!text-[15px] !font-semibold">کد بودجه</th>
+                    <th className="!text-[14px] md:!text-[15px] !font-semibold">نام بودجه</th>
+                    <th className="!text-[14px] md:!text-[15px] !font-semibold">بودجه مبنا</th>
+                    <th className="!text-[14px] md:!text-[15px] !font-semibold">اقدامات</th>
                   </tr>
-                </THead>
+                </thead>
 
-                <tbody className={tablePreset.body}>
+                <tbody className={tbodyCls}>
                   {!projectId ? (
-                    <TR>
-                      <TD colSpan={5} className={tablePreset.emptyRow}>
+                    <tr>
+                      <td colSpan={5} className="py-6 text-black/60 dark:text-neutral-400">
                         مرکز/پروژه را انتخاب کنید.
-                      </TD>
-                    </TR>
+                      </td>
+                    </tr>
                   ) : loading ? (
-                    <TR>
-                      <TD colSpan={5} className={tablePreset.emptyRow}>
+                    <tr>
+                      <td colSpan={5} className="py-6 text-black/60 dark:text-neutral-400">
                         در حال بارگذاری...
-                      </TD>
-                    </TR>
+                      </td>
+                    </tr>
                   ) : !pendingRows.length && rows.length === 0 ? (
-                    <TR>
-                      <TD colSpan={5} className={tablePreset.emptyRow}>
+                    <tr>
+                      <td colSpan={5} className="py-6 text-black/60 dark:text-neutral-400">
                         موردی ثبت نشده.
-                      </TD>
-                    </TR>
+                      </td>
+                    </tr>
                   ) : (
                     <>
-                      {pendingRows.map((row, pendingIdx) => (
-                        <TR key={row.tempId} className={getHoverSelectableRowClass(false)}>
-                          <TD className="px-2.5 py-2 text-center">جدید {toFaDigits(pendingIdx + 1)}</TD>
-                          <TD className="px-2.5 py-2 text-center font-mono ltr">
-                            {toFaDigits(row.budgetCode || "—")}
-                          </TD>
-                          <TD className="px-2.5 py-2 text-center">{row.budgetName || "—"}</TD>
-                          <TD className="px-2.5 py-2 text-center">
-                            <input
-                              value={row.baseBudget ? toFaDigits(formatMoney(row.baseBudget)) : ""}
-                              onChange={(e) => updatePendingBaseBudget(row.tempId, e.target.value)}
-                              className={moneyInputCls}
-                              placeholder="0"
-                              inputMode="numeric"
-                            />
-                          </TD>
-                          <TD className="px-2.5 py-2 text-center">
-                            <div className="flex min-h-[34px] items-center justify-center">
-                              <RowActionIconBtn action="delete" onClick={() => removePendingRow(row.tempId)} size={34} iconSize={16} />
-                            </div>
-                          </TD>
-                        </TR>
-                      ))}
+                      {pendingRows.map((row, pendingIdx) => {
+                        const divider = rows.length || pendingIdx < pendingRows.length - 1 ? rowDividerCls : "";
+                        return (
+                          <tr key={row.tempId} className="group transition-colors hover:bg-black/[0.04] dark:hover:bg-white/10">
+                            <td className={`px-3 ${divider}`}>جدید {pendingIdx + 1}</td>
+                            <td className={`px-3 ${divider}`}>
+                              <span dir="ltr" className="inline-block w-full text-center font-sans tabular-nums">
+                                {displayCode(row.budgetCode) || "—"}
+                              </span>
+                            </td>
+                            <td className={`px-3 whitespace-normal break-words leading-6 ${divider}`}>{row.budgetName || "—"}</td>
+                            <td className={`px-3 ${divider}`}>
+                              <input
+                                value={row.baseBudget ? toFaDigits(formatMoney(row.baseBudget)) : ""}
+                                onChange={(e) => updatePendingBaseBudget(row.tempId, e.target.value)}
+                                className={moneyInputCls}
+                                placeholder="0"
+                                inputMode="numeric"
+                              />
+                            </td>
+                            <td className={`px-3 ${divider}`}>
+                              <div className="relative flex min-h-[34px] items-center justify-center">
+                                <span className="transition-opacity group-hover:opacity-0">-</span>
+                                <div className={`absolute inset-0 ${rowActionsRevealCls}`}>
+                                  <RowActionIconBtn action="edit" onClick={() => editPendingRow(row)} disabled={saving} size={34} iconSize={15} />
+                                  <RowActionIconBtn action="delete" onClick={() => removePendingRow(row.tempId)} disabled={saving} size={34} iconSize={16} />
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
 
                       {rows.map((row, idx) => {
                         const isEditing = editId === row.id;
+                        const divider = idx === rows.length - 1 ? "" : rowDividerCls;
                         return (
-                          <TR key={row.id} className={getHoverSelectableRowClass(false)}>
-                            <TD className="px-2.5 py-2 text-center">{toFaDigits(idx + 1)}</TD>
-                            <TD className="px-2.5 py-2 text-center font-mono ltr">
+                          <tr key={row.id} className="group transition-colors hover:bg-black/[0.04] dark:hover:bg-white/10">
+                            <td className={`px-3 ${divider}`}>{idx + 1}</td>
+                            <td className={`px-3 ${divider}`}>
                               {isEditing ? (
                                 <input
                                   value={editDraft.budgetCode}
                                   onChange={(e) =>
-                                    setEditDraft((prev) => ({ ...prev, budgetCode: toEnDigits(e.target.value) }))
+                                    setEditDraft((prev) => ({ ...prev, budgetCode: normalizeCode(e.target.value) }))
                                   }
-                                  className={moneyInputCls}
+                                  className={moneyInputCls + " font-sans tabular-nums"}
                                   spellCheck={false}
                                 />
                               ) : (
-                                toFaDigits(row.budgetCode || "—")
+                                <span dir="ltr" className="inline-block w-full text-center font-sans tabular-nums">
+                                  {displayCode(row.budgetCode) || "—"}
+                                </span>
                               )}
-                            </TD>
-                            <TD className="px-2.5 py-2 text-center">
+                            </td>
+                            <td className={`px-3 whitespace-normal break-words leading-6 ${divider}`}>
                               {isEditing ? (
                                 <input
                                   value={editDraft.budgetName}
@@ -518,8 +566,8 @@ export default function CostBreakdownPage() {
                               ) : (
                                 row.budgetName || "—"
                               )}
-                            </TD>
-                            <TD className="px-2.5 py-2 text-center">
+                            </td>
+                            <td className={`px-3 ${divider}`}>
                               {isEditing ? (
                                 <input
                                   value={editDraft.baseBudget ? toFaDigits(formatMoney(editDraft.baseBudget)) : ""}
@@ -532,23 +580,21 @@ export default function CostBreakdownPage() {
                               ) : (
                                 toFaDigits(formatMoney(row.baseBudget || 0))
                               )}
-                            </TD>
-                            <TD className="px-2.5 py-2 text-center">
+                            </td>
+                            <td className={`px-3 ${divider}`}>
                               <div className="relative flex min-h-[34px] items-center justify-center">
                                 <span
                                   className={`transition-opacity ${
-                                    isEditing
-                                      ? "opacity-0 pointer-events-none"
-                                      : "opacity-100 group-hover:opacity-0 group-hover:pointer-events-none"
+                                    isEditing ? "opacity-0 pointer-events-none" : "group-hover:opacity-0"
                                   }`}
                                 >
                                   -
                                 </span>
                                 <div
-                                  className={`absolute inset-0 flex items-center justify-center gap-1 transition-opacity ${
+                                  className={`absolute inset-0 ${
                                     isEditing
-                                      ? "opacity-100 pointer-events-auto"
-                                      : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+                                      ? "flex items-center justify-center gap-1"
+                                      : rowActionsRevealCls
                                   }`}
                                 >
                                   {isEditing ? (
@@ -564,8 +610,8 @@ export default function CostBreakdownPage() {
                                   )}
                                 </div>
                               </div>
-                            </TD>
-                          </TR>
+                            </td>
+                          </tr>
                         );
                       })}
                     </>
@@ -575,7 +621,7 @@ export default function CostBreakdownPage() {
             </div>
           </div>
         </div>
-      </TableWrap>
+      </div>
 
       {err && <div className="mt-3 text-center text-sm text-red-600 dark:text-red-400">{err}</div>}
 
