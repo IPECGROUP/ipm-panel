@@ -690,11 +690,13 @@ export default function CostBreakdownPage() {
                       const rowSelected = selectedIds.has(item.key);
                       const displayBudgetCode = projectBudgetCode(row.budgetCode);
                       const isExpanded = expandedCodes.has(displayBudgetCode);
-                      const codeIndent = `${Math.min(Number(item.depth || 0), 4) * 24}px`;
+                      const isParentRow = Boolean(item.hasChildren);
+                      const codeIndent = `${Math.min(Number(item.depth || 0), 4) * 36}px`;
+                      const parentWeightCls = isParentRow ? "font-semibold" : "";
 
                       if (isPending) {
                         return (
-                          <tr key={item.key} className="group transition-colors hover:bg-black/[0.04] dark:hover:bg-white/10">
+                          <tr key={item.key} className={`group transition-colors hover:bg-black/[0.04] dark:hover:bg-white/10 ${parentWeightCls}`}>
                             <td className={`px-3 ${divider}`}>
                               <input
                                 type="checkbox"
@@ -720,12 +722,12 @@ export default function CostBreakdownPage() {
                                 ) : (
                                   <span className="h-7 w-7 shrink-0" />
                                 )}
-                                <span dir="ltr" className="inline-block min-w-0 text-center font-sans tabular-nums">
+                                <span dir="ltr" className={`inline-block min-w-0 text-center font-sans tabular-nums ${parentWeightCls}`}>
                                   {displayBudgetCode || "—"}
                                 </span>
                               </div>
                             </td>
-                            <td className={`px-3 whitespace-normal break-words leading-6 ${divider}`}>{row.budgetName || "—"}</td>
+                            <td className={`px-3 whitespace-normal break-words leading-6 ${parentWeightCls} ${divider}`}>{row.budgetName || "—"}</td>
                             <td className={`px-3 ${divider}`}>
                               <input
                                 value={row.baseBudget ? toFaDigits(formatMoney(row.baseBudget)) : ""}
@@ -750,7 +752,7 @@ export default function CostBreakdownPage() {
                       }
 
                       return (
-                          <tr key={item.key} className="group transition-colors hover:bg-black/[0.04] dark:hover:bg-white/10">
+                          <tr key={item.key} className={`group transition-colors hover:bg-black/[0.04] dark:hover:bg-white/10 ${parentWeightCls}`}>
                             <td className={`px-3 ${divider}`}>
                               <input
                                 type="checkbox"
@@ -786,7 +788,7 @@ export default function CostBreakdownPage() {
                                   ) : (
                                     <span className="h-7 w-7 shrink-0" />
                                   )}
-                                  <span dir="ltr" className="inline-block min-w-0 text-center font-sans tabular-nums">
+                                  <span dir="ltr" className={`inline-block min-w-0 text-center font-sans tabular-nums ${parentWeightCls}`}>
                                     {displayBudgetCode || "—"}
                                   </span>
                                 </div>
@@ -802,7 +804,7 @@ export default function CostBreakdownPage() {
                                   className="h-9 w-full max-w-md rounded-xl border border-neutral-300 bg-white px-2 text-center text-neutral-900 outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                                 />
                               ) : (
-                                row.budgetName || "—"
+                                <span className={parentWeightCls}>{row.budgetName || "—"}</span>
                               )}
                             </td>
                             <td className={`px-3 ${divider}`}>
@@ -816,7 +818,7 @@ export default function CostBreakdownPage() {
                                   inputMode="numeric"
                                 />
                               ) : (
-                                toFaDigits(formatMoney(row.baseBudget || 0))
+                                <span className={parentWeightCls}>{toFaDigits(formatMoney(row.baseBudget || 0))}</span>
                               )}
                             </td>
                             <td className={`px-3 ${divider}`}>
