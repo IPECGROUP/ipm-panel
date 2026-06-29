@@ -495,7 +495,6 @@ function UsersTab({ embedded = false }) {
     if (!isBatchEdit) {
       payloadBase.name = form.name || null;
       payloadBase.username = String(form.username || "").trim();
-      if (form.password) payloadBase.password = form.password;
     }
 
     try {
@@ -512,6 +511,17 @@ function UsersTab({ embedded = false }) {
           })
         )
       );
+      if (!isBatchEdit && form.password) {
+        const sid = targetIds[0];
+        await api(`/admin/users/password`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: idMap.has(sid) ? idMap.get(sid) : sid,
+            password: form.password,
+          }),
+        });
+      }
       cancelEdit();
       await reload();
     } catch (ex) {
