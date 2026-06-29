@@ -82,8 +82,11 @@ export default function CostForecastCostsTab() {
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [loadingProjectId, setLoadingProjectId] = useState("");
   const [err, setErr] = useState("");
+  const [selectedKeys, setSelectedKeys] = useState([]);
 
   const tableUi = tablePreset.table;
+  const rowUi = tablePreset.row;
+  const colCount = 4 + monthNames.length + 1;
 
   const loadProjects = useCallback(async () => {
     setProjectsLoading(true);
@@ -204,6 +207,25 @@ export default function CostForecastCostsTab() {
     return result;
   }, [expandedKeys, makeChildRows, rowsByProject]);
 
+  const visibleKeys = useMemo(() => displayRows.map((row) => row.key), [displayRows]);
+  const selectedSet = useMemo(() => new Set(selectedKeys), [selectedKeys]);
+  const allVisibleSelected = visibleKeys.length > 0 && visibleKeys.every((key) => selectedSet.has(key));
+  const someVisibleSelected = visibleKeys.some((key) => selectedSet.has(key)) && !allVisibleSelected;
+
+  const toggleRowSelect = (key) => {
+    setSelectedKeys((prev) => {
+      if (prev.includes(key)) return prev.filter((item) => item !== key);
+      return [...prev, key];
+    });
+  };
+
+  const toggleSelectAllVisible = () => {
+    setSelectedKeys((prev) => {
+      if (allVisibleSelected) return prev.filter((key) => !visibleKeys.includes(key));
+      return Array.from(new Set([...prev, ...visibleKeys]));
+    });
+  };
+
   const toggleExpanded = (key) => {
     setExpandedKeys((prev) => {
       const next = new Set(prev);
@@ -248,70 +270,123 @@ export default function CostForecastCostsTab() {
   };
 
   return (
-    <div className="rounded-2xl border border-black/10 bg-white py-3 dark:border-neutral-800 dark:bg-neutral-900">
+    <>
       <TableWrap>
         <div className={tableUi.outer}>
           <div className={tableUi.innerPad}>
-            <div className={tableUi.frame + " shadow-sm"}>
-              <div className="overflow-x-auto">
+            <div className={`${tableUi.frame} shadow-sm`}>
+              <div className="max-h-[520px] overflow-auto">
                 <table
-                  className={tableUi.table + " table-fixed text-[11px] md:text-[12px] leading-tight min-w-[900px] lg:min-w-[1040px]"}
+                  className={`${tableUi.table} table-fixed text-[12px] md:text-[13px] min-w-[900px] lg:min-w-[1020px]`}
                   dir="rtl"
                 >
                   <THead>
                     <tr className={`sticky top-0 z-20 ${tableUi.headRow}`}>
+                      <TH className={`${tablePreset.columns.select} ${tableUi.th}`}>
+                        <input
+                          type="checkbox"
+                          className={rowUi.checkbox}
+                          checked={allVisibleSelected}
+                          ref={(el) => {
+                            if (el) el.indeterminate = someVisibleSelected;
+                          }}
+                          onChange={toggleSelectAllVisible}
+                          aria-label="انتخاب همه"
+                          title="انتخاب همه"
+                        />
+                      </TH>
                       <TH className={`${tablePreset.columns.index} ${tableUi.th}`}>#</TH>
-                      <TH className={`w-40 md:w-48 ${tableUi.th}`}>کد</TH>
-                      <TH className={`w-64 md:w-80 ${tableUi.th}`}>پروژه / ساختار شکست</TH>
+                      <TH className={`w-36 md:w-40 ${tableUi.th}`}>کد بودجه</TH>
+                      <TH className={`w-32 md:w-40 ${tableUi.th}`}>نام بودجه</TH>
                       {monthNames.map((month) => (
-                        <TH key={month} className={`w-24 px-0 ${tableUi.th}`}>
+                        <TH key={month} className={`w-20 md:w-24 px-0 ${tableUi.th}`}>
                           {month}
                         </TH>
                       ))}
-                      <TH className={`w-32 border-l border-r border-black/10 dark:border-neutral-700 ${tableUi.th}`}>
+                      <TH className={`w-40 md:w-52 border-l border-r border-black/10 dark:border-neutral-700 ${tableUi.th}`}>
                         جمع
                       </TH>
                     </tr>
                   </THead>
 
                   <tbody className={tableUi.body}>
+                    {displayRows.length > 0 && (
+                      <TR className="text-center bg-black/[0.04] font-semibold dark:bg-white/10">
+                        <TD className="px-2 py-3 border-b border-black/10 dark:border-neutral-800">-</TD>
+                        <TD className="px-2 py-3 border-b border-black/10 dark:border-neutral-800">-</TD>
+                        <TD className="px-2 py-3 border-b border-black/10 dark:border-neutral-800">-</TD>
+                        <TD className="px-2 py-3 text-center border-b border-black/10 dark:border-neutral-800">جمع</TD>
+                        {monthNames.map((month) => (
+                          <TD key={`total-${month}`} className="px-0 py-2 text-center align-middle border-b border-black/10 dark:border-neutral-800">
+                            —
+                          </TD>
+                        ))}
+                        <TD className="px-3 py-3 whitespace-nowrap text-center border-l border-r border-b border-black/10 dark:border-neutral-700">
+                          <span className="ltr">۰</span>
+                        </TD>
+                      </TR>
+                    )}
+
                     {displayRows.map((row, index) => {
                       const expanded = expandedKeys.has(row.key);
-                      const depthPad = Math.min(Math.max(row.depth, 0) * 28, 112);
+                      const isSelected = selectedSet.has(row.key);
                       const isProject = row.kind === "project";
+                      const shiftX = row.depth ? row.depth * 10 : 0;
+                      const codeTextClass = isProject
+                        ? "text-[13px] md:text-[15px] font-semibold"
+                        : row.depth
+                          ? "text-[11px] md:text-xs"
+                          : "text-xs md:text-[13px]";
+                      const nameCellTextClass = isProject
+                        ? "text-[12px] md:text-[14px] font-semibold"
+                        : row.depth
+                          ? "text-[10px] md:text-[12px]"
+                          : "text-[11px] md:text-[13px]";
 
                       return (
-                        <TR key={row.key} className={getHoverSelectableRowClass(false)}>
-                          <TD className="px-2 py-2">{toFaDigits(index + 1)}</TD>
-                          <TD className="px-2 py-2">
-                            <div className="flex items-center justify-start gap-2" style={{ paddingRight: depthPad }}>
-                              {row.hasChildren ? (
+                        <TR key={row.key} className={getHoverSelectableRowClass(isSelected)}>
+                          <TD className="px-2 py-3">
+                            <input
+                              type="checkbox"
+                              className={rowUi.checkbox}
+                              checked={isSelected}
+                              onChange={() => toggleRowSelect(row.key)}
+                              aria-label="انتخاب ردیف"
+                              title="انتخاب ردیف"
+                            />
+                          </TD>
+                          <TD className="px-2 py-3">{toFaDigits(index + 1)}</TD>
+
+                          <TD className="px-2 py-3 whitespace-nowrap text-right">
+                            <div
+                              className="inline-flex items-center justify-end gap-1 flex-row-reverse"
+                              style={shiftX ? { transform: `translateX(${shiftX}px)` } : undefined}
+                            >
+                              {row.hasChildren && (
                                 <ExpandButton expanded={expanded} onClick={() => toggleExpanded(row.key)} />
-                              ) : (
-                                <span className="h-7 w-7 shrink-0" />
                               )}
-                              <span className={`ltr font-sans tabular-nums ${isProject ? "font-bold" : ""}`}>
-                                {row.code || "—"}
-                              </span>
+                              <span className={`ltr ${codeTextClass}`}>{row.code || "—"}</span>
                             </div>
                           </TD>
-                          <TD className="px-2 py-2 text-right">
-                            <div
-                              className={`truncate text-right ${isProject ? "text-sm font-bold md:text-[15px]" : "text-xs md:text-[13px]"}`}
-                              style={{ paddingRight: depthPad }}
-                              title={row.name || "—"}
-                            >
+
+                          <TD className={`px-2 py-3 text-right break-words max-w-[180px] ${nameCellTextClass}`}>
+                            <div style={shiftX ? { transform: `translateX(${shiftX}px)` } : undefined}>
                               {row.name || "—"}
                             </div>
                           </TD>
+
                           {monthNames.map((month) => (
                             <TD key={`${row.key}-${month}`} className="px-0 py-2 text-center align-middle">
-                              <span className="mx-auto flex h-9 w-24 items-center justify-center rounded-xl border border-black/10 bg-black/5 text-black/45 dark:border-neutral-700 dark:bg-white/5 dark:text-neutral-400">
+                              <button
+                                type="button"
+                                className="w-[5.5rem] mx-auto h-10 md:w-[5.5rem] md:h-10 rounded-xl border text-[10px] md:text-[11px] flex items-center justify-center shadow-sm transition bg-black/5 border-black/10 text-black/70 dark:bg-white/5 dark:border-neutral-700 dark:text-neutral-100"
+                              >
                                 —
-                              </span>
+                              </button>
                             </TD>
                           ))}
-                          <TD className="px-3 py-2 whitespace-nowrap text-center border-l border-r border-black/10 dark:border-neutral-700">
+
+                          <TD className="px-3 py-3 whitespace-nowrap text-center border-l border-r border-black/10 dark:border-neutral-700">
                             <span className="ltr">۰</span>
                           </TD>
                         </TR>
@@ -320,8 +395,9 @@ export default function CostForecastCostsTab() {
 
                     {adding && (
                       <TR>
-                        <TD className="px-2 py-2">{toFaDigits(displayRows.length + 1)}</TD>
-                        <TD colSpan={2} className="px-2 py-2 text-right">
+                        <TD className="px-2 py-3">-</TD>
+                        <TD className="px-2 py-3">{toFaDigits(displayRows.length + 1)}</TD>
+                        <TD colSpan={2} className="px-2 py-3 text-right">
                           <select
                             value={selectedProjectId}
                             onChange={(event) => handleSelectProject(event.target.value)}
@@ -343,7 +419,7 @@ export default function CostForecastCostsTab() {
                         {monthNames.map((month) => (
                           <TD key={`select-${month}`} className="px-0 py-2" />
                         ))}
-                        <TD className="px-3 py-2 border-l border-r border-black/10 dark:border-neutral-700">
+                        <TD className="px-3 py-3 border-l border-r border-black/10 dark:border-neutral-700">
                           {loadingProjectId ? (
                             <span className="text-xs text-black/55 dark:text-neutral-400">در حال افزودن...</span>
                           ) : null}
@@ -352,7 +428,7 @@ export default function CostForecastCostsTab() {
                     )}
 
                     <TR>
-                      <TD colSpan={3 + monthNames.length + 1} className="px-3 py-3 text-right">
+                      <TD colSpan={colCount} className="px-3 py-3 text-right">
                         <PlusButton
                           onClick={() => {
                             setAdding(true);
@@ -371,6 +447,6 @@ export default function CostForecastCostsTab() {
       </TableWrap>
 
       {err && <div className="px-[15px] text-sm text-red-600 dark:text-red-400">{err}</div>}
-    </div>
+    </>
   );
 }
