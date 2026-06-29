@@ -49,11 +49,11 @@ function PlusButton({ onClick, disabled = false, title = "افزودن پروژ�
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="grid h-9 w-9 place-items-center rounded-xl border border-black/15 bg-white text-black shadow-sm transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-45 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800"
+      className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 bg-white text-black shadow-sm transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-45 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800"
       aria-label={title}
       title={title}
     >
-      <span className="text-lg font-semibold leading-none">+</span>
+      <img src="/images/icons/afzodan.svg" alt="" className="h-5 w-5 dark:invert" />
     </button>
   );
 }
@@ -233,14 +233,6 @@ export default function CostForecastCostsTab() {
         );
 
       setRowsByProject((prev) => [...prev, { project, items }]);
-      setExpandedKeys((prev) => {
-        const next = new Set(prev);
-        next.add(`project:${project.id}`);
-        items.forEach((item, index) => {
-          next.add(`breakdown:${project.id}:${item.id || item.budgetCode || index}`);
-        });
-        return next;
-      });
       setSelectedProjectId("");
       setAdding(false);
     } catch (ex) {
