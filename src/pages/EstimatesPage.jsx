@@ -11,7 +11,7 @@ import { usePageAccess } from "../hooks/usePageAccess";
 
 const PAGE_KEY = "EstimatesPage";
 
-export default function EstimatesPage() {
+export default function EstimatesPage({ embeddedTableOnly = false } = {}) {
   const API_BASE = (window.API_URL || "/api").replace(/\/+$/, "");
 
   async function api(path, opt = {}) {
@@ -1674,7 +1674,10 @@ const sortedProjects = useMemo(() => {
     );
   };
 
-  const renderCenterCreateControls = (children = null) => (
+  const renderCenterCreateControls = (children = null) => {
+    if (embeddedTableOnly) return children;
+
+    return (
     <div
       className="rounded-2xl ring-1 ring-black/10 border border-black/10 py-3 md:py-4 bg-white dark:bg-neutral-900 dark:ring-neutral-800 dark:border-neutral-800"
       dir="rtl"
@@ -1747,7 +1750,8 @@ const sortedProjects = useMemo(() => {
 
       {children ? <div className="mt-3">{children}</div> : null}
     </div>
-  );
+    );
+  };
 
   const tableUi = tablePreset.table;
   const rowUi = tablePreset.row;
@@ -1825,16 +1829,18 @@ const sortedProjects = useMemo(() => {
 
   return (
     <>
-      <Card>
+      <Card className={embeddedTableOnly ? "!rounded-none !border-0 !bg-transparent !p-0 !shadow-none dark:!bg-transparent" : ""}>
+        {!embeddedTableOnly && (
         <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
           <span>بودجه‌بندی</span>
           <span className="mx-2">›</span>
           <span className="font-semibold text-black dark:text-neutral-100">برآورد هزینه‌ها</span>
         </div>
+        )}
 
         <div className="space-y-3 md:space-y-4 mb-4">
-          {renderTopButtons()}
-          {renderProjectsControls()}
+          {!embeddedTableOnly && renderTopButtons()}
+          {!embeddedTableOnly && renderProjectsControls()}
           {renderCenterCreateControls(
             <TableWrap>
               <div className={tableUi.outer}>
@@ -2573,6 +2579,7 @@ const sortedProjects = useMemo(() => {
 
         {err && <div className="text-sm text-red-600 dark:text-red-400 mt-3">{err}</div>}
 
+        {!embeddedTableOnly && (
         <div className="mt-4 flex flex-col items-stretch gap-2 min-[430px]:flex-row min-[430px]:items-center min-[430px]:justify-end">
           <button
             onClick={exportExcel}
@@ -2605,6 +2612,7 @@ const sortedProjects = useMemo(() => {
             <img src="/images/icons/berozresani.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
           </button>
         </div>
+        )}
 
         {historyOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-2 sm:px-4">

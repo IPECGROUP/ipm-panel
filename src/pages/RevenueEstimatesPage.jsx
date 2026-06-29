@@ -15,7 +15,7 @@ import {
   getHoverSelectableRowClass,
 } from '../components/ui/tablePresets';
 
-function RevenueEstimatesPage() {
+function RevenueEstimatesPage({ embeddedTableOnly = false } = {}) {
   // This page is intentionally open for any authenticated user (no page-level access check).
   const me = {};
   const accessLoading = false;
@@ -1529,15 +1529,18 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
 
   return (
     <>
-      <Card>
+      <Card className={embeddedTableOnly ? "!rounded-none !border-0 !bg-transparent !p-0 !shadow-none dark:!bg-transparent" : ""}>
+        {!embeddedTableOnly && (
         <div className="mb-3 text-black/70 dark:text-neutral-300 text-base md:text-lg">
           <span>بودجه‌بندی</span>
           <span className="mx-2">›</span>
           <span className="font-semibold text-black dark:text-neutral-100">برآورد درآمد ها</span>
         </div>
+        )}
 
         <div>
-          <div className="rounded-2xl border border-black/10 dark:border-neutral-700 bg-white dark:bg-neutral-900 py-3">
+          <div className={embeddedTableOnly ? "" : "rounded-2xl border border-black/10 dark:border-neutral-700 bg-white dark:bg-neutral-900 py-3"}>
+            {!embeddedTableOnly && (
             <div className="px-[15px]">
               <div className="grid grid-cols-1 md:grid-cols-[minmax(220px,320px)_1fr_auto] gap-2 items-end">
                 <div className="flex flex-col gap-1">
@@ -1594,9 +1597,10 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
 
               {childDraftErr && <div className="mt-2 text-xs text-red-600 dark:text-red-400">{childDraftErr}</div>}
             </div>
+            )}
 
             {/* جدول اصلی */}
-            <div className="mt-3">
+            <div className={embeddedTableOnly ? "" : "mt-3"}>
           <TableWrap>
             <div className={tableUi.outer}>
               <div className={tableUi.innerPad}>
@@ -1915,6 +1919,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
         </div>
 
         {/* دکمه ذخیره دستی (اختیاری) */}
+        {!embeddedTableOnly && (
         <div className="mt-4 flex items-center gap-2 justify-end">
           <button
             onClick={exportExcel}
@@ -1935,6 +1940,7 @@ setSelectedKeysArr(Array.from(new Set(finalSel)));
             <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
           </button>
         </div>
+        )}
 
         {/* مودال مدیریت سایر (تماماً سفید در لایت و با بک‌دراپ، تا جدول پشتش دیده نشود) */}
         {otherMenuOpen && (
