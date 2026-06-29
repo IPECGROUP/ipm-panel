@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+// ساختار شکست هزینه ها
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Card from "../components/ui/Card.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 import { api } from "../utils/api.js";
@@ -76,9 +77,6 @@ export default function CostBreakdownPage() {
 
   const [budgetCode, setBudgetCode] = useState("");
   const [budgetName, setBudgetName] = useState("");
-  const [baseBudget, setBaseBudget] = useState("");
-  const [pendingRows, setPendingRows] = useState([]);
-  const pendingRowsRef = useRef([]);
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -112,22 +110,13 @@ export default function CostBreakdownPage() {
   const projectBudgetCode = useCallback((value = "") => normalizeCode(value), []);
 
   const tableRows = useMemo(() => {
-    const pending = pendingRows.map((row, idx) => ({
-      kind: "pending",
-      key: `pending:${row.tempId}`,
-      row,
-      label: `جدید ${idx + 1}`,
-    }));
-
-    const saved = rows.map((row, idx) => ({
+    return rows.map((row, idx) => ({
       kind: "saved",
       key: `saved:${row.id}`,
       row,
       label: String(idx + 1),
     }));
-
-    return [...pending, ...saved];
-  }, [pendingRows, rows]);
+  }, [rows]);
 
   const childRowsByParentCode = useMemo(() => {
     const codes = new Set(tableRows.map((item) => projectBudgetCode(item.row?.budgetCode)));
@@ -277,12 +266,10 @@ export default function CostBreakdownPage() {
   useEffect(() => {
     if (!projectId) {
       setRows([]);
-      setPendingRows([]);
       setSelectedIds(new Set());
       return;
     }
     clearDraft();
-    setPendingRows([]);
     setSelectedIds(new Set());
     setPage(0);
     loadRows(projectId);
@@ -304,10 +291,6 @@ export default function CostBreakdownPage() {
   }, [page, safePage]);
 
   useEffect(() => {
-    pendingRowsRef.current = pendingRows;
-  }, [pendingRows]);
-
-  useEffect(() => {
     if (!projectId) return;
     const exists = (projects || []).some((p) => String(p.id) === String(projectId));
     if (!exists) setProjectId("");
@@ -316,11 +299,10 @@ export default function CostBreakdownPage() {
   const clearDraft = () => {
     setBudgetCode("");
     setBudgetName("");
-    setBaseBudget("");
     setErr("");
   };
 
-  const addPendingRow = () => {
+  const addRow = async () => {
     const code = projectBudgetCode(budgetCode);
     const name = String(budgetName || "").trim();
 
@@ -335,74 +317,12 @@ export default function CostBreakdownPage() {
     }
 
     const existsSaved = rows.some((row) => projectBudgetCode(row.budgetCode) === code);
-    const existsPending = pendingRows.some((row) => projectBudgetCode(row.budgetCode) === code);
-    if (existsSaved || existsPending) {
+    if (existsSaved) {
       setErr("این کد بودجه قبلاً در جدول وجود دارد.");
-      return;
+      return false;
     }
 
-    setPendingRows((prev) => [
-      ...prev,
-      {
-        tempId: `tmp-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-        budgetCode: code,
-        budgetName: name,
-        baseBudget: parseMoney(baseBudget),
-      },
-    ]);
-    clearDraft();
-  };
-
-  const canAddDraft = Boolean(projectId && !saving && projectBudgetCode(budgetCode) && String(budgetName || "").trim());
-
-  const handleDraftEnter = (event) => {
-    if (event.key !== "Enter") return;
-    event.preventDefault();
-    if (canAddDraft) addPendingRow();
-  };
-
-  const removePendingRow = (tempId) => {
-    setPendingRows((prev) => prev.filter((row) => row.tempId !== tempId));
-  };
-
-  const editPendingRow = (row) => {
-    setBudgetCode(row.budgetCode || "");
-    setBudgetName(row.budgetName || "");
-    setBaseBudget(row.baseBudget || "");
-    removePendingRow(row.tempId);
-    setErr("");
-  };
-
-  const updatePendingBaseBudget = (tempId, value) => {
-    setPendingRows((prev) =>
-      prev.map((row) => (row.tempId === tempId ? { ...row, baseBudget: parseMoney(value) } : row))
-    );
-  };
-
-  const upsertSavedRow = (item) => {
-    const normalized = normalizeItem(item);
-    if (!normalized.id) return;
-    setRows((prev) => {
-      const exists = prev.some((row) => String(row.id) === String(normalized.id));
-      if (exists) return prev.map((row) => (String(row.id) === String(normalized.id) ? normalized : row));
-      return [...prev, normalized].sort((a, b) =>
-        projectBudgetCode(a.budgetCode).localeCompare(projectBudgetCode(b.budgetCode), "fa", {
-          numeric: true,
-          sensitivity: "base",
-        })
-      );
-    });
-  };
-
-  const savePendingRow = async (row, { silent = false } = {}) => {
-    if (!projectId || !row?.tempId) return false;
-
-    const code = projectBudgetCode(row.budgetCode);
-    const name = String(row.budgetName || "").trim();
-    if (!code || !name) return false;
-
-    if (!silent) setSaving(true);
-
+    setSaving(true);
     try {
       const res = await api("/cost-breakdown", {
         method: "POST",
@@ -410,53 +330,53 @@ export default function CostBreakdownPage() {
           project_id: Number(projectId),
           budget_code: code,
           budget_name: name,
-          base_budget: parseMoney(row.baseBudget),
+          base_budget: 0,
         }),
       });
 
       if (res?.item) upsertSavedRow(res.item);
-      removePendingRow(row.tempId);
+      clearDraft();
       return true;
     } catch (ex) {
-      if (!silent) {
-        setErr(ex.message === "duplicate_budget_code" ? "این کد بودجه برای پروژه انتخاب‌شده قبلاً ثبت شده است." : ex.message || "خطا در ثبت");
-      }
-      return false;
-    } finally {
-      if (!silent) setSaving(false);
-    }
-  };
-
-  const savePendingOnBlur = async (tempId) => {
-    const row = pendingRowsRef.current.find((item) => item.tempId === tempId);
-    if (!row) return;
-    await savePendingRow(row, { silent: true });
-  };
-
-  const saveDraft = async () => {
-    setErr("");
-    if (!projectId) {
-      setErr("مرکز/پروژه را انتخاب کنید.");
-      return;
-    }
-    if (!pendingRows.length) {
-      setErr("ابتدا با دکمه افزودن، ردیف را به جدول اضافه کنید.");
-      return;
-    }
-
-    setSaving(true);
-    try {
-      for (const row of pendingRows) {
-        const ok = await savePendingRow(row, { silent: true });
-        if (!ok) throw new Error("خطا در ثبت");
-      }
-      setPendingRows([]);
-      await loadRows(projectId);
-    } catch (ex) {
       setErr(ex.message === "duplicate_budget_code" ? "این کد بودجه برای پروژه انتخاب‌شده قبلاً ثبت شده است." : ex.message || "خطا در ثبت");
+      return false;
     } finally {
       setSaving(false);
     }
+  };
+
+  const canAddDraft = Boolean(projectId && !saving && projectBudgetCode(budgetCode) && String(budgetName || "").trim());
+
+  const handleDraftKeyDown = async (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      clearDraft();
+      event.currentTarget.blur();
+      return;
+    }
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    if (canAddDraft) {
+      const saved = await addRow();
+      if (saved) event.currentTarget.blur();
+    }
+  };
+
+  const upsertSavedRow = (item) => {
+    const normalized = normalizeItem(item);
+    if (!normalized.id) return;
+    setRows((prev) => {
+      const exists = prev.some((row) => String(row.id) === String(normalized.id));
+      const nextRows = exists
+        ? prev.map((row) => (String(row.id) === String(normalized.id) ? normalized : row))
+        : [...prev, normalized];
+      return nextRows.sort((a, b) =>
+        projectBudgetCode(a.budgetCode).localeCompare(projectBudgetCode(b.budgetCode), "fa", {
+          numeric: true,
+          sensitivity: "base",
+        })
+      );
+    });
   };
 
   const beginEdit = (row) => {
@@ -487,7 +407,7 @@ export default function CostBreakdownPage() {
     setSaving(true);
     setErr("");
     try {
-      await api("/cost-breakdown", {
+      const res = await api("/cost-breakdown", {
         method: "PATCH",
         body: JSON.stringify({
           id: Number(editId),
@@ -497,13 +417,24 @@ export default function CostBreakdownPage() {
           base_budget: parseMoney(editDraft.baseBudget),
         }),
       });
+      if (res?.item) upsertSavedRow(res.item);
       cancelEdit();
-      await loadRows(projectId);
     } catch (ex) {
       setErr(ex.message === "duplicate_budget_code" ? "این کد بودجه برای پروژه انتخاب‌شده قبلاً ثبت شده است." : ex.message || "خطا در ویرایش");
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleEditKeyDown = async (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      cancelEdit();
+      return;
+    }
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    await saveEdit();
   };
 
   const deleteRow = async (row) => {
@@ -526,7 +457,7 @@ export default function CostBreakdownPage() {
     "focus:border-neutral-400 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-500";
 
   const moneyInputCls =
-    "h-9 w-full max-w-[180px] rounded-xl border border-neutral-300 bg-white px-2 text-center text-neutral-900 outline-none ltr " +
+    "h-9 w-full max-w-[180px] rounded-xl border border-neutral-300 bg-white px-2 text-right text-neutral-900 outline-none ltr " +
     "dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
 
   const PagerBtn = ({ direction, disabled, onClick }) => (
@@ -573,7 +504,6 @@ export default function CostBreakdownPage() {
                   setProjectId(e.target.value);
                   cancelEdit();
                   clearDraft();
-                  setPendingRows([]);
                   setErr("");
                 }}
                 className={inputCls}
@@ -593,7 +523,7 @@ export default function CostBreakdownPage() {
               <input
                 value={budgetCode}
                 onChange={(e) => handleBudgetCodeChange(e.target.value)}
-                onKeyDown={handleDraftEnter}
+                onKeyDown={handleDraftKeyDown}
                 disabled={!projectId}
                 className={inputCls + " ltr text-left font-sans tabular-nums"}
                 spellCheck={false}
@@ -606,13 +536,13 @@ export default function CostBreakdownPage() {
                 <input
                   value={budgetName}
                   onChange={(e) => setBudgetName(e.target.value)}
-                  onKeyDown={handleDraftEnter}
+                  onKeyDown={handleDraftKeyDown}
                   className={inputCls}
                   placeholder="نام بودجه"
                 />
                 <button
                   type="button"
-                  onClick={addPendingRow}
+                  onClick={addRow}
                   disabled={!canAddDraft}
                   className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/15 bg-white text-black transition hover:bg-black/5 disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-200/20"
                   aria-label="افزودن به جدول"
@@ -630,7 +560,7 @@ export default function CostBreakdownPage() {
             <div className="overflow-x-auto">
               <table
                 dir="rtl"
-                className="w-full min-w-[760px] table-fixed text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-2 [&_td]:py-1.5"
+                className="w-full min-w-[760px] table-fixed text-sm [&_th]:text-center [&_td]:text-right [&_th]:py-2 [&_td]:py-1.5"
               >
                 <colgroup>
                   <col style={{ width: 48 }} />
@@ -683,76 +613,19 @@ export default function CostBreakdownPage() {
                   ) : (
                     pageItems.map((item, pageIdx) => {
                       const row = item.row;
-                      const isPending = item.kind === "pending";
-                      const isEditing = !isPending && editId === row.id;
+                      const isEditing = editId === row.id;
                       const divider = startIdx + pageIdx === displayRows.length - 1 ? "" : rowDividerCls;
                       const rowSelected = selectedIds.has(item.key);
                       const displayBudgetCode = projectBudgetCode(row.budgetCode);
                       const isExpanded = expandedCodes.has(displayBudgetCode);
                       const isParentRow = Boolean(item.hasChildren);
-                      const codeIndent = `${Math.min(Number(item.depth || 0), 4) * 36}px`;
+                      const rowIndent = `${Math.min(Number(item.depth || 0), 4) * 36}px`;
+                      const rowIndentStyle = { paddingRight: rowIndent };
                       const parentWeightCls = isParentRow ? "font-semibold" : "";
-
-                      if (isPending) {
-                        return (
-                          <tr key={item.key} className={`group transition-colors hover:bg-black/[0.04] dark:hover:bg-white/10 ${parentWeightCls}`}>
-                            <td className={`px-3 ${divider}`}>
-                              <input
-                                type="checkbox"
-                                className="w-4 h-4 accent-black dark:accent-neutral-200"
-                                checked={rowSelected}
-                                onChange={() => toggleRowSelect(item.key)}
-                                aria-label="انتخاب"
-                                title="انتخاب"
-                              />
-                            </td>
-                            <td className={`px-3 ${divider}`}>
-                              <div className="flex items-center justify-center gap-2" dir="rtl" style={{ paddingRight: codeIndent }}>
-                                {item.hasChildren ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleExpandedCode(displayBudgetCode)}
-                                    className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-black/15 bg-white text-base leading-none text-black transition hover:bg-black/5 dark:border-white/15 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10"
-                                    aria-label={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
-                                    title={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
-                                  >
-                                    {isExpanded ? "−" : "+"}
-                                  </button>
-                                ) : (
-                                  <span className="h-7 w-7 shrink-0" />
-                                )}
-                                <span dir="ltr" className={`inline-block min-w-0 text-center font-sans tabular-nums ${parentWeightCls}`}>
-                                  {displayBudgetCode || "—"}
-                                </span>
-                              </div>
-                            </td>
-                            <td className={`px-3 whitespace-normal break-words leading-6 ${parentWeightCls} ${divider}`}>{row.budgetName || "—"}</td>
-                            <td className={`px-3 ${divider}`}>
-                              <input
-                                value={row.baseBudget ? toFaDigits(formatMoney(row.baseBudget)) : ""}
-                                onChange={(e) => updatePendingBaseBudget(row.tempId, e.target.value)}
-                                onBlur={() => savePendingOnBlur(row.tempId)}
-                                className={moneyInputCls}
-                                placeholder="0"
-                                inputMode="numeric"
-                              />
-                            </td>
-                            <td className={`px-3 ${divider}`}>
-                              <div className="relative flex min-h-[34px] items-center justify-center">
-                                <span className="transition-opacity group-hover:opacity-0">-</span>
-                                <div className={`absolute inset-0 ${rowActionsRevealCls}`}>
-                                  <RowActionIconBtn action="edit" onClick={() => editPendingRow(row)} disabled={saving} size={34} iconSize={15} />
-                                  <RowActionIconBtn action="delete" onClick={() => removePendingRow(row.tempId)} disabled={saving} size={34} iconSize={16} />
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      }
 
                       return (
                           <tr key={item.key} className={`group transition-colors hover:bg-black/[0.04] dark:hover:bg-white/10 ${parentWeightCls}`}>
-                            <td className={`px-3 ${divider}`}>
+                            <td className={`px-3 text-center ${divider}`}>
                               <input
                                 type="checkbox"
                                 className="w-4 h-4 accent-black dark:accent-neutral-200"
@@ -764,16 +637,20 @@ export default function CostBreakdownPage() {
                             </td>
                             <td className={`px-3 ${divider}`}>
                               {isEditing ? (
-                                <input
-                                  value={editDraft.budgetCode}
-                                  onChange={(e) =>
-                                    setEditDraft((prev) => ({ ...prev, budgetCode: projectBudgetCode(e.target.value) }))
-                                  }
-                                  className={moneyInputCls + " font-sans tabular-nums"}
-                                  spellCheck={false}
-                                />
+                                <div className="flex items-center justify-start" dir="rtl" style={rowIndentStyle}>
+                                  <input
+                                    value={editDraft.budgetCode}
+                                    onChange={(e) =>
+                                      setEditDraft((prev) => ({ ...prev, budgetCode: projectBudgetCode(e.target.value) }))
+                                    }
+                                    onKeyDown={handleEditKeyDown}
+                                    className={moneyInputCls + " text-right font-sans tabular-nums"}
+                                    spellCheck={false}
+                                    autoFocus
+                                  />
+                                </div>
                               ) : (
-                                <div className="flex items-center justify-center gap-2" dir="rtl" style={{ paddingRight: codeIndent }}>
+                                <div className="flex items-center justify-start gap-2" dir="rtl" style={rowIndentStyle}>
                                   {item.hasChildren ? (
                                     <button
                                       type="button"
@@ -794,33 +671,39 @@ export default function CostBreakdownPage() {
                               )}
                             </td>
                             <td className={`px-3 whitespace-normal break-words leading-6 ${divider}`}>
-                              {isEditing ? (
-                                <input
-                                  value={editDraft.budgetName}
-                                  onChange={(e) =>
-                                    setEditDraft((prev) => ({ ...prev, budgetName: e.target.value }))
-                                  }
-                                  className="h-9 w-full max-w-md rounded-xl border border-neutral-300 bg-white px-2 text-center text-neutral-900 outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
-                                />
-                              ) : (
-                                <span className={parentWeightCls}>{row.budgetName || "—"}</span>
-                              )}
+                              <div className="flex items-center justify-start" style={rowIndentStyle}>
+                                {isEditing ? (
+                                  <input
+                                    value={editDraft.budgetName}
+                                    onChange={(e) =>
+                                      setEditDraft((prev) => ({ ...prev, budgetName: e.target.value }))
+                                    }
+                                    onKeyDown={handleEditKeyDown}
+                                    className="h-9 w-full max-w-md rounded-xl border border-neutral-300 bg-white px-2 text-right text-neutral-900 outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                                  />
+                                ) : (
+                                  <span className={parentWeightCls}>{row.budgetName || "—"}</span>
+                                )}
+                              </div>
                             </td>
                             <td className={`px-3 ${divider}`}>
-                              {isEditing ? (
-                                <input
-                                  value={editDraft.baseBudget ? toFaDigits(formatMoney(editDraft.baseBudget)) : ""}
-                                  onChange={(e) =>
-                                    setEditDraft((prev) => ({ ...prev, baseBudget: parseMoney(e.target.value) }))
-                                  }
-                                  className={moneyInputCls}
-                                  inputMode="numeric"
-                                />
-                              ) : (
-                                <span className={parentWeightCls}>{toFaDigits(formatMoney(row.baseBudget || 0))}</span>
-                              )}
+                              <div className="flex items-center justify-start" style={rowIndentStyle}>
+                                {isEditing ? (
+                                  <input
+                                    value={editDraft.baseBudget ? toFaDigits(formatMoney(editDraft.baseBudget)) : ""}
+                                    onChange={(e) =>
+                                      setEditDraft((prev) => ({ ...prev, baseBudget: parseMoney(e.target.value) }))
+                                    }
+                                    onKeyDown={handleEditKeyDown}
+                                    className={moneyInputCls + " text-right"}
+                                    inputMode="numeric"
+                                  />
+                                ) : (
+                                  <span className={parentWeightCls}>{toFaDigits(formatMoney(row.baseBudget || 0))}</span>
+                                )}
+                              </div>
                             </td>
-                            <td className={`px-3 ${divider}`}>
+                            <td className={`px-3 text-center ${divider}`}>
                               <div className="relative flex min-h-[34px] items-center justify-center">
                                 <span
                                   className={`transition-opacity ${
@@ -909,19 +792,6 @@ export default function CostBreakdownPage() {
       </div>
 
       {err && <div className="mt-3 text-center text-sm text-red-600 dark:text-red-400">{err}</div>}
-
-      <div className="mt-4 flex items-center justify-end">
-        <button
-          type="button"
-          onClick={saveDraft}
-          disabled={saving || !projectId || !pendingRows.length}
-          className="grid h-10 w-14 place-items-center rounded-xl bg-neutral-900 text-white transition disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
-          aria-label="ثبت"
-          title="ثبت"
-        >
-          <img src="/images/icons/check.svg" alt="" className="h-5 w-5 invert dark:invert" />
-        </button>
-      </div>
     </Card>
   );
 }
