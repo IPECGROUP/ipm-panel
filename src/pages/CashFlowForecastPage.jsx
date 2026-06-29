@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import Card from "../components/ui/Card.jsx";
 import CostForecastCostsTab from "./CostForecastCostsTab.jsx";
-import RevenueEstimatesPage from "./RevenueEstimatesPage.jsx";
 
 const PAGE_ICON = "/images/icons/pishbini-naghdi.svg";
 
@@ -60,7 +59,7 @@ export default function CashFlowForecastPage() {
 
         <div dir="rtl">
           {activeTab === "costs" && <CostForecastCostsTab />}
-          {activeTab === "revenues" && <RevenueEstimatesPage embeddedTableOnly />}
+          {activeTab === "revenues" && <CostForecastCostsTab storageApiPath="/revenue-forecast-revenues" />}
           {activeTab === "chart" && (
             <div className="min-h-[320px] rounded-2xl border border-black/10 bg-white dark:border-neutral-800 dark:bg-neutral-900" />
           )}

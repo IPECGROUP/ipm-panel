@@ -95,7 +95,7 @@ function ExpandButton({ expanded, onClick, disabled = false }) {
   );
 }
 
-export default function CostForecastCostsTab() {
+export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-costs" } = {}) {
   const [projects, setProjects] = useState([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [rowsByProject, setRowsByProject] = useState([]);
@@ -151,7 +151,7 @@ export default function CostForecastCostsTab() {
 
   const loadForecast = useCallback(async () => {
     try {
-      const res = await api("/cost-forecast-costs");
+      const res = await api(storageApiPath);
       const projectIds = (Array.isArray(res?.projects) ? res.projects : [])
         .map((item) => String(item?.project_id ?? item?.projectId ?? ""))
         .filter(Boolean);
@@ -168,7 +168,7 @@ export default function CostForecastCostsTab() {
     } catch (ex) {
       setErr(ex.message || "خطا در دریافت پیش بینی هزینه‌ها");
     }
-  }, [valueKey]);
+  }, [storageApiPath, valueKey]);
 
   useEffect(() => {
     loadForecast();
@@ -435,7 +435,7 @@ export default function CostForecastCostsTab() {
     setSavingCell(key);
     setErr("");
     try {
-      await api("/cost-forecast-costs", {
+      await api(storageApiPath, {
         method: "PATCH",
         body: JSON.stringify({
           project_id: Number(row.projectId),
@@ -459,7 +459,7 @@ export default function CostForecastCostsTab() {
     try {
       for (const row of targets) {
         if (row.kind === "project") {
-          await api("/cost-forecast-costs", {
+          await api(storageApiPath, {
             method: "DELETE",
             body: JSON.stringify({ project_id: Number(row.projectId) }),
           });
@@ -492,7 +492,7 @@ export default function CostForecastCostsTab() {
 
         await Promise.all(
           codes.map((code) =>
-            api("/cost-forecast-costs", {
+            api(storageApiPath, {
               method: "DELETE",
               body: JSON.stringify({ project_id: Number(row.projectId), budget_code: code }),
             }),
@@ -524,7 +524,7 @@ export default function CostForecastCostsTab() {
     setLoadingProjectId(String(project.id));
     try {
       const entry = await loadProjectEntry(project);
-      await api("/cost-forecast-costs", {
+      await api(storageApiPath, {
         method: "POST",
         body: JSON.stringify({ project_id: Number(project.id) }),
       });
