@@ -558,11 +558,11 @@ export default function CostForecastCostsTab() {
                   <colgroup>
                     <col style={{ width: 48 }} />
                     <col style={{ width: 112 }} />
-                    <col />
+                    <col style={{ width: "28%" }} />
                     {forecastMonths.map((month) => (
                       <col key={month.key} style={{ width: 92 }} />
                     ))}
-                    <col style={{ width: 128 }} />
+                    <col style={{ width: 156 }} />
                   </colgroup>
                   <THead>
                     <tr className={`sticky top-0 z-20 ${tableUi.headRow}`}>
@@ -586,7 +586,7 @@ export default function CostForecastCostsTab() {
                           {month.label}
                         </TH>
                       ))}
-                      <TH className={`w-32 border-l border-r border-black/10 dark:border-neutral-700 ${tableUi.th}`}>
+                      <TH className={`w-40 border-l border-r border-black/10 dark:border-neutral-700 ${tableUi.th}`}>
                         جمع
                       </TH>
                     </tr>
