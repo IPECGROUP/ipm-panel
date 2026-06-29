@@ -560,7 +560,7 @@ export default function CostBreakdownPage() {
             <div className="overflow-x-auto">
               <table
                 dir="rtl"
-                className="w-full min-w-[760px] table-fixed text-sm [&_th]:text-center [&_td]:text-right [&_th]:py-2 [&_td]:py-1.5"
+                className="w-full min-w-[760px] table-fixed text-sm [&_th]:text-right [&_td]:text-right [&_th]:py-2 [&_td]:py-1.5"
               >
                 <colgroup>
                   <col style={{ width: 48 }} />
@@ -571,7 +571,7 @@ export default function CostBreakdownPage() {
                 </colgroup>
                 <thead>
                   <tr className={theadRowCls}>
-                    <th className="!text-[14px] md:!text-[15px] !font-semibold">
+                    <th className="!text-center !text-[14px] md:!text-[15px] !font-semibold">
                       <input
                         type="checkbox"
                         className="w-4 h-4 accent-black dark:accent-neutral-200"
@@ -584,10 +584,10 @@ export default function CostBreakdownPage() {
                         title="انتخاب همه"
                       />
                     </th>
-                    <th className="!text-[14px] md:!text-[15px] !font-semibold">کد بودجه</th>
-                    <th className="!text-[14px] md:!text-[15px] !font-semibold">نام بودجه</th>
-                    <th className="!text-[14px] md:!text-[15px] !font-semibold">بودجه مبنا</th>
-                    <th className="!text-[14px] md:!text-[15px] !font-semibold">اقدامات</th>
+                    <th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">کد بودجه</th>
+                    <th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">نام بودجه</th>
+                    <th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">بودجه مبنا</th>
+                    <th className="px-3 !text-center !text-[14px] md:!text-[15px] !font-semibold">اقدامات</th>
                   </tr>
                 </thead>
 
