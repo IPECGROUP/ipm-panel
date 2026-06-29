@@ -96,11 +96,12 @@ function PlusButton({ onClick, disabled = false, title = "افزودن پروژ�
   );
 }
 
-function ExpandButton({ onClick, disabled = false }) {
+function ExpandButton({ onClick, onMouseDown, disabled = false }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      onMouseDown={onMouseDown}
       disabled={disabled}
       className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-black/25 bg-white text-lg font-bold leading-none text-black shadow-sm transition hover:bg-black/5 disabled:opacity-40 dark:border-white/20 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10"
       aria-label="نمایش / افزودن زیرمجموعه"
@@ -111,7 +112,10 @@ function ExpandButton({ onClick, disabled = false }) {
   );
 }
 
-export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-costs" } = {}) {
+export default function CostForecastCostsTab({
+  storageApiPath = "/cost-forecast-costs",
+  allowManualChildren = false,
+} = {}) {
   const [projects, setProjects] = useState([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [rowsByProject, setRowsByProject] = useState([]);
@@ -191,27 +195,29 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
         if (!projectId || !budgetCode || !monthKey) return;
         values[valueKey(projectId, budgetCode, monthKey)] = String(item?.amount ?? "0");
       });
-      (Array.isArray(res?.items) ? res.items : []).forEach((item) => {
-        const projectId = String(item?.project_id ?? item?.projectId ?? "");
-        const code = normalizeCode(item?.code ?? "");
-        const title = String(item?.title ?? "").trim();
-        if (!projectId || !code || !title) return;
-        items.push({
-          id: String(item?.id ?? code),
-          projectId,
-          parentCode: normalizeCode(item?.parent_code ?? item?.parentCode ?? ""),
-          code,
-          title,
-          rowIndex: Number(item?.row_index ?? item?.rowIndex ?? 0) || 0,
+      if (allowManualChildren) {
+        (Array.isArray(res?.items) ? res.items : []).forEach((item) => {
+          const projectId = String(item?.project_id ?? item?.projectId ?? "");
+          const code = normalizeCode(item?.code ?? "");
+          const title = String(item?.title ?? "").trim();
+          if (!projectId || !code || !title) return;
+          items.push({
+            id: String(item?.id ?? code),
+            projectId,
+            parentCode: normalizeCode(item?.parent_code ?? item?.parentCode ?? ""),
+            code,
+            title,
+            rowIndex: Number(item?.row_index ?? item?.rowIndex ?? 0) || 0,
+          });
         });
-      });
+      }
       setSavedProjectIds(Array.from(new Set(projectIds)));
       setForecastValues(values);
       setCustomItems(items);
     } catch (ex) {
       setErr(ex.message || "خطا در دریافت پیش بینی هزینه‌ها");
     }
-  }, [storageApiPath, valueKey]);
+  }, [allowManualChildren, storageApiPath, valueKey]);
 
   useEffect(() => {
     loadForecast();
@@ -277,13 +283,14 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
 
   const customItemsByProject = useMemo(() => {
     const map = new Map();
+    if (!allowManualChildren) return map;
     customItems.forEach((item) => {
       const list = map.get(String(item.projectId)) || [];
       list.push(item);
       map.set(String(item.projectId), list);
     });
     return map;
-  }, [customItems]);
+  }, [allowManualChildren, customItems]);
 
   const makeChildRows = useCallback((projectEntry) => {
     const manualItems = (customItemsByProject.get(String(projectEntry.project.id)) || [])
@@ -513,7 +520,12 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
   };
 
   const startAddChild = (row) => {
-    if (!row) return;
+    if (!allowManualChildren || !row) return;
+    if (addingChildFor === row.key) {
+      setAddingChildFor("");
+      setChildDraft("");
+      return;
+    }
     setExpandedKeys((prev) => {
       const next = new Set(prev);
       next.add(row.key);
@@ -524,6 +536,7 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
   };
 
   const saveChild = async (row) => {
+    if (!allowManualChildren) return;
     const title = String(childDraft || "").trim();
     if (!row || !title) {
       setAddingChildFor("");
@@ -778,6 +791,7 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
                         : row.depth
                           ? "text-[10px] md:text-[12px]"
                           : "text-[11px] md:text-[13px]";
+                      const isAddingChild = allowManualChildren && addingChildFor === row.key;
 
                       return (
                         <React.Fragment key={row.key}>
@@ -794,12 +808,19 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
                           </TD>
                           <TD className="px-2 py-3 whitespace-nowrap text-right">
                             <div
-                              className="flex items-center justify-start gap-2"
-                              dir="rtl"
+                              className={`flex items-center justify-start gap-2 ${allowManualChildren ? "flex-row-reverse" : ""}`}
+                              dir={allowManualChildren ? "ltr" : "rtl"}
                               style={rowIndentStyle}
                             >
                               <span className={`ltr ${codeTextClass}`}>{row.code || "—"}</span>
-                              <ExpandButton onClick={() => startAddChild(row)} />
+                              {allowManualChildren ? (
+                                <ExpandButton
+                                  onMouseDown={(event) => event.preventDefault()}
+                                  onClick={() => startAddChild(row)}
+                                />
+                              ) : row.hasChildren ? (
+                                <ExpandButton onClick={() => toggleExpanded(row.key)} />
+                              ) : null}
                             </div>
                           </TD>
 
@@ -897,11 +918,11 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
                             </div>
                           </TD>
                         </TR>
-                        {addingChildFor === row.key && (
+                        {isAddingChild && (
                           <TR>
                             <TD className="px-2 py-3">-</TD>
                             <TD colSpan={2} className="px-2 py-3 text-right">
-                              <div className="flex items-center justify-start" style={{ paddingRight: `calc(${rowIndent} + 36px)` }}>
+                              <div className="flex w-full items-center justify-start" style={{ paddingRight: `calc(${rowIndent} + 36px)` }}>
                                 <input
                                   value={childDraft}
                                   onChange={(event) => setChildDraft(event.target.value)}
@@ -917,7 +938,7 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
                                       setChildDraft("");
                                     }
                                   }}
-                                  className="h-10 w-full max-w-lg rounded-xl border border-black/15 bg-white px-3 text-right text-sm text-black outline-none focus:ring-2 focus:ring-black/10 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                                  className="h-12 w-full max-w-2xl rounded-xl border border-black/15 bg-white px-4 text-right text-base text-black shadow-sm outline-none transition focus:border-black/25 focus:ring-2 focus:ring-black/10 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:border-white/25 dark:focus:ring-white/20"
                                   placeholder="عنوان زیرمجموعه"
                                   autoFocus
                                 />
