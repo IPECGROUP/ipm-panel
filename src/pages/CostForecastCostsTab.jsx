@@ -86,7 +86,7 @@ function ExpandButton({ expanded, onClick, disabled = false }) {
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-black/20 bg-white text-lg font-bold leading-none text-black transition hover:bg-black/5 disabled:opacity-40 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10"
+      className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-black/15 bg-white text-base leading-none text-black transition hover:bg-black/5 disabled:opacity-40 dark:border-white/15 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10"
       aria-label={expanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
       title={expanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
     >
@@ -591,7 +591,8 @@ export default function CostForecastCostsTab() {
                       const isSelected = selectedSet.has(row.key);
                       const isProject = row.kind === "project";
                       const canEditAmounts = row.kind === "breakdown" && !row.hasChildren;
-                      const indentPx = row.depth ? Math.min(row.depth * 16, 64) : 0;
+                      const rowIndent = `${Math.min(Math.max(0, Number(row.depth || 0)), 4) * 36}px`;
+                      const rowIndentStyle = { paddingRight: rowIndent };
                       const rowGrandTotal = getRowGrandTotal(row);
                       const actionTargets = selectedKeys.length > 1 && isSelected
                         ? displayRows.filter((item) => selectedSet.has(item.key))
@@ -623,8 +624,9 @@ export default function CostForecastCostsTab() {
 
                           <TD className="px-2 py-3 whitespace-nowrap text-right">
                             <div
-                              className="inline-flex items-center justify-end gap-1 flex-row-reverse"
-                              style={indentPx ? { paddingRight: indentPx } : undefined}
+                              className="flex items-center justify-start gap-2"
+                              dir="rtl"
+                              style={rowIndentStyle}
                             >
                               {row.hasChildren && (
                                 <ExpandButton expanded={expanded} onClick={() => toggleExpanded(row.key)} />
@@ -634,7 +636,7 @@ export default function CostForecastCostsTab() {
                           </TD>
 
                           <TD className={`px-2 py-3 text-right break-words max-w-[180px] ${nameCellTextClass}`}>
-                            <div style={indentPx ? { paddingRight: indentPx } : undefined}>
+                            <div className="flex items-center justify-start" style={rowIndentStyle}>
                               {row.name || "—"}
                             </div>
                           </TD>
