@@ -86,7 +86,7 @@ function ExpandButton({ expanded, onClick, disabled = false }) {
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-black/15 bg-white text-base leading-none text-black transition hover:bg-black/5 disabled:opacity-40 dark:border-white/15 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10"
+      className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-black/25 bg-white text-lg font-bold leading-none text-black shadow-sm transition hover:bg-black/5 disabled:opacity-40 dark:border-white/20 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10"
       aria-label={expanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
       title={expanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
     >
@@ -108,10 +108,15 @@ export default function CostForecastCostsTab() {
   const [savedProjectIds, setSavedProjectIds] = useState([]);
   const [forecastValues, setForecastValues] = useState({});
   const [savingCell, setSavingCell] = useState("");
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [page, setPage] = useState(0);
 
   const tableUi = tablePreset.table;
   const rowUi = tablePreset.row;
   const colCount = 4 + forecastMonths.length + 1;
+  const paginationIconBtnCls =
+    "h-9 w-9 rounded-lg grid place-items-center transition !bg-transparent !ring-0 !border-0 !shadow-none " +
+    "hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed";
 
   const valueKey = useCallback((projectId, budgetCode, monthKey) => {
     return `${projectId}::${budgetCode}::${monthKey}`;
@@ -309,7 +314,18 @@ export default function CostForecastCostsTab() {
     return result;
   }, [expandedKeys, makeChildRows, rowsByProject]);
 
-  const visibleKeys = useMemo(() => displayRows.map((row) => row.key), [displayRows]);
+  const totalRows = displayRows.length;
+  const pageCount = Math.max(1, Math.ceil(totalRows / Math.max(1, rowsPerPage)));
+  const safePage = Math.min(page, pageCount - 1);
+  const startIdx = safePage * rowsPerPage;
+  const endIdx = Math.min(totalRows, startIdx + rowsPerPage);
+  const pageItems = displayRows.slice(startIdx, endIdx);
+
+  useEffect(() => {
+    if (page !== safePage) setPage(safePage);
+  }, [page, safePage]);
+
+  const visibleKeys = useMemo(() => pageItems.map((row) => row.key), [pageItems]);
   const selectedSet = useMemo(() => new Set(selectedKeys), [selectedKeys]);
   const allVisibleSelected = visibleKeys.length > 0 && visibleKeys.every((key) => selectedSet.has(key));
   const someVisibleSelected = visibleKeys.some((key) => selectedSet.has(key)) && !allVisibleSelected;
@@ -534,11 +550,21 @@ export default function CostForecastCostsTab() {
         <div className={tableUi.outer}>
           <div className={tableUi.innerPad}>
             <div className={`${tableUi.frame} shadow-sm`}>
-              <div className="max-h-[520px] overflow-auto">
+              <div className="relative max-h-[55vh] overflow-y-auto overflow-x-auto pb-0">
                 <table
-                  className={`${tableUi.table} table-fixed text-[12px] md:text-[13px] min-w-[900px] lg:min-w-[1020px]`}
+                  className="w-full min-w-full table-fixed text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5 [&_th]:whitespace-nowrap [&_td]:min-w-0"
                   dir="rtl"
                 >
+                  <colgroup>
+                    <col style={{ width: 48 }} />
+                    <col style={{ width: 72 }} />
+                    <col style={{ width: 112 }} />
+                    <col />
+                    {forecastMonths.map((month) => (
+                      <col key={month.key} style={{ width: 92 }} />
+                    ))}
+                    <col style={{ width: 128 }} />
+                  </colgroup>
                   <THead>
                     <tr className={`sticky top-0 z-20 ${tableUi.headRow}`}>
                       <TH className={`${tablePreset.columns.select} ${tableUi.th}`}>
@@ -554,15 +580,15 @@ export default function CostForecastCostsTab() {
                           title="انتخاب همه"
                         />
                       </TH>
-                      <TH className={`${tablePreset.columns.index} ${tableUi.th}`}>#</TH>
-                      <TH className={`w-36 md:w-40 ${tableUi.th}`}>کد بودجه</TH>
-                      <TH className={`w-32 md:w-40 ${tableUi.th}`}>نام بودجه</TH>
+                      <TH className={`w-[72px] ${tableUi.th}`}>#</TH>
+                      <TH className={`w-28 ${tableUi.th}`}>کد بودجه</TH>
+                      <TH className={tableUi.th}>نام بودجه</TH>
                       {forecastMonths.map((month) => (
                         <TH key={month.key} className={`w-20 md:w-24 px-0 ${tableUi.th}`}>
                           {month.label}
                         </TH>
                       ))}
-                      <TH className={`w-40 md:w-52 border-l border-r border-black/10 dark:border-neutral-700 ${tableUi.th}`}>
+                      <TH className={`w-32 border-l border-r border-black/10 dark:border-neutral-700 ${tableUi.th}`}>
                         جمع
                       </TH>
                     </tr>
@@ -586,7 +612,7 @@ export default function CostForecastCostsTab() {
                       </TR>
                     )}
 
-                    {displayRows.map((row, index) => {
+                    {pageItems.map((row, index) => {
                       const expanded = expandedKeys.has(row.key);
                       const isSelected = selectedSet.has(row.key);
                       const isProject = row.kind === "project";
@@ -620,7 +646,7 @@ export default function CostForecastCostsTab() {
                               title="انتخاب ردیف"
                             />
                           </TD>
-                          <TD className="px-2 py-3">{toFaDigits(index + 1)}</TD>
+                          <TD className="px-2 py-3">{toFaDigits(startIdx + index + 1)}</TD>
 
                           <TD className="px-2 py-3 whitespace-nowrap text-right">
                             <div
@@ -735,7 +761,7 @@ export default function CostForecastCostsTab() {
                     {adding && (
                       <TR>
                         <TD className="px-2 py-3">-</TD>
-                        <TD className="px-2 py-3">{toFaDigits(displayRows.length + 1)}</TD>
+                        <TD className="px-2 py-3">{toFaDigits(totalRows + 1)}</TD>
                         <TD colSpan={2} className="px-2 py-3 text-right">
                           <select
                             value={selectedProjectId}
@@ -779,6 +805,70 @@ export default function CostForecastCostsTab() {
                     </TR>
                   </tbody>
                 </table>
+              </div>
+
+              <div className="border-t border-neutral-300 dark:border-neutral-800 px-3 py-2">
+                <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center md:justify-between gap-2">
+                  <div className="flex items-center justify-between md:justify-start gap-2 text-sm">
+                    <button
+                      type="button"
+                      onClick={() => setPage((prev) => Math.max(0, prev - 1))}
+                      disabled={safePage <= 0}
+                      className={paginationIconBtnCls}
+                      aria-label="صفحه قبل"
+                      title="صفحه قبل"
+                    >
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9 18l6-6-6-6" />
+                      </svg>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPage((prev) => Math.min(pageCount - 1, prev + 1))}
+                      disabled={safePage >= pageCount - 1}
+                      className={paginationIconBtnCls}
+                      aria-label="صفحه بعد"
+                      title="صفحه بعد"
+                    >
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M15 18l-6-6 6-6" />
+                      </svg>
+                    </button>
+
+                    <div className="text-black/70 dark:text-neutral-400 whitespace-nowrap">
+                      {totalRows === 0 ? "۰ از ۰" : `${toFaDigits(startIdx + 1)}–${toFaDigits(endIdx)} از ${toFaDigits(totalRows)}`}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between md:justify-start gap-2 text-sm">
+                    <span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span>
+                    <div className="inline-flex h-9 overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">
+                      {[10, 25, 100].map((count) => {
+                        const active = rowsPerPage === count;
+                        return (
+                          <button
+                            key={count}
+                            type="button"
+                            onClick={() => {
+                              setRowsPerPage(count);
+                              setPage(0);
+                            }}
+                            className={
+                              "min-w-10 px-3 text-sm font-semibold transition " +
+                              (active
+                                ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
+                                : "text-neutral-700 hover:bg-black/[0.04] dark:text-white/75 dark:hover:bg-white/10")
+                            }
+                            aria-pressed={active}
+                          >
+                            {toFaDigits(count)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
