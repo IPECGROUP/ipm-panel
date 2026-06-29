@@ -113,7 +113,7 @@ export default function CostForecastCostsTab() {
 
   const tableUi = tablePreset.table;
   const rowUi = tablePreset.row;
-  const colCount = 4 + forecastMonths.length + 1;
+  const colCount = 3 + forecastMonths.length + 1;
   const paginationIconBtnCls =
     "h-9 w-9 rounded-lg grid place-items-center transition !bg-transparent !ring-0 !border-0 !shadow-none " +
     "hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed";
@@ -557,7 +557,6 @@ export default function CostForecastCostsTab() {
                 >
                   <colgroup>
                     <col style={{ width: 48 }} />
-                    <col style={{ width: 72 }} />
                     <col style={{ width: 112 }} />
                     <col />
                     {forecastMonths.map((month) => (
@@ -580,7 +579,6 @@ export default function CostForecastCostsTab() {
                           title="انتخاب همه"
                         />
                       </TH>
-                      <TH className={`w-[72px] ${tableUi.th}`}>#</TH>
                       <TH className={`w-28 ${tableUi.th}`}>کد بودجه</TH>
                       <TH className={tableUi.th}>نام بودجه</TH>
                       {forecastMonths.map((month) => (
@@ -597,7 +595,6 @@ export default function CostForecastCostsTab() {
                   <tbody className={tableUi.body}>
                     {displayRows.length > 0 && (
                       <TR className="text-center bg-black/[0.04] font-semibold dark:bg-white/10">
-                        <TD className="px-2 py-3 border-b border-black/10 dark:border-neutral-800">-</TD>
                         <TD className="px-2 py-3 border-b border-black/10 dark:border-neutral-800">-</TD>
                         <TD className="px-2 py-3 border-b border-black/10 dark:border-neutral-800">-</TD>
                         <TD className="px-2 py-3 text-center border-b border-black/10 dark:border-neutral-800">جمع</TD>
@@ -646,8 +643,6 @@ export default function CostForecastCostsTab() {
                               title="انتخاب ردیف"
                             />
                           </TD>
-                          <TD className="px-2 py-3">{toFaDigits(startIdx + index + 1)}</TD>
-
                           <TD className="px-2 py-3 whitespace-nowrap text-right">
                             <div
                               className="flex items-center justify-start gap-2"
@@ -761,7 +756,6 @@ export default function CostForecastCostsTab() {
                     {adding && (
                       <TR>
                         <TD className="px-2 py-3">-</TD>
-                        <TD className="px-2 py-3">{toFaDigits(totalRows + 1)}</TD>
                         <TD colSpan={2} className="px-2 py-3 text-right">
                           <select
                             value={selectedProjectId}
