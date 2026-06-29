@@ -56,14 +56,30 @@ const normalizeBreakdownItem = (item) => ({
   baseBudget: String(item?.baseBudget ?? item?.base_budget ?? "0"),
 });
 
-const forecastMonths = [
-  { key: "m1", label: "فروردین" },
-  { key: "m2", label: "اردیبهشت" },
-  { key: "m3", label: "خرداد" },
-  { key: "m4", label: "تیر" },
-  { key: "m5", label: "مرداد" },
-  { key: "m6", label: "شهریور" },
+const PERSIAN_MONTH_NAMES = [
+  "فروردین",
+  "اردیبهشت",
+  "خرداد",
+  "تیر",
+  "مرداد",
+  "شهریور",
+  "مهر",
+  "آبان",
+  "آذر",
+  "دی",
+  "بهمن",
+  "اسفند",
 ];
+
+const currentPersianMonth = () => {
+  try {
+    const value = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { month: "numeric" }).format(new Date());
+    const month = Number(toEnDigits(value));
+    return month >= 1 && month <= 12 ? month : 1;
+  } catch {
+    return 1;
+  }
+};
 
 function PlusButton({ onClick, disabled = false, title = "افزودن پروژه" }) {
   return (
@@ -80,17 +96,17 @@ function PlusButton({ onClick, disabled = false, title = "افزودن پروژ�
   );
 }
 
-function ExpandButton({ expanded, onClick, disabled = false }) {
+function ExpandButton({ onClick, disabled = false }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
       className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-black/25 bg-white text-lg font-bold leading-none text-black shadow-sm transition hover:bg-black/5 disabled:opacity-40 dark:border-white/20 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10"
-      aria-label={expanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
-      title={expanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
+      aria-label="نمایش / افزودن زیرمجموعه"
+      title="نمایش / افزودن زیرمجموعه"
     >
-      {expanded ? "−" : "+"}
+      +
     </button>
   );
 }
@@ -107,9 +123,20 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
   const [selectedKeys, setSelectedKeys] = useState([]);
   const [savedProjectIds, setSavedProjectIds] = useState([]);
   const [forecastValues, setForecastValues] = useState({});
+  const [customItems, setCustomItems] = useState([]);
+  const [addingChildFor, setAddingChildFor] = useState("");
+  const [childDraft, setChildDraft] = useState("");
   const [savingCell, setSavingCell] = useState("");
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
+
+  const forecastMonths = useMemo(() => {
+    const start = currentPersianMonth();
+    return Array.from({ length: 6 }, (_, index) => {
+      const monthIndex = ((start + index - 1) % 12) + 1;
+      return { key: `m${monthIndex}`, label: PERSIAN_MONTH_NAMES[monthIndex - 1] };
+    });
+  }, []);
 
   const tableUi = tablePreset.table;
   const rowUi = tablePreset.row;
@@ -156,6 +183,7 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
         .map((item) => String(item?.project_id ?? item?.projectId ?? ""))
         .filter(Boolean);
       const values = {};
+      const items = [];
       (Array.isArray(res?.values) ? res.values : []).forEach((item) => {
         const projectId = String(item?.project_id ?? item?.projectId ?? "");
         const budgetCode = normalizeCode(item?.budget_code ?? item?.budgetCode ?? "");
@@ -163,8 +191,23 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
         if (!projectId || !budgetCode || !monthKey) return;
         values[valueKey(projectId, budgetCode, monthKey)] = String(item?.amount ?? "0");
       });
+      (Array.isArray(res?.items) ? res.items : []).forEach((item) => {
+        const projectId = String(item?.project_id ?? item?.projectId ?? "");
+        const code = normalizeCode(item?.code ?? "");
+        const title = String(item?.title ?? "").trim();
+        if (!projectId || !code || !title) return;
+        items.push({
+          id: String(item?.id ?? code),
+          projectId,
+          parentCode: normalizeCode(item?.parent_code ?? item?.parentCode ?? ""),
+          code,
+          title,
+          rowIndex: Number(item?.row_index ?? item?.rowIndex ?? 0) || 0,
+        });
+      });
       setSavedProjectIds(Array.from(new Set(projectIds)));
       setForecastValues(values);
+      setCustomItems(items);
     } catch (ex) {
       setErr(ex.message || "خطا در دریافت پیش بینی هزینه‌ها");
     }
@@ -232,8 +275,32 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
     };
   }, [addedProjectIds, loadProjectEntry, projects, savedProjectIds]);
 
+  const customItemsByProject = useMemo(() => {
+    const map = new Map();
+    customItems.forEach((item) => {
+      const list = map.get(String(item.projectId)) || [];
+      list.push(item);
+      map.set(String(item.projectId), list);
+    });
+    return map;
+  }, [customItems]);
+
   const makeChildRows = useCallback((projectEntry) => {
-    const items = projectEntry.items || [];
+    const manualItems = (customItemsByProject.get(String(projectEntry.project.id)) || [])
+      .slice()
+      .sort((a, b) => (a.rowIndex || 0) - (b.rowIndex || 0));
+    const items = [
+      ...(projectEntry.items || []),
+      ...manualItems.map((item) => ({
+        id: `manual-${item.id}`,
+        budgetCode: item.code,
+        budgetName: item.title,
+        baseBudget: "0",
+        parentCode: item.parentCode,
+        isCustom: true,
+        customId: item.id,
+      })),
+    ];
     if (!items.length) return [];
 
     const itemNodes = items.map((item, index) => ({
@@ -245,8 +312,10 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
       baseBudget: item.baseBudget,
       depth: 1,
       hasChildren: false,
-      parentCode: "",
+      parentCode: normalizeCode(item.parentCode || ""),
       originalIndex: index,
+      isCustom: !!item.isCustom,
+      customId: item.customId || "",
     }));
 
     const byCode = new Map();
@@ -256,13 +325,15 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
 
     const childrenByParent = new Map();
     itemNodes.forEach((node) => {
-      const parts = String(node.code || "").split("-").filter(Boolean);
-      let parentCode = "";
-      for (let index = parts.length - 1; index > 0; index -= 1) {
-        const candidate = parts.slice(0, index).join("-");
-        if (byCode.has(candidate)) {
-          parentCode = candidate;
-          break;
+      let parentCode = node.parentCode;
+      if (!parentCode) {
+        const parts = String(node.code || "").split("-").filter(Boolean);
+        for (let index = parts.length - 1; index > 0; index -= 1) {
+          const candidate = parts.slice(0, index).join("-");
+          if (byCode.has(candidate)) {
+            parentCode = candidate;
+            break;
+          }
         }
       }
       node.parentCode = parentCode;
@@ -292,7 +363,7 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
       .forEach((node) => visit(node, 1));
 
     return result;
-  }, [expandedKeys]);
+  }, [customItemsByProject, expandedKeys]);
 
   const displayRows = useMemo(() => {
     const result = [];
@@ -307,12 +378,12 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
         name: entry.project.name,
         baseBudget: "0",
         depth: 0,
-        hasChildren: (entry.items || []).length > 0,
+        hasChildren: (entry.items || []).length > 0 || (customItemsByProject.get(String(entry.project.id)) || []).length > 0,
       });
       if (expandedKeys.has(projectKey)) result.push(...childRows);
     });
     return result;
-  }, [expandedKeys, makeChildRows, rowsByProject]);
+  }, [customItemsByProject, expandedKeys, makeChildRows, rowsByProject]);
 
   const totalRows = displayRows.length;
   const pageCount = Math.max(1, Math.ceil(totalRows / Math.max(1, rowsPerPage)));
@@ -352,13 +423,18 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
 
   const isLeafBudgetCode = useCallback((projectId, budgetCode) => {
     const entry = entryByProjectId.get(String(projectId));
+    const manualItems = customItemsByProject.get(String(projectId)) || [];
     const code = String(budgetCode || "");
-    if (!entry || !code) return true;
-    return !(entry.items || []).some((item) => {
-      const other = String(item.budgetCode || "");
+    if (!code) return true;
+    const allItems = [
+      ...(entry?.items || []).map((item) => ({ code: item.budgetCode })),
+      ...manualItems.map((item) => ({ code: item.code, parentCode: item.parentCode })),
+    ];
+    return !allItems.some((item) => {
+      const other = String(item.code || "");
       return other && other !== code && other.startsWith(`${code}-`);
     });
-  }, [entryByProjectId]);
+  }, [customItemsByProject, entryByProjectId]);
 
   const getCellAmount = useCallback((projectId, budgetCode, monthKey) => {
     const raw = forecastValues[valueKey(projectId, budgetCode, monthKey)];
@@ -370,17 +446,27 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
 
     if (row.kind === "project") {
       const entry = entryByProjectId.get(String(row.projectId));
-      return (entry?.items || []).reduce((sum, item) => {
-        if (!isLeafBudgetCode(row.projectId, item.budgetCode)) return sum;
-        return sum + getCellAmount(row.projectId, item.budgetCode, monthKey);
+      const manualItems = customItemsByProject.get(String(row.projectId)) || [];
+      const allItems = [
+        ...(entry?.items || []).map((item) => ({ code: item.budgetCode })),
+        ...manualItems.map((item) => ({ code: item.code })),
+      ];
+      return allItems.reduce((sum, item) => {
+        if (!isLeafBudgetCode(row.projectId, item.code)) return sum;
+        return sum + getCellAmount(row.projectId, item.code, monthKey);
       }, 0);
     }
 
     if (row.hasChildren) {
       const entry = entryByProjectId.get(String(row.projectId));
+      const manualItems = customItemsByProject.get(String(row.projectId)) || [];
+      const allItems = [
+        ...(entry?.items || []).map((item) => ({ code: item.budgetCode })),
+        ...manualItems.map((item) => ({ code: item.code })),
+      ];
       const prefix = `${row.code}-`;
-      return (entry?.items || []).reduce((sum, item) => {
-        const code = String(item.budgetCode || "");
+      return allItems.reduce((sum, item) => {
+        const code = String(item.code || "");
         if (!code.startsWith(prefix)) return sum;
         if (!isLeafBudgetCode(row.projectId, code)) return sum;
         return sum + getCellAmount(row.projectId, code, monthKey);
@@ -388,7 +474,7 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
     }
 
     return getCellAmount(row.projectId, row.code, monthKey);
-  }, [entryByProjectId, getCellAmount, isLeafBudgetCode]);
+  }, [customItemsByProject, entryByProjectId, getCellAmount, isLeafBudgetCode]);
 
   const getRowGrandTotal = useCallback((row) => {
     return forecastMonths.reduce((sum, month) => sum + getRowMonthTotal(row, month.key), 0);
@@ -398,14 +484,19 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
     const totals = {};
     forecastMonths.forEach((month) => {
       totals[month.key] = rowsByProject.reduce((sum, entry) => {
-        return sum + (entry.items || []).reduce((inner, item) => {
-          if (!isLeafBudgetCode(entry.project.id, item.budgetCode)) return inner;
-          return inner + getCellAmount(entry.project.id, item.budgetCode, month.key);
+        const manualItems = customItemsByProject.get(String(entry.project.id)) || [];
+        const allItems = [
+          ...(entry.items || []).map((item) => ({ code: item.budgetCode })),
+          ...manualItems.map((item) => ({ code: item.code })),
+        ];
+        return sum + allItems.reduce((inner, item) => {
+          if (!isLeafBudgetCode(entry.project.id, item.code)) return inner;
+          return inner + getCellAmount(entry.project.id, item.code, month.key);
         }, 0);
       }, 0);
     });
     return totals;
-  }, [getCellAmount, isLeafBudgetCode, rowsByProject]);
+  }, [customItemsByProject, getCellAmount, isLeafBudgetCode, rowsByProject]);
 
   const totalGrand = useMemo(
     () => forecastMonths.reduce((sum, month) => sum + (totalByMonth[month.key] || 0), 0),
@@ -419,6 +510,57 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
       else next.add(key);
       return next;
     });
+  };
+
+  const startAddChild = (row) => {
+    if (!row) return;
+    setExpandedKeys((prev) => {
+      const next = new Set(prev);
+      next.add(row.key);
+      return next;
+    });
+    setAddingChildFor(row.key);
+    setChildDraft("");
+  };
+
+  const saveChild = async (row) => {
+    const title = String(childDraft || "").trim();
+    if (!row || !title) {
+      setAddingChildFor("");
+      setChildDraft("");
+      return;
+    }
+
+    setErr("");
+    try {
+      const res = await api(storageApiPath, {
+        method: "POST",
+        body: JSON.stringify({
+          action: "add_item",
+          project_id: Number(row.projectId),
+          parent_code: row.kind === "project" ? "" : row.code,
+          title,
+        }),
+      });
+      const item = res?.item;
+      if (item?.code) {
+        setCustomItems((prev) => [
+          ...prev,
+          {
+            id: String(item.id ?? item.code),
+            projectId: String(item.project_id ?? item.projectId ?? row.projectId),
+            parentCode: normalizeCode(item.parent_code ?? item.parentCode ?? ""),
+            code: normalizeCode(item.code),
+            title: String(item.title ?? title),
+            rowIndex: Number(item.row_index ?? item.rowIndex ?? Date.now()) || Date.now(),
+          },
+        ]);
+      }
+      setAddingChildFor("");
+      setChildDraft("");
+    } catch (ex) {
+      setErr(ex.message || "خطا در افزودن زیرمجموعه");
+    }
   };
 
   const updateCellValue = (row, monthKey, rawValue) => {
@@ -494,10 +636,17 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
           codes.map((code) =>
             api(storageApiPath, {
               method: "DELETE",
-              body: JSON.stringify({ project_id: Number(row.projectId), budget_code: code }),
+              body: JSON.stringify({
+                project_id: Number(row.projectId),
+                budget_code: code,
+                item_id: row.isCustom && code === row.code ? Number(row.customId) : undefined,
+              }),
             }),
           ),
         );
+        if (row.isCustom) {
+          setCustomItems((prev) => prev.filter((item) => String(item.id) !== String(row.customId)));
+        }
       }
       setSelectedKeys([]);
     } catch (ex) {
@@ -508,7 +657,7 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
   const focusFirstEditableCell = (row) => {
     if (!row || row.kind !== "breakdown" || row.hasChildren) return;
     window.setTimeout(() => {
-      const el = document.querySelector(`[data-forecast-cell="${row.key}-m1"]`);
+      const el = document.querySelector(`[data-forecast-cell="${row.key}-${forecastMonths[0]?.key || "m1"}"]`);
       if (el) {
         el.focus();
         el.select?.();
@@ -610,7 +759,6 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
                     )}
 
                     {pageItems.map((row, index) => {
-                      const expanded = expandedKeys.has(row.key);
                       const isSelected = selectedSet.has(row.key);
                       const isProject = row.kind === "project";
                       const canEditAmounts = row.kind === "breakdown" && !row.hasChildren;
@@ -632,7 +780,8 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
                           : "text-[11px] md:text-[13px]";
 
                       return (
-                        <TR key={row.key} className={getHoverSelectableRowClass(isSelected)}>
+                        <React.Fragment key={row.key}>
+                        <TR className={getHoverSelectableRowClass(isSelected)}>
                           <TD className="px-2 py-3">
                             <input
                               type="checkbox"
@@ -649,10 +798,8 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
                               dir="rtl"
                               style={rowIndentStyle}
                             >
-                              {row.hasChildren && (
-                                <ExpandButton expanded={expanded} onClick={() => toggleExpanded(row.key)} />
-                              )}
                               <span className={`ltr ${codeTextClass}`}>{row.code || "—"}</span>
+                              <ExpandButton onClick={() => startAddChild(row)} />
                             </div>
                           </TD>
 
@@ -750,6 +897,39 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
                             </div>
                           </TD>
                         </TR>
+                        {addingChildFor === row.key && (
+                          <TR>
+                            <TD className="px-2 py-3">-</TD>
+                            <TD colSpan={2} className="px-2 py-3 text-right">
+                              <div className="flex items-center justify-start" style={{ paddingRight: `calc(${rowIndent} + 36px)` }}>
+                                <input
+                                  value={childDraft}
+                                  onChange={(event) => setChildDraft(event.target.value)}
+                                  onBlur={() => saveChild(row)}
+                                  onKeyDown={(event) => {
+                                    if (event.key === "Enter") {
+                                      event.preventDefault();
+                                      event.currentTarget.blur();
+                                    }
+                                    if (event.key === "Escape") {
+                                      event.preventDefault();
+                                      setAddingChildFor("");
+                                      setChildDraft("");
+                                    }
+                                  }}
+                                  className="h-10 w-full max-w-lg rounded-xl border border-black/15 bg-white px-3 text-right text-sm text-black outline-none focus:ring-2 focus:ring-black/10 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                                  placeholder="عنوان زیرمجموعه"
+                                  autoFocus
+                                />
+                              </div>
+                            </TD>
+                            {forecastMonths.map((month) => (
+                              <TD key={`child-${row.key}-${month.key}`} className="px-0 py-2" />
+                            ))}
+                            <TD className="px-3 py-3 border-l border-r border-black/10 dark:border-neutral-700" />
+                          </TR>
+                        )}
+                        </React.Fragment>
                       );
                     })}
 
@@ -761,11 +941,11 @@ export default function CostForecastCostsTab({ storageApiPath = "/cost-forecast-
                             value={selectedProjectId}
                             onChange={(event) => handleSelectProject(event.target.value)}
                             disabled={projectsLoading || Boolean(loadingProjectId)}
-                            className="h-10 w-full max-w-md rounded-xl border border-black/15 bg-white px-3 text-right text-sm text-black outline-none focus:ring-2 focus:ring-black/10 disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                            className="h-11 w-full max-w-xl rounded-xl border border-black/15 bg-white px-4 text-right text-base text-black outline-none focus:ring-2 focus:ring-black/10 disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                             autoFocus
                           >
                             <option value="">
-                              {projectsLoading ? "در حال دریافت پروژه‌ها..." : "انتخاب پروژه فعال"}
+                              {projectsLoading ? "در حال دریافت پروژه‌ها..." : "انتخاب پروژه"}
                             </option>
                             {availableProjects.map((project) => (
                               <option key={project.id} value={project.id}>
