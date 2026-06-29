@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
+import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 import {
   hoverSelectableCrudTablePreset as tablePreset,
   getHoverSelectableRowClass,
@@ -13,6 +14,20 @@ const toEnDigits = (value = "") =>
 
 const toFaDigits = (value = "") =>
   String(value).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
+
+const parseMoney = (value) => {
+  const sign = /^\s*-/.test(String(value ?? "")) ? -1 : 1;
+  const digits = toEnDigits(String(value ?? "")).replace(/[^\d]/g, "");
+  if (!digits) return 0;
+  return sign * Number.parseInt(digits, 10);
+};
+
+const formatMoney = (value) => {
+  const num = Number(value || 0);
+  const sign = num < 0 ? "-" : "";
+  const digits = String(Math.abs(num));
+  return sign + digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+};
 
 const normalizeCode = (value = "") =>
   toEnDigits(value)
@@ -41,7 +56,14 @@ const normalizeBreakdownItem = (item) => ({
   baseBudget: String(item?.baseBudget ?? item?.base_budget ?? "0"),
 });
 
-const monthNames = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور"];
+const forecastMonths = [
+  { key: "m1", label: "فروردین" },
+  { key: "m2", label: "اردیبهشت" },
+  { key: "m3", label: "خرداد" },
+  { key: "m4", label: "تیر" },
+  { key: "m5", label: "مرداد" },
+  { key: "m6", label: "شهریور" },
+];
 
 function PlusButton({ onClick, disabled = false, title = "افزودن پروژه" }) {
   return (
@@ -83,10 +105,17 @@ export default function CostForecastCostsTab() {
   const [loadingProjectId, setLoadingProjectId] = useState("");
   const [err, setErr] = useState("");
   const [selectedKeys, setSelectedKeys] = useState([]);
+  const [savedProjectIds, setSavedProjectIds] = useState([]);
+  const [forecastValues, setForecastValues] = useState({});
+  const [savingCell, setSavingCell] = useState("");
 
   const tableUi = tablePreset.table;
   const rowUi = tablePreset.row;
-  const colCount = 4 + monthNames.length + 1;
+  const colCount = 4 + forecastMonths.length + 1;
+
+  const valueKey = useCallback((projectId, budgetCode, monthKey) => {
+    return `${projectId}::${budgetCode}::${monthKey}`;
+  }, []);
 
   const loadProjects = useCallback(async () => {
     setProjectsLoading(true);
@@ -115,6 +144,31 @@ export default function CostForecastCostsTab() {
     loadProjects();
   }, [loadProjects]);
 
+  const loadForecast = useCallback(async () => {
+    try {
+      const res = await api("/cost-forecast-costs");
+      const projectIds = (Array.isArray(res?.projects) ? res.projects : [])
+        .map((item) => String(item?.project_id ?? item?.projectId ?? ""))
+        .filter(Boolean);
+      const values = {};
+      (Array.isArray(res?.values) ? res.values : []).forEach((item) => {
+        const projectId = String(item?.project_id ?? item?.projectId ?? "");
+        const budgetCode = normalizeCode(item?.budget_code ?? item?.budgetCode ?? "");
+        const monthKey = String(item?.month_key ?? item?.monthKey ?? "");
+        if (!projectId || !budgetCode || !monthKey) return;
+        values[valueKey(projectId, budgetCode, monthKey)] = String(item?.amount ?? "0");
+      });
+      setSavedProjectIds(Array.from(new Set(projectIds)));
+      setForecastValues(values);
+    } catch (ex) {
+      setErr(ex.message || "خطا در دریافت پیش بینی هزینه‌ها");
+    }
+  }, [valueKey]);
+
+  useEffect(() => {
+    loadForecast();
+  }, [loadForecast]);
+
   const addedProjectIds = useMemo(
     () => new Set(rowsByProject.map((item) => String(item.project.id))),
     [rowsByProject],
@@ -124,6 +178,54 @@ export default function CostForecastCostsTab() {
     () => projects.filter((project) => !addedProjectIds.has(String(project.id))),
     [projects, addedProjectIds],
   );
+
+  const loadProjectEntry = useCallback(async (project) => {
+    const res = await api(`/cost-breakdown?project_id=${encodeURIComponent(project.id)}`);
+    const rawItems = Array.isArray(res?.items) ? res.items : [];
+    const items = rawItems
+      .map(normalizeBreakdownItem)
+      .filter((item) => item.budgetCode || item.budgetName)
+      .sort((a, b) =>
+        String(a.budgetCode || "").localeCompare(String(b.budgetCode || ""), "fa", {
+          numeric: true,
+          sensitivity: "base",
+        }),
+      );
+    return { project, items };
+  }, []);
+
+  useEffect(() => {
+    if (!projects.length || !savedProjectIds.length) return;
+
+    let cancelled = false;
+    const missingProjects = savedProjectIds
+      .filter((id) => !addedProjectIds.has(String(id)))
+      .map((id) => projects.find((project) => String(project.id) === String(id)))
+      .filter(Boolean);
+
+    if (!missingProjects.length) return;
+
+    (async () => {
+      try {
+        const entries = await Promise.all(missingProjects.map(loadProjectEntry));
+        if (cancelled) return;
+        setRowsByProject((prev) => {
+          const seen = new Set(prev.map((entry) => String(entry.project.id)));
+          const next = [...prev];
+          entries.forEach((entry) => {
+            if (!seen.has(String(entry.project.id))) next.push(entry);
+          });
+          return next;
+        });
+      } catch (ex) {
+        if (!cancelled) setErr(ex.message || "خطا در دریافت ساختار شکست هزینه‌ها");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [addedProjectIds, loadProjectEntry, projects, savedProjectIds]);
 
   const makeChildRows = useCallback((projectEntry) => {
     const items = projectEntry.items || [];
@@ -226,6 +328,74 @@ export default function CostForecastCostsTab() {
     });
   };
 
+  const entryByProjectId = useMemo(() => {
+    const map = new Map();
+    rowsByProject.forEach((entry) => map.set(String(entry.project.id), entry));
+    return map;
+  }, [rowsByProject]);
+
+  const isLeafBudgetCode = useCallback((projectId, budgetCode) => {
+    const entry = entryByProjectId.get(String(projectId));
+    const code = String(budgetCode || "");
+    if (!entry || !code) return true;
+    return !(entry.items || []).some((item) => {
+      const other = String(item.budgetCode || "");
+      return other && other !== code && other.startsWith(`${code}-`);
+    });
+  }, [entryByProjectId]);
+
+  const getCellAmount = useCallback((projectId, budgetCode, monthKey) => {
+    const raw = forecastValues[valueKey(projectId, budgetCode, monthKey)];
+    return Number.parseInt(String(raw ?? "0"), 10) || 0;
+  }, [forecastValues, valueKey]);
+
+  const getRowMonthTotal = useCallback((row, monthKey) => {
+    if (!row) return 0;
+
+    if (row.kind === "project") {
+      const entry = entryByProjectId.get(String(row.projectId));
+      return (entry?.items || []).reduce((sum, item) => {
+        if (!isLeafBudgetCode(row.projectId, item.budgetCode)) return sum;
+        return sum + getCellAmount(row.projectId, item.budgetCode, monthKey);
+      }, 0);
+    }
+
+    if (row.hasChildren) {
+      const entry = entryByProjectId.get(String(row.projectId));
+      const prefix = `${row.code}-`;
+      return (entry?.items || []).reduce((sum, item) => {
+        const code = String(item.budgetCode || "");
+        if (!code.startsWith(prefix)) return sum;
+        if (!isLeafBudgetCode(row.projectId, code)) return sum;
+        return sum + getCellAmount(row.projectId, code, monthKey);
+      }, 0);
+    }
+
+    return getCellAmount(row.projectId, row.code, monthKey);
+  }, [entryByProjectId, getCellAmount, isLeafBudgetCode]);
+
+  const getRowGrandTotal = useCallback((row) => {
+    return forecastMonths.reduce((sum, month) => sum + getRowMonthTotal(row, month.key), 0);
+  }, [getRowMonthTotal]);
+
+  const totalByMonth = useMemo(() => {
+    const totals = {};
+    forecastMonths.forEach((month) => {
+      totals[month.key] = rowsByProject.reduce((sum, entry) => {
+        return sum + (entry.items || []).reduce((inner, item) => {
+          if (!isLeafBudgetCode(entry.project.id, item.budgetCode)) return inner;
+          return inner + getCellAmount(entry.project.id, item.budgetCode, month.key);
+        }, 0);
+      }, 0);
+    });
+    return totals;
+  }, [getCellAmount, isLeafBudgetCode, rowsByProject]);
+
+  const totalGrand = useMemo(
+    () => forecastMonths.reduce((sum, month) => sum + (totalByMonth[month.key] || 0), 0),
+    [totalByMonth],
+  );
+
   const toggleExpanded = (key) => {
     setExpandedKeys((prev) => {
       const next = new Set(prev);
@@ -235,6 +405,101 @@ export default function CostForecastCostsTab() {
     });
   };
 
+  const updateCellValue = (row, monthKey, rawValue) => {
+    if (!row || row.kind !== "breakdown" || row.hasChildren) return;
+    const amount = parseMoney(rawValue);
+    const key = valueKey(row.projectId, row.code, monthKey);
+    setForecastValues((prev) => ({ ...prev, [key]: String(amount) }));
+  };
+
+  const saveCellValue = async (row, monthKey) => {
+    if (!row || row.kind !== "breakdown" || row.hasChildren) return;
+    const key = valueKey(row.projectId, row.code, monthKey);
+    const amount = forecastValues[key] || "0";
+    setSavingCell(key);
+    setErr("");
+    try {
+      await api("/cost-forecast-costs", {
+        method: "PATCH",
+        body: JSON.stringify({
+          project_id: Number(row.projectId),
+          budget_code: row.code,
+          month_key: monthKey,
+          amount,
+        }),
+      });
+    } catch (ex) {
+      setErr(ex.message || "خطا در ذخیره مبلغ پیش بینی");
+    } finally {
+      setSavingCell((current) => (current === key ? "" : current));
+    }
+  };
+
+  const removeForecastRows = async (rows) => {
+    const targets = (Array.isArray(rows) ? rows : [rows]).filter(Boolean);
+    if (!targets.length) return;
+
+    setErr("");
+    try {
+      for (const row of targets) {
+        if (row.kind === "project") {
+          await api("/cost-forecast-costs", {
+            method: "DELETE",
+            body: JSON.stringify({ project_id: Number(row.projectId) }),
+          });
+          setRowsByProject((prev) => prev.filter((entry) => String(entry.project.id) !== String(row.projectId)));
+          setSavedProjectIds((prev) => prev.filter((id) => String(id) !== String(row.projectId)));
+          setForecastValues((prev) => {
+            const next = { ...prev };
+            Object.keys(next).forEach((key) => {
+              if (key.startsWith(`${row.projectId}::`)) delete next[key];
+            });
+            return next;
+          });
+          continue;
+        }
+
+        const entry = entryByProjectId.get(String(row.projectId));
+        const codes = row.hasChildren
+          ? (entry?.items || [])
+              .map((item) => item.budgetCode)
+              .filter((code) => String(code || "").startsWith(`${row.code}-`))
+          : [row.code];
+
+        setForecastValues((prev) => {
+          const next = { ...prev };
+          codes.forEach((code) => {
+            forecastMonths.forEach((month) => delete next[valueKey(row.projectId, code, month.key)]);
+          });
+          return next;
+        });
+
+        await Promise.all(
+          codes.map((code) =>
+            api("/cost-forecast-costs", {
+              method: "DELETE",
+              body: JSON.stringify({ project_id: Number(row.projectId), budget_code: code }),
+            }),
+          ),
+        );
+      }
+      setSelectedKeys([]);
+    } catch (ex) {
+      setErr(ex.message || "خطا در حذف مقادیر پیش بینی");
+    }
+  };
+
+  const focusFirstEditableCell = (row) => {
+    if (!row || row.kind !== "breakdown" || row.hasChildren) return;
+    window.setTimeout(() => {
+      const el = document.querySelector(`[data-forecast-cell="${row.key}-m1"]`);
+      if (el) {
+        el.focus();
+        el.select?.();
+      }
+    }, 0);
+  };
+
   const addProject = async (projectId) => {
     const project = projects.find((item) => String(item.id) === String(projectId));
     if (!project || addedProjectIds.has(String(project.id))) return;
@@ -242,19 +507,13 @@ export default function CostForecastCostsTab() {
     setErr("");
     setLoadingProjectId(String(project.id));
     try {
-      const res = await api(`/cost-breakdown?project_id=${encodeURIComponent(project.id)}`);
-      const rawItems = Array.isArray(res?.items) ? res.items : [];
-      const items = rawItems
-        .map(normalizeBreakdownItem)
-        .filter((item) => item.budgetCode || item.budgetName)
-        .sort((a, b) =>
-          String(a.budgetCode || "").localeCompare(String(b.budgetCode || ""), "fa", {
-            numeric: true,
-            sensitivity: "base",
-          }),
-        );
-
-      setRowsByProject((prev) => [...prev, { project, items }]);
+      const entry = await loadProjectEntry(project);
+      await api("/cost-forecast-costs", {
+        method: "POST",
+        body: JSON.stringify({ project_id: Number(project.id) }),
+      });
+      setRowsByProject((prev) => [...prev, entry]);
+      setSavedProjectIds((prev) => Array.from(new Set([...prev, String(project.id)])));
       setSelectedProjectId("");
       setAdding(false);
     } catch (ex) {
@@ -298,9 +557,9 @@ export default function CostForecastCostsTab() {
                       <TH className={`${tablePreset.columns.index} ${tableUi.th}`}>#</TH>
                       <TH className={`w-36 md:w-40 ${tableUi.th}`}>کد بودجه</TH>
                       <TH className={`w-32 md:w-40 ${tableUi.th}`}>نام بودجه</TH>
-                      {monthNames.map((month) => (
-                        <TH key={month} className={`w-20 md:w-24 px-0 ${tableUi.th}`}>
-                          {month}
+                      {forecastMonths.map((month) => (
+                        <TH key={month.key} className={`w-20 md:w-24 px-0 ${tableUi.th}`}>
+                          {month.label}
                         </TH>
                       ))}
                       <TH className={`w-40 md:w-52 border-l border-r border-black/10 dark:border-neutral-700 ${tableUi.th}`}>
@@ -316,13 +575,13 @@ export default function CostForecastCostsTab() {
                         <TD className="px-2 py-3 border-b border-black/10 dark:border-neutral-800">-</TD>
                         <TD className="px-2 py-3 border-b border-black/10 dark:border-neutral-800">-</TD>
                         <TD className="px-2 py-3 text-center border-b border-black/10 dark:border-neutral-800">جمع</TD>
-                        {monthNames.map((month) => (
-                          <TD key={`total-${month}`} className="px-0 py-2 text-center align-middle border-b border-black/10 dark:border-neutral-800">
-                            —
+                        {forecastMonths.map((month) => (
+                          <TD key={`total-${month.key}`} className="px-0 py-2 text-center align-middle border-b border-black/10 dark:border-neutral-800">
+                            {totalByMonth[month.key] ? toFaDigits(formatMoney(totalByMonth[month.key])) : "—"}
                           </TD>
                         ))}
                         <TD className="px-3 py-3 whitespace-nowrap text-center border-l border-r border-b border-black/10 dark:border-neutral-700">
-                          <span className="ltr">۰</span>
+                          <span className="ltr">{toFaDigits(formatMoney(totalGrand || 0))}</span>
                         </TD>
                       </TR>
                     )}
@@ -331,7 +590,12 @@ export default function CostForecastCostsTab() {
                       const expanded = expandedKeys.has(row.key);
                       const isSelected = selectedSet.has(row.key);
                       const isProject = row.kind === "project";
-                      const shiftX = row.depth ? row.depth * 10 : 0;
+                      const canEditAmounts = row.kind === "breakdown" && !row.hasChildren;
+                      const indentPx = row.depth ? Math.min(row.depth * 16, 64) : 0;
+                      const rowGrandTotal = getRowGrandTotal(row);
+                      const actionTargets = selectedKeys.length > 1 && isSelected
+                        ? displayRows.filter((item) => selectedSet.has(item.key))
+                        : [row];
                       const codeTextClass = isProject
                         ? "text-[13px] md:text-[15px] font-semibold"
                         : row.depth
@@ -360,7 +624,7 @@ export default function CostForecastCostsTab() {
                           <TD className="px-2 py-3 whitespace-nowrap text-right">
                             <div
                               className="inline-flex items-center justify-end gap-1 flex-row-reverse"
-                              style={shiftX ? { transform: `translateX(${shiftX}px)` } : undefined}
+                              style={indentPx ? { paddingRight: indentPx } : undefined}
                             >
                               {row.hasChildren && (
                                 <ExpandButton expanded={expanded} onClick={() => toggleExpanded(row.key)} />
@@ -370,24 +634,97 @@ export default function CostForecastCostsTab() {
                           </TD>
 
                           <TD className={`px-2 py-3 text-right break-words max-w-[180px] ${nameCellTextClass}`}>
-                            <div style={shiftX ? { transform: `translateX(${shiftX}px)` } : undefined}>
+                            <div style={indentPx ? { paddingRight: indentPx } : undefined}>
                               {row.name || "—"}
                             </div>
                           </TD>
 
-                          {monthNames.map((month) => (
-                            <TD key={`${row.key}-${month}`} className="px-0 py-2 text-center align-middle">
-                              <button
-                                type="button"
-                                className="w-[5.5rem] mx-auto h-10 md:w-[5.5rem] md:h-10 rounded-xl border text-[10px] md:text-[11px] flex items-center justify-center shadow-sm transition bg-black/5 border-black/10 text-black/70 dark:bg-white/5 dark:border-neutral-700 dark:text-neutral-100"
-                              >
-                                —
-                              </button>
+                          {forecastMonths.map((month) => {
+                            const amount = getRowMonthTotal(row, month.key);
+                            const cellKey = valueKey(row.projectId, row.code, month.key);
+                            const isSaving = savingCell === cellKey;
+
+                            return (
+                            <TD key={`${row.key}-${month.key}`} className="px-0 py-2 text-center align-middle">
+                              {canEditAmounts ? (
+                                <input
+                                  data-forecast-cell={`${row.key}-${month.key}`}
+                                  dir="ltr"
+                                  value={amount ? toFaDigits(formatMoney(amount)) : ""}
+                                  onChange={(event) => updateCellValue(row, month.key, event.target.value)}
+                                  onBlur={() => saveCellValue(row, month.key)}
+                                  onKeyDown={(event) => {
+                                    if (event.key === "Enter") {
+                                      event.preventDefault();
+                                      event.currentTarget.blur();
+                                    }
+                                    if (event.key === "Escape") {
+                                      event.preventDefault();
+                                      event.currentTarget.blur();
+                                    }
+                                  }}
+                                  className={`w-[5.5rem] mx-auto h-10 md:w-[5.5rem] md:h-10 rounded-xl border text-[10px] md:text-[11px] text-center bg-white text-black border-black/20 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-600 outline-none focus:ring-2 focus:ring-black/10 dark:focus:ring-white/20 ${
+                                    isSaving ? "opacity-70" : ""
+                                  }`}
+                                  placeholder="0"
+                                />
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled
+                                  className={`w-[5.5rem] mx-auto h-10 md:w-[5.5rem] md:h-10 rounded-xl border text-[10px] md:text-[11px] flex items-center justify-center shadow-sm transition ${
+                                    amount
+                                      ? "bg-[#edaf7c] border-[#edaf7c]/90 text-black"
+                                      : "bg-black/5 border-black/10 text-black/70 dark:bg-white/5 dark:border-neutral-700 dark:text-neutral-100"
+                                  } cursor-default`}
+                                >
+                                  {amount ? toFaDigits(formatMoney(amount)) : "—"}
+                                </button>
+                              )}
                             </TD>
-                          ))}
+                            );
+                          })}
 
                           <TD className="px-3 py-3 whitespace-nowrap text-center border-l border-r border-black/10 dark:border-neutral-700">
-                            <span className="ltr">۰</span>
+                            <div className="relative mx-auto flex min-h-[34px] w-full max-w-[230px] items-center justify-center overflow-visible">
+                              <span
+                                className={`inline-flex items-center justify-center gap-1 px-1 transition-transform duration-200 ${
+                                  isSelected ? "translate-x-7" : "group-hover:translate-x-7"
+                                }`}
+                              >
+                                <span className="ltr">{rowGrandTotal ? toFaDigits(formatMoney(rowGrandTotal)) : "۰"}</span>
+                              </span>
+
+                              <div
+                                className={`absolute left-1 top-1/2 flex -translate-y-1/2 items-center gap-1 transition-all duration-200 ${
+                                  isSelected
+                                    ? "translate-x-0 opacity-100 pointer-events-auto"
+                                    : "-translate-x-1 opacity-0 pointer-events-none group-hover:translate-x-0 group-hover:opacity-100 group-hover:pointer-events-auto"
+                                }`}
+                              >
+                                <RowActionIconBtn
+                                  action="edit"
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    focusFirstEditableCell(row);
+                                  }}
+                                  disabled={!canEditAmounts}
+                                  size={34}
+                                  iconSize={15}
+                                />
+                                <RowActionIconBtn
+                                  action="delete"
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    removeForecastRows(actionTargets);
+                                  }}
+                                  size={34}
+                                  iconSize={16}
+                                />
+                              </div>
+                            </div>
                           </TD>
                         </TR>
                       );
@@ -416,8 +753,8 @@ export default function CostForecastCostsTab() {
                             ))}
                           </select>
                         </TD>
-                        {monthNames.map((month) => (
-                          <TD key={`select-${month}`} className="px-0 py-2" />
+                        {forecastMonths.map((month) => (
+                          <TD key={`select-${month.key}`} className="px-0 py-2" />
                         ))}
                         <TD className="px-3 py-3 border-l border-r border-black/10 dark:border-neutral-700">
                           {loadingProjectId ? (
