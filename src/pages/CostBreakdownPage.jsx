@@ -107,7 +107,21 @@ export default function CostBreakdownPage() {
     [projects]
   );
 
-  const projectBudgetCode = useCallback((value = "") => normalizeCode(value), []);
+  const selectedProjectCode = useMemo(() => {
+    if (!projectId) return "";
+    const project = (projects || []).find((p) => String(p.id) === String(projectId));
+    return normalizeCode(project?.code || "");
+  }, [projectId, projects]);
+
+  const projectBudgetCode = useCallback(
+    (value = "") => {
+      const code = normalizeCode(value);
+      if (!code || !selectedProjectCode) return code;
+      if (code === selectedProjectCode || code.startsWith(`${selectedProjectCode}-`)) return code;
+      return `${selectedProjectCode}-${code}`;
+    },
+    [selectedProjectCode]
+  );
 
   const tableRows = useMemo(() => {
     return rows.map((row, idx) => ({
