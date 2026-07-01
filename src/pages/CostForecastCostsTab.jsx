@@ -605,6 +605,7 @@ export default function CostForecastCostsTab({
     const entry = entryByProjectId.get(String(row.projectId));
     const projectCode = normalizeCode(entry?.project?.code || row.code || "");
     if (row.kind === "project") return projectCode;
+    if (row.isCustom) return row.code;
     if (Number(row.depth || 0) <= 1) return projectCode;
     return row.code;
   };
