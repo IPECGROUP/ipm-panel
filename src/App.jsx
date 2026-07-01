@@ -22,6 +22,7 @@ import CashFlowForecastPage from "./pages/CashFlowForecastPage.jsx";
 import BudgetAllocationPage from "./pages/BudgetAllocationPage.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
 import LettersPage from "./pages/LettersPage.jsx";
+import SupplyRequestPage from "./pages/SupplyRequestPage.jsx";
 import TestEditorPage from "./pages/TestEditorPage.jsx";
 import RoznegarPgae from "./pages/RoznegarPgae.jsx";
 import QualityManagementPage from "./pages/QualityManagementPage.jsx";
@@ -110,7 +111,7 @@ export default function App() {
         <Route path="/finance/cash-flow-forecast" element={<CashFlowForecastPage />} />
         <Route path="/finance/financial-management-dashboard" element={<NavPlaceholderPage title="داشبورد مدیریت مالی" />} />
 
-        <Route path="/supply/request" element={<NavPlaceholderPage title="درخواست تامین" />} />
+        <Route path="/supply/request" element={<SupplyRequestPage />} />
         <Route path="/supply/actions" element={<NavPlaceholderPage title="اقدامات تامین" />} />
         <Route path="/supply/dashboard" element={<NavPlaceholderPage title="داشبورد مدیریت تامین و پشتیبانی" />} />
 
