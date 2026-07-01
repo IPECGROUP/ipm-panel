@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 import {
@@ -165,6 +165,7 @@ export default function CostForecastCostsTab({
   const [addingChildFor, setAddingChildFor] = useState("");
   const [childDraft, setChildDraft] = useState("");
   const [savingChildKey, setSavingChildKey] = useState("");
+  const savingChildRef = useRef("");
   const [savingCell, setSavingCell] = useState("");
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
@@ -562,7 +563,7 @@ export default function CostForecastCostsTab({
     if (!allowManualChildren || !row) return;
     if (addingChildFor === row.key) {
       if (String(childDraft || "").trim()) {
-        saveChild(row);
+        saveChild(row, childDraft);
       } else {
         setAddingChildFor("");
         setChildDraft("");
@@ -578,9 +579,9 @@ export default function CostForecastCostsTab({
     setChildDraft("");
   };
 
-  const saveChild = async (row) => {
-    if (!allowManualChildren || savingChildKey) return;
-    const title = String(childDraft || "").trim();
+  const saveChild = async (row, nextTitle = childDraft) => {
+    if (!allowManualChildren || savingChildRef.current) return;
+    const title = String(nextTitle || "").trim();
     if (!row || !title) {
       setAddingChildFor("");
       setChildDraft("");
@@ -588,6 +589,7 @@ export default function CostForecastCostsTab({
     }
 
     setErr("");
+    savingChildRef.current = row.key;
     setSavingChildKey(row.key);
     try {
       const res = await api(storageApiPath, {
@@ -613,11 +615,13 @@ export default function CostForecastCostsTab({
           },
         ]);
       }
+      await loadForecast();
       setAddingChildFor("");
       setChildDraft("");
     } catch (ex) {
       setErr(ex.message || "خطا در افزودن زیرمجموعه");
     } finally {
+      savingChildRef.current = "";
       setSavingChildKey("");
     }
   };
@@ -880,8 +884,8 @@ export default function CostForecastCostsTab({
                           </TD>
 
                           <TD className={`px-2 py-3 text-right break-words max-w-[180px] ${nameCellTextClass}`}>
-                            <div className="flex items-center justify-start gap-2" dir="rtl" style={rowIndentStyle}>
-                              {row.name || "—"}
+                            <div className="flex w-full items-center justify-start gap-2" dir="rtl" style={rowIndentStyle}>
+                              <span className="min-w-0 flex-1 text-right">{row.name || "—"}</span>
                               {allowManualChildren && row.hasChildren ? (
                                 <TreeToggleButton
                                   expanded={isExpanded}
@@ -991,11 +995,11 @@ export default function CostForecastCostsTab({
                                 <input
                                   value={childDraft}
                                   onChange={(event) => setChildDraft(event.target.value)}
-                                  onBlur={() => saveChild(row)}
+                                  onBlur={(event) => saveChild(row, event.currentTarget.value)}
                                   onKeyDown={(event) => {
                                     if (event.key === "Enter") {
                                       event.preventDefault();
-                                      event.currentTarget.blur();
+                                      saveChild(row, event.currentTarget.value);
                                     }
                                     if (event.key === "Escape") {
                                       event.preventDefault();
