@@ -146,6 +146,21 @@ function TreeToggleButton({ expanded, onClick }) {
   );
 }
 
+function HideRowButton({ onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-grid place-items-center rounded-xl !border-0 !bg-transparent !bg-none !shadow-none !ring-0 transition hover:opacity-80 active:opacity-70"
+      style={{ width: 34, height: 34 }}
+      aria-label="پنهان کردن ردیف"
+      title="پنهان کردن ردیف"
+    >
+      <span className="block h-[2px] w-4 rounded-full bg-neutral-900 dark:bg-neutral-100" />
+    </button>
+  );
+}
+
 export default function CostForecastCostsTab({
   storageApiPath = "/cost-forecast-costs",
   allowManualChildren = false,
@@ -161,6 +176,16 @@ export default function CostForecastCostsTab({
   const [selectedKeys, setSelectedKeys] = useState([]);
   const [savedProjectIds, setSavedProjectIds] = useState([]);
   const [forecastValues, setForecastValues] = useState({});
+  const [hiddenRowKeys, setHiddenRowKeys] = useState(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const raw = window.localStorage.getItem(`cash-flow-forecast:hidden:${storageApiPath}`);
+      const list = raw ? JSON.parse(raw) : [];
+      return new Set(Array.isArray(list) ? list : []);
+    } catch {
+      return new Set();
+    }
+  });
   const [customItems, setCustomItems] = useState([]);
   const [addingChildFor, setAddingChildFor] = useState("");
   const [childDraft, setChildDraft] = useState("");
@@ -177,6 +202,14 @@ export default function CostForecastCostsTab({
       return { key: `m${monthIndex}`, label: PERSIAN_MONTH_NAMES[monthIndex - 1] };
     });
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      `cash-flow-forecast:hidden:${storageApiPath}`,
+      JSON.stringify(Array.from(hiddenRowKeys)),
+    );
+  }, [hiddenRowKeys, storageApiPath]);
 
   const tableUi = tablePreset.table;
   const rowUi = tablePreset.row;
@@ -450,8 +483,18 @@ export default function CostForecastCostsTab({
       });
       if (expandedKeys.has(projectKey)) result.push(...childRows);
     });
-    return result;
-  }, [customItemsByProject, expandedKeys, makeChildRows, rowsByProject]);
+    let hiddenDepth = null;
+    return result.filter((row) => {
+      const depth = Number(row.depth || 0);
+      if (hiddenDepth !== null && depth > hiddenDepth) return false;
+      hiddenDepth = null;
+      if (hiddenRowKeys.has(row.key)) {
+        hiddenDepth = depth;
+        return false;
+      }
+      return true;
+    });
+  }, [customItemsByProject, expandedKeys, hiddenRowKeys, makeChildRows, rowsByProject]);
 
   const totalRows = displayRows.length;
   const pageCount = Math.max(1, Math.ceil(totalRows / Math.max(1, rowsPerPage)));
@@ -691,6 +734,16 @@ export default function CostForecastCostsTab({
     } finally {
       setSavingCell((current) => (current === key ? "" : current));
     }
+  };
+
+  const hideForecastRow = (row) => {
+    if (!row?.key) return;
+    setHiddenRowKeys((prev) => {
+      const next = new Set(prev);
+      next.add(row.key);
+      return next;
+    });
+    setSelectedKeys((prev) => prev.filter((key) => key !== row.key));
   };
 
   const removeForecastRows = async (rows) => {
@@ -1009,6 +1062,13 @@ export default function CostForecastCostsTab({
                                   disabled={!canEditAmounts}
                                   size={34}
                                   iconSize={15}
+                                />
+                                <HideRowButton
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    hideForecastRow(row);
+                                  }}
                                 />
                                 <RowActionIconBtn
                                   action="delete"
