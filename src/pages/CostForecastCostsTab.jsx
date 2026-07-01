@@ -313,8 +313,12 @@ export default function CostForecastCostsTab({
   );
 
   const availableProjects = useMemo(
-    () => projects.filter((project) => !addedProjectIds.has(String(project.id))),
-    [projects, addedProjectIds],
+    () =>
+      projects.filter((project) => {
+        const projectId = String(project.id);
+        return !addedProjectIds.has(projectId) || hiddenRowKeys.has(`project:${projectId}`);
+      }),
+    [projects, addedProjectIds, hiddenRowKeys],
   );
 
   const loadProjectEntry = useCallback(async (project) => {
@@ -488,7 +492,7 @@ export default function CostForecastCostsTab({
       const depth = Number(row.depth || 0);
       if (hiddenDepth !== null && depth > hiddenDepth) return false;
       hiddenDepth = null;
-      if (hiddenRowKeys.has(row.key)) {
+      if (row.kind === "project" && hiddenRowKeys.has(row.key)) {
         hiddenDepth = depth;
         return false;
       }
@@ -737,7 +741,7 @@ export default function CostForecastCostsTab({
   };
 
   const hideForecastRow = (row) => {
-    if (!row?.key) return;
+    if (!row?.key || row.kind !== "project") return;
     setHiddenRowKeys((prev) => {
       const next = new Set(prev);
       next.add(row.key);
@@ -820,7 +824,21 @@ export default function CostForecastCostsTab({
 
   const addProject = async (projectId) => {
     const project = projects.find((item) => String(item.id) === String(projectId));
-    if (!project || addedProjectIds.has(String(project.id))) return;
+    if (!project) return;
+
+    const projectKey = `project:${project.id}`;
+    if (addedProjectIds.has(String(project.id)) && hiddenRowKeys.has(projectKey)) {
+      setHiddenRowKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(projectKey);
+        return next;
+      });
+      setSelectedProjectId("");
+      setAdding(false);
+      return;
+    }
+
+    if (addedProjectIds.has(String(project.id))) return;
 
     setErr("");
     setLoadingProjectId(String(project.id));
@@ -1063,13 +1081,15 @@ export default function CostForecastCostsTab({
                                   size={30}
                                   iconSize={14}
                                 />
-                                <HideRowButton
-                                  onClick={(event) => {
-                                    event.preventDefault();
-                                    event.stopPropagation();
-                                    hideForecastRow(row);
-                                  }}
-                                />
+                                {isProject ? (
+                                  <HideRowButton
+                                    onClick={(event) => {
+                                      event.preventDefault();
+                                      event.stopPropagation();
+                                      hideForecastRow(row);
+                                    }}
+                                  />
+                                ) : null}
                                 <RowActionIconBtn
                                   action="delete"
                                   onClick={(event) => {
@@ -1086,8 +1106,7 @@ export default function CostForecastCostsTab({
                         </TR>
                         {isAddingChild && (
                           <TR>
-                            <TD className="px-2 py-3">-</TD>
-                            <TD colSpan={colCount - 1} className="px-2 py-3 text-right">
+                            <TD colSpan={colCount} className="px-3 py-3 text-right">
                               <div className="flex w-full items-center justify-start" style={{ paddingRight: `calc(${rowIndent} + 36px)` }}>
                                 <input
                                   value={childDraft}
@@ -1118,11 +1137,10 @@ export default function CostForecastCostsTab({
                       );
                     })}
 
-                    {adding && (
-                      <TR>
-                        <TD className="px-2 py-3">-</TD>
-                        <TD colSpan={colCount - 1} className="px-2 py-3 text-right">
-                          <div className="flex w-full items-center justify-between gap-3">
+                        {adding && (
+                          <TR>
+                        <TD colSpan={colCount} className="px-3 py-3 text-right">
+                          <div className="flex w-full items-center justify-start gap-3" dir="rtl">
                           <select
                             value={selectedProjectId}
                             onChange={(event) => handleSelectProject(event.target.value)}
