@@ -2014,19 +2014,22 @@ function OrgStructurePage() {
                       <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
                         نقش‌ها
                       </TH>
+                      <TH className="w-28 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                        اقدامات
+                      </TH>
                     </tr>
                   </THead>
 
                   <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100 [&_td]:text-center [&_th]:text-center">
                     {unitRoleLoading ? (
                       <TR className="border-t-0 bg-white dark:bg-neutral-900">
-                        <TD colSpan={2} className="text-center text-black/60 dark:text-neutral-400 py-3">
+                        <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-3">
                           در حال بارگذاری…
                         </TD>
                       </TR>
                     ) : unitRolesRows.length === 0 ? (
                       <TR className="border-t-0 bg-white dark:bg-neutral-900">
-                        <TD colSpan={2} className="text-center text-black/60 dark:text-neutral-400 py-3">
+                        <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-3">
                           واحدی ثبت نشده است.
                         </TD>
                       </TR>
@@ -2058,6 +2061,18 @@ function OrgStructurePage() {
                               ) : (
                                 <span className="text-neutral-500 dark:text-neutral-400">—</span>
                               )}
+                            </TD>
+
+                            <TD className={`px-3 ${tdBorder}`}>
+                              <div className="flex items-center justify-center gap-2">
+                                <RowActionIconBtn
+                                  action="delete"
+                                  onClick={() => deleteUnitFromUnitRoles(row.id, row.unit)}
+                                  disabled={!isAdmin || unitRoleSaving}
+                                  size={36}
+                                  iconSize={17}
+                                />
+                              </div>
                             </TD>
                           </TR>
                         );
