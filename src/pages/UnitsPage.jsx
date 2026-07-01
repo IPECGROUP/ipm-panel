@@ -163,10 +163,8 @@ function OrgStructurePage() {
   const [activeTab, setActiveTab] = useState(() => {
     if (requestedTab === "assignments" && isAdmin) return "assignments";
     if (requestedTab === "users" && isAdmin) return "users";
-    if (requestedTab === "unit-roles") return "unitRoles";
-    if (requestedTab === "roles") return "roles";
-    return "units";
-  }); // "units" | "roles" | "unitRoles" | "users" | "assignments"
+    return "unitRoles";
+  }); // "unitRoles" | "users" | "assignments"
 
   const [list, setList] = useState([]);
   const [adding, setAdding] = useState("");
@@ -192,7 +190,8 @@ function OrgStructurePage() {
   const [unitRoleNewRole, setUnitRoleNewRole] = useState("");
   const [unitRoleErr, setUnitRoleErr] = useState("");
   const [unitRoleSaving, setUnitRoleSaving] = useState(false);
-  const [unitRolesByUnitId, setUnitRolesByUnitId] = useState({});
+  const [unitRoleLoading, setUnitRoleLoading] = useState(false);
+  const [unitRoleItems, setUnitRoleItems] = useState([]);
   const unitRoleUnitComboRef = useRef(null);
   const unitRoleRoleInputRef = useRef(null);
 
@@ -223,6 +222,27 @@ function OrgStructurePage() {
       await loadRoles().catch(() => {});
     }
     return item;
+  };
+
+  const loadUnitRoles = async () => {
+    setUnitRoleLoading(true);
+    setUnitRoleErr("");
+    try {
+      const data = await api("/base/unit-roles", { credentials: "include" });
+      const items = Array.isArray(data.items) ? data.items : [];
+      setUnitRoleItems(items);
+      if (Array.isArray(data.units)) {
+        setList(sortUnitsByName(data.units));
+      }
+      if (Array.isArray(data.roles)) {
+        setRolesList(data.roles);
+      }
+    } catch (e) {
+      setUnitRoleItems([]);
+      setUnitRoleErr(e.message || "خطا در دریافت واحدها و نقش‌ها");
+    } finally {
+      setUnitRoleLoading(false);
+    }
   };
 
   const addRole = async (e) => {
@@ -340,13 +360,6 @@ function OrgStructurePage() {
       });
       return next;
     });
-    setUnitRolesByUnitId((prev) => {
-      const next = {};
-      Object.entries(prev || {}).forEach(([unitId, roles]) => {
-        next[unitId] = (Array.isArray(roles) ? roles : []).filter((role) => !idSet.has(String(role?.id)));
-      });
-      return next;
-    });
 
     const idMap = new Map((rolesList || []).map((it) => [String(it.id), it.id]));
     try {
@@ -367,8 +380,14 @@ function OrgStructurePage() {
   };
 
   useEffect(() => {
-    if (activeTab === "roles" || activeTab === "unitRoles") {
+    if (activeTab === "roles") {
       loadRoles().catch(console.error);
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === "unitRoles") {
+      loadUnitRoles().catch(console.error);
     }
   }, [activeTab]);
 
@@ -381,17 +400,11 @@ function OrgStructurePage() {
       setActiveTab("assignments");
       return;
     }
-    if (requestedTab === "roles") {
-      setActiveTab("roles");
-      return;
-    }
-    if (requestedTab === "unit-roles") {
+    if (requestedTab === "unit-roles" || requestedTab === "roles" || requestedTab === "units") {
       setActiveTab("unitRoles");
       return;
     }
-    if (requestedTab === "units") {
-      setActiveTab("units");
-    }
+    setActiveTab("unitRoles");
   }, [requestedTab, isAdmin]);
 
   // --- پاپ‌آپ سطح دسترسی ---
@@ -812,7 +825,7 @@ function OrgStructurePage() {
     }
   };
 
-  const visibleTabCount = isAdmin ? 5 : 3;
+  const visibleTabCount = isAdmin ? 3 : 1;
 
   const topTabBtnClass = (isActive, index, total) =>
     [
@@ -834,12 +847,12 @@ function OrgStructurePage() {
 
   const unitRoleUnitOptions = useMemo(
     () =>
-      (sortedList || []).map((u, idx) => ({
-        id: unitRowId(u, idx),
+      (unitRoleItems || []).map((u, idx) => ({
+        id: String(u?.id ?? unitRowId(u, idx)),
         label: u?.name || "—",
         item: u,
       })),
-    [sortedList]
+    [unitRoleItems]
   );
 
   useEffect(() => {
@@ -852,26 +865,15 @@ function OrgStructurePage() {
     setSelectedUnitRoleUnitId(found ? found.id : null);
   }, [unitRoleUnitQuery, unitRoleUnitOptions]);
 
-  useEffect(() => {
-    const validUnitIds = new Set((unitRoleUnitOptions || []).map((u) => String(u.id)));
-    setUnitRolesByUnitId((prev) => {
-      const next = {};
-      Object.entries(prev || {}).forEach(([unitId, roles]) => {
-        if (!validUnitIds.has(String(unitId))) return;
-        next[unitId] = Array.isArray(roles) ? roles : [];
-      });
-      return next;
-    });
-  }, [unitRoleUnitOptions]);
-
   const unitRolesRows = useMemo(
     () =>
-      (unitRoleUnitOptions || []).map((unit) => ({
-        id: unit.id,
-        unit: unit.label,
-        roles: unitRolesByUnitId[String(unit.id)] || [],
+      (unitRoleItems || []).map((unit, idx) => ({
+        id: String(unit?.id ?? idx),
+        unitId: unit?.id,
+        unit: unit?.name || unit?.label || "—",
+        roles: Array.isArray(unit?.roles) ? unit.roles : [],
       })),
-    [unitRoleUnitOptions, unitRolesByUnitId]
+    [unitRoleItems]
   );
 
   const addUnitFromUnitRoles = async (e) => {
@@ -885,8 +887,15 @@ function OrgStructurePage() {
     setUnitRoleSaving(true);
     setUnitRoleErr("");
     try {
-      const item = await createUnit(name);
-      const newId = item ? unitRowId(item) : "";
+      const resp = await api("/base/unit-roles", {
+        method: "POST",
+        body: JSON.stringify({ unit_name: name }),
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      const item = resp.item || resp.unit || null;
+      await loadUnitRoles();
+      const newId = item?.id ? String(item.id) : "";
       setUnitRoleNewUnit("");
       setUnitRoleUnitQuery(item?.name || name);
       if (newId) setSelectedUnitRoleUnitId(newId);
@@ -915,24 +924,13 @@ function OrgStructurePage() {
     setUnitRoleSaving(true);
     setUnitRoleErr("");
     try {
-      let role = (rolesList || []).find((r) => String(r?.name || "").trim() === name);
-      if (!role) {
-        role = await createRole(name);
-      }
-      if (!role) {
-        await loadRoles().catch(() => {});
-        role = { id: `local-${Date.now()}`, name };
-      }
-
-      setUnitRolesByUnitId((prev) => {
-        const current = Array.isArray(prev?.[unitId]) ? prev[unitId] : [];
-        const exists = current.some((r) =>
-          role?.id != null ? String(r?.id) === String(role.id) : String(r?.name || "").trim() === name
-        );
-        if (exists) return prev;
-        return { ...(prev || {}), [unitId]: [...current, role] };
+      await api("/base/unit-roles", {
+        method: "POST",
+        body: JSON.stringify({ unit_id: Number(unitId), role_name: name }),
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
       });
-
+      await loadUnitRoles();
       setUnitRoleNewRole("");
       requestAnimationFrame(() => unitRoleRoleInputRef.current?.focus?.());
     } catch (ex) {
@@ -943,21 +941,36 @@ function OrgStructurePage() {
   };
 
   const removeRoleFromUnit = (unitId, role) => {
-    const sid = String(unitId);
-    setUnitRolesByUnitId((prev) => {
-      const current = Array.isArray(prev?.[sid]) ? prev[sid] : [];
-      return {
-        ...(prev || {}),
-        [sid]: current.filter((r) =>
-          role?.id != null ? String(r?.id) !== String(role.id) : String(r?.name || "") !== String(role?.name || "")
-        ),
-      };
-    });
+    const uid = Number(unitId);
+    const rid = Number(role?.id);
+    if (!uid || !rid) return;
+    setUnitRoleSaving(true);
+    setUnitRoleErr("");
+    api("/base/unit-roles", {
+      method: "DELETE",
+      body: JSON.stringify({ unit_id: uid, role_id: rid }),
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    })
+      .then(() => loadUnitRoles())
+      .catch((ex) => setUnitRoleErr(ex.message || "خطا در حذف نقش از واحد"))
+      .finally(() => setUnitRoleSaving(false));
   };
 
   const clearRolesFromUnit = (unitId) => {
-    const sid = String(unitId);
-    setUnitRolesByUnitId((prev) => ({ ...(prev || {}), [sid]: [] }));
+    const uid = Number(unitId);
+    if (!uid) return;
+    setUnitRoleSaving(true);
+    setUnitRoleErr("");
+    api("/base/unit-roles", {
+      method: "DELETE",
+      body: JSON.stringify({ unit_id: uid }),
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    })
+      .then(() => loadUnitRoles())
+      .catch((ex) => setUnitRoleErr(ex.message || "خطا در حذف نقش‌های واحد"))
+      .finally(() => setUnitRoleSaving(false));
   };
 
   useEffect(() => {
@@ -1047,24 +1060,8 @@ function OrgStructurePage() {
         >
           <button
             type="button"
-            onClick={() => setActiveTab("units")}
-            className={topTabBtnClass(activeTab === "units", 0, visibleTabCount)}
-          >
-            واحد ها
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab("roles")}
-            className={topTabBtnClass(activeTab === "roles", 1, visibleTabCount)}
-          >
-            نقش ها
-          </button>
-
-          <button
-            type="button"
             onClick={() => setActiveTab("unitRoles")}
-            className={topTabBtnClass(activeTab === "unitRoles", 2, visibleTabCount)}
+            className={topTabBtnClass(activeTab === "unitRoles", 0, visibleTabCount)}
           >
             واحد ها و نقش ها
           </button>
@@ -1074,7 +1071,7 @@ function OrgStructurePage() {
               <button
                 type="button"
                 onClick={() => setActiveTab("users")}
-                className={topTabBtnClass(activeTab === "users", 3, visibleTabCount)}
+                className={topTabBtnClass(activeTab === "users", 1, visibleTabCount)}
               >
                 کاربران
               </button>
@@ -1082,7 +1079,7 @@ function OrgStructurePage() {
               <button
                 type="button"
                 onClick={() => setActiveTab("assignments")}
-                className={topTabBtnClass(activeTab === "assignments", 4, visibleTabCount)}
+                className={topTabBtnClass(activeTab === "assignments", 2, visibleTabCount)}
               >
                 انتصاب ها
               </button>
@@ -1859,7 +1856,13 @@ function OrgStructurePage() {
                   </THead>
 
                   <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100 [&_td]:text-center [&_th]:text-center">
-                    {unitRolesRows.length === 0 ? (
+                    {unitRoleLoading ? (
+                      <TR className="border-t-0 bg-white dark:bg-neutral-900">
+                        <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-3">
+                          در حال بارگذاری…
+                        </TD>
+                      </TR>
+                    ) : unitRolesRows.length === 0 ? (
                       <TR className="border-t-0 bg-white dark:bg-neutral-900">
                         <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-3">
                           واحدی ثبت نشده است.
