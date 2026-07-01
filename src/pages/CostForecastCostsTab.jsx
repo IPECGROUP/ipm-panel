@@ -935,6 +935,7 @@ export default function CostForecastCostsTab({
                       const canEditAmounts = row.kind === "breakdown" && !row.hasChildren;
                       const rowIndent = `${Math.min(Math.max(0, Number(row.depth || 0)), 4) * 36}px`;
                       const rowIndentStyle = { paddingRight: rowIndent };
+                      const childRowIndentStyle = { paddingRight: `calc(${rowIndent} + 36px)` };
                       const rowGrandTotal = getRowGrandTotal(row);
                       const actionTargets = selectedKeys.length > 1 && isSelected
                         ? displayRows.filter((item) => selectedSet.has(item.key))
@@ -1105,9 +1106,24 @@ export default function CostForecastCostsTab({
                           </TD>
                         </TR>
                         {isAddingChild && (
-                          <TR>
-                            <TD colSpan={colCount} className="px-3 py-3 text-right">
-                              <div className="flex w-full items-center justify-start" style={{ paddingRight: `calc(${rowIndent} + 36px)` }}>
+                          <TR className={getHoverSelectableRowClass(false)}>
+                            <TD className="px-2 py-3">
+                              <input
+                                type="checkbox"
+                                className={rowUi.checkbox}
+                                checked={false}
+                                disabled
+                                aria-label="ردیف جدید"
+                                title="ردیف جدید"
+                              />
+                            </TD>
+                            <TD className="px-2 py-3 whitespace-nowrap text-right">
+                              <div className="flex items-center justify-start" dir="rtl" style={childRowIndentStyle}>
+                                <span className="ltr text-[11px] md:text-xs">—</span>
+                              </div>
+                            </TD>
+                            <TD className="px-2 py-3 text-right break-words max-w-[180px]">
+                              <div className="flex w-full items-center justify-start" style={childRowIndentStyle}>
                                 <input
                                   value={childDraft}
                                   onChange={(event) => setChildDraft(event.target.value)}
@@ -1125,10 +1141,26 @@ export default function CostForecastCostsTab({
                                   }}
                                   disabled={isSavingChild}
                                   dir="rtl"
-                                  className="h-12 w-full max-w-3xl rounded-xl border border-black/15 bg-white px-4 text-right text-base text-black shadow-sm outline-none transition placeholder:text-neutral-400 focus:border-black/25 focus:ring-2 focus:ring-black/10 disabled:opacity-70 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:border-white/25 dark:focus:ring-white/20"
+                                  className="h-10 w-full rounded-xl border border-black/15 bg-white px-3 text-right text-sm text-black shadow-sm outline-none transition placeholder:text-neutral-400 focus:border-black/25 focus:ring-2 focus:ring-black/10 disabled:opacity-70 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:border-white/25 dark:focus:ring-white/20"
                                   placeholder="عنوان زیرمجموعه"
                                   autoFocus
                                 />
+                              </div>
+                            </TD>
+                            {forecastMonths.map((month) => (
+                              <TD key={`new-child-${row.key}-${month.key}`} className="px-0 py-2 text-center align-middle">
+                                <button
+                                  type="button"
+                                  disabled
+                                  className="w-[5.5rem] mx-auto h-10 md:w-[5.5rem] md:h-10 rounded-xl border border-black/10 bg-black/5 text-[10px] md:text-[11px] text-black/70 shadow-sm cursor-default dark:bg-white/5 dark:border-neutral-700 dark:text-neutral-100"
+                                >
+                                  —
+                                </button>
+                              </TD>
+                            ))}
+                            <TD className="px-3 py-3 whitespace-nowrap text-center border-l border-r border-black/10 dark:border-neutral-700">
+                              <div className="mx-auto flex min-h-[34px] w-full max-w-[230px] items-center justify-center">
+                                <span className="ltr">۰</span>
                               </div>
                             </TD>
                           </TR>
