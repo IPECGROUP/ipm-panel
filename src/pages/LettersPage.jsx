@@ -1424,7 +1424,41 @@ const mailTextOf = (l, ...keys) => {
   return "";
 };
 
-const openLetterInOutlook = (l) => {
+const arrayBufferToBase64 = (buffer) => {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+};
+
+const textToBase64 = (text) => arrayBufferToBase64(new TextEncoder().encode(String(text || "")).buffer);
+
+const foldBase64 = (value) => String(value || "").match(/.{1,76}/g)?.join("\r\n") || "";
+
+const encodeMimeHeader = (value) => {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (/^[\x20-\x7E]*$/.test(text)) return text;
+  return `=?UTF-8?B?${textToBase64(text)}?=`;
+};
+
+const encodeRfc5987 = (value) =>
+  encodeURIComponent(String(value || "file"))
+    .replace(/['()]/g, escape)
+    .replace(/\*/g, "%2A");
+
+const safeEmailFileName = (value) => {
+  const name = String(value || "letter")
+    .replace(/[\\/:*?"<>|]+/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+  return name || "letter";
+};
+
+const buildLetterMailDraft = (l) => {
   const kind = letterKindOf(l);
   const no = letterNoOf(l);
   const subject = subjectOf(l);
@@ -1444,11 +1478,103 @@ const openLetterInOutlook = (l) => {
     mailTextOf(l, "secretariat_note", "secretariatNote") ? `توضیح: ${mailTextOf(l, "secretariat_note", "secretariatNote")}` : "",
   ].filter(Boolean);
   const mailSubject = subject || (no ? `نامه ${no}` : "نامه");
+  return { recipient, subject: mailSubject, body: details.join("\n") };
+};
+
+const buildEmlDraft = ({ to, subject, body, attachments }) => {
+  const boundary = `----=_IPM_LETTER_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  const lines = [
+    `To: ${to || ""}`,
+    `Subject: ${encodeMimeHeader(subject)}`,
+    `Date: ${new Date().toUTCString()}`,
+    "X-Unsent: 1",
+    "MIME-Version: 1.0",
+    `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    "",
+    `--${boundary}`,
+    'Content-Type: text/plain; charset="utf-8"',
+    "Content-Transfer-Encoding: base64",
+    "",
+    foldBase64(textToBase64(body)),
+  ];
+
+  for (const file of attachments) {
+    const name = file.name || "file";
+    const encodedName = encodeRfc5987(name);
+    lines.push(
+      `--${boundary}`,
+      `Content-Type: ${file.type || "application/octet-stream"}; name*=UTF-8''${encodedName}`,
+      "Content-Transfer-Encoding: base64",
+      `Content-Disposition: attachment; filename*=UTF-8''${encodedName}`,
+      "",
+      foldBase64(file.base64)
+    );
+  }
+
+  lines.push(`--${boundary}--`, "");
+  return lines.join("\r\n");
+};
+
+const downloadEmlDraft = ({ subject, eml }) => {
+  const blob = new Blob([eml], { type: "message/rfc822;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${safeEmailFileName(subject)}.eml`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+};
+
+const openLetterInOutlook = async (l) => {
+  const draft = buildLetterMailDraft(l);
+  const atts = attachmentsOf(l);
+
+  if (!atts.length) {
   const href =
-    `mailto:${encodeURIComponent(recipient)}` +
-    `?subject=${encodeURIComponent(mailSubject)}` +
-    `&body=${encodeURIComponent(details.join("\n"))}`;
+      `mailto:${encodeURIComponent(draft.recipient)}` +
+      `?subject=${encodeURIComponent(draft.subject)}` +
+      `&body=${encodeURIComponent(draft.body)}`;
   window.location.href = href;
+    return;
+  }
+
+  const letterId = letterIdOf(l);
+  const fetched = await Promise.allSettled(
+    atts.map(async (att, index) => {
+      const url = resolveFileUrl(attachmentViewUrlOf(att, letterId, index));
+      if (!url) throw new Error("missing_attachment_url");
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) throw new Error(`attachment_fetch_failed_${res.status}`);
+      const blob = await res.blob();
+      return {
+        name: attachmentNameOf(att) || `file-${index + 1}`,
+        type: attachmentTypeOf(att) || blob.type || "application/octet-stream",
+        base64: arrayBufferToBase64(await blob.arrayBuffer()),
+      };
+    })
+  );
+
+  const attachments = fetched.filter((x) => x.status === "fulfilled").map((x) => x.value);
+  const failedCount = fetched.length - attachments.length;
+  const body = failedCount
+    ? `${draft.body}\n\n${failedCount} فایل پیوست به دلیل خطا اضافه نشد.`
+    : draft.body;
+
+  downloadEmlDraft({
+    subject: draft.subject,
+    eml: buildEmlDraft({
+      to: draft.recipient,
+      subject: draft.subject,
+      body,
+      attachments,
+    }),
+  });
+
+  if (failedCount) {
+    alert(`${toFaDigits(failedCount)} فایل پیوست به ایمیل اضافه نشد.`);
+  }
 };
 
 const searchHaystackOf = (l) => {
