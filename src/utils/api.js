@@ -8,6 +8,7 @@ function mapError(data, fallback = "request_failed") {
   if (e === "username_password_required") return "نام کاربری و رمز را وارد کنید";
   if (e === "user_has_no_password") return "برای این کاربر رمز ثبت نشده است";
   if (e === "user_expired") return "اعتبار این کاربر منقضی شده است";
+  if (e === "user_in_use") return "این کاربر در سوابق سیستم استفاده شده و قابل حذف کامل نیست";
   if (e === "not_found") return "سرویس مورد نظر روی سرور پیدا نشد";
 
   return String(e);
