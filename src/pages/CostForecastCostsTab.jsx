@@ -151,12 +151,12 @@ function HideRowButton({ onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="inline-grid place-items-center rounded-xl !border-0 !bg-transparent !bg-none !shadow-none !ring-0 transition hover:opacity-80 active:opacity-70"
-      style={{ width: 34, height: 34 }}
+      className="inline-grid place-items-center rounded-lg !border-0 !bg-transparent !bg-none !shadow-none !ring-0 transition hover:opacity-80 active:opacity-70"
+      style={{ width: 26, height: 26 }}
       aria-label="پنهان کردن ردیف"
       title="پنهان کردن ردیف"
     >
-      <span className="block h-[2px] w-4 rounded-full bg-neutral-900 dark:bg-neutral-100" />
+      <span className="block h-[2px] w-3 rounded-full bg-neutral-900 dark:bg-neutral-100" />
     </button>
   );
 }
@@ -1046,7 +1046,7 @@ export default function CostForecastCostsTab({
                               </span>
 
                               <div
-                                className={`absolute left-1 top-1/2 flex -translate-y-1/2 items-center gap-1 transition-all duration-200 ${
+                                className={`absolute left-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5 transition-all duration-200 ${
                                   isSelected
                                     ? "translate-x-0 opacity-100 pointer-events-auto"
                                     : "-translate-x-1 opacity-0 pointer-events-none group-hover:translate-x-0 group-hover:opacity-100 group-hover:pointer-events-auto"
@@ -1060,8 +1060,8 @@ export default function CostForecastCostsTab({
                                     focusFirstEditableCell(row);
                                   }}
                                   disabled={!canEditAmounts}
-                                  size={34}
-                                  iconSize={15}
+                                  size={30}
+                                  iconSize={14}
                                 />
                                 <HideRowButton
                                   onClick={(event) => {
@@ -1077,8 +1077,8 @@ export default function CostForecastCostsTab({
                                     event.stopPropagation();
                                     removeForecastRows(actionTargets);
                                   }}
-                                  size={34}
-                                  iconSize={16}
+                                  size={30}
+                                  iconSize={15}
                                 />
                               </div>
                             </div>
@@ -1121,12 +1121,13 @@ export default function CostForecastCostsTab({
                     {adding && (
                       <TR>
                         <TD className="px-2 py-3">-</TD>
-                        <TD colSpan={2} className="px-2 py-3 text-right">
+                        <TD colSpan={colCount - 1} className="px-2 py-3 text-right">
+                          <div className="flex w-full items-center justify-between gap-3">
                           <select
                             value={selectedProjectId}
                             onChange={(event) => handleSelectProject(event.target.value)}
                             disabled={projectsLoading || Boolean(loadingProjectId)}
-                            className="h-11 w-full max-w-xl rounded-xl border border-black/15 bg-white px-4 text-right text-base text-black outline-none focus:ring-2 focus:ring-black/10 disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                            className="h-11 w-full max-w-md rounded-xl border border-black/15 bg-white px-4 text-right text-base text-black shadow-sm outline-none focus:ring-2 focus:ring-black/10 disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                             autoFocus
                           >
                             <option value="">
@@ -1139,14 +1140,10 @@ export default function CostForecastCostsTab({
                               </option>
                             ))}
                           </select>
-                        </TD>
-                        {forecastMonths.map((month) => (
-                          <TD key={`select-${month.key}`} className="px-0 py-2" />
-                        ))}
-                        <TD className="px-3 py-3 border-l border-r border-black/10 dark:border-neutral-700">
                           {loadingProjectId ? (
-                            <span className="text-xs text-black/55 dark:text-neutral-400">در حال افزودن...</span>
+                            <span className="shrink-0 text-xs text-black/55 dark:text-neutral-400">در حال افزودن...</span>
                           ) : null}
+                          </div>
                         </TD>
                       </TR>
                     )}
