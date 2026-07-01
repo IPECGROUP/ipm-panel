@@ -259,6 +259,17 @@ export default function CostForecastCostsTab({
     loadForecast();
   }, [loadForecast]);
 
+  useEffect(() => {
+    if (!allowManualChildren || !customItems.length) return;
+    setExpandedKeys((prev) => {
+      const next = new Set(prev);
+      customItems.forEach((item) => {
+        if (item.projectId) next.add(`project:${item.projectId}`);
+      });
+      return next;
+    });
+  }, [allowManualChildren, customItems]);
+
   const addedProjectIds = useMemo(
     () => new Set(rowsByProject.map((item) => String(item.project.id))),
     [rowsByProject],
@@ -340,10 +351,10 @@ export default function CostForecastCostsTab({
       ...(projectEntry.items || []),
       ...manualItems.map((item) => ({
         id: `manual-${item.id}`,
-        budgetCode: item.code,
+        budgetCode: projectBudgetCode(projectEntry.project.code, item.code),
         budgetName: item.title,
         baseBudget: "0",
-        parentCode: item.parentCode,
+        parentCode: item.parentCode ? projectBudgetCode(projectEntry.project.code, item.parentCode) : "",
         isCustom: true,
         customId: item.id,
       })),
@@ -373,6 +384,9 @@ export default function CostForecastCostsTab({
     const childrenByParent = new Map();
     itemNodes.forEach((node) => {
       let parentCode = node.parentCode;
+      if (parentCode === normalizeCode(projectEntry.project.code)) {
+        parentCode = "";
+      }
       if (!parentCode) {
         const parts = String(node.code || "").split("-").filter(Boolean);
         for (let index = parts.length - 1; index > 0; index -= 1) {
@@ -382,6 +396,9 @@ export default function CostForecastCostsTab({
             break;
           }
         }
+      }
+      if (parentCode && !byCode.has(parentCode)) {
+        parentCode = "";
       }
       node.parentCode = parentCode;
       if (parentCode) {
