@@ -120,6 +120,32 @@ function ExpandButton({ onClick, onMouseDown, disabled = false }) {
   );
 }
 
+function TreeToggleButton({ expanded, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="grid h-6 w-6 shrink-0 place-items-center rounded-md border border-[#1f2b38] bg-[#263445] text-white shadow-sm transition hover:bg-[#1f2b38]"
+      aria-label={expanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
+      title={expanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
+    >
+      <svg
+        viewBox="0 0 20 20"
+        width="14"
+        height="14"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={`transition-transform ${expanded ? "rotate-180" : ""}`}
+      >
+        <path d="M5 8l5 5 5-5" />
+      </svg>
+    </button>
+  );
+}
+
 export default function CostForecastCostsTab({
   storageApiPath = "/cost-forecast-costs",
   allowManualChildren = false,
@@ -535,8 +561,12 @@ export default function CostForecastCostsTab({
   const startAddChild = (row) => {
     if (!allowManualChildren || !row) return;
     if (addingChildFor === row.key) {
-      setAddingChildFor("");
-      setChildDraft("");
+      if (String(childDraft || "").trim()) {
+        saveChild(row);
+      } else {
+        setAddingChildFor("");
+        setChildDraft("");
+      }
       return;
     }
     setExpandedKeys((prev) => {
@@ -809,6 +839,7 @@ export default function CostForecastCostsTab({
                           : "text-[11px] md:text-[13px]";
                       const isAddingChild = allowManualChildren && addingChildFor === row.key;
                       const isSavingChild = savingChildKey === row.key;
+                      const isExpanded = expandedKeys.has(row.key);
 
                       return (
                         <React.Fragment key={row.key}>
@@ -849,8 +880,18 @@ export default function CostForecastCostsTab({
                           </TD>
 
                           <TD className={`px-2 py-3 text-right break-words max-w-[180px] ${nameCellTextClass}`}>
-                            <div className="flex items-center justify-start" style={rowIndentStyle}>
+                            <div className="flex items-center justify-start gap-2" dir="rtl" style={rowIndentStyle}>
                               {row.name || "—"}
+                              {allowManualChildren && row.hasChildren ? (
+                                <TreeToggleButton
+                                  expanded={isExpanded}
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    toggleExpanded(row.key);
+                                  }}
+                                />
+                              ) : null}
                             </div>
                           </TD>
 
@@ -945,15 +986,16 @@ export default function CostForecastCostsTab({
                         {isAddingChild && (
                           <TR>
                             <TD className="px-2 py-3">-</TD>
-                            <TD colSpan={2} className="px-2 py-3 text-right">
-                              <div className="flex w-full items-center justify-start gap-2" style={{ paddingRight: `calc(${rowIndent} + 36px)` }}>
+                            <TD colSpan={colCount - 1} className="px-2 py-3 text-right">
+                              <div className="flex w-full items-center justify-start" style={{ paddingRight: `calc(${rowIndent} + 36px)` }}>
                                 <input
                                   value={childDraft}
                                   onChange={(event) => setChildDraft(event.target.value)}
+                                  onBlur={() => saveChild(row)}
                                   onKeyDown={(event) => {
                                     if (event.key === "Enter") {
                                       event.preventDefault();
-                                      saveChild(row);
+                                      event.currentTarget.blur();
                                     }
                                     if (event.key === "Escape") {
                                       event.preventDefault();
@@ -962,35 +1004,13 @@ export default function CostForecastCostsTab({
                                     }
                                   }}
                                   disabled={isSavingChild}
-                                  className="h-12 w-full max-w-2xl rounded-xl border border-black/15 bg-white px-4 text-right text-base text-black shadow-sm outline-none transition placeholder:text-neutral-400 focus:border-black/25 focus:ring-2 focus:ring-black/10 disabled:opacity-70 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:border-white/25 dark:focus:ring-white/20"
+                                  dir="rtl"
+                                  className="h-12 w-full max-w-3xl rounded-xl border border-black/15 bg-white px-4 text-right text-base text-black shadow-sm outline-none transition placeholder:text-neutral-400 focus:border-black/25 focus:ring-2 focus:ring-black/10 disabled:opacity-70 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:border-white/25 dark:focus:ring-white/20"
                                   placeholder="عنوان زیرمجموعه"
                                   autoFocus
                                 />
-                                <div className="flex shrink-0 items-center gap-1 rounded-xl border border-black/10 bg-white px-1 py-1 dark:border-neutral-700 dark:bg-neutral-900">
-                                  <RowActionIconBtn
-                                    action="save"
-                                    onClick={() => saveChild(row)}
-                                    disabled={isSavingChild || !String(childDraft || "").trim()}
-                                    size={34}
-                                    iconSize={15}
-                                  />
-                                  <RowActionIconBtn
-                                    action="cancel"
-                                    onClick={() => {
-                                      setAddingChildFor("");
-                                      setChildDraft("");
-                                    }}
-                                    disabled={isSavingChild}
-                                    size={34}
-                                    iconSize={14}
-                                  />
-                                </div>
                               </div>
                             </TD>
-                            {forecastMonths.map((month) => (
-                              <TD key={`child-${row.key}-${month.key}`} className="px-0 py-2" />
-                            ))}
-                            <TD className="px-3 py-3 border-l border-r border-black/10 dark:border-neutral-700" />
                           </TR>
                         )}
                         </React.Fragment>
