@@ -957,19 +957,22 @@ function OrgStructurePage() {
       .finally(() => setUnitRoleSaving(false));
   };
 
-  const clearRolesFromUnit = (unitId) => {
+  const deleteUnitFromUnitRoles = (unitId, unitName = "") => {
     const uid = Number(unitId);
     if (!uid) return;
+    const confirmText = unitName ? `حذف واحد «${unitName}»؟` : "حذف این واحد؟";
+    if (!window.confirm(confirmText)) return;
+
     setUnitRoleSaving(true);
     setUnitRoleErr("");
     api("/base/unit-roles", {
       method: "DELETE",
-      body: JSON.stringify({ unit_id: uid }),
+      body: JSON.stringify({ unit_id: uid, delete_unit: true }),
       headers: { "Content-Type": "application/json" },
       credentials: "include",
     })
       .then(() => loadUnitRoles())
-      .catch((ex) => setUnitRoleErr(ex.message || "خطا در حذف نقش‌های واحد"))
+      .catch((ex) => setUnitRoleErr(ex.message || "خطا در حذف واحد"))
       .finally(() => setUnitRoleSaving(false));
   };
 
@@ -1902,8 +1905,8 @@ function OrgStructurePage() {
                               <div className="flex items-center justify-center gap-2">
                                 <RowActionIconBtn
                                   action="delete"
-                                  onClick={() => clearRolesFromUnit(row.id)}
-                                  disabled={!isAdmin || unitRoleSaving || !hasRoles}
+                                  onClick={() => deleteUnitFromUnitRoles(row.id, row.unit)}
+                                  disabled={!isAdmin || unitRoleSaving}
                                   size={36}
                                   iconSize={17}
                                 />
