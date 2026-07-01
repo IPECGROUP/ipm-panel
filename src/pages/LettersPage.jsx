@@ -1407,6 +1407,50 @@ const fromToOf = (l) => {
     return s || "—";
   };
 
+const firstEmailOf = (...vals) => {
+  const emailRe = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+  for (const val of vals) {
+    const match = String(val ?? "").match(emailRe);
+    if (match?.[0]) return match[0];
+  }
+  return "";
+};
+
+const mailTextOf = (l, ...keys) => {
+  for (const key of keys) {
+    const value = String(l?.[key] ?? "").trim();
+    if (value) return value;
+  }
+  return "";
+};
+
+const openLetterInOutlook = (l) => {
+  const kind = letterKindOf(l);
+  const no = letterNoOf(l);
+  const subject = subjectOf(l);
+  const recipient = firstEmailOf(
+    mailTextOf(l, "to_email", "toEmail", "email"),
+    mailTextOf(l, "to_name", "toName", "to"),
+    mailTextOf(l, "receiver_email", "receiverEmail")
+  );
+  const kindLabel = kind === "outgoing" ? "صادره" : kind === "internal" ? "داخلی" : "وارده";
+  const details = [
+    `نوع نامه: ${kindLabel}`,
+    no ? `شماره نامه: ${no}` : "",
+    letterDateOf(l) ? `تاریخ نامه: ${letterDateOf(l)}` : "",
+    subject ? `موضوع: ${subject}` : "",
+    fromToOf(l) && fromToOf(l) !== "—" ? `از/به: ${fromToOf(l)}` : "",
+    orgOf(l) ? `شرکت/سازمان: ${orgOf(l)}` : "",
+    mailTextOf(l, "secretariat_note", "secretariatNote") ? `توضیح: ${mailTextOf(l, "secretariat_note", "secretariatNote")}` : "",
+  ].filter(Boolean);
+  const mailSubject = subject || (no ? `نامه ${no}` : "نامه");
+  const href =
+    `mailto:${encodeURIComponent(recipient)}` +
+    `?subject=${encodeURIComponent(mailSubject)}` +
+    `&body=${encodeURIComponent(details.join("\n"))}`;
+  window.location.href = href;
+};
+
 const searchHaystackOf = (l) => {
   const head = [
     letterIdOf(l),
@@ -3458,20 +3502,38 @@ useLayoutEffect(() => {
     if (lastLetterDraftSignatureRef.current.includes(cleanKey)) lastLetterDraftSignatureRef.current = "";
   };
 
+  const clearNewLetterDrafts = () => {
+    if (letterDraftSaveTimerRef.current) {
+      clearTimeout(letterDraftSaveTimerRef.current);
+      letterDraftSaveTimerRef.current = null;
+    }
+
+    const store = readLetterDraftStore();
+    const userPrefix = `${encodeURIComponent(letterDraftUserKey())}:new:`;
+    let changed = false;
+
+    for (const [key, item] of Object.entries(store.items || {})) {
+      if (String(key).startsWith(userPrefix) && !item?.payload?.editingId) {
+        delete store.items[key];
+        changed = true;
+      }
+    }
+
+    if (store.latestNewKey && !store.items?.[store.latestNewKey]) {
+      store.latestNewKey = "";
+      changed = true;
+    }
+
+    if (changed) writeLetterDraftStore(store);
+    lastSavedLetterDraftKeyRef.current = "";
+    lastLetterDraftSignatureRef.current = "";
+  };
+
   const readLetterDraftByKey = (key) => {
     const cleanKey = String(key || "").trim();
     if (!cleanKey) return null;
     const item = readLetterDraftStore().items?.[cleanKey];
     return item?.payload ? item : null;
-  };
-
-  const readLatestNewLetterDraft = () => {
-    const store = readLetterDraftStore();
-    const latest = store.latestNewKey ? store.items?.[store.latestNewKey] : null;
-    if (latest?.payload) return latest;
-    return Object.values(store.items || {})
-      .filter((item) => item?.payload && !item.payload.editingId)
-      .sort((a, b) => String(b?.savedAt || "").localeCompare(String(a?.savedAt || "")))[0] || null;
   };
 
   const applyLetterDraftPayload = (payload) => {
@@ -3621,25 +3683,16 @@ useLayoutEffect(() => {
 };
 
 const closeFormAndReset = () => {
+  if (!editingId) clearNewLetterDrafts();
   resetForm();
   setFormKind("incoming");
   setFormOpen(false);
 };
 
 const openFreshForm = () => {
+  clearNewLetterDrafts();
   resetForm();
-  const draft = readLatestNewLetterDraft();
-  if (draft?.payload) {
-    applyLetterDraftPayload(draft.payload);
-    lastSavedLetterDraftKeyRef.current = String(draft.key || letterDraftKeyFromPayload(draft.payload));
-  } else {
-    lastSavedLetterDraftKeyRef.current = "";
-    lastLetterDraftSignatureRef.current = "";
-  }
   setFormKind("incoming");
-  if (draft?.payload?.formKind && LETTER_FORM_KINDS.includes(draft.payload.formKind)) {
-    setFormKind(draft.payload.formKind);
-  }
   setFormOpen(true);
 };
 
@@ -4874,7 +4927,7 @@ aria-invalid={formKind === "incoming" ? fieldHasError("incoming", "classificatio
   {/* مرکز/پروژه */}
   {/* مرکز/پروژه */}
 <div className="w-full md:flex-1 md:min-w-[260px]">
-  <div className={labelSmCls}>مرکز/پروژه</div>
+  <div className={labelSmCls}>پروژه</div>
 
   <FieldWrap>
     <select
@@ -5339,8 +5392,6 @@ aria-invalid={fieldHasError(formKind, "subject")}
     alt=""
     className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
   />
-  <span>بارگذاری اسناد</span>
-
   {Array.isArray(docFilesByType?.[formKind]) && docFilesByType[formKind].length > 0 ? (
     <span className="mr-2 text-xs opacity-80">
       ({toFaDigits(docFilesByType[formKind].length)})
@@ -5823,6 +5874,18 @@ aria-invalid={fieldHasError(formKind, "subject")}
                               >
                                 <img src="/images/icons/namayeshname.svg" alt="" className="w-5 h-5 dark:invert" />
                               </button>
+                              <button
+                                type="button"
+                                onClick={() => openLetterInOutlook(l)}
+                                className={iconBtnCls + " !h-9 !w-9"}
+                                aria-label="ارسال"
+                                title="ارسال"
+                              >
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M22 2 11 13" />
+                                  <path d="m22 2-7 20-4-9-9-4 20-7Z" />
+                                </svg>
+                              </button>
                               <button type="button" onClick={() => startEdit(l)} className={iconBtnCls + " !h-9 !w-9"} aria-label="ویرایش" title="ویرایش">
                                 <img src="/images/icons/pencil.svg" alt="" className="w-5 h-5 dark:invert" />
                               </button>
@@ -5887,7 +5950,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
   <col />                         {/* موضوع (باقی فضا) */}
   <col style={{ width: 144 }} />  {/* از/به */}
   <col style={{ width: 176 }} />  {/* شرکت/سازمان */}
-  <col style={{ width: 160 }} />  {/* اقدامات */}
+  <col style={{ width: 192 }} />  {/* اقدامات */}
 </colgroup>
 
   <thead>
@@ -6121,6 +6184,19 @@ const rowBg = normalRowBg;
                   title="نمایش"
                 >
                   <img src="/images/icons/namayeshname.svg" alt="" className="w-4 h-4 dark:invert" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => openLetterInOutlook(l)}
+                  className={iconBtnCls}
+                  aria-label="ارسال"
+                  title="ارسال"
+                >
+                  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 2 11 13" />
+                    <path d="m22 2-7 20-4-9-9-4 20-7Z" />
+                  </svg>
                 </button>
 
                 <button type="button" onClick={() => startEdit(l)} className={iconBtnCls} aria-label="ویرایش" title="ویرایش">
