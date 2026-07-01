@@ -14,6 +14,8 @@ import {
 import { api } from "../utils/api"; // 
 import UsersTab from "./UsersTab.jsx";
 
+const PAGE_ICON = "/images/icons/unit.svg";
+
 const UnitRolesTableShell = React.memo(function UnitRolesTableShell({ children }) {
   return (
     <div className="rounded-2xl border border-black/10 bg-white text-black overflow-hidden dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
@@ -61,6 +63,7 @@ const UnitRoleCombobox = React.memo(function UnitRoleCombobox({
   onSelect,
   inputRef,
   disabled,
+  ariaLabel = "انتخاب",
 }) {
   const [open, setOpen] = useState(false);
 
@@ -90,7 +93,7 @@ const UnitRoleCombobox = React.memo(function UnitRoleCombobox({
                    border border-black/15 outline-none focus:ring-2 focus:ring-black/10
                    dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50
                    disabled:opacity-60"
-        aria-label="واحد ها"
+        aria-label={ariaLabel}
         autoComplete="off"
       />
 
@@ -195,6 +198,18 @@ function OrgStructurePage() {
   const unitRoleUnitComboRef = useRef(null);
   const unitRoleRoleInputRef = useRef(null);
 
+  const [assignmentUserQuery, setAssignmentUserQuery] = useState("");
+  const [selectedAssignmentUserId, setSelectedAssignmentUserId] = useState(null);
+  const [assignmentRoleQuery, setAssignmentRoleQuery] = useState("");
+  const [selectedAssignmentRoleId, setSelectedAssignmentRoleId] = useState(null);
+  const [assignmentErr, setAssignmentErr] = useState("");
+  const [assignmentSaving, setAssignmentSaving] = useState(false);
+  const [assignmentLoading, setAssignmentLoading] = useState(false);
+  const [assignmentItems, setAssignmentItems] = useState([]);
+  const [assignmentRoles, setAssignmentRoles] = useState([]);
+  const assignmentUserComboRef = useRef(null);
+  const assignmentRoleComboRef = useRef(null);
+
   const loadRoles = async () => {
     setRolesLoading(true);
     setRolesErr("");
@@ -242,6 +257,22 @@ function OrgStructurePage() {
       setUnitRoleErr(e.message || "خطا در دریافت واحدها و نقش‌ها");
     } finally {
       setUnitRoleLoading(false);
+    }
+  };
+
+  const loadAssignments = async () => {
+    setAssignmentLoading(true);
+    setAssignmentErr("");
+    try {
+      const data = await api("/base/user-role-assignments", { credentials: "include" });
+      setAssignmentItems(Array.isArray(data.items) ? data.items : []);
+      setAssignmentRoles(Array.isArray(data.roles) ? data.roles : []);
+    } catch (e) {
+      setAssignmentItems([]);
+      setAssignmentRoles([]);
+      setAssignmentErr(e.message || "خطا در دریافت انتصاب‌ها");
+    } finally {
+      setAssignmentLoading(false);
     }
   };
 
@@ -390,6 +421,12 @@ function OrgStructurePage() {
       loadUnitRoles().catch(console.error);
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === "assignments" && isAdmin) {
+      loadAssignments().catch(console.error);
+    }
+  }, [activeTab, isAdmin]);
 
   useEffect(() => {
     if (requestedTab === "users" && isAdmin) {
@@ -976,6 +1013,127 @@ function OrgStructurePage() {
       .finally(() => setUnitRoleSaving(false));
   };
 
+  const assignmentUserOptions = useMemo(
+    () =>
+      (assignmentItems || []).map((u) => ({
+        id: String(u?.id || ""),
+        label: u?.label || u?.name || u?.username || "—",
+        item: u,
+      })),
+    [assignmentItems]
+  );
+
+  const assignmentRoleOptions = useMemo(
+    () =>
+      (assignmentRoles || []).map((role) => ({
+        id: String(role?.id || ""),
+        label: role?.name || "—",
+        item: role,
+      })),
+    [assignmentRoles]
+  );
+
+  useEffect(() => {
+    const v = String(assignmentUserQuery || "").trim();
+    if (!v) {
+      setSelectedAssignmentUserId(null);
+      return;
+    }
+    const found = (assignmentUserOptions || []).find((item) => String(item?.label || "").trim() === v);
+    setSelectedAssignmentUserId(found ? found.id : null);
+  }, [assignmentUserQuery, assignmentUserOptions]);
+
+  useEffect(() => {
+    const v = String(assignmentRoleQuery || "").trim();
+    if (!v) {
+      setSelectedAssignmentRoleId(null);
+      return;
+    }
+    const found = (assignmentRoleOptions || []).find((item) => String(item?.label || "").trim() === v);
+    setSelectedAssignmentRoleId(found ? found.id : null);
+  }, [assignmentRoleQuery, assignmentRoleOptions]);
+
+  const assignmentRows = useMemo(
+    () =>
+      (assignmentItems || []).map((item, idx) => ({
+        id: String(item?.id ?? idx),
+        userId: item?.id,
+        user: item?.label || item?.name || item?.username || "—",
+        roles: Array.isArray(item?.roles) ? item.roles : [],
+      })),
+    [assignmentItems]
+  );
+
+  const addAssignment = async (e) => {
+    e?.preventDefault();
+    const userId = Number(selectedAssignmentUserId);
+    const roleId = Number(selectedAssignmentRoleId);
+
+    if (!userId) {
+      setAssignmentErr("ابتدا یک کاربر را انتخاب کنید");
+      return;
+    }
+    if (!roleId) {
+      setAssignmentErr("ابتدا یک نقش را انتخاب کنید");
+      return;
+    }
+
+    setAssignmentSaving(true);
+    setAssignmentErr("");
+    try {
+      await api("/base/user-role-assignments", {
+        method: "POST",
+        body: JSON.stringify({ user_id: userId, role_id: roleId }),
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      await loadAssignments();
+      setAssignmentRoleQuery("");
+      setSelectedAssignmentRoleId(null);
+      requestAnimationFrame(() => assignmentRoleComboRef.current?.focus?.());
+    } catch (ex) {
+      setAssignmentErr(ex.message || "خطا در ثبت انتصاب");
+    } finally {
+      setAssignmentSaving(false);
+    }
+  };
+
+  const removeRoleFromUser = (userId, role) => {
+    const uid = Number(userId);
+    const rid = Number(role?.id);
+    if (!uid || !rid) return;
+    setAssignmentSaving(true);
+    setAssignmentErr("");
+    api("/base/user-role-assignments", {
+      method: "DELETE",
+      body: JSON.stringify({ user_id: uid, role_id: rid }),
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    })
+      .then(() => loadAssignments())
+      .catch((ex) => setAssignmentErr(ex.message || "خطا در حذف نقش از کاربر"))
+      .finally(() => setAssignmentSaving(false));
+  };
+
+  const clearRolesFromUser = (userId, userName = "") => {
+    const uid = Number(userId);
+    if (!uid) return;
+    const confirmText = userName ? `حذف همه نقش‌های «${userName}»؟` : "حذف همه نقش‌های این کاربر؟";
+    if (!window.confirm(confirmText)) return;
+
+    setAssignmentSaving(true);
+    setAssignmentErr("");
+    api("/base/user-role-assignments", {
+      method: "DELETE",
+      body: JSON.stringify({ user_id: uid }),
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    })
+      .then(() => loadAssignments())
+      .catch((ex) => setAssignmentErr(ex.message || "خطا در حذف انتصاب‌ها"))
+      .finally(() => setAssignmentSaving(false));
+  };
+
   useEffect(() => {
     const validIds = new Set((sortedList || []).map((u, idx) => unitRowId(u, idx)));
     setSelectedUnits((prev) => prev.filter((id) => validIds.has(String(id))));
@@ -1051,10 +1209,14 @@ function OrgStructurePage() {
   return (
     <>
       <Card className="rounded-2xl border bg-white text-black border-black/10 text-[11px] md:text-sm dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-        <div className="mb-3 text-xs md:text-lg">
-          <span className="text-black/70 dark:text-neutral-300">تنظیمات</span>
-          <span className="mx-2 text-black/50 dark:text-neutral-400">›</span>
-          <span className="font-semibold text-black dark:text-neutral-100">ساختار سازمانی</span>
+        <div className="mb-5 flex min-w-0 items-center gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
+            <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate text-base font-bold md:text-lg">ساختار سازمانی</span>
+            <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">تنظیمات</span>
+          </span>
         </div>
         {/* تب‌ها */}
         <div
@@ -1931,7 +2093,142 @@ function OrgStructurePage() {
 
         {activeTab === "assignments" && isAdmin && (
           <div className={tabbedPanelClass}>
-            <div className="p-4 text-sm font-semibold text-black dark:text-neutral-100">انتصاب ها</div>
+            <div className="space-y-4 p-3 sm:p-4">
+              <div>
+                <form
+                  onSubmit={addAssignment}
+                  className="rounded-2xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-800 dark:bg-white/[0.03]"
+                >
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div>
+                      <UnitRoleFieldLabel>کاربران</UnitRoleFieldLabel>
+                      <UnitRoleCombobox
+                        items={assignmentUserOptions}
+                        value={assignmentUserQuery}
+                        onValueChange={setAssignmentUserQuery}
+                        selectedId={selectedAssignmentUserId}
+                        onSelect={(id) => setSelectedAssignmentUserId(id)}
+                        inputRef={assignmentUserComboRef}
+                        disabled={assignmentSaving || assignmentLoading}
+                        ariaLabel="کاربران"
+                      />
+                      {!selectedAssignmentUserId && String(assignmentUserQuery || "").trim() ? (
+                        <div className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">
+                          یک کاربر معتبر انتخاب کنید.
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div>
+                      <UnitRoleFieldLabel>نقش ها</UnitRoleFieldLabel>
+                      <div className="flex items-center gap-2 flex-row-reverse">
+                        <UnitRoleAddIconBtn
+                          title="ثبت انتصاب"
+                          disabled={assignmentSaving || assignmentLoading || !selectedAssignmentUserId || !selectedAssignmentRoleId}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <UnitRoleCombobox
+                            items={assignmentRoleOptions}
+                            value={assignmentRoleQuery}
+                            onValueChange={setAssignmentRoleQuery}
+                            selectedId={selectedAssignmentRoleId}
+                            onSelect={(id) => setSelectedAssignmentRoleId(id)}
+                            inputRef={assignmentRoleComboRef}
+                            disabled={assignmentSaving || assignmentLoading || !selectedAssignmentUserId}
+                            ariaLabel="نقش ها"
+                          />
+                        </div>
+                      </div>
+                      {!selectedAssignmentRoleId && String(assignmentRoleQuery || "").trim() ? (
+                        <div className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">
+                          یک نقش معتبر انتخاب کنید.
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </form>
+
+                {assignmentErr && <div className="mt-2 text-sm text-red-600 dark:text-red-400">{assignmentErr}</div>}
+              </div>
+
+              <div className="mt-3">
+                <UnitRolesTableShell>
+                  <THead>
+                    <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
+                      <TH className="w-44 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                        کاربران
+                      </TH>
+                      <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                        نقش ها
+                      </TH>
+                      <TH className="w-28 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                        اقدامات
+                      </TH>
+                    </tr>
+                  </THead>
+
+                  <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100 [&_td]:text-center [&_th]:text-center">
+                    {assignmentLoading ? (
+                      <TR className="border-t-0 bg-white dark:bg-neutral-900">
+                        <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-3">
+                          در حال بارگذاری…
+                        </TD>
+                      </TR>
+                    ) : assignmentRows.length === 0 ? (
+                      <TR className="border-t-0 bg-white dark:bg-neutral-900">
+                        <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-3">
+                          کاربری ثبت نشده است.
+                        </TD>
+                      </TR>
+                    ) : (
+                      assignmentRows.map((row, idx) => {
+                        const isLast = idx === assignmentRows.length - 1;
+                        const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
+                        const hasRoles = (row.roles || []).length > 0;
+
+                        return (
+                          <TR
+                            key={row.id}
+                            className="group border-t-0 bg-white transition-colors hover:bg-black/[0.04] dark:bg-neutral-900 dark:hover:bg-white/10"
+                          >
+                            <TD className={`px-3 font-semibold ${tdBorder}`}>{row.user || "—"}</TD>
+
+                            <TD className={`px-3 !py-[6px] ${tdBorder}`}>
+                              {hasRoles ? (
+                                <div className="flex flex-wrap items-center justify-start gap-2">
+                                  {row.roles.map((role) => (
+                                    <UnitRoleChip
+                                      key={`${row.id}-${role?.id ?? role?.name}`}
+                                      label={role?.name || "—"}
+                                      disabled={assignmentSaving}
+                                      onRemove={() => removeRoleFromUser(row.id, role)}
+                                    />
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-neutral-500 dark:text-neutral-400">—</span>
+                              )}
+                            </TD>
+
+                            <TD className={`px-3 ${tdBorder}`}>
+                              <div className="flex items-center justify-center gap-2">
+                                <RowActionIconBtn
+                                  action="delete"
+                                  onClick={() => clearRolesFromUser(row.id, row.user)}
+                                  disabled={assignmentSaving || !hasRoles}
+                                  size={36}
+                                  iconSize={17}
+                                />
+                              </div>
+                            </TD>
+                          </TR>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </UnitRolesTableShell>
+              </div>
+            </div>
           </div>
         )}
       </Card>
