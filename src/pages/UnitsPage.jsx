@@ -14,6 +14,41 @@ import {
 import { api } from "../utils/api"; // 
 import UsersTab from "./UsersTab.jsx";
 
+const UnitRolesTableShell = React.memo(function UnitRolesTableShell({ children }) {
+  return (
+    <div className="rounded-2xl border border-black/10 bg-white text-black overflow-hidden dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
+      <div dir="ltr" className="overflow-x-auto">
+        <table
+          className="w-full min-w-[700px] table-fixed text-xs sm:text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-2 [&_td]:py-2 [&_th]:whitespace-nowrap [&_td]:min-w-0"
+          dir="rtl"
+        >
+          {children}
+        </table>
+      </div>
+    </div>
+  );
+});
+
+const UnitRoleChip = React.memo(function UnitRoleChip({ label }) {
+  return (
+    <span
+      className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3 py-1 text-xs
+                 text-neutral-900 shadow-sm dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800"
+    >
+      <span className="whitespace-nowrap">{label}</span>
+      <button
+        type="button"
+        disabled
+        className="h-4 w-4 grid place-items-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-50"
+        aria-label="حذف"
+        title="حذف"
+      >
+        <img src="/images/icons/bastan.svg" alt="" className="w-3 h-3 opacity-70 hover:opacity-100 dark:invert" />
+      </button>
+    </span>
+  );
+});
+
 function OrgStructurePage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -23,9 +58,10 @@ function OrgStructurePage() {
   const [activeTab, setActiveTab] = useState(() => {
     if (requestedTab === "assignments" && isAdmin) return "assignments";
     if (requestedTab === "users" && isAdmin) return "users";
+    if (requestedTab === "unit-roles") return "unitRoles";
     if (requestedTab === "roles") return "roles";
     return "units";
-  }); // "units" | "roles" | "users" | "assignments"
+  }); // "units" | "roles" | "unitRoles" | "users" | "assignments"
 
   const [list, setList] = useState([]);
   const [adding, setAdding] = useState("");
@@ -220,6 +256,10 @@ function OrgStructurePage() {
     }
     if (requestedTab === "roles") {
       setActiveTab("roles");
+      return;
+    }
+    if (requestedTab === "unit-roles") {
+      setActiveTab("unitRoles");
       return;
     }
     if (requestedTab === "units") {
@@ -633,11 +673,11 @@ function OrgStructurePage() {
     }
   };
 
-  const visibleTabCount = isAdmin ? 4 : 2;
+  const visibleTabCount = isAdmin ? 5 : 3;
 
   const topTabBtnClass = (isActive, index, total) =>
     [
-      "relative z-10 h-10 flex-1 rounded-lg px-3 text-[11px] font-semibold transition whitespace-nowrap md:h-11 md:min-w-[132px] md:rounded-none md:px-4 md:text-sm",
+      "relative z-10 h-10 min-w-[104px] flex-none rounded-lg px-3 text-[11px] font-semibold transition whitespace-nowrap md:h-11 md:min-w-[132px] md:flex-1 md:rounded-none md:px-4 md:text-sm",
       index > 0 ? "md:border-r md:border-black/10 md:dark:border-neutral-800" : "",
       index === 0 ? "md:rounded-tr-2xl" : "",
       index === total - 1 ? "md:rounded-tl-2xl" : "",
@@ -652,6 +692,15 @@ function OrgStructurePage() {
 
   const tableUi = tablePreset.table;
   const rowUi = tablePreset.row;
+
+  const unitRolesRows = useMemo(
+    () => [
+      { id: "finance", unit: "واحد مالی", roles: ["مدیر مالی", "کارشناس مالی"] },
+      { id: "project", unit: "واحد پروژه", roles: ["مدیر پروژه", "کنترل پروژه"] },
+      { id: "support", unit: "واحد پشتیبانی", roles: ["مسئول پشتیبانی", "کارشناس تامین"] },
+    ],
+    []
+  );
 
   useEffect(() => {
     const validIds = new Set((sortedList || []).map((u, idx) => unitRowId(u, idx)));
@@ -735,7 +784,7 @@ function OrgStructurePage() {
         </div>
         {/* تب‌ها */}
         <div
-          className="mx-auto mb-2 flex w-full max-w-[360px] items-center justify-center gap-1 overflow-hidden rounded-xl border border-black/10 bg-black/[0.03] p-1 md:-mb-px md:max-w-[900px] md:items-stretch md:gap-0 md:rounded-b-none md:rounded-t-2xl md:border-b-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900"
+          className="mx-auto mb-2 flex w-full max-w-[360px] items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-black/10 bg-black/[0.03] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:-mb-px md:max-w-[1040px] md:items-stretch md:justify-center md:gap-0 md:rounded-b-none md:rounded-t-2xl md:border-b-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900"
           dir="rtl"
         >
           <button
@@ -754,12 +803,20 @@ function OrgStructurePage() {
             نقش ها
           </button>
 
+          <button
+            type="button"
+            onClick={() => setActiveTab("unitRoles")}
+            className={topTabBtnClass(activeTab === "unitRoles", 2, visibleTabCount)}
+          >
+            واحد ها و نقش ها
+          </button>
+
           {isAdmin && (
             <>
               <button
                 type="button"
                 onClick={() => setActiveTab("users")}
-                className={topTabBtnClass(activeTab === "users", 2, visibleTabCount)}
+                className={topTabBtnClass(activeTab === "users", 3, visibleTabCount)}
               >
                 کاربران
               </button>
@@ -767,7 +824,7 @@ function OrgStructurePage() {
               <button
                 type="button"
                 onClick={() => setActiveTab("assignments")}
-                className={topTabBtnClass(activeTab === "assignments", 3, visibleTabCount)}
+                className={topTabBtnClass(activeTab === "assignments", 4, visibleTabCount)}
               >
                 انتصاب ها
               </button>
@@ -1453,6 +1510,64 @@ function OrgStructurePage() {
               </TableWrap>
             </div>
           </>
+        )}
+
+        {activeTab === "unitRoles" && (
+          <div className={tabbedPanelClass}>
+            <div className="space-y-4 p-3 sm:p-4">
+              <div className="mt-3">
+                <UnitRolesTableShell>
+                  <THead>
+                    <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
+                      <TH className="w-44 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                        واحد
+                      </TH>
+                      <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                        نقش‌ها
+                      </TH>
+                      <TH className="w-28 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                        اقدامات
+                      </TH>
+                    </tr>
+                  </THead>
+
+                  <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100 [&_td]:text-center [&_th]:text-center">
+                    {unitRolesRows.map((row, idx) => {
+                      const isLast = idx === unitRolesRows.length - 1;
+                      const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
+
+                      return (
+                        <TR
+                          key={row.id}
+                          className="group border-t-0 bg-white transition-colors hover:bg-black/[0.04] dark:bg-neutral-900 dark:hover:bg-white/10"
+                        >
+                          <TD className={`px-3 font-semibold ${tdBorder}`}>{row.unit || "—"}</TD>
+
+                          <TD className={`px-3 !py-[6px] ${tdBorder}`}>
+                            {row.roles.length ? (
+                              <div className="flex flex-wrap items-center justify-start gap-2">
+                                {row.roles.map((role) => (
+                                  <UnitRoleChip key={`${row.id}-${role}`} label={role} />
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-neutral-500 dark:text-neutral-400">—</span>
+                            )}
+                          </TD>
+
+                          <TD className={`px-3 ${tdBorder}`}>
+                            <div className="flex items-center justify-center gap-2">
+                              <RowActionIconBtn action="delete" onClick={() => {}} disabled size={36} iconSize={17} />
+                            </div>
+                          </TD>
+                        </TR>
+                      );
+                    })}
+                  </tbody>
+                </UnitRolesTableShell>
+              </div>
+            </div>
+          </div>
         )}
 
         {activeTab === "users" && isAdmin && (
