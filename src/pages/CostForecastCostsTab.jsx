@@ -219,9 +219,11 @@ export default function CostForecastCostsTab({
   const loadForecast = useCallback(async () => {
     try {
       const res = await api(storageApiPath);
-      const projectIds = (Array.isArray(res?.projects) ? res.projects : [])
-        .map((item) => String(item?.project_id ?? item?.projectId ?? ""))
-        .filter(Boolean);
+      const projectIds = new Set(
+        (Array.isArray(res?.projects) ? res.projects : [])
+          .map((item) => String(item?.project_id ?? item?.projectId ?? ""))
+          .filter(Boolean),
+      );
       const values = {};
       const items = [];
       (Array.isArray(res?.values) ? res.values : []).forEach((item) => {
@@ -229,6 +231,7 @@ export default function CostForecastCostsTab({
         const budgetCode = normalizeCode(item?.budget_code ?? item?.budgetCode ?? "");
         const monthKey = String(item?.month_key ?? item?.monthKey ?? "");
         if (!projectId || !budgetCode || !monthKey) return;
+        projectIds.add(projectId);
         values[valueKey(projectId, budgetCode, monthKey)] = String(item?.amount ?? "0");
       });
       if (allowManualChildren) {
@@ -237,6 +240,7 @@ export default function CostForecastCostsTab({
           const code = normalizeCode(item?.code ?? "");
           const title = String(item?.title ?? "").trim();
           if (!projectId || !code || !title) return;
+          projectIds.add(projectId);
           items.push({
             id: String(item?.id ?? code),
             projectId,
@@ -247,7 +251,7 @@ export default function CostForecastCostsTab({
           });
         });
       }
-      setSavedProjectIds(Array.from(new Set(projectIds)));
+      setSavedProjectIds(Array.from(projectIds));
       setForecastValues(values);
       setCustomItems(items);
     } catch (ex) {
@@ -363,7 +367,7 @@ export default function CostForecastCostsTab({
 
     const itemNodes = items.map((item, index) => ({
       kind: "breakdown",
-      key: `breakdown:${projectEntry.project.id}:${item.id || item.budgetCode || index}`,
+      key: `breakdown:${projectEntry.project.id}:${item.budgetCode || item.id || index}`,
       projectId: projectEntry.project.id,
       code: item.budgetCode,
       name: item.budgetName,
@@ -608,6 +612,12 @@ export default function CostForecastCostsTab({
     setErr("");
     savingChildRef.current = row.key;
     setSavingChildKey(row.key);
+    setExpandedKeys((prev) => {
+      const next = new Set(prev);
+      next.add(`project:${row.projectId}`);
+      next.add(row.key);
+      return next;
+    });
     try {
       const res = await api(storageApiPath, {
         method: "POST",
