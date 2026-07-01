@@ -601,9 +601,10 @@ export default function CostForecastCostsTab({
   };
 
   const getManualParentCode = (row) => {
-    if (!row || row.kind === "project") return "";
+    if (!row) return "";
     const entry = entryByProjectId.get(String(row.projectId));
-    const projectCode = normalizeCode(entry?.project?.code || "");
+    const projectCode = normalizeCode(entry?.project?.code || row.code || "");
+    if (row.kind === "project") return projectCode;
     if (Number(row.depth || 0) <= 1) return projectCode;
     return row.code;
   };
