@@ -56,6 +56,14 @@ const normalizeBreakdownItem = (item) => ({
   baseBudget: String(item?.baseBudget ?? item?.base_budget ?? "0"),
 });
 
+const projectBudgetCode = (projectCode, value = "") => {
+  const projectCodeClean = normalizeCode(projectCode);
+  const code = normalizeCode(value);
+  if (!code || !projectCodeClean) return code;
+  if (code === projectCodeClean || code.startsWith(`${projectCodeClean}-`)) return code;
+  return `${projectCodeClean}-${code}`;
+};
+
 const PERSIAN_MONTH_NAMES = [
   "فروردین",
   "اردیبهشت",
@@ -130,6 +138,7 @@ export default function CostForecastCostsTab({
   const [customItems, setCustomItems] = useState([]);
   const [addingChildFor, setAddingChildFor] = useState("");
   const [childDraft, setChildDraft] = useState("");
+  const [savingChildKey, setSavingChildKey] = useState("");
   const [savingCell, setSavingCell] = useState("");
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
@@ -238,6 +247,10 @@ export default function CostForecastCostsTab({
     const rawItems = Array.isArray(res?.items) ? res.items : [];
     const items = rawItems
       .map(normalizeBreakdownItem)
+      .map((item) => ({
+        ...item,
+        budgetCode: projectBudgetCode(project.code, item.budgetCode),
+      }))
       .filter((item) => item.budgetCode || item.budgetName)
       .sort((a, b) =>
         String(a.budgetCode || "").localeCompare(String(b.budgetCode || ""), "fa", {
@@ -536,7 +549,7 @@ export default function CostForecastCostsTab({
   };
 
   const saveChild = async (row) => {
-    if (!allowManualChildren) return;
+    if (!allowManualChildren || savingChildKey) return;
     const title = String(childDraft || "").trim();
     if (!row || !title) {
       setAddingChildFor("");
@@ -545,6 +558,7 @@ export default function CostForecastCostsTab({
     }
 
     setErr("");
+    setSavingChildKey(row.key);
     try {
       const res = await api(storageApiPath, {
         method: "POST",
@@ -573,6 +587,8 @@ export default function CostForecastCostsTab({
       setChildDraft("");
     } catch (ex) {
       setErr(ex.message || "خطا در افزودن زیرمجموعه");
+    } finally {
+      setSavingChildKey("");
     }
   };
 
@@ -792,6 +808,7 @@ export default function CostForecastCostsTab({
                           ? "text-[10px] md:text-[12px]"
                           : "text-[11px] md:text-[13px]";
                       const isAddingChild = allowManualChildren && addingChildFor === row.key;
+                      const isSavingChild = savingChildKey === row.key;
 
                       return (
                         <React.Fragment key={row.key}>
@@ -812,15 +829,22 @@ export default function CostForecastCostsTab({
                               dir={allowManualChildren ? "ltr" : "rtl"}
                               style={rowIndentStyle}
                             >
-                              <span className={`ltr ${codeTextClass}`}>{row.code || "—"}</span>
                               {allowManualChildren ? (
-                                <ExpandButton
-                                  onMouseDown={(event) => event.preventDefault()}
-                                  onClick={() => startAddChild(row)}
-                                />
+                                <>
+                                  <span className={`ltr ${codeTextClass}`}>{row.code || "—"}</span>
+                                  <ExpandButton
+                                    onMouseDown={(event) => event.preventDefault()}
+                                    onClick={() => startAddChild(row)}
+                                  />
+                                </>
                               ) : row.hasChildren ? (
-                                <ExpandButton onClick={() => toggleExpanded(row.key)} />
-                              ) : null}
+                                <>
+                                  <ExpandButton onClick={() => toggleExpanded(row.key)} />
+                                  <span className={`ltr ${codeTextClass}`}>{row.code || "—"}</span>
+                                </>
+                              ) : (
+                                <span className={`ltr ${codeTextClass}`}>{row.code || "—"}</span>
+                              )}
                             </div>
                           </TD>
 
@@ -922,15 +946,14 @@ export default function CostForecastCostsTab({
                           <TR>
                             <TD className="px-2 py-3">-</TD>
                             <TD colSpan={2} className="px-2 py-3 text-right">
-                              <div className="flex w-full items-center justify-start" style={{ paddingRight: `calc(${rowIndent} + 36px)` }}>
+                              <div className="flex w-full items-center justify-start gap-2" style={{ paddingRight: `calc(${rowIndent} + 36px)` }}>
                                 <input
                                   value={childDraft}
                                   onChange={(event) => setChildDraft(event.target.value)}
-                                  onBlur={() => saveChild(row)}
                                   onKeyDown={(event) => {
                                     if (event.key === "Enter") {
                                       event.preventDefault();
-                                      event.currentTarget.blur();
+                                      saveChild(row);
                                     }
                                     if (event.key === "Escape") {
                                       event.preventDefault();
@@ -938,10 +961,30 @@ export default function CostForecastCostsTab({
                                       setChildDraft("");
                                     }
                                   }}
-                                  className="h-12 w-full max-w-2xl rounded-xl border border-black/15 bg-white px-4 text-right text-base text-black shadow-sm outline-none transition focus:border-black/25 focus:ring-2 focus:ring-black/10 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:border-white/25 dark:focus:ring-white/20"
+                                  disabled={isSavingChild}
+                                  className="h-12 w-full max-w-2xl rounded-xl border border-black/15 bg-white px-4 text-right text-base text-black shadow-sm outline-none transition placeholder:text-neutral-400 focus:border-black/25 focus:ring-2 focus:ring-black/10 disabled:opacity-70 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-500 dark:focus:border-white/25 dark:focus:ring-white/20"
                                   placeholder="عنوان زیرمجموعه"
                                   autoFocus
                                 />
+                                <div className="flex shrink-0 items-center gap-1 rounded-xl border border-black/10 bg-white px-1 py-1 dark:border-neutral-700 dark:bg-neutral-900">
+                                  <RowActionIconBtn
+                                    action="save"
+                                    onClick={() => saveChild(row)}
+                                    disabled={isSavingChild || !String(childDraft || "").trim()}
+                                    size={34}
+                                    iconSize={15}
+                                  />
+                                  <RowActionIconBtn
+                                    action="cancel"
+                                    onClick={() => {
+                                      setAddingChildFor("");
+                                      setChildDraft("");
+                                    }}
+                                    disabled={isSavingChild}
+                                    size={34}
+                                    iconSize={14}
+                                  />
+                                </div>
                               </div>
                             </TD>
                             {forecastMonths.map((month) => (
