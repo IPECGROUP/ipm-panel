@@ -600,6 +600,14 @@ export default function CostForecastCostsTab({
     setChildDraft("");
   };
 
+  const getManualParentCode = (row) => {
+    if (!row || row.kind === "project") return "";
+    const entry = entryByProjectId.get(String(row.projectId));
+    const projectCode = normalizeCode(entry?.project?.code || "");
+    if (Number(row.depth || 0) <= 1) return projectCode;
+    return row.code;
+  };
+
   const saveChild = async (row, nextTitle = childDraft) => {
     if (!allowManualChildren || savingChildRef.current) return;
     const title = String(nextTitle || "").trim();
@@ -624,7 +632,7 @@ export default function CostForecastCostsTab({
         body: JSON.stringify({
           action: "add_item",
           project_id: Number(row.projectId),
-          parent_code: row.kind === "project" ? "" : row.code,
+          parent_code: getManualParentCode(row),
           title,
         }),
       });
