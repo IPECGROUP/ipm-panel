@@ -1,6 +1,6 @@
 // ساختار سازمانی
 // src/pages/OrgStructurePage.jsx
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
@@ -29,7 +29,111 @@ const UnitRolesTableShell = React.memo(function UnitRolesTableShell({ children }
   );
 });
 
-const UnitRoleChip = React.memo(function UnitRoleChip({ label }) {
+const UnitRoleFieldLabel = React.memo(function UnitRoleFieldLabel({ children }) {
+  return (
+    <label className="block text-[11px] md:text-xs text-neutral-600 dark:text-neutral-300 mb-1">
+      {children}
+    </label>
+  );
+});
+
+const UnitRoleAddIconBtn = React.memo(function UnitRoleAddIconBtn({ title, disabled }) {
+  return (
+    <button
+      type="submit"
+      disabled={disabled}
+      className="h-10 w-10 rounded-xl bg-white text-black border border-black/15 hover:bg-black/5
+                 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-800 dark:hover:bg-neutral-200
+                 disabled:opacity-50 grid place-items-center shrink-0"
+      aria-label={title}
+      title={title}
+    >
+      <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5" />
+    </button>
+  );
+});
+
+const UnitRoleCombobox = React.memo(function UnitRoleCombobox({
+  items,
+  value,
+  onValueChange,
+  selectedId,
+  onSelect,
+  inputRef,
+  disabled,
+}) {
+  const [open, setOpen] = useState(false);
+
+  const filtered = useMemo(() => {
+    const q = String(value || "").trim();
+    if (!q) return items || [];
+    const qq = q.toLowerCase();
+    return (items || []).filter((item) => String(item?.label || "").toLowerCase().includes(qq));
+  }, [items, value]);
+
+  return (
+    <div className="relative">
+      <input
+        ref={inputRef}
+        value={value}
+        onChange={(e) => {
+          onValueChange(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => {
+          window.setTimeout(() => setOpen(false), 120);
+        }}
+        disabled={disabled}
+        placeholder="انتخاب/جستجو…"
+        className="w-full h-10 rounded-xl px-3 pe-10 bg-white text-black placeholder-neutral-400
+                   border border-black/15 outline-none focus:ring-2 focus:ring-black/10
+                   dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50
+                   disabled:opacity-60"
+        aria-label="واحد ها"
+        autoComplete="off"
+      />
+
+      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
+        <img src="/images/icons/dropdown.svg" alt="" className="w-4 h-4 opacity-70 dark:invert" />
+      </span>
+
+      {open && (filtered || []).length > 0 && (
+        <div
+          className="absolute z-20 mt-1 w-full overflow-hidden rounded-2xl border border-black/10 bg-white shadow-lg
+                     dark:bg-neutral-900 dark:border-neutral-800"
+        >
+          <div className="max-h-56 overflow-auto py-1">
+            {(filtered || []).map((item) => {
+              const isSel = selectedId != null && String(selectedId) === String(item?.id);
+              return (
+                <button
+                  key={item?.id ?? item?.label}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    onSelect(item?.id);
+                    onValueChange(item?.label || "");
+                    setOpen(false);
+                  }}
+                  className={`w-full text-right px-3 py-2 text-sm transition ${
+                    isSel
+                      ? "bg-black text-white"
+                      : "text-black hover:bg-black/5 dark:text-neutral-100 dark:hover:bg-white/10"
+                  }`}
+                >
+                  {item?.label || "—"}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
+
+const UnitRoleChip = React.memo(function UnitRoleChip({ label, onRemove, disabled }) {
   return (
     <span
       className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3 py-1 text-xs
@@ -38,7 +142,8 @@ const UnitRoleChip = React.memo(function UnitRoleChip({ label }) {
       <span className="whitespace-nowrap">{label}</span>
       <button
         type="button"
-        disabled
+        onClick={onRemove}
+        disabled={disabled}
         className="h-4 w-4 grid place-items-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-50"
         aria-label="حذف"
         title="حذف"
@@ -81,6 +186,16 @@ function OrgStructurePage() {
   const [selectedRoleIds, setSelectedRoleIds] = React.useState([]);
   const [editingRolesById, setEditingRolesById] = React.useState({});
 
+  const [unitRoleNewUnit, setUnitRoleNewUnit] = useState("");
+  const [unitRoleUnitQuery, setUnitRoleUnitQuery] = useState("");
+  const [selectedUnitRoleUnitId, setSelectedUnitRoleUnitId] = useState(null);
+  const [unitRoleNewRole, setUnitRoleNewRole] = useState("");
+  const [unitRoleErr, setUnitRoleErr] = useState("");
+  const [unitRoleSaving, setUnitRoleSaving] = useState(false);
+  const [unitRolesByUnitId, setUnitRolesByUnitId] = useState({});
+  const unitRoleUnitComboRef = useRef(null);
+  const unitRoleRoleInputRef = useRef(null);
+
   const loadRoles = async () => {
     setRolesLoading(true);
     setRolesErr("");
@@ -94,6 +209,22 @@ function OrgStructurePage() {
     }
   };
 
+  const createRole = async (name) => {
+    const resp = await api("/base/user-roles", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+    const item = resp.item || null;
+    if (item) {
+      setRolesList((prev) => [...(prev || []), item]);
+    } else {
+      await loadRoles().catch(() => {});
+    }
+    return item;
+  };
+
   const addRole = async (e) => {
     e?.preventDefault();
     setRolesErr("");
@@ -104,18 +235,7 @@ function OrgStructurePage() {
     }
 
     try {
-      const resp = await api("/base/user-roles", {
-        method: "POST",
-        body: JSON.stringify({ name: v }),
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      });
-      const item = resp.item || null;
-      if (item) {
-        setRolesList((prev) => [...prev, item]);
-      } else {
-        loadRoles().catch(() => {});
-      }
+      await createRole(v);
       setRoleName("");
     } catch (e2) {
       setRolesErr(e2.message || "خطا در ثبت نقش");
@@ -220,6 +340,13 @@ function OrgStructurePage() {
       });
       return next;
     });
+    setUnitRolesByUnitId((prev) => {
+      const next = {};
+      Object.entries(prev || {}).forEach(([unitId, roles]) => {
+        next[unitId] = (Array.isArray(roles) ? roles : []).filter((role) => !idSet.has(String(role?.id)));
+      });
+      return next;
+    });
 
     const idMap = new Map((rolesList || []).map((it) => [String(it.id), it.id]));
     try {
@@ -240,7 +367,7 @@ function OrgStructurePage() {
   };
 
   useEffect(() => {
-    if (activeTab === "roles") {
+    if (activeTab === "roles" || activeTab === "unitRoles") {
       loadRoles().catch(console.error);
     }
   }, [activeTab]);
@@ -492,16 +619,18 @@ function OrgStructurePage() {
     setAccessUnit(null);
   };
 
-  const reload = async () => {
-    const r = await api("/base/units", {
-      credentials: "include",
-    });
-    const units = (r.units || []).slice().sort((a, b) =>
+  const sortUnitsByName = (items) =>
+    (Array.isArray(items) ? items : []).slice().sort((a, b) =>
       String(a.name || "").localeCompare(String(b.name || ""), "fa", {
         sensitivity: "base",
       })
     );
-    setList(units);
+
+  const reload = async () => {
+    const r = await api("/base/units", {
+      credentials: "include",
+    });
+    setList(sortUnitsByName(r.units || []));
   };
 
   useEffect(() => {
@@ -536,6 +665,22 @@ function OrgStructurePage() {
     return String(u?.id ?? u?.unit_id ?? u?.unitId ?? fallback);
   };
 
+  const createUnit = async (name) => {
+    const resp = await api("/base/units", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+      credentials: "include",
+    });
+    const item = resp.item || null;
+    if (item) {
+      setList((prev) => sortUnitsByName([...(prev || []).filter((u) => unitIdOf(u) !== unitIdOf(item)), item]));
+    } else {
+      await reload();
+    }
+    return item;
+  };
+
   const addUnit = async () => {
     setErr("");
     const name = (adding || "").trim();
@@ -545,14 +690,8 @@ function OrgStructurePage() {
     }
     setSaving(true);
     try {
-      await api("/base/units", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-        credentials: "include",
-      });
+      await createUnit(name);
       setAdding("");
-      await reload();
     } catch (ex) {
       setErr(ex.message || "خطا در ثبت");
     } finally {
@@ -693,14 +832,133 @@ function OrgStructurePage() {
   const tableUi = tablePreset.table;
   const rowUi = tablePreset.row;
 
-  const unitRolesRows = useMemo(
-    () => [
-      { id: "finance", unit: "واحد مالی", roles: ["مدیر مالی", "کارشناس مالی"] },
-      { id: "project", unit: "واحد پروژه", roles: ["مدیر پروژه", "کنترل پروژه"] },
-      { id: "support", unit: "واحد پشتیبانی", roles: ["مسئول پشتیبانی", "کارشناس تامین"] },
-    ],
-    []
+  const unitRoleUnitOptions = useMemo(
+    () =>
+      (sortedList || []).map((u, idx) => ({
+        id: unitRowId(u, idx),
+        label: u?.name || "—",
+        item: u,
+      })),
+    [sortedList]
   );
+
+  useEffect(() => {
+    const v = String(unitRoleUnitQuery || "").trim();
+    if (!v) {
+      setSelectedUnitRoleUnitId(null);
+      return;
+    }
+    const found = (unitRoleUnitOptions || []).find((u) => String(u?.label || "").trim() === v);
+    setSelectedUnitRoleUnitId(found ? found.id : null);
+  }, [unitRoleUnitQuery, unitRoleUnitOptions]);
+
+  useEffect(() => {
+    const validUnitIds = new Set((unitRoleUnitOptions || []).map((u) => String(u.id)));
+    setUnitRolesByUnitId((prev) => {
+      const next = {};
+      Object.entries(prev || {}).forEach(([unitId, roles]) => {
+        if (!validUnitIds.has(String(unitId))) return;
+        next[unitId] = Array.isArray(roles) ? roles : [];
+      });
+      return next;
+    });
+  }, [unitRoleUnitOptions]);
+
+  const unitRolesRows = useMemo(
+    () =>
+      (unitRoleUnitOptions || []).map((unit) => ({
+        id: unit.id,
+        unit: unit.label,
+        roles: unitRolesByUnitId[String(unit.id)] || [],
+      })),
+    [unitRoleUnitOptions, unitRolesByUnitId]
+  );
+
+  const addUnitFromUnitRoles = async (e) => {
+    e?.preventDefault();
+    const name = String(unitRoleNewUnit || "").trim();
+    if (!name) {
+      setUnitRoleErr("نام واحد را وارد کنید");
+      return;
+    }
+
+    setUnitRoleSaving(true);
+    setUnitRoleErr("");
+    try {
+      const item = await createUnit(name);
+      const newId = item ? unitRowId(item) : "";
+      setUnitRoleNewUnit("");
+      setUnitRoleUnitQuery(item?.name || name);
+      if (newId) setSelectedUnitRoleUnitId(newId);
+      requestAnimationFrame(() => unitRoleUnitComboRef.current?.focus?.());
+    } catch (ex) {
+      setUnitRoleErr(ex.message || "خطا در ثبت واحد");
+    } finally {
+      setUnitRoleSaving(false);
+    }
+  };
+
+  const addRoleToSelectedUnit = async (e) => {
+    e?.preventDefault();
+    const unitId = String(selectedUnitRoleUnitId || "");
+    const name = String(unitRoleNewRole || "").trim();
+
+    if (!unitId) {
+      setUnitRoleErr("ابتدا یک واحد را انتخاب کنید");
+      return;
+    }
+    if (!name) {
+      setUnitRoleErr("نام نقش را وارد کنید");
+      return;
+    }
+
+    setUnitRoleSaving(true);
+    setUnitRoleErr("");
+    try {
+      let role = (rolesList || []).find((r) => String(r?.name || "").trim() === name);
+      if (!role) {
+        role = await createRole(name);
+      }
+      if (!role) {
+        await loadRoles().catch(() => {});
+        role = { id: `local-${Date.now()}`, name };
+      }
+
+      setUnitRolesByUnitId((prev) => {
+        const current = Array.isArray(prev?.[unitId]) ? prev[unitId] : [];
+        const exists = current.some((r) =>
+          role?.id != null ? String(r?.id) === String(role.id) : String(r?.name || "").trim() === name
+        );
+        if (exists) return prev;
+        return { ...(prev || {}), [unitId]: [...current, role] };
+      });
+
+      setUnitRoleNewRole("");
+      requestAnimationFrame(() => unitRoleRoleInputRef.current?.focus?.());
+    } catch (ex) {
+      setUnitRoleErr(ex.message || "خطا در ثبت نقش");
+    } finally {
+      setUnitRoleSaving(false);
+    }
+  };
+
+  const removeRoleFromUnit = (unitId, role) => {
+    const sid = String(unitId);
+    setUnitRolesByUnitId((prev) => {
+      const current = Array.isArray(prev?.[sid]) ? prev[sid] : [];
+      return {
+        ...(prev || {}),
+        [sid]: current.filter((r) =>
+          role?.id != null ? String(r?.id) !== String(role.id) : String(r?.name || "") !== String(role?.name || "")
+        ),
+      };
+    });
+  };
+
+  const clearRolesFromUnit = (unitId) => {
+    const sid = String(unitId);
+    setUnitRolesByUnitId((prev) => ({ ...(prev || {}), [sid]: [] }));
+  };
 
   useEffect(() => {
     const validIds = new Set((sortedList || []).map((u, idx) => unitRowId(u, idx)));
@@ -1515,12 +1773,81 @@ function OrgStructurePage() {
         {activeTab === "unitRoles" && (
           <div className={tabbedPanelClass}>
             <div className="space-y-4 p-3 sm:p-4">
+              <div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <form
+                    onSubmit={addUnitFromUnitRoles}
+                    className="rounded-2xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-800 dark:bg-white/[0.03]"
+                  >
+                    <UnitRoleFieldLabel>واحد جدید</UnitRoleFieldLabel>
+                    <div className="flex items-center gap-2 flex-row-reverse">
+                      <UnitRoleAddIconBtn title="افزودن واحد" disabled={!isAdmin || unitRoleSaving} />
+                      <input
+                        value={unitRoleNewUnit}
+                        onChange={(e) => setUnitRoleNewUnit(e.target.value)}
+                        disabled={!isAdmin || unitRoleSaving}
+                        placeholder="نام واحد..."
+                        className="flex-1 h-10 rounded-xl px-3 bg-white text-black placeholder-neutral-400
+                                   border border-black/15 outline-none focus:ring-2 focus:ring-black/10
+                                   dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50
+                                   disabled:opacity-60"
+                      />
+                    </div>
+                  </form>
+
+                  <div className="md:col-span-2 rounded-2xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-800 dark:bg-white/[0.03]">
+                    <div className="flex flex-col md:flex-row-reverse gap-3">
+                      <form onSubmit={addRoleToSelectedUnit} className="md:flex-1">
+                        <UnitRoleFieldLabel>نقش جدید</UnitRoleFieldLabel>
+                        <div className="flex items-center gap-2 flex-row-reverse">
+                          <UnitRoleAddIconBtn title="افزودن نقش" disabled={!isAdmin || unitRoleSaving || !selectedUnitRoleUnitId} />
+                          <input
+                            ref={unitRoleRoleInputRef}
+                            value={unitRoleNewRole}
+                            onChange={(e) => setUnitRoleNewRole(e.target.value)}
+                            disabled={!isAdmin || unitRoleSaving || !selectedUnitRoleUnitId}
+                            placeholder="نام نقش..."
+                            className="flex-1 h-10 rounded-xl px-3 bg-white text-black placeholder-neutral-400
+                                       border border-black/15 outline-none focus:ring-2 focus:ring-black/10
+                                       dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50
+                                       disabled:opacity-60"
+                          />
+                        </div>
+                      </form>
+
+                      <div className="md:flex-1">
+                        <UnitRoleFieldLabel>واحد ها</UnitRoleFieldLabel>
+                        <UnitRoleCombobox
+                          items={unitRoleUnitOptions}
+                          value={unitRoleUnitQuery}
+                          onValueChange={setUnitRoleUnitQuery}
+                          selectedId={selectedUnitRoleUnitId}
+                          onSelect={(id) => setSelectedUnitRoleUnitId(id)}
+                          inputRef={unitRoleUnitComboRef}
+                          disabled={unitRoleSaving}
+                        />
+                        {!selectedUnitRoleUnitId && String(unitRoleUnitQuery || "").trim() ? (
+                          <div className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">
+                            یک واحد معتبر انتخاب کنید.
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {unitRoleErr && <div className="mt-2 text-sm text-red-600 dark:text-red-400">{unitRoleErr}</div>}
+                {rolesLoading && (
+                  <div className="mt-2 text-sm text-black/60 dark:text-neutral-400">در حال بارگذاری نقش‌ها…</div>
+                )}
+              </div>
+
               <div className="mt-3">
                 <UnitRolesTableShell>
                   <THead>
                     <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
                       <TH className="w-44 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
-                        واحد
+                        واحد ها
                       </TH>
                       <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
                         نقش‌ها
@@ -1532,37 +1859,57 @@ function OrgStructurePage() {
                   </THead>
 
                   <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100 [&_td]:text-center [&_th]:text-center">
-                    {unitRolesRows.map((row, idx) => {
-                      const isLast = idx === unitRolesRows.length - 1;
-                      const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
+                    {unitRolesRows.length === 0 ? (
+                      <TR className="border-t-0 bg-white dark:bg-neutral-900">
+                        <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-3">
+                          واحدی ثبت نشده است.
+                        </TD>
+                      </TR>
+                    ) : (
+                      unitRolesRows.map((row, idx) => {
+                        const isLast = idx === unitRolesRows.length - 1;
+                        const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
+                        const hasRoles = (row.roles || []).length > 0;
 
-                      return (
-                        <TR
-                          key={row.id}
-                          className="group border-t-0 bg-white transition-colors hover:bg-black/[0.04] dark:bg-neutral-900 dark:hover:bg-white/10"
-                        >
-                          <TD className={`px-3 font-semibold ${tdBorder}`}>{row.unit || "—"}</TD>
+                        return (
+                          <TR
+                            key={row.id}
+                            className="group border-t-0 bg-white transition-colors hover:bg-black/[0.04] dark:bg-neutral-900 dark:hover:bg-white/10"
+                          >
+                            <TD className={`px-3 font-semibold ${tdBorder}`}>{row.unit || "—"}</TD>
 
-                          <TD className={`px-3 !py-[6px] ${tdBorder}`}>
-                            {row.roles.length ? (
-                              <div className="flex flex-wrap items-center justify-start gap-2">
-                                {row.roles.map((role) => (
-                                  <UnitRoleChip key={`${row.id}-${role}`} label={role} />
-                                ))}
+                            <TD className={`px-3 !py-[6px] ${tdBorder}`}>
+                              {hasRoles ? (
+                                <div className="flex flex-wrap items-center justify-start gap-2">
+                                  {row.roles.map((role) => (
+                                    <UnitRoleChip
+                                      key={`${row.id}-${role?.id ?? role?.name}`}
+                                      label={role?.name || "—"}
+                                      disabled={!isAdmin || unitRoleSaving}
+                                      onRemove={() => removeRoleFromUnit(row.id, role)}
+                                    />
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-neutral-500 dark:text-neutral-400">—</span>
+                              )}
+                            </TD>
+
+                            <TD className={`px-3 ${tdBorder}`}>
+                              <div className="flex items-center justify-center gap-2">
+                                <RowActionIconBtn
+                                  action="delete"
+                                  onClick={() => clearRolesFromUnit(row.id)}
+                                  disabled={!isAdmin || unitRoleSaving || !hasRoles}
+                                  size={36}
+                                  iconSize={17}
+                                />
                               </div>
-                            ) : (
-                              <span className="text-neutral-500 dark:text-neutral-400">—</span>
-                            )}
-                          </TD>
-
-                          <TD className={`px-3 ${tdBorder}`}>
-                            <div className="flex items-center justify-center gap-2">
-                              <RowActionIconBtn action="delete" onClick={() => {}} disabled size={36} iconSize={17} />
-                            </div>
-                          </TD>
-                        </TR>
-                      );
-                    })}
+                            </TD>
+                          </TR>
+                        );
+                      })
+                    )}
                   </tbody>
                 </UnitRolesTableShell>
               </div>
