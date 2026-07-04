@@ -57,10 +57,7 @@ function formatMoney(value) {
 }
 
 function normalizeProjectCode(value = "") {
-  const raw = normalizeDigits(value).trim();
-  const exact = raw.match(/^\d{3}$/);
-  if (exact) return raw;
-  return raw.match(/^(\d{3})/)?.[1] || "";
+  return normalizeBudgetCode(value);
 }
 
 function normalizeCode(value = "") {
@@ -309,11 +306,25 @@ export default function SupplyRequestPage() {
 
   const loadProjects = useCallback(async () => {
     try {
-      const data = await api("/projects?isActive=true");
-      const raw = Array.isArray(data?.items) ? data.items : Array.isArray(data?.projects) ? data.projects : [];
-      const clean = raw
+      const data = await api("/cost-breakdown");
+      const raw = Array.isArray(data?.items) ? data.items : [];
+      const byProject = new Map();
+      raw.forEach((item) => {
+        const project = item?.project || {};
+        const id = project.id ?? item.projectId ?? item.project_id;
+        const code = normalizeProjectCode(project.code ?? item.projectCode ?? item.project_code);
+        if (!id || !code) return;
+        if (!byProject.has(String(id))) {
+          byProject.set(String(id), {
+            id,
+            code,
+            name: String(project.name ?? item.projectName ?? item.project_name ?? "").trim(),
+            isActive: project.isActive ?? item.projectIsActive ?? item.project_is_active ?? true,
+          });
+        }
+      });
+      const clean = Array.from(byProject.values())
         .filter((project) => isActiveProject(project) && isMainProject(project))
-        .map((project) => ({ ...project, code: normalizeProjectCode(project.code) }))
         .sort((a, b) => String(a.code).localeCompare(String(b.code), "fa", { numeric: true }));
       setProjects(clean);
     } catch {

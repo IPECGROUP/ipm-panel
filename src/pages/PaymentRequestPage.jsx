@@ -51,9 +51,7 @@ function jalaliYY(value = today()) {
   return year.slice(-2);
 }
 function normalizeProjectCode(value = "") {
-  const raw = normalizeDigits(value).trim();
-  if (/^\d{3}$/.test(raw)) return raw;
-  return raw.match(/^(\d{3})/)?.[1] || "";
+  return normalizeBudgetCode(value);
 }
 function isActiveProject(project) {
   const value = project?.isActive ?? project?.is_active ?? project?.active;
@@ -276,10 +274,25 @@ export default function PaymentRequestPage() {
     } catch {}
   }, [pinnedFilterTagIds, user?.id]);
   useEffect(() => {
-    Promise.allSettled([api("/projects?isActive=true"), api("/base/currencies/types"), api("/base/currencies/sources"), api("/supply-requests")]).then(([p, t, s, sr]) => {
+    Promise.allSettled([api("/cost-breakdown"), api("/base/currencies/types"), api("/base/currencies/sources"), api("/supply-requests")]).then(([p, t, s, sr]) => {
       if (p.status === "fulfilled") {
-        const rawProjects = p.value.items || p.value.projects || [];
-        const mainProjects = rawProjects
+        const rows = Array.isArray(p.value.items) ? p.value.items : [];
+        const byProject = new Map();
+        rows.forEach((item) => {
+          const project = item?.project || {};
+          const id = project.id ?? item.projectId ?? item.project_id;
+          const code = normalizeProjectCode(project.code ?? item.projectCode ?? item.project_code);
+          if (!id || !code) return;
+          if (!byProject.has(String(id))) {
+            byProject.set(String(id), {
+              id,
+              code,
+              name: String(project.name ?? item.projectName ?? item.project_name ?? "").trim(),
+              isActive: project.isActive ?? item.projectIsActive ?? item.project_is_active ?? true,
+            });
+          }
+        });
+        const mainProjects = Array.from(byProject.values())
           .filter((project) => isActiveProject(project) && isMainProject(project))
           .sort((a, b) => normalizeProjectCode(a.code).localeCompare(normalizeProjectCode(b.code), "fa", { numeric: true }));
         setProjects(mainProjects);
