@@ -68,7 +68,7 @@ function formatSheba(value) {
   }
   const tail = raw.slice(22, 24);
   if (tail) groups.push(tail);
-  return `IR${groups.length ? ` ${groups.join(" ")}` : ""}`;
+  return `IR${groups.length ? `-${groups.join("-")}` : ""}`;
 }
 
 function JalaliPopupDatePicker({ value, onChange, disablePast = false }) {
@@ -426,8 +426,23 @@ export default function PaymentRequestPage() {
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(180px,0.6fr)_minmax(260px,1fr)]">
             <Field label="درخواست تامین">
-              <div className="flex h-11 overflow-hidden rounded-xl border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">
-                {[["no", "ندارد"], ["yes", "دارد"]].map(([value, label]) => <button key={value} type="button" onClick={() => setForm((old) => ({ ...old, hasSupplyRequest: value, supplyRequestId: value === "yes" ? old.supplyRequestId : "" }))} className={`flex-1 text-sm transition ${form.hasSupplyRequest === value ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "hover:bg-black/[0.04] dark:hover:bg-white/10"}`}>{label}</button>)}
+              <div className="flex h-11 items-center gap-6 rounded-xl border border-black/10 bg-white px-3 dark:border-white/15 dark:bg-white/5">
+                {[["no", "ندارد"], ["yes", "دارد"]].map(([value, label]) => {
+                  const checked = form.hasSupplyRequest === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setForm((old) => ({ ...old, hasSupplyRequest: value, supplyRequestId: value === "yes" ? old.supplyRequestId : "" }))}
+                      className="inline-flex items-center gap-2 text-sm text-neutral-900 transition hover:opacity-75 dark:text-white"
+                    >
+                      <span>{label}</span>
+                      <span className={`grid h-5 w-5 place-items-center rounded-full border ${checked ? "border-neutral-950 dark:border-white" : "border-neutral-400 dark:border-neutral-500"}`}>
+                        {checked && <span className="h-3 w-3 rounded-full bg-neutral-950 dark:bg-white" />}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </Field>
             {form.hasSupplyRequest === "yes" && <Field label="انتخاب درخواست تامین" required><select className={inputClass} value={form.supplyRequestId} onChange={(e) => setField("supplyRequestId", e.target.value)}><option value="">انتخاب کنید</option>{supplyRequests.map((item) => <option key={item.id} value={item.id}>{item.serial || `#${item.id}`}{item.title ? ` - ${item.title}` : ""}</option>)}</select></Field>}
@@ -436,12 +451,23 @@ export default function PaymentRequestPage() {
           <Field label="شرح درخواست"><textarea className={`${inputClass} min-h-24 py-2 leading-7`} value={form.description} onChange={(e) => setField("description", e.target.value)} /></Field>
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-            <Field label="نوع سند"><select className={inputClass} value={form.docId} onChange={(e) => setField("docId", e.target.value)}>{DOC_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
+            <Field label="نوع سند">
+              {form.docId === "other" ? (
+                <input className={inputClass} value={form.docOther} onChange={(e) => setField("docOther", e.target.value)} placeholder="نوع سند را وارد کنید" autoFocus />
+              ) : (
+                <select className={inputClass} value={form.docId} onChange={(e) => {
+                  const value = e.target.value;
+                  setForm((old) => ({ ...old, docId: value, docOther: value === "other" ? "" : old.docOther }));
+                }}>{DOC_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+              )}
+            </Field>
             <Field label="شماره سند"><input className={inputClass} value={form.docNumber} onChange={(e) => setField("docNumber", e.target.value)} /></Field>
             <Field label="تاریخ سند"><JalaliPopupDatePicker value={form.docDateJalali} onChange={(value) => setField("docDateJalali", value)} /></Field>
-            <Field label={form.docId === "other" ? "آپلود سند" : "آپلود درخواست"}>
-              {form.docId === "other" && <input className={`${inputClass} mb-2`} value={form.docOther} onChange={(e) => setField("docOther", e.target.value)} placeholder="عنوان دلخواه" />}
-              <label className={`${inputClass} flex cursor-pointer items-center justify-center gap-2`}><img src="/images/icons/upload.svg" alt="" className="h-4 w-4 dark:invert" />{uploading ? "در حال آپلود..." : "آپلود و الصاق فایل‌ها"}<input type="file" multiple accept="image/*,.pdf" className="hidden" onChange={(e) => uploadFiles(e.target.files)} /></label>
+            <Field label="بارگذاری">
+              <label className="grid h-11 w-11 cursor-pointer place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={uploading ? "در حال آپلود" : "بارگذاری"} aria-label={uploading ? "در حال آپلود" : "بارگذاری"}>
+                <img src="/images/icons/upload.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse opacity-60" : ""}`} />
+                <input type="file" multiple accept="image/*,.pdf" className="hidden" onChange={(e) => uploadFiles(e.target.files)} />
+              </label>
               {!!form.attachments.length && <div className="mt-1 text-[11px] text-neutral-500">{toFa(form.attachments.length)} فایل ضمیمه شده</div>}
             </Field>
           </div>
