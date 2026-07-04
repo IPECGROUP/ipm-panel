@@ -30,6 +30,21 @@ function parseAmount(value) {
 }
 function money(value) { const amount = parseAmount(value); return amount ? amount.toLocaleString("en-US") : ""; }
 function normalizeCode(value) { return toEnglishDigits(String(value || "")).trim(); }
+function normalizeBudgetCode(value = "") {
+  return normalizeCode(value)
+    .toUpperCase()
+    .replace(/[^\d.-]/g, "-")
+    .replace(/[.-]+/g, "-")
+    .replace(/^-/, "")
+    .replace(/-$/, "");
+}
+function budgetCodeForProject(value = "", projectCode = "") {
+  const code = normalizeBudgetCode(value);
+  const prefix = normalizeBudgetCode(projectCode);
+  if (!code || !prefix) return code;
+  if (code === prefix || code.startsWith(`${prefix}-`)) return code;
+  return `${prefix}-${code}`;
+}
 function normalizeDigits(value = "") { return toEnglishDigits(String(value ?? "")).replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660)); }
 function jalaliYY(value = today()) {
   const year = normalizeDigits(value).match(/^(\d{4})/)?.[1] || "1400";
@@ -39,12 +54,6 @@ function normalizeProjectCode(value = "") {
   const raw = normalizeDigits(value).trim();
   if (/^\d{3}$/.test(raw)) return raw;
   return raw.match(/^(\d{3})/)?.[1] || "";
-}
-function coreOf(value) {
-  const raw = normalizeCode(value);
-  const noPrefix = raw.replace(/^[A-Za-z]+[^0-9]*/, "");
-  const normalized = noPrefix.replace(/[^0-9.]+/g, ".");
-  return normalized.replace(/\.+/g, ".").replace(/^\./, "").replace(/\.$/, "");
 }
 function isActiveProject(project) {
   const value = project?.isActive ?? project?.is_active ?? project?.active;
@@ -284,47 +293,15 @@ export default function PaymentRequestPage() {
     if (!form.projectId) { setBudgetItems([]); return; }
     let cancelled = false;
     (async () => {
-      const query = new URLSearchParams({ kind: "projects" });
-      if (form.projectId) query.set("project_id", form.projectId);
-
       const selectedProject = projects.find((item) => String(item.id) === String(form.projectId));
-      const projectCore = coreOf(selectedProject?.code);
+      const projectCode = normalizeBudgetCode(selectedProject?.code);
       try {
-        const [estimateData, centersData, costData] = await Promise.all([
-          api(`/budget-estimates?${query}`).catch(() => ({ items: [] })),
-          api("/centers/projects").catch(() => ({ items: [] })),
-          api(`/cost-breakdown?project_id=${encodeURIComponent(form.projectId)}`).catch(() => ({ items: [] })),
-        ]);
-        const estimateItems = Array.isArray(estimateData?.items) ? estimateData.items : [];
-        const centerItems = Array.isArray(centersData?.items) ? centersData.items : [];
+        const costData = await api(`/cost-breakdown?project_id=${encodeURIComponent(form.projectId)}`).catch(() => ({ items: [] }));
         const costItems = Array.isArray(costData?.items) ? costData.items : [];
         const byCode = new Map();
 
-        centerItems.forEach((item) => {
-          const code = normalizeCode(item?.suffix ?? item?.code);
-          const codeCore = coreOf(code);
-          if (!code || !projectCore || (codeCore !== projectCore && !codeCore.startsWith(`${projectCore}.`))) return;
-          byCode.set(code, {
-            code,
-            center_desc: String(item?.description ?? item?.center_desc ?? item?.name ?? ""),
-            last_amount: Number(item?.last_amount || 0),
-          });
-        });
-
-        estimateItems.forEach((item) => {
-          const code = normalizeCode(item?.code);
-          const codeCore = coreOf(code);
-          if (!code || !projectCore || (codeCore !== projectCore && !codeCore.startsWith(`${projectCore}.`))) return;
-          const previous = byCode.get(code) || { code, center_desc: "", last_amount: 0 };
-          byCode.set(code, {
-            ...previous,
-            center_desc: previous.center_desc || String(item?.center_desc ?? item?.last_desc ?? item?.name ?? ""),
-            last_amount: Number(item?.last_amount ?? item?.amount ?? previous.last_amount ?? 0),
-          });
-        });
-
         costItems.forEach((item) => {
-          const code = normalizeCode(item?.budgetCode ?? item?.budget_code ?? item?.code);
+          const code = budgetCodeForProject(item?.budgetCode ?? item?.budget_code ?? item?.code, projectCode);
           if (!code) return;
           const previous = byCode.get(code) || { code, center_desc: "", last_amount: 0 };
           byCode.set(code, {
@@ -335,12 +312,12 @@ export default function PaymentRequestPage() {
         });
 
         if (!byCode.size && selectedProject?.code) {
-          const code = normalizeCode(selectedProject.code);
+          const code = normalizeBudgetCode(selectedProject.code);
           byCode.set(code, { code, center_desc: selectedProject.name || "", last_amount: 0 });
         }
 
         const merged = Array.from(byCode.values()).sort((a, b) =>
-          coreOf(a.code).localeCompare(coreOf(b.code), "fa", { numeric: true, sensitivity: "base" })
+          normalizeBudgetCode(a.code).localeCompare(normalizeBudgetCode(b.code), "fa", { numeric: true, sensitivity: "base" })
         );
         if (!cancelled) setBudgetItems(merged);
       } catch {
@@ -484,7 +461,7 @@ export default function PaymentRequestPage() {
             <ReadField label="شماره درخواست" value={serial} ltr />
             <ReadField label="تاریخ درخواست" value={toFa(form.dateJalali)} />
             <Field label="پروژه" required><select className={inputClass} value={form.projectId} onChange={(e) => setForm((old) => ({ ...old, projectId: e.target.value, budgetCode: "" }))}><option value="">انتخاب پروژه</option>{projects.map((item) => <option key={item.id} value={item.id}>{projectLabel(item)}</option>)}</select></Field>
-            <Field label="کد بودجه" required><select className={inputClass} value={form.budgetCode} disabled={!form.projectId} onChange={(e) => setField("budgetCode", e.target.value)}><option value="">{form.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید"}</option>{budgetItems.map((item) => { const code = normalizeCode(item.code || item.center_code); const description = item.center_desc || item.last_desc || item.name || item.description || ""; return <option key={code || item.id} value={code}>{code}{description ? ` - ${description}` : ""}</option>; })}</select></Field>
+            <Field label="کد بودجه" required><select className={inputClass} value={form.budgetCode} disabled={!form.projectId} onChange={(e) => setField("budgetCode", e.target.value)}><option value="">{form.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید"}</option>{budgetItems.map((item) => { const code = normalizeBudgetCode(item.code || item.center_code); const description = item.center_desc || item.last_desc || item.name || item.description || ""; return <option key={code || item.id} value={code}>{code}{description ? ` - ${description}` : ""}</option>; })}</select></Field>
           </div>
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(260px,1.4fr)_minmax(160px,0.75fr)_minmax(160px,0.7fr)]">

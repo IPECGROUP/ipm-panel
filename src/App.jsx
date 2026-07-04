@@ -13,8 +13,6 @@ import TagsPage from "./pages/TagsPage.jsx";
 import DefineBudgetCentersPage from "./pages/DefineBudgetCentersPage.jsx";
 import UnitsPage from "./pages/UnitsPage.jsx";
 import BaseCurrenciesPage from "./pages/BaseCurrenciesPage.jsx";
-import EstimatesPage from "./pages/EstimatesPage.jsx";
-import RevenueEstimatesPage from "./pages/RevenueEstimatesPage.jsx";
 import DailyReportPage from "./pages/DailyReportPage.jsx";
 import FinancialWorksheetPage from "./pages/FinancialWorksheetPage.jsx";
 import CostBreakdownPage from "./pages/CostBreakdownPage.jsx";
@@ -102,8 +100,6 @@ export default function App() {
 
         {/* بودجه‌بندی */}
         <Route path="/budget/centers" element={<DefineBudgetCentersPage />} />
-        <Route path="/estimates" element={<EstimatesPage api={api} />} />
-        <Route path="/revenue-estimates" element={<RevenueEstimatesPage />} />
         <Route path="/budget-allocation" element={<BudgetAllocationPage />} />
         <Route path="/budget/reports" element={<ReportsPage />} />
         <Route path="/finance/payment-request" element={<PaymentRequestPage />} />

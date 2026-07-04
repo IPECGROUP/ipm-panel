@@ -128,8 +128,6 @@ function RightNav() {
     if (
       path.startsWith("/budget/") ||
       path.startsWith("/finance/") ||
-      path === "/estimates" ||
-      path === "/revenue-estimates" ||
       path === "/budget-allocation" ||
       path === "/payment" ||
       path === "/requests" ||
@@ -193,11 +191,11 @@ function RightNav() {
           icon: <IcProjects />,
           active: projectsParentActive,
           items: [
+            { to: "/projects/daily-log", label: "روزنگار پروژه", hint: "ثبت گزارش های روزانه", icon: <IcDaily /> },
             { to: "/projects/cost-breakdown", label: "ساختار شکست هزینه ها", hint: "ساختار و اجزای هزینه پروژه", icon: <IcCostBreakdown /> },
             { to: "/projects/financial-commitments", label: "تعهدات و مصارف مالی", hint: "تعهدات و مصرف های پروژه", icon: <IcFinancialCommitments /> },
             { to: "/projects/financial-worksheet", label: "کاربرگ مالی", hint: "جزئیات مالی پروژه", icon: <IcWorksheet /> },
             { to: "/projects/project-management-dashboard", label: "داشبورد مدیریت پروژه", hint: "نمای کلی وضعیت پروژه", icon: <IcProjectDashboard /> },
-            { to: "/projects/daily-log", label: "روزنگار پروژه", hint: "ثبت گزارش های روزانه", icon: <IcDaily /> },
           ],
         },
       ],
@@ -216,8 +214,6 @@ function RightNav() {
             { to: "/finance/liquidity-allocation", label: "تخصیص نقدینگی", hint: "مدیریت و توزیع نقدینگی", icon: <IcLiquidity /> },
             { to: "/finance/cash-flow-forecast", label: "پیش بینی جریان نقدی", hint: "برآورد جریان نقدی آینده", icon: <IcCashForecast /> },
             { to: "/finance/financial-management-dashboard", label: "داشبورد مدیریت مالی", hint: "نمای کلی شاخص های مالی", icon: <IcProjectDashboard /> },
-            { to: "/estimates", label: "برآورد هزینه ها", hint: "پیش بینی و کنترل هزینه", icon: <NavIcon src="/images/icons/baravord.svg" /> },
-            { to: "/revenue-estimates", label: "برآورد درآمد", hint: "پیش بینی جریان درآمد", icon: <NavIcon src="/images/icons/baravordhazine.svg" /> },
             { to: "/budget-allocation", label: "تخصیص بودجه", hint: "تقسیم منابع بودجه ای", icon: <NavIcon src="/images/icons/taksisbodge.svg" /> },
             { to: "/budget/reports", label: "گزارش ها", hint: "خلاصه ها و خروجی ها", icon: <NavIcon src="/images/icons/gozareshha.svg" /> },
           ],
@@ -358,7 +354,7 @@ function RightNav() {
   const renderIcon = (icon, active) => <span className={iconShellCls(active)}>{icon}</span>;
 
   const renderExpandedSection = (item) => {
-    const sectionOpen = open[item.key] || item.active;
+    const sectionOpen = !!open[item.key];
 
     return (
       <div key={item.key} className="space-y-1">

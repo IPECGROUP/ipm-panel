@@ -67,11 +67,21 @@ function normalizeCode(value = "") {
   return toEnglishDigits(String(value || "")).trim();
 }
 
-function coreOf(value) {
-  const raw = normalizeCode(value);
-  const noPrefix = raw.replace(/^[A-Za-z]+[^0-9]*/, "");
-  const normalized = noPrefix.replace(/[^0-9.]+/g, ".");
-  return normalized.replace(/\.+/g, ".").replace(/^\./, "").replace(/\.$/, "");
+function normalizeBudgetCode(value = "") {
+  return normalizeCode(value)
+    .toUpperCase()
+    .replace(/[^\d.-]/g, "-")
+    .replace(/[.-]+/g, "-")
+    .replace(/^-/, "")
+    .replace(/-$/, "");
+}
+
+function budgetCodeForProject(value = "", projectCode = "") {
+  const code = normalizeBudgetCode(value);
+  const prefix = normalizeBudgetCode(projectCode);
+  if (!code || !prefix) return code;
+  if (code === prefix || code.startsWith(`${prefix}-`)) return code;
+  return `${prefix}-${code}`;
 }
 
 function isActiveProject(project) {
@@ -364,47 +374,15 @@ export default function SupplyRequestPage() {
     }
 
     (async () => {
-      const query = new URLSearchParams({ kind: "projects" });
-      query.set("project_id", form.projectId);
-      const projectCore = coreOf(selectedProject?.code);
+      const projectCode = normalizeBudgetCode(selectedProject?.code);
 
       try {
-        const [estimateData, centersData, costData] = await Promise.all([
-          api(`/budget-estimates?${query}`).catch(() => ({ items: [] })),
-          api("/centers/projects").catch(() => ({ items: [] })),
-          api(`/cost-breakdown?project_id=${encodeURIComponent(form.projectId)}`).catch(() => ({ items: [] })),
-        ]);
-
-        const estimateItems = Array.isArray(estimateData?.items) ? estimateData.items : [];
-        const centerItems = Array.isArray(centersData?.items) ? centersData.items : [];
+        const costData = await api(`/cost-breakdown?project_id=${encodeURIComponent(form.projectId)}`).catch(() => ({ items: [] }));
         const costItems = Array.isArray(costData?.items) ? costData.items : [];
         const byCode = new Map();
 
-        centerItems.forEach((item) => {
-          const code = normalizeCode(item?.suffix ?? item?.code);
-          const codeCore = coreOf(code);
-          if (!code || !projectCore || (codeCore !== projectCore && !codeCore.startsWith(`${projectCore}.`))) return;
-          byCode.set(code, {
-            code,
-            center_desc: String(item?.description ?? item?.center_desc ?? item?.name ?? ""),
-            last_amount: Number(item?.last_amount || 0),
-          });
-        });
-
-        estimateItems.forEach((item) => {
-          const code = normalizeCode(item?.code);
-          const codeCore = coreOf(code);
-          if (!code || !projectCore || (codeCore !== projectCore && !codeCore.startsWith(`${projectCore}.`))) return;
-          const previous = byCode.get(code) || { code, center_desc: "", last_amount: 0 };
-          byCode.set(code, {
-            ...previous,
-            center_desc: previous.center_desc || String(item?.center_desc ?? item?.last_desc ?? item?.name ?? ""),
-            last_amount: Number(item?.last_amount ?? item?.amount ?? previous.last_amount ?? 0),
-          });
-        });
-
         costItems.forEach((item) => {
-          const code = normalizeCode(item?.budgetCode ?? item?.budget_code ?? item?.code);
+          const code = budgetCodeForProject(item?.budgetCode ?? item?.budget_code ?? item?.code, projectCode);
           if (!code) return;
           const previous = byCode.get(code) || { code, center_desc: "", last_amount: 0 };
           byCode.set(code, {
@@ -415,12 +393,12 @@ export default function SupplyRequestPage() {
         });
 
         if (!byCode.size && selectedProject?.code) {
-          const code = normalizeCode(selectedProject.code);
+          const code = normalizeBudgetCode(selectedProject.code);
           byCode.set(code, { code, center_desc: selectedProject.name || "", last_amount: 0 });
         }
 
         const merged = Array.from(byCode.values()).sort((a, b) =>
-          coreOf(a.code).localeCompare(coreOf(b.code), "fa", { numeric: true, sensitivity: "base" })
+          normalizeBudgetCode(a.code).localeCompare(normalizeBudgetCode(b.code), "fa", { numeric: true, sensitivity: "base" })
         );
         if (!cancelled) setBudgetItems(merged);
       } catch {
@@ -661,7 +639,7 @@ export default function SupplyRequestPage() {
                   <select value={form.budgetCode} onChange={(event) => setField("budgetCode", event.target.value)} className={inputCls} disabled={!form.projectId}>
                     <option value="">{form.projectId ? "انتخاب کنید" : "ابتدا پروژه را انتخاب کنید"}</option>
                     {budgetItems.map((item) => {
-                      const code = normalizeCode(item.code ?? item.budgetCode ?? item.budget_code ?? item.center_code);
+                      const code = normalizeBudgetCode(item.code ?? item.budgetCode ?? item.budget_code ?? item.center_code);
                       const name = item.center_desc ?? item.last_desc ?? item.budgetName ?? item.budget_name ?? item.name ?? item.description ?? "";
                       return (
                         <option key={item.id || code} value={code}>
