@@ -20,6 +20,7 @@ const labelCls = "mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-30
 
 const tableWrapCls =
   "overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100";
+const QUICK_FILTERS = [["week", "هفته قبل"], ["2w", "2 هفته قبل"], ["1m", "ماه قبل"], ["3m", "3 ماه قبل"], ["6m", "6 ماه قبل"]];
 
 const statusLabels = {
   pending: "در انتظار بررسی",
@@ -182,6 +183,38 @@ function StatusBadge({ status }) {
   return <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs ${cls}`}>{statusLabels[status] || "—"}</span>;
 }
 
+function tagLabelOf(tag) {
+  return String(tag?.label ?? tag?.name ?? tag?.title ?? tag?.text ?? tag?.id ?? "").trim();
+}
+
+function tagIdListOf(item, letterById = new Map()) {
+  const raw = item?.tagIds ?? item?.tag_ids ?? [];
+  const own = Array.isArray(raw) ? raw.map((id) => String(id)) : [];
+  const related = Array.isArray(item?.relatedLetterIds) ? item.relatedLetterIds : [];
+  const fromLetters = related.flatMap((id) => {
+    const letter = letterById.get(String(id));
+    const ids = letter?.tag_ids ?? letter?.tagIds ?? [];
+    return Array.isArray(ids) ? ids.map((x) => String(x)) : [];
+  });
+  return Array.from(new Set([...own, ...fromLetters]));
+}
+
+function quickStartDate(key) {
+  if (!key) return "";
+  const date = new Date();
+  if (key === "week") date.setDate(date.getDate() - 7);
+  else if (key === "2w") date.setDate(date.getDate() - 14);
+  else if (key === "1m") date.setMonth(date.getMonth() - 1);
+  else if (key === "3m") date.setMonth(date.getMonth() - 3);
+  else if (key === "6m") date.setMonth(date.getMonth() - 6);
+  else return "";
+  return normalizeDigits(new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit" }).format(date));
+}
+
+function itemDateKey(item) {
+  return normalizeDigits(String(item?.dateJalali || item?.dateFa || "")).replaceAll("-", "/");
+}
+
 export default function SupplyRequestPage() {
   const { user, loading: authLoading } = useAuth();
   const fileRef = useRef(null);
@@ -204,6 +237,11 @@ export default function SupplyRequestPage() {
   const [filterQuery, setFilterQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterProjectId, setFilterProjectId] = useState("");
+  const [filterQuick, setFilterQuick] = useState("");
+  const [filterTagIds, setFilterTagIds] = useState([]);
+  const [tags, setTags] = useState([]);
+  const [tagPickOpen, setTagPickOpen] = useState(false);
+  const [tagPickSearch, setTagPickSearch] = useState("");
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
 
@@ -296,6 +334,13 @@ export default function SupplyRequestPage() {
       cancelled = true;
     };
   }, [api, authLoading]);
+
+  useEffect(() => {
+    api("/tags?scope=letters").then((data) => {
+      const rows = Array.isArray(data?.tags) ? data.tags : Array.isArray(data?.items) ? data.items : [];
+      setTags(rows);
+    }).catch(() => setTags([]));
+  }, [api]);
 
   useEffect(() => {
     let cancelled = false;
@@ -488,9 +533,17 @@ export default function SupplyRequestPage() {
 
   const filteredItems = useMemo(() => {
     const q = normalizeDigits(filterQuery).trim().toLowerCase();
+    const start = quickStartDate(filterQuick);
+    const selectedTags = Array.isArray(filterTagIds) ? filterTagIds.map(String).filter(Boolean) : [];
+    const letterById = new Map((Array.isArray(letters) ? letters : []).map((letter) => [letterIdOf(letter), letter]));
     return items.filter((item) => {
       if (filterStatus && item.status !== filterStatus) return false;
       if (filterProjectId && String(item.projectId) !== String(filterProjectId)) return false;
+      if (start && itemDateKey(item) < start) return false;
+      if (selectedTags.length) {
+        const itemTags = tagIdListOf(item, letterById);
+        if (!selectedTags.some((id) => itemTags.includes(id))) return false;
+      }
       if (!q) return true;
       const haystack = [
         item.serial,
@@ -506,7 +559,7 @@ export default function SupplyRequestPage() {
         .join(" ");
       return haystack.includes(q);
     });
-  }, [filterProjectId, filterQuery, filterStatus, items, projects]);
+  }, [filterProjectId, filterQuery, filterQuick, filterStatus, filterTagIds, items, letters, projects]);
 
   const total = filteredItems.length;
   const pageCount = Math.max(1, Math.ceil(total / rowsPerPage));
@@ -517,7 +570,7 @@ export default function SupplyRequestPage() {
 
   useEffect(() => {
     setPage(0);
-  }, [filterProjectId, filterQuery, filterStatus, rowsPerPage]);
+  }, [filterProjectId, filterQuery, filterQuick, filterStatus, filterTagIds, rowsPerPage]);
 
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
@@ -545,52 +598,19 @@ export default function SupplyRequestPage() {
           </div>
 
           {!formOpen && (
-            <div className="mb-4 rounded-2xl border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-transparent">
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(240px,1fr)_minmax(180px,0.7fr)_minmax(180px,0.8fr)_auto] md:items-end">
-                <label className="block">
-                  <div className={labelCls}>جست و جو</div>
-                  <input
-                    value={filterQuery}
-                    onChange={(event) => setFilterQuery(event.target.value)}
-                    className={inputCls}
-                    placeholder="شماره، موضوع، پروژه یا کد بودجه"
-                  />
-                </label>
-                <label className="block">
-                  <div className={labelCls}>پروژه</div>
-                  <select value={filterProjectId} onChange={(event) => setFilterProjectId(event.target.value)} className={inputCls}>
-                    <option value="">همه پروژه‌ها</option>
-                    {projects.map((project) => (
-                      <option key={project.id} value={project.id}>
-                        {projectLabel(project)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block">
-                  <div className={labelCls}>آخرین وضعیت</div>
-                  <select value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)} className={inputCls}>
-                    <option value="">همه وضعیت‌ها</option>
-                    {Object.entries(statusLabels).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFilterQuery("");
-                    setFilterProjectId("");
-                    setFilterStatus("");
-                  }}
-                  className="h-11 rounded-xl border border-black/10 px-4 text-sm transition hover:bg-black/[0.03] dark:border-white/15 dark:hover:bg-white/10"
-                >
-                  پاک کردن
-                </button>
-              </div>
-            </div>
+            <RequestFilterBar
+              query={filterQuery}
+              setQuery={setFilterQuery}
+              quick={filterQuick}
+              setQuick={setFilterQuick}
+              tags={tags}
+              selectedTagIds={filterTagIds}
+              setSelectedTagIds={setFilterTagIds}
+              tagPickOpen={tagPickOpen}
+              setTagPickOpen={setTagPickOpen}
+              tagPickSearch={tagPickSearch}
+              setTagPickSearch={setTagPickSearch}
+            />
           )}
 
           {formOpen && (
@@ -881,6 +901,90 @@ function Field({ label, required, children }) {
       </div>
       {children}
     </label>
+  );
+}
+
+function RequestFilterBar({ query, setQuery, quick, setQuick, tags, selectedTagIds, setSelectedTagIds, tagPickOpen, setTagPickOpen, tagPickSearch, setTagPickSearch }) {
+  const selected = new Set((selectedTagIds || []).map(String));
+  const visibleTags = (Array.isArray(tags) ? tags : []).slice(0, 8);
+  const toggleTag = (id) => {
+    const sid = String(id);
+    setSelectedTagIds((prev) => {
+      const cur = (Array.isArray(prev) ? prev : []).map(String);
+      return cur.includes(sid) ? cur.filter((x) => x !== sid) : [...cur, sid];
+    });
+  };
+
+  return (
+    <div className="mb-4 space-y-2 rounded-2xl border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-transparent">
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="w-full md:min-w-[280px] md:flex-1">
+          <div className={labelCls}>جست و جو</div>
+          <input value={query} onChange={(event) => setQuery(event.target.value)} className={inputCls} placeholder="جستجو در شماره، موضوع، تاریخ، پروژه و ..." />
+        </div>
+      </div>
+      <div>
+        <div className={labelCls}>برچسب ها</div>
+        <div className="flex flex-wrap items-center gap-2">
+          {QUICK_FILTERS.map(([key, label]) => (
+            <button key={key} type="button" onClick={() => setQuick(quick === key ? "" : key)} className={`h-9 rounded-full border px-4 text-xs transition ${quick === key ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>
+              {label}
+            </button>
+          ))}
+          {visibleTags.map((tag) => {
+            const id = String(tag?.id ?? "");
+            const active = selected.has(id);
+            return (
+              <button key={id} type="button" onClick={() => toggleTag(id)} className={`h-9 rounded-full border px-4 text-xs transition ${active ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>
+                {tagLabelOf(tag)}
+              </button>
+            );
+          })}
+          <button type="button" onClick={() => { setTagPickSearch(""); setTagPickOpen(true); }} className="grid h-9 w-9 place-items-center rounded-full border border-black/10 bg-white transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="انتخاب برچسب" title="انتخاب برچسب">
+            <img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" />
+          </button>
+        </div>
+      </div>
+      {tagPickOpen && <TagPicker tags={tags} selectedIds={selectedTagIds} onToggle={toggleTag} query={tagPickSearch} setQuery={setTagPickSearch} onClose={() => setTagPickOpen(false)} />}
+    </div>
+  );
+}
+
+function TagPicker({ tags, selectedIds, onToggle, query, setQuery, onClose }) {
+  const selected = new Set((selectedIds || []).map(String));
+  const q = String(query || "").trim().toLowerCase();
+  const list = (Array.isArray(tags) ? tags : []).filter((tag) => !q || tagLabelOf(tag).toLowerCase().includes(q));
+  return createPortal(
+    <div className="fixed inset-0 z-[9999]" dir="rtl">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="absolute inset-0 flex items-center justify-center p-4">
+        <div className="flex h-[min(70vh,620px)] w-[min(760px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
+          <div className="flex items-center justify-between border-b border-black/10 p-4 dark:border-white/10">
+            <b className="text-sm">انتخاب برچسب</b>
+            <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-xl border border-black/10 dark:border-white/10" aria-label="بستن" title="بستن">
+              <img src="/images/icons/bastan.svg" alt="" className="h-5 w-5 dark:invert" />
+            </button>
+          </div>
+          <div className="p-4">
+            <input value={query} onChange={(event) => setQuery(event.target.value)} className={inputCls} placeholder="جستجو در برچسب‌ها..." />
+          </div>
+          <div className="flex-1 overflow-auto px-4 pb-4">
+            <div className="flex flex-wrap gap-2">
+              {list.map((tag) => {
+                const id = String(tag?.id ?? "");
+                const active = selected.has(id);
+                return (
+                  <button key={id} type="button" onClick={() => onToggle(id)} className={`h-10 rounded-full border px-4 text-sm transition ${active ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 hover:bg-black/[0.03] dark:border-white/15 dark:hover:bg-white/10"}`}>
+                    {tagLabelOf(tag)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
 

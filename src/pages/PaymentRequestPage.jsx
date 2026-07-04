@@ -13,6 +13,7 @@ const DOC_OPTIONS = [
 ];
 const MONTHS = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
 const STATUS_LABELS = { pending: "در انتظار بررسی", approved: "تأییدشده", rejected: "ردشده", returned: "برگشت‌خورده" };
+const PAGE_ICON = "/images/icons/darkhast-pardakht.svg";
 const inputClass = "w-full h-11 rounded-xl border border-black/10 bg-white px-3 text-sm text-neutral-900 outline-none transition focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-white";
 const today = () => todayJalaliYmd().replaceAll("-", "/");
 const emptyForm = () => ({
@@ -193,6 +194,12 @@ export default function PaymentRequestPage() {
   const [success, setSuccess] = useState("");
   const [submitNotice, setSubmitNotice] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [filterQuery, setFilterQuery] = useState("");
+  const [filterQuick, setFilterQuick] = useState("");
+  const [filterTagIds, setFilterTagIds] = useState([]);
+  const [tags, setTags] = useState([]);
+  const [tagPickOpen, setTagPickOpen] = useState(false);
+  const [tagPickSearch, setTagPickSearch] = useState("");
   const [actionNote, setActionNote] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState("");
@@ -231,13 +238,19 @@ export default function PaymentRequestPage() {
   const loadItems = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await api(mainAdmin ? "/requests" : "/requests?view=mine");
+      const data = await api("/requests?view=mine");
       setItems(Array.isArray(data.items) ? data.items : []);
     } catch { setError("دریافت درخواست‌ها انجام نشد."); }
     finally { setLoading(false); }
-  }, [api, mainAdmin]);
+  }, [api]);
 
   useEffect(() => { loadItems(); }, [loadItems]);
+  useEffect(() => {
+    api("/tags?scope=letters").then((data) => {
+      const rows = Array.isArray(data?.tags) ? data.tags : Array.isArray(data?.items) ? data.items : [];
+      setTags(rows);
+    }).catch(() => setTags([]));
+  }, [api]);
   useEffect(() => {
     Promise.allSettled([api("/projects?isActive=true"), api("/base/currencies/types"), api("/base/currencies/sources"), api("/supply-requests")]).then(([p, t, s, sr]) => {
       if (p.status === "fulfilled") {
@@ -403,10 +416,11 @@ export default function PaymentRequestPage() {
     }
   };
 
-  const sortedItems = useMemo(() => [...items].sort((a, b) => {
+  const filteredItems = useMemo(() => filterRequestRows(items, { query: filterQuery, quick: filterQuick, tagIds: filterTagIds }), [items, filterQuery, filterQuick, filterTagIds]);
+  const sortedItems = useMemo(() => [...filteredItems].sort((a, b) => {
     const result = String(a.serial || a.id || "").localeCompare(String(b.serial || b.id || ""), "fa", { numeric: true, sensitivity: "base" });
     return numberSortDir === "asc" ? result : -result;
-  }), [items, numberSortDir]);
+  }), [filteredItems, numberSortDir]);
   const total = sortedItems.length;
   const pageCount = Math.max(1, Math.ceil(total / rowsPerPage));
   const safePage = Math.min(page, pageCount - 1);
@@ -435,8 +449,16 @@ export default function PaymentRequestPage() {
   return <div dir="rtl" className="mx-auto max-w-[1400px]">
     <Card className="overflow-hidden rounded-2xl border border-black/10 bg-white p-0 dark:border-white/10 dark:bg-neutral-900">
       <div className="p-3 md:p-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div className="text-lg font-bold md:text-xl">مدیریت درخواست ها</div>
+        <div className="mb-5 flex min-w-0 items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
+              <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-base font-bold md:text-lg">مدیریت درخواست ها</span>
+              <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">درخواست پرداخت</span>
+            </span>
+          </div>
           <button type="button" onClick={() => { setShowForm((old) => !old); setError(""); setSuccess(""); }} className="flex h-10 w-10 items-center justify-center rounded-xl ring-1 ring-black/15 transition hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10" title={showForm ? "نمایش لیست" : "افزودن درخواست"}>
             <img src={showForm ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" />
           </button>
@@ -513,29 +535,27 @@ export default function PaymentRequestPage() {
           <div className="flex justify-end"><button type="submit" disabled={submitting || uploading} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-900 text-white transition hover:bg-neutral-900/85 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90" title="ثبت" aria-label="ثبت"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button></div>
         </form>}
 
+        {!showForm && <RequestFilterBar query={filterQuery} setQuery={setFilterQuery} quick={filterQuick} setQuick={setFilterQuick} tags={tags} selectedTagIds={filterTagIds} setSelectedTagIds={setFilterTagIds} tagPickOpen={tagPickOpen} setTagPickOpen={setTagPickOpen} tagPickSearch={tagPickSearch} setTagPickSearch={setTagPickSearch} />}
+
         {!showForm && <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
           <div className="relative hidden max-h-[55vh] overflow-y-auto overflow-x-hidden pb-0 md:block" dir="ltr"><table dir="rtl" className="w-full min-w-full table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:min-w-0 [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5">
-            <colgroup><col style={{ width: 48 }} /><col style={{ width: 125 }} /><col style={{ width: 100 }} /><col /><col style={{ width: 125 }} />{mainAdmin && <col style={{ width: 145 }} />}<col style={{ width: 150 }} /><col style={{ width: 135 }} /><col style={{ width: 145 }} /></colgroup>
+            <colgroup><col style={{ width: 48 }} /><col style={{ width: 125 }} /><col style={{ width: 100 }} /><col /><col style={{ width: 125 }} /><col style={{ width: 135 }} /><col style={{ width: 145 }} /></colgroup>
             <thead><tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100">
               <th className="sticky top-0 z-40 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><input ref={selectAllRef} type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allVisibleSelected} onChange={toggleSelectAll} aria-label="انتخاب همه" /></th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><button type="button" onClick={() => setNumberSortDir((old) => old === "asc" ? "desc" : "asc")} className="mx-auto inline-flex items-center gap-1 transition hover:opacity-90"><span>شماره</span><img src={numberSortDir === "desc" ? "/images/icons/bozorgbekochik.svg" : "/images/icons/kochikbebozorg.svg"} alt="" className="h-4 w-4 dark:invert" /></button></th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">تاریخ</th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">موضوع</th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">پروژه</th>
-              {mainAdmin && <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">ثبت کننده</th>}
-              <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">مبلغ درخواست</th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">آخرین وضعیت</th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 !pl-6 !pr-3 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">اقدامات</th>
             </tr></thead>
             <tbody className="text-black dark:text-neutral-100">
-              {loading ? <tr><td colSpan={mainAdmin ? 9 : 8} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td></tr> : pageItems.length === 0 ? <tr><td colSpan={mainAdmin ? 9 : 8} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواستی ثبت نشده است.</td></tr> : pageItems.map((item, index) => <tr key={item.id} className="group bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
+              {loading ? <tr><td colSpan={7} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td></tr> : pageItems.length === 0 ? <tr><td colSpan={7} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواستی ثبت نشده است.</td></tr> : pageItems.map((item, index) => <tr key={item.id} className="group bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label="انتخاب" /></td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><button type="button" onClick={() => openPreview(item)} className="mx-auto inline-flex items-center justify-center text-[13px] font-semibold underline-offset-4 transition hover:underline" title="نمایش درخواست">{item.serial || "—"}</button></td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))}</td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.title || "—"}</span></td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{projectLabel(projects.find((row) => String(row.id) === String(item.projectId))) || item.projectName || item.projectCode || "—"}</span></td>
-                {mainAdmin && <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.createdByName || `کاربر #${toFa(item.createdById)}`}</span></td>}
-                <td className="border-b border-neutral-300 px-3 ltr dark:border-neutral-700">{toFa(Number(item.amount || 0).toLocaleString("en-US"))}</td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><StatusBadge status={item.status} /></td>
                 <td className="border-b border-neutral-300 !pl-6 !pr-3 dark:border-neutral-700"><div className="flex w-full items-center justify-start gap-2 pl-3 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"><button type="button" onClick={() => openPreview(item)} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label="نمایش" title="نمایش"><img src="/images/icons/namayeshname.svg" alt="" className="h-4 w-4 dark:invert" /></button>{String(item.createdById) === String(user?.id) && <button type="button" onClick={() => deleteItem(item)} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label="حذف" title="حذف"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" style={{ filter: "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)" }} /></button>}</div></td>
               </tr>)}
@@ -564,6 +584,107 @@ export default function PaymentRequestPage() {
     />}
     {submitNotice && <RegistrationNotice info={submitNotice} onClose={() => setSubmitNotice(null)} />}
   </div>;
+}
+
+const QUICK_FILTERS = [["week", "هفته قبل"], ["2w", "2 هفته قبل"], ["1m", "ماه قبل"], ["3m", "3 ماه قبل"], ["6m", "6 ماه قبل"]];
+
+function tagLabelOf(tag) {
+  return String(tag?.label ?? tag?.name ?? tag?.title ?? tag?.text ?? tag?.id ?? "").trim();
+}
+
+function tagIdListOf(item) {
+  const history = Array.isArray(item?.historyJson) ? item.historyJson : Array.isArray(item?.history_json) ? item.history_json : [];
+  const created = history.find((entry) => entry?.type === "created") || {};
+  const raw = item?.tagIds ?? item?.tag_ids ?? created?.tagIds ?? created?.tag_ids ?? [];
+  return Array.isArray(raw) ? raw.map((id) => String(id)) : [];
+}
+
+function quickStartDate(key) {
+  if (!key) return "";
+  const date = new Date();
+  if (key === "week") date.setDate(date.getDate() - 7);
+  else if (key === "2w") date.setDate(date.getDate() - 14);
+  else if (key === "1m") date.setMonth(date.getMonth() - 1);
+  else if (key === "3m") date.setMonth(date.getMonth() - 3);
+  else if (key === "6m") date.setMonth(date.getMonth() - 6);
+  else return "";
+  return normalizeDigits(new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit" }).format(date));
+}
+
+function itemDateKey(item) {
+  return normalizeDigits(String(item?.dateFa || item?.dateJalali || item?.date_jalali || "")).replaceAll("-", "/");
+}
+
+function filterRequestRows(rows, { query, quick, tagIds }) {
+  const q = normalizeDigits(query).trim().toLowerCase();
+  const start = quickStartDate(quick);
+  const selectedTags = Array.isArray(tagIds) ? tagIds.map(String).filter(Boolean) : [];
+  return (Array.isArray(rows) ? rows : []).filter((item) => {
+    if (start && itemDateKey(item) < start) return false;
+    if (selectedTags.length) {
+      const itemTags = tagIdListOf(item);
+      if (!selectedTags.some((id) => itemTags.includes(id))) return false;
+    }
+    if (!q) return true;
+    const hay = [item.serial, item.dateFa, item.dateJalali, item.title, item.description, item.budgetCode, item.projectName, item.projectCode, item.status]
+      .map((value) => normalizeDigits(value).toLowerCase())
+      .join(" ");
+    return hay.includes(q);
+  });
+}
+
+function RequestFilterBar({ query, setQuery, quick, setQuick, tags, selectedTagIds, setSelectedTagIds, tagPickOpen, setTagPickOpen, tagPickSearch, setTagPickSearch }) {
+  const selected = new Set((selectedTagIds || []).map(String));
+  const visibleTags = (Array.isArray(tags) ? tags : []).slice(0, 8);
+  const toggleTag = (id) => {
+    const sid = String(id);
+    setSelectedTagIds((prev) => {
+      const cur = (Array.isArray(prev) ? prev : []).map(String);
+      return cur.includes(sid) ? cur.filter((x) => x !== sid) : [...cur, sid];
+    });
+  };
+
+  return <div className="mb-4 space-y-2 rounded-2xl border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-transparent">
+    <div className="flex flex-wrap items-end gap-2">
+      <div className="w-full md:min-w-[280px] md:flex-1">
+        <div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">جست و جو</div>
+        <input value={query} onChange={(event) => setQuery(event.target.value)} className={inputClass} placeholder="جستجو در شماره، موضوع، تاریخ، پروژه و ..." />
+      </div>
+    </div>
+    <div>
+      <div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">برچسب ها</div>
+      <div className="flex flex-wrap items-center gap-2">
+        {QUICK_FILTERS.map(([key, label]) => (
+          <button key={key} type="button" onClick={() => setQuick(quick === key ? "" : key)} className={`h-9 rounded-full border px-4 text-xs transition ${quick === key ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>{label}</button>
+        ))}
+        {visibleTags.map((tag) => {
+          const id = String(tag?.id ?? "");
+          const active = selected.has(id);
+          return <button key={id} type="button" onClick={() => toggleTag(id)} className={`h-9 rounded-full border px-4 text-xs transition ${active ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>{tagLabelOf(tag)}</button>;
+        })}
+        <button type="button" onClick={() => { setTagPickSearch(""); setTagPickOpen(true); }} className="grid h-9 w-9 place-items-center rounded-full border border-black/10 bg-white transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="انتخاب برچسب" title="انتخاب برچسب">
+          <img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" />
+        </button>
+      </div>
+    </div>
+    {tagPickOpen && <TagPicker tags={tags} selectedIds={selectedTagIds} onToggle={toggleTag} query={tagPickSearch} setQuery={setTagPickSearch} onClose={() => setTagPickOpen(false)} />}
+  </div>;
+}
+
+function TagPicker({ tags, selectedIds, onToggle, query, setQuery, onClose }) {
+  const selected = new Set((selectedIds || []).map(String));
+  const q = String(query || "").trim().toLowerCase();
+  const list = (Array.isArray(tags) ? tags : []).filter((tag) => !q || tagLabelOf(tag).toLowerCase().includes(q));
+  return createPortal(<div className="fixed inset-0 z-[9999]" dir="rtl">
+    <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+    <div className="absolute inset-0 flex items-center justify-center p-4">
+      <div className="flex h-[min(70vh,620px)] w-[min(760px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-black/10 p-4 dark:border-white/10"><b className="text-sm">انتخاب برچسب</b><button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-xl border border-black/10 dark:border-white/10"><img src="/images/icons/bastan.svg" alt="" className="h-5 w-5 dark:invert" /></button></div>
+        <div className="p-4"><input value={query} onChange={(event) => setQuery(event.target.value)} className={inputClass} placeholder="جستجو در برچسب‌ها..." /></div>
+        <div className="flex-1 overflow-auto px-4 pb-4"><div className="flex flex-wrap gap-2">{list.map((tag) => { const id = String(tag?.id ?? ""); const active = selected.has(id); return <button key={id} type="button" onClick={() => onToggle(id)} className={`h-10 rounded-full border px-4 text-sm transition ${active ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 hover:bg-black/[0.03] dark:border-white/15 dark:hover:bg-white/10"}`}>{tagLabelOf(tag)}</button>; })}</div></div>
+      </div>
+    </div>
+  </div>, document.body);
 }
 
 function Field({ label, required, children }) { return <label className="block text-xs text-neutral-600 dark:text-neutral-300">{label}{required && <span className="mr-1 text-red-500">*</span>}<div className="mt-1">{children}</div></label>; }
