@@ -5,7 +5,6 @@ import Card from "../components/ui/Card.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
-import { api } from "../utils/api.js";
 import { todayJalaliYmd } from "../utils/date.js";
 import { toEnglishDigits } from "../utils/format.js";
 
@@ -61,6 +60,17 @@ function normalizeProjectCode(value = "") {
   const exact = raw.match(/^\d{3}$/);
   if (exact) return raw;
   return raw.match(/^(\d{3})/)?.[1] || "";
+}
+
+function normalizeCode(value = "") {
+  return toEnglishDigits(String(value || "")).trim();
+}
+
+function coreOf(value) {
+  const raw = normalizeCode(value);
+  const noPrefix = raw.replace(/^[A-Za-z]+[^0-9]*/, "");
+  const normalized = noPrefix.replace(/[^0-9.]+/g, ".");
+  return normalized.replace(/\.+/g, ".").replace(/^\./, "").replace(/\.$/, "");
 }
 
 function isActiveProject(project) {
@@ -136,7 +146,27 @@ function registrationMessage(info) {
   const time = info.time || "";
   const userName = info.userName || info.username || "کاربر";
   const unitName = info.unitName || "نامشخص";
-  return `درخواست شما در تاریخ ${toFaDigits(String(date).replaceAll("-", "/"))} در ساعت ${toFaDigits(time)} توسط ${userName} واحد ${unitName} ثبت گردید`;
+  const roleName = info.roleName || "";
+  return `درخواست شما در تاریخ ${toFaDigits(String(date).replaceAll("-", "/"))} در ساعت ${toFaDigits(time)} توسط ${userName}${roleName ? ` با نقش ${roleName}` : ""} واحد ${unitName} ثبت گردید`;
+}
+
+function clientRegistrationInfo() {
+  const now = new Date();
+  const dateJalali = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+  const time = new Intl.DateTimeFormat("fa-IR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(now);
+  return {
+    dateJalali: normalizeDigits(dateJalali).replaceAll("-", "/"),
+    time: normalizeDigits(time),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+  };
 }
 
 function StatusBadge({ status }) {
@@ -153,7 +183,7 @@ function StatusBadge({ status }) {
 }
 
 export default function SupplyRequestPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const fileRef = useRef(null);
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -182,6 +212,25 @@ export default function SupplyRequestPage() {
     [form.projectId, projects]
   );
 
+  const api = useCallback(async (path, options = {}) => {
+    const response = await fetch(`/api${path}`, {
+      credentials: "include",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(user?.id != null ? { "x-user-id": String(user.id) } : {}),
+        ...(options.headers || {}),
+      },
+    });
+    const text = await response.text();
+    let data = {};
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {}
+    if (!response.ok) throw new Error(data.error || data.message || "request_failed");
+    return data;
+  }, [user?.id]);
+
   const previewSerial = useMemo(() => {
     const yy = jalaliYY(form.dateJalali);
     const pcode = normalizeProjectCode(selectedProject?.code);
@@ -197,6 +246,7 @@ export default function SupplyRequestPage() {
   }, [form.dateJalali, items, selectedProject?.code]);
 
   const loadItems = useCallback(async () => {
+    if (authLoading) return;
     setLoading(true);
     setErr("");
     try {
@@ -209,7 +259,7 @@ export default function SupplyRequestPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [api, authLoading]);
 
   const loadProjects = useCallback(async () => {
     try {
@@ -223,7 +273,7 @@ export default function SupplyRequestPage() {
     } catch {
       setProjects([]);
     }
-  }, []);
+  }, [api]);
 
   useEffect(() => {
     loadItems();
@@ -231,6 +281,7 @@ export default function SupplyRequestPage() {
   }, [loadItems, loadProjects]);
 
   useEffect(() => {
+    if (authLoading) return undefined;
     let cancelled = false;
     (async () => {
       try {
@@ -244,7 +295,7 @@ export default function SupplyRequestPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [api, authLoading]);
 
   useEffect(() => {
     let cancelled = false;
@@ -254,10 +305,65 @@ export default function SupplyRequestPage() {
     }
 
     (async () => {
+      const query = new URLSearchParams({ kind: "projects" });
+      query.set("project_id", form.projectId);
+      const projectCore = coreOf(selectedProject?.code);
+
       try {
-        const data = await api(`/cost-breakdown?project_id=${encodeURIComponent(form.projectId)}`);
-        const rows = Array.isArray(data?.items) ? data.items : [];
-        if (!cancelled) setBudgetItems(rows);
+        const [estimateData, centersData, costData] = await Promise.all([
+          api(`/budget-estimates?${query}`).catch(() => ({ items: [] })),
+          api("/centers/projects").catch(() => ({ items: [] })),
+          api(`/cost-breakdown?project_id=${encodeURIComponent(form.projectId)}`).catch(() => ({ items: [] })),
+        ]);
+
+        const estimateItems = Array.isArray(estimateData?.items) ? estimateData.items : [];
+        const centerItems = Array.isArray(centersData?.items) ? centersData.items : [];
+        const costItems = Array.isArray(costData?.items) ? costData.items : [];
+        const byCode = new Map();
+
+        centerItems.forEach((item) => {
+          const code = normalizeCode(item?.suffix ?? item?.code);
+          const codeCore = coreOf(code);
+          if (!code || !projectCore || (codeCore !== projectCore && !codeCore.startsWith(`${projectCore}.`))) return;
+          byCode.set(code, {
+            code,
+            center_desc: String(item?.description ?? item?.center_desc ?? item?.name ?? ""),
+            last_amount: Number(item?.last_amount || 0),
+          });
+        });
+
+        estimateItems.forEach((item) => {
+          const code = normalizeCode(item?.code);
+          const codeCore = coreOf(code);
+          if (!code || !projectCore || (codeCore !== projectCore && !codeCore.startsWith(`${projectCore}.`))) return;
+          const previous = byCode.get(code) || { code, center_desc: "", last_amount: 0 };
+          byCode.set(code, {
+            ...previous,
+            center_desc: previous.center_desc || String(item?.center_desc ?? item?.last_desc ?? item?.name ?? ""),
+            last_amount: Number(item?.last_amount ?? item?.amount ?? previous.last_amount ?? 0),
+          });
+        });
+
+        costItems.forEach((item) => {
+          const code = normalizeCode(item?.budgetCode ?? item?.budget_code ?? item?.code);
+          if (!code) return;
+          const previous = byCode.get(code) || { code, center_desc: "", last_amount: 0 };
+          byCode.set(code, {
+            ...previous,
+            center_desc: previous.center_desc || String(item?.budgetName ?? item?.budget_name ?? item?.name ?? ""),
+            last_amount: Number(item?.baseBudget ?? item?.base_budget ?? previous.last_amount ?? 0),
+          });
+        });
+
+        if (!byCode.size && selectedProject?.code) {
+          const code = normalizeCode(selectedProject.code);
+          byCode.set(code, { code, center_desc: selectedProject.name || "", last_amount: 0 });
+        }
+
+        const merged = Array.from(byCode.values()).sort((a, b) =>
+          coreOf(a.code).localeCompare(coreOf(b.code), "fa", { numeric: true, sensitivity: "base" })
+        );
+        if (!cancelled) setBudgetItems(merged);
       } catch {
         if (!cancelled) setBudgetItems([]);
       }
@@ -266,7 +372,7 @@ export default function SupplyRequestPage() {
     return () => {
       cancelled = true;
     };
-  }, [form.projectId]);
+  }, [api, form.projectId, selectedProject]);
 
   const setField = (name, value) => {
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -355,6 +461,7 @@ export default function SupplyRequestPage() {
         scope: "projects",
         amount,
         relatedLetterIds: form.relatedLetterIds,
+        clientRegistrationInfo: clientRegistrationInfo(),
       };
       const data = await api("/supply-requests", { method: "POST", body: JSON.stringify(payload) });
       if (data?.item) setItems((prev) => [data.item, ...prev]);
@@ -518,8 +625,8 @@ export default function SupplyRequestPage() {
                   <select value={form.budgetCode} onChange={(event) => setField("budgetCode", event.target.value)} className={inputCls} disabled={!form.projectId}>
                     <option value="">{form.projectId ? "انتخاب کنید" : "ابتدا پروژه را انتخاب کنید"}</option>
                     {budgetItems.map((item) => {
-                      const code = item.budgetCode ?? item.budget_code ?? "";
-                      const name = item.budgetName ?? item.budget_name ?? "";
+                      const code = normalizeCode(item.code ?? item.budgetCode ?? item.budget_code ?? item.center_code);
+                      const name = item.center_desc ?? item.last_desc ?? item.budgetName ?? item.budget_name ?? item.name ?? item.description ?? "";
                       return (
                         <option key={item.id || code} value={code}>
                           {code}
@@ -779,7 +886,7 @@ function Field({ label, required, children }) {
 
 function RegistrationNotice({ info, onClose }) {
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-start justify-center bg-black/20 px-3 pt-20" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/20 px-3" onClick={onClose}>
       <div dir="rtl" className="w-[min(520px,calc(100vw-24px))] rounded-2xl border border-black/10 bg-white p-4 text-sm text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
         <div className="leading-7">{registrationMessage(info)}</div>
         <div className="mt-3 flex justify-end">

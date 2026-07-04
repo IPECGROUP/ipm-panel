@@ -77,7 +77,27 @@ function registrationMessage(info) {
   const time = info.time || "";
   const userName = info.userName || info.username || "کاربر";
   const unitName = info.unitName || "نامشخص";
-  return `درخواست شما در تاریخ ${toFa(String(date).replaceAll("-", "/"))} در ساعت ${toFa(time)} توسط ${userName} واحد ${unitName} ثبت گردید`;
+  const roleName = info.roleName || "";
+  return `درخواست شما در تاریخ ${toFa(String(date).replaceAll("-", "/"))} در ساعت ${toFa(time)} توسط ${userName}${roleName ? ` با نقش ${roleName}` : ""} واحد ${unitName} ثبت گردید`;
+}
+
+function clientRegistrationInfo() {
+  const now = new Date();
+  const dateJalali = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+  const time = new Intl.DateTimeFormat("fa-IR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(now);
+  return {
+    dateJalali: normalizeDigits(dateJalali).replaceAll("-", "/"),
+    time: normalizeDigits(time),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+  };
 }
 
 function JalaliPopupDatePicker({ value, onChange, disablePast = false }) {
@@ -335,6 +355,7 @@ export default function PaymentRequestPage() {
         ...form, serial, scope: "projects", amount, cashAmount: null, creditAmount: null,
         currencyTypeId: form.currencyTypeId || null, currencySourceId: form.currencySourceId || null,
         projectId: form.projectId || null,
+        clientRegistrationInfo: clientRegistrationInfo(),
       }) });
       setSubmitNotice(data?.item?.registrationInfo || null);
       setForm(emptyForm()); setSuccess("درخواست با موفقیت ثبت شد."); setShowForm(false); await loadItems();
@@ -625,7 +646,7 @@ function historyLabel(value) { return ({ created: "ثبت درخواست", appro
 function formatDateTime(value) { if (!value) return "—"; try { return new Intl.DateTimeFormat("fa-IR-u-ca-persian", { dateStyle: "short", timeStyle: "short" }).format(new Date(value)); } catch { return "—"; } }
 
 function RegistrationNotice({ info, onClose }) {
-  return createPortal(<div className="fixed inset-0 z-[9999] flex items-start justify-center bg-black/20 px-3 pt-20" onClick={onClose}>
+  return createPortal(<div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/20 px-3" onClick={onClose}>
     <div dir="rtl" className="w-[min(520px,calc(100vw-24px))] rounded-2xl border border-black/10 bg-white p-4 text-sm text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
       <div className="leading-7">{registrationMessage(info)}</div>
       <div className="mt-3 flex justify-end">
