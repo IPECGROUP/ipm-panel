@@ -239,6 +239,7 @@ export default function SupplyRequestPage() {
   const [filterProjectId, setFilterProjectId] = useState("");
   const [filterQuick, setFilterQuick] = useState("");
   const [filterTagIds, setFilterTagIds] = useState([]);
+  const [pinnedFilterTagIds, setPinnedFilterTagIds] = useState([]);
   const [tags, setTags] = useState([]);
   const [tagPickOpen, setTagPickOpen] = useState(false);
   const [tagPickSearch, setTagPickSearch] = useState("");
@@ -341,6 +342,22 @@ export default function SupplyRequestPage() {
       setTags(rows);
     }).catch(() => setTags([]));
   }, [api]);
+  useEffect(() => {
+    if (!user?.id) return;
+    try {
+      const raw = localStorage.getItem(`request_filter_tags:supply:u${user.id}`);
+      const ids = raw ? JSON.parse(raw) : [];
+      setPinnedFilterTagIds(Array.isArray(ids) ? ids.map(String) : []);
+    } catch {
+      setPinnedFilterTagIds([]);
+    }
+  }, [user?.id]);
+  useEffect(() => {
+    if (!user?.id) return;
+    try {
+      localStorage.setItem(`request_filter_tags:supply:u${user.id}`, JSON.stringify((pinnedFilterTagIds || []).map(String)));
+    } catch {}
+  }, [pinnedFilterTagIds, user?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -604,8 +621,10 @@ export default function SupplyRequestPage() {
               quick={filterQuick}
               setQuick={setFilterQuick}
               tags={tags}
-              selectedTagIds={filterTagIds}
-              setSelectedTagIds={setFilterTagIds}
+              pinnedTagIds={pinnedFilterTagIds}
+              setPinnedTagIds={setPinnedFilterTagIds}
+              activeTagIds={filterTagIds}
+              setActiveTagIds={setFilterTagIds}
               tagPickOpen={tagPickOpen}
               setTagPickOpen={setTagPickOpen}
               tagPickSearch={tagPickSearch}
@@ -904,14 +923,26 @@ function Field({ label, required, children }) {
   );
 }
 
-function RequestFilterBar({ query, setQuery, quick, setQuick, tags, selectedTagIds, setSelectedTagIds, tagPickOpen, setTagPickOpen, tagPickSearch, setTagPickSearch }) {
-  const selected = new Set((selectedTagIds || []).map(String));
-  const visibleTags = (Array.isArray(tags) ? tags : []).slice(0, 8);
-  const toggleTag = (id) => {
+function RequestFilterBar({ query, setQuery, quick, setQuick, tags, pinnedTagIds, setPinnedTagIds, activeTagIds, setActiveTagIds, tagPickOpen, setTagPickOpen, tagPickSearch, setTagPickSearch }) {
+  const active = new Set((activeTagIds || []).map(String));
+  const tagMap = new Map((Array.isArray(tags) ? tags : []).map((tag) => [String(tag?.id ?? ""), tag]));
+  const visibleTags = (Array.isArray(pinnedTagIds) ? pinnedTagIds : []).map((id) => tagMap.get(String(id))).filter(Boolean);
+  const toggleActiveTag = (id) => {
     const sid = String(id);
-    setSelectedTagIds((prev) => {
+    setActiveTagIds((prev) => {
       const cur = (Array.isArray(prev) ? prev : []).map(String);
       return cur.includes(sid) ? cur.filter((x) => x !== sid) : [...cur, sid];
+    });
+  };
+  const togglePinnedTag = (id) => {
+    const sid = String(id);
+    setPinnedTagIds((prev) => {
+      const cur = (Array.isArray(prev) ? prev : []).map(String);
+      if (cur.includes(sid)) {
+        setActiveTagIds((activePrev) => (Array.isArray(activePrev) ? activePrev.map(String).filter((x) => x !== sid) : []));
+        return cur.filter((x) => x !== sid);
+      }
+      return [...cur, sid];
     });
   };
 
@@ -933,9 +964,9 @@ function RequestFilterBar({ query, setQuery, quick, setQuick, tags, selectedTagI
           ))}
           {visibleTags.map((tag) => {
             const id = String(tag?.id ?? "");
-            const active = selected.has(id);
+            const isActive = active.has(id);
             return (
-              <button key={id} type="button" onClick={() => toggleTag(id)} className={`h-9 rounded-full border px-4 text-xs transition ${active ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>
+              <button key={id} type="button" onClick={() => toggleActiveTag(id)} className={`h-9 rounded-full border px-4 text-xs transition ${isActive ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>
                 {tagLabelOf(tag)}
               </button>
             );
@@ -945,7 +976,7 @@ function RequestFilterBar({ query, setQuery, quick, setQuick, tags, selectedTagI
           </button>
         </div>
       </div>
-      {tagPickOpen && <TagPicker tags={tags} selectedIds={selectedTagIds} onToggle={toggleTag} query={tagPickSearch} setQuery={setTagPickSearch} onClose={() => setTagPickOpen(false)} />}
+      {tagPickOpen && <TagPicker tags={tags} selectedIds={pinnedTagIds} onToggle={togglePinnedTag} query={tagPickSearch} setQuery={setTagPickSearch} onClose={() => setTagPickOpen(false)} />}
     </div>
   );
 }

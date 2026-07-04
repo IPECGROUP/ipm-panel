@@ -197,6 +197,7 @@ export default function PaymentRequestPage() {
   const [filterQuery, setFilterQuery] = useState("");
   const [filterQuick, setFilterQuick] = useState("");
   const [filterTagIds, setFilterTagIds] = useState([]);
+  const [pinnedFilterTagIds, setPinnedFilterTagIds] = useState([]);
   const [tags, setTags] = useState([]);
   const [tagPickOpen, setTagPickOpen] = useState(false);
   const [tagPickSearch, setTagPickSearch] = useState("");
@@ -251,6 +252,22 @@ export default function PaymentRequestPage() {
       setTags(rows);
     }).catch(() => setTags([]));
   }, [api]);
+  useEffect(() => {
+    if (!user?.id) return;
+    try {
+      const raw = localStorage.getItem(`request_filter_tags:payment:u${user.id}`);
+      const ids = raw ? JSON.parse(raw) : [];
+      setPinnedFilterTagIds(Array.isArray(ids) ? ids.map(String) : []);
+    } catch {
+      setPinnedFilterTagIds([]);
+    }
+  }, [user?.id]);
+  useEffect(() => {
+    if (!user?.id) return;
+    try {
+      localStorage.setItem(`request_filter_tags:payment:u${user.id}`, JSON.stringify((pinnedFilterTagIds || []).map(String)));
+    } catch {}
+  }, [pinnedFilterTagIds, user?.id]);
   useEffect(() => {
     Promise.allSettled([api("/projects?isActive=true"), api("/base/currencies/types"), api("/base/currencies/sources"), api("/supply-requests")]).then(([p, t, s, sr]) => {
       if (p.status === "fulfilled") {
@@ -535,7 +552,7 @@ export default function PaymentRequestPage() {
           <div className="flex justify-end"><button type="submit" disabled={submitting || uploading} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-900 text-white transition hover:bg-neutral-900/85 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90" title="ثبت" aria-label="ثبت"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button></div>
         </form>}
 
-        {!showForm && <RequestFilterBar query={filterQuery} setQuery={setFilterQuery} quick={filterQuick} setQuick={setFilterQuick} tags={tags} selectedTagIds={filterTagIds} setSelectedTagIds={setFilterTagIds} tagPickOpen={tagPickOpen} setTagPickOpen={setTagPickOpen} tagPickSearch={tagPickSearch} setTagPickSearch={setTagPickSearch} />}
+        {!showForm && <RequestFilterBar query={filterQuery} setQuery={setFilterQuery} quick={filterQuick} setQuick={setFilterQuick} tags={tags} pinnedTagIds={pinnedFilterTagIds} setPinnedTagIds={setPinnedFilterTagIds} activeTagIds={filterTagIds} setActiveTagIds={setFilterTagIds} tagPickOpen={tagPickOpen} setTagPickOpen={setTagPickOpen} tagPickSearch={tagPickSearch} setTagPickSearch={setTagPickSearch} />}
 
         {!showForm && <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
           <div className="relative hidden max-h-[55vh] overflow-y-auto overflow-x-hidden pb-0 md:block" dir="ltr"><table dir="rtl" className="w-full min-w-full table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:min-w-0 [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5">
@@ -633,14 +650,26 @@ function filterRequestRows(rows, { query, quick, tagIds }) {
   });
 }
 
-function RequestFilterBar({ query, setQuery, quick, setQuick, tags, selectedTagIds, setSelectedTagIds, tagPickOpen, setTagPickOpen, tagPickSearch, setTagPickSearch }) {
-  const selected = new Set((selectedTagIds || []).map(String));
-  const visibleTags = (Array.isArray(tags) ? tags : []).slice(0, 8);
-  const toggleTag = (id) => {
+function RequestFilterBar({ query, setQuery, quick, setQuick, tags, pinnedTagIds, setPinnedTagIds, activeTagIds, setActiveTagIds, tagPickOpen, setTagPickOpen, tagPickSearch, setTagPickSearch }) {
+  const active = new Set((activeTagIds || []).map(String));
+  const tagMap = new Map((Array.isArray(tags) ? tags : []).map((tag) => [String(tag?.id ?? ""), tag]));
+  const visibleTags = (Array.isArray(pinnedTagIds) ? pinnedTagIds : []).map((id) => tagMap.get(String(id))).filter(Boolean);
+  const toggleActiveTag = (id) => {
     const sid = String(id);
-    setSelectedTagIds((prev) => {
+    setActiveTagIds((prev) => {
       const cur = (Array.isArray(prev) ? prev : []).map(String);
       return cur.includes(sid) ? cur.filter((x) => x !== sid) : [...cur, sid];
+    });
+  };
+  const togglePinnedTag = (id) => {
+    const sid = String(id);
+    setPinnedTagIds((prev) => {
+      const cur = (Array.isArray(prev) ? prev : []).map(String);
+      if (cur.includes(sid)) {
+        setActiveTagIds((activePrev) => (Array.isArray(activePrev) ? activePrev.map(String).filter((x) => x !== sid) : []));
+        return cur.filter((x) => x !== sid);
+      }
+      return [...cur, sid];
     });
   };
 
@@ -659,15 +688,15 @@ function RequestFilterBar({ query, setQuery, quick, setQuick, tags, selectedTagI
         ))}
         {visibleTags.map((tag) => {
           const id = String(tag?.id ?? "");
-          const active = selected.has(id);
-          return <button key={id} type="button" onClick={() => toggleTag(id)} className={`h-9 rounded-full border px-4 text-xs transition ${active ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>{tagLabelOf(tag)}</button>;
+          const isActive = active.has(id);
+          return <button key={id} type="button" onClick={() => toggleActiveTag(id)} className={`h-9 rounded-full border px-4 text-xs transition ${isActive ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>{tagLabelOf(tag)}</button>;
         })}
         <button type="button" onClick={() => { setTagPickSearch(""); setTagPickOpen(true); }} className="grid h-9 w-9 place-items-center rounded-full border border-black/10 bg-white transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="انتخاب برچسب" title="انتخاب برچسب">
           <img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" />
         </button>
       </div>
     </div>
-    {tagPickOpen && <TagPicker tags={tags} selectedIds={selectedTagIds} onToggle={toggleTag} query={tagPickSearch} setQuery={setTagPickSearch} onClose={() => setTagPickOpen(false)} />}
+    {tagPickOpen && <TagPicker tags={tags} selectedIds={pinnedTagIds} onToggle={togglePinnedTag} query={tagPickSearch} setQuery={setTagPickSearch} onClose={() => setTagPickOpen(false)} />}
   </div>;
 }
 
