@@ -272,17 +272,14 @@ export default function SupplyRequestPage() {
 
   const previewSerial = useMemo(() => {
     const yy = jalaliYY(form.dateJalali);
-    const pcode = normalizeProjectCode(selectedProject?.code);
-    if (!pcode) return `${yy}/---/---`;
-
     let maxSeq = 0;
-    const re = new RegExp(`^${yy}/${pcode}/(\\d{3})$`);
+    const re = new RegExp(`^${yy}/(?:\\d{3}/)?(\\d{3})$`);
     items.forEach((item) => {
       const m = normalizeDigits(item?.serial || "").match(re);
       if (m) maxSeq = Math.max(maxSeq, Number(m[1]) || 0);
     });
-    return `${yy}/${pcode}/${String(maxSeq + 1).padStart(3, "0")}`;
-  }, [form.dateJalali, items, selectedProject?.code]);
+    return `${yy}/${String(maxSeq + 1).padStart(3, "0")}`;
+  }, [form.dateJalali, items]);
 
   const loadItems = useCallback(async () => {
     if (authLoading) return;

@@ -211,16 +211,14 @@ export default function PaymentRequestPage() {
   );
   const serial = useMemo(() => {
     const yy = jalaliYY(form.dateJalali);
-    const projectCode = normalizeProjectCode(selectedProject?.code);
-    if (!projectCode) return `${yy}/---/0001`;
     let maxSeq = 0;
-    const re = new RegExp(`^${yy}/${projectCode}/(\\d{4})$`);
+    const re = new RegExp(`^${yy}/(?:\\d{3}/)?(\\d{4})$`);
     items.forEach((item) => {
       const match = normalizeDigits(item?.serial || "").match(re);
       if (match) maxSeq = Math.max(maxSeq, Number(match[1]) || 0);
     });
-    return `${yy}/${projectCode}/${String(maxSeq + 1).padStart(4, "0")}`;
-  }, [form.dateJalali, items, selectedProject?.code]);
+    return `${yy}/${String(maxSeq + 1).padStart(4, "0")}`;
+  }, [form.dateJalali, items]);
   const amount = parseAmount(form.amount);
   const selectedCurrency = currencyTypes.find((item) => String(item.id) === String(form.currencyTypeId));
   const currencyLabel = selectedCurrency ? itemLabel(selectedCurrency) : "ریال";
