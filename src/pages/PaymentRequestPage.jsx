@@ -5,10 +5,6 @@ import { useAuth } from "../components/AuthProvider";
 import { todayJalaliYmd } from "../utils/date";
 import { toEnglishDigits } from "../utils/format";
 
-const SCOPE_OPTIONS = [
-  ["office", "دفتر مرکزی"], ["site", "سایت"], ["finance", "مالی"],
-  ["cash", "نقدی"], ["capex", "سرمایه‌ای"], ["projects", "پروژه‌ها"],
-];
 const DOC_OPTIONS = [
   ["pre_invoice", "پیش فاکتور"], ["invoice", "فاکتور"],
   ["goods_services", "صورت حساب رسمی کالا و خدمات"],
@@ -20,10 +16,10 @@ const STATUS_LABELS = { pending: "در انتظار بررسی", approved: "تأ
 const inputClass = "w-full h-11 rounded-xl border border-black/10 bg-white px-3 text-sm text-neutral-900 outline-none transition focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-white";
 const today = () => todayJalaliYmd().replaceAll("-", "/");
 const emptyForm = () => ({
-  dateJalali: today(), scope: "office", projectId: "", budgetCode: "", title: "", description: "",
+  dateJalali: today(), scope: "projects", projectId: "", budgetCode: "", title: "", description: "",
   amount: "", cashAmount: "", cashDateJalali: "", creditPay: "", beneficiaryName: "", bankInfo: "",
   docId: "pre_invoice", docOther: "", docNumber: "", docDateJalali: "",
-  currencyTypeId: "", currencySourceId: "", attachments: [],
+  currencyTypeId: "", currencySourceId: "", attachments: [], hasSupplyRequest: "no", supplyRequestId: "",
 });
 
 function toFa(value) { return String(value ?? "").replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]); }
@@ -33,6 +29,16 @@ function parseAmount(value) {
 }
 function money(value) { const amount = parseAmount(value); return amount ? amount.toLocaleString("en-US") : ""; }
 function normalizeCode(value) { return toEnglishDigits(String(value || "")).trim(); }
+function normalizeDigits(value = "") { return toEnglishDigits(String(value ?? "")).replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660)); }
+function jalaliYY(value = today()) {
+  const year = normalizeDigits(value).match(/^(\d{4})/)?.[1] || "1400";
+  return year.slice(-2);
+}
+function normalizeProjectCode(value = "") {
+  const raw = normalizeDigits(value).trim();
+  if (/^\d{3}$/.test(raw)) return raw;
+  return raw.match(/^(\d{3})/)?.[1] || "";
+}
 function coreOf(value) {
   const raw = normalizeCode(value);
   const noPrefix = raw.replace(/^[A-Za-z]+[^0-9]*/, "");
@@ -43,11 +49,27 @@ function isActiveProject(project) {
   const value = project?.isActive ?? project?.is_active ?? project?.active;
   return value === undefined || value === null || value === true || value === 1 || String(value).toLowerCase() === "true" || String(value) === "1";
 }
-function isMainProject(project) { return /^\d{3}$/.test(normalizeCode(project?.code)); }
+function isMainProject(project) { return /^\d{3}$/.test(normalizeProjectCode(project?.code)); }
 function isMarandi(user) {
   return String(user?.username || "").toLowerCase() === "marandi" || String(user?.email || "").toLowerCase() === "marandi@ipecgroup.net";
 }
 function itemLabel(item) { return item?.title || item?.name || item?.label || item?.code || `#${item?.id}`; }
+function projectLabel(project) {
+  const code = normalizeProjectCode(project?.code);
+  return `${code}${project?.name || project?.title ? ` - ${project.name || project.title}` : ""}`;
+}
+function formatSheba(value) {
+  const raw = normalizeDigits(value).toUpperCase().replace(/^IR/i, "").replace(/[^0-9]/g, "").slice(0, 24);
+  const groups = [];
+  if (raw.slice(0, 2)) groups.push(raw.slice(0, 2));
+  for (let i = 2; i < 22; i += 4) {
+    const part = raw.slice(i, i + 4);
+    if (part) groups.push(part);
+  }
+  const tail = raw.slice(22, 24);
+  if (tail) groups.push(tail);
+  return `IR${groups.length ? ` ${groups.join(" ")}` : ""}`;
+}
 
 function JalaliPopupDatePicker({ value, onChange, disablePast = false }) {
   const [open, setOpen] = useState(false);
@@ -132,6 +154,7 @@ export default function PaymentRequestPage() {
   const [page, setPage] = useState(0);
   const [projects, setProjects] = useState([]);
   const [budgetItems, setBudgetItems] = useState([]);
+  const [supplyRequests, setSupplyRequests] = useState([]);
   const [currencyTypes, setCurrencyTypes] = useState([]);
   const [currencySources, setCurrencySources] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -144,10 +167,23 @@ export default function PaymentRequestPage() {
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState("");
   const mainAdmin = useMemo(() => isMarandi(user), [user]);
-  const serial = useMemo(() => `PR-${Date.now().toString().slice(-8)}`, [showForm]);
+  const selectedProject = useMemo(
+    () => projects.find((project) => String(project.id) === String(form.projectId)),
+    [form.projectId, projects]
+  );
+  const serial = useMemo(() => {
+    const yy = jalaliYY(form.dateJalali);
+    const projectCode = normalizeProjectCode(selectedProject?.code);
+    if (!projectCode) return `${yy}/---/0001`;
+    let maxSeq = 0;
+    const re = new RegExp(`^${yy}/${projectCode}/(\\d{4})$`);
+    items.forEach((item) => {
+      const match = normalizeDigits(item?.serial || "").match(re);
+      if (match) maxSeq = Math.max(maxSeq, Number(match[1]) || 0);
+    });
+    return `${yy}/${projectCode}/${String(maxSeq + 1).padStart(4, "0")}`;
+  }, [form.dateJalali, items, selectedProject?.code]);
   const amount = parseAmount(form.amount);
-  const cashAmount = parseAmount(form.cashAmount);
-  const creditAmount = Math.max(0, amount - cashAmount);
   const selectedCurrency = currencyTypes.find((item) => String(item.id) === String(form.currencyTypeId));
   const currencyLabel = selectedCurrency ? itemLabel(selectedCurrency) : "ریال";
 
@@ -173,102 +209,90 @@ export default function PaymentRequestPage() {
 
   useEffect(() => { loadItems(); }, [loadItems]);
   useEffect(() => {
-    Promise.allSettled([api("/projects?isActive=true"), api("/base/currencies/types"), api("/base/currencies/sources")]).then(([p, t, s]) => {
+    Promise.allSettled([api("/projects?isActive=true"), api("/base/currencies/types"), api("/base/currencies/sources"), api("/supply-requests")]).then(([p, t, s, sr]) => {
       if (p.status === "fulfilled") {
         const rawProjects = p.value.items || p.value.projects || [];
         const mainProjects = rawProjects
           .filter((project) => isActiveProject(project) && isMainProject(project))
-          .sort((a, b) => normalizeCode(a.code).localeCompare(normalizeCode(b.code), "fa", { numeric: true }));
+          .sort((a, b) => normalizeProjectCode(a.code).localeCompare(normalizeProjectCode(b.code), "fa", { numeric: true }));
         setProjects(mainProjects);
       }
       if (t.status === "fulfilled") setCurrencyTypes(t.value.items || []);
       if (s.status === "fulfilled") setCurrencySources(s.value.items || []);
+      if (sr.status === "fulfilled") setSupplyRequests(Array.isArray(sr.value.items) ? sr.value.items : []);
     });
   }, [api]);
   useEffect(() => {
-    if (form.scope === "projects" && !form.projectId) { setBudgetItems([]); return; }
+    if (!form.projectId) { setBudgetItems([]); return; }
     let cancelled = false;
     (async () => {
-      const query = new URLSearchParams({ kind: form.scope });
+      const query = new URLSearchParams({ kind: "projects" });
       if (form.projectId) query.set("project_id", form.projectId);
 
-      if (form.scope === "projects") {
-        const selectedProject = projects.find((item) => String(item.id) === String(form.projectId));
-        const projectCore = coreOf(selectedProject?.code);
-        try {
-          const [estimateData, centersData] = await Promise.all([
-            api(`/budget-estimates?${query}`).catch(() => ({ items: [] })),
-            api("/centers/projects").catch(() => ({ items: [] })),
-          ]);
-          const estimateItems = Array.isArray(estimateData?.items) ? estimateData.items : [];
-          const centerItems = Array.isArray(centersData?.items) ? centersData.items : [];
-          const byCode = new Map();
-
-          centerItems.forEach((item) => {
-            const code = normalizeCode(item?.suffix ?? item?.code);
-            const codeCore = coreOf(code);
-            if (!code || !projectCore || (codeCore !== projectCore && !codeCore.startsWith(`${projectCore}.`))) return;
-            byCode.set(code, {
-              code,
-              center_desc: String(item?.description ?? item?.center_desc ?? item?.name ?? ""),
-              last_amount: Number(item?.last_amount || 0),
-            });
-          });
-
-          estimateItems.forEach((item) => {
-            const code = normalizeCode(item?.code);
-            const codeCore = coreOf(code);
-            if (!code || !projectCore || (codeCore !== projectCore && !codeCore.startsWith(`${projectCore}.`))) return;
-            const previous = byCode.get(code) || { code, center_desc: "", last_amount: 0 };
-            byCode.set(code, {
-              ...previous,
-              center_desc: previous.center_desc || String(item?.center_desc ?? item?.last_desc ?? item?.name ?? ""),
-              last_amount: Number(item?.last_amount ?? item?.amount ?? previous.last_amount ?? 0),
-            });
-          });
-
-          if (!byCode.size && selectedProject?.code) {
-            const code = normalizeCode(selectedProject.code);
-            byCode.set(code, { code, center_desc: selectedProject.name || "", last_amount: 0 });
-          }
-
-          const merged = Array.from(byCode.values()).sort((a, b) =>
-            coreOf(a.code).localeCompare(coreOf(b.code), "fa", { numeric: true, sensitivity: "base" })
-          );
-          if (!cancelled) setBudgetItems(merged);
-        } catch {
-          if (!cancelled) setBudgetItems([]);
-        }
-        return;
-      }
-
+      const selectedProject = projects.find((item) => String(item.id) === String(form.projectId));
+      const projectCore = coreOf(selectedProject?.code);
       try {
-        const data = await api(`/budget-estimates?${query}`);
-        const estimateItems = Array.isArray(data.items) ? data.items : [];
-        if (estimateItems.length) {
-          if (!cancelled) setBudgetItems(estimateItems);
-          return;
-        }
-      } catch {}
+        const [estimateData, centersData, costData] = await Promise.all([
+          api(`/budget-estimates?${query}`).catch(() => ({ items: [] })),
+          api("/centers/projects").catch(() => ({ items: [] })),
+          api(`/cost-breakdown?project_id=${encodeURIComponent(form.projectId)}`).catch(() => ({ items: [] })),
+        ]);
+        const estimateItems = Array.isArray(estimateData?.items) ? estimateData.items : [];
+        const centerItems = Array.isArray(centersData?.items) ? centersData.items : [];
+        const costItems = Array.isArray(costData?.items) ? costData.items : [];
+        const byCode = new Map();
 
-      try {
-        const data = await api(`/centers/${form.scope}`);
-        let rows = Array.isArray(data.items) ? data.items : [];
-        const mapped = rows.map((item) => ({
-          ...item,
-          code: item.code || item.center_code || item.suffix || "",
-          center_desc: item.center_desc || item.description || item.name || "",
-        })).filter((item) => item.code);
-        if (!cancelled) setBudgetItems(mapped);
+        centerItems.forEach((item) => {
+          const code = normalizeCode(item?.suffix ?? item?.code);
+          const codeCore = coreOf(code);
+          if (!code || !projectCore || (codeCore !== projectCore && !codeCore.startsWith(`${projectCore}.`))) return;
+          byCode.set(code, {
+            code,
+            center_desc: String(item?.description ?? item?.center_desc ?? item?.name ?? ""),
+            last_amount: Number(item?.last_amount || 0),
+          });
+        });
+
+        estimateItems.forEach((item) => {
+          const code = normalizeCode(item?.code);
+          const codeCore = coreOf(code);
+          if (!code || !projectCore || (codeCore !== projectCore && !codeCore.startsWith(`${projectCore}.`))) return;
+          const previous = byCode.get(code) || { code, center_desc: "", last_amount: 0 };
+          byCode.set(code, {
+            ...previous,
+            center_desc: previous.center_desc || String(item?.center_desc ?? item?.last_desc ?? item?.name ?? ""),
+            last_amount: Number(item?.last_amount ?? item?.amount ?? previous.last_amount ?? 0),
+          });
+        });
+
+        costItems.forEach((item) => {
+          const code = normalizeCode(item?.budgetCode ?? item?.budget_code ?? item?.code);
+          if (!code) return;
+          const previous = byCode.get(code) || { code, center_desc: "", last_amount: 0 };
+          byCode.set(code, {
+            ...previous,
+            center_desc: previous.center_desc || String(item?.budgetName ?? item?.budget_name ?? item?.name ?? ""),
+            last_amount: Number(item?.baseBudget ?? item?.base_budget ?? previous.last_amount ?? 0),
+          });
+        });
+
+        if (!byCode.size && selectedProject?.code) {
+          const code = normalizeCode(selectedProject.code);
+          byCode.set(code, { code, center_desc: selectedProject.name || "", last_amount: 0 });
+        }
+
+        const merged = Array.from(byCode.values()).sort((a, b) =>
+          coreOf(a.code).localeCompare(coreOf(b.code), "fa", { numeric: true, sensitivity: "base" })
+        );
+        if (!cancelled) setBudgetItems(merged);
       } catch {
         if (!cancelled) setBudgetItems([]);
       }
     })();
     return () => { cancelled = true; };
-  }, [api, form.scope, form.projectId, projects]);
+  }, [api, form.projectId, projects]);
 
   const setField = (name, value) => { setForm((old) => ({ ...old, [name]: value })); setError(""); setSuccess(""); };
-  const changeScope = (scope) => setForm((old) => ({ ...old, scope, projectId: "", budgetCode: "" }));
 
   const uploadFiles = async (fileList) => {
     const files = Array.from(fileList || []);
@@ -290,16 +314,15 @@ export default function PaymentRequestPage() {
 
   const submit = async (event) => {
     event.preventDefault();
-    if (!form.title.trim()) return setError("عنوان درخواست را وارد کنید.");
+    if (!form.projectId) return setError("پروژه را انتخاب کنید.");
     if (!form.budgetCode) return setError("کد بودجه را انتخاب کنید.");
+    if (!form.title.trim()) return setError("موضوع درخواست را وارد کنید.");
     if (amount <= 0) return setError("مبلغ درخواست باید بیشتر از صفر باشد.");
-    if (cashAmount > amount) return setError("مبلغ نقدی نمی‌تواند از مبلغ درخواست بیشتر باشد.");
-    if (cashAmount > 0 && !form.cashDateJalali) return setError("تاریخ پرداخت را انتخاب کنید.");
-    if (creditAmount > 0 && !form.creditPay.trim()) return setError("شرح پرداخت اعتباری را وارد کنید.");
+    if (form.hasSupplyRequest === "yes" && !form.supplyRequestId) return setError("درخواست تامین را انتخاب کنید.");
     setSubmitting(true); setError(""); setSuccess("");
     try {
       await api("/requests", { method: "POST", body: JSON.stringify({
-        ...form, serial, amount, cashAmount, creditAmount,
+        ...form, serial, scope: "projects", amount, cashAmount: null, creditAmount: null,
         currencyTypeId: form.currencyTypeId || null, currencySourceId: form.currencySourceId || null,
         projectId: form.projectId || null,
       }) });
@@ -388,19 +411,29 @@ export default function PaymentRequestPage() {
         </div>
 
         {showForm && <form onSubmit={submit} className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(150px,0.75fr)_minmax(140px,0.7fr)_minmax(220px,1fr)_minmax(220px,1fr)]">
             <ReadField label="شماره درخواست" value={serial} ltr />
-            <ReadField label="تاریخ" value={toFa(form.dateJalali)} />
+            <ReadField label="تاریخ درخواست" value={toFa(form.dateJalali)} />
+            <Field label="پروژه" required><select className={inputClass} value={form.projectId} onChange={(e) => setForm((old) => ({ ...old, projectId: e.target.value, budgetCode: "" }))}><option value="">انتخاب پروژه</option>{projects.map((item) => <option key={item.id} value={item.id}>{projectLabel(item)}</option>)}</select></Field>
+            <Field label="کد بودجه" required><select className={inputClass} value={form.budgetCode} disabled={!form.projectId} onChange={(e) => setField("budgetCode", e.target.value)}><option value="">{form.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید"}</option>{budgetItems.map((item) => { const code = normalizeCode(item.code || item.center_code); const description = item.center_desc || item.last_desc || item.name || item.description || ""; return <option key={code || item.id} value={code}>{code}{description ? ` - ${description}` : ""}</option>; })}</select></Field>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {SCOPE_OPTIONS.map(([value, label]) => <button key={value} type="button" onClick={() => changeScope(value)} className={`rounded-xl border px-4 py-2 text-sm transition ${form.scope === value ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-neutral-900" : "border-black/10 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"}`}>{label}</button>)}
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(260px,1.4fr)_minmax(160px,0.75fr)_minmax(160px,0.7fr)]">
+            <Field label="موضوع درخواست" required><input className={`${inputClass} h-12 text-[15px]`} value={form.title} onChange={(e) => setField("title", e.target.value)} /></Field>
+            <Field label={`مبلغ درخواست (${currencyLabel})`} required><MoneyInput value={form.amount} onChange={(value) => setField("amount", value)} /></Field>
+            <Field label="ارز"><select className={inputClass} value={form.currencyTypeId} onChange={(e) => setField("currencyTypeId", e.target.value)}><option value="">ریال</option>{currencyTypes.map((item) => <option key={item.id} value={item.id}>{itemLabel(item)}</option>)}</select></Field>
           </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {form.scope === "projects" && <Field label="پروژه"><select className={inputClass} value={form.projectId} onChange={(e) => setForm((old) => ({ ...old, projectId: e.target.value, budgetCode: "" }))}><option value="">انتخاب پروژه</option>{projects.map((item) => <option key={item.id} value={item.id}>{normalizeCode(item.code)}{item.name || item.title ? ` - ${item.name || item.title}` : ""}</option>)}</select></Field>}
-            <Field label="کد بودجه" required><select className={inputClass} value={form.budgetCode} disabled={form.scope === "projects" && !form.projectId} onChange={(e) => setField("budgetCode", e.target.value)}><option value="">{form.scope === "projects" && !form.projectId ? "ابتدا پروژه را انتخاب کنید" : "انتخاب کد بودجه"}</option>{budgetItems.map((item) => { const code = normalizeCode(item.code || item.center_code); const description = item.center_desc || item.last_desc || item.name || item.description || ""; return <option key={code || item.id} value={code}>{code}{description ? ` - ${description}` : ""}</option>; })}</select></Field>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(180px,0.6fr)_minmax(260px,1fr)]">
+            <Field label="درخواست تامین">
+              <div className="flex h-11 overflow-hidden rounded-xl border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">
+                {[["no", "ندارد"], ["yes", "دارد"]].map(([value, label]) => <button key={value} type="button" onClick={() => setForm((old) => ({ ...old, hasSupplyRequest: value, supplyRequestId: value === "yes" ? old.supplyRequestId : "" }))} className={`flex-1 text-sm transition ${form.hasSupplyRequest === value ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "hover:bg-black/[0.04] dark:hover:bg-white/10"}`}>{label}</button>)}
+              </div>
+            </Field>
+            {form.hasSupplyRequest === "yes" && <Field label="انتخاب درخواست تامین" required><select className={inputClass} value={form.supplyRequestId} onChange={(e) => setField("supplyRequestId", e.target.value)}><option value="">انتخاب کنید</option>{supplyRequests.map((item) => <option key={item.id} value={item.id}>{item.serial || `#${item.id}`}{item.title ? ` - ${item.title}` : ""}</option>)}</select></Field>}
           </div>
-          <Field label="عنوان درخواست" required><input className={inputClass} value={form.title} onChange={(e) => setField("title", e.target.value)} /></Field>
-          <Field label="شرح"><textarea className={`${inputClass} min-h-24 py-2`} value={form.description} onChange={(e) => setField("description", e.target.value)} /></Field>
+
+          <Field label="شرح درخواست"><textarea className={`${inputClass} min-h-24 py-2 leading-7`} value={form.description} onChange={(e) => setField("description", e.target.value)} /></Field>
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
             <Field label="نوع سند"><select className={inputClass} value={form.docId} onChange={(e) => setField("docId", e.target.value)}>{DOC_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></Field>
@@ -414,17 +447,9 @@ export default function PaymentRequestPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <Field label="نوع ارز"><select className={inputClass} value={form.currencyTypeId} onChange={(e) => setField("currencyTypeId", e.target.value)}><option value="">ریال</option>{currencyTypes.map((item) => <option key={item.id} value={item.id}>{itemLabel(item)}</option>)}</select></Field>
-            <Field label="منشا ارز"><select className={inputClass} value={form.currencySourceId} onChange={(e) => setField("currencySourceId", e.target.value)}><option value="">انتخاب منشا ارز</option>{currencySources.map((item) => <option key={item.id} value={item.id}>{itemLabel(item)}</option>)}</select></Field>
-            <Field label={`مبلغ درخواست (${currencyLabel})`} required><MoneyInput value={form.amount} onChange={(value) => setField("amount", value)} /></Field>
-            <Field label={`نقدی (${currencyLabel})`}><MoneyInput value={form.cashAmount} onChange={(value) => setField("cashAmount", value)} /></Field>
-            <Field label="تاریخ پرداخت"><JalaliPopupDatePicker value={form.cashDateJalali} onChange={(value) => setField("cashDateJalali", value)} disablePast /></Field>
-            <ReadField label={`مانده اعتباری (${currencyLabel})`} value={toFa(creditAmount.toLocaleString("en-US"))} ltr />
-          </div>
-          <Field label="شرح پرداخت اعتباری"><input className={inputClass} value={creditAmount === 0 ? "-" : form.creditPay} disabled={creditAmount === 0} onChange={(e) => setField("creditPay", e.target.value)} /></Field>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <Field label="نام ذینفع"><input className={inputClass} value={form.beneficiaryName} onChange={(e) => setField("beneficiaryName", e.target.value)} placeholder="نام ذینفع را وارد کنید..." /></Field>
-            <Field label="اطلاعات بانکی ذینفع"><input className={inputClass} value={form.bankInfo} onChange={(e) => setField("bankInfo", e.target.value)} placeholder="نام بانک، شماره شبا/کارت، صاحب حساب و ..." /></Field>
+            <Field label="شرایط پرداخت"><input className={inputClass} value={form.creditPay} onChange={(e) => setField("creditPay", e.target.value)} /></Field>
+            <Field label="نام ذینفع"><input className={inputClass} value={form.beneficiaryName} onChange={(e) => setField("beneficiaryName", e.target.value)} /></Field>
+            <Field label="شماره شبا"><input dir="ltr" inputMode="numeric" className={`${inputClass} text-left font-sans tabular-nums`} value={form.bankInfo || "IR"} onChange={(e) => setField("bankInfo", formatSheba(e.target.value))} onFocus={() => { if (!form.bankInfo) setField("bankInfo", "IR"); }} placeholder="IR" /></Field>
           </div>
           {(error || success) && <div className={`rounded-xl px-3 py-2 text-sm ${error ? "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300" : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"}`}>{error || success}</div>}
           <div className="flex justify-end"><button type="submit" disabled={submitting || uploading} className="h-10 w-12 rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900" title="ثبت"><img src="/images/icons/sabtdarkhast.svg" alt="ثبت" className="mx-auto h-5 w-5 invert dark:invert-0" /></button></div>
@@ -438,7 +463,7 @@ export default function PaymentRequestPage() {
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><button type="button" onClick={() => setNumberSortDir((old) => old === "asc" ? "desc" : "asc")} className="mx-auto inline-flex items-center gap-1 transition hover:opacity-90"><span>شماره</span><img src={numberSortDir === "desc" ? "/images/icons/bozorgbekochik.svg" : "/images/icons/kochikbebozorg.svg"} alt="" className="h-4 w-4 dark:invert" /></button></th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">تاریخ</th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">موضوع</th>
-              <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">مرکز بودجه</th>
+              <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">پروژه</th>
               {mainAdmin && <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">ثبت کننده</th>}
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">مبلغ درخواست</th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">آخرین وضعیت</th>
@@ -450,7 +475,7 @@ export default function PaymentRequestPage() {
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><button type="button" onClick={() => openPreview(item)} className="mx-auto inline-flex items-center justify-center text-[13px] font-semibold underline-offset-4 transition hover:underline" title="نمایش درخواست">{item.serial || "—"}</button></td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))}</td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.title || "—"}</span></td>
-                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{SCOPE_OPTIONS.find(([value]) => value === item.scope)?.[1] || "—"}</td>
+                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{projectLabel(projects.find((row) => String(row.id) === String(item.projectId))) || item.projectName || item.projectCode || "—"}</span></td>
                 {mainAdmin && <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.createdByName || `کاربر #${toFa(item.createdById)}`}</span></td>}
                 <td className="border-b border-neutral-300 px-3 ltr dark:border-neutral-700">{toFa(Number(item.amount || 0).toLocaleString("en-US"))}</td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><StatusBadge status={item.status} /></td>
@@ -491,13 +516,10 @@ function StatusBadge({ status }) {
 }
 
 function PaymentPreview({ item, projects, currencyTypes, currencySources, mainAdmin, actionNote, setActionNote, actionBusy, actionError, onAction, onClose }) {
-  const scopeLabel = SCOPE_OPTIONS.find(([value]) => value === item.scope)?.[1] || "—";
   const project = projects.find((row) => String(row.id) === String(item.projectId));
   const currency = currencyTypes.find((row) => String(row.id) === String(item.currencyTypeId));
   const source = currencySources.find((row) => String(row.id) === String(item.currencySourceId));
   const currencyName = currency ? itemLabel(currency) : "ریال";
-  const cash = Number(item.cashText ?? item.cashAmount ?? 0);
-  const credit = Number(item.creditSection ?? item.creditAmount ?? Math.max(0, Number(item.amount || 0) - cash));
   const docName = item.docId === "other" ? (item.docOther || "سایر") : (DOC_OPTIONS.find(([value]) => value === item.docId)?.[1] || "—");
   const attachments = Array.isArray(item.attachments) ? item.attachments : [];
   const history = Array.isArray(item.historyJson) ? item.historyJson : Array.isArray(item.history_json) ? item.history_json : [];
@@ -518,8 +540,7 @@ function PaymentPreview({ item, projects, currencyTypes, currencySources, mainAd
                 <PreviewRow label="شماره درخواست" value={item.serial || "—"} ltr />
                 <PreviewRow label="تاریخ درخواست" value={toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))} />
                 <PreviewRow label="درخواست کننده" value={item.createdByName || `کاربر #${toFa(item.createdById)}`} />
-                <PreviewRow label="مرکز بودجه" value={scopeLabel} />
-                {item.scope === "projects" && <PreviewRow label="پروژه" value={project ? `${normalizeCode(project.code)} - ${project.name || ""}` : (item.projectId || "—")} />}
+                <PreviewRow label="پروژه" value={project ? projectLabel(project) : (item.projectName || item.projectCode || item.projectId || "—")} />
                 <PreviewRow label="کد بودجه" value={item.budgetCode || "—"} ltr />
                 <PreviewRow label="آخرین وضعیت" value={<StatusBadge status={item.status} />} />
               </PreviewSection>
@@ -535,13 +556,10 @@ function PaymentPreview({ item, projects, currencyTypes, currencySources, mainAd
                 <PreviewRow label="عنوان درخواست" value={item.title || "—"} />
                 <PreviewRow label="شرح" value={item.description || "—"} />
                 <PreviewRow label={`مبلغ درخواست (${currencyName})`} value={toFa(Number(item.amount || 0).toLocaleString("en-US"))} ltr />
-                <PreviewRow label={`مبلغ نقدی (${currencyName})`} value={toFa(cash.toLocaleString("en-US"))} ltr />
-                <PreviewRow label={`مانده اعتباری (${currencyName})`} value={toFa(credit.toLocaleString("en-US"))} ltr />
-                <PreviewRow label="تاریخ پرداخت" value={toFa(item.cashDate || item.cashDateJalali || "—")} />
-                <PreviewRow label="شرح پرداخت اعتباری" value={item.creditPay || "—"} />
+                <PreviewRow label="شرایط پرداخت" value={item.creditPay || "—"} />
                 <PreviewRow label="منشا ارز" value={source ? itemLabel(source) : "—"} />
                 <PreviewRow label="نام ذینفع" value={item.beneficiaryName || "—"} />
-                <PreviewRow label="اطلاعات بانکی ذینفع" value={item.bankInfo || "—"} />
+                <PreviewRow label="شماره شبا" value={item.bankInfo || "—"} ltr />
               </PreviewSection>
             </div>
           </div>
