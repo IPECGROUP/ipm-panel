@@ -1,5 +1,6 @@
 // درخواست تامین
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
@@ -10,6 +11,7 @@ import { toEnglishDigits } from "../utils/format.js";
 
 const PAGE_ICON = "/images/icons/darkhast-tamin.svg";
 const REQUEST_DOC_ID = "supply_request";
+const RELATED_PICK_LIMIT = 200;
 
 const inputCls =
   "h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-right text-sm text-neutral-900 outline-none transition " +
@@ -92,7 +94,49 @@ function emptyForm() {
     amount: "",
     description: "",
     attachments: [],
+    relatedLetterIds: [],
   };
+}
+
+function letterIdOf(letter) {
+  const raw = letter?.id ?? letter?.letter_id ?? letter?.letterId ?? letter?._id;
+  const id = Number(raw);
+  return id && Number.isFinite(id) ? String(id) : String(raw || "");
+}
+
+function pickFirstNonEmpty(...values) {
+  for (const value of values) {
+    const text = String(value ?? "").trim();
+    if (text) return text;
+  }
+  return "";
+}
+
+function letterNoOf(letter) {
+  return pickFirstNonEmpty(letter?.secretariat_no, letter?.secretariatNo, letter?.letter_no, letter?.letterNo, letter?.no, letter?.number);
+}
+
+function letterDateOf(letter) {
+  return pickFirstNonEmpty(letter?.letter_date, letter?.letterDate, letter?.secretariat_date, letter?.secretariatDate, letter?.date);
+}
+
+function subjectOf(letter) {
+  return String(letter?.subject ?? letter?.title ?? "");
+}
+
+function fromToOf(letter) {
+  const from = String(letter?.from_name ?? letter?.fromName ?? letter?.from ?? "");
+  const to = String(letter?.to_name ?? letter?.toName ?? letter?.to ?? "");
+  return `${from}${from && to ? " / " : ""}${to}`.trim();
+}
+
+function registrationMessage(info) {
+  if (!info) return "";
+  const date = info.dateJalali || info.date || "";
+  const time = info.time || "";
+  const userName = info.userName || info.username || "کاربر";
+  const unitName = info.unitName || "نامشخص";
+  return `درخواست شما در تاریخ ${toFaDigits(String(date).replaceAll("-", "/"))} در ساعت ${toFaDigits(time)} توسط ${userName} واحد ${unitName} ثبت گردید`;
 }
 
 function StatusBadge({ status }) {
@@ -114,6 +158,11 @@ export default function SupplyRequestPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [relatedDocsOpen, setRelatedDocsOpen] = useState(false);
+  const [letters, setLetters] = useState([]);
+  const [relatedPickOpen, setRelatedPickOpen] = useState(false);
+  const [relatedPickQuery, setRelatedPickQuery] = useState("");
+  const [relatedPickIds, setRelatedPickIds] = useState([]);
+  const [submitNotice, setSubmitNotice] = useState(null);
   const [items, setItems] = useState([]);
   const [projects, setProjects] = useState([]);
   const [budgetItems, setBudgetItems] = useState([]);
@@ -183,6 +232,22 @@ export default function SupplyRequestPage() {
 
   useEffect(() => {
     let cancelled = false;
+    (async () => {
+      try {
+        const data = await api("/letters/mine");
+        const rows = Array.isArray(data?.items) ? data.items : [];
+        if (!cancelled) setLetters(rows);
+      } catch {
+        if (!cancelled) setLetters([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
     if (!form.projectId) {
       setBudgetItems([]);
       return undefined;
@@ -212,6 +277,7 @@ export default function SupplyRequestPage() {
   const openFreshForm = () => {
     setForm(emptyForm());
     setRelatedDocsOpen(false);
+    setRelatedPickOpen(false);
     setFormOpen(true);
     setErr("");
     setOk("");
@@ -221,8 +287,26 @@ export default function SupplyRequestPage() {
     setFormOpen(false);
     setForm(emptyForm());
     setRelatedDocsOpen(false);
+    setRelatedPickOpen(false);
     setErr("");
   };
+
+  const selectedRelatedLetters = useMemo(() => {
+    const map = new Map((Array.isArray(letters) ? letters : []).map((letter) => [letterIdOf(letter), letter]));
+    return (Array.isArray(form.relatedLetterIds) ? form.relatedLetterIds : []).map((id) => map.get(String(id))).filter(Boolean);
+  }, [form.relatedLetterIds, letters]);
+
+  const relatedPickList = useMemo(() => {
+    if (!relatedPickOpen) return [];
+    const q = normalizeDigits(relatedPickQuery).trim().toLowerCase();
+    const rows = Array.isArray(letters) ? letters : [];
+    const indexed = rows.map((letter) => ({
+      letter,
+      hay: normalizeDigits([letterIdOf(letter), letterNoOf(letter), subjectOf(letter), fromToOf(letter)].join(" ")).toLowerCase(),
+    }));
+    if (!q) return indexed.slice(0, RELATED_PICK_LIMIT).map((item) => item.letter);
+    return indexed.filter((item) => item.hay.includes(q)).slice(0, 800).map((item) => item.letter);
+  }, [letters, relatedPickOpen, relatedPickQuery]);
 
   const uploadFiles = async (fileList) => {
     const files = Array.from(fileList || []);
@@ -270,9 +354,11 @@ export default function SupplyRequestPage() {
         docId: REQUEST_DOC_ID,
         scope: "projects",
         amount,
+        relatedLetterIds: form.relatedLetterIds,
       };
       const data = await api("/supply-requests", { method: "POST", body: JSON.stringify(payload) });
       if (data?.item) setItems((prev) => [data.item, ...prev]);
+      setSubmitNotice(data?.item?.registrationInfo || null);
       setOk("درخواست تامین با موفقیت ثبت شد.");
       closeForm();
       await loadItems();
@@ -485,13 +571,17 @@ export default function SupplyRequestPage() {
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setRelatedDocsOpen((prev) => !prev)}
+                  onClick={() => {
+                    setRelatedPickIds((Array.isArray(form.relatedLetterIds) ? form.relatedLetterIds : []).map(String));
+                    setRelatedPickQuery("");
+                    setRelatedPickOpen(true);
+                  }}
                   className="inline-flex h-10 items-center gap-2 rounded-xl border border-black/10 bg-white px-4 text-sm transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
                   title="اسناد مرتبط"
                 >
                   <img src="/images/icons/namayeshname.svg" alt="" className="h-5 w-5 dark:invert" />
                   اسناد مرتبط
-                  <span className="text-xs text-neutral-500">({toFaDigits(form.attachments.length)})</span>
+                  <span className="text-xs text-neutral-500">({toFaDigits(form.relatedLetterIds.length)})</span>
                 </button>
                 <button
                   type="button"
@@ -526,22 +616,20 @@ export default function SupplyRequestPage() {
 
               {relatedDocsOpen && (
                 <div className="mt-3 rounded-xl border border-black/10 p-3 text-xs dark:border-white/10">
-                  {form.attachments.length > 0 ? (
+                  {selectedRelatedLetters.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
-                      {form.attachments.map((file, index) => (
-                        <a
-                          key={file.id || file.serverId || index}
-                          href={file.url || "#"}
-                          target="_blank"
-                          rel="noreferrer"
+                      {selectedRelatedLetters.map((letter) => (
+                        <span
+                          key={letterIdOf(letter)}
                           className="rounded-lg border border-black/10 px-2 py-1 hover:bg-black/[0.03] dark:border-white/10 dark:hover:bg-white/10"
                         >
-                          {file.name || file.originalName || `فایل ${toFaDigits(index + 1)}`}
-                        </a>
+                          {toFaDigits(letterNoOf(letter) || letterIdOf(letter))}
+                          {subjectOf(letter) ? ` - ${subjectOf(letter)}` : ""}
+                        </span>
                       ))}
                     </div>
                   ) : (
-                    <div className="py-2 text-center text-neutral-500 dark:text-neutral-400">سندی بارگذاری نشده است.</div>
+                    <div className="py-2 text-center text-neutral-500 dark:text-neutral-400">نامه‌ای انتخاب نشده است.</div>
                   )}
                 </div>
               )}
@@ -656,6 +744,23 @@ export default function SupplyRequestPage() {
           </div>
         </div>
       </Card>
+      {submitNotice && <RegistrationNotice info={submitNotice} onClose={() => setSubmitNotice(null)} />}
+      {relatedPickOpen && (
+        <RelatedLettersPicker
+          query={relatedPickQuery}
+          setQuery={setRelatedPickQuery}
+          letters={relatedPickList}
+          selectedIds={relatedPickIds}
+          setSelectedIds={setRelatedPickIds}
+          onClose={() => setRelatedPickOpen(false)}
+          onConfirm={() => {
+            const clean = (Array.isArray(relatedPickIds) ? relatedPickIds : []).map((id) => String(id).trim()).filter(Boolean);
+            setForm((prev) => ({ ...prev, relatedLetterIds: clean }));
+            setRelatedDocsOpen(clean.length > 0);
+            setRelatedPickOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -669,5 +774,76 @@ function Field({ label, required, children }) {
       </div>
       {children}
     </label>
+  );
+}
+
+function RegistrationNotice({ info, onClose }) {
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-start justify-center bg-black/20 px-3 pt-20" onClick={onClose}>
+      <div dir="rtl" className="w-[min(520px,calc(100vw-24px))] rounded-2xl border border-black/10 bg-white p-4 text-sm text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
+        <div className="leading-7">{registrationMessage(info)}</div>
+        <div className="mt-3 flex justify-end">
+          <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 dark:bg-white dark:text-black" aria-label="بستن" title="بستن">
+            <img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" />
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function RelatedLettersPicker({ query, setQuery, letters, selectedIds, setSelectedIds, onClose, onConfirm }) {
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div dir="rtl" className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-xl dark:border-white/10 dark:bg-neutral-900 dark:text-white">
+        <div className="flex items-center justify-between gap-3 p-4">
+          <div className="text-sm font-semibold">
+            انتخاب اسناد مرتبط
+            {selectedIds.length ? <span className="mr-2 text-neutral-500 dark:text-white/60">({toFaDigits(selectedIds.length)})</span> : null}
+          </div>
+          <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-xl border border-black/10 transition hover:bg-black/[0.04] dark:border-white/10 dark:hover:bg-white/10" aria-label="بستن" title="بستن">
+            <img src="/images/icons/bastan.svg" alt="" className="h-5 w-5 dark:invert" />
+          </button>
+        </div>
+        <div className="px-4 pb-3">
+          <input value={query} onChange={(event) => setQuery(event.target.value)} className={`${inputCls} h-10 text-sm`} placeholder="جستجو با شماره / موضوع / فرستنده ..." autoFocus />
+        </div>
+        <div className="h-px bg-black/10 dark:bg-white/10" />
+        <div className="max-h-[55vh] overflow-auto p-2">
+          {!letters.length ? (
+            <div className="p-4 text-sm text-neutral-600 dark:text-white/60">موردی پیدا نشد.</div>
+          ) : (
+            letters.map((letter) => {
+              const id = letterIdOf(letter);
+              const no = letterNoOf(letter) || id;
+              const subject = subjectOf(letter);
+              const date = letterDateOf(letter);
+              const checked = selectedIds.includes(id);
+              return (
+                <button key={id} type="button" onClick={() => setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]))} className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-right transition hover:bg-black/[0.04] dark:hover:bg-white/10">
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      <span className="font-semibold">{toFaDigits(no)}</span>
+                      {date ? <span className="text-xs text-neutral-600 dark:text-white/60">{toFaDigits(date)}</span> : null}
+                    </span>
+                    <span className="mt-0.5 block truncate text-xs text-neutral-600 dark:text-white/60">{subject || "—"}</span>
+                  </span>
+                  <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border ${checked ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/15 dark:border-white/15"}`}>{checked ? "✓" : ""}</span>
+                </button>
+              );
+            })
+          )}
+        </div>
+        <div className="h-px bg-black/10 dark:bg-white/10" />
+        <div className="flex justify-end gap-2 p-4">
+          <button type="button" onClick={onConfirm} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90" aria-label="تأیید" title="تأیید">
+            <img src="/images/icons/check.svg" alt="" className="h-5 w-5 invert dark:invert-0" />
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }

@@ -71,6 +71,15 @@ function formatSheba(value) {
   return `IR${groups.length ? `-${groups.join("-")}` : ""}`;
 }
 
+function registrationMessage(info) {
+  if (!info) return "";
+  const date = info.dateJalali || info.date || "";
+  const time = info.time || "";
+  const userName = info.userName || info.username || "کاربر";
+  const unitName = info.unitName || "نامشخص";
+  return `درخواست شما در تاریخ ${toFa(String(date).replaceAll("-", "/"))} در ساعت ${toFa(time)} توسط ${userName} واحد ${unitName} ثبت گردید`;
+}
+
 function JalaliPopupDatePicker({ value, onChange, disablePast = false }) {
   const [open, setOpen] = useState(false);
   const buttonRef = useRef(null);
@@ -162,6 +171,7 @@ export default function PaymentRequestPage() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [submitNotice, setSubmitNotice] = useState(null);
   const [selected, setSelected] = useState(null);
   const [actionNote, setActionNote] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
@@ -321,11 +331,12 @@ export default function PaymentRequestPage() {
     if (form.hasSupplyRequest === "yes" && !form.supplyRequestId) return setError("درخواست تامین را انتخاب کنید.");
     setSubmitting(true); setError(""); setSuccess("");
     try {
-      await api("/requests", { method: "POST", body: JSON.stringify({
+      const data = await api("/requests", { method: "POST", body: JSON.stringify({
         ...form, serial, scope: "projects", amount, cashAmount: null, creditAmount: null,
         currencyTypeId: form.currencyTypeId || null, currencySourceId: form.currencySourceId || null,
         projectId: form.projectId || null,
       }) });
+      setSubmitNotice(data?.item?.registrationInfo || null);
       setForm(emptyForm()); setSuccess("درخواست با موفقیت ثبت شد."); setShowForm(false); await loadItems();
     } catch (err) { setError(err.message === "marandi_user_not_found" ? "کاربر مرندی در سامانه پیدا نشد." : "ثبت درخواست انجام نشد."); }
     finally { setSubmitting(false); }
@@ -426,7 +437,7 @@ export default function PaymentRequestPage() {
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(180px,0.6fr)_minmax(260px,1fr)]">
             <Field label="درخواست تامین">
-              <div className="flex h-11 items-center gap-6 rounded-xl border border-black/10 bg-white px-3 dark:border-white/15 dark:bg-white/5">
+              <div className="flex h-9 items-center gap-6 px-1">
                 {[["no", "ندارد"], ["yes", "دارد"]].map(([value, label]) => {
                   const checked = form.hasSupplyRequest === value;
                   return (
@@ -478,7 +489,7 @@ export default function PaymentRequestPage() {
             <Field label="شماره شبا"><input dir="ltr" inputMode="numeric" className={`${inputClass} text-left font-sans tabular-nums`} value={form.bankInfo || "IR"} onChange={(e) => setField("bankInfo", formatSheba(e.target.value))} onFocus={() => { if (!form.bankInfo) setField("bankInfo", "IR"); }} placeholder="IR" /></Field>
           </div>
           {(error || success) && <div className={`rounded-xl px-3 py-2 text-sm ${error ? "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300" : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"}`}>{error || success}</div>}
-          <div className="flex justify-end"><button type="submit" disabled={submitting || uploading} className="h-10 w-12 rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900" title="ثبت"><img src="/images/icons/sabtdarkhast.svg" alt="ثبت" className="mx-auto h-5 w-5 invert dark:invert-0" /></button></div>
+          <div className="flex justify-end"><button type="submit" disabled={submitting || uploading} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-900 text-white transition hover:bg-neutral-900/85 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90" title="ثبت" aria-label="ثبت"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button></div>
         </form>}
 
         {!showForm && <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
@@ -530,6 +541,7 @@ export default function PaymentRequestPage() {
       onAction={recordAction}
       onClose={() => setSelected(null)}
     />}
+    {submitNotice && <RegistrationNotice info={submitNotice} onClose={() => setSubmitNotice(null)} />}
   </div>;
 }
 
@@ -611,3 +623,16 @@ function PreviewSection({ title, children }) { return <section className="overfl
 function PreviewRow({ label, value, ltr }) { return <div className="grid grid-cols-[135px_1fr] gap-3 py-2.5 text-sm"><div className="text-neutral-500 dark:text-neutral-400">{label}</div><div dir={ltr ? "ltr" : "rtl"} className={`break-words font-medium ${ltr ? "text-left" : "text-right"}`}>{value}</div></div>; }
 function historyLabel(value) { return ({ created: "ثبت درخواست", approved: "تأیید", rejected: "رد", returned: "برگشت", edited: "ویرایش" })[value] || value || "—"; }
 function formatDateTime(value) { if (!value) return "—"; try { return new Intl.DateTimeFormat("fa-IR-u-ca-persian", { dateStyle: "short", timeStyle: "short" }).format(new Date(value)); } catch { return "—"; } }
+
+function RegistrationNotice({ info, onClose }) {
+  return createPortal(<div className="fixed inset-0 z-[9999] flex items-start justify-center bg-black/20 px-3 pt-20" onClick={onClose}>
+    <div dir="rtl" className="w-[min(520px,calc(100vw-24px))] rounded-2xl border border-black/10 bg-white p-4 text-sm text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
+      <div className="leading-7">{registrationMessage(info)}</div>
+      <div className="mt-3 flex justify-end">
+        <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 dark:bg-white dark:text-black" aria-label="بستن" title="بستن">
+          <img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" />
+        </button>
+      </div>
+    </div>
+  </div>, document.body);
+}
