@@ -41,6 +41,12 @@ const statusLabels = {
   returned: "در انتظار تایید اولیه",
 };
 
+const STEP_LABELS = {
+  requester: "درخواست کننده",
+  project_control: "برنامه ریزی و کنترل پروژه",
+  project_manager: "مدیر پروژه",
+};
+
 function toFaDigits(value = "") {
   return String(value ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
 }
@@ -162,6 +168,7 @@ function fromToOf(letter) {
 
 function registrationMessage(info) {
   if (!info) return "";
+  if (info.message) return info.message;
   const date = info.dateJalali || info.date || "";
   const time = info.time || "";
   const userName = info.userName || info.username || "کاربر";
@@ -246,6 +253,10 @@ function statusGroup(status) {
   return status || "";
 }
 
+function displayStatusOf(item) {
+  return item?.workflowStatus || item?.status || "";
+}
+
 function normalizeYmd(value = "") {
   const text = normalizeDigits(value).trim().replaceAll("-", "/");
   const match = text.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
@@ -264,6 +275,10 @@ export default function SupplyRequestPage() {
   const [relatedPickQuery, setRelatedPickQuery] = useState("");
   const [relatedPickIds, setRelatedPickIds] = useState([]);
   const [submitNotice, setSubmitNotice] = useState(null);
+  const [selected, setSelected] = useState(null);
+  const [actionNote, setActionNote] = useState("");
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionError, setActionError] = useState("");
   const [items, setItems] = useState([]);
   const [projects, setProjects] = useState([]);
   const [budgetItems, setBudgetItems] = useState([]);
@@ -478,6 +493,12 @@ export default function SupplyRequestPage() {
     setErr("");
   };
 
+  const openPreview = (item) => {
+    setSelected(item);
+    setActionNote("");
+    setActionError("");
+  };
+
   const selectedRelatedLetters = useMemo(() => {
     const map = new Map((Array.isArray(letters) ? letters : []).map((letter) => [letterIdOf(letter), letter]));
     return (Array.isArray(form.relatedLetterIds) ? form.relatedLetterIds : []).map((id) => map.get(String(id))).filter(Boolean);
@@ -551,9 +572,56 @@ export default function SupplyRequestPage() {
       closeForm();
       await loadItems();
     } catch (ex) {
-      setErr(ex.message || "ثبت درخواست تامین انجام نشد.");
+      const message = String(ex?.message || "");
+      setErr(
+        message === "project_control_user_not_found"
+          ? "کاربری در واحد برنامه ریزی و کنترل پروژه پیدا نشد."
+          : message === "project_manager_user_not_found"
+            ? "کاربری با نقش مدیر پروژه پیدا نشد."
+            : message || "ثبت درخواست تامین انجام نشد."
+      );
     } finally {
       setSaving(false);
+    }
+  };
+
+  const recordWorkflowAction = async (workflowAction, extraPayload = {}) => {
+    if (!selected || actionBusy) return;
+    setActionBusy(true);
+    setActionError("");
+    try {
+      const data = await api("/supply-requests", {
+        method: "POST",
+        body: JSON.stringify({
+          id: selected.id,
+          workflowAction,
+          note: actionNote,
+          ...extraPayload,
+        }),
+      });
+      const nextItem = data?.item || null;
+      if (nextItem) {
+        setSelected(nextItem);
+        setItems((prev) => prev.map((row) => (String(row.id) === String(nextItem.id) ? nextItem : row)));
+      }
+      setActionNote("");
+      setSubmitNotice({
+        message: `در تاریخ ${toFaDigits(normalizeDigits(new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())))} ساعت ${toFaDigits(normalizeDigits(new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date())))} توسط ${user?.name || user?.username || "کاربر"} ذخیره شد.`,
+      });
+      await loadItems();
+    } catch (ex) {
+      const message = String(ex?.message || "");
+      setActionError(
+        message === "project_manager_user_not_found"
+          ? "کاربری با نقش مدیر پروژه پیدا نشد."
+          : message === "project_control_user_not_found"
+            ? "کاربری در واحد برنامه ریزی و کنترل پروژه پیدا نشد."
+            : ["forbidden", "return_not_allowed_for_step", "reject_not_allowed_for_step"].includes(message)
+              ? "شما اجازه انجام این اقدام را ندارید."
+              : "ثبت اقدام انجام نشد."
+      );
+    } finally {
+      setActionBusy(false);
     }
   };
 
@@ -575,7 +643,7 @@ export default function SupplyRequestPage() {
     const selectedTags = Array.isArray(filterTagIds) ? filterTagIds.map(String).filter(Boolean) : [];
     const letterById = new Map((Array.isArray(letters) ? letters : []).map((letter) => [letterIdOf(letter), letter]));
     return items.filter((item) => {
-      if (filterStatus && statusGroup(item.status) !== filterStatus) return false;
+      if (filterStatus && statusGroup(displayStatusOf(item)) !== filterStatus) return false;
       if (filterProjectId && String(item.projectId) !== String(filterProjectId)) return false;
       const dateKey = normalizeYmd(itemDateKey(item));
       if ((fromDate || toDate) && !dateKey) return false;
@@ -595,7 +663,9 @@ export default function SupplyRequestPage() {
         item.budgetCode,
         itemProjectLabel(item, projects),
         item.status,
-        statusLabels[item.status],
+        displayStatusOf(item),
+        statusLabels[displayStatusOf(item)],
+        item.currentAssigneeName,
       ]
         .map((value) => normalizeDigits(value).toLowerCase())
         .join(" ");
@@ -631,7 +701,7 @@ export default function SupplyRequestPage() {
         item.budgetCode || "",
         toFaDigits(Number(item.amount || 0).toLocaleString("en-US")),
         toFaDigits(String(item.needDateJalali || item.docDateJalali || "").replaceAll("-", "/")),
-        statusLabels[item.status] || item.status || "",
+        statusLabels[displayStatusOf(item)] || item.status || "",
         item.description || "",
       ]),
     ];
@@ -882,14 +952,21 @@ export default function SupplyRequestPage() {
                   ) : (
                     pageItems.map((item) => (
                       <tr key={item.id} className="group bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
-                        <td dir="ltr" className="border-b border-neutral-300 px-3 font-sans tabular-nums dark:border-neutral-700">{item.serial || "—"}</td>
+                        <td dir="ltr" className="border-b border-neutral-300 px-3 font-sans tabular-nums dark:border-neutral-700">
+                          <button type="button" onClick={() => openPreview(item)} className="mx-auto inline-flex underline-offset-4 transition hover:underline" title="نمایش درخواست">
+                            {item.serial || "—"}
+                          </button>
+                        </td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/"))}</td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.title || "—"}</span></td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{itemProjectLabel(item, projects)}</span></td>
-                        <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><StatusBadge status={item.status} /></td>
+                        <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><StatusBadge status={displayStatusOf(item)} /></td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">
                           <div className="flex min-h-9 items-center justify-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                            <RowActionIconBtn action="delete" onClick={() => deleteItem(item)} size={34} iconSize={16} />
+                            <button type="button" onClick={() => openPreview(item)} className="grid h-[34px] w-[34px] place-items-center rounded-lg transition hover:bg-black/[0.04] dark:hover:bg-white/10" aria-label={item.canAct ? "اقدامات" : "نمایش"} title={item.canAct ? "اقدامات" : "نمایش"}>
+                              <img src="/images/icons/namayeshname.svg" alt="" className="h-4 w-4 dark:invert" />
+                            </button>
+                            {item.canDelete && <RowActionIconBtn action="delete" onClick={() => deleteItem(item)} size={34} iconSize={16} />}
                           </div>
                         </td>
                       </tr>
@@ -909,10 +986,13 @@ export default function SupplyRequestPage() {
                   <div key={item.id} className="rounded-xl border border-black/10 p-3 dark:border-white/10">
                     <div className="flex items-center justify-between gap-2">
                       <b dir="ltr" className="font-sans tabular-nums">{item.serial || "—"}</b>
-                      <StatusBadge status={item.status} />
+                      <StatusBadge status={displayStatusOf(item)} />
                     </div>
                     <div className="mt-2 truncate text-sm">{item.title || "—"}</div>
                     <div className="mt-2 text-xs text-neutral-500">{toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/"))}</div>
+                    <button type="button" onClick={() => openPreview(item)} className="mt-3 grid h-9 w-9 place-items-center rounded-lg border border-black/10 dark:border-white/10" aria-label={item.canAct ? "اقدامات" : "نمایش"} title={item.canAct ? "اقدامات" : "نمایش"}>
+                      <img src="/images/icons/namayeshname.svg" alt="" className="h-4 w-4 dark:invert" />
+                    </button>
                   </div>
                 ))
               )}
@@ -954,6 +1034,18 @@ export default function SupplyRequestPage() {
           </div>
         </div>
       </Card>
+      {selected && (
+        <SupplyRequestPreview
+          item={selected}
+          projects={projects}
+          actionNote={actionNote}
+          setActionNote={setActionNote}
+          actionBusy={actionBusy}
+          actionError={actionError}
+          onAction={recordWorkflowAction}
+          onClose={() => setSelected(null)}
+        />
+      )}
       {submitNotice && <RegistrationNotice info={submitNotice} onClose={() => setSubmitNotice(null)} />}
       {relatedPickOpen && (
         <RelatedLettersPicker
@@ -973,6 +1065,332 @@ export default function SupplyRequestPage() {
       )}
     </div>
   );
+}
+
+function SupplyRequestPreview({ item, projects, actionNote, setActionNote, actionBusy, actionError, onAction, onClose }) {
+  const project = projects.find((row) => String(row.id) === String(item.projectId));
+  const attachments = Array.isArray(item.attachments) ? item.attachments : [];
+  const history = Array.isArray(item.historyJson) ? item.historyJson : [];
+  const stepKey = item.currentStepRoleKey || "";
+  const canAct = item.canAct === true;
+  const status = displayStatusOf(item);
+  const meta = item.workflowMeta || {};
+  const [choice, setChoice] = useState("");
+  const [budgetCodeDraft, setBudgetCodeDraft] = useState(item.budgetCode || "");
+  const [baseBudget, setBaseBudget] = useState("");
+  const [budgetLoading, setBudgetLoading] = useState(false);
+  const [finalAmount, setFinalAmount] = useState(formatMoney(meta.finalAmount ?? item.amount ?? ""));
+  const [actionText, setActionText] = useState(meta.actionText || "");
+  const [deadlineDate, setDeadlineDate] = useState(meta.deadlineDate || "");
+  const [ccOpen, setCcOpen] = useState(false);
+  const [ccUsers, setCcUsers] = useState([]);
+  const [ccLoading, setCcLoading] = useState(false);
+  const [ccUserIds, setCcUserIds] = useState(Array.isArray(item.ccUserIds) ? item.ccUserIds.map(String) : []);
+
+  useEffect(() => {
+    setChoice("");
+    setBudgetCodeDraft(item.budgetCode || "");
+    setFinalAmount(formatMoney(item.workflowMeta?.finalAmount ?? item.amount ?? ""));
+    setActionText(item.workflowMeta?.actionText || "");
+    setDeadlineDate(item.workflowMeta?.deadlineDate || "");
+    setCcUserIds(Array.isArray(item.ccUserIds) ? item.ccUserIds.map(String) : []);
+  }, [item.id, item.budgetCode, item.amount, item.workflowMeta, item.ccUserIds]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setBaseBudget("");
+    if (!item.projectId || !budgetCodeDraft) return undefined;
+    setBudgetLoading(true);
+    fetch(`/api/cost-breakdown?project_id=${encodeURIComponent(item.projectId)}`, { credentials: "include" })
+      .then((response) => (response.ok ? response.json() : { items: [] }))
+      .then((data) => {
+        if (cancelled) return;
+        const rows = Array.isArray(data?.items) ? data.items : [];
+        const target = normalizeBudgetCode(budgetCodeDraft);
+        const projectCode = normalizeProjectCode(project?.code || item.projectCode || "");
+        const match = rows.find((row) => {
+          const rawCode = row?.budgetCode ?? row?.budget_code ?? row?.code;
+          return normalizeBudgetCode(rawCode) === target || budgetCodeForProject(rawCode, projectCode) === target;
+        });
+        const value = match?.baseBudget ?? match?.base_budget ?? "";
+        setBaseBudget(value === "" || value == null ? "" : formatMoney(value));
+      })
+      .catch(() => {
+        if (!cancelled) setBaseBudget("");
+      })
+      .finally(() => {
+        if (!cancelled) setBudgetLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [budgetCodeDraft, item.projectCode, item.projectId, project?.code]);
+
+  useEffect(() => {
+    if (!ccOpen || ccUsers.length || ccLoading) return undefined;
+    let cancelled = false;
+    setCcLoading(true);
+    fetch("/api/supply-requests?users=1", { credentials: "include" })
+      .then((response) => (response.ok ? response.json() : { users: [] }))
+      .then((data) => {
+        if (!cancelled) setCcUsers(Array.isArray(data?.users) ? data.users : []);
+      })
+      .catch(() => {
+        if (!cancelled) setCcUsers([]);
+      })
+      .finally(() => {
+        if (!cancelled) setCcLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ccLoading, ccOpen, ccUsers.length]);
+
+  const submitSelectedAction = () => {
+    if (!choice || actionBusy) return;
+    const payload =
+      stepKey === "project_control"
+        ? { budgetCode: budgetCodeDraft }
+        : stepKey === "project_manager"
+          ? {
+              finalAmount: parseMoney(finalAmount),
+              actionText,
+              deadlineDate,
+              ccUserIds,
+            }
+          : {};
+    onAction(choice, payload);
+  };
+
+  const toggleCcUser = (id) => {
+    const sid = String(id);
+    setCcUserIds((prev) => (prev.includes(sid) ? prev.filter((x) => x !== sid) : [...prev, sid]));
+  };
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999]">
+      <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 flex items-center justify-center p-3 md:p-6">
+        <div dir="rtl" className="flex h-[min(88vh,760px)] w-[min(1040px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
+          <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3 dark:border-white/10">
+            <div className="min-w-0 text-sm font-bold">
+              اقدامات درخواست تامین
+              <span className="mr-2 font-normal text-neutral-500">{item.serial || "—"}</span>
+            </div>
+            <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 dark:bg-white dark:text-black" aria-label="بستن" title="بستن">
+              <img src="/images/icons/bastan.svg" alt="" className="h-5 w-5 invert dark:invert-0" />
+            </button>
+          </div>
+
+          <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[0.9fr_1.25fr]">
+            <aside className="min-h-0 overflow-y-auto border-b border-black/10 p-4 dark:border-white/10 lg:border-b-0 lg:border-l">
+              <div className="space-y-4">
+                <PreviewSection title="مشخصات درخواست">
+                  <PreviewRow label="شماره درخواست" value={item.serial || "—"} ltr />
+                  <PreviewRow label="تاریخ درخواست" value={toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/"))} />
+                  <PreviewRow label="درخواست کننده" value={item.createdByName || `کاربر #${toFaDigits(item.createdById)}`} />
+                  <PreviewRow label="پروژه" value={project ? projectLabel(project) : item.projectName || item.projectCode || "—"} />
+                  <PreviewRow label="کد بودجه" value={item.budgetCode || "—"} ltr />
+                  <PreviewRow label="وضعیت" value={<StatusBadge status={status} />} />
+                  <PreviewRow label="مرحله فعلی" value={STEP_LABELS[stepKey] || (item.status === "approved" ? "پایان یافته" : "—")} />
+                  <PreviewRow label="ارجاع شده به" value={item.currentAssigneeName || "—"} />
+                </PreviewSection>
+
+                <PreviewSection title="سابقه درخواست">
+                  <div className="space-y-2 py-3">
+                    {history.filter((entry) => !["step_set", "step_clear"].includes(entry?.type)).length ? (
+                      history.filter((entry) => !["step_set", "step_clear"].includes(entry?.type)).map((entry, index) => (
+                        <div key={`${entry?.at || ""}_${index}`} className="rounded-xl border border-black/10 p-3 text-xs leading-6 dark:border-white/10">
+                          <div className="flex items-center justify-between gap-2">
+                            <b>{historyLabel(entry?.type || entry?.status)}</b>
+                            <span className="text-neutral-500">{formatDateTime(entry?.at)}</span>
+                          </div>
+                          <div className="mt-1 text-neutral-600 dark:text-neutral-300">{entry?.note || "—"}</div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="py-5 text-center text-sm text-neutral-500">سابقه‌ای ثبت نشده است.</div>
+                    )}
+                  </div>
+                </PreviewSection>
+              </div>
+            </aside>
+
+            <main className="min-h-0 overflow-y-auto p-4 md:p-5">
+              <div className="space-y-4">
+                <PreviewSection title="جزئیات درخواست">
+                  <PreviewRow label="موضوع" value={item.title || "—"} />
+                  <PreviewRow label="شرح" value={item.description || "—"} />
+                  <PreviewRow label="برآورد هزینه" value={toFaDigits(Number(item.amount || 0).toLocaleString("en-US"))} ltr />
+                  <PreviewRow label="تاریخ نیاز" value={toFaDigits(String(item.needDateJalali || "—").replaceAll("-", "/"))} />
+                  <PreviewRow label="پیوست‌ها" value={attachments.length ? <div className="flex flex-wrap justify-end gap-2">{attachments.map((file, index) => <a key={file.id || file.serverId || index} href={file.url || "#"} target="_blank" rel="noreferrer" className="rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFaDigits(index + 1)}`}</a>)}</div> : "—"} />
+                </PreviewSection>
+
+                {canAct ? (
+                  stepKey === "project_control" ? (
+                    <>
+                      <PreviewSection title="بررسی برنامه ریزی و کنترل پروژه">
+                        <div className="grid grid-cols-1 gap-3 py-4 md:grid-cols-3">
+                          <Field label="کد بودجه">
+                            <input dir="ltr" value={budgetCodeDraft} onChange={(event) => setBudgetCodeDraft(normalizeBudgetCode(event.target.value))} className={inputCls} />
+                          </Field>
+                          <ReadOnlyBox label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFaDigits(baseBudget) : "—"} ltr />
+                          <ReadOnlyBox label="باقی مانده نقدینگی تخصیص یافته به پروژه" value="—" ltr />
+                        </div>
+                      </PreviewSection>
+                      <PreviewSection title="نتیجه بررسی اولیه">
+                        <div className="space-y-3 py-4">
+                          <ActionOption checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy} />
+                          <ActionOption checked={choice === "return"} onClick={() => setChoice("return")} label="ارجاع به درخواست کننده" disabled={actionBusy} />
+                          {choice === "return" && <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputCls} min-h-24 py-3`} placeholder="توضیح..." />}
+                          <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice || !budgetCodeDraft} onSubmit={submitSelectedAction} />
+                        </div>
+                      </PreviewSection>
+                    </>
+                  ) : stepKey === "project_manager" ? (
+                    <>
+                      <PreviewSection title="بررسی مدیر پروژه">
+                        <div className="space-y-3 py-4">
+                          <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_120px]">
+                            <Field label="برآورد هزینه نهایی">
+                              <input dir="ltr" inputMode="numeric" value={toFaDigits(finalAmount)} onChange={(event) => setFinalAmount(formatMoney(event.target.value))} className={inputCls} placeholder="۰" />
+                            </Field>
+                            <ReadOnlyBox label="ارز" value="ریال" />
+                          </div>
+                          <div>
+                            <div className="mb-2 text-sm font-semibold">الزامات تایید</div>
+                            <div className="min-h-10 rounded-xl border border-black/10 dark:border-white/10" />
+                          </div>
+                          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                            <ReadOnlyBox label="کد بودجه" value={item.budgetCode || "—"} ltr />
+                            <ReadOnlyBox label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFaDigits(baseBudget) : "—"} ltr />
+                            <ReadOnlyBox label="باقی مانده نقدینگی تخصیص یافته به پروژه" value="—" ltr />
+                          </div>
+                          <Field label="اقدام">
+                            <textarea value={actionText} onChange={(event) => setActionText(event.target.value)} className={`${inputCls} min-h-24 py-3`} />
+                          </Field>
+                          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(180px,260px)_1fr]">
+                            <Field label="مهلت اقدام">
+                              <JalaliPopupDatePicker value={deadlineDate} onChange={setDeadlineDate} buttonClassName={`${inputCls} flex items-center justify-between gap-2`} />
+                            </Field>
+                            <div>
+                              <div className={labelCls}>رونوشت جهت اطلاع</div>
+                              <button type="button" onClick={() => setCcOpen((open) => !open)} className="inline-flex h-11 items-center gap-2 rounded-xl border border-black/10 bg-white px-3 text-sm transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10">
+                                <span className="grid h-6 w-6 place-items-center rounded-lg bg-black text-white dark:bg-white dark:text-black">+</span>
+                                <span>رونوشت جهت اطلاع</span>
+                              </button>
+                              {ccUserIds.length ? <div className="mt-2 text-xs text-neutral-500">{toFaDigits(ccUserIds.length)} کاربر انتخاب شده</div> : null}
+                              {ccOpen && (
+                                <div className="mt-2 max-h-52 overflow-auto rounded-xl border border-black/10 p-2 dark:border-white/10">
+                                  {ccLoading ? <div className="p-3 text-xs text-neutral-500">در حال دریافت...</div> : ccUsers.map((u) => {
+                                    const id = String(u.id);
+                                    const checked = ccUserIds.includes(id);
+                                    const name = u.name || u.username || u.email || `کاربر #${id}`;
+                                    return (
+                                      <button key={id} type="button" onClick={() => toggleCcUser(id)} className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-right text-sm hover:bg-black/[0.03] dark:hover:bg-white/10">
+                                        <span>{name}</span>
+                                        <span className={`grid h-5 w-5 place-items-center rounded-md border ${checked ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/15 dark:border-white/15"}`}>{checked ? "✓" : ""}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </PreviewSection>
+                      <PreviewSection title="نتیجه بررسی نهایی">
+                        <div className="space-y-3 py-4">
+                          <ActionOption checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy} />
+                          <ActionOption checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست تامین" disabled={actionBusy} />
+                          <ActionOption checked={choice === "return"} onClick={() => setChoice("return")} label="ارجاع به درخواست کننده" disabled={actionBusy} />
+                          {["reject", "return"].includes(choice) && <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputCls} min-h-24 py-3`} placeholder="توضیح..." />}
+                          <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice || parseMoney(finalAmount) <= 0} onSubmit={submitSelectedAction} />
+                        </div>
+                      </PreviewSection>
+                    </>
+                  ) : (
+                    <PreviewSection title="ارسال مجدد درخواست">
+                      <div className="space-y-3 py-4">
+                        <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputCls} min-h-24 py-3`} placeholder="توضیح اصلاحات..." />
+                        <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={false} onSubmit={() => onAction("approve", {})} />
+                      </div>
+                    </PreviewSection>
+                  )
+                ) : (
+                  <div className="rounded-2xl border border-black/10 p-4 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">
+                    در این مرحله اقدامی برای شما فعال نیست.
+                  </div>
+                )}
+              </div>
+            </main>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function PreviewSection({ title, children }) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
+      <div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">{title}</div>
+      <div className="divide-y divide-black/10 px-4 dark:divide-white/10">{children}</div>
+    </section>
+  );
+}
+
+function PreviewRow({ label, value, ltr }) {
+  return (
+    <div className="grid grid-cols-[120px_1fr] gap-3 py-2.5 text-sm">
+      <div className="text-neutral-500 dark:text-neutral-400">{label}</div>
+      <div dir={ltr ? "ltr" : "rtl"} className={`break-words font-medium ${ltr ? "text-left" : "text-right"}`}>{value}</div>
+    </div>
+  );
+}
+
+function ReadOnlyBox({ label, value, ltr }) {
+  return (
+    <Field label={label}>
+      <div dir={ltr ? "ltr" : "rtl"} className={`${inputCls} flex items-center ${ltr ? "justify-end" : "justify-start"} bg-neutral-50 dark:bg-white/5`}>
+        {value || "—"}
+      </div>
+    </Field>
+  );
+}
+
+function ActionOption({ checked, disabled, onClick, label }) {
+  return (
+    <button type="button" disabled={disabled} onClick={onClick} className={`flex h-11 w-full items-center justify-between rounded-xl border px-3 text-sm transition disabled:cursor-not-allowed disabled:opacity-45 ${checked ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>
+      <span>{label}</span>
+      <span className="grid h-5 w-5 place-items-center rounded-md border border-neutral-400" />
+    </button>
+  );
+}
+
+function ActionFooter({ actionBusy, actionError, disabled, onSubmit }) {
+  return (
+    <div className="flex items-center justify-between gap-3 pt-2">
+      <div className="text-xs text-red-600 dark:text-red-400">{actionError || ""}</div>
+      <button type="button" onClick={onSubmit} disabled={disabled || actionBusy} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 disabled:opacity-50 dark:bg-white dark:text-black" title="ثبت" aria-label="ثبت">
+        <img src="/images/icons/check.svg" alt="" className="h-5 w-5 invert dark:invert-0" />
+      </button>
+    </div>
+  );
+}
+
+function historyLabel(value) {
+  return ({ created: "ثبت درخواست", approved: "تایید", rejected: "رد", returned: "ارجاع جهت اصلاح" })[value] || value || "—";
+}
+
+function formatDateTime(value) {
+  if (!value) return "—";
+  try {
+    return new Intl.DateTimeFormat("fa-IR-u-ca-persian", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
+  } catch {
+    return "—";
+  }
 }
 
 function Field({ label, required, children }) {
