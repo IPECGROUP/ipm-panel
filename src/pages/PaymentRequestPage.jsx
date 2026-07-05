@@ -22,6 +22,7 @@ const STEP_LABELS = {
   finance_manager: "مدیریت مالی",
   payment_order: "دستور پرداخت",
 };
+const PAYMENT_METHOD_OPTIONS = ["واریز بانکی - فیش", "واریز بانکی - اینترنت بانک", "صدور چک", "بصورت نقدی"];
 const PAGE_ICON = "/images/icons/darkhast-pardakht.svg";
 const inputClass = "w-full h-11 rounded-xl border border-black/10 bg-white px-3 text-sm text-neutral-900 outline-none transition focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-white";
 const today = () => todayJalaliYmd().replaceAll("-", "/");
@@ -396,18 +397,27 @@ export default function PaymentRequestPage() {
     setActionError("");
   };
 
-  const recordAction = async (status) => {
+  const recordAction = async (status, noteOverride = "") => {
     if (!selected || actionBusy) return;
     setActionBusy(true);
     setActionError("");
     try {
+      const finalNote = String(noteOverride || actionNote || "").trim();
       const data = await api("/requests/status", {
         method: "POST",
-        body: JSON.stringify({ id: selected.id, status, note: actionNote.trim() }),
+        body: JSON.stringify({ id: selected.id, status, note: finalNote }),
       });
       setSelected((current) => current ? { ...current, ...(data.item || {}) } : current);
       setActionNote("");
+      setSubmitNotice({
+        dateJalali: normalizeDigits(new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())),
+        time: normalizeDigits(new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date())),
+        userName: user?.name || user?.username || "کاربر",
+        unitName: STEP_LABELS[selected.currentStepRoleKey] || "واحد مربوطه",
+        roleName: status === "approved" ? "تایید کننده" : status === "returned" ? "ارجاع دهنده" : "رد کننده",
+      });
       await loadItems();
+      return data;
     } catch (err) {
       setActionError(["forbidden", "reject_not_allowed_for_step", "return_not_allowed_for_step"].includes(err?.message) ? "شما اجازه انجام این اقدام را ندارید." : "ثبت اقدام انجام نشد.");
     } finally {
@@ -731,20 +741,87 @@ function PaymentPreview({ item, projects, currencyTypes, currencySources, mainAd
   const history = Array.isArray(item.historyJson) ? item.historyJson : Array.isArray(item.history_json) ? item.history_json : [];
   const currentStepRoleKey = item.currentStepRoleKey || "";
   const canDecide = item.status === "pending" && item.canAct === true;
-  const canReject = currentStepRoleKey === "project_manager";
-  const canReturn = ["project_control", "project_manager", "accounting", "management"].includes(currentStepRoleKey);
+  const currentStepIndex = Number(item.currentStepIndex || 0);
+  const finalAccounting = currentStepRoleKey === "accounting" && currentStepIndex >= 5;
+  const [baseBudget, setBaseBudget] = useState("");
+  const [budgetLoading, setBudgetLoading] = useState(false);
+  const [choice, setChoice] = useState("");
+  const [urgentCash, setUrgentCash] = useState(false);
+  const [cashPayAmount, setCashPayAmount] = useState("");
+  const [cashPayCurrencyId, setCashPayCurrencyId] = useState(item.currencyTypeId || "");
+  const [paymentMethod, setPaymentMethod] = useState(PAYMENT_METHOD_OPTIONS[0]);
+  const [creditPayAmount, setCreditPayAmount] = useState("");
+  const [creditPayCurrencyId, setCreditPayCurrencyId] = useState(item.currencyTypeId || "");
+  const [creditPayDesc, setCreditPayDesc] = useState("");
+  const liquidityRemaining = "";
+  const amountNumber = Number(item.amount || 0);
+  const liquidityNumber = parseAmount(liquidityRemaining);
+  const hasEnoughLiquidity = liquidityNumber > 0 && amountNumber <= liquidityNumber;
+
+  useEffect(() => {
+    let cancelled = false;
+    setBaseBudget("");
+    if (!item.projectId || !item.budgetCode) return undefined;
+    setBudgetLoading(true);
+    fetch(`/api/cost-breakdown?project_id=${encodeURIComponent(item.projectId)}`, { credentials: "include" })
+      .then((response) => response.ok ? response.json() : { items: [] })
+      .then((data) => {
+        if (cancelled) return;
+        const rows = Array.isArray(data?.items) ? data.items : [];
+        const target = normalizeBudgetCode(item.budgetCode);
+        const projectCode = normalizeProjectCode(project?.code || item.projectCode || "");
+        const match = rows.find((row) => {
+          const rawCode = row?.budgetCode ?? row?.budget_code ?? row?.code;
+          return normalizeBudgetCode(rawCode) === target || budgetCodeForProject(rawCode, projectCode) === target;
+        });
+        const value = match?.baseBudget ?? match?.base_budget ?? "";
+        setBaseBudget(value === "" || value == null ? "" : money(value));
+      })
+      .catch(() => { if (!cancelled) setBaseBudget(""); })
+      .finally(() => { if (!cancelled) setBudgetLoading(false); });
+    return () => { cancelled = true; };
+  }, [item.budgetCode, item.projectCode, item.projectId, project?.code]);
+
+  const submitWorkflow = () => {
+    if (!choice && !finalAccounting) return;
+    const note = buildWorkflowNote({
+      stepKey: currentStepRoleKey,
+      stepIndex: currentStepIndex,
+      choice,
+      note: actionNote,
+      urgentCash,
+      cashPayAmount,
+      cashPayCurrency: currencyNameOf(cashPayCurrencyId, currencyTypes),
+      paymentMethod,
+      creditPayAmount,
+      creditPayCurrency: currencyNameOf(creditPayCurrencyId, currencyTypes),
+      creditPayDesc,
+    });
+    const status = finalAccounting ? "approved" : choice === "reject" || choice === "stop" ? "rejected" : choice === "return" ? "returned" : "approved";
+    onAction(status, note);
+  };
 
   return createPortal(<div className="fixed inset-0 z-[9999]">
     <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
     <div className="absolute inset-0 flex items-center justify-center p-3 md:p-6">
-      <div dir="rtl" className="flex h-[min(88vh,840px)] w-[min(1100px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
+      <div dir="rtl" className="flex h-[min(90vh,860px)] w-[min(1180px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
         <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3 dark:border-white/10">
-          <div className="text-sm font-bold">نمایش درخواست پرداخت <span className="font-normal text-neutral-500">— {item.serial || "—"}</span></div>
+          <div className="text-sm font-bold">اقدامات درخواست پرداخت <span className="font-normal text-neutral-500">— {item.serial || "—"}</span></div>
           <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white ring-1 ring-black/15 transition hover:bg-black/80 dark:bg-transparent dark:ring-neutral-800 dark:hover:bg-white/10" aria-label="بستن" title="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 md:p-5">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.25fr]">
+        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[0.9fr_1.35fr]">
+          <aside className="min-h-0 overflow-y-auto border-b border-black/10 p-4 dark:border-white/10 lg:border-b-0 lg:border-l">
             <div className="space-y-4">
+              <PreviewSection title="سابقه درخواست">
+                <div className="space-y-2 py-3">
+                  {history.filter((entry) => !["step_set", "step_clear"].includes(entry?.type)).length ? history.filter((entry) => !["step_set", "step_clear"].includes(entry?.type)).map((entry, index) => (
+                    <div key={index} className="rounded-xl border border-black/10 p-3 text-xs leading-6 dark:border-white/10">
+                      <div className="flex items-center justify-between gap-2"><b>{historyLabel(entry?.type || entry?.status)}</b><span className="text-neutral-500">{formatDateTime(entry?.at)}</span></div>
+                      <div className="mt-1 text-neutral-600 dark:text-neutral-300">{entry?.note || "—"}</div>
+                    </div>
+                  )) : <div className="py-5 text-center text-sm text-neutral-500">سابقه‌ای ثبت نشده است.</div>}
+                </div>
+              </PreviewSection>
               <PreviewSection title="مشخصات درخواست">
                 <PreviewRow label="شماره درخواست" value={item.serial || "—"} ltr />
                 <PreviewRow label="تاریخ درخواست" value={toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))} />
@@ -754,42 +831,174 @@ function PaymentPreview({ item, projects, currencyTypes, currencySources, mainAd
                 <PreviewRow label="آخرین وضعیت" value={<StatusBadge status={item.status} />} />
                 <PreviewRow label="مرحله فعلی" value={STEP_LABELS[currentStepRoleKey] || "—"} />
               </PreviewSection>
-              <PreviewSection title="اطلاعات سند">
+            </div>
+          </aside>
+          <main className="min-h-0 overflow-y-auto p-4 md:p-5">
+            <div className="space-y-4">
+              <PreviewSection title="بررسی درخواست">
+                <PreviewRow label="کد بودجه" value={item.budgetCode || "—"} ltr />
+                <PreviewRow label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFa(baseBudget) : "—"} ltr />
+                <PreviewRow label="باقی مانده نقدینگی تخصیص یافته به پروژه" value={liquidityRemaining || "—"} ltr />
+                {currentStepRoleKey === "project_manager" && <PreviewRow label={`مبلغ درخواست پرداخت (${currencyName})`} value={toFa(Number(item.amount || 0).toLocaleString("en-US"))} ltr />}
+              </PreviewSection>
+              <PreviewSection title="جزئیات پرداخت و سند">
+                <PreviewRow label="موضوع درخواست" value={item.title || "—"} />
+                <PreviewRow label="شرح درخواست" value={item.description || "—"} />
+                <PreviewRow label={`مبلغ درخواست (${currencyName})`} value={toFa(Number(item.amount || 0).toLocaleString("en-US"))} ltr />
+                <PreviewRow label="شرایط پرداخت" value={item.creditPay || "—"} />
+                <PreviewRow label="ارز" value={currencyName} />
+                <PreviewRow label="منشا ارز" value={source ? itemLabel(source) : "—"} />
                 <PreviewRow label="نوع سند" value={docName} />
                 <PreviewRow label="شماره سند" value={item.docNumber || "—"} />
                 <PreviewRow label="تاریخ سند" value={toFa(item.docDate || item.docDateJalali || "—")} />
                 <PreviewRow label="پیوست‌ها" value={attachments.length ? <div className="flex flex-wrap justify-end gap-2">{attachments.map((file, index) => <a key={file.id || file.serverId || index} href={file.url || "#"} target="_blank" rel="noreferrer" className="rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFa(index + 1)}`}</a>)}</div> : "—"} />
               </PreviewSection>
+              {canDecide && <WorkflowPanel
+                stepKey={currentStepRoleKey}
+                stepIndex={currentStepIndex}
+                choice={choice}
+                setChoice={setChoice}
+                actionNote={actionNote}
+                setActionNote={setActionNote}
+                actionBusy={actionBusy}
+                actionError={actionError}
+                onSubmit={submitWorkflow}
+                hasEnoughLiquidity={hasEnoughLiquidity}
+                urgentCash={urgentCash}
+                setUrgentCash={setUrgentCash}
+                cashPayAmount={cashPayAmount}
+                setCashPayAmount={setCashPayAmount}
+                cashPayCurrencyId={cashPayCurrencyId}
+                setCashPayCurrencyId={setCashPayCurrencyId}
+                paymentMethod={paymentMethod}
+                setPaymentMethod={setPaymentMethod}
+                creditPayAmount={creditPayAmount}
+                setCreditPayAmount={setCreditPayAmount}
+                creditPayCurrencyId={creditPayCurrencyId}
+                setCreditPayCurrencyId={setCreditPayCurrencyId}
+                creditPayDesc={creditPayDesc}
+                setCreditPayDesc={setCreditPayDesc}
+                currencyTypes={currencyTypes}
+              />}
             </div>
-            <div className="space-y-4">
-              <PreviewSection title="جزئیات پرداخت">
-                <PreviewRow label="عنوان درخواست" value={item.title || "—"} />
-                <PreviewRow label="شرح" value={item.description || "—"} />
-                <PreviewRow label={`مبلغ درخواست (${currencyName})`} value={toFa(Number(item.amount || 0).toLocaleString("en-US"))} ltr />
-                <PreviewRow label="شرایط پرداخت" value={item.creditPay || "—"} />
-                <PreviewRow label="منشا ارز" value={source ? itemLabel(source) : "—"} />
-                <PreviewRow label="نام ذینفع" value={item.beneficiaryName || "—"} />
-                <PreviewRow label="شماره شبا" value={item.bankInfo || "—"} ltr />
-              </PreviewSection>
-            </div>
-          </div>
-
-          {!!history.length && <div className="mt-4"><PreviewSection title="سوابق درخواست"><div className="overflow-x-auto"><table className="w-full min-w-[620px] text-sm"><thead><tr className="bg-neutral-100 dark:bg-white/10"><th className="p-2 text-right">اقدام</th><th className="p-2 text-right">شرح</th><th className="p-2 text-right">تاریخ و ساعت</th></tr></thead><tbody>{history.filter((entry) => !["step_set", "step_clear"].includes(entry?.type)).map((entry, index) => <tr key={index} className="border-t border-black/10 dark:border-white/10"><td className="p-2">{historyLabel(entry?.type || entry?.status)}</td><td className="p-2">{entry?.note || "—"}</td><td className="p-2">{formatDateTime(entry?.at)}</td></tr>)}</tbody></table></div></PreviewSection></div>}
-
-          {canDecide && <div className="mt-4 rounded-2xl border border-black/10 p-4 dark:border-white/10">
-            <div className="mb-2 text-sm font-semibold">اقدام روی درخواست <span className="font-normal text-neutral-500">({STEP_LABELS[currentStepRoleKey] || "مرحله فعلی"})</span></div>
-            <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className="min-h-20 w-full rounded-xl border border-black/10 bg-white p-3 text-sm outline-none dark:border-white/15 dark:bg-white/5" placeholder="شرح اقدام (اختیاری)" />
-            {actionError && <div className="mt-2 text-xs text-red-600 dark:text-red-400">{actionError}</div>}
-            <div className="mt-3 flex justify-end gap-2">
-              {canReturn && <button type="button" onClick={() => onAction("returned")} disabled={actionBusy} className="inline-flex h-10 items-center gap-2 rounded-xl bg-amber-600 px-4 text-sm text-white transition hover:bg-amber-700 disabled:opacity-50"><img src="/images/icons/bargashtdarkhast.svg" alt="" className="h-5 w-5 invert" />ارجاع به درخواست‌کننده</button>}
-              {canReject && <button type="button" onClick={() => onAction("rejected")} disabled={actionBusy} className="inline-flex h-10 items-center gap-2 rounded-xl bg-red-600 px-4 text-sm text-white transition hover:bg-red-700 disabled:opacity-50"><img src="/images/icons/raddarkhast.svg" alt="" className="h-5 w-5 invert" />رد درخواست</button>}
-              <button type="button" onClick={() => onAction("approved")} disabled={actionBusy} className="inline-flex h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm text-white transition hover:bg-emerald-700 disabled:opacity-50"><img src="/images/icons/taeid.svg" alt="" className="h-5 w-5 invert" />تأیید درخواست</button>
-            </div>
-          </div>}
+          </main>
         </div>
       </div>
     </div>
   </div>, document.body);
+}
+
+function WorkflowPanel({
+  stepKey, stepIndex, choice, setChoice, actionNote, setActionNote, actionBusy, actionError, onSubmit,
+  hasEnoughLiquidity, urgentCash, setUrgentCash,
+  cashPayAmount, setCashPayAmount, cashPayCurrencyId, setCashPayCurrencyId, paymentMethod, setPaymentMethod,
+  creditPayAmount, setCreditPayAmount, creditPayCurrencyId, setCreditPayCurrencyId, creditPayDesc, setCreditPayDesc,
+  currencyTypes,
+}) {
+  const finalAccounting = stepKey === "accounting" && Number(stepIndex) >= 5;
+  if (finalAccounting) {
+    return <PreviewSection title="ثبت پرداخت نهایی">
+      <div className="space-y-4 py-4">
+        <div className="rounded-xl border border-black/10 p-3 dark:border-white/10">
+          <div className="mb-3 text-sm font-semibold">پرداخت نقدی</div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <Field label="مبلغ"><MoneyInput value={cashPayAmount} onChange={setCashPayAmount} /></Field>
+            <Field label="ارز"><CurrencySelect value={cashPayCurrencyId} onChange={setCashPayCurrencyId} currencyTypes={currencyTypes} /></Field>
+            <Field label="روش پرداخت"><select className={inputClass} value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}>{PAYMENT_METHOD_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}</select></Field>
+          </div>
+        </div>
+        <div className="rounded-xl border border-black/10 p-3 dark:border-white/10">
+          <div className="mb-3 text-sm font-semibold">پرداخت اعتباری</div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <Field label="مبلغ"><MoneyInput value={creditPayAmount} onChange={setCreditPayAmount} /></Field>
+            <Field label="ارز"><CurrencySelect value={creditPayCurrencyId} onChange={setCreditPayCurrencyId} currencyTypes={currencyTypes} /></Field>
+          </div>
+          <div className="mt-3"><Field label="شرح پرداخت"><textarea className={`${inputClass} min-h-24 py-3`} value={creditPayDesc} onChange={(event) => setCreditPayDesc(event.target.value)} /></Field></div>
+        </div>
+        <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!cashPayAmount && !creditPayAmount} onSubmit={onSubmit} />
+      </div>
+    </PreviewSection>;
+  }
+
+  if (stepKey === "project_manager") {
+    return <PreviewSection title="نتیجه بررسی مدیر پروژه">
+      <div className="space-y-3 py-4">
+        <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={urgentCash} onChange={(event) => setUrgentCash(event.target.checked)} className="h-4 w-4 accent-black dark:accent-white" />پرداخت فوری و نقدی</label>
+        <ActionOption checked={choice === "approve"} disabled={!hasEnoughLiquidity} onClick={() => setChoice("approve")} label="تایید درخواست" />
+        <ActionOption checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست" />
+        <ActionOption checked={choice === "return"} onClick={() => setChoice("return")} label="ارجاع به درخواست کننده" />
+        {!hasEnoughLiquidity && <ActionOption checked={choice === "stop"} onClick={() => setChoice("stop")} label="توقف پرداخت به دلیل عدم نقدینگی" />}
+        {["reject", "return", "stop"].includes(choice) && <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputClass} min-h-24 py-3`} placeholder="توضیح..." />}
+        <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice} onSubmit={onSubmit} />
+      </div>
+    </PreviewSection>;
+  }
+
+  if (stepKey === "project_control") {
+    return <PreviewSection title="نتیجه بررسی اولیه">
+      <div className="space-y-3 py-4">
+        <ActionOption checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست پرداخت" />
+        <ActionOption checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست پرداخت" />
+        <ActionOption checked={choice === "return"} onClick={() => setChoice("return")} label="ارجاع به درخواست کننده" />
+        {["reject", "return"].includes(choice) && <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputClass} min-h-24 py-3`} placeholder="توضیح..." />}
+        <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice} onSubmit={onSubmit} />
+      </div>
+    </PreviewSection>;
+  }
+
+  return <PreviewSection title={stepKey === "management" ? "نتیجه بررسی مدیریت" : "نتیجه بررسی مالی و حسابداری"}>
+    <div className="space-y-3 py-4">
+      <ActionOption checked={choice === "approve"} onClick={() => setChoice("approve")} label={stepKey === "management" ? "درخواست پرداخت" : "تایید درخواست"} />
+      <ActionOption checked={choice === "return"} onClick={() => setChoice("return")} label="ارجاع به درخواست کننده" />
+      {choice === "return" && <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputClass} min-h-24 py-3`} placeholder="توضیح..." />}
+      <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice} onSubmit={onSubmit} />
+    </div>
+  </PreviewSection>;
+}
+
+function ActionOption({ checked, disabled, onClick, label }) {
+  return <button type="button" disabled={disabled} onClick={onClick} className={`flex h-11 w-full items-center justify-between rounded-xl border px-3 text-sm transition disabled:cursor-not-allowed disabled:opacity-45 ${checked ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>
+    <span>{label}</span>
+    <span className={`grid h-5 w-5 place-items-center rounded-md border ${checked ? "border-white dark:border-black" : "border-neutral-400"}`}>{checked && <img src="/images/icons/check.svg" alt="" className={`h-3.5 w-3.5 ${checked ? "invert dark:invert-0" : ""}`} />}</span>
+  </button>;
+}
+
+function ActionFooter({ actionBusy, actionError, disabled, onSubmit }) {
+  return <div className="flex items-center justify-between gap-3 pt-2">
+    <div className="text-xs text-red-600 dark:text-red-400">{actionError || ""}</div>
+    <button type="button" onClick={onSubmit} disabled={disabled || actionBusy} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 disabled:opacity-50 dark:bg-white dark:text-black" title="ثبت" aria-label="ثبت">
+      <img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" />
+    </button>
+  </div>;
+}
+
+function CurrencySelect({ value, onChange, currencyTypes }) {
+  return <select className={inputClass} value={value || ""} onChange={(event) => onChange(event.target.value)}>
+    <option value="">ریال</option>
+    {(currencyTypes || []).map((item) => <option key={item.id} value={item.id}>{itemLabel(item)}</option>)}
+  </select>;
+}
+
+function currencyNameOf(id, currencyTypes) {
+  const item = (currencyTypes || []).find((row) => String(row.id) === String(id));
+  return item ? itemLabel(item) : "ریال";
+}
+
+function buildWorkflowNote({ stepKey, stepIndex, choice, note, urgentCash, cashPayAmount, cashPayCurrency, paymentMethod, creditPayAmount, creditPayCurrency, creditPayDesc }) {
+  const finalAccounting = stepKey === "accounting" && Number(stepIndex) >= 5;
+  if (finalAccounting) {
+    const parts = [];
+    if (cashPayAmount) parts.push(`پرداخت نقدی: ${cashPayAmount} ${cashPayCurrency}، روش پرداخت: ${paymentMethod}`);
+    if (creditPayAmount) parts.push(`پرداخت اعتباری: ${creditPayAmount} ${creditPayCurrency}${creditPayDesc ? `، شرح: ${creditPayDesc}` : ""}`);
+    return parts.join(" | ") || "پرداخت ثبت شد";
+  }
+  const labels = {
+    approve: "تایید درخواست",
+    reject: "رد درخواست",
+    return: "ارجاع به درخواست کننده",
+    stop: "توقف پرداخت به دلیل عدم نقدینگی",
+  };
+  return [labels[choice] || "اقدام", urgentCash ? "پرداخت فوری و نقدی" : "", note].filter(Boolean).join(" - ");
 }
 
 function PreviewSection({ title, children }) { return <section className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">{title}</div><div className="divide-y divide-black/10 px-4 dark:divide-white/10">{children}</div></section>; }
