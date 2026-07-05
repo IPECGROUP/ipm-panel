@@ -257,6 +257,15 @@ function displayStatusOf(item) {
   return item?.workflowStatus || item?.status || "";
 }
 
+function friendlyError(message, fallback) {
+  const text = String(message || "");
+  if (text === "database_unreachable") return "ارتباط با پایگاه داده برقرار نیست. سرویس دیتابیس را بررسی کنید.";
+  if (text === "database_auth_failed") return "احراز هویت پایگاه داده ناموفق است.";
+  if (text === "project_control_user_not_found") return "کاربری در واحد برنامه ریزی و کنترل پروژه پیدا نشد.";
+  if (text === "project_manager_user_not_found") return "کاربری با نقش مدیر پروژه پیدا نشد.";
+  return text || fallback;
+}
+
 function normalizeYmd(value = "") {
   const text = normalizeDigits(value).trim().replaceAll("-", "/");
   const match = text.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
@@ -345,7 +354,7 @@ export default function SupplyRequestPage() {
       const rows = Array.isArray(data?.items) ? data.items : [];
       setItems(rows);
     } catch (ex) {
-      setErr(ex.message || "دریافت درخواست‌های تامین انجام نشد.");
+      setErr(friendlyError(ex.message, "دریافت درخواست‌های تامین انجام نشد."));
       setItems([]);
     } finally {
       setLoading(false);
@@ -572,14 +581,7 @@ export default function SupplyRequestPage() {
       closeForm();
       await loadItems();
     } catch (ex) {
-      const message = String(ex?.message || "");
-      setErr(
-        message === "project_control_user_not_found"
-          ? "کاربری در واحد برنامه ریزی و کنترل پروژه پیدا نشد."
-          : message === "project_manager_user_not_found"
-            ? "کاربری با نقش مدیر پروژه پیدا نشد."
-            : message || "ثبت درخواست تامین انجام نشد."
-      );
+      setErr(friendlyError(ex?.message, "ثبت درخواست تامین انجام نشد."));
     } finally {
       setSaving(false);
     }
