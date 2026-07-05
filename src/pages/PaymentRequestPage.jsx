@@ -13,6 +13,15 @@ const DOC_OPTIONS = [
 ];
 const MONTHS = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
 const STATUS_LABELS = { pending: "در انتظار بررسی", approved: "تأییدشده", rejected: "ردشده", returned: "برگشت‌خورده" };
+const STEP_LABELS = {
+  requester: "درخواست‌کننده",
+  project_control: "برنامه‌ریزی و کنترل پروژه",
+  project_manager: "مدیر پروژه",
+  accounting: "مالی و حسابداری",
+  management: "مدیریت",
+  finance_manager: "مدیریت مالی",
+  payment_order: "دستور پرداخت",
+};
 const PAGE_ICON = "/images/icons/darkhast-pardakht.svg";
 const inputClass = "w-full h-11 rounded-xl border border-black/10 bg-white px-3 text-sm text-neutral-900 outline-none transition focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-white";
 const today = () => todayJalaliYmd().replaceAll("-", "/");
@@ -244,7 +253,7 @@ export default function PaymentRequestPage() {
   const loadItems = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await api("/requests?view=mine");
+      const data = await api("/requests");
       setItems(Array.isArray(data.items) ? data.items : []);
     } catch { setError("دریافت درخواست‌ها انجام نشد."); }
     finally { setLoading(false); }
@@ -377,7 +386,7 @@ export default function PaymentRequestPage() {
       }) });
       setSubmitNotice(data?.item?.registrationInfo || null);
       setForm(emptyForm()); setSuccess("درخواست با موفقیت ثبت شد."); setShowForm(false); await loadItems();
-    } catch (err) { setError(err.message === "marandi_user_not_found" ? "کاربر مرندی در سامانه پیدا نشد." : "ثبت درخواست انجام نشد."); }
+    } catch { setError("ثبت درخواست انجام نشد."); }
     finally { setSubmitting(false); }
   };
 
@@ -400,7 +409,7 @@ export default function PaymentRequestPage() {
       setActionNote("");
       await loadItems();
     } catch (err) {
-      setActionError(err?.message === "forbidden" ? "شما اجازه انجام این اقدام را ندارید." : "ثبت اقدام انجام نشد.");
+      setActionError(["forbidden", "reject_not_allowed_for_step", "return_not_allowed_for_step"].includes(err?.message) ? "شما اجازه انجام این اقدام را ندارید." : "ثبت اقدام انجام نشد.");
     } finally {
       setActionBusy(false);
     }
@@ -562,7 +571,7 @@ export default function PaymentRequestPage() {
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.title || "—"}</span></td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{projectLabel(projects.find((row) => String(row.id) === String(item.projectId))) || item.projectName || item.projectCode || "—"}</span></td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><StatusBadge status={item.status} /></td>
-                <td className="border-b border-neutral-300 !pl-6 !pr-3 dark:border-neutral-700"><div className="flex w-full items-center justify-start gap-2 pl-3 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"><button type="button" onClick={() => openPreview(item)} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label="نمایش" title="نمایش"><img src="/images/icons/namayeshname.svg" alt="" className="h-4 w-4 dark:invert" /></button>{String(item.createdById) === String(user?.id) && <button type="button" onClick={() => deleteItem(item)} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label="حذف" title="حذف"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" style={{ filter: "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)" }} /></button>}</div></td>
+                <td className="border-b border-neutral-300 !pl-6 !pr-3 dark:border-neutral-700"><div className="flex w-full items-center justify-start gap-2 pl-3 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"><button type="button" onClick={() => openPreview(item)} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label={item.canAct ? "اقدامات" : "نمایش"} title={item.canAct ? "اقدامات" : "نمایش"}><img src="/images/icons/namayeshname.svg" alt="" className="h-4 w-4 dark:invert" /></button>{item.canDelete && <button type="button" onClick={() => deleteItem(item)} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label="حذف" title="حذف"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" style={{ filter: "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)" }} /></button>}</div></td>
               </tr>)}
             </tbody>
           </table></div>
@@ -720,7 +729,10 @@ function PaymentPreview({ item, projects, currencyTypes, currencySources, mainAd
   const docName = item.docId === "other" ? (item.docOther || "سایر") : (DOC_OPTIONS.find(([value]) => value === item.docId)?.[1] || "—");
   const attachments = Array.isArray(item.attachments) ? item.attachments : [];
   const history = Array.isArray(item.historyJson) ? item.historyJson : Array.isArray(item.history_json) ? item.history_json : [];
-  const canDecide = mainAdmin && item.status === "pending" && item.canAct !== false;
+  const currentStepRoleKey = item.currentStepRoleKey || "";
+  const canDecide = item.status === "pending" && item.canAct === true;
+  const canReject = currentStepRoleKey === "project_manager";
+  const canReturn = ["project_control", "project_manager", "accounting", "management"].includes(currentStepRoleKey);
 
   return createPortal(<div className="fixed inset-0 z-[9999]">
     <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
@@ -740,6 +752,7 @@ function PaymentPreview({ item, projects, currencyTypes, currencySources, mainAd
                 <PreviewRow label="پروژه" value={project ? projectLabel(project) : (item.projectName || item.projectCode || item.projectId || "—")} />
                 <PreviewRow label="کد بودجه" value={item.budgetCode || "—"} ltr />
                 <PreviewRow label="آخرین وضعیت" value={<StatusBadge status={item.status} />} />
+                <PreviewRow label="مرحله فعلی" value={STEP_LABELS[currentStepRoleKey] || "—"} />
               </PreviewSection>
               <PreviewSection title="اطلاعات سند">
                 <PreviewRow label="نوع سند" value={docName} />
@@ -764,11 +777,12 @@ function PaymentPreview({ item, projects, currencyTypes, currencySources, mainAd
           {!!history.length && <div className="mt-4"><PreviewSection title="سوابق درخواست"><div className="overflow-x-auto"><table className="w-full min-w-[620px] text-sm"><thead><tr className="bg-neutral-100 dark:bg-white/10"><th className="p-2 text-right">اقدام</th><th className="p-2 text-right">شرح</th><th className="p-2 text-right">تاریخ و ساعت</th></tr></thead><tbody>{history.filter((entry) => !["step_set", "step_clear"].includes(entry?.type)).map((entry, index) => <tr key={index} className="border-t border-black/10 dark:border-white/10"><td className="p-2">{historyLabel(entry?.type || entry?.status)}</td><td className="p-2">{entry?.note || "—"}</td><td className="p-2">{formatDateTime(entry?.at)}</td></tr>)}</tbody></table></div></PreviewSection></div>}
 
           {canDecide && <div className="mt-4 rounded-2xl border border-black/10 p-4 dark:border-white/10">
-            <div className="mb-2 text-sm font-semibold">اقدام روی درخواست</div>
+            <div className="mb-2 text-sm font-semibold">اقدام روی درخواست <span className="font-normal text-neutral-500">({STEP_LABELS[currentStepRoleKey] || "مرحله فعلی"})</span></div>
             <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className="min-h-20 w-full rounded-xl border border-black/10 bg-white p-3 text-sm outline-none dark:border-white/15 dark:bg-white/5" placeholder="شرح اقدام (اختیاری)" />
             {actionError && <div className="mt-2 text-xs text-red-600 dark:text-red-400">{actionError}</div>}
             <div className="mt-3 flex justify-end gap-2">
-              <button type="button" onClick={() => onAction("rejected")} disabled={actionBusy} className="inline-flex h-10 items-center gap-2 rounded-xl bg-red-600 px-4 text-sm text-white transition hover:bg-red-700 disabled:opacity-50"><img src="/images/icons/raddarkhast.svg" alt="" className="h-5 w-5 invert" />رد درخواست</button>
+              {canReturn && <button type="button" onClick={() => onAction("returned")} disabled={actionBusy} className="inline-flex h-10 items-center gap-2 rounded-xl bg-amber-600 px-4 text-sm text-white transition hover:bg-amber-700 disabled:opacity-50"><img src="/images/icons/bargashtdarkhast.svg" alt="" className="h-5 w-5 invert" />ارجاع به درخواست‌کننده</button>}
+              {canReject && <button type="button" onClick={() => onAction("rejected")} disabled={actionBusy} className="inline-flex h-10 items-center gap-2 rounded-xl bg-red-600 px-4 text-sm text-white transition hover:bg-red-700 disabled:opacity-50"><img src="/images/icons/raddarkhast.svg" alt="" className="h-5 w-5 invert" />رد درخواست</button>}
               <button type="button" onClick={() => onAction("approved")} disabled={actionBusy} className="inline-flex h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm text-white transition hover:bg-emerald-700 disabled:opacity-50"><img src="/images/icons/taeid.svg" alt="" className="h-5 w-5 invert" />تأیید درخواست</button>
             </div>
           </div>}
