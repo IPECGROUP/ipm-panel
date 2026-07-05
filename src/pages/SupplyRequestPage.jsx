@@ -20,13 +20,25 @@ const labelCls = "mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-30
 
 const tableWrapCls =
   "overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100";
-const QUICK_FILTERS = [["week", "هفته قبل"], ["2w", "2 هفته قبل"], ["1m", "ماه قبل"], ["3m", "3 ماه قبل"], ["6m", "6 ماه قبل"]];
+const STATUS_FILTERS = [
+  ["pending", "در انتظار تایید اولیه"],
+  ["final_approval", "در انتظار تایید نهایی"],
+  ["in_progress", "در حال اقدام"],
+  ["done", "انجام شد"],
+  ["canceled", "لغو شد"],
+];
 
 const statusLabels = {
-  pending: "در انتظار بررسی",
-  approved: "تأییدشده",
-  rejected: "ردشده",
-  returned: "برگشت‌خورده",
+  pending: "در انتظار تایید اولیه",
+  final_approval: "در انتظار تایید نهایی",
+  approved: "در انتظار تایید نهایی",
+  in_progress: "در حال اقدام",
+  done: "انجام شد",
+  completed: "انجام شد",
+  canceled: "لغو شد",
+  cancelled: "لغو شد",
+  rejected: "لغو شد",
+  returned: "در انتظار تایید اولیه",
 };
 
 function toFaDigits(value = "") {
@@ -179,11 +191,15 @@ function clientRegistrationInfo() {
 
 function StatusBadge({ status }) {
   const cls =
-    status === "approved"
+    status === "done" || status === "completed"
       ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
-      : status === "rejected"
+      : status === "canceled" || status === "cancelled" || status === "rejected"
         ? "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300"
-        : status === "returned"
+        : status === "in_progress"
+          ? "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300"
+          : status === "final_approval" || status === "approved"
+            ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+            : status === "returned"
           ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
           : "bg-neutral-100 text-neutral-700 dark:bg-white/10 dark:text-neutral-200";
 
@@ -222,6 +238,21 @@ function itemDateKey(item) {
   return normalizeDigits(String(item?.dateJalali || item?.dateFa || "")).replaceAll("-", "/");
 }
 
+function statusGroup(status) {
+  if (status === "approved") return "final_approval";
+  if (status === "completed") return "done";
+  if (status === "cancelled" || status === "rejected") return "canceled";
+  if (status === "returned") return "pending";
+  return status || "";
+}
+
+function normalizeYmd(value = "") {
+  const text = normalizeDigits(value).trim().replaceAll("-", "/");
+  const match = text.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+  if (!match) return text;
+  return `${match[1]}/${match[2].padStart(2, "0")}/${match[3].padStart(2, "0")}`;
+}
+
 export default function SupplyRequestPage() {
   const { user, loading: authLoading } = useAuth();
   const fileRef = useRef(null);
@@ -245,6 +276,8 @@ export default function SupplyRequestPage() {
   const [filterStatus, setFilterStatus] = useState("");
   const [filterProjectId, setFilterProjectId] = useState("");
   const [filterQuick, setFilterQuick] = useState("");
+  const [filterFromDate, setFilterFromDate] = useState("");
+  const [filterToDate, setFilterToDate] = useState("");
   const [filterTagIds, setFilterTagIds] = useState([]);
   const [pinnedFilterTagIds, setPinnedFilterTagIds] = useState([]);
   const [tags, setTags] = useState([]);
@@ -536,13 +569,18 @@ export default function SupplyRequestPage() {
 
   const filteredItems = useMemo(() => {
     const q = normalizeDigits(filterQuery).trim().toLowerCase();
-    const start = quickStartDate(filterQuick);
+    const quickStart = quickStartDate(filterQuick);
+    const fromDate = normalizeYmd(filterFromDate || quickStart);
+    const toDate = normalizeYmd(filterToDate);
     const selectedTags = Array.isArray(filterTagIds) ? filterTagIds.map(String).filter(Boolean) : [];
     const letterById = new Map((Array.isArray(letters) ? letters : []).map((letter) => [letterIdOf(letter), letter]));
     return items.filter((item) => {
-      if (filterStatus && item.status !== filterStatus) return false;
+      if (filterStatus && statusGroup(item.status) !== filterStatus) return false;
       if (filterProjectId && String(item.projectId) !== String(filterProjectId)) return false;
-      if (start && itemDateKey(item) < start) return false;
+      const dateKey = normalizeYmd(itemDateKey(item));
+      if ((fromDate || toDate) && !dateKey) return false;
+      if (fromDate && dateKey < fromDate) return false;
+      if (toDate && dateKey > toDate) return false;
       if (selectedTags.length) {
         const itemTags = tagIdListOf(item, letterById);
         if (!selectedTags.some((id) => itemTags.includes(id))) return false;
@@ -557,12 +595,13 @@ export default function SupplyRequestPage() {
         item.budgetCode,
         itemProjectLabel(item, projects),
         item.status,
+        statusLabels[item.status],
       ]
         .map((value) => normalizeDigits(value).toLowerCase())
         .join(" ");
       return haystack.includes(q);
     });
-  }, [filterProjectId, filterQuery, filterQuick, filterStatus, filterTagIds, items, letters, projects]);
+  }, [filterFromDate, filterProjectId, filterQuery, filterQuick, filterStatus, filterTagIds, filterToDate, items, letters, projects]);
 
   const total = filteredItems.length;
   const pageCount = Math.max(1, Math.ceil(total / rowsPerPage));
@@ -573,7 +612,38 @@ export default function SupplyRequestPage() {
 
   useEffect(() => {
     setPage(0);
-  }, [filterProjectId, filterQuery, filterQuick, filterStatus, filterTagIds, rowsPerPage]);
+  }, [filterFromDate, filterProjectId, filterQuery, filterQuick, filterStatus, filterTagIds, filterToDate, rowsPerPage]);
+
+  const handleExportExcel = async () => {
+    if (!filteredItems.length) return;
+    const xlsxMod = await import("xlsx");
+    const XLSX = xlsxMod?.default || xlsxMod;
+    const rows = [
+      ["درخواست تامین - خروجی جدول"],
+      [""],
+      ["ردیف", "شماره", "تاریخ", "موضوع", "پروژه", "کد بودجه", "مبلغ", "تاریخ نیاز", "آخرین وضعیت", "شرح"],
+      ...filteredItems.map((item, index) => [
+        toFaDigits(index + 1),
+        item.serial || "",
+        toFaDigits(String(item.dateJalali || item.dateFa || "").replaceAll("-", "/")),
+        item.title || "",
+        itemProjectLabel(item, projects),
+        item.budgetCode || "",
+        toFaDigits(Number(item.amount || 0).toLocaleString("en-US")),
+        toFaDigits(String(item.needDateJalali || item.docDateJalali || "").replaceAll("-", "/")),
+        statusLabels[item.status] || item.status || "",
+        item.description || "",
+      ]),
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws["!cols"] = [{ wch: 8 }, { wch: 14 }, { wch: 14 }, { wch: 36 }, { wch: 28 }, { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 22 }, { wch: 44 }];
+    ws["!rtl"] = true;
+    const wb = XLSX.utils.book_new();
+    wb.Workbook = wb.Workbook || {};
+    wb.Workbook.Views = [{ RTL: true }];
+    XLSX.utils.book_append_sheet(wb, ws, "SupplyRequests");
+    XLSX.writeFile(wb, `supply-requests-${String(todayJalaliYmd()).replaceAll("/", "-").replaceAll("\\", "-")}.xlsx`);
+  };
 
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
@@ -606,6 +676,12 @@ export default function SupplyRequestPage() {
               setQuery={setFilterQuery}
               quick={filterQuick}
               setQuick={setFilterQuick}
+              fromDate={filterFromDate}
+              setFromDate={setFilterFromDate}
+              toDate={filterToDate}
+              setToDate={setFilterToDate}
+              status={filterStatus}
+              setStatus={setFilterStatus}
               tags={tags}
               pinnedTagIds={pinnedFilterTagIds}
               setPinnedTagIds={setPinnedFilterTagIds}
@@ -615,6 +691,8 @@ export default function SupplyRequestPage() {
               setTagPickOpen={setTagPickOpen}
               tagPickSearch={tagPickSearch}
               setTagPickSearch={setTagPickSearch}
+              onExport={handleExportExcel}
+              canExport={filteredItems.length > 0}
             />
           )}
 
@@ -909,7 +987,29 @@ function Field({ label, required, children }) {
   );
 }
 
-function RequestFilterBar({ query, setQuery, quick, setQuick, tags, pinnedTagIds, setPinnedTagIds, activeTagIds, setActiveTagIds, tagPickOpen, setTagPickOpen, tagPickSearch, setTagPickSearch }) {
+function RequestFilterBar({
+  query,
+  setQuery,
+  quick,
+  setQuick,
+  fromDate,
+  setFromDate,
+  toDate,
+  setToDate,
+  status,
+  setStatus,
+  tags,
+  pinnedTagIds,
+  setPinnedTagIds,
+  activeTagIds,
+  setActiveTagIds,
+  tagPickOpen,
+  setTagPickOpen,
+  tagPickSearch,
+  setTagPickSearch,
+  onExport,
+  canExport,
+}) {
   const active = new Set((activeTagIds || []).map(String));
   const tagMap = new Map((Array.isArray(tags) ? tags : []).map((tag) => [String(tag?.id ?? ""), tag]));
   const visibleTags = (Array.isArray(pinnedTagIds) ? pinnedTagIds : []).map((id) => tagMap.get(String(id))).filter(Boolean);
@@ -939,12 +1039,44 @@ function RequestFilterBar({ query, setQuery, quick, setQuick, tags, pinnedTagIds
           <div className={labelCls}>جست و جو</div>
           <input value={query} onChange={(event) => setQuery(event.target.value)} className={inputCls} placeholder="جستجو در شماره، موضوع، تاریخ، پروژه و ..." />
         </div>
+        <div className="w-[calc(50%-0.25rem)] md:w-auto md:min-w-[140px]">
+          <div className={labelCls}>از</div>
+          <JalaliPopupDatePicker
+            value={fromDate}
+            onChange={(value) => {
+              setFromDate(value);
+              setQuick("");
+            }}
+            buttonClassName={`${inputCls} flex items-center justify-between gap-2`}
+          />
+        </div>
+        <div className="w-[calc(50%-0.25rem)] md:w-auto md:min-w-[140px]">
+          <div className={labelCls}>تا</div>
+          <JalaliPopupDatePicker
+            value={toDate}
+            onChange={(value) => {
+              setToDate(value);
+              setQuick("");
+            }}
+            buttonClassName={`${inputCls} flex items-center justify-between gap-2`}
+          />
+        </div>
+        <button
+          type="button"
+          onClick={onExport}
+          disabled={!canExport}
+          className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[0.03] disabled:opacity-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
+          title="خروجی اکسل"
+          aria-label="خروجی اکسل"
+        >
+          <img src="/images/icons8-excel-50.png" alt="" className="h-5 w-5" />
+        </button>
       </div>
       <div>
         <div className={labelCls}>برچسب ها</div>
         <div className="flex flex-wrap items-center gap-2">
-          {QUICK_FILTERS.map(([key, label]) => (
-            <button key={key} type="button" onClick={() => setQuick(quick === key ? "" : key)} className={`h-9 rounded-full border px-4 text-xs transition ${quick === key ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>
+          {STATUS_FILTERS.map(([key, label]) => (
+            <button key={key} type="button" onClick={() => setStatus(status === key ? "" : key)} className={`h-9 rounded-full border px-4 text-xs transition ${status === key ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>
               {label}
             </button>
           ))}
