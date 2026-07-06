@@ -6,6 +6,8 @@ import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider";
 import { isMainAdminUser } from "../utils/auth";
 
+const PAGE_ICON = "/images/icons/nameha.svg";
+
 const TAB_ACTIVE_BG = {
   incoming: "#0046FF",
   outgoing: "#8BAE66",
@@ -675,11 +677,12 @@ const REQUIRED_MSG = "کامل کردن این فیلد ضروری است";
 
 // ✅ required ها دقیقاً طبق گفته‌ی تو
 const REQUIRED = {
-  internal: ["letterDate", "subject", "formTags"],
+  internal: ["letterDate", "subject", "internalUnitId", "formTags"],
 
   outgoing: [
     "category",     // کلاس سند
     "projectId",    // مرکز/پروژه
+    "fromName",     // از
     "toName",       // به
     "orgName",      // شرکت/سازمان
     "subject",      // موضوع
@@ -691,6 +694,9 @@ const REQUIRED = {
     "projectId",      // شماره از سرور با پروژه ساخته می‌شود
     "letterNo",       // شماره سند
     "letterDate",     // تاریخ سند
+    "fromName",       // از
+    "toName",         // به
+    "orgName",        // شرکت/سازمان
     "subject",        // موضوع
     "formTags",       // برچسب
   ],
@@ -714,6 +720,9 @@ const validate = (kind) => {
       projectId: incomingForm.projectId,
       letterNo: incomingForm.letterNo,
       letterDate: incomingForm.letterDate,
+      fromName: incomingForm.fromName,
+      toName: incomingForm.toName,
+      orgName: incomingForm.orgName,
 subject: incomingForm.subject,
       formTags: Array.isArray(incomingTagIds) ? incomingTagIds : [],
     },
@@ -722,6 +731,7 @@ subject: incomingForm.subject,
       category: outgoingForm.category,
       projectId: outgoingForm.projectId,
       letterDate: outgoingForm.letterDate,
+      fromName: outgoingForm.fromName,
       toName: outgoingForm.toName,
       orgName: outgoingForm.orgName,
       subject: outgoingForm.subject,
@@ -731,6 +741,7 @@ subject: incomingForm.subject,
     internal: {
       letterDate: internalForm.letterDate,
       subject: internalForm.subject,
+      internalUnitId,
       formTags: Array.isArray(internalTagIds) ? internalTagIds : [],
     },
   };
@@ -1462,6 +1473,18 @@ const buildLetterMailDraft = (l) => {
   const kind = letterKindOf(l);
   const no = letterNoOf(l);
   const subject = subjectOf(l);
+  const projectId = String(l?.project_id ?? l?.projectId ?? "").trim();
+  const projectFromList = projectId
+    ? (Array.isArray(projectsTopOnly) ? projectsTopOnly : []).find((p) => String(p?.id) === projectId)
+    : null;
+  const projectLabel = String(
+    l?.project_name ??
+      l?.projectName ??
+      l?.project_title ??
+      l?.projectTitle ??
+      l?.project ??
+      (projectFromList ? projectOptionLabel(projectFromList) : "")
+  ).trim();
   const recipient = firstEmailOf(
     mailTextOf(l, "to_email", "toEmail", "email"),
     mailTextOf(l, "to_name", "toName", "to"),
@@ -1478,7 +1501,14 @@ const buildLetterMailDraft = (l) => {
     mailTextOf(l, "secretariat_note", "secretariatNote") ? `توضیح: ${mailTextOf(l, "secretariat_note", "secretariatNote")}` : "",
   ].filter(Boolean);
   const mailSubject = subject || (no ? `نامه ${no}` : "نامه");
-  return { recipient, subject: mailSubject, body: details.join("\n") };
+  const mailDetails = projectLabel
+    ? (() => {
+        const next = details.slice();
+        next.splice(Math.min(3, next.length), 0, `پروژه: ${projectLabel}`);
+        return next;
+      })()
+    : details;
+  return { recipient, subject: mailSubject, body: mailDetails.map((line) => `\u200F${line}`).join("\n") };
 };
 
 const buildEmlDraft = ({ to, subject, body, attachments }) => {
@@ -1530,12 +1560,18 @@ const downloadEmlDraft = ({ subject, eml }) => {
 const openLetterInOutlook = async (l) => {
   const draft = buildLetterMailDraft(l);
   const atts = attachmentsOf(l);
+  const attachmentNames = atts
+    .map((att, index) => String(attachmentNameOf(att) || `file-${index + 1}`).trim())
+    .filter(Boolean);
+  const bodyWithAttachmentList = attachmentNames.length
+    ? `${draft.body}\n\n\n\u200Fضمیمه:\n${attachmentNames.map((name) => `\u200F- ${name}`).join("\n")}`
+    : draft.body;
 
   if (!atts.length) {
   const href =
       `mailto:${encodeURIComponent(draft.recipient)}` +
       `?subject=${encodeURIComponent(draft.subject)}` +
-      `&body=${encodeURIComponent(draft.body)}`;
+      `&body=${encodeURIComponent(bodyWithAttachmentList)}`;
   window.location.href = href;
     return;
   }
@@ -1559,8 +1595,8 @@ const openLetterInOutlook = async (l) => {
   const attachments = fetched.filter((x) => x.status === "fulfilled").map((x) => x.value);
   const failedCount = fetched.length - attachments.length;
   const body = failedCount
-    ? `${draft.body}\n\n${failedCount} فایل پیوست به دلیل خطا اضافه نشد.`
-    : draft.body;
+    ? `${bodyWithAttachmentList}\n\n${failedCount} فایل پیوست به دلیل خطا اضافه نشد.`
+    : bodyWithAttachmentList;
 
   downloadEmlDraft({
     subject: draft.subject,
@@ -3451,7 +3487,7 @@ useLayoutEffect(() => {
     "h-10 w-10 inline-grid place-items-center !bg-transparent !ring-0 !border-0 !shadow-none " +
     "hover:opacity-80 active:opacity-70 transition disabled:opacity-50";
   const rowActionsRevealCls =
-    "w-full flex items-center justify-start gap-2 pl-3 opacity-0 pointer-events-none transition-opacity " +
+    "w-full flex items-center justify-center gap-2 opacity-0 pointer-events-none transition-opacity " +
     "group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto";
 
   const tableWrapCls =
@@ -4089,11 +4125,6 @@ const _uploadQueueInBackground = async (kind, queue, letterId) => {
 
   const ok = validate(kind);
   if (!ok) return; // ✅ جلو ارسال را می‌گیرد
-    if (kind === "internal" && !String(internalUnitId || "").trim()) {
-  alert("برای نامه داخلی انتخاب واحد الزامی است.");
-  return;
-}
-
     const tagIds =
       kind === "incoming" ? incomingTagIds : kind === "outgoing" ? outgoingTagIds : internalTagIds;
 
@@ -4541,6 +4572,70 @@ const tagById = useMemo(() => {
   return m;
 }, [allTags]);
 
+useEffect(() => {
+  if (!formOpen) return;
+  const normalizeText = (value) => normFa(toEnDigits(String(value || ""))).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  const selectedProject = (Array.isArray(projectsTopOnly) ? projectsTopOnly : []).find(
+    (p) => String(p?.id) === String(getForm(formKind).projectId || "")
+  );
+  const projectCandidates = selectedProject
+    ? [
+        selectedProject?.code,
+        selectedProject?.__baseCode,
+        selectedProject?.name,
+        selectedProject?.title,
+        selectedProject?.label,
+        projectOptionLabel(selectedProject),
+      ]
+    : [];
+  const fieldCandidates =
+    formKind === "incoming"
+      ? [...projectCandidates, incomingForm.subject, incomingForm.orgName]
+      : formKind === "internal"
+      ? [...projectCandidates, internalForm.subject]
+      : [...projectCandidates, outgoingForm.orgName, outgoingForm.subject];
+
+  const candidates = fieldCandidates.map(normalizeText).filter((x) => x.length >= 3);
+  if (!candidates.length || !Array.isArray(allTags) || !allTags.length) return;
+
+  const matchedIds = allTags
+    .filter((tag) => {
+      const label = normalizeText(tagLabelOf(tag));
+      if (label.length < 3) return false;
+      return candidates.some((candidate) => candidate === label || candidate.includes(label) || label.includes(candidate));
+    })
+    .map((tag) => String(tag?.id || "").trim())
+    .filter(Boolean);
+
+  if (!matchedIds.length) return;
+
+  const mergeAutoTags = (current) => {
+    const next = normalizeIdList([...(Array.isArray(current) ? current : []), ...matchedIds]).slice(0, TAG_PREFS_LIMIT);
+    return next.length === normalizeIdList(current).length && next.every((id, index) => id === normalizeIdList(current)[index])
+      ? current
+      : next;
+  };
+
+  if (formKind === "incoming") setIncomingTagIds(mergeAutoTags);
+  else if (formKind === "internal") setInternalTagIds(mergeAutoTags);
+  else setOutgoingTagIds(mergeAutoTags);
+  clearFieldError(formKind, "formTags");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [
+  formOpen,
+  formKind,
+  allTags,
+  projectsTopOnly,
+  incomingForm.projectId,
+  incomingForm.subject,
+  incomingForm.orgName,
+  internalForm.projectId,
+  internalForm.subject,
+  outgoingForm.projectId,
+  outgoingForm.subject,
+  outgoingForm.orgName,
+]);
+
 const _latestAllTags = useMemo(() => {
   const arr = Array.isArray(allTags) ? allTags.slice() : [];
   arr.sort((a, b) => {
@@ -4709,8 +4804,16 @@ useEffect(() => {
       >
         <div className="p-3 md:p-4">
           {/* Header INSIDE card */}
-          <div className="flex items-center justify-between gap-3 mb-3">
-            <div className="text-lg md:text-xl font-bold">اسناد و نامه ها</div>
+          <div className="mb-5 flex min-w-0 items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
+                <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-base font-bold md:text-lg">مدیریت نامه ها</span>
+                <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">اسناد و نامه ها</span>
+              </span>
+            </div>
             <button
               type="button"
               onClick={() => {
@@ -5146,14 +5249,19 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
           {/* از (کمی کوچکتر) */}
           <div className="col-span-1 order-1 md:order-none md:col-span-3 md:col-start-1">
             <div className={labelCls}>از</div>
+            <FieldWrap>
             <input
   value={outgoingForm.fromName}
-  onChange={(e) =>
-    setOutgoingForm((p) => ({ ...p, fromName: e.target.value }))
-  }
-  className={inputCls}
+  onChange={(e) => {
+    setOutgoingForm((p) => ({ ...p, fromName: e.target.value }));
+    clearFieldError("outgoing", "fromName");
+  }}
+  className={inputWithError(inputCls, "outgoing", "fromName")}
+  aria-invalid={fieldHasError("outgoing", "fromName")}
   type="text"
 />
+              <ErrorTextAbs kind="outgoing" k="fromName" />
+            </FieldWrap>
           </div>
 
           {/* آیکن وسط */}
@@ -5211,12 +5319,19 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
           <div className="col-span-1 md:col-span-4 md:col-start-1">
   <div className={labelCls}>از</div>
 
+  <FieldWrap>
   <input
   value={incomingForm.fromName}
-  onChange={(e) => setIncomingForm((p) => ({ ...p, fromName: e.target.value }))}
-  className={inputCls}
+  onChange={(e) => {
+    setIncomingForm((p) => ({ ...p, fromName: e.target.value }));
+    clearFieldError("incoming", "fromName");
+  }}
+  className={inputWithError(inputCls, "incoming", "fromName")}
+  aria-invalid={fieldHasError("incoming", "fromName")}
   type="text"
 />
+    <ErrorTextAbs kind="incoming" k="fromName" />
+  </FieldWrap>
 
 </div>
 
@@ -5298,10 +5413,15 @@ onChange={(e) => {
     {/* واحد (کنار ضمیمه) */}
     <div className="col-span-2 md:col-span-3 md:col-start-8">
       <div className={labelCls}>واحد</div>
+      <FieldWrap>
       <select
         value={internalUnitId}
-        onChange={(e) => setInternalUnitId(e.target.value)}
-        className={inputCls}
+        onChange={(e) => {
+          setInternalUnitId(e.target.value);
+          clearFieldError("internal", "internalUnitId");
+        }}
+        className={inputWithError(inputCls, "internal", "internalUnitId")}
+        aria-invalid={fieldHasError("internal", "internalUnitId")}
       >
         <option value=""></option>
 
@@ -5317,6 +5437,8 @@ onChange={(e) => {
           </option>
         ))}
       </select>
+        <ErrorTextAbs kind="internal" k="internalUnitId" />
+      </FieldWrap>
     </div>
 
     {/* ضمیمه (کنار واحد و در همان خط) */}
@@ -6003,7 +6125,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
                               <button
                                 type="button"
                                 onClick={() => openLetterInOutlook(l)}
-                                className={iconBtnCls + " !h-9 !w-9"}
+                                className={iconBtnCls + " !h-9 !w-9 !text-neutral-900 dark:!text-white"}
                                 aria-label="ارسال"
                                 title="ارسال"
                               >
@@ -6129,11 +6251,11 @@ aria-invalid={fieldHasError(formKind, "subject")}
       </th>
 
      <th className="w-28 !py-2 pl-6 !pr-3 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
-  <div className="flex items-center justify-between gap-2">
+  <div className="relative flex items-center justify-center gap-2">
     <span>اقدامات</span>
 
     {isMainAdmin ? (
-      <div className="flex items-center gap-1">
+      <div className="absolute left-0 flex items-center gap-1">
         <button
           type="button"
           onClick={deleteAllLetters}
@@ -6174,7 +6296,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
         type="button"
         onClick={() => askMainAdminEnable(setIsMainAdmin)}
         className={
-          "h-6 w-6 rounded-md flex items-center justify-center transition " +
+          "absolute left-0 h-6 w-6 rounded-md flex items-center justify-center transition " +
           (theme === "dark"
             ? "bg-white/10 hover:bg-white/15 text-white/70"
             : "bg-black/10 hover:bg-black/15 text-black/70")
@@ -6315,7 +6437,7 @@ const rowBg = normalRowBg;
                 <button
                   type="button"
                   onClick={() => openLetterInOutlook(l)}
-                  className={iconBtnCls}
+                  className={iconBtnCls + " !text-neutral-900 dark:!text-white"}
                   aria-label="ارسال"
                   title="ارسال"
                 >
