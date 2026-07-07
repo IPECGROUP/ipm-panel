@@ -1141,6 +1141,8 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
   const history = Array.isArray(item.historyJson) ? item.historyJson : [];
   const stepKey = item.currentStepRoleKey || "";
   const canAct = item.canAct === true;
+  const latestAction = [...history].reverse().find((entry) => ["approved", "returned", "rejected"].includes(entry?.type));
+  const canResubmitReturned = stepKey === "requester" && latestAction?.type === "returned" && canAct;
   const status = displayStatusOf(item);
   const meta = item.workflowMeta || {};
   const [choice, setChoice] = useState("");
@@ -1447,7 +1449,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                         </div>
                       </PreviewSection>
                     </>
-                  ) : (
+                  ) : canResubmitReturned ? (
                     <PreviewSection title="ارسال مجدد درخواست">
                       <div className="space-y-3 py-4">
                         <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputCls} min-h-24 py-3`} placeholder="توضیح اصلاحات..." />
@@ -1461,6 +1463,10 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                         <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!!nextRecipients.targetRoleKey && !targetAssigneeUserId} onSubmit={() => onAction("approve", { targetAssigneeUserId: targetAssigneeUserId || null })} />
                       </div>
                     </PreviewSection>
+                  ) : (
+                    <div className="rounded-2xl border border-black/10 p-4 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">
+                      در این مرحله اقدامی برای شما فعال نیست.
+                    </div>
                   )
                 ) : (
                   <div className="rounded-2xl border border-black/10 p-4 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">
