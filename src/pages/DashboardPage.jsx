@@ -19,6 +19,31 @@ function toFaDigits(value = "") {
   return String(value ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
 }
 
+function normalizeDigits(value = "") {
+  return String(value ?? "")
+    .replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)))
+    .replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
+}
+
+function clientRegistrationInfo() {
+  const now = new Date();
+  const dateJalali = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+  const time = new Intl.DateTimeFormat("fa-IR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(now);
+  return {
+    dateJalali: normalizeDigits(dateJalali).replaceAll("-", "/"),
+    time: normalizeDigits(time),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+  };
+}
+
 function displayStatusOf(item) {
   return item?.workflowStatus || item?.status || "";
 }
@@ -123,6 +148,7 @@ export default function DashboardPage() {
           id: selected.id,
           workflowAction,
           note: actionNote,
+          clientRegistrationInfo: clientRegistrationInfo(),
           ...extraPayload,
         }),
       });

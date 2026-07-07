@@ -630,6 +630,7 @@ export default function SupplyRequestPage() {
           id: selected.id,
           workflowAction,
           note: actionNote,
+          clientRegistrationInfo: clientRegistrationInfo(),
           ...extraPayload,
         }),
       });
@@ -1729,7 +1730,13 @@ function historyActorName(entry, item) {
   );
 }
 
-function formatHistoryDate(value) {
+function historyClientInfo(entry) {
+  return entry?.clientRegistrationInfo || entry?.registrationInfo || null;
+}
+
+function formatHistoryDate(value, entry) {
+  const clientInfo = historyClientInfo(entry);
+  if (clientInfo?.dateJalali || clientInfo?.date) return toFaDigits(normalizeDigits(String(clientInfo.dateJalali || clientInfo.date)).replaceAll("-", "/"));
   if (!value) return "—";
   try {
     return new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "numeric", day: "numeric" }).format(new Date(value));
@@ -1738,7 +1745,9 @@ function formatHistoryDate(value) {
   }
 }
 
-function formatHistoryTime(value) {
+function formatHistoryTime(value, entry) {
+  const clientInfo = historyClientInfo(entry);
+  if (clientInfo?.time) return toFaDigits(normalizeDigits(String(clientInfo.time)));
   if (!value) return "—";
   try {
     return new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(value));
@@ -1748,8 +1757,8 @@ function formatHistoryTime(value) {
 }
 
 function historySentence(entry, item) {
-  const date = formatHistoryDate(entry?.at);
-  const time = formatHistoryTime(entry?.at);
+  const date = formatHistoryDate(entry?.at, entry);
+  const time = formatHistoryTime(entry?.at, entry);
   const actor = historyActorName(entry, item);
   const action = historyActionText(entry?.type || entry?.status);
   return `درخواست در تاریخ ${date} ساعت ${time} توسط ${actor} ${action}.`;
