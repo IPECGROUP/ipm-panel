@@ -1250,6 +1250,13 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
   };
 
   const targetRequired = choice === "approve" && !!nextRecipients.targetRoleKey;
+  const reviewSectionTitle = `بررسی اولیه (${STEP_LABELS[stepKey] || "مرحله جاری"})`;
+  const actionSubmitDisabled =
+    !choice ||
+    (choice === "approve" &&
+      ((stepKey === "project_control" && !budgetCodeDraft) ||
+        (stepKey === "project_manager" && parseMoney(finalAmount) <= 0) ||
+        (targetRequired && !targetAssigneeUserId)));
 
   const toggleCcUser = (id) => {
     const sid = String(id);
@@ -1285,18 +1292,17 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                   <PreviewRow label="ارجاع شده به" value={item.currentAssigneeName || "—"} />
                 </PreviewSection>
 
-                <PreviewSection title="سابقه درخواست">
-                  <div className="space-y-2 py-3">
-                    {history.filter((entry) => !["step_set", "step_clear"].includes(entry?.type)).length ? (
-                      history.filter((entry) => !["step_set", "step_clear"].includes(entry?.type)).map((entry, index) => (
-                        <div key={`${entry?.at || ""}_${index}`} className="rounded-xl border border-black/10 p-3 text-xs leading-6 dark:border-white/10">
-                          <div className="flex items-center justify-between gap-2">
-                            <b>{historyLabel(entry?.type || entry?.status)}</b>
-                            <span className="text-neutral-500">{formatDateTime(entry?.at)}</span>
+                <PreviewSection title="سابقه فرآیند درخواست">
+                  <div className="py-2">
+                    {history.filter((entry) => !["step_set", "step_clear", "workflow_meta", "cc_added"].includes(entry?.type)).length ? (
+                      <div className="divide-y divide-black/10 dark:divide-white/10">
+                        {history.filter((entry) => !["step_set", "step_clear", "workflow_meta", "cc_added"].includes(entry?.type)).map((entry, index) => (
+                          <div key={`${entry?.at || ""}_${index}`} className="py-2.5 text-xs leading-6">
+                            <div className="text-neutral-700 dark:text-neutral-200">{historySentence(entry, item)}</div>
+                            {entry?.note ? <div className="mt-1 text-neutral-500 dark:text-neutral-400">توضیح: {entry.note}</div> : null}
                           </div>
-                          <div className="mt-1 text-neutral-600 dark:text-neutral-300">{entry?.note || "—"}</div>
-                        </div>
-                      ))
+                        ))}
+                      </div>
                     ) : (
                       <div className="py-5 text-center text-sm text-neutral-500">سابقه‌ای ثبت نشده است.</div>
                     )}
@@ -1318,18 +1324,17 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                 {canAct ? (
                   stepKey === "project_control" ? (
                     <>
-                      <PreviewSection title="بررسی برنامه ریزی و کنترل پروژه">
-                        <div className="grid grid-cols-1 gap-3 py-4 md:grid-cols-3">
+                      <PreviewSection title={reviewSectionTitle}>
+                        <div className="space-y-3 py-4">
                           <Field label="کد بودجه">
                             <input dir="ltr" value={budgetCodeDraft} onChange={(event) => setBudgetCodeDraft(normalizeBudgetCode(event.target.value))} className={inputCls} />
                           </Field>
                           <ReadOnlyBox label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFaDigits(baseBudget) : "—"} ltr />
                           <ReadOnlyBox label="باقی مانده نقدینگی تخصیص یافته به پروژه" value="—" ltr />
-                        </div>
-                      </PreviewSection>
-                      <PreviewSection title="نتیجه بررسی اولیه">
-                        <div className="space-y-3 py-4">
-                          <ActionOption checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy} />
+                          <div className="grid grid-cols-1 gap-2 pt-2 md:grid-cols-2">
+                            <ActionOption checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت به درخواست کننده" disabled={actionBusy} />
+                            <ActionOption checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy} />
+                          </div>
                           {choice === "approve" && (
                             <TargetAssigneePicker
                               targetRoleKey={nextRecipients.targetRoleKey}
@@ -1339,17 +1344,16 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                               onChange={setTargetAssigneeUserId}
                             />
                           )}
-                          <ActionOption checked={choice === "return"} onClick={() => setChoice("return")} label="ارجاع به درخواست کننده" disabled={actionBusy} />
                           {choice === "return" && <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputCls} min-h-24 py-3`} placeholder="توضیح..." />}
-                          <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice || !budgetCodeDraft || (targetRequired && !targetAssigneeUserId)} onSubmit={submitSelectedAction} />
+                          <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={actionSubmitDisabled} onSubmit={submitSelectedAction} />
                         </div>
                       </PreviewSection>
                     </>
                   ) : stepKey === "project_manager" ? (
                     <>
-                      <PreviewSection title="بررسی مدیر پروژه">
+                      <PreviewSection title={reviewSectionTitle}>
                         <div className="space-y-3 py-4">
-                          <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_120px]">
+                          <div className="space-y-3">
                             <Field label="برآورد هزینه نهایی">
                               <input dir="ltr" inputMode="numeric" value={toFaDigits(finalAmount)} onChange={(event) => setFinalAmount(formatMoney(event.target.value))} className={inputCls} placeholder="۰" />
                             </Field>
@@ -1359,7 +1363,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                             <div className="mb-2 text-sm font-semibold">الزامات تایید</div>
                             <div className="min-h-10 rounded-xl border border-black/10 dark:border-white/10" />
                           </div>
-                          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                          <div className="space-y-3">
                             <ReadOnlyBox label="کد بودجه" value={item.budgetCode || "—"} ltr />
                             <ReadOnlyBox label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFaDigits(baseBudget) : "—"} ltr />
                             <ReadOnlyBox label="باقی مانده نقدینگی تخصیص یافته به پروژه" value="—" ltr />
@@ -1367,7 +1371,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                           <Field label="اقدام">
                             <textarea value={actionText} onChange={(event) => setActionText(event.target.value)} className={`${inputCls} min-h-24 py-3`} />
                           </Field>
-                          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(180px,260px)_1fr]">
+                          <div className="space-y-3">
                             <Field label="مهلت اقدام">
                               <JalaliPopupDatePicker value={deadlineDate} onChange={setDeadlineDate} buttonClassName={`${inputCls} flex items-center justify-between gap-2`} />
                             </Field>
@@ -1395,13 +1399,11 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                               )}
                             </div>
                           </div>
-                        </div>
-                      </PreviewSection>
-                      <PreviewSection title="نتیجه بررسی نهایی">
-                        <div className="space-y-3 py-4">
-                          <ActionOption checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy} />
-                          <ActionOption checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست تامین" disabled={actionBusy} />
-                          <ActionOption checked={choice === "return"} onClick={() => setChoice("return")} label="ارجاع به درخواست کننده" disabled={actionBusy} />
+                          <div className="grid grid-cols-1 gap-2 pt-2 md:grid-cols-3">
+                            <ActionOption checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت به درخواست کننده" disabled={actionBusy} />
+                            <ActionOption checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy} />
+                            <ActionOption checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست تامین" disabled={actionBusy} />
+                          </div>
                           {choice === "approve" && (
                             <TargetAssigneePicker
                               targetRoleKey={nextRecipients.targetRoleKey}
@@ -1412,7 +1414,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                             />
                           )}
                           {["reject", "return"].includes(choice) && <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputCls} min-h-24 py-3`} placeholder="توضیح..." />}
-                          <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice || parseMoney(finalAmount) <= 0 || (targetRequired && !targetAssigneeUserId)} onSubmit={submitSelectedAction} />
+                          <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={actionSubmitDisabled} onSubmit={submitSelectedAction} />
                         </div>
                       </PreviewSection>
                     </>
@@ -1510,17 +1512,44 @@ function ActionFooter({ actionBusy, actionError, disabled, onSubmit }) {
   );
 }
 
-function historyLabel(value) {
-  return ({ created: "ثبت درخواست", approved: "تایید", rejected: "رد", returned: "ارجاع جهت اصلاح" })[value] || value || "—";
+function historyActionText(value) {
+  return ({ created: "ثبت شد", approved: "تایید شد", rejected: "رد شد", returned: "برگشت خورد" })[value] || "ثبت شد";
 }
 
-function formatDateTime(value) {
+function historyActorName(entry, item) {
+  return (
+    entry?.actorName ||
+    entry?.userName ||
+    entry?.registrationInfo?.userName ||
+    (Number(entry?.byUserId) === Number(item?.createdById) ? item?.createdByName : "") ||
+    (entry?.byUserId ? `کاربر #${toFaDigits(entry.byUserId)}` : "کاربر")
+  );
+}
+
+function formatHistoryDate(value) {
   if (!value) return "—";
   try {
-    return new Intl.DateTimeFormat("fa-IR-u-ca-persian", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
+    return new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "numeric", day: "numeric" }).format(new Date(value));
   } catch {
     return "—";
   }
+}
+
+function formatHistoryTime(value) {
+  if (!value) return "—";
+  try {
+    return new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(value));
+  } catch {
+    return "—";
+  }
+}
+
+function historySentence(entry, item) {
+  const date = formatHistoryDate(entry?.at);
+  const time = formatHistoryTime(entry?.at);
+  const actor = historyActorName(entry, item);
+  const action = historyActionText(entry?.type || entry?.status);
+  return `درخواست در تاریخ ${date} ساعت ${time} توسط ${actor} ${action}.`;
 }
 
 function Field({ label, required, children }) {
