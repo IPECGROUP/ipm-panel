@@ -283,6 +283,7 @@ export default function SupplyRequestPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [relatedDocsOpen, setRelatedDocsOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [letters, setLetters] = useState([]);
   const [relatedPickOpen, setRelatedPickOpen] = useState(false);
   const [relatedPickQuery, setRelatedPickQuery] = useState("");
@@ -928,7 +929,7 @@ export default function SupplyRequestPage() {
                 )}
                 <button
                   type="button"
-                  onClick={() => fileRef.current?.click()}
+                  onClick={() => setUploadOpen(true)}
                   disabled={uploading}
                   className="grid h-10 w-10 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[0.03] disabled:opacity-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
                   title="بارگذاری"
@@ -936,16 +937,6 @@ export default function SupplyRequestPage() {
                 >
                   <img src="/images/icons/upload.svg" alt="" className="h-5 w-5 dark:invert" />
                 </button>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={(event) => {
-                    uploadFiles(event.target.files);
-                    event.target.value = "";
-                  }}
-                />
                 <div className="min-w-[240px] flex-1 md:flex-none">
                   <label className="flex min-w-0 items-center gap-2">
                     <span className="shrink-0 text-xs font-medium text-neutral-600 dark:text-neutral-300">ارسال درخواست تامین به:</span>
@@ -1128,6 +1119,16 @@ export default function SupplyRequestPage() {
             setRelatedDocsOpen(false);
             setRelatedPickOpen(false);
           }}
+        />
+      )}
+      {uploadOpen && (
+        <SupplyUploadModal
+          fileRef={fileRef}
+          files={form.attachments}
+          uploading={uploading}
+          onUpload={uploadFiles}
+          onRemove={(index) => setForm((prev) => ({ ...prev, attachments: (prev.attachments || []).filter((_, i) => i !== index) }))}
+          onClose={() => setUploadOpen(false)}
         />
       )}
     </div>
@@ -1468,6 +1469,138 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                 )}
               </div>
             </main>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function fileNameOf(file, index) {
+  return file?.name || file?.originalName || file?.filename || `فایل ${toFaDigits(index + 1)}`;
+}
+
+function formatBytes(value) {
+  const size = Number(value || 0);
+  if (!size) return "";
+  if (size < 1024) return `${toFaDigits(size)} بایت`;
+  if (size < 1024 * 1024) return `${toFaDigits((size / 1024).toFixed(size >= 10240 ? 0 : 1))} KB`;
+  return `${toFaDigits((size / (1024 * 1024)).toFixed(size >= 10 * 1024 * 1024 ? 0 : 1))} MB`;
+}
+
+function SupplyUploadModal({ fileRef, files, uploading, onUpload, onRemove, onClose }) {
+  const list = Array.isArray(files) ? files : [];
+  const handleDrop = async (event) => {
+    event.preventDefault();
+    const dropped = event.dataTransfer?.files;
+    if (dropped?.length) await onUpload(dropped);
+  };
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999]">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 flex items-center justify-center p-2 sm:p-4">
+        <div
+          dir="rtl"
+          className="flex max-h-[calc(100dvh-16px)] w-[min(720px,calc(100vw-16px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-xl dark:border-white/10 dark:bg-neutral-900 dark:text-white sm:max-h-[calc(100dvh-32px)]"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="flex shrink-0 items-center justify-between gap-3 p-3 sm:p-4">
+            <div className="min-w-0 truncate text-sm font-bold leading-6">بارگذاری اسناد (درخواست تامین)</div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white ring-1 ring-black/15 transition hover:bg-black/90"
+              aria-label="بستن"
+              title="بستن"
+            >
+              <img src="/images/icons/bastan.svg" alt="" className="h-4 w-4 invert" />
+            </button>
+          </div>
+
+          <div className="h-px bg-black/10 dark:bg-white/10" />
+
+          <div className="grid grid-cols-1 gap-4 overflow-y-auto overscroll-contain p-3 sm:p-4">
+            <div>
+              <div className={labelCls}>فایل‌های انتخاب‌شده</div>
+              <div className="overflow-hidden rounded-2xl border border-black/10 bg-white dark:border-white/10 dark:bg-white/5">
+                <div className="border-b border-black/10 px-3 py-2 text-xs font-semibold text-neutral-700 dark:border-white/10 dark:text-white/80">
+                  درخواست تامین
+                </div>
+
+                <div className="space-y-2 p-2 sm:p-3">
+                  {list.length === 0 ? (
+                    <div className="py-6 text-center text-sm text-black/60 dark:text-white/50">فایلی انتخاب نشده است.</div>
+                  ) : (
+                    list.map((file, index) => (
+                      <div key={file.id || file.serverId || file.url || `${fileNameOf(file, index)}_${index}`} className="flex items-center justify-between gap-3 rounded-xl border border-black/10 bg-white px-3 py-2 dark:border-white/10 dark:bg-white/5">
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-[13px] font-semibold leading-6">{fileNameOf(file, index)}</div>
+                          {formatBytes(file.size) ? <div className="mt-1 text-[11px] text-neutral-600 dark:text-white/60">{formatBytes(file.size)}</div> : null}
+                        </div>
+                        {file.url ? (
+                          <a href={file.url} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center justify-center rounded-lg border border-black/10 px-3 text-xs transition hover:bg-black/[0.03] dark:border-white/15 dark:hover:bg-white/10">
+                            باز کردن
+                          </a>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => onRemove(index)}
+                          className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-red-50 dark:hover:bg-red-500/10"
+                          title="حذف"
+                          aria-label="حذف"
+                        >
+                          <img src="/images/icons/hazf.svg" alt="" className="h-5 w-5" style={{ filter: "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)" }} />
+                        </button>
+                      </div>
+                    ))
+                  )}
+
+                  <div
+                    className="mt-3 rounded-2xl border border-dashed border-black/15 bg-black/[0.01] px-4 py-7 text-center transition dark:border-white/15 dark:bg-white/[0.03]"
+                    onDrop={handleDrop}
+                    onDragOver={(event) => event.preventDefault()}
+                  >
+                    <div className="text-sm font-semibold text-neutral-800 dark:text-white/80">فایل را اینجا رها کنید</div>
+                    <div className="mt-1 text-xs text-neutral-500 dark:text-white/50">هر نوع فایلی را می‌توانید انتخاب کنید</div>
+                    <div className="mt-3 flex items-center justify-center">
+                      <button
+                        type="button"
+                        onClick={() => fileRef.current?.click()}
+                        disabled={uploading}
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-black/15 bg-black px-4 text-white transition hover:bg-black/90 disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-white/90"
+                      >
+                        <img src="/images/icons/upload.svg" alt="" className="h-5 w-5 invert dark:invert-0" />
+                        {uploading ? "در حال بارگذاری..." : "انتخاب فایل"}
+                      </button>
+                      <input
+                        ref={fileRef}
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={(event) => {
+                          onUpload(event.target.files);
+                          event.target.value = "";
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-black text-white transition hover:bg-black/90 dark:border-white/15 dark:bg-white dark:text-black dark:hover:bg-white/90"
+                      aria-label="تایید"
+                      title="تایید"
+                    >
+                      <img src="/images/icons/check.svg" alt="" className="h-5 w-5 invert dark:invert-0" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
