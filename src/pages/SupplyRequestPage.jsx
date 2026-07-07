@@ -131,6 +131,7 @@ function emptyForm() {
     description: "",
     attachments: [],
     relatedLetterIds: [],
+    targetAssigneeUserId: "",
   };
 }
 
@@ -263,6 +264,8 @@ function friendlyError(message, fallback) {
   if (text === "database_auth_failed") return "احراز هویت پایگاه داده ناموفق است.";
   if (text === "project_control_user_not_found") return "کاربری در واحد برنامه ریزی و کنترل پروژه پیدا نشد.";
   if (text === "project_manager_user_not_found") return "کاربری با نقش مدیر پروژه پیدا نشد.";
+  if (text === "target_assignee_required") return "گیرنده درخواست تامین را انتخاب کنید.";
+  if (text === "target_assignee_invalid") return "گیرنده انتخاب شده برای این مرحله معتبر نیست.";
   return text || fallback;
 }
 
@@ -307,6 +310,8 @@ export default function SupplyRequestPage() {
   const [tags, setTags] = useState([]);
   const [tagPickOpen, setTagPickOpen] = useState(false);
   const [tagPickSearch, setTagPickSearch] = useState("");
+  const [createRecipients, setCreateRecipients] = useState({ targetRoleKey: null, users: [] });
+  const [createRecipientsLoading, setCreateRecipientsLoading] = useState(false);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
 
@@ -417,6 +422,29 @@ export default function SupplyRequestPage() {
       setTags(rows);
     }).catch(() => setTags([]));
   }, [api]);
+
+  useEffect(() => {
+    if (authLoading) return undefined;
+    let cancelled = false;
+    setCreateRecipientsLoading(true);
+    api("/supply-requests?nextRecipientsForCreate=1")
+      .then((data) => {
+        if (cancelled) return;
+        setCreateRecipients({
+          targetRoleKey: data?.targetRoleKey || null,
+          users: Array.isArray(data?.users) ? data.users : [],
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setCreateRecipients({ targetRoleKey: null, users: [] });
+      })
+      .finally(() => {
+        if (!cancelled) setCreateRecipientsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [api, authLoading]);
   useEffect(() => {
     if (!user?.id) return;
     try {
@@ -560,6 +588,7 @@ export default function SupplyRequestPage() {
     if (!form.budgetCode) return setErr("کد بودجه را انتخاب کنید.");
     if (!form.title.trim()) return setErr("موضوع درخواست را وارد کنید.");
     if (amount <= 0) return setErr("برآورد هزینه اولیه باید بیشتر از صفر باشد.");
+    if (createRecipients.targetRoleKey && !form.targetAssigneeUserId) return setErr("گیرنده درخواست تامین را انتخاب کنید.");
 
     setSaving(true);
     setErr("");
@@ -572,6 +601,7 @@ export default function SupplyRequestPage() {
         scope: "projects",
         amount,
         relatedLetterIds: form.relatedLetterIds,
+        targetAssigneeUserId: form.targetAssigneeUserId || null,
         clientRegistrationInfo: clientRegistrationInfo(),
       };
       const data = await api("/supply-requests", { method: "POST", body: JSON.stringify(payload) });
@@ -618,6 +648,10 @@ export default function SupplyRequestPage() {
           ? "کاربری با نقش مدیر پروژه پیدا نشد."
           : message === "project_control_user_not_found"
             ? "کاربری در واحد برنامه ریزی و کنترل پروژه پیدا نشد."
+            : message === "target_assignee_required"
+              ? "گیرنده درخواست تامین را انتخاب کنید."
+              : message === "target_assignee_invalid"
+                ? "گیرنده انتخاب شده برای این مرحله معتبر نیست."
             : ["forbidden", "return_not_allowed_for_step", "reject_not_allowed_for_step"].includes(message)
               ? "شما اجازه انجام این اقدام را ندارید."
               : "ثبت اقدام انجام نشد."
@@ -885,6 +919,30 @@ export default function SupplyRequestPage() {
                     event.target.value = "";
                   }}
                 />
+                <div className="min-w-[240px] flex-1 md:flex-none">
+                  <label className="flex min-w-0 items-center gap-2">
+                    <span className="shrink-0 text-xs font-medium text-neutral-600 dark:text-neutral-300">ارسال درخواست تامین به:</span>
+                    <select
+                      value={form.targetAssigneeUserId}
+                      onChange={(event) => setField("targetAssigneeUserId", event.target.value)}
+                      disabled={createRecipientsLoading || !createRecipients.targetRoleKey}
+                      className={`${inputCls} h-10 min-w-[180px]`}
+                    >
+                      <option value="">
+                        {createRecipientsLoading
+                          ? "در حال دریافت..."
+                          : createRecipients.targetRoleKey
+                            ? "انتخاب کنید"
+                            : "ارسال مستقیم برای اقدام"}
+                      </option>
+                      {createRecipients.users.map((recipient) => (
+                        <option key={recipient.id} value={recipient.id}>
+                          {recipient.name || recipient.username || recipient.email || `کاربر #${recipient.id}`}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
                 <button
                   type="submit"
                   disabled={saving || uploading}
@@ -1069,7 +1127,7 @@ export default function SupplyRequestPage() {
   );
 }
 
-function SupplyRequestPreview({ item, projects, actionNote, setActionNote, actionBusy, actionError, onAction, onClose }) {
+export function SupplyRequestPreview({ item, projects, actionNote, setActionNote, actionBusy, actionError, onAction, onClose }) {
   const project = projects.find((row) => String(row.id) === String(item.projectId));
   const attachments = Array.isArray(item.attachments) ? item.attachments : [];
   const history = Array.isArray(item.historyJson) ? item.historyJson : [];
@@ -1088,6 +1146,9 @@ function SupplyRequestPreview({ item, projects, actionNote, setActionNote, actio
   const [ccUsers, setCcUsers] = useState([]);
   const [ccLoading, setCcLoading] = useState(false);
   const [ccUserIds, setCcUserIds] = useState(Array.isArray(item.ccUserIds) ? item.ccUserIds.map(String) : []);
+  const [nextRecipients, setNextRecipients] = useState({ targetRoleKey: null, users: [] });
+  const [nextRecipientsLoading, setNextRecipientsLoading] = useState(false);
+  const [targetAssigneeUserId, setTargetAssigneeUserId] = useState("");
 
   useEffect(() => {
     setChoice("");
@@ -1096,7 +1157,31 @@ function SupplyRequestPreview({ item, projects, actionNote, setActionNote, actio
     setActionText(item.workflowMeta?.actionText || "");
     setDeadlineDate(item.workflowMeta?.deadlineDate || "");
     setCcUserIds(Array.isArray(item.ccUserIds) ? item.ccUserIds.map(String) : []);
+    setTargetAssigneeUserId("");
   }, [item.id, item.budgetCode, item.amount, item.workflowMeta, item.ccUserIds]);
+
+  useEffect(() => {
+    if (!canAct) return undefined;
+    let cancelled = false;
+    setNextRecipientsLoading(true);
+    fetch(`/api/supply-requests?nextRecipientsForItem=${encodeURIComponent(item.id)}`, { credentials: "include" })
+      .then((response) => (response.ok ? response.json() : { targetRoleKey: null, users: [] }))
+      .then((data) => {
+        if (cancelled) return;
+        const users = Array.isArray(data?.users) ? data.users : [];
+        setNextRecipients({ targetRoleKey: data?.targetRoleKey || null, users });
+        setTargetAssigneeUserId(users.length === 1 ? String(users[0].id) : "");
+      })
+      .catch(() => {
+        if (!cancelled) setNextRecipients({ targetRoleKey: null, users: [] });
+      })
+      .finally(() => {
+        if (!cancelled) setNextRecipientsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [canAct, item.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1157,12 +1242,14 @@ function SupplyRequestPreview({ item, projects, actionNote, setActionNote, actio
           ? {
               finalAmount: parseMoney(finalAmount),
               actionText,
-              deadlineDate,
-              ccUserIds,
-            }
+            deadlineDate,
+            ccUserIds,
+          }
           : {};
-    onAction(choice, payload);
+    onAction(choice, choice === "approve" ? { ...payload, targetAssigneeUserId: targetAssigneeUserId || null } : payload);
   };
+
+  const targetRequired = choice === "approve" && !!nextRecipients.targetRoleKey;
 
   const toggleCcUser = (id) => {
     const sid = String(id);
@@ -1243,9 +1330,18 @@ function SupplyRequestPreview({ item, projects, actionNote, setActionNote, actio
                       <PreviewSection title="نتیجه بررسی اولیه">
                         <div className="space-y-3 py-4">
                           <ActionOption checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy} />
+                          {choice === "approve" && (
+                            <TargetAssigneePicker
+                              targetRoleKey={nextRecipients.targetRoleKey}
+                              users={nextRecipients.users}
+                              loading={nextRecipientsLoading}
+                              value={targetAssigneeUserId}
+                              onChange={setTargetAssigneeUserId}
+                            />
+                          )}
                           <ActionOption checked={choice === "return"} onClick={() => setChoice("return")} label="ارجاع به درخواست کننده" disabled={actionBusy} />
                           {choice === "return" && <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputCls} min-h-24 py-3`} placeholder="توضیح..." />}
-                          <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice || !budgetCodeDraft} onSubmit={submitSelectedAction} />
+                          <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice || !budgetCodeDraft || (targetRequired && !targetAssigneeUserId)} onSubmit={submitSelectedAction} />
                         </div>
                       </PreviewSection>
                     </>
@@ -1306,8 +1402,17 @@ function SupplyRequestPreview({ item, projects, actionNote, setActionNote, actio
                           <ActionOption checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy} />
                           <ActionOption checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست تامین" disabled={actionBusy} />
                           <ActionOption checked={choice === "return"} onClick={() => setChoice("return")} label="ارجاع به درخواست کننده" disabled={actionBusy} />
+                          {choice === "approve" && (
+                            <TargetAssigneePicker
+                              targetRoleKey={nextRecipients.targetRoleKey}
+                              users={nextRecipients.users}
+                              loading={nextRecipientsLoading}
+                              value={targetAssigneeUserId}
+                              onChange={setTargetAssigneeUserId}
+                            />
+                          )}
                           {["reject", "return"].includes(choice) && <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputCls} min-h-24 py-3`} placeholder="توضیح..." />}
-                          <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice || parseMoney(finalAmount) <= 0} onSubmit={submitSelectedAction} />
+                          <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice || parseMoney(finalAmount) <= 0 || (targetRequired && !targetAssigneeUserId)} onSubmit={submitSelectedAction} />
                         </div>
                       </PreviewSection>
                     </>
@@ -1315,7 +1420,14 @@ function SupplyRequestPreview({ item, projects, actionNote, setActionNote, actio
                     <PreviewSection title="ارسال مجدد درخواست">
                       <div className="space-y-3 py-4">
                         <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputCls} min-h-24 py-3`} placeholder="توضیح اصلاحات..." />
-                        <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={false} onSubmit={() => onAction("approve", {})} />
+                        <TargetAssigneePicker
+                          targetRoleKey={nextRecipients.targetRoleKey}
+                          users={nextRecipients.users}
+                          loading={nextRecipientsLoading}
+                          value={targetAssigneeUserId}
+                          onChange={setTargetAssigneeUserId}
+                        />
+                        <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!!nextRecipients.targetRoleKey && !targetAssigneeUserId} onSubmit={() => onAction("approve", { targetAssigneeUserId: targetAssigneeUserId || null })} />
                       </div>
                     </PreviewSection>
                   )
@@ -1368,6 +1480,22 @@ function ActionOption({ checked, disabled, onClick, label }) {
       <span>{label}</span>
       <span className="grid h-5 w-5 place-items-center rounded-md border border-neutral-400" />
     </button>
+  );
+}
+
+function TargetAssigneePicker({ targetRoleKey, users, loading, value, onChange }) {
+  if (!targetRoleKey && !loading) return null;
+  return (
+    <Field label="ارسال درخواست تامین به">
+      <select value={value} onChange={(event) => onChange(event.target.value)} disabled={loading || !targetRoleKey} className={inputCls}>
+        <option value="">{loading ? "در حال دریافت..." : "انتخاب کنید"}</option>
+        {(Array.isArray(users) ? users : []).map((user) => (
+          <option key={user.id} value={user.id}>
+            {user.name || user.username || user.email || `کاربر #${user.id}`}
+          </option>
+        ))}
+      </select>
+    </Field>
   );
 }
 
