@@ -1356,18 +1356,19 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                           <ReadOnlyBox label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFaDigits(baseBudget) : "—"} ltr />
                           <ReadOnlyBox label="باقی مانده نقدینگی تخصیص یافته به پروژه" value="—" ltr />
                           <div className="space-y-2 pt-2">
-                            <ActionOptionRow checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy} />
+                            <ActionOptionRow checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy}>
+                              <TargetAssigneePicker
+                                targetRoleKey={nextRecipients.targetRoleKey}
+                                users={nextRecipients.users}
+                                loading={nextRecipientsLoading}
+                                value={targetAssigneeUserId}
+                                onChange={setTargetAssigneeUserId}
+                                inline
+                                disabled={!choice || choice !== "approve"}
+                              />
+                            </ActionOptionRow>
                             <ActionOptionRow checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت به درخواست کننده" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
                           </div>
-                          {choice === "approve" && (
-                            <TargetAssigneePicker
-                              targetRoleKey={nextRecipients.targetRoleKey}
-                              users={nextRecipients.users}
-                              loading={nextRecipientsLoading}
-                              value={targetAssigneeUserId}
-                              onChange={setTargetAssigneeUserId}
-                            />
-                          )}
                           <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={actionSubmitDisabled} onSubmit={submitSelectedAction} />
                         </div>
                       </PreviewSection>
@@ -1423,19 +1424,20 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                             </div>
                           </div>
                           <div className="space-y-2 pt-2">
-                            <ActionOptionRow checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy} />
+                            <ActionOptionRow checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy}>
+                              <TargetAssigneePicker
+                                targetRoleKey={nextRecipients.targetRoleKey}
+                                users={nextRecipients.users}
+                                loading={nextRecipientsLoading}
+                                value={targetAssigneeUserId}
+                                onChange={setTargetAssigneeUserId}
+                                inline
+                                disabled={!choice || choice !== "approve"}
+                              />
+                            </ActionOptionRow>
                             <ActionOptionRow checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت به درخواست کننده" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
                             <ActionOptionRow checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست تامین" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
                           </div>
-                          {choice === "approve" && (
-                            <TargetAssigneePicker
-                              targetRoleKey={nextRecipients.targetRoleKey}
-                              users={nextRecipients.users}
-                              loading={nextRecipientsLoading}
-                              value={targetAssigneeUserId}
-                              onChange={setTargetAssigneeUserId}
-                            />
-                          )}
                           <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={actionSubmitDisabled} onSubmit={submitSelectedAction} />
                         </div>
                       </PreviewSection>
@@ -1509,11 +1511,11 @@ function ActionOption({ checked, disabled, onClick, label }) {
   );
 }
 
-function ActionOptionRow({ checked, disabled, onClick, label, showNote, noteValue, onNoteChange }) {
+function ActionOptionRow({ checked, disabled, onClick, label, showNote, noteValue, onNoteChange, children }) {
   return (
-    <div className="grid grid-cols-1 items-center gap-2 md:grid-cols-[190px_minmax(220px,1fr)]">
+    <div className="grid grid-cols-1 items-center gap-2 md:grid-cols-[190px_minmax(180px,260px)]">
       <ActionOption checked={checked} disabled={disabled} onClick={onClick} label={label} />
-      {showNote ? (
+      {children || (showNote ? (
         <input
           value={checked ? noteValue : ""}
           onChange={(event) => onNoteChange(event.target.value)}
@@ -1523,13 +1525,28 @@ function ActionOptionRow({ checked, disabled, onClick, label, showNote, noteValu
         />
       ) : (
         <div className="hidden md:block" />
-      )}
+      ))}
     </div>
   );
 }
 
-function TargetAssigneePicker({ targetRoleKey, users, loading, value, onChange }) {
+function TargetAssigneePicker({ targetRoleKey, users, loading, value, onChange, inline, disabled }) {
   if (!targetRoleKey && !loading) return null;
+  if (inline) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="shrink-0 text-xs text-neutral-500 dark:text-neutral-400">ارسال به</span>
+        <select value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled || loading || !targetRoleKey} className={`${inputCls} h-9 max-w-[210px] disabled:bg-neutral-50 disabled:text-transparent disabled:placeholder:text-neutral-300 dark:disabled:bg-white/5`}>
+          <option value="">{loading ? "در حال دریافت..." : "انتخاب کنید"}</option>
+          {(Array.isArray(users) ? users : []).map((user) => (
+            <option key={user.id} value={user.id}>
+              {user.name || user.username || user.email || `کاربر #${user.id}`}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  }
   return (
     <Field label="ارسال درخواست تامین به">
       <select value={value} onChange={(event) => onChange(event.target.value)} disabled={loading || !targetRoleKey} className={inputCls}>
