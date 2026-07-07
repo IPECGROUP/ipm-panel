@@ -266,6 +266,7 @@ function friendlyError(message, fallback) {
   if (text === "project_manager_user_not_found") return "کاربری با نقش مدیر پروژه پیدا نشد.";
   if (text === "target_assignee_required") return "گیرنده درخواست تامین را انتخاب کنید.";
   if (text === "target_assignee_invalid") return "گیرنده انتخاب شده برای این مرحله معتبر نیست.";
+  if (text === "note_required") return "برای برگشت یا رد درخواست، وارد کردن توضیح الزامی است.";
   return text || fallback;
 }
 
@@ -652,9 +653,11 @@ export default function SupplyRequestPage() {
               ? "گیرنده درخواست تامین را انتخاب کنید."
               : message === "target_assignee_invalid"
                 ? "گیرنده انتخاب شده برای این مرحله معتبر نیست."
-            : ["forbidden", "return_not_allowed_for_step", "reject_not_allowed_for_step"].includes(message)
-              ? "شما اجازه انجام این اقدام را ندارید."
-              : "ثبت اقدام انجام نشد."
+                : message === "note_required"
+                  ? "برای برگشت یا رد درخواست، وارد کردن توضیح الزامی است."
+                : ["forbidden", "return_not_allowed_for_step", "reject_not_allowed_for_step"].includes(message)
+                  ? "شما اجازه انجام این اقدام را ندارید."
+                  : "ثبت اقدام انجام نشد."
       );
     } finally {
       setActionBusy(false);
@@ -1263,8 +1266,10 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
 
   const targetRequired = choice === "approve" && !!nextRecipients.targetRoleKey;
   const reviewSectionTitle = `بررسی اولیه (${STEP_LABELS[stepKey] || "مرحله جاری"})`;
+  const noteRequired = ["return", "reject"].includes(choice);
   const actionSubmitDisabled =
     !choice ||
+    (noteRequired && !actionNote.trim()) ||
     (choice === "approve" &&
       ((stepKey === "project_control" && !budgetCodeDraft) ||
         (stepKey === "project_manager" && parseMoney(finalAmount) <= 0) ||
@@ -1351,8 +1356,8 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                           <ReadOnlyBox label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFaDigits(baseBudget) : "—"} ltr />
                           <ReadOnlyBox label="باقی مانده نقدینگی تخصیص یافته به پروژه" value="—" ltr />
                           <div className="space-y-2 pt-2">
-                            <ActionOptionRow checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت به درخواست کننده" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
                             <ActionOptionRow checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy} />
+                            <ActionOptionRow checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت به درخواست کننده" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
                           </div>
                           {choice === "approve" && (
                             <TargetAssigneePicker
@@ -1418,8 +1423,8 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                             </div>
                           </div>
                           <div className="space-y-2 pt-2">
-                            <ActionOptionRow checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت به درخواست کننده" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
                             <ActionOptionRow checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy} />
+                            <ActionOptionRow checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت به درخواست کننده" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
                             <ActionOptionRow checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست تامین" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
                           </div>
                           {choice === "approve" && (
