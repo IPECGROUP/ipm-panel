@@ -1350,10 +1350,9 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                           </Field>
                           <ReadOnlyBox label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFaDigits(baseBudget) : "—"} ltr />
                           <ReadOnlyBox label="باقی مانده نقدینگی تخصیص یافته به پروژه" value="—" ltr />
-                          <div className="flex flex-wrap items-center gap-4 pt-2">
-                            <ActionOption checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت به درخواست کننده" disabled={actionBusy} />
-                            <ActionOption checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy} />
-                            {choice === "return" && <input value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputCls} h-9 min-w-[220px] flex-1`} placeholder="توضیح..." />}
+                          <div className="space-y-2 pt-2">
+                            <ActionOptionRow checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت به درخواست کننده" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
+                            <ActionOptionRow checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy} />
                           </div>
                           {choice === "approve" && (
                             <TargetAssigneePicker
@@ -1418,11 +1417,10 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                               )}
                             </div>
                           </div>
-                          <div className="flex flex-wrap items-center gap-4 pt-2">
-                            <ActionOption checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت به درخواست کننده" disabled={actionBusy} />
-                            <ActionOption checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy} />
-                            <ActionOption checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست تامین" disabled={actionBusy} />
-                            {["reject", "return"].includes(choice) && <input value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputCls} h-9 min-w-[220px] flex-1`} placeholder="توضیح..." />}
+                          <div className="space-y-2 pt-2">
+                            <ActionOptionRow checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت به درخواست کننده" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
+                            <ActionOptionRow checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy} />
+                            <ActionOptionRow checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست تامین" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
                           </div>
                           {choice === "approve" && (
                             <TargetAssigneePicker
@@ -1503,6 +1501,25 @@ function ActionOption({ checked, disabled, onClick, label }) {
         {checked ? <span className="h-2.5 w-2.5 rounded-full bg-black dark:bg-white" /> : null}
       </span>
     </button>
+  );
+}
+
+function ActionOptionRow({ checked, disabled, onClick, label, showNote, noteValue, onNoteChange }) {
+  return (
+    <div className="grid grid-cols-1 items-center gap-2 md:grid-cols-[190px_minmax(220px,1fr)]">
+      <ActionOption checked={checked} disabled={disabled} onClick={onClick} label={label} />
+      {showNote ? (
+        <input
+          value={checked ? noteValue : ""}
+          onChange={(event) => onNoteChange(event.target.value)}
+          disabled={!checked || disabled}
+          className={`${inputCls} h-9 disabled:bg-neutral-50 disabled:text-transparent disabled:placeholder:text-neutral-300 dark:disabled:bg-white/5 dark:disabled:placeholder:text-neutral-600`}
+          placeholder="توضیح..."
+        />
+      ) : (
+        <div className="hidden md:block" />
+      )}
+    </div>
   );
 }
 
