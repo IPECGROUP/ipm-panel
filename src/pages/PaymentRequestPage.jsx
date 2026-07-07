@@ -32,6 +32,29 @@ const emptyForm = () => ({
   docId: "pre_invoice", docOther: "", docNumber: "", docDateJalali: "",
   currencyTypeId: "", currencySourceId: "", attachments: [], hasSupplyRequest: "no", supplyRequestId: "",
 });
+const formFromItem = (item = {}) => ({
+  dateJalali: String(item.dateFa || item.dateJalali || item.date_jalali || today()).replaceAll("-", "/"),
+  scope: "projects",
+  projectId: item.projectId != null ? String(item.projectId) : "",
+  budgetCode: item.budgetCode || "",
+  title: item.title || "",
+  description: item.description || "",
+  amount: money(item.amount || ""),
+  cashAmount: money(item.cashText || item.cashAmount || ""),
+  cashDateJalali: item.cashDate || item.cashDateJalali || "",
+  creditPay: item.creditPay || "",
+  beneficiaryName: item.beneficiaryName || "",
+  bankInfo: item.bankInfo || "",
+  docId: item.docId || "pre_invoice",
+  docOther: item.docOther || "",
+  docNumber: item.docNumber || "",
+  docDateJalali: item.docDateJalali || item.docDate || "",
+  currencyTypeId: item.currencyTypeId != null ? String(item.currencyTypeId) : "",
+  currencySourceId: item.currencySourceId != null ? String(item.currencySourceId) : "",
+  attachments: Array.isArray(item.attachments) ? item.attachments : [],
+  hasSupplyRequest: item.hasSupplyRequest === "yes" || item.supplyRequestId ? "yes" : "no",
+  supplyRequestId: item.supplyRequestId != null ? String(item.supplyRequestId) : "",
+});
 
 function toFa(value) { return String(value ?? "").replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]); }
 function parseAmount(value) {
@@ -425,6 +448,53 @@ export default function PaymentRequestPage() {
     }
   };
 
+  const resubmitReturned = async (item, updates, note = "") => {
+    if (!item || actionBusy) return;
+    if (!updates.projectId) return setActionError("پروژه را انتخاب کنید.");
+    if (!updates.budgetCode) return setActionError("کد بودجه را انتخاب کنید.");
+    if (!String(updates.title || "").trim()) return setActionError("موضوع درخواست را وارد کنید.");
+    if (parseAmount(updates.amount) <= 0) return setActionError("مبلغ درخواست باید بیشتر از صفر باشد.");
+    if (updates.hasSupplyRequest === "yes" && !updates.supplyRequestId) return setActionError("درخواست تامین را انتخاب کنید.");
+
+    setActionBusy(true);
+    setActionError("");
+    try {
+      const patchPayload = {
+        ...updates,
+        scope: "projects",
+        amount: parseAmount(updates.amount),
+        cashAmount: null,
+        creditAmount: null,
+        currencyTypeId: updates.currencyTypeId || null,
+        currencySourceId: updates.currencySourceId || null,
+        projectId: updates.projectId || null,
+      };
+      const patched = await api(`/requests/${item.id}`, {
+        method: "PATCH",
+        body: JSON.stringify(patchPayload),
+      });
+      const finalNote = String(note || "").trim() || "اصلاح و ارسال مجدد درخواست";
+      const submitted = await api("/requests/status", {
+        method: "POST",
+        body: JSON.stringify({ id: item.id, status: "approved", note: finalNote }),
+      });
+      setSelected((current) => current ? { ...current, ...(submitted.item || patched.item || {}) } : current);
+      setActionNote("");
+      setSubmitNotice({
+        dateJalali: normalizeDigits(new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())),
+        time: normalizeDigits(new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date())),
+        userName: user?.name || user?.username || "کاربر",
+        unitName: "درخواست کننده",
+        roleName: "ارسال کننده مجدد",
+      });
+      await loadItems();
+    } catch (err) {
+      setActionError(err?.message === "forbidden" ? "شما اجازه انجام این اقدام را ندارید." : "ارسال مجدد درخواست انجام نشد.");
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
   const deleteItem = async (item) => {
     if (!window.confirm("این درخواست حذف شود؟")) return;
     try {
@@ -596,14 +666,17 @@ export default function PaymentRequestPage() {
     {selected && <PaymentPreview
       item={selected}
       projects={projects}
+      supplyRequests={supplyRequests}
       currencyTypes={currencyTypes}
       currencySources={currencySources}
       mainAdmin={mainAdmin}
+      userId={user?.id}
       actionNote={actionNote}
       setActionNote={setActionNote}
       actionBusy={actionBusy}
       actionError={actionError}
       onAction={recordAction}
+      onResubmit={resubmitReturned}
       onClose={() => setSelected(null)}
     />}
     {submitNotice && <RegistrationNotice info={submitNotice} onClose={() => setSubmitNotice(null)} />}
@@ -731,7 +804,7 @@ function StatusBadge({ status }) {
   return <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs ${colors}`}>{STATUS_LABELS[status] || status || "—"}</span>;
 }
 
-function PaymentPreview({ item, projects, currencyTypes, currencySources, mainAdmin, actionNote, setActionNote, actionBusy, actionError, onAction, onClose }) {
+function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currencySources, mainAdmin, userId, actionNote, setActionNote, actionBusy, actionError, onAction, onResubmit, onClose }) {
   const project = projects.find((row) => String(row.id) === String(item.projectId));
   const currency = currencyTypes.find((row) => String(row.id) === String(item.currencyTypeId));
   const source = currencySources.find((row) => String(row.id) === String(item.currencySourceId));
@@ -741,6 +814,7 @@ function PaymentPreview({ item, projects, currencyTypes, currencySources, mainAd
   const history = Array.isArray(item.historyJson) ? item.historyJson : Array.isArray(item.history_json) ? item.history_json : [];
   const currentStepRoleKey = item.currentStepRoleKey || "";
   const canDecide = item.status === "pending" && item.canAct === true;
+  const canEditReturned = item.status === "returned" && item.canAct === true && currentStepRoleKey === "requester";
   const currentStepIndex = Number(item.currentStepIndex || 0);
   const finalAccounting = currentStepRoleKey === "accounting" && currentStepIndex >= 5;
   const [baseBudget, setBaseBudget] = useState("");
@@ -880,6 +954,22 @@ function PaymentPreview({ item, projects, currencyTypes, currencySources, mainAd
                 setCreditPayDesc={setCreditPayDesc}
                 currencyTypes={currencyTypes}
               />}
+              {canEditReturned && <ReturnedEditPanel
+                item={item}
+                projects={projects}
+                supplyRequests={supplyRequests}
+                currencyTypes={currencyTypes}
+                currencySources={currencySources}
+                actionNote={actionNote}
+                setActionNote={setActionNote}
+                actionBusy={actionBusy}
+                actionError={actionError}
+                userId={userId}
+                onSubmit={(updates) => onResubmit(item, updates, actionNote)}
+              />}
+              {!canDecide && !canEditReturned && <div className="rounded-2xl border border-black/10 p-4 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">
+                در این مرحله اقدامی برای شما فعال نیست.
+              </div>}
             </div>
           </main>
         </div>
@@ -982,6 +1072,164 @@ function CurrencySelect({ value, onChange, currencyTypes }) {
 function currencyNameOf(id, currencyTypes) {
   const item = (currencyTypes || []).find((row) => String(row.id) === String(id));
   return item ? itemLabel(item) : "ریال";
+}
+
+function ReturnedEditPanel({
+  item, projects, supplyRequests, currencyTypes, currencySources, actionNote, setActionNote,
+  actionBusy, actionError, userId, onSubmit,
+}) {
+  const [form, setForm] = useState(() => formFromItem(item));
+  const [budgetItems, setBudgetItems] = useState([]);
+  const [budgetLoading, setBudgetLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const selectedProject = projects.find((project) => String(project.id) === String(form.projectId));
+  const selectedCurrency = currencyTypes.find((row) => String(row.id) === String(form.currencyTypeId));
+  const currencyLabel = selectedCurrency ? itemLabel(selectedCurrency) : "ریال";
+  const budgetOptions = useMemo(() => {
+    const rows = Array.isArray(budgetItems) ? budgetItems : [];
+    const hasCurrent = rows.some((row) => normalizeBudgetCode(row.code || row.center_code) === normalizeBudgetCode(form.budgetCode));
+    return hasCurrent || !form.budgetCode ? rows : [{ code: form.budgetCode, center_desc: "" }, ...rows];
+  }, [budgetItems, form.budgetCode]);
+
+  useEffect(() => {
+    setForm(formFromItem(item));
+    setUploadError("");
+  }, [item.id, item.updatedAt]);
+
+  useEffect(() => {
+    if (!form.projectId) {
+      setBudgetItems([]);
+      return undefined;
+    }
+    let cancelled = false;
+    const projectCode = normalizeBudgetCode(selectedProject?.code);
+    setBudgetLoading(true);
+    fetch(`/api/cost-breakdown?project_id=${encodeURIComponent(form.projectId)}`, { credentials: "include" })
+      .then((response) => response.ok ? response.json() : { items: [] })
+      .then((data) => {
+        if (cancelled) return;
+        const byCode = new Map();
+        (Array.isArray(data?.items) ? data.items : []).forEach((row) => {
+          const code = budgetCodeForProject(row?.budgetCode ?? row?.budget_code ?? row?.code, projectCode);
+          if (!code) return;
+          byCode.set(code, {
+            code,
+            center_desc: String(row?.budgetName ?? row?.budget_name ?? row?.name ?? row?.center_desc ?? ""),
+          });
+        });
+        setBudgetItems(Array.from(byCode.values()).sort((a, b) =>
+          normalizeBudgetCode(a.code).localeCompare(normalizeBudgetCode(b.code), "fa", { numeric: true, sensitivity: "base" })
+        ));
+      })
+      .catch(() => { if (!cancelled) setBudgetItems([]); })
+      .finally(() => { if (!cancelled) setBudgetLoading(false); });
+    return () => { cancelled = true; };
+  }, [form.projectId, selectedProject?.code]);
+
+  const setField = (name, value) => {
+    setForm((old) => ({ ...old, [name]: value }));
+    setUploadError("");
+  };
+
+  const uploadFiles = async (fileList) => {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    setUploading(true);
+    setUploadError("");
+    try {
+      const uploaded = [];
+      for (const file of files) {
+        const body = new FormData();
+        body.append("file", file);
+        const response = await fetch("/api/upload/payment-doc", {
+          method: "POST",
+          credentials: "include",
+          headers: userId != null ? { "x-user-id": String(userId) } : {},
+          body,
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "upload_failed");
+        uploaded.push(data.file || data);
+      }
+      setForm((old) => ({ ...old, attachments: [...old.attachments, ...uploaded] }));
+    } catch {
+      setUploadError("آپلود فایل انجام نشد.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeAttachment = (index) => {
+    setForm((old) => ({ ...old, attachments: old.attachments.filter((_, i) => i !== index) }));
+  };
+
+  return <PreviewSection title="اصلاح و ارسال مجدد درخواست">
+    <div className="space-y-4 py-4">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(150px,0.75fr)_minmax(140px,0.7fr)_minmax(220px,1fr)_minmax(220px,1fr)]">
+        <ReadField label="شماره درخواست" value={item.serial || "—"} ltr />
+        <ReadField label="تاریخ درخواست" value={toFa(form.dateJalali)} />
+        <Field label="پروژه" required><select className={inputClass} value={form.projectId} onChange={(event) => setForm((old) => ({ ...old, projectId: event.target.value, budgetCode: "" }))}><option value="">انتخاب پروژه</option>{projects.map((project) => <option key={project.id} value={project.id}>{projectLabel(project)}</option>)}</select></Field>
+        <Field label="کد بودجه" required><select className={inputClass} value={form.budgetCode} disabled={!form.projectId || budgetLoading} onChange={(event) => setField("budgetCode", event.target.value)}><option value="">{budgetLoading ? "در حال دریافت..." : form.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید"}</option>{budgetOptions.map((row) => { const code = normalizeBudgetCode(row.code || row.center_code); const desc = row.center_desc || row.last_desc || row.name || row.description || ""; return <option key={code || row.id} value={code}>{code}{desc ? ` - ${desc}` : ""}</option>; })}</select></Field>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(260px,1.4fr)_minmax(160px,0.75fr)_minmax(160px,0.7fr)_minmax(160px,0.7fr)]">
+        <Field label="موضوع درخواست" required><input className={`${inputClass} h-12 text-[15px]`} value={form.title} onChange={(event) => setField("title", event.target.value)} /></Field>
+        <Field label={`مبلغ درخواست (${currencyLabel})`} required><MoneyInput value={form.amount} onChange={(value) => setField("amount", value)} /></Field>
+        <Field label="ارز"><select className={inputClass} value={form.currencyTypeId} onChange={(event) => setField("currencyTypeId", event.target.value)}><option value="">ریال</option>{currencyTypes.map((row) => <option key={row.id} value={row.id}>{itemLabel(row)}</option>)}</select></Field>
+        <Field label="منشا ارز"><select className={inputClass} value={form.currencySourceId} onChange={(event) => setField("currencySourceId", event.target.value)}><option value="">انتخاب نشده</option>{currencySources.map((row) => <option key={row.id} value={row.id}>{itemLabel(row)}</option>)}</select></Field>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(180px,0.6fr)_minmax(260px,1fr)]">
+        <Field label="درخواست تامین">
+          <div className="flex h-9 items-center gap-6 px-1">
+            {[["no", "ندارد"], ["yes", "دارد"]].map(([value, label]) => {
+              const checked = form.hasSupplyRequest === value;
+              return <button key={value} type="button" onClick={() => setForm((old) => ({ ...old, hasSupplyRequest: value, supplyRequestId: value === "yes" ? old.supplyRequestId : "" }))} className="inline-flex items-center gap-2 text-sm text-neutral-900 transition hover:opacity-75 dark:text-white">
+                <span>{label}</span>
+                <span className={`grid h-5 w-5 place-items-center rounded-full border ${checked ? "border-neutral-950 dark:border-white" : "border-neutral-400 dark:border-neutral-500"}`}>{checked && <span className="h-3 w-3 rounded-full bg-neutral-950 dark:bg-white" />}</span>
+              </button>;
+            })}
+          </div>
+        </Field>
+        {form.hasSupplyRequest === "yes" && <Field label="انتخاب درخواست تامین" required><select className={inputClass} value={form.supplyRequestId} onChange={(event) => setField("supplyRequestId", event.target.value)}><option value="">انتخاب کنید</option>{supplyRequests.map((row) => <option key={row.id} value={row.id}>{row.serial || `#${row.id}`}{row.title ? ` - ${row.title}` : ""}</option>)}</select></Field>}
+      </div>
+
+      <Field label="شرح درخواست"><textarea className={`${inputClass} min-h-24 py-2 leading-7`} value={form.description} onChange={(event) => setField("description", event.target.value)} /></Field>
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <Field label="نوع سند">
+          <select className={inputClass} value={form.docId} onChange={(event) => setForm((old) => ({ ...old, docId: event.target.value, docOther: event.target.value === "other" ? old.docOther : "" }))}>{DOC_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+          {form.docId === "other" && <input className={`${inputClass} mt-2`} value={form.docOther} onChange={(event) => setField("docOther", event.target.value)} placeholder="نوع سند را وارد کنید" />}
+        </Field>
+        <Field label="شماره سند"><input className={inputClass} value={form.docNumber} onChange={(event) => setField("docNumber", event.target.value)} /></Field>
+        <Field label="تاریخ سند"><JalaliPopupDatePicker value={form.docDateJalali} onChange={(value) => setField("docDateJalali", value)} /></Field>
+        <Field label="بارگذاری">
+          <label className="grid h-11 w-11 cursor-pointer place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={uploading ? "در حال آپلود" : "بارگذاری"} aria-label={uploading ? "در حال آپلود" : "بارگذاری"}>
+            <img src="/images/icons/upload.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse opacity-60" : ""}`} />
+            <input type="file" multiple accept="image/*,.pdf" className="hidden" onChange={(event) => uploadFiles(event.target.files)} />
+          </label>
+        </Field>
+      </div>
+
+      {!!form.attachments.length && <div className="flex flex-wrap gap-2">
+        {form.attachments.map((file, index) => <span key={file.id || file.serverId || file.url || index} className="inline-flex max-w-full items-center gap-2 rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10">
+          <a href={file.url || "#"} target="_blank" rel="noreferrer" className="max-w-[220px] truncate hover:underline">{file.name || `فایل ${toFa(index + 1)}`}</a>
+          <button type="button" onClick={() => removeAttachment(index)} className="grid h-6 w-6 place-items-center rounded-md hover:bg-black/5 dark:hover:bg-white/10" aria-label="حذف پیوست" title="حذف پیوست">×</button>
+        </span>)}
+      </div>}
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <Field label="شرایط پرداخت"><input className={inputClass} value={form.creditPay} onChange={(event) => setField("creditPay", event.target.value)} /></Field>
+        <Field label="نام ذینفع"><input className={inputClass} value={form.beneficiaryName} onChange={(event) => setField("beneficiaryName", event.target.value)} /></Field>
+        <Field label="شماره شبا"><input dir="ltr" inputMode="numeric" className={`${inputClass} text-left font-sans tabular-nums`} value={form.bankInfo || "IR"} onChange={(event) => setField("bankInfo", formatSheba(event.target.value))} onFocus={() => { if (!form.bankInfo) setField("bankInfo", "IR"); }} placeholder="IR" /></Field>
+      </div>
+
+      <Field label="توضیح اصلاحات"><textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputClass} min-h-24 py-3`} placeholder="توضیح اصلاحات..." /></Field>
+      {uploadError && <div className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">{uploadError}</div>}
+      <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={uploading} onSubmit={() => onSubmit(form)} />
+    </div>
+  </PreviewSection>;
 }
 
 function buildWorkflowNote({ stepKey, stepIndex, choice, note, urgentCash, cashPayAmount, cashPayCurrency, paymentMethod, creditPayAmount, creditPayCurrency, creditPayDesc }) {
