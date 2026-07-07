@@ -38,7 +38,7 @@ const statusLabels = {
   canceled: "لغو شد",
   cancelled: "لغو شد",
   rejected: "لغو شد",
-  returned: "در انتظار تایید اولیه",
+  returned: "در حال اقدام",
 };
 
 const STEP_LABELS = {
@@ -898,10 +898,34 @@ export default function SupplyRequestPage() {
                   className="inline-flex h-10 items-center gap-2 rounded-xl border border-black/10 bg-white px-4 text-sm transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
                   title="اسناد مرتبط"
                 >
-                  <img src="/images/icons/namayeshname.svg" alt="" className="h-5 w-5 dark:invert" />
+                  <img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" />
                   اسناد مرتبط
                   <span className="text-xs text-neutral-500">({toFaDigits(form.relatedLetterIds.length)})</span>
                 </button>
+                {selectedRelatedLetters.length > 0 && (
+                  <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs">
+                    <span className="shrink-0 text-neutral-600 dark:text-neutral-300">اسناد مرتبط:</span>
+                    {selectedRelatedLetters.map((letter) => {
+                      const id = letterIdOf(letter);
+                      return (
+                        <span key={id} className="inline-flex h-8 max-w-[220px] items-center gap-2 rounded-lg border border-black/10 bg-white px-2 dark:border-white/10 dark:bg-white/5">
+                          <button
+                            type="button"
+                            onClick={() => setForm((prev) => ({ ...prev, relatedLetterIds: (prev.relatedLetterIds || []).filter((x) => String(x) !== String(id)) }))}
+                            className="grid h-4 w-4 shrink-0 place-items-center rounded-full text-red-500 transition hover:bg-red-50 dark:hover:bg-red-500/10"
+                            aria-label="حذف سند مرتبط"
+                            title="حذف سند مرتبط"
+                          >
+                            ×
+                          </button>
+                          <span dir="ltr" className="truncate font-sans font-semibold tabular-nums">
+                            {toFaDigits(letterNoOf(letter) || id)}
+                          </span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
@@ -956,26 +980,6 @@ export default function SupplyRequestPage() {
                   <img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" />
                 </button>
               </div>
-
-              {relatedDocsOpen && (
-                <div className="mt-3 rounded-xl border border-black/10 p-3 text-xs dark:border-white/10">
-                  {selectedRelatedLetters.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {selectedRelatedLetters.map((letter) => (
-                        <span
-                          key={letterIdOf(letter)}
-                          className="rounded-lg border border-black/10 px-2 py-1 hover:bg-black/[0.03] dark:border-white/10 dark:hover:bg-white/10"
-                        >
-                          {toFaDigits(letterNoOf(letter) || letterIdOf(letter))}
-                          {subjectOf(letter) ? ` - ${subjectOf(letter)}` : ""}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="py-2 text-center text-neutral-500 dark:text-neutral-400">نامه‌ای انتخاب نشده است.</div>
-                  )}
-                </div>
-              )}
             </form>
           )}
 
@@ -1121,7 +1125,7 @@ export default function SupplyRequestPage() {
           onConfirm={() => {
             const clean = (Array.isArray(relatedPickIds) ? relatedPickIds : []).map((id) => String(id).trim()).filter(Boolean);
             setForm((prev) => ({ ...prev, relatedLetterIds: clean }));
-            setRelatedDocsOpen(clean.length > 0);
+            setRelatedDocsOpen(false);
             setRelatedPickOpen(false);
           }}
         />

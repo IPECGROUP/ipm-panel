@@ -12,7 +12,7 @@ const statusLabels = {
   canceled: "لغو شد",
   cancelled: "لغو شد",
   rejected: "لغو شد",
-  returned: "در انتظار تایید اولیه",
+  returned: "در حال اقدام",
 };
 
 function toFaDigits(value = "") {
