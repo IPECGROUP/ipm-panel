@@ -1138,6 +1138,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
   const [choice, setChoice] = useState("");
   const [budgetCodeDraft, setBudgetCodeDraft] = useState(item.budgetCode || "");
   const [baseBudget, setBaseBudget] = useState("");
+  const [workflowBudgetItems, setWorkflowBudgetItems] = useState([]);
   const [budgetLoading, setBudgetLoading] = useState(false);
   const [finalAmount, setFinalAmount] = useState(formatMoney(meta.finalAmount ?? item.amount ?? ""));
   const [actionText, setActionText] = useState(meta.actionText || "");
@@ -1186,15 +1187,26 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
   useEffect(() => {
     let cancelled = false;
     setBaseBudget("");
-    if (!item.projectId || !budgetCodeDraft) return undefined;
+    setWorkflowBudgetItems([]);
+    if (!item.projectId) return undefined;
     setBudgetLoading(true);
     fetch(`/api/cost-breakdown?project_id=${encodeURIComponent(item.projectId)}`, { credentials: "include" })
       .then((response) => (response.ok ? response.json() : { items: [] }))
       .then((data) => {
         if (cancelled) return;
         const rows = Array.isArray(data?.items) ? data.items : [];
-        const target = normalizeBudgetCode(budgetCodeDraft);
         const projectCode = normalizeProjectCode(project?.code || item.projectCode || "");
+        const byCode = new Map();
+        rows.forEach((row) => {
+          const code = budgetCodeForProject(row?.budgetCode ?? row?.budget_code ?? row?.code, projectCode);
+          if (!code) return;
+          const name = row?.budgetName ?? row?.budget_name ?? row?.name ?? row?.center_desc ?? row?.description ?? "";
+          if (!byCode.has(code)) byCode.set(code, { code, name });
+        });
+        if (budgetCodeDraft && !byCode.has(budgetCodeDraft)) byCode.set(budgetCodeDraft, { code: budgetCodeDraft, name: "" });
+        setWorkflowBudgetItems(Array.from(byCode.values()).sort((a, b) => a.code.localeCompare(b.code, "fa", { numeric: true })));
+        if (!budgetCodeDraft) return;
+        const target = normalizeBudgetCode(budgetCodeDraft);
         const match = rows.find((row) => {
           const rawCode = row?.budgetCode ?? row?.budget_code ?? row?.code;
           return normalizeBudgetCode(rawCode) === target || budgetCodeForProject(rawCode, projectCode) === target;
@@ -1269,9 +1281,8 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
       <div className="absolute inset-0 flex items-center justify-center p-3 md:p-6">
         <div dir="rtl" className="flex h-[min(88vh,760px)] w-[min(1040px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
           <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3 dark:border-white/10">
-            <div className="min-w-0 text-sm font-bold">
+            <div className="min-w-0 text-base font-bold md:text-lg">
               اقدامات درخواست تامین
-              <span className="mr-2 font-normal text-neutral-500">{item.serial || "—"}</span>
             </div>
             <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 dark:bg-white dark:text-black" aria-label="بستن" title="بستن">
               <img src="/images/icons/bastan.svg" alt="" className="h-5 w-5 invert dark:invert-0" />
@@ -1289,7 +1300,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                   <PreviewRow label="کد بودجه" value={item.budgetCode || "—"} ltr />
                   <PreviewRow label="وضعیت" value={<StatusBadge status={status} />} />
                   <PreviewRow label="مرحله فعلی" value={STEP_LABELS[stepKey] || (item.status === "approved" ? "پایان یافته" : "—")} />
-                  <PreviewRow label="ارجاع شده به" value={item.currentAssigneeName || "—"} />
+                  <PreviewRow label="ارسال شده به" value={item.currentAssigneeName || "—"} />
                 </PreviewSection>
 
                 <PreviewSection title="سابقه فرآیند درخواست">
@@ -1327,13 +1338,22 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                       <PreviewSection title={reviewSectionTitle}>
                         <div className="space-y-3 py-4">
                           <Field label="کد بودجه">
-                            <input dir="ltr" value={budgetCodeDraft} onChange={(event) => setBudgetCodeDraft(normalizeBudgetCode(event.target.value))} className={inputCls} />
+                            <select dir="ltr" value={budgetCodeDraft} onChange={(event) => setBudgetCodeDraft(event.target.value)} className={inputCls}>
+                              <option value="">انتخاب کنید</option>
+                              {workflowBudgetItems.map((row) => (
+                                <option key={row.code} value={row.code}>
+                                  {row.code}
+                                  {row.name ? ` - ${row.name}` : ""}
+                                </option>
+                              ))}
+                            </select>
                           </Field>
                           <ReadOnlyBox label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFaDigits(baseBudget) : "—"} ltr />
                           <ReadOnlyBox label="باقی مانده نقدینگی تخصیص یافته به پروژه" value="—" ltr />
-                          <div className="grid grid-cols-1 gap-2 pt-2 md:grid-cols-2">
+                          <div className="flex flex-wrap items-center gap-4 pt-2">
                             <ActionOption checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت به درخواست کننده" disabled={actionBusy} />
                             <ActionOption checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy} />
+                            {choice === "return" && <input value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputCls} h-9 min-w-[220px] flex-1`} placeholder="توضیح..." />}
                           </div>
                           {choice === "approve" && (
                             <TargetAssigneePicker
@@ -1344,7 +1364,6 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                               onChange={setTargetAssigneeUserId}
                             />
                           )}
-                          {choice === "return" && <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputCls} min-h-24 py-3`} placeholder="توضیح..." />}
                           <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={actionSubmitDisabled} onSubmit={submitSelectedAction} />
                         </div>
                       </PreviewSection>
@@ -1399,10 +1418,11 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                               )}
                             </div>
                           </div>
-                          <div className="grid grid-cols-1 gap-2 pt-2 md:grid-cols-3">
+                          <div className="flex flex-wrap items-center gap-4 pt-2">
                             <ActionOption checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت به درخواست کننده" disabled={actionBusy} />
                             <ActionOption checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy} />
                             <ActionOption checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست تامین" disabled={actionBusy} />
+                            {["reject", "return"].includes(choice) && <input value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputCls} h-9 min-w-[220px] flex-1`} placeholder="توضیح..." />}
                           </div>
                           {choice === "approve" && (
                             <TargetAssigneePicker
@@ -1413,7 +1433,6 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                               onChange={setTargetAssigneeUserId}
                             />
                           )}
-                          {["reject", "return"].includes(choice) && <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputCls} min-h-24 py-3`} placeholder="توضیح..." />}
                           <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={actionSubmitDisabled} onSubmit={submitSelectedAction} />
                         </div>
                       </PreviewSection>
@@ -1478,9 +1497,11 @@ function ReadOnlyBox({ label, value, ltr }) {
 
 function ActionOption({ checked, disabled, onClick, label }) {
   return (
-    <button type="button" disabled={disabled} onClick={onClick} className={`flex h-11 w-full items-center justify-between rounded-xl border px-3 text-sm transition disabled:cursor-not-allowed disabled:opacity-45 ${checked ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>
+    <button type="button" disabled={disabled} onClick={onClick} className="inline-flex h-8 shrink-0 items-center gap-2 rounded-lg px-1 text-sm text-neutral-800 transition hover:text-black disabled:cursor-not-allowed disabled:opacity-45 dark:text-neutral-100 dark:hover:text-white">
       <span>{label}</span>
-      <span className="grid h-5 w-5 place-items-center rounded-md border border-neutral-400" />
+      <span className={`grid h-4 w-4 place-items-center rounded-full border ${checked ? "border-black dark:border-white" : "border-neutral-400 dark:border-neutral-500"}`}>
+        {checked ? <span className="h-2.5 w-2.5 rounded-full bg-black dark:bg-white" /> : null}
+      </span>
     </button>
   );
 }
@@ -1519,9 +1540,9 @@ function historyActionText(value) {
 function historyActorName(entry, item) {
   return (
     entry?.actorName ||
+    (Number(entry?.byUserId) === Number(item?.createdById) ? item?.createdByName : "") ||
     entry?.userName ||
     entry?.registrationInfo?.userName ||
-    (Number(entry?.byUserId) === Number(item?.createdById) ? item?.createdByName : "") ||
     (entry?.byUserId ? `کاربر #${toFaDigits(entry.byUserId)}` : "کاربر")
   );
 }
