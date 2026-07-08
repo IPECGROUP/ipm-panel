@@ -904,12 +904,11 @@ export default function SupplyRequestPage() {
                         setRelatedPickQuery("");
                         setRelatedPickOpen(true);
                       }}
-                      className="inline-flex h-10 w-auto items-center gap-2 rounded-xl border border-black/10 bg-white px-4 text-sm transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-white text-sm transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
                       title="اسناد مرتبط"
+                      aria-label="اسناد مرتبط"
                     >
                       <img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" />
-                      اسناد مرتبط
-                      <span className="text-xs text-neutral-500">({toFaDigits(form.relatedLetterIds.length)})</span>
                     </button>
                     {selectedRelatedLetters.length > 0 && (
                       <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs">

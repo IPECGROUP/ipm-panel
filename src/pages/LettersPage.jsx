@@ -37,11 +37,6 @@ function askMainAdminEnable(setIsMainAdmin) {
   setIsMainAdmin(true);
 }
 
-function disableMainAdmin(setIsMainAdmin) {
-  localStorage.removeItem(ADMIN_FLAG_KEY);
-  setIsMainAdmin(false);
-}
-
 const LETTERS_CACHE_KEY = "letters_mine_cache_v1";
 const LETTER_DRAFT_STORAGE_KEY = "ipm_letters_form_drafts_v1";
 const LETTER_DRAFT_SAVE_DELAY_MS = 3000;
@@ -4573,9 +4568,7 @@ useEffect(() => {
 
     const matchesCandidate = (candidate, label) => {
       if (!candidate || !label) return false;
-      if (candidate === label) return true;
-      const labelParts = label.split(/\s+/).filter(Boolean);
-      return labelParts.length > 1 && candidate.includes(label);
+      return label === candidate || label.includes(candidate);
     };
 
     const matchedIds = allTags
@@ -5511,7 +5504,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
           type="button"
           onClick={openRelatedPicker}
           className={
-            "h-10 w-auto shrink-0 rounded-xl border px-4 transition inline-flex items-center justify-center gap-2 " +
+            "h-10 w-10 shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
             (theme === "dark"
               ? "border-white/15 bg-white/5 hover:bg-white/10"
               : "border-black/10 bg-white hover:bg-black/[0.02]")
@@ -5524,12 +5517,6 @@ aria-invalid={fieldHasError(formKind, "subject")}
             alt=""
             className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
           />
-          <span>اسناد مرتبط</span>
-          {relatedSelectedIds.length > 0 ? (
-            <span className={theme === "dark" ? "text-white/60 text-xs" : "text-neutral-500 text-xs"}>
-              ({toFaDigits(relatedSelectedIds.length)})
-            </span>
-          ) : null}
         </button>
       </div>
       </div>
@@ -5552,7 +5539,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
           type="button"
           onClick={openRelatedPicker}
           className={
-            "h-10 w-auto shrink-0 rounded-xl border px-4 transition inline-flex items-center justify-center gap-2 " +
+            "h-10 w-10 shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
             (theme === "dark"
               ? "border-white/15 bg-white/5 hover:bg-white/10"
               : "border-black/10 bg-white hover:bg-black/[0.02]")
@@ -5565,12 +5552,6 @@ aria-invalid={fieldHasError(formKind, "subject")}
             alt=""
             className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
           />
-          <span>اسناد مرتبط</span>
-          {relatedSelectedIds.length > 0 ? (
-            <span className={theme === "dark" ? "text-white/60 text-xs" : "text-neutral-500 text-xs"}>
-              ({toFaDigits(relatedSelectedIds.length)})
-            </span>
-          ) : null}
         </button>
 
         {/* نمایش انتخاب‌ها */}
@@ -6127,11 +6108,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
                                   <img
                                     src="/images/icons/upload.svg"
                                     alt=""
-                                    className="w-5 h-5"
-                                    style={{
-                                      filter:
-                                        "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
-                                    }}
+                                    className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
                                   />
                                 </button>
                               ) : null}
@@ -6280,27 +6257,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
   <div className="relative flex items-center justify-center gap-2">
     <span>اقدامات</span>
 
-    {isMainAdmin ? (
-      <div className="absolute left-0 flex items-center gap-1">
-        <button
-          type="button"
-          onClick={() => disableMainAdmin(setIsMainAdmin)}
-          className={
-            "h-6 w-6 rounded-md flex items-center justify-center transition " +
-            (theme === "dark"
-              ? "bg-white/10 hover:bg-white/15 text-white/70"
-              : "bg-black/10 hover:bg-black/15 text-black/70")
-          }
-          aria-label="خروج ادمین"
-          title="خروج ادمین"
-        >
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M10 7h9M10 12h9M10 17h9" />
-            <path d="M4 6h2v12H4z" />
-          </svg>
-        </button>
-      </div>
-    ) : canSeeMainAdminLogin ? (
+    {!isMainAdmin && canSeeMainAdminLogin ? (
       <button
         type="button"
         onClick={() => askMainAdminEnable(setIsMainAdmin)}
@@ -6487,18 +6444,14 @@ const rowBg = normalRowBg;
                     startEdit(l);
                     openUpload(kind);
                   }}
-                  className="mx-auto grid h-9 w-9 place-items-center rounded-xl border border-red-300 bg-red-50 text-red-600 animate-pulse transition hover:bg-red-100 dark:border-red-500/40 dark:bg-red-500/10"
+                  className="mx-auto grid h-9 w-9 place-items-center !border-0 !bg-transparent !shadow-none animate-pulse transition hover:opacity-80"
                   aria-label="بارگذاری پیوست"
                   title="بارگذاری پیوست"
                 >
                   <img
                     src="/images/icons/upload.svg"
                     alt=""
-                    className="w-5 h-5"
-                    style={{
-                      filter:
-                        "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
-                    }}
+                    className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
                   />
                 </button>
               ) : (
