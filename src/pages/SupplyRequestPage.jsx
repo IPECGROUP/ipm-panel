@@ -45,6 +45,7 @@ const STEP_LABELS = {
   requester: "درخواست کننده",
   project_control: "برنامه ریزی و کنترل پروژه",
   project_manager: "مدیر پروژه",
+  commercial: "اقدام",
 };
 
 function toFaDigits(value = "") {
@@ -264,6 +265,7 @@ function friendlyError(message, fallback) {
   if (text === "database_auth_failed") return "احراز هویت پایگاه داده ناموفق است.";
   if (text === "project_control_user_not_found") return "کاربری در واحد برنامه ریزی و کنترل پروژه پیدا نشد.";
   if (text === "project_manager_user_not_found") return "کاربری با نقش مدیر پروژه پیدا نشد.";
+  if (text === "commercial_user_not_found") return "کاربری در واحد بازرگانی پیدا نشد.";
   if (text === "target_assignee_required") return "گیرنده درخواست تامین را انتخاب کنید.";
   if (text === "target_assignee_invalid") return "گیرنده انتخاب شده برای این مرحله معتبر نیست.";
   if (text === "note_required") return "برای برگشت یا رد درخواست، وارد کردن توضیح الزامی است.";
@@ -651,6 +653,8 @@ export default function SupplyRequestPage() {
           ? "کاربری با نقش مدیر پروژه پیدا نشد."
           : message === "project_control_user_not_found"
             ? "کاربری در واحد برنامه ریزی و کنترل پروژه پیدا نشد."
+            : message === "commercial_user_not_found"
+              ? "کاربری در واحد بازرگانی پیدا نشد."
             : message === "target_assignee_required"
               ? "گیرنده درخواست تامین را انتخاب کنید."
               : message === "target_assignee_invalid"
@@ -1264,10 +1268,9 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
         : stepKey === "project_manager"
           ? {
               finalAmount: parseMoney(finalAmount),
-              actionText,
-            deadlineDate,
-            ccUserIds,
-          }
+              deadlineDate,
+              ccUserIds,
+            }
           : {};
     onAction(choice, choice === "approve" ? { ...payload, targetAssigneeUserId: targetAssigneeUserId || null } : payload);
   };
@@ -1277,10 +1280,10 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
   const noteRequired = ["return", "reject"].includes(choice);
   const actionSubmitDisabled =
     !choice ||
-    (noteRequired && !actionNote.trim()) ||
+        (noteRequired && !actionNote.trim()) ||
     (choice === "approve" &&
       ((stepKey === "project_control" && !budgetCodeDraft) ||
-        (stepKey === "project_manager" && parseMoney(finalAmount) <= 0) ||
+        (stepKey === "project_manager" && (parseMoney(finalAmount) <= 0 || !targetAssigneeUserId)) ||
         (targetRequired && !targetAssigneeUserId)));
 
   const toggleCcUser = (id) => {
@@ -1401,7 +1404,14 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                             <ReadOnlyBox label="باقی مانده نقدینگی تخصیص یافته به پروژه" value="—" ltr />
                           </div>
                           <Field label="اقدام">
-                            <textarea value={actionText} onChange={(event) => setActionText(event.target.value)} className={`${inputCls} min-h-24 py-3`} />
+                            <select value={targetAssigneeUserId} onChange={(event) => setTargetAssigneeUserId(event.target.value)} disabled={nextRecipientsLoading || nextRecipients.targetRoleKey !== "commercial"} className={inputCls}>
+                              <option value="">{nextRecipientsLoading ? "در حال دریافت..." : "انتخاب کاربر بازرگانی"}</option>
+                              {nextRecipients.users.map((user) => (
+                                <option key={user.id} value={user.id}>
+                                  {user.name || user.username || user.email || `کاربر #${user.id}`}
+                                </option>
+                              ))}
+                            </select>
                           </Field>
                           <div className="space-y-3">
                             <Field label="مهلت اقدام">
@@ -1432,17 +1442,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                             </div>
                           </div>
                           <div className="space-y-2 pt-2">
-                            <ActionOptionRow checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy}>
-                              <TargetAssigneePicker
-                                targetRoleKey={nextRecipients.targetRoleKey}
-                                users={nextRecipients.users}
-                                loading={nextRecipientsLoading}
-                                value={targetAssigneeUserId}
-                                onChange={setTargetAssigneeUserId}
-                                inline
-                                disabled={!choice || choice !== "approve"}
-                              />
-                            </ActionOptionRow>
+                            <ActionOptionRow checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy} />
                             <ActionOptionRow checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت به درخواست کننده" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
                             <ActionOptionRow checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست تامین" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
                           </div>
@@ -1450,6 +1450,18 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                         </div>
                       </PreviewSection>
                     </>
+                  ) : stepKey === "commercial" ? (
+                    <PreviewSection title={reviewSectionTitle}>
+                      <div className="space-y-3 py-4">
+                        <ReadOnlyBox label="کد بودجه" value={item.budgetCode || "—"} ltr />
+                        <ReadOnlyBox label="مبلغ نهایی" value={toFaDigits(Number(item.amount || 0).toLocaleString("en-US"))} ltr />
+                        <ReadOnlyBox label="مهلت اقدام" value={meta.deadlineDate ? toFaDigits(String(meta.deadlineDate).replaceAll("-", "/")) : "—"} />
+                        <div className="space-y-2 pt-2">
+                          <ActionOptionRow checked={choice === "approve"} onClick={() => setChoice("approve")} label="انجام شد" disabled={actionBusy} />
+                        </div>
+                        <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={actionSubmitDisabled} onSubmit={submitSelectedAction} />
+                      </div>
+                    </PreviewSection>
                   ) : canResubmitReturned ? (
                     <PreviewSection title="ارسال مجدد درخواست">
                       <div className="space-y-3 py-4">
