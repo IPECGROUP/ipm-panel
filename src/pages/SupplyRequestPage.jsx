@@ -904,7 +904,7 @@ export default function SupplyRequestPage() {
                         setRelatedPickQuery("");
                         setRelatedPickOpen(true);
                       }}
-                      className="inline-flex h-10 w-[76px] items-center justify-center rounded-xl border border-black/10 bg-white text-sm transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
+                      className="inline-flex h-10 w-[70px] items-center justify-center rounded-xl border border-black/10 bg-white text-sm transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
                       title="اسناد مرتبط"
                       aria-label="اسناد مرتبط"
                     >

@@ -5504,7 +5504,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
           type="button"
           onClick={openRelatedPicker}
           className={
-            "h-10 w-[76px] shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
+            "h-10 w-[70px] shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
             (theme === "dark"
               ? "border-white/15 bg-white/5 hover:bg-white/10"
               : "border-black/10 bg-white hover:bg-black/[0.02]")
@@ -5539,7 +5539,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
           type="button"
           onClick={openRelatedPicker}
           className={
-            "h-10 w-[76px] shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
+            "h-10 w-[70px] shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
             (theme === "dark"
               ? "border-white/15 bg-white/5 hover:bg-white/10"
               : "border-black/10 bg-white hover:bg-black/[0.02]")
