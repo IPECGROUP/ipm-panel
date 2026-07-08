@@ -20,11 +20,6 @@ const MAIN_ADMIN_USER = "marandi";
 const MAIN_ADMIN_PASS = "1234";
 const ADMIN_FLAG_KEY = "main_admin_ok";
 
-const basicAuthHeader = () => {
-  const token = btoa(`${MAIN_ADMIN_USER}:${MAIN_ADMIN_PASS}`);
-  return `Basic ${token}`;
-};
-
 function askMainAdminEnable(setIsMainAdmin) {
   const u = window.prompt("نام کاربری ادمین اصلی:");
   if (String(u || "").trim() !== MAIN_ADMIN_USER) {
@@ -649,13 +644,8 @@ const fieldHasError = (kind, key) =>
 const inputWithError = (baseCls, kind, key) =>
   baseCls + (fieldHasError(kind, key) ? " !border-red-500 !ring-1 !ring-red-500" : "");
 
-// ✅ ارور: زیر فیلد، ولی absolute (پس هل نمیده)
-const ErrorTextAbs = ({ kind, k }) =>
-  fieldHasError(kind, k) ? (
-    <div className="absolute right-0 bottom-0 text-[10px] text-red-500 leading-3">
-      {errorsByKind?.[kind]?.[k]}
-    </div>
-  ) : null;
+// خطا فقط با قرمز شدن خود فیلد نمایش داده می‌شود.
+const ErrorTextAbs = () => null;
 
 // ✅ وقتی کاربر تایپ کرد، ارور همان فیلد در همان تب پاک شود
 const clearFieldError = (kind, k) => {
@@ -701,6 +691,16 @@ const REQUIRED = {
     "formTags",       // برچسب
   ],
 };
+
+const requiredMark = (kind, key) =>
+  (REQUIRED?.[kind] || []).includes(key) ? <span className="mr-1 text-red-500">*</span> : null;
+
+const requiredLabel = (label, kind, key) => (
+  <>
+    {label}
+    {requiredMark(kind, key)}
+  </>
+);
 
 const validate = (kind) => {
   // ✅ فقط همین تب
@@ -2468,7 +2468,7 @@ const labelSmCls = (theme === "dark"
   : "text-neutral-600 text-[11px] mb-1");
 
 const tabSmCls = (active) =>
-  "h-10 flex-1 md:flex-none justify-center px-3 md:px-4 rounded-xl border transition text-[12px] md:text-[13px] font-semibold inline-flex items-center gap-2 whitespace-nowrap " +
+  "h-10 flex-1 md:flex-none justify-center px-3 md:px-5 rounded-xl border transition text-[13px] md:text-sm font-semibold inline-flex items-center gap-2 whitespace-nowrap " +
   (active
     ? "text-white"
     : theme === "dark"
@@ -4335,35 +4335,6 @@ const deleteLetter = async (id) => {
   }
 };
 
-const deleteAllLetters = async () => {
-  if (!isMainAdmin) return;
-
-  const ok = window.confirm("⚠️ همه نامه‌ها حذف شوند؟ این عملیات برگشت‌پذیر نیست.");
-  if (!ok) return;
-
-  try {
-    const res = await fetch(API_BASE + "/letters/delete-all", {
-      method: "DELETE",
-      headers: {
-        Authorization: basicAuthHeader(),
-      },
-    });
-
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data?.ok) {
-      throw new Error(data?.error || "delete_all_failed");
-    }
-
-    setMyLetters([]);
-    setSelectedIds(new Set());
-    setPage(0);
-
-    alert(`✅ ${data.deleted ?? 0} نامه حذف شد`);
-  } catch (e) {
-    alert("خطا در حذف همه نامه‌ها: " + (e?.message || "delete_all_failed"));
-  }
-};
-
   const InfoRow = ({ label, value }) => (
     <div className="grid grid-cols-12 gap-2 py-2">
       <div className={"col-span-4 text-xs font-semibold " + (theme === "dark" ? "text-white/70" : "text-neutral-600")}>
@@ -4573,53 +4544,65 @@ const tagById = useMemo(() => {
 }, [allTags]);
 
 useEffect(() => {
-  if (!formOpen) return;
-  const normalizeText = (value) => normFa(toEnDigits(String(value || ""))).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
-  const selectedProject = (Array.isArray(projectsTopOnly) ? projectsTopOnly : []).find(
-    (p) => String(p?.id) === String(getForm(formKind).projectId || "")
-  );
-  const projectCandidates = selectedProject
-    ? [
-        selectedProject?.code,
-        selectedProject?.__baseCode,
-        selectedProject?.name,
-        selectedProject?.title,
-        selectedProject?.label,
-        projectOptionLabel(selectedProject),
-      ]
-    : [];
-  const fieldCandidates =
-    formKind === "incoming"
-      ? [...projectCandidates, incomingForm.subject, incomingForm.orgName]
-      : formKind === "internal"
-      ? [...projectCandidates, internalForm.subject]
-      : [...projectCandidates, outgoingForm.orgName, outgoingForm.subject];
+  if (!formOpen) return undefined;
 
-  const candidates = fieldCandidates.map(normalizeText).filter((x) => x.length >= 3);
-  if (!candidates.length || !Array.isArray(allTags) || !allTags.length) return;
+  const timer = window.setTimeout(() => {
+    const normalizeText = (value) => normFa(toEnDigits(String(value || ""))).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+    const selectedProject = (Array.isArray(projectsTopOnly) ? projectsTopOnly : []).find(
+      (p) => String(p?.id) === String(getForm(formKind).projectId || "")
+    );
+    const projectCandidates = selectedProject
+      ? [
+          selectedProject?.code,
+          selectedProject?.__baseCode,
+          selectedProject?.name,
+          selectedProject?.title,
+          selectedProject?.label,
+          projectOptionLabel(selectedProject),
+        ]
+      : [];
+    const fieldCandidates =
+      formKind === "incoming"
+        ? [...projectCandidates, incomingForm.subject, incomingForm.orgName]
+        : formKind === "internal"
+        ? [...projectCandidates, internalForm.subject]
+        : [...projectCandidates, outgoingForm.orgName, outgoingForm.subject];
 
-  const matchedIds = allTags
-    .filter((tag) => {
-      const label = normalizeText(tagLabelOf(tag));
-      if (label.length < 3) return false;
-      return candidates.some((candidate) => candidate === label || candidate.includes(label) || label.includes(candidate));
-    })
-    .map((tag) => String(tag?.id || "").trim())
-    .filter(Boolean);
+    const candidates = fieldCandidates.map(normalizeText).filter((x) => x.length >= 3);
+    if (!candidates.length || !Array.isArray(allTags) || !allTags.length) return;
 
-  if (!matchedIds.length) return;
+    const matchesCandidate = (candidate, label) => {
+      if (!candidate || !label) return false;
+      if (candidate === label) return true;
+      const labelParts = label.split(/\s+/).filter(Boolean);
+      return labelParts.length > 1 && candidate.includes(label);
+    };
 
-  const mergeAutoTags = (current) => {
-    const next = normalizeIdList([...(Array.isArray(current) ? current : []), ...matchedIds]).slice(0, TAG_PREFS_LIMIT);
-    return next.length === normalizeIdList(current).length && next.every((id, index) => id === normalizeIdList(current)[index])
-      ? current
-      : next;
-  };
+    const matchedIds = allTags
+      .filter((tag) => {
+        const label = normalizeText(tagLabelOf(tag));
+        if (label.length < 3) return false;
+        return candidates.some((candidate) => matchesCandidate(candidate, label));
+      })
+      .map((tag) => String(tag?.id || "").trim())
+      .filter(Boolean);
 
-  if (formKind === "incoming") setIncomingTagIds(mergeAutoTags);
-  else if (formKind === "internal") setInternalTagIds(mergeAutoTags);
-  else setOutgoingTagIds(mergeAutoTags);
-  clearFieldError(formKind, "formTags");
+    if (!matchedIds.length) return;
+
+    const mergeAutoTags = (current) => {
+      const next = normalizeIdList([...(Array.isArray(current) ? current : []), ...matchedIds]).slice(0, TAG_PREFS_LIMIT);
+      return next.length === normalizeIdList(current).length && next.every((id, index) => id === normalizeIdList(current)[index])
+        ? current
+        : next;
+    };
+
+    if (formKind === "incoming") setIncomingTagIds(mergeAutoTags);
+    else if (formKind === "internal") setInternalTagIds(mergeAutoTags);
+    else setOutgoingTagIds(mergeAutoTags);
+    clearFieldError(formKind, "formTags");
+  }, 2000);
+
+  return () => window.clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [
   formOpen,
@@ -5107,8 +5090,8 @@ useEffect(() => {
   </div>
 
   {/* کلاس سند */}
-<div className="w-[calc(50%-0.25rem)] md:shrink-0 md:w-[190px]">
-  <div className={labelSmCls}>کلاس سند</div>
+  <div className="w-[calc(50%-0.25rem)] md:shrink-0 md:w-[190px]">
+  <div className={labelSmCls}>{requiredLabel("کلاس سند", formKind, "category")}</div>
 
   <FieldWrap>
     <select
@@ -5133,7 +5116,7 @@ aria-invalid={fieldHasError(formKind, "category") ? true : undefined}
 
   {/* طبقه بندی */}
   <div className="w-[calc(50%-0.25rem)] md:shrink-0 md:w-[140px]">
-  <div className={labelSmCls}>طبقه بندی</div>
+  <div className={labelSmCls}>{requiredLabel("طبقه بندی", formKind, "classification")}</div>
 
   <FieldWrap>
     <select
@@ -5156,7 +5139,7 @@ aria-invalid={formKind === "incoming" ? fieldHasError("incoming", "classificatio
   {/* مرکز/پروژه */}
   {/* مرکز/پروژه */}
 <div className="w-full md:flex-1 md:min-w-[260px]">
-  <div className={labelSmCls}>پروژه</div>
+  <div className={labelSmCls}>{requiredLabel("پروژه", formKind, "projectId")}</div>
 
   <FieldWrap>
     <select
@@ -5188,7 +5171,7 @@ aria-invalid={fieldHasError(formKind, "projectId") ? true : undefined}
 {/* شماره سند */}
 {formKind !== "outgoing" ? (
 <div className="w-full md:shrink-0 md:w-[170px]">
-  <div className={labelSmCls}>شماره سند</div>
+  <div className={labelSmCls}>{requiredLabel("شماره سند", formKind, "letterNo")}</div>
 
   <FieldWrap>
     {formKind === "incoming" ? (
@@ -5223,7 +5206,7 @@ aria-invalid={fieldHasError(formKind, "projectId") ? true : undefined}
 
   {/* تاریخ */}
   <div className="w-full md:shrink-0 md:w-[170px]">
-  <div className={labelSmCls}>تاریخ سند</div>
+  <div className={labelSmCls}>{requiredLabel("تاریخ سند", formKind, "letterDate")}</div>
 
   <FieldWrap>
     <JalaliPopupDatePicker
@@ -5248,7 +5231,7 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
         <>
           {/* از (کمی کوچکتر) */}
           <div className="col-span-1 order-1 md:order-none md:col-span-3 md:col-start-1">
-            <div className={labelCls}>از</div>
+            <div className={labelCls}>{requiredLabel("از", "outgoing", "fromName")}</div>
             <FieldWrap>
             <input
   value={outgoingForm.fromName}
@@ -5278,7 +5261,7 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
 
           {/* به (کمی کوچکتر) */}
           <div className="col-span-2 order-4 md:order-none md:col-span-3 md:col-start-5">
-            <div className={labelCls}>به</div>
+            <div className={labelCls}>{requiredLabel("به", "outgoing", "toName")}</div>
             <FieldWrap>
  <input
     value={outgoingForm.toName}
@@ -5297,7 +5280,7 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
 
           {/* شرکت/سازمان (باقی فضا) */}
           <div className="col-span-1 order-2 md:order-none md:col-span-5 md:col-start-8">
-            <div className={labelCls}>شرکت/سازمان</div>
+            <div className={labelCls}>{requiredLabel("شرکت/سازمان", "outgoing", "orgName")}</div>
      <FieldWrap>
   <input
     value={outgoingForm.orgName}
@@ -5317,7 +5300,7 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
         <>
           {/* وارده (مثل قبل) */}
           <div className="col-span-1 md:col-span-4 md:col-start-1">
-  <div className={labelCls}>از</div>
+  <div className={labelCls}>{requiredLabel("از", "incoming", "fromName")}</div>
 
   <FieldWrap>
   <input
@@ -5337,7 +5320,7 @@ buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between
 
           {/* شرکت/سازمان (باقی فضا) */}
 <div className="col-span-1 md:col-span-4 md:col-start-5">
-  <div className={labelCls}>شرکت/سازمان</div>
+  <div className={labelCls}>{requiredLabel("شرکت/سازمان", "incoming", "orgName")}</div>
 
     <input
       value={incomingForm.orgName}
@@ -5367,7 +5350,7 @@ onChange={(e) => {
 
           {/* به (کمی کوچکتر) */}
 <div className="col-span-2 md:col-span-3 md:col-start-10">
-  <div className={labelCls}>به</div>
+  <div className={labelCls}>{requiredLabel("به", "incoming", "toName")}</div>
 
     <input
   value={incomingForm.toName}
@@ -5393,7 +5376,7 @@ onChange={(e) => {
   <div className="grid grid-cols-2 md:grid-cols-12 gap-2 items-start">
     {/* موضوع */}
     <div className="col-span-2 md:col-span-7 md:col-start-1">
-      <div className={labelCls}>موضوع</div>
+      <div className={labelCls}>{requiredLabel("موضوع", "internal", "subject")}</div>
 
       <FieldWrap>
         <input
@@ -5412,7 +5395,7 @@ onChange={(e) => {
 
     {/* واحد (کنار ضمیمه) */}
     <div className="col-span-2 md:col-span-3 md:col-start-8">
-      <div className={labelCls}>واحد</div>
+      <div className={labelCls}>{requiredLabel("واحد", "internal", "internalUnitId")}</div>
       <FieldWrap>
       <select
         value={internalUnitId}
@@ -5476,7 +5459,7 @@ onChange={(e) => {
   <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-start">
     {/* موضوع */}
    <div className="col-span-2 md:col-span-10">
-  <div className={labelCls}>موضوع</div>
+  <div className={labelCls}>{requiredLabel("موضوع", formKind, "subject")}</div>
 
   <FieldWrap>
     <input
@@ -5528,7 +5511,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
           type="button"
           onClick={openRelatedPicker}
           className={
-            "h-10 w-full shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
+            "h-10 w-auto shrink-0 rounded-xl border px-4 transition inline-flex items-center justify-center gap-2 " +
             (theme === "dark"
               ? "border-white/15 bg-white/5 hover:bg-white/10"
               : "border-black/10 bg-white hover:bg-black/[0.02]")
@@ -5541,6 +5524,12 @@ aria-invalid={fieldHasError(formKind, "subject")}
             alt=""
             className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
           />
+          <span>اسناد مرتبط</span>
+          {relatedSelectedIds.length > 0 ? (
+            <span className={theme === "dark" ? "text-white/60 text-xs" : "text-neutral-500 text-xs"}>
+              ({toFaDigits(relatedSelectedIds.length)})
+            </span>
+          ) : null}
         </button>
       </div>
       </div>
@@ -5558,44 +5547,52 @@ aria-invalid={fieldHasError(formKind, "subject")}
     {/* اسناد مرتبط */}
     <div className="hidden md:block w-full min-w-0 md:w-auto">
       <div className={labelCls}>اسناد مرتبط</div>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={openRelatedPicker}
+          className={
+            "h-10 w-auto shrink-0 rounded-xl border px-4 transition inline-flex items-center justify-center gap-2 " +
+            (theme === "dark"
+              ? "border-white/15 bg-white/5 hover:bg-white/10"
+              : "border-black/10 bg-white hover:bg-black/[0.02]")
+          }
+          aria-label="انتخاب اسناد مرتبط"
+          title="انتخاب اسناد مرتبط"
+        >
+          <img
+            src="/images/icons/sayer.svg"
+            alt=""
+            className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
+          />
+          <span>اسناد مرتبط</span>
+          {relatedSelectedIds.length > 0 ? (
+            <span className={theme === "dark" ? "text-white/60 text-xs" : "text-neutral-500 text-xs"}>
+              ({toFaDigits(relatedSelectedIds.length)})
+            </span>
+          ) : null}
+        </button>
 
-      <button
-        type="button"
-        onClick={openRelatedPicker}
-        className={
-          "h-10 w-10 shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
-          (theme === "dark"
-            ? "border-white/15 bg-white/5 hover:bg-white/10"
-            : "border-black/10 bg-white hover:bg-black/[0.02]")
-        }
-        aria-label="انتخاب اسناد مرتبط"
-        title="انتخاب اسناد مرتبط"
-      >
-        <img
-          src="/images/icons/sayer.svg"
-          alt=""
-          className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
-        />
-      </button>
-
-      {/* نمایش انتخاب‌ها */}
-      {relatedSelectedIds.length > 0 && (
-        <div className="mt-2 flex flex-wrap items-center gap-1 text-sm">
-          {relatedSelectedIds.map((id, i) => {
+        {/* نمایش انتخاب‌ها */}
+        {relatedSelectedIds.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+          {relatedSelectedIds.map((id) => {
             const l = letterById.get(String(id));
             const no = String(letterNoOf(l) || "").trim() || String(id);
 
             return (
-              <span key={String(id)} className="inline-flex items-center gap-1">
-                {i > 0 && (
-                  <span className={theme === "dark" ? "text-white/60" : "text-neutral-600"}>و</span>
-                )}
-
+              <span
+                key={String(id)}
+                className={
+                  "inline-flex h-10 max-w-[220px] items-center gap-2 rounded-xl border px-3 text-xs " +
+                  (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")
+                }
+              >
                 <button
                   type="button"
                   onClick={() => { if (l) openView(l); }}
                   className={
-                    "underline underline-offset-4 font-semibold " +
+                    "min-w-0 truncate font-semibold " +
                     (theme === "dark" ? "text-white hover:text-white/90" : "text-neutral-900 hover:text-black")
                   }
                   title="پیش نمایش"
@@ -5622,17 +5619,18 @@ aria-invalid={fieldHasError(formKind, "subject")}
               </span>
             );
           })}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
 
     {/* بارگذاری اسناد (چسبیده کنار اسناد مرتبط) */}
     <div className="w-full md:shrink-0 md:w-auto">
-      <div className={labelCls + " hidden md:block"}>&nbsp;</div> {/* هم‌تراز با لیبل بالا */}
+      <div className={labelCls}>بارگذاری</div>
       <button
   type="button"
   onClick={() => openUpload(formKind)}
-  className={uploadTriggerCls + " h-10 w-full md:w-auto whitespace-nowrap"}
+  className={uploadTriggerCls + " h-10 w-auto whitespace-nowrap"}
   title="بارگذاری اسناد"
 >
   <img
@@ -5935,7 +5933,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
 
 {/* برچسب‌ها (برای فرم) */}
 <div className="md:col-span-12 min-w-0">
-  <div className={labelCls}>برچسب ها</div>
+  <div className={labelCls}>{requiredLabel("برچسب ها", formKind, "formTags")}</div>
 
   <FieldWrap>
     <div className="w-full min-w-0 flex flex-wrap items-center gap-2">
@@ -5982,6 +5980,9 @@ aria-invalid={fieldHasError(formKind, "subject")}
         onClick={() => { openTagPicker("form"); clearFieldError(formKind, "formTags"); }}
         className={
           "h-10 w-10 shrink-0 rounded-full border transition inline-flex items-center justify-center " +
+          (fieldHasError(formKind, "formTags")
+            ? "!border-red-500 !ring-1 !ring-red-500 "
+            : "") +
           (theme === "dark"
             ? "border-white/15 bg-white/5 hover:bg-white/10"
             : "border-black/10 bg-white hover:bg-black/[0.02]")
@@ -6072,6 +6073,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
                         ? "text-white/50"
                         : "text-neutral-500";
                       const kindLabel = TABS.find((x) => x.id === kind)?.label || "";
+                      const hasRealAttachment = attachmentsOf(l).length > 0;
 
                       return (
                         <div key={id} className={"border-r-4 p-3 " + cardBg + (isConf ? " " + CONFIDENTIAL_TEXT_CLS : "")} style={{ borderRightColor: activeColor }}>
@@ -6110,6 +6112,29 @@ aria-invalid={fieldHasError(formKind, "subject")}
                             </div>
 
                             <div className="flex shrink-0 items-center gap-1">
+                              {!hasRealAttachment ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setKbdAbsIdx(absIdx);
+                                    startEdit(l);
+                                    openUpload(kind);
+                                  }}
+                                  className={iconBtnCls + " !h-9 !w-9 animate-pulse"}
+                                  aria-label="بارگذاری پیوست"
+                                  title="بارگذاری پیوست"
+                                >
+                                  <img
+                                    src="/images/icons/upload.svg"
+                                    alt=""
+                                    className="w-5 h-5"
+                                    style={{
+                                      filter:
+                                        "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
+                                    }}
+                                  />
+                                </button>
+                              ) : null}
                               <button
                                 type="button"
                                 onClick={() => {
@@ -6199,6 +6224,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
   <col style={{ width: 144 }} />  {/* از/به */}
   <col style={{ width: 176 }} />  {/* شرکت/سازمان */}
   <col style={{ width: 192 }} />  {/* اقدامات */}
+  <col style={{ width: 72 }} />   {/* پیوست */}
 </colgroup>
 
   <thead>
@@ -6258,23 +6284,6 @@ aria-invalid={fieldHasError(formKind, "subject")}
       <div className="absolute left-0 flex items-center gap-1">
         <button
           type="button"
-          onClick={deleteAllLetters}
-          className={
-            "h-6 w-6 rounded-md flex items-center justify-center transition " +
-            (theme === "dark"
-              ? "bg-white/10 hover:bg-white/15 text-white"
-              : "bg-black/10 hover:bg-black/15 text-black")
-          }
-          aria-label="حذف همه نامه‌ها"
-          title="حذف همه نامه‌ها"
-        >
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M18 6 6 18M6 6l12 12" />
-          </svg>
-        </button>
-
-        <button
-          type="button"
           onClick={() => disableMainAdmin(setIsMainAdmin)}
           className={
             "h-6 w-6 rounded-md flex items-center justify-center transition " +
@@ -6313,13 +6322,16 @@ aria-invalid={fieldHasError(formKind, "subject")}
     ) : null}
   </div>
 </th>
+      <th className="w-[72px] !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+        پیوست
+      </th>
     </tr>
   </thead>
 
   <tbody className={tbodyCls}>
     {pageItems.length === 0 ? (
       <tr>
-        <td colSpan={7} className="py-6 text-black/60 dark:text-neutral-400">
+        <td colSpan={8} className="py-6 text-black/60 dark:text-neutral-400">
           آیتمی ثبت نشده است.
         </td>
       </tr>
@@ -6334,6 +6346,8 @@ aria-invalid={fieldHasError(formKind, "subject")}
         const isInternal = kind === "internal";
         const isLast = idx === pageItems.length - 1;
         const divider = isLast ? "" : rowDividerCls;
+        const rowAttachments = attachmentsOf(l);
+        const hasRealAttachment = rowAttachments.length > 0;
 
         const isConf = isConfidentialLetter(l);
 
@@ -6463,6 +6477,33 @@ const rowBg = normalRowBg;
                   />
                 </button>
               </div>
+            </td>
+            <td className={"px-3 " + divider}>
+              {!hasRealAttachment ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setKbdAbsIdx(absIdx);
+                    startEdit(l);
+                    openUpload(kind);
+                  }}
+                  className="mx-auto grid h-9 w-9 place-items-center rounded-xl border border-red-300 bg-red-50 text-red-600 animate-pulse transition hover:bg-red-100 dark:border-red-500/40 dark:bg-red-500/10"
+                  aria-label="بارگذاری پیوست"
+                  title="بارگذاری پیوست"
+                >
+                  <img
+                    src="/images/icons/upload.svg"
+                    alt=""
+                    className="w-5 h-5"
+                    style={{
+                      filter:
+                        "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
+                    }}
+                  />
+                </button>
+              ) : (
+                <span className="mx-auto block h-9 w-9" aria-label="دارای پیوست" title="دارای پیوست" />
+              )}
             </td>
           </tr>
         );

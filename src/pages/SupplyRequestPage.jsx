@@ -893,55 +893,62 @@ export default function SupplyRequestPage() {
                 </Field>
               </div>
 
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRelatedPickIds((Array.isArray(form.relatedLetterIds) ? form.relatedLetterIds : []).map(String));
-                    setRelatedPickQuery("");
-                    setRelatedPickOpen(true);
-                  }}
-                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-black/10 bg-white px-4 text-sm transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
-                  title="اسناد مرتبط"
-                >
-                  <img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" />
-                  اسناد مرتبط
-                  <span className="text-xs text-neutral-500">({toFaDigits(form.relatedLetterIds.length)})</span>
-                </button>
-                {selectedRelatedLetters.length > 0 && (
-                  <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs">
-                    <span className="shrink-0 text-neutral-600 dark:text-neutral-300">اسناد مرتبط:</span>
-                    {selectedRelatedLetters.map((letter) => {
-                      const id = letterIdOf(letter);
-                      return (
-                        <span key={id} className="inline-flex h-8 max-w-[220px] items-center gap-2 rounded-lg border border-black/10 bg-white px-2 dark:border-white/10 dark:bg-white/5">
-                          <button
-                            type="button"
-                            onClick={() => setForm((prev) => ({ ...prev, relatedLetterIds: (prev.relatedLetterIds || []).filter((x) => String(x) !== String(id)) }))}
-                            className="grid h-4 w-4 shrink-0 place-items-center rounded-full text-red-500 transition hover:bg-red-50 dark:hover:bg-red-500/10"
-                            aria-label="حذف سند مرتبط"
-                            title="حذف سند مرتبط"
-                          >
-                            ×
-                          </button>
-                          <span dir="ltr" className="truncate font-sans font-semibold tabular-nums">
-                            {toFaDigits(letterNoOf(letter) || id)}
-                          </span>
-                        </span>
-                      );
-                    })}
+              <div className="mt-3 flex flex-wrap items-start gap-2">
+                <div>
+                  <div className={labelCls}>اسناد مرتبط</div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRelatedPickIds((Array.isArray(form.relatedLetterIds) ? form.relatedLetterIds : []).map(String));
+                        setRelatedPickQuery("");
+                        setRelatedPickOpen(true);
+                      }}
+                      className="inline-flex h-10 w-auto items-center gap-2 rounded-xl border border-black/10 bg-white px-4 text-sm transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
+                      title="اسناد مرتبط"
+                    >
+                      <img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" />
+                      اسناد مرتبط
+                      <span className="text-xs text-neutral-500">({toFaDigits(form.relatedLetterIds.length)})</span>
+                    </button>
+                    {selectedRelatedLetters.length > 0 && (
+                      <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs">
+                        {selectedRelatedLetters.map((letter) => {
+                          const id = letterIdOf(letter);
+                          return (
+                            <span key={id} className="inline-flex h-10 max-w-[220px] items-center gap-2 rounded-xl border border-black/10 bg-white px-3 dark:border-white/10 dark:bg-white/5">
+                              <button
+                                type="button"
+                                onClick={() => setForm((prev) => ({ ...prev, relatedLetterIds: (prev.relatedLetterIds || []).filter((x) => String(x) !== String(id)) }))}
+                                className="grid h-4 w-4 shrink-0 place-items-center rounded-full text-red-500 transition hover:bg-red-50 dark:hover:bg-red-500/10"
+                                aria-label="حذف سند مرتبط"
+                                title="حذف سند مرتبط"
+                              >
+                                ×
+                              </button>
+                              <span dir="ltr" className="truncate font-sans font-semibold tabular-nums">
+                                {toFaDigits(letterNoOf(letter) || id)}
+                              </span>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setUploadOpen(true)}
-                  disabled={uploading}
-                  className="grid h-10 w-10 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[0.03] disabled:opacity-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
-                  title="بارگذاری"
-                  aria-label="بارگذاری"
-                >
-                  <img src="/images/icons/upload.svg" alt="" className="h-5 w-5 dark:invert" />
-                </button>
+                </div>
+                <div>
+                  <div className={labelCls}>بارگذاری</div>
+                  <button
+                    type="button"
+                    onClick={() => setUploadOpen(true)}
+                    disabled={uploading}
+                    className="grid h-10 w-10 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[0.03] disabled:opacity-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
+                    title="بارگذاری"
+                    aria-label="بارگذاری"
+                  >
+                    <img src="/images/icons/upload.svg" alt="" className="h-5 w-5 dark:invert" />
+                  </button>
+                </div>
                 <div className="min-w-[240px] flex-1 md:flex-none">
                   <label className="flex min-w-0 items-center gap-2">
                     <span className="shrink-0 text-xs font-medium text-neutral-600 dark:text-neutral-300">ارسال درخواست تامین به:</span>
