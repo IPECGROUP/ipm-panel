@@ -50,7 +50,7 @@
 
 /* فونت روی کل سایت */
 :root {
-  --right-nav-space: 304px;
+  --right-nav-space: 96px;
   font-family: Vazir, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, "Noto Sans", sans-serif;
 }

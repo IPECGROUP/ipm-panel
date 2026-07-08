@@ -81,9 +81,8 @@ function RightNav() {
   });
 
   useEffect(() => {
-    const space = expanded ? "304px" : "96px";
-    document.documentElement.style.setProperty("--right-nav-space", space);
-  }, [expanded]);
+    document.documentElement.style.setProperty("--right-nav-space", "96px");
+  }, []);
 
   const toggleExpanded = () =>
     setExpanded((curr) => {
@@ -221,18 +220,18 @@ function RightNav() {
       ],
     },
     {
-      title: "مدیریت تامین و پشتیبانی",
+      title: "مدیریت تامین",
       items: [
         {
           type: "section",
           key: "supply",
-          label: "مدیریت تامین و پشتیبانی",
+          label: "مدیریت تامین",
           icon: <IcSupply />,
           active: supplyParentActive,
           items: [
             { to: "/supply/request", label: "درخواست تامین", hint: "ثبت و پیگیری درخواست تامین", icon: <IcSupplyRequest /> },
             { to: "/supply/actions", label: "اقدامات تامین", hint: "پیگیری اقدامات تامین", icon: <NavIcon src="/images/icons/egdamat-tamin.svg" /> },
-            { to: "/supply/dashboard", label: "داشبورد مدیریت تامین و پشتیبانی", hint: "نمای کلی تامین و پشتیبانی", icon: <IcProjectDashboard /> },
+            { to: "/supply/dashboard", label: "داشبورد مدیریت تامین", hint: "نمای کلی تامین", icon: <IcProjectDashboard /> },
           ],
         },
       ],
@@ -637,7 +636,7 @@ function RightNav() {
                 type="button"
                 className={mobileDockBtn(supplyParentActive)}
                 onClick={() => toggle("supply")}
-                aria-label="مدیریت تامین و پشتیبانی"
+                aria-label="مدیریت تامین"
               >
                 {open.supply ? <IcClose /> : <IcSupply />}
                 <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">

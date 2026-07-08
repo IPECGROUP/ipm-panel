@@ -110,7 +110,7 @@ export default function App() {
 
         <Route path="/supply/request" element={<SupplyRequestPage />} />
         <Route path="/supply/actions" element={<SupplyActionsPage />} />
-        <Route path="/supply/dashboard" element={<NavPlaceholderPage title="داشبورد مدیریت تامین و پشتیبانی" />} />
+        <Route path="/supply/dashboard" element={<NavPlaceholderPage title="داشبورد مدیریت تامین" />} />
 
         <Route path="/operations/equipment" element={<NavPlaceholderPage title="ماشین آلات و تجهیزات" />} />
         <Route path="/operations/history" element={<NavPlaceholderPage title="سوابق عملیات" />} />
