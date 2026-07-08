@@ -5035,14 +5035,14 @@ useEffect(() => {
   <div className={formOuterBoxCls}>
     <div
   className="
-    flex flex-wrap md:flex-nowrap items-stretch md:items-start gap-1
+    flex flex-wrap md:flex-nowrap items-stretch md:items-start gap-2
     overflow-visible
     md:flex-nowrap
     pb-1
   "
 >
   {/* نوع نامه */}
-  <div className="w-full md:shrink-0 md:w-[304px]">
+  <div className="w-full md:shrink-0 md:w-auto">
     <div className={labelSmCls}>نوع سند</div>
     <div className="flex items-center gap-1">
       {TABS.filter((x) => x.id !== "all").map((t) => {
