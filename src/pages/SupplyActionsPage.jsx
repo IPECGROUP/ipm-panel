@@ -586,17 +586,16 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
 function FileSummary({ files, uploading, onClick }) {
   const list = Array.isArray(files) ? files : [];
   if (uploading) return <span className="min-w-0 truncate text-xs text-neutral-500">در حال بارگذاری...</span>;
-  if (!list.length) return <span className="text-xs text-neutral-400">—</span>;
-  const lastName = list[list.length - 1]?.name || `فایل ${toFaDigits(list.length)}`;
+  const hasFiles = list.length > 0;
   return (
     <button
       type="button"
-      onClick={onClick}
-      className="inline-flex min-w-0 max-w-[150px] items-center gap-1 rounded-lg border border-black/10 bg-white px-2 py-1 text-xs transition hover:bg-black/[0.03] dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+      onClick={hasFiles ? onClick : undefined}
+      disabled={!hasFiles}
+      className="inline-flex h-7 shrink-0 items-center rounded-lg border border-black/10 bg-white px-2 text-[11px] text-neutral-700 transition hover:bg-black/[0.03] disabled:cursor-default disabled:text-neutral-400 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10 dark:disabled:text-neutral-500"
       title="نمایش فایل‌ها"
     >
-      <span className="min-w-0 truncate">{lastName}</span>
-      <span className="shrink-0 text-neutral-500">({toFaDigits(list.length)} فایل)</span>
+      ({toFaDigits(list.length)} فایل)
     </button>
   );
 }

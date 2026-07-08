@@ -1292,6 +1292,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
   };
 
   const targetRequired = choice === "approve" && !!nextRecipients.targetRoleKey;
+  const budgetLabelCls = "flex min-h-[34px] items-end text-[11px] leading-4";
   const reviewSectionTitle =
     stepKey === "project_manager"
       ? "بررسی نهایی(مدیر پروژه)"
@@ -1377,19 +1378,18 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                       <PreviewSection title={reviewSectionTitle}>
                         <div className="space-y-3 py-4">
                           <div className="grid gap-3 md:grid-cols-3">
-                            <Field label="کد بودجه">
+                            <Field label="کد بودجه" labelClassName={budgetLabelCls}>
                               <select dir="ltr" value={budgetCodeDraft} onChange={(event) => setBudgetCodeDraft(event.target.value)} className={inputCls}>
                                 <option value="">انتخاب کنید</option>
                                 {workflowBudgetItems.map((row) => (
                                   <option key={row.code} value={row.code}>
                                     {row.code}
-                                    {row.name ? ` - ${row.name}` : ""}
                                   </option>
                                 ))}
                               </select>
                             </Field>
-                            <ReadOnlyBox label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFaDigits(baseBudget) : "—"} ltr />
-                            <ReadOnlyBox label="باقی مانده نقدینگی تخصیص یافته" value="—" ltr />
+                            <ReadOnlyBox label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFaDigits(baseBudget) : "—"} ltr labelClassName={budgetLabelCls} />
+                            <ReadOnlyBox label="باقی مانده نقدینگی تخصیص یافته" value="—" ltr labelClassName={budgetLabelCls} />
                           </div>
                           <div className="rounded-2xl bg-neutral-100 p-3 dark:bg-white/5">
                             <div className="space-y-2">
@@ -1428,9 +1428,9 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                             </div>
                           </div>
                           <div className="grid gap-3 md:grid-cols-3">
-                            <ReadOnlyBox label="کد بودجه" value={item.budgetCode || "—"} ltr />
-                            <ReadOnlyBox label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFaDigits(baseBudget) : "—"} ltr />
-                            <ReadOnlyBox label="باقی مانده نقدینگی تخصیص یافته" value="—" ltr />
+                            <ReadOnlyBox label="کد بودجه" value={item.budgetCode || "—"} ltr labelClassName={budgetLabelCls} />
+                            <ReadOnlyBox label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFaDigits(baseBudget) : "—"} ltr labelClassName={budgetLabelCls} />
+                            <ReadOnlyBox label="باقی مانده نقدینگی تخصیص یافته" value="—" ltr labelClassName={budgetLabelCls} />
                           </div>
                           <div className="grid gap-3 md:grid-cols-2">
                             <Field label="مسئول اقدام">
@@ -1653,9 +1653,9 @@ function PreviewRow({ label, value, ltr }) {
   );
 }
 
-function ReadOnlyBox({ label, value, ltr }) {
+function ReadOnlyBox({ label, value, ltr, labelClassName }) {
   return (
-    <Field label={label}>
+    <Field label={label} labelClassName={labelClassName}>
       <div dir={ltr ? "ltr" : "rtl"} className={`${inputCls} flex items-center ${ltr ? "justify-end" : "justify-start"} bg-neutral-50 dark:bg-white/5`}>
         {value || "—"}
       </div>
@@ -1783,10 +1783,10 @@ function historySentence(entry, item) {
   return `درخواست در تاریخ ${date} ساعت ${time} توسط ${actor} ${action}.`;
 }
 
-function Field({ label, required, children }) {
+function Field({ label, required, children, labelClassName }) {
   return (
     <label className="block min-w-0">
-      <div className={labelCls}>
+      <div className={`${labelCls} ${labelClassName || ""}`}>
         {label}
         {required && <span className="mr-1 text-red-500">*</span>}
       </div>
