@@ -171,12 +171,18 @@ function fromToOf(letter) {
 function registrationMessage(info) {
   if (!info) return "";
   if (info.message) return info.message;
-  const date = info.dateJalali || info.date || "";
-  const time = info.time || "";
+  const rawDate = normalizeDigits(info.dateJalali || info.date || "").replaceAll("-", "/");
+  const dateParts = rawDate.split("/");
+  const date =
+    dateParts.length === 3
+      ? `${dateParts[0]}/${String(dateParts[1]).padStart(2, "0")}/${String(dateParts[2]).padStart(2, "0")}`
+      : rawDate;
+  const time = normalizeDigits(info.time || "");
   const userName = info.userName || info.username || "کاربر";
-  const unitName = info.unitName || "نامشخص";
+  const unitName = info.unitName || "";
   const roleName = info.roleName || "";
-  return `درخواست شما در تاریخ ${toFaDigits(String(date).replaceAll("-", "/"))} در ساعت ${toFaDigits(time)} توسط ${userName}${roleName ? ` با نقش ${roleName}` : ""} واحد ${unitName} ثبت گردید`;
+  const serial = info.serial || info.requestSerial || info.requestNo || info.number || "";
+  return `درخواست${serial ? ` شماره ${toFaDigits(serial)}` : ""} در تاریخ ${toFaDigits(date)} در ساعت ${toFaDigits(time)} توسط ${userName}${roleName ? ` با نقش ${roleName}` : ""}${unitName ? ` واحد ${unitName}` : ""} ثبت گردید`;
 }
 
 function clientRegistrationInfo() {
@@ -610,7 +616,7 @@ export default function SupplyRequestPage() {
       };
       const data = await api("/supply-requests", { method: "POST", body: JSON.stringify(payload) });
       if (data?.item) setItems((prev) => [data.item, ...prev]);
-      setSubmitNotice(data?.item?.registrationInfo || null);
+      setSubmitNotice(data?.item?.registrationInfo ? { ...data.item.registrationInfo, serial: data.item.serial } : null);
       setOk("درخواست تامین با موفقیت ثبت شد.");
       closeForm();
       await loadItems();
@@ -866,6 +872,7 @@ export default function SupplyRequestPage() {
                     onChange={(value) => setField("needDateJalali", value)}
                     buttonClassName={`${inputCls} flex items-center justify-between`}
                     placeholder="انتخاب تاریخ"
+                    preventDefaultToday
                   />
                 </Field>
                 <Field label="برآورد هزینه اولیه" required>

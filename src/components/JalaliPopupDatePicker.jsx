@@ -61,11 +61,13 @@ export default function JalaliPopupDatePicker({
   hideIcon,
   disableFuture = false,
   placeholder = "",
+  preventDefaultToday = false,
 }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
   const popRef = useRef(null);
   const [pos, setPos] = useState({ top: 0, right: 0 });
+  const [touched, setTouched] = useState(false);
 
   const normalizedValue = normalizePickerValue(value);
   const nowParts = useMemo(() => getJalaliPartsFromDate(new Date()), []);
@@ -113,6 +115,8 @@ export default function JalaliPopupDatePicker({
 
   useEffect(() => {
     if (!open) return;
+    setTouched(false);
+
     const onDoc = (e) => {
       const t = e.target;
       if (popRef.current && popRef.current.contains(t)) return;
@@ -276,7 +280,14 @@ export default function JalaliPopupDatePicker({
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>روز</div>
-                <select value={jd} onChange={(e) => setJd(Number(e.target.value))} className={"w-full h-11 px-3 rounded-xl border outline-none " + (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-neutral-900")}>
+                <select
+                  value={jd}
+                  onChange={(e) => {
+                    setTouched(true);
+                    setJd(Number(e.target.value));
+                  }}
+                  className={"w-full h-11 px-3 rounded-xl border outline-none " + (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-neutral-900")}
+                >
                   {days.map((d) => (
                     <option key={d} value={d}>
                       {toFaDigits(d)}
@@ -287,7 +298,14 @@ export default function JalaliPopupDatePicker({
 
               <div>
                 <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>ماه</div>
-                <select value={jm} onChange={(e) => setJm(Number(e.target.value))} className={"w-full h-11 px-3 rounded-xl border outline-none " + (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-neutral-900")}>
+                <select
+                  value={jm}
+                  onChange={(e) => {
+                    setTouched(true);
+                    setJm(Number(e.target.value));
+                  }}
+                  className={"w-full h-11 px-3 rounded-xl border outline-none " + (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-neutral-900")}
+                >
                   {months.map((m) => (
                     <option key={m} value={m}>
                       {PERSIAN_MONTHS[m - 1]}
@@ -298,7 +316,14 @@ export default function JalaliPopupDatePicker({
 
               <div>
                 <div className={theme === "dark" ? "text-white/70 text-xs mb-1" : "text-neutral-600 text-xs mb-1"}>سال</div>
-                <select value={jy} onChange={(e) => setJy(Number(e.target.value))} className={"w-full h-11 px-3 rounded-xl border outline-none " + (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-neutral-900")}>
+                <select
+                  value={jy}
+                  onChange={(e) => {
+                    setTouched(true);
+                    setJy(Number(e.target.value));
+                  }}
+                  className={"w-full h-11 px-3 rounded-xl border outline-none " + (theme === "dark" ? "border-white/15 bg-white/5 text-white" : "border-black/10 bg-white text-neutral-900")}
+                >
                   {years.map((y) => (
                     <option key={y} value={y}>
                       {toFaDigits(y)}
@@ -317,6 +342,10 @@ export default function JalaliPopupDatePicker({
                 <button
                   type="button"
                   onClick={() => {
+                    if (preventDefaultToday && !normalizedValue && !touched) {
+                      setOpen(false);
+                      return;
+                    }
                     onChange(preview);
                     setOpen(false);
                   }}

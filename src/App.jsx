@@ -21,6 +21,7 @@ import BudgetAllocationPage from "./pages/BudgetAllocationPage.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
 import LettersPage from "./pages/LettersPage.jsx";
 import SupplyRequestPage from "./pages/SupplyRequestPage.jsx";
+import SupplyActionsPage from "./pages/SupplyActionsPage.jsx";
 import TestEditorPage from "./pages/TestEditorPage.jsx";
 import RoznegarPgae from "./pages/RoznegarPgae.jsx";
 import QualityManagementPage from "./pages/QualityManagementPage.jsx";
@@ -108,7 +109,7 @@ export default function App() {
         <Route path="/finance/financial-management-dashboard" element={<NavPlaceholderPage title="داشبورد مدیریت مالی" />} />
 
         <Route path="/supply/request" element={<SupplyRequestPage />} />
-        <Route path="/supply/actions" element={<NavPlaceholderPage title="اقدامات تامین" />} />
+        <Route path="/supply/actions" element={<SupplyActionsPage />} />
         <Route path="/supply/dashboard" element={<NavPlaceholderPage title="داشبورد مدیریت تامین و پشتیبانی" />} />
 
         <Route path="/operations/equipment" element={<NavPlaceholderPage title="ماشین آلات و تجهیزات" />} />
