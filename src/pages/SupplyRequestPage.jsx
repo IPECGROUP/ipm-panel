@@ -351,14 +351,18 @@ export default function SupplyRequestPage() {
 
   const previewSerial = useMemo(() => {
     const yy = jalaliYY(form.dateJalali);
+    const projectCode = normalizeDigits(selectedProject?.code || "").replace(/[^\d]/g, "");
+    const prefix = projectCode ? `${yy}/${projectCode}` : yy;
     let maxSeq = 0;
-    const re = new RegExp(`^${yy}/(?:\\d{3}/)?(\\d{3})$`);
+    const re = projectCode
+      ? new RegExp(`^${yy}/${projectCode.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/(\\d{3})$`)
+      : new RegExp(`^${yy}/(?:\\d{3}/)?(\\d{3})$`);
     items.forEach((item) => {
       const m = normalizeDigits(item?.serial || "").match(re);
       if (m) maxSeq = Math.max(maxSeq, Number(m[1]) || 0);
     });
-    return `${yy}/${String(maxSeq + 1).padStart(3, "0")}`;
-  }, [form.dateJalali, items]);
+    return `${prefix}/${String(maxSeq + 1).padStart(3, "0")}`;
+  }, [form.dateJalali, items, selectedProject?.code]);
 
   const loadItems = useCallback(async () => {
     if (authLoading) return;
@@ -900,7 +904,7 @@ export default function SupplyRequestPage() {
                 </Field>
               </div>
 
-              <div className="mt-3 flex flex-wrap items-start gap-2">
+              <div className="mt-3 flex flex-wrap items-end gap-2">
                 <div>
                   <div className={labelCls}>اسناد مرتبط</div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -956,7 +960,7 @@ export default function SupplyRequestPage() {
                   </button>
                 </div>
                 <div className="min-w-[240px] flex-1 md:flex-none">
-                  <label className="flex min-w-0 items-center gap-2">
+                  <label className="flex h-10 min-w-0 items-center gap-2">
                     <span className="shrink-0 text-xs font-medium text-neutral-600 dark:text-neutral-300">ارسال درخواست تامین به:</span>
                     <select
                       value={form.targetAssigneeUserId}
@@ -1281,15 +1285,21 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
         : stepKey === "project_manager"
           ? {
               finalAmount: parseMoney(finalAmount),
-              deadlineDate,
-              ccUserIds,
+              actionText,
             }
           : {};
     onAction(choice, choice === "approve" ? { ...payload, targetAssigneeUserId: targetAssigneeUserId || null } : payload);
   };
 
   const targetRequired = choice === "approve" && !!nextRecipients.targetRoleKey;
-  const reviewSectionTitle = `بررسی اولیه (${STEP_LABELS[stepKey] || "مرحله جاری"})`;
+  const reviewSectionTitle =
+    stepKey === "project_manager"
+      ? "بررسی نهایی(مدیر پروژه)"
+      : stepKey === "project_control"
+        ? `بررسی اولیه (${STEP_LABELS[stepKey] || "مرحله جاری"})`
+        : stepKey === "commercial"
+          ? "اقدام تامین(بازرگانی)"
+          : `بررسی (${STEP_LABELS[stepKey] || "مرحله جاری"})`;
   const noteRequired = ["return", "reject"].includes(choice);
   const actionSubmitDisabled =
     !choice ||
@@ -1366,20 +1376,23 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                     <>
                       <PreviewSection title={reviewSectionTitle}>
                         <div className="space-y-3 py-4">
-                          <Field label="کد بودجه">
-                            <select dir="ltr" value={budgetCodeDraft} onChange={(event) => setBudgetCodeDraft(event.target.value)} className={inputCls}>
-                              <option value="">انتخاب کنید</option>
-                              {workflowBudgetItems.map((row) => (
-                                <option key={row.code} value={row.code}>
-                                  {row.code}
-                                  {row.name ? ` - ${row.name}` : ""}
-                                </option>
-                              ))}
-                            </select>
-                          </Field>
-                          <ReadOnlyBox label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFaDigits(baseBudget) : "—"} ltr />
-                          <ReadOnlyBox label="باقی مانده نقدینگی تخصیص یافته به پروژه" value="—" ltr />
-                          <div className="space-y-2 pt-2">
+                          <div className="grid gap-3 md:grid-cols-3">
+                            <Field label="کد بودجه">
+                              <select dir="ltr" value={budgetCodeDraft} onChange={(event) => setBudgetCodeDraft(event.target.value)} className={inputCls}>
+                                <option value="">انتخاب کنید</option>
+                                {workflowBudgetItems.map((row) => (
+                                  <option key={row.code} value={row.code}>
+                                    {row.code}
+                                    {row.name ? ` - ${row.name}` : ""}
+                                  </option>
+                                ))}
+                              </select>
+                            </Field>
+                            <ReadOnlyBox label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFaDigits(baseBudget) : "—"} ltr />
+                            <ReadOnlyBox label="باقی مانده نقدینگی تخصیص یافته" value="—" ltr />
+                          </div>
+                          <div className="rounded-2xl bg-neutral-100 p-3 dark:bg-white/5">
+                            <div className="space-y-2">
                             <ActionOptionRow checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy}>
                               <TargetAssigneePicker
                                 targetRoleKey={nextRecipients.targetRoleKey}
@@ -1392,6 +1405,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                               />
                             </ActionOptionRow>
                             <ActionOptionRow checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت به درخواست کننده" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
+                            </div>
                           </div>
                           <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={actionSubmitDisabled} onSubmit={submitSelectedAction} />
                         </div>
@@ -1401,63 +1415,44 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                     <>
                       <PreviewSection title={reviewSectionTitle}>
                         <div className="space-y-3 py-4">
-                          <div className="space-y-3">
+                          <div className="grid items-end gap-3 md:grid-cols-[minmax(180px,240px)_1fr]">
                             <Field label="برآورد هزینه نهایی">
-                              <input dir="ltr" inputMode="numeric" value={toFaDigits(finalAmount)} onChange={(event) => setFinalAmount(formatMoney(event.target.value))} className={inputCls} placeholder="۰" />
-                            </Field>
-                            <ReadOnlyBox label="ارز" value="ریال" />
-                          </div>
-                          <div>
-                            <div className="mb-2 text-sm font-semibold">الزامات تایید</div>
-                            <div className="min-h-10 rounded-xl border border-black/10 dark:border-white/10" />
-                          </div>
-                          <div className="space-y-3">
-                            <ReadOnlyBox label="کد بودجه" value={item.budgetCode || "—"} ltr />
-                            <ReadOnlyBox label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFaDigits(baseBudget) : "—"} ltr />
-                            <ReadOnlyBox label="باقی مانده نقدینگی تخصیص یافته به پروژه" value="—" ltr />
-                          </div>
-                          <Field label="اقدام">
-                            <select value={targetAssigneeUserId} onChange={(event) => setTargetAssigneeUserId(event.target.value)} disabled={nextRecipientsLoading || nextRecipients.targetRoleKey !== "commercial"} className={inputCls}>
-                              <option value="">{nextRecipientsLoading ? "در حال دریافت..." : "انتخاب کاربر بازرگانی"}</option>
-                              {nextRecipients.users.map((user) => (
-                                <option key={user.id} value={user.id}>
-                                  {user.name || user.username || user.email || `کاربر #${user.id}`}
-                                </option>
-                              ))}
-                            </select>
-                          </Field>
-                          <div className="space-y-3">
-                            <Field label="مهلت اقدام">
-                              <JalaliPopupDatePicker value={deadlineDate} onChange={setDeadlineDate} buttonClassName={`${inputCls} flex items-center justify-between gap-2`} />
+                              <div className="flex h-11 overflow-hidden rounded-xl border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">
+                                <input dir="ltr" inputMode="numeric" value={toFaDigits(finalAmount)} onChange={(event) => setFinalAmount(formatMoney(event.target.value))} className="min-w-0 flex-1 bg-transparent px-3 text-left text-sm outline-none" placeholder="۰" />
+                                <span className="flex h-full shrink-0 items-center border-r border-black/10 px-3 text-xs text-neutral-500 dark:border-white/10 dark:text-neutral-300">ریال</span>
+                              </div>
                             </Field>
                             <div>
-                              <div className={labelCls}>رونوشت جهت اطلاع</div>
-                              <button type="button" onClick={() => setCcOpen((open) => !open)} className="inline-flex h-11 items-center gap-2 rounded-xl border border-black/10 bg-white px-3 text-sm transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10">
-                                <span className="grid h-6 w-6 place-items-center rounded-lg bg-black text-white dark:bg-white dark:text-black">+</span>
-                                <span>رونوشت جهت اطلاع</span>
-                              </button>
-                              {ccUserIds.length ? <div className="mt-2 text-xs text-neutral-500">{toFaDigits(ccUserIds.length)} کاربر انتخاب شده</div> : null}
-                              {ccOpen && (
-                                <div className="mt-2 max-h-52 overflow-auto rounded-xl border border-black/10 p-2 dark:border-white/10">
-                                  {ccLoading ? <div className="p-3 text-xs text-neutral-500">در حال دریافت...</div> : ccUsers.map((u) => {
-                                    const id = String(u.id);
-                                    const checked = ccUserIds.includes(id);
-                                    const name = u.name || u.username || u.email || `کاربر #${id}`;
-                                    return (
-                                      <button key={id} type="button" onClick={() => toggleCcUser(id)} className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-right text-sm hover:bg-black/[0.03] dark:hover:bg-white/10">
-                                        <span>{name}</span>
-                                        <span className={`grid h-5 w-5 place-items-center rounded-md border ${checked ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/15 dark:border-white/15"}`}>{checked ? "✓" : ""}</span>
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              )}
+                              <div className={labelCls}>الزامات تایید</div>
+                              <div className="flex h-11 items-center rounded-xl border border-black/10 bg-neutral-50 px-3 text-sm text-neutral-500 dark:border-white/10 dark:bg-white/5 dark:text-neutral-300">—</div>
                             </div>
                           </div>
-                          <div className="space-y-2 pt-2">
+                          <div className="grid gap-3 md:grid-cols-3">
+                            <ReadOnlyBox label="کد بودجه" value={item.budgetCode || "—"} ltr />
+                            <ReadOnlyBox label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFaDigits(baseBudget) : "—"} ltr />
+                            <ReadOnlyBox label="باقی مانده نقدینگی تخصیص یافته" value="—" ltr />
+                          </div>
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <Field label="مسئول اقدام">
+                              <select value={targetAssigneeUserId} onChange={(event) => setTargetAssigneeUserId(event.target.value)} disabled={nextRecipientsLoading || nextRecipients.targetRoleKey !== "commercial"} className={inputCls}>
+                                <option value="">{nextRecipientsLoading ? "در حال دریافت..." : "انتخاب کاربر بازرگانی"}</option>
+                                {nextRecipients.users.map((user) => (
+                                  <option key={user.id} value={user.id}>
+                                    {user.name || user.username || user.email || `کاربر #${user.id}`}
+                                  </option>
+                                ))}
+                              </select>
+                            </Field>
+                            <Field label="توضیح">
+                              <input value={actionText} onChange={(event) => setActionText(event.target.value)} className={inputCls} placeholder="توضیح..." />
+                            </Field>
+                          </div>
+                          <div className="rounded-2xl bg-neutral-100 p-3 dark:bg-white/5">
+                            <div className="space-y-2">
                             <ActionOptionRow checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy} />
                             <ActionOptionRow checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت به درخواست کننده" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
                             <ActionOptionRow checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست تامین" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
+                            </div>
                           </div>
                           <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={actionSubmitDisabled} onSubmit={submitSelectedAction} />
                         </div>
@@ -1468,7 +1463,6 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                       <div className="space-y-3 py-4">
                         <ReadOnlyBox label="کد بودجه" value={item.budgetCode || "—"} ltr />
                         <ReadOnlyBox label="مبلغ نهایی" value={toFaDigits(Number(item.amount || 0).toLocaleString("en-US"))} ltr />
-                        <ReadOnlyBox label="مهلت اقدام" value={meta.deadlineDate ? toFaDigits(String(meta.deadlineDate).replaceAll("-", "/")) : "—"} />
                         <div className="space-y-2 pt-2">
                           <ActionOptionRow checked={choice === "approve"} onClick={() => setChoice("approve")} label="انجام شد" disabled={actionBusy} />
                         </div>
@@ -1671,11 +1665,11 @@ function ReadOnlyBox({ label, value, ltr }) {
 
 function ActionOption({ checked, disabled, onClick, label }) {
   return (
-    <button type="button" disabled={disabled} onClick={onClick} className="inline-flex h-8 shrink-0 items-center gap-2 rounded-lg px-1 text-sm text-neutral-800 transition hover:text-black disabled:cursor-not-allowed disabled:opacity-45 dark:text-neutral-100 dark:hover:text-white">
-      <span>{label}</span>
+    <button type="button" disabled={disabled} onClick={onClick} className="inline-flex h-8 shrink-0 items-center justify-end gap-2 rounded-lg px-1 text-sm text-neutral-800 transition hover:text-black disabled:cursor-not-allowed disabled:opacity-45 dark:text-neutral-100 dark:hover:text-white">
       <span className={`grid h-4 w-4 place-items-center rounded-full border ${checked ? "border-black dark:border-white" : "border-neutral-400 dark:border-neutral-500"}`}>
         {checked ? <span className="h-2.5 w-2.5 rounded-full bg-black dark:bg-white" /> : null}
       </span>
+      <span>{label}</span>
     </button>
   );
 }

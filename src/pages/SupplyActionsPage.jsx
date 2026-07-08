@@ -72,6 +72,7 @@ export default function SupplyActionsPage() {
   const [savingIds, setSavingIds] = useState({});
   const [uploadingIds, setUploadingIds] = useState({});
   const [uploadTarget, setUploadTarget] = useState(null);
+  const [filesModal, setFilesModal] = useState(null);
 
   const api = useCallback(
     async (path, options = {}) => {
@@ -152,7 +153,7 @@ export default function SupplyActionsPage() {
         }),
       });
       replaceItem(data?.item);
-      setEditingIds((prev) => ({ ...prev, [key]: false }));
+      setEditingIds((prev) => ({ ...prev, [key]: true }));
     } catch {
       setError("ذخیره اقدام تامین انجام نشد.");
     } finally {
@@ -245,10 +246,13 @@ export default function SupplyActionsPage() {
       <section className="overflow-hidden rounded-2xl border border-black/10 bg-white p-3 text-neutral-900 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100 md:p-4">
         <div className="mb-4 flex min-w-0 items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-black text-white dark:bg-white dark:text-black">
-              <img src={PAGE_ICON} alt="" className="h-6 w-6 invert dark:invert-0" />
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
+              <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
             </span>
-            <h1 className="truncate text-base font-bold md:text-lg">اقدامات تامین</h1>
+            <span className="min-w-0">
+              <span className="block truncate text-base font-bold md:text-lg">اقدامات تامین</span>
+              <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت تامین و پشتیبانی</span>
+            </span>
           </div>
         </div>
 
@@ -315,6 +319,7 @@ export default function SupplyActionsPage() {
                               onEdit={(action) => setEditingIds((prev) => ({ ...prev, [`${item.id}:${action.id}`]: true }))}
                               onDelete={deleteAction}
                               onOpenUpload={(action) => setUploadTarget({ requestId: item.id, action })}
+                              onOpenFiles={(action) => setFilesModal({ files: actionFiles(action), preview: null })}
                             />
                           </td>
                         </tr>
@@ -360,6 +365,7 @@ export default function SupplyActionsPage() {
                         onEdit={(action) => setEditingIds((prev) => ({ ...prev, [`${item.id}:${action.id}`]: true }))}
                         onDelete={deleteAction}
                         onOpenUpload={(action) => setUploadTarget({ requestId: item.id, action })}
+                        onOpenFiles={(action) => setFilesModal({ files: actionFiles(action), preview: null })}
                         compact
                       />
                     </div>
@@ -381,11 +387,19 @@ export default function SupplyActionsPage() {
           onClose={() => setUploadTarget(null)}
         />
       )}
+      {filesModal && (
+        <SupplyActionFilesModal
+          files={filesModal.files}
+          preview={filesModal.preview}
+          onPreview={(file) => setFilesModal((prev) => ({ ...(prev || {}), preview: file }))}
+          onClose={() => setFilesModal(null)}
+        />
+      )}
     </div>
   );
 }
 
-function ActionsGrid({ item, editingIds, savingIds, uploadingIds, onAdd, onPatch, onPersist, onEdit, onDelete, onOpenUpload, compact = false }) {
+function ActionsGrid({ item, editingIds, savingIds, uploadingIds, onAdd, onPatch, onPersist, onEdit, onDelete, onOpenUpload, onOpenFiles, compact = false }) {
   const actions = Array.isArray(item?.actions) ? item.actions : [];
   const requestId = item?.id;
 
@@ -410,6 +424,7 @@ function ActionsGrid({ item, editingIds, savingIds, uploadingIds, onAdd, onPatch
             onEdit={onEdit}
             onDelete={onDelete}
             onOpenUpload={onOpenUpload}
+            onOpenFiles={onOpenFiles}
             compact
           />
         ))}
@@ -460,6 +475,7 @@ function ActionsGrid({ item, editingIds, savingIds, uploadingIds, onAdd, onPatch
                 onEdit={onEdit}
                 onDelete={onDelete}
                 onOpenUpload={onOpenUpload}
+                onOpenFiles={onOpenFiles}
               />
             ))
           )}
@@ -469,13 +485,12 @@ function ActionsGrid({ item, editingIds, savingIds, uploadingIds, onAdd, onPatch
   );
 }
 
-function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingIds, onPatch, onPersist, onEdit, onDelete, onOpenUpload, compact = false }) {
+function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingIds, onPatch, onPersist, onEdit, onDelete, onOpenUpload, onOpenFiles, compact = false }) {
   const key = `${requestId}:${action.id}`;
   const editable = action.isNew || editingIds[key];
   const saving = savingIds[key];
   const uploading = uploadingIds[key];
   const files = actionFiles(action);
-  const fileName = files[files.length - 1]?.name || "";
 
   const patchAndPersist = (patch) => {
     const next = { ...action, ...patch };
@@ -507,7 +522,7 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
           </select>
           <div className="flex items-center justify-between gap-2">
             <FileButton disabled={!editable || uploading} onClick={() => onOpenUpload(action)} />
-            <span className="min-w-0 truncate text-xs text-neutral-500">{uploading ? "در حال بارگذاری..." : fileName || "—"}</span>
+            <FileSummary files={files} uploading={uploading} onClick={() => onOpenFiles(action)} />
             <RowActionIconBtn action="edit" onClick={() => onEdit(action)} size={32} iconSize={15} />
             <RowActionIconBtn action="delete" onClick={() => onDelete(requestId, action)} size={32} iconSize={15} />
           </div>
@@ -554,13 +569,7 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
       <td className="border-b border-neutral-300 px-2 dark:border-neutral-700">
         <div className="flex items-center justify-center gap-2">
           <FileButton disabled={!editable || uploading} onClick={() => onOpenUpload(action)} />
-          {fileName ? (
-            <a href={files[files.length - 1]?.url || "#"} target="_blank" rel="noreferrer" className="max-w-[70px] truncate text-xs underline-offset-4 hover:underline">
-              {fileName}
-            </a>
-          ) : (
-            <span className="text-xs text-neutral-400">{uploading ? "..." : "—"}</span>
-          )}
+          <FileSummary files={files} uploading={uploading} onClick={() => onOpenFiles(action)} />
         </div>
       </td>
       <td className="border-b border-neutral-300 px-2 dark:border-neutral-700">
@@ -571,6 +580,24 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
         </div>
       </td>
     </tr>
+  );
+}
+
+function FileSummary({ files, uploading, onClick }) {
+  const list = Array.isArray(files) ? files : [];
+  if (uploading) return <span className="min-w-0 truncate text-xs text-neutral-500">در حال بارگذاری...</span>;
+  if (!list.length) return <span className="text-xs text-neutral-400">—</span>;
+  const lastName = list[list.length - 1]?.name || `فایل ${toFaDigits(list.length)}`;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex min-w-0 max-w-[150px] items-center gap-1 rounded-lg border border-black/10 bg-white px-2 py-1 text-xs transition hover:bg-black/[0.03] dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+      title="نمایش فایل‌ها"
+    >
+      <span className="min-w-0 truncate">{lastName}</span>
+      <span className="shrink-0 text-neutral-500">({toFaDigits(list.length)} فایل)</span>
+    </button>
   );
 }
 
@@ -586,6 +613,83 @@ function FileButton({ disabled, onClick }) {
     >
       <img src="/images/icons/upload.svg" alt="" className="h-4 w-4 dark:invert" />
     </button>
+  );
+}
+
+function isImageFile(file) {
+  const type = String(file?.type || "").toLowerCase();
+  const url = String(file?.url || "").toLowerCase();
+  return type.startsWith("image/") || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(url);
+}
+
+function isPdfFile(file) {
+  const type = String(file?.type || "").toLowerCase();
+  const url = String(file?.url || "").toLowerCase();
+  return type.includes("pdf") || /\.pdf($|\?)/i.test(url);
+}
+
+function SupplyActionFilesModal({ files, preview, onPreview, onClose }) {
+  const list = Array.isArray(files) ? files : [];
+  const current = preview || list[0] || null;
+  return (
+    <div dir="rtl" className="fixed inset-0 z-[10001] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/45 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative grid w-full max-w-[760px] overflow-hidden rounded-2xl bg-white text-neutral-900 shadow-2xl dark:bg-neutral-900 dark:text-neutral-100 md:grid-cols-[240px_1fr]">
+        <div className="border-b border-black/10 p-3 dark:border-white/10 md:border-b-0 md:border-l">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <div className="text-sm font-bold">فایل‌های اقدام</div>
+            <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black" title="بستن" aria-label="بستن">
+              <img src="/images/icons/bastan.svg" alt="" className="h-4 w-4 invert dark:invert-0" />
+            </button>
+          </div>
+          <div className="max-h-[56vh] space-y-2 overflow-auto">
+            {list.length ? (
+              list.map((file, index) => (
+                <button
+                  key={`${file.url || file.name || index}-${index}`}
+                  type="button"
+                  onClick={() => onPreview(file)}
+                  className={`block w-full truncate rounded-xl border px-3 py-2 text-right text-xs transition ${
+                    current?.url === file.url
+                      ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
+                      : "border-black/10 hover:bg-black/[0.03] dark:border-white/10 dark:hover:bg-white/10"
+                  }`}
+                  title={file.name || ""}
+                >
+                  {file.name || `فایل ${toFaDigits(index + 1)}`}
+                </button>
+              ))
+            ) : (
+              <div className="rounded-xl border border-dashed border-black/10 p-4 text-center text-xs text-neutral-500 dark:border-white/10">فایلی ثبت نشده است.</div>
+            )}
+          </div>
+        </div>
+
+        <div className="min-h-[320px] p-3">
+          {current?.url ? (
+            <div className="flex h-full min-h-[320px] flex-col gap-3">
+              <div className="truncate text-xs text-neutral-500 dark:text-neutral-400">{current.name || "فایل"}</div>
+              <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-black/10 bg-neutral-50 dark:border-white/10 dark:bg-white/5">
+                {isImageFile(current) ? (
+                  <img src={current.url} alt={current.name || ""} className="h-full max-h-[56vh] w-full object-contain" />
+                ) : isPdfFile(current) ? (
+                  <iframe title="supply_action_file_preview" src={`${current.url}#view=FitH`} className="h-[56vh] w-full bg-white" />
+                ) : (
+                  <div className="flex h-[320px] flex-col items-center justify-center gap-3 text-sm text-neutral-500">
+                    <div>پیش‌نمایش این نوع فایل در مرورگر ممکن نیست.</div>
+                    <a href={current.url} target="_blank" rel="noreferrer" className="rounded-xl bg-black px-4 py-2 text-white dark:bg-white dark:text-black">
+                      باز کردن فایل
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex h-[320px] items-center justify-center text-sm text-neutral-500">فایلی برای نمایش انتخاب نشده است.</div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
