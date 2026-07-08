@@ -5035,14 +5035,14 @@ useEffect(() => {
   <div className={formOuterBoxCls}>
     <div
   className="
-    flex flex-wrap md:flex-nowrap items-stretch md:items-start gap-2
+    flex flex-wrap md:flex-nowrap items-stretch md:items-start gap-1
     overflow-visible
     md:flex-nowrap
     pb-1
   "
 >
   {/* نوع نامه */}
-  <div className="w-full md:shrink-0 md:w-[320px]">
+  <div className="w-full md:shrink-0 md:w-[304px]">
     <div className={labelSmCls}>نوع سند</div>
     <div className="flex items-center gap-1">
       {TABS.filter((x) => x.id !== "all").map((t) => {
@@ -5504,7 +5504,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
           type="button"
           onClick={openRelatedPicker}
           className={
-            "h-10 w-10 shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
+            "h-10 w-[76px] shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
             (theme === "dark"
               ? "border-white/15 bg-white/5 hover:bg-white/10"
               : "border-black/10 bg-white hover:bg-black/[0.02]")
@@ -5539,7 +5539,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
           type="button"
           onClick={openRelatedPicker}
           className={
-            "h-10 w-10 shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
+            "h-10 w-[76px] shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
             (theme === "dark"
               ? "border-white/15 bg-white/5 hover:bg-white/10"
               : "border-black/10 bg-white hover:bg-black/[0.02]")
