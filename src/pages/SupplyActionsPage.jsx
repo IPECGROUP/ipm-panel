@@ -251,7 +251,7 @@ export default function SupplyActionsPage() {
               <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
             </span>
             <span className="min-w-0">
-              <span className="block truncate text-base font-bold md:text-lg">اقدامات تامین</span>
+              <span className="block truncate text-base font-bold md:text-lg">کارهای در دست اقدام</span>
               <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت تامین و پشتیبانی</span>
             </span>
           </div>
@@ -384,11 +384,11 @@ function SupplyActionsModal({ item, onClose, ...actionsProps }) {
   return (
     <div dir="rtl" className="fixed inset-0 z-[9999] flex items-center justify-center p-3 md:p-6">
       <div className="absolute inset-0 bg-black/45 backdrop-blur-sm" onClick={onClose} />
-      <div className="supply-actions-modal relative flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
+      <div className="supply-actions-modal relative flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
         <header className="flex shrink-0 items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10">
           <div>
-            <h2 className="text-sm font-bold md:text-base">گزارش اقدامات تامین</h2>
-            <p className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">ثبت و پیگیری اقدامات انجام‌شده برای درخواست</p>
+            <h2 className="text-sm font-bold md:text-base">کارهای در دست اقدام</h2>
+            <p className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">ثبت و پیگیری اقدامات درخواست</p>
           </div>
           <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-xl border border-black/10 transition hover:bg-black/[0.04] dark:border-white/10 dark:hover:bg-white/10" title="بستن" aria-label="بستن">
             <img src="/images/icons/bastan.svg" alt="" className="h-4 w-4 dark:invert" />
@@ -396,21 +396,49 @@ function SupplyActionsModal({ item, onClose, ...actionsProps }) {
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-5">
-          <section className="grid gap-3 rounded-2xl border border-black/5 bg-neutral-100 p-4 dark:border-white/5 dark:bg-white/[0.06] md:grid-cols-[1fr_auto]">
-            <div className="min-w-0">
-              <div className="text-[11px] text-neutral-500 dark:text-neutral-400">موضوع درخواست</div>
-              <div className="mt-1 truncate text-sm font-semibold">{item.title || "—"}</div>
-              <div className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">{projectLabel(item)}</div>
-            </div>
-            <div className="flex items-center gap-5 md:justify-end">
-              <div><div className="text-[11px] text-neutral-500">شماره</div><div dir="ltr" className="mt-1 font-sans text-xs tabular-nums">{item.serial || "—"}</div></div>
-              <div><div className="text-[11px] text-neutral-500">وضعیت</div><div className="mt-1"><StatusBadge status={item.workflowStatus || item.status} /></div></div>
-            </div>
-          </section>
-
-          <ActionsGrid item={item} {...actionsProps} />
+          <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+            <aside className="space-y-4">
+              <RequestInfoCard title="مشخصات درخواست">
+                <RequestInfoRow label="شماره درخواست" value={item.serial || "—"} ltr />
+                <RequestInfoRow label="تاریخ درخواست" value={formatDate(item.dateJalali)} />
+                <RequestInfoRow label="درخواست‌کننده" value={item.createdByName || "—"} />
+                <RequestInfoRow label="پروژه" value={projectLabel(item)} />
+                <RequestInfoRow label="کد بودجه" value={item.budgetCode || "—"} ltr />
+                <RequestInfoRow label="وضعیت" value={<StatusBadge status={item.workflowStatus || item.status} />} />
+                <RequestInfoRow label="مرحله فعلی" value={item.currentStepName || item.currentAssigneeName || "—"} />
+              </RequestInfoCard>
+              <RequestInfoCard title="جزئیات درخواست">
+                <RequestInfoRow label="موضوع" value={item.title || "—"} />
+                <RequestInfoRow label="شرح" value={item.description || "—"} />
+                <RequestInfoRow label="برآورد هزینه" value={item.amount ? toFaDigits(Number(item.amount).toLocaleString("en-US")) : "—"} />
+                <RequestInfoRow label="تاریخ نیاز" value={formatDate(item.needDateJalali)} />
+                <RequestInfoRow label="پیوست‌ها" value={Array.isArray(item.attachments) && item.attachments.length ? `${toFaDigits(item.attachments.length)} فایل` : "—"} />
+              </RequestInfoCard>
+            </aside>
+            <main className="min-w-0">
+              <ActionsGrid item={item} {...actionsProps} />
+            </main>
+          </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function RequestInfoCard({ title, children }) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-black/10 bg-white dark:border-white/10 dark:bg-neutral-900">
+      <h3 className="border-b border-black/10 px-4 py-3 text-sm font-bold dark:border-white/10">{title}</h3>
+      <div className="px-4">{children}</div>
+    </section>
+  );
+}
+
+function RequestInfoRow({ label, value, ltr = false }) {
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-black/10 py-2.5 text-xs last:border-b-0 dark:border-white/10">
+      <div dir={ltr ? "ltr" : "rtl"} className={`min-w-0 break-words font-medium ${ltr ? "text-left" : "text-right"}`}>{value}</div>
+      <div className="text-neutral-500 dark:text-neutral-400">{label}</div>
     </div>
   );
 }
@@ -421,14 +449,11 @@ function ActionsGrid({ item, editingIds, savingIds, uploadingIds, onAdd, onPatch
 
   return (
     <div className="mt-5">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3">
         <div>
           <h3 className="text-sm font-bold">سوابق اقدامات</h3>
           <p className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">جدیدترین اقدام در ابتدای فهرست نمایش داده می‌شود.</p>
         </div>
-        <button type="button" onClick={onAdd} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white shadow-sm transition hover:scale-105 hover:bg-black/85 dark:bg-white dark:text-black" title="افزودن اقدام جدید" aria-label="افزودن اقدام جدید">
-          <img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" />
-        </button>
       </div>
 
       <div className="relative">
@@ -457,6 +482,12 @@ function ActionsGrid({ item, editingIds, savingIds, uploadingIds, onAdd, onPatch
           </div>
         ))}
       </div>
+      <div className="mt-4 flex justify-end">
+        <button type="button" onClick={onAdd} className="inline-flex h-10 items-center gap-2 rounded-xl bg-black px-4 text-sm font-medium text-white shadow-sm transition hover:bg-black/85 dark:bg-white dark:text-black" title="افزودن اقدام جدید">
+          <span className="text-lg leading-none">+</span>
+          افزودن اقدام جدید
+        </button>
+      </div>
     </div>
   );
 }
@@ -484,7 +515,7 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
           </div>
           <StatusBadge status={action.status} />
         </div>
-        <div className="grid gap-2">
+        <div className="grid gap-2 md:grid-cols-[150px_minmax(180px,1fr)_150px_auto] md:items-start">
           <JalaliPopupDatePicker value={action.date || ""} onChange={(value) => patchAndPersist({ date: value })} buttonClassName={`${inputCls} flex items-center justify-between`} placeholder="تاریخ اقدام" />
           <textarea
             value={action.description || ""}
@@ -499,7 +530,7 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
             <option value="done">انجام شد</option>
             <option value="canceled">لغو شد</option>
           </select>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-black/5 pt-2 dark:border-white/10">
+          <div className="flex flex-wrap items-center justify-between gap-2 md:min-h-10 md:border-r md:border-t-0 md:pr-2 md:pt-0 dark:border-white/10">
             <div className="flex items-center gap-2">
               <FileButton disabled={!editable || uploading} onClick={() => onOpenUpload(action)} />
               <FileSummary files={files} uploading={uploading} onClick={() => onOpenFiles(action)} />
@@ -593,7 +624,7 @@ function FileButton({ disabled, onClick }) {
       title="بارگذاری فایل"
       aria-label="بارگذاری فایل"
     >
-      <img src="/images/icons/upload.svg" alt="" className="h-4 w-4 dark:invert" />
+      <img src="/images/icons/Uplod.svg" alt="" className="h-4 w-4 dark:invert" />
     </button>
   );
 }
@@ -724,7 +755,7 @@ function SupplyActionUploadModal({ fileRef, files, uploading, onUpload, onRemove
               <div className="mb-1 text-sm font-bold">فایل را اینجا رها کنید</div>
               <div className="mb-3 text-xs text-neutral-500 dark:text-neutral-400">هر نوع فایلی را می‌توانید انتخاب کنید</div>
               <button type="button" disabled={uploading} onClick={() => fileRef.current?.click()} className="inline-flex h-10 items-center gap-2 rounded-xl bg-black px-4 text-sm font-bold text-white transition hover:bg-black/85 disabled:opacity-50 dark:bg-white dark:text-black">
-                <img src="/images/icons/upload.svg" alt="" className="h-5 w-5 invert dark:invert-0" />
+                <img src="/images/icons/Uplod.svg" alt="" className="h-5 w-5 invert dark:invert-0" />
                 {uploading ? "در حال بارگذاری..." : "انتخاب فایل"}
               </button>
               <input
