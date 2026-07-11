@@ -6193,10 +6193,10 @@ aria-invalid={fieldHasError(formKind, "subject")}
       66% { transform: scale(1.14); opacity: 0.8; filter: drop-shadow(0 0 7px rgba(37, 99, 235, 0.7)); }
       74% { transform: scale(0.98); opacity: 1; filter: drop-shadow(0 0 2px rgba(37, 99, 235, 0.35)); }
     }
-    .letter-upload-flash :is(img, svg) { animation: letter-upload-flash 2.4s ease-in-out infinite; }
-    .letter-upload-flash:hover :is(img, svg) { animation-play-state: paused; }
+    .letter-upload-flash :is(img, svg, .letter-upload-icon) { animation: letter-upload-flash 2.4s ease-in-out infinite; }
+    .letter-upload-flash:hover :is(img, svg, .letter-upload-icon) { animation-play-state: paused; }
     @media (prefers-reduced-motion: reduce) {
-      .letter-upload-flash :is(img, svg) { animation: none; }
+      .letter-upload-flash :is(img, svg, .letter-upload-icon) { animation: none; }
     }
   `}</style>
                <table
@@ -6412,10 +6412,14 @@ const rowBg = normalRowBg;
                     aria-label="بارگذاری پیوست"
                     title="بارگذاری پیوست"
                   >
-                    <img
-                      src="/images/icons/Uplod.svg"
-                      alt=""
-                      className={"w-6 h-6 " + (theme === "dark" ? "invert" : "")}
+                    <span
+                      className="letter-upload-icon block w-7 h-7"
+                      aria-hidden="true"
+                      style={{
+                        backgroundColor: theme === "dark" ? "#fff" : "#111827",
+                        WebkitMask: "url('/images/icons/Uplod.svg') center / contain no-repeat",
+                        mask: "url('/images/icons/Uplod.svg') center / contain no-repeat",
+                      }}
                     />
                   </button>
                 ) : null}
