@@ -154,7 +154,7 @@ export default function SupplyActionsPage() {
         }),
       });
       replaceItem(data?.item);
-      setEditingIds((prev) => ({ ...prev, [key]: true }));
+      setEditingIds((prev) => ({ ...prev, [key]: false }));
     } catch {
       setError("ذخیره اقدام تامین انجام نشد.");
     } finally {
@@ -163,12 +163,19 @@ export default function SupplyActionsPage() {
   };
 
   const addActionRow = (requestId) => {
+    const current = items.find((item) => String(item.id) === String(requestId));
+    if (Array.isArray(current?.actions) && current.actions.some((action) => action?.isNew)) return;
     const id = `sa_client_${Date.now()}_${Math.random().toString(16).slice(2)}`;
     patchItem(requestId, (item) => ({
       ...item,
       actions: [{ id, date: "", description: "", status: "in_progress", files: [], isNew: true }, ...(Array.isArray(item.actions) ? item.actions : [])],
     }));
     setEditingIds((prev) => ({ ...prev, [`${requestId}:${id}`]: true }));
+  };
+
+  const openActions = (item) => {
+    addActionRow(item.id);
+    setExpandedId(item.id);
   };
 
   const deleteAction = async (requestId, action) => {
@@ -216,7 +223,7 @@ export default function SupplyActionsPage() {
       }
       const nextAction = { ...action, files: [...actionFiles(action), ...uploadedFiles] };
       patchAction(requestId, action.id, { files: nextAction.files });
-      await persistAction(requestId, nextAction);
+      if (!action.isNew) await persistAction(requestId, nextAction);
       setUploadTarget((prev) => (prev ? { ...prev, action: nextAction } : prev));
     } catch {
       setError("بارگذاری فایل انجام نشد.");
@@ -234,7 +241,7 @@ export default function SupplyActionsPage() {
     const nextAction = { ...action, files: nextFiles };
     patchAction(requestId, action.id, { files: nextFiles });
     setUploadTarget((prev) => (prev ? { ...prev, action: nextAction } : prev));
-    await persistAction(requestId, nextAction);
+    if (!action.isNew) await persistAction(requestId, nextAction);
   };
 
   const tableWrapCls =
@@ -297,7 +304,7 @@ export default function SupplyActionsPage() {
                         <td className={`${tdBorder} px-3`}>
                           <button
                             type="button"
-                            onClick={() => setExpandedId(item.id)}
+                            onClick={() => openActions(item)}
                             className="mx-auto grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.04] dark:hover:bg-white/10"
                             title="اقدامات"
                             aria-label="اقدامات"
@@ -329,7 +336,7 @@ export default function SupplyActionsPage() {
                   <div className="mt-2 text-xs text-neutral-500">{projectLabel(item)}</div>
                   <button
                     type="button"
-                    onClick={() => setExpandedId(item.id)}
+                    onClick={() => openActions(item)}
                     className="mt-3 h-9 rounded-xl border border-black/10 px-3 text-xs dark:border-white/10"
                   >
                     اقدامات
@@ -446,6 +453,8 @@ function RequestInfoRow({ label, value, ltr = false }) {
 function ActionsGrid({ item, editingIds, savingIds, uploadingIds, onAdd, onPatch, onPersist, onEdit, onDelete, onOpenUpload, onOpenFiles }) {
   const actions = Array.isArray(item?.actions) ? item.actions : [];
   const requestId = item?.id;
+  const savedActions = actions.filter((action) => !action?.isNew);
+  const draftAction = actions.find((action) => action?.isNew);
 
   return (
     <div className="mt-5">
@@ -457,11 +466,11 @@ function ActionsGrid({ item, editingIds, savingIds, uploadingIds, onAdd, onPatch
       </div>
 
       <div className="relative">
-        {actions.length === 0 ? <div className="rounded-2xl border border-dashed border-black/10 py-8 text-center text-xs text-neutral-500 dark:border-white/10">هنوز اقدامی ثبت نشده است.</div> : null}
-        {actions.map((action, index) => (
+        {savedActions.length === 0 ? <div className="rounded-2xl border border-dashed border-black/10 py-8 text-center text-xs text-neutral-500 dark:border-white/10">هنوز اقدامی ثبت نشده است.</div> : null}
+        {savedActions.map((action, index) => (
           <div key={action.id} className="relative grid grid-cols-[20px_minmax(0,1fr)] gap-3 pb-4 last:pb-0">
             <div className="relative flex justify-center" aria-hidden="true">
-              {index < actions.length - 1 ? <span className="absolute bottom-[-16px] top-3 w-px bg-emerald-200 dark:bg-emerald-500/30" /> : null}
+              {index < savedActions.length - 1 ? <span className="absolute bottom-[-16px] top-3 w-px bg-emerald-200 dark:bg-emerald-500/30" /> : null}
               <span className={`relative z-10 mt-4 h-3 w-3 rounded-full ring-4 ${action.status === "canceled" ? "bg-rose-500 ring-rose-100 dark:ring-rose-500/20" : action.status === "done" ? "bg-emerald-500 ring-emerald-100 dark:ring-emerald-500/20" : "bg-sky-500 ring-sky-100 dark:ring-sky-500/20"}`} />
             </div>
             <ActionRow
@@ -482,12 +491,30 @@ function ActionsGrid({ item, editingIds, savingIds, uploadingIds, onAdd, onPatch
           </div>
         ))}
       </div>
-      <div className="mt-4 flex justify-end">
-        <button type="button" onClick={onAdd} className="inline-flex h-10 items-center gap-2 rounded-xl bg-black px-4 text-sm font-medium text-white shadow-sm transition hover:bg-black/85 dark:bg-white dark:text-black" title="افزودن اقدام جدید">
-          <span className="text-lg leading-none">+</span>
-          افزودن اقدام جدید
-        </button>
-      </div>
+      {draftAction ? (
+        <div className="mt-5 border-t border-black/10 pt-5 dark:border-white/10">
+          <div className="mb-2 text-sm font-bold">ثبت اقدام جدید</div>
+          <ActionRow
+            index={savedActions.length}
+            requestId={requestId}
+            action={draftAction}
+            editingIds={editingIds}
+            savingIds={savingIds}
+            uploadingIds={uploadingIds}
+            onPatch={onPatch}
+            onPersist={onPersist}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onOpenUpload={onOpenUpload}
+            onOpenFiles={onOpenFiles}
+            compact
+          />
+        </div>
+      ) : (
+        <div className="mt-4 flex justify-end">
+          <button type="button" onClick={onAdd} className="inline-flex h-10 items-center gap-2 rounded-xl bg-black px-4 text-sm font-medium text-white shadow-sm transition hover:bg-black/85 dark:bg-white dark:text-black" title="افزودن اقدام جدید"><span className="text-lg leading-none">+</span> افزودن اقدام جدید</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -499,13 +526,24 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
   const uploading = uploadingIds[key];
   const files = actionFiles(action);
 
-  const patchAndPersist = (patch) => {
-    const next = { ...action, ...patch };
-    onPatch(requestId, action.id, patch);
-    onPersist(requestId, next);
-  };
-
   if (compact) {
+    if (!editable) {
+      return (
+        <div className="rounded-2xl border border-black/10 bg-white px-3 py-3 transition hover:border-black/20 dark:border-white/10 dark:bg-neutral-900 dark:hover:border-white/20">
+          <div className="grid gap-3 sm:grid-cols-[115px_minmax(0,1fr)_auto] sm:items-center">
+            <time className="text-xs font-medium tabular-nums text-emerald-700 dark:text-emerald-400">{formatDate(action.date)}</time>
+            <div className="min-w-0 text-xs leading-6 text-neutral-700 dark:text-neutral-200">{action.description || "—"}</div>
+            <div className="flex items-center justify-between gap-2 sm:justify-end">
+              <StatusBadge status={action.status} />
+              <FileSummary files={files} uploading={uploading} onClick={() => onOpenFiles(action)} />
+              <RowActionIconBtn action="edit" onClick={() => onEdit(action)} size={32} iconSize={15} />
+              <RowActionIconBtn action="delete" onClick={() => onDelete(requestId, action)} size={32} iconSize={15} />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className={`rounded-2xl border p-3 transition ${action.isNew ? "border-black/10 bg-neutral-100 shadow-sm dark:border-white/10 dark:bg-white/[0.07]" : "border-black/10 bg-white dark:border-white/10 dark:bg-neutral-900"}`}>
         <div className="mb-2 flex items-center justify-between">
@@ -515,28 +553,28 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
           </div>
           <StatusBadge status={action.status} />
         </div>
-        <div className="grid gap-2 md:grid-cols-[150px_minmax(180px,1fr)_150px_auto] md:items-start">
-          <JalaliPopupDatePicker value={action.date || ""} onChange={(value) => patchAndPersist({ date: value })} buttonClassName={`${inputCls} flex items-center justify-between`} placeholder="تاریخ اقدام" />
+        <div className="grid gap-2 md:grid-cols-[128px_minmax(180px,1fr)_128px_auto] md:items-start">
+          <JalaliPopupDatePicker value={action.date || ""} onChange={(value) => onPatch(requestId, action.id, { date: value })} buttonClassName={`${inputCls} flex items-center justify-between`} placeholder="تاریخ اقدام" />
           <textarea
             value={action.description || ""}
-            readOnly={!editable}
             onChange={(event) => onPatch(requestId, action.id, { description: event.target.value })}
-            onBlur={(event) => onPersist(requestId, { ...action, description: event.currentTarget.value })}
-            className={`${inputCls} min-h-[76px] resize-y py-2`}
+            className={`${inputCls} h-10 min-h-10 resize-y py-2`}
             placeholder="شرح اقدام/توضیح"
           />
-          <select value={action.status || "in_progress"} disabled={!editable} onChange={(event) => patchAndPersist({ status: event.target.value })} className={inputCls}>
+          <select value={action.status || "in_progress"} onChange={(event) => onPatch(requestId, action.id, { status: event.target.value })} className={inputCls}>
             <option value="in_progress">در حال اقدام</option>
             <option value="done">انجام شد</option>
             <option value="canceled">لغو شد</option>
           </select>
           <div className="flex flex-wrap items-center justify-between gap-2 md:min-h-10 md:border-r md:border-t-0 md:pr-2 md:pt-0 dark:border-white/10">
             <div className="flex items-center gap-2">
-              <FileButton disabled={!editable || uploading} onClick={() => onOpenUpload(action)} />
+              <FileButton disabled={uploading} onClick={() => onOpenUpload(action)} />
               <FileSummary files={files} uploading={uploading} onClick={() => onOpenFiles(action)} />
             </div>
             <div className="flex items-center gap-1">
-              {!action.isNew ? <RowActionIconBtn action="edit" onClick={() => onEdit(action)} size={32} iconSize={15} /> : null}
+              <button type="button" onClick={() => onPersist(requestId, action)} disabled={saving} className="grid h-8 w-8 place-items-center rounded-lg bg-black text-white transition hover:bg-black/85 disabled:opacity-50 dark:bg-white dark:text-black" title={action.isNew ? "ثبت اقدام" : "ذخیره تغییرات"} aria-label={action.isNew ? "ثبت اقدام" : "ذخیره تغییرات"}>
+                {action.isNew ? <span className="text-lg leading-none">+</span> : <img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" />}
+              </button>
               <RowActionIconBtn action="delete" onClick={() => onDelete(requestId, action)} size={32} iconSize={15} />
             </div>
           </div>
