@@ -266,6 +266,8 @@ export default function SupplyActionsPage() {
 
         {error && <div className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{error}</div>}
 
+        <SupplyActionsFilterMock />
+
         <div className={tableWrapCls}>
           <div className="hidden overflow-x-auto md:block" dir="ltr">
             <table dir="rtl" className="w-full min-w-[860px] table-fixed text-sm [&_td]:py-1.5 [&_td]:text-center [&_th]:py-2 [&_th]:text-center">
@@ -361,7 +363,7 @@ export default function SupplyActionsPage() {
           onEdit={(action) => setEditingIds((prev) => ({ ...prev, [`${expandedItem.id}:${action.id}`]: true }))}
           onDelete={deleteAction}
           onOpenUpload={(action) => setUploadTarget({ requestId: expandedItem.id, action })}
-          onOpenFiles={(action) => setFilesModal({ files: actionFiles(action), preview: null })}
+          onOpenFiles={(action) => setUploadTarget({ requestId: expandedItem.id, action })}
         />
       )}
 
@@ -383,6 +385,27 @@ export default function SupplyActionsPage() {
           onClose={() => setFilesModal(null)}
         />
       )}
+    </div>
+  );
+}
+
+function SupplyActionsFilterMock() {
+  return (
+    <div className="mb-4 rounded-2xl border border-black/10 bg-white p-3 text-xs dark:border-white/10 dark:bg-transparent">
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="min-w-[230px] flex-1">
+          <span className="mb-1 block text-neutral-500 dark:text-neutral-400">جست‌وجو</span>
+          <div className={`${inputCls} flex items-center text-neutral-400 dark:text-neutral-500`}>جست‌وجو در همه فیلدها (شماره، موضوع، تاریخ، پروژه و ...)</div>
+        </label>
+        <label className="w-[calc(50%-0.25rem)] md:w-[145px]"><span className="mb-1 block text-neutral-500 dark:text-neutral-400">از</span><div className={`${inputCls} flex items-center text-neutral-400 dark:text-neutral-500`}>انتخاب تاریخ</div></label>
+        <label className="w-[calc(50%-0.25rem)] md:w-[145px]"><span className="mb-1 block text-neutral-500 dark:text-neutral-400">تا</span><div className={`${inputCls} flex items-center text-neutral-400 dark:text-neutral-500`}>انتخاب تاریخ</div></label>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <span className="ml-1 text-neutral-500 dark:text-neutral-400">برچسب‌ها</span>
+        {['همه', 'در حال اقدام', 'انجام شد', 'لغو شد', 'هفته قبل', 'دو هفته قبل', 'ماه قبل', 'سه ماه قبل', '۶ ماه قبل'].map((label, index) => (
+          <span key={label} className={`inline-flex h-8 items-center rounded-full border px-3 ${index === 0 ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black' : 'border-black/10 text-neutral-600 dark:border-white/15 dark:text-neutral-300'}`}>{label}</span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -755,18 +778,18 @@ function SupplyActionUploadModal({ fileRef, files, uploading, onUpload, onRemove
   return (
     <div dir="rtl" className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-[720px] overflow-hidden rounded-2xl bg-white text-neutral-900 shadow-2xl dark:bg-neutral-900 dark:text-neutral-100">
-        <div className="flex items-center justify-between border-b border-black/10 px-4 py-4 dark:border-white/10">
-          <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 dark:bg-white dark:text-black" title="بستن" aria-label="بستن">
+      <div className="relative w-full max-w-[700px] overflow-hidden rounded-2xl bg-white text-neutral-900 shadow-2xl dark:bg-neutral-900 dark:text-neutral-100">
+        <div className="relative border-b border-black/10 px-4 py-4 text-right dark:border-white/10">
+          <button type="button" onClick={onClose} className="absolute left-4 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 dark:bg-white dark:text-black" title="بستن" aria-label="بستن">
             <img src="/images/icons/bastan.svg" alt="" className="h-4 w-4 invert dark:invert-0" />
           </button>
-          <div className="min-w-0 truncate text-sm font-bold leading-6">بارگذاری فایل اقدام تامین</div>
+          <div className="min-w-0 truncate pl-12 text-sm font-bold leading-6">بارگذاری اسناد (وارده)</div>
         </div>
 
         <div className="p-4">
           <div className="rounded-2xl border border-black/10 p-3 dark:border-white/10">
-            <div className="mb-2 text-right text-xs text-neutral-500 dark:text-neutral-400">فایل‌های انتخاب‌شده</div>
-            <div className="min-h-[86px] rounded-xl border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-white/5">
+            <div className="mb-2 text-right text-xs font-medium text-neutral-600 dark:text-neutral-300">فایل‌های بارگذاری‌شده</div>
+            <div className="min-h-[92px] rounded-xl border border-black/10 bg-neutral-50 p-3 dark:border-white/10 dark:bg-white/5">
               {list.length === 0 ? (
                 <div className="flex h-[54px] items-center justify-center text-sm text-neutral-500">فایلی انتخاب نشده است.</div>
               ) : (
@@ -785,6 +808,8 @@ function SupplyActionUploadModal({ fileRef, files, uploading, onUpload, onRemove
               )}
             </div>
 
+            <div className="my-4 h-px bg-black/10 dark:bg-white/10" />
+            <div className="mb-2 text-right text-xs font-medium text-neutral-600 dark:text-neutral-300">بارگذاری فایل جدید</div>
             <div
               onDragOver={(event) => event.preventDefault()}
               onDrop={handleDrop}
