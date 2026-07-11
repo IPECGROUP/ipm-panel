@@ -535,7 +535,7 @@ function ActionsGrid({ item, editingIds, savingIds, uploadingIds, onAdd, onPatch
         </div>
       ) : (
         <div className="mt-4 flex justify-end">
-          <button type="button" onClick={onAdd} className="inline-flex h-10 items-center gap-2 rounded-xl bg-black px-4 text-sm font-medium text-white shadow-sm transition hover:bg-black/85 dark:bg-white dark:text-black" title="افزودن اقدام جدید"><span className="text-lg leading-none">+</span> افزودن اقدام جدید</button>
+          <button type="button" onClick={onAdd} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white shadow-sm transition hover:bg-black/85 dark:bg-white dark:text-black" title="افزودن اقدام جدید" aria-label="افزودن اقدام جدید"><span className="text-xl leading-none">+</span></button>
         </div>
       )}
     </div>
