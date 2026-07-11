@@ -6449,7 +6449,7 @@ const rowBg = normalRowBg;
                     title="بارگذاری پیوست"
                   >
                     <span
-                      className="letter-upload-icon block w-7 h-7"
+                      className="letter-upload-icon block w-[18px] h-[18px]"
                       aria-hidden="true"
                       style={{
                         backgroundColor: theme === "dark" ? "#fff" : "#111827",
