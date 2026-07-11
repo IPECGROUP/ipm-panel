@@ -432,7 +432,7 @@ function formatBytes(n) {
   return `${Math.round(v * 10) / 10} ${units[i]}`;
 }
 
-const LETTER_UPLOAD_ACCEPT = "";
+const LETTER_UPLOAD_ACCEPT = ".pdf,image/*,.xls,.xlsx,.xlsm,.csv,.ods,.doc,.docx,.odt";
 
 const ensureLetterUploadableFile = async (file) => file;
 
@@ -3482,7 +3482,7 @@ useLayoutEffect(() => {
     "h-10 w-10 inline-grid place-items-center !bg-transparent !ring-0 !border-0 !shadow-none " +
     "hover:opacity-80 active:opacity-70 transition disabled:opacity-50";
   const rowActionsRevealCls =
-    "w-full flex items-center justify-center gap-2 opacity-0 pointer-events-none transition-opacity " +
+    "flex items-center justify-center gap-2 opacity-0 pointer-events-none transition-opacity " +
     "group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto";
   const uploadActionBtnCls =
     iconBtnCls + " letter-upload-flash relative overflow-visible";
@@ -6399,7 +6399,7 @@ const rowBg = normalRowBg;
             </td>
 
             <td className={"!pl-6 !pr-3 " + divider}>
-              <div className={rowActionsRevealCls}>
+              <div className="w-full flex items-center justify-center gap-2">
                 {!hasRealAttachment ? (
                   <button
                     type="button"
@@ -6419,6 +6419,7 @@ const rowBg = normalRowBg;
                     />
                   </button>
                 ) : null}
+                <div className={rowActionsRevealCls}>
                 <button
                   type="button"
                   onClick={() => {
@@ -6460,6 +6461,7 @@ const rowBg = normalRowBg;
                     }}
                   />
                 </button>
+                </div>
               </div>
             </td>
           </tr>
