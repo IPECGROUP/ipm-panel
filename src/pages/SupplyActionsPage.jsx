@@ -45,6 +45,21 @@ function actionFiles(action) {
   return Array.isArray(action?.files) ? action.files : [];
 }
 
+function clientActionTime() {
+  return new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
+}
+
+function formatActionTime(action) {
+  const ownTime = normalizeDigits(action?.time || "");
+  if (/^\d{1,2}:\d{2}$/.test(ownTime)) return toFaDigits(ownTime);
+  if (!action?.createdAt) return "—";
+  try {
+    return new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(action.createdAt));
+  } catch {
+    return "—";
+  }
+}
+
 function shouldPersist(action) {
   return !!(action?.date || action?.description || actionFiles(action).length || action?.status !== "in_progress");
 }
@@ -154,6 +169,7 @@ export default function SupplyActionsPage() {
           date: action.date || "",
           description: action.description || "",
           status: action.status || "in_progress",
+          time: action.time || "",
           files: actionFiles(action),
         }),
       });
@@ -169,10 +185,14 @@ export default function SupplyActionsPage() {
   const addActionRow = (requestId) => {
     const current = items.find((item) => String(item.id) === String(requestId));
     if (Array.isArray(current?.actions) && current.actions.some((action) => action?.isNew)) return;
+    const latestAction = (Array.isArray(current?.actions) ? current.actions : [])
+      .filter((action) => !action?.isNew)
+      .sort((a, b) => String(b?.createdAt || b?.updatedAt || "").localeCompare(String(a?.createdAt || a?.updatedAt || "")))[0];
+    if (latestAction && latestAction.status !== "in_progress") return;
     const id = `sa_client_${Date.now()}_${Math.random().toString(16).slice(2)}`;
     patchItem(requestId, (item) => ({
       ...item,
-      actions: [{ id, date: "", description: "", status: "in_progress", files: [], isNew: true }, ...(Array.isArray(item.actions) ? item.actions : [])],
+      actions: [{ id, date: "", time: clientActionTime(), description: "", status: "in_progress", files: [], isNew: true }, ...(Array.isArray(item.actions) ? item.actions : [])],
     }));
     setEditingIds((prev) => ({ ...prev, [`${requestId}:${id}`]: true }));
   };
@@ -442,8 +462,11 @@ function SupplyActionsModal({ item, onClose, ...actionsProps }) {
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-5">
-          <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-            <aside className="space-y-4">
+          <div dir="ltr" className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+            <main dir="rtl" className="min-w-0 lg:order-1">
+              <ActionsGrid item={item} {...actionsProps} />
+            </main>
+            <aside dir="rtl" className="space-y-4 lg:order-2">
               <RequestInfoCard title="مشخصات درخواست">
                 <RequestInfoRow label="شماره درخواست" value={item.serial || "—"} ltr />
                 <RequestInfoRow label="تاریخ درخواست" value={formatDate(item.dateJalali)} />
@@ -461,9 +484,6 @@ function SupplyActionsModal({ item, onClose, ...actionsProps }) {
                 <RequestInfoRow label="پیوست‌ها" value={Array.isArray(item.attachments) && item.attachments.length ? `${toFaDigits(item.attachments.length)} فایل` : "—"} />
               </RequestInfoCard>
             </aside>
-            <main className="min-w-0">
-              <ActionsGrid item={item} {...actionsProps} />
-            </main>
           </div>
         </div>
       </div>
@@ -510,8 +530,28 @@ function ActionsGrid({ item, editingIds, savingIds, uploadingIds, onAdd, onPatch
         ) : null}
       </div>
 
+      {draftAction ? (
+        <div className="mb-4">
+          <ActionRow
+            index={savedActions.length}
+            requestId={requestId}
+            action={draftAction}
+            editingIds={editingIds}
+            savingIds={savingIds}
+            uploadingIds={uploadingIds}
+            onPatch={onPatch}
+            onPersist={onPersist}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onOpenUpload={onOpenUpload}
+            onOpenFiles={onOpenFiles}
+            compact
+          />
+        </div>
+      ) : null}
+
       <div className="relative">
-        {savedActions.length === 0 ? <div className="rounded-2xl border border-dashed border-black/10 py-8 text-center text-xs text-neutral-500 dark:border-white/10">هنوز اقدامی ثبت نشده است.</div> : null}
+        {savedActions.length === 0 && !draftAction ? <div className="rounded-2xl border border-dashed border-black/10 py-8 text-center text-xs text-neutral-500 dark:border-white/10">هنوز اقدامی ثبت نشده است.</div> : null}
         {savedActions.map((action, index) => (
           <div key={action.id} className="relative grid grid-cols-[16px_minmax(0,1fr)] gap-3 pb-3 last:pb-0">
             <div className="relative flex justify-center" aria-hidden="true">
@@ -537,26 +577,6 @@ function ActionsGrid({ item, editingIds, savingIds, uploadingIds, onAdd, onPatch
           </div>
         ))}
       </div>
-      {draftAction ? (
-        <div className="mt-5 border-t border-black/10 pt-5 dark:border-white/10">
-          <div className="mb-2 text-sm font-bold">ثبت اقدام جدید</div>
-          <ActionRow
-            index={savedActions.length}
-            requestId={requestId}
-            action={draftAction}
-            editingIds={editingIds}
-            savingIds={savingIds}
-            uploadingIds={uploadingIds}
-            onPatch={onPatch}
-            onPersist={onPersist}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onOpenUpload={onOpenUpload}
-            onOpenFiles={onOpenFiles}
-            compact
-          />
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -572,11 +592,10 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
     if (!editable) {
       return (
         <div className="group min-w-0 px-0 py-0.5 transition">
-          <div className="grid gap-2 sm:grid-cols-[104px_minmax(0,1fr)_auto] sm:items-start">
-            <time className="text-xs font-medium tabular-nums text-emerald-700 dark:text-emerald-400">{formatDate(action.date)}</time>
-            <div className="min-w-0 pt-0 text-xs leading-5 text-neutral-700 dark:text-neutral-200">{action.description || "—"}</div>
-            <div className="flex items-center justify-between gap-2 sm:justify-end">
-              <StatusBadge status={action.status} />
+          <div className="grid gap-2 sm:grid-cols-[92px_minmax(0,1fr)_auto] sm:items-start">
+            <time className="text-xs font-medium leading-5 tabular-nums text-emerald-700 dark:text-emerald-400"><span className="block">{formatDate(action.date)}</span><span className="block text-[10px] text-neutral-400 dark:text-neutral-500">{formatActionTime(action)}</span></time>
+            <div className="min-w-0 pt-0 text-xs leading-5 text-neutral-700 dark:text-neutral-200"><div>{action.description || "—"}</div><div className="mt-1"><StatusBadge status={action.status} /></div></div>
+            <div className="flex items-center justify-end gap-1 sm:min-w-[104px]">
               <FileSummary files={files} uploading={uploading} onClick={() => onOpenFiles(action)} />
               <span className="flex items-center gap-1 opacity-0 transition duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
                 <RowActionIconBtn action="edit" onClick={() => onEdit(action)} size={30} iconSize={14} />
@@ -590,15 +609,9 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
 
     return (
       <div className={`rounded-2xl border p-3 transition ${action.isNew ? "border-black/10 bg-neutral-100 shadow-sm dark:border-white/10 dark:bg-white/[0.07]" : "border-black/10 bg-white dark:border-white/10 dark:bg-neutral-900"}`}>
-        <div className="mb-2 flex items-center justify-between">
-          <div>
-            <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-200">{action.isNew ? "اقدام جدید" : `اقدام ${toFaDigits(index + 1)}`}</span>
-            {!action.isNew && action.date ? <span className="mr-2 text-[11px] tabular-nums text-neutral-400">{formatDate(action.date)}</span> : null}
-          </div>
-          <StatusBadge status={action.status} />
-        </div>
-        <div className="grid gap-2 md:grid-cols-[128px_minmax(180px,1fr)_128px_auto] md:items-start">
-          <JalaliPopupDatePicker value={action.date || ""} onChange={(value) => onPatch(requestId, action.id, { date: value })} buttonClassName={`${inputCls} flex items-center justify-between`} placeholder="تاریخ اقدام" />
+        <div className="mb-2 flex justify-end"><StatusBadge status={action.status} /></div>
+        <div className="grid gap-2 md:grid-cols-[108px_minmax(180px,1fr)_118px_auto] md:items-start">
+          <JalaliPopupDatePicker value={action.date || ""} onChange={(value) => onPatch(requestId, action.id, { date: value })} buttonClassName={`${inputCls} flex items-center justify-between`} placeholder="تاریخ" />
           <textarea
             value={action.description || ""}
             onChange={(event) => onPatch(requestId, action.id, { description: event.target.value })}
@@ -618,7 +631,6 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
               <button type="button" onClick={() => onPersist(requestId, action)} disabled={saving} className="grid h-8 w-8 place-items-center rounded-lg bg-black text-white transition hover:bg-black/85 disabled:opacity-50 dark:bg-white dark:text-black" title={action.isNew ? "ثبت اقدام" : "ذخیره تغییرات"} aria-label={action.isNew ? "ثبت اقدام" : "ذخیره تغییرات"}>
                 {action.isNew ? <span className="text-lg leading-none">+</span> : <img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" />}
               </button>
-              {!action.isNew ? <RowActionIconBtn action="delete" onClick={() => onDelete(requestId, action)} size={32} iconSize={15} /> : null}
             </div>
           </div>
           {saving && <div className="text-xs text-neutral-400">در حال ذخیره...</div>}
