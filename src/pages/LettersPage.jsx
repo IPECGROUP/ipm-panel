@@ -3482,7 +3482,7 @@ useLayoutEffect(() => {
     "h-10 w-10 inline-grid place-items-center !bg-transparent !ring-0 !border-0 !shadow-none " +
     "hover:opacity-80 active:opacity-70 transition disabled:opacity-50";
   const rowActionsRevealCls =
-    "flex items-center justify-center gap-2 opacity-0 pointer-events-none transition-opacity " +
+    "flex items-center justify-center gap-1 opacity-0 pointer-events-none transition-opacity " +
     "group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto";
   const uploadActionBtnCls =
     iconBtnCls + " letter-upload-flash relative overflow-visible";
@@ -6212,9 +6212,9 @@ aria-invalid={fieldHasError(formKind, "subject")}
   <col style={{ width: 96 }} />   {/* شماره */}
   <col style={{ width: 96 }} />   {/* تاریخ */}
   <col />                         {/* موضوع (باقی فضا) */}
-  <col style={{ width: 144 }} />  {/* از/به */}
+  <col style={{ width: 168 }} />  {/* از/به */}
   <col style={{ width: 176 }} />  {/* شرکت/سازمان */}
-  <col style={{ width: 240 }} />  {/* اقدامات */}
+  <col style={{ width: 216 }} />  {/* اقدامات */}
 </colgroup>
 
   <thead>
@@ -6399,7 +6399,7 @@ const rowBg = normalRowBg;
             </td>
 
             <td className={"!pl-6 !pr-3 " + divider}>
-              <div className="w-full flex items-center justify-center gap-2">
+              <div className="w-full flex items-center justify-center gap-1">
                 {!hasRealAttachment ? (
                   <button
                     type="button"
@@ -6415,7 +6415,7 @@ const rowBg = normalRowBg;
                     <img
                       src="/images/icons/upload.svg"
                       alt=""
-                      className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
+                      className={"w-6 h-6 " + (theme === "dark" ? "invert" : "")}
                     />
                   </button>
                 ) : null}
