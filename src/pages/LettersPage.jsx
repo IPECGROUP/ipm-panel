@@ -5617,7 +5617,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
   title="بارگذاری اسناد"
 >
   <img
-    src="/images/icons/upload.svg"
+    src="/images/icons/Uplod.svg"
     alt=""
     className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
   />
@@ -6108,7 +6108,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
                                   title="بارگذاری پیوست"
                                 >
                                   <img
-                                    src="/images/icons/upload.svg"
+                                    src="/images/icons/Uplod.svg"
                                     alt=""
                                     className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
                                   />
@@ -6412,20 +6412,11 @@ const rowBg = normalRowBg;
                     aria-label="بارگذاری پیوست"
                     title="بارگذاری پیوست"
                   >
-                    <svg
-                      viewBox="0 0 24 24"
-                      className="w-6 h-6"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="M12 15V3" />
-                      <path d="m7 8 5-5 5 5" />
-                      <path d="M5 13v6h14v-6" />
-                    </svg>
+                    <img
+                      src="/images/icons/Uplod.svg"
+                      alt=""
+                      className={"w-6 h-6 " + (theme === "dark" ? "invert" : "")}
+                    />
                   </button>
                 ) : null}
                 <div className={rowActionsRevealCls}>
@@ -7332,7 +7323,7 @@ const rowBg = normalRowBg;
                                   : "border-black/15 bg-black text-white hover:bg-black/90")
                               }
                             >
-                              <img src="/images/icons/upload.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")} />
+                              <img src="/images/icons/Uplod.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")} />
                               انتخاب فایل
                             </button>
                             <input
