@@ -24,13 +24,24 @@ export default function Shell() {
     if (authLoading || !user?.id) return;
     if (!quiet) setNotificationsLoading(true);
     try {
-      const response = await fetch("/api/supply-requests?cartable=1", {
-        credentials: "include",
-        headers: { "x-user-id": String(user.id) },
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data?.error || "notifications_failed");
-      setNotifications(Array.isArray(data?.items) ? data.items : []);
+      const requestOptions = { credentials: "include", headers: { "x-user-id": String(user.id) } };
+      const [cartableResponse, actionsResponse] = await Promise.all([
+        fetch("/api/supply-requests?cartable=1", requestOptions),
+        fetch("/api/supply-actions", requestOptions),
+      ]);
+      const [cartableData, actionsData] = await Promise.all([
+        cartableResponse.json().catch(() => ({})),
+        actionsResponse.json().catch(() => ({})),
+      ]);
+      const dashboardItems = cartableResponse.ok && Array.isArray(cartableData?.items)
+        ? cartableData.items.map((item) => ({ ...item, notificationTarget: "dashboard" }))
+        : [];
+      const actionItems = actionsResponse.ok && Array.isArray(actionsData?.items)
+        ? actionsData.items
+            .filter((item) => Number(item.currentAssigneeUserId) === Number(user.id) && item.workflowStatus === "in_progress")
+            .map((item) => ({ ...item, notificationTarget: "supply_actions" }))
+        : [];
+      setNotifications([...dashboardItems, ...actionItems]);
     } catch {
       setNotifications([]);
     } finally {
@@ -62,7 +73,9 @@ export default function Shell() {
 
   const openNotification = (item) => {
     setNotificationsOpen(false);
-    navigate(`/dashboard?supplyRequest=${encodeURIComponent(item.id)}`);
+    const target = item.notificationTarget === "supply_actions" ? "/supply/actions" : "/dashboard";
+    const key = item.notificationTarget === "supply_actions" ? "request" : "supplyRequest";
+    navigate(`${target}?${key}=${encodeURIComponent(item.id)}`);
   };
 
   // ===== Date (Jalali + Gregorian) =====
@@ -209,7 +222,7 @@ export default function Shell() {
                   <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10">
                     <div>
                       <div className="text-sm font-bold">اعلان‌ها</div>
-                      <div className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">درخواست‌های تأمین ارجاع‌شده به شما</div>
+                      <div className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">پیام‌ها و موارد نیازمند بررسی</div>
                     </div>
                     {notifications.length ? <span className="rounded-full bg-rose-50 px-2 py-1 text-[10px] font-semibold text-rose-600 dark:bg-rose-500/10 dark:text-rose-300">{new Intl.NumberFormat("fa-IR").format(notifications.length)} جدید</span> : null}
                   </div>
@@ -223,11 +236,11 @@ export default function Shell() {
                             <img src="/images/icons/darkhast-tamin.svg" alt="" className="h-5 w-5 dark:invert" />
                           </span>
                           <span className="min-w-0 flex-1">
-                            <span className="block text-xs font-semibold">درخواست تأمین جدید</span>
+                            <span className="block text-xs font-semibold">{item.notificationTarget === "supply_actions" ? "کار جدید در انتظار اقدام" : "درخواست جدید در انتظار بررسی"}</span>
                             <span className="mt-1 block truncate text-xs text-neutral-600 dark:text-neutral-300">{item.title || "بدون موضوع"}</span>
                             <span className="mt-1.5 flex items-center justify-between gap-2 text-[10px] text-neutral-400">
                               <span dir="ltr" className="font-sans tabular-nums">{item.serial || "—"}</span>
-                              <span className="transition group-hover:text-neutral-700 dark:group-hover:text-neutral-200">مشاهده در داشبورد ←</span>
+                              <span className="transition group-hover:text-neutral-700 dark:group-hover:text-neutral-200">{item.notificationTarget === "supply_actions" ? "مشاهده در کارهای در دست اقدام ←" : "مشاهده در داشبورد ←"}</span>
                             </span>
                           </span>
                         </button>

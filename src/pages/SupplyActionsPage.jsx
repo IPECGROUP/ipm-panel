@@ -1,5 +1,6 @@
 // اقدامات تامین
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
@@ -64,6 +65,9 @@ function StatusBadge({ status }) {
 
 export default function SupplyActionsPage() {
   const { user, loading: authLoading } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedActionId = searchParams.get("request");
+  const openedNotificationRef = useRef("");
   const uploadFileRef = useRef(null);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -177,6 +181,14 @@ export default function SupplyActionsPage() {
     addActionRow(item.id);
     setExpandedId(item.id);
   };
+
+  useEffect(() => {
+    if (!requestedActionId || loading || openedNotificationRef.current === requestedActionId) return;
+    const requested = items.find((item) => String(item.id) === String(requestedActionId));
+    if (!requested) return;
+    openedNotificationRef.current = requestedActionId;
+    openActions(requested);
+  }, [items, loading, requestedActionId]);
 
   const deleteAction = async (requestId, action) => {
     const key = `${requestId}:${action.id}`;
@@ -356,7 +368,11 @@ export default function SupplyActionsPage() {
           editingIds={editingIds}
           savingIds={savingIds}
           uploadingIds={uploadingIds}
-          onClose={() => setExpandedId(null)}
+          onClose={() => {
+            setExpandedId(null);
+            openedNotificationRef.current = "";
+            if (requestedActionId) setSearchParams({}, { replace: true });
+          }}
           onAdd={() => addActionRow(expandedItem.id)}
           onPatch={patchAction}
           onPersist={persistAction}
