@@ -3484,6 +3484,8 @@ useLayoutEffect(() => {
   const rowActionsRevealCls =
     "w-full flex items-center justify-center gap-2 opacity-0 pointer-events-none transition-opacity " +
     "group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto";
+  const uploadActionBtnCls =
+    iconBtnCls + " letter-upload-flash relative overflow-visible";
 
   const tableWrapCls =
     "bg-white text-black rounded-2xl border border-black/10 overflow-hidden " +
@@ -6185,6 +6187,18 @@ aria-invalid={fieldHasError(formKind, "subject")}
   " pb-0"
 }
 >
+  <style>{`
+    @keyframes letter-upload-flash {
+      0%, 58%, 100% { transform: scale(1); opacity: 1; filter: drop-shadow(0 0 0 rgba(37, 99, 235, 0)); }
+      66% { transform: scale(1.14); opacity: 0.8; filter: drop-shadow(0 0 7px rgba(37, 99, 235, 0.7)); }
+      74% { transform: scale(0.98); opacity: 1; filter: drop-shadow(0 0 2px rgba(37, 99, 235, 0.35)); }
+    }
+    .letter-upload-flash img { animation: letter-upload-flash 2.4s ease-in-out infinite; }
+    .letter-upload-flash:hover img { animation-play-state: paused; }
+    @media (prefers-reduced-motion: reduce) {
+      .letter-upload-flash img { animation: none; }
+    }
+  `}</style>
                <table
                
   dir="rtl"
@@ -6200,8 +6214,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
   <col />                         {/* موضوع (باقی فضا) */}
   <col style={{ width: 144 }} />  {/* از/به */}
   <col style={{ width: 176 }} />  {/* شرکت/سازمان */}
-  <col style={{ width: 192 }} />  {/* اقدامات */}
-  <col style={{ width: 72 }} />   {/* پیوست */}
+  <col style={{ width: 240 }} />  {/* اقدامات */}
 </colgroup>
 
   <thead>
@@ -6279,16 +6292,13 @@ aria-invalid={fieldHasError(formKind, "subject")}
     ) : null}
   </div>
 </th>
-      <th className="w-[72px] !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
-        پیوست
-      </th>
     </tr>
   </thead>
 
   <tbody className={tbodyCls}>
     {pageItems.length === 0 ? (
       <tr>
-        <td colSpan={8} className="py-6 text-black/60 dark:text-neutral-400">
+        <td colSpan={7} className="py-6 text-black/60 dark:text-neutral-400">
           آیتمی ثبت نشده است.
         </td>
       </tr>
@@ -6303,9 +6313,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
         const isInternal = kind === "internal";
         const isLast = idx === pageItems.length - 1;
         const divider = isLast ? "" : rowDividerCls;
-        const rowAttachments = attachmentsOf(l);
-        const hasRealAttachment = rowAttachments.length > 0;
-
+        const hasRealAttachment = attachmentsOf(l).length > 0;
         const isConf = isConfidentialLetter(l);
 
 const normalRowBg = isOutgoing
@@ -6392,6 +6400,25 @@ const rowBg = normalRowBg;
 
             <td className={"!pl-6 !pr-3 " + divider}>
               <div className={rowActionsRevealCls}>
+                {!hasRealAttachment ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setKbdAbsIdx(absIdx);
+                      startEdit(l);
+                      openUpload(kind);
+                    }}
+                    className={uploadActionBtnCls}
+                    aria-label="بارگذاری پیوست"
+                    title="بارگذاری پیوست"
+                  >
+                    <img
+                      src="/images/icons/upload.svg"
+                      alt=""
+                      className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
+                    />
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => {
@@ -6434,29 +6461,6 @@ const rowBg = normalRowBg;
                   />
                 </button>
               </div>
-            </td>
-            <td className={"px-3 " + divider}>
-              {!hasRealAttachment ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setKbdAbsIdx(absIdx);
-                    startEdit(l);
-                    openUpload(kind);
-                  }}
-                  className="mx-auto grid h-9 w-9 place-items-center !border-0 !bg-transparent !shadow-none animate-pulse transition hover:opacity-80"
-                  aria-label="بارگذاری پیوست"
-                  title="بارگذاری پیوست"
-                >
-                  <img
-                    src="/images/icons/upload.svg"
-                    alt=""
-                    className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
-                  />
-                </button>
-              ) : (
-                <span className="mx-auto block h-9 w-9" aria-label="دارای پیوست" title="دارای پیوست" />
-              )}
             </td>
           </tr>
         );
