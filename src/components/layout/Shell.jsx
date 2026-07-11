@@ -1,9 +1,16 @@
 // src/components/layout/Shell.jsx
 import React from "react";
-import { Link, Outlet } from "react-router-dom";
+import { Link, Outlet, useNavigate } from "react-router-dom";
 import RightNav from "../RightNav.jsx";
+import { useAuth } from "../AuthProvider.jsx";
 
 export default function Shell() {
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const notificationsRef = React.useRef(null);
+  const [notifications, setNotifications] = React.useState([]);
+  const [notificationsOpen, setNotificationsOpen] = React.useState(false);
+  const [notificationsLoading, setNotificationsLoading] = React.useState(false);
   // ===== تم (dark|light) فقط برای همین سشن، بدون localStorage =====
   const [theme] = React.useState("light"); 
 
@@ -12,6 +19,51 @@ export default function Shell() {
     if (theme === "dark") root.classList.add("dark");
     else root.classList.remove("dark");
   }, [theme]);
+
+  const loadNotifications = React.useCallback(async ({ quiet = false } = {}) => {
+    if (authLoading || !user?.id) return;
+    if (!quiet) setNotificationsLoading(true);
+    try {
+      const response = await fetch("/api/supply-requests?cartable=1", {
+        credentials: "include",
+        headers: { "x-user-id": String(user.id) },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error || "notifications_failed");
+      setNotifications(Array.isArray(data?.items) ? data.items : []);
+    } catch {
+      setNotifications([]);
+    } finally {
+      if (!quiet) setNotificationsLoading(false);
+    }
+  }, [authLoading, user?.id]);
+
+  React.useEffect(() => {
+    loadNotifications();
+    const interval = setInterval(() => loadNotifications({ quiet: true }), 30000);
+    const refresh = () => loadNotifications({ quiet: true });
+    window.addEventListener("focus", refresh);
+    window.addEventListener("supply-notifications-refresh", refresh);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("supply-notifications-refresh", refresh);
+    };
+  }, [loadNotifications]);
+
+  React.useEffect(() => {
+    if (!notificationsOpen) return undefined;
+    const closeOnOutsideClick = (event) => {
+      if (!notificationsRef.current?.contains(event.target)) setNotificationsOpen(false);
+    };
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    return () => document.removeEventListener("mousedown", closeOnOutsideClick);
+  }, [notificationsOpen]);
+
+  const openNotification = (item) => {
+    setNotificationsOpen(false);
+    navigate(`/dashboard?supplyRequest=${encodeURIComponent(item.id)}`);
+  };
 
   // ===== Date (Jalali + Gregorian) =====
   const [now, setNow] = React.useState(() => new Date());
@@ -127,24 +179,69 @@ export default function Shell() {
               </span>
             </div>
 
-            {/* دکمه اعلان */}
-            <button
-              aria-label="اعلان‌ها"
-              title="اعلان‌ها"
-              className={
-                "h-8 w-8 sm:h-9 sm:w-9 shrink-0 rounded-xl border flex items-center justify-center p-0 transition " +
-                (theme === "dark"
-                  ? "border-neutral-700 text-neutral-200 hover:bg-neutral-800/60"
-                  : "border-neutral-300 text-neutral-800 hover:bg-neutral-50")
-              }
-              onClick={() => {}}
-            >
-              <img
-                src="/images/icons/notif.svg"
-                alt="اعلان"
-                className="w-4 h-4 sm:w-5 sm:h-5 dark:invert"
-              />
-            </button>
+            <div ref={notificationsRef} className="relative shrink-0">
+              <button
+                type="button"
+                aria-label={`اعلان‌ها${notifications.length ? `، ${notifications.length} مورد` : ""}`}
+                title="اعلان‌ها"
+                className={
+                  "relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border p-0 transition sm:h-9 sm:w-9 " +
+                  (theme === "dark"
+                    ? "border-neutral-700 text-neutral-200 hover:bg-neutral-800/60"
+                    : "border-neutral-300 text-neutral-800 hover:bg-neutral-50")
+                }
+                onClick={() => {
+                  setNotificationsOpen((open) => !open);
+                  if (!notificationsOpen) loadNotifications();
+                }}
+              >
+                {notifications.length ? <span className="notification-ring absolute inset-0 rounded-xl border border-rose-400/70" aria-hidden="true" /> : null}
+                <img src="/images/icons/notif.svg" alt="" className={`h-4 w-4 dark:invert sm:h-5 sm:w-5 ${notifications.length ? "notification-bell" : ""}`} />
+                {notifications.length ? (
+                  <span className="notification-count absolute -left-2 -top-2 grid h-5 min-w-5 place-items-center rounded-full bg-rose-600 px-1 text-[10px] font-bold leading-none text-white shadow-md ring-2 ring-white dark:ring-neutral-900">
+                    {notifications.length > 99 ? "+۹۹" : new Intl.NumberFormat("fa-IR").format(notifications.length)}
+                  </span>
+                ) : null}
+              </button>
+
+              {notificationsOpen ? (
+                <div className="notification-popover absolute left-0 top-[calc(100%+10px)] z-[70] w-[min(360px,calc(100vw-24px))] overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
+                  <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10">
+                    <div>
+                      <div className="text-sm font-bold">اعلان‌ها</div>
+                      <div className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">درخواست‌های تأمین ارجاع‌شده به شما</div>
+                    </div>
+                    {notifications.length ? <span className="rounded-full bg-rose-50 px-2 py-1 text-[10px] font-semibold text-rose-600 dark:bg-rose-500/10 dark:text-rose-300">{new Intl.NumberFormat("fa-IR").format(notifications.length)} جدید</span> : null}
+                  </div>
+                  <div className="max-h-[min(420px,65vh)] overflow-y-auto p-2">
+                    {notificationsLoading ? (
+                      <div className="py-8 text-center text-xs text-neutral-500">در حال دریافت اعلان‌ها...</div>
+                    ) : notifications.length ? (
+                      notifications.map((item) => (
+                        <button key={item.id} type="button" onClick={() => openNotification(item)} className="group flex w-full gap-3 rounded-xl p-3 text-right transition hover:bg-black/[0.04] dark:hover:bg-white/[0.07]">
+                          <span className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-50 dark:bg-amber-500/10">
+                            <img src="/images/icons/darkhast-tamin.svg" alt="" className="h-5 w-5 dark:invert" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-xs font-semibold">درخواست تأمین جدید</span>
+                            <span className="mt-1 block truncate text-xs text-neutral-600 dark:text-neutral-300">{item.title || "بدون موضوع"}</span>
+                            <span className="mt-1.5 flex items-center justify-between gap-2 text-[10px] text-neutral-400">
+                              <span dir="ltr" className="font-sans tabular-nums">{item.serial || "—"}</span>
+                              <span className="transition group-hover:text-neutral-700 dark:group-hover:text-neutral-200">مشاهده در داشبورد ←</span>
+                            </span>
+                          </span>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="py-9 text-center">
+                        <div className="text-sm font-medium">اعلان جدیدی ندارید</div>
+                        <div className="mt-1 text-xs text-neutral-500">درخواست‌های ارجاع‌شده اینجا نمایش داده می‌شوند.</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </div>
 
           </div>
           </div>

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { SupplyRequestPreview } from "./SupplyRequestPage.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 
@@ -71,6 +72,9 @@ function StatusBadge({ status }) {
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedSupplyId = searchParams.get("supplyRequest");
+  const openedNotificationRef = React.useRef("");
   const [activeTab, setActiveTab] = useState("supply");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -118,6 +122,17 @@ export default function DashboardPage() {
     loadCartable();
   }, [loadCartable]);
 
+  useEffect(() => {
+    if (!requestedSupplyId || loading || openedNotificationRef.current === requestedSupplyId) return;
+    const requested = items.find((item) => String(item.id) === String(requestedSupplyId));
+    if (!requested) return;
+    openedNotificationRef.current = requestedSupplyId;
+    setActiveTab("supply");
+    setSelected(requested);
+    setActionNote("");
+    setActionError("");
+  }, [items, loading, requestedSupplyId]);
+
   const projects = useMemo(() => {
     const byId = new Map();
     items.forEach((item) => {
@@ -158,6 +173,7 @@ export default function DashboardPage() {
       }
       setActionNote("");
       await loadCartable();
+      window.dispatchEvent(new Event("supply-notifications-refresh"));
     } catch (ex) {
       const message = String(ex?.message || "");
       setActionError(
@@ -309,7 +325,11 @@ export default function DashboardPage() {
           actionBusy={actionBusy}
           actionError={actionError}
           onAction={recordWorkflowAction}
-          onClose={() => setSelected(null)}
+          onClose={() => {
+            setSelected(null);
+            openedNotificationRef.current = "";
+            if (requestedSupplyId) setSearchParams({}, { replace: true });
+          }}
         />
       )}
     </div>

@@ -209,3 +209,36 @@ td {
 @media (prefers-reduced-motion: reduce) {
   .supply-actions-modal { animation: none; }
 }
+
+@keyframes notification-bell-shake {
+  0%, 76%, 100% { transform: rotate(0); }
+  80% { transform: rotate(14deg); }
+  85% { transform: rotate(-12deg); }
+  90% { transform: rotate(8deg); }
+  95% { transform: rotate(-5deg); }
+}
+
+@keyframes notification-ring-pulse {
+  0% { opacity: .65; transform: scale(.92); }
+  75%, 100% { opacity: 0; transform: scale(1.35); }
+}
+
+@keyframes notification-count-pop {
+  0% { opacity: 0; transform: scale(.45); }
+  70% { transform: scale(1.15); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes notification-popover-enter {
+  from { opacity: 0; transform: translateY(-7px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.notification-bell { animation: notification-bell-shake 2.8s ease-in-out infinite; transform-origin: 50% 12%; }
+.notification-ring { animation: notification-ring-pulse 1.8s ease-out infinite; }
+.notification-count { animation: notification-count-pop 420ms cubic-bezier(.22, 1, .36, 1); }
+.notification-popover { animation: notification-popover-enter 260ms cubic-bezier(.22, 1, .36, 1); transform-origin: top left; }
+
+@media (prefers-reduced-motion: reduce) {
+  .notification-bell, .notification-ring, .notification-count, .notification-popover { animation: none; }
+}
