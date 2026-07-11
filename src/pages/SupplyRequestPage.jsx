@@ -1346,14 +1346,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                 <PreviewSection title="سابقه فرآیند درخواست">
                   <div className="py-2">
                     {history.filter((entry) => !["step_set", "step_clear", "workflow_meta", "cc_added"].includes(entry?.type)).length ? (
-                      <div className="divide-y divide-black/10 dark:divide-white/10">
-                        {history.filter((entry) => !["step_set", "step_clear", "workflow_meta", "cc_added"].includes(entry?.type)).map((entry, index) => (
-                          <div key={`${entry?.at || ""}_${index}`} className="py-2.5 text-xs leading-6">
-                            <div className="text-neutral-700 dark:text-neutral-200">{historySentence(entry, item)}</div>
-                            {entry?.note ? <div className="mt-1 text-neutral-500 dark:text-neutral-400">توضیح: {entry.note}</div> : null}
-                          </div>
-                        ))}
-                      </div>
+                      <HistoryTimeline entries={history.filter((entry) => !["step_set", "step_clear", "workflow_meta", "cc_added"].includes(entry?.type))} item={item} />
                     ) : (
                       <div className="py-5 text-center text-sm text-neutral-500">سابقه‌ای ثبت نشده است.</div>
                     )}
@@ -1776,11 +1769,48 @@ function formatHistoryTime(value, entry) {
 }
 
 function historySentence(entry, item) {
-  const date = formatHistoryDate(entry?.at, entry);
-  const time = formatHistoryTime(entry?.at, entry);
   const actor = historyActorName(entry, item);
   const action = historyActionText(entry?.type || entry?.status);
-  return `درخواست در تاریخ ${date} ساعت ${time} توسط ${actor} ${action}.`;
+  return `درخواست توسط ${actor} ${action}.`;
+}
+
+function historyTone(entry) {
+  const type = entry?.type || entry?.status;
+  if (type === "rejected") return { dot: "bg-rose-500 ring-rose-100 dark:ring-rose-500/20", line: "bg-rose-200 dark:bg-rose-500/30", text: "text-rose-600 dark:text-rose-400" };
+  if (type === "returned") return { dot: "bg-amber-500 ring-amber-100 dark:ring-amber-500/20", line: "bg-amber-200 dark:bg-amber-500/30", text: "text-amber-600 dark:text-amber-400" };
+  if (type === "approved") return { dot: "bg-emerald-500 ring-emerald-100 dark:ring-emerald-500/20", line: "bg-emerald-200 dark:bg-emerald-500/30", text: "text-emerald-600 dark:text-emerald-400" };
+  return { dot: "bg-sky-500 ring-sky-100 dark:ring-sky-500/20", line: "bg-sky-200 dark:bg-sky-500/30", text: "text-sky-600 dark:text-sky-400" };
+}
+
+function HistoryTimeline({ entries, item }) {
+  return (
+    <ol className="px-1 py-1" aria-label="خط زمانی سابقه فرآیند درخواست">
+      {entries.map((entry, index) => {
+        const tone = historyTone(entry);
+        const isLast = index === entries.length - 1;
+        return (
+          <li
+            key={`${entry?.at || ""}_${index}`}
+            className="supply-history-item relative grid grid-cols-[66px_22px_minmax(0,1fr)] gap-2 pb-5 last:pb-2"
+            style={{ "--history-delay": `${Math.min(index * 90, 540)}ms` }}
+          >
+            <time className={`pt-0.5 text-left text-[11px] font-medium leading-5 tabular-nums ${tone.text}`} dir="ltr">
+              <span className="block whitespace-nowrap">{formatHistoryDate(entry?.at, entry)}</span>
+              <span className="block text-neutral-400 dark:text-neutral-500">{formatHistoryTime(entry?.at, entry)}</span>
+            </time>
+            <span className="relative flex justify-center" aria-hidden="true">
+              {!isLast ? <span className={`supply-history-line absolute bottom-[-20px] top-3 w-px ${tone.line}`} /> : null}
+              <span className={`supply-history-dot relative z-10 mt-1 h-3 w-3 rounded-full ring-4 ${tone.dot}`} />
+            </span>
+            <div className="min-w-0 rounded-xl bg-neutral-50 px-3 py-2 text-xs leading-6 dark:bg-white/[0.04]">
+              <div className="font-medium text-neutral-700 dark:text-neutral-200">{historySentence(entry, item)}</div>
+              {entry?.note ? <div className="mt-1 border-t border-black/5 pt-1 text-neutral-500 dark:border-white/10 dark:text-neutral-400">توضیح: {entry.note}</div> : null}
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
 }
 
 function Field({ label, required, children, labelClassName }) {

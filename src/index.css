@@ -173,3 +173,26 @@ td {
     @apply bg-background text-foreground;
   }
 }
+@keyframes supply-history-enter {
+  from { opacity: 0; transform: translateY(-8px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes supply-history-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.28); }
+}
+
+.supply-history-item {
+  opacity: 0;
+  animation: supply-history-enter 480ms cubic-bezier(.22, 1, .36, 1) var(--history-delay, 0ms) forwards;
+}
+
+.supply-history-item:last-child .supply-history-dot {
+  animation: supply-history-pulse 1.8s ease-in-out 600ms infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .supply-history-item { opacity: 1; animation: none; }
+  .supply-history-item:last-child .supply-history-dot { animation: none; }
+}
