@@ -950,9 +950,11 @@ const getEffectiveLetterNoForKind = (kind) => {
 
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFor, setUploadFor] = useState("incoming");
+  const [uploadTargetLetterId, setUploadTargetLetterId] = useState("");
 
   const closeUpload = () => {
     setUploadOpen(false);
+    setUploadTargetLetterId("");
   };
     
 // ===== Units (for internal letters) =====
@@ -2268,6 +2270,7 @@ const resetAllFilters = () => {
   const addFilesToUpload = async (which, fileList) => {
     const list = Array.from(fileList || []);
     if (!list.length) return;
+    const targetLetterId = String(uploadTargetLetterId || "").trim();
 
     for (const rawFile of list) {
       const isImg = rawFile.type && rawFile.type.startsWith("image/");
@@ -2295,6 +2298,38 @@ const resetAllFilters = () => {
             optimizedFile: preparedFile,
           },
         ]);
+
+        // Uploads started from a table row are attached immediately to that exact letter.
+        if (targetLetterId) {
+          setDocFilesFor(which, (prev) =>
+            prev.map((x) => (x.id === id ? { ...x, status: "uploading", progress: 0, error: "" } : x))
+          );
+
+          try {
+            const res = await uploadFileToLetter(preparedFile, targetLetterId, makeProgressUpdater(which, id));
+            setDocFilesFor(which, (prev) =>
+              prev.map((x) =>
+                x.id === id
+                  ? {
+                      ...x,
+                      status: "done",
+                      progress: 100,
+                      serverId: res?.item?.id ?? res?.id ?? x.serverId,
+                      url: res?.item?.url ?? res?.url ?? x.url,
+                    }
+                  : x
+              )
+            );
+            setHasAttachment(true);
+            await refetchLetters();
+          } catch (e) {
+            setDocFilesFor(which, (prev) =>
+              prev.map((x) =>
+                x.id === id ? { ...x, status: "error", error: e?.message || "خطا در آپلود فایل." } : x
+              )
+            );
+          }
+        }
       } catch (e) {
         alert(e?.message || "\u062e\u0637\u0627 \u062f\u0631 \u0622\u0645\u0627\u062f\u0647\u200c\u0633\u0627\u0632\u06cc \u0641\u0627\u06cc\u0644 \u0628\u0631\u0627\u06cc \u0622\u067e\u0644\u0648\u062f.");
       }
@@ -2921,8 +2956,9 @@ const secretariatLongText = (ymd) => {
 
   return `${weekdayFa} — ${gregYmd}`;
 };
-  const openUpload = (which) => {
+  const openUpload = (which, letterId = "") => {
     setUploadFor(which);
+    setUploadTargetLetterId(String(letterId || "").trim());
     setUploadOpen(true);
   };
 
@@ -6101,7 +6137,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
                                   onClick={() => {
                                     setKbdAbsIdx(absIdx);
                                     startEdit(l);
-                                    openUpload(kind);
+                                    openUpload(kind, id);
                                   }}
                                   className={iconBtnCls + " !h-9 !w-9 animate-pulse"}
                                   aria-label="بارگذاری پیوست"
@@ -6406,7 +6442,7 @@ const rowBg = normalRowBg;
                     onClick={() => {
                       setKbdAbsIdx(absIdx);
                       startEdit(l);
-                      openUpload(kind);
+                      openUpload(kind, id);
                     }}
                     className={uploadActionBtnCls}
                     aria-label="بارگذاری پیوست"
