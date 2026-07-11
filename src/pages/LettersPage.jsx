@@ -6193,10 +6193,10 @@ aria-invalid={fieldHasError(formKind, "subject")}
       66% { transform: scale(1.14); opacity: 0.8; filter: drop-shadow(0 0 7px rgba(37, 99, 235, 0.7)); }
       74% { transform: scale(0.98); opacity: 1; filter: drop-shadow(0 0 2px rgba(37, 99, 235, 0.35)); }
     }
-    .letter-upload-flash img { animation: letter-upload-flash 2.4s ease-in-out infinite; }
-    .letter-upload-flash:hover img { animation-play-state: paused; }
+    .letter-upload-flash :is(img, svg) { animation: letter-upload-flash 2.4s ease-in-out infinite; }
+    .letter-upload-flash:hover :is(img, svg) { animation-play-state: paused; }
     @media (prefers-reduced-motion: reduce) {
-      .letter-upload-flash img { animation: none; }
+      .letter-upload-flash :is(img, svg) { animation: none; }
     }
   `}</style>
                <table
@@ -6412,11 +6412,20 @@ const rowBg = normalRowBg;
                     aria-label="بارگذاری پیوست"
                     title="بارگذاری پیوست"
                   >
-                    <img
-                      src="/images/icons/upload.svg"
-                      alt=""
-                      className={"w-6 h-6 " + (theme === "dark" ? "invert" : "")}
-                    />
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M12 15V3" />
+                      <path d="m7 8 5-5 5 5" />
+                      <path d="M5 13v6h14v-6" />
+                    </svg>
                   </button>
                 ) : null}
                 <div className={rowActionsRevealCls}>
