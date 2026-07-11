@@ -592,7 +592,6 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
           <div className="flex flex-wrap items-center justify-between gap-2 md:min-h-10 md:border-r md:border-t-0 md:pr-2 md:pt-0 dark:border-white/10">
             <div className="flex items-center gap-2">
               <FileButton disabled={uploading} onClick={() => onOpenUpload(action)} />
-              <FileSummary files={files} uploading={uploading} onClick={() => onOpenFiles(action)} />
             </div>
             <div className="flex items-center gap-1">
               <button type="button" onClick={() => onPersist(requestId, action)} disabled={saving} className="grid h-8 w-8 place-items-center rounded-lg bg-black text-white transition hover:bg-black/85 disabled:opacity-50 dark:bg-white dark:text-black" title={action.isNew ? "ثبت اقدام" : "ذخیره تغییرات"} aria-label={action.isNew ? "ثبت اقدام" : "ذخیره تغییرات"}>
