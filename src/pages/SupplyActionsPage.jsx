@@ -592,10 +592,11 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
     if (!editable) {
       return (
         <div className="group min-w-0 px-0 py-0.5 transition">
-          <div className="grid gap-2 sm:grid-cols-[92px_minmax(0,1fr)_auto] sm:items-start">
+          <div className="grid gap-2 sm:grid-cols-[92px_minmax(0,1fr)_auto_104px] sm:items-start">
             <time className="text-xs font-medium leading-5 tabular-nums text-emerald-700 dark:text-emerald-400"><span className="block">{formatDate(action.date)}</span><span className="block text-[10px] text-neutral-400 dark:text-neutral-500">{formatActionTime(action)}</span></time>
-            <div className="min-w-0 pt-0 text-xs leading-5 text-neutral-700 dark:text-neutral-200"><div>{action.description || "—"}</div><div className="mt-1"><StatusBadge status={action.status} /></div></div>
-            <div className="flex items-center justify-end gap-1 sm:min-w-[104px]">
+            <div className="min-w-0 pt-0 text-xs leading-5 text-neutral-700 dark:text-neutral-200">{action.description || "—"}</div>
+            <div className="pt-0.5"><StatusBadge status={action.status} /></div>
+            <div className="flex items-center justify-end gap-1">
               <FileSummary files={files} uploading={uploading} onClick={() => onOpenFiles(action)} />
               <span className="flex items-center gap-1 opacity-0 transition duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
                 <RowActionIconBtn action="edit" onClick={() => onEdit(action)} size={30} iconSize={14} />
