@@ -196,3 +196,16 @@ td {
   .supply-history-item { opacity: 1; animation: none; }
   .supply-history-item:last-child .supply-history-dot { animation: none; }
 }
+
+@keyframes supply-actions-modal-enter {
+  from { opacity: 0; transform: translateY(14px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.supply-actions-modal {
+  animation: supply-actions-modal-enter 320ms cubic-bezier(.22, 1, .36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .supply-actions-modal { animation: none; }
+}
