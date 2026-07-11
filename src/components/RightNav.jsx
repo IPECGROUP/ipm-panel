@@ -230,7 +230,7 @@ function RightNav() {
           active: supplyParentActive,
           items: [
             { to: "/supply/request", label: "درخواست تامین", hint: "ثبت و پیگیری درخواست تامین", icon: <IcSupplyRequest /> },
-            { to: "/supply/actions", label: "کارهای در دست اقدام", hint: "پیگیری کارهای در دست اقدام", icon: <NavIcon src="/images/icons/egdamat-tamin.svg" /> },
+            { to: "/supply/actions", label: "کار های در دست انجام", hint: "پیگیری کار های در دست انجام", icon: <NavIcon src="/images/icons/egdamat-tamin.svg" /> },
             { to: "/supply/dashboard", label: "داشبورد مدیریت تامین", hint: "نمای کلی تامین", icon: <IcProjectDashboard /> },
           ],
         },

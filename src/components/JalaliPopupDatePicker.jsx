@@ -60,6 +60,7 @@ export default function JalaliPopupDatePicker({
   buttonClassName,
   hideIcon,
   disableFuture = false,
+  disableTodayAndPast = false,
   placeholder = "",
   preventDefaultToday = false,
 }) {
@@ -71,6 +72,7 @@ export default function JalaliPopupDatePicker({
 
   const normalizedValue = normalizePickerValue(value);
   const nowParts = useMemo(() => getJalaliPartsFromDate(new Date()), []);
+  const minSelectableParts = useMemo(() => getJalaliPartsFromDate(new Date(Date.now() + 24 * 60 * 60 * 1000)), []);
   const initial = useMemo(() => {
     const m = normalizedValue.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
     if (m) return { jy: Number(m[1]), jm: Number(m[2]), jd: Number(m[3]) };
@@ -92,6 +94,11 @@ export default function JalaliPopupDatePicker({
     return Number(y) === Number(nowParts.jy) ? Number(nowParts.jm) : 12;
   };
 
+  const minMonthForYear = (y) => {
+    if (!disableTodayAndPast) return 1;
+    return Number(y) === Number(minSelectableParts.jy) ? Number(minSelectableParts.jm) : 1;
+  };
+
   const maxDayForYearMonth = (y, m) => {
     const maxByMonth = Number(m) <= 6 ? 31 : Number(m) <= 11 ? 30 : 29;
     if (!disableFuture) return maxByMonth;
@@ -99,6 +106,22 @@ export default function JalaliPopupDatePicker({
       return Math.min(maxByMonth, Number(nowParts.jd));
     }
     return maxByMonth;
+  };
+
+  const minDayForYearMonth = (y, m) => {
+    if (!disableTodayAndPast) return 1;
+    if (Number(y) === Number(minSelectableParts.jy) && Number(m) === Number(minSelectableParts.jm)) return Number(minSelectableParts.jd);
+    return 1;
+  };
+
+  const isBeforeMinSelectable = (y, m, d) => {
+    if (!disableTodayAndPast) return false;
+    const yy = Number(y);
+    const mm = Number(m);
+    const dd = Number(d);
+    if (yy !== Number(minSelectableParts.jy)) return yy < Number(minSelectableParts.jy);
+    if (mm !== Number(minSelectableParts.jm)) return mm < Number(minSelectableParts.jm);
+    return dd < Number(minSelectableParts.jd);
   };
 
   const isAfterToday = (y, m, d) => {
@@ -137,36 +160,40 @@ export default function JalaliPopupDatePicker({
   }, [open]);
 
   const years = useMemo(() => {
-    const base = nowParts.jy || 1400;
+    const base = disableTodayAndPast ? minSelectableParts.jy : nowParts.jy || 1400;
     const arr = [];
     const maxY = disableFuture ? base : base + 10;
     for (let y = base - 10; y <= maxY; y++) arr.push(y);
     return arr;
-  }, [disableFuture, nowParts.jy]);
+  }, [disableFuture, disableTodayAndPast, nowParts.jy, minSelectableParts.jy]);
 
   const months = useMemo(() => {
     const maxM = maxMonthForYear(jy);
     const arr = [];
-    for (let m = 1; m <= maxM; m++) arr.push(m);
+    for (let m = minMonthForYear(jy); m <= maxM; m++) arr.push(m);
     return arr;
-  }, [jy, disableFuture, nowParts.jy, nowParts.jm]);
+  }, [jy, disableFuture, disableTodayAndPast, nowParts.jy, nowParts.jm, minSelectableParts.jy, minSelectableParts.jm]);
 
   const days = useMemo(() => {
     const max = maxDayForYearMonth(jy, jm);
     const arr = [];
-    for (let d = 1; d <= max; d++) arr.push(d);
+    for (let d = minDayForYearMonth(jy, jm); d <= max; d++) arr.push(d);
     return arr;
-  }, [jy, jm, disableFuture, nowParts.jy, nowParts.jm, nowParts.jd]);
+  }, [jy, jm, disableFuture, disableTodayAndPast, nowParts.jy, nowParts.jm, nowParts.jd, minSelectableParts.jy, minSelectableParts.jm, minSelectableParts.jd]);
 
   useEffect(() => {
     const maxM = maxMonthForYear(jy);
     if (jm > maxM) setJm(maxM);
-  }, [jy, jm, disableFuture, nowParts.jy, nowParts.jm]);
+    const minM = minMonthForYear(jy);
+    if (jm < minM) setJm(minM);
+  }, [jy, jm, disableFuture, disableTodayAndPast, nowParts.jy, nowParts.jm, minSelectableParts.jy, minSelectableParts.jm]);
 
   useEffect(() => {
     const max = maxDayForYearMonth(jy, jm);
     if (jd > max) setJd(max);
-  }, [jy, jm, jd, disableFuture, nowParts.jy, nowParts.jm, nowParts.jd]);
+    const min = minDayForYearMonth(jy, jm);
+    if (jd < min) setJd(min);
+  }, [jy, jm, jd, disableFuture, disableTodayAndPast, nowParts.jy, nowParts.jm, nowParts.jd, minSelectableParts.jy, minSelectableParts.jm, minSelectableParts.jd]);
 
   useEffect(() => {
     if (!disableFuture) return;
@@ -175,6 +202,13 @@ export default function JalaliPopupDatePicker({
     setJm(nowParts.jm);
     setJd(nowParts.jd);
   }, [disableFuture, jy, jm, jd, nowParts.jy, nowParts.jm, nowParts.jd]);
+
+  useEffect(() => {
+    if (!disableTodayAndPast || !isBeforeMinSelectable(jy, jm, jd)) return;
+    setJy(minSelectableParts.jy);
+    setJm(minSelectableParts.jm);
+    setJd(minSelectableParts.jd);
+  }, [disableTodayAndPast, jy, jm, jd, minSelectableParts.jy, minSelectableParts.jm, minSelectableParts.jd]);
 
   const preview = `${jy}/${pad2(jm)}/${pad2(jd)}`;
 
@@ -342,6 +376,12 @@ export default function JalaliPopupDatePicker({
                 <button
                   type="button"
                   onClick={() => {
+                    if (disableTodayAndPast && isBeforeMinSelectable(jy, jm, jd)) {
+                      setJy(minSelectableParts.jy);
+                      setJm(minSelectableParts.jm);
+                      setJd(minSelectableParts.jd);
+                      return;
+                    }
                     if (preventDefaultToday && !normalizedValue && !touched) {
                       setOpen(false);
                       return;

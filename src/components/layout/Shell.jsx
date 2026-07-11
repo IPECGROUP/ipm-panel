@@ -236,11 +236,11 @@ export default function Shell() {
                             <img src="/images/icons/darkhast-tamin.svg" alt="" className="h-5 w-5 dark:invert" />
                           </span>
                           <span className="min-w-0 flex-1">
-                            <span className="block text-xs font-semibold">{item.notificationTarget === "supply_actions" ? "کار جدید در انتظار اقدام" : "درخواست جدید در انتظار بررسی"}</span>
+                            <span className="block text-xs font-semibold">{item.notificationTarget === "supply_actions" ? "کار جدید در انتظار انجام" : "درخواست جدید در انتظار بررسی"}</span>
                             <span className="mt-1 block truncate text-xs text-neutral-600 dark:text-neutral-300">{item.title || "بدون موضوع"}</span>
                             <span className="mt-1.5 flex items-center justify-between gap-2 text-[10px] text-neutral-400">
                               <span dir="ltr" className="font-sans tabular-nums">{item.serial || "—"}</span>
-                              <span className="transition group-hover:text-neutral-700 dark:group-hover:text-neutral-200">{item.notificationTarget === "supply_actions" ? "مشاهده در کارهای در دست اقدام ←" : "مشاهده در داشبورد ←"}</span>
+                              <span className="transition group-hover:text-neutral-700 dark:group-hover:text-neutral-200">{item.notificationTarget === "supply_actions" ? "مشاهده در کار های در دست انجام ←" : "مشاهده در داشبورد ←"}</span>
                             </span>
                           </span>
                         </button>

@@ -109,7 +109,7 @@ export default function SupplyActionsPage() {
       const data = await api("/supply-actions");
       setItems(Array.isArray(data?.items) ? data.items : []);
     } catch {
-      setError("دریافت اقدامات تامین انجام نشد.");
+      setError("دریافت کارهای در دست انجام انجام نشد.");
       setItems([]);
     } finally {
       setLoading(false);
@@ -270,7 +270,7 @@ export default function SupplyActionsPage() {
               <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
             </span>
             <span className="min-w-0">
-              <span className="block truncate text-base font-bold md:text-lg">کارهای در دست اقدام</span>
+              <span className="block truncate text-base font-bold md:text-lg">کار های در دست انجام</span>
               <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت تامین و پشتیبانی</span>
             </span>
           </div>
@@ -305,7 +305,7 @@ export default function SupplyActionsPage() {
                 {loading ? (
                   <tr><td colSpan={6} className="py-8 text-neutral-500">در حال دریافت...</td></tr>
                 ) : items.length === 0 ? (
-                  <tr><td colSpan={6} className="py-8 text-neutral-500">درخواستی برای اقدامات تامین وجود ندارد.</td></tr>
+                  <tr><td colSpan={6} className="py-8 text-neutral-500">درخواستی برای کارهای در دست انجام وجود ندارد.</td></tr>
                 ) : (
                   items.map((item) => (
                     <React.Fragment key={item.id}>
@@ -338,7 +338,7 @@ export default function SupplyActionsPage() {
             {loading ? (
               <div className="py-6 text-center text-sm text-neutral-500">در حال دریافت...</div>
             ) : items.length === 0 ? (
-              <div className="py-6 text-center text-sm text-neutral-500">درخواستی برای اقدامات تامین وجود ندارد.</div>
+              <div className="py-6 text-center text-sm text-neutral-500">درخواستی برای کارهای در دست انجام وجود ندارد.</div>
             ) : (
               items.map((item) => (
                 <div key={item.id} className="rounded-xl border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-white/5">
@@ -433,7 +433,7 @@ function SupplyActionsModal({ item, onClose, ...actionsProps }) {
       <div className="supply-actions-modal relative flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
         <header className="flex shrink-0 items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10">
           <div>
-            <h2 className="text-sm font-bold md:text-base">کارهای در دست اقدام</h2>
+            <h2 className="text-sm font-bold md:text-base">کار های در دست انجام</h2>
             <p className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">ثبت و پیگیری اقدامات درخواست</p>
           </div>
           <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-xl border border-black/10 transition hover:bg-black/[0.04] dark:border-white/10 dark:hover:bg-white/10" title="بستن" aria-label="بستن">
@@ -492,25 +492,32 @@ function RequestInfoRow({ label, value, ltr = false }) {
 function ActionsGrid({ item, editingIds, savingIds, uploadingIds, onAdd, onPatch, onPersist, onEdit, onDelete, onOpenUpload, onOpenFiles }) {
   const actions = Array.isArray(item?.actions) ? item.actions : [];
   const requestId = item?.id;
-  const savedActions = actions.filter((action) => !action?.isNew);
+  const savedActions = actions
+    .filter((action) => !action?.isNew)
+    .sort((a, b) => String(b?.createdAt || b?.updatedAt || "").localeCompare(String(a?.createdAt || a?.updatedAt || "")));
   const draftAction = actions.find((action) => action?.isNew);
+  const canAddAction = !draftAction && (!savedActions[0] || savedActions[0]?.status === "in_progress");
 
   return (
     <div className="mt-5">
-      <div className="mb-3">
+      <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-bold">سوابق اقدامات</h3>
           <p className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">جدیدترین اقدام در ابتدای فهرست نمایش داده می‌شود.</p>
         </div>
+        {canAddAction ? (
+          <button type="button" onClick={onAdd} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/15 bg-white text-neutral-700 shadow-sm transition hover:border-black/30 hover:bg-neutral-50 dark:border-white/15 dark:bg-white/[0.06] dark:text-neutral-100 dark:hover:bg-white/10" title="افزودن اقدام جدید" aria-label="افزودن اقدام جدید"><span className="text-2xl font-light leading-none">+</span></button>
+        ) : null}
       </div>
 
       <div className="relative">
         {savedActions.length === 0 ? <div className="rounded-2xl border border-dashed border-black/10 py-8 text-center text-xs text-neutral-500 dark:border-white/10">هنوز اقدامی ثبت نشده است.</div> : null}
         {savedActions.map((action, index) => (
-          <div key={action.id} className="relative grid grid-cols-[20px_minmax(0,1fr)] gap-3 pb-4 last:pb-0">
+          <div key={action.id} className="relative grid grid-cols-[16px_minmax(0,1fr)] gap-3 pb-3 last:pb-0">
             <div className="relative flex justify-center" aria-hidden="true">
-              {index < savedActions.length - 1 ? <span className="absolute bottom-[-16px] top-3 w-px bg-emerald-200 dark:bg-emerald-500/30" /> : null}
-              <span className={`relative z-10 mt-4 h-3 w-3 rounded-full ring-4 ${action.status === "canceled" ? "bg-rose-500 ring-rose-100 dark:ring-rose-500/20" : action.status === "done" ? "bg-emerald-500 ring-emerald-100 dark:ring-emerald-500/20" : "bg-sky-500 ring-sky-100 dark:ring-sky-500/20"}`} />
+              {index === 0 ? <span className="absolute -top-3 h-3 w-px bg-emerald-200 dark:bg-emerald-500/30" /> : null}
+              {index < savedActions.length - 1 ? <span className="absolute bottom-[-12px] top-3 w-px bg-emerald-200 dark:bg-emerald-500/30" /> : null}
+              <span className={`relative z-10 mt-1.5 h-3 w-3 rounded-full ring-4 ${action.status === "canceled" ? "bg-rose-500 ring-rose-100 dark:ring-rose-500/20" : action.status === "done" ? "bg-emerald-500 ring-emerald-100 dark:ring-emerald-500/20" : "bg-sky-500 ring-sky-100 dark:ring-sky-500/20"}`} />
             </div>
             <ActionRow
               index={index}
@@ -549,11 +556,7 @@ function ActionsGrid({ item, editingIds, savingIds, uploadingIds, onAdd, onPatch
             compact
           />
         </div>
-      ) : (
-        <div className="mt-4 flex justify-end">
-          <button type="button" onClick={onAdd} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white shadow-sm transition hover:bg-black/85 dark:bg-white dark:text-black" title="افزودن اقدام جدید" aria-label="افزودن اقدام جدید"><span className="text-xl leading-none">+</span></button>
-        </div>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -568,15 +571,17 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
   if (compact) {
     if (!editable) {
       return (
-        <div className="rounded-2xl border border-black/10 bg-white px-3 py-3 transition hover:border-black/20 dark:border-white/10 dark:bg-neutral-900 dark:hover:border-white/20">
-          <div className="grid gap-3 sm:grid-cols-[115px_minmax(0,1fr)_auto] sm:items-center">
+        <div className="group min-w-0 px-0 py-0.5 transition">
+          <div className="grid gap-2 sm:grid-cols-[104px_minmax(0,1fr)_auto] sm:items-start">
             <time className="text-xs font-medium tabular-nums text-emerald-700 dark:text-emerald-400">{formatDate(action.date)}</time>
-            <div className="min-w-0 text-xs leading-6 text-neutral-700 dark:text-neutral-200">{action.description || "—"}</div>
+            <div className="min-w-0 pt-0 text-xs leading-5 text-neutral-700 dark:text-neutral-200">{action.description || "—"}</div>
             <div className="flex items-center justify-between gap-2 sm:justify-end">
               <StatusBadge status={action.status} />
               <FileSummary files={files} uploading={uploading} onClick={() => onOpenFiles(action)} />
-              <RowActionIconBtn action="edit" onClick={() => onEdit(action)} size={32} iconSize={15} />
-              <RowActionIconBtn action="delete" onClick={() => onDelete(requestId, action)} size={32} iconSize={15} />
+              <span className="flex items-center gap-1 opacity-0 transition duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
+                <RowActionIconBtn action="edit" onClick={() => onEdit(action)} size={30} iconSize={14} />
+                <RowActionIconBtn action="delete" onClick={() => onDelete(requestId, action)} size={30} iconSize={14} />
+              </span>
             </div>
           </div>
         </div>
@@ -613,7 +618,7 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
               <button type="button" onClick={() => onPersist(requestId, action)} disabled={saving} className="grid h-8 w-8 place-items-center rounded-lg bg-black text-white transition hover:bg-black/85 disabled:opacity-50 dark:bg-white dark:text-black" title={action.isNew ? "ثبت اقدام" : "ذخیره تغییرات"} aria-label={action.isNew ? "ثبت اقدام" : "ذخیره تغییرات"}>
                 {action.isNew ? <span className="text-lg leading-none">+</span> : <img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" />}
               </button>
-              <RowActionIconBtn action="delete" onClick={() => onDelete(requestId, action)} size={32} iconSize={15} />
+              {!action.isNew ? <RowActionIconBtn action="delete" onClick={() => onDelete(requestId, action)} size={32} iconSize={15} /> : null}
             </div>
           </div>
           {saving && <div className="text-xs text-neutral-400">در حال ذخیره...</div>}
@@ -676,16 +681,16 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
 function FileSummary({ files, uploading, onClick }) {
   const list = Array.isArray(files) ? files : [];
   if (uploading) return <span className="min-w-0 truncate text-xs text-neutral-500">در حال بارگذاری...</span>;
-  const hasFiles = list.length > 0;
+  if (!list.length) return null;
   return (
     <button
       type="button"
-      onClick={hasFiles ? onClick : undefined}
-      disabled={!hasFiles}
-      className="inline-flex h-7 shrink-0 items-center rounded-lg border border-black/10 bg-white px-2 text-[11px] text-neutral-700 transition hover:bg-black/[0.03] disabled:cursor-default disabled:text-neutral-400 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10 dark:disabled:text-neutral-500"
+      onClick={onClick}
+      className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-neutral-500 transition hover:bg-black/[0.05] hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-white/10 dark:hover:text-white"
       title="نمایش فایل‌ها"
+      aria-label="نمایش فایل‌ها"
     >
-      ({toFaDigits(list.length)} فایل)
+      <img src="/images/icons/Uplod.svg" alt="" className="h-4 w-4 dark:invert" />
     </button>
   );
 }

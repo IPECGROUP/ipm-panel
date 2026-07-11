@@ -876,7 +876,7 @@ export default function SupplyRequestPage() {
                     onChange={(value) => setField("needDateJalali", value)}
                     buttonClassName={`${inputCls} flex items-center justify-between`}
                     placeholder="انتخاب تاریخ"
-                    preventDefaultToday
+                    disableTodayAndPast
                   />
                 </Field>
                 <Field label="برآورد هزینه اولیه" required>
