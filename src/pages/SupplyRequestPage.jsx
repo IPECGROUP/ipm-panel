@@ -1045,11 +1045,11 @@ export default function SupplyRequestPage() {
                   <tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100">
                     <th><input type="checkbox" className="h-4 w-4 accent-black dark:accent-white" checked={allPageItemsSelected} onChange={toggleAllPageItems} aria-label="انتخاب همه" /></th>
                     <th aria-label="خوانده‌نشده" />
-                    <th className="!pr-2 !pl-3 !text-right">شماره</th>
-                    <th className="!pr-2 !pl-3 !text-right">تاریخ</th>
-                    <th className="!pr-2 !pl-3 !text-right">پروژه</th>
-                    <th className="!pr-2 !pl-3 !text-right">موضوع</th>
-                    <th className="!pr-2 !pl-3 !text-right">آخرین وضعیت</th>
+                    <th>شماره</th>
+                    <th>تاریخ</th>
+                    <th>پروژه</th>
+                    <th>موضوع</th>
+                    <th>آخرین وضعیت</th>
                     <th className="relative">
                       اقدامات
                       <img src="/images/icons/menu-table.svg" alt="" className="absolute left-2 top-1/2 h-4 w-3 -translate-y-1/2 dark:invert" />
@@ -1070,15 +1070,15 @@ export default function SupplyRequestPage() {
                       <tr key={item.id} className="group bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-white" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label={`انتخاب درخواست ${item.serial || item.id}`} /></td>
                         <td className="border-b border-neutral-300 px-0 dark:border-neutral-700">{Number(item.currentAssigneeUserId) === Number(user?.id) && Number(item.createdById) !== Number(user?.id) && !seenIncomingIds.has(String(item.id)) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="درخواست دیده‌نشده" aria-label="درخواست دیده‌نشده" />}</td>
-                        <td dir="ltr" className="border-b border-neutral-300 !pr-2 !pl-3 !text-right font-sans tabular-nums dark:border-neutral-700">
-                          <button type="button" onClick={() => openPreview(item)} className="inline-flex underline-offset-4 transition hover:underline" title="نمایش درخواست">
+                        <td dir="ltr" className="border-b border-neutral-300 px-3 font-sans tabular-nums dark:border-neutral-700">
+                          <button type="button" onClick={() => openPreview(item)} className="mx-auto inline-flex underline-offset-4 transition hover:underline" title="نمایش درخواست">
                             {item.serial || "—"}
                           </button>
                         </td>
-                        <td className="border-b border-neutral-300 !pr-2 !pl-3 !text-right dark:border-neutral-700">{toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/"))}</td>
-                        <td className="border-b border-neutral-300 !pr-2 !pl-3 !text-right dark:border-neutral-700"><span className="block truncate">{itemProjectLabel(item, projects)}</span></td>
-                        <td className="border-b border-neutral-300 !pr-2 !pl-3 !text-right dark:border-neutral-700"><span className="block truncate">{item.title || "—"}</span></td>
-                        <td className="border-b border-neutral-300 !pr-2 !pl-3 !text-right dark:border-neutral-700"><StatusBadge status={displayStatusOf(item)} /></td>
+                        <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/"))}</td>
+                        <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{itemProjectLabel(item, projects)}</span></td>
+                        <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.title || "—"}</span></td>
+                        <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><StatusBadge status={displayStatusOf(item)} /></td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">
                           <div className="flex min-h-9 items-center justify-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                             <button type="button" onClick={() => openPreview(item)} className="grid h-[34px] w-[34px] place-items-center rounded-lg transition hover:bg-black/[0.04] dark:hover:bg-white/10" aria-label={item.canAct ? "اقدامات" : "نمایش"} title={item.canAct ? "اقدامات" : "نمایش"}>
