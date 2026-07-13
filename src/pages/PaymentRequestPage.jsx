@@ -445,7 +445,7 @@ export default function PaymentRequestPage() {
     setActionError("");
   };
 
-  const recordAction = async (status, noteOverride = "") => {
+  const recordAction = async (status, noteOverride = "", extraPayload = {}) => {
     if (!selected || actionBusy) return;
     setActionBusy(true);
     setActionError("");
@@ -453,7 +453,7 @@ export default function PaymentRequestPage() {
       const finalNote = String(noteOverride || actionNote || "").trim();
       const data = await api("/requests/status", {
         method: "POST",
-        body: JSON.stringify({ id: selected.id, status, note: finalNote }),
+        body: JSON.stringify({ id: selected.id, status, note: finalNote, ...extraPayload }),
       });
       setSelected((current) => current ? { ...current, ...(data.item || {}) } : current);
       setActionNote("");
@@ -473,7 +473,7 @@ export default function PaymentRequestPage() {
     }
   };
 
-  const resubmitReturned = async (item, updates, note = "") => {
+  const resubmitReturned = async (item, updates, note = "", extraPayload = {}) => {
     if (!item || actionBusy) return;
     if (!updates.projectId) return setActionError("پروژه را انتخاب کنید.");
     if (!updates.budgetCode) return setActionError("کد بودجه را انتخاب کنید.");
@@ -501,7 +501,7 @@ export default function PaymentRequestPage() {
       const finalNote = String(note || "").trim() || "اصلاح و ارسال مجدد درخواست";
       const submitted = await api("/requests/status", {
         method: "POST",
-        body: JSON.stringify({ id: item.id, status: "approved", note: finalNote }),
+        body: JSON.stringify({ id: item.id, status: "approved", note: finalNote, ...extraPayload }),
       });
       setSelected((current) => current ? { ...current, ...(submitted.item || patched.item || {}) } : current);
       setActionNote("");
@@ -867,6 +867,9 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
   const [creditPayAmount, setCreditPayAmount] = useState("");
   const [creditPayCurrencyId, setCreditPayCurrencyId] = useState(item.currencyTypeId || "");
   const [creditPayDesc, setCreditPayDesc] = useState("");
+  const [nextRecipients, setNextRecipients] = useState({ targetRoleKey: null, users: [] });
+  const [nextRecipientsLoading, setNextRecipientsLoading] = useState(false);
+  const [targetAssigneeUserId, setTargetAssigneeUserId] = useState("");
   const liquidityRemaining = "";
   const amountNumber = Number(item.amount || 0);
   const liquidityNumber = parseAmount(liquidityRemaining);
@@ -883,6 +886,26 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
     const hasCurrent = rows.some((row) => normalizeBudgetCode(row.code || row.center_code) === normalizeBudgetCode(editForm.budgetCode));
     return hasCurrent || !editForm.budgetCode ? rows : [{ code: editForm.budgetCode, center_desc: "" }, ...rows];
   }, [editBudgetItems, editForm.budgetCode]);
+
+  useEffect(() => {
+    if (!canDecide && !canEditReturned) return undefined;
+    let cancelled = false;
+    setNextRecipientsLoading(true);
+    fetch(`/api/requests?nextRecipientsForItem=${encodeURIComponent(item.id)}`, {
+      credentials: "include",
+      headers: userId != null ? { "x-user-id": String(userId) } : {},
+    })
+      .then((response) => (response.ok ? response.json() : { targetRoleKey: null, users: [] }))
+      .then((data) => {
+        if (!cancelled) {
+          setNextRecipients({ targetRoleKey: data?.targetRoleKey || null, users: Array.isArray(data?.users) ? data.users : [] });
+          setTargetAssigneeUserId("");
+        }
+      })
+      .catch(() => { if (!cancelled) setNextRecipients({ targetRoleKey: null, users: [] }); })
+      .finally(() => { if (!cancelled) setNextRecipientsLoading(false); });
+    return () => { cancelled = true; };
+  }, [canDecide, canEditReturned, item.id, userId]);
 
   useEffect(() => {
     setEditForm(formFromItem(item));
@@ -996,7 +1019,7 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
       creditPayDesc,
     });
     const status = finalAccounting ? "approved" : choice === "reject" || choice === "stop" ? "rejected" : choice === "return" ? "returned" : "approved";
-    onAction(status, note);
+    onAction(status, note, { targetAssigneeUserId: targetAssigneeUserId || null });
   };
 
   return createPortal(<div className="fixed inset-0 z-[9999]">
@@ -1123,10 +1146,15 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                 creditPayDesc={creditPayDesc}
                 setCreditPayDesc={setCreditPayDesc}
                 currencyTypes={currencyTypes}
+                nextRecipients={nextRecipients}
+                nextRecipientsLoading={nextRecipientsLoading}
+                targetAssigneeUserId={targetAssigneeUserId}
+                setTargetAssigneeUserId={setTargetAssigneeUserId}
               />}
               {canEditReturned && <div className="rounded-2xl border border-black/10 px-4 py-3 dark:border-white/10">
                 {editUploadError && <div className="mb-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">{editUploadError}</div>}
-                <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={editUploading} onSubmit={() => onResubmit(item, editForm, actionNote)} />
+                <NextRecipientSelect recipients={nextRecipients} loading={nextRecipientsLoading} value={targetAssigneeUserId} onChange={setTargetAssigneeUserId} />
+                <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={editUploading || (!!nextRecipients.targetRoleKey && !targetAssigneeUserId)} onSubmit={() => onResubmit(item, editForm, actionNote, { targetAssigneeUserId: targetAssigneeUserId || null })} />
               </div>}
               {!canDecide && !canEditReturned && <div className="rounded-2xl border border-black/10 p-4 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">
                 در این مرحله اقدامی برای شما فعال نیست.
@@ -1144,9 +1172,10 @@ function WorkflowPanel({
   hasEnoughLiquidity, urgentCash, setUrgentCash,
   cashPayAmount, setCashPayAmount, cashPayCurrencyId, setCashPayCurrencyId, paymentMethod, setPaymentMethod,
   creditPayAmount, setCreditPayAmount, creditPayCurrencyId, setCreditPayCurrencyId, creditPayDesc, setCreditPayDesc,
-  currencyTypes,
+  currencyTypes, nextRecipients, nextRecipientsLoading, targetAssigneeUserId, setTargetAssigneeUserId,
 }) {
   const finalAccounting = stepKey === "accounting" && Number(stepIndex) >= 5;
+  const targetRequired = choice === "approve" && !!nextRecipients?.targetRoleKey;
   if (finalAccounting) {
     return <PreviewSection title="ثبت پرداخت نهایی">
       <div className="space-y-4 py-4">
@@ -1180,7 +1209,8 @@ function WorkflowPanel({
         <ActionOption checked={choice === "return"} onClick={() => setChoice("return")} label="ارجاع به درخواست کننده" />
         {!hasEnoughLiquidity && <ActionOption checked={choice === "stop"} onClick={() => setChoice("stop")} label="توقف پرداخت به دلیل عدم نقدینگی" />}
         {["reject", "return", "stop"].includes(choice) && <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputClass} min-h-24 py-3`} placeholder="توضیح..." />}
-        <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice} onSubmit={onSubmit} />
+        <NextRecipientSelect recipients={nextRecipients} loading={nextRecipientsLoading} value={targetAssigneeUserId} onChange={setTargetAssigneeUserId} visible={choice === "approve"} />
+        <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice || (targetRequired && !targetAssigneeUserId)} onSubmit={onSubmit} />
       </div>
     </PreviewSection>;
   }
@@ -1192,7 +1222,8 @@ function WorkflowPanel({
         <ActionOption checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست پرداخت" />
         <ActionOption checked={choice === "return"} onClick={() => setChoice("return")} label="ارجاع به درخواست کننده" />
         {["reject", "return"].includes(choice) && <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputClass} min-h-24 py-3`} placeholder="توضیح..." />}
-        <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice} onSubmit={onSubmit} />
+        <NextRecipientSelect recipients={nextRecipients} loading={nextRecipientsLoading} value={targetAssigneeUserId} onChange={setTargetAssigneeUserId} visible={choice === "approve"} />
+        <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice || (targetRequired && !targetAssigneeUserId)} onSubmit={onSubmit} />
       </div>
     </PreviewSection>;
   }
@@ -1202,7 +1233,8 @@ function WorkflowPanel({
       <ActionOption checked={choice === "approve"} onClick={() => setChoice("approve")} label={stepKey === "management" ? "درخواست پرداخت" : "تایید درخواست"} />
       <ActionOption checked={choice === "return"} onClick={() => setChoice("return")} label="ارجاع به درخواست کننده" />
       {choice === "return" && <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputClass} min-h-24 py-3`} placeholder="توضیح..." />}
-      <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice} onSubmit={onSubmit} />
+      <NextRecipientSelect recipients={nextRecipients} loading={nextRecipientsLoading} value={targetAssigneeUserId} onChange={setTargetAssigneeUserId} visible={choice === "approve"} />
+      <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice || (targetRequired && !targetAssigneeUserId)} onSubmit={onSubmit} />
     </div>
   </PreviewSection>;
 }
@@ -1212,6 +1244,18 @@ function ActionOption({ checked, disabled, onClick, label }) {
     <span>{label}</span>
     <span className={`grid h-5 w-5 place-items-center rounded-md border ${checked ? "border-white dark:border-black" : "border-neutral-400"}`}>{checked && <img src="/images/icons/check.svg" alt="" className={`h-3.5 w-3.5 ${checked ? "invert dark:invert-0" : ""}`} />}</span>
   </button>;
+}
+
+function NextRecipientSelect({ recipients, loading, value, onChange, visible = true }) {
+  if (!visible) return null;
+  const targetRoleKey = recipients?.targetRoleKey;
+  if (!targetRoleKey && !loading) return null;
+  return <Field label="ارسال به کاربر مرحله بعد" required>
+    <select className={inputClass} value={value || ""} onChange={(event) => onChange(event.target.value)} disabled={loading || !targetRoleKey}>
+      <option value="">{loading ? "در حال دریافت کاربران..." : "انتخاب کنید"}</option>
+      {(recipients?.users || []).map((recipient) => <option key={recipient.id} value={recipient.id}>{recipient.name || recipient.username || recipient.email || `کاربر #${recipient.id}`}</option>)}
+    </select>
+  </Field>;
 }
 
 function ActionFooter({ actionBusy, actionError, disabled, onSubmit }) {
