@@ -1,3 +1,4 @@
+// درخواست پرداخت
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Card } from "../components/ui/Card";
@@ -30,7 +31,7 @@ const emptyForm = () => ({
   dateJalali: today(), scope: "projects", projectId: "", budgetCode: "", title: "", description: "",
   amount: "", cashAmount: "", cashDateJalali: "", creditPay: "", beneficiaryName: "", bankInfo: "",
   docId: "pre_invoice", docOther: "", docNumber: "", docDateJalali: "",
-  currencyTypeId: "", currencySourceId: "", attachments: [], hasSupplyRequest: "no", supplyRequestId: "",
+  currencyTypeId: "", currencySourceId: "", attachments: [], hasSupplyRequest: "no", supplyRequestId: "", targetAssigneeUserId: "",
 });
 const formFromItem = (item = {}) => ({
   dateJalali: String(item.dateFa || item.dateJalali || item.date_jalali || today()).replaceAll("-", "/"),
@@ -241,6 +242,8 @@ export default function PaymentRequestPage() {
   const [actionNote, setActionNote] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [createRecipients, setCreateRecipients] = useState({ targetRoleKey: null, users: [] });
+  const [createRecipientsLoading, setCreateRecipientsLoading] = useState(false);
   const selectedProject = useMemo(
     () => projects.find((project) => String(project.id) === String(form.projectId)),
     [form.projectId, projects]
@@ -280,6 +283,15 @@ export default function PaymentRequestPage() {
   }, [api]);
 
   useEffect(() => { loadItems(); }, [loadItems]);
+  useEffect(() => {
+    let cancelled = false;
+    setCreateRecipientsLoading(true);
+    api("/requests?nextRecipientsForCreate=1")
+      .then((data) => { if (!cancelled) setCreateRecipients({ targetRoleKey: data?.targetRoleKey || null, users: Array.isArray(data?.users) ? data.users : [] }); })
+      .catch(() => { if (!cancelled) setCreateRecipients({ targetRoleKey: null, users: [] }); })
+      .finally(() => { if (!cancelled) setCreateRecipientsLoading(false); });
+    return () => { cancelled = true; };
+  }, [api]);
   useEffect(() => {
     api("/tags?scope=letters").then((data) => {
       const rows = Array.isArray(data?.tags) ? data.tags : Array.isArray(data?.items) ? data.items : [];
@@ -396,12 +408,14 @@ export default function PaymentRequestPage() {
     if (!form.title.trim()) return setError("موضوع درخواست را وارد کنید.");
     if (amount <= 0) return setError("مبلغ درخواست باید بیشتر از صفر باشد.");
     if (form.hasSupplyRequest === "yes" && !form.supplyRequestId) return setError("درخواست تامین را انتخاب کنید.");
+    if (createRecipients.targetRoleKey && !form.targetAssigneeUserId) return setError("گیرنده درخواست پرداخت را انتخاب کنید.");
     setSubmitting(true); setError(""); setSuccess("");
     try {
       const data = await api("/requests", { method: "POST", body: JSON.stringify({
         ...form, serial, scope: "projects", amount, cashAmount: null, creditAmount: null,
         currencyTypeId: form.currencyTypeId || null, currencySourceId: form.currencySourceId || null,
         projectId: form.projectId || null,
+        targetAssigneeUserId: form.targetAssigneeUserId || null,
         clientRegistrationInfo: clientRegistrationInfo(),
       }) });
       setSubmitNotice(data?.item?.registrationInfo || null);
@@ -591,6 +605,13 @@ export default function PaymentRequestPage() {
             </Field>
             {form.hasSupplyRequest === "yes" && <Field label="انتخاب درخواست تامین" required><select className={inputClass} value={form.supplyRequestId} onChange={(e) => setField("supplyRequestId", e.target.value)}><option value="">انتخاب کنید</option>{supplyRequests.map((item) => <option key={item.id} value={item.id}>{item.serial || `#${item.id}`}{item.title ? ` - ${item.title}` : ""}</option>)}</select></Field>}
           </div>
+
+          <Field label="ارسال درخواست پرداخت به" required={!!createRecipients.targetRoleKey}>
+            <select className={inputClass} value={form.targetAssigneeUserId} onChange={(e) => setField("targetAssigneeUserId", e.target.value)} disabled={createRecipientsLoading || !createRecipients.targetRoleKey}>
+              <option value="">{createRecipientsLoading ? "در حال دریافت..." : createRecipients.targetRoleKey ? "انتخاب کنید" : "ارسال مستقیم برای اقدام"}</option>
+              {createRecipients.users.map((recipient) => <option key={recipient.id} value={recipient.id}>{recipient.name || recipient.username || recipient.email || `کاربر #${recipient.id}`}</option>)}
+            </select>
+          </Field>
 
           <Field label="شرح درخواست"><textarea className={`${inputClass} min-h-24 py-2 leading-7`} value={form.description} onChange={(e) => setField("description", e.target.value)} /></Field>
 

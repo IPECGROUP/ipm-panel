@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { SupplyRequestPreview } from "./SupplyRequestPage.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 
@@ -77,12 +77,14 @@ export default function DashboardPage() {
   const openedNotificationRef = React.useRef("");
   const [activeTab, setActiveTab] = useState("supply");
   const [items, setItems] = useState([]);
+  const [paymentItems, setPaymentItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState(null);
   const [actionNote, setActionNote] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState("");
+  const navigate = useNavigate();
 
   const api = useCallback(async (path, options = {}) => {
     const response = await fetch(`/api${path}`, {
@@ -108,11 +110,13 @@ export default function DashboardPage() {
     setLoading(true);
     setError("");
     try {
-      const data = await api("/supply-requests?cartable=1");
-      setItems(Array.isArray(data?.items) ? data.items : []);
+      const [supplyData, paymentData] = await Promise.all([api("/supply-requests?cartable=1"), api("/requests?view=inbox")]);
+      setItems(Array.isArray(supplyData?.items) ? supplyData.items : []);
+      setPaymentItems(Array.isArray(paymentData?.items) ? paymentData.items : []);
     } catch {
       setError("دریافت کارتابل انجام نشد.");
       setItems([]);
+      setPaymentItems([]);
     } finally {
       setLoading(false);
     }
@@ -309,9 +313,20 @@ export default function DashboardPage() {
               </div>
             </>
           ) : (
-            <div className="px-4 py-10 text-center text-sm text-black/60 dark:text-neutral-400">
-              موردی برای مدیریت درخواست‌ها ثبت نشده است.
-            </div>
+            paymentItems.length ? (
+              <div className="divide-y divide-neutral-200 dark:divide-neutral-800">
+                {paymentItems.map((item) => (
+                  <button key={item.id} type="button" onClick={() => navigate("/requests")} className="block w-full px-4 py-3 text-right transition hover:bg-black/[0.03] dark:hover:bg-white/10">
+                    <div className="flex items-center justify-between gap-3">
+                      <b dir="ltr" className="font-sans text-sm tabular-nums">{item.serial || "—"}</b>
+                      <StatusBadge status={item.status} />
+                    </div>
+                    <div className="mt-2 truncate text-sm">{item.title || "—"}</div>
+                    <div className="mt-1 text-xs text-neutral-500">درخواست پرداخت — برای اقدام شما</div>
+                  </button>
+                ))}
+              </div>
+            ) : <div className="px-4 py-10 text-center text-sm text-black/60 dark:text-neutral-400">موردی برای مدیریت درخواست‌ها ثبت نشده است.</div>
           )}
         </div>
       </section>
