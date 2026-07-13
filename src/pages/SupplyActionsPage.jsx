@@ -1,4 +1,4 @@
-// اقدامات تامین
+// کار های در دست انجام
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
@@ -454,7 +454,7 @@ function SupplyActionsModal({ item, onClose, ...actionsProps }) {
         <header className="flex shrink-0 items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10">
           <div>
             <h2 className="text-sm font-bold md:text-base">کار های در دست انجام</h2>
-            <p className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">ثبت و پیگیری اقدامات درخواست</p>
+            <p className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">ثبت و پیگیری اقدامات درخواست تامین</p>
           </div>
           <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-xl border border-black/10 transition hover:bg-black/[0.04] dark:border-white/10 dark:hover:bg-white/10" title="بستن" aria-label="بستن">
             <img src="/images/icons/bastan.svg" alt="" className="h-4 w-4 dark:invert" />
@@ -467,7 +467,7 @@ function SupplyActionsModal({ item, onClose, ...actionsProps }) {
               <ActionsGrid item={item} {...actionsProps} />
             </main>
             <aside dir="rtl" className="space-y-4 lg:order-2">
-              <RequestInfoCard title="مشخصات درخواست">
+              <RequestInfoCard title="مشخصات درخواست تامین">
                 <RequestInfoRow label="شماره درخواست" value={item.serial || "—"} ltr />
                 <RequestInfoRow label="تاریخ درخواست" value={formatDate(item.dateJalali)} />
                 <RequestInfoRow label="درخواست‌کننده" value={item.createdByName || "—"} />
@@ -476,7 +476,7 @@ function SupplyActionsModal({ item, onClose, ...actionsProps }) {
                 <RequestInfoRow label="وضعیت" value={<StatusBadge status={item.workflowStatus || item.status} />} />
                 <RequestInfoRow label="مرحله فعلی" value={item.currentStepName || item.currentAssigneeName || "—"} />
               </RequestInfoCard>
-              <RequestInfoCard title="جزئیات درخواست">
+              <RequestInfoCard title="جزئیات درخواست تامین">
                 <RequestInfoRow label="موضوع" value={item.title || "—"} />
                 <RequestInfoRow label="شرح" value={item.description || "—"} />
                 <RequestInfoRow label="برآورد هزینه" value={item.amount ? toFaDigits(Number(item.amount).toLocaleString("en-US")) : "—"} />
@@ -522,7 +522,7 @@ function ActionsGrid({ item, editingIds, savingIds, uploadingIds, onAdd, onPatch
     <div className="mt-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-bold">سوابق اقدامات</h3>
+          <h3 className="text-sm font-bold">سوابق کار های انجام شده</h3>
           <p className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">جدیدترین اقدام در ابتدای فهرست نمایش داده می‌شود.</p>
         </div>
         {canAddAction ? (
@@ -612,7 +612,14 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
       <div className={`rounded-2xl border p-3 transition ${action.isNew ? "border-black/10 bg-neutral-100 shadow-sm dark:border-white/10 dark:bg-white/[0.07]" : "border-black/10 bg-white dark:border-white/10 dark:bg-neutral-900"}`}>
         <div className="mb-2 flex justify-end"><StatusBadge status={action.status} /></div>
         <div className="grid gap-2 md:grid-cols-[108px_minmax(180px,1fr)_118px_auto] md:items-start">
-          <JalaliPopupDatePicker value={action.date || ""} onChange={(value) => onPatch(requestId, action.id, { date: value })} buttonClassName={`${inputCls} flex items-center justify-between`} placeholder="تاریخ" />
+          <JalaliPopupDatePicker
+            value={action.date || ""}
+            onChange={(value) => onPatch(requestId, action.id, { date: value })}
+            disableFuture={false}
+            disableTodayAndPast={false}
+            buttonClassName={`${inputCls} flex items-center justify-between`}
+            placeholder="تاریخ"
+          />
           <textarea
             value={action.description || ""}
             onChange={(event) => onPatch(requestId, action.id, { description: event.target.value })}
@@ -645,7 +652,14 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
       <td className="border-b border-neutral-300 px-2 dark:border-neutral-700">{toFaDigits(index + 1)}</td>
       <td className="border-b border-neutral-300 px-2 dark:border-neutral-700">
         {editable ? (
-          <JalaliPopupDatePicker value={action.date || ""} onChange={(value) => patchAndPersist({ date: value })} buttonClassName={`${inputCls} flex items-center justify-between`} placeholder="تاریخ اقدام" />
+          <JalaliPopupDatePicker
+            value={action.date || ""}
+            onChange={(value) => patchAndPersist({ date: value })}
+            disableFuture={false}
+            disableTodayAndPast={false}
+            buttonClassName={`${inputCls} flex items-center justify-between`}
+            placeholder="تاریخ اقدام"
+          />
         ) : (
           formatDate(action.date)
         )}
