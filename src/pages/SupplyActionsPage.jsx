@@ -306,8 +306,8 @@ export default function SupplyActionsPage() {
               <colgroup>
                 <col style={{ width: 130 }} />
                 <col style={{ width: 120 }} />
-                <col />
                 <col style={{ width: 210 }} />
+                <col />
                 <col style={{ width: 140 }} />
                 <col style={{ width: 110 }} />
               </colgroup>
@@ -315,8 +315,8 @@ export default function SupplyActionsPage() {
                 <tr className={theadCls}>
                   <th>شماره</th>
                   <th>تاریخ</th>
-                  <th>موضوع</th>
                   <th>پروژه</th>
+                  <th>موضوع</th>
                   <th>وضعیت</th>
                   <th>اقدام</th>
                 </tr>
@@ -332,8 +332,8 @@ export default function SupplyActionsPage() {
                       <tr className="group bg-white transition-colors hover:bg-black/[0.04] dark:bg-neutral-900 dark:hover:bg-white/10">
                         <td dir="ltr" className={`${tdBorder} px-3 font-sans tabular-nums`}>{item.serial || "—"}</td>
                         <td className={`${tdBorder} px-3`}>{formatDate(item.dateJalali)}</td>
-                        <td className={`${tdBorder} px-3`}><span className="mx-auto block truncate">{item.title || "—"}</span></td>
                         <td className={`${tdBorder} px-3`}><span className="mx-auto block truncate">{projectLabel(item)}</span></td>
+                        <td className={`${tdBorder} px-3`}><span className="mx-auto block truncate">{item.title || "—"}</span></td>
                         <td className={`${tdBorder} px-3`}><StatusBadge status={item.workflowStatus || item.status} /></td>
                         <td className={`${tdBorder} px-3`}>
                           <button
