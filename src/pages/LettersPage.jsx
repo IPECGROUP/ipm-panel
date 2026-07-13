@@ -4336,42 +4336,6 @@ subject:
     }
   };
 
-const deleteLetter = async (id) => {
-  const ok = window.confirm("حذف شود؟");
-  if (!ok) return;
-
-  const sid = String(id || "").trim();
-  if (!sid) return;
-
-  // ✅ 1) سریع از UI حذف کن (Optimistic) تا طول نکشه
-  setMyLetters((prev) => (Array.isArray(prev) ? prev.filter((x) => String(letterIdOf(x)) !== sid) : prev));
-
-  // ✅ 2) از انتخاب‌ها هم حذف کن
-  setSelectedIds((prev) => {
-    const next = new Set(prev);
-    next.delete(sid);
-    return next;
-  });
-
-  try {
-    // ✅ 3) فقط یک endpoint بزن (همون که قبلاً کار می‌کرد)
-    await api(`/letters?id=${encodeURIComponent(sid)}`, {
-      method: "DELETE",
-      body: JSON.stringify({ id: sid, letter_id: sid }),
-    });
-
-    // ✅ 4) refetch کامل نزن (اصلی‌ترین علت کندی همین بود)
-    // اگر خیلی لازم داری، اینو بدون await بزن:
-    // refetchLetters();
-
-  } catch (e) {
-    // ✅ اگر حذف سرور fail شد، لیست رو از سرور دوباره درست کن
-    console.error("delete failed", e);
-    await refetchLetters();
-    throw e;
-  }
-};
-
   const InfoRow = ({ label, value }) => (
     <div className="grid grid-cols-12 gap-2 py-2">
       <div className={"col-span-4 text-xs font-semibold " + (theme === "dark" ? "text-white/70" : "text-neutral-600")}>
@@ -6133,7 +6097,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
                               </div>
                             </div>
 
-                            <div className="flex shrink-0 items-center gap-1">
+                            <div className="flex shrink-0 items-center gap-0">
                               {!hasRealAttachment ? (
                                 <button
                                   type="button"
@@ -6179,17 +6143,6 @@ aria-invalid={fieldHasError(formKind, "subject")}
                               </button>
                               <button type="button" onClick={() => startEdit(l)} className={iconBtnCls + " !h-9 !w-9"} aria-label="ویرایش" title="ویرایش">
                                 <img src="/images/icons/pencil.svg" alt="" className="w-5 h-5 dark:invert" />
-                              </button>
-                              <button type="button" onClick={() => deleteLetter(id)} className={iconBtnCls + " !h-9 !w-9"} aria-label="حذف" title="حذف">
-                                <img
-                                  src="/images/icons/hazf.svg"
-                                  alt=""
-                                  className="w-5 h-5"
-                                  style={{
-                                    filter:
-                                      "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
-                                  }}
-                                />
                               </button>
                             </div>
                           </div>
@@ -6253,7 +6206,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
   <col />                         {/* موضوع (باقی فضا) */}
   <col style={{ width: 168 }} />  {/* از/به */}
   <col style={{ width: 176 }} />  {/* شرکت/سازمان */}
-  <col style={{ width: 216 }} />  {/* اقدامات */}
+  <col style={{ width: 172 }} />  {/* اقدامات */}
 </colgroup>
 
   <thead>
@@ -6438,7 +6391,7 @@ const rowBg = normalRowBg;
             </td>
 
             <td className={"!pl-6 !pr-3 " + divider}>
-              <div className="w-full flex items-center justify-center gap-1">
+              <div className="w-full flex items-center justify-center gap-0">
                 {!hasRealAttachment ? (
                   <button
                     type="button"
@@ -6493,17 +6446,6 @@ const rowBg = normalRowBg;
                   <img src="/images/icons/pencil.svg" alt="" className="w-[17px] h-[17px] dark:invert" />
                 </button>
 
-                <button type="button" onClick={() => deleteLetter(id)} className={iconBtnCls} aria-label="حذف" title="حذف">
-                  <img
-                    src="/images/icons/hazf.svg"
-                    alt=""
-                    className="w-4 h-4"
-                    style={{
-                      filter:
-                        "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
-                    }}
-                  />
-                </button>
                 </div>
               </div>
             </td>
