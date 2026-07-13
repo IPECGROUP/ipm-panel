@@ -38,6 +38,7 @@ function askMainAdminEnable(setIsMainAdmin) {
 }
 
 const LETTERS_CACHE_KEY = "letters_mine_cache_v1";
+const LETTERS_CACHE_TTL_MS = 5 * 60 * 1000;
 const LETTER_DRAFT_STORAGE_KEY = "ipm_letters_form_drafts_v1";
 const LETTER_DRAFT_SAVE_DELAY_MS = 3000;
 const LETTER_FORM_KINDS = ["incoming", "outgoing", "internal"];
@@ -814,6 +815,26 @@ const [hasYScroll, setHasYScroll] = useState(false);
     if (!res.ok) throw new Error(data?.error || data?.message || "request_failed");
     return data;
   }
+
+  const lettersCacheKey = () => `${LETTERS_CACHE_KEY}:u${String(user?.id || "")}`;
+
+  const readLettersCache = () => {
+    if (!user?.id) return [];
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(lettersCacheKey()) || "null");
+      if (!cached || Date.now() - Number(cached.savedAt || 0) > LETTERS_CACHE_TTL_MS) return [];
+      return Array.isArray(cached.items) ? cached.items : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const saveLettersCache = (items) => {
+    if (!user?.id) return;
+    try {
+      sessionStorage.setItem(lettersCacheKey(), JSON.stringify({ savedAt: Date.now(), items }));
+    } catch {}
+  };
 // ===== Letter Prefs (backend) =====
 const LETTER_PREFS_ENDPOINT = "/tag-prefs";
 
@@ -866,12 +887,6 @@ useEffect(() => {
     const obs = new MutationObserver(() => apply());
     obs.observe(el, { attributes: true, attributeFilter: ["class"] });
     return () => obs.disconnect();
-  }, []);
-
-  useEffect(() => {
-    try {
-      sessionStorage.removeItem(LETTERS_CACHE_KEY);
-    } catch {}
   }, []);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -2063,22 +2078,6 @@ useEffect(() => {
 
 useEffect(() => {
   if (!user?.id) return;
-
-  (async () => {
-    // برای اینکه pinned ها از هر تب (letters/projects/execution) بعد refresh دیده بشن
-    await Promise.all([
-      refreshTags("letters"),
-      refreshTags("projects"),
-      refreshTags("execution"),
-    ]);
-  })();
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [user?.id]);
-
-
-useEffect(() => {
-  if (!user?.id) return;
   loadFormTagPrefs(); // ✅ فقط یک بار
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [user?.id]);
@@ -2370,6 +2369,7 @@ const resetAllFilters = () => {
     const r = await api("/letters/mine");
     const items = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
     setMyLetters(items);
+    saveLettersCache(items);
   };
 
 
@@ -2393,7 +2393,10 @@ const resetAllFilters = () => {
   }, []);
 
  useEffect(() => {
+  if (!user?.id) return undefined;
   let mounted = true;
+  const cachedItems = readLettersCache();
+  if (cachedItems.length) setMyLetters(cachedItems);
 
   (async () => {
     try {
@@ -2401,8 +2404,9 @@ const resetAllFilters = () => {
       const items = Array.isArray(r?.items) ? r.items : Array.isArray(r) ? r : [];
       if (!mounted) return;
       setMyLetters(items);
+      saveLettersCache(items);
     } catch {
-      if (!mounted) return;
+      if (!mounted || cachedItems.length) return;
       setMyLetters([]);
     }
   })();
@@ -2411,7 +2415,7 @@ const resetAllFilters = () => {
     mounted = false;
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-}, []);
+}, [user?.id]);
 
 
   useEffect(() => {
