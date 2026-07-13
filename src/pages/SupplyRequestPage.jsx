@@ -311,6 +311,7 @@ export default function SupplyRequestPage() {
   const [ok, setOk] = useState("");
   const [filterQuery, setFilterQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [filterOwnership, setFilterOwnership] = useState("");
   const [filterProjectId, setFilterProjectId] = useState("");
   const [filterQuick, setFilterQuick] = useState("");
   const [filterFromDate, setFilterFromDate] = useState("");
@@ -322,6 +323,8 @@ export default function SupplyRequestPage() {
   const [tagPickSearch, setTagPickSearch] = useState("");
   const [createRecipients, setCreateRecipients] = useState({ targetRoleKey: null, users: [] });
   const [createRecipientsLoading, setCreateRecipientsLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [seenIncomingIds, setSeenIncomingIds] = useState(() => new Set());
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
 
@@ -475,6 +478,15 @@ export default function SupplyRequestPage() {
       localStorage.setItem(`request_filter_tags:supply:u${user.id}`, JSON.stringify((pinnedFilterTagIds || []).map(String)));
     } catch {}
   }, [pinnedFilterTagIds, user?.id]);
+  useEffect(() => {
+    if (!user?.id) return;
+    try {
+      const stored = JSON.parse(localStorage.getItem(`supply_request_seen_incoming:u${user.id}`) || "[]");
+      setSeenIncomingIds(new Set(Array.isArray(stored) ? stored.map(String) : []));
+    } catch {
+      setSeenIncomingIds(new Set());
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -545,6 +557,14 @@ export default function SupplyRequestPage() {
   };
 
   const openPreview = (item) => {
+    if (Number(item?.currentAssigneeUserId) === Number(user?.id) && Number(item?.createdById) !== Number(user?.id)) {
+      setSeenIncomingIds((previous) => {
+        const next = new Set(previous);
+        next.add(String(item.id));
+        try { localStorage.setItem(`supply_request_seen_incoming:u${user.id}`, JSON.stringify([...next])); } catch {}
+        return next;
+      });
+    }
     setSelected(item);
     setActionNote("");
     setActionError("");
@@ -698,6 +718,10 @@ export default function SupplyRequestPage() {
     const selectedTags = Array.isArray(filterTagIds) ? filterTagIds.map(String).filter(Boolean) : [];
     const letterById = new Map((Array.isArray(letters) ? letters : []).map((letter) => [letterIdOf(letter), letter]));
     return items.filter((item) => {
+      const isMine = Number(item?.createdById) === Number(user?.id);
+      const isIncoming = Number(item?.currentAssigneeUserId) === Number(user?.id) && !isMine;
+      if (filterOwnership === "mine" && !isMine) return false;
+      if (filterOwnership === "incoming" && !isIncoming) return false;
       if (filterStatus && statusGroup(displayStatusOf(item)) !== filterStatus) return false;
       if (filterProjectId && String(item.projectId) !== String(filterProjectId)) return false;
       const dateKey = normalizeYmd(itemDateKey(item));
@@ -726,7 +750,7 @@ export default function SupplyRequestPage() {
         .join(" ");
       return haystack.includes(q);
     });
-  }, [filterFromDate, filterProjectId, filterQuery, filterQuick, filterStatus, filterTagIds, filterToDate, items, letters, projects]);
+  }, [filterFromDate, filterOwnership, filterProjectId, filterQuery, filterQuick, filterStatus, filterTagIds, filterToDate, items, letters, projects, user?.id]);
 
   const total = filteredItems.length;
   const pageCount = Math.max(1, Math.ceil(total / rowsPerPage));
@@ -734,10 +758,24 @@ export default function SupplyRequestPage() {
   const startIndex = safePage * rowsPerPage;
   const endIndex = Math.min(total, startIndex + rowsPerPage);
   const pageItems = filteredItems.slice(startIndex, endIndex);
+  const pageItemIds = pageItems.map((item) => String(item.id));
+  const allPageItemsSelected = pageItemIds.length > 0 && pageItemIds.every((id) => selectedIds.has(id));
+  const toggleSelected = (id) => setSelectedIds((previous) => {
+    const next = new Set(previous);
+    const key = String(id);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+  const toggleAllPageItems = () => setSelectedIds((previous) => {
+    const next = new Set(previous);
+    if (allPageItemsSelected) pageItemIds.forEach((id) => next.delete(id));
+    else pageItemIds.forEach((id) => next.add(id));
+    return next;
+  });
 
   useEffect(() => {
     setPage(0);
-  }, [filterFromDate, filterProjectId, filterQuery, filterQuick, filterStatus, filterTagIds, filterToDate, rowsPerPage]);
+  }, [filterFromDate, filterOwnership, filterProjectId, filterQuery, filterQuick, filterStatus, filterTagIds, filterToDate, rowsPerPage]);
 
   const handleExportExcel = async () => {
     if (!filteredItems.length) return;
@@ -807,6 +845,8 @@ export default function SupplyRequestPage() {
               setToDate={setFilterToDate}
               status={filterStatus}
               setStatus={setFilterStatus}
+              ownership={filterOwnership}
+              setOwnership={setFilterOwnership}
               tags={tags}
               pinnedTagIds={pinnedFilterTagIds}
               setPinnedTagIds={setPinnedFilterTagIds}
@@ -956,7 +996,7 @@ export default function SupplyRequestPage() {
                     title="بارگذاری"
                     aria-label="بارگذاری"
                   >
-                    <img src="/images/icons/upload.svg" alt="" className="h-5 w-5 dark:invert" />
+                    <img src="/images/icons/Uplod.svg" alt="" className="h-5 w-5 dark:invert" />
                   </button>
                 </div>
                 <div className="min-w-[240px] flex-1 md:flex-none">
@@ -1003,6 +1043,7 @@ export default function SupplyRequestPage() {
             <div className="hidden overflow-x-auto md:block" dir="ltr">
               <table dir="rtl" className="w-full min-w-[860px] table-fixed text-sm [&_td]:py-1.5 [&_td]:text-center [&_th]:py-2 [&_th]:text-center">
                 <colgroup>
+                  <col style={{ width: 48 }} />
                   <col style={{ width: 130 }} />
                   <col style={{ width: 120 }} />
                   <col />
@@ -1012,6 +1053,7 @@ export default function SupplyRequestPage() {
                 </colgroup>
                 <thead>
                   <tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100">
+                    <th><input type="checkbox" className="h-4 w-4 accent-black dark:accent-white" checked={allPageItemsSelected} onChange={toggleAllPageItems} aria-label="انتخاب همه" /></th>
                     <th>شماره</th>
                     <th>تاریخ</th>
                     <th>موضوع</th>
@@ -1023,17 +1065,19 @@ export default function SupplyRequestPage() {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td>
+                      <td colSpan={7} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td>
                     </tr>
                   ) : pageItems.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواست تامینی ثبت نشده است.</td>
+                      <td colSpan={7} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواست تامینی ثبت نشده است.</td>
                     </tr>
                   ) : (
                     pageItems.map((item) => (
                       <tr key={item.id} className="group bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
+                        <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-white" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label={`انتخاب درخواست ${item.serial || item.id}`} /></td>
                         <td dir="ltr" className="border-b border-neutral-300 px-3 font-sans tabular-nums dark:border-neutral-700">
-                          <button type="button" onClick={() => openPreview(item)} className="mx-auto inline-flex underline-offset-4 transition hover:underline" title="نمایش درخواست">
+                          <button type="button" onClick={() => openPreview(item)} className="mx-auto inline-flex items-center gap-1.5 underline-offset-4 transition hover:underline" title="نمایش درخواست">
+                            {Number(item.currentAssigneeUserId) === Number(user?.id) && Number(item.createdById) !== Number(user?.id) && !seenIncomingIds.has(String(item.id)) && <span className="h-2 w-2 shrink-0 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="درخواست دیده‌نشده" aria-label="درخواست دیده‌نشده" />}
                             {item.serial || "—"}
                           </button>
                         </td>
@@ -1836,6 +1880,8 @@ function RequestFilterBar({
   setToDate,
   status,
   setStatus,
+  ownership,
+  setOwnership,
   tags,
   pinnedTagIds,
   setPinnedTagIds,
@@ -1913,6 +1959,8 @@ function RequestFilterBar({
       <div>
         <div className={labelCls}>برچسب ها</div>
         <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => setOwnership(ownership === "mine" ? "" : "mine")} className={`h-9 rounded-full border px-4 text-xs transition ${ownership === "mine" ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>درخواست‌های من</button>
+          <button type="button" onClick={() => setOwnership(ownership === "incoming" ? "" : "incoming")} className={`h-9 rounded-full border px-4 text-xs transition ${ownership === "incoming" ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>موارد ارسال‌شده به من</button>
           {STATUS_FILTERS.map(([key, label]) => (
             <button key={key} type="button" onClick={() => setStatus(status === key ? "" : key)} className={`h-9 rounded-full border px-4 text-xs transition ${status === key ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>
               {label}
