@@ -259,8 +259,6 @@ export default function PaymentRequestPage() {
     return `${yy}/${String(maxSeq + 1).padStart(4, "0")}`;
   }, [form.dateJalali, items]);
   const amount = parseAmount(form.amount);
-  const selectedCurrency = currencyTypes.find((item) => String(item.id) === String(form.currencyTypeId));
-  const currencyLabel = selectedCurrency ? itemLabel(selectedCurrency) : "ریال";
 
   const api = useCallback(async (path, options = {}) => {
     const response = await fetch(`/api${path}`, {
@@ -568,7 +566,7 @@ export default function PaymentRequestPage() {
           </button>
         </div>
 
-        {showForm && <form onSubmit={submit} className="space-y-4">
+        {showForm && <form onSubmit={submit} className="mb-4 space-y-4">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(150px,0.75fr)_minmax(140px,0.7fr)_minmax(220px,1fr)_minmax(220px,1fr)]">
             <ReadField label="شماره درخواست" value={serial} ltr />
             <ReadField label="تاریخ درخواست" value={toFa(form.dateJalali)} />
@@ -576,37 +574,32 @@ export default function PaymentRequestPage() {
             <Field label="کد بودجه" required><select className={inputClass} value={form.budgetCode} disabled={!form.projectId} onChange={(e) => setField("budgetCode", e.target.value)}><option value="">{form.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید"}</option>{budgetItems.map((item) => { const code = normalizeBudgetCode(item.code || item.center_code); const description = item.center_desc || item.last_desc || item.name || item.description || ""; return <option key={code || item.id} value={code}>{code}{description ? ` - ${description}` : ""}</option>; })}</select></Field>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(220px,1.25fr)_minmax(220px,0.9fr)_minmax(210px,0.8fr)_minmax(220px,1fr)]">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(230px,1.2fr)_minmax(210px,0.85fr)_minmax(360px,1.35fr)]">
             <Field label="موضوع درخواست" required><input className={`${inputClass} h-12 text-[15px]`} value={form.title} onChange={(e) => setField("title", e.target.value)} /></Field>
             <Field label="مبلغ درخواست" required>
-              <div className="flex gap-2">
-                <div className="min-w-0 flex-1"><MoneyInput value={form.amount} onChange={(value) => setField("amount", value)} /></div>
-                <select aria-label="ارز مبلغ درخواست" title="انتخاب ارز" className={`${inputClass} w-[108px] shrink-0 px-2 text-center text-xs font-semibold`} value={form.currencyTypeId} onChange={(e) => setField("currencyTypeId", e.target.value)}>
+              <div className="relative min-w-0">
+                <MoneyInput className="!pl-[82px]" value={form.amount} onChange={(value) => setField("amount", value)} />
+                <select aria-label="ارز مبلغ درخواست" title="انتخاب ارز" className="absolute left-1 top-1 h-9 !w-[74px] rounded-lg border border-black/10 bg-neutral-100 px-1 text-center text-[11px] font-semibold text-neutral-800 outline-none transition hover:bg-neutral-200 focus:border-neutral-400 dark:border-white/15 dark:bg-white/10 dark:text-white dark:hover:bg-white/15" value={form.currencyTypeId} onChange={(e) => setField("currencyTypeId", e.target.value)}>
                   <option value="">ریال</option>{currencyTypes.map((item) => <option key={item.id} value={item.id}>{itemLabel(item)}</option>)}
                 </select>
               </div>
             </Field>
-            <Field label="درخواست تامین">
-              <div className="flex h-9 items-center gap-6 px-1">
-                {[["no", "ندارد"], ["yes", "دارد"]].map(([value, label]) => {
-                  const checked = form.hasSupplyRequest === value;
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setForm((old) => ({ ...old, hasSupplyRequest: value, supplyRequestId: value === "yes" ? old.supplyRequestId : "" }))}
-                      className="inline-flex items-center gap-2 text-sm text-neutral-900 transition hover:opacity-75 dark:text-white"
-                    >
-                      <span>{label}</span>
-                      <span className={`grid h-5 w-5 place-items-center rounded-full border ${checked ? "border-neutral-950 dark:border-white" : "border-neutral-400 dark:border-neutral-500"}`}>
-                        {checked && <span className="h-3 w-3 rounded-full bg-neutral-950 dark:bg-white" />}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </Field>
-            <Field label="انتخاب درخواست تامین" required={form.hasSupplyRequest === "yes"}><select className={inputClass} value={form.supplyRequestId} disabled={form.hasSupplyRequest !== "yes"} onChange={(e) => setField("supplyRequestId", e.target.value)}><option value="">{form.hasSupplyRequest === "yes" ? "انتخاب کنید" : "ابتدا گزینه دارد را انتخاب کنید"}</option>{supplyRequests.map((item) => <option key={item.id} value={item.id}>{item.serial || `#${item.id}`}{item.title ? ` - ${item.title}` : ""}</option>)}</select></Field>
+            <div className={`grid min-w-0 grid-cols-1 items-end gap-2 ${form.hasSupplyRequest === "yes" ? "sm:grid-cols-[auto_minmax(190px,1fr)]" : "sm:grid-cols-1"}`}>
+              <Field label="درخواست تامین">
+                <div className="flex h-11 items-center gap-4 whitespace-nowrap rounded-xl border border-black/10 bg-white px-3 dark:border-white/15 dark:bg-white/5">
+                  {[["no", "ندارد"], ["yes", "دارد"]].map(([value, label]) => {
+                    const checked = form.hasSupplyRequest === value;
+                    return (
+                      <button key={value} type="button" onClick={() => setForm((old) => ({ ...old, hasSupplyRequest: value, supplyRequestId: value === "yes" ? old.supplyRequestId : "" }))} className="inline-flex items-center gap-1.5 text-sm text-neutral-900 transition hover:opacity-75 dark:text-white">
+                        <span>{label}</span>
+                        <span className={`grid h-5 w-5 place-items-center rounded-full border ${checked ? "border-neutral-950 dark:border-white" : "border-neutral-400 dark:border-neutral-500"}`}>{checked && <span className="h-3 w-3 rounded-full bg-neutral-950 dark:bg-white" />}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </Field>
+              {form.hasSupplyRequest === "yes" && <Field label="انتخاب درخواست تامین" required><select className={inputClass} value={form.supplyRequestId} onChange={(e) => setField("supplyRequestId", e.target.value)}><option value="">انتخاب کنید</option>{supplyRequests.map((item) => <option key={item.id} value={item.id}>{item.serial || `#${item.id}`}{item.title ? ` - ${item.title}` : ""}</option>)}</select></Field>}
+            </div>
           </div>
 
           <Field label="شرح درخواست"><textarea className={`${inputClass} min-h-24 py-2 leading-7`} value={form.description} onChange={(e) => setField("description", e.target.value)} /></Field>
@@ -633,7 +626,7 @@ export default function PaymentRequestPage() {
             </Field>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(150px,0.8fr)_minmax(130px,0.55fr)_minmax(190px,1fr)_minmax(260px,1.6fr)]">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(190px,1.25fr)_minmax(130px,0.65fr)_minmax(210px,1.25fr)_minmax(180px,0.85fr)]">
             <Field label="شرایط پرداخت"><input className={inputClass} value={form.creditPay} onChange={(e) => setField("creditPay", e.target.value)} /></Field>
             <Field label="نام ذینفع"><input className={inputClass} value={form.beneficiaryName} onChange={(e) => setField("beneficiaryName", e.target.value)} /></Field>
             <Field label="شماره شبا"><input dir="ltr" inputMode="numeric" className={`${inputClass} text-left font-sans tabular-nums`} value={form.bankInfo || "IR"} onChange={(e) => setField("bankInfo", formatSheba(e.target.value))} onFocus={() => { if (!form.bankInfo) setField("bankInfo", "IR"); }} placeholder="IR" /></Field>
@@ -648,7 +641,7 @@ export default function PaymentRequestPage() {
           <div className="flex justify-end"><button type="submit" disabled={submitting || uploading} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-900 text-white transition hover:bg-neutral-900/85 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90" title="ثبت" aria-label="ثبت"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button></div>
         </form>}
 
-        <RequestFilterBar query={filterQuery} setQuery={setFilterQuery} quick={filterQuick} setQuick={setFilterQuick} tags={tags} pinnedTagIds={pinnedFilterTagIds} setPinnedTagIds={setPinnedFilterTagIds} activeTagIds={filterTagIds} setActiveTagIds={setFilterTagIds} tagPickOpen={tagPickOpen} setTagPickOpen={setTagPickOpen} tagPickSearch={tagPickSearch} setTagPickSearch={setTagPickSearch} />
+        {!showForm && <RequestFilterBar query={filterQuery} setQuery={setFilterQuery} quick={filterQuick} setQuick={setFilterQuick} tags={tags} pinnedTagIds={pinnedFilterTagIds} setPinnedTagIds={setPinnedFilterTagIds} activeTagIds={filterTagIds} setActiveTagIds={setFilterTagIds} tagPickOpen={tagPickOpen} setTagPickOpen={setTagPickOpen} tagPickSearch={tagPickSearch} setTagPickSearch={setTagPickSearch} />}
 
         <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
           <div className="relative hidden max-h-[55vh] overflow-y-auto overflow-x-hidden pb-0 md:block" dir="ltr"><table dir="rtl" className="w-full min-w-full table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:min-w-0 [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5">
@@ -816,7 +809,7 @@ function TagPicker({ tags, selectedIds, onToggle, query, setQuery, onClose }) {
 
 function Field({ label, required, children }) { return <label className="block text-xs text-neutral-600 dark:text-neutral-300">{label}{required && <span className="mr-1 text-red-500">*</span>}<div className="mt-1">{children}</div></label>; }
 function ReadField({ label, value, ltr }) { return <Field label={label}><div dir={ltr ? "ltr" : "rtl"} className={`${inputClass} flex items-center ${ltr ? "justify-end" : ""}`}>{value || "—"}</div></Field>; }
-function MoneyInput({ value, onChange }) { return <input dir="ltr" inputMode="numeric" className={inputClass} value={toFa(value)} onChange={(e) => onChange(money(e.target.value))} placeholder="۰" />; }
+function MoneyInput({ value, onChange, className = "" }) { return <input dir="ltr" inputMode="numeric" className={`${inputClass} ${className}`} value={toFa(value)} onChange={(e) => onChange(money(e.target.value))} placeholder="۰" />; }
 function StatusBadge({ status }) {
   const colors = status === "approved" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" : status === "rejected" ? "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300" : status === "returned" ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" : "bg-neutral-100 text-neutral-700 dark:bg-white/10 dark:text-neutral-200";
   return <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs ${colors}`}>{STATUS_LABELS[status] || status || "—"}</span>;
