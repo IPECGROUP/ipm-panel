@@ -615,8 +615,7 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
           <JalaliPopupDatePicker
             value={action.date || ""}
             onChange={(value) => onPatch(requestId, action.id, { date: value })}
-            disableFuture={false}
-            disableTodayAndPast={false}
+            disableTodayAndPast
             buttonClassName={`${inputCls} flex items-center justify-between`}
             placeholder="تاریخ"
           />
@@ -655,8 +654,7 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
           <JalaliPopupDatePicker
             value={action.date || ""}
             onChange={(value) => patchAndPersist({ date: value })}
-            disableFuture={false}
-            disableTodayAndPast={false}
+            disableTodayAndPast
             buttonClassName={`${inputCls} flex items-center justify-between`}
             placeholder="تاریخ اقدام"
           />
