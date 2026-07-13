@@ -427,7 +427,7 @@ export default function SupplyActionsPage() {
 
 function SupplyActionsFilterMock() {
   return (
-    <div className="mb-4 rounded-2xl border border-black/10 bg-white p-3 text-xs dark:border-white/10 dark:bg-transparent">
+    <div className="mb-4 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 text-xs shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
       <div className="flex flex-wrap items-end gap-2">
         <label className="min-w-[230px] flex-1">
           <span className="mb-1 block text-neutral-500 dark:text-neutral-400">جست‌وجو</span>
@@ -439,7 +439,7 @@ function SupplyActionsFilterMock() {
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <span className="ml-1 text-neutral-500 dark:text-neutral-400">برچسب‌ها</span>
         {['همه', 'در حال اقدام', 'انجام شد', 'لغو شد', 'هفته قبل', 'دو هفته قبل', 'ماه قبل', 'سه ماه قبل', '۶ ماه قبل'].map((label, index) => (
-          <span key={label} className={`inline-flex h-8 items-center rounded-full border px-3 ${index === 0 ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black' : 'border-black/10 text-neutral-600 dark:border-white/15 dark:text-neutral-300'}`}>{label}</span>
+          <span key={label} className={`inline-flex h-8 items-center rounded-full border px-3 ${index === 0 ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black' : 'border-neutral-200 bg-white/75 text-neutral-600 shadow-sm dark:border-white/15 dark:bg-white/[0.06] dark:text-neutral-300'}`}>{label}</span>
         ))}
       </div>
     </div>
@@ -610,7 +610,6 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
 
     return (
       <div className={`rounded-2xl border p-3 transition ${action.isNew ? "border-black/10 bg-neutral-100 shadow-sm dark:border-white/10 dark:bg-white/[0.07]" : "border-black/10 bg-white dark:border-white/10 dark:bg-neutral-900"}`}>
-        <div className="mb-2 flex justify-end"><StatusBadge status={action.status} /></div>
         <div className="grid gap-2 md:grid-cols-[108px_minmax(180px,1fr)_118px_auto] md:items-start">
           <JalaliPopupDatePicker
             value={action.date || ""}
@@ -625,11 +624,13 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
             className={`${inputCls} h-10 min-h-10 resize-y py-2`}
             placeholder="شرح اقدام/توضیح"
           />
-          <select value={action.status || "in_progress"} onChange={(event) => onPatch(requestId, action.id, { status: event.target.value })} className={inputCls}>
-            <option value="in_progress">در حال اقدام</option>
-            <option value="done">انجام شد</option>
-            <option value="canceled">لغو شد</option>
-          </select>
+          {action.isNew ? (
+            <select value={action.status || "in_progress"} onChange={(event) => onPatch(requestId, action.id, { status: event.target.value })} className={inputCls}>
+              <option value="in_progress">در حال اقدام</option>
+              <option value="done">انجام شد</option>
+              <option value="canceled">لغو شد</option>
+            </select>
+          ) : <div className="flex h-10 items-center justify-center"><StatusBadge status={action.status} /></div>}
           <div className="flex flex-wrap items-center justify-between gap-2 md:min-h-10 md:border-r md:border-t-0 md:pr-2 md:pt-0 dark:border-white/10">
             <div className="flex items-center gap-2">
               <FileButton disabled={uploading} onClick={() => onOpenUpload(action)} />
@@ -676,7 +677,7 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
         )}
       </td>
       <td className="border-b border-neutral-300 px-2 dark:border-neutral-700">
-        {editable ? (
+        {editable && action.isNew ? (
           <select value={action.status || "in_progress"} onChange={(event) => patchAndPersist({ status: event.target.value })} className={inputCls}>
             <option value="in_progress">در حال اقدام</option>
             <option value="done">انجام شد</option>
