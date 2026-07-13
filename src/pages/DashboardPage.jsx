@@ -230,9 +230,6 @@ export default function DashboardPage() {
           <button type="button" onClick={() => setActiveTab("supply")} className={topTabBtnClass(activeTab === "supply", 0, 2)}>
             درخواست تامین
           </button>
-          <button type="button" onClick={() => setActiveTab("management")} className={topTabBtnClass(activeTab === "management", 1, 2)}>
-            مدیریت درخواست ها
-          </button>
         </div>
 
         <div className={tableWrapCls}>

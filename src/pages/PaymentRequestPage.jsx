@@ -234,6 +234,7 @@ export default function PaymentRequestPage() {
   const [selected, setSelected] = useState(null);
   const [filterQuery, setFilterQuery] = useState("");
   const [filterQuick, setFilterQuick] = useState("");
+  const [filterOwnership, setFilterOwnership] = useState("");
   const [filterTagIds, setFilterTagIds] = useState([]);
   const [pinnedFilterTagIds, setPinnedFilterTagIds] = useState([]);
   const [tags, setTags] = useState([]);
@@ -242,6 +243,7 @@ export default function PaymentRequestPage() {
   const [actionNote, setActionNote] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [seenIncomingIds, setSeenIncomingIds] = useState(() => new Set());
   const [createRecipients, setCreateRecipients] = useState({ targetRoleKey: null, users: [] });
   const [createRecipientsLoading, setCreateRecipientsLoading] = useState(false);
   const selectedProject = useMemo(
@@ -312,6 +314,13 @@ export default function PaymentRequestPage() {
       localStorage.setItem(`request_filter_tags:payment:u${user.id}`, JSON.stringify((pinnedFilterTagIds || []).map(String)));
     } catch {}
   }, [pinnedFilterTagIds, user?.id]);
+  useEffect(() => {
+    if (!user?.id) return;
+    try {
+      const stored = JSON.parse(localStorage.getItem(`payment_request_seen_incoming:u${user.id}`) || "[]");
+      setSeenIncomingIds(new Set(Array.isArray(stored) ? stored.map(String) : []));
+    } catch { setSeenIncomingIds(new Set()); }
+  }, [user?.id]);
   useEffect(() => {
     Promise.allSettled([api("/cost-breakdown"), api("/base/currencies/types"), api("/base/currencies/sources"), api("/supply-requests")]).then(([p, t, s, sr]) => {
       if (p.status === "fulfilled") {
@@ -423,6 +432,14 @@ export default function PaymentRequestPage() {
   };
 
   const openPreview = (item) => {
+    if (item?.canAct && Number(item?.createdById) !== Number(user?.id)) {
+      setSeenIncomingIds((previous) => {
+        const next = new Set(previous);
+        next.add(String(item.id));
+        try { localStorage.setItem(`payment_request_seen_incoming:u${user.id}`, JSON.stringify([...next])); } catch {}
+        return next;
+      });
+    }
     setSelected(item);
     setActionNote("");
     setActionError("");
@@ -518,7 +535,7 @@ export default function PaymentRequestPage() {
     }
   };
 
-  const filteredItems = useMemo(() => filterRequestRows(items, { query: filterQuery, quick: filterQuick, tagIds: filterTagIds }), [items, filterQuery, filterQuick, filterTagIds]);
+  const filteredItems = useMemo(() => filterRequestRows(items, { query: filterQuery, quick: filterQuick, tagIds: filterTagIds, ownership: filterOwnership, userId: user?.id }), [items, filterOwnership, filterQuery, filterQuick, filterTagIds, user?.id]);
   const sortedItems = useMemo(() => [...filteredItems].sort((a, b) => {
     const result = String(a.serial || a.id || "").localeCompare(String(b.serial || b.id || ""), "fa", { numeric: true, sensitivity: "base" });
     return numberSortDir === "asc" ? result : -result;
@@ -619,17 +636,17 @@ export default function PaymentRequestPage() {
             <Field label="تاریخ سند"><JalaliPopupDatePicker value={form.docDateJalali} onChange={(value) => setField("docDateJalali", value)} /></Field>
             <Field label="بارگذاری">
               <label className="grid h-11 w-11 cursor-pointer place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={uploading ? "در حال آپلود" : "بارگذاری"} aria-label={uploading ? "در حال آپلود" : "بارگذاری"}>
-                <img src="/images/icons/upload.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse opacity-60" : ""}`} />
+                <img src="/images/icons/Uplod.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse opacity-60" : ""}`} />
                 <input type="file" multiple accept="image/*,.pdf" className="hidden" onChange={(e) => uploadFiles(e.target.files)} />
               </label>
               {!!form.attachments.length && <div className="mt-1 text-[11px] text-neutral-500">{toFa(form.attachments.length)} فایل ضمیمه شده</div>}
             </Field>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(190px,1.25fr)_minmax(130px,0.65fr)_minmax(210px,1.25fr)_minmax(180px,0.85fr)]">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(260px,1.7fr)_minmax(130px,0.65fr)_minmax(150px,0.8fr)_minmax(155px,0.7fr)]">
             <Field label="شرایط پرداخت"><input className={inputClass} value={form.creditPay} onChange={(e) => setField("creditPay", e.target.value)} /></Field>
             <Field label="نام ذینفع"><input className={inputClass} value={form.beneficiaryName} onChange={(e) => setField("beneficiaryName", e.target.value)} /></Field>
-            <Field label="شماره شبا"><input dir="ltr" inputMode="numeric" className={`${inputClass} text-left font-sans tabular-nums`} value={form.bankInfo || "IR"} onChange={(e) => setField("bankInfo", formatSheba(e.target.value))} onFocus={() => { if (!form.bankInfo) setField("bankInfo", "IR"); }} placeholder="IR" /></Field>
+            <Field label="شماره شبا"><input dir="ltr" inputMode="numeric" maxLength={33} className={`${inputClass} text-left font-sans tabular-nums`} value={form.bankInfo || "IR"} onChange={(e) => setField("bankInfo", formatSheba(e.target.value))} onFocus={() => { if (!form.bankInfo) setField("bankInfo", "IR"); }} placeholder="IR" /></Field>
             <Field label="ارسال درخواست پرداخت به" required={!!createRecipients.targetRoleKey}>
               <select className={inputClass} value={form.targetAssigneeUserId} onChange={(e) => setField("targetAssigneeUserId", e.target.value)} disabled={createRecipientsLoading || !createRecipients.targetRoleKey}>
                 <option value="">{createRecipientsLoading ? "در حال دریافت..." : createRecipients.targetRoleKey ? "انتخاب کنید" : "ارسال مستقیم برای اقدام"}</option>
@@ -641,14 +658,14 @@ export default function PaymentRequestPage() {
           <div className="flex justify-end"><button type="submit" disabled={submitting || uploading} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-900 text-white transition hover:bg-neutral-900/85 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90" title="ثبت" aria-label="ثبت"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button></div>
         </form>}
 
-        {!showForm && <RequestFilterBar query={filterQuery} setQuery={setFilterQuery} quick={filterQuick} setQuick={setFilterQuick} tags={tags} pinnedTagIds={pinnedFilterTagIds} setPinnedTagIds={setPinnedFilterTagIds} activeTagIds={filterTagIds} setActiveTagIds={setFilterTagIds} tagPickOpen={tagPickOpen} setTagPickOpen={setTagPickOpen} tagPickSearch={tagPickSearch} setTagPickSearch={setTagPickSearch} />}
+        {!showForm && <RequestFilterBar query={filterQuery} setQuery={setFilterQuery} quick={filterQuick} setQuick={setFilterQuick} ownership={filterOwnership} setOwnership={setFilterOwnership} tags={tags} pinnedTagIds={pinnedFilterTagIds} setPinnedTagIds={setPinnedFilterTagIds} activeTagIds={filterTagIds} setActiveTagIds={setFilterTagIds} tagPickOpen={tagPickOpen} setTagPickOpen={setTagPickOpen} tagPickSearch={tagPickSearch} setTagPickSearch={setTagPickSearch} />}
 
         <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
           <div className="relative hidden max-h-[55vh] overflow-y-auto overflow-x-hidden pb-0 md:block" dir="ltr"><table dir="rtl" className="w-full min-w-full table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:min-w-0 [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5">
-            <colgroup><col style={{ width: 48 }} /><col style={{ width: 125 }} /><col style={{ width: 100 }} /><col /><col style={{ width: 125 }} /><col style={{ width: 135 }} /><col style={{ width: 145 }} /></colgroup>
+            <colgroup><col style={{ width: 48 }} /><col style={{ width: 24 }} /><col style={{ width: 125 }} /><col style={{ width: 100 }} /><col /><col style={{ width: 125 }} /><col style={{ width: 135 }} /><col style={{ width: 145 }} /></colgroup>
             <thead><tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100">
               <th className="sticky top-0 z-40 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><input ref={selectAllRef} type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allVisibleSelected} onChange={toggleSelectAll} aria-label="انتخاب همه" /></th>
-              <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><button type="button" onClick={() => setNumberSortDir((old) => old === "asc" ? "desc" : "asc")} className="mx-auto inline-flex items-center gap-1 transition hover:opacity-90"><span>شماره</span><img src={numberSortDir === "desc" ? "/images/icons/bozorgbekochik.svg" : "/images/icons/kochikbebozorg.svg"} alt="" className="h-4 w-4 dark:invert" /></button></th>
+              <th className="sticky top-0 z-30 bg-neutral-200 !py-2 dark:bg-neutral-800" aria-label="خوانده‌نشده" /><th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><button type="button" onClick={() => setNumberSortDir((old) => old === "asc" ? "desc" : "asc")} className="mx-auto inline-flex items-center gap-1 transition hover:opacity-90"><span>شماره</span><img src={numberSortDir === "desc" ? "/images/icons/bozorgbekochik.svg" : "/images/icons/kochikbebozorg.svg"} alt="" className="h-4 w-4 dark:invert" /></button></th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">تاریخ</th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">موضوع</th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">پروژه</th>
@@ -656,8 +673,9 @@ export default function PaymentRequestPage() {
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 !pl-6 !pr-3 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">اقدامات</th>
             </tr></thead>
             <tbody className="text-black dark:text-neutral-100">
-              {loading ? <tr><td colSpan={7} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td></tr> : pageItems.length === 0 ? <tr><td colSpan={7} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواستی ثبت نشده است.</td></tr> : pageItems.map((item, index) => <tr key={item.id} className="group bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
+              {loading ? <tr><td colSpan={8} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td></tr> : pageItems.length === 0 ? <tr><td colSpan={8} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواستی ثبت نشده است.</td></tr> : pageItems.map((item, index) => <tr key={item.id} className="group bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label="انتخاب" /></td>
+                <td className="border-b border-neutral-300 px-0 dark:border-neutral-700">{item.canAct && Number(item.createdById) !== Number(user?.id) && !seenIncomingIds.has(String(item.id)) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="درخواست دیده‌نشده" aria-label="درخواست دیده‌نشده" />}</td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><button type="button" onClick={() => openPreview(item)} className="mx-auto inline-flex items-center justify-center text-[13px] font-semibold underline-offset-4 transition hover:underline" title="نمایش درخواست">{item.serial || "—"}</button></td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))}</td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.title || "—"}</span></td>
@@ -723,11 +741,15 @@ function itemDateKey(item) {
   return normalizeDigits(String(item?.dateFa || item?.dateJalali || item?.date_jalali || "")).replaceAll("-", "/");
 }
 
-function filterRequestRows(rows, { query, quick, tagIds }) {
+function filterRequestRows(rows, { query, quick, tagIds, ownership, userId }) {
   const q = normalizeDigits(query).trim().toLowerCase();
   const start = quickStartDate(quick);
   const selectedTags = Array.isArray(tagIds) ? tagIds.map(String).filter(Boolean) : [];
   return (Array.isArray(rows) ? rows : []).filter((item) => {
+    const isMine = Number(item?.createdById) === Number(userId);
+    const isIncoming = item?.canAct === true && !isMine;
+    if (ownership === "mine" && !isMine) return false;
+    if (ownership === "incoming" && !isIncoming) return false;
     if (start && itemDateKey(item) < start) return false;
     if (selectedTags.length) {
       const itemTags = tagIdListOf(item);
@@ -741,7 +763,7 @@ function filterRequestRows(rows, { query, quick, tagIds }) {
   });
 }
 
-function RequestFilterBar({ query, setQuery, quick, setQuick, tags, pinnedTagIds, setPinnedTagIds, activeTagIds, setActiveTagIds, tagPickOpen, setTagPickOpen, tagPickSearch, setTagPickSearch }) {
+function RequestFilterBar({ query, setQuery, quick, setQuick, ownership, setOwnership, tags, pinnedTagIds, setPinnedTagIds, activeTagIds, setActiveTagIds, tagPickOpen, setTagPickOpen, tagPickSearch, setTagPickSearch }) {
   const active = new Set((activeTagIds || []).map(String));
   const tagMap = new Map((Array.isArray(tags) ? tags : []).map((tag) => [String(tag?.id ?? ""), tag]));
   const visibleTags = (Array.isArray(pinnedTagIds) ? pinnedTagIds : []).map((id) => tagMap.get(String(id))).filter(Boolean);
@@ -764,7 +786,7 @@ function RequestFilterBar({ query, setQuery, quick, setQuick, tags, pinnedTagIds
     });
   };
 
-  return <div className="mb-4 space-y-2 rounded-2xl border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-transparent">
+  return <div className="mb-4 space-y-2 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
     <div className="flex flex-wrap items-end gap-2">
       <div className="w-full md:min-w-[280px] md:flex-1">
         <div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">جست و جو</div>
@@ -774,6 +796,8 @@ function RequestFilterBar({ query, setQuery, quick, setQuick, tags, pinnedTagIds
     <div>
       <div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">برچسب ها</div>
       <div className="flex flex-wrap items-center gap-2">
+        <button type="button" onClick={() => setOwnership(ownership === "mine" ? "" : "mine")} className={`h-9 rounded-full border px-4 text-xs transition ${ownership === "mine" ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-neutral-200 bg-white/75 text-neutral-600 shadow-sm hover:bg-white dark:border-white/15 dark:bg-white/[0.06] dark:text-neutral-300"}`}>درخواست‌های من</button>
+        <button type="button" onClick={() => setOwnership(ownership === "incoming" ? "" : "incoming")} className={`h-9 rounded-full border px-4 text-xs transition ${ownership === "incoming" ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-neutral-200 bg-white/75 text-neutral-600 shadow-sm hover:bg-white dark:border-white/15 dark:bg-white/[0.06] dark:text-neutral-300"}`}>موارد ارسال‌شده به من</button>
         {QUICK_FILTERS.map(([key, label]) => (
           <button key={key} type="button" onClick={() => setQuick(quick === key ? "" : key)} className={`h-9 rounded-full border px-4 text-xs transition ${quick === key ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>{label}</button>
         ))}
@@ -1067,7 +1091,7 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                       <button type="button" onClick={() => removeEditAttachment(index)} className="grid h-6 w-6 place-items-center rounded-md hover:bg-black/5 dark:hover:bg-white/10" aria-label="حذف پیوست" title="حذف پیوست">×</button>
                     </span>)}
                     <label className="grid h-9 w-9 cursor-pointer place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={editUploading ? "در حال آپلود" : "بارگذاری"} aria-label={editUploading ? "در حال آپلود" : "بارگذاری"}>
-                      <img src="/images/icons/upload.svg" alt="" className={`h-4 w-4 dark:invert ${editUploading ? "animate-pulse opacity-60" : ""}`} />
+                      <img src="/images/icons/Uplod.svg" alt="" className={`h-4 w-4 dark:invert ${editUploading ? "animate-pulse opacity-60" : ""}`} />
                       <input type="file" multiple accept="image/*,.pdf" className="hidden" onChange={(event) => uploadEditFiles(event.target.files)} />
                     </label>
                   </div>
