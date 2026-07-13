@@ -1044,6 +1044,7 @@ export default function SupplyRequestPage() {
               <table dir="rtl" className="w-full min-w-[860px] table-fixed text-sm [&_td]:py-1.5 [&_td]:text-center [&_th]:py-2 [&_th]:text-center">
                 <colgroup>
                   <col style={{ width: 48 }} />
+                  <col style={{ width: 24 }} />
                   <col style={{ width: 130 }} />
                   <col style={{ width: 120 }} />
                   <col />
@@ -1054,6 +1055,7 @@ export default function SupplyRequestPage() {
                 <thead>
                   <tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100">
                     <th><input type="checkbox" className="h-4 w-4 accent-black dark:accent-white" checked={allPageItemsSelected} onChange={toggleAllPageItems} aria-label="انتخاب همه" /></th>
+                    <th aria-label="خوانده‌نشده" />
                     <th>شماره</th>
                     <th>تاریخ</th>
                     <th>موضوع</th>
@@ -1065,19 +1067,19 @@ export default function SupplyRequestPage() {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td>
+                      <td colSpan={8} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td>
                     </tr>
                   ) : pageItems.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواست تامینی ثبت نشده است.</td>
+                      <td colSpan={8} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواست تامینی ثبت نشده است.</td>
                     </tr>
                   ) : (
                     pageItems.map((item) => (
                       <tr key={item.id} className="group bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-white" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label={`انتخاب درخواست ${item.serial || item.id}`} /></td>
+                        <td className="border-b border-neutral-300 px-0 dark:border-neutral-700">{Number(item.currentAssigneeUserId) === Number(user?.id) && Number(item.createdById) !== Number(user?.id) && !seenIncomingIds.has(String(item.id)) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="درخواست دیده‌نشده" aria-label="درخواست دیده‌نشده" />}</td>
                         <td dir="ltr" className="border-b border-neutral-300 px-3 font-sans tabular-nums dark:border-neutral-700">
-                          <button type="button" onClick={() => openPreview(item)} className="mx-auto inline-flex items-center gap-1.5 underline-offset-4 transition hover:underline" title="نمایش درخواست">
-                            {Number(item.currentAssigneeUserId) === Number(user?.id) && Number(item.createdById) !== Number(user?.id) && !seenIncomingIds.has(String(item.id)) && <span className="h-2 w-2 shrink-0 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="درخواست دیده‌نشده" aria-label="درخواست دیده‌نشده" />}
+                          <button type="button" onClick={() => openPreview(item)} className="mx-auto inline-flex underline-offset-4 transition hover:underline" title="نمایش درخواست">
                             {item.serial || "—"}
                           </button>
                         </td>
@@ -1917,7 +1919,7 @@ function RequestFilterBar({
   };
 
   return (
-    <div className="mb-4 space-y-2 rounded-2xl border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-transparent">
+    <div className="mb-4 space-y-2 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
       <div className="flex flex-wrap items-end gap-2">
         <div className="w-full md:min-w-[280px] md:flex-1">
           <div className={labelCls}>جست و جو</div>
