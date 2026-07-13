@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
-import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { todayJalaliYmd } from "../utils/date.js";
 import { toEnglishDigits } from "../utils/format.js";
@@ -700,16 +699,6 @@ export default function SupplyRequestPage() {
     }
   };
 
-  const deleteItem = async (item) => {
-    if (!window.confirm("این درخواست تامین حذف شود؟")) return;
-    try {
-      await api(`/supply-requests?id=${encodeURIComponent(item.id)}`, { method: "DELETE" });
-      setItems((prev) => prev.filter((row) => String(row.id) !== String(item.id)));
-    } catch (ex) {
-      setErr(ex.message || "حذف درخواست انجام نشد.");
-    }
-  };
-
   const filteredItems = useMemo(() => {
     const q = normalizeDigits(filterQuery).trim().toLowerCase();
     const quickStart = quickStartDate(filterQuick);
@@ -1043,14 +1032,14 @@ export default function SupplyRequestPage() {
             <div className="hidden overflow-x-auto md:block" dir="ltr">
               <table dir="rtl" className="w-full min-w-[860px] table-fixed text-sm [&_td]:py-1.5 [&_td]:text-center [&_th]:py-2 [&_th]:text-center">
                 <colgroup>
-                  <col style={{ width: 48 }} />
-                  <col style={{ width: 24 }} />
+                  <col style={{ width: 40 }} />
+                  <col style={{ width: 16 }} />
                   <col style={{ width: 130 }} />
                   <col style={{ width: 120 }} />
-                  <col />
                   <col style={{ width: 180 }} />
+                  <col />
                   <col style={{ width: 140 }} />
-                  <col style={{ width: 120 }} />
+                  <col style={{ width: 132 }} />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100">
@@ -1058,10 +1047,15 @@ export default function SupplyRequestPage() {
                     <th aria-label="خوانده‌نشده" />
                     <th>شماره</th>
                     <th>تاریخ</th>
-                    <th>موضوع</th>
                     <th>پروژه</th>
+                    <th>موضوع</th>
                     <th>آخرین وضعیت</th>
-                    <th>اقدامات</th>
+                    <th>
+                      <span className="inline-flex items-center justify-center gap-1.5">
+                        اقدامات
+                        <img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 dark:invert" />
+                      </span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1084,15 +1078,14 @@ export default function SupplyRequestPage() {
                           </button>
                         </td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/"))}</td>
-                        <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.title || "—"}</span></td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{itemProjectLabel(item, projects)}</span></td>
+                        <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.title || "—"}</span></td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><StatusBadge status={displayStatusOf(item)} /></td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">
                           <div className="flex min-h-9 items-center justify-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                             <button type="button" onClick={() => openPreview(item)} className="grid h-[34px] w-[34px] place-items-center rounded-lg transition hover:bg-black/[0.04] dark:hover:bg-white/10" aria-label={item.canAct ? "اقدامات" : "نمایش"} title={item.canAct ? "اقدامات" : "نمایش"}>
                               <img src="/images/icons/namayeshname.svg" alt="" className="h-4 w-4 dark:invert" />
                             </button>
-                            {item.canDelete && <RowActionIconBtn action="delete" onClick={() => deleteItem(item)} size={34} iconSize={16} />}
                           </div>
                         </td>
                       </tr>
