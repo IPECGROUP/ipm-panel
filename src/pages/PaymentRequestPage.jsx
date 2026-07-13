@@ -574,19 +574,19 @@ export default function PaymentRequestPage() {
             <Field label="کد بودجه" required><select className={inputClass} value={form.budgetCode} disabled={!form.projectId} onChange={(e) => setField("budgetCode", e.target.value)}><option value="">{form.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید"}</option>{budgetItems.map((item) => { const code = normalizeBudgetCode(item.code || item.center_code); const description = item.center_desc || item.last_desc || item.name || item.description || ""; return <option key={code || item.id} value={code}>{code}{description ? ` - ${description}` : ""}</option>; })}</select></Field>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(230px,1.2fr)_minmax(210px,0.85fr)_minmax(360px,1.35fr)]">
+          <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-[minmax(230px,1.2fr)_minmax(210px,0.85fr)_minmax(360px,1.35fr)]">
             <Field label="موضوع درخواست" required><input className={`${inputClass} h-12 text-[15px]`} value={form.title} onChange={(e) => setField("title", e.target.value)} /></Field>
             <Field label="مبلغ درخواست" required>
               <div className="relative min-w-0">
-                <MoneyInput className="!pl-[82px]" value={form.amount} onChange={(value) => setField("amount", value)} />
-                <select aria-label="ارز مبلغ درخواست" title="انتخاب ارز" className="absolute left-1 top-1 h-9 !w-[74px] rounded-lg border border-black/10 bg-neutral-100 px-1 text-center text-[11px] font-semibold text-neutral-800 outline-none transition hover:bg-neutral-200 focus:border-neutral-400 dark:border-white/15 dark:bg-white/10 dark:text-white dark:hover:bg-white/15" value={form.currencyTypeId} onChange={(e) => setField("currencyTypeId", e.target.value)}>
+                <MoneyInput className="!pl-[64px]" value={form.amount} onChange={(value) => setField("amount", value)} />
+                <select aria-label="ارز مبلغ درخواست" title="انتخاب ارز" className="absolute left-1 top-1 h-9 !w-[56px] cursor-pointer rounded-lg border border-sky-200 bg-gradient-to-b from-sky-50 to-blue-100 px-0.5 text-center text-[10px] font-bold text-sky-800 shadow-sm outline-none transition hover:from-sky-100 hover:to-blue-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-200/70 dark:border-sky-400/30 dark:from-sky-500/20 dark:to-blue-500/20 dark:text-sky-100 dark:hover:from-sky-500/30 dark:hover:to-blue-500/30" value={form.currencyTypeId} onChange={(e) => setField("currencyTypeId", e.target.value)}>
                   <option value="">ریال</option>{currencyTypes.map((item) => <option key={item.id} value={item.id}>{itemLabel(item)}</option>)}
                 </select>
               </div>
             </Field>
-            <div className={`grid min-w-0 grid-cols-1 items-end gap-2 ${form.hasSupplyRequest === "yes" ? "sm:grid-cols-[auto_minmax(190px,1fr)]" : "sm:grid-cols-1"}`}>
+            <div className={`grid min-w-0 grid-cols-1 items-start gap-2 ${form.hasSupplyRequest === "yes" ? "sm:grid-cols-[auto_minmax(190px,1fr)]" : "sm:grid-cols-1"}`}>
               <Field label="درخواست تامین">
-                <div className="flex h-11 items-center gap-4 whitespace-nowrap rounded-xl border border-black/10 bg-white px-3 dark:border-white/15 dark:bg-white/5">
+                <div className="flex h-11 items-center gap-4 whitespace-nowrap px-1">
                   {[["no", "ندارد"], ["yes", "دارد"]].map(([value, label]) => {
                     const checked = form.hasSupplyRequest === value;
                     return (
@@ -604,7 +604,7 @@ export default function PaymentRequestPage() {
 
           <Field label="شرح درخواست"><textarea className={`${inputClass} min-h-24 py-2 leading-7`} value={form.description} onChange={(e) => setField("description", e.target.value)} /></Field>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(180px,1fr)_minmax(150px,0.9fr)_minmax(120px,0.65fr)_auto]">
             <Field label="نوع سند">
               {form.docId === "other" ? (
                 <input className={inputClass} value={form.docOther} onChange={(e) => setField("docOther", e.target.value)} placeholder="نوع سند را وارد کنید" autoFocus />
