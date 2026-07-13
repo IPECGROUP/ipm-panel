@@ -3522,7 +3522,7 @@ useLayoutEffect(() => {
     "h-10 w-10 inline-grid place-items-center !bg-transparent !ring-0 !border-0 !shadow-none " +
     "hover:opacity-80 active:opacity-70 transition disabled:opacity-50";
   const rowActionsRevealCls =
-    "flex items-center justify-center gap-1 opacity-0 pointer-events-none transition-opacity " +
+    "flex items-center justify-center gap-0 -space-x-1 opacity-0 pointer-events-none transition-opacity " +
     "group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto";
   const uploadActionBtnCls =
     iconBtnCls + " letter-upload-flash relative overflow-visible";
@@ -6097,7 +6097,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
                               </div>
                             </div>
 
-                            <div className="flex shrink-0 items-center gap-0">
+                            <div className="flex shrink-0 items-center gap-0 -space-x-1">
                               {!hasRealAttachment ? (
                                 <button
                                   type="button"
