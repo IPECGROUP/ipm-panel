@@ -306,8 +306,8 @@ export default function SupplyActionsPage() {
               <colgroup>
                 <col style={{ width: 130 }} />
                 <col style={{ width: 120 }} />
-                <col style={{ width: 210 }} />
                 <col />
+                <col style={{ width: 210 }} />
                 <col style={{ width: 140 }} />
                 <col style={{ width: 110 }} />
               </colgroup>
