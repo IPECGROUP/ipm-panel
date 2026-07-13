@@ -109,17 +109,21 @@ function RightNav() {
   const hasOpenMenu = Object.values(open).some(Boolean);
 
   useEffect(() => {
-    if (!hasOpenMenu) return undefined;
+    if (!expanded && !hasOpenMenu) return undefined;
 
     const closeOnOutsideClick = (event) => {
       if (navRef.current?.contains(event.target)) return;
       localStorage.setItem("nav_open", "{}");
       setOpen({});
+      if (expanded) {
+        localStorage.setItem("nav_expanded", "false");
+        setExpanded(false);
+      }
     };
 
     document.addEventListener("pointerdown", closeOnOutsideClick);
     return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
-  }, [hasOpenMenu]);
+  }, [expanded, hasOpenMenu]);
 
   const sectionFromPath = (p) => {
     const path = clean(p);
