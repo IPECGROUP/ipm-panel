@@ -106,10 +106,10 @@ function RightNav() {
       return {};
     });
 
-  const hasCollapsedFlyout = !expanded && Object.values(open).some(Boolean);
+  const hasOpenMenu = Object.values(open).some(Boolean);
 
   useEffect(() => {
-    if (!hasCollapsedFlyout) return undefined;
+    if (!hasOpenMenu) return undefined;
 
     const closeOnOutsideClick = (event) => {
       if (navRef.current?.contains(event.target)) return;
@@ -119,7 +119,7 @@ function RightNav() {
 
     document.addEventListener("pointerdown", closeOnOutsideClick);
     return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
-  }, [hasCollapsedFlyout]);
+  }, [hasOpenMenu]);
 
   const sectionFromPath = (p) => {
     const path = clean(p);

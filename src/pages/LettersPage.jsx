@@ -1089,10 +1089,10 @@ const canSeeConfidential = useMemo(() => {
 
 const canEditSecretariatNo = useMemo(() => {
   const ids = [user?.username, user?.user_name, user?.login, user?.name]
-    .map((x) => String(x || "").trim().toLowerCase())
+    .map((value) => String(value || "").trim().toLowerCase())
     .filter(Boolean);
 
-  return ids.includes("marandi") || ids.includes("rastegar");
+  return ids.includes("rastegar");
 }, [user]);
 
 // ===== Filters (page-level) =====
@@ -4824,8 +4824,7 @@ useEffect(() => {
                 <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
               </span>
               <span className="min-w-0">
-                <span className="block truncate text-base font-bold md:text-lg">مدیریت نامه ها</span>
-                <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">اسناد و نامه ها</span>
+                <span className="block truncate text-base font-bold md:text-lg">اسناد و نامه ها</span>
               </span>
             </div>
             <button
@@ -6304,7 +6303,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
 
      <th className="w-28 !py-2 pl-6 !pr-3 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
   <div className="relative flex items-center justify-center gap-2">
-    <span>اقدامات</span>
+    <span>عملیات</span>
 
     {!isMainAdmin && canSeeMainAdminLogin ? (
       <button
