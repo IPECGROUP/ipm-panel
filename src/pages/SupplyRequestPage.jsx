@@ -1146,12 +1146,12 @@ export default function SupplyRequestPage() {
                         <button
                           type="button"
                           onClick={() => setTableMenuOpen((open) => !open)}
-                          className={`grid h-8 w-8 place-items-center rounded-lg transition ${tableMenuOpen ? "bg-black text-white shadow-md dark:bg-white dark:text-black" : "hover:bg-black/[0.08] dark:hover:bg-white/10"}`}
+                          className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10"
                           title="مدیریت وضعیت خواندن"
                           aria-label="مدیریت وضعیت خواندن"
                           aria-expanded={tableMenuOpen}
                         >
-                          <img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${tableMenuOpen ? "scale-110 dark:invert-0 invert" : "dark:invert"}`} />
+                          <img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${tableMenuOpen ? "scale-110" : ""} dark:invert`} />
                         </button>
 
                         {tableMenuOpen && (
@@ -1168,7 +1168,6 @@ export default function SupplyRequestPage() {
                               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-100 text-emerald-700 transition group-hover:scale-105 dark:bg-emerald-500/15 dark:text-emerald-300">✓</span>
                               <span className="min-w-0 flex-1">
                                 <span className="block text-sm font-semibold">خوانده شده</span>
-                                <span className="block text-[11px] text-neutral-500 dark:text-neutral-400">نشان آبی حذف می‌شود</span>
                               </span>
                             </button>
                             <button
@@ -1180,7 +1179,6 @@ export default function SupplyRequestPage() {
                               <span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-100 text-sky-700 transition group-hover:scale-105 dark:bg-sky-500/15 dark:text-sky-300"><span className="h-2.5 w-2.5 rounded-full bg-sky-500 ring-2 ring-sky-200 dark:ring-sky-400/30" /></span>
                               <span className="min-w-0 flex-1">
                                 <span className="block text-sm font-semibold">خوانده نشده</span>
-                                <span className="block text-[11px] text-neutral-500 dark:text-neutral-400">نشان آبی اضافه می‌شود</span>
                               </span>
                             </button>
                           </div>
