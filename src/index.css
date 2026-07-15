@@ -239,6 +239,13 @@ td {
 .notification-count { animation: notification-count-pop 420ms cubic-bezier(.22, 1, .36, 1); }
 .notification-popover { animation: notification-popover-enter 260ms cubic-bezier(.22, 1, .36, 1); transform-origin: top left; }
 
+@keyframes table-menu-popover-enter {
+  from { opacity: 0; transform: translateY(-6px) scale(.96); filter: blur(2px); }
+  to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+
+.table-menu-popover { animation: table-menu-popover-enter 220ms cubic-bezier(.22, 1, .36, 1); transform-origin: top left; }
+
 @media (prefers-reduced-motion: reduce) {
-  .notification-bell, .notification-ring, .notification-count, .notification-popover { animation: none; }
+  .notification-bell, .notification-ring, .notification-count, .notification-popover, .table-menu-popover { animation: none; }
 }

@@ -329,6 +329,9 @@ export default function SupplyRequestPage() {
   const [createRecipientsLoading, setCreateRecipientsLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [seenIncomingIds, setSeenIncomingIds] = useState(() => new Set());
+  const [manualUnreadIds, setManualUnreadIds] = useState(() => new Set());
+  const [tableMenuOpen, setTableMenuOpen] = useState(false);
+  const tableMenuRef = useRef(null);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
 
@@ -493,6 +496,39 @@ export default function SupplyRequestPage() {
   }, [user?.id]);
 
   useEffect(() => {
+    if (!user?.id) return;
+    try {
+      const stored = JSON.parse(localStorage.getItem(`supply_request_manual_unread:u${user.id}`) || "[]");
+      setManualUnreadIds(new Set(Array.isArray(stored) ? stored.map(String) : []));
+    } catch {
+      setManualUnreadIds(new Set());
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    try {
+      localStorage.setItem(`supply_request_manual_unread:u${user.id}`, JSON.stringify([...manualUnreadIds]));
+    } catch {}
+  }, [manualUnreadIds, user?.id]);
+
+  useEffect(() => {
+    if (!tableMenuOpen) return undefined;
+    const closeOnOutsideClick = (event) => {
+      if (!tableMenuRef.current?.contains(event.target)) setTableMenuOpen(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setTableMenuOpen(false);
+    };
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [tableMenuOpen]);
+
+  useEffect(() => {
     let cancelled = false;
     if (!form.projectId) {
       setBudgetItems([]);
@@ -569,6 +605,13 @@ export default function SupplyRequestPage() {
         return next;
       });
     }
+    setManualUnreadIds((previous) => {
+      const key = String(item.id);
+      if (!previous.has(key)) return previous;
+      const next = new Set(previous);
+      next.delete(key);
+      return next;
+    });
     setSelected(item);
     setActionNote("");
     setActionError("");
@@ -774,6 +817,40 @@ export default function SupplyRequestPage() {
     else pageItemIds.forEach((id) => next.add(id));
     return next;
   });
+
+  const isIncomingForUser = (item) =>
+    Number(item.currentAssigneeUserId) === Number(user?.id) && Number(item.createdById) !== Number(user?.id);
+
+  const isUnreadForUser = (item) =>
+    manualUnreadIds.has(String(item.id)) || (isIncomingForUser(item) && !seenIncomingIds.has(String(item.id)));
+
+  const setSelectedReadStatus = (unread) => {
+    const ids = [...selectedIds].map(String);
+    if (!ids.length) return;
+
+    if (unread) {
+      setManualUnreadIds((previous) => {
+        const next = new Set(previous);
+        ids.forEach((id) => next.add(id));
+        return next;
+      });
+    } else {
+      setSeenIncomingIds((previous) => {
+        const next = new Set(previous);
+        ids.forEach((id) => next.add(id));
+        try { localStorage.setItem(`supply_request_seen_incoming:u${user.id}`, JSON.stringify([...next])); } catch {}
+        return next;
+      });
+      setManualUnreadIds((previous) => {
+        const next = new Set(previous);
+        ids.forEach((id) => next.delete(id));
+        return next;
+      });
+    }
+
+    setSelectedIds(new Set());
+    setTableMenuOpen(false);
+  };
 
   useEffect(() => {
     setPage(0);
@@ -1064,8 +1141,51 @@ export default function SupplyRequestPage() {
                     <th>موضوع</th>
                     <th>آخرین وضعیت</th>
                     <th className="relative">
-                      اقدامات
-                      <img src="/images/icons/menu-table.svg" alt="" className="absolute left-2 top-1/2 h-4 w-3 -translate-y-1/2 dark:invert" />
+                      <span>اقدامات</span>
+                      <div ref={tableMenuRef} className="absolute left-1 top-1/2 z-30 -translate-y-1/2">
+                        <button
+                          type="button"
+                          onClick={() => setTableMenuOpen((open) => !open)}
+                          className={`grid h-8 w-8 place-items-center rounded-lg transition ${tableMenuOpen ? "bg-black text-white shadow-md dark:bg-white dark:text-black" : "hover:bg-black/[0.08] dark:hover:bg-white/10"}`}
+                          title="مدیریت وضعیت خواندن"
+                          aria-label="مدیریت وضعیت خواندن"
+                          aria-expanded={tableMenuOpen}
+                        >
+                          <img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${tableMenuOpen ? "scale-110 dark:invert-0 invert" : "dark:invert"}`} />
+                        </button>
+
+                        {tableMenuOpen && (
+                          <div className="table-menu-popover absolute left-0 top-[calc(100%+8px)] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
+                            <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+                              {selectedIds.size ? `${toFaDigits(selectedIds.size)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}
+                            </div>
+                            <button
+                              type="button"
+                              disabled={!selectedIds.size}
+                              onClick={() => setSelectedReadStatus(false)}
+                              className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-emerald-500/10"
+                            >
+                              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-100 text-emerald-700 transition group-hover:scale-105 dark:bg-emerald-500/15 dark:text-emerald-300">✓</span>
+                              <span className="min-w-0 flex-1">
+                                <span className="block text-sm font-semibold">خوانده شده</span>
+                                <span className="block text-[11px] text-neutral-500 dark:text-neutral-400">نشان آبی حذف می‌شود</span>
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={!selectedIds.size}
+                              onClick={() => setSelectedReadStatus(true)}
+                              className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-sky-500/10"
+                            >
+                              <span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-100 text-sky-700 transition group-hover:scale-105 dark:bg-sky-500/15 dark:text-sky-300"><span className="h-2.5 w-2.5 rounded-full bg-sky-500 ring-2 ring-sky-200 dark:ring-sky-400/30" /></span>
+                              <span className="min-w-0 flex-1">
+                                <span className="block text-sm font-semibold">خوانده نشده</span>
+                                <span className="block text-[11px] text-neutral-500 dark:text-neutral-400">نشان آبی اضافه می‌شود</span>
+                              </span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </th>
                   </tr>
                 </thead>
@@ -1082,7 +1202,7 @@ export default function SupplyRequestPage() {
                     pageItems.map((item) => (
                       <tr key={item.id} className="group bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-white" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label={`انتخاب درخواست ${item.serial || item.id}`} /></td>
-                        <td className="border-b border-neutral-300 px-0 dark:border-neutral-700">{Number(item.currentAssigneeUserId) === Number(user?.id) && Number(item.createdById) !== Number(user?.id) && !seenIncomingIds.has(String(item.id)) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="درخواست دیده‌نشده" aria-label="درخواست دیده‌نشده" />}</td>
+                        <td className="border-b border-neutral-300 px-0 dark:border-neutral-700">{isUnreadForUser(item) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="درخواست خوانده‌نشده" aria-label="درخواست خوانده‌نشده" />}</td>
                         <td dir="ltr" className="border-b border-neutral-300 px-3 font-sans tabular-nums dark:border-neutral-700">
                           <button type="button" onClick={() => openPreview(item)} className="mx-auto inline-flex underline-offset-4 transition hover:underline" title="نمایش درخواست">
                             {item.serial || "—"}
