@@ -44,6 +44,27 @@ const dateButtonCls =
   "focus:ring-2 focus:ring-black/10 flex items-center justify-between gap-2 " +
   "dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:ring-neutral-600/50";
 
+const createEmptyUserForm = () => ({
+  name: "",
+  email: "",
+  username: "",
+  password: "",
+  expiresAt: "",
+  department: "",
+  role: "user",
+  unitPack: "",
+  accessBudget: {
+    "budget:projects": false,
+    "budget:office": false,
+    "budget:site": false,
+    "budget:finance": false,
+    "budget:cash": false,
+    "budget:capex": false,
+  },
+  contracts: "contracts:nonfinancial",
+  positions: [],
+});
+
 function toFaDigits(s) {
   return String(s || "").replace(/[0-9]/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
 }
@@ -191,43 +212,8 @@ function UsersTab({ embedded = false }) {
 
   // ویرایش
   const [editId, setEditId] = useState(null);
-  const [editIds, setEditIds] = useState([]);
-  const [editOpen, setEditOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    username: "",
-    department: "",
-    role: "user",
-    password: "",
-    expiresAt: "",
-    access: [],
-    positions: [],
-  });
-  // انتخاب «قراردادها» در حالت ویرایش
-  const [contractsSel, setContracts] = useState("contracts:nonfinancial");
-
-  const [addForm, setAddForm] = useState({
-    name: "",
-    email: "",
-    username: "",
-    password: "",
-    expiresAt: "",
-    department: "",
-    role: "user",
-    unitPack: "",
-    accessBudget: {
-      "budget:projects": false,
-      "budget:office": false,
-      "budget:site": false,
-      "budget:finance": false,
-      "budget:cash": false,
-      "budget:capex": false,
-    },
-    contracts: "contracts:nonfinancial",
-    positions: [],
-  });
+  const [addForm, setAddForm] = useState(createEmptyUserForm);
 
   const unitPacks = [
     ["pack:pm", "برنامه‌ریزی و کنترل پروژه"],
@@ -361,16 +347,18 @@ function UsersTab({ embedded = false }) {
   const submitAdd = async (e) => {
     e?.preventDefault();
     setAddErr("");
-    if (!addForm.username.trim() || !addForm.password.trim()) {
-      setAddErr("نام کاربری و گذرواژه الزامی است.");
+    const isEditing = editId !== null;
+    if (!addForm.username.trim() || (!isEditing && !addForm.password.trim())) {
+      setAddErr(isEditing ? "نام کاربری الزامی است." : "نام کاربری و گذرواژه الزامی است.");
       return;
     }
     try {
       setAddSaving(true);
       await api("/admin/users", {
-        method: "POST",
+        method: isEditing ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...(isEditing ? { id: editId } : {}),
           name: addForm.name?.trim() || null,
           email: addForm.email?.trim() || null,
           username: addForm.username.trim(),
@@ -380,28 +368,17 @@ function UsersTab({ embedded = false }) {
           role: addForm.role || "user",
         }),
       });
+      if (isEditing && addForm.password) {
+        await api("/admin/users/password", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: editId, password: addForm.password }),
+        });
+      }
       setAddSaving(false);
       setAddOpen(false);
-      setAddForm({
-        name: "",
-        email: "",
-        username: "",
-        password: "",
-        expiresAt: "",
-        department: "",
-        role: "user",
-        unitPack: "",
-        accessBudget: {
-          "budget:projects": false,
-          "budget:office": false,
-          "budget:site": false,
-          "budget:finance": false,
-          "budget:cash": false,
-          "budget:capex": false,
-        },
-        contracts: "contracts:nonfinancial",
-        positions: [],
-      });
+      setEditId(null);
+      setAddForm(createEmptyUserForm());
       await reload();
     } catch (ex) {
       setAddSaving(false);
@@ -409,46 +386,12 @@ function UsersTab({ embedded = false }) {
     }
   };
 
-  // ===== edit (modal) =====
+  // ===== edit in the add form =====
   const startEdit = (u) => {
-    const clickedId = String(u.id);
-    const shouldEditSelected = selectedIds.length > 1 && selectedIds.some((id) => String(id) === clickedId);
-    const selectedSet = new Set((shouldEditSelected ? selectedIds : [clickedId]).map((id) => String(id)));
-    const targetIds = (list || [])
-      .map((it) => String(it.id))
-      .filter((id) => selectedSet.has(id));
-    if (!targetIds.length) return;
-
-    const acc = Array.isArray(u.access_labels) ? u.access_labels : Array.isArray(u.access) ? u.access : [];
-    const contracts = acc.find((x) => String(x).startsWith("contracts:")) || "contracts:nonfinancial";
-
-    // u.positions یا u.roles را به اسلاگ نقش تبدیل کن
-    const rawPos = Array.isArray(u.positions) ? u.positions : Array.isArray(u.roles) ? u.roles : [];
-    const positionsNorm = rawPos
-      .map((p) => {
-        if (typeof p === "string") {
-          const raw = String(p).trim();
-          if (ROLE_FA_TO_SLUG[raw]) return ROLE_FA_TO_SLUG[raw];
-          if (ROLE_SLUG_TO_FA[raw]) return raw;
-          return raw;
-        }
-        if (typeof p === "number") return idToName[String(p)] || "";
-        if (p && typeof p === "object") {
-          if (p.name) {
-            const raw = String(p.name).trim();
-            if (ROLE_FA_TO_SLUG[raw]) return ROLE_FA_TO_SLUG[raw];
-            if (ROLE_SLUG_TO_FA[raw]) return raw;
-            return raw;
-          }
-          if (p.id != null) return idToName[String(p.id)] || "";
-        }
-        return "";
-      })
-      .filter(Boolean);
-
     setEditId(u.id);
-    setEditIds(targetIds);
-    setForm({
+    setAddErr("");
+    setAddForm((current) => ({
+      ...current,
       name: u.name || "",
       email: u.email || "",
       username: u.username || "",
@@ -456,77 +399,8 @@ function UsersTab({ embedded = false }) {
       role: u.role || "user",
       password: "",
       expiresAt: dateTimeToJalaliYmd(u.expiresAt || u.expires_at || u.validUntil || u.valid_until),
-      access: acc.filter((x) => !String(x).startsWith("contracts:")),
-      positions: positionsNorm,
-    });
-    setContracts(contracts);
-    setEditOpen(true);
-  };
-  const cancelEdit = () => {
-    setEditId(null);
-    setEditIds([]);
-    setEditOpen(false);
-    setEditRolesOpen(false);
-    setForm((s) => ({ ...s, password: "" }));
-  };
-
-  const has = (key) => Array.isArray(form.access) && form.access.includes(key);
-  const toggleBudget = (key) =>
-    setForm((s) => {
-      const set = new Set(s.access || []);
-      if (set.has(key)) set.delete(key);
-      else set.add(key);
-      return { ...s, access: Array.from(set) };
-    });
-
-  const saveEdit = async () => {
-    const isBatchEdit = (editIds || []).length > 1;
-    const targetIds = (editIds || []).length
-      ? editIds.map((id) => String(id))
-      : editId != null
-      ? [String(editId)]
-      : [];
-    if (!targetIds.length) return;
-
-    const payloadBase = {
-      role: form.role || "user",
-      expiresAt: jalaliYmdToIsoEndOfDay(form.expiresAt),
-    };
-    if (!isBatchEdit) {
-      payloadBase.name = form.name || null;
-      payloadBase.username = String(form.username || "").trim();
-    }
-
-    try {
-      const idMap = new Map((list || []).map((it) => [String(it.id), it.id]));
-      await Promise.all(
-        targetIds.map((sid) =>
-          api(`/admin/users`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              ...payloadBase,
-              id: idMap.has(sid) ? idMap.get(sid) : sid,
-            }),
-          })
-        )
-      );
-      if (!isBatchEdit && form.password) {
-        const sid = targetIds[0];
-        await api(`/admin/users/password`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: idMap.has(sid) ? idMap.get(sid) : sid,
-            password: form.password,
-          }),
-        });
-      }
-      cancelEdit();
-      await reload();
-    } catch (ex) {
-      alert(ex?.message || "خطا در ذخیره تغییرات");
-    }
+    }));
+    setAddOpen(true);
   };
 
   const removeRows = async (ids) => {
@@ -545,8 +419,10 @@ function UsersTab({ embedded = false }) {
     if (!confirm(confirmText)) return;
 
     const idSet = new Set(uniqIds);
-    if ((editIds || []).some((id) => idSet.has(String(id))) || (editId != null && idSet.has(String(editId)))) {
-      cancelEdit();
+    if (editId != null && idSet.has(String(editId))) {
+      setEditId(null);
+      setAddOpen(false);
+      setAddForm(createEmptyUserForm());
     }
 
     setList((prev) => (prev || []).filter((u) => !idSet.has(String(u.id))));
@@ -621,7 +497,6 @@ function UsersTab({ embedded = false }) {
   const selectedSet = new Set((selectedIds || []).map((id) => String(id)));
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedSet.has(id));
   const someVisibleSelected = visibleIds.some((id) => selectedSet.has(id)) && !allVisibleSelected;
-  const isBatchEdit = (editIds || []).length > 1;
 
   const toggleSelectAllVisible = () => {
     setSelected((prev) => {
@@ -645,11 +520,9 @@ function UsersTab({ embedded = false }) {
   useEffect(() => {
     const validIds = new Set((sortedList || []).map((u) => String(u.id)));
     setSelected((prev) => prev.filter((id) => validIds.has(String(id))));
-    setEditIds((prev) => (prev || []).filter((id) => validIds.has(String(id))));
   }, [sortedList]);
 
   const [addRolesOpen, setAddRolesOpen] = useState(false);
-  const [editRolesOpen, setEditRolesOpen] = useState(false);
 
   const addPositionToAdd = (slug) => {
     setAddForm((s) => {
@@ -665,19 +538,6 @@ function UsersTab({ embedded = false }) {
     }));
   };
 
-  const addPositionToEdit = (slug) => {
-    setForm((s) => {
-      const set = new Set(s.positions || []);
-      set.add(slug);
-      return { ...s, positions: Array.from(set) };
-    });
-  };
-  const removePositionFromEdit = (slug) => {
-    setForm((s) => ({
-      ...s,
-      positions: (s.positions || []).filter((x) => x !== slug),
-    }));
-  };
 
   // فقط اگر جایی نیاز شد
   const roleNames = roleItems.map((r) => r.name);
@@ -721,7 +581,16 @@ function UsersTab({ embedded = false }) {
             </div>
           )}
 
-          <AddPlusBtn onClick={() => setAddOpen((s) => !s)} title="افزودن کاربر" className="ml-[15px]" />
+          <AddPlusBtn
+            onClick={() => {
+              setEditId(null);
+              setAddErr("");
+              setAddForm(createEmptyUserForm());
+              setAddOpen((isOpen) => !isOpen);
+            }}
+            title="افزودن کاربر"
+            className="ml-[15px]"
+          />
         </div>
 
         {/* Add form (ریسپانسیو + دارک/لایت) */}
@@ -755,13 +624,15 @@ function UsersTab({ embedded = false }) {
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-sm text-black/70 dark:text-neutral-300">کلمه عبور* (حداکثر ۸)</label>
+                  <label className="text-sm text-black/70 dark:text-neutral-300">
+                    {editId !== null ? "کلمه عبور جدید (اختیاری، حداکثر ۸)" : "کلمه عبور* (حداکثر ۸)"}
+                  </label>
                   <input
                     type="password"
                     maxLength={8}
                     className={inputCls + " text-left"}
                     dir="ltr"
-                    required
+                    required={editId === null}
                     value={addForm.password}
                     onChange={(e) => setAddForm((s) => ({ ...s, password: e.target.value.slice(0, 8) }))}
                   />
@@ -953,119 +824,6 @@ function UsersTab({ embedded = false }) {
         </TableWrap>
       </Container>
 
-      {/* ===== Edit Modal (دارک/لایت + ریسپانسیو) ===== */}
-      {editOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={cancelEdit} />
-
-          <div className="relative w-full max-w-6xl rounded-2xl shadow-2xl p-5 bg-white text-black border border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h3 className="text-lg md:text-xl font-bold">
-                {isBatchEdit ? `ویرایش گروهی کاربران (${editIds.length} مورد)` : "ویرایش کاربر"}
-              </h3>
-
-              <button
-                onClick={cancelEdit}
-                className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
-                aria-label="بستن"
-                title="بستن"
-              >
-                <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
-              </button>
-            </div>
-
-            {isBatchEdit && (
-              <div className="mb-3 text-xs text-black/70 dark:text-neutral-300">
-                در ویرایش گروهی، فیلدهای نام، ایمیل، نام کاربری و رمز عبور غیرفعال هستند و فقط روی یک کاربر اعمال نمی‌شوند.
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-5" dir="rtl">
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-black/70 dark:text-neutral-300">نام</label>
-                <input
-                  value={form.name}
-                  onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
-                  disabled={isBatchEdit}
-                  className={inputCls}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-black/70 dark:text-neutral-300">نام کاربری</label>
-                <input
-                  value={form.username}
-                  onChange={(e) => setForm((s) => ({ ...s, username: e.target.value }))}
-                  disabled={isBatchEdit}
-                  className={inputCls + " text-left"}
-                  dir="ltr"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-black/70 dark:text-neutral-300">کلمه عبور جدید</label>
-                <input
-                  value={form.password}
-                  onChange={(e) => setForm((s) => ({ ...s, password: e.target.value.slice(0, 8) }))}
-                  disabled={isBatchEdit}
-                  className={inputCls + " text-left"}
-                  dir="ltr"
-                  type="password"
-                  maxLength={8}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-black/70 dark:text-neutral-300">اعتبار تا</label>
-                <JalaliPopupDatePicker
-                  value={form.expiresAt}
-                  onChange={(v) => setForm((s) => ({ ...s, expiresAt: normalizeJalaliYmd(v) }))}
-                  buttonClassName={dateButtonCls}
-                  placeholder="بدون محدودیت"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-sm text-black/70 dark:text-neutral-300">نوع</label>
-                <select value={form.role} onChange={(e) => setForm((s) => ({ ...s, role: e.target.value }))} className={selectCls}>
-                  <option value="user">user</option>
-                  <option value="admin">admin</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="mt-4 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={cancelEdit}
-                className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
-                aria-label="انصراف"
-                title="انصراف"
-              >
-                <img
-                  src="/images/icons/bastan.svg"
-                  alt=""
-                  className="w-[16px] h-[16px]"
-                  style={{
-                    filter:
-                      "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)",
-                  }}
-                />
-              </button>
-
-              <button
-                type="button"
-                onClick={saveEdit}
-                className="h-10 w-10 grid place-items-center bg-transparent hover:opacity-80 active:opacity-70 transition"
-                aria-label="ذخیره"
-                title="ذخیره"
-              >
-                <img src="/images/icons/check.svg" alt="" className="w-[18px] h-[18px] dark:invert" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
