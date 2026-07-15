@@ -244,6 +244,9 @@ export default function PaymentRequestPage() {
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState("");
   const [seenIncomingIds, setSeenIncomingIds] = useState(() => new Set());
+  const [manualUnreadIds, setManualUnreadIds] = useState(() => new Set());
+  const [tableMenuOpen, setTableMenuOpen] = useState(false);
+  const tableMenuRef = useRef(null);
   const [createRecipients, setCreateRecipients] = useState({ targetRoleKey: null, users: [] });
   const [createRecipientsLoading, setCreateRecipientsLoading] = useState(false);
   const selectedProject = useMemo(
@@ -321,6 +324,32 @@ export default function PaymentRequestPage() {
       setSeenIncomingIds(new Set(Array.isArray(stored) ? stored.map(String) : []));
     } catch { setSeenIncomingIds(new Set()); }
   }, [user?.id]);
+  useEffect(() => {
+    if (!user?.id) return;
+    try {
+      const stored = JSON.parse(localStorage.getItem(`payment_request_manual_unread:u${user.id}`) || "[]");
+      setManualUnreadIds(new Set(Array.isArray(stored) ? stored.map(String) : []));
+    } catch { setManualUnreadIds(new Set()); }
+  }, [user?.id]);
+  useEffect(() => {
+    if (!user?.id) return;
+    try { localStorage.setItem(`payment_request_manual_unread:u${user.id}`, JSON.stringify([...manualUnreadIds])); } catch {}
+  }, [manualUnreadIds, user?.id]);
+  useEffect(() => {
+    if (!tableMenuOpen) return undefined;
+    const closeOnOutsideClick = (event) => {
+      if (!tableMenuRef.current?.contains(event.target)) setTableMenuOpen(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setTableMenuOpen(false);
+    };
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [tableMenuOpen]);
   useEffect(() => {
     Promise.allSettled([api("/cost-breakdown"), api("/base/currencies/types"), api("/base/currencies/sources"), api("/supply-requests")]).then(([p, t, s, sr]) => {
       if (p.status === "fulfilled") {
@@ -440,6 +469,13 @@ export default function PaymentRequestPage() {
         return next;
       });
     }
+    setManualUnreadIds((previous) => {
+      const key = String(item.id);
+      if (!previous.has(key)) return previous;
+      const next = new Set(previous);
+      next.delete(key);
+      return next;
+    });
     setSelected(item);
     setActionNote("");
     setActionError("");
@@ -564,6 +600,36 @@ export default function PaymentRequestPage() {
     if (next.has(key)) next.delete(key); else next.add(key);
     return next;
   });
+  const isIncomingForUser = (item) => item.canAct && Number(item.createdById) !== Number(user?.id);
+  const isUnreadForUser = (item) =>
+    manualUnreadIds.has(String(item.id)) || (isIncomingForUser(item) && !seenIncomingIds.has(String(item.id)));
+  const setSelectedReadStatus = (unread) => {
+    const ids = [...selectedIds].map(String);
+    if (!ids.length) return;
+
+    if (unread) {
+      setManualUnreadIds((previous) => {
+        const next = new Set(previous);
+        ids.forEach((id) => next.add(id));
+        return next;
+      });
+    } else {
+      setSeenIncomingIds((previous) => {
+        const next = new Set(previous);
+        ids.forEach((id) => next.add(id));
+        try { localStorage.setItem(`payment_request_seen_incoming:u${user.id}`, JSON.stringify([...next])); } catch {}
+        return next;
+      });
+      setManualUnreadIds((previous) => {
+        const next = new Set(previous);
+        ids.forEach((id) => next.delete(id));
+        return next;
+      });
+    }
+
+    setSelectedIds(new Set());
+    setTableMenuOpen(false);
+  };
 
   return <div dir="rtl" className="mx-auto max-w-[1400px]">
     <Card className="overflow-hidden rounded-2xl border border-black/10 bg-white p-0 dark:border-white/10 dark:bg-neutral-900">
@@ -670,12 +736,41 @@ export default function PaymentRequestPage() {
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">موضوع</th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">پروژه</th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">آخرین وضعیت</th>
-              <th className="sticky top-0 z-30 bg-neutral-200 !py-2 !pl-6 !pr-3 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">اقدامات</th>
+              <th className="sticky top-0 z-40 bg-neutral-200 !py-2 !pl-6 !pr-3 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">
+                <span>اقدامات</span>
+                <div ref={tableMenuRef} className="absolute left-1 top-1/2 z-50 -translate-y-1/2">
+                  <button
+                    type="button"
+                    onClick={() => setTableMenuOpen((open) => !open)}
+                    className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10"
+                    title="مدیریت وضعیت خواندن"
+                    aria-label="مدیریت وضعیت خواندن"
+                    aria-expanded={tableMenuOpen}
+                  >
+                    <img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${tableMenuOpen ? "scale-110" : ""} dark:invert`} />
+                  </button>
+                  {tableMenuOpen && (
+                    <div className="table-menu-popover absolute left-0 top-[calc(100%+8px)] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
+                      <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+                        {selectedIds.size ? `${toFa(selectedIds.size)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}
+                      </div>
+                      <button type="button" disabled={!selectedIds.size} onClick={() => setSelectedReadStatus(false)} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-emerald-500/10">
+                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-100 text-emerald-700 transition group-hover:scale-105 dark:bg-emerald-500/15 dark:text-emerald-300">✓</span>
+                        <span className="min-w-0 flex-1 text-sm font-semibold">خوانده شده</span>
+                      </button>
+                      <button type="button" disabled={!selectedIds.size} onClick={() => setSelectedReadStatus(true)} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-sky-500/10">
+                        <span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-100 text-sky-700 transition group-hover:scale-105 dark:bg-sky-500/15 dark:text-sky-300"><span className="h-2.5 w-2.5 rounded-full bg-sky-500 ring-2 ring-sky-200 dark:ring-sky-400/30" /></span>
+                        <span className="min-w-0 flex-1 text-sm font-semibold">خوانده نشده</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </th>
             </tr></thead>
             <tbody className="text-black dark:text-neutral-100">
               {loading ? <tr><td colSpan={8} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td></tr> : pageItems.length === 0 ? <tr><td colSpan={8} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواستی ثبت نشده است.</td></tr> : pageItems.map((item, index) => <tr key={item.id} className="group bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label="انتخاب" /></td>
-                <td className="border-b border-neutral-300 px-0 dark:border-neutral-700">{item.canAct && Number(item.createdById) !== Number(user?.id) && !seenIncomingIds.has(String(item.id)) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="درخواست دیده‌نشده" aria-label="درخواست دیده‌نشده" />}</td>
+                <td className="border-b border-neutral-300 px-0 dark:border-neutral-700">{isUnreadForUser(item) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="درخواست خوانده‌نشده" aria-label="درخواست خوانده‌نشده" />}</td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><button type="button" onClick={() => openPreview(item)} className="mx-auto inline-flex items-center justify-center text-[13px] font-semibold underline-offset-4 transition hover:underline" title="نمایش درخواست">{item.serial || "—"}</button></td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))}</td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.title || "—"}</span></td>
