@@ -1502,7 +1502,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
         <div dir="rtl" className="flex h-[min(88vh,760px)] w-[min(1040px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
           <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3 dark:border-white/10">
             <div className="min-w-0 text-base font-bold md:text-lg">
-              اقدامات درخواست تامین
+              اقدامات تامین
             </div>
             <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 dark:bg-white dark:text-black" aria-label="بستن" title="بستن">
               <img src="/images/icons/bastan.svg" alt="" className="h-5 w-5 invert dark:invert-0" />
@@ -1512,7 +1512,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
           <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[0.9fr_1.25fr]">
             <aside className="flex min-h-0 border-b border-black/10 p-4 dark:border-white/10 lg:border-b-0 lg:border-l">
               <section className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
-                <div className="shrink-0 border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">سابقه فرآیند درخواست</div>
+                <div className="shrink-0 border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">فرآیند تامین</div>
                 <div className="min-h-0 flex-1 overflow-y-auto px-4">
                   {history.length ? (
                     <SupplyWorkflowTimeline history={history} item={item} />
@@ -1525,14 +1525,12 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
 
             <main className="min-h-0 overflow-y-auto p-4 md:p-5">
               <div className="space-y-4">
-                <PreviewSection title="مشخصات درخواست">
+                <PreviewSection title="جزئیات درخواست">
                   <PreviewRow label="شماره درخواست" value={item.serial || "—"} ltr />
                   <PreviewRow label="تاریخ درخواست" value={toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/"))} />
                   <PreviewRow label="درخواست کننده" value={item.createdByName || `کاربر #${toFaDigits(item.createdById)}`} />
                   <PreviewRow label="پروژه" value={project ? projectLabel(project) : item.projectName || item.projectCode || "—"} />
                   <PreviewRow label="کد بودجه" value={item.budgetCode || "—"} ltr />
-                </PreviewSection>
-                <PreviewSection title="جزئیات درخواست">
                   <PreviewRow label="موضوع" value={item.title || "—"} />
                   <PreviewRow label="شرح" value={item.description || "—"} />
                   <PreviewRow label="برآورد هزینه" value={toFaDigits(Number(item.amount || 0).toLocaleString("en-US"))} ltr />
@@ -1943,10 +1941,10 @@ function historySentence(entry, item) {
 }
 
 const SUPPLY_WORKFLOW_STEPS = [
-  { key: "requester", label: "درخواست تامین", emptyLabel: "ثبت درخواست" },
-  { key: "project_control", label: "برنامه‌ریزی و کنترل پروژه" },
-  { key: "project_manager", label: "مدیر پروژه" },
-  { key: "commercial", label: "اقدام کننده" },
+  { key: "requester", label: "ثبت درخواست", emptyLabel: "ثبت درخواست" },
+  { key: "project_control", label: "بررسی اولیه (واحد برنامه ریزی)" },
+  { key: "project_manager", label: "بررسی نهایی (مدیریت پروژه)" },
+  { key: "commercial", label: "ارسال به کارشناس (واحد تامین)" },
 ];
 
 function latestEntryForStep(history, stepKey) {
