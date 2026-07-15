@@ -1525,7 +1525,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
 
             <main className="min-h-0 overflow-y-auto p-4 md:p-5">
               <div className="space-y-4">
-                <PreviewSection title="جزئیات درخواست">
+                <PreviewSection title=" تامین جزئیات درخواست">
                   <PreviewRow label="شماره درخواست" value={item.serial || "—"} ltr />
                   <PreviewRow label="تاریخ درخواست" value={toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/"))} />
                   <PreviewRow label="درخواست کننده" value={item.createdByName || `کاربر #${toFaDigits(item.createdById)}`} />
