@@ -1,9 +1,11 @@
 // درخواست تامین
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useSearchParams } from "react-router-dom";
 import Card from "../components/ui/Card.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
+import { SupplyActionsPanel } from "./SupplyActionsPage.jsx";
 import { todayJalaliYmd } from "../utils/date.js";
 import { toEnglishDigits } from "../utils/format.js";
 
@@ -286,6 +288,9 @@ function normalizeYmd(value = "") {
 
 export default function SupplyRequestPage() {
   const { user, loading: authLoading } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedRequestId = searchParams.get("request") || searchParams.get("supplyRequest") || "";
+  const openedRequestRef = useRef("");
   const fileRef = useRef(null);
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -568,6 +573,14 @@ export default function SupplyRequestPage() {
     setActionNote("");
     setActionError("");
   };
+
+  useEffect(() => {
+    if (!requestedRequestId || loading || openedRequestRef.current === requestedRequestId) return;
+    const requested = items.find((item) => String(item.id) === String(requestedRequestId));
+    if (!requested) return;
+    openedRequestRef.current = requestedRequestId;
+    openPreview(requested);
+  }, [items, loading, requestedRequestId]);
 
   const selectedRelatedLetters = useMemo(() => {
     const map = new Map((Array.isArray(letters) ? letters : []).map((letter) => [letterIdOf(letter), letter]));
@@ -1160,7 +1173,14 @@ export default function SupplyRequestPage() {
           actionBusy={actionBusy}
           actionError={actionError}
           onAction={recordWorkflowAction}
-          onClose={() => setSelected(null)}
+          onSupplyActionsChanged={loadItems}
+          onClose={() => {
+            setSelected(null);
+            if (requestedRequestId) {
+              openedRequestRef.current = "";
+              setSearchParams({}, { replace: true });
+            }
+          }}
         />
       )}
       {submitNotice && <RegistrationNotice info={submitNotice} onClose={() => setSubmitNotice(null)} />}
@@ -1194,12 +1214,18 @@ export default function SupplyRequestPage() {
   );
 }
 
-export function SupplyRequestPreview({ item, projects, actionNote, setActionNote, actionBusy, actionError, onAction, onClose }) {
+export function SupplyRequestPreview({ item, projects, actionNote, setActionNote, actionBusy, actionError, onAction, onSupplyActionsChanged, onClose }) {
+  const { user } = useAuth();
   const project = projects.find((row) => String(row.id) === String(item.projectId));
   const attachments = Array.isArray(item.attachments) ? item.attachments : [];
   const history = Array.isArray(item.historyJson) ? item.historyJson : [];
-  const stepKey = item.currentStepRoleKey || "";
-  const canAct = item.canAct === true;
+  const isCompletedCommercialOwner =
+    !item.currentStepRoleKey &&
+    ["approved", "rejected"].includes(item.status) &&
+    Number(item.currentAssigneeUserId) === Number(user?.id) &&
+    Number(item.createdById) !== Number(user?.id);
+  const stepKey = item.currentStepRoleKey || (isCompletedCommercialOwner ? "commercial" : "");
+  const canAct = item.canAct === true || isCompletedCommercialOwner;
   const latestAction = [...history].reverse().find((entry) => ["approved", "returned", "rejected"].includes(entry?.type));
   const canResubmitReturned = stepKey === "requester" && latestAction?.type === "returned" && canAct;
   const status = displayStatusOf(item);
@@ -1490,14 +1516,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                     </>
                   ) : stepKey === "commercial" ? (
                     <PreviewSection title={reviewSectionTitle}>
-                      <div className="space-y-3 py-4">
-                        <ReadOnlyBox label="کد بودجه" value={item.budgetCode || "—"} ltr />
-                        <ReadOnlyBox label="مبلغ نهایی" value={toFaDigits(Number(item.amount || 0).toLocaleString("en-US"))} ltr />
-                        <div className="space-y-2 pt-2">
-                          <ActionOptionRow checked={choice === "approve"} onClick={() => setChoice("approve")} label="انجام شد" disabled={actionBusy} />
-                        </div>
-                        <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={actionSubmitDisabled} onSubmit={submitSelectedAction} />
-                      </div>
+                      <SupplyActionsPanel requestId={item.id} onChanged={onSupplyActionsChanged} />
                     </PreviewSection>
                   ) : canResubmitReturned ? (
                     <PreviewSection title="ارسال مجدد درخواست">

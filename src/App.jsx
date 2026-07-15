@@ -1,5 +1,5 @@
 // src/App.jsx
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Shell from "./components/layout/Shell.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import PaymentRequestPage from "./pages/PaymentRequestPage.jsx";
@@ -21,7 +21,6 @@ import BudgetAllocationPage from "./pages/BudgetAllocationPage.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
 import LettersPage from "./pages/LettersPage.jsx";
 import SupplyRequestPage from "./pages/SupplyRequestPage.jsx";
-import SupplyActionsPage from "./pages/SupplyActionsPage.jsx";
 import TestEditorPage from "./pages/TestEditorPage.jsx";
 import RoznegarPgae from "./pages/RoznegarPgae.jsx";
 import QualityManagementPage from "./pages/QualityManagementPage.jsx";
@@ -58,6 +57,11 @@ function PrivateRoute({ children }) {
   }
 
   return children;
+}
+
+function SupplyActionsRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={`/supply/request${search}`} replace />;
 }
 
 export default function App() {
@@ -109,7 +113,7 @@ export default function App() {
         <Route path="/finance/financial-management-dashboard" element={<NavPlaceholderPage title="داشبورد مدیریت مالی" />} />
 
         <Route path="/supply/request" element={<SupplyRequestPage />} />
-        <Route path="/supply/actions" element={<SupplyActionsPage />} />
+        <Route path="/supply/actions" element={<SupplyActionsRedirect />} />
         <Route path="/supply/dashboard" element={<NavPlaceholderPage title="داشبورد مدیریت تامین" />} />
 
         <Route path="/operations/equipment" element={<NavPlaceholderPage title="ماشین آلات و تجهیزات" />} />

@@ -78,10 +78,14 @@ function StatusBadge({ status }) {
   );
 }
 
-export default function SupplyActionsPage() {
+export function SupplyActionsPanel({ requestId, onChanged }) {
+  return <SupplyActionsPage embedded requestId={requestId} onChanged={onChanged} />;
+}
+
+export default function SupplyActionsPage({ embedded = false, requestId: embeddedRequestId = null, onChanged }) {
   const { user, loading: authLoading } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const requestedActionId = searchParams.get("request");
+  const requestedActionId = embeddedRequestId || searchParams.get("request");
   const openedNotificationRef = useRef("");
   const uploadFileRef = useRef(null);
   const [items, setItems] = useState([]);
@@ -121,7 +125,8 @@ export default function SupplyActionsPage() {
     setLoading(true);
     setError("");
     try {
-      const data = await api("/supply-actions");
+      const path = embeddedRequestId ? `/supply-actions?requestId=${encodeURIComponent(embeddedRequestId)}` : "/supply-actions";
+      const data = await api(path);
       setItems(Array.isArray(data?.items) ? data.items : []);
     } catch {
       setError("دریافت کارهای در دست انجام انجام نشد.");
@@ -129,7 +134,7 @@ export default function SupplyActionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [api, authLoading]);
+  }, [api, authLoading, embeddedRequestId]);
 
   useEffect(() => {
     loadItems();
@@ -153,6 +158,7 @@ export default function SupplyActionsPage() {
   const replaceItem = (nextItem) => {
     if (!nextItem) return;
     setItems((prev) => prev.map((item) => (String(item.id) === String(nextItem.id) ? nextItem : item)));
+    onChanged?.(nextItem);
   };
 
   const persistAction = async (requestId, action) => {
@@ -203,12 +209,12 @@ export default function SupplyActionsPage() {
   };
 
   useEffect(() => {
-    if (!requestedActionId || loading || openedNotificationRef.current === requestedActionId) return;
+    if (embedded || !requestedActionId || loading || openedNotificationRef.current === requestedActionId) return;
     const requested = items.find((item) => String(item.id) === String(requestedActionId));
     if (!requested) return;
     openedNotificationRef.current = requestedActionId;
     openActions(requested);
-  }, [items, loading, requestedActionId]);
+  }, [embedded, items, loading, requestedActionId]);
 
   const deleteAction = async (requestId, action) => {
     const key = `${requestId}:${action.id}`;
@@ -280,6 +286,55 @@ export default function SupplyActionsPage() {
     "overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100";
   const theadCls = "border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100";
   const tdBorder = "border-b border-neutral-300 dark:border-neutral-700";
+
+  if (embedded) {
+    const item = items.find((row) => String(row.id) === String(embeddedRequestId)) || null;
+    return (
+      <div className="py-4">
+        {error && <div className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{error}</div>}
+        {loading ? (
+          <div className="py-8 text-center text-sm text-neutral-500">در حال دریافت اقدامات...</div>
+        ) : item ? (
+          <ActionsGrid
+            item={item}
+            editingIds={editingIds}
+            savingIds={savingIds}
+            uploadingIds={uploadingIds}
+            onAdd={() => addActionRow(item.id)}
+            onPatch={patchAction}
+            onPersist={persistAction}
+            onEdit={(action) => setEditingIds((prev) => ({ ...prev, [`${item.id}:${action.id}`]: true }))}
+            onDelete={deleteAction}
+            onOpenUpload={(action) => setUploadTarget({ requestId: item.id, action })}
+            onOpenFiles={(action) => setFilesModal({ files: actionFiles(action), preview: actionFiles(action)[0] || null })}
+          />
+        ) : (
+          <div className="rounded-2xl border border-dashed border-black/10 py-8 text-center text-sm text-neutral-500 dark:border-white/10">
+            اقدامی برای این درخواست در دسترس نیست.
+          </div>
+        )}
+
+        {uploadTarget && (
+          <SupplyActionUploadModal
+            fileRef={uploadFileRef}
+            files={actionFiles(uploadTarget.action)}
+            uploading={!!uploadingIds[`${uploadTarget.requestId}:${uploadTarget.action.id}`]}
+            onUpload={uploadFiles}
+            onRemove={removeUploadedFile}
+            onClose={() => setUploadTarget(null)}
+          />
+        )}
+        {filesModal && (
+          <SupplyActionFilesModal
+            files={filesModal.files}
+            preview={filesModal.preview}
+            onPreview={(file) => setFilesModal((prev) => ({ ...(prev || {}), preview: file }))}
+            onClose={() => setFilesModal(null)}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
@@ -399,7 +454,7 @@ export default function SupplyActionsPage() {
           onEdit={(action) => setEditingIds((prev) => ({ ...prev, [`${expandedItem.id}:${action.id}`]: true }))}
           onDelete={deleteAction}
           onOpenUpload={(action) => setUploadTarget({ requestId: expandedItem.id, action })}
-          onOpenFiles={(action) => setUploadTarget({ requestId: expandedItem.id, action })}
+          onOpenFiles={(action) => setFilesModal({ files: actionFiles(action), preview: actionFiles(action)[0] || null })}
         />
       )}
 

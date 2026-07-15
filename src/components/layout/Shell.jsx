@@ -12,7 +12,7 @@ export default function Shell() {
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
   const [notificationsLoading, setNotificationsLoading] = React.useState(false);
   // ===== تم (dark|light) فقط برای همین سشن، بدون localStorage =====
-  const [theme] = React.useState("light"); 
+  const [theme] = React.useState("light");
 
   React.useEffect(() => {
     const root = document.documentElement;
@@ -73,7 +73,7 @@ export default function Shell() {
 
   const openNotification = (item) => {
     setNotificationsOpen(false);
-    const target = item.notificationTarget === "supply_actions" ? "/supply/actions" : "/dashboard";
+    const target = item.notificationTarget === "supply_actions" ? "/supply/request" : "/dashboard";
     const key = item.notificationTarget === "supply_actions" ? "request" : "supplyRequest";
     navigate(`${target}?${key}=${encodeURIComponent(item.id)}`);
   };
