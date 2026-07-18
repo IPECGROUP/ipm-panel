@@ -1501,7 +1501,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
     <div className="fixed inset-0 z-[9999]">
       <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
       <div className="absolute inset-0 flex items-center justify-center p-3 md:p-6">
-        <div dir="rtl" className="flex h-[min(88vh,760px)] w-[min(1040px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
+        <div dir="rtl" className="flex h-[min(88vh,760px)] w-[min(1180px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
           <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3 dark:border-white/10">
             <div className="min-w-0 text-base font-bold md:text-lg">
               اقدامات تامین
@@ -1511,7 +1511,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
             </button>
           </div>
 
-          <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[0.9fr_1.25fr]">
+          <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(300px,0.72fr)_minmax(0,1.55fr)]">
             <aside className="flex items-start border-b border-black/10 p-4 dark:border-white/10 lg:border-b-0 lg:border-l">
               <section className="w-full self-start overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
                 <div className="shrink-0 border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">فرآیند تامین</div>
@@ -2071,7 +2071,7 @@ function SupplyWorkflowTimeline({ history, item }) {
               {state.entry?.note ? <div className="mt-2 border-t border-black/5 pt-2 text-[11px] leading-5 text-neutral-500 dark:border-white/10 dark:text-neutral-400">توضیح: {state.entry.note}</div> : null}
             </div>
             <div className="relative flex justify-center" aria-hidden="true">
-              {!isLast ? <span className={`absolute bottom-[-4px] top-[28px] w-px ${style.line}`} /> : null}
+              {!isLast ? <span className={`absolute bottom-[-12px] top-[22px] z-0 w-px ${style.line}`} /> : null}
               <span className={`supply-workflow-marker relative z-10 mt-0.5 grid h-7 w-7 place-items-center rounded-full border-2 ${style.marker}`}>
                 <WorkflowMarker kind={markerKind} index={index} />
               </span>
