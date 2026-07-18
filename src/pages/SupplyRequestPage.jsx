@@ -1527,7 +1527,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
 
             <main className="min-h-0 overflow-y-auto p-4 md:p-5">
               <div className="space-y-4">
-                <PreviewSection title="جزئیات درخواست تامین">
+                <PreviewSection title="جزئیات درخواست تامین" flush>
                   <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-x md:divide-y-0 dark:divide-white/10">
                     <PreviewRow compact label="شماره درخواست" value={item.serial || "—"} ltr />
                     <PreviewRow compact label="تاریخ درخواست" value={toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/"))} />
@@ -1802,18 +1802,18 @@ function SupplyUploadModal({ fileRef, files, uploading, onUpload, onRemove, onCl
   );
 }
 
-function PreviewSection({ title, children }) {
+function PreviewSection({ title, children, flush = false }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
       <div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">{title}</div>
-      <div className="divide-y divide-black/10 px-4 dark:divide-white/10">{children}</div>
+      <div className={`divide-y divide-black/10 dark:divide-white/10 ${flush ? "" : "px-4"}`}>{children}</div>
     </section>
   );
 }
 
 function PreviewRow({ label, value, ltr, compact = false }) {
   return (
-    <div className={`min-w-0 ${compact ? "grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2 px-3 py-3 text-xs" : "grid grid-cols-[120px_1fr] gap-3 py-2.5 text-sm"}`}>
+    <div className={`min-w-0 ${compact ? "grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2 px-3 py-3 text-xs" : "grid grid-cols-[120px_1fr] gap-3 px-4 py-2.5 text-sm"}`}>
       <div className={`text-neutral-500 dark:text-neutral-400 ${compact ? "whitespace-nowrap" : ""}`}>{label}</div>
       <div dir={ltr ? "ltr" : "rtl"} className={`min-w-0 break-words font-medium ${ltr ? "text-left" : "text-right"}`}>{value}</div>
     </div>
