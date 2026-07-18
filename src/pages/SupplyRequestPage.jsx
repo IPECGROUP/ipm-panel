@@ -1165,7 +1165,6 @@ export default function SupplyRequestPage() {
                               onClick={() => setSelectedReadStatus(false)}
                               className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-emerald-500/10"
                             >
-                              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-100 text-emerald-700 transition group-hover:scale-105 dark:bg-emerald-500/15 dark:text-emerald-300">✓</span>
                               <span className="min-w-0 flex-1">
                                 <span className="block text-sm font-semibold">خوانده شده</span>
                               </span>
@@ -1176,7 +1175,6 @@ export default function SupplyRequestPage() {
                               onClick={() => setSelectedReadStatus(true)}
                               className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-sky-500/10"
                             >
-                              <span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-100 text-sky-700 transition group-hover:scale-105 dark:bg-sky-500/15 dark:text-sky-300"><span className="h-2.5 w-2.5 rounded-full bg-sky-500 ring-2 ring-sky-200 dark:ring-sky-400/30" /></span>
                               <span className="min-w-0 flex-1">
                                 <span className="block text-sm font-semibold">خوانده نشده</span>
                               </span>
@@ -1479,7 +1477,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
       : stepKey === "project_control"
         ? `بررسی اولیه (${STEP_LABELS[stepKey] || "مرحله جاری"})`
         : stepKey === "commercial"
-          ? "اقدام تامین"
+          ? "اقدامات تامین"
           : `بررسی (${STEP_LABELS[stepKey] || "مرحله جاری"})`;
   const noteRequired = ["return", "reject"].includes(choice);
   const actionSubmitDisabled =
@@ -2045,7 +2043,7 @@ function WorkflowMarker({ kind, index }) {
 function SupplyWorkflowTimeline({ history, item }) {
   const workflowFinished = !item?.currentStepRoleKey && item?.status === "approved";
   return (
-    <ol className="supply-workflow-timeline flex min-h-full flex-col justify-between px-1 pb-4 pt-5" aria-label="مراحل فرآیند درخواست تامین">
+    <ol className="supply-workflow-timeline flex min-h-full flex-col justify-start px-1 pb-3 pt-3" aria-label="مراحل فرآیند درخواست تامین">
       {SUPPLY_WORKFLOW_STEPS.map((step, index) => {
         const state = workflowStageState(step, history, item);
         const markerKind = state.kind === "completed" && workflowFinished && index === SUPPLY_WORKFLOW_STEPS.length - 1 ? "final_completed" : state.kind;
@@ -2053,7 +2051,7 @@ function SupplyWorkflowTimeline({ history, item }) {
         const isLast = index === SUPPLY_WORKFLOW_STEPS.length - 1;
         const description = workflowStageDescription(step, state, item);
         return (
-          <li key={step.key} data-state={markerKind} className="supply-workflow-stage relative grid grid-cols-[minmax(0,1fr)_32px] gap-3 pb-5 last:pb-0" style={{ "--workflow-delay": `${Math.min(index * 110, 440)}ms` }}>
+          <li key={step.key} data-state={markerKind} className="supply-workflow-stage relative grid grid-cols-[minmax(0,1fr)_32px] gap-3 pb-3 last:pb-0" style={{ "--workflow-delay": `${Math.min(index * 110, 440)}ms` }}>
             <div className={`min-w-0 ${style.card ? `rounded-2xl px-3 py-2.5 ${style.card}` : "px-3 py-1"}`}>
               <div className={`text-sm font-bold leading-6 ${style.title}`}>{step.label}</div>
               {(state.kind !== "waiting" || description) && <div className="mt-0.5 text-xs leading-5 text-neutral-500 dark:text-neutral-400">{description}</div>}
@@ -2063,8 +2061,8 @@ function SupplyWorkflowTimeline({ history, item }) {
               {state.entry?.note ? <div className="mt-2 border-t border-black/5 pt-2 text-[11px] leading-5 text-neutral-500 dark:border-white/10 dark:text-neutral-400">توضیح: {state.entry.note}</div> : null}
             </div>
             <div className="relative flex justify-center" aria-hidden="true">
-              {!isLast ? <span className={`absolute bottom-[-20px] top-7 w-px ${style.line}`} /> : null}
-              <span className={`supply-workflow-marker relative z-10 mt-1 grid h-7 w-7 place-items-center rounded-full border-2 ${style.marker}`}>
+              {!isLast ? <span className={`absolute bottom-[-2px] top-7 w-px ${style.line}`} /> : null}
+              <span className={`supply-workflow-marker relative z-10 mt-0.5 grid h-7 w-7 place-items-center rounded-full border-2 ${style.marker}`}>
                 <WorkflowMarker kind={markerKind} index={index} />
               </span>
             </div>

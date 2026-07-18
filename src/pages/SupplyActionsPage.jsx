@@ -590,6 +590,7 @@ function ActionsGrid({ item, editingIds, savingIds, uploadingIds, onAdd, onPatch
           <ActionRow
             index={savedActions.length}
             requestId={requestId}
+            requestDate={item?.dateJalali || item?.dateFa}
             action={draftAction}
             editingIds={editingIds}
             savingIds={savingIds}
@@ -617,6 +618,7 @@ function ActionsGrid({ item, editingIds, savingIds, uploadingIds, onAdd, onPatch
             <ActionRow
               index={index}
               requestId={requestId}
+              requestDate={item?.dateJalali || item?.dateFa}
               action={action}
               editingIds={editingIds}
               savingIds={savingIds}
@@ -636,7 +638,7 @@ function ActionsGrid({ item, editingIds, savingIds, uploadingIds, onAdd, onPatch
   );
 }
 
-function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingIds, onPatch, onPersist, onEdit, onDelete, onOpenUpload, onOpenFiles, compact = false }) {
+function ActionRow({ index, requestId, requestDate, action, editingIds, savingIds, uploadingIds, onPatch, onPersist, onEdit, onDelete, onOpenUpload, onOpenFiles, compact = false }) {
   const key = `${requestId}:${action.id}`;
   const editable = action.isNew || editingIds[key];
   const saving = savingIds[key];
@@ -669,7 +671,9 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
           <JalaliPopupDatePicker
             value={action.date || ""}
             onChange={(value) => onPatch(requestId, action.id, { date: value })}
-            disableTodayAndPast
+            disableFuture
+            minDate={requestDate}
+            minDateExclusive
             buttonClassName={`${inputCls} flex items-center justify-between`}
             placeholder="تاریخ"
           />
@@ -679,7 +683,7 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
             className={`${inputCls} h-10 min-h-10 resize-y py-2`}
             placeholder="شرح اقدام/توضیح"
           />
-          {action.isNew ? (
+          {action.isNew || action.status === "in_progress" ? (
             <select value={action.status || "in_progress"} onChange={(event) => onPatch(requestId, action.id, { status: event.target.value })} className={inputCls}>
               <option value="in_progress">در حال اقدام</option>
               <option value="done">انجام شد</option>
@@ -710,7 +714,9 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
           <JalaliPopupDatePicker
             value={action.date || ""}
             onChange={(value) => patchAndPersist({ date: value })}
-            disableTodayAndPast
+            disableFuture
+            minDate={requestDate}
+            minDateExclusive
             buttonClassName={`${inputCls} flex items-center justify-between`}
             placeholder="تاریخ اقدام"
           />
@@ -732,7 +738,7 @@ function ActionRow({ index, requestId, action, editingIds, savingIds, uploadingI
         )}
       </td>
       <td className="border-b border-neutral-300 px-2 dark:border-neutral-700">
-        {editable && action.isNew ? (
+        {editable && (action.isNew || action.status === "in_progress") ? (
           <select value={action.status || "in_progress"} onChange={(event) => patchAndPersist({ status: event.target.value })} className={inputCls}>
             <option value="in_progress">در حال اقدام</option>
             <option value="done">انجام شد</option>

@@ -53,6 +53,12 @@ function normalizePickerValue(value) {
   return `${m[1]}/${pad2(m[2])}/${pad2(m[3])}`;
 }
 
+function jalaliPartsOf(value) {
+  const normalized = normalizePickerValue(value);
+  const match = normalized.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+  return match ? { jy: Number(match[1]), jm: Number(match[2]), jd: Number(match[3]) } : null;
+}
+
 export default function JalaliPopupDatePicker({
   value,
   onChange,
@@ -61,6 +67,9 @@ export default function JalaliPopupDatePicker({
   hideIcon,
   disableFuture = false,
   disableTodayAndPast = false,
+  minDate = "",
+  minDateExclusive = false,
+  maxDate = "",
   placeholder = "",
   preventDefaultToday = false,
 }) {
@@ -72,7 +81,13 @@ export default function JalaliPopupDatePicker({
 
   const normalizedValue = normalizePickerValue(value);
   const nowParts = useMemo(() => getJalaliPartsFromDate(new Date()), []);
-  const minSelectableParts = useMemo(() => getJalaliPartsFromDate(new Date(Date.now() + 24 * 60 * 60 * 1000)), []);
+  const explicitMinParts = useMemo(() => jalaliPartsOf(minDate), [minDate]);
+  const explicitMaxParts = useMemo(() => jalaliPartsOf(maxDate), [maxDate]);
+  const tomorrowParts = useMemo(() => getJalaliPartsFromDate(new Date(Date.now() + 24 * 60 * 60 * 1000)), []);
+  const minSelectableParts = explicitMinParts || tomorrowParts;
+  const maxSelectableParts = explicitMaxParts || nowParts;
+  const hasMinConstraint = disableTodayAndPast || !!explicitMinParts;
+  const hasMaxConstraint = disableFuture || !!explicitMaxParts;
   const initial = useMemo(() => {
     const m = normalizedValue.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
     if (m) return { jy: Number(m[1]), jm: Number(m[2]), jd: Number(m[3]) };
@@ -90,50 +105,50 @@ export default function JalaliPopupDatePicker({
   }, [initial.jy, initial.jm, initial.jd]);
 
   const maxMonthForYear = (y) => {
-    if (!disableFuture) return 12;
-    return Number(y) === Number(nowParts.jy) ? Number(nowParts.jm) : 12;
+    if (!hasMaxConstraint) return 12;
+    return Number(y) === Number(maxSelectableParts.jy) ? Number(maxSelectableParts.jm) : 12;
   };
 
   const minMonthForYear = (y) => {
-    if (!disableTodayAndPast) return 1;
+    if (!hasMinConstraint) return 1;
     return Number(y) === Number(minSelectableParts.jy) ? Number(minSelectableParts.jm) : 1;
   };
 
   const maxDayForYearMonth = (y, m) => {
     const maxByMonth = Number(m) <= 6 ? 31 : Number(m) <= 11 ? 30 : 29;
-    if (!disableFuture) return maxByMonth;
-    if (Number(y) === Number(nowParts.jy) && Number(m) === Number(nowParts.jm)) {
-      return Math.min(maxByMonth, Number(nowParts.jd));
+    if (!hasMaxConstraint) return maxByMonth;
+    if (Number(y) === Number(maxSelectableParts.jy) && Number(m) === Number(maxSelectableParts.jm)) {
+      return Math.min(maxByMonth, Number(maxSelectableParts.jd));
     }
     return maxByMonth;
   };
 
   const minDayForYearMonth = (y, m) => {
-    if (!disableTodayAndPast) return 1;
-    if (Number(y) === Number(minSelectableParts.jy) && Number(m) === Number(minSelectableParts.jm)) return Number(minSelectableParts.jd);
+    if (!hasMinConstraint) return 1;
+    if (Number(y) === Number(minSelectableParts.jy) && Number(m) === Number(minSelectableParts.jm)) return Number(minSelectableParts.jd) + (minDateExclusive ? 1 : 0);
     return 1;
   };
 
   const isBeforeMinSelectable = (y, m, d) => {
-    if (!disableTodayAndPast) return false;
+    if (!hasMinConstraint) return false;
     const yy = Number(y);
     const mm = Number(m);
     const dd = Number(d);
     if (yy !== Number(minSelectableParts.jy)) return yy < Number(minSelectableParts.jy);
     if (mm !== Number(minSelectableParts.jm)) return mm < Number(minSelectableParts.jm);
-    return dd < Number(minSelectableParts.jd);
+    return dd < Number(minSelectableParts.jd) || (minDateExclusive && dd === Number(minSelectableParts.jd));
   };
 
   const isAfterToday = (y, m, d) => {
-    if (!disableFuture) return false;
+    if (!hasMaxConstraint) return false;
     const yy = Number(y);
     const mm = Number(m);
     const dd = Number(d);
-    if (yy > Number(nowParts.jy)) return true;
-    if (yy < Number(nowParts.jy)) return false;
-    if (mm > Number(nowParts.jm)) return true;
-    if (mm < Number(nowParts.jm)) return false;
-    return dd > Number(nowParts.jd);
+    if (yy > Number(maxSelectableParts.jy)) return true;
+    if (yy < Number(maxSelectableParts.jy)) return false;
+    if (mm > Number(maxSelectableParts.jm)) return true;
+    if (mm < Number(maxSelectableParts.jm)) return false;
+    return dd > Number(maxSelectableParts.jd);
   };
 
   useEffect(() => {
@@ -160,55 +175,56 @@ export default function JalaliPopupDatePicker({
   }, [open]);
 
   const years = useMemo(() => {
-    const base = disableTodayAndPast ? minSelectableParts.jy : nowParts.jy || 1400;
+    const base = hasMinConstraint ? minSelectableParts.jy : nowParts.jy || 1400;
     const arr = [];
-    const maxY = disableFuture ? base : base + 10;
-    for (let y = base - 10; y <= maxY; y++) arr.push(y);
+    const maxY = hasMaxConstraint ? maxSelectableParts.jy : base + 10;
+    const minY = hasMinConstraint ? minSelectableParts.jy : base - 10;
+    for (let y = minY; y <= maxY; y++) arr.push(y);
     return arr;
-  }, [disableFuture, disableTodayAndPast, nowParts.jy, minSelectableParts.jy]);
+  }, [hasMaxConstraint, hasMinConstraint, maxSelectableParts.jy, minSelectableParts.jy, nowParts.jy]);
 
   const months = useMemo(() => {
     const maxM = maxMonthForYear(jy);
     const arr = [];
     for (let m = minMonthForYear(jy); m <= maxM; m++) arr.push(m);
     return arr;
-  }, [jy, disableFuture, disableTodayAndPast, nowParts.jy, nowParts.jm, minSelectableParts.jy, minSelectableParts.jm]);
+  }, [jy, hasMaxConstraint, hasMinConstraint, maxSelectableParts.jy, maxSelectableParts.jm, minSelectableParts.jy, minSelectableParts.jm]);
 
   const days = useMemo(() => {
     const max = maxDayForYearMonth(jy, jm);
     const arr = [];
     for (let d = minDayForYearMonth(jy, jm); d <= max; d++) arr.push(d);
     return arr;
-  }, [jy, jm, disableFuture, disableTodayAndPast, nowParts.jy, nowParts.jm, nowParts.jd, minSelectableParts.jy, minSelectableParts.jm, minSelectableParts.jd]);
+  }, [jy, jm, hasMaxConstraint, hasMinConstraint, maxSelectableParts.jy, maxSelectableParts.jm, maxSelectableParts.jd, minDateExclusive, minSelectableParts.jy, minSelectableParts.jm, minSelectableParts.jd]);
 
   useEffect(() => {
     const maxM = maxMonthForYear(jy);
     if (jm > maxM) setJm(maxM);
     const minM = minMonthForYear(jy);
     if (jm < minM) setJm(minM);
-  }, [jy, jm, disableFuture, disableTodayAndPast, nowParts.jy, nowParts.jm, minSelectableParts.jy, minSelectableParts.jm]);
+  }, [jy, jm, hasMaxConstraint, hasMinConstraint, maxSelectableParts.jy, maxSelectableParts.jm, minSelectableParts.jy, minSelectableParts.jm]);
 
   useEffect(() => {
     const max = maxDayForYearMonth(jy, jm);
     if (jd > max) setJd(max);
     const min = minDayForYearMonth(jy, jm);
     if (jd < min) setJd(min);
-  }, [jy, jm, jd, disableFuture, disableTodayAndPast, nowParts.jy, nowParts.jm, nowParts.jd, minSelectableParts.jy, minSelectableParts.jm, minSelectableParts.jd]);
+  }, [jy, jm, jd, hasMaxConstraint, hasMinConstraint, maxSelectableParts.jy, maxSelectableParts.jm, maxSelectableParts.jd, minDateExclusive, minSelectableParts.jy, minSelectableParts.jm, minSelectableParts.jd]);
 
   useEffect(() => {
-    if (!disableFuture) return;
+    if (!hasMaxConstraint) return;
     if (!isAfterToday(jy, jm, jd)) return;
-    setJy(nowParts.jy);
-    setJm(nowParts.jm);
-    setJd(nowParts.jd);
-  }, [disableFuture, jy, jm, jd, nowParts.jy, nowParts.jm, nowParts.jd]);
+    setJy(maxSelectableParts.jy);
+    setJm(maxSelectableParts.jm);
+    setJd(maxSelectableParts.jd);
+  }, [hasMaxConstraint, jy, jm, jd, maxSelectableParts.jy, maxSelectableParts.jm, maxSelectableParts.jd]);
 
   useEffect(() => {
-    if (!disableTodayAndPast || !isBeforeMinSelectable(jy, jm, jd)) return;
+    if (!hasMinConstraint || !isBeforeMinSelectable(jy, jm, jd)) return;
     setJy(minSelectableParts.jy);
     setJm(minSelectableParts.jm);
-    setJd(minSelectableParts.jd);
-  }, [disableTodayAndPast, jy, jm, jd, minSelectableParts.jy, minSelectableParts.jm, minSelectableParts.jd]);
+    setJd(Number(minSelectableParts.jd) + (minDateExclusive ? 1 : 0));
+  }, [hasMinConstraint, jy, jm, jd, minDateExclusive, minSelectableParts.jy, minSelectableParts.jm, minSelectableParts.jd]);
 
   const preview = `${jy}/${pad2(jm)}/${pad2(jd)}`;
 
@@ -376,12 +392,13 @@ export default function JalaliPopupDatePicker({
                 <button
                   type="button"
                   onClick={() => {
-                    if (disableTodayAndPast && isBeforeMinSelectable(jy, jm, jd)) {
+                    if (hasMinConstraint && isBeforeMinSelectable(jy, jm, jd)) {
                       setJy(minSelectableParts.jy);
                       setJm(minSelectableParts.jm);
-                      setJd(minSelectableParts.jd);
+                      setJd(Number(minSelectableParts.jd) + (minDateExclusive ? 1 : 0));
                       return;
                     }
+                    if (hasMaxConstraint && isAfterToday(jy, jm, jd)) return;
                     if (preventDefaultToday && !normalizedValue && !touched) {
                       setOpen(false);
                       return;
