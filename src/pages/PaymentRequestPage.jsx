@@ -236,6 +236,7 @@ export default function PaymentRequestPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [submitNotice, setSubmitNotice] = useState(null);
@@ -663,8 +664,8 @@ export default function PaymentRequestPage() {
             <Field label="مبلغ درخواست" required>
               <div className="relative min-w-0">
                 <MoneyInput className="!pl-[64px]" value={form.amount} onChange={(value) => setField("amount", value)} />
-                <select aria-label="ارز مبلغ درخواست" title="انتخاب ارز" className="absolute left-1 top-1 h-9 !w-[56px] cursor-pointer rounded-lg border border-[#ECA265] bg-gradient-to-b from-[#f6c18a] via-[#ECA265] to-[#d98b48] px-0.5 text-center text-[10px] font-bold text-white shadow-sm outline-none transition hover:from-[#f9ce9f] hover:via-[#ECA265] hover:to-[#cf7f3f] focus:border-[#ECA265] focus:ring-2 focus:ring-[#ECA265]/45 dark:border-[#ECA265] dark:from-[#f6c18a] dark:via-[#ECA265] dark:to-[#d98b48] dark:text-white" value={form.currencyTypeId} onChange={(e) => setField("currencyTypeId", e.target.value)}>
-                  <option value="">ریال</option>{currencyTypes.map((item) => <option key={item.id} value={item.id}>{itemLabel(item)}</option>)}
+                <select aria-label="ارز مبلغ درخواست" title="انتخاب ارز" className="absolute left-1 top-1 h-9 !w-[56px] cursor-pointer rounded-lg border border-[#ECA265] bg-gradient-to-b from-[#f6c18a] via-[#ECA265] to-[#d98b48] px-0.5 text-center text-[11px] font-bold text-white shadow-sm outline-none transition hover:from-[#f9ce9f] hover:via-[#ECA265] hover:to-[#cf7f3f] focus:border-[#ECA265] focus:ring-2 focus:ring-[#ECA265]/45 dark:border-[#ECA265] dark:from-[#f6c18a] dark:via-[#ECA265] dark:to-[#d98b48] dark:text-white" value={form.currencyTypeId} onChange={(e) => setField("currencyTypeId", e.target.value)}>
+                  <option value="" className="bg-white text-black">ریال</option>{currencyTypes.map((item) => <option key={item.id} value={item.id} className="bg-white text-black">{itemLabel(item)}</option>)}
                 </select>
               </div>
             </Field>
@@ -702,10 +703,9 @@ export default function PaymentRequestPage() {
             <Field label="شماره سند"><input className={inputClass} value={form.docNumber} onChange={(e) => setField("docNumber", e.target.value)} /></Field>
             <Field label="تاریخ سند"><JalaliPopupDatePicker value={form.docDateJalali} onChange={(value) => setField("docDateJalali", value)} /></Field>
             <Field label="بارگذاری">
-              <label className="grid h-11 w-11 cursor-pointer place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={uploading ? "در حال آپلود" : "بارگذاری"} aria-label={uploading ? "در حال آپلود" : "بارگذاری"}>
+              <button type="button" onClick={() => setUploadOpen(true)} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={uploading ? "در حال آپلود" : "بارگذاری"} aria-label={uploading ? "در حال آپلود" : "بارگذاری"}>
                 <img src="/images/icons/Uplod.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse opacity-60" : ""}`} />
-                <input type="file" multiple accept="image/*,.pdf" className="hidden" onChange={(e) => uploadFiles(e.target.files)} />
-              </label>
+              </button>
               {!!form.attachments.length && <div className="mt-1 text-[11px] text-neutral-500">{toFa(form.attachments.length)} فایل ضمیمه شده</div>}
             </Field>
           </div>
@@ -724,6 +724,7 @@ export default function PaymentRequestPage() {
           {(error || success) && <div className={`rounded-xl px-3 py-2 text-sm ${error ? "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300" : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"}`}>{error || success}</div>}
           <div className="flex justify-end"><button type="submit" disabled={submitting || uploading} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-900 text-white transition hover:bg-neutral-900/85 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90" title="ثبت" aria-label="ثبت"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button></div>
         </form>}
+        {uploadOpen && <PaymentUploadModal files={form.attachments} uploading={uploading} onUpload={uploadFiles} onClose={() => setUploadOpen(false)} />}
 
         {!showForm && <RequestFilterBar query={filterQuery} setQuery={setFilterQuery} quick={filterQuick} setQuick={setFilterQuick} ownership={filterOwnership} setOwnership={setFilterOwnership} tags={tags} pinnedTagIds={pinnedFilterTagIds} setPinnedTagIds={setPinnedFilterTagIds} activeTagIds={filterTagIds} setActiveTagIds={setFilterTagIds} tagPickOpen={tagPickOpen} setTagPickOpen={setTagPickOpen} tagPickSearch={tagPickSearch} setTagPickSearch={setTagPickSearch} />}
 
@@ -909,6 +910,60 @@ function RequestFilterBar({ query, setQuery, quick, setQuick, ownership, setOwne
     </div>
     {tagPickOpen && <TagPicker tags={tags} selectedIds={pinnedTagIds} onToggle={togglePinnedTag} query={tagPickSearch} setQuery={setTagPickSearch} onClose={() => setTagPickOpen(false)} />}
   </div>;
+}
+
+function PaymentUploadModal({ files, uploading, onUpload, onClose }) {
+  const inputRef = useRef(null);
+  const list = Array.isArray(files) ? files : [];
+  const handleFiles = (fileList) => {
+    if (!fileList?.length || uploading) return;
+    onUpload(fileList);
+  };
+  return createPortal(
+    <div className="fixed inset-0 z-[10000]" dir="rtl">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="absolute inset-0 flex items-center justify-center p-3 sm:p-5">
+        <div className="flex max-h-[min(88vh,640px)] w-[min(720px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
+          <div className="relative shrink-0 border-b border-black/10 px-4 py-4 dark:border-white/10">
+            <button type="button" onClick={onClose} className="absolute left-4 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 dark:bg-white dark:text-black" title="بستن" aria-label="بستن">
+              <img src="/images/icons/bastan.svg" alt="" className="h-5 w-5 invert dark:invert-0" />
+            </button>
+            <div className="pl-12 text-sm font-bold leading-6">بارگذاری اسناد (درخواست پرداخت)</div>
+          </div>
+          <div className="space-y-4 overflow-y-auto p-4">
+            <div>
+              <div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">فایل‌های انتخاب‌شده</div>
+              <div className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
+                <div className="border-b border-black/10 px-3 py-2 text-xs font-semibold text-neutral-700 dark:border-white/10 dark:text-white/80">وارده</div>
+                <div className="min-h-16 p-3 text-center text-sm text-neutral-500 dark:text-neutral-400">
+                  {list.length ? <div className="space-y-2 text-right">{list.map((file, index) => <div key={file.id || file.serverId || file.url || index} className="truncate rounded-lg bg-black/[0.03] px-3 py-2 text-xs text-neutral-700 dark:bg-white/5 dark:text-neutral-200">{file.name || `فایل ${toFa(index + 1)}`}</div>)}</div> : "فایلی انتخاب نشده است."}
+                </div>
+                <div className="p-3">
+                  <div
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event) => { event.preventDefault(); handleFiles(event.dataTransfer?.files); }}
+                    className={`flex min-h-[132px] flex-col items-center justify-center rounded-2xl border border-dashed border-black/15 bg-neutral-50 px-4 py-5 text-center dark:border-white/15 dark:bg-white/[0.04] ${uploading ? "pointer-events-none opacity-65" : ""}`}
+                  >
+                    <div className="text-sm font-bold">فایل را اینجا رها کنید</div>
+                    <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">هر نوع فایلی را می‌توانید انتخاب کنید</div>
+                    <button type="button" onClick={() => inputRef.current?.click()} className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-black px-4 text-sm font-bold text-white transition hover:bg-black/85 disabled:opacity-50 dark:bg-white dark:text-black" disabled={uploading}>
+                      <img src="/images/icons/Uplod.svg" alt="" className="h-5 w-5 invert dark:invert-0" />
+                      {uploading ? "در حال بارگذاری..." : "انتخاب فایل"}
+                    </button>
+                    <input ref={inputRef} type="file" multiple accept="image/*,.pdf" className="hidden" onChange={(event) => { handleFiles(event.target.files); event.target.value = ""; }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="flex shrink-0 justify-start border-t border-black/10 p-3 dark:border-white/10">
+            <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 dark:bg-white dark:text-black" title="تایید" aria-label="تایید"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
 }
 
 function TagPicker({ tags, selectedIds, onToggle, query, setQuery, onClose }) {
