@@ -566,8 +566,16 @@ export default function PaymentRequestPage() {
 
   const filteredItems = useMemo(() => filterRequestRows(items, { query: filterQuery, quick: filterQuick, tagIds: filterTagIds, ownership: filterOwnership, userId: user?.id }), [items, filterOwnership, filterQuery, filterQuick, filterTagIds, user?.id]);
   const sortedItems = useMemo(() => [...filteredItems].sort((a, b) => {
-    const result = String(a.serial || a.id || "").localeCompare(String(b.serial || b.id || ""), "fa", { numeric: true, sensitivity: "base" });
-    return numberSortDir === "asc" ? result : -result;
+    const timeOf = (item) => {
+      const value = Date.parse(item?.createdAt || item?.created_at || item?.updatedAt || item?.updated_at || "");
+      return Number.isFinite(value) ? value : 0;
+    };
+    const byTime = timeOf(a) - timeOf(b);
+    if (byTime) return numberSortDir === "asc" ? byTime : -byTime;
+    const byId = Number(a?.id || 0) - Number(b?.id || 0);
+    if (byId) return numberSortDir === "asc" ? byId : -byId;
+    const bySerial = String(a?.serial || "").localeCompare(String(b?.serial || ""), "fa", { numeric: true, sensitivity: "base" });
+    return numberSortDir === "asc" ? bySerial : -bySerial;
   }), [filteredItems, numberSortDir]);
   const total = sortedItems.length;
   const pageCount = Math.max(1, Math.ceil(total / rowsPerPage));
@@ -724,7 +732,7 @@ export default function PaymentRequestPage() {
             <colgroup><col style={{ width: 40 }} /><col style={{ width: 18 }} /><col style={{ width: 90 }} /><col style={{ width: 100 }} /><col style={{ width: 205 }} /><col /><col style={{ width: 105 }} /><col style={{ width: 120 }} /></colgroup>
             <thead><tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100">
               <th className="sticky top-0 z-40 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><input ref={selectAllRef} type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allVisibleSelected} onChange={toggleSelectAll} aria-label="انتخاب همه" /></th>
-              <th className="sticky top-0 z-30 bg-neutral-200 !py-2 dark:bg-neutral-800" aria-label="خوانده‌نشده" /><th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><button type="button" onClick={() => setNumberSortDir((old) => old === "asc" ? "desc" : "asc")} className="mx-auto inline-flex items-center gap-1 transition hover:opacity-90"><span>شماره</span><img src={numberSortDir === "desc" ? "/images/icons/bozorgbekochik.svg" : "/images/icons/kochikbebozorg.svg"} alt="" className="h-4 w-4 dark:invert" /></button></th>
+              <th className="sticky top-0 z-30 bg-neutral-200 !py-2 dark:bg-neutral-800" aria-label="خوانده‌نشده" /><th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><button type="button" onClick={() => { setNumberSortDir((old) => old === "asc" ? "desc" : "asc"); setPage(0); }} className="mx-auto inline-flex items-center gap-1 transition hover:opacity-90" title={numberSortDir === "desc" ? "نمایش قدیمی‌ترین موارد" : "نمایش جدیدترین موارد"}><span>شماره</span><img src={numberSortDir === "desc" ? "/images/icons/bozorgbekochik.svg" : "/images/icons/kochikbebozorg.svg"} alt="" className="h-4 w-4 dark:invert" /></button></th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">تاریخ</th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">پروژه</th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">موضوع</th>
