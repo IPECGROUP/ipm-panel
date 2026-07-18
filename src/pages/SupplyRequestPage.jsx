@@ -1528,16 +1528,22 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
             <main className="min-h-0 overflow-y-auto p-4 md:p-5">
               <div className="space-y-4">
                 <PreviewSection title="جزئیات درخواست تامین">
-                  <PreviewRow label="شماره درخواست" value={item.serial || "—"} ltr />
-                  <PreviewRow label="تاریخ درخواست" value={toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/"))} />
-                  <PreviewRow label="درخواست کننده" value={item.createdByName || `کاربر #${toFaDigits(item.createdById)}`} />
-                  <PreviewRow label="پروژه" value={project ? projectLabel(project) : item.projectName || item.projectCode || "—"} />
-                  <PreviewRow label="کد بودجه" value={item.budgetCode || "—"} ltr />
+                  <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-x md:divide-y-0 dark:divide-white/10">
+                    <PreviewRow compact label="شماره درخواست" value={item.serial || "—"} ltr />
+                    <PreviewRow compact label="تاریخ درخواست" value={toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/"))} />
+                    <PreviewRow compact label="درخواست کننده" value={item.createdByName || `کاربر #${toFaDigits(item.createdById)}`} />
+                  </div>
+                  <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-2 md:divide-x md:divide-y-0 dark:divide-white/10">
+                    <PreviewRow compact label="پروژه" value={project ? projectLabel(project) : item.projectName || item.projectCode || "—"} />
+                    <PreviewRow compact label="کد بودجه" value={item.budgetCode || "—"} ltr />
+                  </div>
                   <PreviewRow label="موضوع" value={item.title || "—"} />
                   <PreviewRow label="شرح" value={item.description || "—"} />
-                  <PreviewRow label="برآورد هزینه" value={toFaDigits(Number(item.amount || 0).toLocaleString("en-US"))} ltr />
-                  <PreviewRow label="تاریخ نیاز" value={toFaDigits(String(item.needDateJalali || "—").replaceAll("-", "/"))} />
-                  <PreviewRow label="پیوست‌ها" value={attachments.length ? <div className="flex flex-wrap justify-end gap-2">{attachments.map((file, index) => <a key={file.id || file.serverId || index} href={file.url || "#"} target="_blank" rel="noreferrer" className="rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFaDigits(index + 1)}`}</a>)}</div> : "—"} />
+                  <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-x md:divide-y-0 dark:divide-white/10">
+                    <PreviewRow compact label="برآورد هزینه" value={toFaDigits(Number(item.amount || 0).toLocaleString("en-US"))} ltr />
+                    <PreviewRow compact label="تاریخ نیاز" value={toFaDigits(String(item.needDateJalali || "—").replaceAll("-", "/"))} />
+                    <PreviewRow compact label="پیوست‌ها" value={attachments.length ? <div className="flex flex-wrap justify-end gap-1.5">{attachments.map((file, index) => <a key={file.id || file.serverId || index} href={file.url || "#"} target="_blank" rel="noreferrer" className="max-w-full truncate rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFaDigits(index + 1)}`}</a>)}</div> : "—"} />
+                  </div>
                 </PreviewSection>
 
                 {canAct ? (
@@ -1805,11 +1811,11 @@ function PreviewSection({ title, children }) {
   );
 }
 
-function PreviewRow({ label, value, ltr }) {
+function PreviewRow({ label, value, ltr, compact = false }) {
   return (
-    <div className="grid grid-cols-[120px_1fr] gap-3 py-2.5 text-sm">
-      <div className="text-neutral-500 dark:text-neutral-400">{label}</div>
-      <div dir={ltr ? "ltr" : "rtl"} className={`break-words font-medium ${ltr ? "text-left" : "text-right"}`}>{value}</div>
+    <div className={`min-w-0 ${compact ? "grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2 px-3 py-3 text-xs" : "grid grid-cols-[120px_1fr] gap-3 py-2.5 text-sm"}`}>
+      <div className={`text-neutral-500 dark:text-neutral-400 ${compact ? "whitespace-nowrap" : ""}`}>{label}</div>
+      <div dir={ltr ? "ltr" : "rtl"} className={`min-w-0 break-words font-medium ${ltr ? "text-left" : "text-right"}`}>{value}</div>
     </div>
   );
 }
@@ -2065,7 +2071,7 @@ function SupplyWorkflowTimeline({ history, item }) {
               {state.entry?.note ? <div className="mt-2 border-t border-black/5 pt-2 text-[11px] leading-5 text-neutral-500 dark:border-white/10 dark:text-neutral-400">توضیح: {state.entry.note}</div> : null}
             </div>
             <div className="relative flex justify-center" aria-hidden="true">
-              {!isLast ? <span className={`absolute bottom-[-2px] top-[30px] w-px ${style.line}`} /> : null}
+              {!isLast ? <span className={`absolute bottom-[-4px] top-[28px] w-px ${style.line}`} /> : null}
               <span className={`supply-workflow-marker relative z-10 mt-0.5 grid h-7 w-7 place-items-center rounded-full border-2 ${style.marker}`}>
                 <WorkflowMarker kind={markerKind} index={index} />
               </span>
