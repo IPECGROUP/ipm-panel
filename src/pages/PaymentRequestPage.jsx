@@ -1145,12 +1145,12 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
           <main className="min-h-0 overflow-y-auto p-4 md:p-5">
             <div className="space-y-4">
               <PreviewSection title="جزئیات درخواست پرداخت" flush>
-                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-x md:divide-y-0 dark:divide-white/10">
+                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
                   <PreviewRow compact fixedLabel colon leader label="شماره درخواست" value={item.serial || "—"} ltr />
                   <PreviewRow compact fixedLabel colon leader label="تاریخ درخواست" value={toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))} />
                   <PreviewRow compact fixedLabel colon leader label="درخواست کننده" value={item.createdByName || `کاربر #${toFa(item.createdById)}`} />
                 </div>
-                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,1fr)_minmax(190px,0.55fr)] md:divide-x md:divide-y-0 dark:divide-white/10">
+                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,1fr)_minmax(190px,0.55fr)] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
                   <PreviewRow compact colon leader={!canEditReturned} label="پروژه" value={canEditReturned ? (
                     <select className={inputClass} value={editForm.projectId} onChange={(event) => setEditForm((old) => ({ ...old, projectId: event.target.value, budgetCode: "" }))}>
                       <option value="">انتخاب پروژه</option>
@@ -1168,21 +1168,21 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                     </select>
                   ) : (item.budgetCode || "—")} />
                 </div>
-                <PreviewRow colon label="موضوع درخواست" value={canEditReturned ? <input className={inputClass} value={editForm.title} onChange={(event) => setEditField("title", event.target.value)} /> : (item.title || "—")} />
-                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,0.7fr)_minmax(0,0.3fr)] md:divide-x md:divide-y-0 dark:divide-white/10">
-                  <PreviewRow compact colon label="شرح درخواست" value={canEditReturned ? <textarea className={`${inputClass} min-h-24 py-2 leading-7`} value={editForm.description} onChange={(event) => setEditField("description", event.target.value)} /> : (item.description || "—")} />
+                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,0.7fr)_minmax(0,0.3fr)] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
+                  <PreviewRow compact colon label="موضوع درخواست" value={canEditReturned ? <input className={inputClass} value={editForm.title} onChange={(event) => setEditField("title", event.target.value)} /> : (item.title || "—")} />
                   <PreviewRow compact colon valueClassName={!canEditReturned ? "whitespace-nowrap" : ""} label="درخواست تامین" value={supplyRequestControl} />
                 </div>
-                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-x md:divide-y-0 dark:divide-white/10">
+                <PreviewRow colon label="شرح درخواست" value={canEditReturned ? <textarea className={`${inputClass} min-h-24 py-2 leading-7`} value={editForm.description} onChange={(event) => setEditField("description", event.target.value)} /> : (item.description || "—")} />
+                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
                   <PreviewRow compact colon leader={!canEditReturned} label="مبلغ درخواست" ltr={!canEditReturned} value={canEditReturned ? <MoneyInput value={editForm.amount} onChange={(value) => setEditField("amount", value)} /> : toFa(Number(item.amount || 0).toLocaleString("en-US"))} />
                   <PreviewRow compact colon leader={!canEditReturned} label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFa(baseBudget) : "—"} ltr />
                   <PreviewRow compact colon leader={!canEditReturned} label="باقی مانده نقدینگی پروژه" value={liquidityRemaining || "—"} ltr />
                 </div>
-                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,0.38fr)_minmax(0,0.62fr)] md:divide-x md:divide-y-0 dark:divide-white/10">
+                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,0.38fr)_minmax(0,0.62fr)] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
                   <PreviewRow compact colon leader={!canEditReturned} label="نام ذینفع" value={canEditReturned ? <input className={inputClass} value={editForm.beneficiaryName} onChange={(event) => setEditField("beneficiaryName", event.target.value)} /> : (item.beneficiaryName || "—")} />
                   <PreviewRow compact colon leader={!canEditReturned} label="شماره شبا" ltr={!canEditReturned} value={canEditReturned ? <input dir="ltr" inputMode="numeric" className={`${inputClass} text-left font-sans tabular-nums`} value={editForm.bankInfo || "IR"} onChange={(event) => setEditField("bankInfo", formatSheba(event.target.value))} onFocus={() => { if (!editForm.bankInfo) setEditField("bankInfo", "IR"); }} placeholder="IR" /> : (item.bankInfo || "—")} />
                 </div>
-                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-4 md:divide-x md:divide-y-0 dark:divide-white/10">
+                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-4 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
                   <PreviewRow compact colon leader={!canEditReturned} label="نوع سند" value={canEditReturned ? (
                   <div className="space-y-2">
                     <select className={inputClass} value={editForm.docId} onChange={(event) => setEditForm((old) => ({ ...old, docId: event.target.value, docOther: event.target.value === "other" ? old.docOther : "" }))}>{DOC_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
