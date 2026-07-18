@@ -1144,7 +1144,7 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
           </aside>
           <main className="min-h-0 overflow-y-auto p-4 md:p-5">
             <div className="space-y-4">
-              <PreviewSection title="جزئیات درخواست پرداخت">
+              <PreviewSection title="جزئیات درخواست پرداخت" flush>
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-x md:divide-y-0 dark:divide-white/10">
                   <PreviewRow compact label="شماره درخواست" value={item.serial || "—"} ltr />
                   <PreviewRow compact label="تاریخ درخواست" value={toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))} />
@@ -1173,16 +1173,21 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                   <PreviewRow compact label="مرحله فعلی" value={STEP_LABELS[currentStepRoleKey] || "—"} />
                   <PreviewRow compact label="ارز" value={canEditReturned ? <select className={inputClass} value={editForm.currencyTypeId} onChange={(event) => setEditField("currencyTypeId", event.target.value)}><option value="">ریال</option>{currencyTypes.map((row) => <option key={row.id} value={row.id}>{itemLabel(row)}</option>)}</select> : currencyName} />
                 </div>
-                <PreviewRow label="کد بودجه" value={previewBudgetCode || "—"} ltr />
-                <PreviewRow label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFa(baseBudget) : "—"} ltr />
-                <PreviewRow label="باقی مانده نقدینگی تخصیص یافته به پروژه" value={liquidityRemaining || "—"} ltr />
+                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-x md:divide-y-0 dark:divide-white/10">
+                  <PreviewRow compact label="کد بودجه" value={previewBudgetCode || "—"} ltr />
+                  <PreviewRow compact label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFa(baseBudget) : "—"} ltr />
+                  <PreviewRow compact label="باقی مانده نقدینگی تخصیص یافته به پروژه" value={liquidityRemaining || "—"} ltr />
+                </div>
                 {currentStepRoleKey === "project_manager" && <PreviewRow label={`مبلغ درخواست پرداخت (${currencyName})`} value={toFa(Number(item.amount || 0).toLocaleString("en-US"))} ltr />}
                 <PreviewRow label="موضوع درخواست" value={canEditReturned ? <input className={inputClass} value={editForm.title} onChange={(event) => setEditField("title", event.target.value)} /> : (item.title || "—")} />
                 <PreviewRow label="شرح درخواست" value={canEditReturned ? <textarea className={`${inputClass} min-h-24 py-2 leading-7`} value={editForm.description} onChange={(event) => setEditField("description", event.target.value)} /> : (item.description || "—")} />
-                <PreviewRow label={`مبلغ درخواست (${canEditReturned ? editCurrencyName : currencyName})`} ltr={!canEditReturned} value={canEditReturned ? <MoneyInput value={editForm.amount} onChange={(value) => setEditField("amount", value)} /> : toFa(Number(item.amount || 0).toLocaleString("en-US"))} />
-                <PreviewRow label="شرایط پرداخت" value={canEditReturned ? <input className={inputClass} value={editForm.creditPay} onChange={(event) => setEditField("creditPay", event.target.value)} /> : (item.creditPay || "—")} />
-                <PreviewRow label="نام ذینفع" value={canEditReturned ? <input className={inputClass} value={editForm.beneficiaryName} onChange={(event) => setEditField("beneficiaryName", event.target.value)} /> : (item.beneficiaryName || "—")} />
-                <PreviewRow label="شماره شبا" ltr={!canEditReturned} value={canEditReturned ? <input dir="ltr" inputMode="numeric" className={`${inputClass} text-left font-sans tabular-nums`} value={editForm.bankInfo || "IR"} onChange={(event) => setEditField("bankInfo", formatSheba(event.target.value))} onFocus={() => { if (!editForm.bankInfo) setEditField("bankInfo", "IR"); }} placeholder="IR" /> : (item.bankInfo || "—")} />
+                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-2 md:divide-x md:divide-y-0 dark:divide-white/10">
+                  <PreviewRow compact label={`مبلغ درخواست (${canEditReturned ? editCurrencyName : currencyName})`} ltr={!canEditReturned} value={canEditReturned ? <MoneyInput value={editForm.amount} onChange={(value) => setEditField("amount", value)} /> : toFa(Number(item.amount || 0).toLocaleString("en-US"))} />
+                  <PreviewRow compact label="شرایط پرداخت" value={canEditReturned ? <input className={inputClass} value={editForm.creditPay} onChange={(event) => setEditField("creditPay", event.target.value)} /> : (item.creditPay || "—")} />
+                </div>
+                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-4 md:divide-x md:divide-y-0 dark:divide-white/10">
+                  <PreviewRow compact label="نام ذینفع" value={canEditReturned ? <input className={inputClass} value={editForm.beneficiaryName} onChange={(event) => setEditField("beneficiaryName", event.target.value)} /> : (item.beneficiaryName || "—")} />
+                  <PreviewRow compact label="شماره شبا" ltr={!canEditReturned} value={canEditReturned ? <input dir="ltr" inputMode="numeric" className={`${inputClass} text-left font-sans tabular-nums`} value={editForm.bankInfo || "IR"} onChange={(event) => setEditField("bankInfo", formatSheba(event.target.value))} onFocus={() => { if (!editForm.bankInfo) setEditField("bankInfo", "IR"); }} placeholder="IR" /> : (item.bankInfo || "—")} />
                 <PreviewRow label="درخواست تامین" value={canEditReturned ? (
                   <div className="space-y-2">
                     <div className="flex h-9 items-center gap-6 px-1">
@@ -1197,16 +1202,18 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                     {editForm.hasSupplyRequest === "yes" && <select className={inputClass} value={editForm.supplyRequestId} onChange={(event) => setEditField("supplyRequestId", event.target.value)}><option value="">انتخاب کنید</option>{supplyRequests.map((row) => <option key={row.id} value={row.id}>{row.serial || `#${row.id}`}{row.title ? ` - ${row.title}` : ""}</option>)}</select>}
                   </div>
                 ) : (item.hasSupplyRequest === "yes" ? (supplyRequests.find((row) => String(row.id) === String(item.supplyRequestId))?.serial || `#${item.supplyRequestId || "—"}`) : "ندارد")} />
-                <PreviewRow label="منشا ارز" value={canEditReturned ? <select className={inputClass} value={editForm.currencySourceId} onChange={(event) => setEditField("currencySourceId", event.target.value)}><option value="">انتخاب نشده</option>{currencySources.map((row) => <option key={row.id} value={row.id}>{itemLabel(row)}</option>)}</select> : (source ? itemLabel(source) : "—")} />
-                <PreviewRow label="نوع سند" value={canEditReturned ? (
+                  <PreviewRow compact label="منشا ارز" value={canEditReturned ? <select className={inputClass} value={editForm.currencySourceId} onChange={(event) => setEditField("currencySourceId", event.target.value)}><option value="">انتخاب نشده</option>{currencySources.map((row) => <option key={row.id} value={row.id}>{itemLabel(row)}</option>)}</select> : (source ? itemLabel(source) : "—")} />
+                </div>
+                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-4 md:divide-x md:divide-y-0 dark:divide-white/10">
+                  <PreviewRow compact label="نوع سند" value={canEditReturned ? (
                   <div className="space-y-2">
                     <select className={inputClass} value={editForm.docId} onChange={(event) => setEditForm((old) => ({ ...old, docId: event.target.value, docOther: event.target.value === "other" ? old.docOther : "" }))}>{DOC_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
                     {editForm.docId === "other" && <input className={inputClass} value={editForm.docOther} onChange={(event) => setEditField("docOther", event.target.value)} placeholder="نوع سند را وارد کنید" />}
                   </div>
                 ) : docName} />
-                <PreviewRow label="شماره سند" value={canEditReturned ? <input className={inputClass} value={editForm.docNumber} onChange={(event) => setEditField("docNumber", event.target.value)} /> : (item.docNumber || "—")} />
-                <PreviewRow label="تاریخ سند" value={canEditReturned ? <JalaliPopupDatePicker value={editForm.docDateJalali} onChange={(value) => setEditField("docDateJalali", value)} /> : toFa(item.docDate || item.docDateJalali || "—")} />
-                <PreviewRow label="پیوست‌ها" value={canEditReturned ? (
+                  <PreviewRow compact label="شماره سند" value={canEditReturned ? <input className={inputClass} value={editForm.docNumber} onChange={(event) => setEditField("docNumber", event.target.value)} /> : (item.docNumber || "—")} />
+                  <PreviewRow compact label="تاریخ سند" value={canEditReturned ? <JalaliPopupDatePicker value={editForm.docDateJalali} onChange={(value) => setEditField("docDateJalali", value)} /> : toFa(item.docDate || item.docDateJalali || "—")} />
+                  <PreviewRow compact label="پیوست‌ها" value={canEditReturned ? (
                   <div className="flex flex-wrap justify-end gap-2">
                     {editAttachments.map((file, index) => <span key={file.id || file.serverId || file.url || index} className="inline-flex max-w-full items-center gap-2 rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10">
                       <a href={file.url || "#"} target="_blank" rel="noreferrer" className="max-w-[220px] truncate hover:underline">{file.name || `فایل ${toFa(index + 1)}`}</a>
@@ -1218,6 +1225,7 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                     </label>
                   </div>
                 ) : (attachments.length ? <div className="flex flex-wrap justify-end gap-2">{attachments.map((file, index) => <a key={file.id || file.serverId || index} href={file.url || "#"} target="_blank" rel="noreferrer" className="rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFa(index + 1)}`}</a>)}</div> : "—")} />
+                </div>
               </PreviewSection>
               {canDecide && <WorkflowPanel
                 stepKey={currentStepRoleKey}
@@ -1441,8 +1449,8 @@ function PaymentWorkflowTimeline({ history, item }) {
   </ol>;
 }
 
-function PreviewSection({ title, children }) { return <section className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">{title}</div><div className="divide-y divide-black/10 px-4 dark:divide-white/10">{children}</div></section>; }
-function PreviewRow({ label, value, ltr, compact = false }) { return <div className={`min-w-0 ${compact ? "grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2 px-3 py-3 text-xs" : "grid grid-cols-[135px_1fr] gap-3 py-2.5 text-sm"}`}><div className={`text-neutral-500 dark:text-neutral-400 ${compact ? "whitespace-nowrap" : ""}`}>{label}</div><div dir={ltr ? "ltr" : "rtl"} className={`min-w-0 break-words font-medium ${ltr ? "text-left" : "text-right"}`}>{value}</div></div>; }
+function PreviewSection({ title, children, flush = false }) { return <section className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">{title}</div><div className={`divide-y divide-black/10 dark:divide-white/10 ${flush ? "" : "px-4"}`}>{children}</div></section>; }
+function PreviewRow({ label, value, ltr, compact = false }) { return <div className={`min-w-0 ${compact ? "grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2 px-3 py-3 text-xs" : "grid grid-cols-[135px_1fr] gap-3 px-4 py-2.5 text-sm"}`}><div className={`text-neutral-500 dark:text-neutral-400 ${compact ? "whitespace-nowrap" : ""}`}>{label}</div><div dir={ltr ? "ltr" : "rtl"} className={`min-w-0 break-words font-medium ${ltr ? "text-left" : "text-right"}`}>{value}</div></div>; }
 function historyLabel(value) { return ({ created: "ثبت درخواست", approved: "تأیید", rejected: "رد", returned: "برگشت", edited: "ویرایش" })[value] || value || "—"; }
 function formatDateTime(value) { if (!value) return "—"; try { return new Intl.DateTimeFormat("fa-IR-u-ca-persian", { dateStyle: "short", timeStyle: "short" }).format(new Date(value)); } catch { return "—"; } }
 
