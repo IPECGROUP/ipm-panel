@@ -956,7 +956,7 @@ function PaymentUploadModal({ files, uploading, onUpload, onClose }) {
               </div>
             </div>
           </div>
-          <div className="flex shrink-0 justify-start border-t border-black/10 p-3 dark:border-white/10">
+          <div className="flex shrink-0 justify-end border-t border-black/10 p-3 dark:border-white/10">
             <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 dark:bg-white dark:text-black" title="تایید" aria-label="تایید"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button>
           </div>
         </div>
