@@ -1188,7 +1188,7 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-4 md:divide-x md:divide-y-0 dark:divide-white/10">
                   <PreviewRow compact label="نام ذینفع" value={canEditReturned ? <input className={inputClass} value={editForm.beneficiaryName} onChange={(event) => setEditField("beneficiaryName", event.target.value)} /> : (item.beneficiaryName || "—")} />
                   <PreviewRow compact label="شماره شبا" ltr={!canEditReturned} value={canEditReturned ? <input dir="ltr" inputMode="numeric" className={`${inputClass} text-left font-sans tabular-nums`} value={editForm.bankInfo || "IR"} onChange={(event) => setEditField("bankInfo", formatSheba(event.target.value))} onFocus={() => { if (!editForm.bankInfo) setEditField("bankInfo", "IR"); }} placeholder="IR" /> : (item.bankInfo || "—")} />
-                <PreviewRow label="درخواست تامین" value={canEditReturned ? (
+                  <PreviewRow compact valueClassName={!canEditReturned ? "whitespace-nowrap" : ""} label="درخواست تامین" value={canEditReturned ? (
                   <div className="space-y-2">
                     <div className="flex h-9 items-center gap-6 px-1">
                       {[["no", "ندارد"], ["yes", "دارد"]].map(([value, label]) => {
@@ -1450,7 +1450,7 @@ function PaymentWorkflowTimeline({ history, item }) {
 }
 
 function PreviewSection({ title, children, flush = false }) { return <section className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">{title}</div><div className={`divide-y divide-black/10 dark:divide-white/10 ${flush ? "" : "px-4"}`}>{children}</div></section>; }
-function PreviewRow({ label, value, ltr, compact = false }) { return <div className={`min-w-0 ${compact ? "grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2 px-3 py-3 text-xs" : "grid grid-cols-[135px_1fr] gap-3 px-4 py-2.5 text-sm"}`}><div className={`text-neutral-500 dark:text-neutral-400 ${compact ? "whitespace-nowrap" : ""}`}>{label}</div><div dir={ltr ? "ltr" : "rtl"} className={`min-w-0 break-words font-medium ${ltr ? "text-left" : "text-right"}`}>{value}</div></div>; }
+function PreviewRow({ label, value, ltr, compact = false, valueClassName = "" }) { return <div className={`min-w-0 ${compact ? "grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2 px-3 py-3 text-xs" : "grid grid-cols-[135px_1fr] gap-3 px-4 py-2.5 text-sm"}`}><div className={`text-neutral-500 dark:text-neutral-400 ${compact ? "whitespace-nowrap" : ""}`}>{label}</div><div dir={ltr ? "ltr" : "rtl"} className={`min-w-0 break-words font-medium ${ltr ? "text-left" : "text-right"} ${valueClassName}`}>{value}</div></div>; }
 function historyLabel(value) { return ({ created: "ثبت درخواست", approved: "تأیید", rejected: "رد", returned: "برگشت", edited: "ویرایش" })[value] || value || "—"; }
 function formatDateTime(value) { if (!value) return "—"; try { return new Intl.DateTimeFormat("fa-IR-u-ca-persian", { dateStyle: "short", timeStyle: "short" }).format(new Date(value)); } catch { return "—"; } }
 
