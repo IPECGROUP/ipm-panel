@@ -1168,11 +1168,11 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                     </select>
                   ) : (item.budgetCode || "—")} />
                 </div>
+                <PreviewRow colon label="موضوع درخواست" value={canEditReturned ? <input className={inputClass} value={editForm.title} onChange={(event) => setEditField("title", event.target.value)} /> : (item.title || "—")} />
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,0.7fr)_minmax(0,0.3fr)] md:divide-x md:divide-y-0 dark:divide-white/10">
-                  <PreviewRow compact colon leader={!canEditReturned} label="موضوع درخواست" value={canEditReturned ? <input className={inputClass} value={editForm.title} onChange={(event) => setEditField("title", event.target.value)} /> : (item.title || "—")} />
-                  <PreviewRow compact colon leader={!canEditReturned} valueClassName={!canEditReturned ? "whitespace-nowrap" : ""} label="درخواست تامین" value={supplyRequestControl} />
+                  <PreviewRow compact colon label="شرح درخواست" value={canEditReturned ? <textarea className={`${inputClass} min-h-24 py-2 leading-7`} value={editForm.description} onChange={(event) => setEditField("description", event.target.value)} /> : (item.description || "—")} />
+                  <PreviewRow compact colon valueClassName={!canEditReturned ? "whitespace-nowrap" : ""} label="درخواست تامین" value={supplyRequestControl} />
                 </div>
-                <PreviewRow colon label="شرح درخواست" value={canEditReturned ? <textarea className={`${inputClass} min-h-24 py-2 leading-7`} value={editForm.description} onChange={(event) => setEditField("description", event.target.value)} /> : (item.description || "—")} />
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-x md:divide-y-0 dark:divide-white/10">
                   <PreviewRow compact colon leader={!canEditReturned} label="مبلغ درخواست" ltr={!canEditReturned} value={canEditReturned ? <MoneyInput value={editForm.amount} onChange={(value) => setEditField("amount", value)} /> : toFa(Number(item.amount || 0).toLocaleString("en-US"))} />
                   <PreviewRow compact colon leader={!canEditReturned} label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFa(baseBudget) : "—"} ltr />
@@ -1426,7 +1426,7 @@ function PaymentWorkflowTimeline({ history, item }) {
 }
 
 function PreviewSection({ title, children, flush = false }) { return <section className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">{title}</div><div className={`divide-y divide-black/10 dark:divide-white/10 ${flush ? "" : "px-4"}`}>{children}</div></section>; }
-function PreviewRow({ label, value, ltr, compact = false, valueClassName = "", colon = false, leader = false, fixedLabel = false }) { return <div className={`min-w-0 ${compact ? `grid items-start gap-2 px-3 py-3 text-xs ${fixedLabel ? "grid-cols-[92px_minmax(0,1fr)]" : "grid-cols-[auto_minmax(0,1fr)]"}` : "grid grid-cols-[135px_1fr] gap-3 px-4 py-2.5 text-sm"}`}><div className={`text-neutral-500 dark:text-neutral-400 ${compact ? "whitespace-nowrap" : ""}`}>{label}{colon ? ":" : ""}</div><div dir={ltr ? "ltr" : "rtl"} className={`min-w-0 break-words font-medium ${ltr ? "text-left" : "text-right"} ${valueClassName}`}>{leader ? <div className={`flex min-w-0 items-center gap-2 ${ltr ? "flex-row" : "flex-row"}`}><span className="shrink-0">{value}</span><span className="h-px min-w-3 flex-1 bg-black/15 dark:bg-white/15" /></div> : value}</div></div>; }
+function PreviewRow({ label, value, ltr, compact = false, valueClassName = "", colon = false, fixedLabel = false }) { return <div className={`min-w-0 ${compact ? `grid items-start gap-2 px-3 py-3 text-xs ${fixedLabel ? "grid-cols-[92px_minmax(0,1fr)]" : "grid-cols-[auto_minmax(0,1fr)]"}` : "grid grid-cols-[135px_1fr] gap-3 px-4 py-2.5 text-sm"}`}><div className={`text-neutral-500 dark:text-neutral-400 ${compact ? "whitespace-nowrap" : ""}`}>{label}{colon ? ":" : ""}</div><div dir={ltr ? "ltr" : "rtl"} className={`min-w-0 break-words font-medium ${ltr ? "text-left" : "text-right"} ${valueClassName}`}>{value}</div></div>; }
 function historyLabel(value) { return ({ created: "ثبت درخواست", approved: "تأیید", rejected: "رد", returned: "برگشت", edited: "ویرایش" })[value] || value || "—"; }
 function formatDateTime(value) { if (!value) return "—"; try { return new Intl.DateTimeFormat("fa-IR-u-ca-persian", { dateStyle: "short", timeStyle: "short" }).format(new Date(value)); } catch { return "—"; } }
 
