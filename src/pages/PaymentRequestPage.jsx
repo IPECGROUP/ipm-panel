@@ -1122,13 +1122,13 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
     <div className="absolute inset-0 flex items-center justify-center p-3 md:p-6">
       <div dir="rtl" className="flex h-[min(90vh,860px)] w-[min(1180px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
         <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3 dark:border-white/10">
-          <div className="text-sm font-bold">اقدامات درخواست پرداخت <span className="font-normal text-neutral-500">— {item.serial || "—"}</span></div>
+          <div className="text-sm font-bold">اقدامات پرداخت</div>
           <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white ring-1 ring-black/15 transition hover:bg-black/80 dark:bg-transparent dark:ring-neutral-800 dark:hover:bg-white/10" aria-label="بستن" title="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
         </div>
         <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[0.9fr_1.35fr]">
           <aside className="min-h-0 overflow-y-auto border-b border-black/10 p-4 dark:border-white/10 lg:border-b-0 lg:border-l">
             <div className="space-y-4">
-              <PreviewSection title="سابقه درخواست">
+              <PreviewSection title="فرآیند پرداخت">
                 <div className="space-y-2 py-3">
                   {history.filter((entry) => !["step_set", "step_clear"].includes(entry?.type)).length ? history.filter((entry) => !["step_set", "step_clear"].includes(entry?.type)).map((entry, index) => (
                     <div key={index} className="rounded-xl border border-black/10 p-3 text-xs leading-6 dark:border-white/10">
@@ -1165,13 +1165,11 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
           </aside>
           <main className="min-h-0 overflow-y-auto p-4 md:p-5">
             <div className="space-y-4">
-              <PreviewSection title="بررسی درخواست">
+              <PreviewSection title="جزئیات درخواست پرداخت">
                 <PreviewRow label="کد بودجه" value={previewBudgetCode || "—"} ltr />
                 <PreviewRow label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFa(baseBudget) : "—"} ltr />
                 <PreviewRow label="باقی مانده نقدینگی تخصیص یافته به پروژه" value={liquidityRemaining || "—"} ltr />
                 {currentStepRoleKey === "project_manager" && <PreviewRow label={`مبلغ درخواست پرداخت (${currencyName})`} value={toFa(Number(item.amount || 0).toLocaleString("en-US"))} ltr />}
-              </PreviewSection>
-              <PreviewSection title="جزئیات پرداخت و سند">
                 <PreviewRow label="موضوع درخواست" value={canEditReturned ? <input className={inputClass} value={editForm.title} onChange={(event) => setEditField("title", event.target.value)} /> : (item.title || "—")} />
                 <PreviewRow label="شرح درخواست" value={canEditReturned ? <textarea className={`${inputClass} min-h-24 py-2 leading-7`} value={editForm.description} onChange={(event) => setEditField("description", event.target.value)} /> : (item.description || "—")} />
                 <PreviewRow label={`مبلغ درخواست (${canEditReturned ? editCurrencyName : currencyName})`} ltr={!canEditReturned} value={canEditReturned ? <MoneyInput value={editForm.amount} onChange={(value) => setEditField("amount", value)} /> : toFa(Number(item.amount || 0).toLocaleString("en-US"))} />

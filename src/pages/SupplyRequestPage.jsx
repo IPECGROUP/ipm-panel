@@ -46,7 +46,7 @@ const STEP_LABELS = {
   requester: "درخواست کننده",
   project_control: "برنامه ریزی و کنترل پروژه",
   project_manager: "مدیر پروژه",
-  commercial: "اقدام",
+  commercial: "تامین",
 };
 
 function toFaDigits(value = "") {
@@ -272,7 +272,7 @@ function friendlyError(message, fallback) {
   if (text === "database_auth_failed") return "احراز هویت پایگاه داده ناموفق است.";
   if (text === "project_control_user_not_found") return "کاربری در واحد برنامه ریزی و کنترل پروژه پیدا نشد.";
   if (text === "project_manager_user_not_found") return "کاربری با نقش مدیر پروژه پیدا نشد.";
-  if (text === "commercial_user_not_found") return "کاربری در واحد بازرگانی پیدا نشد.";
+  if (text === "commercial_user_not_found") return "کاربری در واحد تامین پیدا نشد.";
   if (text === "target_assignee_required") return "گیرنده درخواست تامین را انتخاب کنید.";
   if (text === "target_assignee_invalid") return "گیرنده انتخاب شده برای این مرحله معتبر نیست.";
   if (text === "note_required") return "برای برگشت یا رد درخواست، وارد کردن توضیح الزامی است.";
@@ -739,7 +739,7 @@ export default function SupplyRequestPage() {
           : message === "project_control_user_not_found"
             ? "کاربری در واحد برنامه ریزی و کنترل پروژه پیدا نشد."
             : message === "commercial_user_not_found"
-              ? "کاربری در واحد بازرگانی پیدا نشد."
+              ? "کاربری در واحد تامین پیدا نشد."
             : message === "target_assignee_required"
               ? "گیرنده درخواست تامین را انتخاب کنید."
               : message === "target_assignee_invalid"
@@ -1479,7 +1479,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
       : stepKey === "project_control"
         ? `بررسی اولیه (${STEP_LABELS[stepKey] || "مرحله جاری"})`
         : stepKey === "commercial"
-          ? "اقدام تامین(بازرگانی)"
+          ? "اقدام تامین"
           : `بررسی (${STEP_LABELS[stepKey] || "مرحله جاری"})`;
   const noteRequired = ["return", "reject"].includes(choice);
   const actionSubmitDisabled =
@@ -1601,7 +1601,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                           <div className="grid gap-3 md:grid-cols-2">
                             <Field label="مسئول اقدام">
                               <select value={targetAssigneeUserId} onChange={(event) => setTargetAssigneeUserId(event.target.value)} disabled={nextRecipientsLoading || nextRecipients.targetRoleKey !== "commercial"} className={inputCls}>
-                                <option value="">{nextRecipientsLoading ? "در حال دریافت..." : "انتخاب کاربر بازرگانی"}</option>
+                                <option value="">{nextRecipientsLoading ? "در حال دریافت..." : "انتخاب کاربر تامین"}</option>
                                 {nextRecipients.users.map((user) => (
                                   <option key={user.id} value={user.id}>
                                     {user.name || user.username || user.email || `کاربر #${user.id}`}
