@@ -1173,7 +1173,7 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                   <PreviewRow compact label="مرحله فعلی" value={STEP_LABELS[currentStepRoleKey] || "—"} />
                   <PreviewRow compact label="ارز" value={canEditReturned ? <select className={inputClass} value={editForm.currencyTypeId} onChange={(event) => setEditField("currencyTypeId", event.target.value)}><option value="">ریال</option>{currencyTypes.map((row) => <option key={row.id} value={row.id}>{itemLabel(row)}</option>)}</select> : currencyName} />
                 </div>
-                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-x md:divide-y-0 dark:divide-white/10">
+                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)_minmax(0,1.4fr)] md:divide-x md:divide-y-0 dark:divide-white/10">
                   <PreviewRow compact label="کد بودجه" value={previewBudgetCode || "—"} ltr />
                   <PreviewRow compact label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFa(baseBudget) : "—"} ltr />
                   <PreviewRow compact label="باقی مانده نقدینگی تخصیص یافته به پروژه" value={liquidityRemaining || "—"} ltr />
