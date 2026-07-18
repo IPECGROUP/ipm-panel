@@ -316,6 +316,7 @@ export default function SupplyRequestPage() {
   const [filterQuery, setFilterQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterOwnership, setFilterOwnership] = useState("");
+  const [filterUnread, setFilterUnread] = useState(false);
   const [filterProjectId, setFilterProjectId] = useState("");
   const [filterQuick, setFilterQuick] = useState("");
   const [filterFromDate, setFilterFromDate] = useState("");
@@ -767,6 +768,7 @@ export default function SupplyRequestPage() {
       const isIncoming = Number(item?.currentAssigneeUserId) === Number(user?.id) && !isMine;
       if (filterOwnership === "mine" && !isMine) return false;
       if (filterOwnership === "incoming" && !isIncoming) return false;
+      if (filterUnread && !(manualUnreadIds.has(String(item.id)) || (isIncoming && !seenIncomingIds.has(String(item.id))))) return false;
       if (filterStatus && statusGroup(displayStatusOf(item)) !== filterStatus) return false;
       if (filterProjectId && String(item.projectId) !== String(filterProjectId)) return false;
       const dateKey = normalizeYmd(itemDateKey(item));
@@ -795,7 +797,7 @@ export default function SupplyRequestPage() {
         .join(" ");
       return haystack.includes(q);
     });
-  }, [filterFromDate, filterOwnership, filterProjectId, filterQuery, filterQuick, filterStatus, filterTagIds, filterToDate, items, letters, projects, user?.id]);
+  }, [filterFromDate, filterOwnership, filterProjectId, filterQuery, filterQuick, filterStatus, filterTagIds, filterToDate, filterUnread, items, letters, manualUnreadIds, projects, seenIncomingIds, user?.id]);
 
   const total = filteredItems.length;
   const pageCount = Math.max(1, Math.ceil(total / rowsPerPage));
@@ -854,7 +856,7 @@ export default function SupplyRequestPage() {
 
   useEffect(() => {
     setPage(0);
-  }, [filterFromDate, filterOwnership, filterProjectId, filterQuery, filterQuick, filterStatus, filterTagIds, filterToDate, rowsPerPage]);
+  }, [filterFromDate, filterOwnership, filterProjectId, filterQuery, filterQuick, filterStatus, filterTagIds, filterToDate, filterUnread, rowsPerPage]);
 
   const handleExportExcel = async () => {
     if (!filteredItems.length) return;
@@ -926,6 +928,8 @@ export default function SupplyRequestPage() {
               setStatus={setFilterStatus}
               ownership={filterOwnership}
               setOwnership={setFilterOwnership}
+              unread={filterUnread}
+              setUnread={setFilterUnread}
               tags={tags}
               pinnedTagIds={pinnedFilterTagIds}
               setPinnedTagIds={setPinnedFilterTagIds}
@@ -1508,10 +1512,10 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
           </div>
 
           <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[0.9fr_1.25fr]">
-            <aside className="flex min-h-0 border-b border-black/10 p-4 dark:border-white/10 lg:border-b-0 lg:border-l">
-              <section className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
+            <aside className="flex items-start border-b border-black/10 p-4 dark:border-white/10 lg:border-b-0 lg:border-l">
+              <section className="w-full self-start overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
                 <div className="shrink-0 border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">فرآیند تامین</div>
-                <div className="min-h-0 flex-1 overflow-y-auto px-4">
+                <div className="px-4">
                   {history.length ? (
                     <SupplyWorkflowTimeline history={history} item={item} />
                   ) : (
@@ -2043,7 +2047,7 @@ function WorkflowMarker({ kind, index }) {
 function SupplyWorkflowTimeline({ history, item }) {
   const workflowFinished = !item?.currentStepRoleKey && item?.status === "approved";
   return (
-    <ol className="supply-workflow-timeline flex min-h-full flex-col justify-start px-1 pb-3 pt-3" aria-label="مراحل فرآیند درخواست تامین">
+    <ol className="supply-workflow-timeline flex flex-col justify-start px-1 pb-2 pt-2" aria-label="مراحل فرآیند درخواست تامین">
       {SUPPLY_WORKFLOW_STEPS.map((step, index) => {
         const state = workflowStageState(step, history, item);
         const markerKind = state.kind === "completed" && workflowFinished && index === SUPPLY_WORKFLOW_STEPS.length - 1 ? "final_completed" : state.kind;
@@ -2051,7 +2055,7 @@ function SupplyWorkflowTimeline({ history, item }) {
         const isLast = index === SUPPLY_WORKFLOW_STEPS.length - 1;
         const description = workflowStageDescription(step, state, item);
         return (
-          <li key={step.key} data-state={markerKind} className="supply-workflow-stage relative grid grid-cols-[minmax(0,1fr)_32px] gap-3 pb-3 last:pb-0" style={{ "--workflow-delay": `${Math.min(index * 110, 440)}ms` }}>
+          <li key={step.key} data-state={markerKind} className="supply-workflow-stage relative grid grid-cols-[minmax(0,1fr)_32px] gap-2 pb-2 last:pb-0" style={{ "--workflow-delay": `${Math.min(index * 110, 440)}ms` }}>
             <div className={`min-w-0 ${style.card ? `rounded-2xl px-3 py-2.5 ${style.card}` : "px-3 py-1"}`}>
               <div className={`text-sm font-bold leading-6 ${style.title}`}>{step.label}</div>
               {(state.kind !== "waiting" || description) && <div className="mt-0.5 text-xs leading-5 text-neutral-500 dark:text-neutral-400">{description}</div>}
@@ -2061,7 +2065,7 @@ function SupplyWorkflowTimeline({ history, item }) {
               {state.entry?.note ? <div className="mt-2 border-t border-black/5 pt-2 text-[11px] leading-5 text-neutral-500 dark:border-white/10 dark:text-neutral-400">توضیح: {state.entry.note}</div> : null}
             </div>
             <div className="relative flex justify-center" aria-hidden="true">
-              {!isLast ? <span className={`absolute bottom-[-2px] top-7 w-px ${style.line}`} /> : null}
+              {!isLast ? <span className={`absolute bottom-[-2px] top-[30px] w-px ${style.line}`} /> : null}
               <span className={`supply-workflow-marker relative z-10 mt-0.5 grid h-7 w-7 place-items-center rounded-full border-2 ${style.marker}`}>
                 <WorkflowMarker kind={markerKind} index={index} />
               </span>
@@ -2098,6 +2102,8 @@ function RequestFilterBar({
   setStatus,
   ownership,
   setOwnership,
+  unread,
+  setUnread,
   tags,
   pinnedTagIds,
   setPinnedTagIds,
@@ -2177,6 +2183,7 @@ function RequestFilterBar({
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" onClick={() => setOwnership(ownership === "mine" ? "" : "mine")} className={`h-9 rounded-full border px-4 text-xs transition ${ownership === "mine" ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>درخواست‌های من</button>
           <button type="button" onClick={() => setOwnership(ownership === "incoming" ? "" : "incoming")} className={`h-9 rounded-full border px-4 text-xs transition ${ownership === "incoming" ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>موارد ارسال‌شده به من</button>
+          <button type="button" onClick={() => setUnread(!unread)} className={`h-9 rounded-full border px-4 text-xs transition ${unread ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>خوانده نشده</button>
           {STATUS_FILTERS.map(([key, label]) => (
             <button key={key} type="button" onClick={() => setStatus(status === key ? "" : key)} className={`h-9 rounded-full border px-4 text-xs transition ${status === key ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>
               {label}

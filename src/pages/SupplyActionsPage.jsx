@@ -577,7 +577,7 @@ function ActionsGrid({ item, editingIds, savingIds, uploadingIds, onAdd, onPatch
     <div className="mt-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-bold">سوابق کار های انجام شده</h3>
+          <h3 className="text-sm font-bold">سوابق کارهای انجام شده</h3>
           <p className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">جدیدترین اقدام در ابتدای فهرست نمایش داده می‌شود.</p>
         </div>
         {canAddAction ? (
