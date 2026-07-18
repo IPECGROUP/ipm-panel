@@ -23,6 +23,14 @@ const STEP_LABELS = {
   finance_manager: "مدیریت مالی",
   payment_order: "دستور پرداخت",
 };
+const PAYMENT_WORKFLOW_STEPS = [
+  { index: 0, label: "ثبت درخواست" },
+  { index: 1, label: "بررسی اولیه (واحد برنامه‌ریزی)" },
+  { index: 2, label: "بررسی نهایی (مدیریت پروژه)" },
+  { index: 3, label: "بررسی مالی و حسابداری" },
+  { index: 4, label: "تایید مدیریت" },
+  { index: 5, label: "ثبت پرداخت نهایی" },
+];
 const PAYMENT_METHOD_OPTIONS = ["واریز بانکی - فیش", "واریز بانکی - اینترنت بانک", "صدور چک", "بصورت نقدی"];
 const PAGE_ICON = "/images/icons/darkhast-pardakht.svg";
 const inputClass = "w-full h-11 rounded-xl border border-black/10 bg-white px-3 text-sm text-neutral-900 outline-none transition focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-white";
@@ -1125,47 +1133,46 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
           <div className="text-sm font-bold">اقدامات پرداخت</div>
           <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white ring-1 ring-black/15 transition hover:bg-black/80 dark:bg-transparent dark:ring-neutral-800 dark:hover:bg-white/10" aria-label="بستن" title="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
         </div>
-        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[0.9fr_1.35fr]">
-          <aside className="min-h-0 overflow-y-auto border-b border-black/10 p-4 dark:border-white/10 lg:border-b-0 lg:border-l">
-            <div className="space-y-4">
-              <PreviewSection title="فرآیند پرداخت">
-                <div className="space-y-2 py-3">
-                  {history.filter((entry) => !["step_set", "step_clear"].includes(entry?.type)).length ? history.filter((entry) => !["step_set", "step_clear"].includes(entry?.type)).map((entry, index) => (
-                    <div key={index} className="rounded-xl border border-black/10 p-3 text-xs leading-6 dark:border-white/10">
-                      <div className="flex items-center justify-between gap-2"><b>{historyLabel(entry?.type || entry?.status)}</b><span className="text-neutral-500">{formatDateTime(entry?.at)}</span></div>
-                      <div className="mt-1 text-neutral-600 dark:text-neutral-300">{entry?.note || "—"}</div>
-                    </div>
-                  )) : <div className="py-5 text-center text-sm text-neutral-500">سابقه‌ای ثبت نشده است.</div>}
-                </div>
-              </PreviewSection>
-              <PreviewSection title="مشخصات درخواست">
-                <PreviewRow label="شماره درخواست" value={item.serial || "—"} ltr />
-                <PreviewRow label="تاریخ درخواست" value={toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))} />
-                <PreviewRow label="درخواست کننده" value={item.createdByName || `کاربر #${toFa(item.createdById)}`} />
-                <PreviewRow label="پروژه" value={canEditReturned ? (
-                  <select className={inputClass} value={editForm.projectId} onChange={(event) => setEditForm((old) => ({ ...old, projectId: event.target.value, budgetCode: "" }))}>
-                    <option value="">انتخاب پروژه</option>
-                    {projects.map((row) => <option key={row.id} value={row.id}>{projectLabel(row)}</option>)}
-                  </select>
-                ) : (project ? projectLabel(project) : (item.projectName || item.projectCode || item.projectId || "—"))} />
-                <PreviewRow label="کد بودجه" ltr={!canEditReturned} value={canEditReturned ? (
-                  <select className={inputClass} value={editForm.budgetCode} disabled={!editForm.projectId || editBudgetLoading} onChange={(event) => setEditField("budgetCode", event.target.value)}>
-                    <option value="">{editBudgetLoading ? "در حال دریافت..." : editForm.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید"}</option>
-                    {editBudgetOptions.map((row) => {
-                      const code = normalizeBudgetCode(row.code || row.center_code);
-                      const desc = row.center_desc || row.last_desc || row.name || row.description || "";
-                      return <option key={code || row.id} value={code}>{code}{desc ? ` - ${desc}` : ""}</option>;
-                    })}
-                  </select>
-                ) : (item.budgetCode || "—")} />
-                <PreviewRow label="آخرین وضعیت" value={<StatusBadge status={item.status} />} />
-                <PreviewRow label="مرحله فعلی" value={STEP_LABELS[currentStepRoleKey] || "—"} />
-              </PreviewSection>
-            </div>
+        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(300px,0.72fr)_minmax(0,1.55fr)]">
+          <aside className="flex items-start border-b border-black/10 p-4 dark:border-white/10 lg:border-b-0 lg:border-l">
+            <section className="w-full self-start overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
+              <div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">فرآیند پرداخت</div>
+              <div className="px-4">
+                <PaymentWorkflowTimeline history={history} item={item} />
+              </div>
+            </section>
           </aside>
           <main className="min-h-0 overflow-y-auto p-4 md:p-5">
             <div className="space-y-4">
               <PreviewSection title="جزئیات درخواست پرداخت">
+                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-x md:divide-y-0 dark:divide-white/10">
+                  <PreviewRow compact label="شماره درخواست" value={item.serial || "—"} ltr />
+                  <PreviewRow compact label="تاریخ درخواست" value={toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))} />
+                  <PreviewRow compact label="درخواست کننده" value={item.createdByName || `کاربر #${toFa(item.createdById)}`} />
+                </div>
+                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-2 md:divide-x md:divide-y-0 dark:divide-white/10">
+                  <PreviewRow compact label="پروژه" value={canEditReturned ? (
+                    <select className={inputClass} value={editForm.projectId} onChange={(event) => setEditForm((old) => ({ ...old, projectId: event.target.value, budgetCode: "" }))}>
+                      <option value="">انتخاب پروژه</option>
+                      {projects.map((row) => <option key={row.id} value={row.id}>{projectLabel(row)}</option>)}
+                    </select>
+                  ) : (project ? projectLabel(project) : (item.projectName || item.projectCode || item.projectId || "—"))} />
+                  <PreviewRow compact label="کد بودجه" ltr={!canEditReturned} value={canEditReturned ? (
+                    <select className={inputClass} value={editForm.budgetCode} disabled={!editForm.projectId || editBudgetLoading} onChange={(event) => setEditField("budgetCode", event.target.value)}>
+                      <option value="">{editBudgetLoading ? "در حال دریافت..." : editForm.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید"}</option>
+                      {editBudgetOptions.map((row) => {
+                        const code = normalizeBudgetCode(row.code || row.center_code);
+                        const desc = row.center_desc || row.last_desc || row.name || row.description || "";
+                        return <option key={code || row.id} value={code}>{code}{desc ? ` - ${desc}` : ""}</option>;
+                      })}
+                    </select>
+                  ) : (item.budgetCode || "—")} />
+                </div>
+                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-x md:divide-y-0 dark:divide-white/10">
+                  <PreviewRow compact label="آخرین وضعیت" value={<StatusBadge status={item.status} />} />
+                  <PreviewRow compact label="مرحله فعلی" value={STEP_LABELS[currentStepRoleKey] || "—"} />
+                  <PreviewRow compact label="ارز" value={canEditReturned ? <select className={inputClass} value={editForm.currencyTypeId} onChange={(event) => setEditField("currencyTypeId", event.target.value)}><option value="">ریال</option>{currencyTypes.map((row) => <option key={row.id} value={row.id}>{itemLabel(row)}</option>)}</select> : currencyName} />
+                </div>
                 <PreviewRow label="کد بودجه" value={previewBudgetCode || "—"} ltr />
                 <PreviewRow label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFa(baseBudget) : "—"} ltr />
                 <PreviewRow label="باقی مانده نقدینگی تخصیص یافته به پروژه" value={liquidityRemaining || "—"} ltr />
@@ -1190,7 +1197,6 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                     {editForm.hasSupplyRequest === "yes" && <select className={inputClass} value={editForm.supplyRequestId} onChange={(event) => setEditField("supplyRequestId", event.target.value)}><option value="">انتخاب کنید</option>{supplyRequests.map((row) => <option key={row.id} value={row.id}>{row.serial || `#${row.id}`}{row.title ? ` - ${row.title}` : ""}</option>)}</select>}
                   </div>
                 ) : (item.hasSupplyRequest === "yes" ? (supplyRequests.find((row) => String(row.id) === String(item.supplyRequestId))?.serial || `#${item.supplyRequestId || "—"}`) : "ندارد")} />
-                <PreviewRow label="ارز" value={canEditReturned ? <select className={inputClass} value={editForm.currencyTypeId} onChange={(event) => setEditField("currencyTypeId", event.target.value)}><option value="">ریال</option>{currencyTypes.map((row) => <option key={row.id} value={row.id}>{itemLabel(row)}</option>)}</select> : currencyName} />
                 <PreviewRow label="منشا ارز" value={canEditReturned ? <select className={inputClass} value={editForm.currencySourceId} onChange={(event) => setEditField("currencySourceId", event.target.value)}><option value="">انتخاب نشده</option>{currencySources.map((row) => <option key={row.id} value={row.id}>{itemLabel(row)}</option>)}</select> : (source ? itemLabel(source) : "—")} />
                 <PreviewRow label="نوع سند" value={canEditReturned ? (
                   <div className="space-y-2">
@@ -1389,8 +1395,54 @@ function buildWorkflowNote({ stepKey, stepIndex, choice, note, urgentCash, cashP
   return [labels[choice] || "اقدام", urgentCash ? "پرداخت فوری و نقدی" : "", note].filter(Boolean).join(" - ");
 }
 
+function paymentWorkflowStageState(step, history, item) {
+  const entries = Array.isArray(history) ? history : [];
+  const entry = step.index === 0
+    ? entries.find((row) => row?.type === "created")
+    : [...entries].reverse().find((row) => Number(row?.index) === step.index && ["approved", "rejected", "returned"].includes(row?.type));
+  if (Number(item?.currentStepIndex) === step.index && item?.currentStepRoleKey) return { kind: "active", entry };
+  if (entry?.type === "rejected") return { kind: "rejected", entry };
+  if (entry?.type === "returned") return { kind: "returned", entry };
+  if (entry?.type === "created" || entry?.type === "approved") return { kind: "completed", entry };
+  return { kind: "waiting", entry: null };
+}
+
+function paymentWorkflowStyle(kind) {
+  if (kind === "active") return { marker: "border-sky-500 bg-sky-500 text-white shadow-[0_0_0_5px_rgba(14,165,233,0.13)]", line: "bg-sky-200 dark:bg-sky-500/30", card: "bg-sky-50/90 dark:bg-sky-500/10", title: "text-sky-700 dark:text-sky-300" };
+  if (kind === "rejected") return { marker: "border-rose-500 bg-rose-500 text-white", line: "bg-rose-200 dark:bg-rose-500/25", card: "bg-rose-50/80 dark:bg-rose-500/10", title: "text-rose-700 dark:text-rose-300" };
+  if (kind === "returned") return { marker: "border-amber-500 bg-amber-500 text-white", line: "bg-amber-200 dark:bg-amber-500/25", card: "bg-amber-50/80 dark:bg-amber-500/10", title: "text-amber-700 dark:text-amber-300" };
+  if (kind === "completed") return { marker: "border-neutral-300 bg-white text-neutral-500 shadow-[0_0_0_4px_rgba(115,115,115,0.08)] dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-300", line: "bg-neutral-200 dark:bg-white/10", card: "", title: "text-neutral-800 dark:text-neutral-100" };
+  return { marker: "border-neutral-300 bg-white text-neutral-400 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-500", line: "bg-neutral-200 dark:bg-white/10", card: "", title: "text-neutral-400 dark:text-neutral-500" };
+}
+
+function PaymentWorkflowTimeline({ history, item }) {
+  const completedAll = !item?.currentStepRoleKey && item?.status === "approved";
+  return <ol className="flex flex-col justify-start px-1 pb-2 pt-2" aria-label="مراحل فرآیند پرداخت">
+    {PAYMENT_WORKFLOW_STEPS.map((step, index) => {
+      const state = paymentWorkflowStageState(step, history, item);
+      const kind = state.kind === "completed" && completedAll && index === PAYMENT_WORKFLOW_STEPS.length - 1 ? "final_completed" : state.kind;
+      const style = kind === "final_completed" ? { ...paymentWorkflowStyle("completed"), marker: "border-emerald-500 bg-emerald-500 text-white shadow-[0_0_0_5px_rgba(16,185,129,0.13)]", line: "bg-emerald-200 dark:bg-emerald-500/25", title: "text-emerald-700 dark:text-emerald-300" } : paymentWorkflowStyle(kind);
+      const description = kind === "active" ? `در انتظار اقدام ${item?.currentAssigneeName || "مسئول این مرحله"}` : kind === "completed" || kind === "final_completed" ? (step.index === 0 ? "درخواست ثبت و ارسال شد" : "مرحله با تایید انجام شد") : kind === "rejected" ? "درخواست در این مرحله رد شد" : kind === "returned" ? "درخواست برای اصلاح برگشت داده شد" : "در انتظار شروع مرحله";
+      return <li key={step.index} className="relative grid grid-cols-[minmax(0,1fr)_32px] gap-2 pb-2 last:pb-0">
+        <div className={`min-w-0 ${style.card ? `rounded-2xl px-3 py-2.5 ${style.card}` : "px-3 py-1"}`}>
+          <div className={`text-sm font-bold leading-6 ${style.title}`}>{step.label}</div>
+          <div className="mt-0.5 text-xs leading-5 text-neutral-500 dark:text-neutral-400">{description}</div>
+          {state.entry?.at ? <div className="mt-1 text-[11px] leading-5 text-neutral-500 dark:text-neutral-400">{step.index === 0 ? item?.createdByName || "درخواست‌کننده" : "انجام‌دهنده"} · {formatDateTime(state.entry.at)}</div> : null}
+          {state.entry?.note ? <div className="mt-2 border-t border-black/5 pt-2 text-[11px] leading-5 text-neutral-500 dark:border-white/10 dark:text-neutral-400">توضیح: {state.entry.note}</div> : null}
+        </div>
+        <div className="relative flex justify-center" aria-hidden="true">
+          {index < PAYMENT_WORKFLOW_STEPS.length - 1 ? <span className={`absolute bottom-[-12px] top-[22px] z-0 w-px ${style.line}`} /> : null}
+          <span className={`relative z-10 mt-0.5 grid h-7 w-7 place-items-center rounded-full border-2 ${style.marker}`}>
+            {kind === "completed" || kind === "final_completed" ? <span className="text-base font-bold leading-none">✓</span> : kind === "rejected" ? <span className="text-base font-bold leading-none">×</span> : kind === "returned" ? <span className="text-sm font-bold leading-none">↶</span> : kind === "active" ? <span className="h-2.5 w-2.5 rounded-full bg-white" /> : <span className="text-[11px] font-bold leading-none">{toFa(index + 1)}</span>}
+          </span>
+        </div>
+      </li>;
+    })}
+  </ol>;
+}
+
 function PreviewSection({ title, children }) { return <section className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">{title}</div><div className="divide-y divide-black/10 px-4 dark:divide-white/10">{children}</div></section>; }
-function PreviewRow({ label, value, ltr }) { return <div className="grid grid-cols-[135px_1fr] gap-3 py-2.5 text-sm"><div className="text-neutral-500 dark:text-neutral-400">{label}</div><div dir={ltr ? "ltr" : "rtl"} className={`break-words font-medium ${ltr ? "text-left" : "text-right"}`}>{value}</div></div>; }
+function PreviewRow({ label, value, ltr, compact = false }) { return <div className={`min-w-0 ${compact ? "grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2 px-3 py-3 text-xs" : "grid grid-cols-[135px_1fr] gap-3 py-2.5 text-sm"}`}><div className={`text-neutral-500 dark:text-neutral-400 ${compact ? "whitespace-nowrap" : ""}`}>{label}</div><div dir={ltr ? "ltr" : "rtl"} className={`min-w-0 break-words font-medium ${ltr ? "text-left" : "text-right"}`}>{value}</div></div>; }
 function historyLabel(value) { return ({ created: "ثبت درخواست", approved: "تأیید", rejected: "رد", returned: "برگشت", edited: "ویرایش" })[value] || value || "—"; }
 function formatDateTime(value) { if (!value) return "—"; try { return new Intl.DateTimeFormat("fa-IR-u-ca-persian", { dateStyle: "short", timeStyle: "short" }).format(new Date(value)); } catch { return "—"; } }
 
