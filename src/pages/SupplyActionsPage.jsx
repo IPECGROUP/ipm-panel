@@ -671,9 +671,7 @@ function ActionRow({ index, requestId, requestDate, action, editingIds, savingId
           <JalaliPopupDatePicker
             value={action.date || ""}
             onChange={(value) => onPatch(requestId, action.id, { date: value })}
-            disableFuture
             minDate={requestDate}
-            minDateExclusive
             buttonClassName={`${inputCls} flex items-center justify-between`}
             placeholder="تاریخ"
           />
@@ -714,9 +712,7 @@ function ActionRow({ index, requestId, requestDate, action, editingIds, savingId
           <JalaliPopupDatePicker
             value={action.date || ""}
             onChange={(value) => patchAndPersist({ date: value })}
-            disableFuture
             minDate={requestDate}
-            minDateExclusive
             buttonClassName={`${inputCls} flex items-center justify-between`}
             placeholder="تاریخ اقدام"
           />
