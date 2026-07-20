@@ -1,5 +1,5 @@
 // تخصیص نقدینگی
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Card from "../components/ui/Card.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
@@ -27,6 +27,14 @@ function todayFa() {
 function formatAmount(value) {
   const digits = toEnglishDigits(String(value ?? "")).replace(/[^\d]/g, "");
   return digits ? Number(digits).toLocaleString("en-US") : "";
+}
+
+function formatSignedAmount(value) {
+  const normalized = toEnglishDigits(String(value ?? "")).replace(/,/g, "");
+  const negative = normalized.trim().startsWith("-");
+  const digits = normalized.replace(/[^\d]/g, "");
+  if (!digits) return negative ? "-" : "";
+  return `${negative ? "-" : ""}${Number(digits).toLocaleString("en-US")}`;
 }
 
 function activeProject(project) {
@@ -57,6 +65,10 @@ export default function LiquidityAllocationPage() {
   const [projects, setProjects] = useState([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [addProjectOpen, setAddProjectOpen] = useState(false);
+  const [summary, setSummary] = useState({ allocations: {}, spent: {}, committed: {} });
+  const [allocationError, setAllocationError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState("");
 
   const updateForm = (key, value) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -82,8 +94,34 @@ export default function LiquidityAllocationPage() {
 
   useEffect(() => { loadProjects(); }, [loadProjects]);
 
+  const loadSummary = useCallback(async () => {
+    try {
+      const response = await fetch("/api/liquidity-allocations/summary", {
+        credentials: "include",
+        headers: user?.id != null ? { "x-user-id": String(user.id) } : {},
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error || "summary_failed");
+      setSummary({ allocations: data.allocations || {}, spent: data.spent || {}, committed: data.committed || {} });
+    } catch {
+      setSummary({ allocations: {}, spent: {}, committed: {} });
+    }
+  }, [user?.id]);
+
+  useEffect(() => { loadSummary(); }, [loadSummary]);
+
   const updateRow = (id, key, value) => {
-    setRows((current) => current.map((row) => row.id === id ? { ...row, [key]: formatAmount(value) } : row));
+    const nextValue = formatSignedAmount(value);
+    setRows((current) => {
+      const nextRows = current.map((row) => row.id === id ? { ...row, [key]: nextValue } : row);
+      const nextTotal = nextRows.reduce((total, row) => total + money(row.newAllocation), 0);
+      if (nextTotal > money(form.amount)) {
+        setAllocationError("جمع تخصیص جدید نمی‌تواند از مبلغ قابل تخصیص بیشتر باشد.");
+        return current;
+      }
+      setAllocationError("");
+      return nextRows;
+    });
   };
 
   const addProject = (projectId) => {
@@ -95,8 +133,54 @@ export default function LiquidityAllocationPage() {
 
   const removeRow = (id) => setRows((current) => current.filter((row) => row.id !== id));
 
-  const money = (value) => Number(toEnglishDigits(String(value || "")).replace(/[^\d]/g, "")) || 0;
+  const money = (value) => {
+    const normalized = toEnglishDigits(String(value ?? "")).replace(/,/g, "").trim();
+    const negative = normalized.startsWith("-");
+    const digits = normalized.replace(/[^\d]/g, "");
+    return (negative ? -1 : 1) * (Number(digits) || 0);
+  };
   const displayMoney = (value) => value ? Number(value).toLocaleString("en-US") : "—";
+  const newAllocationTotal = useMemo(() => rows.reduce((total, row) => total + money(row.newAllocation), 0), [rows]);
+  const availableAmount = money(form.amount);
+  const availableRemaining = availableAmount - newAllocationTotal;
+  const summaryKey = (row) => row.projectId != null ? String(row.projectId) : "reserve";
+
+  const saveAllocation = async () => {
+    const nonZeroRows = rows.filter((row) => money(row.newAllocation) !== 0);
+    if (!form.source.trim() || !availableAmount || !nonZeroRows.length) {
+      setSubmitMessage("منبع نقدینگی، مبلغ قابل تخصیص و حداقل یک تخصیص جدید الزامی است.");
+      return;
+    }
+    if (newAllocationTotal > availableAmount) {
+      setAllocationError("جمع تخصیص جدید نمی‌تواند از مبلغ قابل تخصیص بیشتر باشد.");
+      return;
+    }
+    setSubmitting(true);
+    setSubmitMessage("");
+    try {
+      const response = await fetch("/api/liquidity-allocations", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...(user?.id != null ? { "x-user-id": String(user.id) } : {}) },
+        body: JSON.stringify({
+          allocationDate: form.allocationDate,
+          source: form.source,
+          availableAmount,
+          description: form.description,
+          rows: nonZeroRows.map((row) => ({ projectId: row.projectId ?? null, amount: money(row.newAllocation) })),
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.message || data?.error || "save_failed");
+      setRows((current) => current.map((row) => ({ ...row, newAllocation: "" })));
+      setSubmitMessage("تخصیص نقدینگی ثبت شد.");
+      await loadSummary();
+    } catch (error) {
+      setSubmitMessage(error?.message || "ثبت تخصیص انجام نشد.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <Card className="rounded-2xl border border-neutral-200 bg-white text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
@@ -148,7 +232,12 @@ export default function LiquidityAllocationPage() {
             <div className="relative">
               <input
                 value={form.amount}
-                onChange={(event) => updateForm("amount", formatAmount(event.target.value))}
+                onChange={(event) => {
+                  const nextAmount = formatAmount(event.target.value);
+                  updateForm("amount", nextAmount);
+                  if (newAllocationTotal > money(nextAmount)) setAllocationError("جمع تخصیص جدید نمی‌تواند از مبلغ قابل تخصیص بیشتر باشد.");
+                  else setAllocationError("");
+                }}
                 inputMode="numeric"
                 placeholder="۰"
                 className={inputClass + " pl-14 ltr text-left"}
@@ -170,6 +259,13 @@ export default function LiquidityAllocationPage() {
         </div>
       </div>
 
+      <div className="mt-3 flex items-center justify-between gap-3 text-xs" dir="rtl">
+        <span className={allocationError ? "text-red-600 dark:text-red-300" : "text-neutral-500 dark:text-neutral-400"}>
+          {allocationError || `مانده قابل تخصیص: ${displayMoney(availableRemaining)} ریال`}
+        </span>
+        <span className="text-neutral-500 dark:text-neutral-400">جمع تخصیص جدید: {displayMoney(newAllocationTotal)} ریال</span>
+      </div>
+
       <div className="mt-5 overflow-x-auto" dir="rtl">
         <table className="w-full min-w-[1180px] border-collapse text-xs text-neutral-800 dark:text-neutral-100 sm:text-sm">
           <thead className="bg-black/[0.04] dark:bg-white/[0.06]">
@@ -181,9 +277,10 @@ export default function LiquidityAllocationPage() {
           </thead>
           <tbody>
             {rows.map((row) => {
-              const allocationToDate = money(row.allocationToDate);
-              const spent = money(row.spent);
-              const committed = money(row.committed);
+              const key = summaryKey(row);
+              const allocationToDate = money(summary.allocations[key]);
+              const spent = money(summary.spent[key]);
+              const committed = money(summary.committed[key]);
               const newAllocation = money(row.newAllocation);
               const currentBalance = allocationToDate - spent - committed;
               return (
@@ -207,8 +304,7 @@ export default function LiquidityAllocationPage() {
             <tr className="bg-white dark:bg-neutral-900">
               <td className={tableCellClass}>
                 {addProjectOpen ? (
-                  <select autoFocus defaultValue="" onChange={(event) => addProject(event.target.value)} className={inputClass + " h-9"} disabled={projectsLoading}>
-                    <option value="">{projectsLoading ? "در حال دریافت پروژه‌ها..." : "انتخاب پروژه فعال"}</option>
+                  <select autoFocus defaultValue={projects.find((project) => !rows.some((row) => String(row.projectId) === String(project.id)))?.id || ""} onChange={(event) => addProject(event.target.value)} className={inputClass + " h-9"} disabled={projectsLoading}>
                     {projects.filter((project) => !rows.some((row) => String(row.projectId) === String(project.id))).map((project) => <option key={project.id} value={project.id}>{projectLabel(project)}</option>)}
                   </select>
                 ) : (
@@ -219,6 +315,13 @@ export default function LiquidityAllocationPage() {
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div className="mt-4 flex items-center justify-end gap-3" dir="rtl">
+        {submitMessage && <span className={submitMessage.includes("شد.") ? "text-xs text-emerald-600 dark:text-emerald-300" : "text-xs text-red-600 dark:text-red-300"}>{submitMessage}</span>}
+        <button type="button" onClick={saveAllocation} disabled={submitting || !!allocationError} className="h-10 rounded-xl bg-neutral-900 px-5 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200">
+          {submitting ? "در حال ثبت..." : "ثبت تخصیص"}
+        </button>
       </div>
     </Card>
   );
