@@ -1,11 +1,12 @@
 // تخصیص نقدینگی
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Card from "../components/ui/Card.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
+import { useAuth } from "../components/AuthProvider.jsx";
 import { todayJalaliYmd } from "../utils/date.js";
 import { toEnglishDigits } from "../utils/format.js";
 
-const PAGE_ICON = "/images/icons/takhsis.svg";
+const PAGE_ICON = "/images/icons/modiriat-nagdinegi.svg";
 
 const LIQUIDITY_SOURCES = [
   "کارکرد پروژه‌ها",
@@ -28,17 +29,74 @@ function formatAmount(value) {
   return digits ? Number(digits).toLocaleString("en-US") : "";
 }
 
+function activeProject(project) {
+  const value = project?.isActive ?? project?.is_active ?? project?.active;
+  return value === true || value === 1 || String(value).toLowerCase() === "true" || String(value) === "1";
+}
+
+function isTopProject(project) {
+  return /^\d{3}$/.test(toEnglishDigits(String(project?.code || "")).trim());
+}
+
+function projectLabel(project) {
+  return `${project?.code ? `${project.code} - ` : ""}${project?.name || project?.title || "پروژه بدون نام"}`;
+}
+
+const tableCellClass = "h-14 border border-black/10 px-2 text-center align-middle dark:border-white/10";
+
 export default function LiquidityAllocationPage() {
+  const { user } = useAuth();
   const [form, setForm] = useState({
     allocationDate: todayFa(),
     source: "",
     amount: "",
     description: "",
   });
+  const [customSource, setCustomSource] = useState(false);
+  const [rows, setRows] = useState([{ id: "reserve", label: "ذخیره احتیاطی", allocationToDate: "", spent: "", committed: "", newAllocation: "", fixed: true }]);
+  const [projects, setProjects] = useState([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [addProjectOpen, setAddProjectOpen] = useState(false);
 
   const updateForm = (key, value) => {
     setForm((current) => ({ ...current, [key]: value }));
   };
+
+  const loadProjects = useCallback(async () => {
+    setProjectsLoading(true);
+    try {
+      const response = await fetch("/api/projects", {
+        credentials: "include",
+        headers: user?.id != null ? { "x-user-id": String(user.id) } : {},
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error || "projects_failed");
+      const items = Array.isArray(data?.items) ? data.items : [];
+      setProjects(items.filter((project) => activeProject(project) && isTopProject(project)));
+    } catch {
+      setProjects([]);
+    } finally {
+      setProjectsLoading(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => { loadProjects(); }, [loadProjects]);
+
+  const updateRow = (id, key, value) => {
+    setRows((current) => current.map((row) => row.id === id ? { ...row, [key]: formatAmount(value) } : row));
+  };
+
+  const addProject = (projectId) => {
+    const project = projects.find((item) => String(item.id) === String(projectId));
+    if (!project || rows.some((row) => String(row.projectId) === String(project.id))) return;
+    setRows((current) => [...current, { id: `project-${project.id}`, projectId: project.id, label: projectLabel(project), allocationToDate: "", spent: "", committed: "", newAllocation: "" }]);
+    setAddProjectOpen(false);
+  };
+
+  const removeRow = (id) => setRows((current) => current.filter((row) => row.id !== id));
+
+  const money = (value) => Number(toEnglishDigits(String(value || "")).replace(/[^\d]/g, "")) || 0;
+  const displayMoney = (value) => value ? Number(value).toLocaleString("en-US") : "—";
 
   return (
     <Card className="rounded-2xl border border-neutral-200 bg-white text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
@@ -64,19 +122,26 @@ export default function LiquidityAllocationPage() {
             />
           </label>
 
-          <label className="min-w-0">
+          <div className="min-w-0">
             <span className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">منبع نقدینگی</span>
-            <input
-              list="liquidity-source-options"
-              value={form.source}
-              onChange={(event) => updateForm("source", event.target.value)}
-              placeholder="انتخاب یا وارد کردن منبع"
-              className={inputClass}
-            />
-            <datalist id="liquidity-source-options">
-              {LIQUIDITY_SOURCES.map((source) => <option key={source} value={source} />)}
-            </datalist>
-          </label>
+            {customSource ? (
+              <input value={form.source} onChange={(event) => updateForm("source", event.target.value)} placeholder="منبع نقدینگی را وارد کنید" className={inputClass} autoFocus />
+            ) : (
+              <select
+                value={form.source}
+                onChange={(event) => {
+                  if (event.target.value === "سایر") {
+                    setCustomSource(true);
+                    updateForm("source", "");
+                  } else updateForm("source", event.target.value);
+                }}
+                className={inputClass}
+              >
+                <option value="">انتخاب کنید</option>
+                {LIQUIDITY_SOURCES.map((source) => <option key={source} value={source}>{source}</option>)}
+              </select>
+            )}
+          </div>
 
           <label className="min-w-0">
             <span className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">مبلغ قابل تخصیص</span>
@@ -103,6 +168,57 @@ export default function LiquidityAllocationPage() {
             />
           </label>
         </div>
+      </div>
+
+      <div className="mt-5 overflow-x-auto" dir="rtl">
+        <table className="w-full min-w-[1180px] border-collapse text-xs text-neutral-800 dark:text-neutral-100 sm:text-sm">
+          <thead className="bg-black/[0.04] dark:bg-white/[0.06]">
+            <tr>
+              {["مرکز/پروژه", "جمع تخصیص تاکنون", "مصرف شده", "تعهد شده", "مانده فعلی", "تخصیص جدید", "کل تخصیص", "مانده نهایی پس از تخصیص", "اقدامات"].map((title) => (
+                <th key={title} className="h-14 border border-black/10 px-2 text-center font-semibold dark:border-white/10">{title}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const allocationToDate = money(row.allocationToDate);
+              const spent = money(row.spent);
+              const committed = money(row.committed);
+              const newAllocation = money(row.newAllocation);
+              const currentBalance = allocationToDate - spent - committed;
+              return (
+                <tr key={row.id} className="bg-white dark:bg-neutral-900">
+                  <td className={tableCellClass + " min-w-[175px] font-medium"}>{row.label}</td>
+                  <td className={tableCellClass}>{displayMoney(allocationToDate)}</td>
+                  <td className={tableCellClass}>{displayMoney(spent)}</td>
+                  <td className={tableCellClass}>{displayMoney(committed)}</td>
+                  <td className={tableCellClass}>{displayMoney(currentBalance)}</td>
+                  <td className={tableCellClass + " min-w-[150px]"}>
+                    <input value={row.newAllocation} onChange={(event) => updateRow(row.id, "newAllocation", event.target.value)} inputMode="numeric" placeholder="۰" className={inputClass + " h-9 ltr text-left"} aria-label={`تخصیص جدید ${row.label}`} />
+                  </td>
+                  <td className={tableCellClass}>{displayMoney(allocationToDate + newAllocation)}</td>
+                  <td className={tableCellClass}>{displayMoney(currentBalance + newAllocation)}</td>
+                  <td className={tableCellClass}>
+                    {row.fixed ? "—" : <button type="button" onClick={() => removeRow(row.id)} className="rounded-lg border border-red-500/40 px-2 py-1 text-xs text-red-600 transition hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-950/30">حذف</button>}
+                  </td>
+                </tr>
+              );
+            })}
+            <tr className="bg-white dark:bg-neutral-900">
+              <td className={tableCellClass}>
+                {addProjectOpen ? (
+                  <select autoFocus defaultValue="" onChange={(event) => addProject(event.target.value)} className={inputClass + " h-9"} disabled={projectsLoading}>
+                    <option value="">{projectsLoading ? "در حال دریافت پروژه‌ها..." : "انتخاب پروژه فعال"}</option>
+                    {projects.filter((project) => !rows.some((row) => String(row.projectId) === String(project.id))).map((project) => <option key={project.id} value={project.id}>{projectLabel(project)}</option>)}
+                  </select>
+                ) : (
+                  <button type="button" onClick={() => setAddProjectOpen(true)} className="inline-grid h-8 w-8 place-items-center rounded-lg border border-black/15 text-lg leading-none transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10" aria-label="افزودن پروژه" title="افزودن پروژه فعال">+</button>
+                )}
+              </td>
+              {Array.from({ length: 8 }, (_, index) => <td key={index} className={tableCellClass} />)}
+            </tr>
+          </tbody>
+        </table>
       </div>
     </Card>
   );
