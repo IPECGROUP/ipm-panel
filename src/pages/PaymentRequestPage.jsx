@@ -1021,13 +1021,35 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
   const [nextRecipients, setNextRecipients] = useState({ targetRoleKey: null, users: [] });
   const [nextRecipientsLoading, setNextRecipientsLoading] = useState(false);
   const [targetAssigneeUserId, setTargetAssigneeUserId] = useState("");
-  const liquidityRemaining = "";
+  const [liquidityRemaining, setLiquidityRemaining] = useState("");
   const amountNumber = Number(item.amount || 0);
   const liquidityNumber = parseAmount(liquidityRemaining);
   const hasEnoughLiquidity = liquidityNumber > 0 && amountNumber <= liquidityNumber;
   const editProject = projects.find((row) => String(row.id) === String(editForm.projectId));
   const editCurrency = currencyTypes.find((row) => String(row.id) === String(editForm.currencyTypeId));
   const editCurrencyName = editCurrency ? itemLabel(editCurrency) : "ریال";
+
+  useEffect(() => {
+    if (!item.projectId) {
+      setLiquidityRemaining("");
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/liquidity-allocations", {
+      credentials: "include",
+      headers: userId != null ? { "x-user-id": String(userId) } : {},
+    })
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data?.error || "liquidity_failed");
+        const key = String(item.projectId);
+        const totalBudget = Number(data?.allocations?.[key] || 0);
+        const commitments = Number(data?.committed?.[key] || 0);
+        if (!cancelled) setLiquidityRemaining(money(Math.max(0, totalBudget - commitments)));
+      })
+      .catch(() => { if (!cancelled) setLiquidityRemaining(""); });
+    return () => { cancelled = true; };
+  }, [item.projectId, userId]);
   const editAttachments = Array.isArray(editForm.attachments) ? editForm.attachments : [];
   const previewBudgetProjectId = canEditReturned ? editForm.projectId : item.projectId;
   const previewBudgetCode = canEditReturned ? editForm.budgetCode : item.budgetCode;
@@ -1170,7 +1192,13 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
       creditPayDesc,
     });
     const status = finalAccounting ? "approved" : choice === "reject" || choice === "stop" ? "rejected" : choice === "return" ? "returned" : "approved";
-    onAction(status, note, { targetAssigneeUserId: targetAssigneeUserId || null });
+    onAction(status, note, {
+      targetAssigneeUserId: targetAssigneeUserId || null,
+      ...(finalAccounting ? {
+        cashAmount: parseAmount(cashPayAmount),
+        creditAmount: parseAmount(creditPayAmount),
+      } : {}),
+    });
   };
 
   const supplyRequestControl = canEditReturned ? (
