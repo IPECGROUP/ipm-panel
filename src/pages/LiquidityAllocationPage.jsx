@@ -50,7 +50,7 @@ function projectLabel(project) {
   return `${project?.code ? `${project.code} - ` : ""}${project?.name || project?.title || "پروژه بدون نام"}`;
 }
 
-const tableCellClass = "h-14 border border-black/10 px-2 text-center align-middle dark:border-white/10";
+const tableCellClass = "h-14 border-b border-l border-black/10 px-2 text-center align-middle dark:border-white/10";
 
 export default function LiquidityAllocationPage() {
   const { user, isAdmin } = useAuth();
@@ -287,11 +287,18 @@ export default function LiquidityAllocationPage() {
       </div>
 
       <div className="mt-5 overflow-x-auto rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900" dir="rtl">
-        <table className="w-full min-w-[760px] border-collapse text-xs text-neutral-800 dark:text-neutral-100 sm:text-sm">
+        <table className="w-full min-w-[720px] table-fixed border-collapse text-xs text-neutral-800 dark:text-neutral-100 sm:text-sm">
+          <colgroup>
+            <col className="w-[34%]" />
+            <col className="w-[16.5%]" />
+            <col className="w-[16.5%]" />
+            <col className="w-[16.5%]" />
+            <col className="w-[16.5%]" />
+          </colgroup>
           <thead className="bg-neutral-100 text-neutral-700 dark:bg-white/[0.08] dark:text-neutral-100">
             <tr>
               {["مرکز/پروژه", "کل بودجه", "مانده بودجه", "مبلغ تخصیص", "نقدینگی"].map((title) => (
-                <th key={title} className="h-14 border border-black/10 px-2 text-center font-semibold dark:border-white/10">{title}</th>
+                <th key={title} className="h-12 border-b border-l border-black/10 px-2 text-center font-semibold dark:border-white/10">{title}</th>
               ))}
             </tr>
           </thead>
@@ -303,11 +310,11 @@ export default function LiquidityAllocationPage() {
               const allocationAmount = money(row.newAllocation);
               return (
                 <tr key={row.id} className="bg-white transition-colors hover:bg-neutral-50 dark:bg-neutral-900 dark:hover:bg-white/[0.03]">
-                  <td className={tableCellClass + " min-w-[175px] font-medium"}>{row.label}</td>
+                  <td className={tableCellClass + " truncate font-medium"} title={row.label}>{row.label}</td>
                   <td className={tableCellClass}>{displayMoney(totalBudget)}</td>
                   <td className={tableCellClass}>{displayMoney(budgetRemaining)}</td>
-                  <td className={tableCellClass + " min-w-[150px]"}>
-                    <input value={row.newAllocation} onChange={(event) => updateRow(row.id, "newAllocation", event.target.value)} inputMode="numeric" placeholder="۰" className={inputClass + " h-9 ltr text-left"} aria-label={`مبلغ تخصیص ${row.label}`} />
+                  <td className={tableCellClass}>
+                    <input value={row.newAllocation} onChange={(event) => updateRow(row.id, "newAllocation", event.target.value)} inputMode="numeric" placeholder="۰" className={inputClass + " !h-9 !rounded-lg ltr text-left"} aria-label={`مبلغ تخصیص ${row.label}`} />
                   </td>
                   <td className={tableCellClass}>{displayMoney(budgetRemaining + allocationAmount)}</td>
                 </tr>
@@ -316,7 +323,7 @@ export default function LiquidityAllocationPage() {
             <tr className="bg-neutral-50/80 dark:bg-white/[0.025]">
               <td className={tableCellClass}>
                 {addProjectOpen ? (
-                  <select autoFocus defaultValue="" onChange={(event) => addProject(event.target.value)} className={inputClass + " h-9"} disabled={projectsLoading}>
+                  <select autoFocus defaultValue="" onChange={(event) => addProject(event.target.value)} className={inputClass + " !h-9 !rounded-lg !py-0 text-xs"} disabled={projectsLoading}>
                     <option value="">{projectsLoading ? "در حال دریافت پروژه‌ها..." : "انتخاب پروژه"}</option>
                     {projects.filter((project) => !rows.some((row) => String(row.projectId) === String(project.id))).map((project) => <option key={project.id} value={project.id}>{projectLabel(project)}</option>)}
                   </select>
@@ -327,7 +334,7 @@ export default function LiquidityAllocationPage() {
               {Array.from({ length: 4 }, (_, index) => <td key={index} className={tableCellClass} />)}
             </tr>
             <tr className="bg-amber-50/60 dark:bg-amber-400/[0.05]">
-              <td className={tableCellClass + " min-w-[175px] font-medium"}>ذخیره احتیاطی</td>
+              <td className={tableCellClass + " font-medium"}>ذخیره احتیاطی</td>
               <td className={tableCellClass}>{displayMoney(availableAmount)}</td>
               <td className={tableCellClass}>{displayMoney(availableAmount)}</td>
               <td className={tableCellClass}>{displayMoney(projectAllocationTotal)}</td>
