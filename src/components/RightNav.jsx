@@ -232,8 +232,6 @@ function RightNav() {
             { to: "/finance/liquidity-allocation", label: "تخصیص نقدینگی", hint: "مدیریت و توزیع نقدینگی", icon: <IcLiquidity /> },
             { to: "/finance/cash-flow-forecast", label: "پیش بینی جریان نقدی", hint: "برآورد جریان نقدی آینده", icon: <IcCashForecast /> },
             { to: "/finance/financial-management-dashboard", label: "داشبورد مدیریت مالی", hint: "نمای کلی شاخص های مالی", icon: <IcProjectDashboard /> },
-            { to: "/budget-allocation", label: "تخصیص بودجه", hint: "تقسیم منابع بودجه ای", icon: <NavIcon src="/images/icons/taksisbodge.svg" /> },
-            { to: "/budget/reports", label: "گزارش ها", hint: "خلاصه ها و خروجی ها", icon: <NavIcon src="/images/icons/gozareshha.svg" /> },
           ],
         },
       ],
