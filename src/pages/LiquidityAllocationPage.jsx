@@ -54,6 +54,7 @@ const tableCellClass = "h-14 border-b border-l border-black/10 px-2 text-center 
 
 export default function LiquidityAllocationPage() {
   const { user, isAdmin } = useAuth();
+  const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState({
     allocationDate: todayFa(),
     source: "",
@@ -64,9 +65,9 @@ export default function LiquidityAllocationPage() {
   const [rows, setRows] = useState([]);
   const [projects, setProjects] = useState([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
-  const [addProjectOpen, setAddProjectOpen] = useState(false);
+  const [draftProjectId, setDraftProjectId] = useState("");
+  const [draftAllocation, setDraftAllocation] = useState("");
   const [summary, setSummary] = useState({ allocations: {}, spent: {}, committed: {} });
-  const [allocationError, setAllocationError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
@@ -116,31 +117,6 @@ export default function LiquidityAllocationPage() {
 
   useEffect(() => { loadSummary(); }, [loadSummary]);
 
-  const updateRow = (id, key, value) => {
-    const nextValue = formatSignedAmount(value);
-    setRows((current) => current.map((row) => row.id === id ? { ...row, [key]: nextValue } : row));
-    setAllocationError("");
-  };
-
-  const addProject = async (projectId) => {
-    const project = projects.find((item) => String(item.id) === String(projectId));
-    if (!project || rows.some((row) => String(row.projectId) === String(project.id))) return;
-    setRows((current) => [...current, { id: `project-${project.id}`, projectId: project.id, label: projectLabel(project), newAllocation: "" }]);
-    setAddProjectOpen(false);
-    try {
-      const response = await fetch("/api/liquidity-allocations/projects", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json", ...(user?.id != null ? { "x-user-id": String(user.id) } : {}) },
-        body: JSON.stringify({ projectId: project.id }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data?.message || data?.error || "project_save_failed");
-    } catch {
-      setSubmitMessage("پروژه به جدول اضافه شد؛ ذخیره دائمی آن پس از برقراری ارتباط با سرور انجام می‌شود.");
-    }
-  };
-
   const money = (value) => {
     const normalized = toEnglishDigits(String(value ?? "")).replace(/,/g, "").trim();
     const negative = normalized.startsWith("-");
@@ -152,6 +128,46 @@ export default function LiquidityAllocationPage() {
   const newAllocationTotal = projectAllocationTotal;
   const availableAmount = money(form.amount);
   const availableRemaining = availableAmount - newAllocationTotal;
+  const allocationError = newAllocationTotal > availableAmount
+    ? "جمع مبلغ تخصیص نمی‌تواند بیشتر از مبلغ قابل تخصیص باشد."
+    : "";
+
+  const addAllocationRow = () => {
+    const project = projects.find((item) => String(item.id) === String(draftProjectId));
+    const allocationAmount = money(draftAllocation);
+    if (!project) {
+      setSubmitMessage("پروژه فعال را انتخاب کنید.");
+      return;
+    }
+    if (!allocationAmount) {
+      setSubmitMessage("مبلغ تخصیص را وارد کنید.");
+      return;
+    }
+    const existing = rows.find((row) => String(row.projectId) === String(project.id));
+    const currentAmount = money(existing?.newAllocation);
+    const nextTotal = newAllocationTotal - currentAmount + allocationAmount;
+    if (nextTotal > availableAmount) {
+      setSubmitMessage("جمع مبلغ تخصیص نمی‌تواند بیشتر از مبلغ قابل تخصیص باشد.");
+      return;
+    }
+    setRows((current) => {
+      const found = current.some((row) => String(row.projectId) === String(project.id));
+      if (found) {
+        return current.map((row) => String(row.projectId) === String(project.id)
+          ? { ...row, newAllocation: formatSignedAmount(draftAllocation) }
+          : row);
+      }
+      return [...current, {
+        id: `project-${project.id}`,
+        projectId: project.id,
+        label: projectLabel(project),
+        newAllocation: formatSignedAmount(draftAllocation),
+      }];
+    });
+    setDraftProjectId("");
+    setDraftAllocation("");
+    setSubmitMessage("");
+  };
 
   const saveAllocation = async () => {
     const nonZeroRows = rows.filter((row) => money(row.newAllocation) !== 0);
@@ -178,6 +194,11 @@ export default function LiquidityAllocationPage() {
       if (!response.ok) throw new Error(data?.message || data?.error || "save_failed");
       setRows((current) => current.map((row) => ({ ...row, newAllocation: "" })));
       setSubmitMessage("تخصیص نقدینگی ثبت شد.");
+      setForm({ allocationDate: todayFa(), source: "", amount: "", description: "" });
+      setCustomSource(false);
+      setDraftProjectId("");
+      setDraftAllocation("");
+      setFormOpen(false);
       await loadSummary();
     } catch (error) {
       setSubmitMessage(error?.message || "ثبت تخصیص انجام نشد.");
@@ -214,10 +235,21 @@ export default function LiquidityAllocationPage() {
             <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت مالی</span>
           </span>
         </div>
-        {isAdmin && <button type="button" onClick={resetLiquidityData} disabled={resetting} className="grid h-9 w-9 place-items-center rounded-xl border border-red-500/40 text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:text-red-300 dark:hover:bg-red-950/30" title="پاک‌سازی تخصیص نقدینگی" aria-label="پاک‌سازی تخصیص نقدینگی"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></button>}
+        <div className="flex items-center gap-2">
+          {isAdmin && <button type="button" onClick={resetLiquidityData} disabled={resetting} className="grid h-9 w-9 place-items-center rounded-xl border border-red-500/40 text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:text-red-300 dark:hover:bg-red-950/30" title="پاک‌سازی تخصیص نقدینگی" aria-label="پاک‌سازی تخصیص نقدینگی"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></button>}
+          <button
+            type="button"
+            onClick={() => { setFormOpen((current) => !current); setSubmitMessage(""); }}
+            className="flex h-10 w-10 items-center justify-center rounded-xl ring-1 ring-black/15 transition hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10"
+            title={formOpen ? "نمایش جدول" : "افزودن تخصیص"}
+            aria-label={formOpen ? "نمایش جدول" : "افزودن تخصیص"}
+          >
+            <img src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" />
+          </button>
+        </div>
       </div>
 
-      <div className="rounded-2xl border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.03]" dir="rtl">
+      {formOpen && <div className="rounded-2xl border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.03]" dir="rtl">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(150px,0.8fr)_minmax(230px,1.2fr)_minmax(210px,1fr)_minmax(260px,1.5fr)]">
           <label className="min-w-0">
             <span className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">تاریخ تخصیص</span>
@@ -227,6 +259,23 @@ export default function LiquidityAllocationPage() {
               placeholder="انتخاب تاریخ"
               buttonClassName={inputClass + " flex items-center justify-between gap-2"}
             />
+          </label>
+
+          <label className="min-w-0">
+            <span className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">مبلغ قابل تخصیص</span>
+            <div className="relative">
+              <input
+                value={form.amount}
+                onChange={(event) => {
+                  updateForm("amount", formatAmount(event.target.value));
+                }}
+                inputMode="numeric"
+                placeholder="۰"
+                className={inputClass + " pl-14 ltr text-left"}
+                aria-label="مبلغ قابل تخصیص به ریال"
+              />
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-neutral-500 dark:text-neutral-400">ریال</span>
+            </div>
           </label>
 
           <div className="min-w-0">
@@ -251,23 +300,6 @@ export default function LiquidityAllocationPage() {
           </div>
 
           <label className="min-w-0">
-            <span className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">مبلغ قابل تخصیص</span>
-            <div className="relative">
-              <input
-                value={form.amount}
-                onChange={(event) => {
-                  updateForm("amount", formatAmount(event.target.value));
-                }}
-                inputMode="numeric"
-                placeholder="۰"
-                className={inputClass + " pl-14 ltr text-left"}
-                aria-label="مبلغ قابل تخصیص به ریال"
-              />
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-neutral-500 dark:text-neutral-400">ریال</span>
-            </div>
-          </label>
-
-          <label className="min-w-0">
             <span className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">توضیحات</span>
             <input
               value={form.description}
@@ -277,14 +309,34 @@ export default function LiquidityAllocationPage() {
             />
           </label>
         </div>
-      </div>
 
-      <div className="mt-3 flex items-center justify-between gap-3 text-xs" dir="rtl">
+        <div className="mt-4 grid grid-cols-1 items-end gap-3 md:grid-cols-[minmax(260px,1fr)_minmax(210px,0.7fr)_auto]">
+          <label className="min-w-0">
+            <span className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">پروژه فعال</span>
+            <select value={draftProjectId} onChange={(event) => { setDraftProjectId(event.target.value); setSubmitMessage(""); }} className={inputClass} disabled={projectsLoading}>
+              <option value="">{projectsLoading ? "در حال دریافت پروژه‌ها..." : "انتخاب پروژه"}</option>
+              {projects.map((project) => <option key={project.id} value={project.id}>{projectLabel(project)}</option>)}
+            </select>
+          </label>
+          <label className="min-w-0">
+            <span className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">مبلغ تخصیص</span>
+            <div className="relative">
+              <input value={draftAllocation} onChange={(event) => { setDraftAllocation(formatSignedAmount(event.target.value)); setSubmitMessage(""); }} inputMode="numeric" placeholder="۰" className={inputClass + " pl-14 ltr text-left"} />
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-neutral-500 dark:text-neutral-400">ریال</span>
+            </div>
+          </label>
+          <button type="button" onClick={addAllocationRow} className="grid h-11 w-11 place-items-center rounded-xl bg-neutral-900 text-white transition hover:bg-neutral-800 dark:bg-white dark:text-neutral-900" title="افزودن به جدول" aria-label="افزودن به جدول">
+            <img src="/images/icons/afzodan.svg" alt="" className="h-5 w-5 invert dark:invert-0" />
+          </button>
+        </div>
+      </div>}
+
+      {formOpen && <div className="mt-3 flex items-center justify-between gap-3 text-xs" dir="rtl">
         <span className={allocationError ? "text-red-600 dark:text-red-300" : "text-neutral-500 dark:text-neutral-400"}>
           {allocationError || `نقدینگی ذخیره احتیاطی: ${displayMoney(availableRemaining)} ریال`}
         </span>
         <span className="text-neutral-500 dark:text-neutral-400">جمع مبلغ تخصیص: {displayMoney(newAllocationTotal)} ریال</span>
-      </div>
+      </div>}
 
       <div className="mt-5 overflow-x-auto rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900" dir="rtl">
         <table className="w-full min-w-[720px] table-fixed border-collapse text-xs text-neutral-800 dark:text-neutral-100 sm:text-sm">
@@ -313,26 +365,11 @@ export default function LiquidityAllocationPage() {
                   <td className={tableCellClass + " truncate font-medium"} title={row.label}>{row.label}</td>
                   <td className={tableCellClass}>{displayMoney(totalBudget)}</td>
                   <td className={tableCellClass}>{displayMoney(budgetRemaining)}</td>
-                  <td className={tableCellClass}>
-                    <input value={row.newAllocation} onChange={(event) => updateRow(row.id, "newAllocation", event.target.value)} inputMode="numeric" placeholder="۰" className={inputClass + " !h-9 !rounded-lg ltr text-left"} aria-label={`مبلغ تخصیص ${row.label}`} />
-                  </td>
+                  <td className={tableCellClass}>{displayMoney(allocationAmount)}</td>
                   <td className={tableCellClass}>{displayMoney(budgetRemaining + allocationAmount)}</td>
                 </tr>
               );
             })}
-            <tr className="bg-neutral-50/80 dark:bg-white/[0.025]">
-              <td className={tableCellClass}>
-                {addProjectOpen ? (
-                  <select autoFocus defaultValue="" onChange={(event) => addProject(event.target.value)} className={inputClass + " !h-9 !rounded-lg !py-0 text-xs"} disabled={projectsLoading}>
-                    <option value="">{projectsLoading ? "در حال دریافت پروژه‌ها..." : "انتخاب پروژه"}</option>
-                    {projects.filter((project) => !rows.some((row) => String(row.projectId) === String(project.id))).map((project) => <option key={project.id} value={project.id}>{projectLabel(project)}</option>)}
-                  </select>
-                ) : (
-                  <button type="button" onClick={() => setAddProjectOpen(true)} className="inline-grid h-8 w-8 place-items-center rounded-lg border border-black/15 text-lg leading-none transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10" aria-label="افزودن پروژه" title="افزودن پروژه فعال">+</button>
-                )}
-              </td>
-              {Array.from({ length: 4 }, (_, index) => <td key={index} className={tableCellClass} />)}
-            </tr>
             <tr className="bg-amber-50/60 dark:bg-amber-400/[0.05]">
               <td className={tableCellClass + " font-medium"}>ذخیره احتیاطی</td>
               <td className={tableCellClass}>{displayMoney(availableAmount)}</td>
@@ -346,9 +383,9 @@ export default function LiquidityAllocationPage() {
 
       <div className="mt-4 flex items-center justify-end gap-3" dir="rtl">
         {submitMessage && <span className={submitMessage.includes("شد.") ? "text-xs text-emerald-600 dark:text-emerald-300" : "text-xs text-red-600 dark:text-red-300"}>{submitMessage}</span>}
-        <button type="button" onClick={saveAllocation} disabled={submitting || !!allocationError} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-900 text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200" aria-label="ثبت تخصیص" title="ثبت تخصیص">
+        {formOpen && <button type="button" onClick={saveAllocation} disabled={submitting || !!allocationError} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-900 text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200" aria-label="ثبت تخصیص" title="ثبت تخصیص">
           {submitting ? <span className="text-xs">...</span> : <img src="/images/icons/check.svg" alt="" className="h-5 w-5 invert dark:invert-0" />}
-        </button>
+        </button>}
       </div>
     </Card>
   );
