@@ -154,8 +154,8 @@ export default function LiquidityAllocationPage() {
 
   const saveAllocation = async () => {
     const nonZeroRows = rows.filter((row) => money(row.newAllocation) !== 0);
-    if (!form.source.trim() || !nonZeroRows.length) {
-      setSubmitMessage("منبع نقدینگی و حداقل یک مبلغ تخصیص الزامی است.");
+    if (!form.source.trim() || !availableAmount || !nonZeroRows.length) {
+      setSubmitMessage("منبع نقدینگی، مبلغ قابل تخصیص و حداقل یک مبلغ تخصیص الزامی است.");
       return;
     }
     setSubmitting(true);
@@ -266,9 +266,9 @@ export default function LiquidityAllocationPage() {
         <span className="text-neutral-500 dark:text-neutral-400">جمع مبلغ تخصیص: {displayMoney(newAllocationTotal)} ریال</span>
       </div>
 
-      <div className="mt-5 overflow-x-auto" dir="rtl">
+      <div className="mt-5 overflow-x-auto rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900" dir="rtl">
         <table className="w-full min-w-[760px] border-collapse text-xs text-neutral-800 dark:text-neutral-100 sm:text-sm">
-          <thead className="bg-black/[0.04] dark:bg-white/[0.06]">
+          <thead className="bg-neutral-100 text-neutral-700 dark:bg-white/[0.08] dark:text-neutral-100">
             <tr>
               {["مرکز/پروژه", "کل بودجه", "مانده بودجه", "مبلغ تخصیص", "نقدینگی"].map((title) => (
                 <th key={title} className="h-14 border border-black/10 px-2 text-center font-semibold dark:border-white/10">{title}</th>
@@ -282,7 +282,7 @@ export default function LiquidityAllocationPage() {
               const budgetRemaining = totalBudget - money(summary.committed[key]);
               const allocationAmount = money(row.newAllocation);
               return (
-                <tr key={row.id} className="bg-white dark:bg-neutral-900">
+                <tr key={row.id} className="bg-white transition-colors hover:bg-neutral-50 dark:bg-neutral-900 dark:hover:bg-white/[0.03]">
                   <td className={tableCellClass + " min-w-[175px] font-medium"}>{row.label}</td>
                   <td className={tableCellClass}>{displayMoney(totalBudget)}</td>
                   <td className={tableCellClass}>{displayMoney(budgetRemaining)}</td>
@@ -293,7 +293,7 @@ export default function LiquidityAllocationPage() {
                 </tr>
               );
             })}
-            <tr className="bg-white dark:bg-neutral-900">
+            <tr className="bg-neutral-50/80 dark:bg-white/[0.025]">
               <td className={tableCellClass}>
                 {addProjectOpen ? (
                   <select autoFocus defaultValue="" onChange={(event) => addProject(event.target.value)} className={inputClass + " h-9"} disabled={projectsLoading}>
@@ -306,7 +306,7 @@ export default function LiquidityAllocationPage() {
               </td>
               {Array.from({ length: 4 }, (_, index) => <td key={index} className={tableCellClass} />)}
             </tr>
-            <tr className="bg-white dark:bg-neutral-900">
+            <tr className="bg-amber-50/60 dark:bg-amber-400/[0.05]">
               <td className={tableCellClass + " min-w-[175px] font-medium"}>ذخیره احتیاطی</td>
               <td className={tableCellClass}>{displayMoney(availableAmount)}</td>
               <td className={tableCellClass}>{displayMoney(availableAmount)}</td>
