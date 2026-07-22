@@ -72,6 +72,7 @@ export default function JalaliPopupDatePicker({
   maxDate = "",
   placeholder = "",
   preventDefaultToday = false,
+  disabled = false,
 }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
@@ -282,8 +283,9 @@ export default function JalaliPopupDatePicker({
       <button
         ref={btnRef}
         type="button"
-        onClick={() => setOpen((o) => !o)}
-        className={buttonClassName ? buttonClassName : defaultBtnCls}
+        disabled={disabled}
+        onClick={() => { if (!disabled) setOpen((o) => !o); }}
+        className={(buttonClassName ? buttonClassName : defaultBtnCls) + " disabled:cursor-not-allowed disabled:opacity-60"}
       >
         <span className={normalizedValue ? "" : theme === "dark" ? "text-white/50" : "text-neutral-400"}>
           {normalizedValue ? toFaDigits(normalizedValue) : placeholder}
