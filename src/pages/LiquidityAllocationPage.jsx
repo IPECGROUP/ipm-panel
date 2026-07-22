@@ -304,7 +304,8 @@ export default function LiquidityAllocationPage() {
             <tr className="bg-white dark:bg-neutral-900">
               <td className={tableCellClass}>
                 {addProjectOpen ? (
-                  <select autoFocus defaultValue={projects.find((project) => !rows.some((row) => String(row.projectId) === String(project.id)))?.id || ""} onChange={(event) => addProject(event.target.value)} className={inputClass + " h-9"} disabled={projectsLoading}>
+                  <select autoFocus defaultValue="" onChange={(event) => addProject(event.target.value)} className={inputClass + " h-9"} disabled={projectsLoading}>
+                    <option value="">{projectsLoading ? "در حال دریافت پروژه‌ها..." : "انتخاب پروژه"}</option>
                     {projects.filter((project) => !rows.some((row) => String(row.projectId) === String(project.id))).map((project) => <option key={project.id} value={project.id}>{projectLabel(project)}</option>)}
                   </select>
                 ) : (

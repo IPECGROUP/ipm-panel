@@ -18,6 +18,7 @@ import FinancialWorksheetPage from "./pages/FinancialWorksheetPage.jsx";
 import CostBreakdownPage from "./pages/CostBreakdownPage.jsx";
 import CashFlowForecastPage from "./pages/CashFlowForecastPage.jsx";
 import LiquidityAllocationPage from "./pages/LiquidityAllocationPage.jsx";
+import FinancialManagementDashboardPage from "./pages/FinancialManagementDashboardPage.jsx";
 import BudgetAllocationPage from "./pages/BudgetAllocationPage.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
 import LettersPage from "./pages/LettersPage.jsx";
@@ -111,7 +112,7 @@ export default function App() {
         <Route path="/finance/payment-request" element={<PaymentRequestPage />} />
         <Route path="/finance/liquidity-allocation" element={<LiquidityAllocationPage />} />
         <Route path="/finance/cash-flow-forecast" element={<CashFlowForecastPage />} />
-        <Route path="/finance/financial-management-dashboard" element={<NavPlaceholderPage title="داشبورد مدیریت مالی" />} />
+        <Route path="/finance/financial-management-dashboard" element={<FinancialManagementDashboardPage />} />
 
         <Route path="/supply/request" element={<SupplyRequestPage />} />
         <Route path="/supply/actions" element={<SupplyActionsRedirect />} />
