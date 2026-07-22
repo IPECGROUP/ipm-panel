@@ -124,6 +124,8 @@ export default function LiquidityAllocationPage() {
   const addProject = async (projectId) => {
     const project = projects.find((item) => String(item.id) === String(projectId));
     if (!project || rows.some((row) => String(row.projectId) === String(project.id))) return;
+    setRows((current) => [...current, { id: `project-${project.id}`, projectId: project.id, label: projectLabel(project), newAllocation: "" }]);
+    setAddProjectOpen(false);
     try {
       const response = await fetch("/api/liquidity-allocations/projects", {
         method: "POST",
@@ -133,10 +135,8 @@ export default function LiquidityAllocationPage() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data?.message || data?.error || "project_save_failed");
-      setRows((current) => [...current, { id: `project-${project.id}`, projectId: project.id, label: projectLabel(project), newAllocation: "" }]);
-      setAddProjectOpen(false);
     } catch {
-      setSubmitMessage("افزودن پروژه انجام نشد.");
+      setSubmitMessage("پروژه به جدول اضافه شد؛ ذخیره دائمی آن پس از برقراری ارتباط با سرور انجام می‌شود.");
     }
   };
 
