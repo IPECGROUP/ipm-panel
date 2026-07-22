@@ -230,6 +230,8 @@ export default function PaymentRequestPage() {
   const [page, setPage] = useState(0);
   const [projects, setProjects] = useState([]);
   const [budgetItems, setBudgetItems] = useState([]);
+  const [projectLiquidityRemaining, setProjectLiquidityRemaining] = useState(null);
+  const [projectLiquidityLoading, setProjectLiquidityLoading] = useState(false);
   const [supplyRequests, setSupplyRequests] = useState([]);
   const [currencyTypes, setCurrencyTypes] = useState([]);
   const [currencySources, setCurrencySources] = useState([]);
@@ -274,6 +276,11 @@ export default function PaymentRequestPage() {
     return `${yy}/${String(maxSeq + 1).padStart(4, "0")}`;
   }, [form.dateJalali, items]);
   const amount = parseAmount(form.amount);
+  const selectedBudgetItem = useMemo(
+    () => budgetItems.find((item) => normalizeBudgetCode(item.code || item.center_code) === normalizeBudgetCode(form.budgetCode)),
+    [budgetItems, form.budgetCode]
+  );
+  const selectedBaseBudget = parseAmount(selectedBudgetItem?.last_amount ?? selectedBudgetItem?.baseBudget ?? 0);
 
   const api = useCallback(async (path, options = {}) => {
     const response = await fetch(`/api${path}`, {
@@ -443,6 +450,26 @@ export default function PaymentRequestPage() {
     })();
     return () => { cancelled = true; };
   }, [api, form.projectId, projects]);
+  useEffect(() => {
+    if (!form.projectId) {
+      setProjectLiquidityRemaining(null);
+      setProjectLiquidityLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setProjectLiquidityLoading(true);
+    api("/liquidity-allocations")
+      .then((data) => {
+        if (cancelled) return;
+        const key = String(form.projectId);
+        const budget = parseAmount(data?.allocations?.[key] || 0);
+        const commitments = parseAmount(data?.committed?.[key] || 0);
+        setProjectLiquidityRemaining(Math.max(0, budget - commitments));
+      })
+      .catch(() => { if (!cancelled) setProjectLiquidityRemaining(null); })
+      .finally(() => { if (!cancelled) setProjectLiquidityLoading(false); });
+    return () => { cancelled = true; };
+  }, [api, form.projectId]);
 
   const setField = (name, value) => { setForm((old) => ({ ...old, [name]: value })); setError(""); setSuccess(""); };
 
@@ -470,6 +497,9 @@ export default function PaymentRequestPage() {
     if (!form.budgetCode) return setError("کد بودجه را انتخاب کنید.");
     if (!form.title.trim()) return setError("موضوع درخواست را وارد کنید.");
     if (amount <= 0) return setError("مبلغ درخواست باید بیشتر از صفر باشد.");
+    if (projectLiquidityLoading) return setError("در حال دریافت مانده نقدینگی پروژه هستیم.");
+    if (projectLiquidityRemaining == null) return setError("مانده نقدینگی پروژه در دسترس نیست.");
+    if (amount > projectLiquidityRemaining) return setError("مبلغ درخواست نمی‌تواند بیشتر از مانده نقدینگی پروژه باشد.");
     if (form.hasSupplyRequest === "yes" && !form.supplyRequestId) return setError("درخواست تامین را انتخاب کنید.");
     if (createRecipients.targetRoleKey && !form.targetAssigneeUserId) return setError("گیرنده درخواست پرداخت را انتخاب کنید.");
     setSubmitting(true); setError(""); setSuccess("");
@@ -483,7 +513,11 @@ export default function PaymentRequestPage() {
       }) });
       setSubmitNotice(data?.item?.registrationInfo || null);
       setForm(emptyForm()); setSuccess("درخواست با موفقیت ثبت شد."); setShowForm(false); await loadItems();
-    } catch { setError("ثبت درخواست انجام نشد."); }
+    } catch (submitError) {
+      setError(submitError?.message === "amount_exceeds_project_liquidity"
+        ? "مبلغ درخواست نمی‌تواند بیشتر از مانده نقدینگی پروژه باشد."
+        : "ثبت درخواست انجام نشد.");
+    }
     finally { setSubmitting(false); }
   };
 
@@ -678,6 +712,11 @@ export default function PaymentRequestPage() {
             <ReadField label="تاریخ درخواست" value={toFa(form.dateJalali)} />
             <Field label="پروژه" required><select className={inputClass} value={form.projectId} onChange={(e) => setForm((old) => ({ ...old, projectId: e.target.value, budgetCode: "" }))}><option value="">انتخاب پروژه</option>{projects.map((item) => <option key={item.id} value={item.id}>{projectLabel(item)}</option>)}</select></Field>
             <Field label="کد بودجه" required><select className={inputClass} value={form.budgetCode} disabled={!form.projectId} onChange={(e) => setField("budgetCode", e.target.value)}><option value="">{form.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید"}</option>{budgetItems.map((item) => { const code = normalizeBudgetCode(item.code || item.center_code); const description = item.center_desc || item.last_desc || item.name || item.description || ""; return <option key={code || item.id} value={code}>{code}{description ? ` - ${description}` : ""}</option>; })}</select></Field>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <ReadField label="بودجه مبنا" value={money(selectedBaseBudget) || "0"} ltr />
+            <ReadField label="باقی‌مانده نقدینگی پروژه" value={projectLiquidityLoading ? "در حال دریافت..." : money(projectLiquidityRemaining) || "0"} ltr />
           </div>
 
           <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-[minmax(230px,1.2fr)_minmax(210px,0.85fr)_minmax(360px,1.35fr)]">

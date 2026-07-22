@@ -40,7 +40,7 @@ export default function FinancialManagementDashboardPage() {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("/api/liquidity-allocations", {
+      const response = await fetch("/api/liquidity-allocations?dashboard=1", {
         credentials: "include",
         headers: user?.id != null ? { "x-user-id": String(user.id) } : {},
       });
