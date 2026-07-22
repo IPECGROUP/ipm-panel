@@ -220,7 +220,7 @@ function DateSelect({ label, value, onChange, items }) {
 }
 
 export default function PaymentRequestPage() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [form, setForm] = useState(emptyForm);
   const [showForm, setShowForm] = useState(false);
   const [items, setItems] = useState([]);
@@ -255,6 +255,7 @@ export default function PaymentRequestPage() {
   const [seenIncomingIds, setSeenIncomingIds] = useState(() => new Set());
   const [manualUnreadIds, setManualUnreadIds] = useState(() => new Set());
   const [tableMenuOpen, setTableMenuOpen] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const tableMenuRef = useRef(null);
   const [createRecipients, setCreateRecipients] = useState({ targetRoleKey: null, users: [] });
   const [createRecipientsLoading, setCreateRecipientsLoading] = useState(false);
@@ -284,6 +285,23 @@ export default function PaymentRequestPage() {
     if (!response.ok) throw new Error(data.error || data.message || "request_failed");
     return data;
   }, [user?.id]);
+
+  const resetPaymentRequests = async () => {
+    if (!window.confirm("همه درخواست‌های پرداخت و فایل‌های بارگذاری‌شده این صفحه حذف شوند؟ این عملیات قابل بازگشت نیست.")) return;
+    setResetting(true);
+    setError("");
+    try {
+      await api("/requests/reset", { method: "DELETE" });
+      setItems([]);
+      setSelected(null);
+      setSelectedIds(new Set());
+      setSuccess("اطلاعات مدیریت درخواست‌ها پاک شد.");
+    } catch {
+      setError("پاک‌سازی اطلاعات انجام نشد.");
+    } finally {
+      setResetting(false);
+    }
+  };
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -646,9 +664,12 @@ export default function PaymentRequestPage() {
               <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">درخواست پرداخت</span>
             </span>
           </div>
-          <button type="button" onClick={() => { setShowForm((old) => !old); setError(""); setSuccess(""); }} className="flex h-10 w-10 items-center justify-center rounded-xl ring-1 ring-black/15 transition hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10" title={showForm ? "نمایش لیست" : "افزودن درخواست"}>
-            <img src={showForm ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" />
-          </button>
+          <div className="flex items-center gap-2">
+            {isAdmin && <button type="button" onClick={resetPaymentRequests} disabled={resetting} className="grid h-9 w-9 place-items-center rounded-xl border border-red-500/40 text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:text-red-300 dark:hover:bg-red-950/30" title="پاک‌سازی همه درخواست‌ها و فایل‌ها" aria-label="پاک‌سازی همه درخواست‌ها و فایل‌ها"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></button>}
+            <button type="button" onClick={() => { setShowForm((old) => !old); setError(""); setSuccess(""); }} className="flex h-10 w-10 items-center justify-center rounded-xl ring-1 ring-black/15 transition hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10" title={showForm ? "نمایش لیست" : "افزودن درخواست"}>
+              <img src={showForm ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" />
+            </button>
+          </div>
         </div>
 
         {showForm && <form onSubmit={submit} className="mb-4 space-y-4">

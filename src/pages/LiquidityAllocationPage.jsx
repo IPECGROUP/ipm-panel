@@ -53,7 +53,7 @@ function projectLabel(project) {
 const tableCellClass = "h-14 border border-black/10 px-2 text-center align-middle dark:border-white/10";
 
 export default function LiquidityAllocationPage() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [form, setForm] = useState({
     allocationDate: todayFa(),
     source: "",
@@ -68,6 +68,7 @@ export default function LiquidityAllocationPage() {
   const [summary, setSummary] = useState({ allocations: {}, spent: {}, committed: {} });
   const [allocationError, setAllocationError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
 
   const updateForm = (key, value) => {
@@ -185,16 +186,35 @@ export default function LiquidityAllocationPage() {
     }
   };
 
+  const resetLiquidityData = async () => {
+    if (!window.confirm("همه سوابق تخصیص نقدینگی این صفحه حذف شوند؟ این عملیات قابل بازگشت نیست.")) return;
+    setResetting(true);
+    try {
+      const response = await fetch("/api/liquidity-allocations", { method: "DELETE", credentials: "include", headers: user?.id != null ? { "x-user-id": String(user.id) } : {} });
+      if (!response.ok) throw new Error("reset_failed");
+      setRows([]);
+      setSummary({ allocations: {}, spent: {}, committed: {} });
+      setSubmitMessage("اطلاعات تخصیص نقدینگی پاک شد.");
+    } catch {
+      setSubmitMessage("پاک‌سازی تخصیص نقدینگی انجام نشد.");
+    } finally {
+      setResetting(false);
+    }
+  };
+
   return (
     <Card className="rounded-2xl border border-neutral-200 bg-white text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
-      <div className="mb-5 flex min-w-0 items-center gap-3" dir="rtl">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
-          <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
-        </span>
-        <span className="min-w-0">
-          <span className="block truncate text-base font-bold md:text-lg">تخصیص نقدینگی</span>
-          <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت مالی</span>
-        </span>
+      <div className="mb-5 flex min-w-0 items-center justify-between gap-3" dir="rtl">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
+            <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate text-base font-bold md:text-lg">تخصیص نقدینگی</span>
+            <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت مالی</span>
+          </span>
+        </div>
+        {isAdmin && <button type="button" onClick={resetLiquidityData} disabled={resetting} className="grid h-9 w-9 place-items-center rounded-xl border border-red-500/40 text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:text-red-300 dark:hover:bg-red-950/30" title="پاک‌سازی تخصیص نقدینگی" aria-label="پاک‌سازی تخصیص نقدینگی"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></button>}
       </div>
 
       <div className="rounded-2xl border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.03]" dir="rtl">
