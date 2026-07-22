@@ -22,7 +22,7 @@ const NavIcon = ({ src }) => (
 const IcDashboard = () => <NavIcon src="/images/icons/dashbaord.svg" />;
 const IcLetter = () => <NavIcon src="/images/icons/nameha.svg" />;
 const IcProjects = () => <NavIcon src="/images/icons/modiriat-projects.svg" />;
-const IcBudget = () => <NavIcon src="/images/icons/modiriat-nagdinegi.svg" />;
+const IcBudget = () => <NavIcon src="/images/icons/modiriat-mali.svg" />;
 const IcBase = () => <NavIcon src="/images/icons/atelaatpaye.svg" />;
 const IcCurrency = () => <NavIcon src="/images/icons/arz.svg" />;
 const IcContract = () => <NavIcon src="/images/icons/gharadad.svg" />;
