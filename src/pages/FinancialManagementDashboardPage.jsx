@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 
-const PAGE_ICON = "/images/icons/dashboard-modirirat.svg";
+const PAGE_ICON = "/images/icons/modiriat-mali.svg";
 
 const COLUMNS = [
   "ردیف",

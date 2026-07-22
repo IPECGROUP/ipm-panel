@@ -87,6 +87,7 @@ export default function App() {
         <Route path="/requests/:id" element={<RequestDetailPage />} />
         <Route path="/contracts/info" element={<ContractInformation />} />
         <Route path="/centers/contract-info" element={<ContractInformation />} />
+        <Route path="/contracts/management-dashboard" element={<NavPlaceholderPage title="داشبورد مدیریت قراردادها" />} />
 
         {/* پروژه‌ها */}
         <Route path="/projects/simple" element={<Projects2Page />} />

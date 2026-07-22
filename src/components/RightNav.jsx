@@ -155,12 +155,17 @@ function RightNav() {
       return "projects";
     }
 
+    if (path.startsWith("/contracts/") || path === "/centers/contract-info") {
+      return "contracts";
+    }
+
     return null;
   };
 
   const activeSection = sectionFromPath(pNow);
   const dashboardActive = isActive("/") || isActive("/dashboard");
   const projectsParentActive = !!open.projects || activeSection === "projects";
+  const contractsParentActive = !!open.contracts || activeSection === "contracts";
   const budgetParentActive = !!open.budget || activeSection === "budget";
   const supplyParentActive = !!open.supply || activeSection === "supply";
   const operationsParentActive = !!open.operations || activeSection === "operations";
@@ -186,7 +191,17 @@ function RightNav() {
       items: [
         { type: "link", to: "/", label: "داشبورد", icon: <IcDashboard />, active: dashboardActive },
         { type: "link", to: "/letters", label: "اسناد و نامه ها", icon: <IcLetter />, active: isActive("/letters") },
-        { type: "link", to: "/centers/contract-info", label: "قراردادها", icon: <IcContract />, active: isActive("/centers/contract-info") || isActive("/contracts/info") },
+        {
+          type: "section",
+          key: "contracts",
+          label: "مدیریت قراردادها",
+          icon: <IcContract />,
+          active: contractsParentActive,
+          items: [
+            { to: "/contracts/info", label: "قراردادها", hint: "ثبت و مدیریت اطلاعات قراردادها", icon: <IcContract /> },
+            { to: "/contracts/management-dashboard", label: "داشبورد مدیریت قراردادها", hint: "نمای کلی وضعیت قراردادها", icon: <IcProjectDashboard /> },
+          ],
+        },
         {
           type: "section",
           key: "projects",
@@ -256,9 +271,9 @@ function RightNav() {
       ],
     },
     {
-      title: "سیستم مدیریت کیفیت",
+      title: "سیستم مدیریت دانش",
       items: [
-        { type: "link", to: "/quality-management", label: "سیستم مدیریت کیفیت", icon: <IcQuality />, active: isActive("/quality-management") },
+        { type: "link", to: "/quality-management", label: "سیستم مدیریت دانش", icon: <IcQuality />, active: isActive("/quality-management") },
       ],
     },
     {
@@ -283,6 +298,8 @@ function RightNav() {
 
   const mobileMenuKey = open.projects
     ? "projects"
+    : open.contracts
+      ? "contracts"
     : open.budget
       ? "budget"
       : open.supply
@@ -599,17 +616,17 @@ function RightNav() {
                 </span>
               </LinkBtn>
 
-              <LinkBtn
-                to="/centers/contract-info"
-                onClick={closeMobileMenu}
-                className={mobileDockBtn(isActive("/centers/contract-info") || isActive("/contracts/info"))}
-                aria-label="قراردادها"
+              <Btn
+                type="button"
+                className={mobileDockBtn(contractsParentActive)}
+                onClick={() => toggle("contracts")}
+                aria-label="مدیریت قراردادها"
               >
-                <IcContract />
+                {open.contracts ? <IcClose /> : <IcContract />}
                 <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
-                  قرارداد
+                  قراردادها
                 </span>
-              </LinkBtn>
+              </Btn>
 
               <Btn
                 type="button"
@@ -663,11 +680,11 @@ function RightNav() {
                 to="/quality-management"
                 onClick={closeMobileMenu}
                 className={mobileDockBtn(isActive("/quality-management"))}
-                aria-label="سیستم مدیریت کیفیت"
+                aria-label="سیستم مدیریت دانش"
               >
                 <IcQuality />
                 <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
-                  کیفیت
+                  دانش
                 </span>
               </LinkBtn>
 
