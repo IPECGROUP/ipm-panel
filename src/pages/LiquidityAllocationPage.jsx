@@ -55,10 +55,6 @@ function activeProject(project) {
   return value === true || value === 1 || String(value).toLowerCase() === "true" || String(value) === "1";
 }
 
-function isTopProject(project) {
-  return /^\d{3}$/.test(toEnglishDigits(String(project?.code || "")).trim());
-}
-
 function projectLabel(project) {
   return `${project?.code ? `${project.code} - ` : ""}${project?.name || project?.title || "پروژه بدون نام"}`;
 }
@@ -99,7 +95,7 @@ export default function LiquidityAllocationPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data?.error || "projects_failed");
       const items = Array.isArray(data?.items) ? data.items : [];
-      setProjects(items.filter((project) => activeProject(project) && isTopProject(project)));
+      setProjects(items.filter(activeProject));
     } catch {
       setProjects([]);
     } finally {
@@ -224,10 +220,17 @@ export default function LiquidityAllocationPage() {
     try {
       const response = await fetch("/api/liquidity-allocations", { method: "DELETE", credentials: "include", headers: user?.id != null ? { "x-user-id": String(user.id) } : {} });
       if (!response.ok) throw new Error("reset_failed");
-      setRows([]);
+      setRows(projects.map((project) => ({
+        id: `project-${project.id}`,
+        projectId: project.id,
+        label: projectLabel(project),
+        newAllocation: "",
+      })));
       setSummary({ allocations: {}, spent: {}, committed: {} });
       setHistory([]);
       setPreviewAllocation(null);
+      await loadSummary();
+      await loadProjects();
       setSubmitMessage("اطلاعات تخصیص نقدینگی پاک شد.");
     } catch {
       setSubmitMessage("پاک‌سازی تخصیص نقدینگی انجام نشد.");
