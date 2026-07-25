@@ -64,6 +64,7 @@ function projectLabel(project) {
 }
 
 const tableCellClass = "h-14 border-b border-l border-black/10 px-2 text-center align-middle dark:border-white/10";
+const historyTableCellClass = "h-11 border-b border-l border-neutral-300 px-3 text-center align-middle dark:border-white/10";
 const paginationIconBtnCls = "grid h-9 w-9 place-items-center rounded-lg border border-black/10 text-neutral-700 transition hover:bg-black/[0.04] disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:text-neutral-100 dark:hover:bg-white/10";
 
 export default function LiquidityAllocationPage() {
@@ -415,9 +416,9 @@ export default function LiquidityAllocationPage() {
             </tr>
           </tbody>
         </table>
-      </div> : <div className="mt-5 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900" dir="rtl">
-        <div className="max-h-[55vh] overflow-auto">
-        <table className="w-full min-w-[760px] table-fixed border-collapse text-xs text-neutral-800 dark:text-neutral-100 sm:text-sm">
+      </div> : <div className="mt-5 overflow-hidden rounded-2xl border border-neutral-300 bg-[#fbfbf8] shadow-sm dark:border-white/10 dark:bg-neutral-900" dir="rtl">
+        <div dir="ltr" className="max-h-[55vh] overflow-y-auto overflow-x-auto">
+        <table dir="rtl" className="w-full min-w-[760px] table-fixed border-collapse text-xs text-neutral-800 dark:text-neutral-100 sm:text-sm">
           <colgroup>
             <col className="w-[8%]" />
             <col className="w-[18%]" />
@@ -425,21 +426,21 @@ export default function LiquidityAllocationPage() {
             <col className="w-[24%]" />
             <col className="w-[30%]" />
           </colgroup>
-          <thead className="bg-neutral-100 text-neutral-700 dark:bg-white/[0.08] dark:text-neutral-100">
+          <thead className="bg-neutral-200 text-neutral-900 dark:bg-white/[0.08] dark:text-neutral-100">
             <tr>
               {["ردیف", "تاریخ تخصیص", "مبلغ تخصیص", "منبع نقدینگی", "توضیحات"].map((title) => (
-                <th key={title} className="sticky top-0 z-10 h-12 border-b border-l border-black/10 bg-neutral-100 px-3 text-center font-semibold dark:border-white/10 dark:bg-neutral-900">{title}</th>
+                <th key={title} className="sticky top-0 z-10 h-10 border-b border-l border-neutral-400 bg-neutral-200 px-3 text-center font-bold dark:border-white/10 dark:bg-neutral-900">{title}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {pagedHistory.length ? pagedHistory.map((item, index) => (
-              <tr key={item.id} className="bg-white transition-colors hover:bg-neutral-50 dark:bg-neutral-900 dark:hover:bg-white/[0.03]">
-                <td className={tableCellClass}>{toFaDigits(historyStartIndex + index + 1)}</td>
-                <td className={tableCellClass}>{item.allocationDate || "—"}</td>
-                <td className={tableCellClass}>{displayMoney(money(item.allocatedAmount))}</td>
-                <td className={tableCellClass + " truncate"} title={item.source}>{item.source || "—"}</td>
-                <td className={tableCellClass}>
+              <tr key={item.id} className="bg-[#fbfbf8] transition-colors hover:bg-neutral-100/80 dark:bg-neutral-900 dark:hover:bg-white/[0.03]">
+                <td className={historyTableCellClass}>{toFaDigits(historyStartIndex + index + 1)}</td>
+                <td className={historyTableCellClass}>{item.allocationDate || "—"}</td>
+                <td className={historyTableCellClass}>{displayMoney(money(item.allocatedAmount))}</td>
+                <td className={historyTableCellClass + " truncate"} title={item.source}>{item.source || "—"}</td>
+                <td className={historyTableCellClass}>
                   <div className="flex min-w-0 items-center justify-between gap-2 text-right">
                     <span className="min-w-0 flex-1 truncate" title={item.description || ""}>{item.description || "—"}</span>
                     <button type="button" onClick={() => setPreviewAllocation(item)} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-black/10 transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10" title="پیش‌نمایش جزئیات تخصیص" aria-label="پیش‌نمایش جزئیات تخصیص">
