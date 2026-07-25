@@ -5,6 +5,7 @@ import DashboardPage from "./pages/DashboardPage.jsx";
 import PaymentRequestPage from "./pages/PaymentRequestPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import { useAuth } from "./components/AuthProvider.jsx";
+import { canOpenPage } from "./utils/pageAccess.js";
 import ContractInformation from "./pages/ContractInformation.jsx";
 import RequestDetailPage from "./pages/RequestDetailPage.jsx";
 import Projects2Page from "./pages/Projects2Page.jsx";
@@ -53,9 +54,14 @@ const api = async (path, opt = {}) => {
 function PrivateRoute({ children }) {
   const auth = useAuth();
   const user = auth?.user;
+  const { pathname } = useLocation();
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (!canOpenPage(user, pathname)) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;

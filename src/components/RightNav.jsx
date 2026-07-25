@@ -4,6 +4,7 @@ import { useLocation } from "react-router-dom";
 import { ChevronLeft, ChevronRight, LogOut, X } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { Btn, LinkBtn } from "./ui/Button";
+import { hasLimitedPageAccess } from "../utils/pageAccess";
 
 const iconMaskCls = "nav-icon block h-5 w-5 shrink-0 bg-white pointer-events-none select-none";
 const svgCls = "h-5 w-5 block m-0 pointer-events-none select-none";
@@ -185,7 +186,34 @@ function RightNav() {
 
   const hideTip = () => setTip({ show: false, y: 0, label: "" });
 
-  const navGroups = [
+  const navGroups = hasLimitedPageAccess(user) ? [
+    {
+      title: "اصلی",
+      items: [
+        { type: "link", to: "/", label: "داشبورد", icon: <IcDashboard />, active: dashboardActive },
+        {
+          type: "section",
+          key: "budget",
+          label: "مدیریت مالی",
+          icon: <IcBudget />,
+          active: budgetParentActive,
+          items: [
+            { to: "/finance/payment-request", label: "درخواست پرداخت", hint: "ثبت و پیگیری درخواست پرداخت", icon: <IcPaymentRequest /> },
+          ],
+        },
+        {
+          type: "section",
+          key: "supply",
+          label: "مدیریت تامین",
+          icon: <IcSupply />,
+          active: supplyParentActive,
+          items: [
+            { to: "/supply/request", label: "درخواست تامین", hint: "ثبت و پیگیری درخواست تامین", icon: <IcSupplyRequest /> },
+          ],
+        },
+      ],
+    },
+  ] : [
     {
       title: "اصلی",
       items: [
