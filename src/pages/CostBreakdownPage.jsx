@@ -181,14 +181,13 @@ export default function CostBreakdownPage() {
     return result;
   }, [childRowsByParentCode, expandedCodes, projectBudgetCode, tableRows]);
 
-  const safeRowsPerPage = Number(rowsPerPage) || 10;
   const totalRows = displayRows.length;
+  const safeRowsPerPage = Number(rowsPerPage) || 10;
   const totalPages = Math.max(1, Math.ceil(totalRows / safeRowsPerPage));
   const safePage = Math.min(page, totalPages - 1);
   const startIdx = safePage * safeRowsPerPage;
   const endIdx = Math.min(totalRows, startIdx + safeRowsPerPage);
-  const pageItems = displayRows.slice(startIdx, endIdx);
-  const visibleIds = pageItems.map((item) => item.key);
+  const visibleIds = displayRows.map((item) => item.key);
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
   const someVisibleSelected = visibleIds.some((id) => selectedIds.has(id)) && !allVisibleSelected;
 
@@ -285,7 +284,6 @@ export default function CostBreakdownPage() {
     }
     clearDraft();
     setSelectedIds(new Set());
-    setPage(0);
     loadRows(projectId);
   }, [projectId, loadRows]);
 
@@ -299,10 +297,6 @@ export default function CostBreakdownPage() {
       return next;
     });
   }, [tableRows]);
-
-  useEffect(() => {
-    if (page !== safePage) setPage(safePage);
-  }, [page, safePage]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -625,10 +619,10 @@ export default function CostBreakdownPage() {
                       </td>
                     </tr>
                   ) : (
-                    pageItems.map((item, pageIdx) => {
+                    displayRows.map((item, pageIdx) => {
                       const row = item.row;
                       const isEditing = editId === row.id;
-                      const divider = startIdx + pageIdx === displayRows.length - 1 ? "" : rowDividerCls;
+                      const divider = pageIdx === displayRows.length - 1 ? "" : rowDividerCls;
                       const rowSelected = selectedIds.has(item.key);
                       const displayBudgetCode = projectBudgetCode(row.budgetCode);
                       const isExpanded = expandedCodes.has(displayBudgetCode);
@@ -754,7 +748,7 @@ export default function CostBreakdownPage() {
                 </tbody>
               </table>
             </div>
-            <div className="border-t border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-900">
+            <div className="hidden border-t border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-900">
               <div className="flex flex-col items-stretch gap-2 px-3 py-2 md:flex-row md:items-center md:justify-between" dir="rtl">
                 <div className="flex items-center justify-between gap-2 md:justify-start">
                   <div className="flex items-center gap-1">
