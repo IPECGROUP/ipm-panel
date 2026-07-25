@@ -60,6 +60,7 @@ function projectLabel(project) {
 }
 
 const tableCellClass = "h-14 border-b border-l border-black/10 px-2 text-center align-middle dark:border-white/10";
+const paginationIconBtnCls = "grid h-9 w-9 place-items-center rounded-lg border border-black/10 text-neutral-700 transition hover:bg-black/[0.04] disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:text-neutral-100 dark:hover:bg-white/10";
 
 export default function LiquidityAllocationPage() {
   const { user, isAdmin } = useAuth();
@@ -75,6 +76,8 @@ export default function LiquidityAllocationPage() {
   const [summary, setSummary] = useState({ allocations: {}, spent: {}, committed: {} });
   const [history, setHistory] = useState([]);
   const [previewAllocation, setPreviewAllocation] = useState(null);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [page, setPage] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
@@ -125,6 +128,16 @@ export default function LiquidityAllocationPage() {
   }, [user?.id]);
 
   useEffect(() => { loadSummary(); }, [loadSummary]);
+
+  const historyTotal = history.length;
+  const historyPageCount = Math.max(1, Math.ceil(historyTotal / Math.max(1, rowsPerPage)));
+  const safeHistoryPage = Math.min(Math.max(0, page), historyPageCount - 1);
+  const historyStartIndex = safeHistoryPage * rowsPerPage;
+  const historyEndIndex = Math.min(historyTotal, historyStartIndex + rowsPerPage);
+  const pagedHistory = history.slice(historyStartIndex, historyEndIndex);
+
+  useEffect(() => { setPage(0); }, [rowsPerPage]);
+  useEffect(() => { if (page !== safeHistoryPage) setPage(safeHistoryPage); }, [page, safeHistoryPage]);
 
   const money = (value) => {
     const normalized = toEnglishDigits(String(value ?? "")).replace(/,/g, "").trim();
@@ -415,9 +428,9 @@ export default function LiquidityAllocationPage() {
             </tr>
           </thead>
           <tbody>
-            {history.length ? history.map((item, index) => (
+            {pagedHistory.length ? pagedHistory.map((item, index) => (
               <tr key={item.id} className="bg-white transition-colors hover:bg-neutral-50 dark:bg-neutral-900 dark:hover:bg-white/[0.03]">
-                <td className={tableCellClass}>{index + 1}</td>
+                <td className={tableCellClass}>{historyStartIndex + index + 1}</td>
                 <td className={tableCellClass}>{item.allocationDate || "—"}</td>
                 <td className={tableCellClass}>{displayMoney(money(item.allocatedAmount))}</td>
                 <td className={tableCellClass + " truncate"} title={item.source}>{item.source || "—"}</td>
@@ -433,6 +446,30 @@ export default function LiquidityAllocationPage() {
             )) : <tr><td colSpan={5} className="h-24 px-4 text-center text-neutral-500 dark:text-neutral-400">هنوز تخصیصی ثبت نشده است.</td></tr>}
           </tbody>
         </table>
+        <div className="border-t border-neutral-300 px-3 py-2 dark:border-neutral-800">
+          <div className="flex flex-col items-stretch gap-2 md:flex-row md:flex-wrap md:items-center md:justify-between">
+            <div className="flex items-center justify-between gap-2 text-sm md:justify-start">
+              <button type="button" onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={safeHistoryPage <= 0} className={paginationIconBtnCls} aria-label="صفحه قبل" title="صفحه قبل">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+              </button>
+              <button type="button" onClick={() => setPage((current) => Math.min(historyPageCount - 1, current + 1))} disabled={safeHistoryPage >= historyPageCount - 1} className={paginationIconBtnCls} aria-label="صفحه بعد" title="صفحه بعد">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+              </button>
+              <div className="whitespace-nowrap text-black/70 dark:text-neutral-400">
+                {historyTotal === 0 ? "۰ از ۰" : `${historyStartIndex + 1}–${historyEndIndex} از ${historyTotal}`}
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-2 text-sm md:justify-start">
+              <span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span>
+              <div className="inline-flex h-9 overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">
+                {[10, 25, 100].map((count) => {
+                  const active = rowsPerPage === count;
+                  return <button key={count} type="button" onClick={() => setRowsPerPage(count)} className={`min-w-10 px-3 text-sm font-semibold transition ${active ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-700 hover:bg-black/[0.04] dark:text-white/75 dark:hover:bg-white/10"}`} aria-pressed={active}>{count}</button>;
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>}
 
       <div className="mt-4 flex items-center justify-end gap-3" dir="rtl">
