@@ -38,6 +38,10 @@ function formatAmount(value) {
   return digits ? Number(digits).toLocaleString("en-US") : "";
 }
 
+function toFaDigits(value) {
+  return String(value ?? "").replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
+}
+
 function formatSignedAmount(value) {
   const normalized = toEnglishDigits(String(value ?? "")).replace(/,/g, "");
   const negative = normalized.trim().startsWith("-");
@@ -411,7 +415,8 @@ export default function LiquidityAllocationPage() {
             </tr>
           </tbody>
         </table>
-      </div> : <div className="mt-5 overflow-x-auto rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900" dir="rtl">
+      </div> : <div className="mt-5 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900" dir="rtl">
+        <div className="max-h-[55vh] overflow-auto">
         <table className="w-full min-w-[760px] table-fixed border-collapse text-xs text-neutral-800 dark:text-neutral-100 sm:text-sm">
           <colgroup>
             <col className="w-[8%]" />
@@ -423,14 +428,14 @@ export default function LiquidityAllocationPage() {
           <thead className="bg-neutral-100 text-neutral-700 dark:bg-white/[0.08] dark:text-neutral-100">
             <tr>
               {["ردیف", "تاریخ تخصیص", "مبلغ تخصیص", "منبع نقدینگی", "توضیحات"].map((title) => (
-                <th key={title} className="h-12 border-b border-l border-black/10 px-3 text-center font-semibold dark:border-white/10">{title}</th>
+                <th key={title} className="sticky top-0 z-10 h-12 border-b border-l border-black/10 bg-neutral-100 px-3 text-center font-semibold dark:border-white/10 dark:bg-neutral-900">{title}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {pagedHistory.length ? pagedHistory.map((item, index) => (
               <tr key={item.id} className="bg-white transition-colors hover:bg-neutral-50 dark:bg-neutral-900 dark:hover:bg-white/[0.03]">
-                <td className={tableCellClass}>{historyStartIndex + index + 1}</td>
+                <td className={tableCellClass}>{toFaDigits(historyStartIndex + index + 1)}</td>
                 <td className={tableCellClass}>{item.allocationDate || "—"}</td>
                 <td className={tableCellClass}>{displayMoney(money(item.allocatedAmount))}</td>
                 <td className={tableCellClass + " truncate"} title={item.source}>{item.source || "—"}</td>
@@ -446,6 +451,7 @@ export default function LiquidityAllocationPage() {
             )) : <tr><td colSpan={5} className="h-24 px-4 text-center text-neutral-500 dark:text-neutral-400">هنوز تخصیصی ثبت نشده است.</td></tr>}
           </tbody>
         </table>
+        </div>
         <div className="border-t border-neutral-300 px-3 py-2 dark:border-neutral-800">
           <div className="flex flex-col items-stretch gap-2 md:flex-row md:flex-wrap md:items-center md:justify-between">
             <div className="flex items-center justify-between gap-2 text-sm md:justify-start">
@@ -456,7 +462,7 @@ export default function LiquidityAllocationPage() {
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
               </button>
               <div className="whitespace-nowrap text-black/70 dark:text-neutral-400">
-                {historyTotal === 0 ? "۰ از ۰" : `${historyStartIndex + 1}–${historyEndIndex} از ${historyTotal}`}
+                {historyTotal === 0 ? "۰ از ۰" : `${toFaDigits(historyStartIndex + 1)}–${toFaDigits(historyEndIndex)} از ${toFaDigits(historyTotal)}`}
               </div>
             </div>
             <div className="flex items-center justify-between gap-2 text-sm md:justify-start">
@@ -464,7 +470,7 @@ export default function LiquidityAllocationPage() {
               <div className="inline-flex h-9 overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">
                 {[10, 25, 100].map((count) => {
                   const active = rowsPerPage === count;
-                  return <button key={count} type="button" onClick={() => setRowsPerPage(count)} className={`min-w-10 px-3 text-sm font-semibold transition ${active ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-700 hover:bg-black/[0.04] dark:text-white/75 dark:hover:bg-white/10"}`} aria-pressed={active}>{count}</button>;
+                  return <button key={count} type="button" onClick={() => setRowsPerPage(count)} className={`min-w-10 px-3 text-sm font-semibold transition ${active ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-700 hover:bg-black/[0.04] dark:text-white/75 dark:hover:bg-white/10"}`} aria-pressed={active}>{toFaDigits(count)}</button>;
                 })}
               </div>
             </div>
