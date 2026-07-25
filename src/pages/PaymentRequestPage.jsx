@@ -267,14 +267,16 @@ export default function PaymentRequestPage() {
   );
   const serial = useMemo(() => {
     const yy = jalaliYY(form.dateJalali);
+    const projectCode = normalizeProjectCode(selectedProject?.code);
     let maxSeq = 0;
     const re = new RegExp(`^${yy}/(?:\\d{3}/)?(\\d{4})$`);
     items.forEach((item) => {
       const match = normalizeDigits(item?.serial || "").match(re);
       if (match) maxSeq = Math.max(maxSeq, Number(match[1]) || 0);
     });
-    return `${yy}/${String(maxSeq + 1).padStart(4, "0")}`;
-  }, [form.dateJalali, items]);
+    const sequence = String(maxSeq + 1).padStart(4, "0");
+    return projectCode ? `${yy}/${projectCode}/${sequence}` : `${yy}/${sequence}`;
+  }, [form.dateJalali, items, selectedProject?.code]);
   const amount = parseAmount(form.amount);
   const selectedBudgetItem = useMemo(
     () => budgetItems.find((item) => normalizeBudgetCode(item.code || item.center_code) === normalizeBudgetCode(form.budgetCode)),
@@ -1301,14 +1303,14 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                   <PreviewRow compact fixedLabel colon leader label="تاریخ درخواست" value={toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))} />
                   <PreviewRow compact fixedLabel colon leader label="درخواست کننده" value={item.createdByName || `کاربر #${toFa(item.createdById)}`} />
                 </div>
-                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,1fr)_minmax(190px,0.55fr)] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
-                  <PreviewRow compact colon leader={!canEditReturned} label="پروژه" value={canEditReturned ? (
+                <div className={canEditReturned ? "grid grid-cols-1 gap-3 p-4 md:grid-cols-2" : "grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,1fr)_minmax(190px,0.55fr)] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10"}>
+                  <PreviewRow compact editing={canEditReturned} colon leader={!canEditReturned} label="پروژه" value={canEditReturned ? (
                     <select className={inputClass} value={editForm.projectId} onChange={(event) => setEditForm((old) => ({ ...old, projectId: event.target.value, budgetCode: "" }))}>
                       <option value="">انتخاب پروژه</option>
                       {projects.map((row) => <option key={row.id} value={row.id}>{projectLabel(row)}</option>)}
                     </select>
                   ) : (project ? projectLabel(project) : (item.projectName || item.projectCode || item.projectId || "—"))} />
-                  <PreviewRow compact colon leader={!canEditReturned} label="کد بودجه" ltr={!canEditReturned} value={canEditReturned ? (
+                  <PreviewRow compact editing={canEditReturned} colon leader={!canEditReturned} label="کد بودجه" ltr={!canEditReturned} value={canEditReturned ? (
                     <select className={inputClass} value={editForm.budgetCode} disabled={!editForm.projectId || editBudgetLoading} onChange={(event) => setEditField("budgetCode", event.target.value)}>
                       <option value="">{editBudgetLoading ? "در حال دریافت..." : editForm.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید"}</option>
                       {editBudgetOptions.map((row) => {
@@ -1319,30 +1321,30 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                     </select>
                   ) : (item.budgetCode || "—")} />
                 </div>
-                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,0.7fr)_minmax(0,0.3fr)] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
-                  <PreviewRow compact colon label="موضوع درخواست" value={canEditReturned ? <input className={inputClass} value={editForm.title} onChange={(event) => setEditField("title", event.target.value)} /> : (item.title || "—")} />
-                  <PreviewRow compact colon valueClassName={!canEditReturned ? "whitespace-nowrap" : ""} label="درخواست تامین" value={supplyRequestControl} />
+                <div className={canEditReturned ? "grid grid-cols-1 gap-3 p-4 md:grid-cols-2" : "grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,0.7fr)_minmax(0,0.3fr)] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10"}>
+                  <PreviewRow compact editing={canEditReturned} colon label="موضوع درخواست" value={canEditReturned ? <input className={inputClass} value={editForm.title} onChange={(event) => setEditField("title", event.target.value)} /> : (item.title || "—")} />
+                  <PreviewRow compact editing={canEditReturned} colon valueClassName={!canEditReturned ? "whitespace-nowrap" : ""} label="درخواست تامین" value={supplyRequestControl} />
                 </div>
-                <PreviewRow colon label="شرح درخواست" value={canEditReturned ? <textarea className={`${inputClass} min-h-24 py-2 leading-7`} value={editForm.description} onChange={(event) => setEditField("description", event.target.value)} /> : (item.description || "—")} />
-                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
-                  <PreviewRow compact colon leader={!canEditReturned} label="مبلغ درخواست" ltr={!canEditReturned} value={canEditReturned ? <MoneyInput value={editForm.amount} onChange={(value) => setEditField("amount", value)} /> : toFa(Number(item.amount || 0).toLocaleString("en-US"))} />
+                <div className={canEditReturned ? "p-4" : ""}><PreviewRow editing={canEditReturned} colon label="شرح درخواست" value={canEditReturned ? <textarea className={`${inputClass} min-h-24 py-2 leading-7`} value={editForm.description} onChange={(event) => setEditField("description", event.target.value)} /> : (item.description || "—")} /></div>
+                <div className={canEditReturned ? "grid grid-cols-1 gap-3 p-4 md:grid-cols-3" : "grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10"}>
+                  <PreviewRow compact editing={canEditReturned} colon leader={!canEditReturned} label="مبلغ درخواست" ltr={!canEditReturned} value={canEditReturned ? <MoneyInput value={editForm.amount} onChange={(value) => setEditField("amount", value)} /> : toFa(Number(item.amount || 0).toLocaleString("en-US"))} />
                   <PreviewRow compact colon leader={!canEditReturned} label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFa(baseBudget) : "—"} ltr />
                   <PreviewRow compact colon leader={!canEditReturned} label="باقی مانده نقدینگی پروژه" value={liquidityRemaining || "—"} ltr />
                 </div>
-                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,0.38fr)_minmax(0,0.62fr)] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
-                  <PreviewRow compact colon leader={!canEditReturned} label="نام ذینفع" value={canEditReturned ? <input className={inputClass} value={editForm.beneficiaryName} onChange={(event) => setEditField("beneficiaryName", event.target.value)} /> : (item.beneficiaryName || "—")} />
-                  <PreviewRow compact colon leader={!canEditReturned} label="شماره شبا" ltr={!canEditReturned} value={canEditReturned ? <input dir="ltr" inputMode="numeric" className={`${inputClass} text-left font-sans tabular-nums`} value={editForm.bankInfo || "IR"} onChange={(event) => setEditField("bankInfo", formatSheba(event.target.value))} onFocus={() => { if (!editForm.bankInfo) setEditField("bankInfo", "IR"); }} placeholder="IR" /> : (item.bankInfo || "—")} />
+                <div className={canEditReturned ? "grid grid-cols-1 gap-3 p-4 md:grid-cols-2" : "grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,0.38fr)_minmax(0,0.62fr)] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10"}>
+                  <PreviewRow compact editing={canEditReturned} colon leader={!canEditReturned} label="نام ذینفع" value={canEditReturned ? <input className={inputClass} value={editForm.beneficiaryName} onChange={(event) => setEditField("beneficiaryName", event.target.value)} /> : (item.beneficiaryName || "—")} />
+                  <PreviewRow compact editing={canEditReturned} colon leader={!canEditReturned} label="شماره شبا" ltr={!canEditReturned} value={canEditReturned ? <input dir="ltr" inputMode="numeric" className={`${inputClass} text-left font-sans tabular-nums`} value={editForm.bankInfo || "IR"} onChange={(event) => setEditField("bankInfo", formatSheba(event.target.value))} onFocus={() => { if (!editForm.bankInfo) setEditField("bankInfo", "IR"); }} placeholder="IR" /> : (item.bankInfo || "—")} />
                 </div>
-                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-4 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
-                  <PreviewRow compact colon leader={!canEditReturned} label="نوع سند" value={canEditReturned ? (
+                <div className={canEditReturned ? "grid grid-cols-1 gap-3 p-4 md:grid-cols-2" : "grid grid-cols-1 divide-y divide-black/10 md:grid-cols-4 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10"}>
+                  <PreviewRow compact editing={canEditReturned} colon leader={!canEditReturned} label="نوع سند" value={canEditReturned ? (
                   <div className="space-y-2">
                     <select className={inputClass} value={editForm.docId} onChange={(event) => setEditForm((old) => ({ ...old, docId: event.target.value, docOther: event.target.value === "other" ? old.docOther : "" }))}>{DOC_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
                     {editForm.docId === "other" && <input className={inputClass} value={editForm.docOther} onChange={(event) => setEditField("docOther", event.target.value)} placeholder="نوع سند را وارد کنید" />}
                   </div>
                 ) : docName} />
-                  <PreviewRow compact colon leader={!canEditReturned} label="شماره سند" value={canEditReturned ? <input className={inputClass} value={editForm.docNumber} onChange={(event) => setEditField("docNumber", event.target.value)} /> : (item.docNumber || "—")} />
-                  <PreviewRow compact colon leader={!canEditReturned} label="تاریخ سند" value={canEditReturned ? <JalaliPopupDatePicker value={editForm.docDateJalali} onChange={(value) => setEditField("docDateJalali", value)} /> : toFa(item.docDate || item.docDateJalali || "—")} />
-                  <PreviewRow compact colon leader={!canEditReturned} label="پیوست‌ها" value={canEditReturned ? (
+                  <PreviewRow compact editing={canEditReturned} colon leader={!canEditReturned} label="شماره سند" value={canEditReturned ? <input className={inputClass} value={editForm.docNumber} onChange={(event) => setEditField("docNumber", event.target.value)} /> : (item.docNumber || "—")} />
+                  <PreviewRow compact editing={canEditReturned} colon leader={!canEditReturned} label="تاریخ سند" value={canEditReturned ? <JalaliPopupDatePicker value={editForm.docDateJalali} onChange={(value) => setEditField("docDateJalali", value)} /> : toFa(item.docDate || item.docDateJalali || "—")} />
+                  <PreviewRow compact editing={canEditReturned} colon leader={!canEditReturned} label="پیوست‌ها" value={canEditReturned ? (
                   <div className="flex flex-wrap justify-end gap-2">
                     {editAttachments.map((file, index) => <span key={file.id || file.serverId || file.url || index} className="inline-flex max-w-full items-center gap-2 rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10">
                       <a href={file.url || "#"} target="_blank" rel="noreferrer" className="max-w-[220px] truncate hover:underline">{file.name || `فایل ${toFa(index + 1)}`}</a>
@@ -1577,7 +1579,7 @@ function PaymentWorkflowTimeline({ history, item }) {
 }
 
 function PreviewSection({ title, children, flush = false }) { return <section className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">{title}</div><div className={`divide-y divide-black/10 dark:divide-white/10 ${flush ? "" : "px-4"}`}>{children}</div></section>; }
-function PreviewRow({ label, value, ltr, compact = false, valueClassName = "", colon = false, fixedLabel = false }) { return <div className={`min-w-0 ${compact ? `grid items-start gap-2 px-3 py-3 text-xs ${fixedLabel ? "grid-cols-[92px_minmax(0,1fr)]" : "grid-cols-[auto_minmax(0,1fr)]"}` : "grid grid-cols-[135px_1fr] gap-3 px-4 py-2.5 text-sm"}`}><div className={`text-neutral-500 dark:text-neutral-400 ${compact ? "whitespace-nowrap" : ""}`}>{label}{colon ? ":" : ""}</div><div dir={ltr ? "ltr" : "rtl"} className={`min-w-0 break-words font-medium ${ltr ? "text-left" : "text-right"} ${valueClassName}`}>{value}</div></div>; }
+function PreviewRow({ label, value, ltr, compact = false, valueClassName = "", colon = false, fixedLabel = false, editing = false }) { return <div className={`min-w-0 ${editing ? "space-y-1.5 px-1 py-1 text-xs" : compact ? `grid items-start gap-2 px-3 py-3 text-xs ${fixedLabel ? "grid-cols-[92px_minmax(0,1fr)]" : "grid-cols-[auto_minmax(0,1fr)]"}` : "grid grid-cols-[135px_1fr] gap-3 px-4 py-2.5 text-sm"}`}><div className={`text-neutral-500 dark:text-neutral-400 ${compact && !editing ? "whitespace-nowrap" : ""}`}>{label}{colon ? ":" : ""}</div><div dir={ltr ? "ltr" : "rtl"} className={`min-w-0 break-words font-medium ${editing ? "w-full" : ""} ${ltr ? "text-left" : "text-right"} ${valueClassName}`}>{value}</div></div>; }
 function historyLabel(value) { return ({ created: "ثبت درخواست", approved: "تأیید", rejected: "رد", returned: "برگشت", edited: "ویرایش" })[value] || value || "—"; }
 function formatDateTime(value) { if (!value) return "—"; try { return new Intl.DateTimeFormat("fa-IR-u-ca-persian", { dateStyle: "short", timeStyle: "short" }).format(new Date(value)); } catch { return "—"; } }
 
