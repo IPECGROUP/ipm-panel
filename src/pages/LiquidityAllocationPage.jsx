@@ -55,6 +55,10 @@ function activeProject(project) {
   return value === true || value === 1 || String(value).toLowerCase() === "true" || String(value) === "1";
 }
 
+function mainProject(project) {
+  return /^\d+$/.test(toEnglishDigits(String(project?.code || "")).trim());
+}
+
 function projectLabel(project) {
   return `${project?.code ? `${project.code} - ` : ""}${project?.name || project?.title || "پروژه بدون نام"}`;
 }
@@ -95,7 +99,7 @@ export default function LiquidityAllocationPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data?.error || "projects_failed");
       const items = Array.isArray(data?.items) ? data.items : [];
-      setProjects(items.filter(activeProject));
+      setProjects(items.filter((project) => activeProject(project) && mainProject(project)));
     } catch {
       setProjects([]);
     } finally {
