@@ -4,6 +4,9 @@ import { Link, Outlet, useNavigate } from "react-router-dom";
 import RightNav from "../RightNav.jsx";
 import { useAuth } from "../AuthProvider.jsx";
 
+const notificationStorageKey = (userId) => `ipm-read-notifications:${userId}`;
+const notificationKey = (item) => `${item.notificationTarget}:${item.id}`;
+
 export default function Shell() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -41,7 +44,12 @@ export default function Shell() {
             .filter((item) => Number(item.currentAssigneeUserId) === Number(user.id) && item.workflowStatus === "in_progress")
             .map((item) => ({ ...item, notificationTarget: "supply_actions" }))
         : [];
-      setNotifications([...dashboardItems, ...actionItems]);
+      const readNotifications = new Set(
+        JSON.parse(localStorage.getItem(notificationStorageKey(user.id)) || "[]")
+      );
+      setNotifications(
+        [...dashboardItems, ...actionItems].filter((item) => !readNotifications.has(notificationKey(item)))
+      );
     } catch {
       setNotifications([]);
     } finally {
@@ -76,6 +84,16 @@ export default function Shell() {
     const target = item.notificationTarget === "supply_actions" ? "/supply/request" : "/dashboard";
     const key = item.notificationTarget === "supply_actions" ? "request" : "supplyRequest";
     navigate(`${target}?${key}=${encodeURIComponent(item.id)}`);
+  };
+
+  const markAllNotificationsAsRead = () => {
+    if (!user?.id || !notifications.length) return;
+    const storageKey = notificationStorageKey(user.id);
+    const readNotifications = new Set(JSON.parse(localStorage.getItem(storageKey) || "[]"));
+    notifications.forEach((item) => readNotifications.add(notificationKey(item)));
+    localStorage.setItem(storageKey, JSON.stringify([...readNotifications]));
+    setNotifications([]);
+    setNotificationsOpen(false);
   };
 
   // ===== Date (Jalali + Gregorian) =====
@@ -220,6 +238,15 @@ export default function Shell() {
               {notificationsOpen ? (
                 <div className="notification-popover absolute left-0 top-[calc(100%+10px)] z-[70] w-[min(360px,calc(100vw-24px))] overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
                   <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10">
+                    {notifications.length ? (
+                      <button
+                        type="button"
+                        onClick={markAllNotificationsAsRead}
+                        className="rounded-lg px-2 py-1 text-[10px] font-semibold text-emerald-700 transition hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
+                      >
+                        خوانده شده
+                      </button>
+                    ) : null}
                     <div>
                       <div className="text-sm font-bold">اعلان‌ها</div>
                       <div className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">پیام‌ها و موارد نیازمند بررسی</div>
