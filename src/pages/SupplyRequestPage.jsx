@@ -1339,6 +1339,9 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
   const project = projects.find((row) => String(row.id) === String(item.projectId));
   const attachments = Array.isArray(item.attachments) ? item.attachments : [];
   const history = Array.isArray(item.historyJson) ? item.historyJson : [];
+  const isRequester = Number(item.createdById) === Number(user?.id);
+  const [commercialActions, setCommercialActions] = useState([]);
+  const [commercialActionsLoading, setCommercialActionsLoading] = useState(false);
   const isCompletedCommercialOwner =
     !item.currentStepRoleKey &&
     ["approved", "rejected"].includes(item.status) &&
@@ -1397,6 +1400,26 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
       cancelled = true;
     };
   }, [canAct, item.id]);
+
+  useEffect(() => {
+    if (!isRequester || !item?.id) {
+      setCommercialActions([]);
+      return undefined;
+    }
+    let cancelled = false;
+    setCommercialActionsLoading(true);
+    fetch(`/api/supply-actions?requestId=${encodeURIComponent(item.id)}`, {
+      credentials: "include",
+      headers: user?.id != null ? { "x-user-id": String(user.id) } : {},
+    })
+      .then((response) => (response.ok ? response.json() : { items: [] }))
+      .then((data) => {
+        if (!cancelled) setCommercialActions(Array.isArray(data?.items?.[0]?.actions) ? data.items[0].actions : []);
+      })
+      .catch(() => { if (!cancelled) setCommercialActions([]); })
+      .finally(() => { if (!cancelled) setCommercialActionsLoading(false); });
+    return () => { cancelled = true; };
+  }, [isRequester, item?.id, user?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1545,6 +1568,8 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                     <PreviewRow compact label="پیوست‌ها" value={attachments.length ? <div className="flex flex-wrap justify-end gap-1.5">{attachments.map((file, index) => <a key={file.id || file.serverId || index} href={file.url || "#"} target="_blank" rel="noreferrer" className="max-w-full truncate rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFaDigits(index + 1)}`}</a>)}</div> : "—"} />
                   </div>
                 </PreviewSection>
+
+                {isRequester && <SupplyActionHistory actions={commercialActions} loading={commercialActionsLoading} />}
 
                 {canAct ? (
                   stepKey === "project_control" ? (
@@ -1948,6 +1973,26 @@ function historySentence(entry, item) {
   return `درخواست توسط ${actor} ${action}.`;
 }
 
+function SupplyActionHistory({ actions, loading }) {
+  const rows = Array.isArray(actions) ? actions : [];
+  const statusLabel = (status) => ({ done: "انجام شد", canceled: "لغو شد", in_progress: "در حال اقدام" })[status] || "در حال اقدام";
+  const statusClass = (status) => status === "done"
+    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
+    : status === "canceled"
+      ? "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300"
+      : "bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300";
+  return <PreviewSection title="اقدامات انجام‌شده در واحد تامین">
+    {loading ? <div className="px-4 py-4 text-sm text-neutral-500">در حال دریافت اقدامات...</div> : rows.length === 0 ? <div className="px-4 py-4 text-sm text-neutral-500">هنوز اقدامی توسط واحد تامین ثبت نشده است.</div> : <div className="divide-y divide-black/10 dark:divide-white/10">
+      {rows.map((action, index) => <div key={action.id || index} className="grid gap-2 px-4 py-3 md:grid-cols-[110px_90px_120px_minmax(0,1fr)] md:items-center">
+        <div className="text-xs text-neutral-500">{toFaDigits(String(action.date || "—").replaceAll("-", "/"))}{action.time ? ` · ${toFaDigits(action.time)}` : ""}</div>
+        <span className={`justify-self-start rounded-full px-2.5 py-1 text-xs ${statusClass(action.status)}`}>{statusLabel(action.status)}</span>
+        <div className="min-w-0 text-sm text-neutral-700 dark:text-neutral-200">{action.description || "بدون توضیح"}</div>
+        <div className="flex flex-wrap gap-1.5 md:justify-end">{(Array.isArray(action.files) ? action.files : []).map((file, fileIndex) => <a key={file.id || file.serverId || fileIndex} href={file.url || "#"} target="_blank" rel="noreferrer" className="max-w-full truncate rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFaDigits(fileIndex + 1)}`}</a>)}</div>
+      </div>)}
+    </div>}
+  </PreviewSection>;
+}
+
 const SUPPLY_WORKFLOW_STEPS = [
   { key: "requester", label: "ثبت درخواست", emptyLabel: "ثبت درخواست" },
   { key: "project_control", label: "بررسی اولیه (واحد برنامه ریزی)" },
@@ -1982,6 +2027,7 @@ function workflowStageState(step, history, item) {
   if (action?.type === "rejected") return { kind: "rejected", entry: action };
   if (action?.type === "returned") return { kind: "returned", entry: action };
   if (action?.type === "approved" || action?.type === "created") return { kind: "completed", entry: action };
+  if (step.key === "commercial" && !currentKey && item?.status === "approved") return { kind: "completed", entry: null };
   return { kind: "waiting", entry: null };
 }
 

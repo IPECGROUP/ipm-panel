@@ -1555,6 +1555,10 @@ function paymentWorkflowStageState(step, history, item) {
   return { kind: "waiting", entry: null };
 }
 
+function paymentHistoryActorName(entry, item) {
+  return entry?.actorName || entry?.userName || entry?.registrationInfo?.userName || (Number(entry?.byUserId) === Number(item?.createdById) ? item?.createdByName : "") || (entry?.byUserId ? `کاربر #${toFa(entry.byUserId)}` : "انجام‌دهنده");
+}
+
 function paymentWorkflowStyle(kind) {
   if (kind === "active") return { marker: "border-sky-500 bg-sky-500 text-white shadow-[0_0_0_5px_rgba(14,165,233,0.13)]", line: "bg-sky-200 dark:bg-sky-500/30", card: "bg-sky-50/90 dark:bg-sky-500/10", title: "text-sky-700 dark:text-sky-300" };
   if (kind === "rejected") return { marker: "border-rose-500 bg-rose-500 text-white", line: "bg-rose-200 dark:bg-rose-500/25", card: "bg-rose-50/80 dark:bg-rose-500/10", title: "text-rose-700 dark:text-rose-300" };
@@ -1573,7 +1577,7 @@ function PaymentWorkflowTimeline({ history, item }) {
       return <li key={step.index} className="relative grid grid-cols-[minmax(0,1fr)_32px] gap-2 pb-2 last:pb-0">
         <div className={`min-w-0 ${style.card ? `rounded-2xl px-3 py-2.5 ${style.card}` : "px-3 py-1"}`}>
           <div className={`text-sm font-bold leading-6 ${style.title}`}>{step.label}</div>
-          {state.entry?.at ? <div className="mt-1 text-[11px] leading-5 text-neutral-500 dark:text-neutral-400">{step.index === 0 ? item?.createdByName || "درخواست‌کننده" : "انجام‌دهنده"} · {formatDateTime(state.entry.at)}</div> : null}
+          {state.entry?.at ? <div className="mt-1 text-[11px] leading-5 text-neutral-500 dark:text-neutral-400">{paymentHistoryActorName(state.entry, item)} · {formatDateTime(state.entry.at)}</div> : null}
           {state.entry?.note ? <div className="mt-2 border-t border-black/5 pt-2 text-[11px] leading-5 text-neutral-500 dark:border-white/10 dark:text-neutral-400">توضیح: {state.entry.note}</div> : null}
         </div>
         <div className="relative flex justify-center" aria-hidden="true">
