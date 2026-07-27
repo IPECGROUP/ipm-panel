@@ -2027,7 +2027,7 @@ function workflowStageState(step, history, item) {
   if (action?.type === "rejected") return { kind: "rejected", entry: action };
   if (action?.type === "returned") return { kind: "returned", entry: action };
   if (action?.type === "approved" || action?.type === "created") return { kind: "completed", entry: action };
-  if (step.key === "commercial" && !currentKey && item?.status === "approved") return { kind: "completed", entry: null };
+  if (step.key === "commercial" && !currentKey && item?.workflowStatus === "done") return { kind: "completed", entry: null };
   return { kind: "waiting", entry: null };
 }
 
@@ -2070,8 +2070,12 @@ function workflowStageStyle(kind) {
   };
 }
 
-function workflowStageMeta(stage, item, entry) {
-  if (!entry) return "در انتظار شروع مرحله";
+function workflowStageMeta(stage, item, entry, state) {
+  if (!entry) {
+    if (stage.key === "commercial" && state?.kind === "active") return "در حال بررسی واحد تامین";
+    if (stage.key === "commercial" && state?.kind === "completed") return "تأیید نهایی واحد تامین انجام شد";
+    return "در انتظار شروع مرحله";
+  }
   const actor = entry?.type === "step_set"
     ? item?.currentAssigneeName || "مسئول مرحله"
     : historyActorName(entry, item);
@@ -2081,7 +2085,7 @@ function workflowStageMeta(stage, item, entry) {
 }
 
 function workflowStageDescription(stage, state, item) {
-  if (state.kind === "active") return `در انتظار اقدام ${item?.currentAssigneeName || "مسئول این مرحله"}`;
+  if (state.kind === "active") return stage.key === "commercial" ? "در حال بررسی واحد تامین" : `در انتظار اقدام ${item?.currentAssigneeName || "مسئول این مرحله"}`;
   if (state.kind === "completed") return stage.key === "requester" ? "درخواست ثبت و ارسال شد" : "مرحله با تأیید انجام شد";
   if (state.kind === "rejected") return "درخواست در این مرحله لغو شد";
   if (state.kind === "returned") return "درخواست برای اصلاح برگشت داده شد";
@@ -2112,7 +2116,7 @@ function SupplyWorkflowTimeline({ history, item }) {
               <div className={`text-sm font-bold leading-6 ${style.title}`}>{step.label}</div>
               {(state.kind !== "waiting" || description) && <div className="mt-0.5 text-xs leading-5 text-neutral-500 dark:text-neutral-400">{description}</div>}
               <div className={`mt-1 text-[11px] leading-5 ${state.kind === "waiting" ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-500 dark:text-neutral-400"}`} dir="rtl">
-                {workflowStageMeta(step, item, state.entry)}
+                {workflowStageMeta(step, item, state.entry, state)}
               </div>
               {state.entry?.note ? <div className="mt-2 border-t border-black/5 pt-2 text-[11px] leading-5 text-neutral-500 dark:border-white/10 dark:text-neutral-400">توضیح: {state.entry.note}</div> : null}
             </div>
