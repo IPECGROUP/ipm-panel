@@ -505,7 +505,7 @@ function RightNav() {
         ref={navRef}
         dir="rtl"
         className={[
-          "hidden lg:flex fixed right-4 top-4 bottom-4 z-50 flex-col rounded-2xl border border-white/10 bg-[#24211F]/[0.96] text-white",
+          "hidden lg:flex fixed right-4 top-4 bottom-4 z-[200] flex-col rounded-2xl border border-white/10 bg-[#24211F]/[0.96] text-white",
           "shadow-[0_18px_50px_rgba(0,0,0,0.26)] backdrop-blur-xl transition-all duration-300",
           "overflow-visible",
           expanded ? "w-[280px] py-3 pl-5 pr-3" : "w-[76px] px-2.5 py-3",
@@ -590,7 +590,7 @@ function RightNav() {
 
       <nav
         dir="rtl"
-        className="fixed inset-x-0 bottom-0 z-50 lg:hidden pointer-events-none px-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4"
+        className="fixed inset-x-0 bottom-0 z-[200] lg:hidden pointer-events-none px-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4"
         aria-label="منوی اصلی"
       >
         <div className="pointer-events-auto mx-auto flex max-w-[29rem] flex-col items-center gap-2 sm:max-w-[35rem] md:max-w-[40rem]">
@@ -732,7 +732,7 @@ function RightNav() {
 
       {canHover && tip.show && (
         <div
-          className="fixed z-[80] pointer-events-none rounded-lg border border-white/10 bg-[#24211F] px-3 py-1.5 text-xs text-white/80 shadow-lg whitespace-nowrap"
+          className="fixed z-[210] pointer-events-none rounded-lg border border-white/10 bg-[#24211F] px-3 py-1.5 text-xs text-white/80 shadow-lg whitespace-nowrap"
           style={{ top: tip.y, right: "92px", transform: "translateY(-50%)" }}
         >
           {tip.label}
