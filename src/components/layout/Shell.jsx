@@ -144,7 +144,7 @@ export default function Shell() {
     >
       <header
         className={
-          "sticky top-0 z-40 border-b backdrop-blur " +
+          "sticky top-0 z-[100] isolate border-b backdrop-blur " +
           (theme === "dark"
             ? "border-white/10 bg-gradient-to-l from-white/10 to-transparent"
             : "border-black/10 bg-gradient-to-l from-black/5 to-transparent")
@@ -236,7 +236,7 @@ export default function Shell() {
               </button>
 
               {notificationsOpen ? (
-                <div className="notification-popover absolute left-0 top-[calc(100%+10px)] z-[70] w-[min(360px,calc(100vw-24px))] overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
+                <div className="notification-popover absolute left-0 top-[calc(100%+10px)] z-[110] w-[min(360px,calc(100vw-24px))] overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
                   <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10">
                     {notifications.length ? (
                       <button
