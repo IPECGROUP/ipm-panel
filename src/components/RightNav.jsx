@@ -313,6 +313,7 @@ function RightNav() {
           active: baseParentActive,
           items: [
             { to: "/base/units", label: "ساختار سازمانی", hint: "واحدها، نقش ها و کاربران", icon: <NavIcon src="/images/icons/unit.svg" /> },
+            { to: "/base/access-management", label: "مدیریت دسترسی‌ها", hint: "تنظیم دسترسی واحدهای سازمانی", icon: <NavIcon src="/images/icons/sath.svg" /> },
             { to: "/centers/projects", label: "پروژه ها", hint: "تعریف و ویرایش پروژه ها", icon: <IcProjects /> },
             { to: "/base/currencies", label: "ارزها", hint: "نرخ ها و واحدهای پولی", icon: <IcCurrency /> },
             { to: "/base/tags", label: "برچسب ها", hint: "دسته بندی داده ها", icon: <IcTags /> },

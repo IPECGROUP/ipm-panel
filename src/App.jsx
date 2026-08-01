@@ -13,6 +13,7 @@ import ProjectsPage from "./pages/ProjectsPage.jsx";
 import TagsPage from "./pages/TagsPage.jsx";
 import DefineBudgetCentersPage from "./pages/DefineBudgetCentersPage.jsx";
 import UnitsPage from "./pages/UnitsPage.jsx";
+import AccessManagementPage from "./pages/AccessManagementPage.jsx";
 import BaseCurrenciesPage from "./pages/BaseCurrenciesPage.jsx";
 import DailyReportPage from "./pages/DailyReportPage.jsx";
 import FinancialWorksheetPage from "./pages/FinancialWorksheetPage.jsx";
@@ -130,6 +131,7 @@ export default function App() {
 
         {/* اطلاعات پایه */}
         <Route path="/base/units" element={<UnitsPage />} />
+        <Route path="/base/access-management" element={<AccessManagementPage />} />
         <Route path="/base/currencies" element={<BaseCurrenciesPage />} />
         <Route path="/base/tags" element={<TagsPage />} />
         <Route
