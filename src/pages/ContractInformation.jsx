@@ -15,7 +15,7 @@ const CONTRACT_DOCUMENT_TYPES = [
 const CONTRACT_SECTION_TABS = [
   { id: "general", label: "عمومی" },
   { id: "calendar", label: "تقویم قرارداد" },
-  { id: "technical", label: "فنی و محدوده کار" },
+  { id: "technical", label: "دامنه کار" },
   { id: "financial", label: "مالی و تضامین" },
   { id: "insurance", label: "تامین اجتماعی" },
 ];
@@ -2413,7 +2413,7 @@ export default function ContractInformation() {
 
     {
       const missing = [];
-      if (!String(form.technical?.serviceScope || "").trim()) missing.push("شرح خدمات و محدوده کار");
+      if (!String(form.technical?.serviceScope || "").trim()) missing.push("شرح خدمات");
       if (documentType !== "appendix" && !normalizeIdList(form.technical?.tagIds).length) missing.push("برچسب");
       if (missing.length) {
         alert(`فیلدهای اجباری تب فنی و محدوده کار: ${missing.join("، ")}`);
@@ -2933,7 +2933,7 @@ export default function ContractInformation() {
       ["تاریخ‌های افزوده", Array.isArray(previewContract.calendar?.extraDates) && previewContract.calendar.extraDates.length ? previewContract.calendar.extraDates.map((date) => toFaDigits(date)).join("، ") : ""],
     ]))}
     ${section("فنی و محدوده کار", infoGrid([
-      ["شرح خدمات و محدوده کار", previewContract.technical?.serviceScope],
+      ["شرح خدمات", previewContract.technical?.serviceScope],
       ["برچسب‌ها", previewTechnicalTagLabels],
       ...TECHNICAL_SUPPORT_FIELDS.map((item) => [item.label, previewContract.technical?.[item.key]]),
     ]))}
@@ -3204,10 +3204,15 @@ export default function ContractInformation() {
       <Card className="!p-0 rounded-xl border overflow-hidden border-black/10 bg-white text-black sm:rounded-2xl dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
         <div className="p-2.5 sm:p-3 md:p-4">
           <div className="flex items-center justify-between gap-3 mb-3">
-            <div className="text-base md:text-lg">
-              <span className="text-neutral-700 dark:text-neutral-300">پروژه‌ها</span>
-              <span className="mx-2 text-neutral-500 dark:text-neutral-400">›</span>
-              <span className="font-semibold text-neutral-900 dark:text-neutral-100">قراردادها</span>
+            <div className="flex items-center gap-3">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
+                <img src="/images/icons/gharadad.svg" alt="" className="h-6 w-6 dark:invert" />
+              </span>
+              <div className="text-base md:text-lg">
+                <span className="text-neutral-700 dark:text-neutral-300">پروژه‌ها</span>
+                <span className="mx-2 text-neutral-500 dark:text-neutral-400">›</span>
+                <span className="font-semibold text-neutral-900 dark:text-neutral-100">قراردادها</span>
+              </div>
             </div>
             <button
               type="button"
@@ -3641,7 +3646,7 @@ export default function ContractInformation() {
                             </div>
                           </div>
 
-                          <div>
+                          <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
                             <div className={labelCls}>مدت قرارداد</div>
                             <div className="h-11 rounded-xl border border-black/10 bg-black/[0.03] px-3 text-sm font-bold flex items-center dark:border-neutral-700 dark:bg-white/[0.04]">
                               {calendarTotals.baseDays ? `${toFaDigits(calendarTotals.baseDays)} روز` : "محاسبه نشده"}
@@ -3719,8 +3724,8 @@ export default function ContractInformation() {
                     <div className="space-y-4 p-3 sm:p-4">
                       {isAppendixDocument ? (
                         <div className="space-y-4">
-                          <div>
-                            <div className={labelCls}>شرح خدمات و محدوده کار *</div>
+                          <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
+                            <div className={labelCls}>شرح خدمات *</div>
                             <textarea
                               value={form.technical?.serviceScope || ""}
                               onChange={(e) => setTechnicalField("serviceScope", e.target.value)}
@@ -3733,17 +3738,18 @@ export default function ContractInformation() {
                         </div>
                       ) : (
                       <>
-                      <div className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2 items-start">
-                        <div className="space-y-4">
-                          <div className="pt-1.5">
-                            <div className={labelCls}>شرح خدمات و محدوده کار *</div>
+                      <div className="space-y-4">
+                        <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
+                            <div className={labelCls}>شرح خدمات *</div>
                             <textarea
                               value={form.technical?.serviceScope || ""}
                               onChange={(e) => setTechnicalField("serviceScope", e.target.value)}
-                              className={`${textareaCls} !h-[190px] !min-h-[190px] !resize-none sm:!h-[268px] sm:!min-h-[268px]`}
+                              className={`${textareaCls} !h-[150px] !min-h-[150px] !resize-none sm:!h-[180px] sm:!min-h-[180px]`}
                             />
-                          </div>
+                        </div>
 
+                        <div className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2 items-start">
+                          <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
                           <div>
                             <div className={labelCls}>برچسب ها *</div>
                             <div className="flex flex-wrap items-center gap-2">
@@ -3775,20 +3781,24 @@ export default function ContractInformation() {
                               </button>
                             </div>
                           </div>
-                        </div>
+                          </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {TECHNICAL_SUPPORT_FIELDS.map((item) => (
-                            <div key={item.key} className="min-w-0">
-                              <div className={labelCls}>{item.label}</div>
-                              <input
-                                value={form.technical?.[item.key] || ""}
-                                onChange={(e) => setTechnicalField(item.key, e.target.value)}
-                                className={inputCls}
-                                type="text"
-                              />
+                          <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
+                            <div className="mb-3 text-sm font-semibold text-black dark:text-neutral-100">مسئولیت و تعهدات</div>
+                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                              {TECHNICAL_SUPPORT_FIELDS.map((item) => (
+                                <div key={item.key} className="min-w-0">
+                                  <div className={labelCls}>{item.label}</div>
+                                  <input
+                                    value={form.technical?.[item.key] || ""}
+                                    onChange={(e) => setTechnicalField(item.key, e.target.value)}
+                                    className={inputCls}
+                                    type="text"
+                                  />
+                                </div>
+                              ))}
                             </div>
-                          ))}
+                          </div>
                         </div>
                       </div>
 
@@ -4423,7 +4433,6 @@ export default function ContractInformation() {
                           <div className="flex shrink-0 items-center gap-1">
                             <RowActionIconBtn icon="/images/icons/namayeshname.svg" title="پیش نمایش" onClick={() => setPreviewContractId(id)} size={34} iconSize={16} />
                             <RowActionIconBtn action="edit" onClick={() => openEditForm(row)} size={34} iconSize={15} />
-                            <RowActionIconBtn action="delete" onClick={() => deleteRow(row.id)} size={34} iconSize={16} />
                           </div>
                         </div>
 
@@ -4489,7 +4498,7 @@ export default function ContractInformation() {
                     <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">نوع قرارداد</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">موضوع قرارداد</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">شرکت</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">اقدامات</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">عملیات</th>
                   </tr>
                 </thead>
                 <tbody className={contractsTableBodyCls}>
@@ -4548,7 +4557,6 @@ export default function ContractInformation() {
                             <div className={centeredRowActionsCls}>
                               <RowActionIconBtn icon="/images/icons/namayeshname.svg" title="پیش نمایش" onClick={() => setPreviewContractId(id)} size={34} iconSize={16} />
                               <RowActionIconBtn action="edit" onClick={() => openEditForm(row)} size={34} iconSize={15} />
-                              <RowActionIconBtn action="delete" onClick={() => deleteRow(row.id)} size={34} iconSize={16} />
                             </div>
                           </td>
                         </tr>
@@ -4641,7 +4649,7 @@ export default function ContractInformation() {
                   <th className="px-3 py-3 text-right font-semibold">موضوع قرارداد</th>
                   <th className="px-3 py-3 text-right font-semibold">نامه ابلاغ کار</th>
                   <th className="px-3 py-3 text-right font-semibold">مفاصات</th>
-                  <th className="px-3 py-3 text-right font-semibold">اقدامات</th>
+                  <th className="px-3 py-3 text-right font-semibold">عملیات</th>
                 </tr>
               </thead>
               <tbody>
@@ -4678,10 +4686,9 @@ export default function ContractInformation() {
                         <td className="px-3 py-3 text-right">ثبت نشده</td>
                         <td className="px-3 py-3 text-right">
                           <div className="min-h-[34px] flex items-center justify-center">
-                            <span className="sr-only">اقدامات</span>
+                            <span className="sr-only">عملیات</span>
                             <div className={centeredRowActionsCls}>
                               <RowActionIconBtn action="edit" onClick={() => openEditForm(row)} size={34} iconSize={15} />
-                              <RowActionIconBtn action="delete" onClick={() => deleteRow(row.id)} size={34} iconSize={16} />
                             </div>
                           </div>
                         </td>
@@ -4776,7 +4783,7 @@ export default function ContractInformation() {
                 {renderPreviewSectionTitle("فنی و محدوده کار")}
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   <div className={`${previewInfoItemCls} md:col-span-2`}>
-                    <div className={previewLabelCls}>شرح خدمات و محدوده کار</div>
+                    <div className={previewLabelCls}>شرح خدمات</div>
                     <div className="mt-1 whitespace-pre-wrap text-sm leading-7">{previewValue(previewContract.technical?.serviceScope)}</div>
                   </div>
                   {renderPreviewInfo("برچسب‌ها", previewTechnicalTagLabels)}

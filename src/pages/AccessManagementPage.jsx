@@ -93,7 +93,7 @@ export default function AccessManagementPage() {
           aria-label="تب قبلی"
           title="تب قبلی"
         >
-          <ChevronRight className="h-5 w-5" />
+          <ChevronLeft className="h-5 w-5" />
         </button>
         <div ref={tabsRef} className="flex min-w-0 flex-1 overflow-x-auto rounded-2xl border border-black/10 bg-white scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden dark:border-neutral-800 dark:bg-neutral-900" dir="rtl">
           <div className="flex min-w-max">
@@ -105,7 +105,7 @@ export default function AccessManagementPage() {
                 type="button"
                 onClick={() => setActiveTab(tab)}
                 className={[
-                  "relative h-10 whitespace-nowrap px-4 text-sm font-semibold transition md:h-11",
+                  "relative z-10 h-10 min-w-[104px] flex-none rounded-lg px-3 text-[11px] font-semibold whitespace-nowrap transition md:h-11 md:min-w-[132px] md:px-4 md:text-sm",
                   index > 0 ? "border-r border-black/10 dark:border-neutral-800" : "",
                   selected
                     ? "bg-black text-white dark:bg-white dark:text-black"
@@ -125,16 +125,11 @@ export default function AccessManagementPage() {
           aria-label="تب بعدی"
           title="تب بعدی"
         >
-          <ChevronLeft className="h-5 w-5" />
+          <ChevronRight className="h-5 w-5" />
         </button>
       </div>
 
-      <div className="rounded-2xl border border-black/10 bg-white text-black overflow-hidden dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
-        <div className="border-b border-black/10 bg-black/[0.03] px-4 py-3 text-sm font-semibold dark:border-neutral-800 dark:bg-white/[0.04]">
-          کاربران — {activeTab}
-        </div>
-        <div className="p-3 md:p-4">
-          <div className={tableUi.frame}>
+      <div className={tableUi.frame}>
             <div className="overflow-x-auto">
               <table className={`${tableUi.table} table-fixed`} style={{ minWidth: Math.max(760, (accessColumns.length + 1) * 150) }}>
                 <thead>
@@ -165,8 +160,6 @@ export default function AccessManagementPage() {
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
       </div>
     </Card>
   );
