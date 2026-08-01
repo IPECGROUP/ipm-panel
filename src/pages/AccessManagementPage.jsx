@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { api } from "../utils/api.js";
@@ -31,12 +32,31 @@ const pageTabs = [
   "برچسب‌ها",
 ];
 
+const accessColumnsByTab = {
+  "مدیریت اسناد": ["نمایش منو", "همه", "افزودن", "بارگذاری سند پیوست", "نمایش سند پیوست", "ارسال", "ویرایش"],
+  "قراردادها": ["نمایش منو", "همه", "افزودن", "پیش‌نمایش", "ویرایش", "عمومی", "تقویم قرارداد", "دامنه کار", "مالی و تضامین", "تأمین اجتماعی"],
+  "روزنگار پروژه": ["نمایش منو", "همه", "افزودن"],
+  "ساختار شکست هزینه‌ها": ["نمایش منو"],
+  "تعهدات و مصارف مالی": ["نمایش منو"],
+  "کاربرگ مالی": ["نمایش منو", "همه", "صورت وضعیت‌ها", "دریافتی‌ها"],
+  "درخواست پرداخت": ["نمایش منو", "همه", "افزودن"],
+  "تخصیص نقدینگی": ["نمایش منو", "همه", "افزودن"],
+  "پیش‌بینی جریان نقدی": ["نمایش منو", "همه", "پیش‌بینی هزینه‌ها", "پیش‌بینی درآمدها", "نمودار جریان نقدی"],
+  "درخواست تأمین": ["نمایش منو", "همه", "افزودن"],
+};
+
 export default function AccessManagementPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState(pageTabs[0]);
+  const tabsRef = useRef(null);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const accessColumns = accessColumnsByTab[activeTab] || [];
+
+  const slideTabs = (direction) => {
+    tabsRef.current?.scrollBy({ left: direction * 280, behavior: "smooth" });
+  };
 
   useEffect(() => {
     api("/admin/users", { credentials: "include" })
@@ -65,8 +85,18 @@ export default function AccessManagementPage() {
         </span>
       </div>
 
-      <div className="mb-4 overflow-x-auto rounded-2xl border border-black/10 bg-white dark:border-neutral-800 dark:bg-neutral-900" dir="rtl">
-        <div className="flex min-w-max">
+      <div className="mb-4 flex items-center gap-2" dir="ltr">
+        <button
+          type="button"
+          onClick={() => slideTabs(-1)}
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/10 bg-white text-black transition hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+          aria-label="تب قبلی"
+          title="تب قبلی"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+        <div ref={tabsRef} className="flex min-w-0 flex-1 overflow-x-auto rounded-2xl border border-black/10 bg-white scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden dark:border-neutral-800 dark:bg-neutral-900" dir="rtl">
+          <div className="flex min-w-max">
           {pageTabs.map((tab, index) => {
             const selected = activeTab === tab;
             return (
@@ -86,7 +116,17 @@ export default function AccessManagementPage() {
               </button>
             );
           })}
+          </div>
         </div>
+        <button
+          type="button"
+          onClick={() => slideTabs(1)}
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/10 bg-white text-black transition hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+          aria-label="تب بعدی"
+          title="تب بعدی"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
       </div>
 
       <div className="rounded-2xl border border-black/10 bg-white text-black overflow-hidden dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
@@ -96,28 +136,28 @@ export default function AccessManagementPage() {
         <div className="p-3 md:p-4">
           <div className={tableUi.frame}>
             <div className="overflow-x-auto">
-              <table className={`${tableUi.table} min-w-[760px] table-fixed`}>
+              <table className={`${tableUi.table} table-fixed`} style={{ minWidth: Math.max(760, (accessColumns.length + 1) * 150) }}>
                 <thead>
                   <tr className={tableUi.headRow}>
                     <th className={`${tableUi.th} border-l border-neutral-300 dark:border-neutral-700`}>کاربران</th>
-                    {Array.from({ length: 4 }).map((_, index) => (
-                      <th key={index} className={`${tableUi.th} ${index < 3 ? "border-l border-neutral-300 dark:border-neutral-700" : ""}`} aria-label={`ستون خالی ${index + 1}`} />
+                    {accessColumns.map((column, index) => (
+                      <th key={column} className={`${tableUi.th} ${index < accessColumns.length - 1 ? "border-l border-neutral-300 dark:border-neutral-700" : ""}`}>{column}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className={tableUi.body}>
                   {loading ? (
-                    <tr><td colSpan={5} className={tableUi.emptyRow}>در حال دریافت کاربران…</td></tr>
+                    <tr><td colSpan={accessColumns.length + 1} className={tableUi.emptyRow}>در حال دریافت کاربران…</td></tr>
                   ) : error ? (
-                    <tr><td colSpan={5} className="py-4 text-center text-sm text-red-600 dark:text-red-400">{error}</td></tr>
+                    <tr><td colSpan={accessColumns.length + 1} className="py-4 text-center text-sm text-red-600 dark:text-red-400">{error}</td></tr>
                   ) : users.length === 0 ? (
-                    <tr><td colSpan={5} className={tableUi.emptyRow}>کاربری ثبت نشده است.</td></tr>
+                    <tr><td colSpan={accessColumns.length + 1} className={tableUi.emptyRow}>کاربری ثبت نشده است.</td></tr>
                   ) : (
                     users.map((item) => (
                       <tr key={item.id} className="transition-colors hover:bg-black/[0.03] dark:hover:bg-white/[0.05]">
                         <td className="border-l border-neutral-300 px-4 py-3 text-center text-sm dark:border-neutral-700">{item.name || "—"}</td>
-                        {Array.from({ length: 4 }).map((_, index) => (
-                          <td key={index} className={index < 3 ? "border-l border-neutral-300 px-4 py-3 dark:border-neutral-700" : "px-4 py-3"}>&nbsp;</td>
+                        {accessColumns.map((column, index) => (
+                          <td key={column} className={index < accessColumns.length - 1 ? "border-l border-neutral-300 px-4 py-3 dark:border-neutral-700" : "px-4 py-3"}>&nbsp;</td>
                         ))}
                       </tr>
                     ))
