@@ -80,7 +80,7 @@ export default function AccessManagementPage() {
 
   if (user?.role !== "admin") return <Card className="text-center py-8">دسترسی به این بخش فقط برای مدیر سیستم مجاز است.</Card>;
   return <Card className="mx-auto max-w-6xl" dir="rtl">
-    <div className="mb-5 flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-black/[0.03]"><img src="/images/icons/dastresiha.svg" className="h-6 w-6" /></span><div><h1 className="text-lg font-bold">مدیریت دسترسی‌ها</h1><p className="text-xs text-neutral-500">تنظیمات</p></div></div>
+    <div className="mb-5 flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-black/[0.03]"><img src="/images/icons/dastresiha.svg" className="h-6 w-6" /></span><div><h1 className="text-lg font-bold">دسترسی‌ها</h1><p className="text-xs text-neutral-500">تنظیمات</p></div></div>
     <div className="flex w-full overflow-x-auto rounded-t-2xl border border-black/10 bg-white dark:border-neutral-800 dark:bg-neutral-900" dir="rtl">
       {groups.map((item, index) => <button key={item.label} type="button" onClick={() => setActiveGroup(item.label)} className={`relative z-10 h-11 min-w-[132px] flex-1 whitespace-nowrap px-4 text-sm font-semibold transition ${index ? "border-r border-black/10 dark:border-neutral-800" : ""} ${activeGroup === item.label ? "bg-black text-white dark:bg-white dark:text-black" : "hover:bg-neutral-50 dark:hover:bg-neutral-800"}`}>{item.label}</button>)}
     </div>
