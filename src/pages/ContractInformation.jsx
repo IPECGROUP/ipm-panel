@@ -2328,7 +2328,11 @@ export default function ContractInformation() {
   };
 
   const closeForm = () => {
-    clearDraftSaveTimer();
+    // Closing a newly-added contract must not leave its auto-saved draft behind.
+    // Otherwise pressing “Add” again restores the values that the user discarded.
+    const isNewContract = !String(form.id || "").trim();
+    if (isNewContract) void deleteContractDraft();
+    else clearDraftSaveTimer();
     setForm(emptyForm());
     setRelatedPickQuery("");
     setRelatedPickTarget("contract");
@@ -3749,7 +3753,7 @@ export default function ContractInformation() {
                             <textarea
                               value={form.technical?.serviceScope || ""}
                               onChange={(e) => setTechnicalField("serviceScope", e.target.value)}
-                              className={`${textareaCls} !h-[150px] !min-h-[150px] !resize-none sm:!h-[180px] sm:!min-h-[180px]`}
+                              className={`${textareaCls} !h-[278px] !min-h-[278px] !resize-none`}
                             />
                           </div>
                           <div className="flex items-center justify-end pt-2">
@@ -3765,7 +3769,7 @@ export default function ContractInformation() {
                             <textarea
                               value={form.technical?.serviceScope || ""}
                               onChange={(e) => setTechnicalField("serviceScope", e.target.value)}
-                              className={`${textareaCls} !h-[150px] !min-h-[150px] !resize-none sm:!h-[180px] sm:!min-h-[180px]`}
+                              className={`${textareaCls} !h-[278px] !min-h-[278px] !resize-none`}
                             />
                           </div>
 

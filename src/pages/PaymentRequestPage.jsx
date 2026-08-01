@@ -597,7 +597,6 @@ export default function PaymentRequestPage() {
       const patchPayload = {
         ...updates,
         scope: "projects",
-        amount: parseAmount(updates.amount),
         cashAmount: null,
         creditAmount: null,
         currencyTypeId: updates.currencyTypeId || null,
@@ -625,6 +624,37 @@ export default function PaymentRequestPage() {
       await loadItems();
     } catch (err) {
       setActionError(err?.message === "forbidden" ? "شما اجازه انجام این اقدام را ندارید." : "ارسال مجدد درخواست انجام نشد.");
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const saveOwnRequestEdit = async (item, updates) => {
+    if (!item || actionBusy) return;
+    if (!updates.projectId) return setActionError("پروژه را انتخاب کنید.");
+    if (!updates.budgetCode) return setActionError("کد بودجه را انتخاب کنید.");
+    if (!String(updates.title || "").trim()) return setActionError("موضوع درخواست را وارد کنید.");
+    if (updates.hasSupplyRequest === "yes" && !updates.supplyRequestId) return setActionError("درخواست تامین را انتخاب کنید.");
+
+    setActionBusy(true);
+    setActionError("");
+    try {
+      const data = await api(`/requests/${item.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          ...updates,
+          scope: "projects",
+          cashAmount: null,
+          creditAmount: null,
+          currencyTypeId: updates.currencyTypeId || null,
+          currencySourceId: updates.currencySourceId || null,
+          projectId: updates.projectId || null,
+        }),
+      });
+      setSelected((current) => current ? { ...current, ...(data.item || {}) } : current);
+      await loadItems();
+    } catch (err) {
+      setActionError(err?.message === "forbidden" ? "شما اجازه ویرایش این درخواست را ندارید." : "ویرایش درخواست انجام نشد.");
     } finally {
       setActionBusy(false);
     }
@@ -876,6 +906,7 @@ export default function PaymentRequestPage() {
       actionError={actionError}
       onAction={recordAction}
       onResubmit={resubmitReturned}
+      onEdit={saveOwnRequestEdit}
       onClose={() => setSelected(null)}
     />}
     {submitNotice && <RegistrationNotice info={submitNotice} onClose={() => setSubmitNotice(null)} />}
@@ -1063,7 +1094,7 @@ function StatusBadge({ status }) {
   return <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs ${colors}`}>{STATUS_LABELS[status] || status || "—"}</span>;
 }
 
-function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currencySources, userId, actionNote, setActionNote, actionBusy, actionError, onAction, onResubmit, onClose }) {
+function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currencySources, userId, actionNote, setActionNote, actionBusy, actionError, onAction, onResubmit, onEdit, onClose }) {
   const project = projects.find((row) => String(row.id) === String(item.projectId));
   const currency = currencyTypes.find((row) => String(row.id) === String(item.currencyTypeId));
   const source = currencySources.find((row) => String(row.id) === String(item.currencySourceId));
@@ -1074,6 +1105,9 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
   const currentStepRoleKey = item.currentStepRoleKey || "";
   const canDecide = item.status === "pending" && item.canAct === true;
   const canEditReturned = item.status === "returned" && item.canAct === true && currentStepRoleKey === "requester";
+  const isOwner = Number(item.createdById) === Number(userId);
+  const [isEditing, setIsEditing] = useState(false);
+  const canEditRequest = isOwner && isEditing;
   const currentStepIndex = Number(item.currentStepIndex || 0);
   const finalAccounting = currentStepRoleKey === "accounting" && currentStepIndex >= 5;
   const [editForm, setEditForm] = useState(() => formFromItem(item));
@@ -1124,9 +1158,9 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
     return () => { cancelled = true; };
   }, [item.projectId, userId]);
   const editAttachments = Array.isArray(editForm.attachments) ? editForm.attachments : [];
-  const previewBudgetProjectId = canEditReturned ? editForm.projectId : item.projectId;
-  const previewBudgetCode = canEditReturned ? editForm.budgetCode : item.budgetCode;
-  const previewProjectCode = canEditReturned ? editProject?.code : (project?.code || item.projectCode || "");
+  const previewBudgetProjectId = canEditRequest ? editForm.projectId : item.projectId;
+  const previewBudgetCode = canEditRequest ? editForm.budgetCode : item.budgetCode;
+  const previewProjectCode = canEditRequest ? editProject?.code : (project?.code || item.projectCode || "");
   const editBudgetOptions = useMemo(() => {
     const rows = Array.isArray(editBudgetItems) ? editBudgetItems : [];
     const hasCurrent = rows.some((row) => normalizeBudgetCode(row.code || row.center_code) === normalizeBudgetCode(editForm.budgetCode));
@@ -1156,10 +1190,11 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
   useEffect(() => {
     setEditForm(formFromItem(item));
     setEditUploadError("");
+    setIsEditing(false);
   }, [item.id, item.updatedAt]);
 
   useEffect(() => {
-    if (!canEditReturned || !editForm.projectId) {
+    if (!canEditRequest || !editForm.projectId) {
       setEditBudgetItems([]);
       return undefined;
     }
@@ -1186,7 +1221,7 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
       .catch(() => { if (!cancelled) setEditBudgetItems([]); })
       .finally(() => { if (!cancelled) setEditBudgetLoading(false); });
     return () => { cancelled = true; };
-  }, [canEditReturned, editForm.projectId, editProject?.code]);
+  }, [canEditRequest, editForm.projectId, editProject?.code]);
 
   const setEditField = (name, value) => {
     setEditForm((old) => ({ ...old, [name]: value }));
@@ -1274,7 +1309,7 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
     });
   };
 
-  const supplyRequestControl = canEditReturned ? (
+  const supplyRequestControl = canEditRequest ? (
     <div className="space-y-1">
       <div className="flex h-8 items-center gap-3 overflow-hidden px-1">
         {[['no', 'ندارد'], ['yes', 'دارد']].map(([value, label]) => {
@@ -1294,7 +1329,11 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
     <div className="absolute inset-0 flex items-center justify-center p-3 md:p-6">
       <div dir="rtl" className="flex h-[min(90vh,860px)] w-[min(1180px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
         <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3 dark:border-white/10">
-          <div className="text-sm font-bold">اقدامات پرداخت</div>
+          <div className="flex items-center gap-2">
+            <div className="text-sm font-bold">اقدامات پرداخت</div>
+            {isOwner && !isEditing && <button type="button" onClick={() => setIsEditing(true)} className="rounded-lg border border-black/10 px-3 py-1.5 text-xs font-semibold transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10">ویرایش</button>}
+            {isEditing && <button type="button" onClick={() => { setEditForm(formFromItem(item)); setEditUploadError(""); setIsEditing(false); }} className="rounded-lg border border-black/10 px-3 py-1.5 text-xs transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10">انصراف</button>}
+          </div>
           <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white ring-1 ring-black/15 transition hover:bg-black/80 dark:bg-transparent dark:ring-neutral-800 dark:hover:bg-white/10" aria-label="بستن" title="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
         </div>
         <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(300px,0.72fr)_minmax(0,1.55fr)]">
@@ -1315,13 +1354,13 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                   <PreviewRow compact fixedLabel colon leader label="درخواست کننده" value={item.createdByName || `کاربر #${toFa(item.createdById)}`} />
                 </div>
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,1fr)_minmax(190px,0.55fr)] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
-                  <PreviewRow compact editing={canEditReturned} colon leader={!canEditReturned} label="پروژه" value={canEditReturned ? (
+                  <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="پروژه" value={canEditRequest ? (
                     <select className={inputClass} value={editForm.projectId} onChange={(event) => setEditForm((old) => ({ ...old, projectId: event.target.value, budgetCode: "" }))}>
                       <option value="">انتخاب پروژه</option>
                       {projects.map((row) => <option key={row.id} value={row.id}>{projectLabel(row)}</option>)}
                     </select>
                   ) : (project ? projectLabel(project) : (item.projectName || item.projectCode || item.projectId || "—"))} />
-                  <PreviewRow compact editing={canEditReturned} colon leader={!canEditReturned} label="کد بودجه" ltr={!canEditReturned} value={canEditReturned ? (
+                  <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="کد بودجه" ltr={!canEditRequest} value={canEditRequest ? (
                     <select className={inputClass} value={editForm.budgetCode} disabled={!editForm.projectId || editBudgetLoading} onChange={(event) => setEditField("budgetCode", event.target.value)}>
                       <option value="">{editBudgetLoading ? "در حال دریافت..." : editForm.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید"}</option>
                       {editBudgetOptions.map((row) => {
@@ -1333,29 +1372,29 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                   ) : (item.budgetCode || "—")} />
                 </div>
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,0.7fr)_minmax(0,0.3fr)] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
-                  <PreviewRow compact editing={canEditReturned} colon label="موضوع درخواست" value={canEditReturned ? <input className={inputClass} value={editForm.title} onChange={(event) => setEditField("title", event.target.value)} /> : (item.title || "—")} />
-                  <PreviewRow compact editing={canEditReturned} colon valueClassName={!canEditReturned ? "whitespace-nowrap" : ""} label="درخواست تامین" value={supplyRequestControl} />
+                  <PreviewRow compact editing={canEditRequest} colon label="موضوع درخواست" value={canEditRequest ? <input className={inputClass} value={editForm.title} onChange={(event) => setEditField("title", event.target.value)} /> : (item.title || "—")} />
+                  <PreviewRow compact editing={canEditRequest} colon valueClassName={!canEditRequest ? "whitespace-nowrap" : ""} label="درخواست تامین" value={supplyRequestControl} />
                 </div>
-                <PreviewRow editing={canEditReturned} colon label="شرح درخواست" value={canEditReturned ? <textarea className={`${inputClass} h-[68px] min-h-[68px] resize-y py-1.5 leading-6`} value={editForm.description} onChange={(event) => setEditField("description", event.target.value)} /> : (item.description || "—")} />
+                <PreviewRow editing={canEditRequest} colon label="شرح درخواست" value={canEditRequest ? <textarea className={`${inputClass} h-[68px] min-h-[68px] resize-y py-1.5 leading-6`} value={editForm.description} onChange={(event) => setEditField("description", event.target.value)} /> : (item.description || "—")} />
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
-                  <PreviewRow compact editing={canEditReturned} colon leader={!canEditReturned} label="مبلغ درخواست" ltr={!canEditReturned} value={canEditReturned ? <MoneyInput value={editForm.amount} onChange={(value) => setEditField("amount", value)} /> : toFa(Number(item.amount || 0).toLocaleString("en-US"))} />
-                  <PreviewRow compact colon leader={!canEditReturned} label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFa(baseBudget) : "—"} ltr />
-                  <PreviewRow compact colon leader={!canEditReturned} label="باقی مانده نقدینگی پروژه" value={liquidityRemaining || "—"} ltr />
+                  <PreviewRow compact colon leader={!canEditRequest} label="مبلغ درخواست" ltr={!canEditRequest} value={toFa(Number(item.amount || 0).toLocaleString("en-US"))} />
+                  <PreviewRow compact colon leader={!canEditRequest} label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFa(baseBudget) : "—"} ltr />
+                  <PreviewRow compact colon leader={!canEditRequest} label="باقی مانده نقدینگی پروژه" value={liquidityRemaining || "—"} ltr />
                 </div>
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,0.38fr)_minmax(0,0.62fr)] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
-                  <PreviewRow compact editing={canEditReturned} colon leader={!canEditReturned} label="نام ذینفع" value={canEditReturned ? <input className={inputClass} value={editForm.beneficiaryName} onChange={(event) => setEditField("beneficiaryName", event.target.value)} /> : (item.beneficiaryName || "—")} />
-                  <PreviewRow compact editing={canEditReturned} colon leader={!canEditReturned} label="شماره شبا" ltr={!canEditReturned} value={canEditReturned ? <input dir="ltr" inputMode="numeric" className={`${inputClass} text-left font-sans tabular-nums`} value={editForm.bankInfo || "IR"} onChange={(event) => setEditField("bankInfo", formatSheba(event.target.value))} onFocus={() => { if (!editForm.bankInfo) setEditField("bankInfo", "IR"); }} placeholder="IR" /> : (item.bankInfo || "—")} />
+                  <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="نام ذینفع" value={canEditRequest ? <input className={inputClass} value={editForm.beneficiaryName} onChange={(event) => setEditField("beneficiaryName", event.target.value)} /> : (item.beneficiaryName || "—")} />
+                  <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="شماره شبا" ltr={!canEditRequest} value={canEditRequest ? <input dir="ltr" inputMode="numeric" className={`${inputClass} text-left font-sans tabular-nums`} value={editForm.bankInfo || "IR"} onChange={(event) => setEditField("bankInfo", formatSheba(event.target.value))} onFocus={() => { if (!editForm.bankInfo) setEditField("bankInfo", "IR"); }} placeholder="IR" /> : (item.bankInfo || "—")} />
                 </div>
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-4 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
-                  <PreviewRow compact editing={canEditReturned} colon leader={!canEditReturned} label="نوع سند" value={canEditReturned ? (
+                  <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="نوع سند" value={canEditRequest ? (
                   <div className="space-y-2">
                     <select className={inputClass} value={editForm.docId} onChange={(event) => setEditForm((old) => ({ ...old, docId: event.target.value, docOther: event.target.value === "other" ? old.docOther : "" }))}>{DOC_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
                     {editForm.docId === "other" && <input className={inputClass} value={editForm.docOther} onChange={(event) => setEditField("docOther", event.target.value)} placeholder="نوع سند را وارد کنید" />}
                   </div>
                 ) : docName} />
-                  <PreviewRow compact editing={canEditReturned} colon leader={!canEditReturned} label="شماره سند" value={canEditReturned ? <input className={inputClass} value={editForm.docNumber} onChange={(event) => setEditField("docNumber", event.target.value)} /> : (item.docNumber || "—")} />
-                  <PreviewRow compact editing={canEditReturned} colon leader={!canEditReturned} label="تاریخ سند" value={canEditReturned ? <JalaliPopupDatePicker value={editForm.docDateJalali} onChange={(value) => setEditField("docDateJalali", value)} /> : toFa(item.docDate || item.docDateJalali || "—")} />
-                  <PreviewRow compact editing={canEditReturned} colon leader={!canEditReturned} label="پیوست‌ها" value={canEditReturned ? (
+                  <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="شماره سند" value={canEditRequest ? <input className={inputClass} value={editForm.docNumber} onChange={(event) => setEditField("docNumber", event.target.value)} /> : (item.docNumber || "—")} />
+                  <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="تاریخ سند" value={canEditRequest ? <JalaliPopupDatePicker value={editForm.docDateJalali} onChange={(value) => setEditField("docDateJalali", value)} /> : toFa(item.docDate || item.docDateJalali || "—")} />
+                  <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="پیوست‌ها" value={canEditRequest ? (
                   <div className="flex flex-wrap justify-end gap-2">
                     {editAttachments.map((file, index) => <span key={file.id || file.serverId || file.url || index} className="inline-flex max-w-full items-center gap-2 rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10">
                       <a href={file.url || "#"} target="_blank" rel="noreferrer" className="max-w-[220px] truncate hover:underline">{file.name || `فایل ${toFa(index + 1)}`}</a>
@@ -1400,12 +1439,14 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                 targetAssigneeUserId={targetAssigneeUserId}
                 setTargetAssigneeUserId={setTargetAssigneeUserId}
               />}
-              {canEditReturned && <div className="rounded-2xl border border-black/10 px-4 py-2 dark:border-white/10">
+              {canEditRequest && <div className="rounded-2xl border border-black/10 px-4 py-2 dark:border-white/10">
                 {editUploadError && <div className="mb-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">{editUploadError}</div>}
-                <NextRecipientSelect recipients={nextRecipients} loading={nextRecipientsLoading} value={targetAssigneeUserId} onChange={setTargetAssigneeUserId} />
-                <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={editUploading || (!!nextRecipients.targetRoleKey && !targetAssigneeUserId)} onSubmit={() => onResubmit(item, editForm, actionNote, { targetAssigneeUserId: targetAssigneeUserId || null })} />
+                {canEditReturned ? <>
+                  <NextRecipientSelect recipients={nextRecipients} loading={nextRecipientsLoading} value={targetAssigneeUserId} onChange={setTargetAssigneeUserId} />
+                  <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={editUploading || (!!nextRecipients.targetRoleKey && !targetAssigneeUserId)} onSubmit={() => onResubmit(item, editForm, actionNote, { targetAssigneeUserId: targetAssigneeUserId || null })} />
+                </> : <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={editUploading} onSubmit={() => onEdit(item, editForm)} />}
               </div>}
-              {!canDecide && !canEditReturned && <div className="rounded-2xl border border-black/10 p-4 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">
+              {!canDecide && !canEditRequest && <div className="rounded-2xl border border-black/10 p-4 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">
                 در این مرحله اقدامی برای شما فعال نیست.
               </div>}
             </div>
