@@ -40,7 +40,7 @@ export default function AccessManagementPage() {
 
   useEffect(() => {
     api("/admin/users", { credentials: "include" })
-      .then((data) => setUsers(Array.isArray(data?.items) ? data.items : []))
+      .then((data) => setUsers((Array.isArray(data?.users) ? data.users : []).filter((item) => item?.isActive !== false)))
       .catch((err) => setError(err?.message || "خطا در دریافت کاربران"))
       .finally(() => setLoading(false));
   }, []);

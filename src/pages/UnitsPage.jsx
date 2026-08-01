@@ -1011,7 +1011,7 @@ function OrgStructurePage() {
 
   const assignmentUserOptions = useMemo(
     () =>
-      (assignmentItems || []).map((u) => ({
+      (assignmentItems || []).filter((u) => u?.isActive !== false).map((u) => ({
         id: String(u?.id || ""),
         label: u?.label || u?.name || u?.username || "—",
         item: u,
@@ -1051,7 +1051,7 @@ function OrgStructurePage() {
 
   const assignmentRows = useMemo(
     () =>
-      (assignmentItems || []).map((item, idx) => ({
+      (assignmentItems || []).filter((item) => item?.isActive !== false).map((item, idx) => ({
         id: String(item?.id ?? idx),
         userId: item?.id,
         user: item?.label || item?.name || item?.username || "—",

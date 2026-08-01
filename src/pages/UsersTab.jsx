@@ -53,6 +53,7 @@ const createEmptyUserForm = () => ({
   department: "",
   role: "user",
   unitPack: "",
+  isActive: true,
   accessBudget: {
     "budget:projects": false,
     "budget:office": false,
@@ -138,6 +139,7 @@ function UsersTab({ embedded = false }) {
   // ===== state =====
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [activeUpdatingIds, setActiveUpdatingIds] = useState([]);
 
   // مرتب‌سازی
   const [sortKey, setSortKey] = useState("");
@@ -366,6 +368,7 @@ function UsersTab({ embedded = false }) {
           expiresAt: jalaliYmdToIsoEndOfDay(addForm.expiresAt),
           department: addForm.department || null,
           role: addForm.role || "user",
+          isActive: addForm.isActive !== false,
         }),
       });
       if (isEditing && addForm.password) {
@@ -397,10 +400,31 @@ function UsersTab({ embedded = false }) {
       username: u.username || "",
       department: u.department || "",
       role: u.role || "user",
+      isActive: u.isActive !== false,
       password: "",
       expiresAt: dateTimeToJalaliYmd(u.expiresAt || u.expires_at || u.validUntil || u.valid_until),
     }));
     setAddOpen(true);
+  };
+
+  const toggleUserActive = async (targetUser) => {
+    const id = String(targetUser.id);
+    if (activeUpdatingIds.includes(id)) return;
+    const isActive = targetUser.isActive === false;
+    setActiveUpdatingIds((prev) => [...prev, id]);
+    setList((prev) => prev.map((u) => (String(u.id) === id ? { ...u, isActive } : u)));
+    try {
+      await api("/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: targetUser.id, isActive }),
+      });
+    } catch (ex) {
+      setList((prev) => prev.map((u) => (String(u.id) === id ? { ...u, isActive: targetUser.isActive !== false } : u)));
+      alert(ex?.message || "خطا در تغییر وضعیت کاربر");
+    } finally {
+      setActiveUpdatingIds((prev) => prev.filter((value) => value !== id));
+    }
   };
 
   const removeRows = async (ids) => {
@@ -685,7 +709,7 @@ function UsersTab({ embedded = false }) {
             <div className="px-[15px] pb-4">
               <div className={tableUi.frame}>
                 <div className="w-full overflow-x-auto">
-                  <table className={`${tableUi.table} min-w-[760px]`} dir="rtl">
+                  <table className={`${tableUi.table} min-w-[900px]`} dir="rtl">
                     <THead>
                       <tr className={tableUi.headRow}>
                         <TH className={`w-12 ${tableUi.th}`}>
@@ -740,6 +764,10 @@ function UsersTab({ embedded = false }) {
                           اعتبار تا
                         </TH>
 
+                        <TH className={`w-32 sm:w-40 ${tableUi.th}`}>
+                          وضعیت
+                        </TH>
+
                         <TH className={`min-w-[160px] ${tableUi.th}`}>
                           نوع
                         </TH>
@@ -749,13 +777,13 @@ function UsersTab({ embedded = false }) {
                     <tbody className={tableUi.body}>
                       {loading ? (
                         <TR>
-                          <TD colSpan={6} className={tableUi.emptyRow}>
+                          <TD colSpan={7} className={tableUi.emptyRow}>
                             در حال بارگذاری...
                           </TD>
                         </TR>
                       ) : (sortedList || []).length === 0 ? (
                         <TR>
-                          <TD colSpan={6} className={tableUi.emptyRow}>
+                          <TD colSpan={7} className={tableUi.emptyRow}>
                             کاربری ثبت نشده است.
                           </TD>
                         </TR>
@@ -785,6 +813,17 @@ function UsersTab({ embedded = false }) {
                               <TD className={`px-3 ${tdBorder}`} dir="ltr">{u.username || "—"}</TD>
                               <TD className={`px-3 ${tdBorder} ${isExpired(u.expiresAt || u.expires_at) ? "text-red-600 dark:text-red-400" : ""}`}>
                                 {formatExpiresAt(u.expiresAt || u.expires_at)}
+                              </TD>
+                              <TD className={`px-3 ${tdBorder}`}>
+                                <input
+                                  type="checkbox"
+                                  className={rowUi.checkbox}
+                                  checked={u.isActive !== false}
+                                  disabled={activeUpdatingIds.includes(rowId)}
+                                  onChange={() => toggleUserActive(u)}
+                                  aria-label={u.isActive !== false ? "کاربر فعال" : "کاربر غیرفعال"}
+                                  title={u.isActive !== false ? "فعال" : "غیرفعال"}
+                                />
                               </TD>
                               <TD className={`px-3 ${rowUi.valueCell} ${tdBorder} text-black/80 dark:text-neutral-300`}>
                                 <div className={rowUi.valueWrap}>
