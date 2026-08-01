@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { api } from "../utils/api.js";
@@ -50,12 +50,22 @@ export default function AccessManagementPage() {
   const [activeTab, setActiveTab] = useState(pageTabs[0]);
   const tabsRef = useRef(null);
   const [users, setUsers] = useState([]);
+  const [selectedPermissions, setSelectedPermissions] = useState(() => new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const accessColumns = accessColumnsByTab[activeTab] || [];
 
   const slideTabs = (direction) => {
     tabsRef.current?.scrollBy({ left: direction * 280, behavior: "smooth" });
+  };
+
+  const togglePermission = (userId, column) => {
+    const key = `${activeTab}:${userId}:${column}`;
+    setSelectedPermissions((current) => {
+      const next = new Set(current);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -85,17 +95,17 @@ export default function AccessManagementPage() {
         </span>
       </div>
 
-      <div className="mb-4 flex items-center gap-2" dir="ltr">
+      <div className="mb-5 flex items-end gap-1 border-b border-black/10 dark:border-neutral-800" dir="ltr">
         <button
           type="button"
           onClick={() => slideTabs(-1)}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/10 bg-white text-black transition hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+          className="mb-1 grid h-9 w-9 shrink-0 place-items-center rounded-lg text-neutral-600 transition hover:bg-black/[0.05] dark:text-neutral-300 dark:hover:bg-white/[0.08]"
           aria-label="تب قبلی"
           title="تب قبلی"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
-        <div ref={tabsRef} className="flex min-w-0 flex-1 overflow-x-auto rounded-2xl border border-black/10 bg-white scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden dark:border-neutral-800 dark:bg-neutral-900" dir="rtl">
+        <div ref={tabsRef} className="flex min-w-0 flex-1 overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" dir="rtl">
           <div className="flex min-w-max">
           {pageTabs.map((tab, index) => {
             const selected = activeTab === tab;
@@ -105,11 +115,11 @@ export default function AccessManagementPage() {
                 type="button"
                 onClick={() => setActiveTab(tab)}
                 className={[
-                  "relative z-10 h-10 min-w-[104px] flex-none rounded-lg px-3 text-[11px] font-semibold whitespace-nowrap transition md:h-11 md:min-w-[132px] md:px-4 md:text-sm",
-                  index > 0 ? "border-r border-black/10 dark:border-neutral-800" : "",
+                  "relative -mb-px z-10 h-11 min-w-[132px] flex-none rounded-t-2xl border border-b-0 px-4 text-sm font-semibold whitespace-nowrap transition",
+                  index > 0 ? "mr-[-1px]" : "",
                   selected
-                    ? "bg-black text-white dark:bg-white dark:text-black"
-                    : "text-neutral-700 hover:bg-neutral-50 dark:text-neutral-200 dark:hover:bg-neutral-800",
+                    ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
+                    : "border-black/10 bg-white text-neutral-700 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800",
                 ].join(" ")}
               >
                 {tab}
@@ -121,7 +131,7 @@ export default function AccessManagementPage() {
         <button
           type="button"
           onClick={() => slideTabs(1)}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/10 bg-white text-black transition hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+          className="mb-1 grid h-9 w-9 shrink-0 place-items-center rounded-lg text-neutral-600 transition hover:bg-black/[0.05] dark:text-neutral-300 dark:hover:bg-white/[0.08]"
           aria-label="تب بعدی"
           title="تب بعدی"
         >
@@ -131,12 +141,14 @@ export default function AccessManagementPage() {
 
       <div className={tableUi.frame}>
             <div className="overflow-x-auto">
-              <table className={`${tableUi.table} table-fixed`} style={{ minWidth: Math.max(760, (accessColumns.length + 1) * 150) }}>
+              <table className={`${tableUi.table} table-fixed`} style={{ minWidth: Math.max(360, 240 + accessColumns.length * 58) }}>
                 <thead>
                   <tr className={tableUi.headRow}>
-                    <th className={`${tableUi.th} border-l border-neutral-300 dark:border-neutral-700`}>کاربران</th>
+                    <th className={`${tableUi.th} w-[240px] border-l border-neutral-300 dark:border-neutral-700`}>کاربران</th>
                     {accessColumns.map((column, index) => (
-                      <th key={column} className={`${tableUi.th} ${index < accessColumns.length - 1 ? "border-l border-neutral-300 dark:border-neutral-700" : ""}`}>{column}</th>
+                      <th key={column} className={`${tableUi.th} w-[58px] px-1 ${index < accessColumns.length - 1 ? "border-l border-neutral-300 dark:border-neutral-700" : ""}`}>
+                        <span className="mx-auto block h-28 w-5 whitespace-nowrap [writing-mode:vertical-rl] [transform:rotate(180deg)]">{column}</span>
+                      </th>
                     ))}
                   </tr>
                 </thead>
@@ -151,9 +163,28 @@ export default function AccessManagementPage() {
                     users.map((item) => (
                       <tr key={item.id} className="transition-colors hover:bg-black/[0.03] dark:hover:bg-white/[0.05]">
                         <td className="border-l border-neutral-300 px-4 py-3 text-center text-sm dark:border-neutral-700">{item.name || "—"}</td>
-                        {accessColumns.map((column, index) => (
-                          <td key={column} className={index < accessColumns.length - 1 ? "border-l border-neutral-300 px-4 py-3 dark:border-neutral-700" : "px-4 py-3"}>&nbsp;</td>
-                        ))}
+                        {accessColumns.map((column, index) => {
+                          const permissionKey = `${activeTab}:${item.id}:${column}`;
+                          const isSelected = selectedPermissions.has(permissionKey);
+                          return (
+                            <td key={column} className={index < accessColumns.length - 1 ? "border-l border-neutral-300 px-1 py-3 dark:border-neutral-700" : "px-1 py-3"}>
+                              <button
+                                type="button"
+                                onClick={() => togglePermission(item.id, column)}
+                                className={`mx-auto grid h-5 w-5 place-items-center rounded-[6px] border transition ${
+                                  isSelected
+                                    ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
+                                    : "border-black/25 bg-transparent text-transparent hover:border-black/50 dark:border-white/25 dark:hover:border-white/50"
+                                }`}
+                                aria-label={`${column} برای ${item.name || item.username || "کاربر"}`}
+                                aria-pressed={isSelected}
+                                title={isSelected ? "فعال" : "غیرفعال"}
+                              >
+                                <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                              </button>
+                            </td>
+                          );
+                        })}
                       </tr>
                     ))
                   )}
