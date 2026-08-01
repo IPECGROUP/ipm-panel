@@ -2328,11 +2328,9 @@ export default function ContractInformation() {
   };
 
   const closeForm = () => {
-    // Closing a newly-added contract must not leave its auto-saved draft behind.
-    // Otherwise pressing “Add” again restores the values that the user discarded.
-    const isNewContract = !String(form.id || "").trim();
-    if (isNewContract) void deleteContractDraft();
-    else clearDraftSaveTimer();
+    // The Add/Close toggle means discard. A resumed draft may already have an
+    // id, so always remove both local and server-side draft data.
+    void deleteContractDraft();
     setForm(emptyForm());
     setRelatedPickQuery("");
     setRelatedPickTarget("contract");

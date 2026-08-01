@@ -1105,7 +1105,7 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
   const currentStepRoleKey = item.currentStepRoleKey || "";
   const canDecide = item.status === "pending" && item.canAct === true;
   const canEditReturned = item.status === "returned" && item.canAct === true && currentStepRoleKey === "requester";
-  const isOwner = Number(item.createdById) === Number(userId);
+  const isOwner = item.canEdit === true || Number(item.createdById) === Number(userId);
   const [isEditing, setIsEditing] = useState(false);
   const canEditRequest = isOwner && isEditing;
   const currentStepIndex = Number(item.currentStepIndex || 0);
@@ -1446,9 +1446,12 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                   <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={editUploading || (!!nextRecipients.targetRoleKey && !targetAssigneeUserId)} onSubmit={() => onResubmit(item, editForm, actionNote, { targetAssigneeUserId: targetAssigneeUserId || null })} />
                 </> : <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={editUploading} onSubmit={() => onEdit(item, editForm)} />}
               </div>}
-              {!canDecide && !canEditRequest && <div className="rounded-2xl border border-black/10 p-4 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">
-                در این مرحله اقدامی برای شما فعال نیست.
-              </div>}
+              {!canDecide && !canEditRequest && (
+                isOwner ? <div className="flex items-center justify-between gap-3 rounded-2xl border border-black/10 p-4 text-sm dark:border-white/10">
+                  <span className="text-neutral-500 dark:text-neutral-400">برای ویرایش اطلاعات درخواست، دکمه ویرایش را انتخاب کنید.</span>
+                  <button type="button" onClick={() => setIsEditing(true)} className="shrink-0 rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-black/85 dark:bg-white dark:text-black">ویرایش درخواست</button>
+                </div> : <div className="rounded-2xl border border-black/10 p-4 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">در این مرحله اقدامی برای شما فعال نیست.</div>
+              )}
             </div>
           </main>
         </div>
