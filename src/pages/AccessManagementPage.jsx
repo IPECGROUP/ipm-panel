@@ -57,7 +57,7 @@ export default function AccessManagementPage() {
     <Card className="mx-auto max-w-6xl" dir="rtl">
       <div className="mb-5 flex items-center gap-3">
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
-          <img src="/images/icons/sath.svg" alt="" className="h-6 w-6 dark:invert" />
+          <img src="/images/icons/dastresiha.svg" alt="" className="h-6 w-6 dark:invert" />
         </span>
         <span className="min-w-0">
           <span className="block text-base font-bold md:text-lg">مدیریت دسترسی‌ها</span>
@@ -96,23 +96,29 @@ export default function AccessManagementPage() {
         <div className="p-3 md:p-4">
           <div className={tableUi.frame}>
             <div className="overflow-x-auto">
-              <table className={`${tableUi.table} min-w-full`}>
+              <table className={`${tableUi.table} min-w-[760px] table-fixed`}>
                 <thead>
                   <tr className={tableUi.headRow}>
-                    <th className={tableUi.th}>کاربران</th>
+                    <th className={`${tableUi.th} border-l border-neutral-300 dark:border-neutral-700`}>کاربران</th>
+                    {Array.from({ length: 4 }).map((_, index) => (
+                      <th key={index} className={`${tableUi.th} ${index < 3 ? "border-l border-neutral-300 dark:border-neutral-700" : ""}`} aria-label={`ستون خالی ${index + 1}`} />
+                    ))}
                   </tr>
                 </thead>
                 <tbody className={tableUi.body}>
                   {loading ? (
-                    <tr><td className={tableUi.emptyRow}>در حال دریافت کاربران…</td></tr>
+                    <tr><td colSpan={5} className={tableUi.emptyRow}>در حال دریافت کاربران…</td></tr>
                   ) : error ? (
-                    <tr><td className="py-4 text-center text-sm text-red-600 dark:text-red-400">{error}</td></tr>
+                    <tr><td colSpan={5} className="py-4 text-center text-sm text-red-600 dark:text-red-400">{error}</td></tr>
                   ) : users.length === 0 ? (
-                    <tr><td className={tableUi.emptyRow}>کاربری ثبت نشده است.</td></tr>
+                    <tr><td colSpan={5} className={tableUi.emptyRow}>کاربری ثبت نشده است.</td></tr>
                   ) : (
                     users.map((item) => (
                       <tr key={item.id} className="transition-colors hover:bg-black/[0.03] dark:hover:bg-white/[0.05]">
-                        <td className="px-4 py-3 text-center text-sm">{item.name || "—"}</td>
+                        <td className="border-l border-neutral-300 px-4 py-3 text-center text-sm dark:border-neutral-700">{item.name || "—"}</td>
+                        {Array.from({ length: 4 }).map((_, index) => (
+                          <td key={index} className={index < 3 ? "border-l border-neutral-300 px-4 py-3 dark:border-neutral-700" : "px-4 py-3"}>&nbsp;</td>
+                        ))}
                       </tr>
                     ))
                   )}
