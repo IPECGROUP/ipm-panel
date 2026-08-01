@@ -1331,7 +1331,7 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
         <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3 dark:border-white/10">
           <div className="flex items-center gap-2">
             <div className="text-sm font-bold">اقدامات پرداخت</div>
-            {isOwner && !isEditing && <button type="button" onClick={() => setIsEditing(true)} className="rounded-lg border border-black/10 px-3 py-1.5 text-xs font-semibold transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10">ویرایش</button>}
+            {isOwner && !isEditing && <button type="button" onClick={() => setIsEditing(true)} className="grid h-9 w-9 place-items-center rounded-lg border border-black/10 transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10" title="ویرایش درخواست" aria-label="ویرایش درخواست"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></button>}
             {isEditing && <button type="button" onClick={() => { setEditForm(formFromItem(item)); setEditUploadError(""); setIsEditing(false); }} className="rounded-lg border border-black/10 px-3 py-1.5 text-xs transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10">انصراف</button>}
           </div>
           <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white ring-1 ring-black/15 transition hover:bg-black/80 dark:bg-transparent dark:ring-neutral-800 dark:hover:bg-white/10" aria-label="بستن" title="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
@@ -1447,9 +1447,8 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                 </> : <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={editUploading} onSubmit={() => onEdit(item, editForm)} />}
               </div>}
               {!canDecide && !canEditRequest && (
-                isOwner ? <div className="flex items-center justify-between gap-3 rounded-2xl border border-black/10 p-4 text-sm dark:border-white/10">
-                  <span className="text-neutral-500 dark:text-neutral-400">برای ویرایش اطلاعات درخواست، دکمه ویرایش را انتخاب کنید.</span>
-                  <button type="button" onClick={() => setIsEditing(true)} className="shrink-0 rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-black/85 dark:bg-white dark:text-black">ویرایش درخواست</button>
+                isOwner ? <div className="flex justify-end rounded-2xl border border-black/10 p-3 dark:border-white/10">
+                  <button type="button" onClick={() => setIsEditing(true)} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 dark:bg-white dark:text-black" title="ویرایش درخواست" aria-label="ویرایش درخواست"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button>
                 </div> : <div className="rounded-2xl border border-black/10 p-4 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">در این مرحله اقدامی برای شما فعال نیست.</div>
               )}
             </div>
