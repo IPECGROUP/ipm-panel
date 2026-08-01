@@ -4,6 +4,7 @@ import { Card } from "../components/ui/Card";
 import { Portal } from "../components/Portal";
 import { dayjs, todayJalaliYmd } from "../utils/date";
 import { useAuth } from "../components/AuthProvider";
+import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 
 const PERSIAN_MONTHS = [
   "فروردین",
@@ -545,6 +546,7 @@ function JalaliPopupDatePicker({ value, onChange, theme = "light", buttonClassNa
 }
 
 export default function RoznegarPgae() {
+  useFeatureVisibility("روزنگار پروژه", { "افزودن": "افزودن" });
   const { user: authUser, loading: authLoading } = useAuth();
   const [activeProjects, setActiveProjects] = useState([]);
   const [projectsLoading, setProjectsLoading] = useState(true);

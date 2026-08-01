@@ -5,6 +5,7 @@ import { Card } from "../components/ui/Card";
 import { useAuth } from "../components/AuthProvider";
 import { todayJalaliYmd } from "../utils/date";
 import { toEnglishDigits } from "../utils/format";
+import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 
 const DOC_OPTIONS = [
   ["pre_invoice", "پیش فاکتور"], ["invoice", "فاکتور"],
@@ -229,6 +230,7 @@ function DateSelect({ label, value, onChange, items }) {
 }
 
 export default function PaymentRequestPage() {
+  useFeatureVisibility("درخواست پرداخت", { "افزودن": "افزودن" });
   const { user, isAdmin } = useAuth();
   const [form, setForm] = useState(emptyForm);
   const [showForm, setShowForm] = useState(false);

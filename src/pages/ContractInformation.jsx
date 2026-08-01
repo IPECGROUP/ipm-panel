@@ -5,6 +5,7 @@ import Card from "../components/ui/Card.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 import { baseCurrenciesTablePreset as financialTablePreset, hoverSelectableRowPreset } from "../components/ui/tablePresets.js";
 import { dayjs, isJalaliYmd } from "../utils/date";
+import { useAuth } from "../components/AuthProvider.jsx";
 
 const CONTRACT_DOCUMENT_TYPES = [
   { id: "main", label: "اصلی" },
@@ -1148,6 +1149,13 @@ function ContractDatePicker({ value, onChange }) {
 }
 
 export default function ContractInformation() {
+  const { user } = useAuth();
+  const contractAccess = new Set(Array.isArray(user?.access) ? user.access.map(String) : []);
+  const isContractAdmin = String(user?.role || "").toLowerCase() === "admin";
+  const canContract = (permission) =>
+    isContractAdmin ||
+    contractAccess.has("page-access:2:همه") ||
+    contractAccess.has(`page-access:2:${permission}`);
   const [projects, setProjects] = React.useState([]);
   const [projectsLoading, setProjectsLoading] = React.useState(false);
   const [letters, setLetters] = React.useState([]);
@@ -2633,8 +2641,12 @@ export default function ContractInformation() {
   const isAppendixDocument = form.documentType === "appendix";
   const showCalendarExtraDates = isAppendixDocument;
   const visibleContractTabs = React.useMemo(
-    () => CONTRACT_SECTION_TABS.filter((tab) => !isAppendixDocument || !["general", "insurance"].includes(tab.id)),
-    [isAppendixDocument]
+    () => CONTRACT_SECTION_TABS.filter(
+      (tab) =>
+        (!isAppendixDocument || !["general", "insurance"].includes(tab.id)) &&
+        canContract(tab.label)
+    ),
+    [isAppendixDocument, user]
   );
   const readonlyInputCls =
     "w-full h-11 rounded-xl px-3 bg-black/[0.04] text-black border border-black/10 outline-none dark:bg-white/[0.06] dark:text-neutral-100 dark:border-neutral-700";
@@ -3199,6 +3211,14 @@ export default function ContractInformation() {
     </label>
   );
 
+  if (!canContract("نمایش منو")) {
+    return (
+      <Card className="mx-auto max-w-6xl text-center py-8">
+        شما دسترسی مشاهده قراردادها را ندارید.
+      </Card>
+    );
+  }
+
   return (
     <div dir="rtl" className="ipm-contract-information mx-auto w-full max-w-[1400px] px-2 font-sans text-[13px] sm:px-0 sm:text-sm">
       <Card className="!p-0 rounded-xl border overflow-hidden border-black/10 bg-white text-black sm:rounded-2xl dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
@@ -3214,7 +3234,7 @@ export default function ContractInformation() {
                 <span className="font-semibold text-neutral-900 dark:text-neutral-100">قراردادها</span>
               </div>
             </div>
-            <button
+            {canContract("افزودن") && <button
               type="button"
               onClick={() => (formOpen ? closeForm() : openFreshForm())}
               className={iconBtnCls}
@@ -3226,7 +3246,7 @@ export default function ContractInformation() {
                 alt=""
                 className="w-5 h-5 dark:invert"
               />
-            </button>
+            </button>}
           </div>
 
           <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
@@ -4429,8 +4449,8 @@ export default function ContractInformation() {
                           </div>
 
                           <div className="flex shrink-0 items-center gap-1">
-                            <RowActionIconBtn icon="/images/icons/namayeshname.svg" title="پیش نمایش" onClick={() => setPreviewContractId(id)} size={34} iconSize={16} />
-                            <RowActionIconBtn action="edit" onClick={() => openEditForm(row)} size={34} iconSize={15} />
+                            {canContract("پیش‌نمایش") && <RowActionIconBtn icon="/images/icons/namayeshname.svg" title="پیش نمایش" onClick={() => setPreviewContractId(id)} size={34} iconSize={16} />}
+                            {canContract("ویرایش") && <RowActionIconBtn action="edit" onClick={() => openEditForm(row)} size={34} iconSize={15} />}
                           </div>
                         </div>
 
@@ -4553,8 +4573,8 @@ export default function ContractInformation() {
                           </td>
                           <td className={`px-3 ${divider}`}>
                             <div className={centeredRowActionsCls}>
-                              <RowActionIconBtn icon="/images/icons/namayeshname.svg" title="پیش نمایش" onClick={() => setPreviewContractId(id)} size={34} iconSize={16} />
-                              <RowActionIconBtn action="edit" onClick={() => openEditForm(row)} size={34} iconSize={15} />
+                              {canContract("پیش‌نمایش") && <RowActionIconBtn icon="/images/icons/namayeshname.svg" title="پیش نمایش" onClick={() => setPreviewContractId(id)} size={34} iconSize={16} />}
+                              {canContract("ویرایش") && <RowActionIconBtn action="edit" onClick={() => openEditForm(row)} size={34} iconSize={15} />}
                             </div>
                           </td>
                         </tr>

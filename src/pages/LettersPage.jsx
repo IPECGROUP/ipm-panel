@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider";
 import { isMainAdminUser } from "../utils/auth";
+import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 
 const PAGE_ICON = "/images/icons/nameha.svg";
 
@@ -620,6 +621,7 @@ async function _uploadQueueInBackground({
 }
 
 export default function LettersPage() {
+  useFeatureVisibility("مدیریت اسناد", { "افزودن": "افزودن", "بارگذاری سند پیوست": "بارگذاری پیوست", "نمایش سند پیوست": "پیش نمایش", "ارسال": "ارسال", "ویرایش": "ویرایش" });
 // ✅ Validation (per tab)
 const [errorsByKind, setErrorsByKind] = useState({
   incoming: {},

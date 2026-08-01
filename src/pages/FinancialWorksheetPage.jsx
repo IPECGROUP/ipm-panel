@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
 import { baseCurrenciesTablePreset as tablePreset } from "../components/ui/tablePresets.js";
+import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 
 const CONTRACT_VERIFIED_STORAGE_KEY = "ipm_contract_information_verified_rows_v1";
 
@@ -328,6 +329,7 @@ function AmountInputWithMeta({
 }
 
 export default function FinancialWorksheetPage() {
+  useFeatureVisibility("کاربرگ مالی", { "صورت وضعیت‌ها": "صورت وضعیت", "دریافتی‌ها": "دریافتی" });
   const API_BASE = (window.API_URL || "/api").replace(/\/+$/, "");
 
   const api = useCallback(

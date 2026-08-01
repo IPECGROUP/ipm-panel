@@ -5,6 +5,7 @@ import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { todayJalaliYmd } from "../utils/date.js";
 import { toEnglishDigits } from "../utils/format.js";
+import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 
 const PAGE_ICON = "/images/icons/modiriat-nagdinegi.svg";
 
@@ -68,6 +69,7 @@ const historyTableCellClass = "h-11 border-b border-l border-neutral-300 px-3 te
 const paginationIconBtnCls = "grid h-9 w-9 place-items-center rounded-lg border border-black/10 text-neutral-700 transition hover:bg-black/[0.04] disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:text-neutral-100 dark:hover:bg-white/10";
 
 export default function LiquidityAllocationPage() {
+  useFeatureVisibility("تخصیص نقدینگی", { "افزودن": "افزودن" });
   const { user, isAdmin } = useAuth();
   const [formOpen, setFormOpen] = useState(false);
   const [batchId, setBatchId] = useState("");

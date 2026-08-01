@@ -33,17 +33,24 @@ const pageTabs = [
 ];
 
 const accessColumnsByTab = {
-  "مدیریت اسناد": ["نمایش منو", "همه", "افزودن", "بارگذاری سند پیوست", "نمایش سند پیوست", "ارسال", "ویرایش"],
-  "قراردادها": ["نمایش منو", "همه", "افزودن", "پیش‌نمایش", "ویرایش", "عمومی", "تقویم قرارداد", "دامنه کار", "مالی و تضامین", "تأمین اجتماعی"],
-  "روزنگار پروژه": ["نمایش منو", "همه", "افزودن"],
-  "ساختار شکست هزینه‌ها": ["نمایش منو"],
-  "تعهدات و مصارف مالی": ["نمایش منو"],
-  "کاربرگ مالی": ["نمایش منو", "همه", "صورت وضعیت‌ها", "دریافتی‌ها"],
-  "درخواست پرداخت": ["نمایش منو", "همه", "افزودن"],
-  "تخصیص نقدینگی": ["نمایش منو", "همه", "افزودن"],
-  "پیش‌بینی جریان نقدی": ["نمایش منو", "همه", "پیش‌بینی هزینه‌ها", "پیش‌بینی درآمدها", "نمودار جریان نقدی"],
-  "درخواست تأمین": ["نمایش منو", "همه", "افزودن"],
+  "مدیریت اسناد": ["همه", "نمایش منو", "افزودن", "بارگذاری سند پیوست", "نمایش سند پیوست", "ارسال", "ویرایش"],
+  "قراردادها": ["همه", "نمایش منو", "افزودن", "پیش‌نمایش", "ویرایش", "عمومی", "تقویم قرارداد", "دامنه کار", "مالی و تضامین", "تأمین اجتماعی"],
+  "روزنگار پروژه": ["همه", "نمایش منو", "افزودن"],
+  "ساختار شکست هزینه‌ها": ["همه", "نمایش منو"],
+  "تعهدات و مصارف مالی": ["همه", "نمایش منو"],
+  "کاربرگ مالی": ["همه", "نمایش منو", "صورت وضعیت‌ها", "دریافتی‌ها"],
+  "درخواست پرداخت": ["همه", "نمایش منو", "افزودن"],
+  "تخصیص نقدینگی": ["همه", "نمایش منو", "افزودن"],
+  "پیش‌بینی جریان نقدی": ["همه", "نمایش منو", "پیش‌بینی هزینه‌ها", "پیش‌بینی درآمدها", "نمودار جریان نقدی"],
+  "درخواست تأمین": ["همه", "نمایش منو", "افزودن"],
 };
+
+const ALL_ACCESS = "همه";
+const MENU_ACCESS = "نمایش منو";
+const accessTokenPrefix = "page-access:";
+
+const permissionKey = (tab, userId, column) => `${tab}:${userId}:${column}`;
+const permissionToken = (tab, column) => `${accessTokenPrefix}${pageTabs.indexOf(tab)}:${column}`;
 
 export default function AccessManagementPage() {
   const { user } = useAuth();
@@ -51,6 +58,7 @@ export default function AccessManagementPage() {
   const tabsRef = useRef(null);
   const [users, setUsers] = useState([]);
   const [selectedPermissions, setSelectedPermissions] = useState(() => new Set());
+  const [savingPermissions, setSavingPermissions] = useState(() => new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const accessColumns = accessColumnsByTab[activeTab] || [];
@@ -59,18 +67,83 @@ export default function AccessManagementPage() {
     tabsRef.current?.scrollBy({ left: direction * 280, behavior: "smooth" });
   };
 
-  const togglePermission = (userId, column) => {
-    const key = `${activeTab}:${userId}:${column}`;
-    setSelectedPermissions((current) => {
-      const next = new Set(current);
-      next.has(key) ? next.delete(key) : next.add(key);
-      return next;
-    });
+  const togglePermission = async (targetUser, column) => {
+    const userId = targetUser.id;
+    const currentKey = permissionKey(activeTab, userId, column);
+    if (savingPermissions.has(currentKey)) return;
+
+    const next = new Set(selectedPermissions);
+    const isEnabling = !next.has(currentKey);
+    const allColumns = accessColumns.filter((item) => item !== ALL_ACCESS);
+    const setColumn = (name, enabled) => {
+      const key = permissionKey(activeTab, userId, name);
+      enabled ? next.add(key) : next.delete(key);
+    };
+
+    if (column === ALL_ACCESS) {
+      accessColumns.forEach((name) => setColumn(name, isEnabling));
+    } else {
+      setColumn(column, isEnabling);
+      if (isEnabling && column !== MENU_ACCESS) setColumn(MENU_ACCESS, true);
+      if (column === MENU_ACCESS && !isEnabling) {
+        allColumns.forEach((name) => setColumn(name, false));
+      }
+      if (activeTab === "مدیریت اسناد") {
+        if (column === "بارگذاری سند پیوست" && isEnabling) setColumn("نمایش سند پیوست", true);
+        if (column === "نمایش سند پیوست" && !isEnabling) setColumn("بارگذاری سند پیوست", false);
+      }
+      const hasAll = allColumns.every((name) => next.has(permissionKey(activeTab, userId, name)));
+      setColumn(ALL_ACCESS, hasAll);
+    }
+
+    setSelectedPermissions(next);
+    setSavingPermissions((current) => new Set(current).add(currentKey));
+    try {
+      const baseAccess = Array.isArray(targetUser.access) ? targetUser.access : [];
+      const preservedAccess = baseAccess.filter((item) => !String(item).startsWith(accessTokenPrefix));
+      const currentUserTokens = [];
+      pageTabs.forEach((tab) => {
+        (accessColumnsByTab[tab] || []).forEach((name) => {
+          if (next.has(permissionKey(tab, userId, name))) currentUserTokens.push(permissionToken(tab, name));
+        });
+      });
+      const access = [...preservedAccess, ...currentUserTokens];
+      await api("/admin/users", {
+        method: "PATCH",
+        body: JSON.stringify({ id: userId, access }),
+      });
+      setUsers((current) => current.map((item) => (String(item.id) === String(userId) ? { ...item, access } : item)));
+    } catch (err) {
+      setSelectedPermissions(selectedPermissions);
+      setError(err?.message || "خطا در ذخیره سطح دسترسی");
+    } finally {
+      setSavingPermissions((current) => {
+        const updated = new Set(current);
+        updated.delete(currentKey);
+        return updated;
+      });
+    }
   };
 
   useEffect(() => {
     api("/admin/users", { credentials: "include" })
-      .then((data) => setUsers((Array.isArray(data?.users) ? data.users : []).filter((item) => item?.isActive !== false)))
+      .then((data) => {
+        const activeUsers = (Array.isArray(data?.users) ? data.users : []).filter((item) => item?.isActive !== false);
+        const restoredPermissions = new Set();
+        activeUsers.forEach((item) => {
+          (Array.isArray(item.access) ? item.access : []).forEach((token) => {
+            const match = String(token).match(/^page-access:(\d+):(.*)$/);
+            if (!match) return;
+            const tab = pageTabs[Number(match[1])];
+            const column = match[2];
+            if (tab && (accessColumnsByTab[tab] || []).includes(column)) {
+              restoredPermissions.add(permissionKey(tab, item.id, column));
+            }
+          });
+        });
+        setUsers(activeUsers);
+        setSelectedPermissions(restoredPermissions);
+      })
       .catch((err) => setError(err?.message || "خطا در دریافت کاربران"))
       .finally(() => setLoading(false));
   }, []);
@@ -95,7 +168,7 @@ export default function AccessManagementPage() {
         </span>
       </div>
 
-      <div className="mb-2 flex items-center gap-1" dir="ltr">
+      <div className="flex items-center gap-1" dir="ltr">
         <button
           type="button"
           onClick={() => slideTabs(-1)}
@@ -142,7 +215,7 @@ export default function AccessManagementPage() {
         </button>
       </div>
 
-      <div className={tableUi.frame}>
+      <div className={`${tableUi.frame} rounded-t-none`}>
             <div className="overflow-x-auto">
               <table className={`${tableUi.table} table-fixed`} style={{ minWidth: Math.max(420, 240 + accessColumns.length * 72) }}>
                 <thead>
@@ -167,18 +240,19 @@ export default function AccessManagementPage() {
                       <tr key={item.id} className="transition-colors hover:bg-black/[0.03] dark:hover:bg-white/[0.05]">
                         <td className="border-l border-neutral-300 px-4 py-3 text-center text-sm dark:border-neutral-700">{item.name || "—"}</td>
                         {accessColumns.map((column, index) => {
-                          const permissionKey = `${activeTab}:${item.id}:${column}`;
-                          const isSelected = selectedPermissions.has(permissionKey);
+                          const currentPermissionKey = permissionKey(activeTab, item.id, column);
+                          const isSelected = selectedPermissions.has(currentPermissionKey);
                           return (
                             <td key={column} className={index < accessColumns.length - 1 ? "border-l border-neutral-300 px-1 py-3 dark:border-neutral-700" : "px-1 py-3"}>
                               <button
                                 type="button"
-                                onClick={() => togglePermission(item.id, column)}
+                                onClick={() => togglePermission(item, column)}
+                                disabled={savingPermissions.has(currentPermissionKey)}
                                 className={`mx-auto grid h-5 w-5 place-items-center rounded-[6px] border transition ${
                                   isSelected
                                     ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
                                     : "border-black/25 bg-transparent text-transparent hover:border-black/50 dark:border-white/25 dark:hover:border-white/50"
-                                }`}
+                                } disabled:cursor-wait disabled:opacity-60`}
                                 aria-label={`${column} برای ${item.name || item.username || "کاربر"}`}
                                 aria-pressed={isSelected}
                                 title={isSelected ? "فعال" : "غیرفعال"}

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import Card from "../components/ui/Card.jsx";
 import CostForecastCostsTab from "./CostForecastCostsTab.jsx";
+import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 
 const PAGE_ICON = "/images/icons/pishbini-naghdi.svg";
 
@@ -40,6 +41,7 @@ function ForecastTabs({ active, onChange }) {
 }
 
 export default function CashFlowForecastPage() {
+  useFeatureVisibility("پیش‌بینی جریان نقدی", { "پیش‌بینی هزینه‌ها": "پیش‌بینی هزینه‌ها", "پیش‌بینی درآمدها": "پیش‌بینی درآمدها", "نمودار جریان نقدی": "نمودار جریان نقدی" });
   const [activeTab, setActiveTab] = useState("costs");
 
   return (
