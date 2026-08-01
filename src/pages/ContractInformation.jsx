@@ -3739,18 +3739,35 @@ export default function ContractInformation() {
                       ) : (
                       <>
                       <div className="space-y-4">
-                        <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
-                            <div className={labelCls}>شرح خدمات *</div>
+                        <div className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2 items-start">
+                          <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
+                            <div className="mb-3 text-sm font-semibold text-black dark:text-neutral-100">شرح خدمات *</div>
                             <textarea
                               value={form.technical?.serviceScope || ""}
                               onChange={(e) => setTechnicalField("serviceScope", e.target.value)}
                               className={`${textareaCls} !h-[150px] !min-h-[150px] !resize-none sm:!h-[180px] sm:!min-h-[180px]`}
                             />
+                          </div>
+
+                          <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
+                            <div className="mb-3 text-sm font-semibold text-black dark:text-neutral-100">مسئولیت و تعهدات</div>
+                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                              {TECHNICAL_SUPPORT_FIELDS.map((item) => (
+                                <div key={item.key} className="min-w-0">
+                                  <div className={labelCls}>{item.label}</div>
+                                  <input
+                                    value={form.technical?.[item.key] || ""}
+                                    onChange={(e) => setTechnicalField(item.key, e.target.value)}
+                                    className={inputCls}
+                                    type="text"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2 items-start">
-                          <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
-                          <div>
+                        <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
                             <div className={labelCls}>برچسب ها *</div>
                             <div className="flex flex-wrap items-center gap-2">
                               {technicalTagIds.map((id) => {
@@ -3780,25 +3797,6 @@ export default function ContractInformation() {
                                 <img src="/images/icons/sayer.svg" alt="" className="w-5 h-5 dark:invert" />
                               </button>
                             </div>
-                          </div>
-                          </div>
-
-                          <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
-                            <div className="mb-3 text-sm font-semibold text-black dark:text-neutral-100">مسئولیت و تعهدات</div>
-                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                              {TECHNICAL_SUPPORT_FIELDS.map((item) => (
-                                <div key={item.key} className="min-w-0">
-                                  <div className={labelCls}>{item.label}</div>
-                                  <input
-                                    value={form.technical?.[item.key] || ""}
-                                    onChange={(e) => setTechnicalField(item.key, e.target.value)}
-                                    className={inputCls}
-                                    type="text"
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          </div>
                         </div>
                       </div>
 
