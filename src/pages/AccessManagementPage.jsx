@@ -95,17 +95,17 @@ export default function AccessManagementPage() {
         </span>
       </div>
 
-      <div className="mb-5 flex items-end gap-1 border-b border-black/10 dark:border-neutral-800" dir="ltr">
+      <div className="mb-2 flex items-center gap-1" dir="ltr">
         <button
           type="button"
           onClick={() => slideTabs(-1)}
-          className="mb-1 grid h-9 w-9 shrink-0 place-items-center rounded-lg text-neutral-600 transition hover:bg-black/[0.05] dark:text-neutral-300 dark:hover:bg-white/[0.08]"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-neutral-600 transition hover:bg-black/[0.05] dark:text-neutral-300 dark:hover:bg-white/[0.08]"
           aria-label="تب قبلی"
           title="تب قبلی"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
-        <div ref={tabsRef} className="flex min-w-0 flex-1 overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" dir="rtl">
+        <div ref={tabsRef} className="mx-auto flex w-full min-w-0 flex-1 items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-black/10 bg-black/[0.03] p-1 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:-mb-px md:items-stretch md:gap-0 md:rounded-b-none md:rounded-t-2xl md:border-b-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900" dir="rtl">
           <div className="flex min-w-max">
           {pageTabs.map((tab, index) => {
             const selected = activeTab === tab;
@@ -115,11 +115,14 @@ export default function AccessManagementPage() {
                 type="button"
                 onClick={() => setActiveTab(tab)}
                 className={[
-                  "relative -mb-px z-10 h-11 min-w-[132px] flex-none rounded-t-2xl border border-b-0 px-4 text-sm font-semibold whitespace-nowrap transition",
-                  index > 0 ? "mr-[-1px]" : "",
+                  "relative z-10 h-10 min-w-[104px] flex-none rounded-lg px-3 text-[11px] font-semibold transition whitespace-nowrap md:h-11 md:min-w-[132px] md:flex-1 md:rounded-none md:px-4 md:text-sm",
+                  index > 0 ? "md:border-r md:border-black/10 md:dark:border-neutral-800" : "",
+                  index === 0 ? "md:rounded-tr-2xl" : "",
+                  index === pageTabs.length - 1 ? "md:rounded-tl-2xl" : "",
+                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20",
                   selected
-                    ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
-                    : "border-black/10 bg-white text-neutral-700 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800",
+                    ? "bg-black text-white shadow-sm dark:bg-black dark:text-white"
+                    : "bg-white text-[#1f2937] hover:bg-neutral-50 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800",
                 ].join(" ")}
               >
                 {tab}
@@ -131,7 +134,7 @@ export default function AccessManagementPage() {
         <button
           type="button"
           onClick={() => slideTabs(1)}
-          className="mb-1 grid h-9 w-9 shrink-0 place-items-center rounded-lg text-neutral-600 transition hover:bg-black/[0.05] dark:text-neutral-300 dark:hover:bg-white/[0.08]"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-neutral-600 transition hover:bg-black/[0.05] dark:text-neutral-300 dark:hover:bg-white/[0.08]"
           aria-label="تب بعدی"
           title="تب بعدی"
         >
@@ -141,13 +144,13 @@ export default function AccessManagementPage() {
 
       <div className={tableUi.frame}>
             <div className="overflow-x-auto">
-              <table className={`${tableUi.table} table-fixed`} style={{ minWidth: Math.max(360, 240 + accessColumns.length * 58) }}>
+              <table className={`${tableUi.table} table-fixed`} style={{ minWidth: Math.max(420, 240 + accessColumns.length * 72) }}>
                 <thead>
                   <tr className={tableUi.headRow}>
                     <th className={`${tableUi.th} w-[240px] border-l border-neutral-300 dark:border-neutral-700`}>کاربران</th>
                     {accessColumns.map((column, index) => (
-                      <th key={column} className={`${tableUi.th} w-[58px] px-1 ${index < accessColumns.length - 1 ? "border-l border-neutral-300 dark:border-neutral-700" : ""}`}>
-                        <span className="mx-auto block h-28 w-5 whitespace-nowrap [writing-mode:vertical-rl] [transform:rotate(180deg)]">{column}</span>
+                      <th key={column} className={`${tableUi.th} w-[72px] px-1 ${index < accessColumns.length - 1 ? "border-l border-neutral-300 dark:border-neutral-700" : ""}`}>
+                        <span className="block whitespace-normal break-words text-center leading-5">{column}</span>
                       </th>
                     ))}
                   </tr>
