@@ -4792,7 +4792,7 @@ useEffect(() => {
                 <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
               </span>
               <span className="min-w-0">
-                <span className="block truncate text-base font-bold md:text-lg">اسناد و نامه ها</span>
+                <span className="block truncate text-base font-bold md:text-lg">مدیریت اسناد</span>
               </span>
             </div>
             <button

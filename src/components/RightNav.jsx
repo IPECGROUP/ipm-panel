@@ -218,7 +218,7 @@ function RightNav() {
       title: "اصلی",
       items: [
         { type: "link", to: "/", label: "داشبورد", icon: <IcDashboard />, active: dashboardActive },
-        { type: "link", to: "/letters", label: "اسناد و نامه ها", icon: <IcLetter />, active: isActive("/letters") },
+        { type: "link", to: "/letters", label: "مدیریت اسناد", icon: <IcLetter />, active: isActive("/letters") },
         {
           type: "section",
           key: "contracts",
@@ -297,9 +297,9 @@ function RightNav() {
       ],
     },
     {
-      title: "سیستم مدیریت دانش",
+      title: "مدیریت دانش",
       items: [
-        { type: "link", to: "/quality-management", label: "سیستم مدیریت دانش", icon: <IcQuality />, active: isActive("/quality-management") },
+        { type: "link", to: "/quality-management", label: "مدیریت دانش", icon: <IcQuality />, active: isActive("/quality-management") },
       ],
     },
     {
@@ -634,11 +634,11 @@ function RightNav() {
                 to="/letters"
                 onClick={closeMobileMenu}
                 className={mobileDockBtn(isActive("/letters"))}
-                aria-label="اسناد و نامه ها"
+                aria-label="مدیریت اسناد"
               >
                 <IcLetter />
                 <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
-                  نامه ها
+                  مدیریت اسناد
                 </span>
               </LinkBtn>
 
@@ -706,11 +706,11 @@ function RightNav() {
                 to="/quality-management"
                 onClick={closeMobileMenu}
                 className={mobileDockBtn(isActive("/quality-management"))}
-                aria-label="سیستم مدیریت دانش"
+                aria-label="مدیریت دانش"
               >
                 <IcQuality />
                 <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
-                  دانش
+                  مدیریت دانش
                 </span>
               </LinkBtn>
 
