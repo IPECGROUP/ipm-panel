@@ -3751,7 +3751,7 @@ export default function ContractInformation() {
                             <textarea
                               value={form.technical?.serviceScope || ""}
                               onChange={(e) => setTechnicalField("serviceScope", e.target.value)}
-                              className={`${textareaCls} !h-[310px] !min-h-[310px] !resize-none`}
+                              className={`${textareaCls} !h-[286px] !min-h-[286px] !resize-none`}
                             />
                           </div>
                           <div className="flex items-center justify-end pt-2">
@@ -3767,7 +3767,7 @@ export default function ContractInformation() {
                             <textarea
                               value={form.technical?.serviceScope || ""}
                               onChange={(e) => setTechnicalField("serviceScope", e.target.value)}
-                              className={`${textareaCls} !h-[310px] !min-h-[310px] !resize-none`}
+                              className={`${textareaCls} !h-[286px] !min-h-[286px] !resize-none`}
                             />
                           </div>
 

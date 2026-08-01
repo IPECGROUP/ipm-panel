@@ -29,6 +29,7 @@ import TestEditorPage from "./pages/TestEditorPage.jsx";
 import RoznegarPgae from "./pages/RoznegarPgae.jsx";
 import QualityManagementPage from "./pages/QualityManagementPage.jsx";
 import NavPlaceholderPage from "./pages/NavPlaceholderPage.jsx";
+import TenkhahPage from "./pages/TenkhahPage.jsx";
 
 import BudgetCodesPage, {
   OfficePage,
@@ -118,6 +119,7 @@ export default function App() {
         <Route path="/budget-allocation" element={<BudgetAllocationPage />} />
         <Route path="/budget/reports" element={<ReportsPage />} />
         <Route path="/finance/payment-request" element={<PaymentRequestPage />} />
+        <Route path="/finance/tenkhah" element={<TenkhahPage />} />
         <Route path="/finance/liquidity-allocation" element={<LiquidityAllocationPage />} />
         <Route path="/finance/cash-flow-forecast" element={<CashFlowForecastPage />} />
         <Route path="/finance/financial-management-dashboard" element={<FinancialManagementDashboardPage />} />

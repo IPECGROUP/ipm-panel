@@ -15,6 +15,7 @@ export function canOpenPage(user, pathname) {
     "/requests",
     "/payment",
     "/finance/payment-request",
+    "/finance/tenkhah",
     "/supply/request",
     "/supply/actions",
   ].includes(path) || path.startsWith("/requests/");
