@@ -85,6 +85,13 @@ export default function Shell() {
   }, [notificationsOpen]);
 
   const openNotification = (item) => {
+    if (user?.id) {
+      const storageKey = notificationStorageKey(user.id);
+      const readNotifications = new Set(JSON.parse(localStorage.getItem(storageKey) || "[]"));
+      readNotifications.add(notificationKey(item));
+      localStorage.setItem(storageKey, JSON.stringify([...readNotifications]));
+      setNotifications((current) => current.filter((notification) => notificationKey(notification) !== notificationKey(item)));
+    }
     setNotificationsOpen(false);
     const target = item.notificationTarget === "payment_request" ? "/finance/payment-request" : "/supply/request";
     const key = "request";
