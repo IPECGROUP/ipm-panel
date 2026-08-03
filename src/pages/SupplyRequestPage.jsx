@@ -302,6 +302,7 @@ export default function SupplyRequestPage() {
   const [relatedPickIds, setRelatedPickIds] = useState([]);
   const [submitNotice, setSubmitNotice] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [editingItem, setEditingItem] = useState(null);
   const [actionNote, setActionNote] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState("");
@@ -751,6 +752,33 @@ export default function SupplyRequestPage() {
                   ? "شما اجازه انجام این اقدام را ندارید."
                   : "ثبت اقدام انجام نشد."
       );
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const saveOwnRequestEdit = async (item, updates) => {
+    if (!item || actionBusy) return;
+    if (!updates.projectId) return setActionError("پروژه را انتخاب کنید.");
+    if (!String(updates.budgetCode || "").trim()) return setActionError("کد بودجه را وارد کنید.");
+    if (!String(updates.title || "").trim()) return setActionError("موضوع درخواست را وارد کنید.");
+    if (parseMoney(updates.amount) <= 0) return setActionError("برآورد هزینه باید بیشتر از صفر باشد.");
+    setActionBusy(true);
+    setActionError("");
+    try {
+      const data = await api(`/supply-requests?id=${encodeURIComponent(item.id)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ ...updates, amount: parseMoney(updates.amount) }),
+      });
+      const nextItem = data?.item;
+      if (nextItem) {
+        setItems((prev) => prev.map((row) => String(row.id) === String(nextItem.id) ? nextItem : row));
+        setSelected((current) => String(current?.id) === String(nextItem.id) ? nextItem : current);
+      }
+      setEditingItem(null);
+      await loadItems();
+    } catch (ex) {
+      setActionError(ex?.message === "forbidden" ? "شما اجازه ویرایش این درخواست را ندارید." : "ویرایش درخواست تامین انجام نشد.");
     } finally {
       setActionBusy(false);
     }
@@ -1217,6 +1245,7 @@ export default function SupplyRequestPage() {
                             <button type="button" onClick={() => openPreview(item)} className="grid h-[34px] w-[34px] place-items-center rounded-lg transition hover:bg-black/[0.04] dark:hover:bg-white/10" aria-label={item.canAct ? "اقدامات" : "نمایش"} title={item.canAct ? "اقدامات" : "نمایش"}>
                               <img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" />
                             </button>
+                            {Number(item.createdById) === Number(user?.id) && <button type="button" onClick={() => { setActionError(""); setEditingItem(item); }} className="grid h-[34px] w-[34px] place-items-center rounded-lg transition hover:bg-black/[0.04] dark:hover:bg-white/10" aria-label="ویرایش درخواست" title="ویرایش درخواست"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></button>}
                           </div>
                         </td>
                       </tr>
@@ -1303,6 +1332,7 @@ export default function SupplyRequestPage() {
           }}
         />
       )}
+      {editingItem && <SupplyRequestEditModal item={editingItem} projects={projects} busy={actionBusy} error={actionError} onSave={saveOwnRequestEdit} onClose={() => { if (!actionBusy) { setEditingItem(null); setActionError(""); } }} />}
       {submitNotice && <RegistrationNotice info={submitNotice} onClose={() => setSubmitNotice(null)} />}
       {relatedPickOpen && (
         <RelatedLettersPicker
@@ -1332,6 +1362,39 @@ export default function SupplyRequestPage() {
       )}
     </div>
   );
+}
+
+function SupplyRequestEditModal({ item, projects, busy, error, onSave, onClose }) {
+  const [form, setForm] = useState(() => ({
+    projectId: String(item.projectId || ""),
+    budgetCode: item.budgetCode || "",
+    title: item.title || "",
+    needDateJalali: item.needDateJalali || "",
+    amount: formatMoney(item.amount || ""),
+    description: item.description || "",
+    attachments: Array.isArray(item.attachments) ? item.attachments : [],
+  }));
+  const setField = (name, value) => setForm((current) => ({ ...current, [name]: value }));
+
+  return createPortal(<div className="fixed inset-0 z-[10000]">
+    <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
+    <div className="absolute inset-0 flex items-center justify-center p-3 md:p-6">
+      <form dir="rtl" onSubmit={(event) => { event.preventDefault(); onSave(item, form); }} className="relative w-full max-w-2xl rounded-2xl border border-black/10 bg-white p-5 text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white">
+        <div className="mb-5 flex items-center justify-between gap-3"><h2 className="text-base font-bold">ویرایش درخواست تامین</h2><button type="button" onClick={onClose} disabled={busy} className="grid h-9 w-9 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black" aria-label="بستن"><img src="/images/icons/bastan.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button></div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label="پروژه"><select className={inputCls} value={form.projectId} onChange={(event) => setField("projectId", event.target.value)}><option value="">انتخاب پروژه</option>{projects.map((project) => <option key={project.id} value={project.id}>{projectLabel(project)}</option>)}</select></Field>
+          <Field label="کد بودجه"><input className={inputCls} value={form.budgetCode} onChange={(event) => setField("budgetCode", event.target.value)} /></Field>
+          <Field label="موضوع"><input className={inputCls} value={form.title} onChange={(event) => setField("title", event.target.value)} /></Field>
+          <Field label="برآورد هزینه"><input dir="ltr" inputMode="numeric" className={`${inputCls} text-left`} value={toFaDigits(form.amount)} onChange={(event) => setField("amount", formatMoney(event.target.value))} /></Field>
+          <Field label="تاریخ نیاز"><JalaliPopupDatePicker value={form.needDateJalali} onChange={(value) => setField("needDateJalali", value)} /></Field>
+          <Field label="پیوست‌ها"><div className={`${inputCls} flex items-center text-xs text-neutral-500`}>{form.attachments.length ? `${toFaDigits(form.attachments.length)} فایل` : "بدون پیوست"}</div></Field>
+          <div className="md:col-span-2"><Field label="شرح"><textarea className={`${inputCls} min-h-24 py-3`} value={form.description} onChange={(event) => setField("description", event.target.value)} /></Field></div>
+        </div>
+        {error && <div className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{error}</div>}
+        <div className="mt-5 flex justify-end"><button type="submit" disabled={busy} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white disabled:opacity-50 dark:bg-white dark:text-black" title="ذخیره" aria-label="ذخیره"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button></div>
+      </form>
+    </div>
+  </div>, document.body);
 }
 
 export function SupplyRequestPreview({ item, projects, actionNote, setActionNote, actionBusy, actionError, onAction, onSupplyActionsChanged, onClose }) {
