@@ -74,7 +74,7 @@ export default function TenkhahPage() {
       api("/base/currencies/types"),
     ]);
     setProjects(
-      (p.items || p.projects || []).filter((x) => x.isActive !== false),
+      (p.items || p.projects || []).filter((x) => x.isActive !== false && /^\d{3}$/.test(String(x.code || "").trim())),
     );
     setUsers(u.users || []);
     setCurrencies(c.items || []);
