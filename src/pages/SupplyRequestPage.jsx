@@ -1365,6 +1365,7 @@ export default function SupplyRequestPage() {
 }
 
 function SupplyRequestEditForm({ item, projects, busy, error, onSave, onCancel }) {
+  const { user } = useAuth();
   const [form, setForm] = useState(() => ({
     projectId: String(item.projectId || ""),
     budgetCode: item.budgetCode || "",
@@ -1374,7 +1375,37 @@ function SupplyRequestEditForm({ item, projects, busy, error, onSave, onCancel }
     description: item.description || "",
     attachments: Array.isArray(item.attachments) ? item.attachments : [],
   }));
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
   const setField = (name, value) => setForm((current) => ({ ...current, [name]: value }));
+  const uploadFiles = async (fileList) => {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    setUploading(true);
+    setUploadError("");
+    try {
+      const uploaded = [];
+      for (const file of files) {
+        const body = new FormData();
+        body.append("file", file);
+        const response = await fetch("/api/upload/payment-doc", {
+          method: "POST",
+          credentials: "include",
+          headers: user?.id != null ? { "x-user-id": String(user.id) } : {},
+          body,
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "upload_failed");
+        uploaded.push(data.file || data);
+      }
+      setForm((current) => ({ ...current, attachments: [...current.attachments, ...uploaded] }));
+    } catch {
+      setUploadError("بارگذاری فایل انجام نشد.");
+    } finally {
+      setUploading(false);
+    }
+  };
+  const removeAttachment = (index) => setForm((current) => ({ ...current, attachments: current.attachments.filter((_, itemIndex) => itemIndex !== index) }));
 
   return <form dir="rtl" onSubmit={async (event) => { event.preventDefault(); if (await onSave(item, form)) onCancel(); }} className="space-y-4 py-4">
         <div className="flex items-center justify-between gap-3"><h2 className="text-base font-bold">ویرایش درخواست تامین</h2><button type="button" onClick={onCancel} disabled={busy} className="grid h-9 w-9 place-items-center rounded-xl border border-black/10 transition hover:bg-black/[0.04] dark:border-white/10 dark:hover:bg-white/10" aria-label="انصراف"><img src="/images/icons/bastan.svg" alt="" className="h-4 w-4 dark:invert" /></button></div>
@@ -1384,11 +1415,11 @@ function SupplyRequestEditForm({ item, projects, busy, error, onSave, onCancel }
           <Field label="موضوع"><input className={inputCls} value={form.title} onChange={(event) => setField("title", event.target.value)} /></Field>
           <Field label="برآورد هزینه"><input dir="ltr" inputMode="numeric" className={`${inputCls} text-left`} value={toFaDigits(form.amount)} onChange={(event) => setField("amount", formatMoney(event.target.value))} /></Field>
           <Field label="تاریخ نیاز"><JalaliPopupDatePicker value={form.needDateJalali} onChange={(value) => setField("needDateJalali", value)} /></Field>
-          <Field label="پیوست‌ها"><div className={`${inputCls} flex items-center text-xs text-neutral-500`}>{form.attachments.length ? `${toFaDigits(form.attachments.length)} فایل` : "بدون پیوست"}</div></Field>
+          <Field label="پیوست‌ها"><div className="flex flex-wrap gap-2"><label className="grid h-11 w-11 cursor-pointer place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[0.04] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={uploading ? "در حال بارگذاری" : "بارگذاری فایل"} aria-label={uploading ? "در حال بارگذاری" : "بارگذاری فایل"}><img src="/images/icons/Uplod.svg" alt="" className={`h-4 w-4 dark:invert ${uploading ? "animate-pulse opacity-60" : ""}`} /><input type="file" multiple accept="image/*,.pdf" className="hidden" disabled={uploading} onChange={(event) => uploadFiles(event.target.files)} /></label>{form.attachments.map((file, index) => <span key={file.id || file.serverId || file.url || index} className="inline-flex max-w-full items-center gap-1 rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10"><a href={file.url || "#"} target="_blank" rel="noreferrer" className="max-w-32 truncate hover:underline">{file.name || `فایل ${toFaDigits(index + 1)}`}</a><button type="button" onClick={() => removeAttachment(index)} disabled={uploading} className="grid h-5 w-5 place-items-center rounded hover:bg-black/[0.05] dark:hover:bg-white/10" title="حذف پیوست" aria-label="حذف پیوست">×</button></span>)}</div></Field>
           <div className="md:col-span-2"><Field label="شرح"><textarea className={`${inputCls} min-h-24 py-3`} value={form.description} onChange={(event) => setField("description", event.target.value)} /></Field></div>
         </div>
-        {error && <div className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{error}</div>}
-        <div className="flex justify-end"><button type="submit" disabled={busy} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white disabled:opacity-50 dark:bg-white dark:text-black" title="ذخیره" aria-label="ذخیره"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button></div>
+        {(error || uploadError) && <div className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{uploadError || error}</div>}
+        <div className="flex justify-end"><button type="submit" disabled={busy || uploading} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white disabled:opacity-50 dark:bg-white dark:text-black" title="ذخیره" aria-label="ذخیره"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button></div>
       </form>;
 }
 
