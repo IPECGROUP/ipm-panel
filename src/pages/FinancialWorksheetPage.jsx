@@ -1570,7 +1570,7 @@ export default function FinancialWorksheetPage() {
                             <TH className={`w-36 ${tablePreset.th}`}>{receiptUi.date}</TH>
                             <TH className={`w-44 ${tablePreset.th}`}>{receiptUi.amount}</TH>
                             <TH className={`w-44 ${tablePreset.th}`}>{receiptUi.foreignAmount}</TH>
-                            <TH className={`w-36 ${tablePreset.th}`}>اقدامات</TH>
+                            <TH className={`w-36 ${tablePreset.th}`}>عملیات</TH>
                           </tr>
                         ) : (
                           <tr className={tablePreset.headRow + " sticky top-0 z-10"}>
@@ -1580,7 +1580,7 @@ export default function FinancialWorksheetPage() {
                             <TH className={`w-40 ${tablePreset.th}`}>مبلغ ناخالص</TH>
                             <TH className={`w-32 ${tablePreset.th}`}>VAT</TH>
                             <TH className={`w-32 ${tablePreset.th}`}>ارز منشا</TH>
-                            <TH className={`w-36 ${tablePreset.th}`}>اقدامات</TH>
+                            <TH className={`w-36 ${tablePreset.th}`}>عملیات</TH>
                           </tr>
                         )}
                       </THead>

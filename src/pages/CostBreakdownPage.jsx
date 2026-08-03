@@ -595,7 +595,7 @@ export default function CostBreakdownPage() {
                     <th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">کد بودجه</th>
                     <th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">نام بودجه</th>
                     <th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">بودجه مبنا</th>
-                    <th className="px-3 !text-center !text-[14px] md:!text-[15px] !font-semibold">اقدامات</th>
+                    <th className="px-3 !text-center !text-[14px] md:!text-[15px] !font-semibold">عملیات</th>
                   </tr>
                 </thead>
 
