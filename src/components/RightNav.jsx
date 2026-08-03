@@ -4,7 +4,7 @@ import { useLocation } from "react-router-dom";
 import { ChevronLeft, ChevronRight, LogOut, X } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { Btn, LinkBtn } from "./ui/Button";
-import { hasLimitedPageAccess } from "../utils/pageAccess";
+import { canOpenPage, hasLimitedPageAccess } from "../utils/pageAccess";
 
 const iconMaskCls = "nav-icon block h-5 w-5 shrink-0 bg-white pointer-events-none select-none";
 const svgCls = "h-5 w-5 block m-0 pointer-events-none select-none";
@@ -339,7 +339,20 @@ function RightNav() {
           : open.base
             ? "base"
             : null;
-  const mobileMenu = navGroups
+  const visibleNavGroups = navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items
+        .map((item) =>
+          item.type === "section"
+            ? { ...item, items: item.items.filter((child) => canOpenPage(user, child.to)) }
+            : item
+        )
+        .filter((item) => item.type === "section" ? item.items.length > 0 : canOpenPage(user, item.to)),
+    }))
+    .filter((group) => group.items.length > 0);
+
+  const mobileMenu = visibleNavGroups
     .flatMap((group) => group.items)
     .find((item) => item.type === "section" && item.key === mobileMenuKey);
 
@@ -540,7 +553,7 @@ function RightNav() {
         )}
 
         <div className={["mt-5 min-h-0 flex-1 space-y-4", expanded ? "ipm-right-nav-scroll overflow-y-auto overflow-x-visible px-0.5" : "overflow-visible"].join(" ")}>
-          {navGroups.map((group) => (
+          {visibleNavGroups.map((group) => (
             <div key={group.title} className="space-y-1.5">
               <div className={["space-y-1.5", expanded ? "" : "flex flex-col items-center"].join(" ")}>
                 {group.items.map(renderDesktopItem)}
