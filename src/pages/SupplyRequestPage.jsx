@@ -302,7 +302,6 @@ export default function SupplyRequestPage() {
   const [relatedPickIds, setRelatedPickIds] = useState([]);
   const [submitNotice, setSubmitNotice] = useState(null);
   const [selected, setSelected] = useState(null);
-  const [editingItem, setEditingItem] = useState(null);
   const [actionNote, setActionNote] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState("");
@@ -775,10 +774,11 @@ export default function SupplyRequestPage() {
         setItems((prev) => prev.map((row) => String(row.id) === String(nextItem.id) ? nextItem : row));
         setSelected((current) => String(current?.id) === String(nextItem.id) ? nextItem : current);
       }
-      setEditingItem(null);
       await loadItems();
+      return true;
     } catch (ex) {
       setActionError(ex?.message === "forbidden" ? "شما اجازه ویرایش این درخواست را ندارید." : "ویرایش درخواست تامین انجام نشد.");
+      return false;
     } finally {
       setActionBusy(false);
     }
@@ -1245,7 +1245,7 @@ export default function SupplyRequestPage() {
                             <button type="button" onClick={() => openPreview(item)} className="grid h-[34px] w-[34px] place-items-center rounded-lg transition hover:bg-black/[0.04] dark:hover:bg-white/10" aria-label={item.canAct ? "اقدامات" : "نمایش"} title={item.canAct ? "اقدامات" : "نمایش"}>
                               <img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" />
                             </button>
-                            {Number(item.createdById) === Number(user?.id) && <button type="button" onClick={() => { setActionError(""); setEditingItem(item); }} className="grid h-[34px] w-[34px] place-items-center rounded-lg transition hover:bg-black/[0.04] dark:hover:bg-white/10" aria-label="ویرایش درخواست" title="ویرایش درخواست"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></button>}
+                            {Number(item.createdById) === Number(user?.id) && <button type="button" onClick={() => openPreview({ ...item, __editing: true })} className="grid h-[34px] w-[34px] place-items-center rounded-lg transition hover:bg-black/[0.04] dark:hover:bg-white/10" aria-label="ویرایش درخواست" title="ویرایش درخواست"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></button>}
                           </div>
                         </td>
                       </tr>
@@ -1322,6 +1322,7 @@ export default function SupplyRequestPage() {
           actionBusy={actionBusy}
           actionError={actionError}
           onAction={recordWorkflowAction}
+          onEdit={saveOwnRequestEdit}
           onSupplyActionsChanged={loadItems}
           onClose={() => {
             setSelected(null);
@@ -1332,7 +1333,6 @@ export default function SupplyRequestPage() {
           }}
         />
       )}
-      {editingItem && <SupplyRequestEditModal item={editingItem} projects={projects} busy={actionBusy} error={actionError} onSave={saveOwnRequestEdit} onClose={() => { if (!actionBusy) { setEditingItem(null); setActionError(""); } }} />}
       {submitNotice && <RegistrationNotice info={submitNotice} onClose={() => setSubmitNotice(null)} />}
       {relatedPickOpen && (
         <RelatedLettersPicker
@@ -1364,7 +1364,7 @@ export default function SupplyRequestPage() {
   );
 }
 
-function SupplyRequestEditModal({ item, projects, busy, error, onSave, onClose }) {
+function SupplyRequestEditForm({ item, projects, busy, error, onSave, onCancel }) {
   const [form, setForm] = useState(() => ({
     projectId: String(item.projectId || ""),
     budgetCode: item.budgetCode || "",
@@ -1376,11 +1376,8 @@ function SupplyRequestEditModal({ item, projects, busy, error, onSave, onClose }
   }));
   const setField = (name, value) => setForm((current) => ({ ...current, [name]: value }));
 
-  return createPortal(<div className="fixed inset-0 z-[10000]">
-    <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
-    <div className="absolute inset-0 flex items-center justify-center p-3 md:p-6">
-      <form dir="rtl" onSubmit={(event) => { event.preventDefault(); onSave(item, form); }} className="relative w-full max-w-2xl rounded-2xl border border-black/10 bg-white p-5 text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white">
-        <div className="mb-5 flex items-center justify-between gap-3"><h2 className="text-base font-bold">ویرایش درخواست تامین</h2><button type="button" onClick={onClose} disabled={busy} className="grid h-9 w-9 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black" aria-label="بستن"><img src="/images/icons/bastan.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button></div>
+  return <form dir="rtl" onSubmit={async (event) => { event.preventDefault(); if (await onSave(item, form)) onCancel(); }} className="space-y-4 py-4">
+        <div className="flex items-center justify-between gap-3"><h2 className="text-base font-bold">ویرایش درخواست تامین</h2><button type="button" onClick={onCancel} disabled={busy} className="grid h-9 w-9 place-items-center rounded-xl border border-black/10 transition hover:bg-black/[0.04] dark:border-white/10 dark:hover:bg-white/10" aria-label="انصراف"><img src="/images/icons/bastan.svg" alt="" className="h-4 w-4 dark:invert" /></button></div>
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="پروژه"><select className={inputCls} value={form.projectId} onChange={(event) => setField("projectId", event.target.value)}><option value="">انتخاب پروژه</option>{projects.map((project) => <option key={project.id} value={project.id}>{projectLabel(project)}</option>)}</select></Field>
           <Field label="کد بودجه"><input className={inputCls} value={form.budgetCode} onChange={(event) => setField("budgetCode", event.target.value)} /></Field>
@@ -1391,18 +1388,17 @@ function SupplyRequestEditModal({ item, projects, busy, error, onSave, onClose }
           <div className="md:col-span-2"><Field label="شرح"><textarea className={`${inputCls} min-h-24 py-3`} value={form.description} onChange={(event) => setField("description", event.target.value)} /></Field></div>
         </div>
         {error && <div className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{error}</div>}
-        <div className="mt-5 flex justify-end"><button type="submit" disabled={busy} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white disabled:opacity-50 dark:bg-white dark:text-black" title="ذخیره" aria-label="ذخیره"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button></div>
-      </form>
-    </div>
-  </div>, document.body);
+        <div className="flex justify-end"><button type="submit" disabled={busy} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white disabled:opacity-50 dark:bg-white dark:text-black" title="ذخیره" aria-label="ذخیره"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button></div>
+      </form>;
 }
 
-export function SupplyRequestPreview({ item, projects, actionNote, setActionNote, actionBusy, actionError, onAction, onSupplyActionsChanged, onClose }) {
+export function SupplyRequestPreview({ item, projects, actionNote, setActionNote, actionBusy, actionError, onAction, onEdit, onSupplyActionsChanged, onClose }) {
   const { user } = useAuth();
   const project = projects.find((row) => String(row.id) === String(item.projectId));
   const attachments = Array.isArray(item.attachments) ? item.attachments : [];
   const history = Array.isArray(item.historyJson) ? item.historyJson : [];
   const isRequester = Number(item.createdById) === Number(user?.id);
+  const [isEditing, setIsEditing] = useState(!!item.__editing);
   const [commercialActions, setCommercialActions] = useState([]);
   const [commercialActionsLoading, setCommercialActionsLoading] = useState(false);
   const isCompletedCommercialOwner =
@@ -1432,6 +1428,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
   const [targetAssigneeUserId, setTargetAssigneeUserId] = useState("");
 
   useEffect(() => {
+    setIsEditing(!!item.__editing);
     setChoice("");
     setBudgetCodeDraft(item.budgetCode || "");
     setFinalAmount(formatMoney(item.workflowMeta?.finalAmount ?? item.amount ?? ""));
@@ -1439,7 +1436,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
     setDeadlineDate(item.workflowMeta?.deadlineDate || "");
     setCcUserIds(Array.isArray(item.ccUserIds) ? item.ccUserIds.map(String) : []);
     setTargetAssigneeUserId("");
-  }, [item.id, item.budgetCode, item.amount, item.workflowMeta, item.ccUserIds]);
+  }, [item.id, item.budgetCode, item.amount, item.workflowMeta, item.ccUserIds, item.__editing]);
 
   useEffect(() => {
     if (!canAct) return undefined;
@@ -1613,6 +1610,11 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
 
             <main className="min-h-0 overflow-y-auto p-4 md:p-5">
               <div className="space-y-4">
+                {isEditing && isRequester ? (
+                  <PreviewSection title="ویرایش درخواست تامین">
+                    <SupplyRequestEditForm item={item} projects={projects} busy={actionBusy} error={actionError} onSave={onEdit} onCancel={() => setIsEditing(false)} />
+                  </PreviewSection>
+                ) : <>
                 <PreviewSection title="جزئیات درخواست تامین" flush>
                   <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-x md:divide-y-0 dark:divide-white/10">
                     <PreviewRow compact label="شماره درخواست" value={item.serial || "—"} ltr />
@@ -1748,6 +1750,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                     در این مرحله اقدامی برای شما فعال نیست.
                   </div>
                 )}
+                </>}
               </div>
             </main>
           </div>
