@@ -1,6 +1,7 @@
 // درخواست پرداخت
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useSearchParams } from "react-router-dom";
 import { Card } from "../components/ui/Card";
 import { useAuth } from "../components/AuthProvider";
 import { todayJalaliYmd } from "../utils/date";
@@ -232,6 +233,9 @@ function DateSelect({ label, value, onChange, items }) {
 export default function PaymentRequestPage() {
   useFeatureVisibility("درخواست پرداخت", { "افزودن": "افزودن" });
   const { user, isAdmin } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedRequestId = searchParams.get("request") || "";
+  const openedRequestRef = useRef("");
   const [form, setForm] = useState(emptyForm);
   const [showForm, setShowForm] = useState(false);
   const [items, setItems] = useState([]);
@@ -333,6 +337,13 @@ export default function PaymentRequestPage() {
   }, [api]);
 
   useEffect(() => { loadItems(); }, [loadItems]);
+  useEffect(() => {
+    if (!requestedRequestId || loading || openedRequestRef.current === requestedRequestId) return;
+    const requested = items.find((item) => String(item.id) === String(requestedRequestId));
+    if (!requested) return;
+    openedRequestRef.current = requestedRequestId;
+    openPreview(requested);
+  }, [items, loading, requestedRequestId]);
   useEffect(() => {
     let cancelled = false;
     setCreateRecipientsLoading(true);
@@ -907,7 +918,13 @@ export default function PaymentRequestPage() {
       onAction={recordAction}
       onResubmit={resubmitReturned}
       onEdit={saveOwnRequestEdit}
-      onClose={() => setSelected(null)}
+      onClose={() => {
+        setSelected(null);
+        if (requestedRequestId) {
+          openedRequestRef.current = "";
+          setSearchParams({}, { replace: true });
+        }
+      }}
     />}
     {submitNotice && <RegistrationNotice info={submitNotice} onClose={() => setSubmitNotice(null)} />}
   </div>;
