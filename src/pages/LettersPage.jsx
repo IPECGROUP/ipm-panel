@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider";
 import { isMainAdminUser } from "../utils/auth";
-import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
+import { useFeatureAccess, useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 
 const PAGE_ICON = "/images/icons/nameha.svg";
 
@@ -622,6 +622,7 @@ async function _uploadQueueInBackground({
 
 export default function LettersPage() {
   useFeatureVisibility("مدیریت اسناد", { "افزودن": "افزودن", "بارگذاری سند پیوست": "بارگذاری پیوست", "نمایش سند پیوست": "پیش نمایش", "ارسال": "ارسال", "ویرایش": "ویرایش" });
+  const { can: canDocumentFeature } = useFeatureAccess("مدیریت اسناد");
 // ✅ Validation (per tab)
 const [errorsByKind, setErrorsByKind] = useState({
   incoming: {},
@@ -1097,12 +1098,9 @@ const loggedInUsername = useMemo(() => {
   return String(u?.username || u?.user_name || u?.login || u?.name || "").trim().toLowerCase();
 }, [user]);
 
-  // ✅ فقط همین دو کاربر دسترسی محرمانه دارند
-const PRIV_USERS = new Set(["marandi", "rastegar"]);
-
 const canSeeConfidential = useMemo(() => {
-  return PRIV_USERS.has(loggedInUsername);
-}, [loggedInUsername]);
+  return canDocumentFeature("اسناد محرمانه");
+}, [canDocumentFeature]);
 
 const canEditSecretariatNo = useMemo(() => {
   const ids = [user?.username, user?.user_name, user?.login, user?.name]
@@ -5114,8 +5112,8 @@ aria-invalid={fieldHasError(formKind, "category") ? true : undefined}
 </div>
 
 
-  {/* طبقه بندی */}
-  <div className="w-[calc(50%-0.25rem)] md:shrink-0 md:w-[140px]">
+  {/* طبقه بندی: محرمانه فقط برای کاربر دارای مجوز نمایش داده می‌شود. */}
+  {canSeeConfidential ? <div className="w-[calc(50%-0.25rem)] md:shrink-0 md:w-[140px]">
   <div className={labelSmCls}>{requiredLabel("طبقه بندی", formKind, "classification")}</div>
 
   <FieldWrap>
@@ -5133,7 +5131,7 @@ aria-invalid={formKind === "incoming" ? fieldHasError("incoming", "classificatio
     </select>
 {formKind === "incoming" ? <ErrorTextAbs kind="incoming" k="classification" /> : null}
   </FieldWrap>
-</div>
+</div> : null}
 
 
   {/* مرکز/پروژه */}
