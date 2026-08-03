@@ -28,15 +28,17 @@ export default function Shell() {
     if (!quiet) setNotificationsLoading(true);
     try {
       const requestOptions = { credentials: "include", headers: { "x-user-id": String(user.id) } };
-      const [cartableResponse, actionsResponse, paymentResponse] = await Promise.all([
+      const [cartableResponse, actionsResponse, paymentResponse, tenkhahResponse] = await Promise.all([
         fetch("/api/supply-requests?cartable=1", requestOptions),
         fetch("/api/supply-actions", requestOptions),
         fetch("/api/requests?view=inbox", requestOptions),
+        fetch("/api/tenkhah?inbox=1", requestOptions),
       ]);
-      const [cartableData, actionsData, paymentData] = await Promise.all([
+      const [cartableData, actionsData, paymentData, tenkhahData] = await Promise.all([
         cartableResponse.json().catch(() => ({})),
         actionsResponse.json().catch(() => ({})),
         paymentResponse.json().catch(() => ({})),
+        tenkhahResponse.json().catch(() => ({})),
       ]);
       const dashboardItems = cartableResponse.ok && Array.isArray(cartableData?.items)
         ? cartableData.items.map((item) => ({ ...item, notificationTarget: "supply_request" }))
@@ -49,11 +51,13 @@ export default function Shell() {
       const paymentItems = paymentResponse.ok && Array.isArray(paymentData?.items)
         ? paymentData.items.map((item) => ({ ...item, notificationTarget: "payment_request" }))
         : [];
+      const tenkhahItems = tenkhahResponse.ok && Array.isArray(tenkhahData?.items)
+        ? tenkhahData.items.map((item) => ({ ...item, notificationTarget: "tenkhah" })) : [];
       const readNotifications = new Set(
         JSON.parse(localStorage.getItem(notificationStorageKey(user.id)) || "[]")
       );
       setNotifications(
-        [...dashboardItems, ...actionItems, ...paymentItems].filter((item) => !readNotifications.has(notificationKey(item)))
+        [...dashboardItems, ...actionItems, ...paymentItems, ...tenkhahItems].filter((item) => !readNotifications.has(notificationKey(item)))
       );
     } catch {
       setNotifications([]);
@@ -68,10 +72,12 @@ export default function Shell() {
     const refresh = () => loadNotifications({ quiet: true });
     window.addEventListener("focus", refresh);
     window.addEventListener("supply-notifications-refresh", refresh);
+    window.addEventListener("tenkhah-notifications-refresh", refresh);
     return () => {
       clearInterval(interval);
       window.removeEventListener("focus", refresh);
       window.removeEventListener("supply-notifications-refresh", refresh);
+      window.removeEventListener("tenkhah-notifications-refresh", refresh);
     };
   }, [loadNotifications]);
 
@@ -93,7 +99,7 @@ export default function Shell() {
       setNotifications((current) => current.filter((notification) => notificationKey(notification) !== notificationKey(item)));
     }
     setNotificationsOpen(false);
-    const target = item.notificationTarget === "payment_request" ? "/finance/payment-request" : "/supply/request";
+    const target = item.notificationTarget === "payment_request" ? "/finance/payment-request" : item.notificationTarget === "tenkhah" ? "/finance/tenkhah" : "/supply/request";
     const key = "request";
     navigate(`${target}?${key}=${encodeURIComponent(item.id)}`);
   };
@@ -272,10 +278,10 @@ export default function Shell() {
                       notifications.map((item) => (
                         <button key={item.id} type="button" onClick={() => openNotification(item)} className="group flex w-full gap-3 rounded-xl p-3 text-right transition hover:bg-black/[0.04] dark:hover:bg-white/[0.07]">
                           <span className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-50 dark:bg-amber-500/10">
-                            <img src={item.notificationTarget === "payment_request" ? "/images/icons/darkhast-pardakht.svg" : "/images/icons/darkhast-tamin.svg"} alt="" className="h-5 w-5 dark:invert" />
+                            <img src={item.notificationTarget === "payment_request" ? "/images/icons/darkhast-pardakht.svg" : item.notificationTarget === "tenkhah" ? "/images/icons/tenkhah.svg" : "/images/icons/darkhast-tamin.svg"} alt="" className="h-5 w-5 dark:invert" />
                           </span>
                           <span className="min-w-0 flex-1">
-                            <span className="block text-xs font-semibold">{item.notificationTarget === "supply_actions" ? "کار جدید در انتظار انجام" : item.notificationTarget === "payment_request" ? "درخواست پرداخت جدید در انتظار بررسی" : "درخواست تأمین جدید در انتظار بررسی"}</span>
+                            <span className="block text-xs font-semibold">{item.notificationTarget === "supply_actions" ? "کار جدید در انتظار انجام" : item.notificationTarget === "payment_request" ? "درخواست پرداخت جدید در انتظار بررسی" : item.notificationTarget === "tenkhah" ? "درخواست تنخواه جدید در انتظار بررسی" : "درخواست تأمین جدید در انتظار بررسی"}</span>
                             <span className="mt-1 block truncate text-xs text-neutral-600 dark:text-neutral-300">{item.title || "بدون موضوع"}</span>
                             <span className="mt-1.5 flex items-center justify-between gap-2 text-[10px] text-neutral-400">
                               <span dir="ltr" className="font-sans tabular-nums">{item.serial || "—"}</span>
