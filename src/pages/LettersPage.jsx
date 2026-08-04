@@ -3918,7 +3918,23 @@ const switchFormKindAndReset = (nextKind) => {
     return Object.keys(out).length ? out : null;
   };
 
-  const startEdit = (l) => {
+  const startEdit = async (listItem) => {
+    let l = listItem;
+    const listId = String(letterIdOf(listItem) || "").trim();
+
+    // List responses intentionally omit potentially large attachment JSON.
+    // Hydrate only the record being edited so existing attachments remain
+    // fully available in the edit form.
+    if (listId && listItem?.attachments_loaded === false) {
+      try {
+        const response = await api(`/letters/${encodeURIComponent(listId)}`);
+        const fresh = response?.item || response;
+        if (fresh && typeof fresh === "object") l = { ...listItem, ...fresh };
+      } catch {
+        // The lightweight item still contains all non-attachment fields, so
+        // editing remains available if the detail request fails.
+      }
+    }
 const kind = letterKindOf(l);
     const id = String(letterIdOf(l));
     const sn = l?.secretariat_note ?? l?.secretariatNote ?? "";
