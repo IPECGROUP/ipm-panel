@@ -14,7 +14,7 @@ const empty = () => ({
   requestDate: today(),
   projectId: "",
   amount: "",
-  currency: "",
+  currency: "ریال",
   unregisteredBalance: "",
   unsettledBalance: "",
   projectManagerId: "",
@@ -29,6 +29,15 @@ function Field({ label, required, children }) {
       {children}
     </label>
   );
+}
+function TenkhahWorkflow({ stage, status }) {
+  const steps = [
+    ["project_manager", "تأیید مدیر پروژه"],
+    ["finance", "بررسی و شارژ مالی"],
+    ["completed", "تکمیل درخواست"],
+  ];
+  const active = status === "charged" ? 2 : Math.max(0, steps.findIndex(([key]) => key === stage));
+  return <aside className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-white/[.03]"><h3 className="mb-4 text-sm font-bold">فرآیند تنخواه</h3><div className="space-y-1">{steps.map(([key, label], index) => { const done = index < active || status === "charged"; const current = index === active && status !== "charged"; return <div key={key} className="relative flex min-h-14 items-center gap-3"><span className={`z-10 grid h-7 w-7 shrink-0 place-items-center rounded-full border text-xs font-bold ${current ? "border-sky-500 bg-sky-500 text-white shadow-[0_0_0_4px_rgba(14,165,233,.13)]" : done ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-black" : "border-neutral-300 bg-white text-neutral-400 dark:border-neutral-600 dark:bg-neutral-900"}`}>{done ? "✓" : index + 1}</span>{index < steps.length - 1 && <span className={`absolute right-[13px] top-9 h-7 w-px ${done ? "bg-neutral-900 dark:bg-white" : "bg-neutral-200 dark:bg-white/10"}`} />}<div className="min-w-0"><div className={`text-sm font-medium ${current ? "text-sky-700 dark:text-sky-300" : done ? "text-neutral-900 dark:text-white" : "text-neutral-400"}`}>{label}</div>{current && <div className="mt-0.5 text-[11px] text-sky-600 dark:text-sky-300">مرحله جاری</div>}</div></div>; })}</div></aside>;
 }
 function SettlementTable({ entries, request, onRemove }) {
   return <section className="mt-5 overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="overflow-x-auto"><table className="w-full min-w-[1050px] text-sm"><thead className="bg-neutral-200 dark:bg-white/10"><tr>{["", "تاریخ", "شرح", "کد بودجه", "شارژ تنخواه", "هزینه‌کرد", "فایل", "وضعیت", "اقدامات"].map(h=><th key={h} className="px-3 py-3 text-center">{h}</th>)}</tr></thead><tbody>{entries.length ? entries.map(e=><tr key={e.id} className="border-t border-black/10 dark:border-white/10"><td className="p-3 text-center"><input type="checkbox" className="h-4 w-4 rounded border-neutral-400" /></td><td className="p-3 text-center">{fa(e.expenseDate)}</td><td className="p-3 text-center">{e.description || "—"}</td><td className="p-3 text-center">{e.budgetCode}</td><td className="p-3 text-center">{fa(format3(request.chargedAmount || request.requestedAmount))}</td><td className="p-3 text-center">{fa(format3(e.amount))}</td><td className="p-3 text-center">{e.fileUrl ? <a className="text-blue-600 underline" href={e.fileUrl} target="_blank" rel="noreferrer">{e.fileName || "مشاهده"}</a> : "—"}</td><td className="p-3 text-center">در جریان</td><td className="p-3 text-center">{onRemove ? <button onClick={()=>onRemove(e.id)} className="rounded border px-2 py-1">حذف</button> : <button className="rounded border px-2 py-1">ویرایش</button>}</td></tr>) : <tr><td colSpan="9" className="p-8 text-center text-neutral-500">هنوز هزینه‌ای افزوده نشده است.</td></tr>}</tbody></table></div></section>;
@@ -237,7 +246,7 @@ export default function TenkhahPage() {
         {open && (
           <section className="mb-5 rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03] md:p-5">
             <h2 className="mb-5 text-base font-bold">درخواست تنخواه جدید</h2>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
               <Field label="شماره درخواست" required>
                 <input
                   value={form.requestNumber}
@@ -296,10 +305,10 @@ export default function TenkhahPage() {
                     onChange={(e) =>
                       setForm((x) => ({ ...x, currency: e.target.value }))
                     }
-                    className="m-1 min-w-28 rounded-lg bg-gradient-to-bl from-amber-400 via-orange-500 to-rose-500 px-3 text-center text-sm font-semibold text-white shadow-sm outline-none"
+                    className="m-1 w-[62px] shrink-0 rounded-lg bg-gradient-to-bl from-amber-400 via-orange-500 to-rose-500 px-1 text-center text-xs font-semibold text-white shadow-sm outline-none"
                   >
-                    <option value="">ارز را انتخاب کنید</option>
-                    {currencies.map((currency) => <option key={currency.id} value={currency.title} className="bg-white text-neutral-900">{currency.title}</option>)}
+                    <option value="ریال">ریال</option>
+                    {currencies.filter((currency) => currency.title !== "ریال").map((currency) => <option key={currency.id} value={currency.title} className="bg-white text-neutral-900">{currency.title}</option>)}
                   </select>
                 </div>
               </Field>
@@ -437,14 +446,14 @@ export default function TenkhahPage() {
         </section>
         {selected && (
           <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 p-4">
-            <div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-2xl bg-white p-5 dark:bg-neutral-900">
-              <div className="mb-5 flex justify-between">
-                <b>
+            <div className="max-h-[90vh] w-full max-w-6xl overflow-auto rounded-2xl border border-black/10 bg-white shadow-2xl dark:border-white/10 dark:bg-neutral-900">
+              <div className="sticky top-0 z-10 mb-5 flex items-center justify-between border-b border-black/10 bg-white px-5 py-4 dark:border-white/10 dark:bg-neutral-900">
+                <span><b className="block">
                   {incoming ? "بررسی درخواست تنخواه" : "جزئیات درخواست تنخواه"}
-                </b>
-                <button onClick={() => setSelected(null)}>×</button>
+                </b><small className="mt-1 block text-xs font-normal text-neutral-500">مشاهده وضعیت و اطلاعات درخواست</small></span>
+                <button onClick={() => setSelected(null)} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black"><img src="/images/icons/bastan.svg" alt="بستن" className="h-4 w-4 invert dark:invert-0" /></button>
               </div>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid gap-5 p-4 pt-0 md:grid-cols-[minmax(0,1fr)_280px] md:p-5 md:pt-0"><div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <Field label="شماره درخواست">
                   <div className={input}>{selected.requestNumber}</div>
                 </Field>
@@ -532,7 +541,7 @@ export default function TenkhahPage() {
                     />
                   </Field>
                 )}
-              </div>
+              </div><TenkhahWorkflow stage={selected.stage} status={selected.status} /></div>
               {incoming && (
                 <div className="mt-5 flex justify-end">
                   <button
