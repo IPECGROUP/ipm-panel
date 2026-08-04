@@ -453,9 +453,9 @@ export default function TenkhahPage() {
                 </b><small className="mt-1 block text-xs font-normal text-neutral-500">مشاهده وضعیت و اطلاعات درخواست</small></span>
                 <button onClick={() => setSelected(null)} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black"><img src="/images/icons/bastan.svg" alt="بستن" className="h-4 w-4 invert dark:invert-0" /></button>
               </div>
-              <div className="grid gap-5 p-4 pt-0 md:grid-cols-[minmax(0,1fr)_280px] md:p-5 md:pt-0"><div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid items-center gap-5 p-4 pt-0 md:grid-cols-[280px_minmax(0,1fr)] md:p-5 md:pt-0"><div className="order-last grid grid-cols-1 gap-4 md:grid-cols-2">
                 <Field label="شماره درخواست">
-                  <div className={input}>{selected.requestNumber}</div>
+                  <div className={`${input} flex items-center`}>{selected.requestNumber}</div>
                 </Field>
                 <Field
                   label={
@@ -464,7 +464,7 @@ export default function TenkhahPage() {
                       : "تاریخ شارژ تنخواه"
                   }
                 >
-                  <div className={input}>
+                  <div className={`${input} flex items-center`}>
                     {fa(
                       selected.stage === "project_manager"
                         ? selected.managerApprovedDate || today()
@@ -473,33 +473,33 @@ export default function TenkhahPage() {
                   </div>
                 </Field>
                 <Field label="درخواست‌کننده">
-                  <div className={input}>
+                  <div className={`${input} flex items-center`}>
                     {selected.requesterName || selected.requesterUsername}
                   </div>
                 </Field>
                 <Field label="پروژه">
-                  <div className={input}>
+                  <div className={`${input} flex items-center`}>
                     {selected.projectCode} - {selected.projectName}
                   </div>
                 </Field>
                 <Field label="مبلغ تنخواه درخواستی">
-                  <div className={input}>
+                  <div className={`${input} flex items-center`}>
                     {fa(format3(selected.requestedAmount))} {selected.currency}
                   </div>
                 </Field>
                 <Field label="مانده تنخواه ثبت‌نشده">
-                  <div className={input}>
+                  <div className={`${input} flex items-center`}>
                     {fa(format3(selected.unregisteredBalance))}
                   </div>
                 </Field>
                 <Field label="مانده تنخواه تسویه‌نشده">
-                  <div className={input}>
+                  <div className={`${input} flex items-center`}>
                     {fa(format3(selected.unsettledBalance))}
                   </div>
                 </Field>
                 {selected.stage !== "project_manager" && (
                   <Field label="نقدینگی پروژه">
-                    <div className={input}>
+                    <div className={`${input} flex items-center`}>
                       {fa(format3(selected.projectLiquidity || 0))}
                     </div>
                   </Field>
@@ -541,7 +541,7 @@ export default function TenkhahPage() {
                     />
                   </Field>
                 )}
-              </div><TenkhahWorkflow stage={selected.stage} status={selected.status} /></div>
+              </div><div className="order-first"><TenkhahWorkflow stage={selected.stage} status={selected.status} /></div></div>
               {incoming && (
                 <div className="mt-5 flex justify-end">
                   <button
