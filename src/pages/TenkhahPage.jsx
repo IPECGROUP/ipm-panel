@@ -30,6 +30,9 @@ function Field({ label, required, children }) {
     </label>
   );
 }
+function SettlementTable({ entries, request, onRemove }) {
+  return <section className="mt-5 overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="overflow-x-auto"><table className="w-full min-w-[1050px] text-sm"><thead className="bg-neutral-200 dark:bg-white/10"><tr>{["", "تاریخ", "شرح", "کد بودجه", "شارژ تنخواه", "هزینه‌کرد", "فایل", "وضعیت", "اقدامات"].map(h=><th key={h} className="px-3 py-3 text-center">{h}</th>)}</tr></thead><tbody>{entries.length ? entries.map(e=><tr key={e.id} className="border-t border-black/10 dark:border-white/10"><td className="p-3 text-center"><input type="checkbox" className="h-4 w-4 rounded border-neutral-400" /></td><td className="p-3 text-center">{fa(e.expenseDate)}</td><td className="p-3 text-center">{e.description || "—"}</td><td className="p-3 text-center">{e.budgetCode}</td><td className="p-3 text-center">{fa(format3(request.chargedAmount || request.requestedAmount))}</td><td className="p-3 text-center">{fa(format3(e.amount))}</td><td className="p-3 text-center">{e.fileUrl ? <a className="text-blue-600 underline" href={e.fileUrl} target="_blank" rel="noreferrer">{e.fileName || "مشاهده"}</a> : "—"}</td><td className="p-3 text-center">در جریان</td><td className="p-3 text-center">{onRemove ? <button onClick={()=>onRemove(e.id)} className="rounded border px-2 py-1">حذف</button> : <button className="rounded border px-2 py-1">ویرایش</button>}</td></tr>) : <tr><td colSpan="9" className="p-8 text-center text-neutral-500">هنوز هزینه‌ای افزوده نشده است.</td></tr>}</tbody></table></div></section>;
+}
 export default function TenkhahPage() {
   const { user } = useAuth();
   const [items, setItems] = useState([]),
@@ -39,6 +42,10 @@ export default function TenkhahPage() {
     [users, setUsers] = useState([]),
     [currencies, setCurrencies] = useState([]),
     [selected, setSelected] = useState(null),
+    [settlement, setSettlement] = useState(null),
+    [settlementEntries, setSettlementEntries] = useState([]),
+    [settlementForm, setSettlementForm] = useState({ expenseDate: today(), description: "", budgetCode: "", amount: "", sendToUserId: "", fileName: "", fileUrl: "" }),
+    [budgetItems, setBudgetItems] = useState([]),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const api = async (path, opt = {}) => {
@@ -119,6 +126,26 @@ export default function TenkhahPage() {
       setError(e.message);
     }
   };
+  const settlementUsers = (stage) => users.filter((u) => {
+    if (u.isActive === false) return false;
+    const text = [u.department, u.role, ...(u.positions || []).map((p) => p.name)].join(" ");
+    return stage === "control_project" ? /کنترل\s*پروژه|project\s*control/i.test(text) : stage === "finance" ? /مالی|حسابدار|finance|account/i.test(text) : /مدیر\s*پروژه|project\s*manager/i.test(text);
+  });
+  const openSettlement = async (item, existing = null) => {
+    setError(""); setSettlement(existing ? { ...existing, request: item } : { request: item, stage: "control_project", status: "draft" });
+    setSettlementEntries(existing?.entries || []); setSettlementForm({ expenseDate: today(), description: "", budgetCode: "", amount: "", sendToUserId: "", fileName: "", fileUrl: "" });
+    try { await loadOptions(); const d = await api(`/cost-breakdown?project_id=${encodeURIComponent(item.projectId)}`); setBudgetItems(d.items || []); } catch (e) { setError(e.message); }
+  };
+  const uploadSettlementFile = async (file) => {
+    if (!file) return; setBusy(true); setError("");
+    try { const fd = new FormData(); fd.append("file", file); const r = await fetch("/api/upload/payment-doc", { method: "POST", credentials: "include", headers: { "x-user-id": String(user?.id || "") }, body: fd }); const d = await r.json(); if (!r.ok) throw new Error(d.error || "خطا در بارگذاری فایل"); setSettlementForm((x) => ({ ...x, fileName: d.file.name, fileUrl: d.file.url })); } catch (e) { setError(e.message); } finally { setBusy(false); }
+  };
+  const addSettlementEntry = () => {
+    if (!settlementForm.expenseDate || !settlementForm.budgetCode || !settlementForm.amount) { setError("تاریخ، کد بودجه و مبلغ را وارد کنید."); return; }
+    setSettlementEntries((x) => [...x, { ...settlementForm, id: `draft-${Date.now()}` }]); setSettlementForm((x) => ({ ...x, expenseDate: today(), description: "", budgetCode: "", amount: "", fileName: "", fileUrl: "" })); setError("");
+  };
+  const submitSettlement = async () => { setBusy(true); setError(""); try { await api("/tenkhah", { method: "POST", body: JSON.stringify({ action: "create_settlement", tenkhahRequestId: settlement.request.id, sendToUserId: settlementForm.sendToUserId, entries: settlementEntries }) }); setSettlement(null); await load(); window.dispatchEvent(new Event("tenkhah-notifications-refresh")); } catch (e) { setError(e.message); } finally { setBusy(false); } };
+  const advanceSettlement = async () => { setBusy(true); setError(""); try { await api("/tenkhah", { method: "PATCH", body: JSON.stringify({ action: "advance_settlement", settlementId: settlement.id, sendToUserId: settlementForm.sendToUserId }) }); setSettlement(null); await load(); window.dispatchEvent(new Event("tenkhah-notifications-refresh")); } catch (e) { setError(e.message); } finally { setBusy(false); } };
   const money = (k, v) =>
     setForm((x) => ({
       ...x,
@@ -373,7 +400,7 @@ export default function TenkhahPage() {
                             : "در انتظار مدیر پروژه"}
                       </td>
                       <td className="p-3 text-center">
-                        <button
+                        <div className="flex justify-center gap-2"><button
                           onClick={() =>
                             setSelected({
                               ...x,
@@ -389,6 +416,7 @@ export default function TenkhahPage() {
                             ? "اقدامات"
                             : "نمایش"}
                         </button>
+                        <button onClick={() => openSettlement(x, x.settlements?.[0] || null)} className="rounded-lg bg-neutral-800 px-3 py-1.5 text-white dark:bg-white dark:text-black">تسویه</button></div>
                       </td>
                     </tr>
                   ))
@@ -518,6 +546,18 @@ export default function TenkhahPage() {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+        {settlement && (
+          <div className="fixed inset-0 z-[1001] flex items-center justify-center bg-black/40 p-4">
+            <div className="max-h-[92vh] w-full max-w-6xl overflow-auto rounded-2xl bg-white p-5 dark:bg-neutral-900">
+              <div className="mb-5 flex items-center justify-between"><b>تسویه تنخواه</b><button onClick={() => setSettlement(null)}>×</button></div>
+              <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-3"><Field label="تنخواه‌گیرنده"><div className={`${input} bg-neutral-100 dark:bg-white/10`}>{settlement.request.requesterName || settlement.request.requesterUsername}</div></Field><Field label="پروژه"><div className={`${input} bg-neutral-100 dark:bg-white/10`}>{settlement.request.projectCode} - {settlement.request.projectName}</div></Field><Field label="مبلغ تنخواه"><div className={`${input} bg-neutral-100 dark:bg-white/10`}>{fa(format3(settlement.request.chargedAmount || settlement.request.requestedAmount))} {settlement.request.currency}</div></Field></div>
+              {settlement.status === "draft" ? <>
+                <div className="rounded-2xl bg-neutral-100 p-4 dark:bg-white/10"><div className="grid grid-cols-1 gap-3 md:grid-cols-6"><Field label="تاریخ"><JalaliPopupDatePicker value={settlementForm.expenseDate} onChange={(v) => setSettlementForm(x => ({...x,expenseDate:v}))} buttonClassName={`${input} flex justify-between`} /></Field><Field label="شرح هزینه"><input value={settlementForm.description} onChange={e=>setSettlementForm(x=>({...x,description:e.target.value}))} className={input}/></Field><Field label="کد بودجه"><select value={settlementForm.budgetCode} onChange={e=>setSettlementForm(x=>({...x,budgetCode:e.target.value}))} className={input}><option value="">انتخاب کنید</option>{budgetItems.map(b=><option key={b.id} value={b.budgetCode}>{b.budgetCode} - {b.budgetName}</option>)}</select></Field><Field label="مبلغ"><input inputMode="numeric" value={fa(settlementForm.amount)} onChange={e=>setSettlementForm(x=>({...x,amount:format3(toEnglishDigits(e.target.value).replace(/[^\d]/g,""))}))} className={input}/></Field><Field label="ارسال به"><select value={settlementForm.sendToUserId} onChange={e=>setSettlementForm(x=>({...x,sendToUserId:e.target.value}))} className={input}><option value="">کاربر کنترل پروژه</option>{settlementUsers("control_project").map(u=><option key={u.id} value={u.id}>{name(u)}</option>)}</select></Field><Field label="فایل"><div className="flex gap-2"><label className="cursor-pointer rounded-xl border bg-white px-3 py-2 text-sm dark:bg-neutral-800">بارگذاری<input type="file" className="hidden" onChange={e=>uploadSettlementFile(e.target.files?.[0])}/></label><button onClick={addSettlementEntry} className="h-11 w-11 rounded-xl bg-white text-xl shadow">+</button></div></Field></div>{settlementForm.fileName && <p className="mt-2 text-xs">فایل انتخاب‌شده: {settlementForm.fileName}</p>}</div>
+                <SettlementTable entries={settlementEntries} request={settlement.request} onRemove={(id)=>setSettlementEntries(x=>x.filter(e=>e.id!==id))}/><div className="mt-4 flex justify-end"><button disabled={busy || !settlementEntries.length || !settlementForm.sendToUserId} onClick={submitSettlement} className="rounded-xl bg-black px-5 py-2 text-white dark:bg-white dark:text-black">ارسال برای بررسی</button></div>
+              </> : <><SettlementTable entries={settlementEntries} request={settlement.request}/><div className="mt-4 rounded-xl bg-neutral-100 p-4 dark:bg-white/10">وضعیت: {settlement.status === "completed" ? "تکمیل شده" : settlement.stage === "control_project" ? "در انتظار کنترل پروژه" : settlement.stage === "finance" ? "در انتظار مالی" : settlement.stage === "project_manager" ? "در انتظار مدیر پروژه" : "در انتظار اعلام تحویل فیزیکی اسناد"}</div>{Number(settlement.currentAssigneeUserId)===Number(user?.id) && settlement.status === "pending" && <div className="mt-4 flex items-end justify-end gap-3">{settlement.stage !== "project_manager" && settlement.stage !== "requester_delivery" && <select value={settlementForm.sendToUserId} onChange={e=>setSettlementForm(x=>({...x,sendToUserId:e.target.value}))} className={`${input} max-w-xs`}><option value="">{settlement.stage === "control_project" ? "انتخاب کاربر مالی" : "انتخاب مدیر پروژه"}</option>{settlementUsers(settlement.stage).map(u=><option key={u.id} value={u.id}>{name(u)}</option>)}</select>}<button disabled={busy || ((settlement.stage === "control_project" || settlement.stage === "finance") && !settlementForm.sendToUserId)} onClick={advanceSettlement} className="rounded-xl bg-black px-5 py-2 text-white dark:bg-white dark:text-black">{settlement.stage === "requester_delivery" ? "اسناد ارسال شد" : "تأیید و ارسال"}</button></div>}</>}
             </div>
           </div>
         )}
