@@ -1355,7 +1355,8 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
   const openPdfPreview = () => {
     const value = (input, fallback = "—") => {
       const text = String(input ?? "").trim();
-      return escapePdfHtml(text || fallback);
+      const normalized = toFa(text || fallback).replace(/,/g, "٬");
+      return escapePdfHtml(normalized);
     };
     const amount = (input) => {
       const parsed = Number(input || 0);
@@ -1430,39 +1431,39 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
   <style>
     @font-face { font-family: Vazir; src: url("${fontRegularUrl}") format("woff2"); font-weight: 400; }
     @font-face { font-family: Vazir; src: url("${fontBoldUrl}") format("woff2"); font-weight: 700; }
-    @page { size: A4; margin: 12mm 11mm 14mm; }
+    @page { size: A4; margin: 8mm; }
     * { box-sizing: border-box; }
-    body { margin: 0; background: #eef1f4; color: #16202a; font-family: Vazir, Tahoma, Arial, sans-serif; font-size: 10.5px; line-height: 1.75; }
+    body { margin: 0; background: #eef1f4; color: #16202a; font-family: Vazir, Tahoma, Arial, sans-serif; font-size: 9.5px; line-height: 1.55; }
     .toolbar { position: sticky; top: 0; z-index: 20; display: flex; justify-content: center; gap: 8px; padding: 12px; background: rgba(238,241,244,.96); border-bottom: 1px solid #d7dde3; }
     .toolbar button { min-height: 38px; border: 1px solid #17212b; border-radius: 9px; padding: 0 16px; background: #17212b; color: #fff; font-family: inherit; font-weight: 700; cursor: pointer; }
     .toolbar button.secondary { background: #fff; color: #17212b; }
-    .sheet { width: 210mm; min-height: 297mm; margin: 14px auto; padding: 12mm 11mm 14mm; background: #fff; box-shadow: 0 10px 35px rgba(20,30,40,.12); }
-    .header { display: grid; grid-template-columns: 44mm 1fr 44mm; align-items: center; min-height: 27mm; border: 1.5px solid #182531; border-radius: 13px; overflow: hidden; }
-    .logo { display: flex; height: 100%; align-items: center; justify-content: center; padding: 7px; border-left: 1px solid #d5dbe0; }
-    .logo img { width: 36mm; max-height: 17mm; object-fit: contain; }
-    .title { padding: 7px 12px; text-align: center; }
-    .title h1 { margin: 0; color: #13212d; font-size: 19px; line-height: 1.5; }
-    .title p { margin: 3px 0 0; color: #61707d; font-size: 10px; }
-    .document-meta { height: 100%; display: grid; align-content: center; gap: 4px; padding: 7px 9px; border-right: 1px solid #d5dbe0; }
+    .sheet { width: 210mm; min-height: 297mm; margin: 14px auto; padding: 8mm; background: #fff; box-shadow: 0 10px 35px rgba(20,30,40,.12); }
+    .header { display: grid; grid-template-columns: 44mm 1fr 44mm; align-items: center; min-height: 21mm; border: 1.5px solid #182531; border-radius: 11px; overflow: hidden; }
+    .logo { display: flex; height: 100%; align-items: center; justify-content: center; padding: 4px; border-left: 1px solid #d5dbe0; }
+    .logo img { width: 38mm; max-height: 18mm; object-fit: contain; }
+    .title { padding: 5px 10px; text-align: center; }
+    .title h1 { margin: 0; color: #13212d; font-size: 17px; line-height: 1.4; }
+    .title p { margin: 2px 0 0; color: #61707d; font-size: 9px; }
+    .document-meta { height: 100%; display: grid; align-content: center; gap: 2px; padding: 5px 8px; border-right: 1px solid #d5dbe0; }
     .document-meta div { display: flex; justify-content: space-between; gap: 6px; }
     .document-meta span { color: #6b7782; }
-    .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 9px; }
-    .summary-card { padding: 8px 10px; border-radius: 10px; background: #f4f7f9; border: 1px solid #dce3e8; }
+    .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 6px; }
+    .summary-card { padding: 5px 8px; border-radius: 8px; background: #f4f7f9; border: 1px solid #dce3e8; }
     .summary-card .label { font-size: 9px; }
     .summary-card .value { margin-top: 2px; color: #14232f; font-size: 11px; }
-    section { margin-top: 10px; break-inside: avoid; }
-    .section-title { display: flex; align-items: center; gap: 8px; margin: 0 0 7px; color: #172734; font-size: 12px; font-weight: 700; }
-    .section-title::before { content: ""; width: 4px; height: 17px; border-radius: 4px; background: #1b6c91; }
+    section { margin-top: 6px; break-inside: avoid; }
+    .section-title { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; color: #172734; font-size: 10.5px; font-weight: 700; }
+    .section-title::before { content: ""; width: 3px; height: 14px; border-radius: 4px; background: #1b6c91; }
     .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid #d8e0e6; border-radius: 11px; overflow: hidden; }
-    .info-card { min-height: 51px; padding: 7px 9px; border-left: 1px solid #e1e6ea; border-bottom: 1px solid #e1e6ea; break-inside: avoid; }
+    .info-card { min-height: 38px; padding: 4px 7px; border-left: 1px solid #e1e6ea; border-bottom: 1px solid #e1e6ea; break-inside: avoid; }
     .info-card:nth-child(3n) { border-left: 0; }
     .info-card.full { grid-column: 1 / -1; border-left: 0; }
     .label { color: #6c7882; font-size: 9px; font-weight: 700; }
-    .value { margin-top: 2px; color: #17232d; font-family: Vazir, Tahoma, Arial, sans-serif; font-size: 10.5px; font-weight: 700; font-variant-numeric: normal; overflow-wrap: anywhere; white-space: pre-wrap; }
+    .value { margin-top: 1px; color: #17232d; font-family: Vazir, Tahoma, Arial, sans-serif !important; font-size: 9.5px; font-weight: 700; font-feature-settings: "ss01" 1; font-variant-numeric: normal; letter-spacing: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
     table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #d7dfe5; border-radius: 11px; overflow: hidden; }
-    th, td { padding: 6px 7px; text-align: right; vertical-align: top; border-bottom: 1px solid #e3e8ec; border-left: 1px solid #e3e8ec; overflow-wrap: anywhere; }
+    th, td { padding: 4px 6px; text-align: right; vertical-align: top; border-bottom: 1px solid #e3e8ec; border-left: 1px solid #e3e8ec; overflow-wrap: anywhere; }
     th { background: #eef3f6; color: #293945; font-size: 9px; font-weight: 700; }
-    td { font-family: Vazir, Tahoma, Arial, sans-serif; font-size: 9.5px; font-variant-numeric: normal; }
+    td { font-family: Vazir, Tahoma, Arial, sans-serif !important; font-size: 9px; font-feature-settings: "ss01" 1; font-variant-numeric: normal; }
     tr:last-child td { border-bottom: 0; }
     th:last-child, td:last-child { border-left: 0; }
     .status { display: inline-block; min-width: 44px; padding: 2px 6px; border-radius: 99px; text-align: center; background: #e8eef2; color: #354653; font-size: 8.5px; font-weight: 700; }
@@ -1471,16 +1472,11 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
     .status-returned { background: #fff0d8; color: #965b00; }
     .status-completed { background: #e3f5ea; color: #15713a; }
     .status-active { background: #e1f1fa; color: #126087; }
-    .attachment-sheet { break-before: page; page-break-before: always; }
-    .attachment-sheet .title h1 { font-size: 16px; }
-    .attachment-sheet .logo { padding: 3px; }
-    .attachment-sheet .logo img { width: 40mm; max-height: 21mm; }
-    .attachment-state { display: inline-flex; align-items: center; gap: 7px; margin-top: 10px; padding: 7px 11px; border-radius: 9px; background: ${attachments.length ? "#e4f5eb" : "#f1f3f5"}; color: ${attachments.length ? "#176c3a" : "#53606b"}; font-weight: 700; }
-    .attachment-list { margin: 12px 0 0; padding: 0; list-style: none; border: 1px solid #d9e0e5; border-radius: 11px; overflow: hidden; }
-    .attachment-list li { display: grid; grid-template-columns: 12mm 1fr; gap: 9px; padding: 9px 11px; border-bottom: 1px solid #e4e8eb; }
+    .attachment-state { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 7px; background: ${attachments.length ? "#e4f5eb" : "#f1f3f5"}; color: ${attachments.length ? "#176c3a" : "#53606b"}; font-weight: 700; }
+    .attachment-list { margin: 5px 0 0; padding: 0; list-style: none; border: 1px solid #d9e0e5; border-radius: 8px; overflow: hidden; }
+    .attachment-list li { display: grid; grid-template-columns: 9mm 1fr; gap: 6px; padding: 4px 8px; border-bottom: 1px solid #e4e8eb; }
     .attachment-list li:last-child { border-bottom: 0; }
     .attachment-list .number { color: #1b6c91; font-weight: 700; }
-    .attachment-note { margin-top: 12px; padding: 10px 12px; border: 1px dashed #b8c3cb; border-radius: 10px; color: #5d6973; }
     .attachment-preview-page { break-before: page; page-break-before: always; display: flex; flex-direction: column; }
     .attachment-preview-header { display: grid; grid-template-columns: 28mm 1fr; align-items: center; gap: 10px; min-height: 15mm; padding: 8px 11px; border: 1px solid #d6dee4; border-radius: 11px; background: #f4f7f9; }
     .attachment-preview-header span { color: #1b6c91; font-weight: 700; }
@@ -1574,22 +1570,12 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
         <tbody>${workflowRows || `<tr><td colspan="5">هنوز مرحله‌ای انجام نشده است.</td></tr>`}</tbody>
       </table>
     </section>
+    <section>
+      <h2 class="section-title">پیوست‌های درخواست پرداخت</h2>
+      <div class="attachment-state">پیوست: ${attachments.length ? "دارد" : "ندارد"}</div>
+      ${attachments.length ? `<ul class="attachment-list">${attachmentNames.map((name, index) => `<li><span class="number">${value(index + 1)}</span><strong>${value(name)}</strong></li>`).join("")}</ul>` : ""}
+    </section>
     <footer class="footer"><span>سامانه فرآیندهای یکپارچه شرکت ایده پویان انرژی</span><span></span></footer>
-  </article>
-
-  <article class="sheet attachment-sheet">
-    <header class="header">
-      <div class="logo"><img src="${logoUrl}" alt="IPEC" /></div>
-      <div class="title"><h1>پیوست‌های درخواست پرداخت</h1><p>فهرست رسمی مدارک همراه درخواست</p></div>
-      <div class="document-meta">
-        <div><span>شماره:</span><strong dir="ltr">${value(displayPaymentSerial(item, projects))}</strong></div>
-        <div><span>درخواست‌کننده:</span><strong>${value(item.createdByName)}</strong></div>
-      </div>
-    </header>
-    <div class="attachment-state">پیوست: ${attachments.length ? "دارد" : "ندارد"}</div>
-    ${attachments.length ? `<ul class="attachment-list">${attachmentNames.map((name, index) => `<li><span class="number">${toFa(index + 1)}</span><strong>${value(name)}</strong></li>`).join("")}</ul>` : ""}
-    <div class="attachment-note">${attachments.length ? `تعداد ${toFa(attachments.length)} فایل به این درخواست پیوست شده است. نام فایل‌ها در فهرست بالا درج شده‌اند.` : "برای این درخواست هیچ فایل پیوستی ثبت نشده است."}</div>
-    <footer class="footer"><span>سامانه فرآیندهای یکپارچه شرکت ایده پویان انرژی</span><span>صفحه پیوست‌ها</span></footer>
   </article>
   ${attachmentPreviewPages}
 </body>
