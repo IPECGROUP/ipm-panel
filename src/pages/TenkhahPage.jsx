@@ -5,6 +5,7 @@ import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { todayJalaliYmd } from "../utils/date.js";
 import { format3, toEnglishDigits } from "../utils/format.js";
+const SettlementErrorsContext = React.createContext({});
 const input =
   "h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-right text-sm outline-none focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-white";
 const fa = (v) => String(v ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]);
@@ -22,10 +23,12 @@ const empty = () => ({
   projectManagerId: "",
 });
 function Field({ label, required, children, className = "" }) {
+  const settlementErrors = React.useContext(SettlementErrorsContext);
   const orderClass = label === "مبلغ" ? "md:order-3" : label === "کد بودجه" ? "md:order-4" : label === "فایل" ? "md:order-5" : "";
   const displayLabel = label === "مبلغ" ? "مبلغ تسویه" : label;
+  const invalid = (label === "تاریخ" && settlementErrors.date) || (label === "کد بودجه" && settlementErrors.budgetCode) || (label === "مبلغ" && settlementErrors.amount) || (label === "ارسال به" && settlementErrors.recipient);
   return (
-    <label className={`block ${orderClass} ${className}`}>
+    <label className={`block ${orderClass} ${invalid ? "[&>input]:!border-red-500 [&>select]:!border-red-500 [&>select]:!ring-1 [&>select]:!ring-red-500 [&_button]:!border-red-500 [&_button]:!ring-1 [&_button]:!ring-red-500" : ""} ${className}`}>
       <span className="mb-1.5 block text-sm font-medium text-neutral-700 dark:text-neutral-200">
         {displayLabel}
         {required && <b className="mr-1 text-red-500">*</b>}
@@ -178,7 +181,7 @@ export default function TenkhahPage() {
     const usedAmount = BigInt(sumAmounts(...otherEntries.map((entry) => entry.amount)));
     const enteredAmount = BigInt(toEnglishDigits(String(settlementForm.amount || "0")).replace(/[^\d]/g, "") || "0");
     const remainingAmount = requestAmount > usedAmount ? requestAmount - usedAmount : 0n;
-    if (enteredAmount > remainingAmount) { setSettlementErrors({ amount: true }); setSettlementForm((x) => ({ ...x, amount: format3(remainingAmount.toString()) })); return; }
+    if (enteredAmount > remainingAmount) { setSettlementErrors({ amount: true }); return; }
     if (editingEntryId) { setBusy(true); try { await api("/tenkhah/entry", { method:"PATCH", body:JSON.stringify({ entryId:editingEntryId, ...settlementForm }) }); setSettlementEntries(x=>x.map(entry=>entry.id===editingEntryId?{...entry,...settlementForm}:entry)); setEditingEntryId(null); setSettlementForm(x=>({...x,expenseDate:today(),description:"",budgetCode:"",amount:"",fileName:"",fileUrl:""})); } catch(e) { setError(e.message); } finally { setBusy(false); } return; }
     setSettlementEntries((x) => [...x, { ...settlementForm, id: `draft-${Date.now()}` }]); setSettlementErrors({}); setSettlementForm((x) => ({ ...x, expenseDate: today(), description: "", budgetCode: "", amount: "", fileName: "", fileUrl: "" }));
   };
@@ -255,6 +258,7 @@ export default function TenkhahPage() {
   }, [selected?.id, selected?.stage, selected?.status, selected?.currentAssigneeUserId, user?.id]);
   const canEditSettlement = settlement && settlement.status === "pending" && Number(settlement.currentAssigneeUserId) === Number(user?.id);
   return (
+    <SettlementErrorsContext.Provider value={settlementErrors}>
     <div dir="rtl" className="mx-auto max-w-[1400px]">
       <Card className="rounded-2xl border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-neutral-900 md:p-4">
         <div className="mb-5 flex items-center justify-between">
@@ -561,5 +565,6 @@ export default function TenkhahPage() {
         )}
       </Card>
     </div>
+    </SettlementErrorsContext.Provider>
   );
 }
