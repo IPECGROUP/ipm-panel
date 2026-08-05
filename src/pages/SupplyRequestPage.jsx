@@ -1160,6 +1160,7 @@ export default function SupplyRequestPage() {
                   <col style={{ width: 120 }} />
                   <col style={{ width: 180 }} />
                   <col />
+                  <col style={{ width: 130 }} />
                   <col style={{ width: 140 }} />
                   <col style={{ width: 132 }} />
                 </colgroup>
@@ -1171,6 +1172,7 @@ export default function SupplyRequestPage() {
                     <th>تاریخ</th>
                     <th>پروژه</th>
                     <th>موضوع</th>
+                    <th>درخواست‌کننده</th>
                     <th>آخرین وضعیت</th>
                     <th className="relative">
                       <span>اقدامات</span>
@@ -1220,11 +1222,11 @@ export default function SupplyRequestPage() {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={8} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td>
+                      <td colSpan={9} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td>
                     </tr>
                   ) : pageItems.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواست تامینی ثبت نشده است.</td>
+                      <td colSpan={9} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواست تامینی ثبت نشده است.</td>
                     </tr>
                   ) : (
                     pageItems.map((item) => (
@@ -1239,6 +1241,7 @@ export default function SupplyRequestPage() {
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/"))}</td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{itemProjectLabel(item, projects)}</span></td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.title || "—"}</span></td>
+                        <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.createdByName || `کاربر #${toFaDigits(item.createdById)}`}</span></td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><StatusBadge status={displayStatusOf(item)} /></td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">
                           <div className="flex min-h-9 items-center justify-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
