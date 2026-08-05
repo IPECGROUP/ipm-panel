@@ -461,7 +461,7 @@ export default function TenkhahPage() {
                 </b><small className="mt-1 block text-xs font-normal text-neutral-500">مشاهده وضعیت و اطلاعات درخواست</small></span>
                 <button onClick={() => setSelected(null)} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black"><img src="/images/icons/bastan.svg" alt="بستن" className="h-4 w-4 invert dark:invert-0" /></button>
               </div>
-              <div className="grid items-start gap-5 p-4 pt-0 md:grid-cols-[280px_minmax(0,1fr)] md:p-5 md:pt-0"><div className="order-last overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="grid grid-cols-1 md:grid-cols-3">
+              <div className="grid items-start gap-5 p-4 pt-0 md:grid-cols-[280px_minmax(0,1fr)] md:p-5 md:pt-0"><div className="order-last overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="grid grid-cols-1 md:grid-cols-4">
                 <DetailCell label="درخواست‌کننده">{selected.requesterName || selected.requesterUsername}</DetailCell>
                 <DetailCell label="پروژه">{selected.projectCode} - {selected.projectName}</DetailCell>
                 <DetailCell label="شماره درخواست">{selected.requestNumber}</DetailCell>
