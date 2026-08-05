@@ -129,6 +129,15 @@ function formatSheba(value) {
   return `IR${groups.length ? `-${groups.join("-")}` : ""}`;
 }
 
+function escapePdfHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function registrationMessage(info) {
   if (!info) return "";
   const date = info.dateJalali || info.date || "";
@@ -1343,6 +1352,214 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
     </div>
   ) : (item.hasSupplyRequest === "yes" ? (supplyRequests.find((row) => String(row.id) === String(item.supplyRequestId))?.serial || `#${item.supplyRequestId || "—"}`) : "ندارد");
 
+  const openPdfPreview = () => {
+    const value = (input, fallback = "—") => {
+      const text = String(input ?? "").trim();
+      return escapePdfHtml(text || fallback);
+    };
+    const amount = (input) => {
+      const parsed = Number(input || 0);
+      return parsed > 0 ? `${escapePdfHtml(toFa(parsed.toLocaleString("en-US")))} ریال` : "—";
+    };
+    const projectName = project ? projectLabel(project) : (item.projectName || item.projectCode || item.projectId || "—");
+    const supplyRequestName = item.hasSupplyRequest === "yes"
+      ? (supplyRequests.find((row) => String(row.id) === String(item.supplyRequestId))?.serial || `#${item.supplyRequestId || "—"}`)
+      : "ندارد";
+    const attachmentNames = attachments.map((file, index) =>
+      file?.name || file?.originalName || file?.filename || `فایل ${toFa(index + 1)}`
+    );
+    const currentStage = PAYMENT_WORKFLOW_STEPS.find((step) => step.index === Number(item.currentStepIndex));
+    const statusText = STATUS_LABELS[item.status] || item.status || "نامشخص";
+    const printDate = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+      year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+    }).format(new Date());
+    const historyEntries = history.filter((entry) => ["created", "approved", "rejected", "returned", "edited"].includes(entry?.type));
+    const historyRows = historyEntries.map((entry, index) => {
+      const step = PAYMENT_WORKFLOW_STEPS.find((row) => row.index === Number(entry?.index));
+      const actionLabel = ({ created: "ثبت درخواست", approved: "تأیید", rejected: "رد", returned: "برگشت", edited: "ویرایش" })[entry?.type] || entry?.type || "—";
+      return `<tr>
+        <td>${toFa(index + 1)}</td>
+        <td>${value(step?.label || (entry?.type === "created" ? PAYMENT_WORKFLOW_STEPS[0].label : STEP_LABELS[entry?.roleKey]))}</td>
+        <td><span class="status status-${escapePdfHtml(entry?.type || "pending")}">${value(actionLabel)}</span></td>
+        <td>${value(paymentHistoryActorName(entry, item))}</td>
+        <td>${value(formatDateTime(entry?.at))}</td>
+        <td>${value(entry?.note)}</td>
+      </tr>`;
+    }).join("");
+    const infoCard = (label, content, className = "") => `<div class="info-card ${className}"><div class="label">${escapePdfHtml(label)}</div><div class="value">${value(content)}</div></div>`;
+    const logoUrl = `${window.location.origin}/images/light%20mode.png`;
+    const fontRegularUrl = `${window.location.origin}/fonts/Vazir.woff2`;
+    const fontBoldUrl = `${window.location.origin}/fonts/Vazir-Bold.woff2`;
+
+    const html = `<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>درخواست پرداخت ${value(displayPaymentSerial(item, projects), "")}</title>
+  <style>
+    @font-face { font-family: Vazir; src: url("${fontRegularUrl}") format("woff2"); font-weight: 400; }
+    @font-face { font-family: Vazir; src: url("${fontBoldUrl}") format("woff2"); font-weight: 700; }
+    @page { size: A4; margin: 12mm 11mm 14mm; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #eef1f4; color: #16202a; font-family: Vazir, Tahoma, Arial, sans-serif; font-size: 10.5px; line-height: 1.75; }
+    .toolbar { position: sticky; top: 0; z-index: 20; display: flex; justify-content: center; gap: 8px; padding: 12px; background: rgba(238,241,244,.96); border-bottom: 1px solid #d7dde3; }
+    .toolbar button { min-height: 38px; border: 1px solid #17212b; border-radius: 9px; padding: 0 16px; background: #17212b; color: #fff; font-family: inherit; font-weight: 700; cursor: pointer; }
+    .toolbar button.secondary { background: #fff; color: #17212b; }
+    .sheet { width: 210mm; min-height: 297mm; margin: 14px auto; padding: 12mm 11mm 14mm; background: #fff; box-shadow: 0 10px 35px rgba(20,30,40,.12); }
+    .header { display: grid; grid-template-columns: 44mm 1fr 44mm; align-items: center; min-height: 27mm; border: 1.5px solid #182531; border-radius: 13px; overflow: hidden; }
+    .logo { display: flex; height: 100%; align-items: center; justify-content: center; padding: 7px; border-left: 1px solid #d5dbe0; }
+    .logo img { width: 36mm; max-height: 17mm; object-fit: contain; }
+    .title { padding: 7px 12px; text-align: center; }
+    .title h1 { margin: 0; color: #13212d; font-size: 19px; line-height: 1.5; }
+    .title p { margin: 3px 0 0; color: #61707d; font-size: 10px; }
+    .document-meta { height: 100%; display: grid; align-content: center; gap: 4px; padding: 7px 9px; border-right: 1px solid #d5dbe0; }
+    .document-meta div { display: flex; justify-content: space-between; gap: 6px; }
+    .document-meta span { color: #6b7782; }
+    .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 9px; }
+    .summary-card { padding: 8px 10px; border-radius: 10px; background: #f4f7f9; border: 1px solid #dce3e8; }
+    .summary-card .label { font-size: 9px; }
+    .summary-card .value { margin-top: 2px; color: #14232f; font-size: 11px; }
+    section { margin-top: 10px; break-inside: avoid; }
+    .section-title { display: flex; align-items: center; gap: 8px; margin: 0 0 7px; color: #172734; font-size: 12px; font-weight: 700; }
+    .section-title::before { content: ""; width: 4px; height: 17px; border-radius: 4px; background: #1b6c91; }
+    .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid #d8e0e6; border-radius: 11px; overflow: hidden; }
+    .info-card { min-height: 51px; padding: 7px 9px; border-left: 1px solid #e1e6ea; border-bottom: 1px solid #e1e6ea; break-inside: avoid; }
+    .info-card:nth-child(3n) { border-left: 0; }
+    .info-card.full { grid-column: 1 / -1; border-left: 0; }
+    .label { color: #6c7882; font-size: 9px; font-weight: 700; }
+    .value { margin-top: 2px; color: #17232d; font-size: 10.5px; font-weight: 700; overflow-wrap: anywhere; white-space: pre-wrap; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #d7dfe5; border-radius: 11px; overflow: hidden; }
+    th, td { padding: 6px 7px; text-align: right; vertical-align: top; border-bottom: 1px solid #e3e8ec; border-left: 1px solid #e3e8ec; overflow-wrap: anywhere; }
+    th { background: #eef3f6; color: #293945; font-size: 9px; font-weight: 700; }
+    td { font-size: 9.5px; }
+    tr:last-child td { border-bottom: 0; }
+    th:last-child, td:last-child { border-left: 0; }
+    .status { display: inline-block; min-width: 44px; padding: 2px 6px; border-radius: 99px; text-align: center; background: #e8eef2; color: #354653; font-size: 8.5px; font-weight: 700; }
+    .status-approved { background: #e3f5ea; color: #15713a; }
+    .status-rejected { background: #fde7e7; color: #a32929; }
+    .status-returned { background: #fff0d8; color: #965b00; }
+    .attachment-sheet { break-before: page; page-break-before: always; }
+    .attachment-state { display: inline-flex; align-items: center; gap: 7px; margin-top: 10px; padding: 7px 11px; border-radius: 9px; background: ${attachments.length ? "#e4f5eb" : "#f1f3f5"}; color: ${attachments.length ? "#176c3a" : "#53606b"}; font-weight: 700; }
+    .attachment-list { margin: 12px 0 0; padding: 0; list-style: none; border: 1px solid #d9e0e5; border-radius: 11px; overflow: hidden; }
+    .attachment-list li { display: grid; grid-template-columns: 12mm 1fr; gap: 9px; padding: 9px 11px; border-bottom: 1px solid #e4e8eb; }
+    .attachment-list li:last-child { border-bottom: 0; }
+    .attachment-list .number { color: #1b6c91; font-weight: 700; }
+    .attachment-note { margin-top: 12px; padding: 10px 12px; border: 1px dashed #b8c3cb; border-radius: 10px; color: #5d6973; }
+    .footer { display: flex; justify-content: space-between; gap: 10px; margin-top: 13px; padding-top: 7px; border-top: 1px solid #d9e0e5; color: #75818b; font-size: 8.5px; }
+    @media print {
+      body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .toolbar { display: none; }
+      .sheet { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
+      .sheet + .sheet { margin-top: 0; }
+    }
+    @media screen and (max-width: 900px) {
+      .sheet { width: calc(100% - 20px); min-height: auto; padding: 18px; }
+      .header { grid-template-columns: 1fr; }
+      .logo, .document-meta { border: 0; border-bottom: 1px solid #d5dbe0; }
+      .summary, .info-grid { grid-template-columns: 1fr; }
+      .info-card, .info-card:nth-child(3n) { border-left: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button onclick="window.print()">چاپ / ذخیره PDF</button>
+    <button class="secondary" onclick="window.close()">بستن پیش‌نمایش</button>
+  </div>
+  <article class="sheet">
+    <header class="header">
+      <div class="logo"><img src="${logoUrl}" alt="IPEC" /></div>
+      <div class="title"><h1>فرم درخواست پرداخت</h1><p>گزارش رسمی گردش و وضعیت درخواست</p></div>
+      <div class="document-meta">
+        <div><span>شماره:</span><strong dir="ltr">${value(displayPaymentSerial(item, projects))}</strong></div>
+        <div><span>تاریخ:</span><strong>${value(toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/")))}</strong></div>
+      </div>
+    </header>
+    <div class="summary">
+      <div class="summary-card"><div class="label">وضعیت فعلی</div><div class="value">${value(statusText)}</div></div>
+      <div class="summary-card"><div class="label">مرحله فعلی</div><div class="value">${value(currentStage?.label || (item.status === "approved" ? "فرآیند تکمیل شده" : "—"))}</div></div>
+      <div class="summary-card"><div class="label">تاریخ تهیه گزارش</div><div class="value">${value(printDate)}</div></div>
+    </div>
+
+    <section>
+      <h2 class="section-title">مشخصات درخواست</h2>
+      <div class="info-grid">
+        ${infoCard("درخواست‌کننده", item.createdByName || `کاربر #${toFa(item.createdById)}`)}
+        ${infoCard("پروژه", projectName)}
+        ${infoCard("کد بودجه", item.budgetCode)}
+        ${infoCard("موضوع درخواست", item.title)}
+        ${infoCard("درخواست تأمین", supplyRequestName)}
+        ${infoCard("مبلغ درخواست", `${toFa(Number(item.amount || 0).toLocaleString("en-US"))} ریال`)}
+        ${infoCard("شرح درخواست", item.description, "full")}
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">اطلاعات مالی و پرداخت</h2>
+      <div class="info-grid">
+        ${infoCard("باقی‌مانده بودجه مبنا", baseBudget ? `${toFa(baseBudget)} ریال` : "—")}
+        ${infoCard("باقی‌مانده نقدینگی پروژه", liquidityRemaining ? `${toFa(liquidityRemaining)} ریال` : "—")}
+        ${infoCard("ارز", currencyName)}
+        ${infoCard("نام ذی‌نفع", item.beneficiaryName)}
+        ${infoCard("شماره شبا", item.bankInfo)}
+        ${infoCard("شرایط پرداخت", item.creditPay)}
+        ${infoCard("پرداخت نقدی ثبت‌شده", amount(item.cashText || item.cashAmount))}
+        ${infoCard("تاریخ پرداخت نقدی", toFa(item.cashDate || item.cashDateJalali || "—"))}
+        ${infoCard("پرداخت اعتباری ثبت‌شده", amount(item.creditSection || item.creditAmount))}
+        ${infoCard("نوع ارز", currencyName)}
+        ${infoCard("منشأ ارز", source ? itemLabel(source) : "—")}
+        ${infoCard("شناسه درخواست", toFa(item.id))}
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">اطلاعات سند</h2>
+      <div class="info-grid">
+        ${infoCard("نوع سند", docName)}
+        ${infoCard("شماره سند", item.docNumber)}
+        ${infoCard("تاریخ سند", toFa(item.docDate || item.docDateJalali || "—"))}
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">فرآیند پرداخت و سوابق اقدامات</h2>
+      <table>
+        <thead><tr><th>ردیف</th><th>مرحله</th><th>اقدام</th><th>انجام‌دهنده</th><th>تاریخ و ساعت</th><th>توضیحات</th></tr></thead>
+        <tbody>${historyRows || `<tr><td colspan="6">سابقه‌ای ثبت نشده است.</td></tr>`}</tbody>
+      </table>
+    </section>
+    <footer class="footer"><span>سامانه یکپارچه مدیریت پروژه</span><span>این سند به‌صورت سیستمی تولید شده است.</span></footer>
+  </article>
+
+  <article class="sheet attachment-sheet">
+    <header class="header">
+      <div class="logo"><img src="${logoUrl}" alt="IPEC" /></div>
+      <div class="title"><h1>پیوست‌های درخواست پرداخت</h1><p>فهرست رسمی مدارک همراه درخواست</p></div>
+      <div class="document-meta">
+        <div><span>شماره:</span><strong dir="ltr">${value(displayPaymentSerial(item, projects))}</strong></div>
+        <div><span>درخواست‌کننده:</span><strong>${value(item.createdByName)}</strong></div>
+      </div>
+    </header>
+    <div class="attachment-state">پیوست: ${attachments.length ? "دارد" : "ندارد"}</div>
+    ${attachments.length ? `<ul class="attachment-list">${attachmentNames.map((name, index) => `<li><span class="number">${toFa(index + 1)}</span><strong>${value(name)}</strong></li>`).join("")}</ul>` : ""}
+    <div class="attachment-note">${attachments.length ? `تعداد ${toFa(attachments.length)} فایل به این درخواست پیوست شده است. نام فایل‌ها در فهرست بالا درج شده‌اند.` : "برای این درخواست هیچ فایل پیوستی ثبت نشده است."}</div>
+    <footer class="footer"><span>سامانه یکپارچه مدیریت پروژه</span><span>صفحه پیوست‌ها</span></footer>
+  </article>
+</body>
+</html>`;
+
+    const pdfWindow = window.open("", "_blank", "width=1150,height=850");
+    if (!pdfWindow) {
+      alert("امکان باز کردن پیش‌نمایش وجود ندارد. لطفاً نمایش پنجره‌های بازشو را برای این سایت فعال کنید.");
+      return;
+    }
+    pdfWindow.document.open();
+    pdfWindow.document.write(html);
+    pdfWindow.document.close();
+    pdfWindow.focus();
+  };
+
   return createPortal(<div className="fixed inset-0 z-[9999]">
     <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
     <div className="absolute inset-0 flex items-center justify-center p-3 md:p-6">
@@ -1350,6 +1567,7 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
         <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3 dark:border-white/10">
           <div className="flex items-center gap-2">
             <div className="text-sm font-bold">اقدامات پرداخت</div>
+            <button type="button" onClick={openPdfPreview} className="inline-flex h-9 items-center gap-2 rounded-lg border border-black/10 px-3 text-xs font-semibold transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10" title="مشاهده PDF" aria-label="مشاهده PDF"><img src="/images/icons/print.svg" alt="" className="h-4 w-4 dark:invert" /><span>مشاهده PDF</span></button>
             {isOwner && !isEditing && <button type="button" onClick={() => setIsEditing(true)} className="grid h-9 w-9 place-items-center rounded-lg border border-black/10 transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10" title="ویرایش درخواست" aria-label="ویرایش درخواست"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></button>}
             {isEditing && <button type="button" onClick={() => { setEditForm(formFromItem(item)); setEditUploadError(""); setIsEditing(false); }} className="rounded-lg border border-black/10 px-3 py-1.5 text-xs transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10">انصراف</button>}
           </div>
