@@ -428,7 +428,7 @@ export default function TenkhahPage() {
                               chargedAmount: x.requestedAmount,
                             })
                           }
-                          className="grid h-10 w-10 place-items-center rounded-xl border border-black/10 transition hover:bg-black/[.03] dark:border-white/15 dark:hover:bg-white/10"
+                          className="grid h-10 w-10 place-items-center bg-transparent transition hover:opacity-70"
                           title={Number(x.currentAssigneeUserId) === Number(user?.id) && x.status === "pending" ? "اقدامات" : "نمایش درخواست"}
                           aria-label={Number(x.currentAssigneeUserId) === Number(user?.id) && x.status === "pending" ? "اقدامات" : "نمایش درخواست"}
                         >
@@ -461,14 +461,14 @@ export default function TenkhahPage() {
                 </b><small className="mt-1 block text-xs font-normal text-neutral-500">مشاهده وضعیت و اطلاعات درخواست</small></span>
                 <button onClick={() => setSelected(null)} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black"><img src="/images/icons/bastan.svg" alt="بستن" className="h-4 w-4 invert dark:invert-0" /></button>
               </div>
-              <div className="grid items-start gap-5 p-4 pt-0 md:grid-cols-[280px_minmax(0,1fr)] md:p-5 md:pt-0"><div className="order-last overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="grid grid-cols-1 md:grid-cols-2">
-                <DetailCell label="شماره درخواست">{selected.requestNumber}</DetailCell>
-                <DetailCell label={selected.stage === "project_manager" ? "تاریخ تایید" : "تاریخ شارژ تنخواه"}>{fa(selected.stage === "project_manager" ? selected.managerApprovedDate || today() : selected.chargedDate || today())}</DetailCell>
+              <div className="grid items-start gap-5 p-4 pt-0 md:grid-cols-[280px_minmax(0,1fr)] md:p-5 md:pt-0"><div className="order-last overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="grid grid-cols-1 md:grid-cols-3">
                 <DetailCell label="درخواست‌کننده">{selected.requesterName || selected.requesterUsername}</DetailCell>
                 <DetailCell label="پروژه">{selected.projectCode} - {selected.projectName}</DetailCell>
+                <DetailCell label="شماره درخواست">{selected.requestNumber}</DetailCell>
+                <DetailCell label={selected.stage === "project_manager" ? "تاریخ تایید" : "تاریخ شارژ تنخواه"}>{fa(selected.stage === "project_manager" ? selected.managerApprovedDate || today() : selected.chargedDate || today())}</DetailCell>
+                <DetailCell label="مانده تنخواه تسویه‌نشده">{fa(format3(selected.unsettledBalance))}</DetailCell>
                 <DetailCell label="مبلغ تنخواه درخواستی">{fa(format3(selected.requestedAmount))} {selected.currency}</DetailCell>
                 <DetailCell label="مانده تنخواه ثبت‌نشده">{fa(format3(selected.unregisteredBalance))}</DetailCell>
-                <DetailCell label="مانده تنخواه تسویه‌نشده">{fa(format3(selected.unsettledBalance))}</DetailCell>
                 {selected.stage !== "project_manager" && (
                   <DetailCell label="نقدینگی پروژه">{fa(format3(selected.projectLiquidity || 0))}</DetailCell>
                 )}
