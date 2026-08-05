@@ -64,6 +64,7 @@ export default function TenkhahPage() {
     [settlementForm, setSettlementForm] = useState({ expenseDate: today(), description: "", budgetCode: "", amount: "", sendToUserId: "", fileName: "", fileUrl: "" }),
     [budgetItems, setBudgetItems] = useState([]),
     [settlementRecipients, setSettlementRecipients] = useState([]),
+    [financeRecipients, setFinanceRecipients] = useState([]),
     [projectBalances, setProjectBalances] = useState({ unregisteredBalance: "0", unsettledBalance: "0" }),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -150,6 +151,10 @@ export default function TenkhahPage() {
     const d = await api(`/tenkhah?recipients=${encodeURIComponent(stage)}`);
     setSettlementRecipients(d.users || []);
   };
+  const loadFinanceRecipients = async () => {
+    const d = await api("/tenkhah?recipients=finance");
+    setFinanceRecipients(d.users || []);
+  };
   const openSettlement = async (item, existing = null) => {
     setError(""); setSettlement(existing ? { ...existing, request: item } : { request: item, stage: "control_project", status: "draft" });
     setSettlementEntries(existing?.entries || []); setEditingEntryId(null); setSettlementForm({ expenseDate: today(), description: "", budgetCode: "", amount: "", sendToUserId: "", fileName: "", fileUrl: "" });
@@ -232,6 +237,10 @@ export default function TenkhahPage() {
     selected &&
     Number(selected.currentAssigneeUserId) === Number(user?.id) &&
     selected.status === "pending";
+  useEffect(() => {
+    if (!selected || !incoming || selected.stage !== "project_manager") return;
+    loadFinanceRecipients().catch((e) => setError(e.message));
+  }, [selected?.id, selected?.stage, selected?.status, selected?.currentAssigneeUserId, user?.id]);
   const canEditSettlement = settlement && settlement.status === "pending" && Number(settlement.currentAssigneeUserId) === Number(user?.id);
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
@@ -484,6 +493,7 @@ export default function TenkhahPage() {
                   <DetailCell label="نقدینگی پروژه">{fa(format3(selected.projectLiquidity || 0))}</DetailCell>
                 )}
                 {incoming && selected.stage === "project_manager" && (
+                  <div className="border-b border-l border-black/10 px-4 py-3 dark:border-white/10">
                   <Field label="ارسال نهایی به واحد مالی" required>
                     <select
                       value={selected.financeUserId || ""}
@@ -493,16 +503,16 @@ export default function TenkhahPage() {
                       className={input}
                     >
                       <option value="">انتخاب کنید</option>
-                      {finances.map((u) => (
+                      {financeRecipients.map((u) => (
                         <option value={u.id} key={u.id}>
                           {name(u)}
                         </option>
                       ))}
                     </select>
-                  </Field>
+                  </Field></div>
                 )}
                 {incoming && selected.stage === "finance" && (
-                  <Field label="مبلغ تنخواه شارژ شده">
+                  <div className="border-b border-l border-black/10 px-4 py-3 dark:border-white/10"><Field label="مبلغ تنخواه شارژ شده">
                     <input
                       value={fa(selected.chargedAmount || "")}
                       onChange={(e) =>
@@ -518,23 +528,10 @@ export default function TenkhahPage() {
                       }
                       className={input}
                     />
-                  </Field>
+                  </Field></div>
                 )}
+                {incoming && <div className="col-span-full flex justify-end border-t border-black/10 p-3 dark:border-white/10"><button disabled={busy || (selected.stage === "project_manager" && !selected.financeUserId)} onClick={action} className="inline-flex h-10 items-center gap-2 rounded-xl bg-black px-4 text-sm font-medium text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /><span>{selected.stage === "project_manager" ? "تأیید و ارسال به مالی" : "تأیید شارژ تنخواه"}</span></button></div>}
               </div></div><div className="order-first self-start"><TenkhahWorkflow stage={selected.stage} status={selected.status} /></div></div>
-              {incoming && (
-                <div className="mt-5 flex justify-end">
-                  <button
-                    disabled={busy}
-                    onClick={action}
-                    className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black"
-                  >
-                    <img
-                      src="/images/icons/check.svg"
-                      className="h-5 w-5 invert dark:invert-0"
-                    />
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         )}
