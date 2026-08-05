@@ -28,12 +28,13 @@ function Field({ label, required, children, className = "" }) {
   const displayLabel = label === "مبلغ" ? "مبلغ تسویه" : label;
   const invalid = (label === "تاریخ" && settlementErrors.date) || (label === "کد بودجه" && settlementErrors.budgetCode) || (label === "مبلغ" && settlementErrors.amount) || (label === "ارسال به" && settlementErrors.recipient);
   return (
-    <label className={`block ${orderClass} ${invalid ? "[&>input]:!border-red-500 [&>select]:!border-red-500 [&>select]:!ring-1 [&>select]:!ring-red-500 [&_button]:!border-red-500 [&_button]:!ring-1 [&_button]:!ring-red-500" : ""} ${className}`}>
+    <label className={`block ${orderClass} ${invalid ? "[&>input]:!border-red-500 [&>input]:!ring-1 [&>input]:!ring-red-500 [&>select]:!border-red-500 [&>select]:!ring-1 [&>select]:!ring-red-500 [&_button]:!border-red-500 [&_button]:!ring-1 [&_button]:!ring-red-500" : ""} ${className}`}>
       <span className="mb-1.5 block text-sm font-medium text-neutral-700 dark:text-neutral-200">
         {displayLabel}
         {required && <b className="mr-1 text-red-500">*</b>}
       </span>
       {children}
+      {label === "مبلغ" && settlementErrors.amount && <span className="mt-1 block text-xs text-red-600 dark:text-red-400">مبلغ نمی‌تواند بیشتر از مبلغ تنخواه باشد.</span>}
     </label>
   );
 }
