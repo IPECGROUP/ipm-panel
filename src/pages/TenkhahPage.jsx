@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Card from "../components/ui/Card.jsx";
+import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { todayJalaliYmd } from "../utils/date.js";
@@ -20,9 +21,10 @@ const empty = () => ({
   unsettledBalance: "",
   projectManagerId: "",
 });
-function Field({ label, required, children }) {
+function Field({ label, required, children, className = "" }) {
+  const orderClass = label === "مبلغ" ? "md:order-3" : label === "کد بودجه" ? "md:order-4" : "";
   return (
-    <label className="block">
+    <label className={`block ${orderClass} ${className}`}>
       <span className="mb-1.5 block text-sm font-medium text-neutral-700 dark:text-neutral-200">
         {label}
         {required && <b className="mr-1 text-red-500">*</b>}
@@ -44,10 +46,10 @@ function TenkhahWorkflow({ stage, status }) {
   return <aside className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-white/[.03]"><h3 className="mb-4 text-sm font-bold">فرآیند تنخواه</h3><div className="space-y-1">{steps.map(([key, label], index) => { const done = index < active || status === "charged"; const current = index === active && status !== "charged"; return <div key={key} className="relative flex min-h-14 items-center gap-3"><span className={`z-10 grid h-7 w-7 shrink-0 place-items-center rounded-full border text-xs font-bold ${current ? "border-sky-500 bg-sky-500 text-white shadow-[0_0_0_4px_rgba(14,165,233,.13)]" : done ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-black" : "border-neutral-300 bg-white text-neutral-400 dark:border-neutral-600 dark:bg-neutral-900"}`}>{done ? "✓" : index + 1}</span>{index < steps.length - 1 && <span className={`absolute right-[13px] top-9 h-7 w-px ${done ? "bg-neutral-900 dark:bg-white" : "bg-neutral-200 dark:bg-white/10"}`} />}<div className="min-w-0"><div className={`text-sm font-medium ${current ? "text-sky-700 dark:text-sky-300" : done ? "text-neutral-900 dark:text-white" : "text-neutral-400"}`}>{label}</div>{current && <div className="mt-0.5 text-[11px] text-sky-600 dark:text-sky-300">مرحله جاری</div>}</div></div>; })}</div></aside>;
 }
 function SettlementTable({ entries, request, onRemove, onEdit }) {
-  return <section className="mt-5 overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="overflow-x-auto"><table className="w-full min-w-[1050px] text-sm"><thead className="bg-neutral-200 dark:bg-white/10"><tr>{["", "تاریخ", "شرح", "کد بودجه", "شارژ تنخواه", "هزینه‌کرد", "فایل", "وضعیت", "اقدامات"].map(h=><th key={h} className="px-3 py-3 text-center">{h}</th>)}</tr></thead><tbody>{entries.length ? entries.map(e=><tr key={e.id} className="border-t border-black/10 dark:border-white/10"><td className="p-3 text-center"><input type="checkbox" className="h-4 w-4 rounded border-neutral-400" /></td><td className="p-3 text-center">{fa(e.expenseDate)}</td><td className="p-3 text-center">{e.description || "—"}</td><td className="p-3 text-center">{e.budgetCode}</td><td className="p-3 text-center">{fa(format3(request.chargedAmount || request.requestedAmount))}</td><td className="p-3 text-center">{fa(format3(e.amount))}</td><td className="p-3 text-center">{e.fileUrl ? <a className="text-blue-600 underline" href={e.fileUrl} target="_blank" rel="noreferrer">{e.fileName || "مشاهده"}</a> : "—"}</td><td className="p-3 text-center">در جریان</td><td className="p-3 text-center">{onEdit ? <span className="flex justify-center gap-1"><button onClick={()=>onEdit(e)} className="rounded border px-2 py-1">ویرایش</button>{onRemove && <button onClick={()=>onRemove(e.id)} className="rounded border px-2 py-1">حذف</button>}</span> : <span>—</span>}</td></tr>) : <tr><td colSpan="9" className="p-8 text-center text-neutral-500">هنوز هزینه‌ای افزوده نشده است.</td></tr>}</tbody></table></div></section>;
+  return <section className="mt-5 overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="overflow-x-auto"><table className="w-full min-w-[1050px] text-sm"><thead className="bg-neutral-200 dark:bg-white/10"><tr>{["", "تاریخ", "شرح", "کد بودجه", "شارژ تنخواه", "هزینه‌کرد", "فایل", "وضعیت", "عملیات"].map(h=><th key={h} className="px-3 py-3 text-center">{h}</th>)}</tr></thead><tbody>{entries.length ? entries.map(e=><tr key={e.id} className="border-t border-black/10 dark:border-white/10"><td className="p-3 text-center"><input type="checkbox" className="h-4 w-4 rounded border-neutral-400" /></td><td className="p-3 text-center">{fa(e.expenseDate)}</td><td className="p-3 text-center">{e.description || "—"}</td><td className="p-3 text-center">{e.budgetCode}</td><td className="p-3 text-center">{fa(format3(request.chargedAmount || request.requestedAmount))}</td><td className="p-3 text-center">{fa(format3(e.amount))}</td><td className="p-3 text-center">{e.fileUrl ? <a className="text-blue-600 underline" href={e.fileUrl} target="_blank" rel="noreferrer">{e.fileName || "مشاهده"}</a> : "—"}</td><td className="p-3 text-center">در جریان</td><td className="p-3 text-center">{onEdit ? <span className="flex justify-center gap-1"><RowActionIconBtn action="edit" title="ویرایش" onClick={()=>onEdit(e)} />{onRemove && <RowActionIconBtn action="delete" title="حذف" onClick={()=>onRemove(e.id)} />}</span> : <span>—</span>}</td></tr>) : <tr><td colSpan="9" className="p-8 text-center text-neutral-500">هنوز هزینه‌ای افزوده نشده است.</td></tr>}</tbody></table></div></section>;
 }
 function SettlementEntryEditor({ form, setForm, budgetItems, busy, onSave, onCancel, onUpload }) {
-  return <div className="mb-4 rounded-2xl bg-neutral-100 p-4 dark:bg-white/10"><div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6"><Field label="تاریخ"><JalaliPopupDatePicker value={form.expenseDate} onChange={(value)=>setForm(x=>({...x,expenseDate:value}))} buttonClassName={`${input} flex items-center justify-between`} /></Field><Field label="شرح هزینه"><input className={input} value={form.description} onChange={e=>setForm(x=>({...x,description:e.target.value}))}/></Field><Field label="کد بودجه"><select className={input} value={form.budgetCode} onChange={e=>setForm(x=>({...x,budgetCode:e.target.value}))}><option value="">انتخاب کنید</option>{budgetItems.map(b=><option key={b.id} value={b.budgetCode}>{b.budgetCode} - {b.budgetName}</option>)}</select></Field><Field label="مبلغ"><input className={input} inputMode="numeric" value={fa(form.amount)} onChange={e=>setForm(x=>({...x,amount:format3(toEnglishDigits(e.target.value).replace(/[^\d]/g,""))}))}/></Field><Field label="فایل"><label className="grid h-11 w-11 cursor-pointer place-items-center rounded-xl border border-black/10 bg-white dark:border-white/15 dark:bg-white/5"><img src="/images/icons/Uplod.svg" alt="بارگذاری" className="h-5 w-5 dark:invert"/><input type="file" className="hidden" accept="image/*,.pdf" onChange={e=>onUpload(e.target.files?.[0])}/></label></Field><div className="flex items-end gap-2"><button type="button" disabled={busy} onClick={onSave} className="grid h-11 w-11 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black"><img src="/images/icons/check.svg" alt="ذخیره" className="h-4 w-4 invert dark:invert-0"/></button><button type="button" onClick={onCancel} className="h-11 rounded-xl border px-3 text-sm">انصراف</button></div></div></div>;
+  return <div className="mb-4 rounded-2xl bg-neutral-100 p-4 dark:bg-white/10"><div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6"><Field label="تاریخ"><JalaliPopupDatePicker value={form.expenseDate} onChange={(value)=>setForm(x=>({...x,expenseDate:value}))} buttonClassName={`${input} flex items-center justify-between`} /></Field><Field label="شرح هزینه"><input className={input} value={form.description} onChange={e=>setForm(x=>({...x,description:e.target.value}))}/></Field><Field label="مبلغ" className="xl:order-3"><input className={input} inputMode="numeric" value={fa(form.amount)} onChange={e=>setForm(x=>({...x,amount:format3(toEnglishDigits(e.target.value).replace(/[^\d]/g,""))}))}/></Field><Field label="کد بودجه" className="xl:order-4"><select className={input} value={form.budgetCode} onChange={e=>setForm(x=>({...x,budgetCode:e.target.value}))}><option value="">انتخاب کنید</option>{budgetItems.map(b=><option key={b.id} value={b.budgetCode}>{b.budgetCode} - {b.budgetName}</option>)}</select></Field><Field label="فایل"><label className="grid h-11 w-11 cursor-pointer place-items-center rounded-xl border border-black/10 bg-white dark:border-white/15 dark:bg-white/5"><img src="/images/icons/Uplod.svg" alt="بارگذاری" className="h-5 w-5 dark:invert"/><input type="file" className="hidden" accept="image/*,.pdf" onChange={e=>onUpload(e.target.files?.[0])}/></label></Field><div className="flex items-end gap-2"><button type="button" disabled={busy} onClick={onSave} className="grid h-11 w-11 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black"><img src="/images/icons/check.svg" alt="ذخیره" className="h-4 w-4 invert dark:invert-0"/></button><button type="button" onClick={onCancel} className="h-11 rounded-xl border px-3 text-sm">انصراف</button></div></div></div>;
 }
 export default function TenkhahPage() {
   const { user } = useAuth();
@@ -65,7 +67,7 @@ export default function TenkhahPage() {
     [budgetItems, setBudgetItems] = useState([]),
     [settlementRecipients, setSettlementRecipients] = useState([]),
     [financeRecipients, setFinanceRecipients] = useState([]),
-    [projectBalances, setProjectBalances] = useState({ unregisteredBalance: "0", unsettledBalance: "0" }),
+    [projectBalances, setProjectBalances] = useState({ unregisteredBalance: "0", unsettledBalance: "0", receivedAmount: "0" }),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const api = async (path, opt = {}) => {
@@ -139,7 +141,7 @@ export default function TenkhahPage() {
   const add = async () => {
     setOpen(true);
     setForm(empty());
-    setProjectBalances({ unregisteredBalance: "0", unsettledBalance: "0" });
+    setProjectBalances({ unregisteredBalance: "0", unsettledBalance: "0", receivedAmount: "0" });
     setError("");
     try {
       await loadOptions();
@@ -179,10 +181,10 @@ export default function TenkhahPage() {
     }));
   const selectProject = async (projectId) => {
     setForm((x) => ({ ...x, projectId }));
-    if (!projectId) { setProjectBalances({ unregisteredBalance: "0", unsettledBalance: "0" }); return; }
+    if (!projectId) { setProjectBalances({ unregisteredBalance: "0", unsettledBalance: "0", receivedAmount: "0" }); return; }
     try {
       const balances = await api(`/tenkhah?projectBalances=${encodeURIComponent(projectId)}`);
-      setProjectBalances({ unregisteredBalance: balances.unregisteredBalance || "0", unsettledBalance: balances.unsettledBalance || "0" });
+      setProjectBalances({ unregisteredBalance: balances.unregisteredBalance || "0", unsettledBalance: balances.unsettledBalance || "0", receivedAmount: balances.receivedAmount || "0" });
     } catch (e) { setError(e.message); }
   };
   const displayedUnregisteredBalance = sumAmounts(projectBalances.unregisteredBalance, form.amount);
@@ -341,6 +343,9 @@ export default function TenkhahPage() {
                   </select>
                 </div>
               </Field>
+              <Field label="مجموع تنخواه دریافت‌شده">
+                <input value={fa(format3(projectBalances.receivedAmount))} readOnly className={`${input} bg-neutral-100 dark:bg-white/10`} />
+              </Field>
               <Field label="مانده تنخواه ثبت‌نشده">
                 <input
                   value={fa(format3(displayedUnregisteredBalance))}
@@ -399,7 +404,6 @@ export default function TenkhahPage() {
                   {[
                     "شماره درخواست",
                     "تاریخ درخواست",
-                    "درخواست‌کننده",
                     "پروژه",
                     "مبلغ",
                     "ارز",
@@ -421,9 +425,6 @@ export default function TenkhahPage() {
                     >
                       <td className="p-3 text-center">{x.requestNumber}</td>
                       <td className="p-3 text-center">{fa(x.requestDate)}</td>
-                      <td className="p-3 text-center">
-                        {x.requesterName || x.requesterUsername}
-                      </td>
                       <td className="p-3 text-center">
                         {x.projectCode} - {x.projectName}
                       </td>
