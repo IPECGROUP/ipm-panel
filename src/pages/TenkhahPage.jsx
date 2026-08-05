@@ -176,13 +176,13 @@ export default function TenkhahPage() {
   };
   const addSettlementEntry = async () => {
     const entryErrors = { date: !settlementForm.expenseDate, budgetCode: !settlementForm.budgetCode, amount: !settlementForm.amount };
-    if (Object.values(entryErrors).some(Boolean)) { setSettlementErrors(entryErrors); return; }
     const requestAmount = BigInt(toEnglishDigits(String(settlement.request.chargedAmount || settlement.request.requestedAmount || "0")).replace(/[^\d]/g, "") || "0");
     const otherEntries = settlementEntries.filter((entry) => String(entry.id) !== String(editingEntryId));
     const usedAmount = BigInt(sumAmounts(...otherEntries.map((entry) => entry.amount)));
     const enteredAmount = BigInt(toEnglishDigits(String(settlementForm.amount || "0")).replace(/[^\d]/g, "") || "0");
     const remainingAmount = requestAmount > usedAmount ? requestAmount - usedAmount : 0n;
-    if (enteredAmount > remainingAmount) { setSettlementErrors({ amount: true }); return; }
+    if (enteredAmount > remainingAmount) entryErrors.amount = true;
+    if (Object.values(entryErrors).some(Boolean)) { setSettlementErrors(entryErrors); return; }
     if (editingEntryId) { setBusy(true); try { await api("/tenkhah/entry", { method:"PATCH", body:JSON.stringify({ entryId:editingEntryId, ...settlementForm }) }); setSettlementEntries(x=>x.map(entry=>entry.id===editingEntryId?{...entry,...settlementForm}:entry)); setEditingEntryId(null); setSettlementForm(x=>({...x,expenseDate:today(),description:"",budgetCode:"",amount:"",fileName:"",fileUrl:""})); } catch(e) { setError(e.message); } finally { setBusy(false); } return; }
     setSettlementEntries((x) => [...x, { ...settlementForm, id: `draft-${Date.now()}` }]); setSettlementErrors({}); setSettlementForm((x) => ({ ...x, expenseDate: today(), description: "", budgetCode: "", amount: "", fileName: "", fileUrl: "" }));
   };
