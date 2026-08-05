@@ -1370,21 +1370,51 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
     );
     const currentStage = PAYMENT_WORKFLOW_STEPS.find((step) => step.index === Number(item.currentStepIndex));
     const statusText = STATUS_LABELS[item.status] || item.status || "نامشخص";
+    const now = new Date();
     const printDate = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
-      year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
-    }).format(new Date());
-    const historyEntries = history.filter((entry) => ["created", "approved", "rejected", "returned", "edited"].includes(entry?.type));
-    const historyRows = historyEntries.map((entry, index) => {
-      const step = PAYMENT_WORKFLOW_STEPS.find((row) => row.index === Number(entry?.index));
-      const actionLabel = ({ created: "ثبت درخواست", approved: "تأیید", rejected: "رد", returned: "برگشت", edited: "ویرایش" })[entry?.type] || entry?.type || "—";
+      year: "numeric", month: "long", day: "2-digit",
+    }).format(now);
+    const printTime = new Intl.DateTimeFormat("fa-IR", {
+      hour: "2-digit", minute: "2-digit", hour12: false,
+    }).format(now);
+    const workflowRows = PAYMENT_WORKFLOW_STEPS.map((step) => ({
+      step,
+      state: paymentWorkflowStageState(step, history, item),
+    })).filter(({ state }) => state.kind !== "waiting").map(({ step, state }, index) => {
+      const stateLabel = state.kind === "active" ? "مرحله جاری" : state.kind === "rejected" ? "رد شده" : state.kind === "returned" ? "برگشت داده شده" : "انجام شده";
       return `<tr>
         <td>${toFa(index + 1)}</td>
-        <td>${value(step?.label || (entry?.type === "created" ? PAYMENT_WORKFLOW_STEPS[0].label : STEP_LABELS[entry?.roleKey]))}</td>
-        <td><span class="status status-${escapePdfHtml(entry?.type || "pending")}">${value(actionLabel)}</span></td>
-        <td>${value(paymentHistoryActorName(entry, item))}</td>
-        <td>${value(formatDateTime(entry?.at))}</td>
-        <td>${value(entry?.note)}</td>
+        <td>${value(step.label)}</td>
+        <td><span class="status status-${escapePdfHtml(state.kind)}">${value(stateLabel)}</span></td>
+        <td>${state.entry ? value(paymentHistoryActorName(state.entry, item)) : "—"}</td>
+        <td>${state.entry?.at ? value(formatDateTime(state.entry.at)) : "—"}</td>
       </tr>`;
+    }).join("");
+    const attachmentPreviewPages = attachments.map((file, index) => {
+      const name = attachmentNames[index];
+      const rawUrl = String(file?.url || file?.path || "").trim();
+      let url = "";
+      try {
+        const parsed = new URL(rawUrl, window.location.origin);
+        if (["http:", "https:"].includes(parsed.protocol)) url = parsed.href;
+      } catch {
+        url = "";
+      }
+      const type = String(file?.type || file?.mimeType || "").toLowerCase();
+      const isImage = type.startsWith("image/") || /\.(png|jpe?g|webp|gif|bmp|svg)(?:\?|#|$)/i.test(rawUrl);
+      const isPdf = type.includes("pdf") || /\.pdf(?:\?|#|$)/i.test(rawUrl) || /\.pdf$/i.test(name);
+      const preview = !url
+        ? `<div class="no-preview">آدرس فایل برای پیش‌نمایش در دسترس نیست.</div>`
+        : isImage
+          ? `<img class="attachment-image" src="${escapePdfHtml(url)}" alt="${value(name)}" />`
+          : isPdf
+            ? `<object class="attachment-pdf" data="${escapePdfHtml(url)}#view=FitH&toolbar=1" type="application/pdf"><iframe title="${value(name)}" src="${escapePdfHtml(url)}#view=FitH&toolbar=1"></iframe></object><a class="original-file" href="${escapePdfHtml(url)}" target="_blank" rel="noreferrer">باز کردن و چاپ فایل PDF اصلی</a>`
+            : `<div class="no-preview">پیش‌نمایش این نوع فایل در مرورگر پشتیبانی نمی‌شود.</div><a class="original-file" href="${escapePdfHtml(url)}" target="_blank" rel="noreferrer">باز کردن فایل اصلی</a>`;
+      return `<article class="sheet attachment-preview-page">
+        <div class="attachment-preview-header"><span>پیوست ${toFa(index + 1)}</span><strong>${value(name)}</strong></div>
+        <div class="attachment-preview-body">${preview}</div>
+        <footer class="footer"><span>سامانه فرآیندهای یکپارچه شرکت ایده پویان انرژی</span><span>پیش‌نمایش پیوست ${toFa(index + 1)}</span></footer>
+      </article>`;
     }).join("");
     const infoCard = (label, content, className = "") => `<div class="info-card ${className}"><div class="label">${escapePdfHtml(label)}</div><div class="value">${value(content)}</div></div>`;
     const logoUrl = `${window.location.origin}/images/light%20mode.png`;
@@ -1428,30 +1458,45 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
     .info-card:nth-child(3n) { border-left: 0; }
     .info-card.full { grid-column: 1 / -1; border-left: 0; }
     .label { color: #6c7882; font-size: 9px; font-weight: 700; }
-    .value { margin-top: 2px; color: #17232d; font-size: 10.5px; font-weight: 700; overflow-wrap: anywhere; white-space: pre-wrap; }
+    .value { margin-top: 2px; color: #17232d; font-family: Vazir, Tahoma, Arial, sans-serif; font-size: 10.5px; font-weight: 700; font-variant-numeric: normal; overflow-wrap: anywhere; white-space: pre-wrap; }
     table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #d7dfe5; border-radius: 11px; overflow: hidden; }
     th, td { padding: 6px 7px; text-align: right; vertical-align: top; border-bottom: 1px solid #e3e8ec; border-left: 1px solid #e3e8ec; overflow-wrap: anywhere; }
     th { background: #eef3f6; color: #293945; font-size: 9px; font-weight: 700; }
-    td { font-size: 9.5px; }
+    td { font-family: Vazir, Tahoma, Arial, sans-serif; font-size: 9.5px; font-variant-numeric: normal; }
     tr:last-child td { border-bottom: 0; }
     th:last-child, td:last-child { border-left: 0; }
     .status { display: inline-block; min-width: 44px; padding: 2px 6px; border-radius: 99px; text-align: center; background: #e8eef2; color: #354653; font-size: 8.5px; font-weight: 700; }
     .status-approved { background: #e3f5ea; color: #15713a; }
     .status-rejected { background: #fde7e7; color: #a32929; }
     .status-returned { background: #fff0d8; color: #965b00; }
+    .status-completed { background: #e3f5ea; color: #15713a; }
+    .status-active { background: #e1f1fa; color: #126087; }
     .attachment-sheet { break-before: page; page-break-before: always; }
+    .attachment-sheet .title h1 { font-size: 16px; }
+    .attachment-sheet .logo { padding: 3px; }
+    .attachment-sheet .logo img { width: 40mm; max-height: 21mm; }
     .attachment-state { display: inline-flex; align-items: center; gap: 7px; margin-top: 10px; padding: 7px 11px; border-radius: 9px; background: ${attachments.length ? "#e4f5eb" : "#f1f3f5"}; color: ${attachments.length ? "#176c3a" : "#53606b"}; font-weight: 700; }
     .attachment-list { margin: 12px 0 0; padding: 0; list-style: none; border: 1px solid #d9e0e5; border-radius: 11px; overflow: hidden; }
     .attachment-list li { display: grid; grid-template-columns: 12mm 1fr; gap: 9px; padding: 9px 11px; border-bottom: 1px solid #e4e8eb; }
     .attachment-list li:last-child { border-bottom: 0; }
     .attachment-list .number { color: #1b6c91; font-weight: 700; }
     .attachment-note { margin-top: 12px; padding: 10px 12px; border: 1px dashed #b8c3cb; border-radius: 10px; color: #5d6973; }
+    .attachment-preview-page { break-before: page; page-break-before: always; display: flex; flex-direction: column; }
+    .attachment-preview-header { display: grid; grid-template-columns: 28mm 1fr; align-items: center; gap: 10px; min-height: 15mm; padding: 8px 11px; border: 1px solid #d6dee4; border-radius: 11px; background: #f4f7f9; }
+    .attachment-preview-header span { color: #1b6c91; font-weight: 700; }
+    .attachment-preview-header strong { overflow-wrap: anywhere; }
+    .attachment-preview-body { display: flex; min-height: 235mm; flex: 1; flex-direction: column; align-items: center; justify-content: center; margin-top: 9px; overflow: hidden; border: 1px solid #d9e0e5; border-radius: 11px; background: #fafbfc; }
+    .attachment-image { display: block; width: 100%; max-height: 235mm; object-fit: contain; }
+    .attachment-pdf, .attachment-pdf iframe { display: block; width: 100%; min-height: 225mm; border: 0; }
+    .original-file { display: inline-flex; margin: 8px; border-radius: 8px; background: #17212b; color: #fff; padding: 6px 12px; text-decoration: none; font-weight: 700; }
+    .no-preview { padding: 25px; color: #697680; text-align: center; }
     .footer { display: flex; justify-content: space-between; gap: 10px; margin-top: 13px; padding-top: 7px; border-top: 1px solid #d9e0e5; color: #75818b; font-size: 8.5px; }
     @media print {
       body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .toolbar { display: none; }
       .sheet { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
       .sheet + .sheet { margin-top: 0; }
+      .original-file { display: none; }
     }
     @media screen and (max-width: 900px) {
       .sheet { width: calc(100% - 20px); min-height: auto; padding: 18px; }
@@ -1479,7 +1524,7 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
     <div class="summary">
       <div class="summary-card"><div class="label">وضعیت فعلی</div><div class="value">${value(statusText)}</div></div>
       <div class="summary-card"><div class="label">مرحله فعلی</div><div class="value">${value(currentStage?.label || (item.status === "approved" ? "فرآیند تکمیل شده" : "—"))}</div></div>
-      <div class="summary-card"><div class="label">تاریخ تهیه گزارش</div><div class="value">${value(printDate)}</div></div>
+      <div class="summary-card"><div class="label">تاریخ تهیه گزارش</div><div class="value">${value(printDate)}<br><span style="color:#60707c;font-size:9px;font-weight:400">ساعت ${value(printTime)}</span></div></div>
     </div>
 
     <section>
@@ -1523,13 +1568,13 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
     </section>
 
     <section>
-      <h2 class="section-title">فرآیند پرداخت و سوابق اقدامات</h2>
+      <h2 class="section-title">فرآیند پرداخت</h2>
       <table>
-        <thead><tr><th>ردیف</th><th>مرحله</th><th>اقدام</th><th>انجام‌دهنده</th><th>تاریخ و ساعت</th><th>توضیحات</th></tr></thead>
-        <tbody>${historyRows || `<tr><td colspan="6">سابقه‌ای ثبت نشده است.</td></tr>`}</tbody>
+        <thead><tr><th>ردیف</th><th>مرحله</th><th>وضعیت</th><th>انجام‌دهنده</th><th>تاریخ و ساعت</th></tr></thead>
+        <tbody>${workflowRows || `<tr><td colspan="5">هنوز مرحله‌ای انجام نشده است.</td></tr>`}</tbody>
       </table>
     </section>
-    <footer class="footer"><span>سامانه یکپارچه مدیریت پروژه</span><span>این سند به‌صورت سیستمی تولید شده است.</span></footer>
+    <footer class="footer"><span>سامانه فرآیندهای یکپارچه شرکت ایده پویان انرژی</span><span></span></footer>
   </article>
 
   <article class="sheet attachment-sheet">
@@ -1544,8 +1589,9 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
     <div class="attachment-state">پیوست: ${attachments.length ? "دارد" : "ندارد"}</div>
     ${attachments.length ? `<ul class="attachment-list">${attachmentNames.map((name, index) => `<li><span class="number">${toFa(index + 1)}</span><strong>${value(name)}</strong></li>`).join("")}</ul>` : ""}
     <div class="attachment-note">${attachments.length ? `تعداد ${toFa(attachments.length)} فایل به این درخواست پیوست شده است. نام فایل‌ها در فهرست بالا درج شده‌اند.` : "برای این درخواست هیچ فایل پیوستی ثبت نشده است."}</div>
-    <footer class="footer"><span>سامانه یکپارچه مدیریت پروژه</span><span>صفحه پیوست‌ها</span></footer>
+    <footer class="footer"><span>سامانه فرآیندهای یکپارچه شرکت ایده پویان انرژی</span><span>صفحه پیوست‌ها</span></footer>
   </article>
+  ${attachmentPreviewPages}
 </body>
 </html>`;
 
