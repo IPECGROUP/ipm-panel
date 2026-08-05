@@ -7,6 +7,7 @@ import { format3, toEnglishDigits } from "../utils/format.js";
 const input =
   "h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-right text-sm outline-none focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-white";
 const fa = (v) => String(v ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]);
+const sumAmounts = (...values) => values.reduce((total, value) => total + BigInt(toEnglishDigits(String(value ?? "")).replace(/[^\d]/g, "") || "0"), 0n).toString();
 const today = () => todayJalaliYmd().replaceAll("-", "/");
 const name = (u) => u?.name || u?.username || "—";
 const empty = () => ({
@@ -63,6 +64,7 @@ export default function TenkhahPage() {
     [settlementForm, setSettlementForm] = useState({ expenseDate: today(), description: "", budgetCode: "", amount: "", sendToUserId: "", fileName: "", fileUrl: "" }),
     [budgetItems, setBudgetItems] = useState([]),
     [settlementRecipients, setSettlementRecipients] = useState([]),
+    [projectBalances, setProjectBalances] = useState({ unregisteredBalance: "0", unsettledBalance: "0" }),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const api = async (path, opt = {}) => {
@@ -136,6 +138,7 @@ export default function TenkhahPage() {
   const add = async () => {
     setOpen(true);
     setForm(empty());
+    setProjectBalances({ unregisteredBalance: "0", unsettledBalance: "0" });
     setError("");
     try {
       await loadOptions();
@@ -169,6 +172,16 @@ export default function TenkhahPage() {
       ...x,
       [k]: format3(toEnglishDigits(v).replace(/[^\d]/g, "")),
     }));
+  const selectProject = async (projectId) => {
+    setForm((x) => ({ ...x, projectId }));
+    if (!projectId) { setProjectBalances({ unregisteredBalance: "0", unsettledBalance: "0" }); return; }
+    try {
+      const balances = await api(`/tenkhah?projectBalances=${encodeURIComponent(projectId)}`);
+      setProjectBalances({ unregisteredBalance: balances.unregisteredBalance || "0", unsettledBalance: balances.unsettledBalance || "0" });
+    } catch (e) { setError(e.message); }
+  };
+  const displayedUnregisteredBalance = sumAmounts(projectBalances.unregisteredBalance, form.amount);
+  const displayedUnsettledBalance = sumAmounts(projectBalances.unsettledBalance, form.amount);
   const create = async () => {
     setBusy(true);
     setError("");
@@ -288,9 +301,7 @@ export default function TenkhahPage() {
               <Field label="پروژه" required>
                 <select
                   value={form.projectId}
-                  onChange={(e) =>
-                    setForm((x) => ({ ...x, projectId: e.target.value }))
-                  }
+                  onChange={(e) => selectProject(e.target.value)}
                   className={input}
                 >
                   <option value="">انتخاب کنید</option>
@@ -323,16 +334,16 @@ export default function TenkhahPage() {
               </Field>
               <Field label="مانده تنخواه ثبت‌نشده">
                 <input
-                  value={fa(form.unregisteredBalance)}
-                  onChange={(e) => money("unregisteredBalance", e.target.value)}
-                  className={input}
+                  value={fa(format3(displayedUnregisteredBalance))}
+                  readOnly
+                  className={`${input} bg-neutral-100 dark:bg-white/10`}
                 />
               </Field>
               <Field label="مانده تنخواه تسویه‌نشده">
                 <input
-                  value={fa(form.unsettledBalance)}
-                  onChange={(e) => money("unsettledBalance", e.target.value)}
-                  className={input}
+                  value={fa(format3(displayedUnsettledBalance))}
+                  readOnly
+                  className={`${input} bg-neutral-100 dark:bg-white/10`}
                 />
               </Field>
               <Field label="ارسال درخواست به مدیر پروژه" required>
