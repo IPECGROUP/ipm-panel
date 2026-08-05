@@ -530,7 +530,7 @@ export default function TenkhahPage() {
                     />
                   </Field></div>
                 )}
-                {incoming && <div className="col-span-full flex justify-end border-t border-black/10 p-3 dark:border-white/10"><button disabled={busy || (selected.stage === "project_manager" && !selected.financeUserId)} onClick={action} className="inline-flex h-10 items-center gap-2 rounded-xl bg-black px-4 text-sm font-medium text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /><span>{selected.stage === "project_manager" ? "تأیید و ارسال به مالی" : "تأیید شارژ تنخواه"}</span></button></div>}
+                {incoming && <div className="col-span-full flex justify-end border-t border-black/10 p-3 dark:border-white/10"><button disabled={busy || (selected.stage === "project_manager" && !selected.financeUserId)} onClick={action} title="تأیید و ارسال" aria-label="تأیید و ارسال" className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button></div>}
               </div></div><div className="order-first self-start"><TenkhahWorkflow stage={selected.stage} status={selected.status} /></div></div>
             </div>
           </div>
