@@ -30,6 +30,9 @@ function Field({ label, required, children }) {
     </label>
   );
 }
+function DetailCell({ label, children, className = "" }) {
+  return <div className={`min-h-[76px] border-b border-l border-black/10 px-4 py-3 last:border-l-0 dark:border-white/10 ${className}`}><div className="mb-1 text-xs text-neutral-500 dark:text-neutral-400">{label}</div><div className="flex min-h-6 items-center text-sm font-medium text-neutral-900 dark:text-white">{children || "—"}</div></div>;
+}
 function TenkhahWorkflow({ stage, status }) {
   const steps = [
     ["project_manager", "تأیید مدیر پروژه"],
@@ -425,12 +428,11 @@ export default function TenkhahPage() {
                               chargedAmount: x.requestedAmount,
                             })
                           }
-                          className="rounded-lg border px-3 py-1.5"
+                          className="grid h-10 w-10 place-items-center rounded-xl border border-black/10 transition hover:bg-black/[.03] dark:border-white/15 dark:hover:bg-white/10"
+                          title={Number(x.currentAssigneeUserId) === Number(user?.id) && x.status === "pending" ? "اقدامات" : "نمایش درخواست"}
+                          aria-label={Number(x.currentAssigneeUserId) === Number(user?.id) && x.status === "pending" ? "اقدامات" : "نمایش درخواست"}
                         >
-                          {Number(x.currentAssigneeUserId) ===
-                            Number(user?.id) && x.status === "pending"
-                            ? "اقدامات"
-                            : "نمایش"}
+                          <img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" />
                         </button>
                         {(Number(x.createdById) === Number(user?.id) || (x.settlements || []).some((s) => Number(s.currentAssigneeUserId) === Number(user?.id))) && <button onClick={() => openSettlement(x, (x.settlements || []).find((s) => Number(s.currentAssigneeUserId) === Number(user?.id)) || x.settlements?.[0] || null)} className="rounded-lg bg-neutral-800 px-3 py-1.5 text-white dark:bg-white dark:text-black">تسویه</button>}</div>
                       </td>
@@ -459,56 +461,16 @@ export default function TenkhahPage() {
                 </b><small className="mt-1 block text-xs font-normal text-neutral-500">مشاهده وضعیت و اطلاعات درخواست</small></span>
                 <button onClick={() => setSelected(null)} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black"><img src="/images/icons/bastan.svg" alt="بستن" className="h-4 w-4 invert dark:invert-0" /></button>
               </div>
-              <div className="grid items-center gap-5 p-4 pt-0 md:grid-cols-[280px_minmax(0,1fr)] md:p-5 md:pt-0"><div className="order-last grid grid-cols-1 gap-4 md:grid-cols-2">
-                <Field label="شماره درخواست">
-                  <div className={`${input} flex items-center`}>{selected.requestNumber}</div>
-                </Field>
-                <Field
-                  label={
-                    selected.stage === "project_manager"
-                      ? "تاریخ تایید"
-                      : "تاریخ شارژ تنخواه"
-                  }
-                >
-                  <div className={`${input} flex items-center`}>
-                    {fa(
-                      selected.stage === "project_manager"
-                        ? selected.managerApprovedDate || today()
-                        : selected.chargedDate || today(),
-                    )}
-                  </div>
-                </Field>
-                <Field label="درخواست‌کننده">
-                  <div className={`${input} flex items-center`}>
-                    {selected.requesterName || selected.requesterUsername}
-                  </div>
-                </Field>
-                <Field label="پروژه">
-                  <div className={`${input} flex items-center`}>
-                    {selected.projectCode} - {selected.projectName}
-                  </div>
-                </Field>
-                <Field label="مبلغ تنخواه درخواستی">
-                  <div className={`${input} flex items-center`}>
-                    {fa(format3(selected.requestedAmount))} {selected.currency}
-                  </div>
-                </Field>
-                <Field label="مانده تنخواه ثبت‌نشده">
-                  <div className={`${input} flex items-center`}>
-                    {fa(format3(selected.unregisteredBalance))}
-                  </div>
-                </Field>
-                <Field label="مانده تنخواه تسویه‌نشده">
-                  <div className={`${input} flex items-center`}>
-                    {fa(format3(selected.unsettledBalance))}
-                  </div>
-                </Field>
+              <div className="grid items-start gap-5 p-4 pt-0 md:grid-cols-[280px_minmax(0,1fr)] md:p-5 md:pt-0"><div className="order-last overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="grid grid-cols-1 md:grid-cols-2">
+                <DetailCell label="شماره درخواست">{selected.requestNumber}</DetailCell>
+                <DetailCell label={selected.stage === "project_manager" ? "تاریخ تایید" : "تاریخ شارژ تنخواه"}>{fa(selected.stage === "project_manager" ? selected.managerApprovedDate || today() : selected.chargedDate || today())}</DetailCell>
+                <DetailCell label="درخواست‌کننده">{selected.requesterName || selected.requesterUsername}</DetailCell>
+                <DetailCell label="پروژه">{selected.projectCode} - {selected.projectName}</DetailCell>
+                <DetailCell label="مبلغ تنخواه درخواستی">{fa(format3(selected.requestedAmount))} {selected.currency}</DetailCell>
+                <DetailCell label="مانده تنخواه ثبت‌نشده">{fa(format3(selected.unregisteredBalance))}</DetailCell>
+                <DetailCell label="مانده تنخواه تسویه‌نشده">{fa(format3(selected.unsettledBalance))}</DetailCell>
                 {selected.stage !== "project_manager" && (
-                  <Field label="نقدینگی پروژه">
-                    <div className={`${input} flex items-center`}>
-                      {fa(format3(selected.projectLiquidity || 0))}
-                    </div>
-                  </Field>
+                  <DetailCell label="نقدینگی پروژه">{fa(format3(selected.projectLiquidity || 0))}</DetailCell>
                 )}
                 {incoming && selected.stage === "project_manager" && (
                   <Field label="ارسال نهایی به واحد مالی" required>
@@ -547,7 +509,7 @@ export default function TenkhahPage() {
                     />
                   </Field>
                 )}
-              </div><div className="order-first"><TenkhahWorkflow stage={selected.stage} status={selected.status} /></div></div>
+              </div></div><div className="order-first self-start"><TenkhahWorkflow stage={selected.stage} status={selected.status} /></div></div>
               {incoming && (
                 <div className="mt-5 flex justify-end">
                   <button
@@ -569,7 +531,7 @@ export default function TenkhahPage() {
           <div className="fixed inset-0 z-[1001] flex items-center justify-center bg-black/40 p-4">
             <div className="max-h-[92vh] w-full max-w-[1280px] overflow-auto rounded-2xl border border-black/10 bg-white shadow-2xl dark:border-white/10 dark:bg-neutral-900">
               <div className="sticky top-0 z-10 flex items-center justify-between border-b border-black/10 bg-white px-5 py-4 dark:border-white/10 dark:bg-neutral-900"><div><b className="block text-base">تسویه تنخواه</b><span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">ثبت و ارسال اسناد هزینه</span></div><button onClick={() => setSettlement(null)} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 dark:bg-white dark:text-black" title="بستن"><img src="/images/icons/bastan.svg" alt="بستن" className="h-4 w-4 invert dark:invert-0" /></button></div>
-              <div className="p-4 md:p-5"><div className="mb-5 grid grid-cols-1 gap-3 rounded-2xl border border-black/10 bg-neutral-50 p-4 md:grid-cols-3 dark:border-white/10 dark:bg-white/[.04]"><Field label="تنخواه‌گیرنده"><div className={`${input} bg-white dark:bg-white/5`}>{settlement.request.requesterName || settlement.request.requesterUsername}</div></Field><Field label="پروژه"><div className={`${input} bg-white dark:bg-white/5`}>{settlement.request.projectCode} - {settlement.request.projectName}</div></Field><Field label="مبلغ تنخواه"><div className={`${input} bg-white font-medium tabular-nums dark:bg-white/5`}>{fa(format3(settlement.request.chargedAmount || settlement.request.requestedAmount))} {settlement.request.currency}</div></Field></div>
+              <div className="p-4 md:p-5"><div className="mb-5 grid grid-cols-1 gap-3 rounded-2xl border border-black/10 bg-neutral-50 p-4 md:grid-cols-3 dark:border-white/10 dark:bg-white/[.04]"><Field label="تنخواه‌گیرنده"><div className={`${input} flex items-center bg-white dark:bg-white/5`}>{settlement.request.requesterName || settlement.request.requesterUsername}</div></Field><Field label="پروژه"><div className={`${input} flex items-center bg-white dark:bg-white/5`}>{settlement.request.projectCode} - {settlement.request.projectName}</div></Field><Field label="مبلغ تنخواه"><div className={`${input} flex items-center bg-white font-medium tabular-nums dark:bg-white/5`}>{fa(format3(settlement.request.chargedAmount || settlement.request.requestedAmount))} {settlement.request.currency}</div></Field></div>
               {settlement.status === "draft" ? <>
                 <div className="rounded-2xl bg-neutral-100 p-4 dark:bg-white/10"><div className="grid grid-cols-1 gap-3 md:grid-cols-6"><Field label="تاریخ"><JalaliPopupDatePicker value={settlementForm.expenseDate} onChange={(v) => setSettlementForm(x => ({...x,expenseDate:v}))} buttonClassName={`${input} flex justify-between`} /></Field><Field label="شرح هزینه"><input value={settlementForm.description} onChange={e=>setSettlementForm(x=>({...x,description:e.target.value}))} className={input}/></Field><Field label="کد بودجه"><select value={settlementForm.budgetCode} onChange={e=>setSettlementForm(x=>({...x,budgetCode:e.target.value}))} className={input}><option value="">انتخاب کنید</option>{budgetItems.map(b=><option key={b.id} value={b.budgetCode}>{b.budgetCode} - {b.budgetName}</option>)}</select></Field><Field label="مبلغ"><input inputMode="numeric" value={fa(settlementForm.amount)} onChange={e=>setSettlementForm(x=>({...x,amount:format3(toEnglishDigits(e.target.value).replace(/[^\d]/g,""))}))} className={input}/></Field><Field label="ارسال به" required><select value={settlementForm.sendToUserId} onChange={e=>setSettlementForm(x=>({...x,sendToUserId:e.target.value}))} className={input}><option value="">انتخاب کنید</option>{settlementRecipients.map(u=><option key={u.id} value={u.id}>{name(u)}</option>)}</select></Field><Field label="فایل"><div className="flex gap-2"><label className="grid h-11 w-11 cursor-pointer place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5" title="بارگذاری فایل"><img src="/images/icons/Uplod.svg" alt="بارگذاری" className={`h-5 w-5 dark:invert ${busy ? "animate-pulse opacity-60" : ""}`} /><input type="file" className="hidden" accept="image/*,.pdf" onChange={e=>uploadSettlementFile(e.target.files?.[0])}/></label><button onClick={addSettlementEntry} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white text-xl transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5" title="افزودن">+</button></div></Field></div>{settlementForm.fileName && <p className="mt-2 text-xs">فایل انتخاب‌شده: {settlementForm.fileName}</p>}</div>
                 <SettlementTable entries={settlementEntries} request={settlement.request} onRemove={(id)=>setSettlementEntries(x=>x.filter(e=>e.id!==id))} onEdit={(entry)=>{setSettlementForm(x=>({...x,...entry}));setSettlementEntries(x=>x.filter(e=>e.id!==entry.id));}}/><div className="mt-4 flex justify-end"><button disabled={busy || !settlementEntries.length || !settlementForm.sendToUserId} onClick={submitSettlement} className="rounded-xl bg-black px-5 py-2 text-white dark:bg-white dark:text-black">ارسال برای بررسی</button></div>
