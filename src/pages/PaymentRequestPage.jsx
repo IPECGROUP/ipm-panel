@@ -7,6 +7,7 @@ import { useAuth } from "../components/AuthProvider";
 import { todayJalaliYmd } from "../utils/date";
 import { toEnglishDigits } from "../utils/format";
 import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
+import TenkhahPage from "./TenkhahPage.jsx";
 
 const DOC_OPTIONS = [
   ["pre_invoice", "پیش فاکتور"], ["invoice", "فاکتور"],
@@ -247,6 +248,7 @@ export default function PaymentRequestPage() {
   const openedRequestRef = useRef("");
   const [form, setForm] = useState(emptyForm);
   const [showForm, setShowForm] = useState(false);
+  const [requestType, setRequestType] = useState("normal");
   const [items, setItems] = useState([]);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [numberSortDir, setNumberSortDir] = useState("desc");
@@ -303,11 +305,6 @@ export default function PaymentRequestPage() {
     return projectCode ? `${yy}/${projectCode}/${sequence}` : `${yy}/${sequence}`;
   }, [form.dateJalali, items, selectedProject?.code]);
   const amount = parseAmount(form.amount);
-  const selectedBudgetItem = useMemo(
-    () => budgetItems.find((item) => normalizeBudgetCode(item.code || item.center_code) === normalizeBudgetCode(form.budgetCode)),
-    [budgetItems, form.budgetCode]
-  );
-  const selectedBaseBudget = parseAmount(selectedBudgetItem?.last_amount ?? selectedBudgetItem?.baseBudget ?? 0);
 
   const api = useCallback(async (path, options = {}) => {
     const response = await fetch(`/api${path}`, {
@@ -784,7 +781,7 @@ export default function PaymentRequestPage() {
               <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
             </span>
             <span className="min-w-0">
-              <span className="block truncate text-base font-bold md:text-lg">مدیریت درخواست ها</span>
+              <span className="block truncate text-base font-bold md:text-lg">مدیریت مالی</span>
               <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">درخواست پرداخت</span>
             </span>
           </div>
@@ -796,17 +793,17 @@ export default function PaymentRequestPage() {
           </div>
         </div>
 
-        {showForm && <form onSubmit={submit} className="mb-4 space-y-4">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(150px,0.75fr)_minmax(140px,0.7fr)_minmax(220px,1fr)_minmax(220px,1fr)]">
-            <ReadField label="شماره درخواست" value={serial} ltr />
-            <ReadField label="تاریخ درخواست" value={toFa(form.dateJalali)} />
-            <Field label="پروژه" required><select className={inputClass} value={form.projectId} onChange={(e) => setForm((old) => ({ ...old, projectId: e.target.value, budgetCode: "", targetAssigneeUserId: "" }))}><option value="">انتخاب پروژه</option>{projects.map((item) => <option key={item.id} value={item.id}>{projectLabel(item)}</option>)}</select></Field>
-            <Field label="کد بودجه" required><select className={inputClass} value={form.budgetCode} disabled={!form.projectId} onChange={(e) => setField("budgetCode", e.target.value)}><option value="">{form.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید"}</option>{budgetItems.map((item) => { const code = normalizeBudgetCode(item.code || item.center_code); const description = item.center_desc || item.last_desc || item.name || item.description || ""; return <option key={code || item.id} value={code}>{code}{description ? ` - ${description}` : ""}</option>; })}</select></Field>
-          </div>
+        {showForm && <div className="mb-4 flex items-center gap-2 rounded-2xl border border-black/10 bg-neutral-50 p-2 dark:border-white/10 dark:bg-white/[.04]">
+          {[['normal', 'عادی'], ['tenkhah', 'تنخواه']].map(([value, label]) => <button key={value} type="button" onClick={() => setRequestType(value)} className={`h-10 rounded-xl px-5 text-sm font-semibold transition ${requestType === value ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-600 hover:bg-black/[.05] dark:text-neutral-300 dark:hover:bg-white/10"}`}>{label}</button>)}
+        </div>}
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <ReadField label="بودجه مبنا" value={money(selectedBaseBudget) || "0"} ltr />
+        {showForm && requestType === "tenkhah" && <TenkhahPage embedded />}
+
+        {showForm && requestType === "normal" && <form onSubmit={submit} className="mb-4 space-y-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(150px,0.75fr)_minmax(140px,0.7fr)_minmax(220px,1fr)_minmax(220px,1fr)]">
+            <Field label="پروژه" required><select className={inputClass} value={form.projectId} onChange={(e) => setForm((old) => ({ ...old, projectId: e.target.value, budgetCode: "", targetAssigneeUserId: "" }))}><option value="">انتخاب پروژه</option>{projects.map((item) => <option key={item.id} value={item.id}>{projectLabel(item)}</option>)}</select></Field>
             <ReadField label="باقی‌مانده نقدینگی پروژه" value={projectLiquidityLoading ? "در حال دریافت..." : money(projectLiquidityRemaining) || "0"} ltr />
+            <Field label="کد بودجه" required><select className={inputClass} value={form.budgetCode} disabled={!form.projectId} onChange={(e) => setField("budgetCode", e.target.value)}><option value="">{form.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید"}</option>{budgetItems.map((item) => { const code = normalizeBudgetCode(item.code || item.center_code); const description = item.center_desc || item.last_desc || item.name || item.description || ""; return <option key={code || item.id} value={code}>{code}{description ? ` - ${description}` : ""}</option>; })}</select></Field>
           </div>
 
           <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-[minmax(230px,1.2fr)_minmax(210px,0.85fr)_minmax(360px,1.35fr)]">
@@ -878,15 +875,16 @@ export default function PaymentRequestPage() {
 
         {!showForm && <RequestFilterBar query={filterQuery} setQuery={setFilterQuery} quick={filterQuick} setQuick={setFilterQuick} ownership={filterOwnership} setOwnership={setFilterOwnership} tags={tags} pinnedTagIds={pinnedFilterTagIds} setPinnedTagIds={setPinnedFilterTagIds} activeTagIds={filterTagIds} setActiveTagIds={setFilterTagIds} tagPickOpen={tagPickOpen} setTagPickOpen={setTagPickOpen} tagPickSearch={tagPickSearch} setTagPickSearch={setTagPickSearch} />}
 
-        <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
+        <div className={`${showForm && requestType === "tenkhah" ? "hidden " : ""}overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100`}>
           <div className="relative hidden max-h-[55vh] overflow-y-auto overflow-x-hidden pb-0 md:block" dir="ltr"><table dir="rtl" className="w-full min-w-full table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:min-w-0 [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5">
-            <colgroup><col style={{ width: 40 }} /><col style={{ width: 18 }} /><col style={{ width: 90 }} /><col style={{ width: 100 }} /><col style={{ width: 205 }} /><col /><col style={{ width: 130 }} /><col style={{ width: 105 }} /><col style={{ width: 120 }} /></colgroup>
+            <colgroup><col style={{ width: 40 }} /><col style={{ width: 18 }} /><col style={{ width: 90 }} /><col style={{ width: 100 }} /><col style={{ width: 205 }} /><col /><col style={{ width: 130 }} /><col style={{ width: 130 }} /><col style={{ width: 105 }} /><col style={{ width: 120 }} /></colgroup>
             <thead><tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100">
               <th className="sticky top-0 z-40 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><input ref={selectAllRef} type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allVisibleSelected} onChange={toggleSelectAll} aria-label="انتخاب همه" /></th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 dark:bg-neutral-800" aria-label="خوانده‌نشده" /><th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><button type="button" onClick={() => { setNumberSortDir((old) => old === "asc" ? "desc" : "asc"); setPage(0); }} className="mx-auto inline-flex items-center gap-1 transition hover:opacity-90" title={numberSortDir === "desc" ? "نمایش قدیمی‌ترین موارد" : "نمایش جدیدترین موارد"}><span>شماره</span><img src={numberSortDir === "desc" ? "/images/icons/bozorgbekochik.svg" : "/images/icons/kochikbebozorg.svg"} alt="" className="h-4 w-4 dark:invert" /></button></th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">تاریخ</th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">پروژه</th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">موضوع</th>
+              <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">مبلغ</th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">درخواست‌کننده</th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">آخرین وضعیت</th>
               <th className="sticky top-0 z-40 bg-neutral-200 !py-2 !pl-10 !pr-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">
@@ -925,20 +923,21 @@ export default function PaymentRequestPage() {
               </th>
             </tr></thead>
             <tbody className="text-black dark:text-neutral-100">
-              {loading ? <tr><td colSpan={9} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td></tr> : pageItems.length === 0 ? <tr><td colSpan={9} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواستی ثبت نشده است.</td></tr> : pageItems.map((item, index) => <tr key={item.id} className="group bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
+              {loading ? <tr><td colSpan={10} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td></tr> : pageItems.length === 0 ? <tr><td colSpan={10} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواستی ثبت نشده است.</td></tr> : pageItems.map((item, index) => <tr key={item.id} className="group bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label="انتخاب" /></td>
                 <td className="border-b border-neutral-300 px-0 dark:border-neutral-700">{isUnreadForUser(item) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="درخواست خوانده‌نشده" aria-label="درخواست خوانده‌نشده" />}</td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><button type="button" onClick={() => openPreview(item)} className="mx-auto inline-flex items-center justify-center text-[13px] font-semibold underline-offset-4 transition hover:underline" title="نمایش درخواست">{displayPaymentSerial(item, projects)}</button></td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))}</td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{projectLabel(projects.find((row) => String(row.id) === String(item.projectId))) || item.projectName || item.projectCode || "—"}</span></td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.title || "—"}</span></td>
+                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate tabular-nums">{toFa(money(item.amount) || "0")}</span></td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.createdByName || `کاربر #${toFa(item.createdById)}`}</span></td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><StatusBadge status={item.status} /></td>
                 <td className="border-b border-neutral-300 !pl-10 !pr-2 dark:border-neutral-700"><div className="flex w-full items-center justify-center gap-1 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"><button type="button" onClick={() => openPreview(item)} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label={item.canAct ? "اقدامات" : "نمایش"} title={item.canAct ? "اقدامات" : "نمایش"}><img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" /></button>{Number(item.createdById) === Number(user?.id) && <button type="button" onClick={() => openPreview({ ...item, __editing: true })} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label="ویرایش درخواست" title="ویرایش درخواست"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></button>}</div></td>
               </tr>)}
             </tbody>
           </table></div>
-          <div className="grid gap-3 p-3 md:hidden">{pageItems.map((item) => <button key={item.id} type="button" onClick={() => openPreview(item)} className="rounded-xl border border-black/10 p-3 text-right dark:border-white/10"><div className="flex items-center justify-between gap-2"><b>{displayPaymentSerial(item, projects)}</b><StatusBadge status={item.status} /></div><div className="mt-2 truncate text-sm">{item.title || "—"}</div><div className="mt-2 text-xs text-neutral-500">{toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))}</div></button>)}</div>
+          <div className="grid gap-3 p-3 md:hidden">{pageItems.map((item) => <button key={item.id} type="button" onClick={() => openPreview(item)} className="rounded-xl border border-black/10 p-3 text-right dark:border-white/10"><div className="flex items-center justify-between gap-2"><b>{displayPaymentSerial(item, projects)}</b><StatusBadge status={item.status} /></div><div className="mt-2 truncate text-sm">{item.title || "—"}</div><div className="mt-2 text-xs text-neutral-500">مبلغ: {toFa(money(item.amount) || "0")}</div><div className="mt-1 text-xs text-neutral-500">{toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))}</div></button>)}</div>
           <div className="border-t border-neutral-300 px-3 py-2 dark:border-neutral-800"><div className="flex flex-col items-stretch gap-2 md:flex-row md:flex-wrap md:items-center md:justify-between">
             <div className="flex items-center justify-between gap-2 text-sm md:justify-start"><div className="flex items-center gap-2"><button type="button" onClick={() => setPage((old) => Math.max(0, old - 1))} disabled={safePage <= 0} className="inline-grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.04] disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="صفحه قبل"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 18l6-6-6-6" /></svg></button><button type="button" onClick={() => setPage((old) => Math.min(pageCount - 1, old + 1))} disabled={safePage >= pageCount - 1} className="inline-grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.04] disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="صفحه بعد"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M15 18l-6-6 6-6" /></svg></button></div><div className="whitespace-nowrap text-black/70 dark:text-neutral-400">{total === 0 ? "۰ از ۰" : `${toFa(startIndex + 1)}–${toFa(endIndex)} از ${toFa(total)}`}</div></div>
             <div className="flex items-center justify-between gap-2 text-sm md:justify-start"><span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span><div className="inline-flex h-9 overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">{[10, 25, 100].map((count) => <button key={count} type="button" onClick={() => { setRowsPerPage(count); setPage(0); }} className={`min-w-10 px-3 text-sm font-semibold transition ${rowsPerPage === count ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-700 hover:bg-black/[0.04] dark:text-white/75 dark:hover:bg-white/10"}`}>{toFa(count)}</button>)}</div></div>

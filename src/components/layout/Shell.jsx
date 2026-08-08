@@ -99,7 +99,7 @@ export default function Shell() {
       setNotifications((current) => current.filter((notification) => notificationKey(notification) !== notificationKey(item)));
     }
     setNotificationsOpen(false);
-    const target = item.notificationTarget === "payment_request" ? "/finance/payment-request" : item.notificationTarget === "tenkhah" ? "/finance/tenkhah" : "/supply/request";
+    const target = item.notificationTarget === "payment_request" || item.notificationTarget === "tenkhah" ? "/finance/payment-request" : "/supply/request";
     const key = "request";
     navigate(`${target}?${key}=${encodeURIComponent(item.id)}`);
   };

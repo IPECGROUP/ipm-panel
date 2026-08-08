@@ -14,7 +14,8 @@ const sumAmounts = (...values) => values.reduce((total, value) => total + BigInt
 const today = () => todayJalaliYmd().replaceAll("-", "/");
 const name = (u) => u?.name || u?.username || "—";
 const empty = () => ({
-  requestNumber: "",
+  // شماره و تاریخ همچنان برای ثبت نگهداری می‌شوند، ولی در فرم نمایش داده نمی‌شوند.
+  requestNumber: `TNK-${Date.now()}`,
   requestDate: today(),
   projectId: "",
   amount: "",
@@ -59,7 +60,7 @@ function SettlementTable({ entries, request, onRemove, onEdit, editingEntryId, e
 function SettlementEntryEditor({ form, setForm, budgetItems, busy, onSave, onUpload, onOpenUpload = () => {} }) {
   return <div className="mb-4 rounded-2xl bg-neutral-100 p-4 dark:bg-white/10"><div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6"><Field label="تاریخ"><JalaliPopupDatePicker value={form.expenseDate} onChange={(value)=>setForm(x=>({...x,expenseDate:value}))} buttonClassName={`${input} flex items-center justify-between`} /></Field><Field label="شرح هزینه"><input className={input} value={form.description} onChange={e=>setForm(x=>({...x,description:e.target.value}))}/></Field><Field label="مبلغ" className="xl:order-3"><input className={input} inputMode="numeric" value={fa(form.amount)} onChange={e=>setForm(x=>({...x,amount:format3(toEnglishDigits(e.target.value).replace(/[^\d]/g,""))}))}/></Field><Field label="کد بودجه" className="xl:order-4"><select className={input} value={form.budgetCode} onChange={e=>setForm(x=>({...x,budgetCode:e.target.value}))}><option value="">انتخاب کنید</option>{budgetItems.map(b=><option key={b.id} value={b.budgetCode}>{b.budgetCode} - {b.budgetName}</option>)}</select></Field><Field label="فایل"><div className="flex items-end gap-2"><button type="button" onClick={onOpenUpload} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white dark:border-white/15 dark:bg-white/5" title="بارگذاری فایل"><img src="/images/icons/Uplod.svg" alt="بارگذاری" className="h-5 w-5 dark:invert"/></button><button type="button" disabled={busy} onClick={onSave} title="افزودن به جدول" className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white text-xl dark:border-white/15 dark:bg-white/5">+</button></div></Field></div></div>;
 }
-export default function TenkhahPage() {
+export default function TenkhahPage({ embedded = false }) {
   const { user } = useAuth();
   const [items, setItems] = useState([]),
     [form, setForm] = useState(empty),
@@ -78,6 +79,7 @@ export default function TenkhahPage() {
     [formErrors, setFormErrors] = useState({}),
     [financeRecipients, setFinanceRecipients] = useState([]),
     [projectBalances, setProjectBalances] = useState({ unregisteredBalance: "0", unsettledBalance: "0", receivedAmount: "0" }),
+    [projectLiquidity, setProjectLiquidity] = useState("0"),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const api = async (path, opt = {}) => {
@@ -106,6 +108,9 @@ export default function TenkhahPage() {
   useEffect(() => {
     load();
   }, [user?.id]);
+  useEffect(() => {
+    if (embedded && user?.id) add();
+  }, [embedded, user?.id]);
   const loadOptions = async () => {
     const [p, u, c] = await Promise.all([
       api("/projects?isActive=true"),
@@ -199,10 +204,13 @@ export default function TenkhahPage() {
     }));
   const selectProject = async (projectId) => {
     setForm((x) => ({ ...x, projectId }));
-    if (!projectId) { setProjectBalances({ unregisteredBalance: "0", unsettledBalance: "0", receivedAmount: "0" }); return; }
+    if (!projectId) { setProjectBalances({ unregisteredBalance: "0", unsettledBalance: "0", receivedAmount: "0" }); setProjectLiquidity("0"); return; }
     try {
-      const balances = await api(`/tenkhah?projectBalances=${encodeURIComponent(projectId)}`);
+      const [balances, liquidity] = await Promise.all([api(`/tenkhah?projectBalances=${encodeURIComponent(projectId)}`), api("/liquidity-allocations")]);
       setProjectBalances({ unregisteredBalance: balances.unregisteredBalance || "0", unsettledBalance: balances.unsettledBalance || "0", receivedAmount: balances.receivedAmount || "0" });
+      const allocated = BigInt(liquidity.allocations?.[String(projectId)] || "0");
+      const committed = BigInt(liquidity.committed?.[String(projectId)] || "0");
+      setProjectLiquidity((allocated > committed ? allocated - committed : 0n).toString());
     } catch (e) { setError(e.message); }
   };
   const displayedUnregisteredBalance = sumAmounts(projectBalances.unregisteredBalance, form.amount);
@@ -213,7 +221,7 @@ export default function TenkhahPage() {
     setBusy(true);
     setError("");
     try {
-      await api("/tenkhah", { method: "POST", body: JSON.stringify(form) });
+      await api("/tenkhah", { method: "POST", body: JSON.stringify({ ...form, projectLiquidity }) });
       setOpen(false);
       await load();
       window.dispatchEvent(new Event("tenkhah-notifications-refresh"));
@@ -268,7 +276,7 @@ export default function TenkhahPage() {
     <SettlementErrorsContext.Provider value={settlementErrors}><RequestErrorsContext.Provider value={formErrors}>
     <div dir="rtl" className="mx-auto max-w-[1400px]">
       <Card className="rounded-2xl border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-neutral-900 md:p-4">
-        <div className="mb-5 flex items-center justify-between">
+        {!embedded && <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-black/[.03] dark:border-white/10 dark:bg-white/[.06]">
               <img
@@ -296,40 +304,11 @@ export default function TenkhahPage() {
               className="h-5 w-5 dark:invert"
             />
           </button>
-        </div>
+        </div>}
         {open && (
           <section className="mb-5 rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03] md:p-5">
-            <h2 className="mb-5 text-base font-bold">درخواست تنخواه جدید</h2>
+            {!embedded && <h2 className="mb-5 text-base font-bold">درخواست تنخواه جدید</h2>}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <Field label="شماره درخواست" required>
-                <input
-                  value={form.requestNumber}
-                  onChange={(e) =>
-                    updateSelected
-                      ? setForm((x) => ({
-                          ...x,
-                          requestNumber: e.target.value,
-                        }))
-                      : null
-                  }
-                  className={input}
-                />
-              </Field>
-              <Field label="تاریخ درخواست" required>
-                <JalaliPopupDatePicker
-                  value={form.requestDate}
-                  onChange={(v) => setForm((x) => ({ ...x, requestDate: v }))}
-                  disableFuture
-                  buttonClassName={`${input} flex items-center justify-between`}
-                />
-              </Field>
-              <Field label="درخواست‌کننده">
-                <div
-                  className={`${input} flex items-center bg-neutral-100 dark:bg-white/10`}
-                >
-                  {name(user)}
-                </div>
-              </Field>
               <Field label="پروژه" required>
                 <select
                   value={form.projectId}
@@ -343,6 +322,9 @@ export default function TenkhahPage() {
                     </option>
                   ))}
                 </select>
+              </Field>
+              <Field label="باقی‌مانده نقدینگی پروژه">
+                <input value={fa(format3(projectLiquidity))} readOnly className={`${input} bg-neutral-100 dark:bg-white/10`} />
               </Field>
               <Field label="مبلغ تنخواه درخواستی" required>
                 <div className="flex overflow-hidden rounded-xl border border-black/10 dark:border-white/15">
