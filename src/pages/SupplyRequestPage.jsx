@@ -332,6 +332,7 @@ export default function SupplyRequestPage() {
   const [seenIncomingIds, setSeenIncomingIds] = useState(() => new Set());
   const [manualUnreadIds, setManualUnreadIds] = useState(() => new Set());
   const [tableMenuOpen, setTableMenuOpen] = useState(false);
+  const [deletingSelected, setDeletingSelected] = useState(false);
   const tableMenuRef = useRef(null);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
@@ -882,6 +883,32 @@ export default function SupplyRequestPage() {
     setTableMenuOpen(false);
   };
 
+  const deleteSelectedRequests = async () => {
+    const ids = [...selectedIds].map(String);
+    if (!ids.length || deletingSelected) return;
+    if (!window.confirm(`آیا ${toFaDigits(ids.length)} درخواست انتخاب‌شده حذف شود؟ این عملیات قابل بازگشت نیست.`)) return;
+
+    setDeletingSelected(true);
+    setErr("");
+    try {
+      const results = await Promise.allSettled(ids.map((id) => api(`/supply-requests?id=${encodeURIComponent(id)}`, { method: "DELETE" })));
+      const deletedIds = ids.filter((_, index) => results[index].status === "fulfilled");
+      if (deletedIds.length) {
+        const deleted = new Set(deletedIds);
+        setItems((previous) => previous.filter((item) => !deleted.has(String(item.id))));
+        setSelectedIds((previous) => new Set([...previous].filter((id) => !deleted.has(String(id)))));
+        setManualUnreadIds((previous) => new Set([...previous].filter((id) => !deleted.has(String(id)))));
+        setSeenIncomingIds((previous) => new Set([...previous].filter((id) => !deleted.has(String(id)))));
+        setSelected((previous) => deleted.has(String(previous?.id)) ? null : previous);
+      }
+      if (deletedIds.length !== ids.length) setErr("برخی از موارد انتخاب‌شده حذف نشدند؛ حذف فقط برای درخواست‌های مجاز امکان‌پذیر است.");
+      else setOk(`${toFaDigits(deletedIds.length)} درخواست انتخاب‌شده حذف شد.`);
+    } finally {
+      setDeletingSelected(false);
+      setTableMenuOpen(false);
+    }
+  };
+
   useEffect(() => {
     setPage(0);
   }, [filterFromDate, filterOwnership, filterProjectId, filterQuery, filterQuick, filterStatus, filterTagIds, filterToDate, filterUnread, rowsPerPage]);
@@ -1212,6 +1239,15 @@ export default function SupplyRequestPage() {
                               <span className="min-w-0 flex-1">
                                 <span className="block text-sm font-semibold">خوانده نشده</span>
                               </span>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={!selectedIds.size || deletingSelected}
+                              onClick={deleteSelectedRequests}
+                              className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"
+                            >
+                              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 transition group-hover:scale-105 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span>
+                              <span className="min-w-0 flex-1 text-sm font-semibold">{deletingSelected ? "در حال حذف..." : "حذف موارد انتخاب‌شده"}</span>
                             </button>
                           </div>
                         )}

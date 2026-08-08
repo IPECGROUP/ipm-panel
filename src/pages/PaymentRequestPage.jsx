@@ -281,6 +281,7 @@ export default function PaymentRequestPage() {
   const [seenIncomingIds, setSeenIncomingIds] = useState(() => new Set());
   const [manualUnreadIds, setManualUnreadIds] = useState(() => new Set());
   const [tableMenuOpen, setTableMenuOpen] = useState(false);
+  const [deletingSelected, setDeletingSelected] = useState(false);
   const [resetting, setResetting] = useState(false);
   const tableMenuRef = useRef(null);
   const [createRecipients, setCreateRecipients] = useState({ targetRoleKey: null, users: [] });
@@ -748,6 +749,32 @@ export default function PaymentRequestPage() {
     setTableMenuOpen(false);
   };
 
+  const deleteSelectedRequests = async () => {
+    const ids = [...selectedIds].map(String);
+    if (!ids.length || deletingSelected) return;
+    if (!window.confirm(`آیا ${toFa(ids.length)} درخواست انتخاب‌شده حذف شود؟ این عملیات قابل بازگشت نیست.`)) return;
+
+    setDeletingSelected(true);
+    setError("");
+    try {
+      const results = await Promise.allSettled(ids.map((id) => api(`/requests/${encodeURIComponent(id)}`, { method: "DELETE" })));
+      const deletedIds = ids.filter((_, index) => results[index].status === "fulfilled");
+      if (deletedIds.length) {
+        const deleted = new Set(deletedIds);
+        setItems((previous) => previous.filter((item) => !deleted.has(String(item.id))));
+        setSelectedIds((previous) => new Set([...previous].filter((id) => !deleted.has(String(id)))));
+        setManualUnreadIds((previous) => new Set([...previous].filter((id) => !deleted.has(String(id)))));
+        setSeenIncomingIds((previous) => new Set([...previous].filter((id) => !deleted.has(String(id)))));
+        setSelected((previous) => deleted.has(String(previous?.id)) ? null : previous);
+      }
+      if (deletedIds.length !== ids.length) setError("برخی از موارد انتخاب‌شده حذف نشدند؛ حذف فقط برای درخواست‌های مجاز امکان‌پذیر است.");
+      else setSuccess(`${toFa(deletedIds.length)} درخواست انتخاب‌شده حذف شد.`);
+    } finally {
+      setDeletingSelected(false);
+      setTableMenuOpen(false);
+    }
+  };
+
   return <div dir="rtl" className="mx-auto max-w-[1400px]">
     <Card className="overflow-hidden rounded-2xl border border-black/10 bg-white p-0 dark:border-white/10 dark:bg-neutral-900">
       <div className="p-3 md:p-4">
@@ -887,6 +914,10 @@ export default function PaymentRequestPage() {
                       <button type="button" disabled={!selectedIds.size} onClick={() => setSelectedReadStatus(true)} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-sky-500/10">
                         <span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-100 text-sky-700 transition group-hover:scale-105 dark:bg-sky-500/15 dark:text-sky-300"><span className="h-2.5 w-2.5 rounded-full bg-sky-500 ring-2 ring-sky-200 dark:ring-sky-400/30" /></span>
                         <span className="min-w-0 flex-1 text-sm font-semibold">خوانده نشده</span>
+                      </button>
+                      <button type="button" disabled={!selectedIds.size || deletingSelected} onClick={deleteSelectedRequests} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10">
+                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 transition group-hover:scale-105 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span>
+                        <span className="min-w-0 flex-1 text-sm font-semibold">{deletingSelected ? "در حال حذف..." : "حذف موارد انتخاب‌شده"}</span>
                       </button>
                     </div>
                   )}
