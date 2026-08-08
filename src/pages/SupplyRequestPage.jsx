@@ -452,7 +452,7 @@ export default function SupplyRequestPage() {
     if (authLoading) return undefined;
     let cancelled = false;
     setCreateRecipientsLoading(true);
-    api("/supply-requests?nextRecipientsForCreate=1")
+    api(`/supply-requests?nextRecipientsForCreate=1&projectId=${encodeURIComponent(form.projectId || "")}`)
       .then((data) => {
         if (cancelled) return;
         setCreateRecipients({
@@ -469,7 +469,7 @@ export default function SupplyRequestPage() {
     return () => {
       cancelled = true;
     };
-  }, [api, authLoading]);
+  }, [api, authLoading, form.projectId]);
   useEffect(() => {
     if (!user?.id) return;
     try {
@@ -989,7 +989,7 @@ export default function SupplyRequestPage() {
                 <Field label="پروژه" required>
                   <select
                     value={form.projectId}
-                    onChange={(event) => setForm((prev) => ({ ...prev, projectId: event.target.value, budgetCode: "" }))}
+                    onChange={(event) => setForm((prev) => ({ ...prev, projectId: event.target.value, budgetCode: "", targetAssigneeUserId: "" }))}
                     className={inputCls}
                   >
                     <option value="">انتخاب کنید</option>

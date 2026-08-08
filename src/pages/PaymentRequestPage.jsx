@@ -356,12 +356,12 @@ export default function PaymentRequestPage() {
   useEffect(() => {
     let cancelled = false;
     setCreateRecipientsLoading(true);
-    api("/requests?nextRecipientsForCreate=1")
+    api(`/requests?nextRecipientsForCreate=1&projectId=${encodeURIComponent(form.projectId || "")}`)
       .then((data) => { if (!cancelled) setCreateRecipients({ targetRoleKey: data?.targetRoleKey || null, users: Array.isArray(data?.users) ? data.users : [] }); })
       .catch(() => { if (!cancelled) setCreateRecipients({ targetRoleKey: null, users: [] }); })
       .finally(() => { if (!cancelled) setCreateRecipientsLoading(false); });
     return () => { cancelled = true; };
-  }, [api]);
+  }, [api, form.projectId]);
   useEffect(() => {
     api("/tags?scope=letters").then((data) => {
       const rows = Array.isArray(data?.tags) ? data.tags : Array.isArray(data?.items) ? data.items : [];
@@ -773,7 +773,7 @@ export default function PaymentRequestPage() {
           <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(150px,0.75fr)_minmax(140px,0.7fr)_minmax(220px,1fr)_minmax(220px,1fr)]">
             <ReadField label="شماره درخواست" value={serial} ltr />
             <ReadField label="تاریخ درخواست" value={toFa(form.dateJalali)} />
-            <Field label="پروژه" required><select className={inputClass} value={form.projectId} onChange={(e) => setForm((old) => ({ ...old, projectId: e.target.value, budgetCode: "" }))}><option value="">انتخاب پروژه</option>{projects.map((item) => <option key={item.id} value={item.id}>{projectLabel(item)}</option>)}</select></Field>
+            <Field label="پروژه" required><select className={inputClass} value={form.projectId} onChange={(e) => setForm((old) => ({ ...old, projectId: e.target.value, budgetCode: "", targetAssigneeUserId: "" }))}><option value="">انتخاب پروژه</option>{projects.map((item) => <option key={item.id} value={item.id}>{projectLabel(item)}</option>)}</select></Field>
             <Field label="کد بودجه" required><select className={inputClass} value={form.budgetCode} disabled={!form.projectId} onChange={(e) => setField("budgetCode", e.target.value)}><option value="">{form.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید"}</option>{budgetItems.map((item) => { const code = normalizeBudgetCode(item.code || item.center_code); const description = item.center_desc || item.last_desc || item.name || item.description || ""; return <option key={code || item.id} value={code}>{code}{description ? ` - ${description}` : ""}</option>; })}</select></Field>
           </div>
 
