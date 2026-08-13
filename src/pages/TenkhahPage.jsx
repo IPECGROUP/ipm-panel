@@ -29,7 +29,7 @@ function Field({ label, required, children, className = "" }) {
   const requestErrors = React.useContext(RequestErrorsContext);
   const orderClass = label === "مبلغ" ? "md:order-3" : label === "کد بودجه" ? "md:order-4" : label === "فایل" ? "md:order-5" : "";
   const displayLabel = label === "مبلغ" ? "مبلغ تسویه" : label;
-  const invalid = (label === "تاریخ" && settlementErrors.date) || (label === "کد بودجه" && settlementErrors.budgetCode) || (label === "مبلغ" && settlementErrors.amount) || (label === "ارسال به" && settlementErrors.recipient) || (label === "شماره درخواست" && requestErrors.requestNumber) || (label === "تاریخ درخواست" && requestErrors.requestDate) || (label === "پروژه" && requestErrors.projectId) || (label === "مبلغ تنخواه درخواستی" && requestErrors.amount) || (label === "ارسال درخواست به مدیر پروژه" && requestErrors.projectManagerId);
+  const invalid = (label === "تاریخ" && settlementErrors.date) || (label === "کد بودجه" && settlementErrors.budgetCode) || (label === "مبلغ" && settlementErrors.amount) || (label === "ارسال به" && settlementErrors.recipient) || (label === "شماره درخواست" && requestErrors.requestNumber) || (label === "تاریخ درخواست" && requestErrors.requestDate) || (label === "پروژه" && requestErrors.projectId) || (label === "مبلغ تنخواه درخواستی" && requestErrors.amount) || (label === "ارسال درخواست به" && requestErrors.projectManagerId);
   return (
     <label className={`block ${orderClass} ${invalid ? "[&_input]:!border-red-500 [&_input]:!ring-1 [&_input]:!ring-red-500 [&_select]:!border-red-500 [&_select]:!ring-1 [&_select]:!ring-red-500 [&_button]:!border-red-500 [&_button]:!ring-1 [&_button]:!ring-red-500" : ""} ${className}`}>
       <span className="mb-1.5 block text-sm font-medium text-neutral-700 dark:text-neutral-200">
@@ -363,7 +363,9 @@ export default function TenkhahPage({ embedded = false }) {
                   className={`${input} bg-neutral-100 dark:bg-white/10`}
                 />
               </Field>
-              <Field label="ارسال درخواست به مدیر پروژه" required>
+            </div>
+            <div className="mt-5 flex flex-col gap-3 border-t border-black/10 pt-4 sm:flex-row sm:items-end sm:justify-end dark:border-white/10">
+              <Field label="ارسال درخواست به" required className="w-full sm:max-w-sm">
                 <select
                   value={form.projectManagerId}
                   onChange={(e) =>
@@ -379,12 +381,10 @@ export default function TenkhahPage({ embedded = false }) {
                   ))}
                 </select>
               </Field>
-            </div>
-            <div className="mt-5 flex justify-end border-t border-black/10 pt-4 dark:border-white/10">
               <button
                 disabled={busy}
                 onClick={create}
-                className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black"
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-black text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-black/85 hover:shadow-md disabled:translate-y-0 disabled:opacity-50 dark:bg-white dark:text-black"
               >
                 <img
                   src="/images/icons/check.svg"

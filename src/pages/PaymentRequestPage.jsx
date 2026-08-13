@@ -801,7 +801,7 @@ export default function PaymentRequestPage() {
 
         {showForm && requestType === "tenkhah" && <TenkhahPage embedded />}
 
-        {showForm && requestType === "normal" && <form onSubmit={submit} className="mb-4 space-y-4">
+        {showForm && requestType === "normal" && <form onSubmit={submit} className="mb-5 space-y-4 rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03] md:p-5">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(150px,0.75fr)_minmax(140px,0.7fr)_minmax(220px,1fr)_minmax(220px,1fr)]">
             <Field label="پروژه" required><select className={inputClass} value={form.projectId} onChange={(e) => setForm((old) => ({ ...old, projectId: e.target.value, budgetCode: "", targetAssigneeUserId: "" }))}><option value="">انتخاب پروژه</option>{projects.map((item) => <option key={item.id} value={item.id}>{projectLabel(item)}</option>)}</select></Field>
             <ReadField label="باقی‌مانده نقدینگی پروژه" value={projectLiquidityLoading ? "در حال دریافت..." : money(projectLiquidityRemaining) || "0"} ltr />
@@ -812,9 +812,9 @@ export default function PaymentRequestPage() {
             <Field label="موضوع درخواست" required><input className={`${inputClass} h-12 text-[15px]`} value={form.title} onChange={(e) => setField("title", e.target.value)} /></Field>
             <Field label="مبلغ درخواست" required>
               <div className="relative min-w-0">
-                <MoneyInput className="!pl-[64px]" value={form.amount} onChange={(value) => setField("amount", value)} />
-                <select aria-label="ارز مبلغ درخواست" title="انتخاب ارز" className="absolute left-1 top-1 h-9 !w-[56px] cursor-pointer rounded-lg border border-[#ECA265] bg-gradient-to-b from-[#f6c18a] via-[#ECA265] to-[#d98b48] px-0.5 text-center text-[11px] font-bold text-white shadow-sm outline-none transition hover:from-[#f9ce9f] hover:via-[#ECA265] hover:to-[#cf7f3f] focus:border-[#ECA265] focus:ring-2 focus:ring-[#ECA265]/45 dark:border-[#ECA265] dark:from-[#f6c18a] dark:via-[#ECA265] dark:to-[#d98b48] dark:text-white" value={form.currencyTypeId} onChange={(e) => setField("currencyTypeId", e.target.value)}>
-                  <option value="" className="bg-white text-black">ریال</option>{currencyTypes.map((item) => <option key={item.id} value={item.id} className="bg-white text-black">{itemLabel(item)}</option>)}
+                <MoneyInput className="!pl-[72px]" value={form.amount} onChange={(value) => setField("amount", value)} />
+                <select aria-label="ارز مبلغ درخواست" title="انتخاب ارز" className="absolute left-1 top-1 h-9 !w-[64px] cursor-pointer appearance-auto rounded-lg border border-neutral-200 bg-neutral-100 px-1 text-center text-xs font-semibold text-neutral-700 shadow-sm outline-none transition hover:bg-neutral-200 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-900/10 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/[.15] dark:focus:border-white/30 dark:focus:ring-white/10" value={form.currencyTypeId} onChange={(e) => setField("currencyTypeId", e.target.value)}>
+                  <option value="" className="bg-white text-neutral-900">ریال</option>{currencyTypes.filter((item) => String(itemLabel(item)).replace(/ي/g, "ی").replace(/ك/g, "ک").trim() !== "ریال").map((item) => <option key={item.id} value={item.id} className="bg-white text-neutral-900">{itemLabel(item)}</option>)}
                 </select>
               </div>
             </Field>
