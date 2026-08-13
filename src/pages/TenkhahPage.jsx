@@ -365,7 +365,7 @@ export default function TenkhahPage({ embedded = false }) {
               </Field>
             </div>
             <div className="mt-5 flex flex-col gap-3 border-t border-black/10 pt-4 sm:flex-row sm:items-end sm:justify-end dark:border-white/10">
-              <Field label="ارسال درخواست به" required className="w-full sm:max-w-sm">
+              <Field label="ارسال درخواست به" required className="w-full sm:w-[28rem]">
                 <select
                   value={form.projectManagerId}
                   onChange={(e) =>

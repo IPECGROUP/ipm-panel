@@ -242,7 +242,7 @@ function DateSelect({ label, value, onChange, items }) {
 
 export default function PaymentRequestPage() {
   useFeatureVisibility("درخواست پرداخت", { "افزودن": "افزودن" });
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedRequestId = searchParams.get("request") || "";
   const openedRequestRef = useRef("");
@@ -284,7 +284,6 @@ export default function PaymentRequestPage() {
   const [manualUnreadIds, setManualUnreadIds] = useState(() => new Set());
   const [tableMenuOpen, setTableMenuOpen] = useState(false);
   const [deletingSelected, setDeletingSelected] = useState(false);
-  const [resetting, setResetting] = useState(false);
   const tableMenuRef = useRef(null);
   const [createRecipients, setCreateRecipients] = useState({ targetRoleKey: null, users: [] });
   const [createRecipientsLoading, setCreateRecipientsLoading] = useState(false);
@@ -316,23 +315,6 @@ export default function PaymentRequestPage() {
     if (!response.ok) throw new Error(data.error || data.message || "request_failed");
     return data;
   }, [user?.id]);
-
-  const resetPaymentRequests = async () => {
-    if (!window.confirm("همه درخواست‌های پرداخت و فایل‌های بارگذاری‌شده این صفحه حذف شوند؟ این عملیات قابل بازگشت نیست.")) return;
-    setResetting(true);
-    setError("");
-    try {
-      await api("/requests/reset", { method: "DELETE" });
-      setItems([]);
-      setSelected(null);
-      setSelectedIds(new Set());
-      setSuccess("اطلاعات مدیریت درخواست‌ها پاک شد.");
-    } catch {
-      setError("پاک‌سازی اطلاعات انجام نشد.");
-    } finally {
-      setResetting(false);
-    }
-  };
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -786,7 +768,6 @@ export default function PaymentRequestPage() {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            {isAdmin && <button type="button" onClick={resetPaymentRequests} disabled={resetting} className="grid h-9 w-9 place-items-center rounded-xl border border-red-500/40 text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:text-red-300 dark:hover:bg-red-950/30" title="پاک‌سازی همه درخواست‌ها و فایل‌ها" aria-label="پاک‌سازی همه درخواست‌ها و فایل‌ها"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></button>}
             <button type="button" onClick={() => { setShowForm((old) => !old); setError(""); setSuccess(""); }} className="flex h-10 w-10 items-center justify-center rounded-xl ring-1 ring-black/15 transition hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10" title={showForm ? "نمایش لیست" : "افزودن درخواست"}>
               <img src={showForm ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" />
             </button>
@@ -865,7 +846,7 @@ export default function PaymentRequestPage() {
             <Field label="شماره شبا"><input dir="ltr" inputMode="numeric" maxLength={33} className={`${inputClass} text-left font-sans tabular-nums`} value={form.bankInfo || "IR"} onChange={(e) => setField("bankInfo", formatSheba(e.target.value))} onFocus={() => { if (!form.bankInfo) setField("bankInfo", "IR"); }} placeholder="IR" /></Field>
           </div>
           <div className="flex flex-col gap-3 border-t border-black/[0.07] pt-4 sm:flex-row sm:items-end sm:justify-end dark:border-white/10">
-            <Field label="ارسال درخواست پرداخت به" required={!!createRecipients.targetRoleKey}>
+            <Field label="ارسال درخواست پرداخت به" required={!!createRecipients.targetRoleKey} className="w-full sm:w-[28rem]">
               <select className={inputClass} value={form.targetAssigneeUserId} onChange={(e) => setField("targetAssigneeUserId", e.target.value)} disabled={createRecipientsLoading || !createRecipients.targetRoleKey}>
                 <option value="">{createRecipientsLoading ? "در حال دریافت..." : createRecipients.targetRoleKey ? "انتخاب کنید" : "ارسال مستقیم برای اقدام"}</option>
                 {createRecipients.users.map((recipient) => <option key={recipient.id} value={recipient.id}>{recipient.name || recipient.username || recipient.email || `کاربر #${recipient.id}`}</option>)}
@@ -934,14 +915,14 @@ export default function PaymentRequestPage() {
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))}</td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{projectLabel(projects.find((row) => String(row.id) === String(item.projectId))) || item.projectName || item.projectCode || "—"}</span></td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.title || "—"}</span></td>
-                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate tabular-nums">{toFa(money(item.amount) || "0")}</span></td>
+                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate tabular-nums">{toFa(money(item.amount) || "0")} {currencyNameOf(item.currencyTypeId, currencyTypes)}</span></td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.createdByName || `کاربر #${toFa(item.createdById)}`}</span></td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><StatusBadge status={item.status} /></td>
                 <td className="border-b border-neutral-300 !pl-10 !pr-2 dark:border-neutral-700"><div className="flex w-full items-center justify-center gap-1 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"><button type="button" onClick={() => openPreview(item)} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label={item.canAct ? "اقدامات" : "نمایش"} title={item.canAct ? "اقدامات" : "نمایش"}><img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" /></button>{Number(item.createdById) === Number(user?.id) && <button type="button" onClick={() => openPreview({ ...item, __editing: true })} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label="ویرایش درخواست" title="ویرایش درخواست"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></button>}</div></td>
               </tr>)}
             </tbody>
           </table></div>
-          <div className="grid gap-3 p-3 md:hidden">{pageItems.map((item) => <button key={item.id} type="button" onClick={() => openPreview(item)} className="rounded-xl border border-black/10 p-3 text-right dark:border-white/10"><div className="flex items-center justify-between gap-2"><b>{displayPaymentSerial(item, projects)}</b><StatusBadge status={item.status} /></div><div className="mt-2 truncate text-sm">{item.title || "—"}</div><div className="mt-2 text-xs text-neutral-500">مبلغ: {toFa(money(item.amount) || "0")}</div><div className="mt-1 text-xs text-neutral-500">{toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))}</div></button>)}</div>
+          <div className="grid gap-3 p-3 md:hidden">{pageItems.map((item) => <button key={item.id} type="button" onClick={() => openPreview(item)} className="rounded-xl border border-black/10 p-3 text-right dark:border-white/10"><div className="flex items-center justify-between gap-2"><b>{displayPaymentSerial(item, projects)}</b><StatusBadge status={item.status} /></div><div className="mt-2 truncate text-sm">{item.title || "—"}</div><div className="mt-2 text-xs text-neutral-500">مبلغ: {toFa(money(item.amount) || "0")} {currencyNameOf(item.currencyTypeId, currencyTypes)}</div><div className="mt-1 text-xs text-neutral-500">{toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))}</div></button>)}</div>
           <div className="border-t border-neutral-300 px-3 py-2 dark:border-neutral-800"><div className="flex flex-col items-stretch gap-2 md:flex-row md:flex-wrap md:items-center md:justify-between">
             <div className="flex items-center justify-between gap-2 text-sm md:justify-start"><div className="flex items-center gap-2"><button type="button" onClick={() => setPage((old) => Math.max(0, old - 1))} disabled={safePage <= 0} className="inline-grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.04] disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="صفحه قبل"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 18l6-6-6-6" /></svg></button><button type="button" onClick={() => setPage((old) => Math.min(pageCount - 1, old + 1))} disabled={safePage >= pageCount - 1} className="inline-grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.04] disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="صفحه بعد"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M15 18l-6-6 6-6" /></svg></button></div><div className="whitespace-nowrap text-black/70 dark:text-neutral-400">{total === 0 ? "۰ از ۰" : `${toFa(startIndex + 1)}–${toFa(endIndex)} از ${toFa(total)}`}</div></div>
             <div className="flex items-center justify-between gap-2 text-sm md:justify-start"><span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span><div className="inline-flex h-9 overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">{[10, 25, 100].map((count) => <button key={count} type="button" onClick={() => { setRowsPerPage(count); setPage(0); }} className={`min-w-10 px-3 text-sm font-semibold transition ${rowsPerPage === count ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-700 hover:bg-black/[0.04] dark:text-white/75 dark:hover:bg-white/10"}`}>{toFa(count)}</button>)}</div></div>
@@ -1148,7 +1129,7 @@ function TagPicker({ tags, selectedIds, onToggle, query, setQuery, onClose }) {
   </div>, document.body);
 }
 
-function Field({ label, required, children }) { return <label className="block text-xs text-neutral-600 dark:text-neutral-300">{label}{required && <span className="mr-1 text-red-500">*</span>}<div className="mt-1">{children}</div></label>; }
+function Field({ label, required, children, className = "" }) { return <label className={`block text-xs text-neutral-600 dark:text-neutral-300 ${className}`}>{label}{required && <span className="mr-1 text-red-500">*</span>}<div className="mt-1">{children}</div></label>; }
 function ReadField({ label, value, ltr }) { return <Field label={label}><div dir={ltr ? "ltr" : "rtl"} className={`${inputClass} flex items-center ${ltr ? "justify-end" : ""}`}>{value || "—"}</div></Field>; }
 function MoneyInput({ value, onChange, className = "" }) { return <input dir="ltr" inputMode="numeric" className={`${inputClass} ${className}`} value={toFa(value)} onChange={(e) => onChange(money(e.target.value))} placeholder="۰" />; }
 function StatusBadge({ status }) {
