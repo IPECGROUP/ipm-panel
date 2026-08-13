@@ -773,16 +773,16 @@ export default function PaymentRequestPage() {
   };
 
   return <div dir="rtl" className="mx-auto max-w-[1400px]">
-    <Card className="overflow-hidden rounded-2xl border border-black/10 bg-white p-0 dark:border-white/10 dark:bg-neutral-900">
+    <Card className="overflow-hidden rounded-3xl border border-black/10 bg-white p-0 shadow-[0_18px_50px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-neutral-900">
       <div className="p-3 md:p-4">
-        <div className="mb-5 flex min-w-0 items-center justify-between gap-3">
+        <div className="mb-5 flex min-w-0 items-center justify-between gap-3 border-b border-black/[0.07] pb-4 dark:border-white/10">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-black/10 bg-gradient-to-br from-neutral-50 to-neutral-200/70 shadow-sm dark:border-white/10 dark:from-white/[0.12] dark:to-white/[0.04]">
               <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
             </span>
             <span className="min-w-0">
-              <span className="block truncate text-base font-bold md:text-lg">مدیریت مالی</span>
-              <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">درخواست پرداخت</span>
+              <span className="block truncate text-base font-bold tracking-tight md:text-lg">درخواست پرداخت</span>
+              <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت مالی</span>
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -793,8 +793,10 @@ export default function PaymentRequestPage() {
           </div>
         </div>
 
-        {showForm && <div className="mb-4 flex items-center gap-2 rounded-2xl border border-black/10 bg-neutral-50 p-2 dark:border-white/10 dark:bg-white/[.04]">
-          {[['normal', 'عادی'], ['tenkhah', 'تنخواه']].map(([value, label]) => <button key={value} type="button" onClick={() => setRequestType(value)} className={`h-10 rounded-xl px-5 text-sm font-semibold transition ${requestType === value ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-600 hover:bg-black/[.05] dark:text-neutral-300 dark:hover:bg-white/10"}`}>{label}</button>)}
+        {showForm && <div className="mb-5 w-fit rounded-2xl border border-black/10 bg-neutral-100/80 p-1.5 shadow-inner shadow-black/[0.03] dark:border-white/10 dark:bg-white/[.06]">
+          <div className="flex items-center gap-1" role="tablist" aria-label="نوع درخواست پرداخت">
+            {[['normal', 'عادی'], ['tenkhah', 'تنخواه']].map(([value, label]) => <button key={value} type="button" role="tab" aria-selected={requestType === value} onClick={() => setRequestType(value)} className={`h-9 rounded-xl px-4 text-sm font-semibold transition-all duration-200 ${requestType === value ? "bg-white text-neutral-950 shadow-sm ring-1 ring-black/[0.06] dark:bg-white dark:text-neutral-900" : "text-neutral-500 hover:bg-white/70 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-white/[.08] dark:hover:text-white"}`}>{label}</button>)}
+          </div>
         </div>}
 
         {showForm && requestType === "tenkhah" && <TenkhahPage embedded />}
@@ -857,19 +859,21 @@ export default function PaymentRequestPage() {
             </Field>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(260px,1.7fr)_minmax(130px,0.65fr)_minmax(150px,0.8fr)_minmax(155px,0.7fr)]">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <Field label="شرایط پرداخت"><input className={inputClass} value={form.creditPay} onChange={(e) => setField("creditPay", e.target.value)} /></Field>
             <Field label="نام ذینفع"><input className={inputClass} value={form.beneficiaryName} onChange={(e) => setField("beneficiaryName", e.target.value)} /></Field>
             <Field label="شماره شبا"><input dir="ltr" inputMode="numeric" maxLength={33} className={`${inputClass} text-left font-sans tabular-nums`} value={form.bankInfo || "IR"} onChange={(e) => setField("bankInfo", formatSheba(e.target.value))} onFocus={() => { if (!form.bankInfo) setField("bankInfo", "IR"); }} placeholder="IR" /></Field>
+          </div>
+          <div className="flex flex-col gap-3 border-t border-black/[0.07] pt-4 sm:flex-row sm:items-end sm:justify-end dark:border-white/10">
             <Field label="ارسال درخواست پرداخت به" required={!!createRecipients.targetRoleKey}>
               <select className={inputClass} value={form.targetAssigneeUserId} onChange={(e) => setField("targetAssigneeUserId", e.target.value)} disabled={createRecipientsLoading || !createRecipients.targetRoleKey}>
                 <option value="">{createRecipientsLoading ? "در حال دریافت..." : createRecipients.targetRoleKey ? "انتخاب کنید" : "ارسال مستقیم برای اقدام"}</option>
                 {createRecipients.users.map((recipient) => <option key={recipient.id} value={recipient.id}>{recipient.name || recipient.username || recipient.email || `کاربر #${recipient.id}`}</option>)}
               </select>
             </Field>
+            <button type="submit" disabled={submitting || uploading} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-neutral-900 text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-neutral-800 hover:shadow-md disabled:translate-y-0 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90" title="ثبت" aria-label="ثبت"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button>
           </div>
           {(error || success) && <div className={`rounded-xl px-3 py-2 text-sm ${error ? "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300" : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"}`}>{error || success}</div>}
-          <div className="flex justify-end"><button type="submit" disabled={submitting || uploading} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-900 text-white transition hover:bg-neutral-900/85 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90" title="ثبت" aria-label="ثبت"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button></div>
         </form>}
         {uploadOpen && <PaymentUploadModal files={form.attachments} uploading={uploading} onUpload={uploadFiles} onClose={() => setUploadOpen(false)} />}
 
