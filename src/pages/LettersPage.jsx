@@ -434,7 +434,7 @@ function formatBytes(n) {
   return `${Math.round(v * 10) / 10} ${units[i]}`;
 }
 
-const LETTER_UPLOAD_ACCEPT = ".pdf,image/*,.xls,.xlsx,.xlsm,.csv,.ods,.doc,.docx,.odt";
+const LETTER_UPLOAD_ACCEPT = ".pdf,image/*,.xls,.xlsx,.xlsm,.csv,.ods,.doc,.docx,.odt,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 const ensureLetterUploadableFile = async (file) => file;
 
