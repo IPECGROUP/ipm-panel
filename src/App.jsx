@@ -25,7 +25,6 @@ import BudgetAllocationPage from "./pages/BudgetAllocationPage.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
 import LettersPage from "./pages/LettersPage.jsx";
 import SupplyRequestPage from "./pages/SupplyRequestPage.jsx";
-import TestEditorPage from "./pages/TestEditorPage.jsx";
 import RoznegarPgae from "./pages/RoznegarPgae.jsx";
 import QualityManagementPage from "./pages/QualityManagementPage.jsx";
 import NavPlaceholderPage from "./pages/NavPlaceholderPage.jsx";
