@@ -1100,7 +1100,7 @@ export default function SupplyRequestPage() {
                     <img src="/images/icons/Uplod.svg" alt="" className="h-5 w-5 dark:invert" />
                   </button>
                 </div>
-                <Field label="ارسال درخواست تامین به" required={!!createRecipients.targetRoleKey} className="w-full sm:w-[30rem]">
+                <Field label="ارسال درخواست تامین به" required={!!createRecipients.targetRoleKey} className="w-full sm:w-[20rem]">
                     <select
                       value={form.targetAssigneeUserId}
                       onChange={(event) => setField("targetAssigneeUserId", event.target.value)}
@@ -1685,7 +1685,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                           <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-end sm:justify-end">
                             <Field label="مسئول اقدام" className="w-full sm:w-[28rem]">
                               <select value={targetAssigneeUserId} onChange={(event) => setTargetAssigneeUserId(event.target.value)} disabled={choice !== "approve" || actionBusy || nextRecipientsLoading || nextRecipients.targetRoleKey !== "commercial"} className={inputCls}>
-                                <option value="">{nextRecipientsLoading ? "در حال دریافت..." : "انتخاب کاربر تامین"}</option>
+                                <option value="">{nextRecipientsLoading ? "در حال دریافت..." : "انتخاب کاربر"}</option>
                                 {nextRecipients.users.map((user) => <option key={user.id} value={user.id}>{user.name || user.username || user.email || `کاربر #${user.id}`}</option>)}
                               </select>
                             </Field>
