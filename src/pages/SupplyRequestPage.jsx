@@ -978,7 +978,7 @@ export default function SupplyRequestPage() {
 
           {formOpen && (
             <form onSubmit={submit} className="mb-4 rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03] md:p-5">
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(220px,1fr)_minmax(220px,1fr)]">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 <Field label="پروژه" required>
                   <select
                     value={form.projectId}
@@ -1008,11 +1008,18 @@ export default function SupplyRequestPage() {
                     })}
                   </select>
                 </Field>
-              </div>
-
-              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[minmax(260px,1.4fr)_minmax(150px,0.7fr)_minmax(190px,0.8fr)]">
                 <Field label="موضوع درخواست" required>
                   <input value={form.title} onChange={(event) => setField("title", event.target.value)} className={`${inputCls} h-12 text-[15px]`} />
+                </Field>
+              </div>
+
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[minmax(260px,1.4fr)_minmax(190px,0.8fr)_minmax(150px,0.7fr)]">
+                <Field label="شرح درخواست">
+                  <textarea
+                    value={form.description}
+                    onChange={(event) => setField("description", event.target.value)}
+                    className={`${inputCls} min-h-11 resize-y py-3 leading-7`}
+                  />
                 </Field>
                 <Field label="تاریخ نیاز">
                   <JalaliPopupDatePicker
@@ -1035,16 +1042,6 @@ export default function SupplyRequestPage() {
                     />
                     <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-neutral-500 dark:text-neutral-400">ریال</span>
                   </div>
-                </Field>
-              </div>
-
-              <div className="mt-3">
-                <Field label="شرح درخواست">
-                  <textarea
-                    value={form.description}
-                    onChange={(event) => setField("description", event.target.value)}
-                    className={`${inputCls} min-h-28 resize-y py-3 leading-7`}
-                  />
                 </Field>
               </div>
 
@@ -1103,7 +1100,7 @@ export default function SupplyRequestPage() {
                     <img src="/images/icons/Uplod.svg" alt="" className="h-5 w-5 dark:invert" />
                   </button>
                 </div>
-                <Field label="ارسال درخواست تامین به" required={!!createRecipients.targetRoleKey} className="w-full sm:w-[28rem]">
+                <Field label="ارسال درخواست تامین به" required={!!createRecipients.targetRoleKey} className="w-full sm:w-[20rem]">
                     <select
                       value={form.targetAssigneeUserId}
                       onChange={(event) => setField("targetAssigneeUserId", event.target.value)}
@@ -1870,18 +1867,18 @@ function SupplyUploadModal({ fileRef, files, uploading, onUpload, onRemove, onCl
 
 function PreviewSection({ title, children, flush = false }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
-      <div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">{title}</div>
-      <div className={`divide-y divide-black/10 dark:divide-white/10 ${flush ? "" : "px-4"}`}>{children}</div>
+    <section className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900">
+      <div className="border-b border-black/[0.08] bg-gradient-to-l from-neutral-50 to-white px-4 py-3 text-sm font-semibold text-neutral-800 dark:border-white/10 dark:from-white/[0.07] dark:to-white/[0.03] dark:text-neutral-100">{title}</div>
+      <div className={`divide-y divide-black/[0.06] bg-white dark:divide-white/[0.08] dark:bg-neutral-900 ${flush ? "" : "px-4"}`}>{children}</div>
     </section>
   );
 }
 
 function PreviewRow({ label, value, ltr, compact = false }) {
   return (
-    <div className={`min-w-0 ${compact ? "grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2 px-3 py-3 text-xs" : "grid grid-cols-[120px_1fr] gap-3 px-4 py-2.5 text-sm"}`}>
-      <div className={`text-neutral-500 dark:text-neutral-400 ${compact ? "whitespace-nowrap" : ""}`}>{label}</div>
-      <div dir={ltr ? "ltr" : "rtl"} className={`min-w-0 break-words font-medium ${ltr ? "text-left" : "text-right"}`}>{value}</div>
+    <div className={`min-w-0 ${compact ? "grid grid-cols-[minmax(86px,0.65fr)_minmax(0,1.35fr)] items-center gap-3 px-3 py-3 text-xs" : "grid grid-cols-[132px_minmax(0,1fr)] items-center gap-3 px-4 py-3 text-sm"}`}>
+      <div className={`font-medium text-neutral-500 dark:text-neutral-400 ${compact ? "whitespace-nowrap" : ""}`}>{label}</div>
+      <div dir={ltr ? "ltr" : "rtl"} className={`min-w-0 break-words rounded-lg bg-neutral-50 px-3 py-2 font-medium text-neutral-800 dark:bg-white/[0.05] dark:text-neutral-100 ${ltr ? "text-left" : "text-right"}`}>{value}</div>
     </div>
   );
 }
