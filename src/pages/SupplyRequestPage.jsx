@@ -1462,6 +1462,12 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
   const [targetAssigneeUserId, setTargetAssigneeUserId] = useState("");
 
   useEffect(() => {
+    const closeOnEscape = (event) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
+
+  useEffect(() => {
     setIsEditing(!!item.__editing);
     setChoice("");
     setBudgetCodeDraft(item.budgetCode || "");
@@ -1863,9 +1869,9 @@ function SupplyUploadModal({ fileRef, files, uploading, onUpload, onRemove, onCl
 
 function PreviewSection({ title, children, flush = false }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900">
+    <section className="overflow-hidden rounded-2xl border border-black/10 bg-neutral-50 shadow-sm dark:border-white/10 dark:bg-white/[0.05]">
       <div className="border-b border-black/[0.08] bg-gradient-to-l from-neutral-50 to-white px-4 py-3 text-sm font-semibold text-neutral-800 dark:border-white/10 dark:from-white/[0.07] dark:to-white/[0.03] dark:text-neutral-100">{title}</div>
-      <div className={`divide-y divide-black/[0.06] bg-white dark:divide-white/[0.08] dark:bg-neutral-900 ${flush ? "" : "px-4"}`}>{children}</div>
+      <div className={`divide-y divide-black/[0.06] bg-neutral-50 dark:divide-white/[0.08] dark:bg-white/[0.05] ${flush ? "" : "px-4"}`}>{children}</div>
     </section>
   );
 }
