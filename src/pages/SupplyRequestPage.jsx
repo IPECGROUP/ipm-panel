@@ -198,8 +198,8 @@ function clientRegistrationInfo() {
   };
 }
 
-function StatusBadge({ status }) {
-  const cls =
+function statusBadgeClass(status) {
+  return (
     status === "done" || status === "completed"
       ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
       : status === "canceled" || status === "cancelled" || status === "rejected"
@@ -210,9 +210,12 @@ function StatusBadge({ status }) {
             ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
             : status === "returned"
           ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
-          : "bg-neutral-100 text-neutral-700 dark:bg-white/10 dark:text-neutral-200";
+          : "bg-neutral-100 text-neutral-700 dark:bg-white/10 dark:text-neutral-200"
+  );
+}
 
-  return <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs ${cls}`}>{statusLabels[status] || "—"}</span>;
+function StatusBadge({ status }) {
+  return <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs ${statusBadgeClass(status)}`}>{statusLabels[status] || "—"}</span>;
 }
 
 function tagLabelOf(tag) {
@@ -1442,6 +1445,8 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
   const canResubmitReturned = stepKey === "requester" && latestAction?.type === "returned" && canAct;
   const meta = item.workflowMeta || {};
   const [choice, setChoice] = useState("");
+  const [budgetCodeDraft, setBudgetCodeDraft] = useState(item.budgetCode || "");
+  const [actionBudgetItems, setActionBudgetItems] = useState([]);
   const [finalAmount, setFinalAmount] = useState(formatMoney(meta.finalAmount ?? item.amount ?? ""));
   const [actionText, setActionText] = useState(meta.actionText || "");
   const [deadlineDate, setDeadlineDate] = useState(meta.deadlineDate || "");
@@ -1456,12 +1461,34 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
   useEffect(() => {
     setIsEditing(!!item.__editing);
     setChoice("");
+    setBudgetCodeDraft(item.budgetCode || "");
     setFinalAmount(formatMoney(item.workflowMeta?.finalAmount ?? item.amount ?? ""));
     setActionText(item.workflowMeta?.actionText || "");
     setDeadlineDate(item.workflowMeta?.deadlineDate || "");
     setCcUserIds(Array.isArray(item.ccUserIds) ? item.ccUserIds.map(String) : []);
     setTargetAssigneeUserId("");
   }, [item.id, item.budgetCode, item.amount, item.workflowMeta, item.ccUserIds, item.__editing]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!item.projectId) return undefined;
+    fetch(`/api/cost-breakdown?project_id=${encodeURIComponent(item.projectId)}`, { credentials: "include" })
+      .then((response) => (response.ok ? response.json() : { items: [] }))
+      .then((data) => {
+        if (cancelled) return;
+        const projectCode = normalizeBudgetCode(project?.code || item.projectCode || "");
+        const byCode = new Map();
+        (Array.isArray(data?.items) ? data.items : []).forEach((budgetItem) => {
+          const code = budgetCodeForProject(budgetItem?.budgetCode ?? budgetItem?.budget_code ?? budgetItem?.code, projectCode);
+          if (!code) return;
+          byCode.set(code, { ...budgetItem, code });
+        });
+        if (item.budgetCode && !byCode.has(item.budgetCode)) byCode.set(item.budgetCode, { code: item.budgetCode });
+        setActionBudgetItems(Array.from(byCode.values()).sort((a, b) => String(a.code).localeCompare(String(b.code), "fa", { numeric: true })));
+      })
+      .catch(() => { if (!cancelled) setActionBudgetItems(item.budgetCode ? [{ code: item.budgetCode }] : []); });
+    return () => { cancelled = true; };
+  }, [item.budgetCode, item.projectId, item.projectCode, project?.code]);
 
   useEffect(() => {
     if (!canAct) return undefined;
@@ -1533,6 +1560,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
           ? {
               finalAmount: parseMoney(finalAmount),
               actionText,
+              budgetCode: budgetCodeDraft,
             }
           : {};
     onAction(choice, choice === "approve" ? { ...payload, targetAssigneeUserId: targetAssigneeUserId || null } : payload);
@@ -1551,7 +1579,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
     !choice ||
         (noteRequired && !actionNote.trim()) ||
     (choice === "approve" &&
-      ((stepKey === "project_manager" && (parseMoney(finalAmount) <= 0 || !targetAssigneeUserId)) ||
+      ((stepKey === "project_manager" && (parseMoney(finalAmount) <= 0 || !budgetCodeDraft || !targetAssigneeUserId)) ||
         (targetRequired && !targetAssigneeUserId)));
 
   const toggleCcUser = (id) => {
@@ -1633,20 +1661,19 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                             </div>
                           </div>
                           <div className="grid gap-3 md:grid-cols-2">
-                            <ReadOnlyBox label="کد بودجه" value={item.budgetCode || "—"} ltr labelClassName={budgetLabelCls} />
-                            <ReadOnlyBox label="باقی مانده نقدینگی تخصیص یافته" value="—" ltr labelClassName={budgetLabelCls} />
-                          </div>
-                          <div className="grid gap-3 md:grid-cols-2">
-                            <Field label="مسئول اقدام">
-                              <select value={targetAssigneeUserId} onChange={(event) => setTargetAssigneeUserId(event.target.value)} disabled={nextRecipientsLoading || nextRecipients.targetRoleKey !== "commercial"} className={inputCls}>
-                                <option value="">{nextRecipientsLoading ? "در حال دریافت..." : "انتخاب کاربر تامین"}</option>
-                                {nextRecipients.users.map((user) => (
-                                  <option key={user.id} value={user.id}>
-                                    {user.name || user.username || user.email || `کاربر #${user.id}`}
-                                  </option>
-                                ))}
+                            <Field label="کد بودجه" required labelClassName={budgetLabelCls}>
+                              <select dir="ltr" value={budgetCodeDraft} onChange={(event) => setBudgetCodeDraft(event.target.value)} className={inputCls}>
+                                <option value="">انتخاب کنید</option>
+                                {actionBudgetItems.map((budgetItem) => {
+                                  const code = normalizeBudgetCode(budgetItem.code ?? budgetItem.budgetCode ?? budgetItem.budget_code ?? budgetItem.center_code);
+                                  const name = budgetItem.center_desc ?? budgetItem.last_desc ?? budgetItem.budgetName ?? budgetItem.budget_name ?? budgetItem.name ?? budgetItem.description ?? "";
+                                  return <option key={budgetItem.id || code} value={code}>{code}{name ? ` - ${name}` : ""}</option>;
+                                })}
                               </select>
                             </Field>
+                            <ReadOnlyBox label="باقی مانده نقدینگی تخصیص یافته" value="—" ltr labelClassName={budgetLabelCls} />
+                          </div>
+                          <div>
                             <Field label="توضیح">
                               <input value={actionText} onChange={(event) => setActionText(event.target.value)} className={inputCls} placeholder="توضیح..." />
                             </Field>
@@ -1658,7 +1685,15 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                             <ActionOptionRow checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست تامین" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
                             </div>
                           </div>
-                          <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={actionSubmitDisabled} onSubmit={submitSelectedAction} />
+                          <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-end sm:justify-end">
+                            <Field label="مسئول اقدام" className="w-full sm:w-[28rem]">
+                              <select value={targetAssigneeUserId} onChange={(event) => setTargetAssigneeUserId(event.target.value)} disabled={choice !== "approve" || actionBusy || nextRecipientsLoading || nextRecipients.targetRoleKey !== "commercial"} className={inputCls}>
+                                <option value="">{nextRecipientsLoading ? "در حال دریافت..." : "انتخاب کاربر تامین"}</option>
+                                {nextRecipients.users.map((user) => <option key={user.id} value={user.id}>{user.name || user.username || user.email || `کاربر #${user.id}`}</option>)}
+                              </select>
+                            </Field>
+                            <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={actionSubmitDisabled} onSubmit={submitSelectedAction} />
+                          </div>
                         </div>
                       </PreviewSection>
                     </>
@@ -2242,11 +2277,11 @@ function RequestFilterBar({
       <div>
         <div className={labelCls}>برچسب ها</div>
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={() => setOwnership(ownership === "mine" ? "" : "mine")} className={`h-9 rounded-full border px-4 text-xs transition ${ownership === "mine" ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>درخواست‌های من</button>
-          <button type="button" onClick={() => setOwnership(ownership === "incoming" ? "" : "incoming")} className={`h-9 rounded-full border px-4 text-xs transition ${ownership === "incoming" ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>موارد ارسال‌شده به من</button>
-          <button type="button" onClick={() => setUnread(!unread)} className={`h-9 rounded-full border px-4 text-xs transition ${unread ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>خوانده نشده</button>
+          <button type="button" onClick={() => setOwnership(ownership === "mine" ? "" : "mine")} className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs transition ${ownership === "mine" ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : statusBadgeClass("pending")}`}>درخواست‌های من</button>
+          <button type="button" onClick={() => setOwnership(ownership === "incoming" ? "" : "incoming")} className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs transition ${ownership === "incoming" ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : statusBadgeClass("pending")}`}>موارد ارسال‌شده به من</button>
+          <button type="button" onClick={() => setUnread(!unread)} className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs transition ${unread ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : statusBadgeClass("pending")}`}>خوانده نشده</button>
           {STATUS_FILTERS.map(([key, label]) => (
-            <button key={key} type="button" onClick={() => setStatus(status === key ? "" : key)} className={`h-9 rounded-full border px-4 text-xs transition ${status === key ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>
+            <button key={key} type="button" onClick={() => setStatus(status === key ? "" : key)} className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs transition ${status === key ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : statusBadgeClass(key)} `}>
               {label}
             </button>
           ))}
