@@ -399,7 +399,7 @@ export default function TenkhahPage({ embedded = false }) {
             {error}
           </div>
         )}
-        <section className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
+        {!embedded && <section className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] text-sm">
               <thead className="bg-neutral-200 dark:bg-white/10">
@@ -458,7 +458,7 @@ export default function TenkhahPage({ embedded = false }) {
                         >
                           <img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" />
                         </button>
-                        {(Number(x.createdById) === Number(user?.id) || (x.settlements || []).some((s) => Number(s.currentAssigneeUserId) === Number(user?.id))) && <button onClick={() => openSettlement(x, (x.settlements || []).find((s) => Number(s.currentAssigneeUserId) === Number(user?.id)) || x.settlements?.[0] || null)} className="rounded-lg bg-neutral-800 px-3 py-1.5 text-white dark:bg-white dark:text-black">تسویه</button>}</div>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -475,7 +475,7 @@ export default function TenkhahPage({ embedded = false }) {
               </tbody>
             </table>
           </div>
-        </section>
+        </section>}
         {selected && (
           <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 p-4">
             <div className="max-h-[90vh] w-full max-w-6xl overflow-auto rounded-2xl border border-black/10 bg-white shadow-2xl dark:border-white/10 dark:bg-neutral-900">

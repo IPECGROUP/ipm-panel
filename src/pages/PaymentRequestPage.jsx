@@ -16,7 +16,7 @@ const DOC_OPTIONS = [
   ["internal_list", "لیست پرداخت داخلی"], ["gov_salary", "فیش بدهی دولتی"], ["other", "سایر"],
 ];
 const MONTHS = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
-const STATUS_LABELS = { pending: "در انتظار بررسی", approved: "تأییدشده", rejected: "ردشده", returned: "برگشت‌خورده" };
+const STATUS_LABELS = { pending: "در انتظار بررسی", approved: "تأیید شده", rejected: "رد شده", returned: "برگشت خورده", tenkhah_pending: "در انتظار بررسی", tenkhah_charged: "شارژ شد" };
 const STEP_LABELS = {
   requester: "درخواست‌کننده",
   project_control: "برنامه‌ریزی و کنترل پروژه",
@@ -128,6 +128,25 @@ function formatSheba(value) {
   const tail = raw.slice(22, 24);
   if (tail) groups.push(tail);
   return `IR${groups.length ? `-${groups.join("-")}` : ""}`;
+}
+
+function tenkhahTableRow(item) {
+  const status = item?.status === "charged" ? "tenkhah_charged" : "tenkhah_pending";
+  return {
+    ...item,
+    id: `tenkhah-${item.id}`,
+    sourceId: item.id,
+    requestType: "tenkhah",
+    serial: item.requestNumber || `TNK-${item.id}`,
+    dateFa: item.requestDate || "",
+    amount: item.chargedAmount || item.requestedAmount || 0,
+    title: "",
+    createdByName: item.requesterName || item.createdByName || "—",
+    currencyName: item.currency || "ریال",
+    displayStatus: status,
+    projectName: item.projectName || "",
+    projectCode: item.projectCode || "",
+  };
 }
 
 function escapePdfHtml(value) {
@@ -250,6 +269,7 @@ export default function PaymentRequestPage() {
   const [showForm, setShowForm] = useState(false);
   const [requestType, setRequestType] = useState("normal");
   const [items, setItems] = useState([]);
+  const [tenkhahItems, setTenkhahItems] = useState([]);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [numberSortDir, setNumberSortDir] = useState("desc");
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -272,6 +292,10 @@ export default function PaymentRequestPage() {
   const [filterQuery, setFilterQuery] = useState("");
   const [filterQuick, setFilterQuick] = useState("");
   const [filterOwnership, setFilterOwnership] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterUnread, setFilterUnread] = useState(false);
+  const [filterFromDate, setFilterFromDate] = useState("");
+  const [filterToDate, setFilterToDate] = useState("");
   const [filterTagIds, setFilterTagIds] = useState([]);
   const [pinnedFilterTagIds, setPinnedFilterTagIds] = useState([]);
   const [tags, setTags] = useState([]);
@@ -319,13 +343,22 @@ export default function PaymentRequestPage() {
   const loadItems = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await api("/requests");
-      setItems(Array.isArray(data.items) ? data.items : []);
+      const [paymentData, tenkhahData] = await Promise.all([
+        api("/requests"),
+        api("/tenkhah").catch(() => ({ items: [] })),
+      ]);
+      setItems(Array.isArray(paymentData.items) ? paymentData.items : []);
+      setTenkhahItems(Array.isArray(tenkhahData.items) ? tenkhahData.items : []);
     } catch { setError("دریافت درخواست‌ها انجام نشد."); }
     finally { setLoading(false); }
   }, [api]);
 
   useEffect(() => { loadItems(); }, [loadItems]);
+  useEffect(() => {
+    const refreshTenkhahRows = () => loadItems();
+    window.addEventListener("tenkhah-notifications-refresh", refreshTenkhahRows);
+    return () => window.removeEventListener("tenkhah-notifications-refresh", refreshTenkhahRows);
+  }, [loadItems]);
   useEffect(() => {
     if (!requestedRequestId || loading || openedRequestRef.current === requestedRequestId) return;
     const requested = items.find((item) => String(item.id) === String(requestedRequestId));
@@ -660,7 +693,19 @@ export default function PaymentRequestPage() {
     }
   };
 
-  const filteredItems = useMemo(() => filterRequestRows(items, { query: filterQuery, quick: filterQuick, tagIds: filterTagIds, ownership: filterOwnership, userId: user?.id }), [items, filterOwnership, filterQuery, filterQuick, filterTagIds, user?.id]);
+  const isIncomingForUser = (item) => item.requestType !== "tenkhah" && item.canAct && Number(item.createdById) !== Number(user?.id);
+  const isUnreadForUser = (item) => item.requestType !== "tenkhah" && (manualUnreadIds.has(String(item.id)) || (isIncomingForUser(item) && !seenIncomingIds.has(String(item.id))));
+  const tableItems = useMemo(() => [...items, ...tenkhahItems.map(tenkhahTableRow)], [items, tenkhahItems]);
+  const filteredItems = useMemo(() => filterRequestRows(tableItems, {
+    query: filterQuery,
+    quick: filterQuick,
+    tagIds: filterTagIds,
+    ownership: filterOwnership,
+    status: filterStatus,
+    fromDate: filterFromDate,
+    toDate: filterToDate,
+    userId: user?.id,
+  }).filter((item) => !filterUnread || isUnreadForUser(item)), [tableItems, filterFromDate, filterOwnership, filterQuery, filterQuick, filterStatus, filterTagIds, filterToDate, filterUnread, manualUnreadIds, seenIncomingIds, user?.id]);
   const sortedItems = useMemo(() => [...filteredItems].sort((a, b) => {
     const timeOf = (item) => {
       const value = Date.parse(item?.createdAt || item?.created_at || item?.updatedAt || item?.updated_at || "");
@@ -679,7 +724,7 @@ export default function PaymentRequestPage() {
   const startIndex = safePage * rowsPerPage;
   const endIndex = Math.min(total, startIndex + rowsPerPage);
   const pageItems = sortedItems.slice(startIndex, endIndex);
-  const visibleIds = pageItems.map((item) => String(item.id));
+  const visibleIds = pageItems.filter((item) => item.requestType !== "tenkhah").map((item) => String(item.id));
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
   const someVisibleSelected = visibleIds.some((id) => selectedIds.has(id)) && !allVisibleSelected;
   const selectAllRef = useRef(null);
@@ -697,9 +742,6 @@ export default function PaymentRequestPage() {
     if (next.has(key)) next.delete(key); else next.add(key);
     return next;
   });
-  const isIncomingForUser = (item) => item.canAct && Number(item.createdById) !== Number(user?.id);
-  const isUnreadForUser = (item) =>
-    manualUnreadIds.has(String(item.id)) || (isIncomingForUser(item) && !seenIncomingIds.has(String(item.id)));
   const setSelectedReadStatus = (unread) => {
     const ids = [...selectedIds].map(String);
     if (!ids.length) return;
@@ -858,7 +900,7 @@ export default function PaymentRequestPage() {
         </form>}
         {uploadOpen && <PaymentUploadModal files={form.attachments} uploading={uploading} onUpload={uploadFiles} onClose={() => setUploadOpen(false)} />}
 
-        {!showForm && <RequestFilterBar query={filterQuery} setQuery={setFilterQuery} quick={filterQuick} setQuick={setFilterQuick} ownership={filterOwnership} setOwnership={setFilterOwnership} tags={tags} pinnedTagIds={pinnedFilterTagIds} setPinnedTagIds={setPinnedFilterTagIds} activeTagIds={filterTagIds} setActiveTagIds={setFilterTagIds} tagPickOpen={tagPickOpen} setTagPickOpen={setTagPickOpen} tagPickSearch={tagPickSearch} setTagPickSearch={setTagPickSearch} />}
+        {!showForm && <RequestFilterBar query={filterQuery} setQuery={setFilterQuery} quick={filterQuick} setQuick={setFilterQuick} ownership={filterOwnership} setOwnership={setFilterOwnership} status={filterStatus} setStatus={setFilterStatus} unread={filterUnread} setUnread={setFilterUnread} fromDate={filterFromDate} setFromDate={setFilterFromDate} toDate={filterToDate} setToDate={setFilterToDate} tags={tags} pinnedTagIds={pinnedFilterTagIds} setPinnedTagIds={setPinnedFilterTagIds} activeTagIds={filterTagIds} setActiveTagIds={setFilterTagIds} tagPickOpen={tagPickOpen} setTagPickOpen={setTagPickOpen} tagPickSearch={tagPickSearch} setTagPickSearch={setTagPickSearch} />}
 
         <div className={`${showForm && requestType === "tenkhah" ? "hidden " : ""}overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100`}>
           <div className="relative hidden max-h-[55vh] overflow-y-auto overflow-x-hidden pb-0 md:block" dir="ltr"><table dir="rtl" className="w-full min-w-full table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:min-w-0 [&_td]:text-center [&_th]:py-0.5 [&_td]:py-0.5">
@@ -908,21 +950,21 @@ export default function PaymentRequestPage() {
               </th>
             </tr></thead>
             <tbody className="text-black dark:text-neutral-100">
-              {loading ? <tr><td colSpan={10} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td></tr> : pageItems.length === 0 ? <tr><td colSpan={10} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواستی ثبت نشده است.</td></tr> : pageItems.map((item, index) => <tr key={item.id} className="group bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
-                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label="انتخاب" /></td>
+              {loading ? <tr><td colSpan={10} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td></tr> : pageItems.length === 0 ? <tr><td colSpan={10} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواستی ثبت نشده است.</td></tr> : pageItems.map((item) => <tr key={item.id} className={`group transition-colors ${item.requestType === "tenkhah" ? "bg-violet-50/90 hover:bg-violet-100/80 dark:bg-violet-500/[0.12] dark:hover:bg-violet-500/[0.18]" : "bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"}`}>
+                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{item.requestType !== "tenkhah" && <input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label="انتخاب" />}</td>
                 <td className="border-b border-neutral-300 px-0 dark:border-neutral-700">{isUnreadForUser(item) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="درخواست خوانده‌نشده" aria-label="درخواست خوانده‌نشده" />}</td>
-                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><button type="button" onClick={() => openPreview(item)} className="mx-auto inline-flex items-center justify-center text-[13px] font-semibold underline-offset-4 transition hover:underline" title="نمایش درخواست">{displayPaymentSerial(item, projects)}</button></td>
+                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{item.requestType === "tenkhah" ? <span className="mx-auto inline-flex items-center gap-1.5 text-[13px] font-semibold text-violet-800 dark:text-violet-200"><span>{item.serial}</span><span className="rounded-full bg-violet-200/70 px-1.5 py-0.5 text-[10px] dark:bg-violet-400/20">تنخواه</span></span> : <button type="button" onClick={() => openPreview(item)} className="mx-auto inline-flex items-center justify-center text-[13px] font-semibold underline-offset-4 transition hover:underline" title="نمایش درخواست">{displayPaymentSerial(item, projects)}</button>}</td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))}</td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{projectLabel(projects.find((row) => String(row.id) === String(item.projectId))) || item.projectName || item.projectCode || "—"}</span></td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.title || "—"}</span></td>
-                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate tabular-nums">{toFa(money(item.amount) || "0")} {currencyNameOf(item.currencyTypeId, currencyTypes)}</span></td>
+                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate tabular-nums">{toFa(money(item.amount) || "0")} {item.requestType === "tenkhah" ? item.currencyName : currencyNameOf(item.currencyTypeId, currencyTypes)}</span></td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.createdByName || `کاربر #${toFa(item.createdById)}`}</span></td>
-                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><StatusBadge status={item.status} /></td>
-                <td className="border-b border-neutral-300 !pl-10 !pr-2 dark:border-neutral-700"><div className="flex w-full items-center justify-center gap-1 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"><button type="button" onClick={() => openPreview(item)} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label={item.canAct ? "اقدامات" : "نمایش"} title={item.canAct ? "اقدامات" : "نمایش"}><img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" /></button>{Number(item.createdById) === Number(user?.id) && <button type="button" onClick={() => openPreview({ ...item, __editing: true })} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label="ویرایش درخواست" title="ویرایش درخواست"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></button>}</div></td>
+                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><StatusBadge status={item.displayStatus || item.status} /></td>
+                <td className="border-b border-neutral-300 !pl-10 !pr-2 dark:border-neutral-700">{item.requestType === "tenkhah" ? <span className="text-xs text-violet-700 dark:text-violet-300">—</span> : <div className="pointer-events-none flex w-full items-center justify-center gap-1 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"><button type="button" onClick={() => openPreview(item)} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label={item.canAct ? "اقدامات" : "نمایش"} title={item.canAct ? "اقدامات" : "نمایش"}><img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" /></button>{Number(item.createdById) === Number(user?.id) && <button type="button" onClick={() => openPreview({ ...item, __editing: true })} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label="ویرایش درخواست" title="ویرایش درخواست"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></button>}</div>}</td>
               </tr>)}
             </tbody>
           </table></div>
-          <div className="grid gap-3 p-3 md:hidden">{pageItems.map((item) => <button key={item.id} type="button" onClick={() => openPreview(item)} className="rounded-xl border border-black/10 p-3 text-right dark:border-white/10"><div className="flex items-center justify-between gap-2"><b>{displayPaymentSerial(item, projects)}</b><StatusBadge status={item.status} /></div><div className="mt-2 truncate text-sm">{item.title || "—"}</div><div className="mt-2 text-xs text-neutral-500">مبلغ: {toFa(money(item.amount) || "0")} {currencyNameOf(item.currencyTypeId, currencyTypes)}</div><div className="mt-1 text-xs text-neutral-500">{toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))}</div></button>)}</div>
+          <div className="grid gap-3 p-3 md:hidden">{pageItems.map((item) => <button key={item.id} type="button" disabled={item.requestType === "tenkhah"} onClick={() => openPreview(item)} className={`rounded-xl border p-3 text-right disabled:cursor-default ${item.requestType === "tenkhah" ? "border-violet-200 bg-violet-50 dark:border-violet-400/20 dark:bg-violet-500/10" : "border-black/10 dark:border-white/10"}`}><div className="flex items-center justify-between gap-2"><b>{item.requestType === "tenkhah" ? item.serial : displayPaymentSerial(item, projects)}</b><StatusBadge status={item.displayStatus || item.status} /></div><div className="mt-2 truncate text-sm">{item.title || "—"}</div><div className="mt-2 text-xs text-neutral-500">مبلغ: {toFa(money(item.amount) || "0")} {item.requestType === "tenkhah" ? item.currencyName : currencyNameOf(item.currencyTypeId, currencyTypes)}</div><div className="mt-1 text-xs text-neutral-500">{toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))}</div></button>)}</div>
           <div className="border-t border-neutral-300 px-3 py-2 dark:border-neutral-800"><div className="flex flex-col items-stretch gap-2 md:flex-row md:flex-wrap md:items-center md:justify-between">
             <div className="flex items-center justify-between gap-2 text-sm md:justify-start"><div className="flex items-center gap-2"><button type="button" onClick={() => setPage((old) => Math.max(0, old - 1))} disabled={safePage <= 0} className="inline-grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.04] disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="صفحه قبل"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 18l6-6-6-6" /></svg></button><button type="button" onClick={() => setPage((old) => Math.min(pageCount - 1, old + 1))} disabled={safePage >= pageCount - 1} className="inline-grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.04] disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="صفحه بعد"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M15 18l-6-6 6-6" /></svg></button></div><div className="whitespace-nowrap text-black/70 dark:text-neutral-400">{total === 0 ? "۰ از ۰" : `${toFa(startIndex + 1)}–${toFa(endIndex)} از ${toFa(total)}`}</div></div>
             <div className="flex items-center justify-between gap-2 text-sm md:justify-start"><span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span><div className="inline-flex h-9 overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">{[10, 25, 100].map((count) => <button key={count} type="button" onClick={() => { setRowsPerPage(count); setPage(0); }} className={`min-w-10 px-3 text-sm font-semibold transition ${rowsPerPage === count ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-700 hover:bg-black/[0.04] dark:text-white/75 dark:hover:bg-white/10"}`}>{toFa(count)}</button>)}</div></div>
@@ -985,29 +1027,35 @@ function itemDateKey(item) {
   return normalizeDigits(String(item?.dateFa || item?.dateJalali || item?.date_jalali || "")).replaceAll("-", "/");
 }
 
-function filterRequestRows(rows, { query, quick, tagIds, ownership, userId }) {
+function filterRequestRows(rows, { query, quick, tagIds, ownership, status, fromDate, toDate, userId }) {
   const q = normalizeDigits(query).trim().toLowerCase();
   const start = quickStartDate(quick);
+  const from = normalizeDigits(fromDate).replaceAll("-", "/");
+  const to = normalizeDigits(toDate).replaceAll("-", "/");
   const selectedTags = Array.isArray(tagIds) ? tagIds.map(String).filter(Boolean) : [];
   return (Array.isArray(rows) ? rows : []).filter((item) => {
+    const isTenkhah = item?.requestType === "tenkhah";
     const isMine = Number(item?.createdById) === Number(userId);
-    const isIncoming = item?.canAct === true && !isMine;
+    const isIncoming = !isTenkhah && item?.canAct === true && !isMine;
     if (ownership === "mine" && !isMine) return false;
     if (ownership === "incoming" && !isIncoming) return false;
     if (start && itemDateKey(item) < start) return false;
+    if (from && itemDateKey(item) < from) return false;
+    if (to && itemDateKey(item) > to) return false;
+    if (status && (item.displayStatus || item.status) !== status) return false;
     if (selectedTags.length) {
       const itemTags = tagIdListOf(item);
       if (!selectedTags.some((id) => itemTags.includes(id))) return false;
     }
     if (!q) return true;
-    const hay = [item.serial, item.dateFa, item.dateJalali, item.title, item.description, item.budgetCode, item.projectName, item.projectCode, item.status]
+    const hay = [item.serial, item.dateFa, item.dateJalali, item.title, item.description, item.budgetCode, item.projectName, item.projectCode, item.status, item.displayStatus, item.requestType]
       .map((value) => normalizeDigits(value).toLowerCase())
       .join(" ");
     return hay.includes(q);
   });
 }
 
-function RequestFilterBar({ query, setQuery, quick, setQuick, ownership, setOwnership, tags, pinnedTagIds, setPinnedTagIds, activeTagIds, setActiveTagIds, tagPickOpen, setTagPickOpen, tagPickSearch, setTagPickSearch }) {
+function RequestFilterBar({ query, setQuery, quick, setQuick, ownership, setOwnership, status, setStatus, unread, setUnread, fromDate, setFromDate, toDate, setToDate, tags, pinnedTagIds, setPinnedTagIds, activeTagIds, setActiveTagIds, tagPickOpen, setTagPickOpen, tagPickSearch, setTagPickSearch }) {
   const active = new Set((activeTagIds || []).map(String));
   const tagMap = new Map((Array.isArray(tags) ? tags : []).map((tag) => [String(tag?.id ?? ""), tag]));
   const visibleTags = (Array.isArray(pinnedTagIds) ? pinnedTagIds : []).map((id) => tagMap.get(String(id))).filter(Boolean);
@@ -1036,12 +1084,16 @@ function RequestFilterBar({ query, setQuery, quick, setQuick, ownership, setOwne
         <div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">جست و جو</div>
         <input value={query} onChange={(event) => setQuery(event.target.value)} className={inputClass} placeholder="جستجو در شماره، موضوع، تاریخ، پروژه و ..." />
       </div>
+      <div className="w-[calc(50%-0.25rem)] md:w-36"><div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">از</div><JalaliPopupDatePicker value={fromDate} onChange={(value) => { setFromDate(value); setQuick(""); }} /></div>
+      <div className="w-[calc(50%-0.25rem)] md:w-36"><div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">تا</div><JalaliPopupDatePicker value={toDate} onChange={(value) => { setToDate(value); setQuick(""); }} /></div>
     </div>
     <div>
       <div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">برچسب ها</div>
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" onClick={() => setOwnership(ownership === "mine" ? "" : "mine")} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(ownership === "mine")}`}>درخواست‌های من</button>
         <button type="button" onClick={() => setOwnership(ownership === "incoming" ? "" : "incoming")} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(ownership === "incoming")}`}>موارد ارسال‌شده به من</button>
+        <button type="button" onClick={() => setUnread(!unread)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(unread)}`}>خوانده نشده</button>
+        {[['pending', 'در انتظار بررسی'], ['approved', 'تأیید شده'], ['returned', 'برگشت خورده'], ['rejected', 'رد شده'], ['tenkhah_pending', 'تنخواه در انتظار بررسی'], ['tenkhah_charged', 'تنخواه شارژ شده']].map(([key, label]) => <button key={key} type="button" onClick={() => setStatus(status === key ? "" : key)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(status === key)}`}>{label}</button>)}
         {QUICK_FILTERS.map(([key, label]) => (
           <button key={key} type="button" onClick={() => setQuick(quick === key ? "" : key)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(quick === key)}`}>{label}</button>
         ))}
@@ -1139,7 +1191,7 @@ function paymentTagClass(active) {
 }
 
 function StatusBadge({ status }) {
-  const colors = status === "approved" ? "border border-emerald-200/90 bg-emerald-100 text-emerald-700 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-500/15 dark:text-emerald-300" : status === "rejected" ? "border border-red-200/90 bg-red-100 text-red-700 shadow-sm dark:border-red-400/20 dark:bg-red-500/15 dark:text-red-300" : status === "returned" ? "border border-amber-200/90 bg-amber-100 text-amber-700 shadow-sm dark:border-amber-400/20 dark:bg-amber-500/15 dark:text-amber-300" : "border border-neutral-200 bg-neutral-100 text-neutral-700 shadow-sm dark:border-white/10 dark:bg-white/10 dark:text-neutral-200";
+  const colors = status === "approved" || status === "tenkhah_charged" ? "border border-emerald-200/90 bg-emerald-100 text-emerald-700 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-500/15 dark:text-emerald-300" : status === "rejected" ? "border border-red-200/90 bg-red-100 text-red-700 shadow-sm dark:border-red-400/20 dark:bg-red-500/15 dark:text-red-300" : status === "returned" ? "border border-amber-200/90 bg-amber-100 text-amber-700 shadow-sm dark:border-amber-400/20 dark:bg-amber-500/15 dark:text-amber-300" : status === "tenkhah_pending" ? "border border-violet-200 bg-violet-100 text-violet-700 shadow-sm dark:border-violet-400/20 dark:bg-violet-500/15 dark:text-violet-300" : "border border-neutral-200 bg-neutral-100 text-neutral-700 shadow-sm dark:border-white/10 dark:bg-white/10 dark:text-neutral-200";
   return <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs ${colors}`}>{STATUS_LABELS[status] || status || "—"}</span>;
 }
 
@@ -1152,6 +1204,11 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
   const attachments = Array.isArray(item.attachments) ? item.attachments : [];
   const history = Array.isArray(item.historyJson) ? item.historyJson : Array.isArray(item.history_json) ? item.history_json : [];
   const currentStepRoleKey = item.currentStepRoleKey || "";
+  useEffect(() => {
+    const closeOnEscape = (event) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
   const canDecide = item.status === "pending" && item.canAct === true;
   const canEditReturned = item.status === "returned" && item.canAct === true && currentStepRoleKey === "requester";
   const isOwner = item.canEdit === true || Number(item.createdById) === Number(userId);
@@ -1786,10 +1843,12 @@ function WorkflowPanel({
     return <PreviewSection title="نتیجه بررسی مدیر پروژه">
       <div className="space-y-3 py-4">
         <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={urgentCash} onChange={(event) => setUrgentCash(event.target.checked)} className="h-4 w-4 accent-black dark:accent-white" />پرداخت فوری و نقدی</label>
-        <ActionOption checked={choice === "approve"} disabled={!hasEnoughLiquidity} onClick={() => setChoice("approve")} label="تایید درخواست" />
-        <ActionOption checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست" />
-        <ActionOption checked={choice === "return"} onClick={() => setChoice("return")} label="ارجاع به درخواست کننده" />
-        {!hasEnoughLiquidity && <ActionOption checked={choice === "stop"} onClick={() => setChoice("stop")} label="توقف پرداخت به دلیل عدم نقدینگی" />}
+        <div className="grid gap-3 md:grid-cols-3">
+          <ActionOption kind="approve" checked={choice === "approve"} disabled={!hasEnoughLiquidity} onClick={() => setChoice("approve")} label="تایید درخواست" />
+          <ActionOption kind="return" checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت درخواست" />
+          <ActionOption kind="reject" checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست" />
+          {!hasEnoughLiquidity && <ActionOption kind="reject" checked={choice === "stop"} onClick={() => setChoice("stop")} label="توقف پرداخت به دلیل عدم نقدینگی" />}
+        </div>
         {["reject", "return", "stop"].includes(choice) && <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputClass} min-h-24 py-3`} placeholder="توضیح..." />}
         <NextRecipientSelect recipients={nextRecipients} loading={nextRecipientsLoading} value={targetAssigneeUserId} onChange={setTargetAssigneeUserId} visible={choice === "approve"} />
         <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice || (targetRequired && !targetAssigneeUserId)} onSubmit={onSubmit} />
@@ -1800,9 +1859,11 @@ function WorkflowPanel({
   if (stepKey === "project_control") {
     return <PreviewSection title="نتیجه بررسی اولیه">
       <div className="space-y-3 py-4">
-        <ActionOption checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست پرداخت" />
-        <ActionOption checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست پرداخت" />
-        <ActionOption checked={choice === "return"} onClick={() => setChoice("return")} label="ارجاع به درخواست کننده" />
+        <div className="grid gap-3 md:grid-cols-3">
+          <ActionOption kind="approve" checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست پرداخت" />
+          <ActionOption kind="return" checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت درخواست پرداخت" />
+          <ActionOption kind="reject" checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست پرداخت" />
+        </div>
         {["reject", "return"].includes(choice) && <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputClass} min-h-24 py-3`} placeholder="توضیح..." />}
         <NextRecipientSelect recipients={nextRecipients} loading={nextRecipientsLoading} value={targetAssigneeUserId} onChange={setTargetAssigneeUserId} visible={choice === "approve"} />
         <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice || (targetRequired && !targetAssigneeUserId)} onSubmit={onSubmit} />
@@ -1812,8 +1873,10 @@ function WorkflowPanel({
 
   return <PreviewSection title={stepKey === "management" ? "نتیجه بررسی مدیریت" : "نتیجه بررسی مالی و حسابداری"}>
     <div className="space-y-3 py-4">
-      <ActionOption checked={choice === "approve"} onClick={() => setChoice("approve")} label={stepKey === "management" ? "درخواست پرداخت" : "تایید درخواست"} />
-      <ActionOption checked={choice === "return"} onClick={() => setChoice("return")} label="ارجاع به درخواست کننده" />
+      <div className="grid gap-3 md:grid-cols-2">
+        <ActionOption kind="approve" checked={choice === "approve"} onClick={() => setChoice("approve")} label={stepKey === "management" ? "تایید درخواست پرداخت" : "تایید درخواست"} />
+        <ActionOption kind="return" checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت درخواست پرداخت" />
+      </div>
       {choice === "return" && <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputClass} min-h-24 py-3`} placeholder="توضیح..." />}
       <NextRecipientSelect recipients={nextRecipients} loading={nextRecipientsLoading} value={targetAssigneeUserId} onChange={setTargetAssigneeUserId} visible={choice === "approve"} />
       <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice || (targetRequired && !targetAssigneeUserId)} onSubmit={onSubmit} />
@@ -1821,11 +1884,17 @@ function WorkflowPanel({
   </PreviewSection>;
 }
 
-function ActionOption({ checked, disabled, onClick, label }) {
-  return <button type="button" disabled={disabled} onClick={onClick} className={`flex h-11 w-full items-center justify-between rounded-xl border px-3 text-sm transition disabled:cursor-not-allowed disabled:opacity-45 ${checked ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>
-    <span>{label}</span>
-    <span className={`grid h-5 w-5 place-items-center rounded-md border ${checked ? "border-white dark:border-black" : "border-neutral-400"}`}>{checked && <img src="/images/icons/check.svg" alt="" className={`h-3.5 w-3.5 ${checked ? "invert dark:invert-0" : ""}`} />}</span>
-  </button>;
+function ActionOption({ kind = "approve", checked, disabled, onClick, label }) {
+  const appearance = {
+    approve: { icon: "✓", iconClass: "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300", selected: "border-emerald-300 bg-emerald-50/60 shadow-[0_0_0_2px_rgba(52,211,153,.12)] dark:border-emerald-400/40 dark:bg-emerald-500/10", description: "تایید و ارسال به مرحله بعد" },
+    return: { icon: "↶", iconClass: "bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300", selected: "border-amber-300 bg-amber-50/60 shadow-[0_0_0_2px_rgba(245,158,11,.12)] dark:border-amber-400/40 dark:bg-amber-500/10", description: "برگشت به درخواست کننده جهت اصلاح" },
+    reject: { icon: "×", iconClass: "bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300", selected: "border-rose-300 bg-rose-50/60 shadow-[0_0_0_2px_rgba(244,63,94,.12)] dark:border-rose-400/40 dark:bg-rose-500/10", description: "رد درخواست و پایان فرآیند" },
+  }[kind];
+  return <div role="button" tabIndex={disabled ? -1 : 0} onClick={() => !disabled && onClick()} onKeyDown={(event) => { if (!disabled && (event.key === "Enter" || event.key === " ")) onClick(); }} className={`min-h-[154px] cursor-pointer rounded-2xl border p-4 text-center transition ${checked ? appearance.selected : "border-black/10 bg-white hover:border-black/20 hover:shadow-sm dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-white/20"} ${disabled ? "cursor-not-allowed opacity-45" : ""}`}>
+    <div className={`mx-auto grid h-10 w-10 place-items-center rounded-full text-2xl font-bold ${appearance.iconClass}`}>{appearance.icon}</div>
+    <div className="mt-2 text-sm font-bold text-neutral-800 dark:text-neutral-100">{label}</div>
+    <p className="mt-1 text-[11px] leading-5 text-neutral-500 dark:text-neutral-400">{appearance.description}</p>
+  </div>;
 }
 
 function NextRecipientSelect({ recipients, loading, value, onChange, visible = true }) {
