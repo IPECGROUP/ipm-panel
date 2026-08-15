@@ -22,16 +22,16 @@ const labelCls = "mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-30
 const tableWrapCls =
   "overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100";
 const STATUS_FILTERS = [
-  ["final_approval", "در انتظار تایید نهایی"],
+  ["final_approval", "در انتظار تایید"],
   ["in_progress", "در حال اقدام"],
   ["done", "انجام شد"],
   ["canceled", "لغو شد"],
 ];
 
 const statusLabels = {
-  pending: "در انتظار تایید نهایی",
-  final_approval: "در انتظار تایید نهایی",
-  approved: "در انتظار تایید نهایی",
+  pending: "در انتظار تایید",
+  final_approval: "در انتظار تایید",
+  approved: "در انتظار تایید",
   in_progress: "در حال اقدام",
   done: "انجام شد",
   completed: "انجام شد",
