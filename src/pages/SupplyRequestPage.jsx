@@ -22,7 +22,6 @@ const labelCls = "mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-30
 const tableWrapCls =
   "overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100";
 const STATUS_FILTERS = [
-  ["pending", "در انتظار تایید اولیه"],
   ["final_approval", "در انتظار تایید نهایی"],
   ["in_progress", "در حال اقدام"],
   ["done", "انجام شد"],
@@ -30,7 +29,7 @@ const STATUS_FILTERS = [
 ];
 
 const statusLabels = {
-  pending: "در انتظار تایید اولیه",
+  pending: "در انتظار تایید نهایی",
   final_approval: "در انتظار تایید نهایی",
   approved: "در انتظار تایید نهایی",
   in_progress: "در حال اقدام",
@@ -44,7 +43,6 @@ const statusLabels = {
 
 const STEP_LABELS = {
   requester: "درخواست کننده",
-  project_control: "برنامه ریزی و کنترل پروژه",
   project_manager: "مدیر پروژه",
   commercial: "تامین",
 };
@@ -59,11 +57,6 @@ function normalizeDigits(value = "") {
 
 function todayFa() {
   return normalizeDigits(todayJalaliYmd()).replaceAll("-", "/");
-}
-
-function jalaliYY(value = todayFa()) {
-  const year = normalizeDigits(value).match(/^(\d{4})/)?.[1] || "1400";
-  return year.slice(-2);
 }
 
 function parseMoney(value) {
@@ -270,7 +263,6 @@ function friendlyError(message, fallback) {
   const text = String(message || "");
   if (text === "database_unreachable") return "ارتباط با پایگاه داده برقرار نیست. سرویس دیتابیس را بررسی کنید.";
   if (text === "database_auth_failed") return "احراز هویت پایگاه داده ناموفق است.";
-  if (text === "project_control_user_not_found") return "کاربری در واحد برنامه ریزی و کنترل پروژه پیدا نشد.";
   if (text === "project_manager_user_not_found") return "کاربری با نقش مدیر پروژه پیدا نشد.";
   if (text === "commercial_user_not_found") return "کاربری در واحد تامین پیدا نشد.";
   if (text === "target_assignee_required") return "گیرنده درخواست تامین را انتخاب کنید.";
@@ -360,21 +352,6 @@ export default function SupplyRequestPage() {
     if (!response.ok) throw new Error(data.error || data.message || "request_failed");
     return data;
   }, [user?.id]);
-
-  const previewSerial = useMemo(() => {
-    const yy = jalaliYY(form.dateJalali);
-    const projectCode = normalizeDigits(selectedProject?.code || "").replace(/[^\d]/g, "");
-    const prefix = projectCode ? `${yy}/${projectCode}` : yy;
-    let maxSeq = 0;
-    const re = projectCode
-      ? new RegExp(`^${yy}/${projectCode.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/(\\d{3})$`)
-      : new RegExp(`^${yy}/(?:\\d{3}/)?(\\d{3})$`);
-    items.forEach((item) => {
-      const m = normalizeDigits(item?.serial || "").match(re);
-      if (m) maxSeq = Math.max(maxSeq, Number(m[1]) || 0);
-    });
-    return `${prefix}/${String(maxSeq + 1).padStart(3, "0")}`;
-  }, [form.dateJalali, items, selectedProject?.code]);
 
   const loadItems = useCallback(async () => {
     if (authLoading) return;
@@ -687,7 +664,6 @@ export default function SupplyRequestPage() {
     try {
       const payload = {
         ...form,
-        serial: previewSerial,
         docId: REQUEST_DOC_ID,
         scope: "projects",
         amount,
@@ -738,9 +714,7 @@ export default function SupplyRequestPage() {
       setActionError(
         message === "project_manager_user_not_found"
           ? "کاربری با نقش مدیر پروژه پیدا نشد."
-          : message === "project_control_user_not_found"
-            ? "کاربری در واحد برنامه ریزی و کنترل پروژه پیدا نشد."
-            : message === "commercial_user_not_found"
+          : message === "commercial_user_not_found"
               ? "کاربری در واحد تامین پیدا نشد."
             : message === "target_assignee_required"
               ? "گیرنده درخواست تامین را انتخاب کنید."
@@ -946,15 +920,15 @@ export default function SupplyRequestPage() {
 
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
-      <Card className="overflow-hidden rounded-2xl border border-black/10 bg-white p-0 dark:border-white/10 dark:bg-neutral-900">
+      <Card className="overflow-hidden rounded-3xl border border-black/10 bg-white p-0 shadow-[0_18px_50px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-neutral-900">
         <div className="p-3 md:p-4">
-          <div className="mb-5 flex min-w-0 items-center justify-between gap-3">
+          <div className="mb-5 flex min-w-0 items-center justify-between gap-3 border-b border-black/[0.07] pb-4 dark:border-white/10">
             <div className="flex min-w-0 items-center gap-3">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-black/10 bg-gradient-to-br from-neutral-50 to-neutral-200/70 shadow-sm dark:border-white/10 dark:from-white/[0.12] dark:to-white/[0.04]">
                 <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
               </span>
               <span className="min-w-0">
-                <span className="block truncate text-base font-bold md:text-lg">درخواست تامین</span>
+              <span className="block truncate text-base font-bold tracking-tight md:text-lg">درخواست تامین</span>
                 <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت تامین و پشتیبانی</span>
               </span>
             </div>
@@ -1000,19 +974,8 @@ export default function SupplyRequestPage() {
           )}
 
           {formOpen && (
-            <form onSubmit={submit} className="mb-4 rounded-2xl border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-transparent">
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(150px,0.75fr)_minmax(140px,0.7fr)_minmax(220px,1fr)_minmax(220px,1fr)]">
-                <Field label="شماره درخواست">
-                  <div dir="ltr" className={`${inputCls} flex items-center justify-start bg-neutral-50 font-sans tabular-nums dark:bg-white/5`}>
-                    {previewSerial}
-                  </div>
-                </Field>
-                <Field label="تاریخ">
-                  <div className={`${inputCls} flex items-center justify-between bg-neutral-50 dark:bg-white/5`}>
-                    <span>{toFaDigits(form.dateJalali)}</span>
-                    <img src="/images/icons/calendar.svg" alt="" className="h-5 w-5 dark:invert" />
-                  </div>
-                </Field>
+            <form onSubmit={submit} className="mb-4 rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03] md:p-5">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(220px,1fr)_minmax(220px,1fr)]">
                 <Field label="پروژه" required>
                   <select
                     value={form.projectId}
@@ -1082,7 +1045,7 @@ export default function SupplyRequestPage() {
                 </Field>
               </div>
 
-              <div className="mt-3 flex flex-wrap items-end gap-2">
+              <div className="mt-4 flex flex-col gap-3 border-t border-black/[0.07] pt-4 sm:flex-row sm:items-end sm:justify-end dark:border-white/10">
                 <div>
                   <div className={labelCls}>اسناد مرتبط</div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -1137,14 +1100,12 @@ export default function SupplyRequestPage() {
                     <img src="/images/icons/Uplod.svg" alt="" className="h-5 w-5 dark:invert" />
                   </button>
                 </div>
-                <div className="min-w-[240px] flex-1 md:flex-none">
-                  <label className="flex h-10 min-w-0 items-center gap-2">
-                    <span className="shrink-0 text-xs font-medium text-neutral-600 dark:text-neutral-300">ارسال درخواست تامین به:</span>
+                <Field label="ارسال درخواست تامین به" required={!!createRecipients.targetRoleKey} className="w-full sm:w-[28rem]">
                     <select
                       value={form.targetAssigneeUserId}
                       onChange={(event) => setField("targetAssigneeUserId", event.target.value)}
                       disabled={createRecipientsLoading || !createRecipients.targetRoleKey}
-                      className={`${inputCls} h-10 min-w-[180px]`}
+                      className={inputCls}
                     >
                       <option value="">
                         {createRecipientsLoading
@@ -1159,12 +1120,11 @@ export default function SupplyRequestPage() {
                         </option>
                       ))}
                     </select>
-                  </label>
-                </div>
+                </Field>
                 <button
                   type="submit"
                   disabled={saving || uploading}
-                  className="mr-auto grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-white/90"
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-neutral-900 text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-neutral-800 hover:shadow-md disabled:translate-y-0 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90"
                   title="ثبت"
                   aria-label="ثبت"
                 >
@@ -1464,7 +1424,6 @@ function SupplyRequestEditForm({ item, projects, busy, error, onSave, onCancel }
 
 export function SupplyRequestPreview({ item, projects, actionNote, setActionNote, actionBusy, actionError, onAction, onEdit, onSupplyActionsChanged, onClose }) {
   const { user } = useAuth();
-  const project = projects.find((row) => String(row.id) === String(item.projectId));
   const attachments = Array.isArray(item.attachments) ? item.attachments : [];
   const history = Array.isArray(item.historyJson) ? item.historyJson : [];
   const isRequester = Number(item.createdById) === Number(user?.id);
@@ -1482,10 +1441,6 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
   const canResubmitReturned = stepKey === "requester" && latestAction?.type === "returned" && canAct;
   const meta = item.workflowMeta || {};
   const [choice, setChoice] = useState("");
-  const [budgetCodeDraft, setBudgetCodeDraft] = useState(item.budgetCode || "");
-  const [baseBudget, setBaseBudget] = useState("");
-  const [workflowBudgetItems, setWorkflowBudgetItems] = useState([]);
-  const [budgetLoading, setBudgetLoading] = useState(false);
   const [finalAmount, setFinalAmount] = useState(formatMoney(meta.finalAmount ?? item.amount ?? ""));
   const [actionText, setActionText] = useState(meta.actionText || "");
   const [deadlineDate, setDeadlineDate] = useState(meta.deadlineDate || "");
@@ -1500,7 +1455,6 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
   useEffect(() => {
     setIsEditing(!!item.__editing);
     setChoice("");
-    setBudgetCodeDraft(item.budgetCode || "");
     setFinalAmount(formatMoney(item.workflowMeta?.finalAmount ?? item.amount ?? ""));
     setActionText(item.workflowMeta?.actionText || "");
     setDeadlineDate(item.workflowMeta?.deadlineDate || "");
@@ -1552,47 +1506,6 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
   }, [isRequester, item?.id, user?.id]);
 
   useEffect(() => {
-    let cancelled = false;
-    setBaseBudget("");
-    setWorkflowBudgetItems([]);
-    if (!item.projectId) return undefined;
-    setBudgetLoading(true);
-    fetch(`/api/cost-breakdown?project_id=${encodeURIComponent(item.projectId)}`, { credentials: "include" })
-      .then((response) => (response.ok ? response.json() : { items: [] }))
-      .then((data) => {
-        if (cancelled) return;
-        const rows = Array.isArray(data?.items) ? data.items : [];
-        const projectCode = normalizeProjectCode(project?.code || item.projectCode || "");
-        const byCode = new Map();
-        rows.forEach((row) => {
-          const code = budgetCodeForProject(row?.budgetCode ?? row?.budget_code ?? row?.code, projectCode);
-          if (!code) return;
-          const name = row?.budgetName ?? row?.budget_name ?? row?.name ?? row?.center_desc ?? row?.description ?? "";
-          if (!byCode.has(code)) byCode.set(code, { code, name });
-        });
-        if (budgetCodeDraft && !byCode.has(budgetCodeDraft)) byCode.set(budgetCodeDraft, { code: budgetCodeDraft, name: "" });
-        setWorkflowBudgetItems(Array.from(byCode.values()).sort((a, b) => a.code.localeCompare(b.code, "fa", { numeric: true })));
-        if (!budgetCodeDraft) return;
-        const target = normalizeBudgetCode(budgetCodeDraft);
-        const match = rows.find((row) => {
-          const rawCode = row?.budgetCode ?? row?.budget_code ?? row?.code;
-          return normalizeBudgetCode(rawCode) === target || budgetCodeForProject(rawCode, projectCode) === target;
-        });
-        const value = match?.baseBudget ?? match?.base_budget ?? "";
-        setBaseBudget(value === "" || value == null ? "" : formatMoney(value));
-      })
-      .catch(() => {
-        if (!cancelled) setBaseBudget("");
-      })
-      .finally(() => {
-        if (!cancelled) setBudgetLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [budgetCodeDraft, item.projectCode, item.projectId, project?.code]);
-
-  useEffect(() => {
     if (!ccOpen || ccUsers.length || ccLoading) return undefined;
     let cancelled = false;
     setCcLoading(true);
@@ -1615,9 +1528,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
   const submitSelectedAction = () => {
     if (!choice || actionBusy) return;
     const payload =
-      stepKey === "project_control"
-        ? { budgetCode: budgetCodeDraft }
-        : stepKey === "project_manager"
+      stepKey === "project_manager"
           ? {
               finalAmount: parseMoney(finalAmount),
               actionText,
@@ -1631,9 +1542,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
   const reviewSectionTitle =
     stepKey === "project_manager"
       ? "بررسی نهایی(مدیر پروژه)"
-      : stepKey === "project_control"
-        ? `بررسی اولیه (${STEP_LABELS[stepKey] || "مرحله جاری"})`
-        : stepKey === "commercial"
+      : stepKey === "commercial"
           ? "اقدامات تامین"
           : `بررسی (${STEP_LABELS[stepKey] || "مرحله جاری"})`;
   const noteRequired = ["return", "reject"].includes(choice);
@@ -1641,8 +1550,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
     !choice ||
         (noteRequired && !actionNote.trim()) ||
     (choice === "approve" &&
-      ((stepKey === "project_control" && !budgetCodeDraft) ||
-        (stepKey === "project_manager" && (parseMoney(finalAmount) <= 0 || !targetAssigneeUserId)) ||
+      ((stepKey === "project_manager" && (parseMoney(finalAmount) <= 0 || !targetAssigneeUserId)) ||
         (targetRequired && !targetAssigneeUserId)));
 
   const toggleCcUser = (id) => {
@@ -1707,45 +1615,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                 {isRequester && <SupplyActionHistory actions={commercialActions} loading={commercialActionsLoading} />}
 
                 {canAct ? (
-                  stepKey === "project_control" ? (
-                    <>
-                      <PreviewSection title={reviewSectionTitle}>
-                        <div className="space-y-3 py-4">
-                          <div className="grid gap-3 md:grid-cols-3">
-                            <Field label="کد بودجه" labelClassName={budgetLabelCls}>
-                              <select dir="ltr" value={budgetCodeDraft} onChange={(event) => setBudgetCodeDraft(event.target.value)} className={inputCls}>
-                                <option value="">انتخاب کنید</option>
-                                {workflowBudgetItems.map((row) => (
-                                  <option key={row.code} value={row.code}>
-                                    {row.code}
-                                  </option>
-                                ))}
-                              </select>
-                            </Field>
-                            <ReadOnlyBox label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFaDigits(baseBudget) : "—"} ltr labelClassName={budgetLabelCls} />
-                            <ReadOnlyBox label="باقی مانده نقدینگی تخصیص یافته" value="—" ltr labelClassName={budgetLabelCls} />
-                          </div>
-                          <div className="rounded-2xl bg-neutral-100 p-3 dark:bg-white/5">
-                            <div className="space-y-2">
-                            <ActionOptionRow checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy}>
-                              <TargetAssigneePicker
-                                targetRoleKey={nextRecipients.targetRoleKey}
-                                users={nextRecipients.users}
-                                loading={nextRecipientsLoading}
-                                value={targetAssigneeUserId}
-                                onChange={setTargetAssigneeUserId}
-                                inline
-                                disabled={!choice || choice !== "approve"}
-                              />
-                            </ActionOptionRow>
-                            <ActionOptionRow checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت به درخواست کننده" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
-                            </div>
-                          </div>
-                          <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={actionSubmitDisabled} onSubmit={submitSelectedAction} />
-                        </div>
-                      </PreviewSection>
-                    </>
-                  ) : stepKey === "project_manager" ? (
+                  stepKey === "project_manager" ? (
                     <>
                       <PreviewSection title={reviewSectionTitle}>
                         <div className="space-y-3 py-4">
@@ -1761,9 +1631,8 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                               <div className="flex h-11 items-center rounded-xl border border-black/10 bg-neutral-50 px-3 text-sm text-neutral-500 dark:border-white/10 dark:bg-white/5 dark:text-neutral-300">—</div>
                             </div>
                           </div>
-                          <div className="grid gap-3 md:grid-cols-3">
+                          <div className="grid gap-3 md:grid-cols-2">
                             <ReadOnlyBox label="کد بودجه" value={item.budgetCode || "—"} ltr labelClassName={budgetLabelCls} />
-                            <ReadOnlyBox label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFaDigits(baseBudget) : "—"} ltr labelClassName={budgetLabelCls} />
                             <ReadOnlyBox label="باقی مانده نقدینگی تخصیص یافته" value="—" ltr labelClassName={budgetLabelCls} />
                           </div>
                           <div className="grid gap-3 md:grid-cols-2">
@@ -2131,7 +2000,6 @@ function SupplyActionHistory({ actions, loading }) {
 
 const SUPPLY_WORKFLOW_STEPS = [
   { key: "requester", label: "ثبت درخواست", emptyLabel: "ثبت درخواست" },
-  { key: "project_control", label: "بررسی اولیه (واحد برنامه ریزی)" },
   { key: "project_manager", label: "بررسی نهایی (مدیریت پروژه)" },
   { key: "commercial", label: "ارسال به کارشناس (واحد تامین)" },
 ];
