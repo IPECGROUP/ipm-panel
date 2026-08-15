@@ -708,8 +708,9 @@ export default function SupplyRequestPage() {
         setItems((prev) => prev.map((row) => (String(row.id) === String(nextItem.id) ? nextItem : row)));
       }
       setActionNote("");
+      const actionMessage = workflowAction === "approve" ? "تایید شد." : workflowAction === "return" ? "برگشت داده شد." : "رد شد.";
       setSubmitNotice({
-        message: `در تاریخ ${toFaDigits(normalizeDigits(new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())))} ساعت ${toFaDigits(normalizeDigits(new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date())))} توسط ${user?.name || user?.username || "کاربر"} ذخیره شد.`,
+        message: `در تاریخ ${toFaDigits(normalizeDigits(new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())))} ساعت ${toFaDigits(normalizeDigits(new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date())))} توسط ${user?.name || user?.username || "کاربر"} ${actionMessage}`,
       });
       await loadItems();
     } catch (ex) {
