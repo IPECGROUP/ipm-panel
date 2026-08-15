@@ -573,17 +573,6 @@ function RequestInfoRow({ label, value, ltr = false }) {
   );
 }
 
-function openSupplyActionsPdf(item) {
-  const actions = (Array.isArray(item?.actions) ? item.actions : []).filter((action) => !action?.isNew);
-  const rows = actions.map((action, index) => `<tr><td>${index + 1}</td><td>${escapeHtml(formatDate(action.date))}</td><td>${escapeHtml(action.description || "—")}</td><td>${escapeHtml(({ in_progress: "در حال اقدام", done: "انجام شد", canceled: "لغو شد" })[action.status] || "—")}</td></tr>`).join("");
-  const popup = window.open("", "_blank", "width=1000,height=760");
-  if (!popup) return;
-  popup.document.write(`<!doctype html><html dir="rtl"><head><meta charset="utf-8"/><title>گزارش اقدامات تامین</title><style>body{font-family:Tahoma,Arial,sans-serif;margin:32px;color:#17212b}.toolbar{margin-bottom:20px}.toolbar button{border:0;border-radius:8px;background:#17212b;color:#fff;padding:9px 16px;font-weight:700}h1{font-size:20px}p{color:#5e6b76}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #dbe2e8;padding:10px;text-align:right;font-size:13px}th{background:#f3f6f8}@media print{.toolbar{display:none}body{margin:0}}</style></head><body><div class="toolbar"><button onclick="window.print()">چاپ / ذخیره PDF</button></div><h1>گزارش اقدامات تامین</h1><p>درخواست: ${escapeHtml(item?.serial || "—")} · ${escapeHtml(item?.title || "—")}</p><table><thead><tr><th>ردیف</th><th>تاریخ</th><th>شرح اقدام</th><th>وضعیت</th></tr></thead><tbody>${rows || "<tr><td colspan='4'>اقدامی ثبت نشده است.</td></tr>"}</tbody></table></body></html>`);
-  popup.document.close();
-}
-
-function escapeHtml(value) { return String(value ?? "").replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char])); }
-
 function ActionsGrid({ item, editingIds, savingIds, uploadingIds, onPatch, onPersist, onEdit, onDelete, onOpenUpload, onOpenFiles }) {
   const actions = Array.isArray(item?.actions) ? item.actions : [];
   const requestId = item?.id;
@@ -594,11 +583,6 @@ function ActionsGrid({ item, editingIds, savingIds, uploadingIds, onPatch, onPer
 
   return (
     <div className="mt-5">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h3 className="text-sm font-bold">سوابق کارهای انجام شده</h3>
-        <button type="button" onClick={() => openSupplyActionsPdf(item)} className="inline-flex h-9 items-center gap-2 rounded-lg border border-black/10 px-3 text-xs font-semibold transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10" title="مشاهده PDF" aria-label="مشاهده PDF"><img src="/images/icons/print.svg" alt="" className="h-4 w-4 dark:invert" /><span>مشاهده PDF</span></button>
-      </div>
-
       <div className="relative">
         {savedActions.length === 0 && !draftAction ? <div className="rounded-2xl border border-dashed border-black/10 py-8 text-center text-xs text-neutral-500 dark:border-white/10">هنوز اقدامی ثبت نشده است.</div> : null}
         {savedActions.map((action, index) => (
@@ -677,7 +661,7 @@ function ActionRow({ index, requestId, requestDate, action, editingIds, savingId
           />
           {action.isNew || action.status === "in_progress" ? (
             <select value={action.status || "in_progress"} onChange={(event) => onPatch(requestId, action.id, { status: event.target.value })} className={inputCls}>
-              <option value="in_progress">وضعیت</option>
+              <option value="in_progress">در حال اقدام</option>
               <option value="done">انجام شد</option>
               <option value="canceled">لغو شد</option>
             </select>
@@ -730,7 +714,7 @@ function ActionRow({ index, requestId, requestDate, action, editingIds, savingId
       <td className="border-b border-neutral-300 px-2 dark:border-neutral-700">
         {editable && (action.isNew || action.status === "in_progress") ? (
           <select value={action.status || "in_progress"} onChange={(event) => patchAndPersist({ status: event.target.value })} className={inputCls}>
-            <option value="in_progress">وضعیت</option>
+            <option value="in_progress">در حال اقدام</option>
             <option value="done">انجام شد</option>
             <option value="canceled">لغو شد</option>
           </select>

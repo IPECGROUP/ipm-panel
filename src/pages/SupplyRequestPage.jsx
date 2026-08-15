@@ -51,6 +51,16 @@ function toFaDigits(value = "") {
   return String(value ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
 }
 
+function escapeSupplyPdfHtml(value = "") {
+  return String(value ?? "").replace(/[&<>'"]/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;",
+  })[char]);
+}
+
 function normalizeDigits(value = "") {
   return toEnglishDigits(String(value ?? "")).replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660));
 }
@@ -1323,6 +1333,7 @@ export default function SupplyRequestPage() {
         <SupplyRequestPreview
           item={selected}
           projects={projects}
+          letters={letters}
           actionNote={actionNote}
           setActionNote={setActionNote}
           actionBusy={actionBusy}
@@ -1429,7 +1440,7 @@ function SupplyRequestEditForm({ item, projects, busy, error, onSave, onCancel }
       </form>;
 }
 
-export function SupplyRequestPreview({ item, projects, actionNote, setActionNote, actionBusy, actionError, onAction, onEdit, onSupplyActionsChanged, onClose }) {
+export function SupplyRequestPreview({ item, projects, letters = [], actionNote, setActionNote, actionBusy, actionError, onAction, onEdit, onSupplyActionsChanged, onClose }) {
   const { user } = useAuth();
   const project = projects.find((row) => String(row.id) === String(item.projectId));
   const attachments = Array.isArray(item.attachments) ? item.attachments : [];
@@ -1522,7 +1533,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
   }, [canAct, item.id]);
 
   useEffect(() => {
-    if (!isRequester || !item?.id) {
+    if (!item?.id) {
       setCommercialActions([]);
       return undefined;
     }
@@ -1539,7 +1550,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
       .catch(() => { if (!cancelled) setCommercialActions([]); })
       .finally(() => { if (!cancelled) setCommercialActionsLoading(false); });
     return () => { cancelled = true; };
-  }, [isRequester, item?.id, user?.id]);
+  }, [item?.id, user?.id]);
 
   useEffect(() => {
     if (!ccOpen || ccUsers.length || ccLoading) return undefined;
@@ -1594,14 +1605,108 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
     setCcUserIds((prev) => (prev.includes(sid) ? prev.filter((x) => x !== sid) : [...prev, sid]));
   };
 
+  const openPdfPreview = () => {
+    const value = (content, fallback = "—") => escapeSupplyPdfHtml(String(content ?? "").trim() || fallback);
+    const amount = (content) => {
+      const number = Number(content || 0);
+      return number > 0 ? `${toFaDigits(number.toLocaleString("en-US"))} ریال` : "—";
+    };
+    const projectName = project ? projectLabel(project) : item.projectName || item.projectCode || "—";
+    const currentStage = SUPPLY_WORKFLOW_STEPS.find((step) => step.key === item.currentStepRoleKey);
+    const currentStatus = statusLabels[displayStatusOf(item)] || "—";
+    const printDate = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    const printTime = new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
+    const actionStatus = (status) => ({ in_progress: "در حال اقدام", done: "انجام شد", canceled: "لغو شد" })[status] || "—";
+    const workflowKind = (kind) => ({ active: "در حال بررسی", completed: "تکمیل شده", waiting: "در انتظار", returned: "برگشت داده شده", rejected: "رد شده" })[kind] || "—";
+    const historyType = (type) => ({ created: "ثبت درخواست", step_set: "ارسال به مرحله", step_clear: "پایان مرحله", approved: "تایید", returned: "برگشت", rejected: "رد" })[type] || type || "—";
+    const actionRows = [...commercialActions]
+      .filter((action) => !action?.isNew)
+      .sort((a, b) => String(a?.createdAt || a?.date || "").localeCompare(String(b?.createdAt || b?.date || "")))
+      .map((action, index) => {
+        const fileNames = (Array.isArray(action.files) ? action.files : []).map((file) => file.name || file.originalName || file.filename).filter(Boolean).join("، ");
+        return `<tr><td>${value(toFaDigits(index + 1))}</td><td>${value(toFaDigits(String(action.date || "—").replaceAll("-", "/")))}</td><td>${value(toFaDigits(action.time || "—"))}</td><td>${value(action.description || "بدون توضیح")}</td><td><span class="status status-${value(action.status, "in_progress")}">${value(actionStatus(action.status))}</span></td><td>${value(fileNames)}</td></tr>`;
+      }).join("");
+    const workflowRows = SUPPLY_WORKFLOW_STEPS.map((step, index) => {
+      const state = workflowStageState(step, history, item);
+      const actor = state.entry
+        ? (state.entry.type === "step_set" ? item.currentAssigneeName || "مسئول مرحله" : historyActorName(state.entry, item))
+        : "—";
+      const dateTime = state.entry ? `${formatHistoryDate(state.entry.at, state.entry)} - ${formatHistoryTime(state.entry.at, state.entry)}` : "—";
+      return `<tr><td>${value(toFaDigits(index + 1))}</td><td>${value(step.label)}</td><td><span class="status status-${value(state.kind)}">${value(workflowKind(state.kind))}</span></td><td>${value(actor)}</td><td>${value(dateTime)}</td></tr>`;
+    }).join("");
+    const historyRows = history.map((entry, index) => {
+      const role = STEP_LABELS[entry?.roleKey] || entry?.roleName || "—";
+      return `<tr><td>${value(toFaDigits(index + 1))}</td><td>${value(historyType(entry?.type || entry?.status))}</td><td>${value(role)}</td><td>${value(historyActorName(entry, item))}</td><td>${value(`${formatHistoryDate(entry?.at, entry)} - ${formatHistoryTime(entry?.at, entry)}`)}</td><td>${value(entry?.note || entry?.description)}</td></tr>`;
+    }).join("");
+    const requestFiles = attachments.map((file) => ({ ...file, sourceLabel: "پیوست درخواست" }));
+    const actionFiles = commercialActions.flatMap((action, actionIndex) => (Array.isArray(action?.files) ? action.files : []).map((file) => ({ ...file, sourceLabel: `پیوست اقدام ${toFaDigits(actionIndex + 1)}` })));
+    const allFiles = [...requestFiles, ...actionFiles];
+    const attachmentList = allFiles.map((file, index) => `<li><span class="number">${value(toFaDigits(index + 1))}</span><strong>${value(file.name || file.originalName || file.filename || `فایل ${toFaDigits(index + 1)}`)}</strong><span>${value(file.sourceLabel)}</span></li>`).join("");
+    const attachmentPreviewPages = allFiles.map((file, index) => {
+      const name = file.name || file.originalName || file.filename || `فایل ${toFaDigits(index + 1)}`;
+      const rawUrl = String(file.url || file.path || "");
+      let url = "";
+      try { url = rawUrl ? new URL(rawUrl, window.location.origin).href : ""; } catch { url = rawUrl; }
+      const type = String(file.type || file.mimeType || file.mime_type || "").toLowerCase();
+      const isImage = type.startsWith("image/") || /\.(png|jpe?g|webp|gif|bmp|svg)(?:\?|#|$)/i.test(rawUrl);
+      const isPdf = type.includes("pdf") || /\.pdf(?:\?|#|$)/i.test(rawUrl) || /\.pdf$/i.test(name);
+      const preview = !url
+        ? `<div class="no-preview">آدرس فایل برای پیش‌نمایش در دسترس نیست.</div>`
+        : isImage
+          ? `<img class="attachment-image" src="${value(url, "")}" alt="${value(name)}" />`
+          : isPdf
+            ? `<object class="attachment-pdf" data="${value(url, "")}#view=FitH&toolbar=1" type="application/pdf"><iframe title="${value(name)}" src="${value(url, "")}#view=FitH&toolbar=1"></iframe></object><a class="original-file" href="${value(url, "")}" target="_blank" rel="noreferrer">باز کردن فایل PDF اصلی</a>`
+            : `<div class="no-preview">پیش‌نمایش این نوع فایل در مرورگر پشتیبانی نمی‌شود.</div><a class="original-file" href="${value(url, "")}" target="_blank" rel="noreferrer">باز کردن فایل اصلی</a>`;
+      return `<article class="sheet attachment-page"><div class="attachment-header"><span>${value(file.sourceLabel)}</span><strong>${value(name)}</strong></div><div class="attachment-body">${preview}</div><footer class="footer"><span>سامانه فرآیندهای یکپارچه شرکت ایده پویان انرژی</span><span>پیوست ${value(toFaDigits(index + 1))}</span></footer></article>`;
+    }).join("");
+    const infoCard = (label, content, className = "") => `<div class="info-card ${className}"><div class="label">${value(label)}</div><div class="value">${value(content)}</div></div>`;
+    const relatedLetterIds = Array.isArray(item.relatedLetterIds) ? item.relatedLetterIds : [];
+    const relatedLetterMap = new Map((Array.isArray(letters) ? letters : []).map((letter) => [letterIdOf(letter), letter]));
+    const relatedLetters = relatedLetterIds.length ? relatedLetterIds.map((id) => {
+      const letter = relatedLetterMap.get(String(id));
+      return letter ? `${toFaDigits(letterNoOf(letter) || id)}${subjectOf(letter) ? ` - ${subjectOf(letter)}` : ""}` : toFaDigits(id);
+    }).join("، ") : "—";
+    const relatedLetterRows = relatedLetterIds.map((id, index) => {
+      const letter = relatedLetterMap.get(String(id));
+      return `<tr><td>${value(toFaDigits(index + 1))}</td><td>${value(toFaDigits(letter ? letterNoOf(letter) || id : id))}</td><td>${value(letter ? toFaDigits(letterDateOf(letter)) : "—")}</td><td>${value(letter ? subjectOf(letter) : "—")}</td><td>${value(letter ? fromToOf(letter) : "—")}</td></tr>`;
+    }).join("");
+    const copiedUsers = Array.isArray(item.ccUserIds) && item.ccUserIds.length ? item.ccUserIds.map(toFaDigits).join("، ") : "—";
+    const logoUrl = `${window.location.origin}/images/light%20mode.png`;
+    const fontRegularUrl = `${window.location.origin}/fonts/Vazir.woff2`;
+    const fontBoldUrl = `${window.location.origin}/fonts/Vazir-Bold.woff2`;
+    const html = `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>درخواست تامین ${value(item.serial, "")}</title><style>
+@font-face{font-family:Vazir;src:url("${fontRegularUrl}") format("woff2");font-weight:400}@font-face{font-family:Vazir;src:url("${fontBoldUrl}") format("woff2");font-weight:700}@page{size:A4;margin:8mm}*{box-sizing:border-box}body{margin:0;background:#eef1f4;color:#16202a;font-family:Vazir,Tahoma,Arial,sans-serif;font-size:9.5px;line-height:1.55}.toolbar{position:sticky;top:0;z-index:20;display:flex;justify-content:center;gap:8px;padding:12px;background:rgba(238,241,244,.96);border-bottom:1px solid #d7dde3}.toolbar button{min-height:38px;border:1px solid #17212b;border-radius:9px;padding:0 16px;background:#17212b;color:#fff;font:700 12px Vazir;cursor:pointer}.toolbar .secondary{background:#fff;color:#17212b}.sheet{width:210mm;min-height:297mm;margin:14px auto;padding:8mm;background:#fff;box-shadow:0 10px 35px rgba(20,30,40,.12)}.header{display:grid;grid-template-columns:44mm 1fr 44mm;align-items:center;min-height:21mm;border:1.5px solid #182531;border-radius:11px;overflow:hidden}.logo{display:flex;height:100%;align-items:center;justify-content:center;padding:4px;border-left:1px solid #d5dbe0}.logo img{width:38mm;max-height:18mm;object-fit:contain}.title{text-align:center;padding:5px 10px}.title h1{margin:0;font-size:17px}.title p{margin:2px 0 0;color:#61707d;font-size:9px}.document-meta{height:100%;display:grid;align-content:center;gap:3px;padding:5px 8px;border-right:1px solid #d5dbe0}.document-meta div{display:flex;justify-content:space-between;gap:6px}.document-meta span,.label{color:#6b7782}.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:6px}.summary-card{padding:5px 8px;border-radius:8px;background:#f4f7f9;border:1px solid #dce3e8}.summary-card .value{margin-top:2px;font-size:11px;font-weight:700}section{margin-top:7px;break-inside:avoid}.section-title{display:flex;align-items:center;gap:6px;margin:0 0 4px;font-size:10.5px}.section-title:before{content:"";width:3px;height:14px;border-radius:4px;background:#1b6c91}.info-grid{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #d8e0e6;border-radius:11px;overflow:hidden}.info-card{min-height:38px;padding:4px 7px;border-left:1px solid #e1e6ea;border-bottom:1px solid #e1e6ea;break-inside:avoid}.info-card:nth-child(3n){border-left:0}.info-card.full{grid-column:1/-1;border-left:0}.label{font-size:9px;font-weight:700}.value{margin-top:1px;font-weight:700;overflow-wrap:anywhere;white-space:pre-wrap}table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid #d7dfe5;border-radius:11px;overflow:hidden}th,td{padding:4px 6px;text-align:right;vertical-align:top;border-bottom:1px solid #e3e8ec;border-left:1px solid #e3e8ec;overflow-wrap:anywhere}th{background:#eef3f6;font-size:9px}td{font-size:9px}tr:last-child td{border-bottom:0}th:last-child,td:last-child{border-left:0}.status{display:inline-block;white-space:nowrap;padding:2px 6px;border-radius:99px;background:#e8eef2;color:#354653;font-size:8.5px;font-weight:700}.status-active,.status-in_progress{background:#e1f1fa;color:#126087}.status-completed,.status-done{background:#e3f5ea;color:#15713a}.status-rejected,.status-canceled{background:#fde7e7;color:#a32929}.status-returned{background:#fff0d8;color:#965b00}.attachment-list{margin:5px 0 0;padding:0;list-style:none;border:1px solid #d9e0e5;border-radius:8px;overflow:hidden}.attachment-list li{display:grid;grid-template-columns:9mm 1fr 34mm;gap:6px;padding:4px 8px;border-bottom:1px solid #e4e8eb}.attachment-list li:last-child{border-bottom:0}.attachment-list .number{color:#1b6c91;font-weight:700}.attachment-page{break-before:page;page-break-before:always;display:flex;flex-direction:column}.attachment-header{display:grid;grid-template-columns:35mm 1fr;gap:10px;padding:8px 11px;border:1px solid #d6dee4;border-radius:11px;background:#f4f7f9}.attachment-header span{color:#1b6c91;font-weight:700}.attachment-body{display:flex;min-height:235mm;flex:1;flex-direction:column;align-items:center;justify-content:center;margin-top:9px;overflow:hidden;border:1px solid #d9e0e5;border-radius:11px;background:#fafbfc}.attachment-image{display:block;width:100%;max-height:235mm;object-fit:contain}.attachment-pdf,.attachment-pdf iframe{display:block;width:100%;min-height:225mm;border:0}.original-file{margin:8px;border-radius:8px;background:#17212b;color:#fff;padding:6px 12px;text-decoration:none;font-weight:700}.no-preview{padding:25px;color:#697680;text-align:center}.footer{display:flex;justify-content:space-between;margin-top:13px;padding-top:7px;border-top:1px solid #d9e0e5;color:#75818b;font-size:8.5px}@media print{body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}.toolbar{display:none}.sheet{width:auto;min-height:0;margin:0;padding:0;box-shadow:none}.original-file{display:none}}@media screen and (max-width:900px){.sheet{width:calc(100% - 20px);min-height:auto;padding:18px}.header,.summary,.info-grid{grid-template-columns:1fr}.logo,.document-meta{border:0;border-bottom:1px solid #d5dbe0}.info-card,.info-card:nth-child(3n){border-left:0}}
+</style></head><body><div class="toolbar"><button onclick="window.print()">چاپ / ذخیره PDF</button><button class="secondary" onclick="window.close()">بستن پیش‌نمایش</button></div><article class="sheet"><header class="header"><div class="logo"><img src="${logoUrl}" alt="IPEC"/></div><div class="title"><h1>فرم درخواست تامین</h1><p>گزارش رسمی جزئیات، فرآیند و اقدامات درخواست</p></div><div class="document-meta"><div><span>شماره:</span><strong dir="ltr">${value(item.serial)}</strong></div><div><span>تاریخ:</span><strong>${value(toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/")))}</strong></div></div></header>
+<div class="summary"><div class="summary-card"><div class="label">وضعیت فعلی</div><div class="value">${value(currentStatus)}</div></div><div class="summary-card"><div class="label">مرحله فعلی</div><div class="value">${value(currentStage?.label || (["done", "completed"].includes(displayStatusOf(item)) ? "فرآیند تکمیل شده" : "—"))}</div></div><div class="summary-card"><div class="label">تاریخ تهیه گزارش</div><div class="value">${value(printDate)} · ${value(printTime)}</div></div></div>
+<section><h2 class="section-title">مشخصات درخواست</h2><div class="info-grid">${infoCard("درخواست‌کننده", item.createdByName || `کاربر #${toFaDigits(item.createdById)}`)}${infoCard("پروژه", projectName)}${infoCard("کد بودجه", item.budgetCode)}${infoCard("موضوع درخواست", item.title)}${infoCard("برآورد هزینه اولیه", amount(item.amount))}${infoCard("تاریخ نیاز", toFaDigits(String(item.needDateJalali || "—").replaceAll("-", "/")))}${infoCard("شرح درخواست", item.description, "full")}${infoCard("برآورد هزینه نهایی", amount(meta.finalAmount))}${infoCard("مهلت اقدام", toFaDigits(String(meta.deadlineDate || "—").replaceAll("-", "/")))}${infoCard("مسئول فعلی", item.currentAssigneeName)}${infoCard("اسناد مرتبط (شناسه)", relatedLetters)}${infoCard("رونوشت کاربران (شناسه)", copiedUsers)}${infoCard("شناسه سیستمی درخواست", toFaDigits(item.id))}</div></section>
+<section><h2 class="section-title">فرآیند تامین</h2><table><thead><tr><th>ردیف</th><th>مرحله</th><th>وضعیت</th><th>انجام‌دهنده</th><th>تاریخ و ساعت</th></tr></thead><tbody>${workflowRows}</tbody></table></section>
+<section><h2 class="section-title">سوابق کامل گردش درخواست</h2><table><thead><tr><th>ردیف</th><th>رویداد</th><th>مرحله</th><th>کاربر</th><th>تاریخ و ساعت</th><th>توضیح</th></tr></thead><tbody>${historyRows || '<tr><td colspan="6">سابقه‌ای ثبت نشده است.</td></tr>'}</tbody></table></section>
+<section><h2 class="section-title">اقدامات انجام‌شده در واحد تامین</h2><table><thead><tr><th>ردیف</th><th>تاریخ</th><th>ساعت</th><th>شرح اقدام / توضیح</th><th>در حال اقدام</th><th>پیوست‌ها</th></tr></thead><tbody>${actionRows || '<tr><td colspan="6">هنوز اقدامی ثبت نشده است.</td></tr>'}</tbody></table></section>
+<section><h2 class="section-title">اسناد مرتبط</h2><table><thead><tr><th>ردیف</th><th>شماره سند</th><th>تاریخ</th><th>موضوع</th><th>فرستنده / گیرنده</th></tr></thead><tbody>${relatedLetterRows || '<tr><td colspan="5">سند مرتبطی ثبت نشده است.</td></tr>'}</tbody></table></section>
+<section><h2 class="section-title">پیوست‌ها و اسناد مرتبط</h2><div class="summary-card">تعداد کل پیوست‌ها: <strong>${value(toFaDigits(allFiles.length))}</strong></div>${allFiles.length ? `<ul class="attachment-list">${attachmentList}</ul>` : ""}</section><footer class="footer"><span>سامانه فرآیندهای یکپارچه شرکت ایده پویان انرژی</span><span>درخواست تامین ${value(item.serial)}</span></footer></article>${attachmentPreviewPages}</body></html>`;
+    const pdfWindow = window.open("", "_blank", "width=1150,height=850");
+    if (!pdfWindow) {
+      alert("امکان باز کردن پیش‌نمایش وجود ندارد. لطفاً نمایش پنجره‌های بازشو را برای این سایت فعال کنید.");
+      return;
+    }
+    pdfWindow.document.open();
+    pdfWindow.document.write(html);
+    pdfWindow.document.close();
+    pdfWindow.focus();
+  };
+
   return createPortal(
     <div className="fixed inset-0 z-[9999]">
       <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
       <div className="absolute inset-0 flex items-center justify-center p-3 md:p-6">
         <div dir="rtl" className="flex h-[min(88vh,760px)] w-[min(1180px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
           <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3 dark:border-white/10">
-            <div className="min-w-0 text-base font-bold md:text-lg">
-              اقدامات تامین
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="text-base font-bold md:text-lg">اقدامات تامین</div>
+              <button type="button" onClick={openPdfPreview} className="inline-flex h-9 items-center gap-2 rounded-lg border border-black/10 px-3 text-xs font-semibold transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10" title="مشاهده PDF" aria-label="مشاهده PDF">
+                <img src="/images/icons/print.svg" alt="" className="h-4 w-4 dark:invert" />
+                <span>مشاهده PDF</span>
+              </button>
             </div>
             <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 dark:bg-white dark:text-black" aria-label="بستن" title="بستن">
               <img src="/images/icons/bastan.svg" alt="" className="h-5 w-5 invert dark:invert-0" />
@@ -1698,7 +1803,10 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                     </>
                   ) : stepKey === "commercial" ? (
                     <PreviewSection title={reviewSectionTitle}>
-                      <SupplyActionsPanel requestId={item.id} onChanged={onSupplyActionsChanged} />
+                      <SupplyActionsPanel requestId={item.id} onChanged={(nextItem) => {
+                        setCommercialActions(Array.isArray(nextItem?.actions) ? nextItem.actions : []);
+                        onSupplyActionsChanged?.(nextItem);
+                      }} />
                     </PreviewSection>
                   ) : canResubmitReturned ? (
                     <PreviewSection title="ارسال مجدد درخواست">
@@ -1869,9 +1977,9 @@ function SupplyUploadModal({ fileRef, files, uploading, onUpload, onRemove, onCl
 
 function PreviewSection({ title, children, flush = false }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-black/10 bg-neutral-50 shadow-sm dark:border-white/10 dark:bg-white/[0.05]">
+    <section className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900">
       <div className="border-b border-black/[0.08] bg-gradient-to-l from-neutral-50 to-white px-4 py-3 text-sm font-semibold text-neutral-800 dark:border-white/10 dark:from-white/[0.07] dark:to-white/[0.03] dark:text-neutral-100">{title}</div>
-      <div className={`divide-y divide-black/[0.06] bg-neutral-50 dark:divide-white/[0.08] dark:bg-white/[0.05] ${flush ? "" : "px-4"}`}>{children}</div>
+      <div className={`divide-y divide-black/[0.06] bg-white dark:divide-white/[0.08] dark:bg-neutral-900 ${flush ? "" : "px-4"}`}>{children}</div>
     </section>
   );
 }
