@@ -1047,7 +1047,7 @@ export default function SupplyRequestPage() {
                 </Field>
               </div>
 
-              <div className="mt-4 grid grid-cols-1 gap-3 border-t border-black/[0.07] pt-4 md:grid-cols-[minmax(180px,0.6fr)_minmax(360px,1.5fr)] dark:border-white/10">
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[minmax(180px,0.6fr)_minmax(360px,1.5fr)]">
                 <div className="flex flex-wrap items-end gap-3">
                 <div>
                   <div className={labelCls}>اسناد مرتبط</div>
@@ -1104,6 +1104,7 @@ export default function SupplyRequestPage() {
                   </button>
                 </div>
                 </div>
+                <div className="flex flex-col gap-3 border-t border-black/[0.07] pt-4 sm:flex-row sm:items-end sm:justify-end md:col-span-2 dark:border-white/10">
                 <Field label="ارسال درخواست تامین به" required={!!createRecipients.targetRoleKey} className="w-full sm:w-[20rem]">
                     <select
                       value={form.targetAssigneeUserId}
@@ -1128,12 +1129,13 @@ export default function SupplyRequestPage() {
                 <button
                   type="submit"
                   disabled={saving || uploading}
-                  className="md:col-start-2 grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-neutral-900 text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-neutral-800 hover:shadow-md disabled:translate-y-0 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90"
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-neutral-900 text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-neutral-800 hover:shadow-md disabled:translate-y-0 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90"
                   title="ثبت"
                   aria-label="ثبت"
                 >
                   <img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" />
                 </button>
+                </div>
               </div>
             </form>
           )}
@@ -1678,7 +1680,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                                 {nextRecipients.users.map((user) => <option key={user.id} value={user.id}>{user.name || user.username || user.email || `کاربر #${user.id}`}</option>)}
                               </select>
                             </ActionOptionRow>
-                            <ActionOptionRow kind="return" checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت به درخواست کننده" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
+                            <ActionOptionRow kind="return" checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت درخواست تامین" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
                             <ActionOptionRow kind="reject" checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست تامین" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
                           </div>
                           <div className="flex justify-end pt-2">
