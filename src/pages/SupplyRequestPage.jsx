@@ -1627,7 +1627,7 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                   </div>
                   <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-2 md:divide-x md:divide-y-0 dark:divide-white/10">
                     <PreviewRow compact label="پروژه" value={project ? projectLabel(project) : item.projectName || item.projectCode || "—"} />
-                    <PreviewRow compact label="کد بودجه" value={item.budgetCode || "—"} ltr />
+                    <PreviewRow compact label="کد بودجه" value={item.budgetCode || "—"} />
                   </div>
                   <PreviewRow label="موضوع" value={item.title || "—"} />
                   <PreviewRow label="شرح" value={item.description || "—"} />
@@ -2170,9 +2170,9 @@ function SupplyWorkflowTimeline({ history, item }) {
   );
 }
 
-function Field({ label, required, children, labelClassName }) {
+function Field({ label, required, children, labelClassName, className = "" }) {
   return (
-    <label className="block min-w-0">
+    <label className={`block min-w-0 ${className}`}>
       <div className={`${labelCls} ${labelClassName || ""}`}>
         {label}
         {required && <span className="mr-1 text-red-500">*</span>}
