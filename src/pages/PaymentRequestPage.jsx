@@ -1040,15 +1040,15 @@ function RequestFilterBar({ query, setQuery, quick, setQuick, ownership, setOwne
     <div>
       <div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">برچسب ها</div>
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" onClick={() => setOwnership(ownership === "mine" ? "" : "mine")} className={`h-9 rounded-full border px-4 text-xs transition ${ownership === "mine" ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>درخواست‌های من</button>
-        <button type="button" onClick={() => setOwnership(ownership === "incoming" ? "" : "incoming")} className={`h-9 rounded-full border px-4 text-xs transition ${ownership === "incoming" ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>موارد ارسال‌شده به من</button>
+        <button type="button" onClick={() => setOwnership(ownership === "mine" ? "" : "mine")} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(ownership === "mine")}`}>درخواست‌های من</button>
+        <button type="button" onClick={() => setOwnership(ownership === "incoming" ? "" : "incoming")} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(ownership === "incoming")}`}>موارد ارسال‌شده به من</button>
         {QUICK_FILTERS.map(([key, label]) => (
-          <button key={key} type="button" onClick={() => setQuick(quick === key ? "" : key)} className={`h-9 rounded-full border px-4 text-xs transition ${quick === key ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>{label}</button>
+          <button key={key} type="button" onClick={() => setQuick(quick === key ? "" : key)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(quick === key)}`}>{label}</button>
         ))}
         {visibleTags.map((tag) => {
           const id = String(tag?.id ?? "");
           const isActive = active.has(id);
-          return <button key={id} type="button" onClick={() => toggleActiveTag(id)} className={`h-9 rounded-full border px-4 text-xs transition ${isActive ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>{tagLabelOf(tag)}</button>;
+          return <button key={id} type="button" onClick={() => toggleActiveTag(id)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(isActive)}`}>{tagLabelOf(tag)}</button>;
         })}
         <button type="button" onClick={() => { setTagPickSearch(""); setTagPickOpen(true); }} className="grid h-9 w-9 place-items-center rounded-full border border-black/10 bg-white transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="انتخاب برچسب" title="انتخاب برچسب">
           <img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" />
@@ -1132,8 +1132,14 @@ function TagPicker({ tags, selectedIds, onToggle, query, setQuery, onClose }) {
 function Field({ label, required, children, className = "" }) { return <label className={`block text-xs text-neutral-600 dark:text-neutral-300 ${className}`}>{label}{required && <span className="mr-1 text-red-500">*</span>}<div className="mt-1">{children}</div></label>; }
 function ReadField({ label, value, ltr }) { return <Field label={label}><div dir={ltr ? "ltr" : "rtl"} className={`${inputClass} flex items-center ${ltr ? "justify-end" : ""}`}>{value || "—"}</div></Field>; }
 function MoneyInput({ value, onChange, className = "" }) { return <input dir="ltr" inputMode="numeric" className={`${inputClass} ${className}`} value={toFa(value)} onChange={(e) => onChange(money(e.target.value))} placeholder="۰" />; }
+function paymentTagClass(active) {
+  return active
+    ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900 dark:ring-white"
+    : "bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200/80 text-neutral-700 ring-neutral-200 hover:from-neutral-200 hover:to-neutral-300 dark:from-white/10 dark:via-white/[0.07] dark:to-white/[0.13] dark:text-neutral-200 dark:ring-white/10";
+}
+
 function StatusBadge({ status }) {
-  const colors = status === "approved" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" : status === "rejected" ? "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300" : status === "returned" ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" : "bg-neutral-100 text-neutral-700 dark:bg-white/10 dark:text-neutral-200";
+  const colors = status === "approved" ? "border border-emerald-200/90 bg-emerald-100 text-emerald-700 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-500/15 dark:text-emerald-300" : status === "rejected" ? "border border-red-200/90 bg-red-100 text-red-700 shadow-sm dark:border-red-400/20 dark:bg-red-500/15 dark:text-red-300" : status === "returned" ? "border border-amber-200/90 bg-amber-100 text-amber-700 shadow-sm dark:border-amber-400/20 dark:bg-amber-500/15 dark:text-amber-300" : "border border-neutral-200 bg-neutral-100 text-neutral-700 shadow-sm dark:border-white/10 dark:bg-white/10 dark:text-neutral-200";
   return <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs ${colors}`}>{STATUS_LABELS[status] || status || "—"}</span>;
 }
 
