@@ -1013,7 +1013,8 @@ export default function SupplyRequestPage() {
                 </Field>
               </div>
 
-              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[minmax(130px,0.55fr)_minmax(130px,0.55fr)_minmax(300px,1.5fr)]">
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[minmax(180px,0.6fr)_minmax(360px,1.5fr)]">
+                <div className="space-y-3">
                 <Field label="برآورد هزینه اولیه" required>
                   <div className="relative">
                     <input
@@ -1036,7 +1037,8 @@ export default function SupplyRequestPage() {
                     disableTodayAndPast
                   />
                 </Field>
-                <Field label="شرح درخواست">
+                </div>
+                <Field label="شرح درخواست" className="h-full">
                   <textarea
                     value={form.description}
                     onChange={(event) => setField("description", event.target.value)}
@@ -1045,7 +1047,8 @@ export default function SupplyRequestPage() {
                 </Field>
               </div>
 
-              <div className="mt-4 flex flex-col gap-3 border-t border-black/[0.07] pt-4 sm:flex-row sm:items-end sm:justify-end dark:border-white/10">
+              <div className="mt-4 grid grid-cols-1 gap-3 border-t border-black/[0.07] pt-4 md:grid-cols-[minmax(180px,0.6fr)_minmax(360px,1.5fr)] dark:border-white/10">
+                <div className="flex flex-wrap items-end gap-3">
                 <div>
                   <div className={labelCls}>اسناد مرتبط</div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -1100,6 +1103,7 @@ export default function SupplyRequestPage() {
                     <img src="/images/icons/Uplod.svg" alt="" className="h-5 w-5 dark:invert" />
                   </button>
                 </div>
+                </div>
                 <Field label="ارسال درخواست تامین به" required={!!createRecipients.targetRoleKey} className="w-full sm:w-[20rem]">
                     <select
                       value={form.targetAssigneeUserId}
@@ -1124,7 +1128,7 @@ export default function SupplyRequestPage() {
                 <button
                   type="submit"
                   disabled={saving || uploading}
-                  className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-neutral-900 text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-neutral-800 hover:shadow-md disabled:translate-y-0 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90"
+                  className="md:col-start-2 grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-neutral-900 text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-neutral-800 hover:shadow-md disabled:translate-y-0 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90"
                   title="ثبت"
                   aria-label="ثبت"
                 >
@@ -1668,17 +1672,16 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                             <ReadOnlyBox label="باقی مانده نقدینگی تخصیص یافته" value="—" ltr labelClassName={budgetLabelCls} />
                           </div>
                           <div className="grid gap-3 md:grid-cols-3">
-                            <ActionOptionRow kind="approve" checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy} />
-                            <ActionOptionRow kind="return" checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت به درخواست کننده" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
-                            <ActionOptionRow kind="reject" checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست تامین" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
-                          </div>
-                          <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-end sm:justify-end">
-                            <Field label="مسئول اقدام" className="w-full sm:w-[28rem]">
-                              <select value={targetAssigneeUserId} onChange={(event) => setTargetAssigneeUserId(event.target.value)} disabled={choice !== "approve" || actionBusy || nextRecipientsLoading || nextRecipients.targetRoleKey !== "commercial"} className={inputCls}>
+                            <ActionOptionRow kind="approve" checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy}>
+                              <select value={targetAssigneeUserId} onClick={(event) => event.stopPropagation()} onChange={(event) => setTargetAssigneeUserId(event.target.value)} disabled={choice !== "approve" || actionBusy || nextRecipientsLoading || nextRecipients.targetRoleKey !== "commercial"} className={`${inputCls} mt-2 h-9 text-center text-xs`}>
                                 <option value="">{nextRecipientsLoading ? "در حال دریافت..." : "انتخاب کاربر"}</option>
                                 {nextRecipients.users.map((user) => <option key={user.id} value={user.id}>{user.name || user.username || user.email || `کاربر #${user.id}`}</option>)}
                               </select>
-                            </Field>
+                            </ActionOptionRow>
+                            <ActionOptionRow kind="return" checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت به درخواست کننده" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
+                            <ActionOptionRow kind="reject" checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست تامین" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
+                          </div>
+                          <div className="flex justify-end pt-2">
                             <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={actionSubmitDisabled} onSubmit={submitSelectedAction} />
                           </div>
                         </div>
@@ -1883,17 +1886,14 @@ function ReadOnlyBox({ label, value, ltr, labelClassName }) {
   );
 }
 
-function ActionOptionRow({ kind, checked, disabled, onClick, label, showNote, noteValue, onNoteChange }) {
+function ActionOptionRow({ kind, checked, disabled, onClick, label, showNote, noteValue, onNoteChange, children }) {
   const appearance = {
-    approve: { icon: "✓", iconClass: "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300", ring: "border-sky-400 bg-sky-50/70 shadow-[0_0_0_2px_rgba(56,189,248,.12)] dark:bg-sky-500/10", description: "درخواست تامین تایید و برای مسئول اقدام ارسال می‌شود." },
-    return: { icon: "↶", iconClass: "bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300", ring: "border-amber-200 bg-amber-50/30 dark:border-amber-500/25 dark:bg-amber-500/5", description: "برای اصلاح به درخواست‌کننده بازگردانده می‌شود." },
-    reject: { icon: "×", iconClass: "bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300", ring: "border-rose-200 bg-rose-50/30 dark:border-rose-500/25 dark:bg-rose-500/5", description: "درخواست تامین رد و متوقف می‌شود." },
+    approve: { icon: "✓", iconClass: "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300", ring: "border-emerald-300 bg-emerald-50/50 shadow-[0_0_0_2px_rgba(52,211,153,.12)] dark:border-emerald-400/40 dark:bg-emerald-500/10", description: "تایید درخواست و ارسال به کارشناس تامین" },
+    return: { icon: "↶", iconClass: "bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300", ring: "border-amber-200 bg-amber-50/30 dark:border-amber-500/25 dark:bg-amber-500/5", description: "برگشت به درخواست کننده جهت اصلاح" },
+    reject: { icon: "×", iconClass: "bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300", ring: "border-rose-200 bg-rose-50/30 dark:border-rose-500/25 dark:bg-rose-500/5", description: "رد درخواست و پایان فرآیند" },
   }[kind] || {};
   return (
     <div role="button" tabIndex={disabled ? -1 : 0} onClick={() => !disabled && onClick()} onKeyDown={(event) => { if (!disabled && (event.key === "Enter" || event.key === " ")) onClick(); }} className={`relative min-h-[168px] cursor-pointer rounded-2xl border p-4 text-center transition ${checked ? appearance.ring : "border-black/10 bg-white hover:border-black/20 hover:shadow-sm dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-white/20"} ${disabled ? "cursor-not-allowed opacity-55" : ""}`}>
-      <span className={`absolute right-3 top-3 grid h-4 w-4 place-items-center rounded-full border ${checked ? "border-sky-500" : "border-neutral-300 dark:border-neutral-600"}`}>
-        {checked && <span className="h-2 w-2 rounded-full bg-sky-500" />}
-      </span>
       <div className={`mx-auto grid h-10 w-10 place-items-center rounded-full text-2xl font-bold ${appearance.iconClass}`}>{appearance.icon}</div>
       <div className="mt-2 text-sm font-bold text-neutral-800 dark:text-neutral-100">{label}</div>
       <p className="mt-1 min-h-8 text-[11px] leading-5 text-neutral-500 dark:text-neutral-400">{appearance.description}</p>
@@ -1907,6 +1907,7 @@ function ActionOptionRow({ kind, checked, disabled, onClick, label, showNote, no
           placeholder={kind === "reject" ? "دلیل رد را وارد کنید..." : "دلیل برگشت را وارد کنید..."}
         />
       )}
+      {children}
     </div>
   );
 }
