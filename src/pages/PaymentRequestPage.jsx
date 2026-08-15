@@ -1203,15 +1203,16 @@ function TenkhahPreview({ item, onClose }) {
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [onClose]);
-  const stageLabel = item.stage === "finance" ? "بررسی و شارژ مالی" : item.status === "charged" ? "تکمیل درخواست" : "تأیید مدیر پروژه";
+  const activeStep = item.status === "charged" ? 3 : item.stage === "finance" ? 2 : 1;
+  const steps = ["ثبت درخواست", "تأیید مدیر پروژه", "بررسی و شارژ مالی", "تکمیل درخواست"];
   return createPortal(<div className="fixed inset-0 z-[9999]" dir="rtl">
     <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
     <div className="absolute inset-0 flex items-center justify-center p-3 md:p-6">
-      <div className="flex w-[min(820px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
+      <div className="flex max-h-[min(88vh,720px)] w-[min(1040px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10"><div className="text-base font-bold">جزئیات درخواست تنخواه</div><button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 dark:bg-white dark:text-black" title="بستن" aria-label="بستن"><img src="/images/icons/bastan.svg" alt="" className="h-5 w-5 invert dark:invert-0" /></button></div>
-        <div className="grid gap-4 p-4 md:grid-cols-[220px_minmax(0,1fr)] md:p-5">
-          <section className="order-last overflow-hidden rounded-2xl border border-black/10 dark:border-white/10 md:order-first"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">فرآیند تنخواه</div><div className="space-y-4 p-4"><div className="flex items-center gap-3"><span className="grid h-7 w-7 place-items-center rounded-full border border-neutral-900 bg-neutral-900 text-xs font-bold text-white dark:border-white dark:bg-white dark:text-black">✓</span><span className="text-sm">ثبت درخواست</span></div><div className="flex items-center gap-3"><span className={`grid h-7 w-7 place-items-center rounded-full border text-xs font-bold ${item.status === "charged" ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-black" : "border-sky-500 bg-sky-500 text-white"}`}>{item.status === "charged" ? "✓" : "۲"}</span><span className="text-sm">{stageLabel}</span></div></div></section>
-          <section className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">جزئیات درخواست</div><div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10 sm:grid-cols-2 sm:divide-x sm:divide-y-0"><PreviewRow compact label="شماره درخواست" value={item.serial || "—"} ltr /><PreviewRow compact label="تاریخ درخواست" value={toFa(String(item.dateFa || "—").replaceAll("-", "/"))} /><PreviewRow compact label="پروژه" value={`${item.projectCode || ""}${item.projectName ? ` - ${item.projectName}` : ""}` || "—"} /><PreviewRow compact label="درخواست‌کننده" value={item.createdByName || "—"} /><PreviewRow compact label="مبلغ" value={`${toFa(money(item.amount) || "0")} ${item.currencyName || "ریال"}`} ltr /><PreviewRow compact label="وضعیت" value={<StatusBadge status={item.displayStatus || item.status} />} /></div></section>
+        <div className="grid min-h-0 gap-4 overflow-y-auto p-4 md:grid-cols-[260px_minmax(0,1fr)] md:p-5">
+          <section className="self-start overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">فرآیند تنخواه</div><ol className="px-4 py-3">{steps.map((label, index) => { const step = index + 1; const completed = step < activeStep || item.status === "charged"; const active = step === activeStep && item.status !== "charged"; return <li key={label} className="relative grid grid-cols-[minmax(0,1fr)_32px] gap-2 pb-3 last:pb-0"><div className={`min-w-0 ${active ? "rounded-2xl bg-sky-50 px-3 py-2.5 dark:bg-sky-500/10" : "px-3 py-1"}`}><div className={`text-sm font-bold ${active ? "text-sky-700 dark:text-sky-300" : completed ? "text-neutral-800 dark:text-neutral-100" : "text-neutral-400 dark:text-neutral-500"}`}>{label}</div><div className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">{active ? "مرحله جاری" : completed ? "مرحله انجام شده" : "در انتظار شروع مرحله"}</div></div><div className="relative flex justify-center">{index < steps.length - 1 && <span className={`absolute bottom-[-6px] top-8 w-px ${completed ? "bg-sky-200 dark:bg-sky-500/30" : "bg-neutral-200 dark:bg-white/10"}`} />}<span className={`relative z-10 grid h-7 w-7 place-items-center rounded-full border text-xs font-bold ${active ? "border-sky-500 bg-sky-500 text-white shadow-[0_0_0_5px_rgba(14,165,233,.13)]" : completed ? "border-neutral-300 bg-white text-neutral-600 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-200" : "border-neutral-300 bg-white text-neutral-400 dark:border-neutral-600 dark:bg-neutral-900"}`}>{completed ? "✓" : toFa(step)}</span></div></li>; })}</ol></section>
+          <div className="space-y-4"><section className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">جزئیات درخواست تنخواه</div><div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10 sm:grid-cols-2 sm:divide-x sm:divide-y-0"><PreviewRow compact label="شماره درخواست" value={item.serial || "—"} ltr /><PreviewRow compact label="تاریخ درخواست" value={toFa(String(item.dateFa || "—").replaceAll("-", "/"))} /><PreviewRow compact label="پروژه" value={`${item.projectCode || ""}${item.projectName ? ` - ${item.projectName}` : ""}` || "—"} /><PreviewRow compact label="درخواست‌کننده" value={item.createdByName || "—"} /><PreviewRow compact label="مبلغ" value={`${toFa(money(item.amount) || "0")} ${item.currencyName || "ریال"}`} ltr /><PreviewRow compact label="وضعیت" value={<StatusBadge status={item.displayStatus || item.status} />} /></div></section><section className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">اطلاعات تنخواه</div><div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10 sm:grid-cols-2 sm:divide-x sm:divide-y-0"><PreviewRow compact label="مانده ثبت‌نشده" value={toFa(money(item.unregisteredBalance) || "0")} ltr /><PreviewRow compact label="مانده تسویه‌نشده" value={toFa(money(item.unsettledBalance) || "0")} ltr /></div></section></div>
         </div>
       </div>
     </div>
@@ -1883,12 +1884,16 @@ function WorkflowPanel({
     return <PreviewSection title="نتیجه بررسی اولیه">
       <div className="space-y-3 py-4">
         <div className="grid gap-3 md:grid-cols-3">
-          <ActionOption kind="approve" checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست پرداخت" />
-          <ActionOption kind="return" checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت درخواست پرداخت" />
-          <ActionOption kind="reject" checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست پرداخت" />
+          <ActionOption kind="approve" checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست پرداخت">
+            <NextRecipientSelect recipients={nextRecipients} loading={nextRecipientsLoading} value={targetAssigneeUserId} onChange={setTargetAssigneeUserId} disabled={choice !== "approve" || actionBusy} compact />
+          </ActionOption>
+          <ActionOption kind="return" checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت درخواست پرداخت">
+            <input value={actionNote} onClick={(event) => event.stopPropagation()} onChange={(event) => setActionNote(event.target.value)} disabled={choice !== "return" || actionBusy} className={`${inputClass} mt-2 h-9 text-center text-xs`} placeholder="دلیل برگشت را وارد کنید..." />
+          </ActionOption>
+          <ActionOption kind="reject" checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست پرداخت">
+            <input value={actionNote} onClick={(event) => event.stopPropagation()} onChange={(event) => setActionNote(event.target.value)} disabled={choice !== "reject" || actionBusy} className={`${inputClass} mt-2 h-9 text-center text-xs`} placeholder="دلیل رد را وارد کنید..." />
+          </ActionOption>
         </div>
-        {["reject", "return"].includes(choice) && <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputClass} min-h-24 py-3`} placeholder="توضیح..." />}
-        <NextRecipientSelect recipients={nextRecipients} loading={nextRecipientsLoading} value={targetAssigneeUserId} onChange={setTargetAssigneeUserId} visible={choice === "approve"} />
         <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice || (targetRequired && !targetAssigneeUserId)} onSubmit={onSubmit} />
       </div>
     </PreviewSection>;
@@ -1907,7 +1912,7 @@ function WorkflowPanel({
   </PreviewSection>;
 }
 
-function ActionOption({ kind = "approve", checked, disabled, onClick, label }) {
+function ActionOption({ kind = "approve", checked, disabled, onClick, label, children }) {
   const appearance = {
     approve: { icon: "✓", iconClass: "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300", selected: "border-emerald-300 bg-emerald-50/60 shadow-[0_0_0_2px_rgba(52,211,153,.12)] dark:border-emerald-400/40 dark:bg-emerald-500/10", description: "تایید و ارسال به مرحله بعد" },
     return: { icon: "↶", iconClass: "bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300", selected: "border-amber-300 bg-amber-50/60 shadow-[0_0_0_2px_rgba(245,158,11,.12)] dark:border-amber-400/40 dark:bg-amber-500/10", description: "برگشت به درخواست کننده جهت اصلاح" },
@@ -1917,15 +1922,16 @@ function ActionOption({ kind = "approve", checked, disabled, onClick, label }) {
     <div className={`mx-auto grid h-10 w-10 place-items-center rounded-full text-2xl font-bold ${appearance.iconClass}`}>{appearance.icon}</div>
     <div className="mt-2 text-sm font-bold text-neutral-800 dark:text-neutral-100">{label}</div>
     <p className="mt-1 text-[11px] leading-5 text-neutral-500 dark:text-neutral-400">{appearance.description}</p>
+    {children && <div className="mt-2 text-right" onClick={(event) => event.stopPropagation()}>{children}</div>}
   </div>;
 }
 
-function NextRecipientSelect({ recipients, loading, value, onChange, visible = true }) {
+function NextRecipientSelect({ recipients, loading, value, onChange, visible = true, disabled = false, compact = false }) {
   if (!visible) return null;
   const targetRoleKey = recipients?.targetRoleKey;
   if (!targetRoleKey && !loading) return null;
   return <Field label="ارسال به کاربر مرحله بعد" required>
-    <select className={inputClass} value={value || ""} onChange={(event) => onChange(event.target.value)} disabled={loading || !targetRoleKey}>
+    <select className={`${inputClass} ${compact ? "h-9 text-center text-xs" : ""}`} value={value || ""} onChange={(event) => onChange(event.target.value)} disabled={disabled || loading || !targetRoleKey}>
       <option value="">{loading ? "در حال دریافت کاربران..." : "انتخاب کنید"}</option>
       {(recipients?.users || []).map((recipient) => <option key={recipient.id} value={recipient.id}>{recipient.name || recipient.username || recipient.email || `کاربر #${recipient.id}`}</option>)}
     </select>
