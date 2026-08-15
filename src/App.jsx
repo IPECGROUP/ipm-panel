@@ -110,8 +110,6 @@ export default function App() {
         <Route path="/letters" element={<LettersPage />} />
         <Route path="/quality-management" element={<QualityManagementPage />} />
 
-        <Route path="/test/editor" element={<TestEditorPage />} />
-
         {/* بودجه‌بندی */}
         <Route path="/budget/centers" element={<DefineBudgetCentersPage />} />
         <Route path="/budget-allocation" element={<BudgetAllocationPage />} />
