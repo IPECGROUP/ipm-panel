@@ -1445,7 +1445,6 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
   const [budgetCodeDraft, setBudgetCodeDraft] = useState(item.budgetCode || "");
   const [actionBudgetItems, setActionBudgetItems] = useState([]);
   const [finalAmount, setFinalAmount] = useState(formatMoney(meta.finalAmount ?? item.amount ?? ""));
-  const [actionText, setActionText] = useState(meta.actionText || "");
   const [deadlineDate, setDeadlineDate] = useState(meta.deadlineDate || "");
   const [ccOpen, setCcOpen] = useState(false);
   const [ccUsers, setCcUsers] = useState([]);
@@ -1460,7 +1459,6 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
     setChoice("");
     setBudgetCodeDraft(item.budgetCode || "");
     setFinalAmount(formatMoney(item.workflowMeta?.finalAmount ?? item.amount ?? ""));
-    setActionText(item.workflowMeta?.actionText || "");
     setDeadlineDate(item.workflowMeta?.deadlineDate || "");
     setCcUserIds(Array.isArray(item.ccUserIds) ? item.ccUserIds.map(String) : []);
     setTargetAssigneeUserId("");
@@ -1556,7 +1554,6 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
       stepKey === "project_manager"
           ? {
               finalAmount: parseMoney(finalAmount),
-              actionText,
               budgetCode: budgetCodeDraft,
             }
           : {};
@@ -1670,17 +1667,10 @@ export function SupplyRequestPreview({ item, projects, actionNote, setActionNote
                             </Field>
                             <ReadOnlyBox label="باقی مانده نقدینگی تخصیص یافته" value="—" ltr labelClassName={budgetLabelCls} />
                           </div>
-                          <div>
-                            <Field label="توضیح">
-                              <input value={actionText} onChange={(event) => setActionText(event.target.value)} className={inputCls} placeholder="توضیح..." />
-                            </Field>
-                          </div>
-                          <div className="rounded-2xl bg-neutral-100 p-3 dark:bg-white/5">
-                            <div className="space-y-2">
-                            <ActionOptionRow checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy} />
-                            <ActionOptionRow checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت به درخواست کننده" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
-                            <ActionOptionRow checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست تامین" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
-                            </div>
+                          <div className="grid gap-3 md:grid-cols-3">
+                            <ActionOptionRow kind="approve" checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست تامین" disabled={actionBusy} />
+                            <ActionOptionRow kind="return" checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت به درخواست کننده" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
+                            <ActionOptionRow kind="reject" checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست تامین" disabled={actionBusy} noteValue={actionNote} onNoteChange={setActionNote} showNote />
                           </div>
                           <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-end sm:justify-end">
                             <Field label="مسئول اقدام" className="w-full sm:w-[28rem]">
@@ -1893,32 +1883,30 @@ function ReadOnlyBox({ label, value, ltr, labelClassName }) {
   );
 }
 
-function ActionOption({ checked, disabled, onClick, label }) {
+function ActionOptionRow({ kind, checked, disabled, onClick, label, showNote, noteValue, onNoteChange }) {
+  const appearance = {
+    approve: { icon: "✓", iconClass: "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300", ring: "border-sky-400 bg-sky-50/70 shadow-[0_0_0_2px_rgba(56,189,248,.12)] dark:bg-sky-500/10", description: "درخواست تامین تایید و برای مسئول اقدام ارسال می‌شود." },
+    return: { icon: "↶", iconClass: "bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300", ring: "border-amber-200 bg-amber-50/30 dark:border-amber-500/25 dark:bg-amber-500/5", description: "برای اصلاح به درخواست‌کننده بازگردانده می‌شود." },
+    reject: { icon: "×", iconClass: "bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300", ring: "border-rose-200 bg-rose-50/30 dark:border-rose-500/25 dark:bg-rose-500/5", description: "درخواست تامین رد و متوقف می‌شود." },
+  }[kind] || {};
   return (
-    <button type="button" disabled={disabled} onClick={onClick} className="inline-flex h-8 shrink-0 items-center justify-end gap-2 rounded-lg px-1 text-sm text-neutral-800 transition hover:text-black disabled:cursor-not-allowed disabled:opacity-45 dark:text-neutral-100 dark:hover:text-white">
-      <span className={`grid h-4 w-4 place-items-center rounded-full border ${checked ? "border-black dark:border-white" : "border-neutral-400 dark:border-neutral-500"}`}>
-        {checked ? <span className="h-2.5 w-2.5 rounded-full bg-black dark:bg-white" /> : null}
+    <div role="button" tabIndex={disabled ? -1 : 0} onClick={() => !disabled && onClick()} onKeyDown={(event) => { if (!disabled && (event.key === "Enter" || event.key === " ")) onClick(); }} className={`relative min-h-[168px] cursor-pointer rounded-2xl border p-4 text-center transition ${checked ? appearance.ring : "border-black/10 bg-white hover:border-black/20 hover:shadow-sm dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-white/20"} ${disabled ? "cursor-not-allowed opacity-55" : ""}`}>
+      <span className={`absolute right-3 top-3 grid h-4 w-4 place-items-center rounded-full border ${checked ? "border-sky-500" : "border-neutral-300 dark:border-neutral-600"}`}>
+        {checked && <span className="h-2 w-2 rounded-full bg-sky-500" />}
       </span>
-      <span>{label}</span>
-    </button>
-  );
-}
-
-function ActionOptionRow({ checked, disabled, onClick, label, showNote, noteValue, onNoteChange, children }) {
-  return (
-    <div className="grid grid-cols-1 items-center gap-2 md:grid-cols-[190px_minmax(180px,260px)]">
-      <ActionOption checked={checked} disabled={disabled} onClick={onClick} label={label} />
-      {children || (showNote ? (
+      <div className={`mx-auto grid h-10 w-10 place-items-center rounded-full text-2xl font-bold ${appearance.iconClass}`}>{appearance.icon}</div>
+      <div className="mt-2 text-sm font-bold text-neutral-800 dark:text-neutral-100">{label}</div>
+      <p className="mt-1 min-h-8 text-[11px] leading-5 text-neutral-500 dark:text-neutral-400">{appearance.description}</p>
+      {showNote && (
         <input
           value={checked ? noteValue : ""}
+          onClick={(event) => event.stopPropagation()}
           onChange={(event) => onNoteChange(event.target.value)}
           disabled={!checked || disabled}
-          className={`${inputCls} h-9 disabled:bg-neutral-50 disabled:text-transparent disabled:placeholder:text-neutral-300 dark:disabled:bg-white/5 dark:disabled:placeholder:text-neutral-600`}
-          placeholder="توضیح..."
+          className={`${inputCls} mt-2 h-9 text-center text-xs disabled:bg-neutral-50 disabled:text-transparent disabled:placeholder:text-neutral-300 dark:disabled:bg-white/5 dark:disabled:placeholder:text-neutral-600`}
+          placeholder={kind === "reject" ? "دلیل رد را وارد کنید..." : "دلیل برگشت را وارد کنید..."}
         />
-      ) : (
-        <div className="hidden md:block" />
-      ))}
+      )}
     </div>
   );
 }
