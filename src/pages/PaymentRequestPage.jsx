@@ -471,7 +471,7 @@ export default function PaymentRequestPage() {
     }
     let cancelled = false;
     setProjectLiquidityLoading(true);
-    api("/liquidity-allocations")
+    api(`/liquidity-allocations?projectId=${encodeURIComponent(form.projectId)}`)
       .then((data) => {
         if (cancelled) return;
         const key = String(form.projectId);
@@ -1191,7 +1191,7 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
       return;
     }
     let cancelled = false;
-    fetch("/api/liquidity-allocations", {
+    fetch(`/api/liquidity-allocations?projectId=${encodeURIComponent(item.projectId)}`, {
       credentials: "include",
       headers: userId != null ? { "x-user-id": String(userId) } : {},
     })

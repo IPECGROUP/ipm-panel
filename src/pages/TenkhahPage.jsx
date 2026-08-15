@@ -206,7 +206,7 @@ export default function TenkhahPage({ embedded = false }) {
     setForm((x) => ({ ...x, projectId }));
     if (!projectId) { setProjectBalances({ unregisteredBalance: "0", unsettledBalance: "0", receivedAmount: "0" }); setProjectLiquidity("0"); return; }
     try {
-      const [balances, liquidity] = await Promise.all([api(`/tenkhah?projectBalances=${encodeURIComponent(projectId)}`), api("/liquidity-allocations")]);
+      const [balances, liquidity] = await Promise.all([api(`/tenkhah?projectBalances=${encodeURIComponent(projectId)}`), api(`/liquidity-allocations?projectId=${encodeURIComponent(projectId)}`)]);
       setProjectBalances({ unregisteredBalance: balances.unregisteredBalance || "0", unsettledBalance: balances.unsettledBalance || "0", receivedAmount: balances.receivedAmount || "0" });
       const allocated = BigInt(liquidity.allocations?.[String(projectId)] || "0");
       const committed = BigInt(liquidity.committed?.[String(projectId)] || "0");
