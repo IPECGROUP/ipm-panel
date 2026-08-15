@@ -1021,15 +1021,6 @@ export default function SupplyRequestPage() {
                     className={`${inputCls} min-h-11 resize-y py-3 leading-7`}
                   />
                 </Field>
-                <Field label="تاریخ نیاز">
-                  <JalaliPopupDatePicker
-                    value={form.needDateJalali}
-                    onChange={(value) => setField("needDateJalali", value)}
-                    buttonClassName={`${inputCls} flex items-center justify-between`}
-                    placeholder="انتخاب تاریخ"
-                    disableTodayAndPast
-                  />
-                </Field>
                 <Field label="برآورد هزینه اولیه" required>
                   <div className="relative">
                     <input
@@ -1042,6 +1033,15 @@ export default function SupplyRequestPage() {
                     />
                     <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-neutral-500 dark:text-neutral-400">ریال</span>
                   </div>
+                </Field>
+                <Field label="تاریخ نیاز">
+                  <JalaliPopupDatePicker
+                    value={form.needDateJalali}
+                    onChange={(value) => setField("needDateJalali", value)}
+                    buttonClassName={`${inputCls} flex items-center justify-between`}
+                    placeholder="انتخاب تاریخ"
+                    disableTodayAndPast
+                  />
                 </Field>
               </div>
 
@@ -1100,7 +1100,7 @@ export default function SupplyRequestPage() {
                     <img src="/images/icons/Uplod.svg" alt="" className="h-5 w-5 dark:invert" />
                   </button>
                 </div>
-                <Field label="ارسال درخواست تامین به" required={!!createRecipients.targetRoleKey} className="w-full sm:w-[20rem]">
+                <Field label="ارسال درخواست تامین به" required={!!createRecipients.targetRoleKey} className="w-full sm:w-[28rem]">
                     <select
                       value={form.targetAssigneeUserId}
                       onChange={(event) => setField("targetAssigneeUserId", event.target.value)}
@@ -1876,9 +1876,9 @@ function PreviewSection({ title, children, flush = false }) {
 
 function PreviewRow({ label, value, ltr, compact = false }) {
   return (
-    <div className={`min-w-0 ${compact ? "grid grid-cols-[minmax(86px,0.65fr)_minmax(0,1.35fr)] items-center gap-3 px-3 py-3 text-xs" : "grid grid-cols-[132px_minmax(0,1fr)] items-center gap-3 px-4 py-3 text-sm"}`}>
-      <div className={`font-medium text-neutral-500 dark:text-neutral-400 ${compact ? "whitespace-nowrap" : ""}`}>{label}</div>
-      <div dir={ltr ? "ltr" : "rtl"} className={`min-w-0 break-words rounded-lg bg-neutral-50 px-3 py-2 font-medium text-neutral-800 dark:bg-white/[0.05] dark:text-neutral-100 ${ltr ? "text-left" : "text-right"}`}>{value}</div>
+    <div className={`min-w-0 ${compact ? "grid grid-cols-[minmax(74px,auto)_minmax(0,1fr)] items-center gap-1.5 px-3 py-3 text-xs" : "grid grid-cols-[104px_minmax(0,1fr)] items-center gap-2 px-4 py-3 text-sm"}`}>
+      <div className={`font-medium text-neutral-500 dark:text-neutral-400 ${compact ? "whitespace-nowrap" : ""}`}>{label}:</div>
+      <div dir={ltr ? "ltr" : "rtl"} className={`min-w-0 break-words rounded-lg bg-neutral-50 px-2.5 py-2 font-medium text-neutral-800 dark:bg-white/[0.05] dark:text-neutral-100 ${ltr ? "text-left" : "text-right"}`}>{value}</div>
     </div>
   );
 }
