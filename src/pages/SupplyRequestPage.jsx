@@ -201,16 +201,16 @@ function clientRegistrationInfo() {
 function statusBadgeClass(status) {
   return (
     status === "done" || status === "completed"
-      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+      ? "border border-emerald-200/90 bg-emerald-100 text-emerald-700 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-500/15 dark:text-emerald-300"
       : status === "canceled" || status === "cancelled" || status === "rejected"
-        ? "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300"
+        ? "border border-red-200/90 bg-red-100 text-red-700 shadow-sm dark:border-red-400/20 dark:bg-red-500/15 dark:text-red-300"
         : status === "in_progress"
-          ? "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300"
+          ? "border border-sky-200/90 bg-sky-100 text-sky-700 shadow-sm dark:border-sky-400/20 dark:bg-sky-500/15 dark:text-sky-300"
           : status === "final_approval" || status === "approved"
-            ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+            ? "border border-amber-200/90 bg-amber-100 text-amber-700 shadow-sm dark:border-amber-400/20 dark:bg-amber-500/15 dark:text-amber-300"
             : status === "returned"
-          ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
-          : "bg-neutral-100 text-neutral-700 dark:bg-white/10 dark:text-neutral-200"
+          ? "border border-amber-200/90 bg-amber-100 text-amber-700 shadow-sm dark:border-amber-400/20 dark:bg-amber-500/15 dark:text-amber-300"
+          : "border border-neutral-200 bg-neutral-100 text-neutral-700 shadow-sm dark:border-white/10 dark:bg-white/10 dark:text-neutral-200"
   );
 }
 
@@ -1013,7 +1013,7 @@ export default function SupplyRequestPage() {
                 </Field>
               </div>
 
-              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[minmax(260px,1.4fr)_minmax(190px,0.8fr)_minmax(150px,0.7fr)]">
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[minmax(130px,0.55fr)_minmax(130px,0.55fr)_minmax(300px,1.5fr)]">
                 <Field label="برآورد هزینه اولیه" required>
                   <div className="relative">
                     <input
@@ -1040,7 +1040,7 @@ export default function SupplyRequestPage() {
                   <textarea
                     value={form.description}
                     onChange={(event) => setField("description", event.target.value)}
-                    className={`${inputCls} min-h-11 resize-y py-3 leading-7`}
+                    className={`${inputCls} min-h-24 resize-y py-3 leading-7`}
                   />
                 </Field>
               </div>
@@ -1100,7 +1100,7 @@ export default function SupplyRequestPage() {
                     <img src="/images/icons/Uplod.svg" alt="" className="h-5 w-5 dark:invert" />
                   </button>
                 </div>
-                <Field label="ارسال درخواست تامین به" required={!!createRecipients.targetRoleKey} className="w-full sm:w-[28rem]">
+                <Field label="ارسال درخواست تامین به" required={!!createRecipients.targetRoleKey} className="w-full sm:w-[30rem]">
                     <select
                       value={form.targetAssigneeUserId}
                       onChange={(event) => setField("targetAssigneeUserId", event.target.value)}
