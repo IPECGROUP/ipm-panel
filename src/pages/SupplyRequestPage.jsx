@@ -1424,6 +1424,7 @@ function SupplyRequestEditForm({ item, projects, busy, error, onSave, onCancel }
 
 export function SupplyRequestPreview({ item, projects, actionNote, setActionNote, actionBusy, actionError, onAction, onEdit, onSupplyActionsChanged, onClose }) {
   const { user } = useAuth();
+  const project = projects.find((row) => String(row.id) === String(item.projectId));
   const attachments = Array.isArray(item.attachments) ? item.attachments : [];
   const history = Array.isArray(item.historyJson) ? item.historyJson : [];
   const isRequester = Number(item.createdById) === Number(user?.id);
