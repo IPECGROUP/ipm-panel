@@ -158,6 +158,9 @@ export default function LiquidityAllocationPage() {
     return (negative ? -1 : 1) * (Number(digits) || 0);
   };
   const displayMoney = (value) => value ? Number(value).toLocaleString("en-US") : "—";
+  const reserveOf = (allocation) => allocation?.reserveAmount != null
+    ? money(allocation.reserveAmount)
+    : money(allocation?.availableAmount) - money(allocation?.allocatedAmount);
   const projectAllocationTotal = useMemo(() => rows.reduce((total, row) => total + money(row.newAllocation), 0), [rows]);
   const newAllocationTotal = projectAllocationTotal;
   const availableAmount = money(form.amount);
@@ -488,7 +491,7 @@ export default function LiquidityAllocationPage() {
               {[
                 ["مبلغ قابل تخصیص", money(previewAllocation.availableAmount), "text-neutral-900 dark:text-white"],
                 ["جمع مبلغ تخصیص", money(previewAllocation.allocatedAmount), "text-sky-700 dark:text-sky-300"],
-                ["ذخیره احتیاطی", money(previewAllocation.availableAmount) - money(previewAllocation.allocatedAmount), "text-amber-700 dark:text-amber-300"],
+                ["ذخیره احتیاطی", reserveOf(previewAllocation), "text-amber-700 dark:text-amber-300"],
               ].map(([label, value, color]) => <div key={label} className="rounded-2xl border border-black/10 bg-neutral-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.04]"><div className="text-xs text-neutral-500 dark:text-neutral-400">{label}</div><div className={`mt-1 text-base font-bold ${color}`}>{displayMoney(value)} <span className="text-xs font-normal">ریال</span></div></div>)}
             </div>
             <div className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
@@ -516,7 +519,7 @@ export default function LiquidityAllocationPage() {
                   <td className={tableCellClass}>{displayMoney(money(previewAllocation.availableAmount))}</td>
                   <td className={tableCellClass}>{displayMoney(money(previewAllocation.availableAmount))}</td>
                   <td className={tableCellClass}>{displayMoney(money(previewAllocation.allocatedAmount))}</td>
-                  <td className={tableCellClass}>{displayMoney(money(previewAllocation.availableAmount) - money(previewAllocation.allocatedAmount))}</td>
+                  <td className={tableCellClass}>{displayMoney(reserveOf(previewAllocation))}</td>
                 </tr>
               </tbody>
             </table>
