@@ -15,7 +15,7 @@ const today = () => todayJalaliYmd().replaceAll("-", "/");
 const name = (u) => u?.name || u?.username || "—";
 const empty = () => ({
   // شماره و تاریخ همچنان برای ثبت نگهداری می‌شوند، ولی در فرم نمایش داده نمی‌شوند.
-  requestNumber: `TNK-${Date.now()}`,
+  requestNumber: "",
   requestDate: today(),
   projectId: "",
   amount: "",
@@ -216,7 +216,7 @@ export default function TenkhahPage({ embedded = false }) {
   const displayedUnregisteredBalance = sumAmounts(projectBalances.unregisteredBalance, form.amount);
   const displayedUnsettledBalance = sumAmounts(projectBalances.unsettledBalance, form.amount);
   const create = async () => {
-    const requiredErrors = { requestNumber: !form.requestNumber.trim(), requestDate: !form.requestDate, projectId: !form.projectId, amount: !form.amount, projectManagerId: !form.projectManagerId };
+    const requiredErrors = { requestNumber: false, requestDate: !form.requestDate, projectId: !form.projectId, amount: !form.amount, projectManagerId: !form.projectManagerId };
     if (Object.values(requiredErrors).some(Boolean)) { setFormErrors(requiredErrors); return; }
     setBusy(true);
     setError("");
@@ -275,7 +275,7 @@ export default function TenkhahPage({ embedded = false }) {
   return (
     <SettlementErrorsContext.Provider value={settlementErrors}><RequestErrorsContext.Provider value={formErrors}>
     <div dir="rtl" className="mx-auto max-w-[1400px]">
-      <Card className="rounded-2xl border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-neutral-900 md:p-4">
+      <Card className={`${embedded ? "!border-0 !bg-transparent !p-0 !shadow-none dark:!bg-transparent" : "rounded-2xl border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-neutral-900 md:p-4"}`}>
         {!embedded && <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-black/[.03] dark:border-white/10 dark:bg-white/[.06]">
