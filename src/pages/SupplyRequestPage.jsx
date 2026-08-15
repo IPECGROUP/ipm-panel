@@ -1014,13 +1014,6 @@ export default function SupplyRequestPage() {
               </div>
 
               <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[minmax(260px,1.4fr)_minmax(190px,0.8fr)_minmax(150px,0.7fr)]">
-                <Field label="شرح درخواست">
-                  <textarea
-                    value={form.description}
-                    onChange={(event) => setField("description", event.target.value)}
-                    className={`${inputCls} min-h-11 resize-y py-3 leading-7`}
-                  />
-                </Field>
                 <Field label="برآورد هزینه اولیه" required>
                   <div className="relative">
                     <input
@@ -1041,6 +1034,13 @@ export default function SupplyRequestPage() {
                     buttonClassName={`${inputCls} flex items-center justify-between`}
                     placeholder="انتخاب تاریخ"
                     disableTodayAndPast
+                  />
+                </Field>
+                <Field label="شرح درخواست">
+                  <textarea
+                    value={form.description}
+                    onChange={(event) => setField("description", event.target.value)}
+                    className={`${inputCls} min-h-11 resize-y py-3 leading-7`}
                   />
                 </Field>
               </div>
@@ -1876,9 +1876,9 @@ function PreviewSection({ title, children, flush = false }) {
 
 function PreviewRow({ label, value, ltr, compact = false }) {
   return (
-    <div className={`min-w-0 ${compact ? "grid grid-cols-[minmax(74px,auto)_minmax(0,1fr)] items-center gap-1.5 px-3 py-3 text-xs" : "grid grid-cols-[104px_minmax(0,1fr)] items-center gap-2 px-4 py-3 text-sm"}`}>
+    <div className={`flex min-w-0 items-center ${compact ? "gap-1.5 px-3 py-3 text-xs" : "gap-2 px-4 py-3 text-sm"}`}>
       <div className={`font-medium text-neutral-500 dark:text-neutral-400 ${compact ? "whitespace-nowrap" : ""}`}>{label}:</div>
-      <div dir={ltr ? "ltr" : "rtl"} className={`min-w-0 break-words rounded-lg bg-neutral-50 px-2.5 py-2 font-medium text-neutral-800 dark:bg-white/[0.05] dark:text-neutral-100 ${ltr ? "text-left" : "text-right"}`}>{value}</div>
+      <div dir={ltr ? "ltr" : "rtl"} className={`min-w-0 flex-1 break-words rounded-lg bg-neutral-50 px-2.5 py-2 font-medium text-neutral-800 dark:bg-white/[0.05] dark:text-neutral-100 ${ltr ? "text-left" : "text-right"}`}>{value}</div>
     </div>
   );
 }
@@ -2274,9 +2274,9 @@ function RequestFilterBar({
       <div>
         <div className={labelCls}>برچسب ها</div>
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={() => setOwnership(ownership === "mine" ? "" : "mine")} className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs transition ${ownership === "mine" ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : statusBadgeClass("pending")}`}>درخواست‌های من</button>
-          <button type="button" onClick={() => setOwnership(ownership === "incoming" ? "" : "incoming")} className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs transition ${ownership === "incoming" ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : statusBadgeClass("pending")}`}>موارد ارسال‌شده به من</button>
-          <button type="button" onClick={() => setUnread(!unread)} className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs transition ${unread ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : statusBadgeClass("pending")}`}>خوانده نشده</button>
+          <button type="button" onClick={() => setOwnership(ownership === "mine" ? "" : "mine")} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${ownership === "mine" ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900 dark:ring-white" : "bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200/80 text-neutral-700 ring-neutral-200 hover:from-neutral-200 hover:to-neutral-300 dark:from-white/10 dark:via-white/[0.07] dark:to-white/[0.13] dark:text-neutral-200 dark:ring-white/10"}`}>درخواست‌های من</button>
+          <button type="button" onClick={() => setOwnership(ownership === "incoming" ? "" : "incoming")} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${ownership === "incoming" ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900 dark:ring-white" : "bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200/80 text-neutral-700 ring-neutral-200 hover:from-neutral-200 hover:to-neutral-300 dark:from-white/10 dark:via-white/[0.07] dark:to-white/[0.13] dark:text-neutral-200 dark:ring-white/10"}`}>موارد ارسال‌شده به من</button>
+          <button type="button" onClick={() => setUnread(!unread)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${unread ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900 dark:ring-white" : "bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200/80 text-neutral-700 ring-neutral-200 hover:from-neutral-200 hover:to-neutral-300 dark:from-white/10 dark:via-white/[0.07] dark:to-white/[0.13] dark:text-neutral-200 dark:ring-white/10"}`}>خوانده نشده</button>
           {STATUS_FILTERS.map(([key, label]) => (
             <button key={key} type="button" onClick={() => setStatus(status === key ? "" : key)} className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs transition ${status === key ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : statusBadgeClass(key)} `}>
               {label}
