@@ -436,8 +436,13 @@ export default function PaymentRequestPage() {
     };
   }, [tableMenuOpen]);
   useEffect(() => {
-    Promise.allSettled([api("/cost-breakdown"), api("/base/currencies/types"), api("/base/currencies/sources"), api("/supply-requests")]).then(([p, t, s, sr]) => {
-      if (p.status === "fulfilled") {
+    Promise.allSettled([api("/cost-breakdown"), api("/projects?isActive=true"), api("/base/currencies/types"), api("/base/currencies/sources"), api("/supply-requests")]).then(([p, pr, t, s, sr]) => {
+      if (pr.status === "fulfilled") {
+        const mainProjects = (Array.isArray(pr.value.items) ? pr.value.items : pr.value.projects || [])
+          .filter((project) => isActiveProject(project) && isMainProject(project))
+          .sort((a, b) => normalizeProjectCode(a.code).localeCompare(normalizeProjectCode(b.code), "fa", { numeric: true }));
+        setProjects(mainProjects);
+      } else if (p.status === "fulfilled") {
         const rows = Array.isArray(p.value.items) ? p.value.items : [];
         const byProject = new Map();
         rows.forEach((item) => {
@@ -1209,8 +1214,8 @@ function TenkhahPreview({ item, onClose }) {
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [onClose]);
-  const activeStep = item.status === "charged" ? 4 : item.stage === "finance" ? 3 : item.stage === "management" ? 2 : 1;
-  const steps = ["ثبت درخواست", "تأیید مدیر پروژه", "دستور پرداخت (مدیریت ارشد)", "بررسی و شارژ مالی", "تکمیل درخواست"];
+  const activeStep = item.status === "charged" ? 3 : item.stage === "finance" ? 3 : item.stage === "management" ? 2 : 1;
+  const steps = ["تایید نهایی (مدیریت پروژه)", "دستور پرداخت (مدیریت ارشد)", "ثبت پرداخت (واحد مالی)"];
   return createPortal(<div className="fixed inset-0 z-[9999]" dir="rtl">
     <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
     <div className="absolute inset-0 flex items-center justify-center p-3 md:p-6">

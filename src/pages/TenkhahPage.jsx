@@ -46,10 +46,9 @@ function DetailCell({ label, children, className = "" }) {
 }
 function TenkhahWorkflow({ stage, status }) {
   const steps = [
-    ["project_manager", "تأیید مدیر پروژه"],
+    ["project_manager", "تایید نهایی (مدیریت پروژه)"],
     ["management", "دستور پرداخت (مدیریت ارشد)"],
-    ["finance", "بررسی و شارژ مالی"],
-    ["completed", "تکمیل درخواست"],
+    ["finance", "ثبت پرداخت (واحد مالی)"],
   ];
   const active = status === "charged" ? steps.length - 1 : Math.max(0, steps.findIndex(([key]) => key === stage));
   return <aside className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-white/[.03]"><h3 className="mb-4 text-sm font-bold">فرآیند تنخواه</h3><div className="space-y-1">{steps.map(([key, label], index) => { const done = index < active || status === "charged"; const current = index === active && status !== "charged"; const finalCompleted = status === "charged" && index === steps.length - 1; return <div key={key} className="relative flex min-h-14 items-center gap-3"><span className={`z-10 grid h-7 w-7 shrink-0 place-items-center rounded-full border text-xs font-bold ${finalCompleted ? "border-emerald-500 bg-emerald-500 text-white shadow-[0_0_0_4px_rgba(16,185,129,.13)]" : current ? "border-sky-500 bg-sky-500 text-white shadow-[0_0_0_4px_rgba(14,165,233,.13)]" : done ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-black" : "border-neutral-300 bg-white text-neutral-400 dark:border-neutral-600 dark:bg-neutral-900"}`}>{done ? "✓" : index + 1}</span>{index < steps.length - 1 && <span className={`absolute right-[13px] top-9 h-7 w-px ${done ? "bg-neutral-900 dark:bg-white" : "bg-neutral-200 dark:bg-white/10"}`} />}<div className="min-w-0"><div className={`text-sm font-medium ${finalCompleted ? "text-emerald-700 dark:text-emerald-300" : current ? "text-sky-700 dark:text-sky-300" : done ? "text-neutral-900 dark:text-white" : "text-neutral-400"}`}>{label}</div>{current && <div className="mt-0.5 text-[11px] text-sky-600 dark:text-sky-300">مرحله جاری</div>}</div></div>; })}</div></aside>;
