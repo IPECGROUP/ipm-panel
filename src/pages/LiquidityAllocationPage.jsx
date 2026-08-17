@@ -85,6 +85,7 @@ export default function LiquidityAllocationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
+  const [showValidation, setShowValidation] = useState(false);
 
   const updateForm = (key, value) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -174,6 +175,8 @@ export default function LiquidityAllocationPage() {
   );
   const newAllocationTotal = projectAllocationTotal;
   const availableAmount = money(form.amount);
+  const amountMissing = showValidation && availableAmount <= 0;
+  const sourceMissing = showValidation && !form.source.trim();
   const availableRemaining = availableAmount - newAllocationTotal;
   const hasPendingAllocation = rows.some((row) => money(row.newAllocation) !== 0);
   const hasBudgetUnderflow = rows.some((row) => {
@@ -194,6 +197,7 @@ export default function LiquidityAllocationPage() {
 
   const saveAllocation = async () => {
     const nonZeroRows = rows.filter((row) => money(row.newAllocation) !== 0);
+    setShowValidation(true);
     if (!form.source.trim() || availableAmount <= 0) {
       setSubmitMessage("منبع نقدینگی و مبلغ قابل تخصیص را وارد کنید.");
       return;
@@ -230,6 +234,7 @@ export default function LiquidityAllocationPage() {
       setForm(emptyAllocationForm());
       setCustomSource(false);
       setBatchId("");
+      setShowValidation(false);
       setFormOpen(false);
     } catch (error) {
       setSubmitMessage(error?.message === "allocation_total_exceeds_available_amount"
@@ -287,6 +292,7 @@ export default function LiquidityAllocationPage() {
                 setBatchId("");
                 setForm(emptyAllocationForm());
                 setCustomSource(false);
+                setShowValidation(false);
                 setRows((current) => current.map((row) => ({ ...row, newAllocation: "" })));
               } else {
                 setBatchId(createBatchId());
@@ -317,7 +323,7 @@ export default function LiquidityAllocationPage() {
           </label>
 
           <label className="min-w-0">
-            <span className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">مبلغ قابل تخصیص</span>
+            <span className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">مبلغ قابل تخصیص <span className="text-red-600">*</span></span>
             <div className="relative">
               <input
                 value={form.amount}
@@ -327,7 +333,7 @@ export default function LiquidityAllocationPage() {
                 disabled={hasPendingAllocation}
                 inputMode="numeric"
                 placeholder="۰"
-                className={inputClass + " pl-14 ltr text-left"}
+                className={inputClass + " pl-14 ltr text-left" + (amountMissing ? " !border-red-500 focus:!border-red-500" : "")}
                 aria-label="مبلغ قابل تخصیص به ریال"
               />
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-neutral-500 dark:text-neutral-400">ریال</span>
@@ -335,9 +341,9 @@ export default function LiquidityAllocationPage() {
           </label>
 
           <div className="min-w-0">
-            <span className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">منبع نقدینگی</span>
+            <span className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">منبع نقدینگی <span className="text-red-600">*</span></span>
             {customSource ? (
-              <input value={form.source} onChange={(event) => updateForm("source", event.target.value)} placeholder="منبع نقدینگی را وارد کنید" className={inputClass} autoFocus disabled={hasPendingAllocation} />
+              <input value={form.source} onChange={(event) => updateForm("source", event.target.value)} placeholder="منبع نقدینگی را وارد کنید" className={inputClass + (sourceMissing ? " !border-red-500 focus:!border-red-500" : "")} autoFocus />
             ) : (
               <select
                 value={form.source}
@@ -347,8 +353,7 @@ export default function LiquidityAllocationPage() {
                     updateForm("source", "");
                   } else updateForm("source", event.target.value);
                 }}
-                className={inputClass}
-                disabled={hasPendingAllocation}
+                className={inputClass + (sourceMissing ? " !border-red-500 focus:!border-red-500" : "")}
               >
                 <option value="">انتخاب کنید</option>
                 {LIQUIDITY_SOURCES.map((source) => <option key={source} value={source}>{source}</option>)}
