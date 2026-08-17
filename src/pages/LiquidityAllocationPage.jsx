@@ -11,7 +11,6 @@ const PAGE_ICON = "/images/icons/modiriat-nagdinegi.svg";
 
 const LIQUIDITY_SOURCES = [
   "کارکرد پروژه‌ها",
-  "استفاده از ذخیره احتیاطی",
   "وام بانکی",
   "آورده شرکا و سهامداران",
   "فروش دارایی",
@@ -158,16 +157,34 @@ export default function LiquidityAllocationPage() {
     return (negative ? -1 : 1) * (Number(digits) || 0);
   };
   const displayMoney = (value) => value ? Number(value).toLocaleString("en-US") : "—";
-  const reserveOf = (allocation) => allocation?.reserveAmount != null
-    ? money(allocation.reserveAmount)
+  const contingencyReserveOf = (allocation) => allocation?.contingencyReserveAmount != null
+    ? money(allocation.contingencyReserveAmount)
     : money(allocation?.availableAmount) - money(allocation?.allocatedAmount);
   const projectAllocationTotal = useMemo(() => rows.reduce((total, row) => total + money(row.newAllocation), 0), [rows]);
+  const projectTotalBudget = useMemo(
+    () => rows.reduce((total, row) => total + money(summary.allocations[String(row.projectId)]), 0),
+    [rows, summary.allocations],
+  );
+  const projectBudgetRemaining = useMemo(
+    () => rows.reduce((total, row) => {
+      const key = String(row.projectId);
+      return total + money(summary.allocations[key]) - money(summary.committed[key]);
+    }, 0),
+    [rows, summary.allocations, summary.committed],
+  );
   const newAllocationTotal = projectAllocationTotal;
   const availableAmount = money(form.amount);
   const availableRemaining = availableAmount - newAllocationTotal;
   const hasPendingAllocation = rows.some((row) => money(row.newAllocation) !== 0);
+  const hasBudgetUnderflow = rows.some((row) => {
+    const key = String(row.projectId);
+    const budgetRemaining = money(summary.allocations[key]) - money(summary.committed[key]);
+    return money(row.newAllocation) < 0 && budgetRemaining + money(row.newAllocation) < 0;
+  });
   const allocationError = newAllocationTotal > availableAmount
     ? "جمع مبلغ تخصیص نمی‌تواند بیشتر از مبلغ قابل تخصیص باشد."
+    : hasBudgetUnderflow
+      ? "مبلغ تخصیص منفی نمی‌تواند مانده بودجه پروژه را منفی کند."
     : "";
 
   const updateRow = (id, value) => {
@@ -360,17 +377,18 @@ export default function LiquidityAllocationPage() {
       </div>}
 
       {formOpen ? <div className="mt-5 overflow-x-auto rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900" dir="rtl">
-        <table className="w-full min-w-[720px] table-fixed border-collapse text-xs text-neutral-800 dark:text-neutral-100 sm:text-sm">
+        <table className="w-full min-w-[840px] table-fixed border-collapse text-xs text-neutral-800 dark:text-neutral-100 sm:text-sm">
           <colgroup>
-            <col className="w-[34%]" />
-            <col className="w-[16.5%]" />
-            <col className="w-[16.5%]" />
-            <col className="w-[16.5%]" />
-            <col className="w-[16.5%]" />
+            <col className="w-[30%]" />
+            <col className="w-[14%]" />
+            <col className="w-[14%]" />
+            <col className="w-[14%]" />
+            <col className="w-[14%]" />
+            <col className="w-[14%]" />
           </colgroup>
           <thead className="bg-neutral-100 text-neutral-700 dark:bg-white/[0.08] dark:text-neutral-100">
             <tr>
-              {["مرکز/پروژه", "کل بودجه", "مانده بودجه", "مبلغ تخصیص", "نقدینگی"].map((title) => (
+              {["مرکز/پروژه", "کل بودجه", "مانده بودجه", "مبلغ تخصیص", "نقدینگی", "ذخیره احتیاطی"].map((title) => (
                 <th key={title} className="h-12 border-b border-l border-black/10 px-2 text-center font-semibold dark:border-white/10">{title}</th>
               ))}
             </tr>
@@ -390,15 +408,25 @@ export default function LiquidityAllocationPage() {
                     <input value={row.newAllocation} onChange={(event) => updateRow(row.id, event.target.value)} inputMode="numeric" placeholder="۰" className={inputClass + " !h-9 !rounded-lg ltr text-left"} aria-label={`مبلغ تخصیص ${row.label}`} />
                   </td>
                   <td className={tableCellClass}>{displayMoney(budgetRemaining + allocationAmount)}</td>
+                  <td className={tableCellClass}>—</td>
                 </tr>
               );
             })}
             <tr className="bg-amber-50/60 dark:bg-amber-400/[0.05]">
               <td className={tableCellClass + " font-medium"}>ذخیره احتیاطی</td>
-              <td className={tableCellClass}>{displayMoney(availableAmount)}</td>
-              <td className={tableCellClass}>{displayMoney(availableAmount)}</td>
-              <td className={tableCellClass}>{displayMoney(projectAllocationTotal)}</td>
+              <td className={tableCellClass}>—</td>
+              <td className={tableCellClass}>—</td>
+              <td className={tableCellClass}>—</td>
+              <td className={tableCellClass}>—</td>
               <td className={tableCellClass}>{displayMoney(availableRemaining)}</td>
+            </tr>
+            <tr className="bg-neutral-100/80 dark:bg-white/[0.06]">
+              <td className={tableCellClass + " font-medium"}>جمع</td>
+              <td className={tableCellClass}>{displayMoney(projectTotalBudget)}</td>
+              <td className={tableCellClass}>{displayMoney(projectBudgetRemaining)}</td>
+              <td className={tableCellClass}>{displayMoney(projectAllocationTotal)}</td>
+              <td className={tableCellClass}>{displayMoney(projectBudgetRemaining + projectAllocationTotal)}</td>
+              <td className={tableCellClass}>—</td>
             </tr>
           </tbody>
         </table>
@@ -491,13 +519,13 @@ export default function LiquidityAllocationPage() {
               {[
                 ["مبلغ قابل تخصیص", money(previewAllocation.availableAmount), "text-neutral-900 dark:text-white"],
                 ["جمع مبلغ تخصیص", money(previewAllocation.allocatedAmount), "text-sky-700 dark:text-sky-300"],
-                ["ذخیره احتیاطی", reserveOf(previewAllocation), "text-amber-700 dark:text-amber-300"],
+                ["ذخیره احتیاطی", contingencyReserveOf(previewAllocation), "text-amber-700 dark:text-amber-300"],
               ].map(([label, value, color]) => <div key={label} className="rounded-2xl border border-black/10 bg-neutral-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.04]"><div className="text-xs text-neutral-500 dark:text-neutral-400">{label}</div><div className={`mt-1 text-base font-bold ${color}`}>{displayMoney(value)} <span className="text-xs font-normal">ریال</span></div></div>)}
             </div>
             <div className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
-            <table className="w-full min-w-[720px] table-fixed border-collapse text-xs sm:text-sm">
+            <table className="w-full min-w-[840px] table-fixed border-collapse text-xs sm:text-sm">
               <thead className="bg-neutral-100 text-neutral-700 dark:bg-white/[0.08] dark:text-neutral-100">
-                <tr>{["مرکز/پروژه", "کل بودجه", "مانده بودجه", "مبلغ تخصیص", "نقدینگی"].map((title) => <th key={title} className="h-12 border-b border-l border-black/10 px-2 text-center font-semibold dark:border-white/10">{title}</th>)}</tr>
+                <tr>{["مرکز/پروژه", "کل بودجه", "مانده بودجه", "مبلغ تخصیص", "نقدینگی", "ذخیره احتیاطی"].map((title) => <th key={title} className="h-12 border-b border-l border-black/10 px-2 text-center font-semibold dark:border-white/10">{title}</th>)}</tr>
               </thead>
               <tbody>
                 {(previewAllocation.details || []).map((detail, index) => {
@@ -512,14 +540,30 @@ export default function LiquidityAllocationPage() {
                     <td className={tableCellClass}>{displayMoney(budgetRemaining)}</td>
                     <td className={tableCellClass}>{displayMoney(projectAmount)}</td>
                     <td className={tableCellClass}>{displayMoney(budgetRemaining)}</td>
+                    <td className={tableCellClass}>—</td>
                   </tr>;
                 })}
                 <tr className="bg-amber-50/60 dark:bg-amber-400/[0.05]">
                   <td className={tableCellClass + " font-medium"}>ذخیره احتیاطی</td>
-                  <td className={tableCellClass}>{displayMoney(money(previewAllocation.availableAmount))}</td>
-                  <td className={tableCellClass}>{displayMoney(money(previewAllocation.availableAmount))}</td>
+                  <td className={tableCellClass}>—</td>
+                  <td className={tableCellClass}>—</td>
+                  <td className={tableCellClass}>—</td>
+                  <td className={tableCellClass}>—</td>
+                  <td className={tableCellClass}>{displayMoney(contingencyReserveOf(previewAllocation))}</td>
+                </tr>
+                <tr className="bg-neutral-100/80 dark:bg-white/[0.06]">
+                  <td className={tableCellClass + " font-medium"}>جمع</td>
+                  <td className={tableCellClass}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => total + money(summary.allocations[String(detail.projectId)]), 0))}</td>
+                  <td className={tableCellClass}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => {
+                    const key = String(detail.projectId);
+                    return total + money(summary.allocations[key]) - money(summary.committed[key]);
+                  }, 0))}</td>
                   <td className={tableCellClass}>{displayMoney(money(previewAllocation.allocatedAmount))}</td>
-                  <td className={tableCellClass}>{displayMoney(reserveOf(previewAllocation))}</td>
+                  <td className={tableCellClass}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => {
+                    const key = String(detail.projectId);
+                    return total + money(summary.allocations[key]) - money(summary.committed[key]) + money(detail.amount);
+                  }, 0))}</td>
+                  <td className={tableCellClass}>—</td>
                 </tr>
               </tbody>
             </table>
