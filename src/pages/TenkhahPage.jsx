@@ -298,7 +298,6 @@ export default function TenkhahPage({ embedded = false }) {
           <section className="mb-5 rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03] md:p-5">
             {!embedded && <h2 className="mb-5 text-base font-bold">درخواست تنخواه جدید</h2>}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="space-y-4">
               <Field label="پروژه" required>
                 <select
                   value={form.projectId}
@@ -313,15 +312,18 @@ export default function TenkhahPage({ embedded = false }) {
                   ))}
                 </select>
               </Field>
+              <div className="flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">باقی‌مانده نقدینگی پروژه: <span className="mr-1 font-medium tabular-nums">{fa(format3(projectLiquidity))}</span></div>
+              <div className="hidden xl:block" aria-hidden="true" />
+              <div className="hidden xl:block" aria-hidden="true" />
               <Field label="ذینفع" required>
                 <select value={form.beneficiaryUserId} onChange={(e) => selectBeneficiary(e.target.value)} className={input}>
                   <option value="">انتخاب کنید</option>
                   {beneficiaries.map((person) => <option value={person.id} key={person.id}>{name(person)}</option>)}
                 </select>
               </Field>
-              </div>
-              <div className="flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">باقی‌مانده نقدینگی پروژه: <span className="mr-1 font-medium tabular-nums">{fa(format3(projectLiquidity))}</span></div>
               <div className="flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">مجموع تنخواه دریافت‌شده: <span className="mr-1 font-medium tabular-nums">{fa(format3(projectBalances.receivedAmount))}</span></div>
+              <div className="flex min-h-11 items-end pb-2 text-sm font-medium text-red-600 dark:text-red-400">مانده تنخواه تسویه‌نشده: <span className="mr-1 tabular-nums">{fa(format3(projectBalances.unsettledBalance))}</span></div>
+              <div className="hidden xl:block" aria-hidden="true" />
               <Field label="مبلغ تنخواه درخواستی" required>
                 <div className="flex overflow-hidden rounded-xl border border-black/10 dark:border-white/15">
                   <input
@@ -342,7 +344,6 @@ export default function TenkhahPage({ embedded = false }) {
                   </select>
                 </div>
               </Field>
-              <div className="flex min-h-11 items-end pb-2 text-sm font-medium text-red-600 dark:text-red-400">مانده تنخواه تسویه‌نشده: <span className="mr-1 tabular-nums">{fa(format3(projectBalances.unsettledBalance))}</span></div>
             </div>
             <div className="mt-5 flex flex-col gap-3 border-t border-black/10 pt-4 sm:flex-row sm:items-end sm:justify-end dark:border-white/10">
               <Field label={userIsFinance ? "ارسال درخواست به مدیریت ارشد" : "ارسال درخواست به"} required className="w-full sm:w-[20rem]">
