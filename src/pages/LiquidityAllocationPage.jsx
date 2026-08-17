@@ -73,6 +73,7 @@ export default function LiquidityAllocationPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [batchId, setBatchId] = useState("");
   const [form, setForm] = useState(emptyAllocationForm);
+  const [reserveAdjustment, setReserveAdjustment] = useState("");
   const [customSource, setCustomSource] = useState(false);
   const [rows, setRows] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -175,10 +176,11 @@ export default function LiquidityAllocationPage() {
   );
   const newAllocationTotal = projectAllocationTotal;
   const availableAmount = money(form.amount);
+  const reserveAdjustmentAmount = money(reserveAdjustment);
   const amountMissing = showValidation && availableAmount <= 0;
   const sourceMissing = showValidation && !form.source.trim();
-  const availableRemaining = availableAmount - newAllocationTotal;
-  const hasPendingAllocation = rows.some((row) => money(row.newAllocation) !== 0);
+  const availableRemaining = availableAmount - newAllocationTotal + reserveAdjustmentAmount;
+  const hasPendingAllocation = rows.some((row) => money(row.newAllocation) !== 0) || reserveAdjustmentAmount !== 0;
   const hasBudgetUnderflow = rows.some((row) => {
     const key = String(row.projectId);
     const budgetRemaining = money(summary.allocations[key]) - money(summary.committed[key]);
@@ -186,6 +188,8 @@ export default function LiquidityAllocationPage() {
   });
   const allocationError = newAllocationTotal > availableAmount
     ? "جمع مبلغ تخصیص نمی‌تواند بیشتر از مبلغ قابل تخصیص باشد."
+    : availableRemaining < 0
+      ? "تغییر مبلغ ذخیره احتیاطی نمی‌تواند مانده بودجه آن را منفی کند."
     : hasBudgetUnderflow
       ? "مبلغ تخصیص منفی نمی‌تواند مانده بودجه پروژه را منفی کند."
     : "";
@@ -202,7 +206,7 @@ export default function LiquidityAllocationPage() {
       setSubmitMessage("منبع نقدینگی و مبلغ قابل تخصیص را وارد کنید.");
       return;
     }
-    if (!nonZeroRows.length) {
+    if (!nonZeroRows.length && reserveAdjustmentAmount === 0) {
       setSubmitMessage("حداقل یک مبلغ تخصیص وارد کنید.");
       return;
     }
@@ -222,6 +226,7 @@ export default function LiquidityAllocationPage() {
           batchId,
           source: form.source,
           availableAmount,
+          reserveAdjustment: reserveAdjustmentAmount,
           description: form.description,
           rows: nonZeroRows.map((row) => ({ projectId: row.projectId, amount: money(row.newAllocation) })),
         }),
@@ -229,6 +234,7 @@ export default function LiquidityAllocationPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data?.message || data?.error || "save_failed");
       setRows((current) => current.map((row) => ({ ...row, newAllocation: "" })));
+      setReserveAdjustment("");
       setSubmitMessage("تخصیص نقدینگی ثبت شد.");
       await loadSummary();
       setForm(emptyAllocationForm());
@@ -239,6 +245,8 @@ export default function LiquidityAllocationPage() {
     } catch (error) {
       setSubmitMessage(error?.message === "allocation_total_exceeds_available_amount"
         ? "جمع مبلغ تخصیص نمی‌تواند بیشتر از مبلغ قابل تخصیص باشد."
+        : error?.message === "contingency_reserve_cannot_be_negative"
+          ? "تغییر مبلغ ذخیره احتیاطی نمی‌تواند مانده بودجه آن را منفی کند."
         : error?.message || "ثبت تخصیص انجام نشد.");
     } finally {
       setSubmitting(false);
@@ -292,6 +300,7 @@ export default function LiquidityAllocationPage() {
                 setBatchId("");
                 setForm(emptyAllocationForm());
                 setCustomSource(false);
+                setReserveAdjustment("");
                 setShowValidation(false);
                 setRows((current) => current.map((row) => ({ ...row, newAllocation: "" })));
               } else {
@@ -401,8 +410,10 @@ export default function LiquidityAllocationPage() {
             <tr className="bg-amber-50/60 dark:bg-amber-400/[0.05]">
               <td className={tableCellClass + " font-medium"}>ذخیره احتیاطی</td>
               <td className={tableCellClass}>{displayMoney(availableAmount)}</td>
-              <td className={tableCellClass}>{displayMoney(availableAmount)}</td>
-              <td className={tableCellClass}>{displayMoney(projectAllocationTotal)}</td>
+              <td className={tableCellClass}>{displayMoney(availableRemaining)}</td>
+              <td className={tableCellClass}>
+                <input value={reserveAdjustment} onChange={(event) => setReserveAdjustment(formatSignedAmount(event.target.value))} inputMode="numeric" placeholder="۰" className={inputClass + " !h-9 !rounded-lg ltr text-left"} aria-label="تغییر مبلغ ذخیره احتیاطی" />
+              </td>
               <td className={tableCellClass}>{displayMoney(availableRemaining)}</td>
             </tr>
             {rows.map((row) => {
