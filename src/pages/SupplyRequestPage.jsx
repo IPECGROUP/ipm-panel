@@ -2382,9 +2382,6 @@ function RequestFilterBar({
               </button>
             );
           })}
-          <button type="button" onClick={() => { setTagPickSearch(""); setTagPickOpen(true); }} className="grid h-9 w-9 place-items-center rounded-full border border-black/10 bg-white transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="انتخاب برچسب" title="انتخاب برچسب">
-            <img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" />
-          </button>
         </div>
       </div>
       {tagPickOpen && <TagPicker tags={tags} selectedIds={pinnedTagIds} onToggle={togglePinnedTag} query={tagPickSearch} setQuery={setTagPickSearch} onClose={() => setTagPickOpen(false)} />}

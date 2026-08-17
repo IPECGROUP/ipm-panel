@@ -8,6 +8,7 @@ import { toEnglishDigits } from "../utils/format.js";
 import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 
 const PAGE_ICON = "/images/icons/modiriat-nagdinegi.svg";
+const HISTORY_QUICK_FILTERS = [["week", "هفته قبل"], ["2w", "2 هفته قبل"], ["1m", "یک ماه قبل"], ["3m", "3 ماه قبل"], ["6m", "6 ماه قبل"]];
 
 const LIQUIDITY_SOURCES = [
   "کارکرد پروژه‌ها",
@@ -69,6 +70,18 @@ function dateKey(value) {
   return `${parts[0].padStart(4, "0")}${parts[1].padStart(2, "0")}${parts[2].padStart(2, "0")}`;
 }
 
+function quickHistoryStartDate(key) {
+  if (!key) return "";
+  const date = new Date();
+  if (key === "week") date.setDate(date.getDate() - 7);
+  else if (key === "2w") date.setDate(date.getDate() - 14);
+  else if (key === "1m") date.setMonth(date.getMonth() - 1);
+  else if (key === "3m") date.setMonth(date.getMonth() - 3);
+  else if (key === "6m") date.setMonth(date.getMonth() - 6);
+  else return "";
+  return toEnglishDigits(new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit" }).format(date));
+}
+
 const tableCellClass = "h-14 border-b border-l border-black/10 px-2 text-center align-middle dark:border-white/10";
 const historyTableCellClass = "h-11 border-b border-l border-neutral-300 px-3 text-center align-middle dark:border-white/10";
 const paginationIconBtnCls = "grid h-9 w-9 place-items-center rounded-lg border border-black/10 text-neutral-700 transition hover:bg-black/[0.04] disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:text-neutral-100 dark:hover:bg-white/10";
@@ -89,6 +102,7 @@ export default function LiquidityAllocationPage() {
   const [historyQuery, setHistoryQuery] = useState("");
   const [historyFromDate, setHistoryFromDate] = useState("");
   const [historyToDate, setHistoryToDate] = useState("");
+  const [historyQuick, setHistoryQuick] = useState("");
   const [previewAllocation, setPreviewAllocation] = useState(null);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
@@ -155,8 +169,10 @@ export default function LiquidityAllocationPage() {
     const query = toEnglishDigits(historyQuery).trim().toLocaleLowerCase("fa-IR");
     const fromKey = dateKey(historyFromDate);
     const toKey = dateKey(historyToDate);
+    const quickFromKey = dateKey(quickHistoryStartDate(historyQuick));
     return history.filter((item) => {
       const itemDateKey = dateKey(item.allocationDate);
+      if (quickFromKey && (!itemDateKey || itemDateKey < quickFromKey)) return false;
       if (fromKey && (!itemDateKey || itemDateKey < fromKey)) return false;
       if (toKey && (!itemDateKey || itemDateKey > toKey)) return false;
       if (!query) return true;
@@ -166,7 +182,7 @@ export default function LiquidityAllocationPage() {
         .join(" ");
       return searchable.includes(query);
     });
-  }, [history, historyFromDate, historyQuery, historyToDate]);
+  }, [history, historyFromDate, historyQuery, historyQuick, historyToDate]);
 
   const historyTotal = filteredHistory.length;
   const historyPageCount = Math.max(1, Math.ceil(historyTotal / Math.max(1, rowsPerPage)));
@@ -176,7 +192,7 @@ export default function LiquidityAllocationPage() {
   const pagedHistory = filteredHistory.slice(historyStartIndex, historyEndIndex);
 
   useEffect(() => { setPage(0); }, [rowsPerPage]);
-  useEffect(() => { setPage(0); }, [historyFromDate, historyQuery, historyToDate]);
+  useEffect(() => { setPage(0); }, [historyFromDate, historyQuery, historyQuick, historyToDate]);
   useEffect(() => { if (page !== safeHistoryPage) setPage(safeHistoryPage); }, [page, safeHistoryPage]);
 
   const money = (value) => {
@@ -491,7 +507,13 @@ export default function LiquidityAllocationPage() {
               <span className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">تا</span>
               <JalaliPopupDatePicker value={historyToDate} onChange={setHistoryToDate} buttonClassName={inputClass + " flex items-center justify-between gap-2"} />
             </label>
-            {(historyQuery || historyFromDate || historyToDate) && <button type="button" onClick={() => { setHistoryQuery(""); setHistoryFromDate(""); setHistoryToDate(""); }} className="h-11 rounded-xl border border-black/10 px-3 text-xs font-medium transition hover:bg-white dark:border-white/15 dark:hover:bg-white/10">پاک کردن فیلتر</button>}
+            {(historyQuery || historyFromDate || historyToDate || historyQuick) && <button type="button" onClick={() => { setHistoryQuery(""); setHistoryFromDate(""); setHistoryToDate(""); setHistoryQuick(""); }} className="h-11 rounded-xl border border-black/10 px-3 text-xs font-medium transition hover:bg-white dark:border-white/15 dark:hover:bg-white/10">پاک کردن فیلتر</button>}
+          </div>
+          <div className="mt-3">
+            <div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">بازه سریع</div>
+            <div className="flex flex-wrap gap-2">
+              {HISTORY_QUICK_FILTERS.map(([key, label]) => <button key={key} type="button" onClick={() => { setHistoryQuick((current) => current === key ? "" : key); setHistoryFromDate(""); setHistoryToDate(""); }} className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${historyQuick === key ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "bg-white text-neutral-700 ring-1 ring-black/10 hover:bg-neutral-50 dark:bg-white/5 dark:text-neutral-200 dark:ring-white/15 dark:hover:bg-white/10"}`}>{label}</button>)}
+            </div>
           </div>
         </div>
         <div className="mt-3 overflow-hidden rounded-2xl border border-neutral-300 bg-[#fbfbf8] shadow-sm dark:border-white/10 dark:bg-neutral-900" dir="rtl">
