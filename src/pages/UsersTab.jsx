@@ -350,7 +350,12 @@ function UsersTab({ embedded = false }) {
     e?.preventDefault();
     setAddErr("");
     const isEditing = editId !== null;
-    if (!addForm.username.trim() || (!isEditing && !addForm.password.trim())) {
+    const isPersonnel = addForm.role === "personnel";
+    if (isPersonnel && !addForm.name.trim()) {
+      setAddErr("نام پرسنل الزامی است.");
+      return;
+    }
+    if (!isPersonnel && (!addForm.username.trim() || (!isEditing && !addForm.password.trim()))) {
       setAddErr(isEditing ? "نام کاربری الزامی است." : "نام کاربری و گذرواژه الزامی است.");
       return;
     }
@@ -363,15 +368,19 @@ function UsersTab({ embedded = false }) {
           ...(isEditing ? { id: editId } : {}),
           name: addForm.name?.trim() || null,
           email: addForm.email?.trim() || null,
-          username: addForm.username.trim(),
-          password: addForm.password,
-          expiresAt: jalaliYmdToIsoEndOfDay(addForm.expiresAt),
           department: addForm.department || null,
           role: addForm.role || "user",
           isActive: addForm.isActive !== false,
+          ...(!isPersonnel
+            ? {
+                username: addForm.username.trim(),
+                password: addForm.password,
+                expiresAt: jalaliYmdToIsoEndOfDay(addForm.expiresAt),
+              }
+            : {}),
         }),
       });
-      if (isEditing && addForm.password) {
+      if (!isPersonnel && isEditing && addForm.password) {
         await api("/admin/users/password", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -532,6 +541,11 @@ function UsersTab({ embedded = false }) {
       return Array.from(prevSet);
     });
   };
+  const userTypeLabel = (role) => ({
+    personnel: "پرسنل",
+    user: "کاربر",
+    admin: "ادمین",
+  }[String(role || "user").toLowerCase()] || role || "کاربر");
 
   const toggleRowSelect = (id) => {
     const sid = String(id);
@@ -594,10 +608,8 @@ function UsersTab({ embedded = false }) {
     <>
       <Container className={containerClass}>
         {/* Header + Add button */}
-        <div className="mb-3 flex items-center justify-between gap-3">
-          {embedded ? (
-            <div className="text-sm font-semibold text-black dark:text-neutral-100">کاربران</div>
-          ) : (
+        <div className={`mb-3 flex items-center gap-3 ${embedded ? "justify-end" : "justify-between"}`}>
+          {!embedded && (
             <div className="text-base md:text-lg">
               <span className="text-black/70 dark:text-neutral-300">تنظیمات</span>
               <span className="mx-2 text-black/50 dark:text-neutral-400">›</span>
@@ -626,7 +638,8 @@ function UsersTab({ embedded = false }) {
             dir="rtl"
           >
             <div className="p-4">
-              <div className="grid grid-cols-1 gap-3 lg:grid-cols-[repeat(5,minmax(0,1fr))_auto] lg:items-end">
+              <div className="grid grid-cols-1 gap-3 lg:items-end">
+                <div className={addForm.role === "personnel" ? "grid grid-cols-1 gap-3 sm:grid-cols-[repeat(2,minmax(0,1fr))_auto]" : "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(5,minmax(0,1fr))_auto]"}>
                 <div className="flex flex-col gap-1">
                   <label className="text-sm text-black/70 dark:text-neutral-300">نام</label>
                   <input
@@ -636,6 +649,20 @@ function UsersTab({ embedded = false }) {
                   />
                 </div>
 
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm text-black/70 dark:text-neutral-300">نوع</label>
+                  <select
+                    className={selectCls}
+                    value={addForm.role}
+                    onChange={(e) => setAddForm((s) => ({ ...s, role: e.target.value }))}
+                  >
+                    <option value="personnel">پرسنل</option>
+                    <option value="user">کاربر</option>
+                    <option value="admin">ادمین</option>
+                  </select>
+                </div>
+
+                {addForm.role !== "personnel" && <>
                 <div className="flex flex-col gap-1">
                   <label className="text-sm text-black/70 dark:text-neutral-300">نام کاربری*</label>
                   <input
@@ -671,18 +698,7 @@ function UsersTab({ embedded = false }) {
                     placeholder="بدون محدودیت"
                   />
                 </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm text-black/70 dark:text-neutral-300">نوع</label>
-                  <select
-                    className={selectCls}
-                    value={addForm.role}
-                    onChange={(e) => setAddForm((s) => ({ ...s, role: e.target.value }))}
-                  >
-                    <option value="user">user</option>
-                    <option value="admin">admin</option>
-                  </select>
-                </div>
+                </>}
 
                 <div className="flex items-end justify-end">
                   <button
@@ -695,6 +711,7 @@ function UsersTab({ embedded = false }) {
                   >
                     <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert dark:invert-0" />
                   </button>
+                </div>
                 </div>
               </div>
 
@@ -709,7 +726,7 @@ function UsersTab({ embedded = false }) {
             <div className="px-[15px] pb-4">
               <div className={tableUi.frame}>
                 <div className="w-full overflow-x-auto">
-                  <table className={`${tableUi.table} min-w-[900px]`} dir="rtl">
+                  <table className={`${tableUi.table} min-w-[1000px]`} dir="rtl">
                     <THead>
                       <tr className={tableUi.headRow}>
                         <TH className={`w-12 ${tableUi.th}`}>
@@ -756,6 +773,10 @@ function UsersTab({ embedded = false }) {
                           </div>
                         </TH>
 
+                        <TH className={`min-w-[140px] ${tableUi.th}`}>
+                          نوع
+                        </TH>
+
                         <TH className={`min-w-[180px] ${tableUi.th}`}>
                           نام کاربری
                         </TH>
@@ -768,8 +789,8 @@ function UsersTab({ embedded = false }) {
                           وضعیت
                         </TH>
 
-                        <TH className={`min-w-[160px] ${tableUi.th}`}>
-                          نوع
+                        <TH className={`min-w-[132px] ${tableUi.th}`}>
+                          عملیات
                         </TH>
                       </tr>
                     </THead>
@@ -777,13 +798,13 @@ function UsersTab({ embedded = false }) {
                     <tbody className={tableUi.body}>
                       {loading ? (
                         <TR>
-                          <TD colSpan={7} className={tableUi.emptyRow}>
+                          <TD colSpan={8} className={tableUi.emptyRow}>
                             در حال بارگذاری...
                           </TD>
                         </TR>
                       ) : (sortedList || []).length === 0 ? (
                         <TR>
-                          <TD colSpan={7} className={tableUi.emptyRow}>
+                          <TD colSpan={8} className={tableUi.emptyRow}>
                             کاربری ثبت نشده است.
                           </TD>
                         </TR>
@@ -810,7 +831,10 @@ function UsersTab({ embedded = false }) {
 
                               <TD className={`px-3 ${tdBorder}`}>{idx + 1}</TD>
                               <TD className={`px-3 ${tdBorder}`}>{u.name || "—"}</TD>
-                              <TD className={`px-3 ${tdBorder}`} dir="ltr">{u.username || "—"}</TD>
+                              <TD className={`px-3 ${tdBorder} text-black/80 dark:text-neutral-300`}>
+                                {userTypeLabel(u.role)}
+                              </TD>
+                              <TD className={`px-3 ${tdBorder}`} dir="ltr">{u.role === "personnel" ? "—" : u.username || "—"}</TD>
                               <TD className={`px-3 ${tdBorder} ${isExpired(u.expiresAt || u.expires_at) ? "text-red-600 dark:text-red-400" : ""}`}>
                                 {formatExpiresAt(u.expiresAt || u.expires_at)}
                               </TD>
@@ -827,7 +851,6 @@ function UsersTab({ embedded = false }) {
                               </TD>
                               <TD className={`px-3 ${rowUi.valueCell} ${tdBorder} text-black/80 dark:text-neutral-300`}>
                                 <div className={rowUi.valueWrap}>
-                                  <span className={rowUi.valueText}>{u.role || "user"}</span>
                                   <div className={rowUi.rowActions}>
                                     <RowActionIconBtn
                                       action="edit"
