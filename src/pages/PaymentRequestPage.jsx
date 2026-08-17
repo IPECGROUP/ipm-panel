@@ -109,7 +109,7 @@ function displayPaymentSerial(item, projects = []) {
 }
 function isActiveProject(project) {
   const value = project?.isActive ?? project?.is_active ?? project?.active;
-  return value === undefined || value === null || value === true || value === 1 || String(value).toLowerCase() === "true" || String(value) === "1";
+  return value === true || value === 1 || String(value).toLowerCase() === "true" || String(value) === "1";
 }
 function isMainProject(project) { return /^\d{3}$/.test(normalizeProjectCode(project?.code)); }
 function itemLabel(item) { return item?.title || item?.name || item?.label || item?.code || `#${item?.id}`; }
