@@ -106,11 +106,11 @@ function budgetCodeForProject(value = "", projectCode = "") {
 
 function isActiveProject(project) {
   const value = project?.isActive ?? project?.is_active ?? project?.active;
-  return value === undefined || value === null || value === true || value === 1 || String(value).toLowerCase() === "true";
+  return value === true || value === 1 || String(value).toLowerCase() === "true" || String(value) === "1";
 }
 
 function isMainProject(project) {
-  return /^\d{3}$/.test(normalizeProjectCode(project?.code));
+  return /^\d{3}$/.test(toEnglishDigits(String(project?.code ?? "")).trim());
 }
 
 function projectLabel(project) {
@@ -384,24 +384,9 @@ export default function SupplyRequestPage() {
 
   const loadProjects = useCallback(async () => {
     try {
-      const data = await api("/cost-breakdown");
-      const raw = Array.isArray(data?.items) ? data.items : [];
-      const byProject = new Map();
-      raw.forEach((item) => {
-        const project = item?.project || {};
-        const id = project.id ?? item.projectId ?? item.project_id;
-        const code = normalizeProjectCode(project.code ?? item.projectCode ?? item.project_code);
-        if (!id || !code) return;
-        if (!byProject.has(String(id))) {
-          byProject.set(String(id), {
-            id,
-            code,
-            name: String(project.name ?? item.projectName ?? item.project_name ?? "").trim(),
-            isActive: project.isActive ?? item.projectIsActive ?? item.project_is_active ?? true,
-          });
-        }
-      });
-      const clean = Array.from(byProject.values())
+      const data = await api("/projects?isActive=true");
+      const raw = Array.isArray(data?.items) ? data.items : data?.projects || [];
+      const clean = raw
         .filter((project) => isActiveProject(project) && isMainProject(project))
         .sort((a, b) => String(a.code).localeCompare(String(b.code), "fa", { numeric: true }));
       setProjects(clean);
