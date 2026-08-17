@@ -1896,11 +1896,10 @@ function WorkflowPanel({
           <ActionOption kind="approve" checked={choice === "approve"} disabled={!hasEnoughLiquidity} onClick={() => setChoice("approve")} label="تایید درخواست">
             <NextRecipientSelect recipients={nextRecipients} loading={nextRecipientsLoading} value={targetAssigneeUserId} onChange={setTargetAssigneeUserId} disabled={choice !== "approve" || actionBusy} compact />
           </ActionOption>
-          <ActionOption kind="return" checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت درخواست" />
-          <ActionOption kind="reject" checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست" />
-          {!hasEnoughLiquidity && <ActionOption kind="reject" checked={choice === "stop"} onClick={() => setChoice("stop")} label="توقف پرداخت به دلیل عدم نقدینگی" />}
+          <ActionOption kind="return" checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت درخواست"><textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputClass} mt-2 min-h-20 py-2 text-xs`} placeholder="توضیح..." /></ActionOption>
+          <ActionOption kind="reject" checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست"><textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputClass} mt-2 min-h-20 py-2 text-xs`} placeholder="توضیح..." /></ActionOption>
+          {!hasEnoughLiquidity && <ActionOption kind="reject" checked={choice === "stop"} onClick={() => setChoice("stop")} label="توقف پرداخت به دلیل عدم نقدینگی"><textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputClass} mt-2 min-h-20 py-2 text-xs`} placeholder="توضیح..." /></ActionOption>}
         </div>
-        {["reject", "return", "stop"].includes(choice) && <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputClass} min-h-24 py-3`} placeholder="توضیح..." />}
         <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice || (targetRequired && !targetAssigneeUserId)} onSubmit={onSubmit} />
       </div>
     </PreviewSection>;
@@ -1931,9 +1930,8 @@ function WorkflowPanel({
         <ActionOption kind="approve" checked={choice === "approve"} onClick={() => setChoice("approve")} label={stepKey === "management" ? "تایید درخواست پرداخت" : "تایید درخواست"}>
           <NextRecipientSelect recipients={nextRecipients} loading={nextRecipientsLoading} value={targetAssigneeUserId} onChange={setTargetAssigneeUserId} disabled={choice !== "approve" || actionBusy} compact />
         </ActionOption>
-        <ActionOption kind="return" checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت درخواست پرداخت" />
+        <ActionOption kind="return" checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت درخواست پرداخت"><textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputClass} mt-2 min-h-20 py-2 text-xs`} placeholder="توضیح..." /></ActionOption>
       </div>
-      {choice === "return" && <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputClass} min-h-24 py-3`} placeholder="توضیح..." />}
       <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice || (targetRequired && !targetAssigneeUserId)} onSubmit={onSubmit} />
     </div>
   </PreviewSection>;
@@ -1949,7 +1947,7 @@ function ActionOption({ kind = "approve", checked, disabled, onClick, label, chi
     <div className={`mx-auto grid h-10 w-10 place-items-center rounded-full text-2xl font-bold ${appearance.iconClass}`}>{appearance.icon}</div>
     <div className="mt-2 text-sm font-bold text-neutral-800 dark:text-neutral-100">{label}</div>
     <p className="mt-1 text-[11px] leading-5 text-neutral-500 dark:text-neutral-400">{appearance.description}</p>
-    {children && <div className="mt-2 text-right" onClick={(event) => event.stopPropagation()}>{children}</div>}
+    {checked && children && <div className="mt-2 text-right" onClick={(event) => event.stopPropagation()}>{children}</div>}
   </div>;
 }
 
