@@ -18,6 +18,7 @@ const empty = () => ({
   requestNumber: "",
   requestDate: today(),
   projectId: "",
+  beneficiaryUserId: "",
   amount: "",
   currency: "ریال",
   unregisteredBalance: "",
@@ -29,7 +30,7 @@ function Field({ label, required, children, className = "" }) {
   const requestErrors = React.useContext(RequestErrorsContext);
   const orderClass = label === "مبلغ" ? "md:order-3" : label === "کد بودجه" ? "md:order-4" : label === "فایل" ? "md:order-5" : "";
   const displayLabel = label === "مبلغ" ? "مبلغ تسویه" : label;
-  const invalid = (label === "تاریخ" && settlementErrors.date) || (label === "کد بودجه" && settlementErrors.budgetCode) || (label === "مبلغ" && settlementErrors.amount) || (label === "ارسال به" && settlementErrors.recipient) || (label === "شماره درخواست" && requestErrors.requestNumber) || (label === "تاریخ درخواست" && requestErrors.requestDate) || (label === "پروژه" && requestErrors.projectId) || (label === "مبلغ تنخواه درخواستی" && requestErrors.amount) || (label === "ارسال درخواست به" && requestErrors.projectManagerId);
+  const invalid = (label === "تاریخ" && settlementErrors.date) || (label === "کد بودجه" && settlementErrors.budgetCode) || (label === "مبلغ" && settlementErrors.amount) || (label === "ارسال به" && settlementErrors.recipient) || (label === "شماره درخواست" && requestErrors.requestNumber) || (label === "تاریخ درخواست" && requestErrors.requestDate) || (label === "پروژه" && requestErrors.projectId) || (label === "ذینفع" && requestErrors.beneficiaryUserId) || (label === "مبلغ تنخواه درخواستی" && requestErrors.amount) || (label === "ارسال درخواست به" && requestErrors.projectManagerId);
   return (
     <label className={`block ${orderClass} ${invalid ? "[&_input]:!border-red-500 [&_input]:!ring-1 [&_input]:!ring-red-500 [&_select]:!border-red-500 [&_select]:!ring-1 [&_select]:!ring-red-500 [&_button]:!border-red-500 [&_button]:!ring-1 [&_button]:!ring-red-500" : ""} ${className}`}>
       <span className="mb-1 block text-xs font-normal text-neutral-600 dark:text-neutral-300">
@@ -66,6 +67,7 @@ export default function TenkhahPage({ embedded = false }) {
     [form, setForm] = useState(empty),
     [open, setOpen] = useState(false),
     [projects, setProjects] = useState([]),
+    [beneficiaries, setBeneficiaries] = useState([]),
     [currencies, setCurrencies] = useState([]),
     [selected, setSelected] = useState(null),
     [settlement, setSettlement] = useState(null),
@@ -113,12 +115,13 @@ export default function TenkhahPage({ embedded = false }) {
     if (embedded && user?.id) add();
   }, [embedded, user?.id]);
   const loadOptions = async () => {
-    const [p, c, financeState, projectManagement, seniorManagement] = await Promise.all([
+    const [p, c, financeState, projectManagement, seniorManagement, employeeData] = await Promise.all([
       api("/projects?isActive=true"),
       api("/base/currencies/types"),
       api("/tenkhah?currentUserFinance=1"),
       api("/tenkhah?recipients=project_manager"),
       api("/tenkhah?recipients=management"),
+      api("/base/user-role-assignments"),
     ]);
     setProjects(
       (p.items || p.projects || []).filter((x) => x.isActive !== false && /^\d{3}$/.test(String(x.code || "").trim())),
@@ -126,6 +129,7 @@ export default function TenkhahPage({ embedded = false }) {
     setCurrencies(c.items || []);
     setUserIsFinance(Boolean(financeState.isFinance));
     setWorkflowRecipients({ project_manager: projectManagement.users || [], management: seniorManagement.users || [] });
+    setBeneficiaries((employeeData.items || []).map((person) => ({ id: person.id, name: person.name, username: person.username, email: person.email, isActive: person.isActive })).sort((a, b) => name(a).localeCompare(name(b), "fa")));
   };
   const add = async () => {
     setOpen(true);
@@ -175,21 +179,30 @@ export default function TenkhahPage({ embedded = false }) {
       ...x,
       [k]: format3(toEnglishDigits(v).replace(/[^\d]/g, "")),
     }));
+  const loadBeneficiaryBalances = async (projectId, beneficiaryUserId) => {
+    if (!projectId || !beneficiaryUserId) { setProjectBalances({ unregisteredBalance: "0", unsettledBalance: "0", receivedAmount: "0" }); return; }
+    try {
+      const balances = await api(`/tenkhah?projectBalances=${encodeURIComponent(projectId)}&beneficiaryId=${encodeURIComponent(beneficiaryUserId)}`);
+      setProjectBalances({ unregisteredBalance: balances.unregisteredBalance || "0", unsettledBalance: balances.unsettledBalance || "0", receivedAmount: balances.receivedAmount || "0" });
+    } catch (e) { setError(e.message); }
+  };
   const selectProject = async (projectId) => {
     setForm((x) => ({ ...x, projectId }));
     if (!projectId) { setProjectBalances({ unregisteredBalance: "0", unsettledBalance: "0", receivedAmount: "0" }); setProjectLiquidity("0"); return; }
     try {
-      const [balances, liquidity] = await Promise.all([api(`/tenkhah?projectBalances=${encodeURIComponent(projectId)}`), api(`/liquidity-allocations?projectId=${encodeURIComponent(projectId)}`)]);
-      setProjectBalances({ unregisteredBalance: balances.unregisteredBalance || "0", unsettledBalance: balances.unsettledBalance || "0", receivedAmount: balances.receivedAmount || "0" });
+      const liquidity = await api(`/liquidity-allocations?projectId=${encodeURIComponent(projectId)}`);
       const allocated = BigInt(liquidity.allocations?.[String(projectId)] || "0");
       const committed = BigInt(liquidity.committed?.[String(projectId)] || "0");
       setProjectLiquidity((allocated > committed ? allocated - committed : 0n).toString());
     } catch (e) { setError(e.message); }
+    await loadBeneficiaryBalances(projectId, form.beneficiaryUserId);
   };
-  const displayedUnregisteredBalance = sumAmounts(projectBalances.unregisteredBalance, form.amount);
-  const displayedUnsettledBalance = sumAmounts(projectBalances.unsettledBalance, form.amount);
+  const selectBeneficiary = async (beneficiaryUserId) => {
+    setForm((x) => ({ ...x, beneficiaryUserId }));
+    await loadBeneficiaryBalances(form.projectId, beneficiaryUserId);
+  };
   const create = async () => {
-    const requiredErrors = { requestNumber: false, requestDate: !form.requestDate, projectId: !form.projectId, amount: !form.amount, projectManagerId: !userIsFinance && !form.projectManagerId };
+    const requiredErrors = { requestNumber: false, requestDate: !form.requestDate, projectId: !form.projectId, beneficiaryUserId: !form.beneficiaryUserId, amount: !form.amount, projectManagerId: !userIsFinance && !form.projectManagerId };
     if (Object.values(requiredErrors).some(Boolean)) { setFormErrors(requiredErrors); return; }
     setBusy(true);
     setError("");
@@ -285,6 +298,7 @@ export default function TenkhahPage({ embedded = false }) {
           <section className="mb-5 rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03] md:p-5">
             {!embedded && <h2 className="mb-5 text-base font-bold">درخواست تنخواه جدید</h2>}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="space-y-4">
               <Field label="پروژه" required>
                 <select
                   value={form.projectId}
@@ -299,9 +313,15 @@ export default function TenkhahPage({ embedded = false }) {
                   ))}
                 </select>
               </Field>
-              <Field label="باقی‌مانده نقدینگی پروژه">
-                <input value={fa(format3(projectLiquidity))} readOnly className={`${input} bg-neutral-100 dark:bg-white/10`} />
+              <Field label="ذینفع" required>
+                <select value={form.beneficiaryUserId} onChange={(e) => selectBeneficiary(e.target.value)} className={input}>
+                  <option value="">انتخاب کنید</option>
+                  {beneficiaries.map((person) => <option value={person.id} key={person.id}>{name(person)}</option>)}
+                </select>
               </Field>
+              </div>
+              <div className="flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">باقی‌مانده نقدینگی پروژه: <span className="mr-1 font-medium tabular-nums">{fa(format3(projectLiquidity))}</span></div>
+              <div className="flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">مجموع تنخواه دریافت‌شده: <span className="mr-1 font-medium tabular-nums">{fa(format3(projectBalances.receivedAmount))}</span></div>
               <Field label="مبلغ تنخواه درخواستی" required>
                 <div className="flex overflow-hidden rounded-xl border border-black/10 dark:border-white/15">
                   <input
@@ -322,23 +342,7 @@ export default function TenkhahPage({ embedded = false }) {
                   </select>
                 </div>
               </Field>
-              <Field label="مجموع تنخواه دریافت‌شده">
-                <input value={fa(format3(projectBalances.receivedAmount))} readOnly className={`${input} bg-neutral-100 dark:bg-white/10`} />
-              </Field>
-              <Field label="مانده تنخواه ثبت‌نشده">
-                <input
-                  value={fa(format3(displayedUnregisteredBalance))}
-                  readOnly
-                  className={`${input} bg-neutral-100 dark:bg-white/10`}
-                />
-              </Field>
-              <Field label="مانده تنخواه تسویه‌نشده">
-                <input
-                  value={fa(format3(displayedUnsettledBalance))}
-                  readOnly
-                  className={`${input} bg-neutral-100 dark:bg-white/10`}
-                />
-              </Field>
+              <div className="flex min-h-11 items-end pb-2 text-sm font-medium text-red-600 dark:text-red-400">مانده تنخواه تسویه‌نشده: <span className="mr-1 tabular-nums">{fa(format3(projectBalances.unsettledBalance))}</span></div>
             </div>
             <div className="mt-5 flex flex-col gap-3 border-t border-black/10 pt-4 sm:flex-row sm:items-end sm:justify-end dark:border-white/10">
               <Field label={userIsFinance ? "ارسال درخواست به مدیریت ارشد" : "ارسال درخواست به"} required className="w-full sm:w-[20rem]">
