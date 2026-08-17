@@ -63,6 +63,12 @@ function projectLabel(project) {
   return `${project?.code ? `${project.code} - ` : ""}${project?.name || project?.title || "پروژه بدون نام"}`;
 }
 
+function dateKey(value) {
+  const parts = toEnglishDigits(String(value ?? "")).replaceAll("-", "/").split("/");
+  if (parts.length !== 3) return "";
+  return `${parts[0].padStart(4, "0")}${parts[1].padStart(2, "0")}${parts[2].padStart(2, "0")}`;
+}
+
 const tableCellClass = "h-14 border-b border-l border-black/10 px-2 text-center align-middle dark:border-white/10";
 const historyTableCellClass = "h-11 border-b border-l border-neutral-300 px-3 text-center align-middle dark:border-white/10";
 const paginationIconBtnCls = "grid h-9 w-9 place-items-center rounded-lg border border-black/10 text-neutral-700 transition hover:bg-black/[0.04] disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:text-neutral-100 dark:hover:bg-white/10";
@@ -80,6 +86,9 @@ export default function LiquidityAllocationPage() {
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [summary, setSummary] = useState({ allocations: {}, spent: {}, committed: {}, contingencyReserve: "0" });
   const [history, setHistory] = useState([]);
+  const [historyQuery, setHistoryQuery] = useState("");
+  const [historyFromDate, setHistoryFromDate] = useState("");
+  const [historyToDate, setHistoryToDate] = useState("");
   const [previewAllocation, setPreviewAllocation] = useState(null);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
@@ -142,14 +151,32 @@ export default function LiquidityAllocationPage() {
 
   useEffect(() => { loadSummary(); }, [loadSummary]);
 
-  const historyTotal = history.length;
+  const filteredHistory = useMemo(() => {
+    const query = toEnglishDigits(historyQuery).trim().toLocaleLowerCase("fa-IR");
+    const fromKey = dateKey(historyFromDate);
+    const toKey = dateKey(historyToDate);
+    return history.filter((item) => {
+      const itemDateKey = dateKey(item.allocationDate);
+      if (fromKey && (!itemDateKey || itemDateKey < fromKey)) return false;
+      if (toKey && (!itemDateKey || itemDateKey > toKey)) return false;
+      if (!query) return true;
+      const details = (item.details || []).map((detail) => projectLabel(detail.project || {})).join(" ");
+      const searchable = [item.allocationDate, item.source, item.description, item.allocatedAmount, item.contingencyReserveAmount, details]
+        .map((value) => toEnglishDigits(String(value ?? "")).toLocaleLowerCase("fa-IR"))
+        .join(" ");
+      return searchable.includes(query);
+    });
+  }, [history, historyFromDate, historyQuery, historyToDate]);
+
+  const historyTotal = filteredHistory.length;
   const historyPageCount = Math.max(1, Math.ceil(historyTotal / Math.max(1, rowsPerPage)));
   const safeHistoryPage = Math.min(Math.max(0, page), historyPageCount - 1);
   const historyStartIndex = safeHistoryPage * rowsPerPage;
   const historyEndIndex = Math.min(historyTotal, historyStartIndex + rowsPerPage);
-  const pagedHistory = history.slice(historyStartIndex, historyEndIndex);
+  const pagedHistory = filteredHistory.slice(historyStartIndex, historyEndIndex);
 
   useEffect(() => { setPage(0); }, [rowsPerPage]);
+  useEffect(() => { setPage(0); }, [historyFromDate, historyQuery, historyToDate]);
   useEffect(() => { if (page !== safeHistoryPage) setPage(safeHistoryPage); }, [page, safeHistoryPage]);
 
   const money = (value) => {
@@ -404,7 +431,7 @@ export default function LiquidityAllocationPage() {
           <thead className="bg-neutral-100 text-neutral-700 dark:bg-white/[0.08] dark:text-neutral-100">
             <tr>
               {["مرکز/پروژه", "کل بودجه", "مانده بودجه", "مبلغ تخصیص", "نقدینگی"].map((title) => (
-                <th key={title} className="h-12 border-b border-l border-black/10 px-2 text-center font-semibold dark:border-white/10">{title}</th>
+                <th key={title} className={`h-12 border-b border-l border-black/10 px-2 font-semibold dark:border-white/10 ${title === "مرکز/پروژه" ? "text-right" : "text-center"}`}>{title}</th>
               ))}
             </tr>
           </thead>
@@ -425,7 +452,7 @@ export default function LiquidityAllocationPage() {
               const allocationAmount = money(row.newAllocation);
               return (
                 <tr key={row.id} className="bg-white transition-colors hover:bg-neutral-50 dark:bg-neutral-900 dark:hover:bg-white/[0.03]">
-                  <td className={tableCellClass + " truncate font-medium"} title={row.label}>{row.label}</td>
+                  <td className={tableCellClass + " truncate text-right font-medium"} title={row.label}>{row.label}</td>
                   <td className={tableCellClass}>{displayMoney(totalBudget)}</td>
                   <td className={tableCellClass}>{displayMoney(budgetRemaining)}</td>
                   <td className={tableCellClass}>
@@ -449,7 +476,25 @@ export default function LiquidityAllocationPage() {
             {submitting ? <span className="text-xs">...</span> : <img src="/images/icons/check.svg" alt="" className="h-5 w-5 invert dark:invert-0" />}
           </button>
         </div>
-      </div> : <div className="mt-5 overflow-hidden rounded-2xl border border-neutral-300 bg-[#fbfbf8] shadow-sm dark:border-white/10 dark:bg-neutral-900" dir="rtl">
+      </div> : <>
+        <div className="mt-5 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]" dir="rtl">
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="w-full md:min-w-[280px] md:flex-1">
+              <span className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">جست و جو</span>
+              <input value={historyQuery} onChange={(event) => setHistoryQuery(event.target.value)} className={inputClass} placeholder="جستجو در تاریخ، منبع، پروژه و توضیحات..." />
+            </label>
+            <label className="w-[calc(50%-0.25rem)] md:w-auto md:min-w-[150px]">
+              <span className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">از</span>
+              <JalaliPopupDatePicker value={historyFromDate} onChange={setHistoryFromDate} buttonClassName={inputClass + " flex items-center justify-between gap-2"} />
+            </label>
+            <label className="w-[calc(50%-0.25rem)] md:w-auto md:min-w-[150px]">
+              <span className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">تا</span>
+              <JalaliPopupDatePicker value={historyToDate} onChange={setHistoryToDate} buttonClassName={inputClass + " flex items-center justify-between gap-2"} />
+            </label>
+            {(historyQuery || historyFromDate || historyToDate) && <button type="button" onClick={() => { setHistoryQuery(""); setHistoryFromDate(""); setHistoryToDate(""); }} className="h-11 rounded-xl border border-black/10 px-3 text-xs font-medium transition hover:bg-white dark:border-white/15 dark:hover:bg-white/10">پاک کردن فیلتر</button>}
+          </div>
+        </div>
+        <div className="mt-3 overflow-hidden rounded-2xl border border-neutral-300 bg-[#fbfbf8] shadow-sm dark:border-white/10 dark:bg-neutral-900" dir="rtl">
         <div dir="ltr" className="max-h-[55vh] overflow-y-auto overflow-x-auto">
         <table dir="rtl" className="w-full min-w-[760px] table-fixed border-collapse text-xs text-neutral-800 dark:text-neutral-100 sm:text-sm">
           <colgroup>
@@ -510,7 +555,8 @@ export default function LiquidityAllocationPage() {
             </div>
           </div>
         </div>
-      </div>}
+        </div>
+      </>}
 
       <div className="mt-4 flex items-center justify-end gap-3" dir="rtl">
         {submitMessage && <span className={submitMessage.includes("شد.") ? "text-xs text-emerald-600 dark:text-emerald-300" : "text-xs text-red-600 dark:text-red-300"}>{submitMessage}</span>}
@@ -539,7 +585,7 @@ export default function LiquidityAllocationPage() {
             <div className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
             <table className="w-full min-w-[720px] table-fixed border-collapse text-xs sm:text-sm">
               <thead className="bg-neutral-100 text-neutral-700 dark:bg-white/[0.08] dark:text-neutral-100">
-                <tr>{["مرکز/پروژه", "کل بودجه", "مانده بودجه", "مبلغ تخصیص", "نقدینگی"].map((title) => <th key={title} className="h-12 border-b border-l border-black/10 px-2 text-center font-semibold dark:border-white/10">{title}</th>)}</tr>
+                <tr>{["مرکز/پروژه", "کل بودجه", "مانده بودجه", "مبلغ تخصیص", "نقدینگی"].map((title) => <th key={title} className={`h-12 border-b border-l border-black/10 px-2 font-semibold dark:border-white/10 ${title === "مرکز/پروژه" ? "text-right" : "text-center"}`}>{title}</th>)}</tr>
               </thead>
               <tbody>
                 <tr className="bg-amber-50/60 dark:bg-amber-400/[0.05]">
@@ -556,7 +602,7 @@ export default function LiquidityAllocationPage() {
                   const projectAmount = money(detail.amount);
                   const label = detail.project ? projectLabel(detail.project) : "پروژه حذف‌شده";
                   return <tr key={`${key}-${index}`} className="bg-white dark:bg-neutral-900">
-                    <td className={tableCellClass + " truncate font-medium"} title={label}>{label}</td>
+                    <td className={tableCellClass + " truncate text-right font-medium"} title={label}>{label}</td>
                     <td className={tableCellClass}>{displayMoney(totalBudget)}</td>
                     <td className={tableCellClass}>{displayMoney(budgetRemaining)}</td>
                     <td className={tableCellClass}>{displayMoney(projectAmount)}</td>
