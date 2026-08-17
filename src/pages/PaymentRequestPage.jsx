@@ -883,7 +883,7 @@ export default function PaymentRequestPage() {
           </div>
           <div className="flex flex-col gap-3 border-t border-black/[0.07] pt-4 sm:flex-row sm:items-end sm:justify-end dark:border-white/10">
             <Field label="انتخاب کاربر" required={!!createRecipients.targetRoleKey} className="w-full sm:w-[20rem]">
-              <select className={inputClass} value={form.targetAssigneeUserId} onChange={(e) => setField("targetAssigneeUserId", e.target.value)} disabled={createRecipientsLoading || !createRecipients.targetRoleKey}>
+              <select className={inputClass} value={form.targetAssigneeUserId} onChange={(e) => setField("targetAssigneeUserId", e.target.value)} disabled={createRecipientsLoading}>
                 <option value="">{createRecipientsLoading ? "در حال دریافت..." : "انتخاب کاربر"}</option>
                 {createRecipients.users.map((recipient) => <option key={recipient.id} value={recipient.id}>{recipient.name || recipient.username || recipient.email || `کاربر #${recipient.id}`}</option>)}
               </select>
