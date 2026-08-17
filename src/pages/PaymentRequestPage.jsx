@@ -117,6 +117,27 @@ function isActiveProject(project) {
 function isMainProject(project) {
   return /^\d{3}$/.test(toEnglishDigits(String(project?.code ?? "")).trim());
 }
+function normalizeWorkflowUnitName(value = "") {
+  return String(value).replace(/ي/g, "ی").replace(/ك/g, "ک").replace(/[‌\s]+/g, " ").trim().toLowerCase();
+}
+const WORKFLOW_UNIT_NAMES = {
+  project_control: "برنامه ریزی",
+  project_manager: "مدیریت پروژه ها",
+  accounting: "مالی و حسابداری",
+  management: "مدیریت",
+};
+function roleIdsForWorkflowUnit(unitRoleItems, roleKey) {
+  const expected = normalizeWorkflowUnitName(WORKFLOW_UNIT_NAMES[roleKey]);
+  const unit = (Array.isArray(unitRoleItems) ? unitRoleItems : []).find((item) => normalizeWorkflowUnitName(item?.name || item?.label) === expected);
+  return new Set((unit?.roles || []).map((role) => String(role?.id)).filter(Boolean));
+}
+function usersForWorkflowUnit(unitRoleItems, assignments, roleKey) {
+  const roleIds = roleIdsForWorkflowUnit(unitRoleItems, roleKey);
+  if (!roleIds.size) return [];
+  return (Array.isArray(assignments) ? assignments : [])
+    .filter((candidate) => candidate?.isActive !== false && (candidate?.roles || []).some((role) => roleIds.has(String(role?.id))))
+    .map((candidate) => ({ id: candidate.id, name: candidate.name, username: candidate.username, email: candidate.email }));
+}
 function itemLabel(item) { return item?.title || item?.name || item?.label || item?.code || `#${item?.id}`; }
 function projectLabel(project) {
   const code = normalizeProjectCode(project?.code);
@@ -379,12 +400,28 @@ export default function PaymentRequestPage() {
   useEffect(() => {
     let cancelled = false;
     setCreateRecipientsLoading(true);
-    api(`/requests?nextRecipientsForCreate=1&projectId=${encodeURIComponent(form.projectId || "")}`)
-      .then((data) => { if (!cancelled) setCreateRecipients({ targetRoleKey: data?.targetRoleKey || null, users: Array.isArray(data?.users) ? data.users : [] }); })
-      .catch(() => { if (!cancelled) setCreateRecipients({ targetRoleKey: null, users: [] }); })
+    Promise.all([
+      api(`/requests?nextRecipientsForCreate=1&projectId=${encodeURIComponent(form.projectId || "")}`).catch(() => ({})),
+      api("/base/unit-roles").catch(() => ({ items: [] })),
+      api("/base/user-role-assignments").catch(() => ({ items: [] })),
+    ])
+      .then(([workflowData, unitRoleData, assignmentData]) => {
+        if (cancelled) return;
+        const unitRoleItems = Array.isArray(unitRoleData?.items) ? unitRoleData.items : [];
+        const assignments = Array.isArray(assignmentData?.items) ? assignmentData.items : [];
+        const currentAssignment = assignments.find((candidate) => Number(candidate?.id) === Number(user?.id));
+        const financeRoleIds = roleIdsForWorkflowUnit(unitRoleItems, "accounting");
+        const currentUserIsFinance = (currentAssignment?.roles || []).some((role) => financeRoleIds.has(String(role?.id)));
+        const targetRoleKey = workflowData?.targetRoleKey || (currentUserIsFinance ? "management" : "project_control");
+        const apiUsers = Array.isArray(workflowData?.users) ? workflowData.users : [];
+        const derivedUsers = usersForWorkflowUnit(unitRoleItems, assignments, targetRoleKey)
+          .filter((candidate) => Number(candidate.id) !== Number(user?.id));
+        setCreateRecipients({ targetRoleKey, users: apiUsers.length ? apiUsers : derivedUsers });
+      })
+      .catch(() => { if (!cancelled) setCreateRecipients({ targetRoleKey: "project_control", users: [] }); })
       .finally(() => { if (!cancelled) setCreateRecipientsLoading(false); });
     return () => { cancelled = true; };
-  }, [api, form.projectId]);
+  }, [api, form.projectId, user?.id]);
   useEffect(() => {
     api("/tags?scope=letters").then((data) => {
       const rows = Array.isArray(data?.tags) ? data.tags : Array.isArray(data?.items) ? data.items : [];
