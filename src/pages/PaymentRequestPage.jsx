@@ -29,10 +29,10 @@ const STEP_LABELS = {
 const PAYMENT_WORKFLOW_STEPS = [
   { index: 0, label: "ثبت درخواست" },
   { index: 1, label: "بررسی اولیه (واحد برنامه‌ریزی)" },
-  { index: 2, label: "بررسی نهایی (مدیریت پروژه)" },
+  { index: 2, label: "تایید نهایی (مدیریت پروژه)" },
   { index: 3, label: "بررسی اسناد (واحد مالی)" },
-  { index: 4, label: "دستور پرداخت (واحد مدیریت ارشد)" },
-  { index: 5, label: "انجام پرداخت (واحد مالی)" },
+  { index: 4, label: "دستور پرداخت (مدیریت ارشد)" },
+  { index: 5, label: "ثبت پرداخت (واحد مالی)" },
 ];
 const PAYMENT_METHOD_OPTIONS = ["واریز بانکی - فیش", "واریز بانکی - اینترنت بانک", "صدور چک", "بصورت نقدی"];
 const PAGE_ICON = "/images/icons/darkhast-pardakht.svg";
@@ -1209,15 +1209,15 @@ function TenkhahPreview({ item, onClose }) {
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [onClose]);
-  const activeStep = item.status === "charged" ? 3 : item.stage === "finance" ? 2 : 1;
-  const steps = ["ثبت درخواست", "تأیید مدیر پروژه", "بررسی و شارژ مالی", "تکمیل درخواست"];
+  const activeStep = item.status === "charged" ? 4 : item.stage === "finance" ? 3 : item.stage === "management" ? 2 : 1;
+  const steps = ["ثبت درخواست", "تأیید مدیر پروژه", "دستور پرداخت (مدیریت ارشد)", "بررسی و شارژ مالی", "تکمیل درخواست"];
   return createPortal(<div className="fixed inset-0 z-[9999]" dir="rtl">
     <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
     <div className="absolute inset-0 flex items-center justify-center p-3 md:p-6">
       <div className="flex max-h-[min(88vh,720px)] w-[min(1040px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10"><div className="text-base font-bold">جزئیات درخواست تنخواه</div><button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 dark:bg-white dark:text-black" title="بستن" aria-label="بستن"><img src="/images/icons/bastan.svg" alt="" className="h-5 w-5 invert dark:invert-0" /></button></div>
         <div className="grid min-h-0 gap-4 overflow-y-auto p-4 md:grid-cols-[260px_minmax(0,1fr)] md:p-5">
-          <section className="self-start overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">فرآیند تنخواه</div><ol className="px-4 py-3">{steps.map((label, index) => { const step = index + 1; const completed = step < activeStep || item.status === "charged"; const active = step === activeStep && item.status !== "charged"; return <li key={label} className="relative grid grid-cols-[minmax(0,1fr)_32px] gap-2 pb-3 last:pb-0"><div className={`min-w-0 ${active ? "rounded-2xl bg-sky-50 px-3 py-2.5 dark:bg-sky-500/10" : "px-3 py-1"}`}><div className={`text-sm font-bold ${active ? "text-sky-700 dark:text-sky-300" : completed ? "text-neutral-800 dark:text-neutral-100" : "text-neutral-400 dark:text-neutral-500"}`}>{label}</div><div className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">{active ? "مرحله جاری" : completed ? "مرحله انجام شده" : "در انتظار شروع مرحله"}</div></div><div className="relative flex justify-center">{index < steps.length - 1 && <span className={`absolute bottom-[-6px] top-8 w-px ${completed ? "bg-sky-200 dark:bg-sky-500/30" : "bg-neutral-200 dark:bg-white/10"}`} />}<span className={`relative z-10 grid h-7 w-7 place-items-center rounded-full border text-xs font-bold ${active ? "border-sky-500 bg-sky-500 text-white shadow-[0_0_0_5px_rgba(14,165,233,.13)]" : completed ? "border-neutral-300 bg-white text-neutral-600 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-200" : "border-neutral-300 bg-white text-neutral-400 dark:border-neutral-600 dark:bg-neutral-900"}`}>{completed ? "✓" : toFa(step)}</span></div></li>; })}</ol></section>
+          <section className="self-start overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">فرآیند تنخواه</div><ol className="px-4 py-3">{steps.map((label, index) => { const step = index + 1; const completed = step < activeStep || item.status === "charged"; const active = step === activeStep && item.status !== "charged"; const finalCompleted = item.status === "charged" && index === steps.length - 1; return <li key={label} className="relative grid grid-cols-[minmax(0,1fr)_32px] gap-2 pb-3 last:pb-0"><div className={`min-w-0 ${active ? "rounded-2xl bg-sky-50 px-3 py-2.5 dark:bg-sky-500/10" : finalCompleted ? "rounded-2xl bg-emerald-50 px-3 py-2.5 dark:bg-emerald-500/10" : "px-3 py-1"}`}><div className={`text-sm font-bold ${finalCompleted ? "text-emerald-700 dark:text-emerald-300" : active ? "text-sky-700 dark:text-sky-300" : completed ? "text-neutral-800 dark:text-neutral-100" : "text-neutral-400 dark:text-neutral-500"}`}>{label}</div><div className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">{active ? "مرحله جاری" : completed ? "مرحله انجام شده" : "در انتظار شروع مرحله"}</div></div><div className="relative flex justify-center">{index < steps.length - 1 && <span className={`absolute bottom-[-6px] top-8 w-px ${completed ? "bg-sky-200 dark:bg-sky-500/30" : "bg-neutral-200 dark:bg-white/10"}`} />}<span className={`relative z-10 grid h-7 w-7 place-items-center rounded-full border text-xs font-bold ${finalCompleted ? "border-emerald-500 bg-emerald-500 text-white shadow-[0_0_0_5px_rgba(16,185,129,.13)]" : active ? "border-sky-500 bg-sky-500 text-white shadow-[0_0_0_5px_rgba(14,165,233,.13)]" : completed ? "border-neutral-300 bg-white text-neutral-600 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-200" : "border-neutral-300 bg-white text-neutral-400 dark:border-neutral-600 dark:bg-neutral-900"}`}>{completed ? "✓" : toFa(step)}</span></div></li>; })}</ol></section>
           <div className="space-y-4"><section className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">جزئیات درخواست تنخواه</div><div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10 sm:grid-cols-2 sm:divide-x sm:divide-y-0"><PreviewRow compact label="شماره درخواست" value={item.serial || "—"} ltr /><PreviewRow compact label="تاریخ درخواست" value={toFa(String(item.dateFa || "—").replaceAll("-", "/"))} /><PreviewRow compact label="پروژه" value={`${item.projectCode || ""}${item.projectName ? ` - ${item.projectName}` : ""}` || "—"} /><PreviewRow compact label="درخواست‌کننده" value={item.createdByName || "—"} /><PreviewRow compact label="مبلغ" value={`${toFa(money(item.amount) || "0")} ${item.currencyName || "ریال"}`} ltr /><PreviewRow compact label="وضعیت" value={<StatusBadge status={item.displayStatus || item.status} />} /></div></section><section className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">اطلاعات تنخواه</div><div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10 sm:grid-cols-2 sm:divide-x sm:divide-y-0"><PreviewRow compact label="مانده ثبت‌نشده" value={toFa(money(item.unregisteredBalance) || "0")} ltr /><PreviewRow compact label="مانده تسویه‌نشده" value={toFa(money(item.unsettledBalance) || "0")} ltr /></div></section></div>
         </div>
       </div>
@@ -1708,7 +1708,6 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
           <div className="flex items-center gap-2">
             <div className="text-sm font-bold">اقدامات پرداخت</div>
             <button type="button" onClick={openPdfPreview} className="inline-flex h-9 items-center gap-2 rounded-lg border border-black/10 px-3 text-xs font-semibold transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10" title="مشاهده PDF" aria-label="مشاهده PDF"><img src="/images/icons/print.svg" alt="" className="h-4 w-4 dark:invert" /><span>مشاهده PDF</span></button>
-            {isEditing && <button type="button" onClick={() => { setEditForm(formFromItem(item)); setEditUploadError(""); setIsEditing(false); }} className="rounded-lg border border-black/10 px-3 py-1.5 text-xs transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10">انصراف</button>}
           </div>
           <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white ring-1 ring-black/15 transition hover:bg-black/80 dark:bg-transparent dark:ring-neutral-800 dark:hover:bg-white/10" aria-label="بستن" title="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
         </div>
@@ -1752,9 +1751,8 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                   <PreviewRow compact editing={canEditRequest} colon valueClassName={!canEditRequest ? "whitespace-nowrap" : ""} label="درخواست تامین" value={supplyRequestControl} />
                 </div>
                 <PreviewRow editing={canEditRequest} colon label="شرح درخواست" value={canEditRequest ? <textarea className={`${inputClass} h-[68px] min-h-[68px] resize-y py-1.5 leading-6`} value={editForm.description} onChange={(event) => setEditField("description", event.target.value)} /> : (item.description || "—")} />
-                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
+                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-2 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
                   <PreviewRow compact colon leader={!canEditRequest} label="مبلغ درخواست" ltr={!canEditRequest} value={toFa(Number(item.amount || 0).toLocaleString("en-US"))} />
-                  <PreviewRow compact colon leader={!canEditRequest} label="باقی مانده بودجه مبنا" value={budgetLoading ? "در حال دریافت..." : baseBudget ? toFa(baseBudget) : "—"} ltr />
                   <PreviewRow compact colon leader={!canEditRequest} label="باقی مانده نقدینگی پروژه" value={liquidityRemaining || "—"} ltr />
                 </div>
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,0.38fr)_minmax(0,0.62fr)] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
@@ -1815,13 +1813,13 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                 targetAssigneeUserId={targetAssigneeUserId}
                 setTargetAssigneeUserId={setTargetAssigneeUserId}
               />}
-              {canEditRequest && <div className="rounded-2xl border border-black/10 px-4 py-2 dark:border-white/10">
+              {canEditRequest && <>
                 {editUploadError && <div className="mb-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">{editUploadError}</div>}
                 {canEditReturned ? <>
                   <NextRecipientSelect recipients={nextRecipients} loading={nextRecipientsLoading} value={targetAssigneeUserId} onChange={setTargetAssigneeUserId} />
                   <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={editUploading || (!!nextRecipients.targetRoleKey && !targetAssigneeUserId)} onSubmit={() => onResubmit(item, editForm, actionNote, { targetAssigneeUserId: targetAssigneeUserId || null })} />
                 </> : <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={editUploading} onSubmit={() => onEdit(item, editForm)} />}
-              </div>}
+              </>}
               {!canDecide && !canEditRequest && !isOwner && <div className="rounded-2xl border border-black/10 p-4 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">در این مرحله اقدامی برای شما فعال نیست.</div>}
             </div>
           </main>

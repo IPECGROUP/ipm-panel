@@ -47,11 +47,12 @@ function DetailCell({ label, children, className = "" }) {
 function TenkhahWorkflow({ stage, status }) {
   const steps = [
     ["project_manager", "تأیید مدیر پروژه"],
+    ["management", "دستور پرداخت (مدیریت ارشد)"],
     ["finance", "بررسی و شارژ مالی"],
     ["completed", "تکمیل درخواست"],
   ];
-  const active = status === "charged" ? 2 : Math.max(0, steps.findIndex(([key]) => key === stage));
-  return <aside className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-white/[.03]"><h3 className="mb-4 text-sm font-bold">فرآیند تنخواه</h3><div className="space-y-1">{steps.map(([key, label], index) => { const done = index < active || status === "charged"; const current = index === active && status !== "charged"; return <div key={key} className="relative flex min-h-14 items-center gap-3"><span className={`z-10 grid h-7 w-7 shrink-0 place-items-center rounded-full border text-xs font-bold ${current ? "border-sky-500 bg-sky-500 text-white shadow-[0_0_0_4px_rgba(14,165,233,.13)]" : done ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-black" : "border-neutral-300 bg-white text-neutral-400 dark:border-neutral-600 dark:bg-neutral-900"}`}>{done ? "✓" : index + 1}</span>{index < steps.length - 1 && <span className={`absolute right-[13px] top-9 h-7 w-px ${done ? "bg-neutral-900 dark:bg-white" : "bg-neutral-200 dark:bg-white/10"}`} />}<div className="min-w-0"><div className={`text-sm font-medium ${current ? "text-sky-700 dark:text-sky-300" : done ? "text-neutral-900 dark:text-white" : "text-neutral-400"}`}>{label}</div>{current && <div className="mt-0.5 text-[11px] text-sky-600 dark:text-sky-300">مرحله جاری</div>}</div></div>; })}</div></aside>;
+  const active = status === "charged" ? steps.length - 1 : Math.max(0, steps.findIndex(([key]) => key === stage));
+  return <aside className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-white/[.03]"><h3 className="mb-4 text-sm font-bold">فرآیند تنخواه</h3><div className="space-y-1">{steps.map(([key, label], index) => { const done = index < active || status === "charged"; const current = index === active && status !== "charged"; const finalCompleted = status === "charged" && index === steps.length - 1; return <div key={key} className="relative flex min-h-14 items-center gap-3"><span className={`z-10 grid h-7 w-7 shrink-0 place-items-center rounded-full border text-xs font-bold ${finalCompleted ? "border-emerald-500 bg-emerald-500 text-white shadow-[0_0_0_4px_rgba(16,185,129,.13)]" : current ? "border-sky-500 bg-sky-500 text-white shadow-[0_0_0_4px_rgba(14,165,233,.13)]" : done ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-black" : "border-neutral-300 bg-white text-neutral-400 dark:border-neutral-600 dark:bg-neutral-900"}`}>{done ? "✓" : index + 1}</span>{index < steps.length - 1 && <span className={`absolute right-[13px] top-9 h-7 w-px ${done ? "bg-neutral-900 dark:bg-white" : "bg-neutral-200 dark:bg-white/10"}`} />}<div className="min-w-0"><div className={`text-sm font-medium ${finalCompleted ? "text-emerald-700 dark:text-emerald-300" : current ? "text-sky-700 dark:text-sky-300" : done ? "text-neutral-900 dark:text-white" : "text-neutral-400"}`}>{label}</div>{current && <div className="mt-0.5 text-[11px] text-sky-600 dark:text-sky-300">مرحله جاری</div>}</div></div>; })}</div></aside>;
 }
 function SettlementTable({ entries, request, onRemove, onEdit, editingEntryId, editForm, budgetItems = [], onEditChange, onEditSave, onEditCancel }) {
   const total = sumAmounts(...entries.map((entry) => entry.amount));
@@ -82,6 +83,17 @@ export default function TenkhahPage({ embedded = false }) {
     [projectLiquidity, setProjectLiquidity] = useState("0"),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const userIsFinance = useMemo(() => {
+    const currentUser = users.find((item) => Number(item?.id) === Number(user?.id)) || user;
+    return /مالی|حسابدار|finance|account/i.test([
+      currentUser?.role,
+      currentUser?.department,
+      currentUser?.unitName,
+      ...(currentUser?.units || []).map((unit) => unit?.unit?.name || unit?.name || unit),
+      ...(currentUser?.roles || []).map((role) => role?.role?.name || role?.name || role),
+      ...(currentUser?.positions || []).map((position) => position?.name || position),
+    ].filter(Boolean).join(" "));
+  }, [user, users]);
   const api = async (path, opt = {}) => {
     const r = await fetch(`/api${path}`, {
       credentials: "include",
@@ -139,6 +151,9 @@ export default function TenkhahPage({ embedded = false }) {
       ),
     [users, user?.id],
   );
+  const managementRecipients = useMemo(() => users.filter((u) => /مدیریت ارشد|مدیرعامل|مدیر عامل|هیات مدیره|هیئت مدیره|management/i.test([
+    u.department, u.role, ...(u.positions || []).map((position) => position.name), ...(u.roles || []).map((role) => role.name || role.role?.name),
+  ].filter(Boolean).join(" "))), [users]);
   const finances = useMemo(
     () =>
       users.filter(
@@ -169,8 +184,8 @@ export default function TenkhahPage({ embedded = false }) {
     const d = await api(`/tenkhah?recipients=${encodeURIComponent(stage)}`);
     setSettlementRecipients(d.users || []);
   };
-  const loadFinanceRecipients = async () => {
-    const d = await api("/tenkhah?recipients=finance");
+  const loadWorkflowRecipients = async (stage) => {
+    const d = await api(`/tenkhah?recipients=${encodeURIComponent(stage)}`);
     setFinanceRecipients(d.users || []);
   };
   const openSettlement = async (item, existing = null) => {
@@ -216,7 +231,7 @@ export default function TenkhahPage({ embedded = false }) {
   const displayedUnregisteredBalance = sumAmounts(projectBalances.unregisteredBalance, form.amount);
   const displayedUnsettledBalance = sumAmounts(projectBalances.unsettledBalance, form.amount);
   const create = async () => {
-    const requiredErrors = { requestNumber: false, requestDate: !form.requestDate, projectId: !form.projectId, amount: !form.amount, projectManagerId: !form.projectManagerId };
+    const requiredErrors = { requestNumber: false, requestDate: !form.requestDate, projectId: !form.projectId, amount: !form.amount, projectManagerId: !userIsFinance && !form.projectManagerId };
     if (Object.values(requiredErrors).some(Boolean)) { setFormErrors(requiredErrors); return; }
     setBusy(true);
     setError("");
@@ -236,15 +251,18 @@ export default function TenkhahPage({ embedded = false }) {
     setError("");
     try {
       const isManager = selected.stage === "project_manager";
+      const isManagement = selected.stage === "management";
       await api("/tenkhah", {
         method: "PATCH",
         body: JSON.stringify(
           isManager
             ? {
                 id: selected.id,
-                financeUserId: selected.financeUserId,
+                managementUserId: selected.nextUserId,
                 approvedDate: selected.managerApprovedDate || today(),
               }
+            : isManagement
+              ? { id: selected.id, financeUserId: selected.nextUserId }
             : {
                 id: selected.id,
                 chargedDate: selected.chargedDate || today(),
@@ -268,8 +286,8 @@ export default function TenkhahPage({ embedded = false }) {
     Number(selected.currentAssigneeUserId) === Number(user?.id) &&
     selected.status === "pending";
   useEffect(() => {
-    if (!selected || !incoming || selected.stage !== "project_manager") return;
-    loadFinanceRecipients().catch((e) => setError(e.message));
+    if (!selected || !incoming || !["project_manager", "management"].includes(selected.stage)) return;
+    loadWorkflowRecipients(selected.stage === "project_manager" ? "management" : "finance").catch((e) => setError(e.message));
   }, [selected?.id, selected?.stage, selected?.status, selected?.currentAssigneeUserId, user?.id]);
   const canEditSettlement = settlement && settlement.status === "pending" && Number(settlement.currentAssigneeUserId) === Number(user?.id);
   return (
@@ -365,7 +383,7 @@ export default function TenkhahPage({ embedded = false }) {
               </Field>
             </div>
             <div className="mt-5 flex flex-col gap-3 border-t border-black/10 pt-4 sm:flex-row sm:items-end sm:justify-end dark:border-white/10">
-              <Field label="ارسال درخواست به" required className="w-full sm:w-[20rem]">
+              <Field label={userIsFinance ? "ارسال درخواست به مدیریت ارشد" : "ارسال درخواست به"} required className="w-full sm:w-[20rem]">
                 <select
                   value={form.projectManagerId}
                   onChange={(e) =>
@@ -374,7 +392,7 @@ export default function TenkhahPage({ embedded = false }) {
                   className={input}
                 >
                   <option value="">انتخاب کنید</option>
-                  {managers.map((u) => (
+                  {(userIsFinance ? managementRecipients : managers).map((u) => (
                     <option value={u.id} key={u.id}>
                       {name(u)}
                     </option>
@@ -489,7 +507,7 @@ export default function TenkhahPage({ embedded = false }) {
                 <DetailCell label="درخواست‌کننده">{selected.requesterName || selected.requesterUsername}</DetailCell>
                 <DetailCell label="پروژه">{selected.projectCode} - {selected.projectName}</DetailCell>
                 <DetailCell label="شماره درخواست">{selected.requestNumber}</DetailCell>
-                <DetailCell label={selected.stage === "project_manager" ? "تاریخ تایید" : "تاریخ شارژ تنخواه"}>{fa(selected.stage === "project_manager" ? selected.managerApprovedDate || today() : selected.chargedDate || today())}</DetailCell>
+                <DetailCell label={selected.stage === "finance" ? "تاریخ شارژ تنخواه" : "تاریخ تایید"}>{fa(selected.stage === "finance" ? selected.chargedDate || today() : selected.managerApprovedDate || today())}</DetailCell>
                 <DetailCell label="مانده تنخواه تسویه‌نشده">{fa(format3(selected.unsettledBalance))}</DetailCell>
                 <DetailCell label="مبلغ تنخواه درخواستی">{fa(format3(selected.requestedAmount))} {selected.currency}</DetailCell>
                 <DetailCell label="مانده تنخواه ثبت‌نشده">{fa(format3(selected.unregisteredBalance))}</DetailCell>
@@ -498,11 +516,11 @@ export default function TenkhahPage({ embedded = false }) {
                 )}
                 {incoming && selected.stage === "project_manager" && (
                   <div className="border-b border-l border-black/10 px-4 py-3 dark:border-white/10">
-                  <Field label="ارسال نهایی به واحد مالی" required>
+                  <Field label="ارسال به مدیریت ارشد" required>
                     <select
-                      value={selected.financeUserId || ""}
+                      value={selected.nextUserId || ""}
                       onChange={(e) =>
-                        updateSelected("financeUserId", e.target.value)
+                        updateSelected("nextUserId", e.target.value)
                       }
                       className={input}
                     >
@@ -512,6 +530,14 @@ export default function TenkhahPage({ embedded = false }) {
                           {name(u)}
                         </option>
                       ))}
+                    </select>
+                  </Field></div>
+                )}
+                {incoming && selected.stage === "management" && (
+                  <div className="border-b border-l border-black/10 px-4 py-3 dark:border-white/10"><Field label="ارسال نهایی به واحد مالی" required>
+                    <select value={selected.nextUserId || ""} onChange={(e) => updateSelected("nextUserId", e.target.value)} className={input}>
+                      <option value="">انتخاب کنید</option>
+                      {financeRecipients.map((u) => <option value={u.id} key={u.id}>{name(u)}</option>)}
                     </select>
                   </Field></div>
                 )}
@@ -534,7 +560,7 @@ export default function TenkhahPage({ embedded = false }) {
                     />
                   </Field></div>
                 )}
-                {incoming && <div className="col-span-full flex justify-end border-t border-black/10 p-3 dark:border-white/10"><button disabled={busy || (selected.stage === "project_manager" && !selected.financeUserId)} onClick={action} title="تأیید و ارسال" aria-label="تأیید و ارسال" className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button></div>}
+                {incoming && <div className="col-span-full flex justify-end border-t border-black/10 p-3 dark:border-white/10"><button disabled={busy || (["project_manager", "management"].includes(selected.stage) && !selected.nextUserId)} onClick={action} title="تأیید و ارسال" aria-label="تأیید و ارسال" className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button></div>}
               </div></div><div className="order-first self-start"><TenkhahWorkflow stage={selected.stage} status={selected.status} /></div></div>
             </div>
           </div>
