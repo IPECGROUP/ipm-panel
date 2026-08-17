@@ -111,7 +111,12 @@ function isActiveProject(project) {
   const value = project?.isActive ?? project?.is_active ?? project?.active;
   return value === true || value === 1 || String(value).toLowerCase() === "true" || String(value) === "1";
 }
-function isMainProject(project) { return /^\d{3}$/.test(normalizeProjectCode(project?.code)); }
+// Only genuine three-digit project codes are main projects. Do not normalize
+// before this check: legacy codes such as `IMP-489dbv` would otherwise become
+// `489` and incorrectly appear as a selectable project.
+function isMainProject(project) {
+  return /^\d{3}$/.test(toEnglishDigits(String(project?.code ?? "")).trim());
+}
 function itemLabel(item) { return item?.title || item?.name || item?.label || item?.code || `#${item?.id}`; }
 function projectLabel(project) {
   const code = normalizeProjectCode(project?.code);
