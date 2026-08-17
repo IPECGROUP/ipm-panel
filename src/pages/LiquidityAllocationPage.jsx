@@ -78,7 +78,7 @@ export default function LiquidityAllocationPage() {
   const [rows, setRows] = useState([]);
   const [projects, setProjects] = useState([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
-  const [summary, setSummary] = useState({ allocations: {}, spent: {}, committed: {} });
+  const [summary, setSummary] = useState({ allocations: {}, spent: {}, committed: {}, contingencyReserve: "0" });
   const [history, setHistory] = useState([]);
   const [previewAllocation, setPreviewAllocation] = useState(null);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -127,7 +127,7 @@ export default function LiquidityAllocationPage() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data?.error || "summary_failed");
-      setSummary({ allocations: data.allocations || {}, spent: data.spent || {}, committed: data.committed || {} });
+      setSummary({ allocations: data.allocations || {}, spent: data.spent || {}, committed: data.committed || {}, contingencyReserve: data.contingencyReserve || "0" });
       setHistory(Array.isArray(data?.history) ? data.history : []);
       const selectedProjects = projects.length ? projects : (Array.isArray(data?.projects) ? data.projects : []);
       setRows((current) => selectedProjects.map((project) => {
@@ -135,7 +135,7 @@ export default function LiquidityAllocationPage() {
         return existing || { id: `project-${project.id}`, projectId: project.id, label: projectLabel(project), newAllocation: "" };
       }));
     } catch {
-      setSummary({ allocations: {}, spent: {}, committed: {} });
+      setSummary({ allocations: {}, spent: {}, committed: {}, contingencyReserve: "0" });
       setHistory([]);
     }
   }, [projects, user?.id]);
@@ -176,10 +176,12 @@ export default function LiquidityAllocationPage() {
   );
   const newAllocationTotal = projectAllocationTotal;
   const availableAmount = money(form.amount);
+  const savedContingencyReserve = money(summary.contingencyReserve);
   const reserveAdjustmentAmount = money(reserveAdjustment);
   const amountMissing = showValidation && availableAmount <= 0;
   const sourceMissing = showValidation && !form.source.trim();
-  const availableRemaining = availableAmount - newAllocationTotal + reserveAdjustmentAmount;
+  const availableRemaining = savedContingencyReserve + availableAmount - newAllocationTotal + reserveAdjustmentAmount;
+  const reserveBudget = savedContingencyReserve + availableAmount;
   const hasPendingAllocation = rows.some((row) => money(row.newAllocation) !== 0) || reserveAdjustmentAmount !== 0;
   const hasBudgetUnderflow = rows.some((row) => {
     const key = String(row.projectId);
@@ -265,7 +267,7 @@ export default function LiquidityAllocationPage() {
         label: projectLabel(project),
         newAllocation: "",
       })));
-      setSummary({ allocations: {}, spent: {}, committed: {} });
+      setSummary({ allocations: {}, spent: {}, committed: {}, contingencyReserve: "0" });
       setHistory([]);
       setPreviewAllocation(null);
       await loadSummary();
@@ -409,7 +411,7 @@ export default function LiquidityAllocationPage() {
           <tbody>
             <tr className="bg-amber-50/60 dark:bg-amber-400/[0.05]">
               <td className={tableCellClass + " font-medium"}>ذخیره احتیاطی</td>
-              <td className={tableCellClass}>{displayMoney(availableAmount)}</td>
+              <td className={tableCellClass}>{displayMoney(reserveBudget)}</td>
               <td className={tableCellClass}>{displayMoney(availableRemaining)}</td>
               <td className={tableCellClass}>
                 <input value={reserveAdjustment} onChange={(event) => setReserveAdjustment(formatSignedAmount(event.target.value))} inputMode="numeric" placeholder="۰" className={inputClass + " !h-9 !rounded-lg ltr text-left"} aria-label="تغییر مبلغ ذخیره احتیاطی" />
