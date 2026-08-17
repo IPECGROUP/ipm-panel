@@ -1708,7 +1708,6 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
           <div className="flex items-center gap-2">
             <div className="text-sm font-bold">اقدامات پرداخت</div>
             <button type="button" onClick={openPdfPreview} className="inline-flex h-9 items-center gap-2 rounded-lg border border-black/10 px-3 text-xs font-semibold transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10" title="مشاهده PDF" aria-label="مشاهده PDF"><img src="/images/icons/print.svg" alt="" className="h-4 w-4 dark:invert" /><span>مشاهده PDF</span></button>
-            {isOwner && !isEditing && <button type="button" onClick={() => setIsEditing(true)} className="grid h-9 w-9 place-items-center rounded-lg border border-black/10 transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10" title="ویرایش درخواست" aria-label="ویرایش درخواست"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></button>}
             {isEditing && <button type="button" onClick={() => { setEditForm(formFromItem(item)); setEditUploadError(""); setIsEditing(false); }} className="rounded-lg border border-black/10 px-3 py-1.5 text-xs transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10">انصراف</button>}
           </div>
           <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white ring-1 ring-black/15 transition hover:bg-black/80 dark:bg-transparent dark:ring-neutral-800 dark:hover:bg-white/10" aria-label="بستن" title="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
@@ -1730,7 +1729,7 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                   <PreviewRow compact fixedLabel colon leader label="تاریخ درخواست" value={toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))} />
                   <PreviewRow compact fixedLabel colon leader label="درخواست کننده" value={item.createdByName || `کاربر #${toFa(item.createdById)}`} />
                 </div>
-                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,1fr)_minmax(190px,0.55fr)] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
+                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,0.5fr)_minmax(260px,1fr)] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
                   <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="پروژه" value={canEditRequest ? (
                     <select className={inputClass} value={editForm.projectId} onChange={(event) => setEditForm((old) => ({ ...old, projectId: event.target.value, budgetCode: "" }))}>
                       <option value="">انتخاب پروژه</option>
@@ -1823,11 +1822,7 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                   <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={editUploading || (!!nextRecipients.targetRoleKey && !targetAssigneeUserId)} onSubmit={() => onResubmit(item, editForm, actionNote, { targetAssigneeUserId: targetAssigneeUserId || null })} />
                 </> : <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={editUploading} onSubmit={() => onEdit(item, editForm)} />}
               </div>}
-              {!canDecide && !canEditRequest && (
-                isOwner ? <div className="flex justify-end rounded-2xl border border-black/10 p-3 dark:border-white/10">
-                  <button type="button" onClick={() => setIsEditing(true)} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 dark:bg-white dark:text-black" title="ویرایش درخواست" aria-label="ویرایش درخواست"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button>
-                </div> : <div className="rounded-2xl border border-black/10 p-4 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">در این مرحله اقدامی برای شما فعال نیست.</div>
-              )}
+              {!canDecide && !canEditRequest && !isOwner && <div className="rounded-2xl border border-black/10 p-4 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">در این مرحله اقدامی برای شما فعال نیست.</div>}
             </div>
           </main>
         </div>
@@ -1874,13 +1869,14 @@ function WorkflowPanel({
       <div className="space-y-3 py-4">
         <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={urgentCash} onChange={(event) => setUrgentCash(event.target.checked)} className="h-4 w-4 accent-black dark:accent-white" />پرداخت فوری و نقدی</label>
         <div className="grid gap-3 md:grid-cols-3">
-          <ActionOption kind="approve" checked={choice === "approve"} disabled={!hasEnoughLiquidity} onClick={() => setChoice("approve")} label="تایید درخواست" />
+          <ActionOption kind="approve" checked={choice === "approve"} disabled={!hasEnoughLiquidity} onClick={() => setChoice("approve")} label="تایید درخواست">
+            <NextRecipientSelect recipients={nextRecipients} loading={nextRecipientsLoading} value={targetAssigneeUserId} onChange={setTargetAssigneeUserId} disabled={choice !== "approve" || actionBusy} compact />
+          </ActionOption>
           <ActionOption kind="return" checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت درخواست" />
           <ActionOption kind="reject" checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست" />
           {!hasEnoughLiquidity && <ActionOption kind="reject" checked={choice === "stop"} onClick={() => setChoice("stop")} label="توقف پرداخت به دلیل عدم نقدینگی" />}
         </div>
         {["reject", "return", "stop"].includes(choice) && <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputClass} min-h-24 py-3`} placeholder="توضیح..." />}
-        <NextRecipientSelect recipients={nextRecipients} loading={nextRecipientsLoading} value={targetAssigneeUserId} onChange={setTargetAssigneeUserId} visible={choice === "approve"} />
         <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice || (targetRequired && !targetAssigneeUserId)} onSubmit={onSubmit} />
       </div>
     </PreviewSection>;
@@ -1908,11 +1904,12 @@ function WorkflowPanel({
   return <PreviewSection title={stepKey === "management" ? "نتیجه بررسی مدیریت" : "نتیجه بررسی مالی و حسابداری"}>
     <div className="space-y-3 py-4">
       <div className="grid gap-3 md:grid-cols-2">
-        <ActionOption kind="approve" checked={choice === "approve"} onClick={() => setChoice("approve")} label={stepKey === "management" ? "تایید درخواست پرداخت" : "تایید درخواست"} />
+        <ActionOption kind="approve" checked={choice === "approve"} onClick={() => setChoice("approve")} label={stepKey === "management" ? "تایید درخواست پرداخت" : "تایید درخواست"}>
+          <NextRecipientSelect recipients={nextRecipients} loading={nextRecipientsLoading} value={targetAssigneeUserId} onChange={setTargetAssigneeUserId} disabled={choice !== "approve" || actionBusy} compact />
+        </ActionOption>
         <ActionOption kind="return" checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت درخواست پرداخت" />
       </div>
       {choice === "return" && <textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputClass} min-h-24 py-3`} placeholder="توضیح..." />}
-      <NextRecipientSelect recipients={nextRecipients} loading={nextRecipientsLoading} value={targetAssigneeUserId} onChange={setTargetAssigneeUserId} visible={choice === "approve"} />
       <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice || (targetRequired && !targetAssigneeUserId)} onSubmit={onSubmit} />
     </div>
   </PreviewSection>;
