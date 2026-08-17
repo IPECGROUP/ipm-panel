@@ -633,14 +633,14 @@ function UsersTab({ embedded = false }) {
         {addOpen && (
           <form
             onSubmit={submitAdd}
-            className="mb-4 rounded-2xl border border-black/10 bg-white text-black overflow-hidden
-                       dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800"
+            className="mb-4 rounded-2xl border border-black/10 bg-neutral-100 text-black overflow-hidden
+                       dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
             dir="rtl"
           >
             <div className="p-4">
               <div className="grid grid-cols-1 gap-3 lg:items-end">
-                <div className={addForm.role === "personnel" ? "grid grid-cols-1 gap-3 sm:grid-cols-[repeat(2,minmax(0,1fr))_auto]" : "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(5,minmax(0,1fr))_auto]"}>
-                <div className="flex flex-col gap-1">
+                <div className={addForm.role === "personnel" ? "flex flex-wrap items-end gap-3" : "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(5,minmax(0,1fr))_auto]"}>
+                <div className={`flex flex-col gap-1 ${addForm.role === "personnel" ? "w-full sm:w-[180px]" : ""}`}>
                   <label className="text-sm text-black/70 dark:text-neutral-300">نام</label>
                   <input
                     className={inputCls}
@@ -649,7 +649,7 @@ function UsersTab({ embedded = false }) {
                   />
                 </div>
 
-                <div className="flex flex-col gap-1">
+                <div className={`flex flex-col gap-1 ${addForm.role === "personnel" ? "w-full sm:w-[180px]" : ""}`}>
                   <label className="text-sm text-black/70 dark:text-neutral-300">نوع</label>
                   <select
                     className={selectCls}
@@ -851,7 +851,7 @@ function UsersTab({ embedded = false }) {
                               </TD>
                               <TD className={`px-3 ${rowUi.valueCell} ${tdBorder} text-black/80 dark:text-neutral-300`}>
                                 <div className={rowUi.valueWrap}>
-                                  <div className={rowUi.rowActions}>
+                                  <div className={`${rowUi.rowActions} !left-1/2 !-translate-x-1/2`}>
                                     <RowActionIconBtn
                                       action="edit"
                                       onClick={() => startEdit(u)}
