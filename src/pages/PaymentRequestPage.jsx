@@ -436,34 +436,13 @@ export default function PaymentRequestPage() {
     };
   }, [tableMenuOpen]);
   useEffect(() => {
-    Promise.allSettled([api("/cost-breakdown"), api("/projects?isActive=true"), api("/base/currencies/types"), api("/base/currencies/sources"), api("/supply-requests")]).then(([p, pr, t, s, sr]) => {
+    Promise.allSettled([api("/projects?isActive=true"), api("/base/currencies/types"), api("/base/currencies/sources"), api("/supply-requests")]).then(([pr, t, s, sr]) => {
       if (pr.status === "fulfilled") {
         const mainProjects = (Array.isArray(pr.value.items) ? pr.value.items : pr.value.projects || [])
           .filter((project) => isActiveProject(project) && isMainProject(project))
           .sort((a, b) => normalizeProjectCode(a.code).localeCompare(normalizeProjectCode(b.code), "fa", { numeric: true }));
         setProjects(mainProjects);
-      } else if (p.status === "fulfilled") {
-        const rows = Array.isArray(p.value.items) ? p.value.items : [];
-        const byProject = new Map();
-        rows.forEach((item) => {
-          const project = item?.project || {};
-          const id = project.id ?? item.projectId ?? item.project_id;
-          const code = normalizeProjectCode(project.code ?? item.projectCode ?? item.project_code);
-          if (!id || !code) return;
-          if (!byProject.has(String(id))) {
-            byProject.set(String(id), {
-              id,
-              code,
-              name: String(project.name ?? item.projectName ?? item.project_name ?? "").trim(),
-              isActive: project.isActive ?? item.projectIsActive ?? item.project_is_active ?? true,
-            });
-          }
-        });
-        const mainProjects = Array.from(byProject.values())
-          .filter((project) => isActiveProject(project) && isMainProject(project))
-          .sort((a, b) => normalizeProjectCode(a.code).localeCompare(normalizeProjectCode(b.code), "fa", { numeric: true }));
-        setProjects(mainProjects);
-      }
+      } else setProjects([]);
       if (t.status === "fulfilled") setCurrencyTypes(t.value.items || []);
       if (s.status === "fulfilled") setCurrencySources(s.value.items || []);
       if (sr.status === "fulfilled") setSupplyRequests(Array.isArray(sr.value.items) ? sr.value.items : []);
