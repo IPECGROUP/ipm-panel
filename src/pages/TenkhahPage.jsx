@@ -66,7 +66,6 @@ export default function TenkhahPage({ embedded = false }) {
     [form, setForm] = useState(empty),
     [open, setOpen] = useState(false),
     [projects, setProjects] = useState([]),
-    [users, setUsers] = useState([]),
     [currencies, setCurrencies] = useState([]),
     [selected, setSelected] = useState(null),
     [settlement, setSettlement] = useState(null),
@@ -78,21 +77,12 @@ export default function TenkhahPage({ embedded = false }) {
     [settlementErrors, setSettlementErrors] = useState({}),
     [formErrors, setFormErrors] = useState({}),
     [financeRecipients, setFinanceRecipients] = useState([]),
+    [workflowRecipients, setWorkflowRecipients] = useState({ project_manager: [], management: [] }),
+    [userIsFinance, setUserIsFinance] = useState(false),
     [projectBalances, setProjectBalances] = useState({ unregisteredBalance: "0", unsettledBalance: "0", receivedAmount: "0" }),
     [projectLiquidity, setProjectLiquidity] = useState("0"),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
-  const userIsFinance = useMemo(() => {
-    const currentUser = users.find((item) => Number(item?.id) === Number(user?.id)) || user;
-    return /مالی|حسابدار|finance|account/i.test([
-      currentUser?.role,
-      currentUser?.department,
-      currentUser?.unitName,
-      ...(currentUser?.units || []).map((unit) => unit?.unit?.name || unit?.name || unit),
-      ...(currentUser?.roles || []).map((role) => role?.role?.name || role?.name || role),
-      ...(currentUser?.positions || []).map((position) => position?.name || position),
-    ].filter(Boolean).join(" "));
-  }, [user, users]);
   const api = async (path, opt = {}) => {
     const r = await fetch(`/api${path}`, {
       credentials: "include",
@@ -123,51 +113,20 @@ export default function TenkhahPage({ embedded = false }) {
     if (embedded && user?.id) add();
   }, [embedded, user?.id]);
   const loadOptions = async () => {
-    const [p, u, c] = await Promise.all([
+    const [p, c, financeState, projectManagement, seniorManagement] = await Promise.all([
       api("/projects?isActive=true"),
-      api("/admin/users"),
       api("/base/currencies/types"),
+      api("/tenkhah?currentUserFinance=1"),
+      api("/tenkhah?recipients=project_manager"),
+      api("/tenkhah?recipients=management"),
     ]);
     setProjects(
       (p.items || p.projects || []).filter((x) => x.isActive !== false && /^\d{3}$/.test(String(x.code || "").trim())),
     );
-    setUsers(u.users || []);
     setCurrencies(c.items || []);
+    setUserIsFinance(Boolean(financeState.isFinance));
+    setWorkflowRecipients({ project_manager: projectManagement.users || [], management: seniorManagement.users || [] });
   };
-  const managers = useMemo(
-    () =>
-      users.filter(
-        (u) =>
-          u.isActive !== false &&
-          Number(u.id) !== Number(user?.id) &&
-          /مدیر\s*پروژه|project\s*manager/i.test(
-            [
-              u.department,
-              u.role,
-              ...(u.positions || []).map((x) => x.name),
-            ].join(" "),
-          ),
-      ),
-    [users, user?.id],
-  );
-  const managementRecipients = useMemo(() => users.filter((u) => /مدیریت ارشد|مدیرعامل|مدیر عامل|هیات مدیره|هیئت مدیره|management/i.test([
-    u.department, u.role, ...(u.positions || []).map((position) => position.name), ...(u.roles || []).map((role) => role.name || role.role?.name),
-  ].filter(Boolean).join(" "))), [users]);
-  const finances = useMemo(
-    () =>
-      users.filter(
-        (u) =>
-          u.isActive !== false &&
-          /مالی|حسابدار|finance|account/i.test(
-            [
-              u.department,
-              u.role,
-              ...(u.positions || []).map((x) => x.name),
-            ].join(" "),
-          ),
-      ),
-    [users],
-  );
   const add = async () => {
     setOpen(true);
     setForm(empty());
@@ -391,7 +350,7 @@ export default function TenkhahPage({ embedded = false }) {
                   className={input}
                 >
                   <option value="">انتخاب کنید</option>
-                  {(userIsFinance ? managementRecipients : managers).map((u) => (
+                  {(userIsFinance ? workflowRecipients.management : workflowRecipients.project_manager).map((u) => (
                     <option value={u.id} key={u.id}>
                       {name(u)}
                     </option>

@@ -149,7 +149,7 @@ function tenkhahTableRow(item) {
     serial: item.requestNumber || `TNK-${item.id}`,
     dateFa: item.requestDate || "",
     amount: item.chargedAmount || item.requestedAmount || 0,
-    title: "",
+    title: "تنخواه",
     createdByName: item.requesterName || item.createdByName || "—",
     currencyName: item.currency || "ریال",
     displayStatus: status,
@@ -718,7 +718,7 @@ export default function PaymentRequestPage() {
   const startIndex = safePage * rowsPerPage;
   const endIndex = Math.min(total, startIndex + rowsPerPage);
   const pageItems = sortedItems.slice(startIndex, endIndex);
-  const visibleIds = pageItems.filter((item) => item.requestType !== "tenkhah").map((item) => String(item.id));
+  const visibleIds = pageItems.map((item) => String(item.id));
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
   const someVisibleSelected = visibleIds.some((id) => selectedIds.has(id)) && !allVisibleSelected;
   const selectAllRef = useRef(null);
@@ -945,9 +945,9 @@ export default function PaymentRequestPage() {
             </tr></thead>
             <tbody className="text-black dark:text-neutral-100">
               {loading ? <tr><td colSpan={10} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td></tr> : pageItems.length === 0 ? <tr><td colSpan={10} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواستی ثبت نشده است.</td></tr> : pageItems.map((item) => <tr key={item.id} className={`group transition-colors ${item.requestType === "tenkhah" ? "bg-violet-50/90 hover:bg-violet-100/80 dark:bg-violet-500/[0.12] dark:hover:bg-violet-500/[0.18]" : "bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"}`}>
-                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{item.requestType !== "tenkhah" && <input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label="انتخاب" />}</td>
+                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label="انتخاب" /></td>
                 <td className="border-b border-neutral-300 px-0 dark:border-neutral-700">{isUnreadForUser(item) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="درخواست خوانده‌نشده" aria-label="درخواست خوانده‌نشده" />}</td>
-                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{item.requestType === "tenkhah" ? <button type="button" onClick={() => setSelectedTenkhah(item)} className="mx-auto inline-flex items-center text-[13px] font-semibold text-neutral-900 underline-offset-4 transition hover:underline dark:text-neutral-100" title="نمایش درخواست">{item.serial}</button> : <button type="button" onClick={() => openPreview(item)} className="mx-auto inline-flex items-center justify-center text-[13px] font-semibold underline-offset-4 transition hover:underline" title="نمایش درخواست">{displayPaymentSerial(item, projects)}</button>}</td>
+                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{item.requestType === "tenkhah" ? <button type="button" onClick={() => setSelectedTenkhah(item)} className="mx-auto inline-flex items-center text-[13px] font-normal text-neutral-900 underline-offset-4 transition hover:underline dark:text-neutral-100" title="نمایش درخواست">{toFa(item.serial)}</button> : <button type="button" onClick={() => openPreview(item)} className="mx-auto inline-flex items-center justify-center text-[13px] font-semibold underline-offset-4 transition hover:underline" title="نمایش درخواست">{displayPaymentSerial(item, projects)}</button>}</td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))}</td>
                 <td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><span className="block truncate text-right">{projectLabel(projects.find((row) => String(row.id) === String(item.projectId))) || item.projectName || item.projectCode || "—"}</span></td>
                 <td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><span className="block truncate text-right">{item.title || "—"}</span></td>
