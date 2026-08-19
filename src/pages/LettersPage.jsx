@@ -2537,17 +2537,28 @@ const selectedTagChipCls =
   // Filter controls use the same larger, soft-background treatment as the
   // document-search mockup, while regular form tags keep their compact style.
   const filterChipBase =
-    "h-10 inline-flex items-center justify-center rounded-xl border px-4 text-[13px] font-medium transition whitespace-nowrap";
+    "inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition";
   const filterChipCls =
     filterChipBase +
-    (theme === "dark"
-      ? " border-white/15 bg-white/5 text-white hover:bg-white/10"
-      : " border-black/10 bg-white text-neutral-800 hover:bg-black/[0.03]");
+    " bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200/80 text-neutral-700 ring-neutral-200 hover:from-neutral-200 hover:to-neutral-300 dark:from-white/10 dark:via-white/[0.07] dark:to-white/[0.13] dark:text-neutral-200 dark:ring-white/10";
   const selectedFilterChipCls =
     filterChipBase +
-    (theme === "dark"
-      ? " border-white bg-white text-neutral-900"
-      : " border-black bg-black text-white");
+    " bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900 dark:ring-white";
+  const documentTypeFilterChipCls = (kind, active) => {
+    if (kind === "all") return active ? selectedFilterChipCls : filterChipCls;
+    const styles = {
+      incoming: active
+        ? "bg-[#0046FF] text-white ring-[#0046FF]"
+        : "bg-blue-50 text-blue-700 ring-blue-200 hover:bg-blue-100 dark:bg-blue-500/15 dark:text-blue-300 dark:ring-blue-400/20",
+      outgoing: active
+        ? "bg-[#8BAE66] text-white ring-[#8BAE66]"
+        : "bg-lime-50 text-lime-700 ring-lime-200 hover:bg-lime-100 dark:bg-lime-500/15 dark:text-lime-300 dark:ring-lime-400/20",
+      internal: active
+        ? "bg-[#FF8040] text-white ring-[#FF8040]"
+        : "bg-orange-50 text-orange-700 ring-orange-200 hover:bg-orange-100 dark:bg-orange-500/15 dark:text-orange-300 dark:ring-orange-400/20",
+    };
+    return filterChipBase + " " + styles[kind];
+  };
 
   const sendBtnCls =
   "h-10 w-10 md:h-12 md:w-12 rounded-xl flex items-center justify-center transition ring-1 " +
@@ -4851,8 +4862,8 @@ useEffect(() => {
           {!formOpen && (
             <div
   className={
-    "space-y-2 rounded-2xl border p-3 " +
-    (theme === "dark" ? "border-white/10 bg-transparent" : "border-black/10 bg-white")
+    "space-y-2 rounded-2xl border p-3 shadow-sm " +
+    (theme === "dark" ? "border-white/10 bg-white/[0.06]" : "border-neutral-200 bg-neutral-100/80")
 
   }
 >
@@ -4996,7 +5007,7 @@ useEffect(() => {
           }
           setFilterTab(t.id);
         }}
-        className={(active ? selectedFilterChipCls : filterChipCls) + " shrink-0"}
+        className={documentTypeFilterChipCls(t.id, active) + " shrink-0"}
       >
         {t.label}
       </button>
