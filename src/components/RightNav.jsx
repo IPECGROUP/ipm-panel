@@ -23,10 +23,10 @@ const NavIcon = ({ src }) => (
 const KnowledgeNavIcon = ({ src }) => (
   <span
     aria-hidden="true"
-    className="nav-icon block h-6 w-6 shrink-0 bg-white drop-shadow-[0_0_2px_rgba(255,255,255,0.55)] pointer-events-none select-none"
+    className={iconMaskCls}
     style={{
-      WebkitMask: `url(${src}) center / 120% no-repeat`,
-      mask: `url(${src}) center / 120% no-repeat`,
+      WebkitMask: `url(${src}) center / contain no-repeat`,
+      mask: `url(${src}) center / contain no-repeat`,
     }}
   />
 );
