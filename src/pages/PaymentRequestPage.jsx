@@ -1342,7 +1342,7 @@ function TenkhahActionOption({ kind, checked, onClick, label, children }) {
 }
 
 function TenkhahDetailCards({ details }) {
-  return <><style>{`body > div[dir="rtl"] > div:nth-child(2) > div > div:first-child > b + button { font-size: 0; background-image: url('/images/icons/bastan.svg'); background-position: center; background-repeat: no-repeat; background-size: 20px 20px; filter: invert(1); } .dark body > div[dir="rtl"] > div:nth-child(2) > div > div:first-child > b + button { filter: none; }`}</style><section className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900">
+  return <><style>{`body > div[dir="rtl"] > div:nth-child(2) > div > div:first-child > b + button { font-size: 0; background-image: none; filter: none; } body > div[dir="rtl"] > div:nth-child(2) > div > div:first-child > b + button::after { content: ""; display: block; width: 20px; height: 20px; background: url('/images/icons/bastan.svg') center / 20px 20px no-repeat; filter: invert(1); } .dark body > div[dir="rtl"] > div:nth-child(2) > div > div:first-child > b + button::after { filter: none; }`}</style><section className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900">
     <div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">جزئیات درخواست تنخواه</div>
     <div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15">
       {details.slice(0, 3).map(([label, value]) => <PreviewRow key={label} compact fixedLabel colon leader label={label} value={value || "—"} />)}
@@ -1490,6 +1490,7 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
   const [editUploading, setEditUploading] = useState(false);
   const [editUploadError, setEditUploadError] = useState("");
   const [baseBudget, setBaseBudget] = useState("");
+  const [budgetName, setBudgetName] = useState("");
   const [budgetLoading, setBudgetLoading] = useState(false);
   const [choice, setChoice] = useState("");
   const [urgentCash, setUrgentCash] = useState(false);
@@ -1637,6 +1638,7 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
   useEffect(() => {
     let cancelled = false;
     setBaseBudget("");
+    setBudgetName("");
     if (!previewBudgetProjectId || !previewBudgetCode) return undefined;
     setBudgetLoading(true);
     fetch(`/api/cost-breakdown?project_id=${encodeURIComponent(previewBudgetProjectId)}`, { credentials: "include" })
@@ -1651,9 +1653,10 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
           return normalizeBudgetCode(rawCode) === target || budgetCodeForProject(rawCode, projectCode) === target;
         });
         const value = match?.baseBudget ?? match?.base_budget ?? "";
+        setBudgetName(String(match?.budgetName ?? match?.budget_name ?? match?.name ?? ""));
         setBaseBudget(value === "" || value == null ? "" : money(value));
       })
-      .catch(() => { if (!cancelled) setBaseBudget(""); })
+      .catch(() => { if (!cancelled) { setBaseBudget(""); setBudgetName(""); } })
       .finally(() => { if (!cancelled) setBudgetLoading(false); });
     return () => { cancelled = true; };
   }, [previewBudgetCode, previewBudgetProjectId, previewProjectCode]);
@@ -1969,7 +1972,7 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                         return <option key={code || row.id} value={code}>{code}{desc ? ` - ${desc}` : ""}</option>;
                       })}
                     </select>
-                  ) : (item.budgetCode || "—")} />
+                  ) : (item.budgetCode ? `${item.budgetCode}${budgetName ? ` - ${budgetName}` : ""}` : "—")} />
                 </div>
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,0.7fr)_minmax(0,0.3fr)] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
                   <PreviewRow compact editing={canEditRequest} colon label="موضوع درخواست" value={canEditRequest ? <input className={inputClass} value={editForm.title} onChange={(event) => setEditField("title", event.target.value)} /> : (item.title || "—")} />
