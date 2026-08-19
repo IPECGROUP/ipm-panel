@@ -573,11 +573,18 @@ export default function CostBreakdownPage() {
     worksheet.autoFilter = { from: "A4", to: `D${rows.length + 4}` };
     worksheet.views = [{ rightToLeft: true, showGridLines: false, state: "frozen", ySplit: 4 }];
     const buffer = await workbook.xlsx.writeBuffer();
+    const url = URL.createObjectURL(
+      new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+    );
     const link = document.createElement("a");
-    link.href = URL.createObjectURL(new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+    link.href = url;
     link.download = `cost-breakdown-${project?.code || "project"}.xlsx`;
+    link.style.display = "none";
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(link.href);
+    link.remove();
+    // Safari needs the object URL to remain available briefly after the click.
+    window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
   };
 
   const inputCls =
@@ -916,7 +923,7 @@ export default function CostBreakdownPage() {
       </div>
 
       <div className="mt-4 flex justify-end">
-        <button type="button" onClick={exportExcel} disabled={!rows.length} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-600/20 bg-emerald-50 text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-45 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20" title="خروجی اکسل" aria-label="خروجی اکسل">
+        <button type="button" onClick={exportExcel} disabled={!rows.length} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-900 shadow-sm transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10" title="خروجی اکسل" aria-label="خروجی اکسل">
           <img src="/images/icons8-excel-50.png" alt="" className="h-5 w-5" />
         </button>
       </div>

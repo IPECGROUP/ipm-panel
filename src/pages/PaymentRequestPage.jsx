@@ -16,7 +16,7 @@ const DOC_OPTIONS = [
   ["internal_list", "لیست پرداخت داخلی"], ["gov_salary", "فیش بدهی دولتی"], ["other", "سایر"],
 ];
 const MONTHS = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
-const STATUS_LABELS = { pending: "در انتظار بررسی", approved: "تأیید شده", rejected: "رد شده", returned: "برگشت خورده", tenkhah_pending: "در انتظار بررسی", tenkhah_charged: "تنخواه" };
+const STATUS_LABELS = { pending: "در حال پرداخت", approved: "پرداخت شد", rejected: "رد شد", returned: "برگشت خورد", tenkhah_pending: "در حال پرداخت", tenkhah_charged: "تنخواه" };
 const STEP_LABELS = {
   requester: "درخواست‌کننده",
   project_control: "برنامه‌ریزی و کنترل پروژه",
@@ -1108,7 +1108,7 @@ export default function PaymentRequestPage() {
   </div>;
 }
 
-const QUICK_FILTERS = [["week", "هفته قبل"], ["2w", "2 هفته قبل"], ["1m", "ماه قبل"], ["3m", "3 ماه قبل"], ["6m", "6 ماه قبل"]];
+const QUICK_FILTERS = [["week", "هفته قبل"], ["2w", "2 هفته قبل"], ["1m", "ماه قبل"]];
 
 function tagLabelOf(tag) {
   return String(tag?.label ?? tag?.name ?? tag?.title ?? tag?.text ?? tag?.id ?? "").trim();
@@ -1127,8 +1127,6 @@ function quickStartDate(key) {
   if (key === "week") date.setDate(date.getDate() - 7);
   else if (key === "2w") date.setDate(date.getDate() - 14);
   else if (key === "1m") date.setMonth(date.getMonth() - 1);
-  else if (key === "3m") date.setMonth(date.getMonth() - 3);
-  else if (key === "6m") date.setMonth(date.getMonth() - 6);
   else return "";
   return normalizeDigits(new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit" }).format(date));
 }
@@ -1204,8 +1202,7 @@ function RequestFilterBar({ query, setQuery, quick, setQuick, ownership, setOwne
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" onClick={() => setOwnership(ownership === "mine" ? "" : "mine")} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(ownership === "mine")}`}>درخواست‌های من</button>
         <button type="button" onClick={() => setOwnership(ownership === "incoming" ? "" : "incoming")} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(ownership === "incoming")}`}>موارد ارسال‌شده به من</button>
-        <button type="button" onClick={() => setUnread(!unread)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(unread)}`}>خوانده نشده</button>
-        {[['pending', 'در انتظار بررسی'], ['approved', 'تأیید شده'], ['returned', 'برگشت خورده'], ['rejected', 'رد شده'], ['tenkhah', 'تنخواه']].map(([key, label]) => <button key={key} type="button" onClick={() => setStatus(status === key ? "" : key)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition ${statusBadgeClass(key)} ${status === key ? "ring-2 ring-black/20 dark:ring-white/25" : "hover:brightness-95"}`}>{label}</button>)}
+        {[['pending', 'در حال پرداخت'], ['approved', 'پرداخت شد'], ['returned', 'برگشت خورد'], ['rejected', 'رد شد'], ['tenkhah', 'تنخواه']].map(([key, label]) => <button key={key} type="button" onClick={() => setStatus(status === key ? "" : key)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition ${statusBadgeClass(key)} ${status === key ? "ring-2 ring-black/20 dark:ring-white/25" : "hover:brightness-95"}`}>{label}</button>)}
         {QUICK_FILTERS.map(([key, label]) => (
           <button key={key} type="button" onClick={() => setQuick(quick === key ? "" : key)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(quick === key)}`}>{label}</button>
         ))}
