@@ -109,6 +109,12 @@ export default function App() {
         <Route path="/projects/daily-log" element={<RoznegarPgae />} />
         <Route path="/letters" element={<LettersPage />} />
         <Route path="/quality-management" element={<QualityManagementPage />} />
+        <Route path="/knowledge-management/organizational-documents" element={<NavPlaceholderPage title="مستندات سازمانی" />} />
+        <Route path="/knowledge-management/technical-standards" element={<NavPlaceholderPage title="استانداردهای فنی" />} />
+        <Route path="/knowledge-management/template-library" element={<NavPlaceholderPage title="بانک الگوها" />} />
+        <Route path="/knowledge-management/project-lessons-learned" element={<NavPlaceholderPage title="درس‌آموخته‌های پروژه‌ها" />} />
+        <Route path="/knowledge-management/equipment-library" element={<NavPlaceholderPage title="کتابخانه ماشین‌آلات و تجهیزات" />} />
+        <Route path="/knowledge-management/training-resources" element={<NavPlaceholderPage title="منابع آموزشی" />} />
 
         {/* بودجه‌بندی */}
         <Route path="/budget/centers" element={<DefineBudgetCentersPage />} />

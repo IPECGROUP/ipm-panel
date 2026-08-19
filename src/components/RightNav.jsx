@@ -20,6 +20,15 @@ const NavIcon = ({ src }) => (
   />
 );
 
+const KnowledgeNavIcon = ({ src }) => (
+  <img
+    src={src}
+    alt=""
+    aria-hidden="true"
+    className="block h-5 w-5 shrink-0 object-contain pointer-events-none select-none"
+  />
+);
+
 const IcDashboard = () => <NavIcon src="/images/icons/dashbaord.svg" />;
 const IcLetter = () => <NavIcon src="/images/icons/nameha.svg" />;
 const IcProjects = () => <NavIcon src="/images/icons/modiriat-projects.svg" />;
@@ -47,6 +56,7 @@ function RightNav() {
   const { user, logout } = auth;
   const { pathname } = useLocation();
   const navRef = useRef(null);
+  const mobileNavRef = useRef(null);
 
   const clean = (p) => (p || "").replace(/\/+$/, "") || "/";
   const base = (import.meta?.env?.BASE_URL || "/").replace(/\/+$/, "");
@@ -113,7 +123,7 @@ function RightNav() {
     if (!expanded && !hasOpenMenu) return undefined;
 
     const closeOnOutsideClick = (event) => {
-      if (navRef.current?.contains(event.target)) return;
+      if (navRef.current?.contains(event.target) || mobileNavRef.current?.contains(event.target)) return;
       localStorage.setItem("nav_open", "{}");
       setOpen({});
       if (expanded) {
@@ -171,6 +181,7 @@ function RightNav() {
   const supplyParentActive = !!open.supply || activeSection === "supply";
   const operationsParentActive = !!open.operations || activeSection === "operations";
   const baseParentActive = !!open.base || activeSection === "base";
+  const knowledgeParentActive = !!open.knowledge || isActive("/knowledge-management");
 
   const [tip, setTip] = useState({ show: false, y: 0, label: "" });
   const canHover =
@@ -299,7 +310,21 @@ function RightNav() {
     {
       title: "مدیریت دانش",
       items: [
-        { type: "link", to: "/quality-management", label: "مدیریت دانش", icon: <IcQuality />, active: isActive("/quality-management") },
+        {
+          type: "section",
+          key: "knowledge",
+          label: "مدیریت دانش",
+          icon: <IcQuality />,
+          active: knowledgeParentActive,
+          items: [
+            { to: "/knowledge-management/organizational-documents", label: "مستندات سازمانی", hint: "مدیریت و دسترسی به مستندات سازمان", icon: <KnowledgeNavIcon src="/images/icons/1.png" /> },
+            { to: "/knowledge-management/technical-standards", label: "استانداردهای فنی", hint: "استانداردها و الزامات فنی", icon: <KnowledgeNavIcon src="/images/icons/2.png" /> },
+            { to: "/knowledge-management/template-library", label: "بانک الگوها", hint: "الگوهای آماده و قابل استفاده", icon: <KnowledgeNavIcon src="/images/icons/3.png" /> },
+            { to: "/knowledge-management/project-lessons-learned", label: "درس‌آموخته‌های پروژه‌ها", hint: "تجربه‌ها و درس‌آموخته‌های پروژه‌ها", icon: <KnowledgeNavIcon src="/images/icons/4.png" /> },
+            { to: "/knowledge-management/equipment-library", label: "کتابخانه ماشین‌آلات و تجهیزات", hint: "اطلاعات ماشین‌آلات و تجهیزات", icon: <KnowledgeNavIcon src="/images/icons/5.png" /> },
+            { to: "/knowledge-management/training-resources", label: "منابع آموزشی", hint: "محتوا و منابع آموزشی", icon: <KnowledgeNavIcon src="/images/icons/6.png" /> },
+          ],
+        },
       ],
     },
     {
@@ -335,6 +360,8 @@ function RightNav() {
           ? "operations"
           : open.base
             ? "base"
+            : open.knowledge
+              ? "knowledge"
             : null;
   const visibleNavGroups = navGroups
     .map((group) => ({
@@ -603,6 +630,7 @@ function RightNav() {
       )}
 
       <nav
+        ref={mobileNavRef}
         dir="rtl"
         className="fixed inset-x-0 bottom-0 z-[200] lg:hidden pointer-events-none px-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4"
         aria-label="منوی اصلی"
@@ -716,17 +744,17 @@ function RightNav() {
                 </span>
               </Btn>
 
-              <LinkBtn
-                to="/quality-management"
-                onClick={closeMobileMenu}
-                className={mobileDockBtn(isActive("/quality-management"))}
+              <Btn
+                type="button"
+                className={mobileDockBtn(knowledgeParentActive)}
+                onClick={() => toggle("knowledge")}
                 aria-label="مدیریت دانش"
               >
-                <IcQuality />
+                {open.knowledge ? <IcClose /> : <IcQuality />}
                 <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
                   مدیریت دانش
                 </span>
-              </LinkBtn>
+              </Btn>
 
               <Btn
                 type="button"
