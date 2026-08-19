@@ -16,8 +16,9 @@ const name = (u) => u?.name || u?.username || "—";
 const currencyTitle = (currency) => String(currency?.title || currency?.name || currency?.label || "").trim();
 const normalizedCurrencyTitle = (value) => currencyTitle({ title: value }).replace(/ي/g, "ی").replace(/ك/g, "ک").replace(/\s+/g, " ").trim().toLowerCase();
 const isRialCurrency = (currency) => {
-  const title = normalizedCurrencyTitle(currencyTitle(currency));
-  return title === "ریال" || title.includes("ریال") || /(^|\s)irr(\s|$)/i.test(title);
+  const raw = currencyTitle(currency);
+  const title = normalizedCurrencyTitle(raw);
+  return /\u0631\u06cc\u0627\u0644|\u0631\u064a\u0627\u0644/.test(raw) || /(^|\s)irr(\s|$)/i.test(title);
 };
 const empty = () => ({
   // شماره و تاریخ همچنان برای ثبت نگهداری می‌شوند، ولی در فرم نمایش داده نمی‌شوند.
@@ -138,6 +139,10 @@ export default function TenkhahPage({ embedded = false }) {
   useEffect(() => {
     if (embedded && user?.id) add();
   }, [embedded, user?.id]);
+  useEffect(() => {
+    const rial = currencies.find(isRialCurrency);
+    if (rial) setForm((current) => current.currency === currencyTitle(rial) ? current : { ...current, currency: currencyTitle(rial) });
+  }, [currencies]);
   const loadOptions = async () => {
     const [p, c, financeState, projectManagement, seniorManagement, employeeData] = await Promise.all([
       api("/projects?isActive=true"),
@@ -513,6 +518,7 @@ export default function TenkhahPage({ embedded = false }) {
               </div>
               <div className="grid items-start gap-5 p-4 pt-0 md:grid-cols-[280px_minmax(0,1fr)] md:p-5 md:pt-0"><div className="order-last rounded-2xl border border-black/10 bg-neutral-50/60 p-2 shadow-sm dark:border-white/10 dark:bg-white/[.025]"><div className="grid grid-cols-1 gap-2 md:grid-cols-4">
                 <DetailCell label="درخواست‌کننده">{selected.requesterName || selected.requesterUsername}</DetailCell>
+                <DetailCell label="ذینفع">{selected.beneficiaryName || selected.beneficiaryUsername}</DetailCell>
                 <DetailCell label="پروژه">{selected.projectCode} - {selected.projectName}</DetailCell>
                 <DetailCell label="شماره درخواست">{selected.requestNumber}</DetailCell>
                 <DetailCell label={selected.stage === "finance" ? "تاریخ شارژ تنخواه" : "تاریخ تایید"}>{fa(selected.stage === "finance" ? selected.chargedDate || today() : selected.managerApprovedDate || today())}</DetailCell>
