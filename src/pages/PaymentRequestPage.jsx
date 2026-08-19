@@ -1650,7 +1650,7 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
     const reportTime = normalizeDigits(new Intl.DateTimeFormat("fa-IR", {
       hour: "2-digit", minute: "2-digit", hour12: false,
     }).format(now));
-    const reportDateTime = `${reportDate} - ${reportTime}`;
+    const reportDateTime = `${reportTime} - ${reportDate}`;
     const workflowRows = PAYMENT_WORKFLOW_STEPS.map((step) => ({
       step,
       state: paymentWorkflowStageState(step, history, item),
