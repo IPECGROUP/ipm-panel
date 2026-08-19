@@ -610,16 +610,17 @@ export default function CostBreakdownPage() {
   );
 
   return (
-    <Card className="rounded-2xl border bg-white p-3 text-neutral-900 md:p-4 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-      <div className="mb-5 flex min-w-0 items-center gap-3">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
-          <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
-        </span>
-        <span className="min-w-0">
-          <span className="block truncate text-base font-bold md:text-lg">ساختار شکست هزینه ها</span>
-          <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت پروژه</span>
-        </span>
-      </div>
+    <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+      <div className="p-3 md:p-4">
+        <div className="mb-5 flex min-w-0 items-center gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
+            <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate text-base font-bold md:text-lg">ساختار شکست هزینه ها</span>
+            <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت پروژه</span>
+          </span>
+        </div>
 
       <div className="rounded-2xl border border-black/10 bg-white overflow-hidden dark:bg-neutral-900 dark:border-neutral-800">
         <div className="px-[15px] py-4">
@@ -922,6 +923,7 @@ export default function CostBreakdownPage() {
       </div>
 
       {err && <div className="mt-3 text-center text-sm text-red-600 dark:text-red-400">{err}</div>}
+      </div>
     </Card>
   );
 }
