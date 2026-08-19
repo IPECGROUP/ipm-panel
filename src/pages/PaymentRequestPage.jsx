@@ -1344,7 +1344,7 @@ function TenkhahActionOption({ kind, checked, onClick, label, children }) {
 function TenkhahDetailCards({ details }) {
   return <section className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900">
     <div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">جزئیات درخواست تنخواه</div>
-    <div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15">
+    <div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 md:[&>*:nth-child(-n+3)]:border-b md:[&>*:nth-child(-n+3)]:border-black/10 dark:md:[&>*+*]:border-white/15 dark:md:[&>*:nth-child(-n+3)]:border-white/10">
       {details.map(([label, value]) => <PreviewRow key={label} compact fixedLabel colon leader label={label} value={value || "—"} />)}
     </div>
   </section>;
