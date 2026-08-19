@@ -1,5 +1,5 @@
 // ساختار شکست هزینه ها
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Card from "../components/ui/Card.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 import { api } from "../utils/api.js";
@@ -20,10 +20,6 @@ const tbodyCls =
   "dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50";
 
 const rowDividerCls = "border-b border-neutral-300 dark:border-neutral-700";
-
-const rowActionsRevealCls =
-  "w-full flex items-center justify-center gap-1 opacity-0 pointer-events-none transition-opacity " +
-  "group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto";
 
 const toEnDigits = (value = "") =>
   String(value)
@@ -84,6 +80,8 @@ export default function CostBreakdownPage() {
   const [err, setErr] = useState("");
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [expandedCodes, setExpandedCodes] = useState(() => new Set());
+  const [tableMenuOpen, setTableMenuOpen] = useState(false);
+  const tableMenuRef = useRef(null);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
 
@@ -154,6 +152,9 @@ export default function CostBreakdownPage() {
     return map;
   }, [projectBudgetCode, tableRows]);
 
+  const expandableCodes = useMemo(() => Array.from(childRowsByParentCode.keys()), [childRowsByParentCode]);
+  const allRowsExpanded = expandableCodes.length > 0 && expandableCodes.every((code) => expandedCodes.has(code));
+
   const displayRows = useMemo(() => {
     const childKeys = new Set();
     childRowsByParentCode.forEach((children) => {
@@ -212,14 +213,10 @@ export default function CostBreakdownPage() {
     });
   };
 
-  const toggleExpandedCode = (code) => {
-    const normalized = projectBudgetCode(code);
-    if (!normalized) return;
+  const toggleAllRowsExpanded = () => {
     setExpandedCodes((prev) => {
-      const next = new Set(prev);
-      if (next.has(normalized)) next.delete(normalized);
-      else next.add(normalized);
-      return next;
+      if (expandableCodes.length > 0 && expandableCodes.every((code) => prev.has(code))) return new Set();
+      return new Set(expandableCodes);
     });
   };
 
@@ -280,10 +277,12 @@ export default function CostBreakdownPage() {
     if (!projectId) {
       setRows([]);
       setSelectedIds(new Set());
+      setExpandedCodes(new Set());
       return;
     }
     clearDraft();
     setSelectedIds(new Set());
+    setExpandedCodes(new Set());
     loadRows(projectId);
   }, [projectId, loadRows]);
 
@@ -303,6 +302,22 @@ export default function CostBreakdownPage() {
     const exists = (projects || []).some((p) => String(p.id) === String(projectId));
     if (!exists) setProjectId("");
   }, [projectId, projects]);
+
+  useEffect(() => {
+    if (!tableMenuOpen) return undefined;
+    const closeOnOutsideClick = (event) => {
+      if (!tableMenuRef.current?.contains(event.target)) setTableMenuOpen(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setTableMenuOpen(false);
+    };
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [tableMenuOpen]);
 
   const clearDraft = () => {
     setBudgetCode("");
@@ -445,19 +460,81 @@ export default function CostBreakdownPage() {
     await saveEdit();
   };
 
-  const deleteRow = async (row) => {
-    if (!window.confirm("حذف این ردیف؟")) return;
+  const selectedRows = useMemo(
+    () => tableRows.filter((item) => selectedIds.has(item.key)).map((item) => item.row),
+    [selectedIds, tableRows]
+  );
+
+  const editSelectedRows = () => {
+    if (!selectedRows.length) return;
+    beginEdit(selectedRows[0]);
+    setTableMenuOpen(false);
+  };
+
+  const deleteSelectedRows = async () => {
+    if (!selectedRows.length) return;
+    const message = selectedRows.length === 1 ? "حذف این ردیف؟" : `حذف ${toFaDigits(selectedRows.length)} ردیف انتخاب‌شده؟`;
+    if (!window.confirm(message)) return;
 
     setSaving(true);
     setErr("");
     try {
-      await api(`/cost-breakdown?id=${encodeURIComponent(row.id)}`, { method: "DELETE" });
+      await Promise.all(
+        selectedRows.map((row) => api(`/cost-breakdown?id=${encodeURIComponent(row.id)}`, { method: "DELETE" }))
+      );
+      setSelectedIds(new Set());
+      setTableMenuOpen(false);
       await loadRows(projectId);
     } catch (ex) {
-      setErr(ex.message || "خطا در حذف");
+      setErr(ex.message || "خطا در حذف موارد انتخاب‌شده");
     } finally {
       setSaving(false);
     }
+  };
+
+  const exportExcel = async () => {
+    if (!rows.length) {
+      setErr("برای دریافت خروجی، ابتدا حداقل یک ردیف ثبت کنید.");
+      return;
+    }
+
+    const xlsxMod = await import("xlsx");
+    const XLSX = xlsxMod.default || xlsxMod;
+    const project = projects.find((item) => String(item.id) === String(projectId));
+    const sheetData = [
+      ["گزارش ساختار شکست هزینه‌ها"],
+      ["پروژه", project ? `${project.code}${project.name ? ` - ${project.name}` : ""}` : "—"],
+      [],
+      ["ردیف", "کد بودجه", "نام بودجه", "بودجه مبنا"],
+      ...rows.map((row, index) => [index + 1, projectBudgetCode(row.budgetCode), row.budgetName || "—", Number(parseMoney(row.baseBudget))]),
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+    ws["!cols"] = [{ wch: 10 }, { wch: 22 }, { wch: 42 }, { wch: 22 }];
+    ws["!rows"] = [{ hpt: 28 }, { hpt: 22 }, { hpt: 8 }, { hpt: 24 }];
+    ws["!merges"] = [XLSX.utils.decode_range("A1:D1")];
+    ws["!view"] = [{ rightToLeft: true }];
+    ["A1", "A2", "B2", "A4", "B4", "C4", "D4"].forEach((address) => {
+      if (!ws[address]) return;
+      ws[address].s = {
+        font: { bold: true, color: { rgb: "FFFFFF" } },
+        fill: { fgColor: { rgb: address === "A1" ? "1F4E78" : "3B82F6" } },
+        alignment: { horizontal: "center", vertical: "center" },
+      };
+    });
+    for (let rowIndex = 5; rowIndex < sheetData.length + 1; rowIndex += 1) {
+      ["A", "B", "C", "D"].forEach((column) => {
+        const cell = ws[`${column}${rowIndex}`];
+        if (!cell) return;
+        cell.s = {
+          alignment: { horizontal: column === "C" ? "right" : "center", vertical: "center" },
+          fill: { fgColor: { rgb: rowIndex % 2 ? "F8FAFC" : "EAF2F8" } },
+        };
+      });
+      if (ws[`D${rowIndex}`]) ws[`D${rowIndex}`].z = "#,##0";
+    }
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "ساختار هزینه");
+    XLSX.writeFile(wb, `cost-breakdown-${project?.code || "project"}.xlsx`, { compression: true });
   };
 
   const inputCls =
@@ -465,7 +542,7 @@ export default function CostBreakdownPage() {
     "focus:border-neutral-400 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-500";
 
   const moneyInputCls =
-    "h-9 w-full max-w-[180px] rounded-xl border border-neutral-300 bg-white px-2 text-right text-neutral-900 outline-none ltr " +
+    "h-11 w-full max-w-[260px] rounded-xl border border-neutral-300 bg-white px-3 text-right text-neutral-900 outline-none ltr " +
     "dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
 
   const PagerBtn = ({ direction, disabled, onClick }) => (
@@ -490,8 +567,8 @@ export default function CostBreakdownPage() {
   );
 
   return (
-    <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-      <div className="mb-5 flex min-w-0 items-center gap-3">
+    <Card className="rounded-2xl border bg-white p-3 text-neutral-900 md:p-4 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+      <div className="mb-5 flex min-w-0 items-center justify-between gap-3">
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
           <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
         </span>
@@ -505,7 +582,7 @@ export default function CostBreakdownPage() {
         <div className="px-[15px] py-4">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(220px,1.15fr)_minmax(130px,0.65fr)_minmax(260px,1.45fr)] md:items-end">
             <label className="flex min-w-0 flex-col gap-1">
-              <span className="text-sm text-neutral-700 dark:text-neutral-300">مرکز/پروژه</span>
+              <span className="text-sm text-neutral-700 dark:text-neutral-300">پروژه</span>
               <select
                 value={projectId}
                 onChange={(e) => {
@@ -592,10 +669,38 @@ export default function CostBreakdownPage() {
                         title="انتخاب همه"
                       />
                     </th>
-                    <th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">کد بودجه</th>
+                    <th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">
+                      <span className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={toggleAllRowsExpanded}
+                          disabled={!expandableCodes.length}
+                          className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-transparent text-lg leading-none text-black transition hover:text-black/60 disabled:cursor-not-allowed disabled:opacity-35 dark:text-neutral-100 dark:hover:text-white/60"
+                          aria-label={allRowsExpanded ? "بستن همه زیرمجموعه‌ها" : "باز کردن همه زیرمجموعه‌ها"}
+                          title={allRowsExpanded ? "بستن همه زیرمجموعه‌ها" : "باز کردن همه زیرمجموعه‌ها"}
+                        >
+                          {allRowsExpanded ? "−" : "+"}
+                        </button>
+                        کد بودجه
+                      </span>
+                    </th>
                     <th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">نام بودجه</th>
                     <th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">بودجه مبنا</th>
-                    <th className="px-3 !text-center !text-[14px] md:!text-[15px] !font-semibold">عملیات</th>
+                    <th className="relative px-3 !text-center !text-[14px] md:!text-[15px] !font-semibold">
+                      <span>عملیات</span>
+                      <div ref={tableMenuRef} className="absolute left-1 top-1/2 z-30 -translate-y-1/2">
+                        <button type="button" onClick={() => setTableMenuOpen((open) => !open)} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="عملیات انتخاب‌شده" aria-label="عملیات انتخاب‌شده" aria-expanded={tableMenuOpen}>
+                          <img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${tableMenuOpen ? "scale-110" : ""} dark:invert`} />
+                        </button>
+                        {tableMenuOpen && (
+                          <div className="absolute left-0 top-[calc(100%+8px)] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
+                            <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedRows.length ? `${toFaDigits(selectedRows.length)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
+                            <button type="button" disabled={!selectedRows.length || saving} onClick={editSelectedRows} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-black/[0.04] disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-white/10"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /><span className="text-sm font-semibold">ویرایش</span></button>
+                            <button type="button" disabled={!selectedRows.length || saving} onClick={deleteSelectedRows} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /><span className="text-sm font-semibold">حذف</span></button>
+                          </div>
+                        )}
+                      </div>
+                    </th>
                   </tr>
                 </thead>
 
@@ -603,7 +708,7 @@ export default function CostBreakdownPage() {
                   {!projectId ? (
                     <tr>
                       <td colSpan={5} className="py-6 text-black/60 dark:text-neutral-400">
-                        مرکز/پروژه را انتخاب کنید.
+                        پروژه را انتخاب کنید.
                       </td>
                     </tr>
                   ) : loading ? (
@@ -625,7 +730,6 @@ export default function CostBreakdownPage() {
                       const divider = pageIdx === displayRows.length - 1 ? "" : rowDividerCls;
                       const rowSelected = selectedIds.has(item.key);
                       const displayBudgetCode = projectBudgetCode(row.budgetCode);
-                      const isExpanded = expandedCodes.has(displayBudgetCode);
                       const isParentRow = Boolean(item.hasChildren);
                       const rowIndent = `${Math.min(Number(item.depth || 0), 4) * 36}px`;
                       const rowIndentStyle = { paddingRight: rowIndent };
@@ -659,19 +763,6 @@ export default function CostBreakdownPage() {
                                 </div>
                               ) : (
                                 <div className="flex items-center justify-start gap-2" dir="rtl" style={rowIndentStyle}>
-                                  {item.hasChildren ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => toggleExpandedCode(displayBudgetCode)}
-                                      className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-black/15 bg-white text-base leading-none text-black transition hover:bg-black/5 dark:border-white/15 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10"
-                                      aria-label={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
-                                      title={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
-                                    >
-                                      {isExpanded ? "−" : "+"}
-                                    </button>
-                                  ) : (
-                                    <span className="h-7 w-7 shrink-0" />
-                                  )}
                                   <span dir="ltr" className={`inline-block min-w-0 text-center font-sans tabular-nums ${parentWeightCls}`}>
                                     {displayBudgetCode || "—"}
                                   </span>
@@ -687,7 +778,7 @@ export default function CostBreakdownPage() {
                                       setEditDraft((prev) => ({ ...prev, budgetName: e.target.value }))
                                     }
                                     onKeyDown={handleEditKeyDown}
-                                    className="h-9 w-full max-w-md rounded-xl border border-neutral-300 bg-white px-2 text-right text-neutral-900 outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                                    className="h-11 w-full max-w-2xl rounded-xl border border-neutral-300 bg-white px-3 text-right text-neutral-900 outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                                   />
                                 ) : (
                                   <span className={parentWeightCls}>{row.budgetName || "—"}</span>
@@ -712,34 +803,7 @@ export default function CostBreakdownPage() {
                               </div>
                             </td>
                             <td className={`px-3 text-center ${divider}`}>
-                              <div className="relative flex min-h-[34px] items-center justify-center">
-                                <span
-                                  className={`transition-opacity ${
-                                    isEditing ? "opacity-0 pointer-events-none" : "group-hover:opacity-0"
-                                  }`}
-                                >
-                                  -
-                                </span>
-                                <div
-                                  className={`absolute inset-0 ${
-                                    isEditing
-                                      ? "flex items-center justify-center gap-1"
-                                      : rowActionsRevealCls
-                                  }`}
-                                >
-                                  {isEditing ? (
-                                    <>
-                                      <RowActionIconBtn action="save" onClick={saveEdit} disabled={saving} size={34} iconSize={15} />
-                                      <RowActionIconBtn action="cancel" onClick={cancelEdit} disabled={saving} size={34} iconSize={14} />
-                                    </>
-                                  ) : (
-                                    <>
-                                      <RowActionIconBtn action="edit" onClick={() => beginEdit(row)} disabled={saving} size={34} iconSize={15} />
-                                      <RowActionIconBtn action="delete" onClick={() => deleteRow(row)} disabled={saving} size={34} iconSize={16} />
-                                    </>
-                                  )}
-                                </div>
-                              </div>
+                              {isEditing ? <div className="flex items-center justify-center gap-1"><RowActionIconBtn action="save" onClick={saveEdit} disabled={saving} size={34} iconSize={15} /><RowActionIconBtn action="cancel" onClick={cancelEdit} disabled={saving} size={34} iconSize={14} /></div> : <span className="text-neutral-400">—</span>}
                             </td>
                           </tr>
                         );
@@ -797,6 +861,13 @@ export default function CostBreakdownPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <button type="button" onClick={exportExcel} disabled={!rows.length} className="inline-flex h-10 items-center gap-2 rounded-xl border border-emerald-600/20 bg-emerald-50 px-4 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-45 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20">
+          <img src="/images/icons8-excel-50.png" alt="" className="h-5 w-5" />
+          خروجی اکسل
+        </button>
       </div>
 
       {err && <div className="mt-3 text-center text-sm text-red-600 dark:text-red-400">{err}</div>}
