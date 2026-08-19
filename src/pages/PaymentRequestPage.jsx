@@ -1712,6 +1712,11 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
   ) : (item.hasSupplyRequest === "yes" ? (supplyRequests.find((row) => String(row.id) === String(item.supplyRequestId))?.serial || `#${item.supplyRequestId || "—"}`) : "ندارد");
 
   const openPdfPreview = () => {
+    const pdfWindow = window.open("", "_blank", "width=1150,height=850");
+    if (!pdfWindow) {
+      alert("امکان باز کردن پیش‌نمایش وجود ندارد. لطفاً نمایش پنجره‌های بازشو را برای این سایت فعال کنید.");
+      return;
+    }
     const value = (input, fallback = "—") => {
       const text = String(input ?? "").trim();
       const normalized = toFa(text || fallback).replace(/,/g, "٬");
@@ -1924,37 +1929,34 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
     <footer class="footer"><span>سامانه فرآیندهای یکپارچه شرکت ایده پویان انرژی</span><span>${escapePdfHtml(reportDateTime)}</span></footer>
   </article>
   ${attachmentPreviewPages}
-  <script>
-    (function () {
-      var printButton = document.getElementById("print-document");
-      var closeButton = document.getElementById("close-preview");
-      function printDocument() {
-        var startPrint = function () { window.focus(); window.print(); };
-        if (document.fonts && document.fonts.ready) document.fonts.ready.then(startPrint, startPrint);
-        else startPrint();
-      }
-      if (printButton) printButton.addEventListener("click", printDocument);
-      if (closeButton) closeButton.addEventListener("click", function () { window.close(); });
-    }());
-  </script>
 </body>
 </html>`;
 
-    const pdfWindow = window.open("", "_blank", "width=1150,height=850");
-    if (!pdfWindow) {
-      alert("امکان باز کردن پیش‌نمایش وجود ندارد. لطفاً نمایش پنجره‌های بازشو را برای این سایت فعال کنید.");
-      return;
-    }
     pdfWindow.document.open();
     pdfWindow.document.write(html);
     pdfWindow.document.close();
-    const printButton = pdfWindow.document.getElementById("print-document");
-    const closeButton = pdfWindow.document.getElementById("close-preview");
-    printButton?.addEventListener("click", () => {
-      pdfWindow.focus();
-      window.setTimeout(() => pdfWindow.print(), 0);
-    });
-    closeButton?.addEventListener("click", () => pdfWindow.close());
+    const bindPreviewControls = () => {
+      const printButton = pdfWindow.document.getElementById("print-document");
+      const closeButton = pdfWindow.document.getElementById("close-preview");
+      if (printButton && printButton.dataset.bound !== "true") {
+        printButton.dataset.bound = "true";
+        printButton.addEventListener("click", (event) => {
+          event.preventDefault();
+          pdfWindow.focus();
+          pdfWindow.print();
+        });
+      }
+      if (closeButton && closeButton.dataset.bound !== "true") {
+        closeButton.dataset.bound = "true";
+        closeButton.addEventListener("click", (event) => {
+          event.preventDefault();
+          pdfWindow.close();
+        });
+      }
+    };
+    bindPreviewControls();
+    pdfWindow.document.addEventListener("DOMContentLoaded", bindPreviewControls, { once: true });
+    pdfWindow.addEventListener("load", bindPreviewControls, { once: true });
     pdfWindow.focus();
   };
 
