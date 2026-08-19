@@ -26,6 +26,16 @@ const STEP_LABELS = {
   finance_manager: "مدیریت مالی",
   payment_order: "دستور پرداخت",
 };
+const WAITING_UNIT_LABELS = {
+  requester: "درخواست‌کننده",
+  project_control: "برنامه‌ریزی و کنترل پروژه",
+  project_manager: "مدیریت پروژه",
+  accounting: "واحد مالی",
+  management: "مدیریت",
+  finance_manager: "مدیریت مالی",
+  payment_order: "دستور پرداخت",
+  finance: "واحد مالی",
+};
 const PAYMENT_WORKFLOW_STEPS = [
   { index: 0, label: "ثبت درخواست" },
   { index: 1, label: "بررسی اولیه (واحد برنامه‌ریزی)" },
@@ -1021,7 +1031,7 @@ export default function PaymentRequestPage() {
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 !text-right text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">موضوع</th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">مبلغ</th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">درخواست‌کننده</th>
-              <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">آخرین وضعیت</th>
+              <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">در انتظار</th>
               <th className="sticky top-0 z-40 bg-neutral-200 !py-2 !pl-10 !pr-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">
                 <span>اقدامات</span>
                 <div ref={tableMenuRef} className="absolute left-1 top-1/2 z-50 -translate-y-1/2">
@@ -1067,7 +1077,7 @@ export default function PaymentRequestPage() {
                 <td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><span className="block truncate text-right">{item.title || "—"}</span></td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate tabular-nums">{toFa(money(item.amount) || "0")} {item.requestType === "tenkhah" ? item.currencyName : currencyNameOf(item.currencyTypeId, currencyTypes)}</span></td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.createdByName || `کاربر #${toFa(item.createdById)}`}</span></td>
-                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><StatusBadge status={item.displayStatus || item.status} /></td>
+                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><WaitingUnitCell item={item} /></td>
                 <td className="border-b border-neutral-300 !pl-10 !pr-2 dark:border-neutral-700">{item.requestType === "tenkhah" ? <div className="pointer-events-none flex w-full items-center justify-center opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"><button type="button" onClick={() => setSelectedTenkhah(item)} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label="نمایش درخواست تنخواه" title="نمایش درخواست تنخواه"><img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" /></button></div> : <div className="pointer-events-none flex w-full items-center justify-center gap-1 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"><button type="button" onClick={() => openPreview(item)} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label={item.canAct ? "اقدامات" : "نمایش"} title={item.canAct ? "اقدامات" : "نمایش"}><img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" /></button>{Number(item.createdById) === Number(user?.id) && <button type="button" onClick={() => openPreview({ ...item, __editing: true })} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label="ویرایش درخواست" title="ویرایش درخواست"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></button>}</div>}</td>
               </tr>)}
             </tbody>
@@ -1339,6 +1349,17 @@ function statusBadgeClass(status) {
 
 function StatusBadge({ status }) {
   return <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs ${statusBadgeClass(status)}`}>{STATUS_LABELS[status] || status || "—"}</span>;
+}
+
+function WaitingUnitCell({ item }) {
+  const roleKey = item?.currentStepRoleKey || item?.stage;
+  const unitName = WAITING_UNIT_LABELS[roleKey];
+
+  if (unitName) {
+    return <span className="mx-auto block truncate text-center text-[13px] font-medium" title={unitName}>{unitName}</span>;
+  }
+
+  return <StatusBadge status={item?.displayStatus || item?.status} />;
 }
 
 function tenkhahCreatedAt(item) {
