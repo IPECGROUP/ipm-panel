@@ -42,7 +42,7 @@ const emptyForm = () => ({
   dateJalali: today(), scope: "projects", projectId: "", budgetCode: "", title: "", description: "",
   amount: "", cashAmount: "", cashDateJalali: "", creditPay: "", beneficiaryName: "", bankInfo: "",
   docId: "pre_invoice", docOther: "", docNumber: "", docDateJalali: "",
-  currencyTypeId: "", currencySourceId: "", attachments: [], hasSupplyRequest: "no", supplyRequestId: "", targetAssigneeUserId: "",
+  currencyTypeId: "", currencySourceId: "", attachments: [], relatedLetterIds: [], hasSupplyRequest: "no", supplyRequestId: "", targetAssigneeUserId: "",
 });
 const formFromItem = (item = {}) => ({
   dateJalali: String(item.dateFa || item.dateJalali || item.date_jalali || today()).replaceAll("-", "/"),
@@ -64,6 +64,7 @@ const formFromItem = (item = {}) => ({
   currencyTypeId: item.currencyTypeId != null ? String(item.currencyTypeId) : "",
   currencySourceId: item.currencySourceId != null ? String(item.currencySourceId) : "",
   attachments: Array.isArray(item.attachments) ? item.attachments : [],
+  relatedLetterIds: Array.isArray(item.relatedLetterIds) ? item.relatedLetterIds.map(String) : [],
   hasSupplyRequest: item.hasSupplyRequest === "yes" || item.supplyRequestId ? "yes" : "no",
   supplyRequestId: item.supplyRequestId != null ? String(item.supplyRequestId) : "",
 });
@@ -309,6 +310,15 @@ export default function PaymentRequestPage() {
   const [projectLiquidityRemaining, setProjectLiquidityRemaining] = useState(null);
   const [projectLiquidityLoading, setProjectLiquidityLoading] = useState(false);
   const [supplyRequests, setSupplyRequests] = useState([]);
+  const [supplyPickerOpen, setSupplyPickerOpen] = useState(false);
+  const [supplyPickerQuery, setSupplyPickerQuery] = useState("");
+  const [supplyPickerPage, setSupplyPickerPage] = useState(1);
+  const [supplyPickerLoading, setSupplyPickerLoading] = useState(false);
+  const [supplyPickerHasMore, setSupplyPickerHasMore] = useState(false);
+  const [letterPickerOpen, setLetterPickerOpen] = useState(false);
+  const [letterPickerQuery, setLetterPickerQuery] = useState("");
+  const [letters, setLetters] = useState([]);
+  const [lettersLoading, setLettersLoading] = useState(false);
   const [currencyTypes, setCurrencyTypes] = useState([]);
   const [currencySources, setCurrencySources] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -478,7 +488,7 @@ export default function PaymentRequestPage() {
     };
   }, [tableMenuOpen]);
   useEffect(() => {
-    Promise.allSettled([api("/projects?isActive=true"), api("/base/currencies/types"), api("/base/currencies/sources"), api("/supply-requests")]).then(([pr, t, s, sr]) => {
+    Promise.allSettled([api("/projects?isActive=true"), api("/base/currencies/types"), api("/base/currencies/sources")]).then(([pr, t, s]) => {
       if (pr.status === "fulfilled") {
         const mainProjects = (Array.isArray(pr.value.items) ? pr.value.items : pr.value.projects || [])
           .filter((project) => isActiveProject(project) && isMainProject(project))
@@ -487,9 +497,34 @@ export default function PaymentRequestPage() {
       } else setProjects([]);
       if (t.status === "fulfilled") setCurrencyTypes(t.value.items || []);
       if (s.status === "fulfilled") setCurrencySources(s.value.items || []);
-      if (sr.status === "fulfilled") setSupplyRequests(Array.isArray(sr.value.items) ? sr.value.items : []);
     });
   }, [api]);
+  useEffect(() => {
+    if (!supplyPickerOpen) return undefined;
+    const timer = setTimeout(async () => {
+      setSupplyPickerLoading(true);
+      try {
+        const params = new URLSearchParams({ owner: "me", page: String(supplyPickerPage), pageSize: "50" });
+        if (supplyPickerQuery.trim()) params.set("search", supplyPickerQuery.trim());
+        const data = await api(`/supply-requests?${params}`);
+        const rows = Array.isArray(data?.items) ? data.items : [];
+        setSupplyRequests((previous) => supplyPickerPage === 1 ? rows : [...previous, ...rows.filter((row) => !previous.some((old) => String(old.id) === String(row.id)))]);
+        setSupplyPickerHasMore(Boolean(data?.pagination?.hasMore));
+      } catch {
+        setSupplyRequests([]);
+        setSupplyPickerHasMore(false);
+      } finally { setSupplyPickerLoading(false); }
+    }, supplyPickerQuery ? 250 : 0);
+    return () => clearTimeout(timer);
+  }, [api, supplyPickerOpen, supplyPickerPage, supplyPickerQuery]);
+  useEffect(() => {
+    if (!letterPickerOpen || letters.length || lettersLoading) return;
+    setLettersLoading(true);
+    api("/letters")
+      .then((data) => setLetters(Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : []))
+      .catch(() => setLetters([]))
+      .finally(() => setLettersLoading(false));
+  }, [api, letterPickerOpen, letters.length, lettersLoading]);
   useEffect(() => {
     if (!form.projectId) { setBudgetItems([]); return; }
     let cancelled = false;
@@ -856,10 +891,10 @@ export default function PaymentRequestPage() {
         {showForm && <div className={requestType === "tenkhah" ? "" : "hidden"}><TenkhahPage embedded /></div>}
 
         {showForm && <form onSubmit={submit} className={`mb-5 space-y-4 rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03] md:p-5 ${requestType === "normal" ? "" : "hidden"}`}>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(150px,0.75fr)_minmax(140px,0.7fr)_minmax(220px,1fr)_minmax(220px,1fr)]">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(260px,1fr)_minmax(220px,1fr)_minmax(210px,0.8fr)]">
             <Field label="پروژه" required><select className={inputClass} value={form.projectId} onChange={(e) => setForm((old) => ({ ...old, projectId: e.target.value, budgetCode: "", targetAssigneeUserId: "" }))}><option value="">انتخاب پروژه</option>{projects.map((item) => <option key={item.id} value={item.id}>{projectLabel(item)}</option>)}</select></Field>
-            <ReadField label="باقی‌مانده نقدینگی پروژه" value={projectLiquidityLoading ? "در حال دریافت..." : money(projectLiquidityRemaining) || "0"} ltr />
             <Field label="کد بودجه" required><select className={inputClass} value={form.budgetCode} disabled={!form.projectId} onChange={(e) => setField("budgetCode", e.target.value)}><option value="">{form.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید"}</option>{budgetItems.map((item) => { const code = normalizeBudgetCode(item.code || item.center_code); const description = item.center_desc || item.last_desc || item.name || item.description || ""; return <option key={code || item.id} value={code}>{code}{description ? ` - ${description}` : ""}</option>; })}</select></Field>
+            <div className="flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">باقی‌مانده نقدینگی پروژه: <span className="mr-1 font-medium tabular-nums">{projectLiquidityLoading ? "در حال دریافت..." : money(projectLiquidityRemaining) || "۰"}</span></div>
           </div>
 
           <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-[minmax(230px,1.2fr)_minmax(210px,0.85fr)_minmax(360px,1.35fr)]">
@@ -886,7 +921,7 @@ export default function PaymentRequestPage() {
                   })}
                 </div>
               </Field>
-              {form.hasSupplyRequest === "yes" && <Field label="انتخاب درخواست تامین" required><select className={inputClass} value={form.supplyRequestId} onChange={(e) => setField("supplyRequestId", e.target.value)}><option value="">انتخاب کنید</option>{supplyRequests.map((item) => <option key={item.id} value={item.id}>{item.serial || `#${item.id}`}{item.title ? ` - ${item.title}` : ""}</option>)}</select></Field>}
+              {form.hasSupplyRequest === "yes" && <Field label="انتخاب درخواست تامین" required><button type="button" onClick={() => { setSupplyPickerQuery(""); setSupplyPickerPage(1); setSupplyPickerOpen(true); }} className={`${inputClass} flex items-center justify-between text-right`}><span className={form.supplyRequestId ? "truncate" : "text-neutral-400"}>{supplyRequests.find((item) => String(item.id) === String(form.supplyRequestId))?.serial || (form.supplyRequestId ? `#${form.supplyRequestId}` : "انتخاب کنید")}</span><span className="text-lg leading-none">•••</span></button></Field>}
             </div>
           </div>
 
@@ -906,10 +941,11 @@ export default function PaymentRequestPage() {
             <Field label="شماره سند"><input className={inputClass} value={form.docNumber} onChange={(e) => setField("docNumber", e.target.value)} /></Field>
             <Field label="تاریخ سند"><JalaliPopupDatePicker value={form.docDateJalali} onChange={(value) => setField("docDateJalali", value)} /></Field>
             <Field label="بارگذاری">
-              <button type="button" onClick={() => setUploadOpen(true)} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={uploading ? "در حال آپلود" : "بارگذاری"} aria-label={uploading ? "در حال آپلود" : "بارگذاری"}>
+              <div className="flex items-center gap-2"><button type="button" onClick={() => setUploadOpen(true)} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={uploading ? "در حال آپلود" : "بارگذاری"} aria-label={uploading ? "در حال آپلود" : "بارگذاری"}>
                 <img src="/images/icons/Uplod.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse opacity-60" : ""}`} />
-              </button>
+              </button><button type="button" onClick={() => setLetterPickerOpen(true)} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white text-lg transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب نامه" aria-label="انتخاب نامه">•••</button></div>
               {!!form.attachments.length && <div className="mt-1 text-[11px] text-neutral-500">{toFa(form.attachments.length)} فایل ضمیمه شده</div>}
+              {!!form.relatedLetterIds.length && <div className="mt-1 text-[11px] font-medium text-neutral-600 dark:text-neutral-300">{toFa(form.relatedLetterIds.length)} نامه مرتبط انتخاب شده</div>}
             </Field>
           </div>
 
@@ -930,6 +966,27 @@ export default function PaymentRequestPage() {
           {(error || success) && <div className={`rounded-xl px-3 py-2 text-sm ${error ? "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300" : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"}`}>{error || success}</div>}
         </form>}
         {uploadOpen && <PaymentUploadModal files={form.attachments} uploading={uploading} onUpload={uploadFiles} onClose={() => setUploadOpen(false)} />}
+        {supplyPickerOpen && <RequestChoiceModal
+          title="انتخاب درخواست تامین"
+          query={supplyPickerQuery}
+          onQueryChange={(value) => { setSupplyPickerQuery(value); setSupplyPickerPage(1); }}
+          loading={supplyPickerLoading}
+          items={supplyRequests}
+          hasMore={supplyPickerHasMore}
+          selectedId={form.supplyRequestId}
+          onLoadMore={() => setSupplyPickerPage((value) => value + 1)}
+          onSelect={(item) => { setField("supplyRequestId", String(item.id)); setSupplyPickerOpen(false); }}
+          onClose={() => setSupplyPickerOpen(false)}
+        />}
+        {letterPickerOpen && <LetterChoiceModal
+          query={letterPickerQuery}
+          onQueryChange={setLetterPickerQuery}
+          loading={lettersLoading}
+          items={letters}
+          selectedIds={form.relatedLetterIds}
+          onToggle={(id) => setField("relatedLetterIds", form.relatedLetterIds.includes(String(id)) ? form.relatedLetterIds.filter((value) => value !== String(id)) : [...form.relatedLetterIds, String(id)])}
+          onClose={() => setLetterPickerOpen(false)}
+        />}
 
         {!showForm && <RequestFilterBar query={filterQuery} setQuery={setFilterQuery} quick={filterQuick} setQuick={setFilterQuick} ownership={filterOwnership} setOwnership={setFilterOwnership} status={filterStatus} setStatus={setFilterStatus} unread={filterUnread} setUnread={setFilterUnread} fromDate={filterFromDate} setFromDate={setFilterFromDate} toDate={filterToDate} setToDate={setFilterToDate} tags={tags} pinnedTagIds={pinnedFilterTagIds} setPinnedTagIds={setPinnedFilterTagIds} activeTagIds={filterTagIds} setActiveTagIds={setFilterTagIds} tagPickOpen={tagPickOpen} setTagPickOpen={setTagPickOpen} tagPickSearch={tagPickSearch} setTagPickSearch={setTagPickSearch} />}
 
@@ -1140,6 +1197,43 @@ function RequestFilterBar({ query, setQuery, quick, setQuick, ownership, setOwne
     </div>
     {tagPickOpen && <TagPicker tags={tags} selectedIds={pinnedTagIds} onToggle={togglePinnedTag} query={tagPickSearch} setQuery={setTagPickSearch} onClose={() => setTagPickOpen(false)} />}
   </div>;
+}
+
+function ChoiceModal({ title, query, onQueryChange, loading, children, onClose }) {
+  return createPortal(
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-5" dir="rtl">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="relative flex max-h-[min(88vh,700px)] w-[min(760px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white">
+        <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10"><b className="text-sm">{title}</b><button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl border border-black/10 text-xl dark:border-white/10" aria-label="بستن">×</button></div>
+        <div className="border-b border-black/10 p-3 dark:border-white/10"><input autoFocus value={query} onChange={(event) => onQueryChange(event.target.value)} className={inputClass} placeholder="جستجو با شماره، موضوع یا شرح..." /></div>
+        <div className="min-h-40 flex-1 overflow-y-auto p-2">{loading ? <div className="p-5 text-center text-sm text-neutral-500">در حال دریافت...</div> : children}</div>
+      </div>
+    </div>, document.body
+  );
+}
+
+function RequestChoiceModal({ title, query, onQueryChange, loading, items, selectedId, hasMore, onLoadMore, onSelect, onClose }) {
+  return <ChoiceModal title={title} query={query} onQueryChange={onQueryChange} loading={loading} onClose={onClose}>
+    {items.length ? <div className="space-y-1">{items.map((item) => {
+      const selected = String(item.id) === String(selectedId);
+      return <button key={item.id} type="button" onClick={() => onSelect(item)} className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-3 text-right transition ${selected ? "bg-black text-white dark:bg-white dark:text-black" : "hover:bg-black/[0.04] dark:hover:bg-white/10"}`}>
+        <span className="min-w-0"><span className="block font-bold">{toFa(item.serial || `#${item.id}`)}</span><span className={`mt-1 block truncate text-xs ${selected ? "text-white/70 dark:text-black/60" : "text-neutral-500 dark:text-neutral-400"}`}>{item.title || item.description || "بدون موضوع"}</span></span><span className="text-sm">{selected ? "✓" : ""}</span>
+      </button>;
+    })}{hasMore && <button type="button" onClick={onLoadMore} className="mx-auto mt-2 block rounded-xl border border-black/10 px-4 py-2 text-sm font-semibold transition hover:bg-black/[0.04] dark:border-white/10 dark:hover:bg-white/10">نمایش موارد بیشتر</button>}</div> : <div className="p-5 text-center text-sm text-neutral-500">درخواستی پیدا نشد.</div>}
+  </ChoiceModal>;
+}
+
+function LetterChoiceModal({ query, onQueryChange, loading, items, selectedIds, onToggle, onClose }) {
+  const normalizedQuery = normalizeDigits(query).trim().toLowerCase();
+  const rows = (Array.isArray(items) ? items : []).filter((item) => !normalizedQuery || [item.letterNo, item.letter_no, item.secretariatNo, item.secretariat_no, item.subject, item.title, item.organization, item.companyName].map((value) => normalizeDigits(value).toLowerCase()).join(" ").includes(normalizedQuery));
+  return <ChoiceModal title="انتخاب نامه مرتبط" query={query} onQueryChange={onQueryChange} loading={loading} onClose={onClose}>
+    {rows.length ? <div className="space-y-1">{rows.slice(0, 150).map((item) => {
+      const id = String(item.id);
+      const checked = selectedIds.includes(id);
+      const number = item.secretariatNo || item.secretariat_no || item.letterNo || item.letter_no || `#${id}`;
+      return <button key={id} type="button" onClick={() => onToggle(id)} className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-3 text-right transition ${checked ? "bg-black text-white dark:bg-white dark:text-black" : "hover:bg-black/[0.04] dark:hover:bg-white/10"}`}><span className="min-w-0"><span className="block font-bold">{toFa(number)}</span><span className={`mt-1 block truncate text-xs ${checked ? "text-white/70 dark:text-black/60" : "text-neutral-500 dark:text-neutral-400"}`}>{item.subject || item.title || "بدون موضوع"}</span></span><span className={`grid h-5 w-5 place-items-center rounded border ${checked ? "border-current" : "border-neutral-300 dark:border-neutral-600"}`}>{checked ? "✓" : ""}</span></button>;
+    })}</div> : <div className="p-5 text-center text-sm text-neutral-500">نامه‌ای پیدا نشد.</div>}
+  </ChoiceModal>;
 }
 
 function PaymentUploadModal({ files, uploading, onUpload, onClose }) {
