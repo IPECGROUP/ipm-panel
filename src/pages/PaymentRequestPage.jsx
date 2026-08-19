@@ -1356,7 +1356,7 @@ function WaitingUnitCell({ item }) {
   const unitName = WAITING_UNIT_LABELS[roleKey];
 
   if (unitName) {
-    return <span className="mx-auto block truncate text-center text-[13px] font-medium" title={unitName}>{unitName}</span>;
+    return <span className={`inline-flex max-w-full truncate rounded-full px-2.5 py-1 text-xs ${statusBadgeClass("pending")}`} title={unitName}>{unitName}</span>;
   }
 
   return <StatusBadge status={item?.displayStatus || item?.status} />;
