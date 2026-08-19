@@ -45,14 +45,30 @@ function Field({ label, required, children, className = "" }) {
 function DetailCell({ label, children, className = "" }) {
   return <div className={`min-h-[76px] border-b border-l border-black/10 px-4 py-3 last:border-l-0 dark:border-white/10 ${className}`}><div className="mb-1 text-xs text-neutral-500 dark:text-neutral-400">{label}</div><div className="flex min-h-6 items-center text-sm font-medium text-neutral-900 dark:text-white">{children || "—"}</div></div>;
 }
-function TenkhahWorkflow({ stage, status }) {
+function workflowDateTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const day = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit" }).format(date).replaceAll("-", "/");
+  const time = new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false }).format(date);
+  return `${day}، ${time}`;
+}
+function TenkhahWorkflow({ item }) {
+  const { stage, status } = item;
   const steps = [
+    ["created", "ثبت درخواست"],
     ["project_manager", "تایید نهایی (مدیریت پروژه)"],
     ["management", "دستور پرداخت (مدیریت ارشد)"],
     ["finance", "ثبت پرداخت (واحد مالی)"],
   ];
-  const active = status === "charged" ? steps.length - 1 : Math.max(0, steps.findIndex(([key]) => key === stage));
-  return <aside className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-white/[.03]"><h3 className="mb-4 text-sm font-bold">فرآیند تنخواه</h3><div className="space-y-1">{steps.map(([key, label], index) => { const done = index < active || status === "charged"; const current = index === active && status !== "charged"; const finalCompleted = status === "charged" && index === steps.length - 1; return <div key={key} className="relative flex min-h-14 items-center gap-3"><span className={`z-10 grid h-7 w-7 shrink-0 place-items-center rounded-full border text-xs font-bold ${finalCompleted ? "border-emerald-500 bg-emerald-500 text-white shadow-[0_0_0_4px_rgba(16,185,129,.13)]" : current ? "border-sky-500 bg-sky-500 text-white shadow-[0_0_0_4px_rgba(14,165,233,.13)]" : done ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-black" : "border-neutral-300 bg-white text-neutral-400 dark:border-neutral-600 dark:bg-neutral-900"}`}>{done ? "✓" : index + 1}</span>{index < steps.length - 1 && <span className={`absolute right-[13px] top-9 h-7 w-px ${done ? "bg-neutral-900 dark:bg-white" : "bg-neutral-200 dark:bg-white/10"}`} />}<div className="min-w-0"><div className={`text-sm font-medium ${finalCompleted ? "text-emerald-700 dark:text-emerald-300" : current ? "text-sky-700 dark:text-sky-300" : done ? "text-neutral-900 dark:text-white" : "text-neutral-400"}`}>{label}</div>{current && <div className="mt-0.5 text-[11px] text-sky-600 dark:text-sky-300">مرحله جاری</div>}</div></div>; })}</div></aside>;
+  const active = status === "charged" ? steps.length - 1 : Math.max(1, steps.findIndex(([key]) => key === stage));
+  const history = Array.isArray(item.workflowHistory) ? item.workflowHistory : [];
+  const eventFor = (key) => key === "created" ? history.find((event) => event.type === "created") : history.findLast?.((event) => event.type === "approve" && event.stage === key);
+  return <aside className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-white/[.03]"><h3 className="mb-4 text-sm font-bold">فرآیند تنخواه</h3><div className="space-y-1">{steps.map(([key, label], index) => { const event = eventFor(key); const done = index < active || status === "charged"; const current = index === active && !["charged", "rejected", "returned"].includes(status); const completed = done || Boolean(event); const actor = key === "created" ? (item.requesterName || item.requesterUsername) : ""; return <div key={key} className="relative flex min-h-16 items-start gap-3"><span className={`z-10 mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-full border text-xs font-bold ${current ? "border-sky-500 bg-sky-500 text-white shadow-[0_0_0_4px_rgba(14,165,233,.13)]" : completed ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-black" : "border-neutral-300 bg-white text-neutral-400 dark:border-neutral-600 dark:bg-neutral-900"}`}>{completed ? "✓" : index + 1}</span>{index < steps.length - 1 && <span className={`absolute right-[13px] top-9 h-9 w-px ${completed ? "bg-neutral-900 dark:bg-white" : "bg-neutral-200 dark:bg-white/10"}`} />}<div className="min-w-0 pb-2"><div className={`text-sm font-medium ${current ? "text-sky-700 dark:text-sky-300" : completed ? "text-neutral-900 dark:text-white" : "text-neutral-400"}`}>{label}</div>{key === "created" && actor && <div className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">{actor}، {workflowDateTime(event?.at || item.createdAt)}</div>}{event?.note && <div className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">توضیح: {event.note}</div>}{current && <div className="mt-1 text-[11px] text-sky-600 dark:text-sky-300">مرحله جاری</div>}</div></div>; })}</div></aside>;
+}
+function TenkhahActionCards({ choice, setChoice, note, setNote, onSubmit, disabled }) {
+  const options = [["approve", "تایید و ارسال", "bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-200"], ["return", "برگشت درخواست", "bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-200"], ["reject", "رد درخواست", "bg-red-50 text-red-800 dark:bg-red-500/10 dark:text-red-200"]];
+  return <div className="mt-4 rounded-2xl border border-black/10 p-3 dark:border-white/10"><div className="mb-2 text-sm font-bold">اقدام روی درخواست</div><div className="space-y-2">{options.map(([value, label, color]) => <button key={value} type="button" onClick={() => setChoice(value)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-right transition ${choice === value ? `${color} ring-1 ring-current/20` : "hover:bg-black/[0.04] dark:hover:bg-white/10"}`}><span className={`grid h-5 w-5 place-items-center rounded-full border ${choice === value ? "border-current" : "border-neutral-300 dark:border-neutral-600"}`}>{choice === value ? "✓" : ""}</span><span className="font-semibold">{label}</span></button>)}</div>{choice !== "approve" && <textarea value={note} onChange={(event) => setNote(event.target.value)} className={`${input} mt-3 min-h-20 py-2`} placeholder="توضیح اقدام..." />}<button type="button" disabled={disabled} onClick={onSubmit} className="mt-3 inline-flex h-10 items-center rounded-xl bg-black px-4 text-sm font-bold text-white transition hover:bg-black/85 disabled:opacity-50 dark:bg-white dark:text-black">ثبت اقدام</button></div>;
 }
 function SettlementTable({ entries, request, onRemove, onEdit, editingEntryId, editForm, budgetItems = [], onEditChange, onEditSave, onEditCancel }) {
   const total = sumAmounts(...entries.map((entry) => entry.amount));
@@ -84,7 +100,9 @@ export default function TenkhahPage({ embedded = false }) {
     [projectBalances, setProjectBalances] = useState({ unregisteredBalance: "0", unsettledBalance: "0", receivedAmount: "0" }),
     [projectLiquidity, setProjectLiquidity] = useState("0"),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [workflowChoice, setWorkflowChoice] = useState("approve"),
+    [workflowNote, setWorkflowNote] = useState("");
   const api = async (path, opt = {}) => {
     const r = await fetch(`/api${path}`, {
       credentials: "include",
@@ -217,7 +235,7 @@ export default function TenkhahPage({ embedded = false }) {
       setBusy(false);
     }
   };
-  const action = async () => {
+  const action = async (decision = "approve") => {
     setBusy(true);
     setError("");
     try {
@@ -231,12 +249,14 @@ export default function TenkhahPage({ embedded = false }) {
                 id: selected.id,
                 managementUserId: selected.nextUserId,
                 approvedDate: selected.managerApprovedDate || today(),
+                action: decision, note: workflowNote,
               }
             : isManagement
-              ? { id: selected.id, financeUserId: selected.nextUserId }
+              ? { id: selected.id, financeUserId: selected.nextUserId, action: decision, note: workflowNote }
             : {
                 id: selected.id,
                 chargedDate: selected.chargedDate || today(),
+                action: decision, note: workflowNote,
                 chargedAmount:
                   selected.chargedAmount ?? selected.requestedAmount,
               },
@@ -425,14 +445,16 @@ export default function TenkhahPage({ embedded = false }) {
                       </td>
                       <td className="p-3 text-center">
                         <div className="flex justify-center gap-2"><button
-                          onClick={() =>
+                          onClick={() => {
                             setSelected({
                               ...x,
                               managerApprovedDate: today(),
                               chargedDate: today(),
                               chargedAmount: x.requestedAmount,
-                            })
-                          }
+                            });
+                            setWorkflowChoice("approve");
+                            setWorkflowNote("");
+                          }}
                           className="grid h-10 w-10 place-items-center bg-transparent transition hover:opacity-70"
                           title={Number(x.currentAssigneeUserId) === Number(user?.id) && x.status === "pending" ? "اقدامات" : "نمایش درخواست"}
                           aria-label={Number(x.currentAssigneeUserId) === Number(user?.id) && x.status === "pending" ? "اقدامات" : "نمایش درخواست"}
@@ -523,8 +545,8 @@ export default function TenkhahPage({ embedded = false }) {
                     />
                   </Field></div>
                 )}
-                {incoming && <div className="col-span-full flex justify-end border-t border-black/10 p-3 dark:border-white/10"><button disabled={busy || (["project_manager", "management"].includes(selected.stage) && !selected.nextUserId)} onClick={action} title="تأیید و ارسال" aria-label="تأیید و ارسال" className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button></div>}
-              </div></div><div className="order-first self-start"><TenkhahWorkflow stage={selected.stage} status={selected.status} /></div></div>
+                {incoming && <div className="col-span-full border-t border-black/10 p-3 dark:border-white/10"><TenkhahActionCards choice={workflowChoice} setChoice={setWorkflowChoice} note={workflowNote} setNote={setWorkflowNote} onSubmit={() => action(workflowChoice)} disabled={busy || (workflowChoice === "approve" && ["project_manager", "management"].includes(selected.stage) && !selected.nextUserId)} /></div>}
+              </div></div><div className="order-first self-start"><TenkhahWorkflow item={selected} /></div></div>
             </div>
           </div>
         )}
