@@ -1948,6 +1948,13 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
     pdfWindow.document.open();
     pdfWindow.document.write(html);
     pdfWindow.document.close();
+    const printButton = pdfWindow.document.getElementById("print-document");
+    const closeButton = pdfWindow.document.getElementById("close-preview");
+    printButton?.addEventListener("click", () => {
+      pdfWindow.focus();
+      window.setTimeout(() => pdfWindow.print(), 0);
+    });
+    closeButton?.addEventListener("click", () => pdfWindow.close());
     pdfWindow.focus();
   };
 

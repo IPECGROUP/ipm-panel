@@ -271,9 +271,9 @@ td {
 /* Keep the legacy Tenkhah preview close control visually identical to the
    payment-actions close button while it still renders its text-based icon. */
 button.rounded-\[10px\].bg-\[\#292929\] {
-  border-radius: .75rem;
-  background-color: rgb(38 38 38);
-  font-size: 0;
+  border-radius: .75rem !important;
+  background-color: rgb(38 38 38) !important;
+  font-size: 0 !important;
 }
 
 button.rounded-\[10px\].bg-\[\#292929\]::after {
