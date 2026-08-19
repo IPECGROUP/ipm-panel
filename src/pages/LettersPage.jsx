@@ -2534,6 +2534,21 @@ const selectedTagChipCls =
   " border-black bg-black !text-white hover:bg-black/90 " +
   "dark:border-neutral-200 dark:bg-neutral-100 dark:!text-neutral-900";
 
+  // Filter controls use the same larger, soft-background treatment as the
+  // document-search mockup, while regular form tags keep their compact style.
+  const filterChipBase =
+    "h-10 inline-flex items-center justify-center rounded-xl border px-4 text-[13px] font-medium transition whitespace-nowrap";
+  const filterChipCls =
+    filterChipBase +
+    (theme === "dark"
+      ? " border-white/15 bg-white/5 text-white hover:bg-white/10"
+      : " border-black/10 bg-white text-neutral-800 hover:bg-black/[0.03]");
+  const selectedFilterChipCls =
+    filterChipBase +
+    (theme === "dark"
+      ? " border-white bg-white text-neutral-900"
+      : " border-black bg-black text-white");
+
   const sendBtnCls =
   "h-10 w-10 md:h-12 md:w-12 rounded-xl flex items-center justify-center transition ring-1 " +
   (theme === "dark"
@@ -4841,9 +4856,9 @@ useEffect(() => {
 
   }
 >
-              <div className="flex flex-wrap items-end gap-2">
+              <div className="grid grid-cols-1 items-end gap-2 md:grid-cols-[minmax(0,1fr)_140px_140px_44px]">
                 {/* Tabs first */}
-                <div className="flex w-full md:w-auto flex-wrap items-center gap-1 justify-start">
+                <div className="hidden">
 
                   {TABS.map((t) => {
                     const active = filterTab === t.id;
@@ -4945,16 +4960,49 @@ useEffect(() => {
                     buttonClassName={inputCls + " h-10 md:h-11 px-3 md:px-4 text-[12px] md:text-[14px] flex items-center justify-between gap-2"}
                   />
                 </div>
+                <button
+                  type="button"
+                  onClick={exportLettersExcel}
+                  className={
+                    "h-11 w-11 shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
+                    (theme === "dark"
+                      ? "border-white/15 bg-white/5 hover:bg-white/10"
+                      : "border-black/10 bg-white hover:bg-black/[0.03]")
+                  }
+                  aria-label="خروجی اکسل"
+                  title="خروجی اکسل"
+                >
+                  <img src="/images/icons8-excel-50.png" alt="" className="w-5 h-5 object-contain" />
+                </button>
               </div>
-
-
-
-
 
               {/* Tags + Quick chips (moved here) */}
               <div>
                 <div className={labelCls}>برچسب ها</div>
                 <div className="flex flex-wrap items-center gap-2">
+  {/* Document type filters always come first. */}
+  {TABS.map((t) => {
+    const active = filterTab === t.id;
+    return (
+      <button
+        key={t.id}
+        type="button"
+        onClick={() => {
+          setEditingId(null);
+          if (t.id === "all") {
+            setFilterTab("all");
+            resetAllFilters();
+            return;
+          }
+          setFilterTab(t.id);
+        }}
+        className={(active ? selectedFilterChipCls : filterChipCls) + " shrink-0"}
+      >
+        {t.label}
+      </button>
+    );
+  })}
+
   {/* 1) Quick chips */}
   {QUICK_CHIPS.map(([k, lab]) => (
     <button
@@ -4971,10 +5019,8 @@ useEffect(() => {
       }}
       className={
         (filterQuick === k
-          ? theme === "dark"
-            ? chipBase + " border-white/15 bg-white text-black"
-            : chipBase + " border-black/15 bg-black text-white"
-          : chipCls) + " shrink-0"
+          ? selectedFilterChipCls
+          : filterChipCls) + " shrink-0"
       }
       title={lab}
       aria-label={lab}
@@ -4997,7 +5043,7 @@ useEffect(() => {
         // ✅ فقط روشن/خاموش شدن فیلتر، بدون جابه‌جایی در لیست
         toggleFilterTag(id);
       }}
-      className={(active ? selectedTagChipCls : chipCls) + " shrink-0"}
+      className={(active ? selectedFilterChipCls : filterChipCls) + " shrink-0"}
       title={label}
       aria-label={label}
     >
@@ -5012,10 +5058,10 @@ useEffect(() => {
   type="button"
   onClick={() => openTagPicker("filter")}
   className={
-    "h-10 w-10  shrink-0 rounded-full border transition inline-flex items-center justify-center " +
+    "h-10 w-10 shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
     (theme === "dark"
       ? "border-white/15 bg-white/5 hover:bg-white/10"
-      : "border-black/10 bg-white hover:bg-black/[0.02]")
+      : "border-black/10 bg-white hover:bg-black/[0.03]")
   }
   aria-label="افزودن برچسب"
   title="افزودن برچسب"
@@ -5024,25 +5070,6 @@ useEffect(() => {
     src="/images/icons/sayer.svg"
     alt=""
     className={"w-5 h-5 " + (theme === "dark" ? "dark:invert" : "")}
-  />
-</button>
-
-<button
-  type="button"
-  onClick={exportLettersExcel}
-  className={
-    "h-10 w-10 shrink-0 rounded-full border transition inline-flex items-center justify-center " +
-    (theme === "dark"
-      ? "border-white/15 bg-white/5 hover:bg-white/10"
-      : "border-black/10 bg-white hover:bg-black/[0.02]")
-  }
-  aria-label="خروجی اکسل"
-  title="خروجی اکسل"
->
-  <img
-    src="/images/icons8-excel-50.png"
-    alt=""
-    className="w-5 h-5 object-contain"
   />
 </button>
 
