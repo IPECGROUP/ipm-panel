@@ -85,12 +85,8 @@ export default function CostBreakdownPage() {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
 
-  const [editId, setEditId] = useState(null);
-  const [editDraft, setEditDraft] = useState({
-    budgetCode: "",
-    budgetName: "",
-    baseBudget: "",
-  });
+  const [editIds, setEditIds] = useState(() => new Set());
+  const [editDrafts, setEditDrafts] = useState({});
 
   const sortedProjects = useMemo(
     () =>
@@ -151,6 +147,9 @@ export default function CostBreakdownPage() {
     }
     return map;
   }, [projectBudgetCode, tableRows]);
+
+  const expandableCodes = useMemo(() => Array.from(childRowsByParentCode.keys()), [childRowsByParentCode]);
+  const allRowsExpanded = expandableCodes.length > 0 && expandableCodes.every((code) => expandedCodes.has(code));
 
   const displayRows = useMemo(() => {
     const childKeys = new Set();
@@ -217,6 +216,14 @@ export default function CostBreakdownPage() {
       else next.add(code);
       return next;
     });
+  };
+
+  const toggleAllRowsExpanded = () => {
+    setExpandedCodes((prev) =>
+      expandableCodes.length > 0 && expandableCodes.every((code) => prev.has(code))
+        ? new Set()
+        : new Set(expandableCodes)
+    );
   };
 
   const handleBudgetCodeChange = (value) => {
@@ -401,26 +408,43 @@ export default function CostBreakdownPage() {
     });
   };
 
+  const draftForRow = (row) => ({
+    budgetCode: projectBudgetCode(row.budgetCode),
+    budgetName: row.budgetName,
+    baseBudget: row.baseBudget,
+  });
+
   const beginEdit = (row) => {
-    setEditId(row.id);
-    setEditDraft({
-      budgetCode: projectBudgetCode(row.budgetCode),
-      budgetName: row.budgetName,
-      baseBudget: row.baseBudget,
-    });
+    setEditIds((prev) => new Set([...prev, String(row.id)]));
+    setEditDrafts((prev) => ({ ...prev, [row.id]: prev[row.id] || draftForRow(row) }));
     setErr("");
   };
 
-  const cancelEdit = () => {
-    setEditId(null);
-    setEditDraft({ budgetCode: "", budgetName: "", baseBudget: "" });
+  const cancelEdit = (id) => {
+    if (id === undefined) {
+      setEditIds(new Set());
+      setEditDrafts({});
+      return;
+    }
+    setEditIds((prev) => {
+      const next = new Set(prev);
+      next.delete(String(id));
+      return next;
+    });
+    setEditDrafts((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   };
 
-  const saveEdit = async () => {
-    if (!editId) return;
+  const saveEdit = async (id) => {
+    const row = rows.find((item) => String(item.id) === String(id));
+    const draft = editDrafts[id];
+    if (!row || !draft) return;
 
-    const code = projectBudgetCode(editDraft.budgetCode);
-    const name = String(editDraft.budgetName || "").trim();
+    const code = projectBudgetCode(draft.budgetCode);
+    const name = String(draft.budgetName || "").trim();
     if (!code || !name) {
       setErr("کد بودجه و نام بودجه را وارد کنید.");
       return;
@@ -432,15 +456,15 @@ export default function CostBreakdownPage() {
       const res = await api("/cost-breakdown", {
         method: "PATCH",
         body: JSON.stringify({
-          id: Number(editId),
+          id: Number(id),
           project_id: Number(projectId),
           budget_code: code,
           budget_name: name,
-          base_budget: parseMoney(editDraft.baseBudget),
+          base_budget: parseMoney(draft.baseBudget),
         }),
       });
       if (res?.item) upsertSavedRow(res.item);
-      cancelEdit();
+      cancelEdit(id);
     } catch (ex) {
       setErr(ex.message === "duplicate_budget_code" ? "این کد بودجه برای پروژه انتخاب‌شده قبلاً ثبت شده است." : ex.message || "خطا در ویرایش");
     } finally {
@@ -448,15 +472,15 @@ export default function CostBreakdownPage() {
     }
   };
 
-  const handleEditKeyDown = async (event) => {
+  const handleEditKeyDown = async (event, id) => {
     if (event.key === "Escape") {
       event.preventDefault();
-      cancelEdit();
+      cancelEdit(id);
       return;
     }
     if (event.key !== "Enter") return;
     event.preventDefault();
-    await saveEdit();
+    await saveEdit(id);
   };
 
   const selectedRows = useMemo(
@@ -466,7 +490,8 @@ export default function CostBreakdownPage() {
 
   const editSelectedRows = () => {
     if (!selectedRows.length) return;
-    beginEdit(selectedRows[0]);
+    setEditIds(new Set(selectedRows.map((row) => String(row.id))));
+    setEditDrafts((prev) => Object.fromEntries(selectedRows.map((row) => [row.id, prev[row.id] || draftForRow(row)])));
     setTableMenuOpen(false);
   };
 
@@ -497,43 +522,62 @@ export default function CostBreakdownPage() {
       return;
     }
 
-    const xlsxMod = await import("xlsx");
-    const XLSX = xlsxMod.default || xlsxMod;
+    const exceljsMod = await import("exceljs");
+    const ExcelJS = exceljsMod.default || exceljsMod;
     const project = projects.find((item) => String(item.id) === String(projectId));
-    const sheetData = [
-      ["گزارش ساختار شکست هزینه‌ها"],
-      ["پروژه", project ? `${project.code}${project.name ? ` - ${project.name}` : ""}` : "—"],
-      [],
-      ["ردیف", "کد بودجه", "نام بودجه", "بودجه مبنا"],
-      ...rows.map((row, index) => [index + 1, projectBudgetCode(row.budgetCode), row.budgetName || "—", Number(parseMoney(row.baseBudget))]),
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(sheetData);
-    ws["!cols"] = [{ wch: 10 }, { wch: 22 }, { wch: 42 }, { wch: 22 }];
-    ws["!rows"] = [{ hpt: 28 }, { hpt: 22 }, { hpt: 8 }, { hpt: 24 }];
-    ws["!merges"] = [XLSX.utils.decode_range("A1:D1")];
-    ws["!view"] = [{ rightToLeft: true }];
-    ["A1", "A2", "B2", "A4", "B4", "C4", "D4"].forEach((address) => {
-      if (!ws[address]) return;
-      ws[address].s = {
-        font: { bold: true, color: { rgb: "FFFFFF" } },
-        fill: { fgColor: { rgb: address === "A1" ? "1F4E78" : "3B82F6" } },
-        alignment: { horizontal: "center", vertical: "center" },
-      };
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = "سامانه مدیریت پروژه";
+    workbook.created = new Date();
+    const worksheet = workbook.addWorksheet("ساختار هزینه", {
+      views: [{ rightToLeft: true, showGridLines: false }],
+      pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
+      properties: { tabColor: { argb: "1F4E78" } },
     });
-    for (let rowIndex = 5; rowIndex < sheetData.length + 1; rowIndex += 1) {
-      ["A", "B", "C", "D"].forEach((column) => {
-        const cell = ws[`${column}${rowIndex}`];
-        if (!cell) return;
-        cell.s = {
-          alignment: { horizontal: column === "C" ? "right" : "center", vertical: "center" },
-          fill: { fgColor: { rgb: rowIndex % 2 ? "F8FAFC" : "EAF2F8" } },
-        };
+    worksheet.columns = [{ width: 12 }, { width: 24 }, { width: 54 }, { width: 22 }];
+    worksheet.mergeCells("A1:D1");
+    worksheet.getCell("A1").value = "گزارش ساختار شکست هزینه‌ها";
+    worksheet.getCell("A2").value = "پروژه:";
+    worksheet.mergeCells("B2:D2");
+    worksheet.getCell("B2").value = project ? `${project.code}${project.name ? ` - ${project.name}` : ""}` : "—";
+    worksheet.getRow(1).height = 32;
+    worksheet.getRow(2).height = 24;
+    worksheet.getRow(4).values = ["ردیف", "کد بودجه", "نام بودجه", "بودجه مبنا"];
+    worksheet.getRow(4).height = 26;
+    const border = { style: "thin", color: { argb: "D6E1EA" } };
+    worksheet.getCell("A1").font = { name: "Vazirmatn", size: 15, bold: true, color: { argb: "FFFFFFFF" } };
+    worksheet.getCell("A1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "1F4E78" } };
+    worksheet.getCell("A1").alignment = { horizontal: "right", vertical: "middle", readingOrder: "rtl" };
+    ["A2", "B2"].forEach((address) => {
+      const cell = worksheet.getCell(address);
+      cell.font = { name: "Vazirmatn", bold: true, color: { argb: "1F2937" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "EAF2F8" } };
+      cell.alignment = { horizontal: "right", vertical: "middle", readingOrder: "rtl" };
+    });
+    worksheet.getRow(4).eachCell((cell) => {
+      cell.font = { name: "Vazirmatn", bold: true, color: { argb: "FFFFFFFF" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "3B82B6" } };
+      cell.alignment = { horizontal: "right", vertical: "middle", readingOrder: "rtl" };
+      cell.border = { top: border, left: border, bottom: border, right: border };
+    });
+    rows.forEach((row, index) => {
+      const excelRow = worksheet.addRow([index + 1, projectBudgetCode(row.budgetCode), row.budgetName || "—", Number(parseMoney(row.baseBudget))]);
+      excelRow.height = 22;
+      excelRow.eachCell((cell, column) => {
+        cell.font = { name: "Vazirmatn", size: 11, color: { argb: "1F2937" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: index % 2 ? "F8FBFD" : "EAF2F8" } };
+        cell.alignment = { horizontal: column === 3 ? "right" : "center", vertical: "middle", readingOrder: "rtl" };
+        cell.border = { top: border, left: border, bottom: border, right: border };
       });
-      if (ws[`D${rowIndex}`]) ws[`D${rowIndex}`].z = "#,##0";
-    }
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "ساختار هزینه");
-    XLSX.writeFile(wb, `cost-breakdown-${project?.code || "project"}.xlsx`, { compression: true });
+      excelRow.getCell(4).numFmt = "#,##0";
+    });
+    worksheet.autoFilter = { from: "A4", to: `D${rows.length + 4}` };
+    worksheet.views = [{ rightToLeft: true, showGridLines: false, state: "frozen", ySplit: 4 }];
+    const buffer = await workbook.xlsx.writeBuffer();
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+    link.download = `cost-breakdown-${project?.code || "project"}.xlsx`;
+    link.click();
+    URL.revokeObjectURL(link.href);
   };
 
   const inputCls =
@@ -668,7 +712,14 @@ export default function CostBreakdownPage() {
                         title="انتخاب همه"
                       />
                     </th>
-                    <th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">کد بودجه</th>
+                    <th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">
+                      <span className="flex items-center gap-1.5">
+                        <button type="button" onClick={toggleAllRowsExpanded} disabled={!expandableCodes.length} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-transparent text-lg leading-none text-black transition hover:text-black/60 disabled:cursor-not-allowed disabled:opacity-35 dark:text-neutral-100 dark:hover:text-white/60" aria-label={allRowsExpanded ? "بستن همه زیرمجموعه‌ها" : "باز کردن همه زیرمجموعه‌ها"} title={allRowsExpanded ? "بستن همه زیرمجموعه‌ها" : "باز کردن همه زیرمجموعه‌ها"}>
+                          {allRowsExpanded ? "−" : "+"}
+                        </button>
+                        کد بودجه
+                      </span>
+                    </th>
                     <th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">نام بودجه</th>
                     <th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">بودجه مبنا</th>
                     <th className="relative px-3 !text-center !text-[14px] md:!text-[15px] !font-semibold">
@@ -711,7 +762,8 @@ export default function CostBreakdownPage() {
                   ) : (
                     displayRows.map((item, pageIdx) => {
                       const row = item.row;
-                      const isEditing = editId === row.id;
+                      const isEditing = editIds.has(String(row.id));
+                      const editDraft = editDrafts[row.id] || draftForRow(row);
                       const divider = pageIdx === displayRows.length - 1 ? "" : rowDividerCls;
                       const rowSelected = selectedIds.has(item.key);
                       const displayBudgetCode = projectBudgetCode(row.budgetCode);
@@ -739,9 +791,9 @@ export default function CostBreakdownPage() {
                                   <input
                                     value={editDraft.budgetCode}
                                     onChange={(e) =>
-                                      setEditDraft((prev) => ({ ...prev, budgetCode: projectBudgetCode(e.target.value) }))
+                                      setEditDrafts((prev) => ({ ...prev, [row.id]: { ...editDraft, budgetCode: projectBudgetCode(e.target.value) } }))
                                     }
-                                    onKeyDown={handleEditKeyDown}
+                                    onKeyDown={(event) => handleEditKeyDown(event, row.id)}
                                     className={moneyInputCls + " text-right font-sans tabular-nums"}
                                     spellCheck={false}
                                     autoFocus
@@ -774,9 +826,9 @@ export default function CostBreakdownPage() {
                                   <input
                                     value={editDraft.budgetName}
                                     onChange={(e) =>
-                                      setEditDraft((prev) => ({ ...prev, budgetName: e.target.value }))
+                                      setEditDrafts((prev) => ({ ...prev, [row.id]: { ...editDraft, budgetName: e.target.value } }))
                                     }
-                                    onKeyDown={handleEditKeyDown}
+                                    onKeyDown={(event) => handleEditKeyDown(event, row.id)}
                                     className="h-10 w-full max-w-xl rounded-xl border border-neutral-300 bg-white px-3 text-right text-neutral-900 outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                                   />
                                 ) : (
@@ -790,9 +842,9 @@ export default function CostBreakdownPage() {
                                   <input
                                     value={editDraft.baseBudget ? toFaDigits(formatMoney(editDraft.baseBudget)) : ""}
                                     onChange={(e) =>
-                                      setEditDraft((prev) => ({ ...prev, baseBudget: parseMoney(e.target.value) }))
+                                      setEditDrafts((prev) => ({ ...prev, [row.id]: { ...editDraft, baseBudget: parseMoney(e.target.value) } }))
                                     }
-                                    onKeyDown={handleEditKeyDown}
+                                    onKeyDown={(event) => handleEditKeyDown(event, row.id)}
                                     className={moneyInputCls + " text-right"}
                                     inputMode="numeric"
                                   />
@@ -802,7 +854,7 @@ export default function CostBreakdownPage() {
                               </div>
                             </td>
                             <td className={`px-3 text-center ${divider}`}>
-                              {isEditing ? <div className="flex items-center justify-center gap-1"><RowActionIconBtn action="save" onClick={saveEdit} disabled={saving} size={34} iconSize={15} /><RowActionIconBtn action="cancel" onClick={cancelEdit} disabled={saving} size={34} iconSize={14} /></div> : <span className="text-neutral-400">—</span>}
+                              {isEditing ? <div className="flex items-center justify-center gap-1"><RowActionIconBtn action="save" onClick={() => saveEdit(row.id)} disabled={saving} size={34} iconSize={15} /><RowActionIconBtn action="cancel" onClick={() => cancelEdit(row.id)} disabled={saving} size={34} iconSize={14} /></div> : <span className="text-neutral-400">—</span>}
                             </td>
                           </tr>
                         );
