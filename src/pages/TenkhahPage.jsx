@@ -15,6 +15,10 @@ const today = () => todayJalaliYmd().replaceAll("-", "/");
 const name = (u) => u?.name || u?.username || "—";
 const currencyTitle = (currency) => String(currency?.title || currency?.name || currency?.label || "").trim();
 const normalizedCurrencyTitle = (value) => currencyTitle({ title: value }).replace(/ي/g, "ی").replace(/ك/g, "ک").replace(/\s+/g, " ").trim().toLowerCase();
+const isRialCurrency = (currency) => {
+  const title = normalizedCurrencyTitle(currencyTitle(currency));
+  return title === "ریال" || title.includes("ریال") || /(^|\s)irr(\s|$)/i.test(title);
+};
 const empty = () => ({
   // شماره و تاریخ همچنان برای ثبت نگهداری می‌شوند، ولی در فرم نمایش داده نمی‌شوند.
   requestNumber: "",
@@ -45,7 +49,7 @@ function Field({ label, required, children, className = "" }) {
   );
 }
 function DetailCell({ label, children, className = "" }) {
-  return <div className={`min-h-[76px] border-b border-l border-black/10 px-4 py-3 last:border-l-0 dark:border-white/10 ${className}`}><div className="mb-1 text-xs text-neutral-500 dark:text-neutral-400">{label}</div><div className="flex min-h-6 items-center text-sm font-medium text-neutral-900 dark:text-white">{children || "—"}</div></div>;
+  return <div className={`min-h-[76px] rounded-xl border border-black/10 bg-gradient-to-b from-white to-neutral-50/80 px-4 py-3 shadow-sm transition hover:border-black/20 hover:shadow dark:border-white/10 dark:from-white/[.06] dark:to-white/[.02] dark:hover:border-white/20 ${className}`}><div className="mb-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400">{label}</div><div className="flex min-h-6 items-center text-sm font-semibold text-neutral-900 dark:text-white">{children || "—"}</div></div>;
 }
 function workflowDateTime(value) {
   if (!value) return "";
@@ -156,7 +160,7 @@ export default function TenkhahPage({ embedded = false }) {
     setCurrencies(uniqueCurrencies);
     setForm((current) => {
       const hasCurrent = uniqueCurrencies.some((row) => normalizedCurrencyTitle(currencyTitle(row)) === normalizedCurrencyTitle(current.currency));
-      const rial = uniqueCurrencies.find((row) => normalizedCurrencyTitle(currencyTitle(row)) === "ریال");
+      const rial = uniqueCurrencies.find(isRialCurrency);
       return hasCurrent ? current : { ...current, currency: currencyTitle(rial || uniqueCurrencies[0]) };
     });
     setUserIsFinance(Boolean(financeState.isFinance));
@@ -502,7 +506,7 @@ export default function TenkhahPage({ embedded = false }) {
                 </b><small className="mt-1 block text-xs font-normal text-neutral-500">مشاهده وضعیت و اطلاعات درخواست</small></span>
                 <button onClick={() => setSelected(null)} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black"><img src="/images/icons/bastan.svg" alt="بستن" className="h-4 w-4 invert dark:invert-0" /></button>
               </div>
-              <div className="grid items-start gap-5 p-4 pt-0 md:grid-cols-[280px_minmax(0,1fr)] md:p-5 md:pt-0"><div className="order-last overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="grid grid-cols-1 md:grid-cols-4">
+              <div className="grid items-start gap-5 p-4 pt-0 md:grid-cols-[280px_minmax(0,1fr)] md:p-5 md:pt-0"><div className="order-last rounded-2xl border border-black/10 bg-neutral-50/60 p-2 shadow-sm dark:border-white/10 dark:bg-white/[.025]"><div className="grid grid-cols-1 gap-2 md:grid-cols-4">
                 <DetailCell label="درخواست‌کننده">{selected.requesterName || selected.requesterUsername}</DetailCell>
                 <DetailCell label="پروژه">{selected.projectCode} - {selected.projectName}</DetailCell>
                 <DetailCell label="شماره درخواست">{selected.requestNumber}</DetailCell>
@@ -514,7 +518,7 @@ export default function TenkhahPage({ embedded = false }) {
                   <DetailCell label="نقدینگی پروژه">{fa(format3(selected.projectLiquidity || 0))}</DetailCell>
                 )}
                 {incoming && selected.stage === "project_manager" && (
-                  <div className="border-b border-l border-black/10 px-4 py-3 dark:border-white/10">
+                  <div className="rounded-xl border border-black/10 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/[.03]">
                   <Field label="ارسال به مدیریت ارشد" required>
                     <select
                       value={selected.nextUserId || ""}
@@ -533,7 +537,7 @@ export default function TenkhahPage({ embedded = false }) {
                   </Field></div>
                 )}
                 {incoming && selected.stage === "management" && (
-                  <div className="border-b border-l border-black/10 px-4 py-3 dark:border-white/10"><Field label="ارسال نهایی به واحد مالی" required>
+                  <div className="rounded-xl border border-black/10 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/[.03]"><Field label="ارسال نهایی به واحد مالی" required>
                     <select value={selected.nextUserId || ""} onChange={(e) => updateSelected("nextUserId", e.target.value)} className={input}>
                       <option value="">انتخاب کنید</option>
                       {financeRecipients.map((u) => <option value={u.id} key={u.id}>{name(u)}</option>)}
@@ -541,7 +545,7 @@ export default function TenkhahPage({ embedded = false }) {
                   </Field></div>
                 )}
                 {incoming && selected.stage === "finance" && (
-                  <div className="border-b border-l border-black/10 px-4 py-3 dark:border-white/10"><Field label="مبلغ تنخواه شارژ شده">
+                  <div className="rounded-xl border border-black/10 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/[.03]"><Field label="مبلغ تنخواه شارژ شده">
                     <input
                       value={fa(selected.chargedAmount || "")}
                       onChange={(e) =>
