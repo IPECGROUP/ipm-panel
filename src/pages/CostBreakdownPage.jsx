@@ -152,9 +152,6 @@ export default function CostBreakdownPage() {
     return map;
   }, [projectBudgetCode, tableRows]);
 
-  const expandableCodes = useMemo(() => Array.from(childRowsByParentCode.keys()), [childRowsByParentCode]);
-  const allRowsExpanded = expandableCodes.length > 0 && expandableCodes.every((code) => expandedCodes.has(code));
-
   const displayRows = useMemo(() => {
     const childKeys = new Set();
     childRowsByParentCode.forEach((children) => {
@@ -213,10 +210,12 @@ export default function CostBreakdownPage() {
     });
   };
 
-  const toggleAllRowsExpanded = () => {
+  const toggleExpandedCode = (code) => {
     setExpandedCodes((prev) => {
-      if (expandableCodes.length > 0 && expandableCodes.every((code) => prev.has(code))) return new Set();
-      return new Set(expandableCodes);
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
     });
   };
 
@@ -542,7 +541,7 @@ export default function CostBreakdownPage() {
     "focus:border-neutral-400 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-500";
 
   const moneyInputCls =
-    "h-11 w-full max-w-[260px] rounded-xl border border-neutral-300 bg-white px-3 text-right text-neutral-900 outline-none ltr " +
+    "h-10 w-full max-w-[230px] rounded-xl border border-neutral-300 bg-white px-3 text-right text-neutral-900 outline-none ltr " +
     "dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
 
   const PagerBtn = ({ direction, disabled, onClick }) => (
@@ -568,7 +567,7 @@ export default function CostBreakdownPage() {
 
   return (
     <Card className="rounded-2xl border bg-white p-3 text-neutral-900 md:p-4 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-      <div className="mb-5 flex min-w-0 items-center justify-between gap-3">
+      <div className="mb-5 flex min-w-0 items-center gap-3">
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
           <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
         </span>
@@ -669,21 +668,7 @@ export default function CostBreakdownPage() {
                         title="انتخاب همه"
                       />
                     </th>
-                    <th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">
-                      <span className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={toggleAllRowsExpanded}
-                          disabled={!expandableCodes.length}
-                          className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-transparent text-lg leading-none text-black transition hover:text-black/60 disabled:cursor-not-allowed disabled:opacity-35 dark:text-neutral-100 dark:hover:text-white/60"
-                          aria-label={allRowsExpanded ? "بستن همه زیرمجموعه‌ها" : "باز کردن همه زیرمجموعه‌ها"}
-                          title={allRowsExpanded ? "بستن همه زیرمجموعه‌ها" : "باز کردن همه زیرمجموعه‌ها"}
-                        >
-                          {allRowsExpanded ? "−" : "+"}
-                        </button>
-                        کد بودجه
-                      </span>
-                    </th>
+                    <th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">کد بودجه</th>
                     <th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">نام بودجه</th>
                     <th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">بودجه مبنا</th>
                     <th className="relative px-3 !text-center !text-[14px] md:!text-[15px] !font-semibold">
@@ -730,6 +715,7 @@ export default function CostBreakdownPage() {
                       const divider = pageIdx === displayRows.length - 1 ? "" : rowDividerCls;
                       const rowSelected = selectedIds.has(item.key);
                       const displayBudgetCode = projectBudgetCode(row.budgetCode);
+                      const isExpanded = expandedCodes.has(displayBudgetCode);
                       const isParentRow = Boolean(item.hasChildren);
                       const rowIndent = `${Math.min(Number(item.depth || 0), 4) * 36}px`;
                       const rowIndentStyle = { paddingRight: rowIndent };
@@ -763,6 +749,19 @@ export default function CostBreakdownPage() {
                                 </div>
                               ) : (
                                 <div className="flex items-center justify-start gap-2" dir="rtl" style={rowIndentStyle}>
+                                  {item.hasChildren ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleExpandedCode(displayBudgetCode)}
+                                      className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-black/15 bg-white text-base leading-none text-black transition hover:bg-black/5 dark:border-white/15 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10"
+                                      aria-label={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
+                                      title={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
+                                    >
+                                      {isExpanded ? "−" : "+"}
+                                    </button>
+                                  ) : (
+                                    <span className="h-7 w-7 shrink-0" />
+                                  )}
                                   <span dir="ltr" className={`inline-block min-w-0 text-center font-sans tabular-nums ${parentWeightCls}`}>
                                     {displayBudgetCode || "—"}
                                   </span>
@@ -778,7 +777,7 @@ export default function CostBreakdownPage() {
                                       setEditDraft((prev) => ({ ...prev, budgetName: e.target.value }))
                                     }
                                     onKeyDown={handleEditKeyDown}
-                                    className="h-11 w-full max-w-2xl rounded-xl border border-neutral-300 bg-white px-3 text-right text-neutral-900 outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                                    className="h-10 w-full max-w-xl rounded-xl border border-neutral-300 bg-white px-3 text-right text-neutral-900 outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                                   />
                                 ) : (
                                   <span className={parentWeightCls}>{row.budgetName || "—"}</span>
