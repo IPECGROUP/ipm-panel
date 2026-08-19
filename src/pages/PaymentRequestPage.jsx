@@ -1863,8 +1863,8 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
 </head>
 <body>
   <div class="toolbar">
-    <button onclick="window.print()">چاپ / ذخیره PDF</button>
-    <button class="secondary" onclick="window.close()">بستن پیش‌نمایش</button>
+    <button id="print-document" type="button">چاپ / ذخیره PDF</button>
+    <button id="close-preview" class="secondary" type="button">بستن پیش‌نمایش</button>
   </div>
   <article class="sheet">
     <header class="header">
@@ -1924,6 +1924,19 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
     <footer class="footer"><span>سامانه فرآیندهای یکپارچه شرکت ایده پویان انرژی</span><span>${escapePdfHtml(reportDateTime)}</span></footer>
   </article>
   ${attachmentPreviewPages}
+  <script>
+    (function () {
+      var printButton = document.getElementById("print-document");
+      var closeButton = document.getElementById("close-preview");
+      function printDocument() {
+        var startPrint = function () { window.focus(); window.print(); };
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(startPrint, startPrint);
+        else startPrint();
+      }
+      if (printButton) printButton.addEventListener("click", printDocument);
+      if (closeButton) closeButton.addEventListener("click", function () { window.close(); });
+    }());
+  </script>
 </body>
 </html>`;
 
