@@ -1942,8 +1942,44 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
         printButton.dataset.bound = "true";
         printButton.addEventListener("click", (event) => {
           event.preventDefault();
-          pdfWindow.focus();
-          pdfWindow.print();
+          const mainSheet = pdfWindow.document.querySelector("article.sheet:not(.attachment-preview-page)");
+          if (!mainSheet) return;
+
+          const oldPrintFrame = pdfWindow.document.getElementById("payment-request-print-frame");
+          oldPrintFrame?.remove();
+
+          const printFrame = pdfWindow.document.createElement("iframe");
+          printFrame.id = "payment-request-print-frame";
+          printFrame.setAttribute("title", "چاپ درخواست پرداخت");
+          printFrame.style.position = "fixed";
+          printFrame.style.width = "1px";
+          printFrame.style.height = "1px";
+          printFrame.style.left = "-10000px";
+          printFrame.style.top = "0";
+          printFrame.style.border = "0";
+          pdfWindow.document.body.appendChild(printFrame);
+
+          const frameDocument = printFrame.contentDocument;
+          const frameWindow = printFrame.contentWindow;
+          if (!frameDocument || !frameWindow) {
+            printFrame.remove();
+            return;
+          }
+
+          const cleanup = () => window.setTimeout(() => printFrame.remove(), 500);
+          frameWindow.addEventListener("afterprint", cleanup, { once: true });
+          printFrame.addEventListener("load", () => {
+            const runPrint = () => {
+              frameWindow.focus();
+              frameWindow.print();
+            };
+            if (frameDocument.fonts?.ready) frameDocument.fonts.ready.then(runPrint, runPrint);
+            else runPrint();
+          }, { once: true });
+
+          frameDocument.open();
+          frameDocument.write(`<!doctype html><html lang="fa" dir="rtl"><head>${pdfWindow.document.head.innerHTML}</head><body>${mainSheet.outerHTML}</body></html>`);
+          frameDocument.close();
         });
       }
       if (closeButton && closeButton.dataset.bound !== "true") {
