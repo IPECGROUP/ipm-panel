@@ -166,6 +166,7 @@ export default function TenkhahPage({ embedded = false }) {
     setUserIsFinance(Boolean(financeState.isFinance));
     setWorkflowRecipients({ project_manager: projectManagement.users || [], management: seniorManagement.users || [] });
     setBeneficiaries((employeeData.items || []).map((person) => ({ id: person.id, name: person.name, username: person.username, email: person.email, isActive: person.isActive })).sort((a, b) => name(a).localeCompare(name(b), "fa")));
+    return uniqueCurrencies;
   };
   const add = async () => {
     setOpen(true);
@@ -173,7 +174,11 @@ export default function TenkhahPage({ embedded = false }) {
     setProjectBalances({ unregisteredBalance: "0", unsettledBalance: "0", receivedAmount: "0" });
     setError("");
     try {
-      await loadOptions();
+      const loadedCurrencies = await loadOptions();
+      const rial = (loadedCurrencies || []).find(isRialCurrency);
+      // Apply this after all option state has loaded so the native select
+      // never falls back to its first (often Dollar) option.
+      if (rial) setForm((current) => ({ ...current, currency: currencyTitle(rial) }));
     } catch (e) {
       setError(e.message);
     }
