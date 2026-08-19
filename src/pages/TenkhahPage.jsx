@@ -13,6 +13,8 @@ const fa = (v) => String(v ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d
 const sumAmounts = (...values) => values.reduce((total, value) => total + BigInt(toEnglishDigits(String(value ?? "")).replace(/[^\d]/g, "") || "0"), 0n).toString();
 const today = () => todayJalaliYmd().replaceAll("-", "/");
 const name = (u) => u?.name || u?.username || "—";
+const currencyTitle = (currency) => String(currency?.title || currency?.name || currency?.label || "").trim();
+const normalizedCurrencyTitle = (value) => currencyTitle({ title: value }).replace(/ي/g, "ی").replace(/ك/g, "ک").replace(/\s+/g, " ").trim().toLowerCase();
 const empty = () => ({
   // شماره و تاریخ همچنان برای ثبت نگهداری می‌شوند، ولی در فرم نمایش داده نمی‌شوند.
   requestNumber: "",
@@ -20,7 +22,7 @@ const empty = () => ({
   projectId: "",
   beneficiaryUserId: "",
   amount: "",
-  currency: "ریال",
+  currency: "",
   unregisteredBalance: "",
   unsettledBalance: "",
   projectManagerId: "",
@@ -144,7 +146,19 @@ export default function TenkhahPage({ embedded = false }) {
     setProjects(
       (p.items || p.projects || []).filter((x) => x.isActive !== false && /^\d{3}$/.test(String(x.code || "").trim())),
     );
-    setCurrencies(c.items || []);
+    const currencyRows = Array.isArray(c.items) ? c.items : [];
+    // Currency choices must come only from the shared currency definitions.
+    // De-duplicate legacy spellings such as ريـال / ریال as well.
+    const uniqueCurrencies = currencyRows.filter((row, index, all) => {
+      const title = normalizedCurrencyTitle(currencyTitle(row));
+      return title && all.findIndex((candidate) => normalizedCurrencyTitle(currencyTitle(candidate)) === title) === index;
+    });
+    setCurrencies(uniqueCurrencies);
+    setForm((current) => {
+      const hasCurrent = uniqueCurrencies.some((row) => normalizedCurrencyTitle(currencyTitle(row)) === normalizedCurrencyTitle(current.currency));
+      const rial = uniqueCurrencies.find((row) => normalizedCurrencyTitle(currencyTitle(row)) === "ریال");
+      return hasCurrent ? current : { ...current, currency: currencyTitle(rial || uniqueCurrencies[0]) };
+    });
     setUserIsFinance(Boolean(financeState.isFinance));
     setWorkflowRecipients({ project_manager: projectManagement.users || [], management: seniorManagement.users || [] });
     setBeneficiaries((employeeData.items || []).map((person) => ({ id: person.id, name: person.name, username: person.username, email: person.email, isActive: person.isActive })).sort((a, b) => name(a).localeCompare(name(b), "fa")));
@@ -359,8 +373,8 @@ export default function TenkhahPage({ embedded = false }) {
                     }
                     className="m-1 w-[62px] shrink-0 rounded-lg border border-black/10 bg-neutral-100 px-1 text-center text-xs font-semibold text-neutral-700 outline-none transition hover:bg-neutral-200 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
                   >
-                    <option value="ریال">ریال</option>
-                    {currencies.filter((currency) => String(currency.title || "").replace(/ي/g, "ی").replace(/ك/g, "ک").trim() !== "ریال").map((currency) => <option key={currency.id} value={currency.title} className="bg-white text-neutral-900">{currency.title}</option>)}
+                    {!currencies.length && <option value="">در حال دریافت ارزها...</option>}
+                    {currencies.map((currency) => <option key={currency.id} value={currencyTitle(currency)} className="bg-white text-neutral-900">{currencyTitle(currency)}</option>)}
                   </select>
                 </div>
               </Field>
