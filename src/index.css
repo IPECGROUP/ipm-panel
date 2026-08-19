@@ -268,6 +268,21 @@ td {
 
 .table-menu-popover { animation: table-menu-popover-enter 220ms cubic-bezier(.22, 1, .36, 1); transform-origin: top left; }
 
+/* Keep the legacy Tenkhah preview close control visually identical to the
+   payment-actions close button while it still renders its text-based icon. */
+button.rounded-\[10px\].bg-\[\#292929\] {
+  border-radius: .75rem;
+  background-color: rgb(38 38 38);
+  font-size: 0;
+}
+
+button.rounded-\[10px\].bg-\[\#292929\]::after {
+  width: 20px;
+  height: 20px;
+  content: "";
+  background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E");
+}
+
 @media (prefers-reduced-motion: reduce) {
   .notification-bell, .notification-ring, .notification-count, .notification-popover, .table-menu-popover { animation: none; }
 }
