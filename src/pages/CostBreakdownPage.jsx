@@ -693,7 +693,7 @@ export default function CostBreakdownPage() {
               >
                 <colgroup>
                   <col style={{ width: 48 }} />
-                  <col style={{ width: 176 }} />
+                  <col style={{ width: 192 }} />
                   <col />
                   <col style={{ width: 176 }} />
                   <col style={{ width: 136 }} />
@@ -916,9 +916,8 @@ export default function CostBreakdownPage() {
       </div>
 
       <div className="mt-4 flex justify-end">
-        <button type="button" onClick={exportExcel} disabled={!rows.length} className="inline-flex h-10 items-center gap-2 rounded-xl border border-emerald-600/20 bg-emerald-50 px-4 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-45 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20">
+        <button type="button" onClick={exportExcel} disabled={!rows.length} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-600/20 bg-emerald-50 text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-45 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20" title="خروجی اکسل" aria-label="خروجی اکسل">
           <img src="/images/icons8-excel-50.png" alt="" className="h-5 w-5" />
-          خروجی اکسل
         </button>
       </div>
 
