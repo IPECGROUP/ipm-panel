@@ -15,8 +15,9 @@ const today = () => todayJalaliYmd().replaceAll("-", "/");
 const name = (u) => u?.name || u?.username || "—";
 const currencyTitle = (currency) => String(currency?.title || currency?.name || currency?.label || "").trim();
 const normalizedCurrencyTitle = (value) => currencyTitle({ title: value }).replace(/ي/g, "ی").replace(/ك/g, "ک").replace(/\s+/g, " ").trim().toLowerCase();
+const RIAL_CURRENCY = "ریال";
 const isRialCurrency = (currency) => {
-  const raw = currencyTitle(currency);
+  const raw = `${currencyTitle(currency)} ${Object.values(currency || {}).join(" ")}`;
   const title = normalizedCurrencyTitle(raw);
   return /\u0631\u06cc\u0627\u0644|\u0631\u064a\u0627\u0644/.test(raw) || /(^|\s)irr(\s|$)/i.test(title);
 };
@@ -125,7 +126,7 @@ export default function TenkhahPage({ embedded = false, active = true }) {
     if (!r.ok) throw new Error(d.message || d.error || "خطا در ثبت اطلاعات");
     return d;
   };
-  const preferredCurrency = useMemo(() => currencies.find(isRialCurrency) || currencies[0] || null, [currencies]);
+  const preferredCurrency = useMemo(() => currencies.find(isRialCurrency) || { title: RIAL_CURRENCY }, [currencies]);
   const displayedCurrency = !currencyTouched && preferredCurrency ? currencyTitle(preferredCurrency) : form.currency;
   const load = async () => {
     if (!user?.id) return;
@@ -391,8 +392,8 @@ export default function TenkhahPage({ embedded = false, active = true }) {
                     }
                     className="m-1 w-[62px] shrink-0 rounded-lg border border-black/10 bg-neutral-100 px-1 text-center text-xs font-semibold text-neutral-700 outline-none transition hover:bg-neutral-200 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
                   >
-                    {!currencies.length && <option value="">در حال دریافت ارزها...</option>}
-                    {currencies.map((currency) => <option key={currency.id} value={currencyTitle(currency)} className="bg-white text-neutral-900">{currencyTitle(currency)}</option>)}
+                    <option value={currencyTitle(preferredCurrency)} className="bg-white text-neutral-900">{currencyTitle(preferredCurrency)}</option>
+                    {currencies.filter((currency) => normalizedCurrencyTitle(currencyTitle(currency)) !== normalizedCurrencyTitle(currencyTitle(preferredCurrency))).map((currency) => <option key={currency.id} value={currencyTitle(currency)} className="bg-white text-neutral-900">{currencyTitle(currency)}</option>)}
                   </select>
                 </div>
               </Field>

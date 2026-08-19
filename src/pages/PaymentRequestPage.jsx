@@ -1344,7 +1344,7 @@ function TenkhahActionOption({ kind, checked, onClick, label, children }) {
 function TenkhahDetailCards({ details }) {
   return <section className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900">
     <div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">جزئیات درخواست تنخواه</div>
-    <div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+    <div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15">
       {details.map(([label, value]) => <PreviewRow key={label} compact fixedLabel colon leader label={label} value={value || "—"} />)}
     </div>
   </section>;
@@ -1360,7 +1360,7 @@ function TenkhahPreviewV4({ item, userId, api, onRefresh, onClose }) {
   const canAct = Number(item.currentAssigneeUserId) === Number(userId) && item.status === "pending";
   const steps = [["created", "ثبت درخواست"], ["project_manager", "تایید نهایی (مدیریت پروژه)"], ["management", "دستور پرداخت (مدیریت ارشد)"], ["finance", "ثبت پرداخت (واحد مالی)"]];
   const activeStep = item.stage === "finance" ? 4 : item.stage === "management" ? 3 : 2;
-  const details = [["شماره درخواست", item.serial || item.requestNumber || "—"], ["تاریخ درخواست", toFa(String(item.dateFa || item.requestDate || "—").replaceAll("-", "/"))], ["پروژه", `${item.projectCode || ""}${item.projectName ? ` - ${item.projectName}` : ""}` || "—"], ["درخواست‌کننده", item.createdByName || item.requesterName || "—"], ["ذینفع", item.beneficiaryName || item.beneficiaryUsername || "—"]];
+  const details = [["شماره درخواست", item.serial || item.requestNumber || "—"], ["تاریخ درخواست", toFa(String(item.dateFa || item.requestDate || "—").replaceAll("-", "/"))], ["پروژه", `${item.projectCode || ""}${item.projectName ? ` - ${item.projectName}` : ""}` || "—"], ["درخواست‌کننده", item.createdByName || item.requesterName || "—"], ["ذینفع", item.beneficiaryName || item.beneficiaryUsername || "—"], ["مبلغ تنخواه", `${toFa(money(item.amount || item.requestedAmount || "0"))} ${item.currencyName || item.currency || "ریال"}`]];
   useEffect(() => {
     if (!canAct || !["project_manager", "management"].includes(item.stage)) return;
     api(`/tenkhah?recipients=${item.stage === "project_manager" ? "management" : "finance"}`).then((data) => setRecipients(data.users || [])).catch(() => setRecipients([]));
