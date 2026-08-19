@@ -837,25 +837,42 @@ export default function PaymentRequestPage() {
   };
 
   const deleteSelectedRequests = async () => {
-    const ids = [...selectedIds].map(String);
-    if (!ids.length || deletingSelected) return;
-    if (!window.confirm(`آیا ${toFa(ids.length)} درخواست انتخاب‌شده حذف شود؟ این عملیات قابل بازگشت نیست.`)) return;
+    const selectedRows = tableItems.filter((item) => selectedIds.has(String(item.id)));
+    if (!selectedRows.length || deletingSelected) return;
+    if (!window.confirm(`آیا ${toFa(selectedRows.length)} درخواست انتخاب‌شده حذف شود؟ این عملیات قابل بازگشت نیست.`)) return;
 
     setDeletingSelected(true);
     setError("");
     try {
-      const results = await Promise.allSettled(ids.map((id) => api(`/requests/${encodeURIComponent(id)}`, { method: "DELETE" })));
-      const deletedIds = ids.filter((_, index) => results[index].status === "fulfilled");
-      if (deletedIds.length) {
-        const deleted = new Set(deletedIds);
+      const results = await Promise.allSettled(selectedRows.map((item) => item.requestType === "tenkhah"
+        ? api(`/tenkhah?id=${encodeURIComponent(item.sourceId)}`, { method: "DELETE" })
+        : api(`/requests/${encodeURIComponent(item.id)}`, { method: "DELETE" })));
+      const deletedKeys = selectedRows.filter((_, index) => results[index].status === "fulfilled").map((item) => String(item.id));
+      if (deletedKeys.length) {
+        const deleted = new Set(deletedKeys);
         setItems((previous) => previous.filter((item) => !deleted.has(String(item.id))));
+        setTenkhahItems((previous) => previous.filter((item) => !deleted.has(`tenkhah-${item.id}`)));
         setSelectedIds((previous) => new Set([...previous].filter((id) => !deleted.has(String(id)))));
         setManualUnreadIds((previous) => new Set([...previous].filter((id) => !deleted.has(String(id)))));
         setSeenIncomingIds((previous) => new Set([...previous].filter((id) => !deleted.has(String(id)))));
         setSelected((previous) => deleted.has(String(previous?.id)) ? null : previous);
+        setSelectedTenkhah((previous) => deleted.has(`tenkhah-${previous?.id}`) ? null : previous);
       }
-      if (deletedIds.length !== ids.length) setError("برخی از موارد انتخاب‌شده حذف نشدند؛ حذف فقط برای درخواست‌های مجاز امکان‌پذیر است.");
-      else setSuccess(`${toFa(deletedIds.length)} درخواست انتخاب‌شده حذف شد.`);
+      const failedReasons = results
+        .filter((result) => result.status === "rejected")
+        .map((result) => result.reason?.message);
+      if (deletedKeys.length !== selectedRows.length) {
+        const reason = failedReasons.includes("delete_has_settlements")
+          ? "درخواست تنخواه دارای سند تسویه است و قابل حذف نیست."
+          : failedReasons.includes("delete_not_allowed")
+            ? "درخواست نهایی‌شده یا ردشده قابل حذف نیست."
+            : failedReasons.includes("forbidden")
+              ? "فقط ثبت‌کننده درخواست اجازه حذف آن را دارد."
+              : "برخی از موارد انتخاب‌شده حذف نشدند.";
+        setError(reason);
+      } else {
+        setSuccess(`${toFa(deletedKeys.length)} درخواست انتخاب‌شده حذف شد.`);
+      }
     } finally {
       setDeletingSelected(false);
       setTableMenuOpen(false);
