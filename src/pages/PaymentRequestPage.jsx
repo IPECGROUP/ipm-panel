@@ -1342,10 +1342,10 @@ function TenkhahActionOption({ kind, checked, onClick, label, children }) {
 }
 
 function TenkhahDetailCards({ details }) {
-  return <section className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[.03]">
-    <div className="mb-2 flex items-center gap-2 px-1 text-sm font-bold"><span className="h-2 w-2 rounded-full bg-sky-500" />جزئیات درخواست تنخواه</div>
-    <div className="grid gap-2 sm:grid-cols-2">
-      {details.map(([label, value]) => <div key={label} className="min-h-[74px] rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-[0_1px_2px_rgba(15,23,42,.04)] dark:border-white/10 dark:bg-neutral-900"><div className="text-[11px] font-medium text-slate-500 dark:text-neutral-400">{label}</div><div className="mt-1 truncate text-sm font-bold text-slate-800 dark:text-neutral-100" title={typeof value === "string" ? value : undefined}>{value || "—"}</div></div>)}
+  return <section className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900">
+    <div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">جزئیات درخواست تنخواه</div>
+    <div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+      {details.map(([label, value]) => <PreviewRow key={label} compact fixedLabel colon leader label={label} value={value || "—"} />)}
     </div>
   </section>;
 }
