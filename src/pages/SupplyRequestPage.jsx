@@ -24,7 +24,7 @@ const tableWrapCls =
 const STATUS_FILTERS = [
   ["final_approval", "در انتظار تایید"],
   ["in_progress", "در حال اقدام"],
-  ["done", "انجام شد"],
+  ["done", "پرداخت شد"],
   ["canceled", "لغو شد"],
 ];
 
@@ -33,8 +33,8 @@ const statusLabels = {
   final_approval: "در انتظار تایید",
   approved: "در انتظار تایید",
   in_progress: "در حال اقدام",
-  done: "انجام شد",
-  completed: "انجام شد",
+  done: "پرداخت شد",
+  completed: "پرداخت شد",
   canceled: "لغو شد",
   cancelled: "لغو شد",
   rejected: "لغو شد",
@@ -1573,7 +1573,7 @@ export function SupplyRequestPreview({ item, projects, letters = [], actionNote,
   const budgetLabelCls = "flex min-h-[34px] items-end text-[11px] leading-4";
   const reviewSectionTitle =
     stepKey === "project_manager"
-      ? "بررسی نهایی(مدیر پروژه)"
+      ? "تایید نهایی (مدیریت پروژه)"
       : stepKey === "commercial"
           ? "اقدامات تامین"
           : `بررسی (${STEP_LABELS[stepKey] || "مرحله جاری"})`;
@@ -1601,7 +1601,7 @@ export function SupplyRequestPreview({ item, projects, letters = [], actionNote,
     const currentStatus = statusLabels[displayStatusOf(item)] || "—";
     const printDate = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
     const printTime = new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
-    const actionStatus = (status) => ({ in_progress: "در حال اقدام", done: "انجام شد", canceled: "لغو شد" })[status] || "—";
+    const actionStatus = (status) => ({ in_progress: "در حال اقدام", done: "پرداخت شد", canceled: "لغو شد" })[status] || "—";
     const workflowKind = (kind) => ({ active: "در حال بررسی", completed: "تکمیل شده", waiting: "در انتظار", returned: "برگشت داده شده", rejected: "رد شده" })[kind] || "—";
     const historyType = (type) => ({ created: "ثبت درخواست", step_set: "ارسال به مرحله", step_clear: "پایان مرحله", approved: "تایید", returned: "برگشت", rejected: "رد" })[type] || type || "—";
     const actionRows = [...commercialActions]
@@ -1738,7 +1738,7 @@ export function SupplyRequestPreview({ item, projects, letters = [], actionNote,
                   </div>
                 </PreviewSection>
 
-                {isRequester && <SupplyActionHistory actions={commercialActions} loading={commercialActionsLoading} />}
+                <SupplyActionHistory actions={commercialActions} loading={commercialActionsLoading} />
 
                 {canAct ? (
                   stepKey === "project_manager" ? (
@@ -2104,7 +2104,7 @@ function historySentence(entry, item) {
 
 function SupplyActionHistory({ actions, loading }) {
   const rows = Array.isArray(actions) ? actions : [];
-  const statusLabel = (status) => ({ done: "انجام شد", canceled: "لغو شد", in_progress: "در حال اقدام" })[status] || "در حال اقدام";
+  const statusLabel = (status) => ({ done: "پرداخت شد", canceled: "لغو شد", in_progress: "در حال اقدام" })[status] || "در حال اقدام";
   const statusClass = (status) => status === "done"
     ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
     : status === "canceled"
@@ -2124,7 +2124,7 @@ function SupplyActionHistory({ actions, loading }) {
 
 const SUPPLY_WORKFLOW_STEPS = [
   { key: "requester", label: "ثبت درخواست", emptyLabel: "ثبت درخواست" },
-  { key: "project_manager", label: "بررسی نهایی (مدیریت پروژه)" },
+  { key: "project_manager", label: "تایید نهایی (مدیریت پروژه)" },
   { key: "commercial", label: "ارسال به کارشناس (واحد تامین)" },
 ];
 
