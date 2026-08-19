@@ -888,7 +888,7 @@ export default function PaymentRequestPage() {
           </div>
         </div>}
 
-        {showForm && <div className={requestType === "tenkhah" ? "" : "hidden"}><TenkhahPage embedded /></div>}
+        {showForm && <div className={requestType === "tenkhah" ? "" : "hidden"}><TenkhahPage embedded active={requestType === "tenkhah"} /></div>}
 
         {showForm && <form onSubmit={submit} className={`mb-5 space-y-4 rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03] md:p-5 ${requestType === "normal" ? "" : "hidden"}`}>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(260px,1fr)_minmax(220px,1fr)_minmax(210px,0.8fr)]">
@@ -1082,7 +1082,7 @@ export default function PaymentRequestPage() {
         }
       }}
     />}
-    {selectedTenkhah && <TenkhahPreviewV3 item={selectedTenkhah} userId={user?.id} api={api} onRefresh={loadItems} onClose={() => setSelectedTenkhah(null)} />}
+    {selectedTenkhah && <TenkhahPreviewV4 item={selectedTenkhah} userId={user?.id} api={api} onRefresh={loadItems} onClose={() => setSelectedTenkhah(null)} />}
     {submitNotice && <RegistrationNotice info={submitNotice} onClose={() => setSubmitNotice(null)} />}
   </div>;
 }
@@ -1340,6 +1340,46 @@ function TenkhahActionOption({ kind, checked, onClick, label, children }) {
   }[kind];
   return <div role="button" tabIndex={0} onClick={onClick} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onClick(); }} className={`min-h-[154px] cursor-pointer rounded-2xl border p-4 text-center transition ${checked ? appearance.selected : "border-black/10 bg-white hover:border-black/20 hover:shadow-sm dark:border-white/10 dark:bg-white/[.03] dark:hover:border-white/20"}`}><div className={`mx-auto grid h-10 w-10 place-items-center rounded-full text-2xl font-bold ${appearance.iconClass}`}>{appearance.icon}</div><div className="mt-2 text-sm font-bold text-neutral-800 dark:text-neutral-100">{label}</div><p className="mt-1 text-[11px] leading-5 text-neutral-500 dark:text-neutral-400">{appearance.description}</p>{checked && children && <div className="mt-2 text-right" onClick={(event) => event.stopPropagation()}>{children}</div>}</div>;
 }
+
+function TenkhahDetailCards({ details }) {
+  return <section className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[.03]">
+    <div className="mb-2 flex items-center gap-2 px-1 text-sm font-bold"><span className="h-2 w-2 rounded-full bg-sky-500" />جزئیات درخواست تنخواه</div>
+    <div className="grid gap-2 sm:grid-cols-2">
+      {details.map(([label, value]) => <div key={label} className="min-h-[74px] rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-[0_1px_2px_rgba(15,23,42,.04)] dark:border-white/10 dark:bg-neutral-900"><div className="text-[11px] font-medium text-slate-500 dark:text-neutral-400">{label}</div><div className="mt-1 truncate text-sm font-bold text-slate-800 dark:text-neutral-100" title={typeof value === "string" ? value : undefined}>{value || "—"}</div></div>)}
+    </div>
+  </section>;
+}
+
+function TenkhahPreviewV4({ item, userId, api, onRefresh, onClose }) {
+  const [choice, setChoice] = useState("approve");
+  const [note, setNote] = useState("");
+  const [nextUserId, setNextUserId] = useState("");
+  const [recipients, setRecipients] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const canAct = Number(item.currentAssigneeUserId) === Number(userId) && item.status === "pending";
+  const steps = [["created", "ثبت درخواست"], ["project_manager", "تایید نهایی (مدیریت پروژه)"], ["management", "دستور پرداخت (مدیریت ارشد)"], ["finance", "ثبت پرداخت (واحد مالی)"]];
+  const activeStep = item.stage === "finance" ? 4 : item.stage === "management" ? 3 : 2;
+  const details = [["شماره درخواست", item.serial || item.requestNumber || "—"], ["تاریخ درخواست", toFa(String(item.dateFa || item.requestDate || "—").replaceAll("-", "/"))], ["پروژه", `${item.projectCode || ""}${item.projectName ? ` - ${item.projectName}` : ""}` || "—"], ["درخواست‌کننده", item.createdByName || item.requesterName || "—"], ["ذینفع", item.beneficiaryName || item.beneficiaryUsername || "—"]];
+  useEffect(() => {
+    if (!canAct || !["project_manager", "management"].includes(item.stage)) return;
+    api(`/tenkhah?recipients=${item.stage === "project_manager" ? "management" : "finance"}`).then((data) => setRecipients(data.users || [])).catch(() => setRecipients([]));
+  }, [api, canAct, item.stage]);
+  const submit = async () => {
+    if (choice === "approve" && ["project_manager", "management"].includes(item.stage) && !nextUserId) return setError("کاربر مرحله بعد را انتخاب کنید.");
+    setBusy(true); setError("");
+    try {
+      const payload = { id: item.sourceId || item.id, action: choice, note };
+      if (choice === "approve" && item.stage === "project_manager") Object.assign(payload, { managementUserId: nextUserId, approvedDate: today() });
+      if (choice === "approve" && item.stage === "management") Object.assign(payload, { financeUserId: nextUserId });
+      if (choice === "approve" && item.stage === "finance") Object.assign(payload, { chargedDate: today(), chargedAmount: item.chargedAmount || item.requestedAmount || item.amount });
+      await api("/tenkhah", { method: "PATCH", body: JSON.stringify(payload) });
+      await onRefresh(); onClose();
+    } catch (err) { setError(err?.message || "ثبت اقدام انجام نشد."); } finally { setBusy(false); }
+  };
+  return createPortal(<div className="fixed inset-0 z-[9999]" dir="rtl"><div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} /><div className="absolute inset-0 flex items-center justify-center p-3 md:p-6"><div className="flex max-h-[88vh] w-[min(1040px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white"><div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10"><b>جزئیات درخواست تنخواه</b><button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black">×</button></div><div className="grid gap-4 overflow-y-auto p-4 md:grid-cols-[260px_minmax(0,1fr)]"><section className="self-start overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">فرآیند تنخواه</div><ol className="p-3">{steps.map(([key, label], index) => { const step = index + 1; const complete = key === "created" || step < activeStep || item.status === "charged"; const current = step === activeStep && item.status === "pending"; return <li key={key} className="grid grid-cols-[minmax(0,1fr)_30px] gap-2 pb-3 last:pb-0"><div className={current ? "rounded-2xl bg-sky-50 px-3 py-2 dark:bg-sky-500/10" : "px-3 py-1"}><b className={current ? "text-sm text-sky-700 dark:text-sky-300" : complete ? "text-sm text-emerald-700 dark:text-emerald-300" : "text-sm text-neutral-400"}>{label}</b><div className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">{key === "created" ? `${item.createdByName || item.requesterName || "—"}، ${tenkhahCreatedAt(item)}` : current ? "مرحله جاری" : complete ? "مرحله انجام شده" : "در انتظار شروع مرحله"}</div></div><span className={`grid h-7 w-7 place-items-center rounded-full border text-xs font-bold ${current ? "border-sky-500 bg-sky-500 text-white" : complete ? "border-emerald-500 bg-emerald-500 text-white" : "border-neutral-300 text-neutral-400"}`}>{complete ? "✓" : toFa(step)}</span></li>; })}</ol></section><div className="space-y-4"><TenkhahDetailCards details={details} />{canAct && <section className="rounded-2xl border border-black/10 p-4 dark:border-white/10"><div className="mb-3 text-sm font-bold">اقدام روی درخواست</div><div className="grid gap-3 md:grid-cols-3"><TenkhahActionOption kind="approve" checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید و ارسال">{["project_manager", "management"].includes(item.stage) && <select className={`${inputClass} h-9 text-center text-xs`} value={nextUserId} onChange={(event) => setNextUserId(event.target.value)}><option value="">انتخاب کاربر مرحله بعد</option>{recipients.map((person) => <option key={person.id} value={person.id}>{person.name || person.username || person.email}</option>)}</select>}</TenkhahActionOption><TenkhahActionOption kind="return" checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت درخواست"><textarea rows={1} className={`${inputClass} h-9 min-h-9 resize-none py-2 text-xs`} value={note} onChange={(event) => setNote(event.target.value)} placeholder="دلیل برگشت..." /></TenkhahActionOption><TenkhahActionOption kind="reject" checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست"><textarea rows={1} className={`${inputClass} h-9 min-h-9 resize-none py-2 text-xs`} value={note} onChange={(event) => setNote(event.target.value)} placeholder="دلیل رد..." /></TenkhahActionOption></div>{error && <div className="mt-3 text-sm text-red-600">{error}</div>}<div className="mt-3 flex justify-end"><button type="button" onClick={submit} disabled={busy} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white disabled:opacity-50 dark:bg-white dark:text-black">✓</button></div></section>}</div></div></div></div></div>, document.body);
+}
+
 function TenkhahPreviewV3({ item, userId, api, onRefresh, onClose }) {
   const [choice, setChoice] = useState("approve");
   const [note, setNote] = useState("");

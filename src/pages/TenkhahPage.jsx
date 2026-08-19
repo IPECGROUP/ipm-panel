@@ -84,7 +84,7 @@ function SettlementTable({ entries, request, onRemove, onEdit, editingEntryId, e
 function SettlementEntryEditor({ form, setForm, budgetItems, busy, onSave, onUpload, onOpenUpload = () => {} }) {
   return <div className="mb-4 rounded-2xl bg-neutral-100 p-4 dark:bg-white/10"><div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6"><Field label="تاریخ"><JalaliPopupDatePicker value={form.expenseDate} onChange={(value)=>setForm(x=>({...x,expenseDate:value}))} buttonClassName={`${input} flex items-center justify-between`} /></Field><Field label="شرح هزینه"><input className={input} value={form.description} onChange={e=>setForm(x=>({...x,description:e.target.value}))}/></Field><Field label="مبلغ" className="xl:order-3"><input className={input} inputMode="numeric" value={fa(form.amount)} onChange={e=>setForm(x=>({...x,amount:format3(toEnglishDigits(e.target.value).replace(/[^\d]/g,""))}))}/></Field><Field label="کد بودجه" className="xl:order-4"><select className={input} value={form.budgetCode} onChange={e=>setForm(x=>({...x,budgetCode:e.target.value}))}><option value="">انتخاب کنید</option>{budgetItems.map(b=><option key={b.id} value={b.budgetCode}>{b.budgetCode} - {b.budgetName}</option>)}</select></Field><Field label="فایل"><div className="flex items-end gap-2"><button type="button" onClick={onOpenUpload} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white dark:border-white/15 dark:bg-white/5" title="بارگذاری فایل"><img src="/images/icons/Uplod.svg" alt="بارگذاری" className="h-5 w-5 dark:invert"/></button><button type="button" disabled={busy} onClick={onSave} title="افزودن به جدول" className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white text-xl dark:border-white/15 dark:bg-white/5">+</button></div></Field></div></div>;
 }
-export default function TenkhahPage({ embedded = false }) {
+export default function TenkhahPage({ embedded = false, active = true }) {
   const { user } = useAuth();
   const [items, setItems] = useState([]),
     [form, setForm] = useState(empty),
@@ -140,8 +140,8 @@ export default function TenkhahPage({ embedded = false }) {
     load();
   }, [user?.id]);
   useEffect(() => {
-    if (embedded && user?.id) add();
-  }, [embedded, user?.id]);
+    if (embedded && active && user?.id) add();
+  }, [embedded, active, user?.id]);
   useEffect(() => {
     const rial = currencies.find(isRialCurrency);
     if (rial) setForm((current) => current.currency === currencyTitle(rial) ? current : { ...current, currency: currencyTitle(rial) });
