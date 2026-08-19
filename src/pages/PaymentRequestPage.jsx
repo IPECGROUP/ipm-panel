@@ -1643,15 +1643,14 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
     const attachmentNames = attachments.map((file, index) =>
       file?.name || file?.originalName || file?.filename || `فایل ${toFa(index + 1)}`
     );
-    const currentStage = PAYMENT_WORKFLOW_STEPS.find((step) => step.index === Number(item.currentStepIndex));
-    const statusText = STATUS_LABELS[item.status] || item.status || "نامشخص";
     const now = new Date();
-    const printDate = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
-      year: "numeric", month: "long", day: "2-digit",
-    }).format(now);
-    const printTime = new Intl.DateTimeFormat("fa-IR", {
+    const reportDate = normalizeDigits(new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+      year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(now)).replaceAll("-", "/");
+    const reportTime = normalizeDigits(new Intl.DateTimeFormat("fa-IR", {
       hour: "2-digit", minute: "2-digit", hour12: false,
-    }).format(now);
+    }).format(now));
+    const reportDateTime = `${reportDate} - ${reportTime}`;
     const workflowRows = PAYMENT_WORKFLOW_STEPS.map((step) => ({
       step,
       state: paymentWorkflowStageState(step, history, item),
@@ -1791,12 +1790,6 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
         <div><span>تاریخ:</span><strong>${value(toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/")))}</strong></div>
       </div>
     </header>
-    <div class="summary">
-      <div class="summary-card"><div class="label">وضعیت فعلی</div><div class="value">${value(statusText)}</div></div>
-      <div class="summary-card"><div class="label">مرحله فعلی</div><div class="value">${value(currentStage?.label || (item.status === "approved" ? "فرآیند تکمیل شده" : "—"))}</div></div>
-      <div class="summary-card"><div class="label">تاریخ تهیه گزارش</div><div class="value">${value(printDate)}<br><span style="color:#60707c;font-size:9px;font-weight:400">ساعت ${value(printTime)}</span></div></div>
-    </div>
-
     <section>
       <h2 class="section-title">مشخصات درخواست</h2>
       <div class="info-grid">
@@ -1813,18 +1806,12 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
     <section>
       <h2 class="section-title">اطلاعات مالی و پرداخت</h2>
       <div class="info-grid">
-        ${infoCard("باقی‌مانده بودجه مبنا", baseBudget ? `${toFa(baseBudget)} ریال` : "—")}
-        ${infoCard("باقی‌مانده نقدینگی پروژه", liquidityRemaining ? `${toFa(liquidityRemaining)} ریال` : "—")}
-        ${infoCard("ارز", currencyName)}
-        ${infoCard("نام ذی‌نفع", item.beneficiaryName)}
+        ${infoCard("نام ذینفع", item.beneficiaryName)}
         ${infoCard("شماره شبا", item.bankInfo)}
         ${infoCard("شرایط پرداخت", item.creditPay)}
         ${infoCard("پرداخت نقدی ثبت‌شده", amount(item.cashText || item.cashAmount))}
         ${infoCard("تاریخ پرداخت نقدی", toFa(item.cashDate || item.cashDateJalali || "—"))}
         ${infoCard("پرداخت اعتباری ثبت‌شده", amount(item.creditSection || item.creditAmount))}
-        ${infoCard("نوع ارز", currencyName)}
-        ${infoCard("منشأ ارز", source ? itemLabel(source) : "—")}
-        ${infoCard("شناسه درخواست", toFa(item.id))}
       </div>
     </section>
 
@@ -1849,7 +1836,7 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
       <div class="attachment-state">پیوست: ${attachments.length ? "دارد" : "ندارد"}</div>
       ${attachments.length ? `<ul class="attachment-list">${attachmentNames.map((name, index) => `<li><span class="number">${value(index + 1)}</span><strong>${value(name)}</strong></li>`).join("")}</ul>` : ""}
     </section>
-    <footer class="footer"><span>سامانه فرآیندهای یکپارچه شرکت ایده پویان انرژی</span><span></span></footer>
+    <footer class="footer"><span>سامانه فرآیندهای یکپارچه شرکت ایده پویان انرژی</span><span>${escapePdfHtml(reportDateTime)}</span></footer>
   </article>
   ${attachmentPreviewPages}
 </body>
