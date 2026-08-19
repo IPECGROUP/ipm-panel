@@ -1342,12 +1342,14 @@ function TenkhahActionOption({ kind, checked, onClick, label, children }) {
 }
 
 function TenkhahDetailCards({ details }) {
-  return <section className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900">
+  return <><style>{`body > div[dir="rtl"] > div:nth-child(2) > div > div:first-child > b + button { font-size: 0; background-image: url('/images/icons/bastan.svg'); background-position: center; background-repeat: no-repeat; background-size: 20px 20px; filter: invert(1); } .dark body > div[dir="rtl"] > div:nth-child(2) > div > div:first-child > b + button { filter: none; }`}</style><section className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900">
     <div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">جزئیات درخواست تنخواه</div>
-    <div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 md:[&>*:nth-child(-n+3)]:border-b md:[&>*:nth-child(-n+3)]:border-black/10 dark:md:[&>*+*]:border-white/15 dark:md:[&>*:nth-child(-n+3)]:border-white/10">
-      {details.map(([label, value]) => <PreviewRow key={label} compact fixedLabel colon leader label={label} value={value || "—"} />)}
+    <div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15">
+      {details.slice(0, 3).map(([label, value]) => <PreviewRow key={label} compact fixedLabel colon leader label={label} value={value || "—"} />)}
+      <div className="col-span-full hidden h-px bg-black/10 md:block dark:bg-white/10" aria-hidden="true" />
+      {details.slice(3).map(([label, value]) => <PreviewRow key={label} compact fixedLabel colon leader label={label} value={value || "—"} />)}
     </div>
-  </section>;
+  </section></>;
 }
 
 function TenkhahPreviewV4({ item, userId, api, onRefresh, onClose }) {
@@ -1963,7 +1965,7 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                       <option value="">{editBudgetLoading ? "در حال دریافت..." : editForm.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید"}</option>
                       {editBudgetOptions.map((row) => {
                         const code = normalizeBudgetCode(row.code || row.center_code);
-                        const desc = row.center_desc || row.last_desc || row.name || row.description || "";
+                        const desc = row.budgetName || row.budget_name || row.center_desc || row.last_desc || row.name || row.description || "";
                         return <option key={code || row.id} value={code}>{code}{desc ? ` - ${desc}` : ""}</option>;
                       })}
                     </select>
