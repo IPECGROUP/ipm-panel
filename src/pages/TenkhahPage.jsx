@@ -108,6 +108,7 @@ export default function TenkhahPage({ embedded = false }) {
     [projectLiquidity, setProjectLiquidity] = useState("0"),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
+    [currencyTouched, setCurrencyTouched] = useState(false),
     [workflowChoice, setWorkflowChoice] = useState("approve"),
     [workflowNote, setWorkflowNote] = useState("");
   const api = async (path, opt = {}) => {
@@ -124,6 +125,8 @@ export default function TenkhahPage({ embedded = false }) {
     if (!r.ok) throw new Error(d.message || d.error || "خطا در ثبت اطلاعات");
     return d;
   };
+  const preferredCurrency = useMemo(() => currencies.find(isRialCurrency) || currencies[0] || null, [currencies]);
+  const displayedCurrency = !currencyTouched && preferredCurrency ? currencyTitle(preferredCurrency) : form.currency;
   const load = async () => {
     if (!user?.id) return;
     try {
@@ -176,6 +179,7 @@ export default function TenkhahPage({ embedded = false }) {
   const add = async () => {
     setOpen(true);
     setForm(empty());
+    setCurrencyTouched(false);
     setProjectBalances({ unregisteredBalance: "0", unsettledBalance: "0", receivedAmount: "0" });
     setError("");
     try {
@@ -253,7 +257,7 @@ export default function TenkhahPage({ embedded = false }) {
     setBusy(true);
     setError("");
     try {
-      await api("/tenkhah", { method: "POST", body: JSON.stringify({ ...form, projectLiquidity }) });
+      await api("/tenkhah", { method: "POST", body: JSON.stringify({ ...form, currency: displayedCurrency, projectLiquidity }) });
       setOpen(false);
       await load();
       window.dispatchEvent(new Event("tenkhah-notifications-refresh"));
@@ -381,9 +385,9 @@ export default function TenkhahPage({ embedded = false }) {
                     className="h-11 min-w-0 flex-1 bg-transparent px-3 outline-none dark:text-white"
                   />
                   <select
-                    value={form.currency}
+                    value={displayedCurrency}
                     onChange={(e) =>
-                      setForm((x) => ({ ...x, currency: e.target.value }))
+                      { setCurrencyTouched(true); setForm((x) => ({ ...x, currency: e.target.value })); }
                     }
                     className="m-1 w-[62px] shrink-0 rounded-lg border border-black/10 bg-neutral-100 px-1 text-center text-xs font-semibold text-neutral-700 outline-none transition hover:bg-neutral-200 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
                   >
