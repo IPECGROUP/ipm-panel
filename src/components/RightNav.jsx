@@ -21,11 +21,13 @@ const NavIcon = ({ src }) => (
 );
 
 const KnowledgeNavIcon = ({ src }) => (
-  <img
-    src={src}
-    alt=""
+  <span
     aria-hidden="true"
-    className="block h-5 w-5 shrink-0 object-contain pointer-events-none select-none"
+    className={iconMaskCls}
+    style={{
+      WebkitMask: `url(${src}) center / contain no-repeat`,
+      mask: `url(${src}) center / contain no-repeat`,
+    }}
   />
 );
 
