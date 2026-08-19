@@ -927,7 +927,7 @@ export default function PaymentRequestPage() {
 
           <Field label="شرح درخواست"><textarea className={`${inputClass} min-h-24 py-2 leading-7`} value={form.description} onChange={(e) => setField("description", e.target.value)} /></Field>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(180px,1fr)_minmax(150px,0.9fr)_minmax(120px,0.65fr)_auto]">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(180px,1fr)_minmax(150px,0.9fr)_minmax(120px,0.65fr)_auto_auto]">
             <Field label="نوع سند">
               {form.docId === "other" ? (
                 <input className={inputClass} value={form.docOther} onChange={(e) => setField("docOther", e.target.value)} placeholder="نوع سند را وارد کنید" autoFocus />
@@ -941,10 +941,13 @@ export default function PaymentRequestPage() {
             <Field label="شماره سند"><input className={inputClass} value={form.docNumber} onChange={(e) => setField("docNumber", e.target.value)} /></Field>
             <Field label="تاریخ سند"><JalaliPopupDatePicker value={form.docDateJalali} onChange={(value) => setField("docDateJalali", value)} /></Field>
             <Field label="بارگذاری">
-              <div className="flex items-center gap-2"><button type="button" onClick={() => setUploadOpen(true)} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={uploading ? "در حال آپلود" : "بارگذاری"} aria-label={uploading ? "در حال آپلود" : "بارگذاری"}>
+              <div className="isolate flex items-center"><button type="button" onClick={() => setUploadOpen(true)} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={uploading ? "در حال آپلود" : "بارگذاری"} aria-label={uploading ? "در حال آپلود" : "بارگذاری"}>
                 <img src="/images/icons/Uplod.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse opacity-60" : ""}`} />
-              </button><button type="button" onClick={() => setLetterPickerOpen(true)} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white text-lg transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب نامه" aria-label="انتخاب نامه">•••</button></div>
+              </button></div>
               {!!form.attachments.length && <div className="mt-1 text-[11px] text-neutral-500">{toFa(form.attachments.length)} فایل ضمیمه شده</div>}
+            </Field>
+            <Field label="اسناد مرتبط">
+              <div className="isolate flex items-center"><button type="button" onClick={() => setLetterPickerOpen(true)} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white text-lg transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب نامه" aria-label="انتخاب نامه">•••</button></div>
               {!!form.relatedLetterIds.length && <div className="mt-1 text-[11px] font-medium text-neutral-600 dark:text-neutral-300">{toFa(form.relatedLetterIds.length)} نامه مرتبط انتخاب شده</div>}
             </Field>
           </div>
@@ -1063,6 +1066,7 @@ export default function PaymentRequestPage() {
     {selected && <PaymentPreview
       item={selected}
       projects={projects}
+      letters={letters}
       supplyRequests={supplyRequests}
       currencyTypes={currencyTypes}
       currencySources={currencySources}
@@ -1453,7 +1457,7 @@ function TenkhahPreview({ item, onClose }) {
     <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
     <div className="absolute inset-0 flex items-center justify-center p-3 md:p-6">
       <div className="flex max-h-[min(88vh,720px)] w-[min(1040px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10"><div className="text-base font-bold">جزئیات درخواست تنخواه</div><button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 dark:bg-white dark:text-black" title="بستن" aria-label="بستن"><img src="/images/icons/bastan.svg" alt="" className="h-5 w-5 invert dark:invert-0" /></button></div>
+        <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10"><div className="text-base font-bold">جزئیات درخواست تنخواه</div><button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-800 text-white shadow-sm transition hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200" title="بستن" aria-label="بستن"><img src="/images/icons/bastan.svg" alt="" className="h-5 w-5 invert dark:invert-0" /></button></div>
         <div className="grid min-h-0 gap-4 overflow-y-auto p-4 md:grid-cols-[260px_minmax(0,1fr)] md:p-5">
           <section className="self-start overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">فرآیند تنخواه</div><ol className="px-4 py-3">{steps.map((label, index) => { const step = index + 1; const completed = step < activeStep || item.status === "charged"; const active = step === activeStep && item.status !== "charged"; const finalCompleted = item.status === "charged" && index === steps.length - 1; return <li key={label} className="relative grid grid-cols-[minmax(0,1fr)_32px] gap-2 pb-3 last:pb-0"><div className={`min-w-0 ${active ? "rounded-2xl bg-sky-50 px-3 py-2.5 dark:bg-sky-500/10" : finalCompleted ? "rounded-2xl bg-emerald-50 px-3 py-2.5 dark:bg-emerald-500/10" : "px-3 py-1"}`}><div className={`text-sm font-bold ${finalCompleted ? "text-emerald-700 dark:text-emerald-300" : active ? "text-sky-700 dark:text-sky-300" : completed ? "text-neutral-800 dark:text-neutral-100" : "text-neutral-400 dark:text-neutral-500"}`}>{label}</div><div className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">{active ? "مرحله جاری" : completed ? "مرحله انجام شده" : "در انتظار شروع مرحله"}</div></div><div className="relative flex justify-center">{index < steps.length - 1 && <span className={`absolute bottom-[-6px] top-8 w-px ${completed ? "bg-sky-200 dark:bg-sky-500/30" : "bg-neutral-200 dark:bg-white/10"}`} />}<span className={`relative z-10 grid h-7 w-7 place-items-center rounded-full border text-xs font-bold ${finalCompleted ? "border-emerald-500 bg-emerald-500 text-white shadow-[0_0_0_5px_rgba(16,185,129,.13)]" : active ? "border-sky-500 bg-sky-500 text-white shadow-[0_0_0_5px_rgba(14,165,233,.13)]" : completed ? "border-neutral-300 bg-white text-neutral-600 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-200" : "border-neutral-300 bg-white text-neutral-400 dark:border-neutral-600 dark:bg-neutral-900"}`}>{completed ? "✓" : toFa(step)}</span></div></li>; })}</ol></section>
           <div className="space-y-4"><section className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">جزئیات درخواست تنخواه</div><div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10 sm:grid-cols-2 sm:divide-x sm:divide-y-0"><PreviewRow compact label="شماره درخواست" value={item.serial || "—"} ltr /><PreviewRow compact label="تاریخ درخواست" value={toFa(String(item.dateFa || "—").replaceAll("-", "/"))} /><PreviewRow compact label="پروژه" value={`${item.projectCode || ""}${item.projectName ? ` - ${item.projectName}` : ""}` || "—"} /><PreviewRow compact label="درخواست‌کننده" value={item.createdByName || "—"} /><PreviewRow compact label="مبلغ" value={`${toFa(money(item.amount) || "0")} ${item.currencyName || "ریال"}`} ltr /><PreviewRow compact label="وضعیت" value={<StatusBadge status={item.displayStatus || item.status} />} /></div></section><section className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">اطلاعات تنخواه</div><div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10 sm:grid-cols-2 sm:divide-x sm:divide-y-0"><PreviewRow compact label="مجموع تنخواه های دریافت شده:" value={toFa(money(item.unregisteredBalance) || "0")} ltr /><PreviewRow compact label="مانده تسویه‌نشده" value={toFa(money(item.unsettledBalance) || "0")} ltr /></div></section></div>
@@ -1463,13 +1467,19 @@ function TenkhahPreview({ item, onClose }) {
   </div>, document.body);
 }
 
-function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currencySources, userId, actionNote, setActionNote, actionBusy, actionError, onAction, onResubmit, onEdit, onClose }) {
+function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes, currencySources, userId, actionNote, setActionNote, actionBusy, actionError, onAction, onResubmit, onEdit, onClose }) {
   const project = projects.find((row) => String(row.id) === String(item.projectId));
   const currency = currencyTypes.find((row) => String(row.id) === String(item.currencyTypeId));
   const source = currencySources.find((row) => String(row.id) === String(item.currencySourceId));
   const currencyName = currency ? itemLabel(currency) : "ریال";
   const docName = item.docId === "other" ? (item.docOther || "سایر") : (DOC_OPTIONS.find(([value]) => value === item.docId)?.[1] || "—");
   const attachments = Array.isArray(item.attachments) ? item.attachments : [];
+  const relatedLetterIds = Array.isArray(item.relatedLetterIds) ? item.relatedLetterIds.map(String) : [];
+  const relatedLetters = relatedLetterIds.map((id) => {
+    const letter = (Array.isArray(letters) ? letters : []).find((row) => String(row.id) === id);
+    const number = letter?.secretariatNo || letter?.secretariat_no || letter?.letterNo || letter?.letter_no;
+    return { id, label: number ? `نامه ${toFa(number)}` : `نامه #${toFa(id)}`, subject: letter?.subject || letter?.title };
+  });
   const history = Array.isArray(item.historyJson) ? item.historyJson : Array.isArray(item.history_json) ? item.history_json : [];
   const currentStepRoleKey = item.currentStepRoleKey || "";
   useEffect(() => {
@@ -1937,7 +1947,7 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
             <div className="text-sm font-bold">اقدامات پرداخت</div>
             <button type="button" onClick={openPdfPreview} className="inline-flex h-9 items-center gap-2 rounded-lg border border-black/10 px-3 text-xs font-semibold transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10" title="مشاهده PDF" aria-label="مشاهده PDF"><img src="/images/icons/print.svg" alt="" className="h-4 w-4 dark:invert" /><span>مشاهده PDF</span></button>
           </div>
-          <button type="button" onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white ring-1 ring-black/15 transition hover:bg-black/80 dark:bg-transparent dark:ring-neutral-800 dark:hover:bg-white/10" aria-label="بستن" title="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
+          <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-800 text-white shadow-sm transition hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200" aria-label="بستن" title="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
         </div>
         <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(300px,0.72fr)_minmax(0,1.55fr)]">
           <aside className="flex items-start border-b border-black/10 p-4 dark:border-white/10 lg:border-b-0 lg:border-l">
@@ -1987,7 +1997,7 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                   <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="نام ذینفع" value={canEditRequest ? <input className={inputClass} value={editForm.beneficiaryName} onChange={(event) => setEditField("beneficiaryName", event.target.value)} /> : (item.beneficiaryName || "—")} />
                   <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="شماره شبا" ltr={!canEditRequest} value={canEditRequest ? <input dir="ltr" inputMode="numeric" className={`${inputClass} text-left font-sans tabular-nums`} value={editForm.bankInfo || "IR"} onChange={(event) => setEditField("bankInfo", formatSheba(event.target.value))} onFocus={() => { if (!editForm.bankInfo) setEditField("bankInfo", "IR"); }} placeholder="IR" /> : (item.bankInfo || "—")} />
                 </div>
-                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-4 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
+                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[0.8fr_0.8fr_0.8fr_1.3fr_1.3fr] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
                   <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="نوع سند" value={canEditRequest ? (
                   <div className="space-y-2">
                     <select className={inputClass} value={editForm.docId} onChange={(event) => setEditForm((old) => ({ ...old, docId: event.target.value, docOther: event.target.value === "other" ? old.docOther : "" }))}>{DOC_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
@@ -2008,6 +2018,7 @@ function PaymentPreview({ item, projects, supplyRequests, currencyTypes, currenc
                     </label>
                   </div>
                 ) : (attachments.length ? <div className="flex flex-wrap justify-end gap-2">{attachments.map((file, index) => <a key={file.id || file.serverId || index} href={file.url || "#"} target="_blank" rel="noreferrer" className="rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFa(index + 1)}`}</a>)}</div> : "—")} />
+                  <PreviewRow compact colon leader label="اسناد مرتبط" value={relatedLetters.length ? <div className="flex flex-wrap justify-end gap-2">{relatedLetters.map((letter) => <span key={letter.id} className="rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10" title={letter.subject || ""}>{letter.label}</span>)}</div> : "—"} />
                 </div>
               </PreviewSection>
               {canDecide && <WorkflowPanel
