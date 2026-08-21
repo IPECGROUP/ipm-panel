@@ -285,7 +285,7 @@ export default function TenkhahPage({ embedded = false, active = true }) {
                 action: decision, note: workflowNote,
               }
             : isManagement
-              ? { id: selected.id, financeUserId: selected.nextUserId, action: decision, note: workflowNote }
+              ? { id: selected.id, action: decision, note: workflowNote }
             : {
                 id: selected.id,
                 chargedDate: selected.chargedDate || today(),
@@ -307,11 +307,11 @@ export default function TenkhahPage({ embedded = false, active = true }) {
   const updateSelected = (k, v) => setSelected((s) => ({ ...s, [k]: v }));
   const incoming =
     selected &&
-    Number(selected.currentAssigneeUserId) === Number(user?.id) &&
+    (selected.canAct === true || Number(selected.currentAssigneeUserId) === Number(user?.id)) &&
     selected.status === "pending";
   useEffect(() => {
-    if (!selected || !incoming || !["project_manager", "management"].includes(selected.stage)) return;
-    loadWorkflowRecipients(selected.stage === "project_manager" ? "management" : "finance").catch((e) => setError(e.message));
+    if (!selected || !incoming || selected.stage !== "project_manager") return;
+    loadWorkflowRecipients("management").catch((e) => setError(e.message));
   }, [selected?.id, selected?.stage, selected?.status, selected?.currentAssigneeUserId, user?.id]);
   const canEditSettlement = settlement && settlement.status === "pending" && Number(settlement.currentAssigneeUserId) === Number(user?.id);
   return (
@@ -489,8 +489,8 @@ export default function TenkhahPage({ embedded = false, active = true }) {
                             setWorkflowNote("");
                           }}
                           className="grid h-10 w-10 place-items-center bg-transparent transition hover:opacity-70"
-                          title={Number(x.currentAssigneeUserId) === Number(user?.id) && x.status === "pending" ? "اقدامات" : "نمایش درخواست"}
-                          aria-label={Number(x.currentAssigneeUserId) === Number(user?.id) && x.status === "pending" ? "اقدامات" : "نمایش درخواست"}
+                          title={(x.canAct === true || Number(x.currentAssigneeUserId) === Number(user?.id)) && x.status === "pending" ? "اقدامات" : "نمایش درخواست"}
+                          aria-label={(x.canAct === true || Number(x.currentAssigneeUserId) === Number(user?.id)) && x.status === "pending" ? "اقدامات" : "نمایش درخواست"}
                         >
                           <img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" />
                         </button>
@@ -552,14 +552,6 @@ export default function TenkhahPage({ embedded = false, active = true }) {
                     </select>
                   </Field></div>
                 )}
-                {incoming && selected.stage === "management" && (
-                  <div className="rounded-xl border border-black/10 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/[.03]"><Field label="ارسال نهایی به واحد مالی" required>
-                    <select value={selected.nextUserId || ""} onChange={(e) => updateSelected("nextUserId", e.target.value)} className={input}>
-                      <option value="">انتخاب کنید</option>
-                      {financeRecipients.map((u) => <option value={u.id} key={u.id}>{name(u)}</option>)}
-                    </select>
-                  </Field></div>
-                )}
                 {incoming && selected.stage === "finance" && (
                   <div className="rounded-xl border border-black/10 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/[.03]"><Field label="مبلغ تنخواه شارژ شده">
                     <input
@@ -579,7 +571,7 @@ export default function TenkhahPage({ embedded = false, active = true }) {
                     />
                   </Field></div>
                 )}
-                {incoming && <div className="col-span-full border-t border-black/10 p-3 dark:border-white/10"><TenkhahActionCards choice={workflowChoice} setChoice={setWorkflowChoice} note={workflowNote} setNote={setWorkflowNote} onSubmit={() => action(workflowChoice)} disabled={busy || (workflowChoice === "approve" && ["project_manager", "management"].includes(selected.stage) && !selected.nextUserId)} /></div>}
+                {incoming && <div className="col-span-full border-t border-black/10 p-3 dark:border-white/10"><TenkhahActionCards choice={workflowChoice} setChoice={setWorkflowChoice} note={workflowNote} setNote={setWorkflowNote} onSubmit={() => action(workflowChoice)} disabled={busy || (workflowChoice === "approve" && selected.stage === "project_manager" && !selected.nextUserId)} /></div>}
               </div></div><div className="order-first self-start"><TenkhahWorkflow item={selected} /></div></div>
             </div>
           </div>
