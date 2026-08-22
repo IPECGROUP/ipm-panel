@@ -2331,11 +2331,11 @@ function paymentHistoryActorName(entry, item) {
 }
 
 function paymentWorkflowStyle(kind) {
-  if (kind === "active") return { marker: "border-sky-500 bg-white text-sky-500 dark:bg-neutral-900", line: "bg-neutral-200 dark:bg-white/10", card: "", title: "text-black dark:text-white" };
+  if (kind === "active") return { marker: "border-sky-500 bg-sky-500 text-white", line: "bg-neutral-200 dark:bg-white/10", card: "", title: "text-black dark:text-white" };
   if (kind === "rejected") return { marker: "border-rose-500 bg-white text-rose-500 dark:bg-neutral-900", line: "bg-neutral-200 dark:bg-white/10", card: "", title: "text-black dark:text-white" };
   if (kind === "returned") return { marker: "border-amber-500 bg-white text-amber-500 dark:bg-neutral-900", line: "bg-neutral-200 dark:bg-white/10", card: "", title: "text-black dark:text-white" };
-  if (kind === "completed") return { marker: "border-emerald-500 bg-white text-emerald-500 dark:bg-neutral-900", line: "bg-neutral-200 dark:bg-white/10", card: "", title: "text-black dark:text-white" };
-  return { marker: "border-sky-400 bg-white text-sky-500 dark:bg-neutral-900", line: "bg-neutral-200 dark:bg-white/10", card: "", title: "text-black dark:text-white" };
+  if (kind === "completed") return { marker: "border-emerald-500 bg-emerald-500 text-white", line: "bg-neutral-200 dark:bg-white/10", card: "", title: "text-black dark:text-white" };
+  return { marker: "border-sky-400 bg-sky-500 text-white", line: "bg-neutral-200 dark:bg-white/10", card: "", title: "text-black dark:text-white" };
 }
 
 function PaymentWorkflowTimeline({ history, item }) {
@@ -2354,7 +2354,7 @@ function PaymentWorkflowTimeline({ history, item }) {
         <div className="relative flex justify-center" aria-hidden="true">
           {index < PAYMENT_WORKFLOW_STEPS.length - 1 ? <span className={`absolute bottom-[-12px] top-[22px] z-0 w-px ${style.line}`} /> : null}
           <span className={`relative z-10 mt-0.5 grid h-7 w-7 place-items-center rounded-full border-2 ${style.marker}`}>
-            {kind === "completed" || kind === "final_completed" ? <span className="text-base font-bold leading-none">✓</span> : kind === "rejected" ? <span className="text-base font-bold leading-none">×</span> : kind === "returned" ? <span className="text-sm font-bold leading-none">↶</span> : kind === "active" ? <span className="h-2.5 w-2.5 rounded-full bg-sky-500" /> : <span className="text-[11px] font-bold leading-none">{toFa(index + 1)}</span>}
+            {kind === "completed" || kind === "final_completed" ? <span className="text-base font-bold leading-none">✓</span> : kind === "rejected" ? <span className="text-base font-bold leading-none">×</span> : kind === "returned" ? <span className="text-sm font-bold leading-none">↶</span> : kind === "active" ? <span className="h-2.5 w-2.5 rounded-full bg-white" /> : <span className="text-[11px] font-bold leading-none">{toFa(index + 1)}</span>}
           </span>
         </div>
       </li>;

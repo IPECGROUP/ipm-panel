@@ -398,8 +398,8 @@ export default function TenkhahPage({ embedded = false, active = true }) {
                   </select>
                 </div>
               </Field>
-              <Field label="بابت" required>
-                <input value={form.purpose} onChange={(e) => setForm((x) => ({ ...x, purpose: e.target.value }))} className={input} placeholder="بابت تنخواه را وارد کنید" />
+              <Field label="بابت" required className="md:col-span-2 xl:col-span-3">
+                <textarea value={form.purpose} onChange={(e) => setForm((x) => ({ ...x, purpose: e.target.value }))} className={`${input} min-h-[5.5rem] resize-y py-3`} placeholder="بابت تنخواه را وارد کنید" />
               </Field>
             </div>
             <div className="mt-5 flex flex-col gap-3 border-t border-black/10 pt-4 sm:flex-row sm:items-end sm:justify-end dark:border-white/10">
