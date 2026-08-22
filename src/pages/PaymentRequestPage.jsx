@@ -16,7 +16,7 @@ const DOC_OPTIONS = [
   ["internal_list", "لیست پرداخت داخلی"], ["gov_salary", "فیش بدهی دولتی"], ["other", "سایر"],
 ];
 const MONTHS = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
-const STATUS_LABELS = { pending: "در انتظار تأیید", approved: "پرداخت شد", rejected: "رد شد", returned: "برگشت خورد", tenkhah_pending: "در انتظار تأیید", tenkhah_charged: "تنخواه" };
+const STATUS_LABELS = { pending: "در انتظار تأیید", approved: "پرداخت شد", rejected: "رد شد", returned: "برگشت خورد", tenkhah_pending: "در انتظار تأیید", tenkhah_charged: "پرداخت شد" };
 const STEP_LABELS = {
   requester: "درخواست‌کننده",
   project_control: "برنامه‌ریزی و کنترل پروژه",
