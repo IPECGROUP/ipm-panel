@@ -62,7 +62,8 @@ const formFromItem = (item = {}) => ({
   title: item.title || "",
   description: item.description || "",
   amount: money(item.amount || ""),
-  exchangeRate: "",
+  exchangeRate: money(item.exchangeRate || ""),
+  rialAmount: money(item.rialAmount || item.amount || ""),
   cashAmount: money(item.cashText || item.cashAmount || ""),
   cashDateJalali: item.cashDate || item.cashDateJalali || "",
   creditPay: item.creditPay || "",
@@ -630,15 +631,16 @@ export default function PaymentRequestPage() {
     if (!form.budgetCode) return setError("کد بودجه را انتخاب کنید.");
     if (!form.title.trim()) return setError("موضوع درخواست را وارد کنید.");
     if (amount <= 0) return setError("مبلغ درخواست باید بیشتر از صفر باشد.");
+    if (!isRialCurrency && exchangeRate <= 0) return setError("نرخ ارز را وارد کنید.");
     if (projectLiquidityLoading) return setError("در حال دریافت مانده نقدینگی پروژه هستیم.");
     if (projectLiquidityRemaining == null) return setError("مانده نقدینگی پروژه در دسترس نیست.");
-    if (amount > projectLiquidityRemaining) return setError("مبلغ درخواست نمی‌تواند بیشتر از مانده نقدینگی پروژه باشد.");
+    if (rialAmount > projectLiquidityRemaining) return setError("مبلغ ریالی درخواست نمی‌تواند بیشتر از مانده نقدینگی پروژه باشد.");
     if (form.hasSupplyRequest === "yes" && !form.supplyRequestId) return setError("درخواست تامین را انتخاب کنید.");
     if (createRecipients.targetRoleKey && !form.targetAssigneeUserId) return setError("گیرنده درخواست پرداخت را انتخاب کنید.");
     setSubmitting(true); setError(""); setSuccess("");
     try {
       const data = await api("/requests", { method: "POST", body: JSON.stringify({
-        ...form, serial, scope: "projects", amount, cashAmount: null, creditAmount: null,
+        ...form, serial, scope: "projects", amount, exchangeRate, rialAmount, cashAmount: null, creditAmount: null,
         currencyTypeId: form.currencyTypeId || null, currencySourceId: form.currencySourceId || null,
         projectId: form.projectId || null,
         targetAssigneeUserId: form.targetAssigneeUserId || null,
@@ -958,7 +960,7 @@ export default function PaymentRequestPage() {
               <MoneyInput value={form.exchangeRate} onChange={(value) => setField("exchangeRate", value)} disabled={isRialCurrency} className={isRialCurrency ? "cursor-not-allowed bg-neutral-100 text-neutral-400 dark:bg-white/5 dark:text-neutral-500" : ""} />
             </Field>
             <Field label="ریال">
-              <div className={`${inputClass} flex items-center font-medium tabular-nums`} dir="ltr">{toFa(money(rialAmount) || "0")} ریال</div>
+              <div className="flex min-h-11 items-center text-sm font-medium tabular-nums text-neutral-700 dark:text-neutral-200" dir="ltr">{toFa(money(rialAmount) || "0")} ریال</div>
             </Field>
           </div>
 
