@@ -374,7 +374,7 @@ export default function TenkhahPage({ embedded = false, active = true }) {
                   ))}
                 </select>
               </Field>
-              <div className="flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">باقی‌مانده نقدینگی پروژه: <span className="mr-1 font-medium tabular-nums">{fa(format3(projectLiquidity))}</span></div>
+              <div className="flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">باقی‌مانده نقدینگی پروژه: <span className="mr-1 font-medium tabular-nums">{fa(format3(projectLiquidity))} ریال</span></div>
               <div className="hidden xl:block" aria-hidden="true" />
               <div className="hidden xl:block" aria-hidden="true" />
               <Field label="ذینفع" required>
@@ -383,8 +383,8 @@ export default function TenkhahPage({ embedded = false, active = true }) {
                   {beneficiaries.map((person) => <option value={person.id} key={person.id}>{name(person)}</option>)}
                 </select>
               </Field>
-              <div className="flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">مجموع تنخواه دریافت‌شده: <span className="mr-1 font-medium tabular-nums">{fa(format3(projectBalances.receivedAmount))}</span></div>
-              <div className="flex min-h-11 items-end pb-2 text-sm font-medium text-red-600 dark:text-red-400">مانده تنخواه تسویه‌نشده: <span className="mr-1 tabular-nums">{fa(format3(projectBalances.unsettledBalance))}</span></div>
+              <div className="flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">مجموع تنخواه دریافت‌شده: <span className="mr-1 font-medium tabular-nums">{fa(format3(projectBalances.receivedAmount))} ریال</span></div>
+              <div className="flex min-h-11 items-end pb-2 text-sm font-medium text-red-600 dark:text-red-400">مانده تنخواه تسویه‌نشده: <span className="mr-1 tabular-nums">{fa(format3(projectBalances.unsettledBalance))} ریال</span></div>
               <div className="hidden xl:block" aria-hidden="true" />
               <Field label="مبلغ تنخواه درخواستی" required>
                 <div className="flex overflow-hidden rounded-xl border border-black/10 dark:border-white/15">
