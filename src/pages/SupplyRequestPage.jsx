@@ -24,7 +24,7 @@ const tableWrapCls =
 const STATUS_FILTERS = [
   ["final_approval", "در انتظار تایید"],
   ["in_progress", "در حال اقدام"],
-  ["done", "پرداخت شد"],
+  ["done", "انجام شد"],
   ["canceled", "لغو شد"],
 ];
 
@@ -33,8 +33,8 @@ const statusLabels = {
   final_approval: "در انتظار تایید",
   approved: "در انتظار تایید",
   in_progress: "در حال اقدام",
-  done: "پرداخت شد",
-  completed: "پرداخت شد",
+  done: "انجام شد",
+  completed: "انجام شد",
   canceled: "لغو شد",
   cancelled: "لغو شد",
   rejected: "لغو شد",
@@ -1601,7 +1601,7 @@ export function SupplyRequestPreview({ item, projects, letters = [], actionNote,
     const currentStatus = statusLabels[displayStatusOf(item)] || "—";
     const printDate = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
     const printTime = new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
-    const actionStatus = (status) => ({ in_progress: "در حال اقدام", done: "پرداخت شد", canceled: "لغو شد" })[status] || "—";
+    const actionStatus = (status) => ({ in_progress: "در حال اقدام", done: "انجام شد", canceled: "لغو شد" })[status] || "—";
     const workflowKind = (kind) => ({ active: "در حال بررسی", completed: "تکمیل شده", waiting: "در انتظار", returned: "برگشت داده شده", rejected: "رد شده" })[kind] || "—";
     const historyType = (type) => ({ created: "ثبت درخواست", step_set: "ارسال به مرحله", step_clear: "پایان مرحله", approved: "تایید", returned: "برگشت", rejected: "رد" })[type] || type || "—";
     const actionRows = [...commercialActions]
@@ -2104,7 +2104,7 @@ function historySentence(entry, item) {
 
 function SupplyActionHistory({ actions, loading }) {
   const rows = Array.isArray(actions) ? actions : [];
-  const statusLabel = (status) => ({ done: "پرداخت شد", canceled: "لغو شد", in_progress: "در حال اقدام" })[status] || "در حال اقدام";
+  const statusLabel = (status) => ({ done: "انجام شد", canceled: "لغو شد", in_progress: "در حال اقدام" })[status] || "در حال اقدام";
   const statusClass = (status) => status === "done"
     ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
     : status === "canceled"
@@ -2161,40 +2161,40 @@ function workflowStageState(step, history, item) {
 
 function workflowStageStyle(kind) {
   if (kind === "active") return {
-    marker: "border-sky-500 bg-sky-500 text-white shadow-[0_0_0_5px_rgba(14,165,233,0.13)]",
-    line: "bg-sky-200 dark:bg-sky-500/30",
-    card: "bg-sky-50/90 dark:bg-sky-500/10",
-    title: "text-sky-700 dark:text-sky-300",
+    marker: "border-sky-500 bg-white text-sky-500 dark:bg-neutral-900",
+    line: "bg-neutral-200 dark:bg-white/10",
+    card: "",
+    title: "text-black dark:text-white",
   };
   if (kind === "completed") return {
-    marker: "border-neutral-300 bg-white text-neutral-500 shadow-[0_0_0_4px_rgba(115,115,115,0.08)] dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-300",
+    marker: "border-emerald-500 bg-white text-emerald-500 dark:bg-neutral-900",
     line: "bg-neutral-200 dark:bg-white/10",
     card: "",
-    title: "text-neutral-800 dark:text-neutral-100",
+    title: "text-black dark:text-white",
   };
   if (kind === "final_completed") return {
-    marker: "border-emerald-500 bg-emerald-500 text-white shadow-[0_0_0_5px_rgba(16,185,129,0.13)]",
-    line: "bg-emerald-200 dark:bg-emerald-500/25",
-    card: "bg-emerald-50/80 dark:bg-emerald-500/10",
-    title: "text-emerald-700 dark:text-emerald-300",
-  };
-  if (kind === "rejected") return {
-    marker: "border-rose-500 bg-rose-500 text-white shadow-[0_0_0_4px_rgba(244,63,94,0.10)]",
-    line: "bg-rose-200 dark:bg-rose-500/25",
-    card: "bg-rose-50/80 dark:bg-rose-500/10",
-    title: "text-rose-700 dark:text-rose-300",
-  };
-  if (kind === "returned") return {
-    marker: "border-amber-500 bg-amber-500 text-white shadow-[0_0_0_4px_rgba(245,158,11,0.10)]",
-    line: "bg-amber-200 dark:bg-amber-500/25",
-    card: "bg-amber-50/80 dark:bg-amber-500/10",
-    title: "text-amber-700 dark:text-amber-300",
-  };
-  return {
-    marker: "border-neutral-300 bg-white text-neutral-400 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-500",
+    marker: "border-emerald-500 bg-white text-emerald-500 dark:bg-neutral-900",
     line: "bg-neutral-200 dark:bg-white/10",
     card: "",
-    title: "text-neutral-400 dark:text-neutral-500",
+    title: "text-black dark:text-white",
+  };
+  if (kind === "rejected") return {
+    marker: "border-rose-500 bg-white text-rose-500 dark:bg-neutral-900",
+    line: "bg-neutral-200 dark:bg-white/10",
+    card: "",
+    title: "text-black dark:text-white",
+  };
+  if (kind === "returned") return {
+    marker: "border-amber-500 bg-white text-amber-500 dark:bg-neutral-900",
+    line: "bg-neutral-200 dark:bg-white/10",
+    card: "",
+    title: "text-black dark:text-white",
+  };
+  return {
+    marker: "border-sky-400 bg-white text-sky-500 dark:bg-neutral-900",
+    line: "bg-neutral-200 dark:bg-white/10",
+    card: "",
+    title: "text-black dark:text-white",
   };
 }
 
@@ -2224,7 +2224,7 @@ function WorkflowMarker({ kind, index }) {
   if (kind === "completed" || kind === "final_completed") return <span className="text-base font-bold leading-none">✓</span>;
   if (kind === "rejected") return <span className="text-base font-bold leading-none">×</span>;
   if (kind === "returned") return <span className="text-sm font-bold leading-none">↶</span>;
-  if (kind === "active") return <span className="h-2.5 w-2.5 rounded-full bg-white" />;
+  if (kind === "active") return <span className="h-2.5 w-2.5 rounded-full bg-sky-500" />;
   return <span className="text-[11px] font-bold leading-none">{toFaDigits(index + 1)}</span>;
 }
 
@@ -2237,16 +2237,10 @@ function SupplyWorkflowTimeline({ history, item }) {
         const markerKind = state.kind === "completed" && workflowFinished && index === SUPPLY_WORKFLOW_STEPS.length - 1 ? "final_completed" : state.kind;
         const style = workflowStageStyle(markerKind);
         const isLast = index === SUPPLY_WORKFLOW_STEPS.length - 1;
-        const description = workflowStageDescription(step, state, item);
         return (
           <li key={step.key} data-state={markerKind} className="supply-workflow-stage relative grid grid-cols-[minmax(0,1fr)_32px] gap-2 pb-2 last:pb-0" style={{ "--workflow-delay": `${Math.min(index * 110, 440)}ms` }}>
             <div className={`min-w-0 ${style.card ? `rounded-2xl px-3 py-2.5 ${style.card}` : "px-3 py-1"}`}>
               <div className={`text-sm font-bold leading-6 ${style.title}`}>{step.label}</div>
-              {(state.kind !== "waiting" || description) && <div className="mt-0.5 text-xs leading-5 text-neutral-500 dark:text-neutral-400">{description}</div>}
-              <div className={`mt-1 text-[11px] leading-5 ${state.kind === "waiting" ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-500 dark:text-neutral-400"}`} dir="rtl">
-                {workflowStageMeta(step, item, state.entry, state)}
-              </div>
-              {state.entry?.note ? <div className="mt-2 border-t border-black/5 pt-2 text-[11px] leading-5 text-neutral-500 dark:border-white/10 dark:text-neutral-400">توضیح: {state.entry.note}</div> : null}
             </div>
             <div className="relative flex justify-center" aria-hidden="true">
               {!isLast ? <span className={`absolute bottom-[-12px] top-[22px] z-0 w-px ${style.line}`} /> : null}

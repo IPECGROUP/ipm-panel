@@ -41,7 +41,7 @@ function Field({ label, required, children, className = "" }) {
   const displayLabel = label === "مبلغ" ? "مبلغ تسویه" : label;
   const invalid = (label === "تاریخ" && settlementErrors.date) || (label === "کد بودجه" && settlementErrors.budgetCode) || (label === "مبلغ" && settlementErrors.amount) || (label === "ارسال به" && settlementErrors.recipient) || (label === "شماره درخواست" && requestErrors.requestNumber) || (label === "تاریخ درخواست" && requestErrors.requestDate) || (label === "پروژه" && requestErrors.projectId) || (label === "ذینفع" && requestErrors.beneficiaryUserId) || (label === "مبلغ تنخواه درخواستی" && requestErrors.amount) || (label === "بابت" && requestErrors.purpose) || (label === "ارسال درخواست به" && requestErrors.projectManagerId);
   return (
-    <label className={`block ${orderClass} ${invalid ? "[&_input]:!border-red-500 [&_input]:!ring-1 [&_input]:!ring-red-500 [&_select]:!border-red-500 [&_select]:!ring-1 [&_select]:!ring-red-500 [&_button]:!border-red-500 [&_button]:!ring-1 [&_button]:!ring-red-500" : ""} ${className}`}>
+    <label className={`block ${orderClass} ${invalid ? "[&_input]:!border-red-500 [&_input]:!ring-1 [&_input]:!ring-red-500 [&_textarea]:!border-red-500 [&_textarea]:!ring-1 [&_textarea]:!ring-red-500 [&_select]:!border-red-500 [&_select]:!ring-1 [&_select]:!ring-red-500 [&_button]:!border-red-500 [&_button]:!ring-1 [&_button]:!ring-red-500" : ""} ${className}`}>
       <span className="mb-1 block text-xs font-normal text-neutral-600 dark:text-neutral-300">
         {displayLabel}
         {required && <b className="mr-1 text-red-500">*</b>}
