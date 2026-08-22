@@ -293,6 +293,12 @@ export default function TenkhahPage({ embedded = false, active = true }) {
                 action: decision, note: workflowNote,
                 chargedAmount:
                   selected.chargedAmount ?? selected.requestedAmount,
+                cashPaymentAmount: selected.cashPaymentAmount,
+                cashPaymentCurrency: selected.cashPaymentCurrency || selected.currency,
+                cashPaymentMethod: selected.cashPaymentMethod,
+                creditPaymentAmount: selected.creditPaymentAmount,
+                creditPaymentCurrency: selected.creditPaymentCurrency || selected.currency,
+                creditPaymentDescription: selected.creditPaymentDescription,
               },
         ),
       });
@@ -310,6 +316,8 @@ export default function TenkhahPage({ embedded = false, active = true }) {
     selected &&
     (selected.canAct === true || Number(selected.currentAssigneeUserId) === Number(user?.id)) &&
     selected.status === "pending";
+  const hasFinalPaymentAmount = [selected?.cashPaymentAmount, selected?.creditPaymentAmount]
+    .some((value) => Number(toEnglishDigits(String(value || "")).replace(/[^\d]/g, "")) > 0);
   useEffect(() => {
     if (!selected || !incoming || selected.stage !== "project_manager") return;
     loadWorkflowRecipients("management").catch((e) => setError(e.message));
@@ -488,6 +496,12 @@ export default function TenkhahPage({ embedded = false, active = true }) {
                               managerApprovedDate: today(),
                               chargedDate: today(),
                               chargedAmount: x.requestedAmount,
+                              cashPaymentAmount: "",
+                              cashPaymentCurrency: x.currency,
+                              cashPaymentMethod: "واریز بانکی - فیش",
+                              creditPaymentAmount: "",
+                              creditPaymentCurrency: x.currency,
+                              creditPaymentDescription: "",
                             });
                             setWorkflowChoice("approve");
                             setWorkflowNote("");
@@ -558,25 +572,27 @@ export default function TenkhahPage({ embedded = false, active = true }) {
                   </Field></div>
                 )}
                 {incoming && selected.stage === "finance" && (
-                  <div className="rounded-xl border border-black/10 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/[.03]"><Field label="مبلغ تنخواه شارژ شده">
-                    <input
-                      value={fa(selected.chargedAmount || "")}
-                      onChange={(e) =>
-                        updateSelected(
-                          "chargedAmount",
-                          format3(
-                            toEnglishDigits(e.target.value).replace(
-                              /[^\d]/g,
-                              "",
-                            ),
-                          ),
-                        )
-                      }
-                      className={input}
-                    />
-                  </Field></div>
+                  <section className="col-span-full overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-white/[.03]">
+                    <div className="border-b border-black/10 px-4 py-3 text-sm font-bold dark:border-white/10">ثبت پرداخت نهایی</div>
+                    <div className="space-y-4 p-4">
+                      <div className="rounded-2xl border border-black/10 p-4 dark:border-white/10">
+                        <div className="mb-3 text-sm font-bold">پرداخت نقدی</div>
+                        <div className="grid gap-3 md:grid-cols-3">
+                          <Field label="مبلغ"><input inputMode="numeric" value={fa(selected.cashPaymentAmount || "")} onChange={(event) => updateSelected("cashPaymentAmount", format3(toEnglishDigits(event.target.value).replace(/[^\d]/g, "")))} className={input} placeholder="۰" /></Field>
+                          <Field label="ارز"><select value={selected.cashPaymentCurrency || selected.currency} onChange={(event) => updateSelected("cashPaymentCurrency", event.target.value)} className={input}>{currencies.map((currency) => <option key={currency.id || currencyTitle(currency)} value={currencyTitle(currency)}>{currencyTitle(currency)}</option>)}</select></Field>
+                          <Field label="روش پرداخت"><select value={selected.cashPaymentMethod || ""} onChange={(event) => updateSelected("cashPaymentMethod", event.target.value)} className={input}><option value="">انتخاب کنید</option><option value="واریز بانکی - فیش">واریز بانکی - فیش</option><option value="چک">چک</option><option value="نقد">نقد</option></select></Field>
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-black/10 p-4 dark:border-white/10">
+                        <div className="mb-3 text-sm font-bold">پرداخت اعتباری</div>
+                        <div className="grid gap-3 md:grid-cols-2"><Field label="مبلغ"><input inputMode="numeric" value={fa(selected.creditPaymentAmount || "")} onChange={(event) => updateSelected("creditPaymentAmount", format3(toEnglishDigits(event.target.value).replace(/[^\d]/g, "")))} className={input} placeholder="۰" /></Field><Field label="ارز"><select value={selected.creditPaymentCurrency || selected.currency} onChange={(event) => updateSelected("creditPaymentCurrency", event.target.value)} className={input}>{currencies.map((currency) => <option key={currency.id || currencyTitle(currency)} value={currencyTitle(currency)}>{currencyTitle(currency)}</option>)}</select></Field></div>
+                        <div className="mt-3"><Field label="شرح پرداخت"><textarea value={selected.creditPaymentDescription || ""} onChange={(event) => updateSelected("creditPaymentDescription", event.target.value)} className={`${input} min-h-24 resize-y py-2`} /></Field></div>
+                      </div>
+                      <div className="flex justify-end"><button type="button" disabled={busy || !hasFinalPaymentAmount} onClick={() => action("approve")} className="grid h-11 w-11 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black" title="ثبت نهایی پرداخت" aria-label="ثبت نهایی پرداخت"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button></div>
+                    </div>
+                  </section>
                 )}
-                {incoming && <div className="col-span-full border-t border-black/10 p-3 dark:border-white/10"><TenkhahActionCards choice={workflowChoice} setChoice={setWorkflowChoice} note={workflowNote} setNote={setWorkflowNote} onSubmit={() => action(workflowChoice)} disabled={busy || (workflowChoice === "approve" && selected.stage === "project_manager" && !selected.nextUserId)} /></div>}
+                {incoming && selected.stage !== "finance" && <div className="col-span-full border-t border-black/10 p-3 dark:border-white/10"><TenkhahActionCards choice={workflowChoice} setChoice={setWorkflowChoice} note={workflowNote} setNote={setWorkflowNote} onSubmit={() => action(workflowChoice)} disabled={busy || (workflowChoice === "approve" && selected.stage === "project_manager" && !selected.nextUserId)} /></div>}
               </div></div><div className="order-first self-start"><TenkhahWorkflow item={selected} /></div></div>
             </div>
           </div>
