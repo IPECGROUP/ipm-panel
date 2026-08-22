@@ -359,7 +359,7 @@ export default function TenkhahPage({ embedded = false, active = true }) {
         {open && (
           <section className="mb-5 rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03] md:p-5">
             {!embedded && <h2 className="mb-5 text-base font-bold">درخواست تنخواه جدید</h2>}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(210px,1fr)_minmax(310px,1.35fr)_minmax(220px,0.9fr)_minmax(24px,0.1fr)]">
               <Field label="پروژه" required>
                 <select
                   value={form.projectId}
@@ -406,8 +406,8 @@ export default function TenkhahPage({ embedded = false, active = true }) {
                   </select>
                 </div>
               </Field>
-              <Field label="بابت" required className="md:col-span-2 xl:col-span-3">
-                <textarea value={form.purpose} onChange={(e) => setForm((x) => ({ ...x, purpose: e.target.value }))} className={`${input} min-h-[5.5rem] resize-y py-3`} placeholder="بابت تنخواه را وارد کنید" />
+              <Field label="بابت" required className="md:col-span-2 xl:col-span-4">
+                <input value={form.purpose} onChange={(e) => setForm((x) => ({ ...x, purpose: e.target.value }))} className={input} placeholder="بابت تنخواه را وارد کنید" />
               </Field>
             </div>
             <div className="mt-5 flex flex-col gap-3 border-t border-black/10 pt-4 sm:flex-row sm:items-end sm:justify-end dark:border-white/10">
