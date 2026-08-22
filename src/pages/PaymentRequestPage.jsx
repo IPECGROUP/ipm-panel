@@ -50,7 +50,7 @@ const inputClass = "w-full h-11 rounded-xl border border-black/10 bg-white px-3 
 const today = () => todayJalaliYmd().replaceAll("-", "/");
 const emptyForm = () => ({
   dateJalali: today(), scope: "projects", projectId: "", budgetCode: "", title: "", description: "",
-  amount: "", cashAmount: "", cashDateJalali: "", creditPay: "", beneficiaryName: "", bankInfo: "",
+  amount: "", exchangeRate: "", cashAmount: "", cashDateJalali: "", creditPay: "", beneficiaryName: "", bankInfo: "",
   docId: "pre_invoice", docOther: "", docNumber: "", docDateJalali: "",
   currencyTypeId: "", currencySourceId: "", attachments: [], relatedLetterIds: [], hasSupplyRequest: "no", supplyRequestId: "", targetAssigneeUserId: "",
 });
@@ -62,6 +62,7 @@ const formFromItem = (item = {}) => ({
   title: item.title || "",
   description: item.description || "",
   amount: money(item.amount || ""),
+  exchangeRate: "",
   cashAmount: money(item.cashText || item.cashAmount || ""),
   cashDateJalali: item.cashDate || item.cashDateJalali || "",
   creditPay: item.creditPay || "",
@@ -386,6 +387,9 @@ export default function PaymentRequestPage() {
     return projectCode ? `${yy}/${projectCode}/${sequence}` : `${yy}/${sequence}`;
   }, [form.dateJalali, items, selectedProject?.code, tenkhahItems]);
   const amount = parseAmount(form.amount);
+  const isRialCurrency = !form.currencyTypeId;
+  const exchangeRate = isRialCurrency ? 1 : parseAmount(form.exchangeRate);
+  const rialAmount = amount * exchangeRate;
 
   const api = useCallback(async (path, options = {}) => {
     const response = await fetch(`/api${path}`, {
@@ -937,18 +941,24 @@ export default function PaymentRequestPage() {
           <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(260px,1fr)_minmax(220px,1fr)_minmax(210px,0.8fr)]">
             <Field label="پروژه" required><select className={inputClass} value={form.projectId} onChange={(e) => setForm((old) => ({ ...old, projectId: e.target.value, budgetCode: "", targetAssigneeUserId: "" }))}><option value="">انتخاب پروژه</option>{projects.map((item) => <option key={item.id} value={item.id}>{projectLabel(item)}</option>)}</select></Field>
             <Field label="کد بودجه" required><select className={inputClass} value={form.budgetCode} disabled={!form.projectId} onChange={(e) => setField("budgetCode", e.target.value)}><option value="">{form.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید"}</option>{budgetItems.map((item) => { const code = normalizeBudgetCode(item.code || item.center_code); const description = item.center_desc || item.last_desc || item.name || item.description || ""; return <option key={code || item.id} value={code}>{code}{description ? ` - ${description}` : ""}</option>; })}</select></Field>
-            <div className="flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">باقی‌مانده نقدینگی پروژه: <span className="mr-1 font-medium tabular-nums">{projectLiquidityLoading ? "در حال دریافت..." : money(projectLiquidityRemaining) || "۰"}</span></div>
+            <div className="flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">باقی‌مانده نقدینگی پروژه: <span className="mr-1 font-medium tabular-nums">{projectLiquidityLoading ? "در حال دریافت..." : `${money(projectLiquidityRemaining) || "۰"} ریال`}</span></div>
           </div>
 
-          <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-[minmax(230px,1.2fr)_minmax(210px,0.85fr)]">
+          <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.15fr)_minmax(200px,0.85fr)_minmax(145px,0.55fr)_minmax(170px,0.7fr)]">
             <Field label="موضوع درخواست" required><input className={`${inputClass} h-12 text-[15px]`} value={form.title} onChange={(e) => setField("title", e.target.value)} /></Field>
             <Field label="مبلغ درخواست" required>
               <div className="relative min-w-0">
                 <MoneyInput className="!pl-[72px]" value={form.amount} onChange={(value) => setField("amount", value)} />
-                <select aria-label="ارز مبلغ درخواست" title="انتخاب ارز" className="absolute left-1 top-1 h-9 !w-[64px] cursor-pointer appearance-auto rounded-lg border border-neutral-200 bg-neutral-100 px-1 text-center text-xs font-semibold text-neutral-700 shadow-sm outline-none transition hover:bg-neutral-200 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-900/10 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/[.15] dark:focus:border-white/30 dark:focus:ring-white/10" value={form.currencyTypeId} onChange={(e) => setField("currencyTypeId", e.target.value)}>
+                <select aria-label="ارز مبلغ درخواست" title="انتخاب ارز" className="absolute left-1 top-1 h-9 !w-[64px] cursor-pointer appearance-auto rounded-lg border border-neutral-200 bg-neutral-100 px-1 text-center text-xs font-semibold text-neutral-700 shadow-sm outline-none transition hover:bg-neutral-200 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-900/10 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/[.15] dark:focus:border-white/30 dark:focus:ring-white/10" value={form.currencyTypeId} onChange={(e) => setForm((old) => ({ ...old, currencyTypeId: e.target.value, exchangeRate: e.target.value ? old.exchangeRate : "" }))}>
                   <option value="" className="bg-white text-neutral-900">ریال</option>{currencyTypes.filter((item) => String(itemLabel(item)).replace(/ي/g, "ی").replace(/ك/g, "ک").trim() !== "ریال").map((item) => <option key={item.id} value={item.id} className="bg-white text-neutral-900">{itemLabel(item)}</option>)}
                 </select>
               </div>
+            </Field>
+            <Field label="نرخ">
+              <MoneyInput value={form.exchangeRate} onChange={(value) => setField("exchangeRate", value)} disabled={isRialCurrency} className={isRialCurrency ? "cursor-not-allowed bg-neutral-100 text-neutral-400 dark:bg-white/5 dark:text-neutral-500" : ""} />
+            </Field>
+            <Field label="ریال">
+              <div className={`${inputClass} flex items-center font-medium tabular-nums`} dir="ltr">{toFa(money(rialAmount) || "0")} ریال</div>
             </Field>
           </div>
 
@@ -1352,7 +1362,7 @@ function TagPicker({ tags, selectedIds, onToggle, query, setQuery, onClose }) {
 
 function Field({ label, required, children, className = "" }) { return <label className={`block text-xs text-neutral-600 dark:text-neutral-300 ${className}`}>{label}{required && <span className="mr-1 text-red-500">*</span>}<div className="mt-1">{children}</div></label>; }
 function ReadField({ label, value, ltr }) { return <Field label={label}><div dir={ltr ? "ltr" : "rtl"} className={`${inputClass} flex items-center ${ltr ? "justify-end" : ""}`}>{value || "—"}</div></Field>; }
-function MoneyInput({ value, onChange, className = "" }) { return <input dir="ltr" inputMode="numeric" className={`${inputClass} ${className}`} value={toFa(value)} onChange={(e) => onChange(money(e.target.value))} placeholder="۰" />; }
+function MoneyInput({ value, onChange, className = "", disabled = false }) { return <input dir="ltr" inputMode="numeric" disabled={disabled} className={`${inputClass} ${className}`} value={toFa(value)} onChange={(e) => onChange(money(e.target.value))} placeholder="۰" />; }
 function paymentTagClass(active) {
   return active
     ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900 dark:ring-white"
