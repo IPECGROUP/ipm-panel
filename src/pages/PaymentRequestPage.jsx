@@ -1093,7 +1093,7 @@ export default function PaymentRequestPage() {
                 </div>
               </th>
             </tr></thead>
-            <tbody className="text-[13px] text-black [&>tr>td]:!py-0 [&>tr>td:last-child_button]:!h-8 [&>tr>td:last-child_button]:!w-8 dark:text-neutral-100">
+            <tbody className="text-[13px] text-black [&>tr>td]:!py-0 [&>tr>td:last-child_button]:!h-9 [&>tr>td:last-child_button]:!w-9 dark:text-neutral-100">
               {loading ? <tr><td colSpan={10} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td></tr> : pageItems.length === 0 ? <tr><td colSpan={10} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواستی ثبت نشده است.</td></tr> : pageItems.map((item) => <tr key={item.id} className={`group transition-colors ${item.requestType === "tenkhah" ? "bg-violet-50/90 hover:bg-violet-100/80 dark:bg-violet-500/[0.12] dark:hover:bg-violet-500/[0.18]" : "bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"}`}>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label="انتخاب" /></td>
                 <td className="border-b border-neutral-300 px-0 dark:border-neutral-700">{isUnreadForUser(item) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="درخواست خوانده‌نشده" aria-label="درخواست خوانده‌نشده" />}</td>
