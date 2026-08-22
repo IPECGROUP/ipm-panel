@@ -1,7 +1,7 @@
 // src/components/RightNav.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { ChevronLeft, ChevronRight, LogOut, X } from "lucide-react";
+import { BookOpenText, ChevronLeft, ChevronRight, FileText, GraduationCap, LayoutTemplate, Lightbulb, LogOut, Wrench, X } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { Btn, LinkBtn } from "./ui/Button";
 import { canOpenPage, hasLimitedPageAccess } from "../utils/pageAccess";
@@ -13,17 +13,6 @@ const NavIcon = ({ src }) => (
   <span
     className={iconMaskCls}
     aria-hidden="true"
-    style={{
-      WebkitMask: `url(${src}) center / contain no-repeat`,
-      mask: `url(${src}) center / contain no-repeat`,
-    }}
-  />
-);
-
-const KnowledgeNavIcon = ({ src }) => (
-  <span
-    aria-hidden="true"
-    className={iconMaskCls}
     style={{
       WebkitMask: `url(${src}) center / contain no-repeat`,
       mask: `url(${src}) center / contain no-repeat`,
@@ -51,6 +40,13 @@ const IcCashForecast = () => <NavIcon src="/images/icons/pishbini-naghdi.svg" />
 const IcSupply = () => <NavIcon src="/images/icons/modirat-taminposhtibami.svg" />;
 const IcSupplyRequest = () => <NavIcon src="/images/icons/darkhast-tamin.svg" />;
 const IcOperations = () => <NavIcon src="/images/icons/modriat-amaliat.svg" />;
+const knowledgeIconProps = { className: svgCls, strokeWidth: 1.9, "aria-hidden": true };
+const IcOrganizationalDocuments = () => <FileText {...knowledgeIconProps} />;
+const IcTechnicalStandards = () => <BookOpenText {...knowledgeIconProps} />;
+const IcTemplateLibrary = () => <LayoutTemplate {...knowledgeIconProps} />;
+const IcLessonsLearned = () => <Lightbulb {...knowledgeIconProps} />;
+const IcEquipmentLibrary = () => <Wrench {...knowledgeIconProps} />;
+const IcTrainingResources = () => <GraduationCap {...knowledgeIconProps} />;
 const IcClose = () => <X className="h-5 w-5" strokeWidth={2.4} />;
 
 function RightNav() {
@@ -319,12 +315,12 @@ function RightNav() {
           icon: <IcQuality />,
           active: knowledgeParentActive,
           items: [
-            { to: "/knowledge-management/organizational-documents", label: "مستندات سازمانی", hint: "مدیریت و دسترسی به مستندات سازمان", icon: <KnowledgeNavIcon src="/images/icons/1.png" /> },
-            { to: "/knowledge-management/technical-standards", label: "استانداردهای فنی", hint: "استانداردها و الزامات فنی", icon: <KnowledgeNavIcon src="/images/icons/2.png" /> },
-            { to: "/knowledge-management/template-library", label: "بانک الگوها", hint: "الگوهای آماده و قابل استفاده", icon: <KnowledgeNavIcon src="/images/icons/3.png" /> },
-            { to: "/knowledge-management/project-lessons-learned", label: "درس‌آموخته‌های پروژه‌ها", hint: "تجربه‌ها و درس‌آموخته‌های پروژه‌ها", icon: <KnowledgeNavIcon src="/images/icons/4.png" /> },
-            { to: "/knowledge-management/equipment-library", label: "کتابخانه ماشین‌آلات و تجهیزات", hint: "اطلاعات ماشین‌آلات و تجهیزات", icon: <KnowledgeNavIcon src="/images/icons/5.png" /> },
-            { to: "/knowledge-management/training-resources", label: "منابع آموزشی", hint: "محتوا و منابع آموزشی", icon: <KnowledgeNavIcon src="/images/icons/6.png" /> },
+            { to: "/knowledge-management/organizational-documents", label: "مستندات سازمانی", hint: "مدیریت و دسترسی به مستندات سازمان", icon: <IcOrganizationalDocuments /> },
+            { to: "/knowledge-management/technical-standards", label: "استانداردهای فنی", hint: "استانداردها و الزامات فنی", icon: <IcTechnicalStandards /> },
+            { to: "/knowledge-management/template-library", label: "بانک الگوها", hint: "الگوهای آماده و قابل استفاده", icon: <IcTemplateLibrary /> },
+            { to: "/knowledge-management/project-lessons-learned", label: "درس‌آموخته‌های پروژه‌ها", hint: "تجربه‌ها و درس‌آموخته‌های پروژه‌ها", icon: <IcLessonsLearned /> },
+            { to: "/knowledge-management/equipment-library", label: "کتابخانه ماشین‌آلات و تجهیزات", hint: "اطلاعات ماشین‌آلات و تجهیزات", icon: <IcEquipmentLibrary /> },
+            { to: "/knowledge-management/training-resources", label: "منابع آموزشی", hint: "محتوا و منابع آموزشی", icon: <IcTrainingResources /> },
           ],
         },
       ],
