@@ -16,7 +16,7 @@ const DOC_OPTIONS = [
   ["internal_list", "لیست پرداخت داخلی"], ["gov_salary", "فیش بدهی دولتی"], ["other", "سایر"],
 ];
 const MONTHS = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
-const STATUS_LABELS = { pending: "در حال پرداخت", approved: "پرداخت شد", rejected: "رد شد", returned: "برگشت خورد", tenkhah_pending: "در حال پرداخت", tenkhah_charged: "تنخواه" };
+const STATUS_LABELS = { pending: "در انتظار تأیید", approved: "پرداخت شد", rejected: "رد شد", returned: "برگشت خورد", tenkhah_pending: "در انتظار تأیید", tenkhah_charged: "تنخواه" };
 const STEP_LABELS = {
   requester: "درخواست‌کننده",
   project_control: "برنامه‌ریزی و کنترل پروژه",
@@ -1218,7 +1218,7 @@ function RequestFilterBar({ query, setQuery, quick, setQuick, ownership, setOwne
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" onClick={() => setOwnership(ownership === "mine" ? "" : "mine")} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(ownership === "mine")}`}>درخواست‌های من</button>
         <button type="button" onClick={() => setOwnership(ownership === "incoming" ? "" : "incoming")} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(ownership === "incoming")}`}>موارد ارسال‌شده به من</button>
-        {[['pending', 'در حال پرداخت'], ['approved', 'پرداخت شد'], ['returned', 'برگشت خورد'], ['rejected', 'رد شد'], ['tenkhah', 'تنخواه']].map(([key, label]) => <button key={key} type="button" onClick={() => setStatus(status === key ? "" : key)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition ${statusBadgeClass(key)} ${status === key ? "ring-2 ring-black/20 dark:ring-white/25" : "hover:brightness-95"}`}>{label}</button>)}
+        {[['pending', 'در انتظار تأیید'], ['approved', 'پرداخت شد'], ['returned', 'برگشت خورد'], ['rejected', 'رد شد'], ['tenkhah', 'تنخواه']].map(([key, label]) => <button key={key} type="button" onClick={() => setStatus(status === key ? "" : key)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition ${statusBadgeClass(key)} ${status === key ? "ring-2 ring-black/20 dark:ring-white/25" : "hover:brightness-95"}`}>{label}</button>)}
         {QUICK_FILTERS.map(([key, label]) => (
           <button key={key} type="button" onClick={() => setQuick(quick === key ? "" : key)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(quick === key)}`}>{label}</button>
         ))}
@@ -2335,7 +2335,7 @@ function paymentWorkflowStyle(kind) {
   if (kind === "rejected") return { marker: "border-rose-500 bg-white text-rose-500 dark:bg-neutral-900", line: "bg-neutral-200 dark:bg-white/10", card: "", title: "text-black dark:text-white" };
   if (kind === "returned") return { marker: "border-amber-500 bg-white text-amber-500 dark:bg-neutral-900", line: "bg-neutral-200 dark:bg-white/10", card: "", title: "text-black dark:text-white" };
   if (kind === "completed") return { marker: "border-emerald-500 bg-emerald-500 text-white", line: "bg-neutral-200 dark:bg-white/10", card: "", title: "text-black dark:text-white" };
-  return { marker: "border-sky-400 bg-sky-500 text-white", line: "bg-neutral-200 dark:bg-white/10", card: "", title: "text-black dark:text-white" };
+  return { marker: "border-neutral-300 bg-white text-neutral-400 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-500", line: "bg-neutral-200 dark:bg-white/10", card: "", title: "text-black dark:text-white" };
 }
 
 function PaymentWorkflowTimeline({ history, item }) {
