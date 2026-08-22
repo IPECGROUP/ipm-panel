@@ -28,7 +28,7 @@ const KnowledgeNavIcon = ({ src }) => (
     aria-hidden="true"
     alt=""
     className="block h-5 w-5 shrink-0 scale-[1.42] object-contain pointer-events-none select-none"
-    style={{ filter: "brightness(0) invert(1) drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px rgba(255,255,255,0.95))" }}
+    style={{ filter: "url(#knowledge-icon-white)" }}
   />
 );
 
@@ -545,6 +545,16 @@ function RightNav() {
 
   return (
     <>
+      <svg aria-hidden="true" className="absolute h-0 w-0 overflow-hidden">
+        <defs>
+          <filter id="knowledge-icon-white" colorInterpolationFilters="sRGB">
+            <feColorMatrix
+              type="matrix"
+              values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 2.4 -0.16"
+            />
+          </filter>
+        </defs>
+      </svg>
       <aside
         ref={navRef}
         dir="rtl"
