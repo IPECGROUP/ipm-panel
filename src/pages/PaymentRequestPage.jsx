@@ -959,7 +959,7 @@ export default function PaymentRequestPage() {
             <Field label="نرخ">
               <MoneyInput value={form.exchangeRate} onChange={(value) => setField("exchangeRate", value)} disabled={isRialCurrency} className={isRialCurrency ? "cursor-not-allowed bg-neutral-100 text-neutral-400 dark:bg-white/5 dark:text-neutral-500" : ""} />
             </Field>
-            <div className="mt-5 flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">ریال: <span className="mr-1 font-medium tabular-nums" dir="ltr">{toFa(money(rialAmount) || "0")} <span dir="rtl">ریال</span></span></div>
+            <div className="mt-5 flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">ریال: <span className="mr-1 font-medium tabular-nums" dir="ltr">{toFa(money(rialAmount) || "0")}</span></div>
           </div>
 
           <Field label="شرح درخواست"><textarea className={`${inputClass} min-h-24 py-2 leading-7`} value={form.description} onChange={(e) => setField("description", e.target.value)} /></Field>
