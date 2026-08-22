@@ -31,6 +31,7 @@ const empty = () => ({
   currency: "",
   unregisteredBalance: "",
   unsettledBalance: "",
+  purpose: "",
   projectManagerId: "",
 });
 function Field({ label, required, children, className = "" }) {
@@ -38,7 +39,7 @@ function Field({ label, required, children, className = "" }) {
   const requestErrors = React.useContext(RequestErrorsContext);
   const orderClass = label === "مبلغ" ? "md:order-3" : label === "کد بودجه" ? "md:order-4" : label === "فایل" ? "md:order-5" : "";
   const displayLabel = label === "مبلغ" ? "مبلغ تسویه" : label;
-  const invalid = (label === "تاریخ" && settlementErrors.date) || (label === "کد بودجه" && settlementErrors.budgetCode) || (label === "مبلغ" && settlementErrors.amount) || (label === "ارسال به" && settlementErrors.recipient) || (label === "شماره درخواست" && requestErrors.requestNumber) || (label === "تاریخ درخواست" && requestErrors.requestDate) || (label === "پروژه" && requestErrors.projectId) || (label === "ذینفع" && requestErrors.beneficiaryUserId) || (label === "مبلغ تنخواه درخواستی" && requestErrors.amount) || (label === "ارسال درخواست به" && requestErrors.projectManagerId);
+  const invalid = (label === "تاریخ" && settlementErrors.date) || (label === "کد بودجه" && settlementErrors.budgetCode) || (label === "مبلغ" && settlementErrors.amount) || (label === "ارسال به" && settlementErrors.recipient) || (label === "شماره درخواست" && requestErrors.requestNumber) || (label === "تاریخ درخواست" && requestErrors.requestDate) || (label === "پروژه" && requestErrors.projectId) || (label === "ذینفع" && requestErrors.beneficiaryUserId) || (label === "مبلغ تنخواه درخواستی" && requestErrors.amount) || (label === "بابت" && requestErrors.purpose) || (label === "ارسال درخواست به" && requestErrors.projectManagerId);
   return (
     <label className={`block ${orderClass} ${invalid ? "[&_input]:!border-red-500 [&_input]:!ring-1 [&_input]:!ring-red-500 [&_select]:!border-red-500 [&_select]:!ring-1 [&_select]:!ring-red-500 [&_button]:!border-red-500 [&_button]:!ring-1 [&_button]:!ring-red-500" : ""} ${className}`}>
       <span className="mb-1 block text-xs font-normal text-neutral-600 dark:text-neutral-300">
@@ -72,7 +73,7 @@ function TenkhahWorkflow({ item }) {
   const active = status === "charged" ? steps.length - 1 : Math.max(1, steps.findIndex(([key]) => key === stage));
   const history = Array.isArray(item.workflowHistory) ? item.workflowHistory : [];
   const eventFor = (key) => key === "created" ? history.find((event) => event.type === "created") : history.findLast?.((event) => event.type === "approve" && event.stage === key);
-  return <aside className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-white/[.03]"><h3 className="mb-4 text-sm font-bold">فرآیند تنخواه</h3><div className="space-y-1">{steps.map(([key, label], index) => { const event = eventFor(key); const done = index < active || status === "charged"; const current = index === active && !["charged", "rejected", "returned"].includes(status); const completed = key === "created" || done || Boolean(event); const actor = item.requesterName || item.requesterUsername || `کاربر #${fa(item.createdById || "")}`; const createdTime = workflowDateTime(event?.at || item.createdAt) || `تاریخ درخواست: ${fa(item.requestDate || "—")}`; return <div key={key} className="relative flex min-h-16 items-start gap-3"><span className={`z-10 mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-full border text-xs font-bold ${current ? "border-sky-500 bg-sky-500 text-white shadow-[0_0_0_4px_rgba(14,165,233,.13)]" : completed ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-black" : "border-neutral-300 bg-white text-neutral-400 dark:border-neutral-600 dark:bg-neutral-900"}`}>{completed ? "✓" : index + 1}</span>{index < steps.length - 1 && <span className={`absolute right-[13px] top-9 h-9 w-px ${completed ? "bg-neutral-900 dark:bg-white" : "bg-neutral-200 dark:bg-white/10"}`} />}<div className="min-w-0 pb-2"><div className={`text-sm font-medium ${current ? "text-sky-700 dark:text-sky-300" : completed ? "text-neutral-900 dark:text-white" : "text-neutral-400"}`}>{label}</div>{key === "created" && <div className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">{actor}، {createdTime}</div>}{event?.note && <div className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">توضیح: {event.note}</div>}{current && <div className="mt-1 text-[11px] text-sky-600 dark:text-sky-300">مرحله جاری</div>}</div></div>; })}</div></aside>;
+  return <aside className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-white/[.03]"><h3 className="mb-4 text-sm font-bold">فرآیند تنخواه</h3><div className="space-y-1">{steps.map(([key, label], index) => { const event = eventFor(key); const done = index < active || status === "charged"; const current = index === active && !["charged", "rejected", "returned"].includes(status); const completed = key === "created" || done || Boolean(event); const actor = item.requesterName || item.requesterUsername || `کاربر #${fa(item.createdById || "")}`; const createdTime = workflowDateTime(event?.at || item.createdAt) || `تاریخ درخواست: ${fa(item.requestDate || "—")}`; return <div key={key} className="relative flex min-h-16 items-start gap-3"><span className={`z-10 mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 text-xs font-bold ${completed ? "border-emerald-500 bg-white text-emerald-500 dark:bg-neutral-900" : "border-sky-400 bg-white text-sky-500 dark:bg-neutral-900"}`}>{completed ? "✓" : index + 1}</span>{index < steps.length - 1 && <span className="absolute right-[13px] top-9 h-9 w-px bg-neutral-200 dark:bg-white/10" />}<div className="min-w-0 pb-2"><div className="text-sm font-medium text-black dark:text-white">{label}</div>{key === "created" && <div className="mt-1 text-[11px] text-black dark:text-white">{actor}، {createdTime}</div>}{event?.note && <div className="mt-1 text-[11px] text-black dark:text-white">توضیح: {event.note}</div>}{current && <div className="mt-1 text-[11px] text-black dark:text-white">مرحله جاری</div>}</div></div>; })}</div></aside>;
 }
 function TenkhahActionCards({ choice, setChoice, note, setNote, onSubmit, disabled }) {
   const options = [["approve", "تایید و ارسال", "bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-200"], ["return", "برگشت درخواست", "bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-200"], ["reject", "رد درخواست", "bg-red-50 text-red-800 dark:bg-red-500/10 dark:text-red-200"]];
@@ -253,7 +254,7 @@ export default function TenkhahPage({ embedded = false, active = true }) {
     await loadBeneficiaryBalances(form.projectId, beneficiaryUserId);
   };
   const create = async () => {
-    const requiredErrors = { requestNumber: false, requestDate: !form.requestDate, projectId: !form.projectId, beneficiaryUserId: !form.beneficiaryUserId, amount: !form.amount, projectManagerId: !userIsFinance && !form.projectManagerId };
+    const requiredErrors = { requestNumber: false, requestDate: !form.requestDate, projectId: !form.projectId, beneficiaryUserId: !form.beneficiaryUserId, amount: !form.amount, purpose: !form.purpose.trim(), projectManagerId: !userIsFinance && !form.projectManagerId };
     if (Object.values(requiredErrors).some(Boolean)) { setFormErrors(requiredErrors); return; }
     setBusy(true);
     setError("");
@@ -397,6 +398,9 @@ export default function TenkhahPage({ embedded = false, active = true }) {
                   </select>
                 </div>
               </Field>
+              <Field label="بابت" required>
+                <input value={form.purpose} onChange={(e) => setForm((x) => ({ ...x, purpose: e.target.value }))} className={input} placeholder="بابت تنخواه را وارد کنید" />
+              </Field>
             </div>
             <div className="mt-5 flex flex-col gap-3 border-t border-black/10 pt-4 sm:flex-row sm:items-end sm:justify-end dark:border-white/10">
               <Field label={userIsFinance ? "ارسال درخواست به مدیریت ارشد" : "ارسال درخواست به"} required className="w-full sm:w-[20rem]">
@@ -529,6 +533,7 @@ export default function TenkhahPage({ embedded = false, active = true }) {
                 <DetailCell label={selected.stage === "finance" ? "تاریخ شارژ تنخواه" : "تاریخ تایید"}>{fa(selected.stage === "finance" ? selected.chargedDate || today() : selected.managerApprovedDate || today())}</DetailCell>
                 <DetailCell label="مانده تنخواه تسویه‌نشده">{fa(format3(selected.unsettledBalance))}</DetailCell>
                 <DetailCell label="مبلغ تنخواه درخواستی">{fa(format3(selected.requestedAmount))} {selected.currency}</DetailCell>
+                <DetailCell label="بابت">{selected.purpose}</DetailCell>
                 <DetailCell label="مانده تنخواه ثبت‌نشده">{fa(format3(selected.unregisteredBalance))}</DetailCell>
                 {selected.stage !== "project_manager" && (
                   <DetailCell label="نقدینگی پروژه">{fa(format3(selected.projectLiquidity || 0))}</DetailCell>

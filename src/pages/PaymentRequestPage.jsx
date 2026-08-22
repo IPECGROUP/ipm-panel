@@ -181,7 +181,7 @@ function tenkhahTableRow(item) {
     serial: item.requestNumber || `TNK-${item.id}`,
     dateFa: item.requestDate || "",
     amount: item.chargedAmount || item.requestedAmount || 0,
-    title: "تنخواه",
+    title: item.purpose || "تنخواه",
     createdByName: item.requesterName || item.createdByName || "—",
     currencyName: item.currency || "ریال",
     displayStatus: status,
@@ -2331,11 +2331,11 @@ function paymentHistoryActorName(entry, item) {
 }
 
 function paymentWorkflowStyle(kind) {
-  if (kind === "active") return { marker: "border-sky-500 bg-sky-500 text-white shadow-[0_0_0_5px_rgba(14,165,233,0.13)]", line: "bg-sky-200 dark:bg-sky-500/30", card: "bg-sky-50/90 dark:bg-sky-500/10", title: "text-sky-700 dark:text-sky-300" };
-  if (kind === "rejected") return { marker: "border-rose-500 bg-rose-500 text-white", line: "bg-rose-200 dark:bg-rose-500/25", card: "bg-rose-50/80 dark:bg-rose-500/10", title: "text-rose-700 dark:text-rose-300" };
-  if (kind === "returned") return { marker: "border-amber-500 bg-amber-500 text-white", line: "bg-amber-200 dark:bg-amber-500/25", card: "bg-amber-50/80 dark:bg-amber-500/10", title: "text-amber-700 dark:text-amber-300" };
-  if (kind === "completed") return { marker: "border-neutral-300 bg-white text-neutral-500 shadow-[0_0_0_4px_rgba(115,115,115,0.08)] dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-300", line: "bg-neutral-200 dark:bg-white/10", card: "", title: "text-neutral-800 dark:text-neutral-100" };
-  return { marker: "border-neutral-300 bg-white text-neutral-400 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-500", line: "bg-neutral-200 dark:bg-white/10", card: "", title: "text-neutral-400 dark:text-neutral-500" };
+  if (kind === "active") return { marker: "border-sky-500 bg-white text-sky-500 dark:bg-neutral-900", line: "bg-neutral-200 dark:bg-white/10", card: "", title: "text-black dark:text-white" };
+  if (kind === "rejected") return { marker: "border-rose-500 bg-white text-rose-500 dark:bg-neutral-900", line: "bg-neutral-200 dark:bg-white/10", card: "", title: "text-black dark:text-white" };
+  if (kind === "returned") return { marker: "border-amber-500 bg-white text-amber-500 dark:bg-neutral-900", line: "bg-neutral-200 dark:bg-white/10", card: "", title: "text-black dark:text-white" };
+  if (kind === "completed") return { marker: "border-emerald-500 bg-white text-emerald-500 dark:bg-neutral-900", line: "bg-neutral-200 dark:bg-white/10", card: "", title: "text-black dark:text-white" };
+  return { marker: "border-sky-400 bg-white text-sky-500 dark:bg-neutral-900", line: "bg-neutral-200 dark:bg-white/10", card: "", title: "text-black dark:text-white" };
 }
 
 function PaymentWorkflowTimeline({ history, item }) {
@@ -2344,17 +2344,17 @@ function PaymentWorkflowTimeline({ history, item }) {
     {PAYMENT_WORKFLOW_STEPS.map((step, index) => {
       const state = paymentWorkflowStageState(step, history, item);
       const kind = state.kind === "completed" && completedAll && index === PAYMENT_WORKFLOW_STEPS.length - 1 ? "final_completed" : state.kind;
-      const style = kind === "final_completed" ? { ...paymentWorkflowStyle("completed"), marker: "border-emerald-500 bg-emerald-500 text-white shadow-[0_0_0_5px_rgba(16,185,129,0.13)]", line: "bg-emerald-200 dark:bg-emerald-500/25", title: "text-emerald-700 dark:text-emerald-300" } : paymentWorkflowStyle(kind);
+      const style = kind === "final_completed" ? paymentWorkflowStyle("completed") : paymentWorkflowStyle(kind);
       return <li key={step.index} className="relative grid grid-cols-[minmax(0,1fr)_32px] gap-2 pb-2 last:pb-0">
         <div className={`min-w-0 ${style.card ? `rounded-2xl px-3 py-2.5 ${style.card}` : "px-3 py-1"}`}>
           <div className={`text-sm font-bold leading-6 ${style.title}`}>{step.label}</div>
-          {state.entry?.at ? <div className="mt-1 text-[11px] leading-5 text-neutral-500 dark:text-neutral-400">{paymentHistoryActorName(state.entry, item)} · {formatDateTime(state.entry.at)}</div> : null}
-          {state.entry?.note ? <div className="mt-2 border-t border-black/5 pt-2 text-[11px] leading-5 text-neutral-500 dark:border-white/10 dark:text-neutral-400">توضیح: {state.entry.note}</div> : null}
+          {state.entry?.at ? <div className="mt-1 text-[11px] leading-5 text-black dark:text-white">{paymentHistoryActorName(state.entry, item)} · {formatDateTime(state.entry.at)}</div> : null}
+          {state.entry?.note ? <div className="mt-2 border-t border-black/5 pt-2 text-[11px] leading-5 text-black dark:border-white/10 dark:text-white">توضیح: {state.entry.note}</div> : null}
         </div>
         <div className="relative flex justify-center" aria-hidden="true">
           {index < PAYMENT_WORKFLOW_STEPS.length - 1 ? <span className={`absolute bottom-[-12px] top-[22px] z-0 w-px ${style.line}`} /> : null}
           <span className={`relative z-10 mt-0.5 grid h-7 w-7 place-items-center rounded-full border-2 ${style.marker}`}>
-            {kind === "completed" || kind === "final_completed" ? <span className="text-base font-bold leading-none">✓</span> : kind === "rejected" ? <span className="text-base font-bold leading-none">×</span> : kind === "returned" ? <span className="text-sm font-bold leading-none">↶</span> : kind === "active" ? <span className="h-2.5 w-2.5 rounded-full bg-white" /> : <span className="text-[11px] font-bold leading-none">{toFa(index + 1)}</span>}
+            {kind === "completed" || kind === "final_completed" ? <span className="text-base font-bold leading-none">✓</span> : kind === "rejected" ? <span className="text-base font-bold leading-none">×</span> : kind === "returned" ? <span className="text-sm font-bold leading-none">↶</span> : kind === "active" ? <span className="h-2.5 w-2.5 rounded-full bg-sky-500" /> : <span className="text-[11px] font-bold leading-none">{toFa(index + 1)}</span>}
           </span>
         </div>
       </li>;
