@@ -387,12 +387,12 @@ export default function TenkhahPage({ embedded = false, active = true }) {
               <div className="flex min-h-11 items-end pb-2 text-sm font-medium text-red-600 dark:text-red-400">مانده تنخواه تسویه‌نشده: <span className="mr-1 tabular-nums">{fa(format3(projectBalances.unsettledBalance))} ریال</span></div>
               <div className="hidden xl:block" aria-hidden="true" />
               <Field label="مبلغ تنخواه درخواستی" required>
-                <div className="flex overflow-hidden rounded-xl border border-black/10 dark:border-white/15">
+                <div className="flex overflow-hidden rounded-xl border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">
                   <input
                     inputMode="numeric"
                     value={fa(form.amount)}
                     onChange={(e) => money("amount", e.target.value)}
-                    className="h-11 min-w-0 flex-1 bg-transparent px-3 outline-none dark:text-white"
+                    className="h-11 min-w-0 flex-1 bg-white px-3 outline-none dark:bg-white/5 dark:text-white"
                   />
                   <select
                     value={displayedCurrency}
@@ -406,7 +406,7 @@ export default function TenkhahPage({ embedded = false, active = true }) {
                   </select>
                 </div>
               </Field>
-              <Field label="بابت" required className="md:col-span-2 xl:col-span-4">
+              <Field label="بابت" required className="md:col-span-2 xl:col-span-3">
                 <input value={form.purpose} onChange={(e) => setForm((x) => ({ ...x, purpose: e.target.value }))} className={input} placeholder="بابت تنخواه را وارد کنید" />
               </Field>
             </div>
