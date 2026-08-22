@@ -2161,19 +2161,19 @@ function workflowStageState(step, history, item) {
 
 function workflowStageStyle(kind) {
   if (kind === "active") return {
-    marker: "border-sky-500 bg-white text-sky-500 dark:bg-neutral-900",
+    marker: "border-sky-500 bg-sky-500 text-white",
     line: "bg-neutral-200 dark:bg-white/10",
     card: "",
     title: "text-black dark:text-white",
   };
   if (kind === "completed") return {
-    marker: "border-emerald-500 bg-white text-emerald-500 dark:bg-neutral-900",
+    marker: "border-emerald-500 bg-emerald-500 text-white",
     line: "bg-neutral-200 dark:bg-white/10",
     card: "",
     title: "text-black dark:text-white",
   };
   if (kind === "final_completed") return {
-    marker: "border-emerald-500 bg-white text-emerald-500 dark:bg-neutral-900",
+    marker: "border-emerald-500 bg-emerald-500 text-white",
     line: "bg-neutral-200 dark:bg-white/10",
     card: "",
     title: "text-black dark:text-white",
@@ -2191,7 +2191,7 @@ function workflowStageStyle(kind) {
     title: "text-black dark:text-white",
   };
   return {
-    marker: "border-sky-400 bg-white text-sky-500 dark:bg-neutral-900",
+    marker: "border-sky-400 bg-sky-500 text-white",
     line: "bg-neutral-200 dark:bg-white/10",
     card: "",
     title: "text-black dark:text-white",
@@ -2224,7 +2224,7 @@ function WorkflowMarker({ kind, index }) {
   if (kind === "completed" || kind === "final_completed") return <span className="text-base font-bold leading-none">✓</span>;
   if (kind === "rejected") return <span className="text-base font-bold leading-none">×</span>;
   if (kind === "returned") return <span className="text-sm font-bold leading-none">↶</span>;
-  if (kind === "active") return <span className="h-2.5 w-2.5 rounded-full bg-sky-500" />;
+  if (kind === "active") return <span className="h-2.5 w-2.5 rounded-full bg-white" />;
   return <span className="text-[11px] font-bold leading-none">{toFaDigits(index + 1)}</span>;
 }
 
