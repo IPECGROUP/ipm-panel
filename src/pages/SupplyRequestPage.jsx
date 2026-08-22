@@ -2241,6 +2241,8 @@ function SupplyWorkflowTimeline({ history, item }) {
           <li key={step.key} data-state={markerKind} className="supply-workflow-stage relative grid grid-cols-[minmax(0,1fr)_32px] gap-2 pb-2 last:pb-0" style={{ "--workflow-delay": `${Math.min(index * 110, 440)}ms` }}>
             <div className={`min-w-0 ${style.card ? `rounded-2xl px-3 py-2.5 ${style.card}` : "px-3 py-1"}`}>
               <div className={`text-sm font-bold leading-6 ${style.title}`}>{step.label}</div>
+              {state.entry ? <div className="mt-1 text-[11px] leading-5 text-black dark:text-white" dir="rtl">{workflowStageMeta(step, item, state.entry, state)}</div> : null}
+              {state.entry?.note ? <div className="mt-2 border-t border-black/5 pt-2 text-[11px] leading-5 text-black dark:border-white/10 dark:text-white">توضیح: {state.entry.note}</div> : null}
             </div>
             <div className="relative flex justify-center" aria-hidden="true">
               {!isLast ? <span className={`absolute bottom-[-12px] top-[22px] z-0 w-px ${style.line}`} /> : null}
