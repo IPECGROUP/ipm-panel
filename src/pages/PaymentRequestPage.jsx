@@ -954,7 +954,7 @@ export default function PaymentRequestPage() {
 
           <Field label="شرح درخواست"><textarea className={`${inputClass} min-h-24 py-2 leading-7`} value={form.description} onChange={(e) => setField("description", e.target.value)} /></Field>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(120px,0.6fr)_minmax(110px,0.55fr)_minmax(112px,0.55fr)_auto_auto_minmax(135px,0.65fr)_minmax(165px,0.8fr)]">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(135px,0.65fr)_minmax(110px,0.55fr)_minmax(112px,0.55fr)_auto_auto_minmax(135px,0.65fr)_minmax(165px,0.8fr)]">
             <Field label="نوع سند">
               {form.docId === "other" ? (
                 <input className={inputClass} value={form.docOther} onChange={(e) => setField("docOther", e.target.value)} placeholder="نوع سند را وارد کنید" autoFocus />
@@ -977,20 +977,22 @@ export default function PaymentRequestPage() {
               <div className="isolate flex items-center"><button type="button" onClick={() => setLetterPickerOpen(true)} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white text-lg transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب نامه" aria-label="انتخاب نامه">•••</button></div>
               {!!form.relatedLetterIds.length && <div className="mt-1 text-[11px] font-medium text-neutral-600 dark:text-neutral-300">{toFa(form.relatedLetterIds.length)} نامه مرتبط انتخاب شده</div>}
             </Field>
-            <Field label="درخواست تامین">
-              <div className="flex h-11 items-center gap-3 whitespace-nowrap px-1">
-                {[["no", "ندارد"], ["yes", "دارد"]].map(([value, label]) => {
-                  const checked = form.hasSupplyRequest === value;
-                  return (
-                    <button key={value} type="button" onClick={() => setForm((old) => ({ ...old, hasSupplyRequest: value, supplyRequestId: value === "yes" ? old.supplyRequestId : "" }))} className="inline-flex items-center gap-1.5 text-sm text-neutral-900 transition hover:opacity-75 dark:text-white">
-                      <span>{label}</span>
-                      <span className={`grid h-5 w-5 place-items-center rounded-full border ${checked ? "border-neutral-950 dark:border-white" : "border-neutral-400 dark:border-neutral-500"}`}>{checked && <span className="h-3 w-3 rounded-full bg-neutral-950 dark:bg-white" />}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </Field>
-            {form.hasSupplyRequest === "yes" && <Field label="انتخاب درخواست تامین" required><button type="button" onClick={() => { setSupplyPickerQuery(""); setSupplyPickerPage(1); setSupplyPickerOpen(true); }} className={`${inputClass} flex items-center justify-between text-right`}><span className={form.supplyRequestId ? "truncate" : "text-neutral-400"}>{supplyRequests.find((item) => String(item.id) === String(form.supplyRequestId))?.serial || (form.supplyRequestId ? `#${form.supplyRequestId}` : "انتخاب کنید")}</span><span className="text-lg leading-none">•••</span></button></Field>}
+            <div className="flex min-w-0 items-start gap-2 md:col-span-2">
+              <Field label="درخواست تامین" className="w-[135px] shrink-0">
+                <div className="flex h-11 items-center gap-3 whitespace-nowrap px-1">
+                  {[["no", "ندارد"], ["yes", "دارد"]].map(([value, label]) => {
+                    const checked = form.hasSupplyRequest === value;
+                    return (
+                      <button key={value} type="button" onClick={() => setForm((old) => ({ ...old, hasSupplyRequest: value, supplyRequestId: value === "yes" ? old.supplyRequestId : "" }))} className="inline-flex items-center gap-1.5 text-sm text-neutral-900 transition hover:opacity-75 dark:text-white">
+                        <span>{label}</span>
+                        <span className={`grid h-5 w-5 place-items-center rounded-full border ${checked ? "border-neutral-950 dark:border-white" : "border-neutral-400 dark:border-neutral-500"}`}>{checked && <span className="h-3 w-3 rounded-full bg-neutral-950 dark:bg-white" />}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </Field>
+              {form.hasSupplyRequest === "yes" && <Field label="انتخاب درخواست تامین" required className="w-[165px] shrink-0"><button type="button" onClick={() => { setSupplyPickerQuery(""); setSupplyPickerPage(1); setSupplyPickerOpen(true); }} className={`${inputClass} flex items-center justify-between text-right`}><span className={form.supplyRequestId ? "truncate" : "text-neutral-400"}>{supplyRequests.find((item) => String(item.id) === String(form.supplyRequestId))?.serial || (form.supplyRequestId ? `#${form.supplyRequestId}` : "انتخاب کنید")}</span><span className="text-lg leading-none">•••</span></button></Field>}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
