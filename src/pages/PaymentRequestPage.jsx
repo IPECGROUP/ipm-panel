@@ -199,6 +199,12 @@ function escapePdfHtml(value) {
     .replace(/'/g, "&#039;");
 }
 
+// Keep a PDF suffix adjacent to the filename in RTL print layouts. The stored
+// filename and its URL remain unchanged; this is only the printed label.
+function pdfAttachmentLabel(value) {
+  return String(value ?? "").replace(/\.pdf$/i, "pdf");
+}
+
 function registrationMessage(info) {
   if (!info) return "";
   const date = info.dateJalali || info.date || "";
@@ -1765,7 +1771,7 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
       ? (supplyRequests.find((row) => String(row.id) === String(item.supplyRequestId))?.serial || `#${item.supplyRequestId || "—"}`)
       : "ندارد";
     const attachmentNames = attachments.map((file, index) =>
-      file?.name || file?.originalName || file?.filename || `فایل ${toFa(index + 1)}`
+      pdfAttachmentLabel(file?.name || file?.originalName || file?.filename || `فایل ${toFa(index + 1)}`)
     );
     const now = new Date();
     const reportDate = normalizeDigits(new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
@@ -1874,6 +1880,7 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
     .attachment-list li { display: grid; grid-template-columns: 9mm 1fr; gap: 6px; padding: 4px 8px; border-bottom: 1px solid #e4e8eb; }
     .attachment-list li:last-child { border-bottom: 0; }
     .attachment-list .number { color: #1b6c91; font-weight: 700; }
+    .attachment-file-name { direction: ltr; unicode-bidi: isolate; }
     .attachment-preview-page { break-before: page; page-break-before: always; display: flex; flex-direction: column; }
     .attachment-preview-header { display: grid; grid-template-columns: 28mm 1fr; align-items: center; gap: 10px; min-height: 15mm; padding: 8px 11px; border: 1px solid #d6dee4; border-radius: 11px; background: #f4f7f9; }
     .attachment-preview-header span { color: #1b6c91; font-weight: 700; }
@@ -1958,7 +1965,7 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
     <section>
       <h2 class="section-title">پیوست‌های درخواست پرداخت</h2>
       <div class="attachment-state">پیوست: ${attachments.length ? "دارد" : "ندارد"}</div>
-      ${attachments.length ? `<ul class="attachment-list">${attachmentNames.map((name, index) => `<li><span class="number">${value(index + 1)}</span><strong>${value(name)}</strong></li>`).join("")}</ul>` : ""}
+      ${attachments.length ? `<ul class="attachment-list">${attachmentNames.map((name, index) => `<li><span class="number">${value(index + 1)}</span><strong class="attachment-file-name">${value(name)}</strong></li>`).join("")}</ul>` : ""}
     </section>
     <footer class="footer"><span>سامانه فرآیندهای یکپارچه شرکت ایده پویان انرژی</span><span>${escapePdfHtml(reportDateTime)}</span></footer>
   </article>
