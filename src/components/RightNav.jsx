@@ -20,16 +20,14 @@ const NavIcon = ({ src }) => (
   />
 );
 
-// Knowledge icons are the existing PNG assets. They have more transparent
-// padding than the SVG navigation icons, so scale their masks consistently.
+// Render the original PNG assets directly. CSS masks lose their anti-aliased
+// details in some browsers; filtering keeps the artwork crisp and monochrome.
 const KnowledgeNavIcon = ({ src }) => (
-  <span
+  <img
+    src={src}
     aria-hidden="true"
-    className={iconMaskCls}
-    style={{
-      WebkitMask: `url(${src}) center / 145% no-repeat`,
-      mask: `url(${src}) center / 145% no-repeat`,
-    }}
+    alt=""
+    className="block h-5 w-5 shrink-0 scale-[1.42] object-contain brightness-0 invert pointer-events-none select-none"
   />
 );
 
