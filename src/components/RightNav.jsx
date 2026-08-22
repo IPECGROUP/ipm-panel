@@ -27,7 +27,8 @@ const KnowledgeNavIcon = ({ src }) => (
     src={src}
     aria-hidden="true"
     alt=""
-    className="block h-5 w-5 shrink-0 scale-[1.42] object-contain brightness-0 invert pointer-events-none select-none"
+    className="block h-5 w-5 shrink-0 scale-[1.42] object-contain pointer-events-none select-none"
+    style={{ filter: "brightness(0) invert(1) drop-shadow(0 0 0.7px rgba(255,255,255,0.9))" }}
   />
 );
 
