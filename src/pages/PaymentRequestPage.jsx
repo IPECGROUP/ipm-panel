@@ -152,6 +152,10 @@ function usersForWorkflowUnit(unitRoleItems, assignments, roleKey) {
     .map((candidate) => ({ id: candidate.id, name: candidate.name, username: candidate.username, email: candidate.email }));
 }
 function itemLabel(item) { return item?.title || item?.name || item?.label || item?.code || `#${item?.id}`; }
+function currencyOptionKey(item) {
+  const value = String(itemLabel(item)).replace(/ي/g, "ی").replace(/ك/g, "ک").replace(/\s+/g, " ").trim().toLowerCase();
+  return /ریال|rial|(^|\s)irr(\s|$)/i.test(value) ? "rial" : value;
+}
 function projectLabel(project) {
   const code = normalizeProjectCode(project?.code);
   return `${code}${project?.name || project?.title ? ` - ${project.name || project.title}` : ""}`;
@@ -952,7 +956,7 @@ export default function PaymentRequestPage() {
               <div className="relative min-w-0">
                 <MoneyInput className="!pl-[72px]" value={form.amount} onChange={(value) => setField("amount", value)} />
                 <select aria-label="ارز مبلغ درخواست" title="انتخاب ارز" className="absolute left-1 top-1 h-9 !w-[64px] cursor-pointer appearance-auto rounded-lg border border-neutral-200 bg-neutral-100 px-1 text-center text-xs font-semibold text-neutral-700 shadow-sm outline-none transition hover:bg-neutral-200 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-900/10 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/[.15] dark:focus:border-white/30 dark:focus:ring-white/10" value={form.currencyTypeId} onChange={(e) => setForm((old) => ({ ...old, currencyTypeId: e.target.value, exchangeRate: e.target.value ? old.exchangeRate : "" }))}>
-                  <option value="" className="bg-white text-neutral-900">ریال</option>{currencyTypes.filter((item) => String(itemLabel(item)).replace(/ي/g, "ی").replace(/ك/g, "ک").trim() !== "ریال").map((item) => <option key={item.id} value={item.id} className="bg-white text-neutral-900">{itemLabel(item)}</option>)}
+                  <option value="" className="bg-white text-neutral-900">ریال</option>{currencyTypes.filter((item) => currencyOptionKey(item) !== "rial").map((item) => <option key={item.id} value={item.id} className="bg-white text-neutral-900">{itemLabel(item)}</option>)}
                 </select>
               </div>
             </Field>

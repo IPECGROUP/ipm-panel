@@ -14,7 +14,10 @@ const sumAmounts = (...values) => values.reduce((total, value) => total + BigInt
 const today = () => todayJalaliYmd().replaceAll("-", "/");
 const name = (u) => u?.name || u?.username || "—";
 const currencyTitle = (currency) => String(currency?.title || currency?.name || currency?.label || "").trim();
-const normalizedCurrencyTitle = (value) => currencyTitle({ title: value }).replace(/ي/g, "ی").replace(/ك/g, "ک").replace(/\s+/g, " ").trim().toLowerCase();
+const normalizedCurrencyTitle = (value) => {
+  const normalized = currencyTitle({ title: value }).replace(/ي/g, "ی").replace(/ك/g, "ک").replace(/\s+/g, " ").trim().toLowerCase();
+  return /ریال|rial|(^|\s)irr(\s|$)/i.test(normalized) ? "rial" : normalized;
+};
 const RIAL_CURRENCY = "ریال";
 const isRialCurrency = (currency) => {
   const raw = `${currencyTitle(currency)} ${Object.values(currency || {}).join(" ")}`;
