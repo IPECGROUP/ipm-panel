@@ -954,7 +954,7 @@ export default function PaymentRequestPage() {
 
           <Field label="شرح درخواست"><textarea className={`${inputClass} min-h-24 py-2 leading-7`} value={form.description} onChange={(e) => setField("description", e.target.value)} /></Field>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(135px,0.65fr)_minmax(110px,0.55fr)_minmax(112px,0.55fr)_auto_auto_minmax(135px,0.65fr)_minmax(165px,0.8fr)]">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(155px,0.75fr)_minmax(110px,0.55fr)_minmax(112px,0.55fr)_auto_auto_minmax(135px,0.65fr)_minmax(165px,1.6fr)]">
             <Field label="نوع سند">
               {form.docId === "other" ? (
                 <input className={inputClass} value={form.docOther} onChange={(e) => setField("docOther", e.target.value)} placeholder="نوع سند را وارد کنید" autoFocus />
@@ -991,7 +991,7 @@ export default function PaymentRequestPage() {
                   })}
                 </div>
               </Field>
-              {form.hasSupplyRequest === "yes" && <Field label="انتخاب درخواست تامین" required className="w-[165px] shrink-0"><button type="button" onClick={() => { setSupplyPickerQuery(""); setSupplyPickerPage(1); setSupplyPickerOpen(true); }} className={`${inputClass} flex items-center justify-between text-right`}><span className={form.supplyRequestId ? "truncate" : "text-neutral-400"}>{supplyRequests.find((item) => String(item.id) === String(form.supplyRequestId))?.serial || (form.supplyRequestId ? `#${form.supplyRequestId}` : "انتخاب کنید")}</span><span className="text-lg leading-none">•••</span></button></Field>}
+              {form.hasSupplyRequest === "yes" && <Field label="انتخاب درخواست تامین" required className="min-w-[165px] flex-1"><button type="button" onClick={() => { setSupplyPickerQuery(""); setSupplyPickerPage(1); setSupplyPickerOpen(true); }} className={`${inputClass} flex items-center justify-between text-right`}><span className={form.supplyRequestId ? "truncate" : "text-neutral-400"}>{supplyRequests.find((item) => String(item.id) === String(form.supplyRequestId))?.serial || (form.supplyRequestId ? `#${form.supplyRequestId}` : "انتخاب کنید")}</span><span className="text-lg leading-none">•••</span></button></Field>}
             </div>
           </div>
 
