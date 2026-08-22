@@ -954,7 +954,7 @@ export default function PaymentRequestPage() {
 
           <Field label="شرح درخواست"><textarea className={`${inputClass} min-h-24 py-2 leading-7`} value={form.description} onChange={(e) => setField("description", e.target.value)} /></Field>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(155px,0.75fr)_minmax(110px,0.55fr)_minmax(112px,0.55fr)_auto_auto_minmax(135px,0.65fr)_minmax(165px,1.6fr)]">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(180px,1.1fr)_minmax(110px,0.55fr)_minmax(112px,0.55fr)_auto_auto_minmax(135px,0.65fr)_minmax(165px,1.2fr)]">
             <Field label="نوع سند">
               {form.docId === "other" ? (
                 <input className={inputClass} value={form.docOther} onChange={(e) => setField("docOther", e.target.value)} placeholder="نوع سند را وارد کنید" autoFocus />
