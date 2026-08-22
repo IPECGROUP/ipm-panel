@@ -361,6 +361,7 @@ export default function PaymentRequestPage() {
   const [actionNote, setActionNote] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState("");
+  const actionInFlightRef = useRef(false);
   const [seenIncomingIds, setSeenIncomingIds] = useState(() => new Set());
   const [manualUnreadIds, setManualUnreadIds] = useState(() => new Set());
   const [tableMenuOpen, setTableMenuOpen] = useState(false);
@@ -671,29 +672,38 @@ export default function PaymentRequestPage() {
   };
 
   const recordAction = async (status, noteOverride = "", extraPayload = {}) => {
-    if (!selected || actionBusy) return;
+    if (!selected || actionBusy || actionInFlightRef.current) return;
+    const actionItem = selected;
+    actionInFlightRef.current = true;
+    // Lock the current preview synchronously.  The next workflow step must
+    // never be actionable in this dialog while the current action is saving.
+    setSelected((current) => current && Number(current.id) === Number(actionItem.id)
+      ? { ...current, canAct: false, __actionLocked: true }
+      : current);
     setActionBusy(true);
     setActionError("");
     try {
       const finalNote = String(noteOverride || actionNote || "").trim();
       const data = await api("/requests/status", {
         method: "POST",
-        body: JSON.stringify({ id: selected.id, status, note: finalNote, ...extraPayload }),
+        body: JSON.stringify({ id: actionItem.id, status, note: finalNote, ...extraPayload }),
       });
-      setSelected((current) => current ? { ...current, ...(data.item || {}) } : current);
       setActionNote("");
       setSubmitNotice({
         dateJalali: normalizeDigits(new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())),
         time: normalizeDigits(new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date())),
         userName: user?.name || user?.username || "کاربر",
-        unitName: STEP_LABELS[selected.currentStepRoleKey] || "واحد مربوطه",
+        unitName: STEP_LABELS[actionItem.currentStepRoleKey] || "واحد مربوطه",
         roleName: status === "approved" ? "تایید کننده" : status === "returned" ? "ارجاع دهنده" : "رد کننده",
       });
       await loadItems();
+      setSelected(null);
       return data;
     } catch (err) {
+      setSelected((current) => current && Number(current.id) === Number(actionItem.id) ? { ...actionItem } : current);
       setActionError(["forbidden", "reject_not_allowed_for_step", "return_not_allowed_for_step"].includes(err?.message) ? "شما اجازه انجام این اقدام را ندارید." : "ثبت اقدام انجام نشد.");
     } finally {
+      actionInFlightRef.current = false;
       setActionBusy(false);
     }
   };
@@ -1571,7 +1581,7 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [onClose]);
-  const canDecide = item.status === "pending" && item.canAct === true;
+  const canDecide = item.status === "pending" && item.canAct === true && !item.__actionLocked && !actionBusy;
   const canEditReturned = item.status === "returned" && item.canAct === true && currentStepRoleKey === "requester";
   const isOwner = item.canEdit === true || Number(item.createdById) === Number(userId);
   const [isEditing, setIsEditing] = useState(!!item.__editing);
