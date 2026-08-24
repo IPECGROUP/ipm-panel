@@ -20,18 +20,6 @@ const NavIcon = ({ src }) => (
   />
 );
 
-// Render the original PNG assets directly. CSS masks lose their anti-aliased
-// details in some browsers; filtering keeps the artwork crisp and monochrome.
-const KnowledgeNavIcon = ({ src }) => (
-  <img
-    src={src}
-    aria-hidden="true"
-    alt=""
-    className="block h-5 w-5 shrink-0 scale-[1.42] object-contain pointer-events-none select-none"
-    style={{ filter: "url(#knowledge-icon-white)" }}
-  />
-);
-
 const IcDashboard = () => <NavIcon src="/images/icons/dashbaord.svg" />;
 const IcLetter = () => <NavIcon src="/images/icons/nameha.svg" />;
 const IcProjects = () => <NavIcon src="/images/icons/modiriat-projects.svg" />;
@@ -320,9 +308,9 @@ function RightNav() {
           icon: <IcQuality />,
           active: knowledgeParentActive,
           items: [
-            { to: "/knowledge-management/equipment-library", label: "کتابخانه‌ها", hint: "کتابخانه‌ها", icon: <KnowledgeNavIcon src="/images/icons/ketabkhane.svg" /> },
-            { to: "/knowledge-management/project-lessons-learned", label: "درس آموخته‌ها", hint: "درس آموخته‌ها", icon: <KnowledgeNavIcon src="/images/icons/darsamokhteha.svg" /> },
-            { to: "/knowledge-management/training-resources", label: "منابع آموزشی", hint: "محتوا و منابع آموزشی", icon: <KnowledgeNavIcon src="/images/icons/manabeamozeshi.svg" /> },
+            { to: "/knowledge-management/equipment-library", label: "کتابخانه‌ها", hint: "کتابخانه‌ها", icon: <NavIcon src="/images/icons/ketabkhane.svg" /> },
+            { to: "/knowledge-management/project-lessons-learned", label: "درس آموخته‌ها", hint: "درس آموخته‌ها", icon: <NavIcon src="/images/icons/darsamokhteha.svg" /> },
+            { to: "/knowledge-management/training-resources", label: "منابع آموزشی", hint: "محتوا و منابع آموزشی", icon: <NavIcon src="/images/icons/manabeamozeshi.svg" /> },
           ],
         },
       ],
@@ -542,16 +530,6 @@ function RightNav() {
 
   return (
     <>
-      <svg aria-hidden="true" className="absolute h-0 w-0 overflow-hidden">
-        <defs>
-          <filter id="knowledge-icon-white" colorInterpolationFilters="sRGB">
-            <feColorMatrix
-              type="matrix"
-              values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 2.4 -0.16"
-            />
-          </filter>
-        </defs>
-      </svg>
       <aside
         ref={navRef}
         dir="rtl"
