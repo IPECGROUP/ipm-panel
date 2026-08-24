@@ -970,7 +970,7 @@ export default function PaymentRequestPage() {
             <div className="flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">باقی‌مانده نقدینگی پروژه: <span className="mr-1 font-medium tabular-nums">{projectLiquidityLoading ? "در حال دریافت..." : `${money(projectLiquidityRemaining) || "۰"} ریال`}</span></div>
           </div>
 
-          <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.15fr)_minmax(200px,0.85fr)_minmax(145px,0.55fr)_minmax(170px,0.7fr)]">
+          <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.05fr)_minmax(280px,1.2fr)_minmax(96px,0.38fr)_minmax(170px,0.7fr)]">
             <Field label="موضوع درخواست" required><input className={`${inputClass} h-12 text-[15px]`} value={form.title} onChange={(e) => setField("title", e.target.value)} /></Field>
             <Field label="مبلغ درخواست" required>
               <div className="relative min-w-0">
@@ -2195,7 +2195,7 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
                       {projects.map((row) => <option key={row.id} value={row.id}>{projectLabel(row)}</option>)}
                     </select>
                   ) : (project ? projectLabel(project) : (item.projectName || item.projectCode || item.projectId || "—"))} />
-                  <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="کد بودجه" ltr={!canEditRequest} value={canEditRequest ? (
+                  <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="کد بودجه" value={canEditRequest ? (
                     <select className={inputClass} value={editForm.budgetCode} disabled={!editForm.projectId || editBudgetLoading} onChange={(event) => setEditField("budgetCode", event.target.value)}>
                       <option value="">{editBudgetLoading ? "در حال دریافت..." : editForm.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید"}</option>
                       {editBudgetOptions.map((row) => {
@@ -2204,13 +2204,13 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
                         return <option key={code || row.id} value={code}>{code}{desc ? ` - ${desc}` : ""}</option>;
                       })}
                     </select>
-                  ) : (item.budgetCode ? `${item.budgetCode}${budgetName ? ` - ${budgetName}` : ""}` : "—")} />
+                  ) : (item.budgetCode ? <span className="inline-flex max-w-full items-center gap-1.5 font-sans"><bdi dir="ltr">{toFa(item.budgetCode)}</bdi>{budgetName ? <span className="min-w-0 truncate">- {budgetName}</span> : null}</span> : "—")} />
                 </div>
                 <div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10">
                   <PreviewRow compact editing={canEditRequest} colon label="موضوع درخواست" value={canEditRequest ? <input className={inputClass} value={editForm.title} onChange={(event) => setEditField("title", event.target.value)} /> : (item.title || "—")} />
                 </div>
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
-                  <PreviewRow compact colon leader={!canEditRequest} label="مبلغ درخواست" ltr={!canEditRequest} value={`${toFa(Number(item.amount || 0).toLocaleString("en-US"))} ${currencyName}`} />
+                  <PreviewRow compact colon leader={!canEditRequest} label="مبلغ درخواست" ltr={!canEditRequest} value={<span dir="ltr" className="inline-flex items-center gap-1 font-sans"><span>{currencyName}</span><span>{toFa(Number(item.amount || 0).toLocaleString("en-US"))}</span></span>} />
                   <PreviewRow compact colon leader={!canEditRequest} label="نرخ" ltr={!canEditRequest} value={item.currencyTypeId ? toFa(Number(item.exchangeRate || 0).toLocaleString("en-US")) : "—"} />
                   <PreviewRow compact colon leader={!canEditRequest} label="مبلغ ریالی درخواست" ltr={!canEditRequest} value={<span dir="ltr" className="inline-flex items-center gap-1"><span>ریال</span><span>{toFa(Number(item.rialAmount || item.amount || 0).toLocaleString("en-US"))}</span></span>} />
                 </div>
