@@ -999,36 +999,6 @@ export default function PaymentRequestPage() {
       sheet.getColumn(16).numFmt = "@";
       sheet.headerFooter.oddFooter = "&Rصفحه &P از &N&Cگزارش درخواست‌های پرداخت&LIPM";
 
-      const summary = workbook.addWorksheet("خلاصه گزارش", { views: [{ rightToLeft: true, showGridLines: false }] });
-      summary.mergeCells("A1:D1");
-      summary.getCell("A1").value = "خلاصه گزارش درخواست‌های پرداخت";
-      summary.getCell("A1").font = { name: "Tahoma", size: 18, bold: true, color: { argb: "FFFFFFFF" } };
-      summary.getCell("A1").alignment = { horizontal: "center", vertical: "middle" };
-      summary.getCell("A1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1F2937" } };
-      summary.getRow(1).height = 40;
-      summary.addRow([]);
-      summary.addRow(["شاخص", "مقدار", "شاخص", "مقدار"]);
-      summary.addRow(["تعداد کل", sortedItems.length, "درخواست پرداخت", sortedItems.filter((item) => item.requestType !== "tenkhah").length]);
-      summary.addRow(["تنخواه", sortedItems.filter((item) => item.requestType === "tenkhah").length, "در انتظار تأیید", sortedItems.filter((item) => ["pending", "tenkhah_pending"].includes(item.displayStatus || item.status)).length]);
-      summary.addRow(["پرداخت‌شده", sortedItems.filter((item) => ["approved", "tenkhah_charged"].includes(item.displayStatus || item.status)).length, "برگشت‌خورده", sortedItems.filter((item) => (item.displayStatus || item.status) === "returned").length]);
-      summary.addRow(["ردشده", sortedItems.filter((item) => (item.displayStatus || item.status) === "rejected").length, "تاریخ تهیه", `${reportDate} - ${reportTime}`]);
-      summary.getRow(3).eachCell((cell) => {
-        cell.font = { name: "Tahoma", bold: true, color: { argb: "FFFFFFFF" } };
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } };
-        cell.alignment = { horizontal: "center", vertical: "middle" };
-      });
-      for (let rowNumber = 4; rowNumber <= 7; rowNumber += 1) {
-        const row = summary.getRow(rowNumber);
-        row.height = 29;
-        row.eachCell({ includeEmpty: true }, (cell, columnNumber) => {
-          cell.font = { name: "Tahoma", size: 10, bold: columnNumber % 2 === 1 };
-          cell.alignment = { horizontal: "center", vertical: "middle" };
-          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: rowNumber % 2 ? "FFF8FAFC" : "FFEFF6F5" } };
-          cell.border = { top: { style: "thin", color: { argb: "FFD1D5DB" } }, bottom: { style: "thin", color: { argb: "FFD1D5DB" } }, left: { style: "thin", color: { argb: "FFD1D5DB" } }, right: { style: "thin", color: { argb: "FFD1D5DB" } } };
-        });
-      }
-      [28, 19, 28, 23].forEach((width, index) => { summary.getColumn(index + 1).width = width; });
-
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
       const url = URL.createObjectURL(blob);
@@ -1464,11 +1434,7 @@ function RequestFilterBar({ query, setQuery, quick, setQuick, ownership, setOwne
       <div className="w-[calc(50%-0.25rem)] md:w-36"><div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">از</div><JalaliPopupDatePicker value={fromDate} onChange={(value) => { setFromDate(value); setQuick(""); }} /></div>
       <div className="w-[calc(50%-0.25rem)] md:w-36"><div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">تا</div><JalaliPopupDatePicker value={toDate} onChange={(value) => { setToDate(value); setQuick(""); }} /></div>
       <button type="button" onClick={onExportExcel} disabled={exportDisabled || exportingExcel} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-white text-neutral-900 shadow-sm transition hover:-translate-y-0.5 hover:bg-neutral-50 hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10" title={exportingExcel ? "در حال ساخت فایل اکسل..." : "خروجی اکسل نتایج"} aria-label={exportingExcel ? "در حال ساخت فایل اکسل" : "خروجی اکسل"}>
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true" className={exportingExcel ? "animate-pulse" : ""}>
-          <path d="M6.5 4.5h9.8l2.7 2.7v12.3h-12.5z" stroke="currentColor" strokeWidth="1.35" strokeLinejoin="round" />
-          <path d="M16.3 4.5v2.8h2.7M9.4 9.2l4.2 6.1M13.6 9.2l-4.2 6.1" stroke="currentColor" strokeWidth="1.45" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M4 7.2h2.5v9.6h-2.5z" fill="currentColor" opacity=".12" />
-        </svg>
+        <img src="/images/icons8-excel-50.png" alt="" className={`h-5 w-5 object-contain ${exportingExcel ? "animate-pulse" : ""}`} />
       </button>
     </div>
     <div>
