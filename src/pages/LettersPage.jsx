@@ -3559,9 +3559,9 @@ useLayoutEffect(() => {
 
   const theadRowCls =
     "bg-neutral-200 text-black border-b border-neutral-300 " +
-    "dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700";
+    "dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700";
 
-  const tbodyCls = "[&_td]:text-black dark:[&_td]:text-neutral-100";
+  const tbodyCls = "text-[13px] text-black [&>tr>td]:!py-0 [&>tr>td:last-child_button]:!h-9 [&>tr>td:last-child_button]:!w-9 dark:text-neutral-100";
   const rowDividerCls = "border-b border-neutral-300 dark:border-neutral-700";
 
   const readLetterDraftStore = () => {
@@ -6249,23 +6249,22 @@ aria-invalid={fieldHasError(formKind, "subject")}
                
   dir="rtl"
   className="w-full min-w-full table-fixed text-sm
-    [&_th]:text-center [&_td]:text-center
-    [&_th]:py-0.5 [&_td]:py-0.5
-    [&_th]:whitespace-nowrap [&_td]:min-w-0"
+    [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:min-w-0 [&_td]:text-center
+    [&_th]:!py-2 [&_td]:!py-2"
 >
 <colgroup>
   <col style={{ width: 48 }} />   {/* checkbox */}
   <col style={{ width: 96 }} />   {/* شماره */}
   <col style={{ width: 96 }} />   {/* تاریخ */}
   <col />                         {/* موضوع (باقی فضا) */}
-  <col style={{ width: 168 }} />  {/* از/به */}
+  <col style={{ width: 105 }} />  {/* نوع سند */}
   <col style={{ width: 176 }} />  {/* شرکت/سازمان */}
   <col style={{ width: 172 }} />  {/* اقدامات */}
 </colgroup>
 
   <thead>
     <tr className={theadRowCls}>
-      <th className="w-12 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-40 bg-neutral-200 dark:bg-white/10">
+      <th className="w-12 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-40 bg-neutral-200 dark:bg-neutral-800">
         <input
           type="checkbox"
           className="w-4 h-4 accent-black dark:accent-neutral-200"
@@ -6279,7 +6278,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
         />
       </th>
 
-      <th className="w-24 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+      <th className="w-24 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
         <button
           type="button"
           onClick={() => setLetterNoSortDir((prev) => (prev === "asc" ? "desc" : "asc"))}
@@ -6296,23 +6295,23 @@ aria-invalid={fieldHasError(formKind, "subject")}
         </button>
       </th>
 
-      <th className="w-24 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+      <th className="w-24 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
         تاریخ
       </th>
 
-      <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+      <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
         موضوع
       </th>
 
-      <th className="w-36 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
-        از/به
+      <th className="w-28 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
+        نوع سند
       </th>
 
-      <th className="w-44 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+      <th className="w-44 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
         شرکت/سازمان
       </th>
 
-     <th className="w-28 !py-2 pl-6 !pr-3 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-white/10">
+     <th className="w-28 !py-2 pl-6 !pr-3 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
   <div className="relative flex items-center justify-center gap-2">
     <span>عملیات</span>
 
@@ -6357,6 +6356,8 @@ aria-invalid={fieldHasError(formKind, "subject")}
         const isOutgoing = kind === "outgoing";
         const isIncoming = kind === "incoming";
         const isInternal = kind === "internal";
+        const kindLabel = TABS.find((tab) => tab.id === kind)?.label || "—";
+        const kindColor = TAB_ACTIVE_BG[kind] || "#737373";
         const isLast = idx === pageItems.length - 1;
         const divider = isLast ? "" : rowDividerCls;
         const hasRealAttachment = attachmentsOf(l).length > 0;
@@ -6437,7 +6438,13 @@ const rowBg = normalRowBg;
             </td>
 
             <td className={"px-3 " + divider}>
-              <span className="block truncate mx-auto">{fromToOf(l)}</span>
+              <span
+                className="mx-auto inline-flex max-w-full items-center truncate rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                style={{ backgroundColor: `${kindColor}1A`, color: kindColor }}
+                title={kindLabel}
+              >
+                {kindLabel}
+              </span>
             </td>
 
             <td className={"px-3 " + divider}>
