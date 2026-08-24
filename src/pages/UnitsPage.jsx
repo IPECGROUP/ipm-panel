@@ -882,11 +882,11 @@ function OrgStructurePage() {
     headRow:
       "bg-neutral-200 text-black border-b border-neutral-300 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700",
     body:
-      "text-[13px] text-black [&>tr>td]:!py-0 [&>tr>td:last-child_button]:!h-9 [&>tr>td:last-child_button]:!w-9 dark:text-neutral-100",
+      "text-[13px] [&_td]:!text-black dark:[&_td]:!text-neutral-100 [&>tr>td]:!py-0 [&>tr>td:last-child_button]:!h-9 [&>tr>td:last-child_button]:!w-9",
   };
   const rowUi = tablePreset.row;
   const compactTableBodyCls =
-    "text-[13px] text-black [&>tr>td]:!py-0 [&>tr>td:last-child_button]:!h-9 [&>tr>td:last-child_button]:!w-9 dark:text-neutral-100 [&_td]:text-center [&_th]:text-center";
+    "text-[13px] [&_td]:!text-black dark:[&_td]:!text-neutral-100 [&>tr>td]:!py-0 [&>tr>td:last-child_button]:!h-9 [&>tr>td:last-child_button]:!w-9 [&_td]:text-center [&_th]:text-center";
 
   const unitRoleUnitOptions = useMemo(
     () =>
