@@ -385,6 +385,7 @@ export default function PaymentRequestPage() {
   const [filterUnread, setFilterUnread] = useState(false);
   const [filterFromDate, setFilterFromDate] = useState("");
   const [filterToDate, setFilterToDate] = useState("");
+  const [exportingExcel, setExportingExcel] = useState(false);
   const [filterTagIds, setFilterTagIds] = useState([]);
   const [pinnedFilterTagIds, setPinnedFilterTagIds] = useState([]);
   const [tags, setTags] = useState([]);
@@ -852,6 +853,199 @@ export default function PaymentRequestPage() {
     const bySerial = String(a?.serial || "").localeCompare(String(b?.serial || ""), "fa", { numeric: true, sensitivity: "base" });
     return numberSortDir === "asc" ? bySerial : -bySerial;
   }), [filteredItems, numberSortDir]);
+  const exportFilteredExcel = async () => {
+    if (!sortedItems.length || exportingExcel) return;
+    setExportingExcel(true);
+    try {
+      const exceljsMod = await import("exceljs");
+      const ExcelJS = exceljsMod.default || exceljsMod;
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = "IPM - مدیریت مالی";
+      workbook.lastModifiedBy = "IPM - مدیریت مالی";
+      workbook.created = new Date();
+      workbook.modified = new Date();
+      workbook.company = "IPM";
+      workbook.subject = "گزارش درخواست‌های پرداخت";
+      workbook.title = "درخواست‌های پرداخت";
+
+      const reportDate = normalizeDigits(new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+        year: "numeric", month: "2-digit", day: "2-digit",
+      }).format(new Date())).replaceAll("-", "/");
+      const reportTime = normalizeDigits(new Intl.DateTimeFormat("fa-IR", {
+        hour: "2-digit", minute: "2-digit", hour12: false,
+      }).format(new Date()));
+      const excelNumber = (value) => {
+        const digits = amountDigits(value);
+        if (!digits) return null;
+        const big = BigInt(digits);
+        return big <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(digits) : digits;
+      };
+      const projectOf = (item) => projects.find((row) => String(row.id) === String(item.projectId));
+      const attachmentNames = (item) => (Array.isArray(item.attachments) ? item.attachments : [])
+        .map((file, index) => file?.name || file?.originalName || file?.filename || `فایل ${index + 1}`)
+        .join("، ");
+      const statusOf = (item) => STATUS_LABELS[item.displayStatus || item.status] || item.displayStatus || item.status || "—";
+      const currentUnitOf = (item) => WAITING_UNIT_LABELS[item.currentStepRoleKey || item.stage] || statusOf(item);
+      const docNameOf = (item) => item.docId === "other"
+        ? (item.docOther || "سایر")
+        : (DOC_OPTIONS.find(([id]) => id === item.docId)?.[1] || "—");
+      const formatIsoDate = (value) => {
+        if (!value) return "—";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return String(value);
+        const day = normalizeDigits(new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit" }).format(date));
+        const time = normalizeDigits(new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false }).format(date));
+        return `${day} ${time}`;
+      };
+
+      const headers = [
+        "ردیف", "نوع درخواست", "شماره درخواست", "تاریخ درخواست", "پروژه", "کد پروژه", "کد بودجه",
+        "موضوع", "شرح درخواست", "مبلغ درخواست", "ارز", "نرخ تبدیل", "مبلغ ریالی", "درخواست‌کننده",
+        "نام ذی‌نفع", "شماره شبا", "شرایط پرداخت", "نوع سند", "شماره سند", "تاریخ سند",
+        "درخواست تأمین", "وضعیت", "مرحله جاری / در انتظار", "تعداد پیوست", "نام پیوست‌ها",
+        "تعداد اسناد مرتبط", "تاریخ ثبت", "آخرین به‌روزرسانی",
+      ];
+      const sheet = workbook.addWorksheet("درخواست‌ها", {
+        views: [{ rightToLeft: true, state: "frozen", ySplit: 4, activeCell: "A5" }],
+        pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9, margins: { left: 0.25, right: 0.25, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 } },
+        properties: { defaultRowHeight: 22 },
+      });
+      sheet.mergeCells(1, 1, 1, headers.length);
+      const titleCell = sheet.getCell(1, 1);
+      titleCell.value = "گزارش جامع درخواست‌های پرداخت";
+      titleCell.font = { name: "Tahoma", size: 18, bold: true, color: { argb: "FFFFFFFF" } };
+      titleCell.alignment = { horizontal: "center", vertical: "middle" };
+      titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1F2937" } };
+      sheet.getRow(1).height = 38;
+      sheet.mergeCells(2, 1, 2, headers.length);
+      const metaCell = sheet.getCell(2, 1);
+      metaCell.value = `تاریخ تهیه: ${reportDate} - ${reportTime} | تعداد نتایج: ${sortedItems.length} | بازه: ${filterFromDate || "ابتدا"} تا ${filterToDate || "امروز"}`;
+      metaCell.font = { name: "Tahoma", size: 10, color: { argb: "FF374151" } };
+      metaCell.alignment = { horizontal: "center", vertical: "middle" };
+      metaCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE5E7EB" } };
+      sheet.getRow(2).height = 25;
+      sheet.getRow(3).height = 8;
+      sheet.getRow(4).values = headers;
+      sheet.getRow(4).height = 31;
+      sheet.getRow(4).eachCell((cell) => {
+        cell.font = { name: "Tahoma", size: 10, bold: true, color: { argb: "FFFFFFFF" } };
+        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } };
+        cell.border = { bottom: { style: "medium", color: { argb: "FF115E59" } } };
+      });
+
+      sortedItems.forEach((item, index) => {
+        const project = projectOf(item);
+        const isTenkhah = item.requestType === "tenkhah";
+        const relatedIds = Array.isArray(item.relatedLetterIds) ? item.relatedLetterIds : [];
+        const row = sheet.addRow([
+          index + 1,
+          isTenkhah ? "تنخواه" : "درخواست پرداخت",
+          isTenkhah ? (item.serial || item.requestNumber || "—") : displayPaymentSerial(item, projects),
+          String(item.dateFa || item.date_jalali || item.requestDate || "—").replaceAll("-", "/"),
+          project?.name || project?.title || item.projectName || "—",
+          normalizeProjectCode(project?.code || item.projectCode || "") || "—",
+          item.budgetCode || "—",
+          item.title || item.purpose || "—",
+          item.description || "—",
+          excelNumber(item.amount || item.requestedAmount),
+          isTenkhah ? (item.currencyName || item.currency || "ریال") : currencyNameOf(item.currencyTypeId, currencyTypes),
+          isTenkhah ? null : excelNumber(item.exchangeRate),
+          isTenkhah ? null : excelNumber(item.rialAmount || item.amount),
+          item.createdByName || item.requesterName || (item.createdById ? `کاربر #${item.createdById}` : "—"),
+          item.beneficiaryName || item.beneficiaryUsername || "—",
+          item.bankInfo || "—",
+          item.creditPay || "—",
+          isTenkhah ? "—" : docNameOf(item),
+          item.docNumber || "—",
+          item.docDate || item.docDateJalali || "—",
+          item.hasSupplyRequest === "yes" || item.supplyRequestId ? (item.supplyRequestId ? `شماره ${item.supplyRequestId}` : "دارد") : "ندارد",
+          statusOf(item),
+          currentUnitOf(item),
+          Array.isArray(item.attachments) ? item.attachments.length : 0,
+          attachmentNames(item) || "—",
+          relatedIds.length,
+          formatIsoDate(item.createdAt),
+          formatIsoDate(item.updatedAt),
+        ]);
+        row.height = 27;
+        row.eachCell({ includeEmpty: true }, (cell, columnNumber) => {
+          cell.font = { name: "Tahoma", size: 9, color: { argb: "FF111827" } };
+          cell.alignment = { horizontal: [1, 10, 12, 13, 24, 26].includes(columnNumber) ? "center" : "right", vertical: "middle", wrapText: true };
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: index % 2 ? "FFF8FAFC" : "FFFFFFFF" } };
+          cell.border = {
+            top: { style: "hair", color: { argb: "FFD1D5DB" } },
+            bottom: { style: "hair", color: { argb: "FFD1D5DB" } },
+            left: { style: "hair", color: { argb: "FFE5E7EB" } },
+            right: { style: "hair", color: { argb: "FFE5E7EB" } },
+          };
+        });
+        [10, 12, 13].forEach((column) => { row.getCell(column).numFmt = "#,##0"; });
+        const statusCell = row.getCell(22);
+        const status = item.displayStatus || item.status;
+        const statusColors = status === "approved" || status === "tenkhah_charged"
+          ? ["FFD1FAE5", "FF047857"] : status === "rejected" ? ["FFFEE2E2", "FFB91C1C"]
+            : status === "returned" ? ["FFFEF3C7", "FFB45309"] : ["FFDBEAFE", "FF1D4ED8"];
+        statusCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: statusColors[0] } };
+        statusCell.font = { name: "Tahoma", size: 9, bold: true, color: { argb: statusColors[1] } };
+        statusCell.alignment = { horizontal: "center", vertical: "middle" };
+      });
+      sheet.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: headers.length } };
+      const widths = [8, 15, 18, 15, 27, 13, 19, 30, 42, 18, 13, 15, 19, 22, 22, 27, 22, 18, 16, 15, 17, 17, 25, 13, 34, 16, 21, 21];
+      widths.forEach((width, index) => { sheet.getColumn(index + 1).width = width; });
+      sheet.getColumn(3).numFmt = "@";
+      sheet.getColumn(6).numFmt = "@";
+      sheet.getColumn(7).numFmt = "@";
+      sheet.getColumn(16).numFmt = "@";
+      sheet.headerFooter.oddFooter = "&Rصفحه &P از &N&Cگزارش درخواست‌های پرداخت&LIPM";
+
+      const summary = workbook.addWorksheet("خلاصه گزارش", { views: [{ rightToLeft: true, showGridLines: false }] });
+      summary.mergeCells("A1:D1");
+      summary.getCell("A1").value = "خلاصه گزارش درخواست‌های پرداخت";
+      summary.getCell("A1").font = { name: "Tahoma", size: 18, bold: true, color: { argb: "FFFFFFFF" } };
+      summary.getCell("A1").alignment = { horizontal: "center", vertical: "middle" };
+      summary.getCell("A1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1F2937" } };
+      summary.getRow(1).height = 40;
+      summary.addRow([]);
+      summary.addRow(["شاخص", "مقدار", "شاخص", "مقدار"]);
+      summary.addRow(["تعداد کل", sortedItems.length, "درخواست پرداخت", sortedItems.filter((item) => item.requestType !== "tenkhah").length]);
+      summary.addRow(["تنخواه", sortedItems.filter((item) => item.requestType === "tenkhah").length, "در انتظار تأیید", sortedItems.filter((item) => ["pending", "tenkhah_pending"].includes(item.displayStatus || item.status)).length]);
+      summary.addRow(["پرداخت‌شده", sortedItems.filter((item) => ["approved", "tenkhah_charged"].includes(item.displayStatus || item.status)).length, "برگشت‌خورده", sortedItems.filter((item) => (item.displayStatus || item.status) === "returned").length]);
+      summary.addRow(["ردشده", sortedItems.filter((item) => (item.displayStatus || item.status) === "rejected").length, "تاریخ تهیه", `${reportDate} - ${reportTime}`]);
+      summary.getRow(3).eachCell((cell) => {
+        cell.font = { name: "Tahoma", bold: true, color: { argb: "FFFFFFFF" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } };
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+      });
+      for (let rowNumber = 4; rowNumber <= 7; rowNumber += 1) {
+        const row = summary.getRow(rowNumber);
+        row.height = 29;
+        row.eachCell({ includeEmpty: true }, (cell, columnNumber) => {
+          cell.font = { name: "Tahoma", size: 10, bold: columnNumber % 2 === 1 };
+          cell.alignment = { horizontal: "center", vertical: "middle" };
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: rowNumber % 2 ? "FFF8FAFC" : "FFEFF6F5" } };
+          cell.border = { top: { style: "thin", color: { argb: "FFD1D5DB" } }, bottom: { style: "thin", color: { argb: "FFD1D5DB" } }, left: { style: "thin", color: { argb: "FFD1D5DB" } }, right: { style: "thin", color: { argb: "FFD1D5DB" } } };
+        });
+      }
+      [28, 19, 28, 23].forEach((width, index) => { summary.getColumn(index + 1).width = width; });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `payment-requests-${reportDate.replaceAll("/", "-")}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      console.error("Payment requests Excel export failed", err);
+      window.alert("ساخت فایل اکسل انجام نشد. لطفاً دوباره تلاش کنید.");
+    } finally {
+      setExportingExcel(false);
+    }
+  };
   const total = sortedItems.length;
   const pageCount = Math.max(1, Math.ceil(total / rowsPerPage));
   const safePage = Math.min(page, pageCount - 1);
@@ -1080,7 +1274,7 @@ export default function PaymentRequestPage() {
           onClose={() => setLetterPickerOpen(false)}
         />}
 
-        {!showForm && <RequestFilterBar query={filterQuery} setQuery={setFilterQuery} quick={filterQuick} setQuick={setFilterQuick} ownership={filterOwnership} setOwnership={setFilterOwnership} status={filterStatus} setStatus={setFilterStatus} unread={filterUnread} setUnread={setFilterUnread} fromDate={filterFromDate} setFromDate={setFilterFromDate} toDate={filterToDate} setToDate={setFilterToDate} tags={tags} pinnedTagIds={pinnedFilterTagIds} setPinnedTagIds={setPinnedFilterTagIds} activeTagIds={filterTagIds} setActiveTagIds={setFilterTagIds} tagPickOpen={tagPickOpen} setTagPickOpen={setTagPickOpen} tagPickSearch={tagPickSearch} setTagPickSearch={setTagPickSearch} />}
+        {!showForm && <RequestFilterBar query={filterQuery} setQuery={setFilterQuery} quick={filterQuick} setQuick={setFilterQuick} ownership={filterOwnership} setOwnership={setFilterOwnership} status={filterStatus} setStatus={setFilterStatus} unread={filterUnread} setUnread={setFilterUnread} fromDate={filterFromDate} setFromDate={setFilterFromDate} toDate={filterToDate} setToDate={setFilterToDate} onExportExcel={exportFilteredExcel} exportingExcel={exportingExcel} exportDisabled={!sortedItems.length} tags={tags} pinnedTagIds={pinnedFilterTagIds} setPinnedTagIds={setPinnedFilterTagIds} activeTagIds={filterTagIds} setActiveTagIds={setFilterTagIds} tagPickOpen={tagPickOpen} setTagPickOpen={setTagPickOpen} tagPickSearch={tagPickSearch} setTagPickSearch={setTagPickSearch} />}
 
         <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
           <div className="relative hidden max-h-[55vh] overflow-y-auto overflow-x-hidden pb-0 md:block" dir="ltr"><table dir="rtl" className="w-full min-w-full table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:min-w-0 [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2">
@@ -1238,7 +1432,7 @@ function filterRequestRows(rows, { query, quick, tagIds, ownership, status, from
   });
 }
 
-function RequestFilterBar({ query, setQuery, quick, setQuick, ownership, setOwnership, status, setStatus, unread, setUnread, fromDate, setFromDate, toDate, setToDate, tags, pinnedTagIds, setPinnedTagIds, activeTagIds, setActiveTagIds, tagPickOpen, setTagPickOpen, tagPickSearch, setTagPickSearch }) {
+function RequestFilterBar({ query, setQuery, quick, setQuick, ownership, setOwnership, status, setStatus, unread, setUnread, fromDate, setFromDate, toDate, setToDate, onExportExcel, exportingExcel, exportDisabled, tags, pinnedTagIds, setPinnedTagIds, activeTagIds, setActiveTagIds, tagPickOpen, setTagPickOpen, tagPickSearch, setTagPickSearch }) {
   const active = new Set((activeTagIds || []).map(String));
   const tagMap = new Map((Array.isArray(tags) ? tags : []).map((tag) => [String(tag?.id ?? ""), tag]));
   const visibleTags = (Array.isArray(pinnedTagIds) ? pinnedTagIds : []).map((id) => tagMap.get(String(id))).filter(Boolean);
@@ -1269,6 +1463,13 @@ function RequestFilterBar({ query, setQuery, quick, setQuick, ownership, setOwne
       </div>
       <div className="w-[calc(50%-0.25rem)] md:w-36"><div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">از</div><JalaliPopupDatePicker value={fromDate} onChange={(value) => { setFromDate(value); setQuick(""); }} /></div>
       <div className="w-[calc(50%-0.25rem)] md:w-36"><div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">تا</div><JalaliPopupDatePicker value={toDate} onChange={(value) => { setToDate(value); setQuick(""); }} /></div>
+      <button type="button" onClick={onExportExcel} disabled={exportDisabled || exportingExcel} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-white text-neutral-900 shadow-sm transition hover:-translate-y-0.5 hover:bg-neutral-50 hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10" title={exportingExcel ? "در حال ساخت فایل اکسل..." : "خروجی اکسل نتایج"} aria-label={exportingExcel ? "در حال ساخت فایل اکسل" : "خروجی اکسل"}>
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true" className={exportingExcel ? "animate-pulse" : ""}>
+          <path d="M6.5 4.5h9.8l2.7 2.7v12.3h-12.5z" stroke="currentColor" strokeWidth="1.35" strokeLinejoin="round" />
+          <path d="M16.3 4.5v2.8h2.7M9.4 9.2l4.2 6.1M13.6 9.2l-4.2 6.1" stroke="currentColor" strokeWidth="1.45" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M4 7.2h2.5v9.6h-2.5z" fill="currentColor" opacity=".12" />
+        </svg>
+      </button>
     </div>
     <div>
       <div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">برچسب ها</div>
