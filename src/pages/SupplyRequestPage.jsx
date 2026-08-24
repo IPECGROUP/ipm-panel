@@ -84,12 +84,12 @@ function formatMoney(value) {
   }
 }
 
-function RialAmount({ value, empty = "—" }) {
+function CurrencyAmount({ value, currencyName = "ریال", empty = "—" }) {
   const amount = formatMoney(value);
   if (!amount) return empty;
   // LTR keeps the currency to the left of the amount, just like the payment
   // request screen, while the number itself remains Persian for the user.
-  return <span dir="ltr" className="inline-flex items-center gap-1 font-sans tabular-nums"><span>ریال</span><span>{toFaDigits(amount)}</span></span>;
+  return <span dir="ltr" className="inline-flex items-center gap-1 font-sans tabular-nums"><span>{currencyName}</span><span>{toFaDigits(amount)}</span></span>;
 }
 
 function budgetNameOf(item) {
@@ -99,6 +99,11 @@ function budgetNameOf(item) {
 function BudgetCodeValue({ code, name = "" }) {
   if (!code) return "—";
   return <span dir="rtl" className="inline-flex max-w-full items-center justify-end gap-1.5"><span dir="ltr" className="shrink-0 font-sans tabular-nums">{toFaDigits(code)}</span>{name ? <span className="min-w-0 truncate">- {name}</span> : null}</span>;
+}
+
+function isRialCurrency(currency) {
+  const value = String(currency?.title ?? currency ?? "").trim().toLowerCase();
+  return value === "ریال" || value === "﷼" || value === "rial" || value === "irr";
 }
 
 function normalizeProjectCode(value = "") {
@@ -152,6 +157,7 @@ function emptyForm() {
     dateJalali: todayFa(),
     projectId: "",
     budgetCode: "",
+    currencyTypeId: "",
     title: "",
     needDateJalali: "",
     amount: "",
@@ -335,6 +341,7 @@ export default function SupplyRequestPage() {
   const [items, setItems] = useState([]);
   const [projects, setProjects] = useState([]);
   const [budgetItems, setBudgetItems] = useState([]);
+  const [currencyTypes, setCurrencyTypes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -421,6 +428,12 @@ export default function SupplyRequestPage() {
     loadItems();
     loadProjects();
   }, [loadItems, loadProjects]);
+
+  useEffect(() => {
+    api("/base/currencies/types")
+      .then((data) => setCurrencyTypes(Array.isArray(data?.items) ? data.items : Array.isArray(data?.types) ? data.types : []))
+      .catch(() => setCurrencyTypes([]));
+  }, [api]);
 
   useEffect(() => {
     if (authLoading) return undefined;
@@ -1034,16 +1047,25 @@ export default function SupplyRequestPage() {
               <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[minmax(180px,0.6fr)_minmax(360px,1.5fr)]">
                 <div className="space-y-3">
                 <Field label="برآورد هزینه اولیه" required>
-                  <div className="relative">
+                  <div dir="ltr" className="flex h-11 overflow-hidden rounded-xl border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">
+                    <select
+                      dir="rtl"
+                      value={form.currencyTypeId}
+                      onChange={(event) => setField("currencyTypeId", event.target.value)}
+                      className="w-20 shrink-0 border-r border-black/10 bg-neutral-50 px-2 text-center text-xs font-medium outline-none dark:border-white/10 dark:bg-white/[0.06] dark:text-neutral-100"
+                      aria-label="ارز"
+                    >
+                      <option value="">ریال</option>
+                      {currencyTypes.filter((currency) => !isRialCurrency(currency)).map((currency) => <option key={currency.id} value={currency.id}>{currency.title}</option>)}
+                    </select>
                     <input
                       dir="ltr"
                       inputMode="numeric"
                       value={toFaDigits(form.amount)}
                       onChange={(event) => setField("amount", formatMoney(event.target.value))}
-                      className={`${inputCls} pl-12 text-left font-sans tabular-nums`}
+                      className="min-w-0 flex-1 bg-transparent px-3 text-left font-sans tabular-nums outline-none"
                       placeholder="۰"
                     />
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-neutral-500 dark:text-neutral-400">ریال</span>
                   </div>
                 </Field>
                 <Field label="تاریخ نیاز">
@@ -1255,7 +1277,7 @@ export default function SupplyRequestPage() {
                         <td className="border-b border-neutral-300 px-0 dark:border-neutral-700">{isUnreadForUser(item) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="درخواست خوانده‌نشده" aria-label="درخواست خوانده‌نشده" />}</td>
                         <td dir="ltr" className="border-b border-neutral-300 px-3 font-sans tabular-nums dark:border-neutral-700">
                           <button type="button" onClick={() => openPreview(item)} className="mx-auto inline-flex underline-offset-4 transition hover:underline" title="نمایش درخواست">
-                            {item.serial || "—"}
+                            {toFaDigits(item.serial || "—")}
                           </button>
                         </td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/"))}</td>
@@ -1287,7 +1309,7 @@ export default function SupplyRequestPage() {
                 pageItems.map((item) => (
                   <div key={item.id} className="rounded-xl border border-black/10 p-3 dark:border-white/10">
                     <div className="flex items-center justify-between gap-2">
-                      <b dir="ltr" className="font-sans tabular-nums">{item.serial || "—"}</b>
+                      <b dir="ltr" className="font-sans tabular-nums">{toFaDigits(item.serial || "—")}</b>
                       <StatusBadge status={displayStatusOf(item)} />
                     </div>
                     <div className="mt-2 truncate text-sm">{item.title || "—"}</div>
@@ -1340,6 +1362,7 @@ export default function SupplyRequestPage() {
         <SupplyRequestPreview
           item={selected}
           projects={projects}
+          currencyTypes={currencyTypes}
           letters={letters}
           actionNote={actionNote}
           setActionNote={setActionNote}
@@ -1388,11 +1411,12 @@ export default function SupplyRequestPage() {
   );
 }
 
-function SupplyRequestEditForm({ item, projects, busy, error, onSave, onCancel }) {
+function SupplyRequestEditForm({ item, projects, currencyTypes, busy, error, onSave, onCancel }) {
   const { user } = useAuth();
   const [form, setForm] = useState(() => ({
     projectId: String(item.projectId || ""),
     budgetCode: item.budgetCode || "",
+    currencyTypeId: item.currencyTypeId ? String(item.currencyTypeId) : "",
     title: item.title || "",
     needDateJalali: item.needDateJalali || "",
     amount: formatMoney(item.amount || ""),
@@ -1437,7 +1461,7 @@ function SupplyRequestEditForm({ item, projects, busy, error, onSave, onCancel }
           <Field label="پروژه"><select className={inputCls} value={form.projectId} onChange={(event) => setField("projectId", event.target.value)}><option value="">انتخاب پروژه</option>{projects.map((project) => <option key={project.id} value={project.id}>{projectLabel(project)}</option>)}</select></Field>
           <Field label="کد بودجه"><input className={inputCls} value={form.budgetCode} onChange={(event) => setField("budgetCode", event.target.value)} /></Field>
           <Field label="موضوع"><input className={inputCls} value={form.title} onChange={(event) => setField("title", event.target.value)} /></Field>
-          <Field label="برآورد هزینه"><div className="relative"><input dir="ltr" inputMode="numeric" className={`${inputCls} pl-12 text-left font-sans tabular-nums`} value={toFaDigits(form.amount)} onChange={(event) => setField("amount", formatMoney(event.target.value))} /><span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-neutral-500 dark:text-neutral-400">ریال</span></div></Field>
+          <Field label="برآورد هزینه"><div dir="ltr" className="flex h-11 overflow-hidden rounded-xl border border-black/10 bg-white dark:border-white/15 dark:bg-white/5"><select dir="rtl" value={form.currencyTypeId} onChange={(event) => setField("currencyTypeId", event.target.value)} className="w-20 shrink-0 border-r border-black/10 bg-neutral-50 px-2 text-center text-xs font-medium outline-none dark:border-white/10 dark:bg-white/[0.06] dark:text-neutral-100"><option value="">ریال</option>{(currencyTypes || []).filter((currency) => !isRialCurrency(currency)).map((currency) => <option key={currency.id} value={currency.id}>{currency.title}</option>)}</select><input dir="ltr" inputMode="numeric" className="min-w-0 flex-1 bg-transparent px-3 text-left font-sans tabular-nums outline-none" value={toFaDigits(form.amount)} onChange={(event) => setField("amount", formatMoney(event.target.value))} /></div></Field>
           <Field label="تاریخ نیاز"><JalaliPopupDatePicker value={form.needDateJalali} onChange={(value) => setField("needDateJalali", value)} /></Field>
           <Field label="پیوست‌ها"><div className="flex flex-wrap gap-2"><label className="grid h-11 w-11 cursor-pointer place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[0.04] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={uploading ? "در حال بارگذاری" : "بارگذاری فایل"} aria-label={uploading ? "در حال بارگذاری" : "بارگذاری فایل"}><img src="/images/icons/Uplod.svg" alt="" className={`h-4 w-4 dark:invert ${uploading ? "animate-pulse opacity-60" : ""}`} /><input type="file" multiple accept="image/*,.pdf" className="hidden" disabled={uploading} onChange={(event) => uploadFiles(event.target.files)} /></label>{form.attachments.map((file, index) => <span key={file.id || file.serverId || file.url || index} className="inline-flex max-w-full items-center gap-1 rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10"><a href={file.url || "#"} target="_blank" rel="noreferrer" className="max-w-32 truncate hover:underline">{file.name || `فایل ${toFaDigits(index + 1)}`}</a><button type="button" onClick={() => removeAttachment(index)} disabled={uploading} className="grid h-5 w-5 place-items-center rounded hover:bg-black/[0.05] dark:hover:bg-white/10" title="حذف پیوست" aria-label="حذف پیوست">×</button></span>)}</div></Field>
           <div className="md:col-span-2"><Field label="شرح"><textarea className={`${inputCls} min-h-24 py-3`} value={form.description} onChange={(event) => setField("description", event.target.value)} /></Field></div>
@@ -1447,7 +1471,7 @@ function SupplyRequestEditForm({ item, projects, busy, error, onSave, onCancel }
       </form>;
 }
 
-export function SupplyRequestPreview({ item, projects, letters = [], actionNote, setActionNote, actionBusy, actionError, onAction, onEdit, onSupplyActionsChanged, onClose }) {
+export function SupplyRequestPreview({ item, projects, currencyTypes = [], letters = [], actionNote, setActionNote, actionBusy, actionError, onAction, onEdit, onSupplyActionsChanged, onClose }) {
   const { user } = useAuth();
   const project = projects.find((row) => String(row.id) === String(item.projectId));
   const attachments = Array.isArray(item.attachments) ? item.attachments : [];
@@ -1619,9 +1643,9 @@ export function SupplyRequestPreview({ item, projects, letters = [], actionNote,
 
   const openPdfPreview = () => {
     const value = (content, fallback = "—") => escapeSupplyPdfHtml(String(content ?? "").trim() || fallback);
-    const amount = (content) => {
+    const amount = (content, currencyName = item.currencyName || "ریال") => {
       const formatted = formatMoney(content);
-      return formatted ? `${toFaDigits(formatted)} ریال` : "—";
+      return formatted ? `${toFaDigits(formatted)} ${currencyName}` : "—";
     };
     const projectName = project ? projectLabel(project) : item.projectName || item.projectCode || "—";
     const currentStage = SUPPLY_WORKFLOW_STEPS.find((step) => step.key === item.currentStepRoleKey);
@@ -1743,7 +1767,7 @@ export function SupplyRequestPreview({ item, projects, letters = [], actionNote,
               <div className="space-y-4">
                 {isEditing && isRequester ? (
                   <PreviewSection title="ویرایش درخواست تامین">
-                    <SupplyRequestEditForm item={item} projects={projects} busy={actionBusy} error={actionError} onSave={onEdit} onCancel={() => setIsEditing(false)} />
+                    <SupplyRequestEditForm item={item} projects={projects} currencyTypes={currencyTypes} busy={actionBusy} error={actionError} onSave={onEdit} onCancel={() => setIsEditing(false)} />
                   </PreviewSection>
                 ) : <>
                 <PreviewSection title="جزئیات درخواست تامین" flush>
@@ -1759,7 +1783,7 @@ export function SupplyRequestPreview({ item, projects, letters = [], actionNote,
                   <PreviewRow label="موضوع" value={item.title || "—"} />
                   <PreviewRow label="شرح" value={item.description || "—"} />
                   <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-x md:divide-y-0 dark:divide-white/10">
-                    <PreviewRow compact label="برآورد هزینه" value={<RialAmount value={item.amount} />} ltr />
+                    <PreviewRow compact label="برآورد هزینه" value={<CurrencyAmount value={item.amount} currencyName={item.currencyName || "ریال"} />} ltr />
                     <PreviewRow compact label="تاریخ نیاز" value={toFaDigits(String(item.needDateJalali || "—").replaceAll("-", "/"))} />
                     <PreviewRow compact label="پیوست‌ها" value={attachments.length ? <div className="flex flex-wrap justify-end gap-1.5">{attachments.map((file, index) => <a key={file.id || file.serverId || index} href={file.url || "#"} target="_blank" rel="noreferrer" className="max-w-full truncate rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFaDigits(index + 1)}`}</a>)}</div> : "—"} />
                   </div>
