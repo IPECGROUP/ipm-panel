@@ -284,7 +284,6 @@ export default function TenkhahPage({ embedded = false, active = true }) {
           isManager
             ? {
                 id: selected.id,
-                managementUserId: selected.nextUserId,
                 approvedDate: selected.managerApprovedDate || today(),
                 action: decision, note: workflowNote,
               }
@@ -414,7 +413,7 @@ export default function TenkhahPage({ embedded = false, active = true }) {
               </Field>
             </div>
             <div className="mt-5 flex flex-col gap-3 border-t border-black/10 pt-4 sm:flex-row sm:items-end sm:justify-end dark:border-white/10">
-              <Field label={userIsFinance ? "ارسال درخواست به مدیریت ارشد" : "ارسال درخواست به"} required className="w-full sm:w-[20rem]">
+              {!userIsFinance && <Field label="ارسال درخواست به" required className="w-full sm:w-[20rem]">
                 <select
                   value={form.projectManagerId}
                   onChange={(e) =>
@@ -429,7 +428,7 @@ export default function TenkhahPage({ embedded = false, active = true }) {
                     </option>
                   ))}
                 </select>
-              </Field>
+              </Field>}
               <button
                 disabled={busy}
                 onClick={create}
@@ -555,25 +554,6 @@ export default function TenkhahPage({ embedded = false, active = true }) {
                 {selected.stage !== "project_manager" && (
                   <DetailCell label="نقدینگی پروژه">{fa(format3(selected.projectLiquidity || 0))}</DetailCell>
                 )}
-                {incoming && selected.stage === "project_manager" && (
-                  <div className="rounded-xl border border-black/10 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/[.03]">
-                  <Field label="ارسال به مدیریت ارشد" required>
-                    <select
-                      value={selected.nextUserId || ""}
-                      onChange={(e) =>
-                        updateSelected("nextUserId", e.target.value)
-                      }
-                      className={input}
-                    >
-                      <option value="">انتخاب کنید</option>
-                      {financeRecipients.map((u) => (
-                        <option value={u.id} key={u.id}>
-                          {name(u)}
-                        </option>
-                      ))}
-                    </select>
-                  </Field></div>
-                )}
                 {incoming && selected.stage === "finance" && (
                   <section className="col-span-full overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-white/[.03]">
                     <div className="border-b border-black/10 px-4 py-3 text-sm font-bold dark:border-white/10">ثبت پرداخت نهایی</div>
@@ -595,7 +575,7 @@ export default function TenkhahPage({ embedded = false, active = true }) {
                     </div>
                   </section>
                 )}
-                {incoming && selected.stage !== "finance" && <div className="col-span-full border-t border-black/10 p-3 dark:border-white/10"><TenkhahActionCards choice={workflowChoice} setChoice={setWorkflowChoice} note={workflowNote} setNote={setWorkflowNote} onSubmit={() => action(workflowChoice)} disabled={busy || (workflowChoice === "approve" && selected.stage === "project_manager" && !selected.nextUserId)} /></div>}
+                {incoming && selected.stage !== "finance" && <div className="col-span-full border-t border-black/10 p-3 dark:border-white/10"><TenkhahActionCards choice={workflowChoice} setChoice={setWorkflowChoice} note={workflowNote} setNote={setWorkflowNote} onSubmit={() => action(workflowChoice)} disabled={busy} /></div>}
               </div></div><div className="order-first self-start"><TenkhahWorkflow item={selected} /></div></div>
             </div>
           </div>

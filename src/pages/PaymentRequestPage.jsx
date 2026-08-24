@@ -668,7 +668,7 @@ export default function PaymentRequestPage() {
     if (projectLiquidityRemaining == null) return setError("مانده نقدینگی پروژه در دسترس نیست.");
     if (BigInt(rialAmount) > BigInt(String(projectLiquidityRemaining || 0))) return setError("مبلغ ریالی درخواست نمی‌تواند بیشتر از مانده نقدینگی پروژه باشد.");
     if (form.hasSupplyRequest === "yes" && !form.supplyRequestId) return setError("درخواست تامین را انتخاب کنید.");
-    if (createRecipients.targetRoleKey && !form.targetAssigneeUserId) return setError("گیرنده درخواست پرداخت را انتخاب کنید.");
+    if (createRecipients.users.length && !form.targetAssigneeUserId) return setError("گیرنده درخواست پرداخت را انتخاب کنید.");
     setSubmitting(true); setError(""); setSuccess("");
     try {
       const data = await api("/requests", { method: "POST", body: JSON.stringify({
@@ -1043,12 +1043,12 @@ export default function PaymentRequestPage() {
             <Field label="شماره شبا"><input dir="ltr" inputMode="numeric" maxLength={33} className={`${inputClass} text-left font-sans tabular-nums`} value={toFa(form.bankInfo || "IR")} onChange={(e) => setField("bankInfo", formatSheba(e.target.value))} onFocus={() => { if (!form.bankInfo) setField("bankInfo", "IR"); }} placeholder="IR" /></Field>
           </div>
           <div className="flex flex-col gap-3 border-t border-black/[0.07] pt-4 sm:flex-row sm:items-end sm:justify-end dark:border-white/10">
-            <Field label="انتخاب کاربر" required={!!createRecipients.targetRoleKey} className="w-full sm:w-[20rem]">
+            {(createRecipientsLoading || createRecipients.users.length > 0) && <Field label="انتخاب کاربر" required={createRecipients.users.length > 0} className="w-full sm:w-[20rem]">
               <select className={inputClass} value={form.targetAssigneeUserId} onChange={(e) => setField("targetAssigneeUserId", e.target.value)} disabled={createRecipientsLoading}>
                 <option value="">{createRecipientsLoading ? "در حال دریافت..." : "انتخاب کاربر"}</option>
                 {createRecipients.users.map((recipient) => <option key={recipient.id} value={recipient.id}>{recipient.name || recipient.username || recipient.email || `کاربر #${recipient.id}`}</option>)}
               </select>
-            </Field>
+            </Field>}
             <button type="submit" disabled={submitting || uploading} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-neutral-900 text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-neutral-800 hover:shadow-md disabled:translate-y-0 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90" title="ثبت" aria-label="ثبت"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button>
           </div>
           {(error || success) && <div className={`rounded-xl px-3 py-2 text-sm ${error ? "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300" : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"}`}>{error || success}</div>}
@@ -2291,7 +2291,7 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
                 {editUploadError && <div className="mb-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">{editUploadError}</div>}
                 {canEditReturned ? <>
                   <NextRecipientSelect recipients={nextRecipients} loading={nextRecipientsLoading} value={targetAssigneeUserId} onChange={setTargetAssigneeUserId} />
-                  <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={editUploading || (!!nextRecipients.targetRoleKey && !targetAssigneeUserId)} onSubmit={() => onResubmit(item, editForm, actionNote, { targetAssigneeUserId: targetAssigneeUserId || null })} />
+                  <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={editUploading || (nextRecipients.users?.length > 0 && !targetAssigneeUserId)} onSubmit={() => onResubmit(item, editForm, actionNote, { targetAssigneeUserId: targetAssigneeUserId || null })} />
                 </> : <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={editUploading} onSubmit={() => onEdit(item, editForm)} />}
               </>}
               {!canDecide && !canEditRequest && !isOwner && <div className="rounded-2xl border border-black/10 p-4 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">در این مرحله اقدامی برای شما فعال نیست.</div>}
@@ -2320,7 +2320,7 @@ function WorkflowPanel({
   currencyTypes, nextRecipients, nextRecipientsLoading, targetAssigneeUserId, setTargetAssigneeUserId,
 }) {
   const finalAccounting = stepKey === "accounting" && Number(stepIndex) >= 5;
-  const targetRequired = choice === "approve" && !!nextRecipients?.targetRoleKey && nextRecipients.targetRoleKey !== "accounting";
+  const targetRequired = choice === "approve" && (nextRecipients?.users || []).length > 0;
   if (finalAccounting) {
     return <PreviewSection title="ثبت پرداخت نهایی">
       <div className="space-y-4 py-4">
@@ -2411,7 +2411,7 @@ function ActionOption({ kind = "approve", checked, disabled, onClick, label, chi
 function NextRecipientSelect({ recipients, loading, value, onChange, visible = true, disabled = false, compact = false }) {
   if (!visible) return null;
   const targetRoleKey = recipients?.targetRoleKey;
-  if (targetRoleKey === "accounting") return null;
+  if (!(recipients?.users || []).length && !loading) return null;
   if (!targetRoleKey && !loading) return null;
   return <Field label="ارسال به کاربر مرحله بعد" required>
     <select className={`${inputClass} ${compact ? "h-9 text-center text-xs" : ""}`} value={value || ""} onChange={(event) => onChange(event.target.value)} disabled={disabled || loading || !targetRoleKey}>
