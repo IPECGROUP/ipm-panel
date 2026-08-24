@@ -1047,12 +1047,11 @@ export default function SupplyRequestPage() {
               <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[minmax(180px,0.6fr)_minmax(360px,1.5fr)]">
                 <div className="space-y-3">
                 <Field label="برآورد هزینه اولیه" required>
-                  <div dir="ltr" className="flex h-11 overflow-hidden rounded-xl border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">
+                  <div className="relative min-w-0">
                     <select
-                      dir="rtl"
                       value={form.currencyTypeId}
                       onChange={(event) => setField("currencyTypeId", event.target.value)}
-                      className="w-20 shrink-0 border-r border-black/10 bg-neutral-50 px-2 text-center text-xs font-medium outline-none dark:border-white/10 dark:bg-white/[0.06] dark:text-neutral-100"
+                      className="absolute left-1 top-1 z-10 h-9 w-16 cursor-pointer appearance-auto rounded-lg border border-neutral-200 bg-neutral-100 px-1 text-center text-xs font-semibold text-neutral-700 shadow-sm outline-none transition hover:bg-neutral-200 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-900/10 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/[.15] dark:focus:border-white/30 dark:focus:ring-white/10"
                       aria-label="ارز"
                     >
                       <option value="">ریال</option>
@@ -1063,7 +1062,7 @@ export default function SupplyRequestPage() {
                       inputMode="numeric"
                       value={toFaDigits(form.amount)}
                       onChange={(event) => setField("amount", formatMoney(event.target.value))}
-                      className="min-w-0 flex-1 bg-transparent px-3 text-left font-sans tabular-nums outline-none"
+                      className={`${inputCls} pl-[72px] text-left font-sans tabular-nums`}
                       placeholder="۰"
                     />
                   </div>
@@ -1461,7 +1460,7 @@ function SupplyRequestEditForm({ item, projects, currencyTypes, busy, error, onS
           <Field label="پروژه"><select className={inputCls} value={form.projectId} onChange={(event) => setField("projectId", event.target.value)}><option value="">انتخاب پروژه</option>{projects.map((project) => <option key={project.id} value={project.id}>{projectLabel(project)}</option>)}</select></Field>
           <Field label="کد بودجه"><input className={inputCls} value={form.budgetCode} onChange={(event) => setField("budgetCode", event.target.value)} /></Field>
           <Field label="موضوع"><input className={inputCls} value={form.title} onChange={(event) => setField("title", event.target.value)} /></Field>
-          <Field label="برآورد هزینه"><div dir="ltr" className="flex h-11 overflow-hidden rounded-xl border border-black/10 bg-white dark:border-white/15 dark:bg-white/5"><select dir="rtl" value={form.currencyTypeId} onChange={(event) => setField("currencyTypeId", event.target.value)} className="w-20 shrink-0 border-r border-black/10 bg-neutral-50 px-2 text-center text-xs font-medium outline-none dark:border-white/10 dark:bg-white/[0.06] dark:text-neutral-100"><option value="">ریال</option>{(currencyTypes || []).filter((currency) => !isRialCurrency(currency)).map((currency) => <option key={currency.id} value={currency.id}>{currency.title}</option>)}</select><input dir="ltr" inputMode="numeric" className="min-w-0 flex-1 bg-transparent px-3 text-left font-sans tabular-nums outline-none" value={toFaDigits(form.amount)} onChange={(event) => setField("amount", formatMoney(event.target.value))} /></div></Field>
+          <Field label="برآورد هزینه"><div className="relative"><select value={form.currencyTypeId} onChange={(event) => setField("currencyTypeId", event.target.value)} className="absolute left-1 top-1 z-10 h-9 w-16 cursor-pointer appearance-auto rounded-lg border border-neutral-200 bg-neutral-100 px-1 text-center text-xs font-semibold text-neutral-700 shadow-sm outline-none transition hover:bg-neutral-200 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-900/10 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/[.15] dark:focus:border-white/30 dark:focus:ring-white/10"><option value="">ریال</option>{(currencyTypes || []).filter((currency) => !isRialCurrency(currency)).map((currency) => <option key={currency.id} value={currency.id}>{currency.title}</option>)}</select><input dir="ltr" inputMode="numeric" className={`${inputCls} pl-[72px] text-left font-sans tabular-nums`} value={toFaDigits(form.amount)} onChange={(event) => setField("amount", formatMoney(event.target.value))} /></div></Field>
           <Field label="تاریخ نیاز"><JalaliPopupDatePicker value={form.needDateJalali} onChange={(value) => setField("needDateJalali", value)} /></Field>
           <Field label="پیوست‌ها"><div className="flex flex-wrap gap-2"><label className="grid h-11 w-11 cursor-pointer place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[0.04] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={uploading ? "در حال بارگذاری" : "بارگذاری فایل"} aria-label={uploading ? "در حال بارگذاری" : "بارگذاری فایل"}><img src="/images/icons/Uplod.svg" alt="" className={`h-4 w-4 dark:invert ${uploading ? "animate-pulse opacity-60" : ""}`} /><input type="file" multiple accept="image/*,.pdf" className="hidden" disabled={uploading} onChange={(event) => uploadFiles(event.target.files)} /></label>{form.attachments.map((file, index) => <span key={file.id || file.serverId || file.url || index} className="inline-flex max-w-full items-center gap-1 rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10"><a href={file.url || "#"} target="_blank" rel="noreferrer" className="max-w-32 truncate hover:underline">{file.name || `فایل ${toFaDigits(index + 1)}`}</a><button type="button" onClick={() => removeAttachment(index)} disabled={uploading} className="grid h-5 w-5 place-items-center rounded hover:bg-black/[0.05] dark:hover:bg-white/10" title="حذف پیوست" aria-label="حذف پیوست">×</button></span>)}</div></Field>
           <div className="md:col-span-2"><Field label="شرح"><textarea className={`${inputCls} min-h-24 py-3`} value={form.description} onChange={(event) => setField("description", event.target.value)} /></Field></div>
