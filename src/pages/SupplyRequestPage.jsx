@@ -76,7 +76,29 @@ function parseMoney(value) {
 
 function formatMoney(value) {
   const digits = normalizeDigits(value).replace(/[^\d]/g, "");
-  return digits ? Number(digits).toLocaleString("en-US") : "";
+  if (!digits) return "";
+  try {
+    return BigInt(digits).toLocaleString("en-US");
+  } catch {
+    return "";
+  }
+}
+
+function RialAmount({ value, empty = "—" }) {
+  const amount = formatMoney(value);
+  if (!amount) return empty;
+  // LTR keeps the currency to the left of the amount, just like the payment
+  // request screen, while the number itself remains Persian for the user.
+  return <span dir="ltr" className="inline-flex items-center gap-1 font-sans tabular-nums"><span>ریال</span><span>{toFaDigits(amount)}</span></span>;
+}
+
+function budgetNameOf(item) {
+  return String(item?.center_desc ?? item?.last_desc ?? item?.budgetName ?? item?.budget_name ?? item?.name ?? item?.description ?? "").trim();
+}
+
+function BudgetCodeValue({ code, name = "" }) {
+  if (!code) return "—";
+  return <span dir="rtl" className="inline-flex max-w-full items-center justify-end gap-1.5"><span dir="ltr" className="shrink-0 font-sans tabular-nums">{toFaDigits(code)}</span>{name ? <span className="min-w-0 truncate">- {name}</span> : null}</span>;
 }
 
 function normalizeProjectCode(value = "") {
@@ -901,7 +923,7 @@ export default function SupplyRequestPage() {
         item.title || "",
         itemProjectLabel(item, projects),
         item.budgetCode || "",
-        toFaDigits(Number(item.amount || 0).toLocaleString("en-US")),
+        `${toFaDigits(formatMoney(item.amount))} ریال`,
         toFaDigits(String(item.needDateJalali || item.docDateJalali || "").replaceAll("-", "/")),
         statusLabels[displayStatusOf(item)] || item.status || "",
         item.description || "",
@@ -990,14 +1012,14 @@ export default function SupplyRequestPage() {
                   </select>
                 </Field>
                 <Field label="کد بودجه" required>
-                  <select value={form.budgetCode} onChange={(event) => setField("budgetCode", event.target.value)} className={inputCls} disabled={!form.projectId}>
+                  <select dir="rtl" value={form.budgetCode} onChange={(event) => setField("budgetCode", event.target.value)} className={inputCls} disabled={!form.projectId}>
                     <option value="">{form.projectId ? "انتخاب کنید" : "ابتدا پروژه را انتخاب کنید"}</option>
                     {budgetItems.map((item) => {
                       const code = normalizeBudgetCode(item.code ?? item.budgetCode ?? item.budget_code ?? item.center_code);
-                      const name = item.center_desc ?? item.last_desc ?? item.budgetName ?? item.budget_name ?? item.name ?? item.description ?? "";
+                      const name = budgetNameOf(item);
                       return (
                         <option key={item.id || code} value={code}>
-                          {code}
+                          {toFaDigits(code)}
                           {name ? ` - ${name}` : ""}
                         </option>
                       );
@@ -1415,7 +1437,7 @@ function SupplyRequestEditForm({ item, projects, busy, error, onSave, onCancel }
           <Field label="پروژه"><select className={inputCls} value={form.projectId} onChange={(event) => setField("projectId", event.target.value)}><option value="">انتخاب پروژه</option>{projects.map((project) => <option key={project.id} value={project.id}>{projectLabel(project)}</option>)}</select></Field>
           <Field label="کد بودجه"><input className={inputCls} value={form.budgetCode} onChange={(event) => setField("budgetCode", event.target.value)} /></Field>
           <Field label="موضوع"><input className={inputCls} value={form.title} onChange={(event) => setField("title", event.target.value)} /></Field>
-          <Field label="برآورد هزینه"><input dir="ltr" inputMode="numeric" className={`${inputCls} text-left`} value={toFaDigits(form.amount)} onChange={(event) => setField("amount", formatMoney(event.target.value))} /></Field>
+          <Field label="برآورد هزینه"><div className="relative"><input dir="ltr" inputMode="numeric" className={`${inputCls} pl-12 text-left font-sans tabular-nums`} value={toFaDigits(form.amount)} onChange={(event) => setField("amount", formatMoney(event.target.value))} /><span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-neutral-500 dark:text-neutral-400">ریال</span></div></Field>
           <Field label="تاریخ نیاز"><JalaliPopupDatePicker value={form.needDateJalali} onChange={(value) => setField("needDateJalali", value)} /></Field>
           <Field label="پیوست‌ها"><div className="flex flex-wrap gap-2"><label className="grid h-11 w-11 cursor-pointer place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[0.04] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={uploading ? "در حال بارگذاری" : "بارگذاری فایل"} aria-label={uploading ? "در حال بارگذاری" : "بارگذاری فایل"}><img src="/images/icons/Uplod.svg" alt="" className={`h-4 w-4 dark:invert ${uploading ? "animate-pulse opacity-60" : ""}`} /><input type="file" multiple accept="image/*,.pdf" className="hidden" disabled={uploading} onChange={(event) => uploadFiles(event.target.files)} /></label>{form.attachments.map((file, index) => <span key={file.id || file.serverId || file.url || index} className="inline-flex max-w-full items-center gap-1 rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10"><a href={file.url || "#"} target="_blank" rel="noreferrer" className="max-w-32 truncate hover:underline">{file.name || `فایل ${toFaDigits(index + 1)}`}</a><button type="button" onClick={() => removeAttachment(index)} disabled={uploading} className="grid h-5 w-5 place-items-center rounded hover:bg-black/[0.05] dark:hover:bg-white/10" title="حذف پیوست" aria-label="حذف پیوست">×</button></span>)}</div></Field>
           <div className="md:col-span-2"><Field label="شرح"><textarea className={`${inputCls} min-h-24 py-3`} value={form.description} onChange={(event) => setField("description", event.target.value)} /></Field></div>
@@ -1590,11 +1612,16 @@ export function SupplyRequestPreview({ item, projects, letters = [], actionNote,
     setCcUserIds((prev) => (prev.includes(sid) ? prev.filter((x) => x !== sid) : [...prev, sid]));
   };
 
+  const currentBudgetItem = actionBudgetItems.find((budgetItem) =>
+    normalizeBudgetCode(budgetItem?.code ?? budgetItem?.budgetCode ?? budgetItem?.budget_code ?? budgetItem?.center_code) === normalizeBudgetCode(item.budgetCode)
+  );
+  const currentBudgetName = budgetNameOf(currentBudgetItem);
+
   const openPdfPreview = () => {
     const value = (content, fallback = "—") => escapeSupplyPdfHtml(String(content ?? "").trim() || fallback);
     const amount = (content) => {
-      const number = Number(content || 0);
-      return number > 0 ? `${toFaDigits(number.toLocaleString("en-US"))} ریال` : "—";
+      const formatted = formatMoney(content);
+      return formatted ? `${toFaDigits(formatted)} ریال` : "—";
     };
     const projectName = project ? projectLabel(project) : item.projectName || item.projectCode || "—";
     const currentStage = SUPPLY_WORKFLOW_STEPS.find((step) => step.key === item.currentStepRoleKey);
@@ -1727,12 +1754,12 @@ export function SupplyRequestPreview({ item, projects, letters = [], actionNote,
                   </div>
                   <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-2 md:divide-x md:divide-y-0 dark:divide-white/10">
                     <PreviewRow compact label="پروژه" value={project ? projectLabel(project) : item.projectName || item.projectCode || "—"} />
-                    <PreviewRow compact label="کد بودجه" value={item.budgetCode || "—"} />
+                    <PreviewRow compact label="کد بودجه" value={<BudgetCodeValue code={item.budgetCode} name={currentBudgetName} />} />
                   </div>
                   <PreviewRow label="موضوع" value={item.title || "—"} />
                   <PreviewRow label="شرح" value={item.description || "—"} />
                   <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-x md:divide-y-0 dark:divide-white/10">
-                    <PreviewRow compact label="برآورد هزینه" value={toFaDigits(Number(item.amount || 0).toLocaleString("en-US"))} ltr />
+                    <PreviewRow compact label="برآورد هزینه" value={<RialAmount value={item.amount} />} ltr />
                     <PreviewRow compact label="تاریخ نیاز" value={toFaDigits(String(item.needDateJalali || "—").replaceAll("-", "/"))} />
                     <PreviewRow compact label="پیوست‌ها" value={attachments.length ? <div className="flex flex-wrap justify-end gap-1.5">{attachments.map((file, index) => <a key={file.id || file.serverId || index} href={file.url || "#"} target="_blank" rel="noreferrer" className="max-w-full truncate rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFaDigits(index + 1)}`}</a>)}</div> : "—"} />
                   </div>
@@ -1759,12 +1786,12 @@ export function SupplyRequestPreview({ item, projects, letters = [], actionNote,
                           </div>
                           <div className="grid gap-3 md:grid-cols-2">
                             <Field label="کد بودجه" required labelClassName={budgetLabelCls}>
-                              <select dir="ltr" value={budgetCodeDraft} onChange={(event) => setBudgetCodeDraft(event.target.value)} className={inputCls}>
+                              <select dir="rtl" value={budgetCodeDraft} onChange={(event) => setBudgetCodeDraft(event.target.value)} className={inputCls}>
                                 <option value="">انتخاب کنید</option>
                                 {actionBudgetItems.map((budgetItem) => {
                                   const code = normalizeBudgetCode(budgetItem.code ?? budgetItem.budgetCode ?? budgetItem.budget_code ?? budgetItem.center_code);
-                                  const name = budgetItem.center_desc ?? budgetItem.last_desc ?? budgetItem.budgetName ?? budgetItem.budget_name ?? budgetItem.name ?? budgetItem.description ?? "";
-                                  return <option key={budgetItem.id || code} value={code}>{code}{name ? ` - ${name}` : ""}</option>;
+                                  const name = budgetNameOf(budgetItem);
+                                  return <option key={budgetItem.id || code} value={code}>{toFaDigits(code)}{name ? ` - ${name}` : ""}</option>;
                                 })}
                               </select>
                             </Field>
