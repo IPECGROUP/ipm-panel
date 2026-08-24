@@ -2401,7 +2401,7 @@ function RequestFilterBar({
           type="button"
           onClick={onExport}
           disabled={!canExport}
-          className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[0.03] disabled:opacity-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-white shadow-sm transition hover:-translate-y-0.5 hover:bg-neutral-50 hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
           title="خروجی اکسل"
           aria-label="خروجی اکسل"
         >
