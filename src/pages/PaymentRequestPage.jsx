@@ -27,16 +27,16 @@ const STEP_LABELS = {
   payment_order: "دستور پرداخت",
 };
 const WAITING_UNIT_LABELS = {
-  requester: "واحد درخواست‌کننده",
+  requester: "درخواست‌کننده",
   // These are unit names, not workflow-step descriptions. Keep the queue
   // label identical to the unit the request is actually waiting for.
-  project_control: "واحد برنامه ریزی",
-  project_manager: "واحد مدیریت پروژه ها",
-  accounting: "واحد مالی و حسابداری",
-  management: "واحد مدیریت",
-  finance_manager: "واحد مدیریت مالی",
+  project_control: "برنامه ریزی",
+  project_manager: "مدیریت پروژه ها",
+  accounting: "مالی و حسابداری",
+  management: "مدیریت",
+  finance_manager: "مدیریت مالی",
   payment_order: "واحد دستور پرداخت",
-  finance: "واحد مالی",
+  finance: "مالی",
 };
 const PAYMENT_WORKFLOW_STEPS = [
   { index: 0, label: "ثبت درخواست" },
@@ -355,6 +355,8 @@ export default function PaymentRequestPage() {
   const [page, setPage] = useState(0);
   const [projects, setProjects] = useState([]);
   const [budgetItems, setBudgetItems] = useState([]);
+  const [budgetPickerOpen, setBudgetPickerOpen] = useState(false);
+  const [budgetPickerQuery, setBudgetPickerQuery] = useState("");
   const [projectLiquidityRemaining, setProjectLiquidityRemaining] = useState(null);
   const [projectLiquidityLoading, setProjectLiquidityLoading] = useState(false);
   const [supplyRequests, setSupplyRequests] = useState([]);
@@ -1142,7 +1144,7 @@ export default function PaymentRequestPage() {
         {showForm && <form onSubmit={submit} className={`mb-5 space-y-4 rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03] md:p-5 ${requestType === "normal" ? "" : "hidden"}`}>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(260px,1fr)_minmax(220px,1fr)_minmax(210px,0.8fr)]">
             <Field label="پروژه" required><select className={inputClass} value={form.projectId} onChange={(e) => setForm((old) => ({ ...old, projectId: e.target.value, budgetCode: "", targetAssigneeUserId: "" }))}><option value="">انتخاب پروژه</option>{projects.map((item) => <option key={item.id} value={item.id}>{projectLabel(item)}</option>)}</select></Field>
-            <Field label="کد بودجه" required><select className={inputClass} value={form.budgetCode} disabled={!form.projectId} onChange={(e) => setField("budgetCode", e.target.value)}><option value="">{form.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید"}</option>{budgetItems.map((item) => { const code = normalizeBudgetCode(item.code || item.center_code); const description = item.center_desc || item.last_desc || item.name || item.description || ""; return <option key={code || item.id} value={code}>{code}{description ? ` - ${description}` : ""}</option>; })}</select></Field>
+            <Field label="کد بودجه" required><button type="button" disabled={!form.projectId} onClick={() => { setBudgetPickerQuery(""); setBudgetPickerOpen(true); }} className={`${inputClass} flex items-center justify-between gap-3 text-right disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400 dark:disabled:bg-white/5 dark:disabled:text-neutral-500`}><span className={form.budgetCode ? "min-w-0 truncate" : "text-neutral-400"}>{form.budgetCode ? (() => { const item = budgetItems.find((row) => normalizeBudgetCode(row.code || row.center_code) === form.budgetCode); const description = item?.center_desc || item?.last_desc || item?.name || item?.description || ""; return `${form.budgetCode}${description ? ` - ${description}` : ""}`; })() : (form.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید")}</span><span className="shrink-0 text-lg leading-none">⌄</span></button></Field>
             <div className="flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">باقی‌مانده نقدینگی پروژه: <span className="mr-1 font-medium tabular-nums">{projectLiquidityLoading ? "در حال دریافت..." : `${money(projectLiquidityRemaining) || "۰"} ریال`}</span></div>
           </div>
 
@@ -1242,6 +1244,14 @@ export default function PaymentRequestPage() {
           selectedIds={form.relatedLetterIds}
           onToggle={(id) => setField("relatedLetterIds", form.relatedLetterIds.includes(String(id)) ? form.relatedLetterIds.filter((value) => value !== String(id)) : [...form.relatedLetterIds, String(id)])}
           onClose={() => setLetterPickerOpen(false)}
+        />}
+        {budgetPickerOpen && <BudgetTreePickerModal
+          items={budgetItems}
+          selectedCode={form.budgetCode}
+          query={budgetPickerQuery}
+          onQueryChange={setBudgetPickerQuery}
+          onSelect={(code) => { setField("budgetCode", code); setBudgetPickerOpen(false); }}
+          onClose={() => setBudgetPickerOpen(false)}
         />}
 
         {!showForm && <RequestFilterBar query={filterQuery} setQuery={setFilterQuery} quick={filterQuick} setQuick={setFilterQuick} ownership={filterOwnership} setOwnership={setFilterOwnership} status={filterStatus} setStatus={setFilterStatus} unread={filterUnread} setUnread={setFilterUnread} fromDate={filterFromDate} setFromDate={setFilterFromDate} toDate={filterToDate} setToDate={setFilterToDate} onExportExcel={exportFilteredExcel} exportingExcel={exportingExcel} exportDisabled={!sortedItems.length} tags={tags} pinnedTagIds={pinnedFilterTagIds} setPinnedTagIds={setPinnedFilterTagIds} activeTagIds={filterTagIds} setActiveTagIds={setFilterTagIds} tagPickOpen={tagPickOpen} setTagPickOpen={setTagPickOpen} tagPickSearch={tagPickSearch} setTagPickSearch={setTagPickSearch} />}
@@ -1455,6 +1465,114 @@ function RequestFilterBar({ query, setQuery, quick, setQuick, ownership, setOwne
     </div>
     {tagPickOpen && <TagPicker tags={tags} selectedIds={pinnedTagIds} onToggle={togglePinnedTag} query={tagPickSearch} setQuery={setTagPickSearch} onClose={() => setTagPickOpen(false)} />}
   </div>;
+}
+
+function BudgetTreePickerModal({ items, selectedCode, query, onQueryChange, onSelect, onClose }) {
+  const [expandedCodes, setExpandedCodes] = useState(() => new Set());
+  const rows = useMemo(() => {
+    const byCode = new Map();
+    (Array.isArray(items) ? items : []).forEach((item) => {
+      const code = normalizeBudgetCode(item?.code || item?.center_code);
+      if (!code || byCode.has(code)) return;
+      byCode.set(code, {
+        code,
+        name: String(item?.center_desc || item?.last_desc || item?.name || item?.description || "").trim(),
+      });
+    });
+    const compareCodes = (left, right) => {
+      const leftParts = normalizeBudgetCode(left).split("-").filter(Boolean);
+      const rightParts = normalizeBudgetCode(right).split("-").filter(Boolean);
+      for (let index = 0; index < Math.max(leftParts.length, rightParts.length); index += 1) {
+        const a = leftParts[index]; const b = rightParts[index];
+        if (a === undefined) return -1;
+        if (b === undefined) return 1;
+        if (/^\d+$/.test(a) && /^\d+$/.test(b)) {
+          const diff = BigInt(a) === BigInt(b) ? 0 : BigInt(a) < BigInt(b) ? -1 : 1;
+          if (diff) return diff;
+        } else {
+          const diff = a.localeCompare(b, "fa", { numeric: true, sensitivity: "base" });
+          if (diff) return diff;
+        }
+      }
+      return 0;
+    };
+    const childrenByParent = new Map();
+    const roots = [];
+    byCode.forEach((item, code) => {
+      const parts = code.split("-");
+      let parentCode = "";
+      for (let length = parts.length - 1; length > 0; length -= 1) {
+        const candidate = parts.slice(0, length).join("-");
+        if (byCode.has(candidate)) { parentCode = candidate; break; }
+      }
+      if (!parentCode) roots.push(item);
+      else childrenByParent.set(parentCode, [...(childrenByParent.get(parentCode) || []), item]);
+    });
+    const sort = (list) => list.sort((a, b) => compareCodes(a.code, b.code));
+    sort(roots);
+    childrenByParent.forEach(sort);
+    return { roots, childrenByParent };
+  }, [items]);
+  const allExpandable = useMemo(() => Array.from(rows.childrenByParent.keys()), [rows]);
+  const normalizedQuery = normalizeDigits(query).trim().toLowerCase();
+  const matchingCodes = useMemo(() => {
+    if (!normalizedQuery) return null;
+    const matches = new Set();
+    const visit = (nodes, ancestors = []) => nodes.forEach((node) => {
+      const matchesNode = normalizeDigits(`${node.code} ${node.name}`).toLowerCase().includes(normalizedQuery);
+      if (matchesNode) [...ancestors, node.code].forEach((code) => matches.add(code));
+      visit(rows.childrenByParent.get(node.code) || [], [...ancestors, node.code]);
+    });
+    visit(rows.roots);
+    return matches;
+  }, [normalizedQuery, rows]);
+  const toggle = (code) => setExpandedCodes((previous) => {
+    const next = new Set(previous);
+    if (next.has(code)) next.delete(code); else next.add(code);
+    return next;
+  });
+  const displayRows = useMemo(() => {
+    const result = [];
+    const visit = (nodes, depth = 0) => nodes.forEach((node) => {
+      if (matchingCodes && !matchingCodes.has(node.code)) return;
+      const children = rows.childrenByParent.get(node.code) || [];
+      const visibleBySearch = Boolean(matchingCodes);
+      result.push({ ...node, depth, hasChildren: children.length > 0, expanded: visibleBySearch || expandedCodes.has(node.code) });
+      if (visibleBySearch || expandedCodes.has(node.code)) visit(children, depth + 1);
+    });
+    visit(rows.roots);
+    return result;
+  }, [expandedCodes, matchingCodes, rows]);
+  useEffect(() => {
+    const closeOnEscape = (event) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
+  const allExpanded = allExpandable.length > 0 && allExpandable.every((code) => expandedCodes.has(code));
+
+  return createPortal(
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-5" dir="rtl">
+      <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px]" onClick={onClose} />
+      <section className="relative flex max-h-[min(86vh,760px)] w-[min(920px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white">
+        <header className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3 dark:border-white/10">
+          <div><div className="text-base font-bold">انتخاب کد بودجه</div><p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">برای دیدن زیرمجموعه‌ها، دکمه کنار هر ردیف را انتخاب کنید.</p></div>
+          <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-900 text-xl text-white transition hover:bg-neutral-800 dark:bg-white dark:text-neutral-900" aria-label="بستن" title="بستن">×</button>
+        </header>
+        <div className="flex flex-col gap-3 border-b border-black/10 p-3 sm:flex-row dark:border-white/10">
+          <input autoFocus value={query} onChange={(event) => onQueryChange(event.target.value)} className={inputClass} placeholder="جستجو در کد یا نام بودجه..." />
+          <button type="button" onClick={() => setExpandedCodes(allExpanded ? new Set() : new Set(allExpandable))} disabled={!allExpandable.length || Boolean(normalizedQuery)} className="h-11 shrink-0 rounded-xl border border-black/10 px-4 text-sm font-semibold transition hover:bg-black/[0.04] disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:hover:bg-white/10">{allExpanded ? "بستن همه" : "باز کردن همه"}</button>
+        </div>
+        <div className="grid grid-cols-[minmax(0,1fr)_150px_42px] border-b border-black/10 bg-neutral-100 px-3 py-2 text-xs font-bold text-neutral-700 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200"><span>نام بودجه</span><span className="text-center">کد بودجه</span><span /></div>
+        <div className="min-h-40 flex-1 overflow-y-auto">
+          {displayRows.length ? displayRows.map((row) => <div key={row.code} className={`group grid grid-cols-[minmax(0,1fr)_150px_42px] items-center border-b border-black/[0.07] px-3 py-1.5 transition last:border-b-0 hover:bg-black/[0.035] dark:border-white/[0.08] dark:hover:bg-white/[0.05] ${selectedCode === row.code ? "bg-sky-50 dark:bg-sky-500/10" : ""}`}>
+            <button type="button" onClick={() => onSelect(row.code)} className={`min-w-0 py-2 text-right text-sm ${row.hasChildren ? "font-bold" : "font-medium"}`} style={{ paddingRight: `${row.depth * 26}px` }} title={`انتخاب ${row.code}`}><span className="block truncate">{row.name || "بدون عنوان"}</span></button>
+            <button type="button" onClick={() => onSelect(row.code)} className="py-2 text-center font-sans text-sm font-semibold tabular-nums" dir="ltr" title={`انتخاب ${row.code}`}>{toFa(row.code)}</button>
+            {row.hasChildren ? <button type="button" onClick={() => toggle(row.code)} className="grid h-8 w-8 place-items-center justify-self-end rounded-lg border border-black/10 text-lg transition hover:bg-black/[0.06] dark:border-white/10 dark:hover:bg-white/10" aria-label={row.expanded ? "بستن زیرمجموعه‌ها" : "نمایش زیرمجموعه‌ها"} title={row.expanded ? "بستن زیرمجموعه‌ها" : "نمایش زیرمجموعه‌ها"}>{row.expanded ? "−" : "+"}</button> : <span />}
+          </div>) : <div className="p-8 text-center text-sm text-neutral-500 dark:text-neutral-400">موردی پیدا نشد.</div>}
+        </div>
+      </section>
+    </div>, document.body
+  );
 }
 
 function ChoiceModal({ title, query, onQueryChange, loading, children, onClose }) {
