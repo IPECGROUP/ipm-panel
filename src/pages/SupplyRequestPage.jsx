@@ -1140,8 +1140,8 @@ export default function SupplyRequestPage() {
           {ok && <div className="mb-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">{ok}</div>}
 
           <div className={tableWrapCls}>
-            <div className="hidden overflow-x-auto md:block" dir="ltr">
-              <table dir="rtl" className="w-full min-w-[860px] table-fixed text-sm [&_td]:py-1.5 [&_td]:text-center [&_th]:py-2 [&_th]:text-center">
+            <div className="relative hidden max-h-[55vh] overflow-y-auto overflow-x-hidden pb-0 md:block" dir="ltr">
+              <table dir="rtl" className="w-full min-w-full table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:min-w-0 [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2">
                 <colgroup>
                   <col style={{ width: 40 }} />
                   <col style={{ width: 16 }} />
@@ -1155,17 +1155,17 @@ export default function SupplyRequestPage() {
                 </colgroup>
                 <thead>
                   <tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100">
-                    <th><input type="checkbox" className="h-4 w-4 accent-black dark:accent-white" checked={allPageItemsSelected} onChange={toggleAllPageItems} aria-label="انتخاب همه" /></th>
-                    <th aria-label="خوانده‌نشده" />
-                    <th>شماره</th>
-                    <th>تاریخ</th>
-                    <th>پروژه</th>
-                    <th>موضوع</th>
-                    <th>درخواست‌کننده</th>
-                    <th>آخرین وضعیت</th>
-                    <th className="relative">
+                    <th className="sticky top-0 z-40 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allPageItemsSelected} onChange={toggleAllPageItems} aria-label="انتخاب همه" /></th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 !py-2 dark:bg-neutral-800" aria-label="خوانده‌نشده" />
+                    <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">شماره</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">تاریخ</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 !py-2 !text-right text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">پروژه</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 !py-2 !text-right text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">موضوع</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">درخواست‌کننده</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">آخرین وضعیت</th>
+                    <th className="sticky top-0 z-40 bg-neutral-200 !py-2 !pl-10 !pr-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">
                       <span>اقدامات</span>
-                      <div ref={tableMenuRef} className="absolute left-1 top-1/2 z-30 -translate-y-1/2">
+                      <div ref={tableMenuRef} className="absolute left-1 top-1/2 z-50 -translate-y-1/2">
                         <button
                           type="button"
                           onClick={() => setTableMenuOpen((open) => !open)}
@@ -1217,7 +1217,7 @@ export default function SupplyRequestPage() {
                     </th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="text-[13px] text-black [&>tr>td]:!py-0 [&>tr>td:last-child_button]:!h-9 [&>tr>td:last-child_button]:!w-9 dark:text-neutral-100">
                   {loading ? (
                     <tr>
                       <td colSpan={9} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td>
@@ -1229,7 +1229,7 @@ export default function SupplyRequestPage() {
                   ) : (
                     pageItems.map((item) => (
                       <tr key={item.id} className="group bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
-                        <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-white" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label={`انتخاب درخواست ${item.serial || item.id}`} /></td>
+                        <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label={`انتخاب درخواست ${item.serial || item.id}`} /></td>
                         <td className="border-b border-neutral-300 px-0 dark:border-neutral-700">{isUnreadForUser(item) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="درخواست خوانده‌نشده" aria-label="درخواست خوانده‌نشده" />}</td>
                         <td dir="ltr" className="border-b border-neutral-300 px-3 font-sans tabular-nums dark:border-neutral-700">
                           <button type="button" onClick={() => openPreview(item)} className="mx-auto inline-flex underline-offset-4 transition hover:underline" title="نمایش درخواست">
@@ -1237,16 +1237,16 @@ export default function SupplyRequestPage() {
                           </button>
                         </td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/"))}</td>
-                        <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{itemProjectLabel(item, projects)}</span></td>
-                        <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.title || "—"}</span></td>
+                        <td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><span className="block truncate text-right">{itemProjectLabel(item, projects)}</span></td>
+                        <td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><span className="block truncate text-right">{item.title || "—"}</span></td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.createdByName || `کاربر #${toFaDigits(item.createdById)}`}</span></td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><StatusBadge status={displayStatusOf(item)} /></td>
-                        <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">
-                          <div className="flex min-h-9 items-center justify-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                            <button type="button" onClick={() => openPreview(item)} className="grid h-[34px] w-[34px] place-items-center rounded-lg transition hover:bg-black/[0.04] dark:hover:bg-white/10" aria-label={item.canAct ? "اقدامات" : "نمایش"} title={item.canAct ? "اقدامات" : "نمایش"}>
+                        <td className="border-b border-neutral-300 !pl-10 !pr-2 dark:border-neutral-700">
+                          <div className="pointer-events-none flex w-full items-center justify-center gap-1 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
+                            <button type="button" onClick={() => openPreview(item)} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label={item.canAct ? "اقدامات" : "نمایش"} title={item.canAct ? "اقدامات" : "نمایش"}>
                               <img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" />
                             </button>
-                            {Number(item.createdById) === Number(user?.id) && <button type="button" onClick={() => openPreview({ ...item, __editing: true })} className="grid h-[34px] w-[34px] place-items-center rounded-lg transition hover:bg-black/[0.04] dark:hover:bg-white/10" aria-label="ویرایش درخواست" title="ویرایش درخواست"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></button>}
+                            {Number(item.createdById) === Number(user?.id) && <button type="button" onClick={() => openPreview({ ...item, __editing: true })} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label="ویرایش درخواست" title="ویرایش درخواست"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></button>}
                           </div>
                         </td>
                       </tr>
