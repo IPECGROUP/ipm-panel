@@ -257,7 +257,7 @@ export default function TenkhahPage({ embedded = false, active = true }) {
     await loadBeneficiaryBalances(form.projectId, beneficiaryUserId);
   };
   const create = async () => {
-    const requiredErrors = { requestNumber: false, requestDate: !form.requestDate, projectId: !form.projectId, beneficiaryUserId: !form.beneficiaryUserId, amount: !form.amount, purpose: !form.purpose.trim(), projectManagerId: !userIsFinance && !form.projectManagerId };
+    const requiredErrors = { requestNumber: false, requestDate: !form.requestDate, projectId: !form.projectId, beneficiaryUserId: !form.beneficiaryUserId, amount: !form.amount, purpose: !form.purpose.trim(), projectManagerId: !form.projectManagerId };
     if (Object.values(requiredErrors).some(Boolean)) { setFormErrors(requiredErrors); return; }
     setBusy(true);
     setError("");
@@ -413,7 +413,7 @@ export default function TenkhahPage({ embedded = false, active = true }) {
               </Field>
             </div>
             <div className="mt-5 flex flex-col gap-3 border-t border-black/10 pt-4 sm:flex-row sm:items-end sm:justify-end dark:border-white/10">
-              {!userIsFinance && <Field label="ارسال درخواست به" required className="w-full sm:w-[20rem]">
+              <Field label="ارسال درخواست به" required className="w-full sm:w-[20rem]">
                 <select
                   value={form.projectManagerId}
                   onChange={(e) =>
@@ -422,13 +422,13 @@ export default function TenkhahPage({ embedded = false, active = true }) {
                   className={input}
                 >
                   <option value="">انتخاب کنید</option>
-                  {(userIsFinance ? workflowRecipients.management : workflowRecipients.project_manager).map((u) => (
+                  {workflowRecipients.project_manager.map((u) => (
                     <option value={u.id} key={u.id}>
                       {name(u)}
                     </option>
                   ))}
                 </select>
-              </Field>}
+                </Field>
               <button
                 disabled={busy}
                 onClick={create}
