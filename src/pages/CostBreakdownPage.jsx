@@ -66,6 +66,34 @@ const cleanBudgetCodeInput = (value = "") =>
     .toUpperCase()
     .replace(/[^0-9A-Z.-]/g, "");
 
+// Budget codes are hierarchical (for example: 10-4).  A lexical sort puts
+// "10" before "2", so compare each code segment numerically when possible.
+const compareBudgetCodes = (left = "", right = "") => {
+  const leftParts = normalizeCode(left).split("-").filter(Boolean);
+  const rightParts = normalizeCode(right).split("-").filter(Boolean);
+  const length = Math.max(leftParts.length, rightParts.length);
+
+  for (let index = 0; index < length; index += 1) {
+    const a = leftParts[index];
+    const b = rightParts[index];
+    if (a === undefined) return -1;
+    if (b === undefined) return 1;
+
+    const aIsNumber = /^\d+$/.test(a);
+    const bIsNumber = /^\d+$/.test(b);
+    if (aIsNumber && bIsNumber) {
+      const comparison = BigInt(a) < BigInt(b) ? -1 : BigInt(a) > BigInt(b) ? 1 : 0;
+      if (comparison) return comparison;
+      continue;
+    }
+
+    const comparison = a.localeCompare(b, "fa", { numeric: true, sensitivity: "base" });
+    if (comparison) return comparison;
+  }
+
+  return 0;
+};
+
 export default function CostBreakdownPage() {
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState("");
@@ -118,13 +146,16 @@ export default function CostBreakdownPage() {
   );
 
   const tableRows = useMemo(() => {
-    return rows.map((row, idx) => ({
+    return rows
+      .slice()
+      .sort((a, b) => compareBudgetCodes(projectBudgetCode(a.budgetCode), projectBudgetCode(b.budgetCode)))
+      .map((row, idx) => ({
       kind: "saved",
       key: `saved:${row.id}`,
       row,
       label: String(idx + 1),
-    }));
-  }, [rows]);
+      }));
+  }, [projectBudgetCode, rows]);
 
   const childRowsByParentCode = useMemo(() => {
     const codes = new Set(tableRows.map((item) => projectBudgetCode(item.row?.budgetCode)));
@@ -266,7 +297,9 @@ export default function CostBreakdownPage() {
     try {
       const res = await api(`/cost-breakdown?project_id=${encodeURIComponent(nextProjectId)}`);
       const items = Array.isArray(res?.items) ? res.items : [];
-      setRows(items.map(normalizeItem));
+      setRows(items.map(normalizeItem).sort((a, b) =>
+        compareBudgetCodes(projectBudgetCode(a.budgetCode), projectBudgetCode(b.budgetCode))
+      ));
     } catch (ex) {
       setRows([]);
       setErr(ex.message || "خطا در دریافت اطلاعات");
@@ -400,10 +433,7 @@ export default function CostBreakdownPage() {
         ? prev.map((row) => (String(row.id) === String(normalized.id) ? normalized : row))
         : [...prev, normalized];
       return nextRows.sort((a, b) =>
-        projectBudgetCode(a.budgetCode).localeCompare(projectBudgetCode(b.budgetCode), "fa", {
-          numeric: true,
-          sensitivity: "base",
-        })
+        compareBudgetCodes(projectBudgetCode(a.budgetCode), projectBudgetCode(b.budgetCode))
       );
     });
   };
@@ -799,7 +829,7 @@ export default function CostBreakdownPage() {
                                   <input
                                     value={editDraft.budgetCode}
                                     onChange={(e) =>
-                                      setEditDrafts((prev) => ({ ...prev, [row.id]: { ...editDraft, budgetCode: projectBudgetCode(e.target.value) } }))
+                                      setEditDrafts((prev) => ({ ...prev, [row.id]: { ...editDraft, budgetCode: cleanBudgetCodeInput(e.target.value) } }))
                                     }
                                     onKeyDown={(event) => handleEditKeyDown(event, row.id)}
                                     className={moneyInputCls + " text-right font-sans tabular-nums"}
