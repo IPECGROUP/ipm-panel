@@ -163,7 +163,7 @@ function currencyOptionKey(item) {
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
-  return /ریال|rial|(^|\s)irr(\s|$)/i.test(value) ? "rial" : value;
+  return /ریال|rial|﷼|(^|\s)irr(\s|$)/i.test(value) ? "rial" : value;
 }
 function uniqueCurrencyTypes(items) {
   const seen = new Set();
@@ -2175,7 +2175,7 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
                   <PreviewRow compact colon leader={!canEditRequest} label="مبلغ درخواست" ltr={!canEditRequest} value={`${toFa(Number(item.amount || 0).toLocaleString("en-US"))} ${currencyName}`} />
                   <PreviewRow compact colon leader={!canEditRequest} label="نرخ" ltr={!canEditRequest} value={item.currencyTypeId ? toFa(Number(item.exchangeRate || 0).toLocaleString("en-US")) : "—"} />
-                  <PreviewRow compact colon leader={!canEditRequest} label="مبلغ ریالی درخواست" ltr={!canEditRequest} value={`${toFa(Number(item.rialAmount || item.amount || 0).toLocaleString("en-US"))} ریال`} />
+                  <PreviewRow compact colon leader={!canEditRequest} label="مبلغ ریالی درخواست" ltr={!canEditRequest} value={<span dir="ltr" className="inline-flex items-center gap-1"><span>ریال</span><span>{toFa(Number(item.rialAmount || item.amount || 0).toLocaleString("en-US"))}</span></span>} />
                 </div>
                 <div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10">
                   <PreviewRow compact colon leader={!canEditRequest} label="باقی مانده نقدینگی پروژه" value={liquidityRemaining || "—"} ltr />

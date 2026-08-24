@@ -16,13 +16,13 @@ const name = (u) => u?.name || u?.username || "—";
 const currencyTitle = (currency) => String(currency?.title || currency?.name || currency?.label || "").trim();
 const normalizedCurrencyTitle = (value) => {
   const normalized = currencyTitle({ title: value }).replace(/ي/g, "ی").replace(/ك/g, "ک").replace(/\s+/g, " ").trim().toLowerCase();
-  return /ریال|rial|(^|\s)irr(\s|$)/i.test(normalized) ? "rial" : normalized;
+  return /ریال|rial|﷼|(^|\s)irr(\s|$)/i.test(normalized) ? "rial" : normalized;
 };
 const RIAL_CURRENCY = "ریال";
 const isRialCurrency = (currency) => {
   const raw = `${currencyTitle(currency)} ${Object.values(currency || {}).join(" ")}`;
   const title = normalizedCurrencyTitle(raw);
-  return /\u0631\u06cc\u0627\u0644|\u0631\u064a\u0627\u0644/.test(raw) || /(^|\s)irr(\s|$)/i.test(title);
+  return /\u0631\u06cc\u0627\u0644|\u0631\u064a\u0627\u0644|\ufdfc/.test(raw) || /(^|\s)irr(\s|$)/i.test(title);
 };
 const empty = () => ({
   // شماره و تاریخ همچنان برای ثبت نگهداری می‌شوند، ولی در فرم نمایش داده نمی‌شوند.
