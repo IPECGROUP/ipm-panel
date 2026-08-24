@@ -28,9 +28,11 @@ const STEP_LABELS = {
 };
 const WAITING_UNIT_LABELS = {
   requester: "درخواست‌کننده",
-  project_control: "برنامه‌ریزی و کنترل پروژه",
-  project_manager: "مدیریت پروژه",
-  accounting: "واحد مالی",
+  // These are unit names, not workflow-step descriptions. Keep the queue
+  // label identical to the unit the request is actually waiting for.
+  project_control: "برنامه ریزی",
+  project_manager: "مدیریت پروژه ها",
+  accounting: "مالی و حسابداری",
   management: "مدیریت",
   finance_manager: "مدیریت مالی",
   payment_order: "دستور پرداخت",
