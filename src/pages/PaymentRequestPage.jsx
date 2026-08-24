@@ -84,11 +84,17 @@ const formFromItem = (item = {}) => ({
 });
 
 function toFa(value) { return String(value ?? "").replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]); }
+function amountDigits(value) { return toEnglishDigits(String(value || "")).replace(/[^\d]/g, ""); }
 function parseAmount(value) {
-  const digits = toEnglishDigits(String(value || "")).replace(/[^\d]/g, "");
+  const digits = amountDigits(value);
   return digits ? Number(digits) : 0;
 }
-function money(value) { const amount = parseAmount(value); return amount ? amount.toLocaleString("en-US") : ""; }
+function money(value) {
+  const digits = amountDigits(value);
+  // Never turn a monetary value into Number here: Numbers lose digits beyond
+  // MAX_SAFE_INTEGER and were changing long sequences entered by the user.
+  return digits && BigInt(digits) > 0n ? BigInt(digits).toLocaleString("en-US") : "";
+}
 function normalizeCode(value) { return toEnglishDigits(String(value || "")).trim(); }
 function normalizeBudgetCode(value = "") {
   return normalizeCode(value)
@@ -411,10 +417,12 @@ export default function PaymentRequestPage() {
     const sequence = String(maxSeq + 1).padStart(4, "0");
     return projectCode ? `${yy}/${projectCode}/${sequence}` : `${yy}/${sequence}`;
   }, [form.dateJalali, items, selectedProject?.code, tenkhahItems]);
-  const amount = parseAmount(form.amount);
+  const amount = amountDigits(form.amount);
+  const amountBI = BigInt(amount || "0");
   const isRialCurrency = !form.currencyTypeId;
-  const exchangeRate = isRialCurrency ? 1 : parseAmount(form.exchangeRate);
-  const rialAmount = amount * exchangeRate;
+  const exchangeRate = isRialCurrency ? "1" : amountDigits(form.exchangeRate);
+  const exchangeRateBI = BigInt(exchangeRate || "0");
+  const rialAmount = (amountBI * exchangeRateBI).toString();
 
   const api = useCallback(async (path, options = {}) => {
     const response = await fetch(`/api${path}`, {
@@ -654,11 +662,11 @@ export default function PaymentRequestPage() {
     if (!form.projectId) return setError("پروژه را انتخاب کنید.");
     if (!form.budgetCode) return setError("کد بودجه را انتخاب کنید.");
     if (!form.title.trim()) return setError("موضوع درخواست را وارد کنید.");
-    if (amount <= 0) return setError("مبلغ درخواست باید بیشتر از صفر باشد.");
-    if (!isRialCurrency && exchangeRate <= 0) return setError("نرخ ارز را وارد کنید.");
+    if (amountBI <= 0n) return setError("مبلغ درخواست باید بیشتر از صفر باشد.");
+    if (!isRialCurrency && exchangeRateBI <= 0n) return setError("نرخ ارز را وارد کنید.");
     if (projectLiquidityLoading) return setError("در حال دریافت مانده نقدینگی پروژه هستیم.");
     if (projectLiquidityRemaining == null) return setError("مانده نقدینگی پروژه در دسترس نیست.");
-    if (rialAmount > projectLiquidityRemaining) return setError("مبلغ ریالی درخواست نمی‌تواند بیشتر از مانده نقدینگی پروژه باشد.");
+    if (BigInt(rialAmount) > BigInt(String(projectLiquidityRemaining || 0))) return setError("مبلغ ریالی درخواست نمی‌تواند بیشتر از مانده نقدینگی پروژه باشد.");
     if (form.hasSupplyRequest === "yes" && !form.supplyRequestId) return setError("درخواست تامین را انتخاب کنید.");
     if (createRecipients.targetRoleKey && !form.targetAssigneeUserId) return setError("گیرنده درخواست پرداخت را انتخاب کنید.");
     setSubmitting(true); setError(""); setSuccess("");
