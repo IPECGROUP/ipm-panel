@@ -27,15 +27,15 @@ const STEP_LABELS = {
   payment_order: "دستور پرداخت",
 };
 const WAITING_UNIT_LABELS = {
-  requester: "درخواست‌کننده",
+  requester: "واحد درخواست‌کننده",
   // These are unit names, not workflow-step descriptions. Keep the queue
   // label identical to the unit the request is actually waiting for.
-  project_control: "برنامه ریزی",
-  project_manager: "مدیریت پروژه ها",
-  accounting: "مالی و حسابداری",
-  management: "مدیریت",
-  finance_manager: "مدیریت مالی",
-  payment_order: "دستور پرداخت",
+  project_control: "واحد برنامه ریزی",
+  project_manager: "واحد مدیریت پروژه ها",
+  accounting: "واحد مالی و حسابداری",
+  management: "واحد مدیریت",
+  finance_manager: "واحد مدیریت مالی",
+  payment_order: "واحد دستور پرداخت",
   finance: "واحد مالی",
 };
 const PAYMENT_WORKFLOW_STEPS = [
