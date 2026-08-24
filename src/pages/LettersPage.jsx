@@ -6357,7 +6357,6 @@ aria-invalid={fieldHasError(formKind, "subject")}
         const isIncoming = kind === "incoming";
         const isInternal = kind === "internal";
         const kindLabel = TABS.find((tab) => tab.id === kind)?.label || "—";
-        const kindColor = TAB_ACTIVE_BG[kind] || "#737373";
         const isLast = idx === pageItems.length - 1;
         const divider = isLast ? "" : rowDividerCls;
         const hasRealAttachment = attachmentsOf(l).length > 0;
@@ -6439,8 +6438,7 @@ const rowBg = normalRowBg;
 
             <td className={"px-3 " + divider}>
               <span
-                className="mx-auto inline-flex max-w-full items-center truncate rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                style={{ backgroundColor: `${kindColor}1A`, color: kindColor }}
+                className={documentTypeFilterChipCls(kind, false) + " mx-auto max-w-full truncate"}
                 title={kindLabel}
               >
                 {kindLabel}
