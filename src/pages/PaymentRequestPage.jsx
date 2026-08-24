@@ -153,8 +153,26 @@ function usersForWorkflowUnit(unitRoleItems, assignments, roleKey) {
 }
 function itemLabel(item) { return item?.title || item?.name || item?.label || item?.code || `#${item?.id}`; }
 function currencyOptionKey(item) {
-  const value = String(itemLabel(item)).replace(/ي/g, "ی").replace(/ك/g, "ک").replace(/\s+/g, " ").trim().toLowerCase();
+  // Currency records created in older versions may keep the displayed title
+  // in a field other than `title`. Check the whole record so those variants
+  // cannot add a second Rial next to the built-in Rial option.
+  const value = [itemLabel(item), ...Object.values(item || {})]
+    .join(" ")
+    .replace(/ي/g, "ی")
+    .replace(/ك/g, "ک")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
   return /ریال|rial|(^|\s)irr(\s|$)/i.test(value) ? "rial" : value;
+}
+function uniqueCurrencyTypes(items) {
+  const seen = new Set();
+  return (Array.isArray(items) ? items : []).filter((item) => {
+    const key = currencyOptionKey(item);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 function projectLabel(project) {
   const code = normalizeProjectCode(project?.code);
@@ -521,7 +539,7 @@ export default function PaymentRequestPage() {
           .sort((a, b) => normalizeProjectCode(a.code).localeCompare(normalizeProjectCode(b.code), "fa", { numeric: true }));
         setProjects(mainProjects);
       } else setProjects([]);
-      if (t.status === "fulfilled") setCurrencyTypes(t.value.items || []);
+      if (t.status === "fulfilled") setCurrencyTypes(uniqueCurrencyTypes(t.value.items));
       if (s.status === "fulfilled") setCurrencySources(s.value.items || []);
     });
   }, [api]);
@@ -1477,7 +1495,7 @@ function TenkhahPreviewV4({ item, userId, api, onRefresh, onClose }) {
   }, [api, canAct, item.stage]);
   useEffect(() => {
     if (!canAct || item.stage !== "finance") return;
-    api("/base/currencies/types").then((data) => setCurrencyTypes(data.items || [])).catch(() => setCurrencyTypes([]));
+    api("/base/currencies/types").then((data) => setCurrencyTypes(uniqueCurrencyTypes(data.items))).catch(() => setCurrencyTypes([]));
   }, [api, canAct, item.stage]);
   const hasFinalPayment = Number(money(cashPaymentAmount || "0")) > 0 || Number(money(creditPaymentAmount || "0")) > 0;
   const submit = async () => {
@@ -2151,19 +2169,18 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
                     </select>
                   ) : (item.budgetCode ? `${item.budgetCode}${budgetName ? ` - ${budgetName}` : ""}` : "—")} />
                 </div>
-                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,0.7fr)_minmax(0,0.3fr)] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
+                <div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10">
                   <PreviewRow compact editing={canEditRequest} colon label="موضوع درخواست" value={canEditRequest ? <input className={inputClass} value={editForm.title} onChange={(event) => setEditField("title", event.target.value)} /> : (item.title || "—")} />
-                  <PreviewRow compact editing={canEditRequest} colon valueClassName={!canEditRequest ? "whitespace-nowrap" : ""} label="درخواست تامین" value={supplyRequestControl} />
                 </div>
-                <PreviewRow compact editing={canEditRequest} colon label="شرح درخواست" value={canEditRequest ? <textarea className={`${inputClass} h-[68px] min-h-[68px] resize-y py-1.5 leading-6`} value={editForm.description} onChange={(event) => setEditField("description", event.target.value)} /> : (item.description || "—")} />
-                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-2 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
-                  <PreviewRow compact colon leader={!canEditRequest} label="مبلغ درخواست" ltr={!canEditRequest} value={toFa(Number(item.amount || 0).toLocaleString("en-US"))} />
+                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
+                  <PreviewRow compact colon leader={!canEditRequest} label="مبلغ درخواست" ltr={!canEditRequest} value={`${toFa(Number(item.amount || 0).toLocaleString("en-US"))} ${currencyName}`} />
+                  <PreviewRow compact colon leader={!canEditRequest} label="نرخ" ltr={!canEditRequest} value={item.currencyTypeId ? toFa(Number(item.exchangeRate || 0).toLocaleString("en-US")) : "—"} />
+                  <PreviewRow compact colon leader={!canEditRequest} label="مبلغ ریالی درخواست" ltr={!canEditRequest} value={`${toFa(Number(item.rialAmount || item.amount || 0).toLocaleString("en-US"))} ریال`} />
+                </div>
+                <div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10">
                   <PreviewRow compact colon leader={!canEditRequest} label="باقی مانده نقدینگی پروژه" value={liquidityRemaining || "—"} ltr />
                 </div>
-                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,0.38fr)_minmax(0,0.62fr)] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
-                  <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="نام ذینفع" value={canEditRequest ? <input className={inputClass} value={editForm.beneficiaryName} onChange={(event) => setEditField("beneficiaryName", event.target.value)} /> : (item.beneficiaryName || "—")} />
-                  <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="شماره شبا" ltr={!canEditRequest} value={canEditRequest ? <input dir="ltr" inputMode="numeric" className={`${inputClass} text-left font-sans tabular-nums`} value={editForm.bankInfo || "IR"} onChange={(event) => setEditField("bankInfo", formatSheba(event.target.value))} onFocus={() => { if (!editForm.bankInfo) setEditField("bankInfo", "IR"); }} placeholder="IR" /> : (item.bankInfo || "—")} />
-                </div>
+                <PreviewRow compact editing={canEditRequest} colon label="شرح درخواست" value={canEditRequest ? <textarea className={`${inputClass} h-[68px] min-h-[68px] resize-y py-1.5 leading-6`} value={editForm.description} onChange={(event) => setEditField("description", event.target.value)} /> : (item.description || "—")} />
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[0.8fr_0.8fr_0.8fr_1.3fr_1.3fr] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
                   <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="نوع سند" value={canEditRequest ? (
                   <div className="space-y-2">
@@ -2186,6 +2203,12 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
                   </div>
                 ) : (attachments.length ? <div className="flex flex-wrap justify-end gap-2">{attachments.map((file, index) => <a key={file.id || file.serverId || index} href={file.url || "#"} target="_blank" rel="noreferrer" className="rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFa(index + 1)}`}</a>)}</div> : "—")} />
                   <PreviewRow compact colon leader label="اسناد مرتبط" value={relatedLetters.length ? <div className="flex flex-wrap justify-end gap-2">{relatedLetters.map((letter) => <span key={letter.id} className="rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10" title={letter.subject || ""}>{letter.label}</span>)}</div> : "—"} />
+                </div>
+                <PreviewRow compact editing={canEditRequest} colon valueClassName={!canEditRequest ? "whitespace-nowrap" : ""} label="درخواست تامین" value={supplyRequestControl} />
+                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
+                  <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="شرایط پرداخت" value={canEditRequest ? <input className={inputClass} value={editForm.creditPay} onChange={(event) => setEditField("creditPay", event.target.value)} /> : (item.creditPay || "—")} />
+                  <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="نام ذینفع" value={canEditRequest ? <input className={inputClass} value={editForm.beneficiaryName} onChange={(event) => setEditField("beneficiaryName", event.target.value)} /> : (item.beneficiaryName || "—")} />
+                  <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="شماره شبا" ltr={!canEditRequest} value={canEditRequest ? <input dir="ltr" inputMode="numeric" className={`${inputClass} text-left font-sans tabular-nums`} value={editForm.bankInfo || "IR"} onChange={(event) => setEditField("bankInfo", formatSheba(event.target.value))} onFocus={() => { if (!editForm.bankInfo) setEditField("bankInfo", "IR"); }} placeholder="IR" /> : (item.bankInfo || "—")} />
                 </div>
               </PreviewSection>
               {canDecide && <WorkflowPanel
@@ -2356,7 +2379,7 @@ function ActionFooter({ actionBusy, actionError, disabled, onSubmit }) {
 function CurrencySelect({ value, onChange, currencyTypes }) {
   return <select className={inputClass} value={value || ""} onChange={(event) => onChange(event.target.value)}>
     <option value="">ریال</option>
-    {(currencyTypes || []).map((item) => <option key={item.id} value={item.id}>{itemLabel(item)}</option>)}
+    {uniqueCurrencyTypes(currencyTypes).filter((item) => currencyOptionKey(item) !== "rial").map((item) => <option key={item.id} value={item.id}>{itemLabel(item)}</option>)}
   </select>;
 }
 
