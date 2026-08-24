@@ -668,7 +668,11 @@ export default function PaymentRequestPage() {
     if (projectLiquidityRemaining == null) return setError("مانده نقدینگی پروژه در دسترس نیست.");
     if (BigInt(rialAmount) > BigInt(String(projectLiquidityRemaining || 0))) return setError("مبلغ ریالی درخواست نمی‌تواند بیشتر از مانده نقدینگی پروژه باشد.");
     if (form.hasSupplyRequest === "yes" && !form.supplyRequestId) return setError("درخواست تامین را انتخاب کنید.");
-    if (createRecipients.users.length && !form.targetAssigneeUserId) return setError("گیرنده درخواست پرداخت را انتخاب کنید.");
+    // مراحل اولیهٔ برنامه‌ریزی، مدیریت و مالی صف واحد هستند؛ در فرم ثبت
+    // اولیه هیچ شخصی انتخاب نمی‌شود. انتخاب شخص فقط در مرحله مدیریت پروژه
+    // (پس از تأیید برنامه‌ریزی) نمایش داده می‌شود.
+    const createTargetIsIndividual = !["project_control", "management", "accounting"].includes(createRecipients.targetRoleKey);
+    if (createTargetIsIndividual && createRecipients.users.length && !form.targetAssigneeUserId) return setError("گیرنده درخواست پرداخت را انتخاب کنید.");
     setSubmitting(true); setError(""); setSuccess("");
     try {
       const data = await api("/requests", { method: "POST", body: JSON.stringify({
@@ -1043,7 +1047,7 @@ export default function PaymentRequestPage() {
             <Field label="شماره شبا"><input dir="ltr" inputMode="numeric" maxLength={33} className={`${inputClass} text-left font-sans tabular-nums`} value={toFa(form.bankInfo || "IR")} onChange={(e) => setField("bankInfo", formatSheba(e.target.value))} onFocus={() => { if (!form.bankInfo) setField("bankInfo", "IR"); }} placeholder="IR" /></Field>
           </div>
           <div className="flex flex-col gap-3 border-t border-black/[0.07] pt-4 sm:flex-row sm:items-end sm:justify-end dark:border-white/10">
-            {createRecipients.users.length > 0 && <Field label="انتخاب کاربر" required className="w-full sm:w-[20rem]">
+            {! ["project_control", "management", "accounting"].includes(createRecipients.targetRoleKey) && createRecipients.users.length > 0 && <Field label="انتخاب کاربر" required className="w-full sm:w-[20rem]">
               <select className={inputClass} value={form.targetAssigneeUserId} onChange={(e) => setField("targetAssigneeUserId", e.target.value)} disabled={createRecipientsLoading}>
                 <option value="">{createRecipientsLoading ? "در حال دریافت..." : "انتخاب کاربر"}</option>
                 {createRecipients.users.map((recipient) => <option key={recipient.id} value={recipient.id}>{recipient.name || recipient.username || recipient.email || `کاربر #${recipient.id}`}</option>)}
