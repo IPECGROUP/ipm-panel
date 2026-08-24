@@ -970,7 +970,7 @@ export default function PaymentRequestPage() {
             <div className="flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">باقی‌مانده نقدینگی پروژه: <span className="mr-1 font-medium tabular-nums">{projectLiquidityLoading ? "در حال دریافت..." : `${money(projectLiquidityRemaining) || "۰"} ریال`}</span></div>
           </div>
 
-          <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.05fr)_minmax(280px,1.2fr)_minmax(96px,0.38fr)_minmax(170px,0.7fr)]">
+          <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.05fr)_minmax(210px,0.82fr)_minmax(96px,0.38fr)_minmax(260px,1.1fr)]">
             <Field label="موضوع درخواست" required><input className={`${inputClass} h-12 text-[15px]`} value={form.title} onChange={(e) => setField("title", e.target.value)} /></Field>
             <Field label="مبلغ درخواست" required>
               <div className="relative min-w-0">
@@ -1032,7 +1032,7 @@ export default function PaymentRequestPage() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <Field label="شرایط پرداخت"><input className={inputClass} value={form.creditPay} onChange={(e) => setField("creditPay", e.target.value)} /></Field>
             <Field label="نام ذینفع"><input className={inputClass} value={form.beneficiaryName} onChange={(e) => setField("beneficiaryName", e.target.value)} /></Field>
-            <Field label="شماره شبا"><input dir="ltr" inputMode="numeric" maxLength={33} className={`${inputClass} text-left font-sans tabular-nums`} value={form.bankInfo || "IR"} onChange={(e) => setField("bankInfo", formatSheba(e.target.value))} onFocus={() => { if (!form.bankInfo) setField("bankInfo", "IR"); }} placeholder="IR" /></Field>
+            <Field label="شماره شبا"><input dir="ltr" inputMode="numeric" maxLength={33} className={`${inputClass} text-left font-sans tabular-nums`} value={toFa(form.bankInfo || "IR")} onChange={(e) => setField("bankInfo", formatSheba(e.target.value))} onFocus={() => { if (!form.bankInfo) setField("bankInfo", "IR"); }} placeholder="IR" /></Field>
           </div>
           <div className="flex flex-col gap-3 border-t border-black/[0.07] pt-4 sm:flex-row sm:items-end sm:justify-end dark:border-white/10">
             <Field label="انتخاب کاربر" required={!!createRecipients.targetRoleKey} className="w-full sm:w-[20rem]">
@@ -2061,7 +2061,7 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
       <h2 class="section-title">اطلاعات مالی و پرداخت</h2>
       <div class="info-grid">
         ${infoCard("نام ذینفع", item.beneficiaryName)}
-        ${infoCard("شماره شبا", item.bankInfo)}
+        ${infoCard("شماره شبا", toFa(item.bankInfo))}
         ${infoCard("شرایط پرداخت", item.creditPay)}
         ${infoCard("پرداخت نقدی ثبت‌شده", amount(item.cashText || item.cashAmount))}
         ${infoCard("تاریخ پرداخت نقدی", toFa(item.cashDate || item.cashDateJalali || "—"))}
@@ -2245,7 +2245,7 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
                   <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="شرایط پرداخت" value={canEditRequest ? <input className={inputClass} value={editForm.creditPay} onChange={(event) => setEditField("creditPay", event.target.value)} /> : (item.creditPay || "—")} />
                   <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="نام ذینفع" value={canEditRequest ? <input className={inputClass} value={editForm.beneficiaryName} onChange={(event) => setEditField("beneficiaryName", event.target.value)} /> : (item.beneficiaryName || "—")} />
-                  <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="شماره شبا" ltr={!canEditRequest} value={canEditRequest ? <input dir="ltr" inputMode="numeric" className={`${inputClass} text-left font-sans tabular-nums`} value={editForm.bankInfo || "IR"} onChange={(event) => setEditField("bankInfo", formatSheba(event.target.value))} onFocus={() => { if (!editForm.bankInfo) setEditField("bankInfo", "IR"); }} placeholder="IR" /> : (item.bankInfo || "—")} />
+                  <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="شماره شبا" ltr={!canEditRequest} value={canEditRequest ? <input dir="ltr" inputMode="numeric" className={`${inputClass} text-left font-sans tabular-nums`} value={toFa(editForm.bankInfo || "IR")} onChange={(event) => setEditField("bankInfo", formatSheba(event.target.value))} onFocus={() => { if (!editForm.bankInfo) setEditField("bankInfo", "IR"); }} placeholder="IR" /> : (toFa(item.bankInfo) || "—")} />
                 </div>
               </PreviewSection>
               {canDecide && <WorkflowPanel
