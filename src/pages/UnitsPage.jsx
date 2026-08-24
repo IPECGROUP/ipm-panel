@@ -21,7 +21,7 @@ const UnitRolesTableShell = React.memo(function UnitRolesTableShell({ children }
     <div className="rounded-2xl border border-black/10 bg-white text-black overflow-hidden dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
       <div dir="ltr" className="overflow-x-auto">
         <table
-          className="w-full min-w-[700px] table-fixed text-xs sm:text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-2 [&_td]:py-2 [&_th]:whitespace-nowrap [&_td]:min-w-0"
+          className="w-full min-w-[700px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:min-w-0 [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2"
           dir="rtl"
         >
           {children}
@@ -875,8 +875,18 @@ function OrgStructurePage() {
   const tabbedPanelClass =
     "relative rounded-2xl border border-black/10 bg-white overflow-hidden dark:bg-neutral-900 dark:border-neutral-800";
 
-  const tableUi = tablePreset.table;
+  const tableUi = {
+    ...tablePreset.table,
+    table:
+      "w-full table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:min-w-0 [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2",
+    headRow:
+      "bg-neutral-200 text-black border-b border-neutral-300 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700",
+    body:
+      "text-[13px] text-black [&>tr>td]:!py-0 [&>tr>td:last-child_button]:!h-9 [&>tr>td:last-child_button]:!w-9 dark:text-neutral-100",
+  };
   const rowUi = tablePreset.row;
+  const compactTableBodyCls =
+    "text-[13px] text-black [&>tr>td]:!py-0 [&>tr>td:last-child_button]:!h-9 [&>tr>td:last-child_button]:!w-9 dark:text-neutral-100 [&_td]:text-center [&_th]:text-center";
 
   const unitRoleUnitOptions = useMemo(
     () =>
@@ -2003,7 +2013,7 @@ function OrgStructurePage() {
               <div className="mt-3">
                 <UnitRolesTableShell>
                   <THead>
-                    <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
+                    <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700">
                       <TH className="w-44 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
                         واحد ها
                       </TH>
@@ -2016,7 +2026,7 @@ function OrgStructurePage() {
                     </tr>
                   </THead>
 
-                  <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100 [&_td]:text-center [&_th]:text-center">
+                  <tbody className={compactTableBodyCls}>
                     {unitRoleLoading ? (
                       <TR className="border-t-0 bg-white dark:bg-neutral-900">
                         <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-3">
@@ -2150,7 +2160,7 @@ function OrgStructurePage() {
               <div className="mt-3">
                 <UnitRolesTableShell>
                   <THead>
-                    <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700">
+                    <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700">
                       <TH className="w-44 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
                         کاربران
                       </TH>
@@ -2163,7 +2173,7 @@ function OrgStructurePage() {
                     </tr>
                   </THead>
 
-                  <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100 [&_td]:text-center [&_th]:text-center">
+                  <tbody className={compactTableBodyCls}>
                     {assignmentLoading ? (
                       <TR className="border-t-0 bg-white dark:bg-neutral-900">
                         <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-3">
