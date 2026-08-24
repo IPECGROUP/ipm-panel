@@ -524,7 +524,15 @@ function UsersTab({ embedded = false }) {
     return arr;
   }, [list, sortKey, sortDir]);
 
-  const tableUi = tablePreset.table;
+  const tableUi = {
+    ...tablePreset.table,
+    table:
+      "w-full table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:min-w-0 [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2",
+    headRow:
+      "bg-neutral-200 text-black border-b border-neutral-300 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700",
+    body:
+      "text-[13px] text-black [&>tr>td]:!py-0 [&>tr>td:last-child_button]:!h-9 [&>tr>td:last-child_button]:!w-9 dark:text-neutral-100",
+  };
   const rowUi = tablePreset.row;
   const visibleIds = (sortedList || []).map((u) => String(u.id));
   const selectedSet = new Set((selectedIds || []).map((id) => String(id)));
