@@ -95,6 +95,10 @@ function money(value) {
   // MAX_SAFE_INTEGER and were changing long sequences entered by the user.
   return digits && BigInt(digits) > 0n ? BigInt(digits).toLocaleString("en-US") : "";
 }
+function paymentRequestAmount(value, showCurrencyDecimals = false) {
+  const formatted = money(value) || "0";
+  return showCurrencyDecimals ? `${formatted}.00` : formatted;
+}
 function normalizeCode(value) { return toEnglishDigits(String(value || "")).trim(); }
 function normalizeBudgetCode(value = "") {
   return normalizeCode(value)
@@ -1897,6 +1901,7 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
   const currency = currencyTypes.find((row) => String(row.id) === String(item.currencyTypeId));
   const source = currencySources.find((row) => String(row.id) === String(item.currencySourceId));
   const currencyName = currency ? itemLabel(currency) : "ریال";
+  const showCurrencyDecimals = currency ? currencyOptionKey(currency) !== "rial" : Boolean(item.currencyTypeId);
   const docName = item.docId === "other" ? (item.docOther || "سایر") : (DOC_OPTIONS.find(([value]) => value === item.docId)?.[1] || "—");
   const attachments = Array.isArray(item.attachments) ? item.attachments : [];
   const relatedLetterIds = Array.isArray(item.relatedLetterIds) ? item.relatedLetterIds.map(String) : [];
@@ -2506,7 +2511,7 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
                   <PreviewRow compact editing={canEditRequest} colon label="موضوع درخواست" value={canEditRequest ? <input className={inputClass} value={editForm.title} onChange={(event) => setEditField("title", event.target.value)} /> : (item.title || "—")} />
                 </div>
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
-                  <PreviewRow compact colon leader={!canEditRequest} label="مبلغ درخواست" ltr={!canEditRequest} value={<span dir="ltr" className="inline-flex items-center gap-1 font-sans"><span>{currencyName}</span><span>{toFa(Number(item.amount || 0).toLocaleString("en-US"))}</span></span>} />
+                  <PreviewRow compact colon leader={!canEditRequest} label="مبلغ درخواست" ltr={!canEditRequest} value={<span dir="ltr" className="inline-flex items-center gap-1 font-sans"><span>{currencyName}</span><span>{toFa(paymentRequestAmount(item.amount, showCurrencyDecimals))}</span></span>} />
                   <PreviewRow compact colon leader={!canEditRequest} label="نرخ" ltr={!canEditRequest} value={item.currencyTypeId ? toFa(Number(item.exchangeRate || 0).toLocaleString("en-US")) : "—"} />
                   <PreviewRow compact colon leader={!canEditRequest} label="مبلغ ریالی درخواست" ltr={!canEditRequest} value={<span dir="ltr" className="inline-flex items-center gap-1"><span>ریال</span><span>{toFa(Number(item.rialAmount || item.amount || 0).toLocaleString("en-US"))}</span></span>} />
                 </div>
