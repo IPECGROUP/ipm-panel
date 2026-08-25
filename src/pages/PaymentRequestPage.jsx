@@ -63,7 +63,7 @@ const formFromItem = (item = {}) => ({
   budgetCode: item.budgetCode || "",
   title: item.title || "",
   description: item.description || "",
-  amount: money(item.amount || ""),
+  amount: item.currencyTypeId ? decimalMoney(item.amount || "", true) : money(String(item.amount || "").split(".")[0]),
   exchangeRate: money(item.exchangeRate || ""),
   rialAmount: money(item.rialAmount || item.amount || ""),
   cashAmount: money(item.cashText || item.cashAmount || ""),
@@ -95,9 +95,45 @@ function money(value) {
   // MAX_SAFE_INTEGER and were changing long sequences entered by the user.
   return digits && BigInt(digits) > 0n ? BigInt(digits).toLocaleString("en-US") : "";
 }
+function decimalMoney(value, fixed = false) {
+  const normalized = toEnglishDigits(String(value ?? ""))
+    .replace(/[\u0660-\u0669]/g, (digit) => String(digit.charCodeAt(0) - 0x0660))
+    .replace(/٫/g, ".")
+    .replace(/[٬,\s]/g, "")
+    .replace(/[^\d.]/g, "");
+  if (!normalized) return "";
+  const hasDecimalPoint = normalized.includes(".");
+  const [wholePart = "", ...fractionParts] = normalized.split(".");
+  const wholeDigits = wholePart.replace(/\D/g, "") || "0";
+  const fraction = fractionParts.join("").replace(/\D/g, "").slice(0, 2);
+  const formattedWhole = BigInt(wholeDigits).toLocaleString("en-US");
+  if (fixed) return `${formattedWhole}.${fraction.padEnd(2, "0")}`;
+  return hasDecimalPoint ? `${formattedWhole}.${fraction}` : formattedWhole;
+}
+function decimalMinorUnits(value) {
+  const normalized = decimalMoney(value).replace(/,/g, "");
+  const match = normalized.match(/^(\d+)(?:\.(\d{0,2}))?$/);
+  if (!match) return 0n;
+  return BigInt(match[1]) * 100n + BigInt(String(match[2] || "").padEnd(2, "0"));
+}
+function decimalRequestValue(value) {
+  const normalized = decimalMoney(value).replace(/,/g, "");
+  const match = normalized.match(/^(\d+)(?:\.(\d{0,2}))?$/);
+  if (!match) return "";
+  return `${BigInt(match[1]).toString()}.${String(match[2] || "").padEnd(2, "0")}`;
+}
+function minorUnitsToDecimal(minorUnits) {
+  const value = BigInt(minorUnits || 0);
+  const whole = value / 100n;
+  const fraction = String(value % 100n).padStart(2, "0");
+  return fraction === "00" ? whole.toString() : `${whole}.${fraction}`;
+}
+function exactRialMoney(value) {
+  const formatted = decimalMoney(value, true) || "0.00";
+  return formatted.endsWith(".00") ? formatted.slice(0, -3) : formatted;
+}
 function paymentRequestAmount(value, showCurrencyDecimals = false) {
-  const formatted = money(value) || "0";
-  return showCurrencyDecimals ? `${formatted}.00` : formatted;
+  return showCurrencyDecimals ? (decimalMoney(value, true) || "0.00") : (money(String(value ?? "").split(".")[0]) || "0");
 }
 function normalizeCode(value) { return toEnglishDigits(String(value || "")).trim(); }
 function normalizeBudgetCode(value = "") {
@@ -424,12 +460,13 @@ export default function PaymentRequestPage() {
     const sequence = String(maxSeq + 1).padStart(4, "0");
     return projectCode ? `${yy}/${projectCode}/${sequence}` : `${yy}/${sequence}`;
   }, [form.dateJalali, items, selectedProject?.code, tenkhahItems]);
-  const amount = amountDigits(form.amount);
-  const amountBI = BigInt(amount || "0");
   const isRialCurrency = !form.currencyTypeId;
+  const amount = isRialCurrency ? amountDigits(form.amount) : decimalRequestValue(form.amount);
+  const amountMinorBI = isRialCurrency ? BigInt(amount || "0") * 100n : decimalMinorUnits(form.amount);
   const exchangeRate = isRialCurrency ? "1" : amountDigits(form.exchangeRate);
   const exchangeRateBI = BigInt(exchangeRate || "0");
-  const rialAmount = (amountBI * exchangeRateBI).toString();
+  const rialAmountMinorBI = isRialCurrency ? amountMinorBI : amountMinorBI * exchangeRateBI;
+  const rialAmount = minorUnitsToDecimal(rialAmountMinorBI);
 
   const api = useCallback(async (path, options = {}) => {
     const response = await fetch(`/api${path}`, {
@@ -635,9 +672,9 @@ export default function PaymentRequestPage() {
       .then((data) => {
         if (cancelled) return;
         const key = String(form.projectId);
-        const budget = parseAmount(data?.allocations?.[key] || 0);
-        const commitments = parseAmount(data?.committed?.[key] || 0);
-        setProjectLiquidityRemaining(Math.max(0, budget - commitments));
+        const budgetMinorUnits = decimalMinorUnits(data?.allocations?.[key] || 0);
+        const commitmentMinorUnits = decimalMinorUnits(data?.committed?.[key] || 0);
+        setProjectLiquidityRemaining(minorUnitsToDecimal(budgetMinorUnits > commitmentMinorUnits ? budgetMinorUnits - commitmentMinorUnits : 0n));
       })
       .catch(() => { if (!cancelled) setProjectLiquidityRemaining(null); })
       .finally(() => { if (!cancelled) setProjectLiquidityLoading(false); });
@@ -669,11 +706,11 @@ export default function PaymentRequestPage() {
     if (!form.projectId) return setError("پروژه را انتخاب کنید.");
     if (!form.budgetCode) return setError("کد بودجه را انتخاب کنید.");
     if (!form.title.trim()) return setError("موضوع درخواست را وارد کنید.");
-    if (amountBI <= 0n) return setError("مبلغ درخواست باید بیشتر از صفر باشد.");
+    if (amountMinorBI <= 0n) return setError("مبلغ درخواست باید بیشتر از صفر باشد.");
     if (!isRialCurrency && exchangeRateBI <= 0n) return setError("نرخ ارز را وارد کنید.");
     if (projectLiquidityLoading) return setError("در حال دریافت مانده نقدینگی پروژه هستیم.");
     if (projectLiquidityRemaining == null) return setError("مانده نقدینگی پروژه در دسترس نیست.");
-    if (BigInt(rialAmount) > BigInt(String(projectLiquidityRemaining || 0))) return setError("مبلغ ریالی درخواست نمی‌تواند بیشتر از مانده نقدینگی پروژه باشد.");
+    if (rialAmountMinorBI > decimalMinorUnits(projectLiquidityRemaining || 0)) return setError("مبلغ ریالی درخواست نمی‌تواند بیشتر از مانده نقدینگی پروژه باشد.");
     if (form.hasSupplyRequest === "yes" && !form.supplyRequestId) return setError("درخواست تامین را انتخاب کنید.");
     // مراحل اولیهٔ برنامه‌ریزی، مدیریت و مالی صف واحد هستند؛ در فرم ثبت
     // اولیه هیچ شخصی انتخاب نمی‌شود. انتخاب شخص فقط در مرحله مدیریت پروژه
@@ -886,6 +923,12 @@ export default function PaymentRequestPage() {
         const big = BigInt(digits);
         return big <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(digits) : digits;
       };
+      const excelDecimalNumber = (value) => {
+        const exact = decimalRequestValue(value);
+        if (!exact) return null;
+        const [whole] = exact.split(".");
+        return BigInt(whole) <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(exact) : exact;
+      };
       const projectOf = (item) => projects.find((row) => String(row.id) === String(item.projectId));
       const attachmentNames = (item) => (Array.isArray(item.attachments) ? item.attachments : [])
         .map((file, index) => file?.name || file?.originalName || file?.filename || `فایل ${index + 1}`)
@@ -954,10 +997,12 @@ export default function PaymentRequestPage() {
           item.budgetCode || "—",
           item.title || item.purpose || "—",
           item.description || "—",
-          excelNumber(item.amount || item.requestedAmount),
+          !isTenkhah && item.currencyTypeId
+            ? excelDecimalNumber(item.amount || item.requestedAmount)
+            : excelNumber(item.amount || item.requestedAmount),
           isTenkhah ? (item.currencyName || item.currency || "ریال") : currencyNameOf(item.currencyTypeId, currencyTypes),
           isTenkhah ? null : excelNumber(item.exchangeRate),
-          isTenkhah ? null : excelNumber(item.rialAmount || item.amount),
+          isTenkhah ? null : excelDecimalNumber(item.rialAmount || item.amount),
           item.createdByName || item.requesterName || (item.createdById ? `کاربر #${item.createdById}` : "—"),
           item.beneficiaryName || item.beneficiaryUsername || "—",
           item.bankInfo || "—",
@@ -1149,15 +1194,15 @@ export default function PaymentRequestPage() {
           <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(260px,1fr)_minmax(220px,1fr)_minmax(210px,0.8fr)]">
             <Field label="پروژه" required><select className={inputClass} value={form.projectId} onChange={(e) => setForm((old) => ({ ...old, projectId: e.target.value, budgetCode: "", targetAssigneeUserId: "" }))}><option value="">انتخاب پروژه</option>{projects.map((item) => <option key={item.id} value={item.id}>{projectLabel(item)}</option>)}</select></Field>
             <Field label="کد بودجه" required><button type="button" disabled={!form.projectId} onClick={() => { setBudgetPickerQuery(""); setBudgetPickerOpen(true); }} className={`${inputClass} flex items-center justify-between gap-3 text-right disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400 dark:disabled:bg-white/5 dark:disabled:text-neutral-500`}><span className={form.budgetCode ? "min-w-0 truncate" : "text-neutral-400"}>{form.budgetCode ? (() => { const item = budgetItems.find((row) => normalizeBudgetCode(row.code || row.center_code) === form.budgetCode); const description = item?.center_desc || item?.last_desc || item?.name || item?.description || ""; return `${form.budgetCode}${description ? ` - ${description}` : ""}`; })() : (form.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید")}</span><span className="shrink-0 text-lg leading-none">⌄</span></button></Field>
-            <div className="flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">باقی‌مانده نقدینگی پروژه: <span className="mr-1 font-medium tabular-nums">{projectLiquidityLoading ? "در حال دریافت..." : `${money(projectLiquidityRemaining) || "۰"} ریال`}</span></div>
+            <div className="flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">باقی‌مانده نقدینگی پروژه: <span className="mr-1 font-medium tabular-nums">{projectLiquidityLoading ? "در حال دریافت..." : `${exactRialMoney(projectLiquidityRemaining)} ریال`}</span></div>
           </div>
 
           <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.05fr)_minmax(210px,0.82fr)_minmax(96px,0.38fr)_minmax(260px,1.1fr)]">
             <Field label="موضوع درخواست" required><input className={`${inputClass} h-12 text-[15px]`} value={form.title} onChange={(e) => setField("title", e.target.value)} /></Field>
             <Field label="مبلغ درخواست" required>
               <div className="relative min-w-0">
-                <MoneyInput className="!pl-[72px]" value={form.amount} onChange={(value) => setField("amount", value)} />
-                <select aria-label="ارز مبلغ درخواست" title="انتخاب ارز" className="absolute left-1 top-1 h-9 !w-[64px] cursor-pointer appearance-auto rounded-lg border border-neutral-200 bg-neutral-100 px-1 text-center text-xs font-semibold text-neutral-700 shadow-sm outline-none transition hover:bg-neutral-200 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-900/10 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/[.15] dark:focus:border-white/30 dark:focus:ring-white/10" value={form.currencyTypeId} onChange={(e) => setForm((old) => ({ ...old, currencyTypeId: e.target.value, exchangeRate: e.target.value ? old.exchangeRate : "" }))}>
+                <MoneyInput decimals={isRialCurrency ? 0 : 2} className="!pl-[72px]" value={form.amount} onChange={(value) => setField("amount", value)} />
+                <select aria-label="ارز مبلغ درخواست" title="انتخاب ارز" className="absolute left-1 top-1 h-9 !w-[64px] cursor-pointer appearance-auto rounded-lg border border-neutral-200 bg-neutral-100 px-1 text-center text-xs font-semibold text-neutral-700 shadow-sm outline-none transition hover:bg-neutral-200 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-900/10 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/[.15] dark:focus:border-white/30 dark:focus:ring-white/10" value={form.currencyTypeId} onChange={(e) => setForm((old) => ({ ...old, currencyTypeId: e.target.value, amount: e.target.value ? decimalMoney(old.amount) : money(String(old.amount).split(".")[0]), exchangeRate: e.target.value ? old.exchangeRate : "" }))}>
                   <option value="" className="bg-white text-neutral-900">ریال</option>{currencyTypes.filter((item) => currencyOptionKey(item) !== "rial").map((item) => <option key={item.id} value={item.id} className="bg-white text-neutral-900">{itemLabel(item)}</option>)}
                 </select>
               </div>
@@ -1165,7 +1210,7 @@ export default function PaymentRequestPage() {
             <Field label="نرخ">
               <MoneyInput value={form.exchangeRate} onChange={(value) => setField("exchangeRate", value)} disabled={isRialCurrency} className={isRialCurrency ? "cursor-not-allowed bg-neutral-100 text-neutral-400 dark:bg-white/5 dark:text-neutral-500" : ""} />
             </Field>
-            <div className="mt-5 flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">مبلغ درخواست: <span className="mr-1 inline-flex flex-row-reverse items-center gap-1 font-medium tabular-nums" dir="ltr"><span>{toFa(money(rialAmount) || "0")}</span><span dir="ltr">ریال</span></span></div>
+            <div className="mt-5 flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">مبلغ درخواست: <span className="mr-1 inline-flex flex-row-reverse items-center gap-1 font-medium tabular-nums" dir="ltr"><span>{toFa(exactRialMoney(rialAmount))}</span><span dir="ltr">ریال</span></span></div>
           </div>
 
           <Field label="شرح درخواست"><textarea className={`${inputClass} min-h-24 py-2 leading-7`} value={form.description} onChange={(e) => setField("description", e.target.value)} /></Field>
@@ -1315,14 +1360,14 @@ export default function PaymentRequestPage() {
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))}</td>
                 <td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><span className="block truncate text-right">{projectLabel(projects.find((row) => String(row.id) === String(item.projectId))) || item.projectName || item.projectCode || "—"}</span></td>
                 <td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><span className="block truncate text-right">{item.title || "—"}</span></td>
-                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate tabular-nums">{toFa(money(item.amount) || "0")} {item.requestType === "tenkhah" ? item.currencyName : currencyNameOf(item.currencyTypeId, currencyTypes)}</span></td>
+                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate tabular-nums">{toFa(item.requestType === "tenkhah" ? (money(item.amount) || "0") : paymentRequestAmount(item.amount, Boolean(item.currencyTypeId)))} {item.requestType === "tenkhah" ? item.currencyName : currencyNameOf(item.currencyTypeId, currencyTypes)}</span></td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.createdByName || `کاربر #${toFa(item.createdById)}`}</span></td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><WaitingUnitCell item={item} /></td>
                 <td className="border-b border-neutral-300 !pl-10 !pr-2 dark:border-neutral-700">{item.requestType === "tenkhah" ? <div className="pointer-events-none flex w-full items-center justify-center opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"><button type="button" onClick={() => setSelectedTenkhah(item)} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label="نمایش درخواست تنخواه" title="نمایش درخواست تنخواه"><img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" /></button></div> : <div className="pointer-events-none flex w-full items-center justify-center gap-1 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"><button type="button" onClick={() => openPreview(item)} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label={item.canAct ? "اقدامات" : "نمایش"} title={item.canAct ? "اقدامات" : "نمایش"}><img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" /></button>{Number(item.createdById) === Number(user?.id) && <button type="button" onClick={() => openPreview({ ...item, __editing: true })} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label="ویرایش درخواست" title="ویرایش درخواست"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></button>}</div>}</td>
               </tr>)}
             </tbody>
           </table></div>
-          <div className="grid gap-3 p-3 md:hidden">{pageItems.map((item) => <button key={item.id} type="button" onClick={() => item.requestType === "tenkhah" ? setSelectedTenkhah(item) : openPreview(item)} className={`rounded-xl border p-3 text-right ${item.requestType === "tenkhah" ? "border-violet-200 bg-violet-50 dark:border-violet-400/20 dark:bg-violet-500/10" : "border-black/10 dark:border-white/10"}`}><div className="flex items-center justify-between gap-2"><b>{item.requestType === "tenkhah" ? item.serial : displayPaymentSerial(item, projects)}</b><StatusBadge status={item.displayStatus || item.status} /></div><div className="mt-2 truncate text-sm">{item.title || "—"}</div><div className="mt-2 text-xs text-neutral-500">مبلغ: {toFa(money(item.amount) || "0")} {item.requestType === "tenkhah" ? item.currencyName : currencyNameOf(item.currencyTypeId, currencyTypes)}</div><div className="mt-1 text-xs text-neutral-500">{toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))}</div></button>)}</div>
+          <div className="grid gap-3 p-3 md:hidden">{pageItems.map((item) => <button key={item.id} type="button" onClick={() => item.requestType === "tenkhah" ? setSelectedTenkhah(item) : openPreview(item)} className={`rounded-xl border p-3 text-right ${item.requestType === "tenkhah" ? "border-violet-200 bg-violet-50 dark:border-violet-400/20 dark:bg-violet-500/10" : "border-black/10 dark:border-white/10"}`}><div className="flex items-center justify-between gap-2"><b>{item.requestType === "tenkhah" ? item.serial : displayPaymentSerial(item, projects)}</b><StatusBadge status={item.displayStatus || item.status} /></div><div className="mt-2 truncate text-sm">{item.title || "—"}</div><div className="mt-2 text-xs text-neutral-500">مبلغ: {toFa(item.requestType === "tenkhah" ? (money(item.amount) || "0") : paymentRequestAmount(item.amount, Boolean(item.currencyTypeId)))} {item.requestType === "tenkhah" ? item.currencyName : currencyNameOf(item.currencyTypeId, currencyTypes)}</div><div className="mt-1 text-xs text-neutral-500">{toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))}</div></button>)}</div>
           <div className="border-t border-neutral-300 px-3 py-2 dark:border-neutral-800"><div className="flex flex-col items-stretch gap-2 md:flex-row md:flex-wrap md:items-center md:justify-between">
             <div className="flex items-center justify-between gap-2 text-sm md:justify-start"><div className="flex items-center gap-2"><button type="button" onClick={() => setPage((old) => Math.max(0, old - 1))} disabled={safePage <= 0} className="inline-grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.04] disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="صفحه قبل"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 18l6-6-6-6" /></svg></button><button type="button" onClick={() => setPage((old) => Math.min(pageCount - 1, old + 1))} disabled={safePage >= pageCount - 1} className="inline-grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.04] disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="صفحه بعد"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M15 18l-6-6 6-6" /></svg></button></div><div className="whitespace-nowrap text-black/70 dark:text-neutral-400">{total === 0 ? "۰ از ۰" : `${toFa(startIndex + 1)}–${toFa(endIndex)} از ${toFa(total)}`}</div></div>
             <div className="flex items-center justify-between gap-2 text-sm md:justify-start"><span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span><div className="inline-flex h-9 overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">{[10, 25, 100].map((count) => <button key={count} type="button" onClick={() => { setRowsPerPage(count); setPage(0); }} className={`min-w-10 px-3 text-sm font-semibold transition ${rowsPerPage === count ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-700 hover:bg-black/[0.04] dark:text-white/75 dark:hover:bg-white/10"}`}>{toFa(count)}</button>)}</div></div>
@@ -1687,7 +1732,7 @@ function TagPicker({ tags, selectedIds, onToggle, query, setQuery, onClose }) {
 
 function Field({ label, required, children, className = "" }) { return <label className={`block text-xs text-neutral-600 dark:text-neutral-300 ${className}`}>{label}{required && <span className="mr-1 text-red-500">*</span>}<div className="mt-1">{children}</div></label>; }
 function ReadField({ label, value, ltr }) { return <Field label={label}><div dir={ltr ? "ltr" : "rtl"} className={`${inputClass} flex items-center ${ltr ? "justify-end" : ""}`}>{value || "—"}</div></Field>; }
-function MoneyInput({ value, onChange, className = "", disabled = false }) { return <input dir="ltr" inputMode="numeric" disabled={disabled} className={`${inputClass} ${className}`} value={toFa(value)} onChange={(e) => onChange(money(e.target.value))} placeholder="۰" />; }
+function MoneyInput({ value, onChange, className = "", disabled = false, decimals = 0 }) { return <input dir="ltr" inputMode={decimals ? "decimal" : "numeric"} disabled={disabled} className={`${inputClass} ${className}`} value={toFa(value)} onChange={(e) => onChange(decimals ? decimalMoney(e.target.value) : money(e.target.value))} placeholder="۰" />; }
 function paymentTagClass(active) {
   return active
     ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900 dark:ring-white"
@@ -1947,9 +1992,9 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
   const [nextRecipientsLoading, setNextRecipientsLoading] = useState(false);
   const [targetAssigneeUserId, setTargetAssigneeUserId] = useState("");
   const [liquidityRemaining, setLiquidityRemaining] = useState("");
-  const amountNumber = Number(item.amount || 0);
-  const liquidityNumber = parseAmount(liquidityRemaining);
-  const hasEnoughLiquidity = liquidityNumber > 0 && amountNumber <= liquidityNumber;
+  const amountMinorUnits = decimalMinorUnits(item.rialAmount || item.amount || 0);
+  const liquidityMinorUnits = decimalMinorUnits(liquidityRemaining);
+  const hasEnoughLiquidity = liquidityMinorUnits > 0n && amountMinorUnits <= liquidityMinorUnits;
   const editProject = projects.find((row) => String(row.id) === String(editForm.projectId));
   const editCurrency = currencyTypes.find((row) => String(row.id) === String(editForm.currencyTypeId));
   const editCurrencyName = editCurrency ? itemLabel(editCurrency) : "ریال";
@@ -1968,9 +2013,10 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data?.error || "liquidity_failed");
         const key = String(item.projectId);
-        const totalBudget = Number(data?.allocations?.[key] || 0);
-        const commitments = Number(data?.committed?.[key] || 0);
-        if (!cancelled) setLiquidityRemaining(money(Math.max(0, totalBudget - commitments)));
+        const totalBudgetMinorUnits = decimalMinorUnits(data?.allocations?.[key] || 0);
+        const commitmentMinorUnits = decimalMinorUnits(data?.committed?.[key] || 0);
+        const remainingMinorUnits = totalBudgetMinorUnits > commitmentMinorUnits ? totalBudgetMinorUnits - commitmentMinorUnits : 0n;
+        if (!cancelled) setLiquidityRemaining(exactRialMoney(minorUnitsToDecimal(remainingMinorUnits)));
       })
       .catch(() => { if (!cancelled) setLiquidityRemaining(""); });
     return () => { cancelled = true; };
@@ -2353,7 +2399,7 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
         ${infoCard("کد بودجه", item.budgetCode)}
         ${infoCard("موضوع درخواست", item.title)}
         ${infoCard("درخواست تأمین", supplyRequestName)}
-        ${infoCard("مبلغ درخواست", `${toFa(Number(item.amount || 0).toLocaleString("en-US"))} ریال`)}
+        ${infoCard("مبلغ درخواست", `${toFa(paymentRequestAmount(item.amount, showCurrencyDecimals))} ${currencyName}`)}
         ${infoCard("شرح درخواست", item.description, "full")}
       </div>
     </section>
@@ -2513,7 +2559,7 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
                   <PreviewRow compact colon leader={!canEditRequest} label="مبلغ درخواست" ltr={!canEditRequest} value={<span dir="ltr" className="inline-flex items-center gap-1 font-sans"><span>{currencyName}</span><span>{toFa(paymentRequestAmount(item.amount, showCurrencyDecimals))}</span></span>} />
                   <PreviewRow compact colon leader={!canEditRequest} label="نرخ" ltr={!canEditRequest} value={item.currencyTypeId ? toFa(Number(item.exchangeRate || 0).toLocaleString("en-US")) : "—"} />
-                  <PreviewRow compact colon leader={!canEditRequest} label="مبلغ ریالی درخواست" ltr={!canEditRequest} value={<span dir="ltr" className="inline-flex items-center gap-1"><span>ریال</span><span>{toFa(Number(item.rialAmount || item.amount || 0).toLocaleString("en-US"))}</span></span>} />
+                  <PreviewRow compact colon leader={!canEditRequest} label="مبلغ ریالی درخواست" ltr={!canEditRequest} value={<span dir="ltr" className="inline-flex items-center gap-1"><span>ریال</span><span>{toFa(exactRialMoney(item.rialAmount || item.amount || 0))}</span></span>} />
                 </div>
                 <div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10">
                   <PreviewRow compact colon leader={!canEditRequest} label="باقی مانده نقدینگی پروژه" value={liquidityRemaining || "—"} ltr />

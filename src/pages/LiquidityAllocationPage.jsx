@@ -197,11 +197,10 @@ export default function LiquidityAllocationPage() {
 
   const money = (value) => {
     const normalized = toEnglishDigits(String(value ?? "")).replace(/,/g, "").trim();
-    const negative = normalized.startsWith("-");
-    const digits = normalized.replace(/[^\d]/g, "");
-    return (negative ? -1 : 1) * (Number(digits) || 0);
+    if (!/^-?\d+(?:\.\d{1,2})?$/.test(normalized)) return 0;
+    return Number(normalized) || 0;
   };
-  const displayMoney = (value) => value ? Number(value).toLocaleString("en-US") : "—";
+  const displayMoney = (value) => value ? Number(value).toLocaleString("en-US", { maximumFractionDigits: 2 }) : "—";
   const contingencyReserveOf = (allocation) => allocation?.contingencyReserveAmount != null
     ? money(allocation.contingencyReserveAmount)
     : money(allocation?.availableAmount) - money(allocation?.allocatedAmount);
