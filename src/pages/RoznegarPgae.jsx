@@ -575,6 +575,7 @@ export default function RoznegarPgae() {
     dayjs(todayJalaliYmd(), { jalali: true }).calendar("jalali").startOf("month")
   );
   const [entriesByDate, setEntriesByDate] = useState({});
+  const [savedEntryCount, setSavedEntryCount] = useState(0);
 
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState("");
@@ -761,6 +762,7 @@ export default function RoznegarPgae() {
     async (pid) => {
       const p = String(pid || "").trim();
       if (authLoading) return false;
+      setSavedEntryCount(0);
       if (!p) {
         setEntriesByDate({});
         return true;
@@ -796,6 +798,7 @@ export default function RoznegarPgae() {
           if (entry?.dateYmd) next[entry.dateYmd] = entry;
         });
         setEntriesByDate(next);
+        setSavedEntryCount(Object.keys(next).length);
         setSyncState((prev) => (prev?.type === "success" ? prev : { type: "", text: "" }));
         return true;
       } catch (e) {
@@ -1709,11 +1712,33 @@ export default function RoznegarPgae() {
                         </button>
                         {filesUploading ? <div className="mt-1 text-[10px] text-neutral-500 dark:text-neutral-400">در حال بارگذاری...</div> : null}
                       </div>
+
+                      <div className="min-w-0 shrink-0">
+                        <div className={labelCls}>خروجی اکسل</div>
+                        <button
+                          type="button"
+                          onClick={handleExportExcel}
+                          disabled={!filteredTableRows.length}
+                          className={
+                            "h-11 w-11 rounded-xl border transition inline-flex items-center justify-center disabled:cursor-not-allowed disabled:opacity-45 " +
+                            (theme === "dark"
+                              ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                              : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
+                          }
+                          title="خروجی اکسل روزنگارها"
+                          aria-label="خروجی اکسل روزنگارها"
+                        >
+                          <img src="/images/icons8-excel-50.png" alt="" className="h-5 w-5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
                   <div className="mt-5 border-t border-black/[0.08] pt-4 dark:border-white/10 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-h-5 text-[11px] md:text-xs">
+                    <div className="min-h-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] md:text-xs">
+                      <span className="font-semibold text-neutral-700 dark:text-neutral-200">
+                        مجموع روزنگارها: {toFaDigits(savedEntryCount)}
+                      </span>
                       {syncState?.text ? (
                         <span className={syncState.type === "error" ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}>
                           {syncState.text}

@@ -1516,7 +1516,6 @@ const buildLetterMailHtml = ({ title, kind, kindLabel, rows }) => {
             <div style="margin-top:10px;display:inline-block;padding:5px 12px;border:1px solid;border-radius:999px;font-size:12px;font-weight:700;${kindStyles[kind] || "background:#f5f5f5;color:#404040;border-color:#d4d4d4;"}">${escapeMailHtml(kindLabel)}</div>
           </div>
           <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;direction:rtl;">${tableRows}</table>
-          <div style="padding:14px 22px;color:#737373;font-size:11px;background:#fafafa;">این پیش‌نویس از سامانه مدیریت اسناد ایجاد شده است.</div>
         </div>
       </div>
     </body>
