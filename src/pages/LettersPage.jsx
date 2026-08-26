@@ -6407,30 +6407,15 @@ aria-invalid={fieldHasError(formKind, "subject")}
         const absIdx = startIdx + idx;
         const isKeyboardActive = absIdx === kbdAbsIdx;
         const kind = letterKindOf(l);
-        const isOutgoing = kind === "outgoing";
-        const isIncoming = kind === "incoming";
-        const isInternal = kind === "internal";
         const kindLabel = TABS.find((tab) => tab.id === kind)?.label || "—";
         const isLast = idx === pageItems.length - 1;
         const divider = isLast ? "" : rowDividerCls;
         const hasRealAttachment = attachmentsOf(l).length > 0;
         const isConf = isConfidentialLetter(l);
 
-const normalRowBg = isOutgoing
-  ? theme === "dark"
-    ? "bg-[#8BAE66]/15 hover:bg-[#8BAE66]/20"
-    : "bg-[#8BAE66]/[0.06] hover:bg-[#8BAE66]/[0.09]"
-  : isIncoming
-  ? theme === "dark"
-    ? "bg-[#0046FF]/15 hover:bg-[#0046FF]/20"
-    : "bg-[#0046FF]/[0.06] hover:bg-[#0046FF]/[0.09]"
-  : isInternal
-  ? theme === "dark"
-    ? "bg-orange-500/10 hover:bg-orange-500/15"
-    : "bg-orange-50 hover:bg-orange-100/70"
-  : theme === "dark"
-  ? "bg-white/5 hover:bg-white/10"
-  : "bg-black/[0.02] hover:bg-black/[0.04]";
+const normalRowBg = theme === "dark"
+  ? "bg-neutral-900 hover:bg-neutral-800/80"
+  : "bg-white hover:bg-neutral-50";
 
 // ✅ محرمانه: نمایش با آیکن، بدون بک‌گراند جداگانه
 const rowBg = normalRowBg;
