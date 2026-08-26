@@ -4414,7 +4414,7 @@ subject:
       <div className={"col-span-4 text-xs font-semibold " + (theme === "dark" ? "text-white/70" : "text-neutral-600")}>
         {label}
       </div>
-      <div className={"col-span-8 text-sm " + (theme === "dark" ? "text-white" : "text-neutral-900")}>{value || "—"}</div>
+      <div className={"col-span-8 text-sm " + (theme === "dark" ? "text-white" : "text-neutral-900")}>{(typeof value === "string" || typeof value === "number") ? toFaDigits(value) : (value || "—")}</div>
     </div>
   );
   const viewAttachments = useMemo(() => attachmentsOf(viewLetter), [viewLetter]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -6287,8 +6287,8 @@ aria-invalid={fieldHasError(formKind, "subject")}
   <col style={{ width: 48 }} />   {/* checkbox */}
   <col style={{ width: 100 }} />  {/* شماره */}
   <col style={{ width: 100 }} />  {/* تاریخ */}
-  <col />                         {/* موضوع؛ فضای اصلی جدول */}
   <col style={{ width: 115 }} />  {/* نوع سند */}
+  <col />                         {/* موضوع؛ فضای اصلی جدول */}
   <col style={{ width: 190 }} />  {/* شرکت/سازمان */}
   <col style={{ width: 48 }} />   {/* منو / بارگذاری پیوست */}
 </colgroup>
@@ -6331,11 +6331,11 @@ aria-invalid={fieldHasError(formKind, "subject")}
       </th>
 
       <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
-        موضوع
+        نوع سند
       </th>
 
       <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
-        نوع سند
+        موضوع
       </th>
 
       <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
@@ -6477,16 +6477,16 @@ const rowBg = normalRowBg;
             <td className={"px-3 " + divider}>{letterDateOf(l) ? toFaDigits(letterDateOf(l)) : "—"}</td>
 
             <td className={"px-3 " + divider}>
-              <span className="block truncate mx-auto">{subjectOf(l) || "—"}</span>
-            </td>
-
-            <td className={"px-3 " + divider}>
               <span
                 className={documentTypeFilterChipCls(kind, false) + " mx-auto max-w-full truncate"}
                 title={kindLabel}
               >
                 {kindLabel}
               </span>
+            </td>
+
+            <td className={"px-3 " + divider}>
+              <span className="block truncate mx-auto">{subjectOf(l) || "—"}</span>
             </td>
 
             <td className={"px-3 " + divider}>
@@ -6658,25 +6658,19 @@ const rowBg = normalRowBg;
                           </div>
 
                           <div className="px-4 divide-y divide-black/10 dark:divide-white/10">
-                            <InfoRow
-  label="نوع"
+<InfoRow
+  label="نوع سند"
   value={
     viewLetter
       ? (() => {
           const k = letterKindOf(viewLetter);
-          if (k === "outgoing") return "صادره";
-          if (k === "incoming")
-            return (
-              <span className="inline-flex items-center gap-1">
-                وارده
-                <img
-                  src="/images/icons/varede.svg"
-                  alt=""
-                  className="w-4 h-4"
-                />
-              </span>
-            );
-          return "داخلی";
+          const tab = TABS.find((item) => item.id === k);
+          return (
+            <span className={documentTypeFilterChipCls(k, false) + " inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1"}>
+              <span>{tab?.label || "—"}</span>
+              {tab?.icon ? <img src={tab.icon} alt="" className="h-4 w-4" /> : null}
+            </span>
+          );
         })()
       : ""
   }
@@ -6701,32 +6695,18 @@ const rowBg = normalRowBg;
                               }
                             />
 
-                           <InfoRow
-  label={viewLetter && letterKindOf(viewLetter) === "incoming" ? "از" : "از / به"}
-  value={
-    viewLetter
-      ? (() => {
-          const a = String(viewLetter?.from_name ?? viewLetter?.fromName ?? viewLetter?.from ?? "").trim();
-          const b = String(viewLetter?.to_name ?? viewLetter?.toName ?? viewLetter?.to ?? "").trim();
-
-          if (letterKindOf(viewLetter) === "incoming") {
-            const s = `${a}${a && b ? " - " : ""}${b}`.trim();
-            return s || "—";
-          }
-
-          const s = `${a}${a && b ? " / " : ""}${b}`.trim();
-          return s || "—";
-        })()
-      : "—"
-  }
-/>
-
-{!(viewLetter && letterKindOf(viewLetter) === "incoming") && (
-  <InfoRow
-    label="شرکت/سازمان"
-    value={viewLetter ? String(viewLetter?.org_name ?? viewLetter?.orgName ?? viewLetter?.org ?? "") : ""}
-  />
-)}
+                            <InfoRow
+                              label="از"
+                              value={viewLetter ? String(viewLetter?.from_name ?? viewLetter?.fromName ?? viewLetter?.from ?? "") : ""}
+                            />
+                            <InfoRow
+                              label="به"
+                              value={viewLetter ? String(viewLetter?.to_name ?? viewLetter?.toName ?? viewLetter?.to ?? "") : ""}
+                            />
+                            <InfoRow
+                              label="شرکت/سازمان"
+                              value={viewLetter ? String(viewLetter?.org_name ?? viewLetter?.orgName ?? viewLetter?.org ?? viewLetter?.organization ?? viewLetter?.company ?? "") : ""}
+                            />
                             <InfoRow label="موضوع" value={viewLetter ? String(subjectOf(viewLetter) || "") : ""} />
                               {viewLetter && letterKindOf(viewLetter) === "incoming" && (
                                 <InfoRow
@@ -6770,7 +6750,7 @@ const rowBg = normalRowBg;
                                           .filter(Boolean)
                                           .map((sid) => {
                                             const it = map.get(sid);
-                                            return it ? String(it?.letter_no || sid) : sid;
+                                            return toFaDigits(it ? String(it?.letter_no || sid) : sid);
                                           });
                                         return labels.join("، ");
                                       })()
