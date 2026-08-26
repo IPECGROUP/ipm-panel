@@ -6285,12 +6285,12 @@ aria-invalid={fieldHasError(formKind, "subject")}
 >
 <colgroup>
   <col style={{ width: 48 }} />   {/* checkbox */}
-  <col style={{ width: 96 }} />   {/* شماره */}
-  <col style={{ width: 96 }} />   {/* تاریخ */}
-  <col />                         {/* موضوع (باقی فضا) */}
-  <col style={{ width: 105 }} />  {/* نوع سند */}
-  <col style={{ width: 176 }} />  {/* شرکت/سازمان */}
-  <col style={{ width: 172 }} />  {/* اقدامات */}
+  <col />                         {/* شماره */}
+  <col />                         {/* تاریخ */}
+  <col />                         {/* موضوع */}
+  <col />                         {/* نوع سند */}
+  <col />                         {/* شرکت/سازمان */}
+  <col style={{ width: 48 }} />   {/* منو / بارگذاری پیوست */}
 </colgroup>
 
   <thead>
@@ -6309,7 +6309,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
         />
       </th>
 
-      <th className="w-24 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
+      <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
         <button
           type="button"
           onClick={() => setLetterNoSortDir((prev) => (prev === "asc" ? "desc" : "asc"))}
@@ -6326,7 +6326,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
         </button>
       </th>
 
-      <th className="w-24 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
+      <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
         تاریخ
       </th>
 
@@ -6334,17 +6334,16 @@ aria-invalid={fieldHasError(formKind, "subject")}
         موضوع
       </th>
 
-      <th className="w-28 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
+      <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
         نوع سند
       </th>
 
-      <th className="w-44 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
+      <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
         شرکت/سازمان
       </th>
 
-     <th className="w-28 !py-2 pl-6 !pr-3 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-40 bg-neutral-200 dark:bg-neutral-800">
-  <div ref={tableMenuRef} className="relative flex items-center justify-center gap-2">
-    <span>عملیات</span>
+     <th className="w-12 !p-0 sticky top-0 z-40 bg-neutral-200 dark:bg-neutral-800">
+  <div ref={tableMenuRef} className="relative flex items-center justify-center">
     <button
       type="button"
       onClick={() => setTableMenuOpen((open) => !open)}
@@ -6369,28 +6368,26 @@ aria-invalid={fieldHasError(formKind, "subject")}
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span>
           <span className="min-w-0 flex-1 text-sm font-semibold">ویرایش سند</span>
         </button>
+        {!isMainAdmin && canSeeMainAdminLogin ? (
+          <button
+            type="button"
+            onClick={() => {
+              setTableMenuOpen(false);
+              askMainAdminEnable(setIsMainAdmin);
+            }}
+            className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-neutral-100 dark:hover:bg-white/10"
+          >
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-neutral-100 text-neutral-700 transition group-hover:scale-105 dark:bg-white/10 dark:text-neutral-200">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M12 17v-2" />
+                <path d="M8 10V8a4 4 0 0 1 8 0v2" />
+                <rect x="7" y="10" width="10" height="10" rx="2" />
+              </svg>
+            </span>
+            <span className="min-w-0 flex-1 text-sm font-semibold">ورود ادمین</span>
+          </button>
+        ) : null}
       </div>
-    ) : null}
-
-    {!isMainAdmin && canSeeMainAdminLogin ? (
-      <button
-        type="button"
-        onClick={() => askMainAdminEnable(setIsMainAdmin)}
-        className={
-          "absolute left-0 h-6 w-6 rounded-md flex items-center justify-center transition " +
-          (theme === "dark"
-            ? "bg-white/10 hover:bg-white/15 text-white/70"
-            : "bg-black/10 hover:bg-black/15 text-black/70")
-        }
-        aria-label="ورود ادمین"
-        title="ورود ادمین"
-      >
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <path d="M12 17v-2" />
-          <path d="M8 10V8a4 4 0 0 1 8 0v2" />
-          <rect x="7" y="10" width="10" height="10" rx="2" />
-        </svg>
-      </button>
     ) : null}
   </div>
 </th>
@@ -6511,7 +6508,7 @@ const rowBg = normalRowBg;
               <span className="block truncate mx-auto">{orgOf(l) || "—"}</span>
             </td>
 
-            <td className={"!pl-6 !pr-3 " + divider}>
+            <td className={"!px-0 " + divider}>
               <div className="w-full flex items-center justify-center gap-0">
                 {!hasRealAttachment ? (
                   <button
