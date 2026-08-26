@@ -2143,11 +2143,28 @@ const resetAllFilters = () => {
 
   // ===== Table selection + pagination =====
   const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [tableMenuOpen, setTableMenuOpen] = useState(false);
+  const tableMenuRef = useRef(null);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
   const [letterNoSortDir, setLetterNoSortDir] = useState(null); // null | asc | desc
   const [kbdAbsIdx, setKbdAbsIdx] = useState(-1);
   const tableRowRefs = useRef(new Map());
+
+  useEffect(() => {
+    if (!tableMenuOpen) return undefined;
+    const closeMenu = (event) => {
+      if (event.key === "Escape" || (event.type === "mousedown" && !tableMenuRef.current?.contains(event.target))) {
+        setTableMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", closeMenu);
+    document.addEventListener("keydown", closeMenu);
+    return () => {
+      document.removeEventListener("mousedown", closeMenu);
+      document.removeEventListener("keydown", closeMenu);
+    };
+  }, [tableMenuOpen]);
 
   // ===== Uploader state (incoming/outgoing/internal) =====
   const uploadInputRef = useRef(null);
@@ -3522,6 +3539,9 @@ useLayoutEffect(() => {
   const visibleIds = useMemo(() => pageItems.map((l) => String(letterIdOf(l))), [pageItems]);
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(String(id)));
   const someVisibleSelected = visibleIds.some((id) => selectedIds.has(String(id))) && !allVisibleSelected;
+  const selectedMenuLetter = selectedIds.size === 1
+    ? filteredLetters.find((letter) => selectedIds.has(String(letterIdOf(letter))))
+    : null;
 
   const toggleSelectAllVisible = () => {
     setSelectedIds((prev) => {
@@ -3547,9 +3567,6 @@ useLayoutEffect(() => {
   const iconBtnCls =
     "h-10 w-10 inline-grid place-items-center !bg-transparent !ring-0 !border-0 !shadow-none " +
     "hover:opacity-80 active:opacity-70 transition disabled:opacity-50";
-  const rowActionsRevealCls =
-    "flex items-center justify-center gap-0 -space-x-1 opacity-0 pointer-events-none transition-opacity " +
-    "group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto";
   const uploadActionBtnCls =
     iconBtnCls + " letter-upload-flash relative overflow-visible";
 
@@ -3561,7 +3578,7 @@ useLayoutEffect(() => {
     "bg-neutral-200 text-black border-b border-neutral-300 " +
     "dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700";
 
-  const tbodyCls = "text-[13px] text-black [&>tr>td]:!py-0 [&>tr>td:last-child_button]:!h-9 [&>tr>td:last-child_button]:!w-9 dark:text-neutral-100";
+  const tbodyCls = "text-[13px] text-black [&>tr]:h-9 [&>tr>td]:!py-0 dark:text-neutral-100";
   const rowDividerCls = "border-b border-neutral-300 dark:border-neutral-700";
 
   const readLetterDraftStore = () => {
@@ -3692,6 +3709,20 @@ useLayoutEffect(() => {
         String(form?.[key] || "").trim()
       );
     });
+  };
+
+  const sendSelectedLetter = () => {
+    if (!selectedMenuLetter) return;
+    setTableMenuOpen(false);
+    setSelectedIds(new Set());
+    openLetterInOutlook(selectedMenuLetter);
+  };
+
+  const editSelectedLetter = () => {
+    if (!selectedMenuLetter) return;
+    setTableMenuOpen(false);
+    setSelectedIds(new Set());
+    startEdit(selectedMenuLetter);
   };
 
   const saveLetterDraftNow = (payload) => {
@@ -6311,9 +6342,35 @@ aria-invalid={fieldHasError(formKind, "subject")}
         شرکت/سازمان
       </th>
 
-     <th className="w-28 !py-2 pl-6 !pr-3 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
-  <div className="relative flex items-center justify-center gap-2">
+     <th className="w-28 !py-2 pl-6 !pr-3 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-40 bg-neutral-200 dark:bg-neutral-800">
+  <div ref={tableMenuRef} className="relative flex items-center justify-center gap-2">
     <span>عملیات</span>
+    <button
+      type="button"
+      onClick={() => setTableMenuOpen((open) => !open)}
+      className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10"
+      title="مدیریت وضعیت خواندن"
+      aria-label="مدیریت وضعیت خواندن"
+      aria-expanded={tableMenuOpen}
+    >
+      <img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${tableMenuOpen ? "scale-110" : ""} dark:invert`} />
+    </button>
+
+    {tableMenuOpen ? (
+      <div className="table-menu-popover absolute left-0 top-[calc(100%+8px)] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
+        <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+          {selectedIds.size ? `${toFaDigits(selectedIds.size)} مورد انتخاب شده` : "ابتدا یک سند را انتخاب کنید"}
+        </div>
+        <button type="button" disabled={!selectedMenuLetter} onClick={sendSelectedLetter} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-sky-500/10">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-100 text-sky-700 transition group-hover:scale-105 dark:bg-sky-500/15 dark:text-sky-300"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13" /><path d="m22 2-7 20-4-9-9-4 20-7Z" /></svg></span>
+          <span className="min-w-0 flex-1 text-sm font-semibold">ارسال</span>
+        </button>
+        <button type="button" disabled={!selectedMenuLetter} onClick={editSelectedLetter} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span>
+          <span className="min-w-0 flex-1 text-sm font-semibold">ویرایش سند</span>
+        </button>
+      </div>
+    ) : null}
 
     {!isMainAdmin && canSeeMainAdminLogin ? (
       <button
@@ -6388,9 +6445,12 @@ const rowBg = normalRowBg;
             if (el) tableRowRefs.current.set(id, el);
             else tableRowRefs.current.delete(id);
           }}
-          onClick={() => setKbdAbsIdx(absIdx)}
+          onClick={() => {
+            setKbdAbsIdx(absIdx);
+            openView(l);
+          }}
           className={
-            "group " +
+            "group cursor-pointer " +
             rowBg +
             " transition-colors" +
             (isConf ? " [&_td]:!text-red-600 dark:[&_td]:!text-red-500" : "") +
@@ -6402,6 +6462,7 @@ const rowBg = normalRowBg;
                 type="checkbox"
                 className="w-4 h-4 accent-black dark:accent-neutral-200"
                 checked={selectedIds.has(id)}
+                onClick={(event) => event.stopPropagation()}
                 onChange={() => toggleRowSelect(id)}
                 aria-label="انتخاب"
                 title="انتخاب"
@@ -6411,7 +6472,8 @@ const rowBg = normalRowBg;
             <td className={"px-3 " + divider}>
               <button
                 type="button"
-                onClick={() => {
+                onClick={(event) => {
+                  event.stopPropagation();
                   setKbdAbsIdx(absIdx);
                   openView(l);
                 }}
@@ -6454,7 +6516,8 @@ const rowBg = normalRowBg;
                 {!hasRealAttachment ? (
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={(event) => {
+                      event.stopPropagation();
                       setKbdAbsIdx(absIdx);
                       startEdit(l);
                       openUpload(kind, id);
@@ -6474,38 +6537,6 @@ const rowBg = normalRowBg;
                     />
                   </button>
                 ) : null}
-                <div className={rowActionsRevealCls}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setKbdAbsIdx(absIdx);
-                    openView(l);
-                  }}
-                  className={iconBtnCls}
-                  aria-label="نمایش"
-                  title="نمایش"
-                >
-                  <img src="/images/icons/namayeshname.svg" alt="" className="w-4 h-4 dark:invert" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => openLetterInOutlook(l)}
-                  className={iconBtnCls + " !text-neutral-900 dark:!text-white"}
-                  aria-label="ارسال"
-                  title="ارسال"
-                >
-                  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M22 2 11 13" />
-                    <path d="m22 2-7 20-4-9-9-4 20-7Z" />
-                  </svg>
-                </button>
-
-                <button type="button" onClick={() => startEdit(l)} className={iconBtnCls} aria-label="ویرایش" title="ویرایش">
-                  <img src="/images/icons/pencil.svg" alt="" className="w-[17px] h-[17px] dark:invert" />
-                </button>
-
-                </div>
               </div>
             </td>
           </tr>
