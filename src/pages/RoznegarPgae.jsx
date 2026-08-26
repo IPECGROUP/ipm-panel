@@ -1340,7 +1340,7 @@ export default function RoznegarPgae() {
     if (!filteredTableRows.length) return;
     const XLSX = await import("xlsx");
     const rows = [
-      ["روزنگار پروژه - خروجی جدول"],
+      ["روزنگار پروژه"],
       activeProject ? [`پروژه: ${activeProject.code || ""} - ${activeProject.name || ""}`] : [""],
       [""],
       ["ردیف", "پروژه", "تاریخ", "روز", "شرح فعالیت‌ها", "برچسب‌ها", "مستندات مرتبط", "فایل‌ها", "تعداد فایل"],
