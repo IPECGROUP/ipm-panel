@@ -1389,29 +1389,6 @@ export default function RoznegarPgae() {
 
           {formOpen ? (
             <>
-          <div className="mb-5 rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-3 dark:border-neutral-800 dark:bg-neutral-800/50 sm:px-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-              <div className="w-full lg:max-w-md">
-                <div className="mb-1 text-xs text-neutral-600 dark:text-neutral-300">پروژه فعال</div>
-                <select
-                  value={projectId}
-                  onChange={(e) => setProjectId(e.target.value)}
-                  className="h-11 w-full rounded-xl border border-neutral-300 bg-white px-3 text-sm text-right text-neutral-900 outline-none transition focus:ring-2 focus:ring-neutral-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:focus:ring-neutral-600/50"
-                >
-                  <option value="">{projectsLoading ? "در حال دریافت پروژه‌های فعال..." : "انتخاب پروژه فعال..."}</option>
-                  {(sortedActiveProjects || []).map((p) => (
-                    <option key={String(p.id)} value={String(p.id)}>
-                      {String(p.code || "").trim()}
-                      {String(p.name || "").trim() ? ` - ${String(p.name || "").trim()}` : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              
-            </div>
-          </div>
-
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
             <section className="xl:col-span-5 min-w-0">
               <div
@@ -1420,6 +1397,22 @@ export default function RoznegarPgae() {
                   cardReveal
                 }
               >
+                <div className="mb-4">
+                  <div className="mb-1 text-xs text-neutral-600 dark:text-neutral-300">انتخاب پروژه</div>
+                  <select
+                    value={projectId}
+                    onChange={(e) => setProjectId(e.target.value)}
+                    className="h-11 w-full rounded-xl border border-neutral-300 bg-white px-3 text-sm text-right text-neutral-900 outline-none transition focus:ring-2 focus:ring-neutral-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:focus:ring-neutral-600/50"
+                  >
+                    <option value="">{projectsLoading ? "در حال دریافت پروژه‌های فعال..." : "انتخاب پروژه..."}</option>
+                    {(sortedActiveProjects || []).map((p) => (
+                      <option key={String(p.id)} value={String(p.id)}>
+                        {String(p.code || "").trim()}
+                        {String(p.name || "").trim() ? ` - ${String(p.name || "").trim()}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div className="mb-4 flex items-center justify-between">
                   <button
                     type="button"
@@ -1575,7 +1568,7 @@ export default function RoznegarPgae() {
                         disabled={editorDisabled}
                         onClick={() => openTagModal("entry")}
                         className={
-                          "h-10 w-full px-3 shrink-0 rounded-xl border transition inline-flex items-center justify-center gap-2 min-[430px]:w-auto " +
+                          "h-11 w-11 shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
                           (theme === "dark"
                             ? "border-white/15 bg-white/5 hover:bg-white/10"
                             : "border-black/10 bg-white hover:bg-black/[0.02]")
@@ -1584,7 +1577,6 @@ export default function RoznegarPgae() {
                         title="انتخاب برچسب"
                       >
                         <img src="/images/icons/sayer.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")} />
-                        <span className="text-xs md:text-sm">انتخاب برچسب</span>
                       </button>
                     </div>
                   </div>
@@ -1599,7 +1591,7 @@ export default function RoznegarPgae() {
                             disabled={editorDisabled}
                             onClick={openRelatedPicker}
                             className={
-                              "h-10 w-10 shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
+                              "h-11 w-11 shrink-0 rounded-xl border transition inline-flex items-center justify-center " +
                               (theme === "dark"
                                 ? "border-white/15 bg-white/5 hover:bg-white/10"
                                 : "border-black/10 bg-white hover:bg-black/[0.02]")
@@ -1672,7 +1664,7 @@ export default function RoznegarPgae() {
                     </div>
                   </div>
 
-                  <div className="pt-2 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="mt-5 border-t border-black/[0.08] pt-4 dark:border-white/10 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-h-5 text-[11px] md:text-xs">
                       {syncState?.text ? (
                         <span className={syncState.type === "error" ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}>
