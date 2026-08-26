@@ -1216,7 +1216,7 @@ export default function SupplyRequestPage() {
                     <th className="sticky top-0 z-30 bg-neutral-200 !py-2 !text-right text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">پروژه</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 !py-2 !text-right text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">موضوع</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">درخواست‌کننده</th>
-                    <th className="sticky top-0 z-40 bg-neutral-200 !py-2 !pl-4 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><span>آخرین وضعیت</span><SupplyReadingStatusMenu tableMenuRef={tableMenuRef} tableMenuOpen={tableMenuOpen} setTableMenuOpen={setTableMenuOpen} selectedIds={selectedIds} setSelectedReadStatus={setSelectedReadStatus} canEditSelectedRequest={canEditSelectedRequest} editSelectedRequest={editSelectedRequest} deletingSelected={deletingSelected} deleteSelectedRequests={deleteSelectedRequests} /></th>
+                    <th className="sticky top-0 z-40 bg-neutral-200 !py-2 !pl-8 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><span>آخرین وضعیت</span><SupplyReadingStatusMenu tableMenuRef={tableMenuRef} tableMenuOpen={tableMenuOpen} setTableMenuOpen={setTableMenuOpen} selectedIds={selectedIds} setSelectedReadStatus={setSelectedReadStatus} canEditSelectedRequest={canEditSelectedRequest} editSelectedRequest={editSelectedRequest} deletingSelected={deletingSelected} deleteSelectedRequests={deleteSelectedRequests} /></th>
                   </tr>
                 </thead>
                 <tbody className="text-[13px] text-black [&>tr]:h-9 [&>tr>td]:!py-0 dark:text-neutral-100">
