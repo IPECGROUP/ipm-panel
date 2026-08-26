@@ -590,7 +590,7 @@ export default function RoznegarPgae() {
 
   const [uploadOpen, setUploadOpen] = useState(false);
   const [filesUploading, setFilesUploading] = useState(false);
-  const [formOpen, setFormOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(true);
   const [tableFilter, setTableFilter] = useState("");
   const [tableFilterTagIds, setTableFilterTagIds] = useState([]);
   const [tablePage, setTablePage] = useState(0);
@@ -807,6 +807,7 @@ export default function RoznegarPgae() {
   }, [projectId, fetchRoznegarEntries]);
 
   const updateActiveEntry = (updater) => {
+    setSyncState({ type: "", text: "تغییرات ذخیره نشده‌اند." });
     setEntriesByDate((prev) => {
       const current = prev[selectedDate] || makeEntry(selectedDate);
       const nextRaw = typeof updater === "function" ? updater(current) : { ...current, ...updater };
@@ -873,6 +874,19 @@ export default function RoznegarPgae() {
       return selectedDate;
     }
   }, [selectedDate]);
+
+  const selectedDateHeader = useMemo(() => {
+    try {
+      const jalali = dayjs(selectedDate, { jalali: true }).calendar("jalali");
+      const gregorian = jalali.toDate();
+      return {
+        jalali: `${toFaDigits(jalali.format("D"))} ${PERSIAN_MONTHS[Math.max(0, Number(jalali.format("M")) - 1)] || ""} ${toFaDigits(jalali.format("YYYY"))}`,
+        gregorian: `${pad2(gregorian.getDate())}/${pad2(gregorian.getMonth() + 1)}/${gregorian.getFullYear()}`,
+      };
+    } catch {
+      return { jalali: toFaDigits(selectedDateLabel), gregorian: "" };
+    }
+  }, [selectedDate, selectedDateLabel]);
 
   const selectedTags = useMemo(() => {
     const set = new Set((activeEntry?.tagIds || []).map(String));
@@ -1367,24 +1381,31 @@ export default function RoznegarPgae() {
         className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800"
       >
         <div className={"transition-all duration-500 " + cardReveal}>
-          <div className="mb-4 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0 text-sm leading-7 md:text-lg">
-              <span className="text-neutral-700 dark:text-neutral-300">پروژه‌ها</span>
-              <span className="mx-2 text-neutral-500 dark:text-neutral-400">›</span>
-              <span className="font-semibold text-neutral-900 dark:text-neutral-100">روزنگار پروژه</span>
+          <div className="mb-5 flex min-w-0 items-center justify-between gap-3 border-b border-black/[0.07] pb-4 dark:border-white/10">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-black/10 bg-gradient-to-br from-neutral-50 to-neutral-200/70 shadow-sm dark:border-white/10 dark:from-white/[0.12] dark:to-white/[0.04]">
+                <img src="/images/icons/roznegar.svg" alt="" className="h-6 w-6 dark:invert" />
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-base font-bold tracking-tight md:text-lg">روزنگار پروژه</span>
+                <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت پروژه‌ها</span>
+              </span>
             </div>
             <button
               type="button"
-              onClick={() => setFormOpen((open) => !open)}
+              onClick={() => {
+                jumpToDate(todayJalaliYmd());
+                setFormOpen(true);
+              }}
               className={
                 "h-10 w-10 shrink-0 self-end rounded-xl flex items-center justify-center transition ring-1 sm:self-auto " +
                 (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
               }
-              title={formOpen ? "بستن" : "افزودن"}
-              aria-label={formOpen ? "بستن" : "افزودن"}
+              title="ثبت روزنگار امروز"
+              aria-label="ثبت روزنگار امروز"
             >
               <img
-                src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"}
+                src="/images/icons/afzodan.svg"
                 alt=""
                 className="w-5 h-5 dark:invert"
               />
@@ -1464,6 +1485,7 @@ export default function RoznegarPgae() {
                     const isSelected = dateYmd === selectedDate;
                     const isToday = dateYmd === todayJalaliYmd();
                     const hasDetails = hasEntryDetails(entriesByDate[dateYmd]);
+                    const hasSavedData = Boolean(entriesByDate[dateYmd]?.confirmed) || hasDetails;
                     const gDay = (() => {
                       try {
                         return dayjs(dateYmd, { jalali: true }).toDate().getDate();
@@ -1476,20 +1498,25 @@ export default function RoznegarPgae() {
                       <button
                         key={dateYmd}
                         type="button"
-                        onClick={() => jumpToDate(dateYmd)}
+                        onClick={() => {
+                          jumpToDate(dateYmd);
+                          setFormOpen(true);
+                        }}
                         className={
-                          "relative aspect-square min-h-10 rounded-xl border text-xs transition-all duration-200 flex flex-col items-center justify-center leading-tight sm:h-12 sm:aspect-auto sm:text-sm " +
+                          "relative aspect-square min-h-11 rounded-xl border transition-all duration-200 flex flex-col items-center justify-center leading-tight sm:h-14 sm:aspect-auto " +
                           (isSelected
                             ? "border-[#F48B35] bg-[#F48B35]/15 text-[#ce6b1a] dark:text-[#ffb77f]"
+                            : hasSavedData
+                            ? "border-[#F48B35]/45 bg-[#F48B35]/10 text-[#9f4d0b] hover:border-[#F48B35] hover:bg-[#F48B35]/20 dark:border-[#F48B35]/40 dark:bg-[#F48B35]/15 dark:text-[#ffb77f]"
                             : isToday
                             ? "border-neutral-400 bg-neutral-100 text-neutral-900 dark:border-neutral-500 dark:bg-neutral-800 dark:text-neutral-100"
                             : "border-transparent bg-neutral-50 text-neutral-700 hover:border-neutral-300 hover:bg-neutral-100 dark:bg-neutral-800/70 dark:text-neutral-200 dark:hover:border-neutral-700 dark:hover:bg-neutral-800")
                         }
                       >
-                        <span className="leading-none">{toFaDigits(dayNo)}</span>
+                        <span className="text-base font-bold leading-none sm:text-lg">{toFaDigits(dayNo)}</span>
                         <span
                           className={
-                            "mt-0.5 text-[10px] leading-none " +
+                            "mt-1 text-[11px] leading-none font-sans tabular-nums " +
                             (isSelected
                               ? "text-[#ce6b1a]/80 dark:text-[#ffb77f]/80"
                               : theme === "dark"
@@ -1497,10 +1524,10 @@ export default function RoznegarPgae() {
                               : "text-neutral-500")
                           }
                         >
-                          {toFaDigits(gDay)}
+                          {gDay}
                         </span>
-                        {hasDetails ? (
-                          <span className="absolute bottom-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-[#F48B35]" />
+                        {hasSavedData ? (
+                          <span className="absolute bottom-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-[#F48B35]" title="دارای اطلاعات ذخیره‌شده؛ برای ویرایش انتخاب کنید" />
                         ) : null}
                       </button>
                     );
@@ -1517,22 +1544,17 @@ export default function RoznegarPgae() {
                   (editorDisabled ? " opacity-75" : "")
                 }
               >
-                <div className="mb-4 flex flex-wrap items-center gap-2">
-                  <span className="rounded-lg bg-neutral-100 px-2.5 py-1 text-xs text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200">
-                    روز: {activeEntry.dayName}
-                  </span>
-                  <span className="rounded-lg bg-neutral-100 px-2.5 py-1 text-xs text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200">
-                    تاریخ: {toFaDigits(selectedDateLabel)}
-                  </span>
-                  {activeProject ? (
-                    <span className="rounded-lg bg-[#F48B35]/15 px-2.5 py-1 text-xs text-[#ce6b1a] dark:text-[#ffb77f]">
-                      {activeProject.code} - {activeProject.name}
-                    </span>
-                  ) : (
+                <div className="mb-5 flex flex-wrap items-center gap-2 border-b border-black/[0.07] pb-3 dark:border-white/10">
+                  <h2 className="text-base font-bold tracking-tight text-neutral-900 dark:text-neutral-100 md:text-lg">
+                    {selectedDateHeader.jalali}
+                    {selectedDateHeader.gregorian ? <span className="mx-1.5 text-neutral-400">•</span> : null}
+                    {selectedDateHeader.gregorian ? <span dir="ltr" className="font-sans text-sm font-semibold tabular-nums text-neutral-500 dark:text-neutral-400">{selectedDateHeader.gregorian}</span> : null}
+                  </h2>
+                  {!activeProject ? (
                     <span className="rounded-lg bg-amber-50 px-2.5 py-1 text-xs text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
                       ابتدا پروژه فعال را انتخاب کنید.
                     </span>
-                  )}
+                  ) : null}
                   {activeEntry?.confirmed ? (
                     <span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
                       تایید شده (نمایشی)
@@ -1541,39 +1563,6 @@ export default function RoznegarPgae() {
                 </div>
 
                 <div className="space-y-4" aria-disabled={editorDisabled}>
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
-                    <div className="md:col-span-4">
-                      <div className={labelCls}>روز</div>
-                      <select
-                        disabled={editorDisabled}
-                        value={activeEntry.dayName}
-                        onChange={(e) => updateActiveEntry((curr) => ({ ...curr, dayName: e.target.value }))}
-                        className={inputSmCls}
-                      >
-                        {WEEKDAY_NAMES.map((d) => (
-                          <option key={d} value={d}>
-                            {d}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="md:col-span-8">
-                      <div className={labelCls}>تاریخ سند</div>
-                      <div className={editorDisabled ? "pointer-events-none opacity-70" : ""}>
-                        <JalaliPopupDatePicker
-                          value={String(selectedDate || "").replace(/-/g, "/")}
-                          onChange={(v) => {
-                            if (!v) return;
-                            jumpToDate(String(v).replace(/\//g, "-"));
-                          }}
-                          theme={theme}
-                          buttonClassName={inputSmCls + " flex items-center justify-between"}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
                   <div>
                     <div className={labelCls}>شرح فعالیت‌ها</div>
                     <textarea
@@ -1724,7 +1713,7 @@ export default function RoznegarPgae() {
                       disabled={editorDisabled || confirmSaving || filesUploading}
                       onClick={handlePreviewConfirm}
                       className={
-                        "h-9 w-full md:h-10 md:w-14 grid place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 sm:w-12 " +
+                        "h-10 w-full px-4 inline-flex items-center justify-center gap-2 rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 sm:w-auto " +
                         (theme === "dark"
                           ? ""
                           : "")
@@ -1737,6 +1726,7 @@ export default function RoznegarPgae() {
                         alt=""
                         className="w-4 h-4 md:w-5 md:h-5 invert dark:invert"
                       />
+                      <span className="text-xs font-semibold">ذخیره</span>
                     </button>
                   </div>
 
@@ -1747,7 +1737,7 @@ export default function RoznegarPgae() {
             </>
           ) : null}
 
-          <div className="mt-4 space-y-3">
+          <div className="hidden" aria-hidden="true">
             {!formOpen ? (
             <div
               className={
