@@ -807,7 +807,7 @@ export default function RoznegarPgae() {
   }, [projectId, fetchRoznegarEntries]);
 
   const updateActiveEntry = (updater) => {
-    setSyncState({ type: "", text: "تغییرات ذخیره نشده‌اند." });
+    setSyncState((prev) => (prev?.type === "success" ? { type: "", text: "" } : prev));
     setEntriesByDate((prev) => {
       const current = prev[selectedDate] || makeEntry(selectedDate);
       const nextRaw = typeof updater === "function" ? updater(current) : { ...current, ...updater };
@@ -1582,9 +1582,9 @@ export default function RoznegarPgae() {
                   </div>
 
                   <div className="md:col-span-12 min-w-0">
-                    <div className="flex flex-wrap items-start gap-4">
+                    <div className="flex flex-wrap items-start gap-2">
                       <div className="min-w-0">
-                        <div className={labelCls}>مستندات مرتبط</div>
+                        <div className={labelCls}>اسناد مرتبط</div>
                         <div className="flex flex-wrap items-start gap-2">
                           <button
                             type="button"
