@@ -1535,18 +1535,20 @@ export default function RoznegarPgae() {
                         type="button"
                         disabled={editorDisabled}
                         onClick={() => {
-                          const isBullet = activityBulletMode || /^\s*•\s/.test(String(activeEntry.activity || ""));
-                          const nextActivity = isBullet
-                            ? String(activeEntry.activity || "").replace(/^\s*•\s?/gm, "")
-                            : (String(activeEntry.activity || "").trim()
-                                ? String(activeEntry.activity || "").split("\n").map((line) => `• ${line.trim()}`).join("\n")
-                                : "• ");
-                          setActivityBulletMode(!isBullet);
+                          if (activityBulletMode) {
+                            setActivityBulletMode(false);
+                            return;
+                          }
+                          const current = String(activeEntry.activity || "");
+                          const nextActivity = current.trim()
+                            ? `${current}${current.endsWith("\n") ? "" : "\n"}• `
+                            : "• ";
+                          setActivityBulletMode(true);
                           updateActiveEntry((curr) => ({ ...curr, activity: nextActivity }));
                         }}
                         className={
                           "h-7 rounded-lg border px-2 text-[11px] font-semibold transition disabled:opacity-50 inline-flex items-center gap-1 " +
-                          ((activityBulletMode || /^\s*•\s/.test(String(activeEntry.activity || "")))
+                          (activityBulletMode
                             ? "border-[#fb923c] bg-[#fff7ed] text-[#9a3412] dark:bg-[#f97316]/15 dark:text-[#fed7aa]"
                             : theme === "dark"
                             ? "border-white/15 bg-white/5 text-white/75 hover:bg-white/10"
@@ -1563,8 +1565,7 @@ export default function RoznegarPgae() {
                       value={activeEntry.activity}
                       onChange={(e) => updateActiveEntry((curr) => ({ ...curr, activity: e.target.value }))}
                       onKeyDown={(e) => {
-                        const isBullet = activityBulletMode || /^\s*•\s/.test(String(activeEntry.activity || ""));
-                        if (!isBullet || e.key !== "Enter") return;
+                        if (!activityBulletMode || e.key !== "Enter") return;
                         e.preventDefault();
                         const target = e.currentTarget;
                         const start = target.selectionStart;
