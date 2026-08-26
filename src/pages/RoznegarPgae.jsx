@@ -121,6 +121,7 @@ function mapRoznegarErrorText(errLike, fallback = "خطا در ارتباط با
     invalid_relation_reference: "پروژه انتخاب‌شده در پایگاه داده وجود ندارد.",
     roznegar_save_failed: "ذخیره روزنگار روی سرور ناموفق بود.",
     roznegar_load_failed: "دریافت روزنگار از سرور ناموفق بود.",
+    roznegar_delete_failed: "حذف روزنگارها ناموفق بود.",
     roznegar_upload_failed: "بارگذاری فایل روی سرور ناموفق بود.",
   };
   return map[raw] || raw;
@@ -554,7 +555,7 @@ export default function RoznegarPgae() {
     return (activeProjects || [])
       .slice()
       .sort((a, b) =>
-        String(b?.code || "").localeCompare(String(a?.code || ""), "fa", {
+        String(a?.code || "").localeCompare(String(b?.code || ""), "fa", {
           numeric: true,
           sensitivity: "base",
         })
@@ -598,10 +599,11 @@ export default function RoznegarPgae() {
   const [tableRowsPerPage, setTableRowsPerPage] = useState(10);
   const [tagModalMode, setTagModalMode] = useState("entry");
   const [confirmSaving, setConfirmSaving] = useState(false);
-  const [activityBulletMode, setActivityBulletMode] = useState(false);
+  const [activityBulletMode] = useState(true);
   const [syncState, setSyncState] = useState({ type: "", text: "" });
   const [filePreview, setFilePreview] = useState({ open: false, file: null, url: "", isObjectUrl: false });
   const uploadInputRef = useRef(null);
+  const previousProjectIdRef = useRef(projectId);
 
   useEffect(() => {
     let alive = true;
@@ -755,8 +757,14 @@ export default function RoznegarPgae() {
   }, [selectedDate]);
 
   useEffect(() => {
-    setActivityBulletMode(false);
-  }, [selectedDate]);
+    const previousProjectId = previousProjectIdRef.current;
+    previousProjectIdRef.current = projectId;
+    if (String(previousProjectId || "") === String(projectId || "")) return;
+
+    const today = todayJalaliYmd();
+    setSelectedDate(today);
+    setCursor(dayjs(today, { jalali: true }).calendar("jalali").startOf("month"));
+  }, [projectId]);
 
   const fetchRoznegarEntries = useCallback(
     async (pid) => {
@@ -1336,6 +1344,43 @@ export default function RoznegarPgae() {
     }
   };
 
+  const handleResetRoznegar = async () => {
+    if (editorDisabled || !projectId || confirmSaving || filesUploading) return;
+    const confirmed = window.confirm("همه روزنگارهای پروژه انتخاب‌شده حذف شوند؟ این عمل قابل بازگشت نیست.");
+    if (!confirmed) return;
+
+    setConfirmSaving(true);
+    setSyncState({ type: "", text: "" });
+    try {
+      const uid = authUser?.id != null ? String(authUser.id) : "";
+      const res = await fetch(`/api/roznegar?projectId=${encodeURIComponent(projectId)}`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: uid ? { "x-user-id": uid } : {},
+      });
+      if (!res.ok) {
+        let reason = "roznegar_delete_failed";
+        try {
+          const err = await res.json();
+          reason = String(err?.error || err?.message || reason);
+        } catch {}
+        throw new Error(reason);
+      }
+
+      const today = todayJalaliYmd();
+      setEntriesByDate({ [today]: makeEntry(today) });
+      setSavedEntryCount(0);
+      setSelectedDate(today);
+      setCursor(dayjs(today, { jalali: true }).calendar("jalali").startOf("month"));
+      setSyncState({ type: "success", text: "همه روزنگارهای این پروژه حذف شد." });
+    } catch (e) {
+      console.error("roznegar_reset_error", e);
+      setSyncState({ type: "error", text: mapRoznegarErrorText(e, "حذف روزنگارها ناموفق بود.") });
+    } finally {
+      setConfirmSaving(false);
+    }
+  };
+
   const handleExportExcel = async () => {
     if (!filteredTableRows.length) return;
     const XLSX = await import("xlsx");
@@ -1406,7 +1451,7 @@ export default function RoznegarPgae() {
                 }
               >
                 <div className="mb-4">
-                  <div className="mb-1 text-xs text-neutral-600 dark:text-neutral-300">انتخاب پروژه</div>
+                  <div className="mb-1 text-xs text-neutral-600 dark:text-neutral-300">پروژه</div>
                   <select
                     value={projectId}
                     onChange={(e) => setProjectId(e.target.value)}
@@ -1480,12 +1525,12 @@ export default function RoznegarPgae() {
                         }}
                         className={
                           "relative aspect-square min-h-11 rounded-xl border transition-all duration-200 flex flex-col items-center justify-center leading-tight sm:h-14 sm:aspect-auto " +
-                          (isSelected
+                          (isToday
+                            ? "border-[#9A3412] bg-[#9A3412] text-white shadow-[0_1px_2px_rgba(154,52,18,0.2)] hover:bg-[#7c2d12] dark:border-[#9A3412] dark:bg-[#9A3412] dark:text-white"
+                            : isSelected
                             ? "border-[#fb923c] bg-[#fff7ed] text-[#9a3412] ring-1 ring-[#fdba74]/70 dark:border-[#fb923c] dark:bg-[#f97316]/15 dark:text-[#fed7aa]"
                             : hasSavedData
                             ? "border-[#fdba88] bg-[#fff7f2] text-[#9a3412] shadow-[0_1px_2px_rgba(154,52,18,0.05)] hover:border-[#fb923c] hover:bg-[#fff1e8] dark:border-[#fb923c]/50 dark:bg-[#f97316]/10 dark:text-[#fed7aa]"
-                            : isToday
-                            ? "border-neutral-400 bg-neutral-100 text-neutral-900 dark:border-neutral-500 dark:bg-neutral-800 dark:text-neutral-100"
                             : "border-transparent bg-neutral-50 text-neutral-700 hover:border-neutral-300 hover:bg-neutral-100 dark:bg-neutral-800/70 dark:text-neutral-200 dark:hover:border-neutral-700 dark:hover:bg-neutral-800")
                         }
                       >
@@ -1493,7 +1538,9 @@ export default function RoznegarPgae() {
                         <span
                           className={
                             "mt-1 text-[11px] leading-none font-sans tabular-nums " +
-                            (isSelected
+                            (isToday
+                              ? "text-white/80"
+                              : isSelected
                               ? "text-[#ce6b1a]/80 dark:text-[#ffb77f]/80"
                               : theme === "dark"
                               ? "text-white/55"
@@ -1534,39 +1581,19 @@ export default function RoznegarPgae() {
                   <div>
                     <div className="mb-1 flex items-center justify-between gap-2">
                       <div className={labelCls + " mb-0"}>شرح فعالیت‌ها</div>
-                      <button
-                        type="button"
-                        disabled={editorDisabled}
-                        onClick={() => {
-                          if (activityBulletMode) {
-                            setActivityBulletMode(false);
-                            return;
-                          }
-                          const current = String(activeEntry.activity || "");
-                          const nextActivity = current.trim()
-                            ? `${current}${current.endsWith("\n") ? "" : "\n"}• `
-                            : "• ";
-                          setActivityBulletMode(true);
-                          updateActiveEntry((curr) => ({ ...curr, activity: nextActivity }));
-                        }}
-                        className={
-                          "h-7 rounded-lg border px-2 text-[11px] font-semibold transition disabled:opacity-50 inline-flex items-center gap-1 " +
-                          (activityBulletMode
-                            ? "border-[#fb923c] bg-[#fff7ed] text-[#9a3412] dark:bg-[#f97316]/15 dark:text-[#fed7aa]"
-                            : theme === "dark"
-                            ? "border-white/15 bg-white/5 text-white/75 hover:bg-white/10"
-                            : "border-black/10 bg-white text-neutral-600 hover:bg-neutral-50")
-                        }
-                        title="نوشتن فهرست‌وار"
-                        aria-label="نوشتن فهرست‌وار"
-                      >
-                        <span className="text-sm leading-none">•</span><span>فهرست</span>
-                      </button>
                     </div>
                     <textarea
                       disabled={editorDisabled}
                       value={activeEntry.activity}
-                      onChange={(e) => updateActiveEntry((curr) => ({ ...curr, activity: e.target.value }))}
+                      onChange={(e) => {
+                        const nextValue = e.target.value;
+                        const currentValue = String(activeEntry.activity || "");
+                        const activity =
+                          activityBulletMode && !currentValue && nextValue.trim() && !nextValue.trimStart().startsWith("•")
+                            ? `• ${nextValue}`
+                            : nextValue;
+                        updateActiveEntry((curr) => ({ ...curr, activity }));
+                      }}
                       onKeyDown={(e) => {
                         if (!activityBulletMode || e.key !== "Enter") return;
                         e.preventDefault();
@@ -1589,12 +1616,6 @@ export default function RoznegarPgae() {
                   <div className="md:col-span-12 min-w-0">
                     <div className={labelCls}>برچسب‌ها</div>
                     <div className="w-full min-w-0 flex flex-wrap items-center gap-2">
-                      {!selectedTags.length ? (
-                        <span className={theme === "dark" ? "text-white/55 text-xs" : "text-neutral-500 text-xs"}>
-                          برچسبی انتخاب نشده است.
-                        </span>
-                      ) : null}
-
                       {selectedTags.map((tag) => (
                         <button
                           key={tag.id}
@@ -1735,8 +1756,8 @@ export default function RoznegarPgae() {
                   </div>
 
                   <div className="mt-5 border-t border-black/[0.08] pt-4 dark:border-white/10 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-h-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] md:text-xs">
-                      <span className="font-semibold text-neutral-700 dark:text-neutral-200">
+                    <div className="min-h-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs md:text-sm">
+                      <span className="font-semibold text-neutral-700 dark:text-neutral-200 md:text-base">
                         مجموع روزنگارها: {toFaDigits(savedEntryCount)}
                       </span>
                       {syncState?.text ? (
@@ -1745,6 +1766,15 @@ export default function RoznegarPgae() {
                         </span>
                       ) : null}
                     </div>
+                    <button
+                      type="button"
+                      disabled={editorDisabled || confirmSaving || filesUploading}
+                      onClick={handleResetRoznegar}
+                      className="h-10 rounded-xl border border-rose-200 px-3 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45 dark:border-rose-900/70 dark:text-rose-300 dark:hover:bg-rose-950/30"
+                      title="حذف همه روزنگارهای پروژه انتخاب‌شده"
+                    >
+                      ریست روزنگارها
+                    </button>
                     <button
                       type="button"
                       disabled={editorDisabled || confirmSaving || filesUploading}
