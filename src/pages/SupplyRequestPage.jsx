@@ -844,6 +844,11 @@ export default function SupplyRequestPage() {
   const pageItems = filteredItems.slice(startIndex, endIndex);
   const pageItemIds = pageItems.map((item) => String(item.id));
   const allPageItemsSelected = pageItemIds.length > 0 && pageItemIds.every((id) => selectedIds.has(id));
+  const selectedEditableRequest = selectedIds.size === 1
+    ? items.find((item) => selectedIds.has(String(item.id)))
+    : null;
+  const canEditSelectedRequest = Boolean(selectedEditableRequest)
+    && Number(selectedEditableRequest.createdById) === Number(user?.id);
   const toggleSelected = (id) => setSelectedIds((previous) => {
     const next = new Set(previous);
     const key = String(id);
@@ -887,6 +892,13 @@ export default function SupplyRequestPage() {
       });
     }
 
+    setSelectedIds(new Set());
+    setTableMenuOpen(false);
+  };
+
+  const editSelectedRequest = () => {
+    if (!canEditSelectedRequest) return;
+    openPreview({ ...selectedEditableRequest, __editing: true });
     setSelectedIds(new Set());
     setTableMenuOpen(false);
   };
@@ -1194,7 +1206,6 @@ export default function SupplyRequestPage() {
                   <col />
                   <col style={{ width: 130 }} />
                   <col style={{ width: 140 }} />
-                  <col style={{ width: 132 }} />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100">
@@ -1205,77 +1216,25 @@ export default function SupplyRequestPage() {
                     <th className="sticky top-0 z-30 bg-neutral-200 !py-2 !text-right text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">پروژه</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 !py-2 !text-right text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">موضوع</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">درخواست‌کننده</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">آخرین وضعیت</th>
-                    <th className="sticky top-0 z-40 bg-neutral-200 !py-2 !pl-10 !pr-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">
-                      <span>اقدامات</span>
-                      <div ref={tableMenuRef} className="absolute left-1 top-1/2 z-50 -translate-y-1/2">
-                        <button
-                          type="button"
-                          onClick={() => setTableMenuOpen((open) => !open)}
-                          className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10"
-                          title="مدیریت وضعیت خواندن"
-                          aria-label="مدیریت وضعیت خواندن"
-                          aria-expanded={tableMenuOpen}
-                        >
-                          <img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${tableMenuOpen ? "scale-110" : ""} dark:invert`} />
-                        </button>
-
-                        {tableMenuOpen && (
-                          <div className="table-menu-popover absolute left-0 top-[calc(100%+8px)] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
-                            <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">
-                              {selectedIds.size ? `${toFaDigits(selectedIds.size)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}
-                            </div>
-                            <button
-                              type="button"
-                              disabled={!selectedIds.size}
-                              onClick={() => setSelectedReadStatus(false)}
-                              className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-emerald-500/10"
-                            >
-                              <span className="min-w-0 flex-1">
-                                <span className="block text-sm font-semibold">خوانده شده</span>
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              disabled={!selectedIds.size}
-                              onClick={() => setSelectedReadStatus(true)}
-                              className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-sky-500/10"
-                            >
-                              <span className="min-w-0 flex-1">
-                                <span className="block text-sm font-semibold">خوانده نشده</span>
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              disabled={!selectedIds.size || deletingSelected}
-                              onClick={deleteSelectedRequests}
-                              className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"
-                            >
-                              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 transition group-hover:scale-105 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span>
-                              <span className="min-w-0 flex-1 text-sm font-semibold">{deletingSelected ? "در حال حذف..." : "حذف موارد انتخاب‌شده"}</span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </th>
+                    <th className="sticky top-0 z-40 bg-neutral-200 !py-2 !pl-4 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><span>آخرین وضعیت</span><SupplyReadingStatusMenu tableMenuRef={tableMenuRef} tableMenuOpen={tableMenuOpen} setTableMenuOpen={setTableMenuOpen} selectedIds={selectedIds} setSelectedReadStatus={setSelectedReadStatus} canEditSelectedRequest={canEditSelectedRequest} editSelectedRequest={editSelectedRequest} deletingSelected={deletingSelected} deleteSelectedRequests={deleteSelectedRequests} /></th>
                   </tr>
                 </thead>
-                <tbody className="text-[13px] text-black [&>tr>td]:!py-0 [&>tr>td:last-child_button]:!h-9 [&>tr>td:last-child_button]:!w-9 dark:text-neutral-100">
+                <tbody className="text-[13px] text-black [&>tr]:h-9 [&>tr>td]:!py-0 dark:text-neutral-100">
                   {loading ? (
                     <tr>
-                      <td colSpan={9} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td>
+                      <td colSpan={8} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td>
                     </tr>
                   ) : pageItems.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواست تامینی ثبت نشده است.</td>
+                      <td colSpan={8} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواست تامینی ثبت نشده است.</td>
                     </tr>
                   ) : (
                     pageItems.map((item) => (
-                      <tr key={item.id} className="group bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
-                        <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label={`انتخاب درخواست ${item.serial || item.id}`} /></td>
+                      <tr key={item.id} onClick={() => openPreview(item)} className="group cursor-pointer bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
+                        <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onClick={(event) => event.stopPropagation()} onChange={() => toggleSelected(item.id)} aria-label={`انتخاب درخواست ${item.serial || item.id}`} /></td>
                         <td className="border-b border-neutral-300 px-0 dark:border-neutral-700">{isUnreadForUser(item) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="درخواست خوانده‌نشده" aria-label="درخواست خوانده‌نشده" />}</td>
                         <td dir="ltr" className="border-b border-neutral-300 px-3 font-sans tabular-nums dark:border-neutral-700">
-                          <button type="button" onClick={() => openPreview(item)} className="mx-auto inline-flex underline-offset-4 transition hover:underline" title="نمایش درخواست">
+                          <button type="button" onClick={(event) => { event.stopPropagation(); openPreview(item); }} className="mx-auto inline-flex underline-offset-4 transition hover:underline" title="نمایش درخواست">
                             {toFaDigits(item.serial || "—")}
                           </button>
                         </td>
@@ -1284,14 +1243,6 @@ export default function SupplyRequestPage() {
                         <td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><span className="block truncate text-right">{item.title || "—"}</span></td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.createdByName || `کاربر #${toFaDigits(item.createdById)}`}</span></td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><StatusBadge status={displayStatusOf(item)} /></td>
-                        <td className="border-b border-neutral-300 !pl-10 !pr-2 dark:border-neutral-700">
-                          <div className="pointer-events-none flex w-full items-center justify-center gap-1 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
-                            <button type="button" onClick={() => openPreview(item)} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label={item.canAct ? "اقدامات" : "نمایش"} title={item.canAct ? "اقدامات" : "نمایش"}>
-                              <img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" />
-                            </button>
-                            {Number(item.createdById) === Number(user?.id) && <button type="button" onClick={() => openPreview({ ...item, __editing: true })} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label="ویرایش درخواست" title="ویرایش درخواست"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></button>}
-                          </div>
-                        </td>
                       </tr>
                     ))
                   )}
@@ -1306,17 +1257,14 @@ export default function SupplyRequestPage() {
                 <div className="py-6 text-center text-sm text-neutral-500 dark:text-neutral-400">هنوز درخواست تامینی ثبت نشده است.</div>
               ) : (
                 pageItems.map((item) => (
-                  <div key={item.id} className="rounded-xl border border-black/10 p-3 dark:border-white/10">
+                  <button key={item.id} type="button" onClick={() => openPreview(item)} className="rounded-xl border border-black/10 p-3 text-right dark:border-white/10">
                     <div className="flex items-center justify-between gap-2">
                       <b dir="ltr" className="font-sans tabular-nums">{toFaDigits(item.serial || "—")}</b>
                       <StatusBadge status={displayStatusOf(item)} />
                     </div>
                     <div className="mt-2 truncate text-sm">{item.title || "—"}</div>
                     <div className="mt-2 text-xs text-neutral-500">{toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/"))}</div>
-                    <button type="button" onClick={() => openPreview(item)} className="mt-3 grid h-9 w-9 place-items-center rounded-lg border border-black/10 dark:border-white/10" aria-label={item.canAct ? "اقدامات" : "نمایش"} title={item.canAct ? "اقدامات" : "نمایش"}>
-                      <img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" />
-                    </button>
-                  </div>
+                  </button>
                 ))
               )}
             </div>
@@ -1408,6 +1356,21 @@ export default function SupplyRequestPage() {
       )}
     </div>
   );
+}
+
+function SupplyReadingStatusMenu({ tableMenuRef, tableMenuOpen, setTableMenuOpen, selectedIds, setSelectedReadStatus, canEditSelectedRequest, editSelectedRequest, deletingSelected, deleteSelectedRequests }) {
+  return <div ref={tableMenuRef} className="absolute left-2 top-1/2 z-50 -translate-y-1/2" dir="rtl">
+    <button type="button" onClick={() => setTableMenuOpen((open) => !open)} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت وضعیت خواندن" aria-label="مدیریت وضعیت خواندن" aria-expanded={tableMenuOpen}>
+      <img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${tableMenuOpen ? "scale-110" : ""} dark:invert`} />
+    </button>
+    {tableMenuOpen && <div className="table-menu-popover absolute left-0 top-[calc(100%+8px)] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
+      <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedIds.size ? `${toFaDigits(selectedIds.size)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
+      <button type="button" disabled={!selectedIds.size} onClick={() => setSelectedReadStatus(false)} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-emerald-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-100 text-emerald-700 transition group-hover:scale-105 dark:bg-emerald-500/15 dark:text-emerald-300">✓</span><span className="min-w-0 flex-1 text-sm font-semibold">خوانده شده</span></button>
+      <button type="button" disabled={!selectedIds.size} onClick={() => setSelectedReadStatus(true)} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-sky-500/10"><span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-100 text-sky-700 transition group-hover:scale-105 dark:bg-sky-500/15 dark:text-sky-300"><span className="h-2.5 w-2.5 rounded-full bg-sky-500 ring-2 ring-sky-200 dark:ring-sky-400/30" /></span><span className="min-w-0 flex-1 text-sm font-semibold">خوانده نشده</span></button>
+      <button type="button" disabled={!canEditSelectedRequest} onClick={editSelectedRequest} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10" title={canEditSelectedRequest ? "ویرایش درخواست انتخاب‌شده" : "برای ویرایش، یک درخواست متعلق به خودتان را انتخاب کنید"}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="min-w-0 flex-1 text-sm font-semibold">ویرایش درخواست</span></button>
+      <button type="button" disabled={!selectedIds.size || deletingSelected} onClick={deleteSelectedRequests} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 transition group-hover:scale-105 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span><span className="min-w-0 flex-1 text-sm font-semibold">{deletingSelected ? "در حال حذف..." : "حذف موارد انتخاب‌شده"}</span></button>
+    </div>}
+  </div>;
 }
 
 function SupplyRequestEditForm({ item, projects, currencyTypes, busy, error, onSave, onCancel }) {
