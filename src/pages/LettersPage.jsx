@@ -6005,8 +6005,6 @@ aria-invalid={fieldHasError(formKind, "subject")}
 </div>
 </div>
 
-    <div className={theme === "dark" ? "h-px bg-white/10" : "h-px bg-black/10"} />
-
     <div className="space-y-3">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div>
@@ -6157,7 +6155,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
 
 
       {/* ✅ دکمه ارسال هم داخل همین کادر قرار گرفت */}
-      <div className="mt-4 flex w-full items-center justify-end pt-4 md:col-span-12">
+      <div className="mt-4 flex w-full items-center justify-end border-t border-black/10 pt-4 dark:border-white/10 md:col-span-12">
         <button
   type="button"
   disabled={isSubmitting}
