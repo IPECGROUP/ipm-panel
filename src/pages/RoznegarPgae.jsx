@@ -1319,7 +1319,7 @@ export default function RoznegarPgae() {
       setEntriesByDate((prev) => ({ ...prev, [saved.dateYmd]: saved }));
       const synced = await fetchRoznegarEntries(String(projectIdNum));
       if (!synced) throw new Error("roznegar_sync_after_save_failed");
-      setSyncState({ type: "success", text: "با موفقیت روی سرور ذخیره شد." });
+      setSyncState({ type: "success", text: "با موفقیت ذخیره شد." });
     } catch (e) {
       console.error("roznegar_confirm_error", e);
       setSyncState({ type: "error", text: mapRoznegarErrorText(e, "ذخیره روزنگار روی سرور ناموفق بود.") });
@@ -1527,11 +1527,6 @@ export default function RoznegarPgae() {
                       ابتدا پروژه فعال را انتخاب کنید.
                     </span>
                   ) : null}
-                  {activeEntry?.confirmed ? (
-                    <span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-                      تایید شده (نمایشی)
-                    </span>
-                  ) : null}
                 </div>
 
                 <div className="space-y-4" aria-disabled={editorDisabled}>
@@ -1595,7 +1590,7 @@ export default function RoznegarPgae() {
                   </div>
 
                   <div className="md:col-span-12 min-w-0">
-                    <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                    <div className="flex flex-wrap items-start gap-4">
                       <div className="min-w-0">
                         <div className={labelCls}>مستندات مرتبط</div>
                         <div className="flex flex-wrap items-start gap-2">
@@ -1650,7 +1645,7 @@ export default function RoznegarPgae() {
                         </div>
                       </div>
 
-                      <div className="min-w-0 sm:shrink-0">
+                      <div className="min-w-0 shrink-0">
                         <div className={labelCls}>بارگذاری</div>
                         <button
                           type="button"
