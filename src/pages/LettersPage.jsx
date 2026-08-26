@@ -6285,11 +6285,11 @@ aria-invalid={fieldHasError(formKind, "subject")}
 >
 <colgroup>
   <col style={{ width: 48 }} />   {/* checkbox */}
-  <col />                         {/* شماره */}
-  <col />                         {/* تاریخ */}
-  <col />                         {/* موضوع */}
-  <col />                         {/* نوع سند */}
-  <col />                         {/* شرکت/سازمان */}
+  <col style={{ width: 100 }} />  {/* شماره */}
+  <col style={{ width: 100 }} />  {/* تاریخ */}
+  <col />                         {/* موضوع؛ فضای اصلی جدول */}
+  <col style={{ width: 115 }} />  {/* نوع سند */}
+  <col style={{ width: 190 }} />  {/* شرکت/سازمان */}
   <col style={{ width: 48 }} />   {/* منو / بارگذاری پیوست */}
 </colgroup>
 
