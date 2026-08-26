@@ -590,7 +590,7 @@ export default function RoznegarPgae() {
 
   const [uploadOpen, setUploadOpen] = useState(false);
   const [filesUploading, setFilesUploading] = useState(false);
-  const [formOpen, setFormOpen] = useState(true);
+  const formOpen = true;
   const [tableFilter, setTableFilter] = useState("");
   const [tableFilterTagIds, setTableFilterTagIds] = useState([]);
   const [tablePage, setTablePage] = useState(0);
@@ -1244,12 +1244,6 @@ export default function RoznegarPgae() {
     " border-black bg-black !text-white hover:bg-black/90 " +
     "dark:border-neutral-200 dark:bg-neutral-100 dark:!text-neutral-900";
 
-  const uploadTriggerCls =
-    "h-11 px-3 rounded-xl border transition flex items-center justify-center gap-2 whitespace-nowrap outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 " +
-    (theme === "dark"
-      ? "border-white/15 bg-white/5 text-white/90 hover:bg-white/10"
-      : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]");
-
   const uploadBoxCls =
     "rounded-2xl border border-dashed p-4 text-center transition " +
     (theme === "dark"
@@ -1391,25 +1385,6 @@ export default function RoznegarPgae() {
                 <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت پروژه‌ها</span>
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                jumpToDate(todayJalaliYmd());
-                setFormOpen(true);
-              }}
-              className={
-                "h-10 w-10 shrink-0 self-end rounded-xl flex items-center justify-center transition ring-1 sm:self-auto " +
-                (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
-              }
-              title="ثبت روزنگار امروز"
-              aria-label="ثبت روزنگار امروز"
-            >
-              <img
-                src="/images/icons/afzodan.svg"
-                alt=""
-                className="w-5 h-5 dark:invert"
-              />
-            </button>
           </div>
 
           {formOpen ? (
@@ -1498,16 +1473,16 @@ export default function RoznegarPgae() {
                       <button
                         key={dateYmd}
                         type="button"
+                        title={hasSavedData ? "دارای اطلاعات ذخیره‌شده؛ برای ویرایش انتخاب کنید" : undefined}
                         onClick={() => {
                           jumpToDate(dateYmd);
-                          setFormOpen(true);
                         }}
                         className={
                           "relative aspect-square min-h-11 rounded-xl border transition-all duration-200 flex flex-col items-center justify-center leading-tight sm:h-14 sm:aspect-auto " +
                           (isSelected
-                            ? "border-[#F48B35] bg-[#F48B35]/15 text-[#ce6b1a] dark:text-[#ffb77f]"
+                            ? "border-[#fb923c] bg-[#fff7ed] text-[#9a3412] ring-1 ring-[#fdba74]/70 dark:border-[#fb923c] dark:bg-[#f97316]/15 dark:text-[#fed7aa]"
                             : hasSavedData
-                            ? "border-[#F48B35]/45 bg-[#F48B35]/10 text-[#9f4d0b] hover:border-[#F48B35] hover:bg-[#F48B35]/20 dark:border-[#F48B35]/40 dark:bg-[#F48B35]/15 dark:text-[#ffb77f]"
+                            ? "border-[#fdba88] bg-[#fff7f2] text-[#9a3412] shadow-[0_1px_2px_rgba(154,52,18,0.05)] hover:border-[#fb923c] hover:bg-[#fff1e8] dark:border-[#fb923c]/50 dark:bg-[#f97316]/10 dark:text-[#fed7aa]"
                             : isToday
                             ? "border-neutral-400 bg-neutral-100 text-neutral-900 dark:border-neutral-500 dark:bg-neutral-800 dark:text-neutral-100"
                             : "border-transparent bg-neutral-50 text-neutral-700 hover:border-neutral-300 hover:bg-neutral-100 dark:bg-neutral-800/70 dark:text-neutral-200 dark:hover:border-neutral-700 dark:hover:bg-neutral-800")
@@ -1526,9 +1501,6 @@ export default function RoznegarPgae() {
                         >
                           {gDay}
                         </span>
-                        {hasSavedData ? (
-                          <span className="absolute bottom-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-[#F48B35]" title="دارای اطلاعات ذخیره‌شده؛ برای ویرایش انتخاب کنید" />
-                        ) : null}
                       </button>
                     );
                   })}
@@ -1545,10 +1517,10 @@ export default function RoznegarPgae() {
                 }
               >
                 <div className="mb-5 flex flex-wrap items-center gap-2 border-b border-black/[0.07] pb-3 dark:border-white/10">
-                  <h2 className="text-base font-bold tracking-tight text-neutral-900 dark:text-neutral-100 md:text-lg">
+                  <h2 className="text-sm font-bold tracking-tight text-neutral-900 dark:text-neutral-100 md:text-base">
                     {selectedDateHeader.jalali}
                     {selectedDateHeader.gregorian ? <span className="mx-1.5 text-neutral-400">•</span> : null}
-                    {selectedDateHeader.gregorian ? <span dir="ltr" className="font-sans text-sm font-semibold tabular-nums text-neutral-500 dark:text-neutral-400">{selectedDateHeader.gregorian}</span> : null}
+                    {selectedDateHeader.gregorian ? <span dir="ltr" className="font-sans text-xs font-semibold tabular-nums text-neutral-500 dark:text-neutral-400 md:text-sm">{selectedDateHeader.gregorian}</span> : null}
                   </h2>
                   {!activeProject ? (
                     <span className="rounded-lg bg-amber-50 px-2.5 py-1 text-xs text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
@@ -1679,23 +1651,28 @@ export default function RoznegarPgae() {
                       </div>
 
                       <div className="min-w-0 sm:shrink-0">
-                        <div className="hidden sm:block">
-                          <div className={labelCls}>&nbsp;</div>
-                        </div>
+                        <div className={labelCls}>بارگذاری</div>
                         <button
                           type="button"
                           disabled={editorDisabled || filesUploading}
                           onClick={openUpload}
-                          className={uploadTriggerCls + " h-10 w-full max-w-full sm:w-auto"}
+                          className={
+                            "relative h-11 w-11 rounded-xl border transition inline-flex items-center justify-center disabled:opacity-50 " +
+                            (theme === "dark"
+                              ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                              : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
+                          }
                           title="بارگذاری فایل"
+                          aria-label="بارگذاری فایل"
                         >
-                          <img src="/images/icons/upload.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")} />
-                          <span className="text-xs md:text-sm">بارگذاری فایل</span>
-                          {filesUploading ? <span className="mr-2 text-[10px] opacity-80">در حال آپلود...</span> : null}
+                          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="m20.5 11.5-8.2 8.2a5 5 0 0 1-7.1-7.1l8.2-8.2a3.5 3.5 0 0 1 5 5l-8.2 8.2a2 2 0 0 1-2.8-2.8l7.5-7.5" />
+                          </svg>
                           {Array.isArray(activeEntry.files) && activeEntry.files.length > 0 ? (
-                            <span className="mr-2 text-xs opacity-80">({toFaDigits(activeEntry.files.length)})</span>
+                            <span className="absolute -left-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#f97316] px-1 text-[9px] font-bold text-white">{toFaDigits(activeEntry.files.length)}</span>
                           ) : null}
                         </button>
+                        {filesUploading ? <div className="mt-1 text-[10px] text-neutral-500 dark:text-neutral-400">در حال بارگذاری...</div> : null}
                       </div>
                     </div>
                   </div>
@@ -1713,20 +1690,19 @@ export default function RoznegarPgae() {
                       disabled={editorDisabled || confirmSaving || filesUploading}
                       onClick={handlePreviewConfirm}
                       className={
-                        "h-10 w-full px-4 inline-flex items-center justify-center gap-2 rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 sm:w-auto " +
+                        "h-10 w-10 shrink-0 inline-flex items-center justify-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 " +
                         (theme === "dark"
                           ? ""
                           : "")
                       }
-                      title="تایید"
-                      aria-label="تایید"
+                      title="ذخیره تغییرات"
+                      aria-label="ذخیره تغییرات"
                     >
                       <img
                         src="/images/icons/check.svg"
                         alt=""
                         className="w-4 h-4 md:w-5 md:h-5 invert dark:invert"
                       />
-                      <span className="text-xs font-semibold">ذخیره</span>
                     </button>
                   </div>
 
