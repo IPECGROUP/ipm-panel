@@ -2210,7 +2210,9 @@ const resetAllFilters = () => {
   // ===== Table selection + pagination =====
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [tableMenuOpen, setTableMenuOpen] = useState(false);
+  const [tableMenuPosition, setTableMenuPosition] = useState(null);
   const tableMenuRef = useRef(null);
+  const tableMenuPopoverRef = useRef(null);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
   const [letterNoSortDir, setLetterNoSortDir] = useState(null); // null | asc | desc
@@ -2220,7 +2222,12 @@ const resetAllFilters = () => {
   useEffect(() => {
     if (!tableMenuOpen) return undefined;
     const closeMenu = (event) => {
-      if (event.key === "Escape" || (event.type === "mousedown" && !tableMenuRef.current?.contains(event.target))) {
+      if (
+        event.key === "Escape" ||
+        (event.type === "mousedown" &&
+          !tableMenuRef.current?.contains(event.target) &&
+          !tableMenuPopoverRef.current?.contains(event.target))
+      ) {
         setTableMenuOpen(false);
       }
     };
@@ -2231,6 +2238,15 @@ const resetAllFilters = () => {
       document.removeEventListener("keydown", closeMenu);
     };
   }, [tableMenuOpen]);
+
+  const toggleTableMenu = (event) => {
+    const { left, bottom } = event.currentTarget.getBoundingClientRect();
+    setTableMenuPosition({
+      left: Math.min(window.innerWidth - 252, Math.max(12, left)),
+      top: bottom + 8,
+    });
+    setTableMenuOpen((open) => !open);
+  };
 
   // ===== Uploader state (incoming/outgoing/internal) =====
   const uploadInputRef = useRef(null);
@@ -6412,7 +6428,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
   <div ref={tableMenuRef} className="relative flex items-center justify-center">
     <button
       type="button"
-      onClick={() => setTableMenuOpen((open) => !open)}
+      onClick={toggleTableMenu}
       className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10"
       title="مدیریت وضعیت خواندن"
       aria-label="مدیریت وضعیت خواندن"
@@ -6421,15 +6437,21 @@ aria-invalid={fieldHasError(formKind, "subject")}
       <img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${tableMenuOpen ? "scale-110" : ""} dark:invert`} />
     </button>
 
-    {tableMenuOpen ? (
-      <div className="table-menu-popover absolute left-0 top-[calc(100%+8px)] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
+    {tableMenuOpen && tableMenuPosition ? createPortal(
+      <div
+        ref={tableMenuPopoverRef}
+        className="table-menu-popover fixed z-[100] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100"
+        style={{ left: tableMenuPosition.left, top: tableMenuPosition.top }}
+      >
         <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">
           {selectedIds.size ? `${toFaDigits(selectedIds.size)} مورد انتخاب شده` : "ابتدا یک سند را انتخاب کنید"}
         </div>
-        <button type="button" disabled={!selectedMenuLetter} onClick={sendSelectedLetter} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-sky-500/10">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-100 text-sky-700 transition group-hover:scale-105 dark:bg-sky-500/15 dark:text-sky-300"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13" /><path d="m22 2-7 20-4-9-9-4 20-7Z" /></svg></span>
-          <span className="min-w-0 flex-1 text-sm font-semibold">ارسال</span>
-        </button>
+        <div className="border-t border-black/10 pt-1 dark:border-white/10">
+          <button type="button" disabled={!selectedMenuLetter} onClick={sendSelectedLetter} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-sky-500/10">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-100 text-sky-700 transition group-hover:scale-105 dark:bg-sky-500/15 dark:text-sky-300"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13" /><path d="m22 2-7 20-4-9-9-4 20-7Z" /></svg></span>
+            <span className="min-w-0 flex-1 text-sm font-semibold">ارسال</span>
+          </button>
+        </div>
         <button type="button" disabled={!selectedMenuLetter} onClick={editSelectedLetter} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span>
           <span className="min-w-0 flex-1 text-sm font-semibold">ویرایش سند</span>
@@ -6453,7 +6475,8 @@ aria-invalid={fieldHasError(formKind, "subject")}
             <span className="min-w-0 flex-1 text-sm font-semibold">ورود ادمین</span>
           </button>
         ) : null}
-      </div>
+      </div>,
+      document.body
     ) : null}
   </div>
 </th>
