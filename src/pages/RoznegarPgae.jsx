@@ -1344,43 +1344,6 @@ export default function RoznegarPgae() {
     }
   };
 
-  const handleResetRoznegar = async () => {
-    if (editorDisabled || !projectId || confirmSaving || filesUploading) return;
-    const confirmed = window.confirm("همه روزنگارهای پروژه انتخاب‌شده حذف شوند؟ این عمل قابل بازگشت نیست.");
-    if (!confirmed) return;
-
-    setConfirmSaving(true);
-    setSyncState({ type: "", text: "" });
-    try {
-      const uid = authUser?.id != null ? String(authUser.id) : "";
-      const res = await fetch(`/api/roznegar?projectId=${encodeURIComponent(projectId)}`, {
-        method: "DELETE",
-        credentials: "include",
-        headers: uid ? { "x-user-id": uid } : {},
-      });
-      if (!res.ok) {
-        let reason = "roznegar_delete_failed";
-        try {
-          const err = await res.json();
-          reason = String(err?.error || err?.message || reason);
-        } catch {}
-        throw new Error(reason);
-      }
-
-      const today = todayJalaliYmd();
-      setEntriesByDate({ [today]: makeEntry(today) });
-      setSavedEntryCount(0);
-      setSelectedDate(today);
-      setCursor(dayjs(today, { jalali: true }).calendar("jalali").startOf("month"));
-      setSyncState({ type: "success", text: "همه روزنگارهای این پروژه حذف شد." });
-    } catch (e) {
-      console.error("roznegar_reset_error", e);
-      setSyncState({ type: "error", text: mapRoznegarErrorText(e, "حذف روزنگارها ناموفق بود.") });
-    } finally {
-      setConfirmSaving(false);
-    }
-  };
-
   const handleExportExcel = async () => {
     if (!filteredTableRows.length) return;
     const XLSX = await import("xlsx");
@@ -1442,11 +1405,12 @@ export default function RoznegarPgae() {
 
           {formOpen ? (
             <>
+          <div className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 sm:p-4">
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
             <section className="xl:col-span-5 min-w-0">
               <div
                 className={
-                  "rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm transition-all duration-500 delay-75 dark:border-neutral-800 dark:bg-neutral-900 sm:p-4 " +
+                  "transition-all duration-500 delay-75 " +
                   cardReveal
                 }
               >
@@ -1526,7 +1490,7 @@ export default function RoznegarPgae() {
                         className={
                           "relative aspect-square min-h-11 rounded-xl border transition-all duration-200 flex flex-col items-center justify-center leading-tight sm:h-14 sm:aspect-auto " +
                           (isToday
-                            ? "border-[#9A3412] bg-[#9A3412] text-white shadow-[0_1px_2px_rgba(154,52,18,0.2)] hover:bg-[#7c2d12] dark:border-[#9A3412] dark:bg-[#9A3412] dark:text-white"
+                            ? "border-[#0f766e] bg-[#0f766e] text-white shadow-[0_1px_2px_rgba(15,118,110,0.22)] hover:bg-[#115e59] dark:border-[#14b8a6] dark:bg-[#0f766e] dark:text-white"
                             : isSelected
                             ? "border-[#fb923c] bg-[#fff7ed] text-[#9a3412] ring-1 ring-[#fdba74]/70 dark:border-[#fb923c] dark:bg-[#f97316]/15 dark:text-[#fed7aa]"
                             : hasSavedData
@@ -1559,7 +1523,7 @@ export default function RoznegarPgae() {
             <section className="xl:col-span-7 min-w-0">
               <div
                 className={
-                  "rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm transition-all duration-500 delay-150 dark:border-neutral-800 dark:bg-neutral-900 sm:p-4 " +
+                  "transition-all duration-500 delay-150 " +
                   cardReveal +
                   (editorDisabled ? " opacity-75" : "")
                 }
@@ -1607,13 +1571,13 @@ export default function RoznegarPgae() {
                           target.selectionStart = target.selectionEnd = start + 3;
                         });
                       }}
-                      rows={4}
+                      rows={6}
                       placeholder="شرح فعالیت‌های انجام‌شده در این روز را وارد کنید..."
                       className="w-full rounded-2xl border border-neutral-300 bg-white px-3 py-2 text-sm text-right text-neutral-900 outline-none transition focus:ring-2 focus:ring-neutral-300 disabled:cursor-not-allowed disabled:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:focus:ring-neutral-600/50 dark:disabled:bg-neutral-800"
                     />
                   </div>
 
-                  <div className="md:col-span-12 min-w-0">
+                  <div className="-mt-2 md:col-span-12 min-w-0">
                     <div className={labelCls}>برچسب‌ها</div>
                     <div className="w-full min-w-0 flex flex-wrap items-center gap-2">
                       {selectedTags.map((tag) => (
@@ -1769,15 +1733,6 @@ export default function RoznegarPgae() {
                     <button
                       type="button"
                       disabled={editorDisabled || confirmSaving || filesUploading}
-                      onClick={handleResetRoznegar}
-                      className="h-10 rounded-xl border border-rose-200 px-3 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45 dark:border-rose-900/70 dark:text-rose-300 dark:hover:bg-rose-950/30"
-                      title="حذف همه روزنگارهای پروژه انتخاب‌شده"
-                    >
-                      ریست روزنگارها
-                    </button>
-                    <button
-                      type="button"
-                      disabled={editorDisabled || confirmSaving || filesUploading}
                       onClick={handlePreviewConfirm}
                       className={
                         "h-10 w-10 shrink-0 inline-flex items-center justify-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 " +
@@ -1799,6 +1754,7 @@ export default function RoznegarPgae() {
                 </div>
               </div>
             </section>
+          </div>
           </div>
             </>
           ) : null}
