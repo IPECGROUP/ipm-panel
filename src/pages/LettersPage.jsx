@@ -1481,6 +1481,48 @@ const safeEmailFileName = (value) => {
   return name || "letter";
 };
 
+const escapeMailHtml = (value) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
+const buildLetterMailHtml = ({ title, kind, kindLabel, rows }) => {
+  const kindStyles = {
+    incoming: "background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;",
+    outgoing: "background:#f7fee7;color:#4d7c0f;border-color:#d9f99d;",
+    internal: "background:#fff7ed;color:#c2410c;border-color:#fed7aa;",
+  };
+  const tableRows = rows
+    .map(
+      ([label, value], index) => `
+        <tr style="background:${index % 2 ? "#fafafa" : "#ffffff"};">
+          <th style="width:190px;padding:11px 14px;border-bottom:1px solid #e5e7eb;text-align:right;color:#525252;font-size:13px;font-weight:700;vertical-align:top;">${escapeMailHtml(label)}</th>
+          <td style="padding:11px 14px;border-bottom:1px solid #e5e7eb;text-align:right;color:#171717;font-size:14px;line-height:1.8;vertical-align:top;white-space:pre-wrap;">${escapeMailHtml(toFaDigits(value || "—"))}</td>
+        </tr>`
+    )
+    .join("");
+
+  return `<!doctype html>
+  <html lang="fa" dir="rtl">
+    <head><meta charset="utf-8"></head>
+    <body style="margin:0;background:#f5f5f5;font-family:Tahoma,Arial,sans-serif;direction:rtl;text-align:right;">
+      <div style="max-width:760px;margin:24px auto;padding:0 12px;">
+        <div style="overflow:hidden;border:1px solid #e5e7eb;border-radius:18px;background:#ffffff;box-shadow:0 12px 30px rgba(15,23,42,.08);">
+          <div style="padding:20px 22px;border-bottom:1px solid #e5e7eb;background:linear-gradient(135deg,#ffffff,#f5f5f5);">
+            <div style="font-size:18px;font-weight:800;color:#171717;">${escapeMailHtml(toFaDigits(title || "نامه"))}</div>
+            <div style="margin-top:10px;display:inline-block;padding:5px 12px;border:1px solid;border-radius:999px;font-size:12px;font-weight:700;${kindStyles[kind] || "background:#f5f5f5;color:#404040;border-color:#d4d4d4;"}">${escapeMailHtml(kindLabel)}</div>
+          </div>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;direction:rtl;">${tableRows}</table>
+          <div style="padding:14px 22px;color:#737373;font-size:11px;background:#fafafa;">این پیش‌نویس از سامانه مدیریت اسناد ایجاد شده است.</div>
+        </div>
+      </div>
+    </body>
+  </html>`;
+};
+
 const buildLetterMailDraft = (l) => {
   const kind = letterKindOf(l);
   const no = letterNoOf(l);
@@ -1503,27 +1545,60 @@ const buildLetterMailDraft = (l) => {
     mailTextOf(l, "receiver_email", "receiverEmail")
   );
   const kindLabel = kind === "outgoing" ? "صادره" : kind === "internal" ? "داخلی" : "وارده";
-  const details = [
-    `نوع نامه: ${kindLabel}`,
-    no ? `شماره نامه: ${no}` : "",
-    letterDateOf(l) ? `تاریخ نامه: ${letterDateOf(l)}` : "",
-    subject ? `موضوع: ${subject}` : "",
-    fromToOf(l) && fromToOf(l) !== "—" ? `از/به: ${fromToOf(l)}` : "",
-    orgOf(l) ? `شرکت/سازمان: ${orgOf(l)}` : "",
-    mailTextOf(l, "secretariat_note", "secretariatNote") ? `توضیح: ${mailTextOf(l, "secretariat_note", "secretariatNote")}` : "",
-  ].filter(Boolean);
+  const fromName = mailTextOf(l, "from_name", "fromName", "from");
+  const toName = mailTextOf(l, "to_name", "toName", "to");
+  const classification = mailTextOf(l, "classification", "classification_label", "doc_classification", "confidentiality");
+  const tagIds = Array.isArray(l?.tag_ids) ? l.tag_ids : Array.isArray(l?.tagIds) ? l.tagIds : [];
+  const tagLabels = tagIds
+    .map((id) => tagById.get(String(id)))
+    .filter(Boolean)
+    .map((tag) => tagLabelOf(tag));
+  const letterMap = new Map((Array.isArray(myLetters) ? myLetters : []).map((item) => [String(letterIdOf(item)), item]));
+  const linkedNumbers = (rawIds) =>
+    (Array.isArray(rawIds) ? rawIds : [])
+      .map((id) => String(id || "").trim())
+      .filter(Boolean)
+      .map((id) => {
+        const item = letterMap.get(id);
+        return String(item?.letter_no ?? item?.letterNo ?? id);
+      })
+      .join("، ");
+  const returnToIds = Array.isArray(l?.return_to_ids) ? l.return_to_ids : l?.returnToIds;
+  const piroIds = Array.isArray(l?.piro_ids) ? l.piro_ids : l?.piroIds;
+  const attachmentNames = attachmentsOf(l)
+    .map((attachment, index) => attachmentNameOf(attachment) || `فایل ${index + 1}`)
+    .filter(Boolean);
+  const rows = [
+    ["نوع سند", kindLabel],
+    ["شماره نامه", no || "—"],
+    ["تاریخ نامه", letterDateOf(l) || "—"],
+    [kind === "incoming" ? "کلاس سند" : "دسته‌بندی", categoryLabel(categoryOf(l)) || "—"],
+    ["طبقه‌بندی", classification || "—"],
+    ["پروژه", projectLabel || "—"],
+    ["از", fromName || "—"],
+    ["به", toName || "—"],
+    ["شرکت/سازمان", orgOf(l) || "—"],
+    ["موضوع", subject || "—"],
+    ["برچسب‌ها", tagLabels.join("، ") || "—"],
+    [kind === "incoming" ? "نامه‌های مرتبط" : "پیرو", linkedNumbers(piroIds) || "—"],
+    ["بازگشت به", linkedNumbers(returnToIds) || "—"],
+    ["تاریخ ثبت دبیرخانه", mailTextOf(l, "secretariat_date", "secretariatDate") || "—"],
+    ["شماره ثبت دبیرخانه", mailTextOf(l, "secretariat_no", "secretariatNo") || "—"],
+    ["مسئول دبیرخانه", mailTextOf(l, "receiver_name", "receiverName") || "—"],
+    ["توضیحات دبیرخانه", mailTextOf(l, "secretariat_note", "secretariatNote") || "—"],
+    ["پیوست‌ها", attachmentNames.join("، ") || "ندارد"],
+  ];
   const mailSubject = subject || (no ? `نامه ${no}` : "نامه");
-  const mailDetails = projectLabel
-    ? (() => {
-        const next = details.slice();
-        next.splice(Math.min(3, next.length), 0, `پروژه: ${projectLabel}`);
-        return next;
-      })()
-    : details;
-  return { recipient, subject: mailSubject, body: mailDetails.map((line) => `\u200F${line}`).join("\n") };
+  const body = rows.map(([label, value]) => `\u200F${label}: ${toFaDigits(value)}`).join("\n");
+  return {
+    recipient,
+    subject: mailSubject,
+    body,
+    html: buildLetterMailHtml({ title: mailSubject, kind, kindLabel, rows }),
+  };
 };
 
-const buildEmlDraft = ({ to, subject, body, attachments }) => {
+const buildEmlDraft = ({ to, subject, body, html, attachments }) => {
   const boundary = `----=_IPM_LETTER_${Date.now()}_${Math.random().toString(16).slice(2)}`;
   const lines = [
     `To: ${to || ""}`,
@@ -1534,10 +1609,10 @@ const buildEmlDraft = ({ to, subject, body, attachments }) => {
     `Content-Type: multipart/mixed; boundary="${boundary}"`,
     "",
     `--${boundary}`,
-    'Content-Type: text/plain; charset="utf-8"',
+    `Content-Type: ${html ? "text/html" : "text/plain"}; charset="utf-8"`,
     "Content-Transfer-Encoding: base64",
     "",
-    foldBase64(textToBase64(body)),
+    foldBase64(textToBase64(html || body)),
   ];
 
   for (const file of attachments) {
@@ -1572,21 +1647,6 @@ const downloadEmlDraft = ({ subject, eml }) => {
 const openLetterInOutlook = async (l) => {
   const draft = buildLetterMailDraft(l);
   const atts = attachmentsOf(l);
-  const attachmentNames = atts
-    .map((att, index) => String(attachmentNameOf(att) || `file-${index + 1}`).trim())
-    .filter(Boolean);
-  const bodyWithAttachmentList = attachmentNames.length
-    ? `${draft.body}\n\n\n\u200Fضمیمه:\n${attachmentNames.map((name) => `\u200F- ${name}`).join("\n")}`
-    : draft.body;
-
-  if (!atts.length) {
-  const href =
-      `mailto:${encodeURIComponent(draft.recipient)}` +
-      `?subject=${encodeURIComponent(draft.subject)}` +
-      `&body=${encodeURIComponent(bodyWithAttachmentList)}`;
-  window.location.href = href;
-    return;
-  }
 
   const letterId = letterIdOf(l);
   const fetched = await Promise.allSettled(
@@ -1607,8 +1667,14 @@ const openLetterInOutlook = async (l) => {
   const attachments = fetched.filter((x) => x.status === "fulfilled").map((x) => x.value);
   const failedCount = fetched.length - attachments.length;
   const body = failedCount
-    ? `${bodyWithAttachmentList}\n\n${failedCount} فایل پیوست به دلیل خطا اضافه نشد.`
-    : bodyWithAttachmentList;
+    ? `${draft.body}\n\n${toFaDigits(failedCount)} فایل پیوست به دلیل خطا اضافه نشد.`
+    : draft.body;
+  const html = failedCount
+    ? draft.html.replace(
+        "</body>",
+        `<div dir="rtl" style="max-width:736px;margin:0 auto 20px;padding:12px;border:1px solid #fecaca;border-radius:12px;background:#fef2f2;color:#b91c1c;font-family:Tahoma,Arial,sans-serif;text-align:right;">${escapeMailHtml(toFaDigits(failedCount))} فایل پیوست به دلیل خطا اضافه نشد.</div></body>`
+      )
+    : draft.html;
 
   downloadEmlDraft({
     subject: draft.subject,
@@ -1616,6 +1682,7 @@ const openLetterInOutlook = async (l) => {
       to: draft.recipient,
       subject: draft.subject,
       body,
+      html,
       attachments,
     }),
   });
