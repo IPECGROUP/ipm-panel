@@ -21,7 +21,7 @@ const STEP_LABELS = {
   requester: "درخواست‌کننده",
   project_control: "برنامه‌ریزی و کنترل پروژه",
   project_manager: "مدیر پروژه",
-  accounting: "مالی و حسابداری",
+  accounting: "مالی",
   management: "مدیریت",
   finance_manager: "مدیریت مالی",
   payment_order: "دستور پرداخت",
@@ -32,7 +32,7 @@ const WAITING_UNIT_LABELS = {
   // label identical to the unit the request is actually waiting for.
   project_control: "برنامه ریزی",
   project_manager: "مدیریت پروژه ها",
-  accounting: "مالی و حسابداری",
+  accounting: "مالی",
   management: "مدیریت",
   finance_manager: "مدیریت مالی",
   payment_order: "واحد دستور پرداخت",
@@ -184,12 +184,13 @@ function normalizeWorkflowUnitName(value = "") {
 const WORKFLOW_UNIT_NAMES = {
   project_control: "برنامه ریزی",
   project_manager: "مدیریت پروژه ها",
-  accounting: "مالی و حسابداری",
+  accounting: ["مالی", "مالی و حسابداری"],
   management: "مدیریت",
 };
 function roleIdsForWorkflowUnit(unitRoleItems, roleKey) {
-  const expected = normalizeWorkflowUnitName(WORKFLOW_UNIT_NAMES[roleKey]);
-  const unit = (Array.isArray(unitRoleItems) ? unitRoleItems : []).find((item) => normalizeWorkflowUnitName(item?.name || item?.label) === expected);
+  const configuredNames = Array.isArray(WORKFLOW_UNIT_NAMES[roleKey]) ? WORKFLOW_UNIT_NAMES[roleKey] : [WORKFLOW_UNIT_NAMES[roleKey]];
+  const expectedNames = new Set(configuredNames.map(normalizeWorkflowUnitName));
+  const unit = (Array.isArray(unitRoleItems) ? unitRoleItems : []).find((item) => expectedNames.has(normalizeWorkflowUnitName(item?.name || item?.label)));
   return new Set((unit?.roles || []).map((role) => String(role?.id)).filter(Boolean));
 }
 function usersForWorkflowUnit(unitRoleItems, assignments, roleKey) {
@@ -2716,7 +2717,7 @@ function WorkflowPanel({
     </PreviewSection>;
   }
 
-  return <PreviewSection title={stepKey === "management" ? "نتیجه بررسی مدیریت" : "نتیجه بررسی مالی و حسابداری"}>
+  return <PreviewSection title={stepKey === "management" ? "نتیجه بررسی مدیریت" : "نتیجه بررسی مالی"}>
     <div className="space-y-3 py-4">
       <div className="grid gap-3 md:grid-cols-2">
         <ActionOption kind="approve" checked={choice === "approve"} onClick={() => setChoice("approve")} label={stepKey === "management" ? "تایید درخواست پرداخت" : "تایید درخواست"}>
