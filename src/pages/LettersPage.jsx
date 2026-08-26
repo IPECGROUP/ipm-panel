@@ -6157,7 +6157,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
 
 
       {/* ✅ دکمه ارسال هم داخل همین کادر قرار گرفت */}
-      <div className="flex items-center justify-end pt-2">
+      <div className="mt-4 flex w-full items-center justify-end border-t border-black/10 pt-4 dark:border-white/10 md:col-span-12">
         <button
   type="button"
   disabled={isSubmitting}
@@ -6446,12 +6446,10 @@ aria-invalid={fieldHasError(formKind, "subject")}
         <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">
           {selectedIds.size ? `${toFaDigits(selectedIds.size)} مورد انتخاب شده` : "ابتدا یک سند را انتخاب کنید"}
         </div>
-        <div className="border-t border-black/10 pt-1 dark:border-white/10">
-          <button type="button" disabled={!selectedMenuLetter} onClick={sendSelectedLetter} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-sky-500/10">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-100 text-sky-700 transition group-hover:scale-105 dark:bg-sky-500/15 dark:text-sky-300"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13" /><path d="m22 2-7 20-4-9-9-4 20-7Z" /></svg></span>
-            <span className="min-w-0 flex-1 text-sm font-semibold">ارسال</span>
-          </button>
-        </div>
+        <button type="button" disabled={!selectedMenuLetter} onClick={sendSelectedLetter} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-sky-500/10">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-100 text-sky-700 transition group-hover:scale-105 dark:bg-sky-500/15 dark:text-sky-300"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13" /><path d="m22 2-7 20-4-9-9-4 20-7Z" /></svg></span>
+          <span className="min-w-0 flex-1 text-sm font-semibold">ارسال</span>
+        </button>
         <button type="button" disabled={!selectedMenuLetter} onClick={editSelectedLetter} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span>
           <span className="min-w-0 flex-1 text-sm font-semibold">ویرایش سند</span>
