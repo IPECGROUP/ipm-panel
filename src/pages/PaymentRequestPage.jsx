@@ -1076,6 +1076,12 @@ export default function PaymentRequestPage() {
   const visibleIds = pageItems.map((item) => String(item.id));
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
   const someVisibleSelected = visibleIds.some((id) => selectedIds.has(id)) && !allVisibleSelected;
+  const selectedEditableRequest = selectedIds.size === 1
+    ? tableItems.find((item) => selectedIds.has(String(item.id)))
+    : null;
+  const canEditSelectedRequest = Boolean(selectedEditableRequest)
+    && selectedEditableRequest.requestType !== "tenkhah"
+    && (selectedEditableRequest.canEdit === true || Number(selectedEditableRequest.createdById) === Number(user?.id));
   const selectAllRef = useRef(null);
   useEffect(() => { if (selectAllRef.current) selectAllRef.current.indeterminate = someVisibleSelected; }, [someVisibleSelected]);
   useEffect(() => { if (page !== safePage) setPage(safePage); }, [page, safePage]);
@@ -1115,6 +1121,13 @@ export default function PaymentRequestPage() {
       });
     }
 
+    setSelectedIds(new Set());
+    setTableMenuOpen(false);
+  };
+
+  const editSelectedRequest = () => {
+    if (!canEditSelectedRequest) return;
+    openPreview({ ...selectedEditableRequest, __editing: true });
     setSelectedIds(new Set());
     setTableMenuOpen(false);
   };
@@ -1343,6 +1356,10 @@ export default function PaymentRequestPage() {
                         <span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-100 text-sky-700 transition group-hover:scale-105 dark:bg-sky-500/15 dark:text-sky-300"><span className="h-2.5 w-2.5 rounded-full bg-sky-500 ring-2 ring-sky-200 dark:ring-sky-400/30" /></span>
                         <span className="min-w-0 flex-1 text-sm font-semibold">خوانده نشده</span>
                       </button>
+                      <button type="button" disabled={!canEditSelectedRequest} onClick={editSelectedRequest} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10" title={canEditSelectedRequest ? "ویرایش درخواست انتخاب‌شده" : "برای ویرایش، یک درخواست متعلق به خودتان را انتخاب کنید"}>
+                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span>
+                        <span className="min-w-0 flex-1 text-sm font-semibold">ویرایش درخواست</span>
+                      </button>
                       <button type="button" disabled={!selectedIds.size || deletingSelected} onClick={deleteSelectedRequests} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10">
                         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 transition group-hover:scale-105 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span>
                         <span className="min-w-0 flex-1 text-sm font-semibold">{deletingSelected ? "در حال حذف..." : "حذف موارد انتخاب‌شده"}</span>
@@ -1353,17 +1370,17 @@ export default function PaymentRequestPage() {
               </th>
             </tr></thead>
             <tbody className="text-[13px] text-black [&>tr>td]:!py-0 [&>tr>td:last-child_button]:!h-9 [&>tr>td:last-child_button]:!w-9 dark:text-neutral-100">
-              {loading ? <tr><td colSpan={10} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td></tr> : pageItems.length === 0 ? <tr><td colSpan={10} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواستی ثبت نشده است.</td></tr> : pageItems.map((item) => <tr key={item.id} className={`group transition-colors ${item.requestType === "tenkhah" ? "bg-violet-50/90 hover:bg-violet-100/80 dark:bg-violet-500/[0.12] dark:hover:bg-violet-500/[0.18]" : "bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"}`}>
-                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label="انتخاب" /></td>
+              {loading ? <tr><td colSpan={10} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td></tr> : pageItems.length === 0 ? <tr><td colSpan={10} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواستی ثبت نشده است.</td></tr> : pageItems.map((item) => <tr key={item.id} onClick={() => item.requestType === "tenkhah" ? setSelectedTenkhah(item) : openPreview(item)} className={`group cursor-pointer transition-colors ${item.requestType === "tenkhah" ? "bg-violet-50/90 hover:bg-violet-100/80 dark:bg-violet-500/[0.12] dark:hover:bg-violet-500/[0.18]" : "bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"}`}>
+                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onClick={(event) => event.stopPropagation()} onChange={() => toggleSelected(item.id)} aria-label="انتخاب" /></td>
                 <td className="border-b border-neutral-300 px-0 dark:border-neutral-700">{isUnreadForUser(item) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="درخواست خوانده‌نشده" aria-label="درخواست خوانده‌نشده" />}</td>
-                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{item.requestType === "tenkhah" ? <button type="button" onClick={() => setSelectedTenkhah(item)} className="mx-auto inline-flex items-center text-[13px] font-normal text-neutral-900 underline-offset-4 transition hover:underline dark:text-neutral-100" title="نمایش درخواست">{toFa(item.serial)}</button> : <button type="button" onClick={() => openPreview(item)} className="mx-auto inline-flex items-center justify-center text-[13px] font-normal underline-offset-4 transition hover:underline" title="نمایش درخواست">{toFa(displayPaymentSerial(item, projects))}</button>}</td>
+                <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{item.requestType === "tenkhah" ? <button type="button" onClick={(event) => { event.stopPropagation(); setSelectedTenkhah(item); }} className="mx-auto inline-flex items-center text-[13px] font-normal text-neutral-900 underline-offset-4 transition hover:underline dark:text-neutral-100" title="نمایش درخواست">{toFa(item.serial)}</button> : <button type="button" onClick={(event) => { event.stopPropagation(); openPreview(item); }} className="mx-auto inline-flex items-center justify-center text-[13px] font-normal underline-offset-4 transition hover:underline" title="نمایش درخواست">{toFa(displayPaymentSerial(item, projects))}</button>}</td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))}</td>
                 <td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><span className="block truncate text-right">{projectLabel(projects.find((row) => String(row.id) === String(item.projectId))) || item.projectName || item.projectCode || "—"}</span></td>
                 <td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><span className="block truncate text-right">{item.title || "—"}</span></td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate tabular-nums">{toFa(item.requestType === "tenkhah" ? (money(item.amount) || "0") : paymentRequestAmount(item.amount, Boolean(item.currencyTypeId)))} {item.requestType === "tenkhah" ? item.currencyName : currencyNameOf(item.currencyTypeId, currencyTypes)}</span></td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.createdByName || `کاربر #${toFa(item.createdById)}`}</span></td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><WaitingUnitCell item={item} /></td>
-                <td className="border-b border-neutral-300 !pl-10 !pr-2 dark:border-neutral-700">{item.requestType === "tenkhah" ? <div className="pointer-events-none flex w-full items-center justify-center opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"><button type="button" onClick={() => setSelectedTenkhah(item)} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label="نمایش درخواست تنخواه" title="نمایش درخواست تنخواه"><img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" /></button></div> : <div className="pointer-events-none flex w-full items-center justify-center gap-1 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"><button type="button" onClick={() => openPreview(item)} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label={item.canAct ? "اقدامات" : "نمایش"} title={item.canAct ? "اقدامات" : "نمایش"}><img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" /></button>{Number(item.createdById) === Number(user?.id) && <button type="button" onClick={() => openPreview({ ...item, __editing: true })} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label="ویرایش درخواست" title="ویرایش درخواست"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></button>}</div>}</td>
+                <td className="border-b border-neutral-300 !pl-10 !pr-2 dark:border-neutral-700">{item.requestType === "tenkhah" ? <div className="pointer-events-none flex w-full items-center justify-center opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"><button type="button" onClick={(event) => { event.stopPropagation(); setSelectedTenkhah(item); }} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label="نمایش درخواست تنخواه" title="نمایش درخواست تنخواه"><img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" /></button></div> : <div className="pointer-events-none flex w-full items-center justify-center gap-1 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"><button type="button" onClick={(event) => { event.stopPropagation(); openPreview(item); }} className="inline-grid h-10 w-10 place-items-center border-0 bg-transparent shadow-none transition hover:opacity-80" aria-label={item.canAct ? "اقدامات" : "نمایش"} title={item.canAct ? "اقدامات" : "نمایش"}><img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" /></button></div>}</td>
               </tr>)}
             </tbody>
           </table></div>
