@@ -597,6 +597,7 @@ export default function RoznegarPgae() {
   const [tableRowsPerPage, setTableRowsPerPage] = useState(10);
   const [tagModalMode, setTagModalMode] = useState("entry");
   const [confirmSaving, setConfirmSaving] = useState(false);
+  const [activityBulletMode, setActivityBulletMode] = useState(false);
   const [syncState, setSyncState] = useState({ type: "", text: "" });
   const [filePreview, setFilePreview] = useState({ open: false, file: null, url: "", isObjectUrl: false });
   const uploadInputRef = useRef(null);
@@ -750,6 +751,10 @@ export default function RoznegarPgae() {
 
   useEffect(() => {
     setEntriesByDate((prev) => (prev[selectedDate] ? prev : { ...prev, [selectedDate]: makeEntry(selectedDate) }));
+  }, [selectedDate]);
+
+  useEffect(() => {
+    setActivityBulletMode(false);
   }, [selectedDate]);
 
   const fetchRoznegarEntries = useCallback(
@@ -1417,7 +1422,7 @@ export default function RoznegarPgae() {
                   <button
                     type="button"
                     onClick={() => setCursor((c) => c.subtract(1, "month"))}
-                    className="h-9 w-9 rounded-xl border border-neutral-300 text-base text-neutral-700 transition hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800 sm:h-10 sm:w-10"
+                    className="h-10 w-10 rounded-xl border border-neutral-300 text-2xl leading-none text-neutral-700 transition hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
                     aria-label="ماه قبل"
                   >
                     ‹
@@ -1428,7 +1433,7 @@ export default function RoznegarPgae() {
                   <button
                     type="button"
                     onClick={() => setCursor((c) => c.add(1, "month"))}
-                    className="h-9 w-9 rounded-xl border border-neutral-300 text-base text-neutral-700 transition hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800 sm:h-10 sm:w-10"
+                    className="h-10 w-10 rounded-xl border border-neutral-300 text-2xl leading-none text-neutral-700 transition hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
                     aria-label="ماه بعد"
                   >
                     ›
@@ -1524,11 +1529,53 @@ export default function RoznegarPgae() {
 
                 <div className="space-y-4" aria-disabled={editorDisabled}>
                   <div>
-                    <div className={labelCls}>شرح فعالیت‌ها</div>
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <div className={labelCls + " mb-0"}>شرح فعالیت‌ها</div>
+                      <button
+                        type="button"
+                        disabled={editorDisabled}
+                        onClick={() => {
+                          const isBullet = activityBulletMode || /^\s*•\s/.test(String(activeEntry.activity || ""));
+                          const nextActivity = isBullet
+                            ? String(activeEntry.activity || "").replace(/^\s*•\s?/gm, "")
+                            : (String(activeEntry.activity || "").trim()
+                                ? String(activeEntry.activity || "").split("\n").map((line) => `• ${line.trim()}`).join("\n")
+                                : "• ");
+                          setActivityBulletMode(!isBullet);
+                          updateActiveEntry((curr) => ({ ...curr, activity: nextActivity }));
+                        }}
+                        className={
+                          "h-7 rounded-lg border px-2 text-[11px] font-semibold transition disabled:opacity-50 inline-flex items-center gap-1 " +
+                          ((activityBulletMode || /^\s*•\s/.test(String(activeEntry.activity || "")))
+                            ? "border-[#fb923c] bg-[#fff7ed] text-[#9a3412] dark:bg-[#f97316]/15 dark:text-[#fed7aa]"
+                            : theme === "dark"
+                            ? "border-white/15 bg-white/5 text-white/75 hover:bg-white/10"
+                            : "border-black/10 bg-white text-neutral-600 hover:bg-neutral-50")
+                        }
+                        title="نوشتن فهرست‌وار"
+                        aria-label="نوشتن فهرست‌وار"
+                      >
+                        <span className="text-sm leading-none">•</span><span>فهرست</span>
+                      </button>
+                    </div>
                     <textarea
                       disabled={editorDisabled}
                       value={activeEntry.activity}
                       onChange={(e) => updateActiveEntry((curr) => ({ ...curr, activity: e.target.value }))}
+                      onKeyDown={(e) => {
+                        const isBullet = activityBulletMode || /^\s*•\s/.test(String(activeEntry.activity || ""));
+                        if (!isBullet || e.key !== "Enter") return;
+                        e.preventDefault();
+                        const target = e.currentTarget;
+                        const start = target.selectionStart;
+                        const end = target.selectionEnd;
+                        const value = String(activeEntry.activity || "");
+                        const next = `${value.slice(0, start)}\n• ${value.slice(end)}`;
+                        updateActiveEntry((curr) => ({ ...curr, activity: next }));
+                        requestAnimationFrame(() => {
+                          target.selectionStart = target.selectionEnd = start + 3;
+                        });
+                      }}
                       rows={4}
                       placeholder="شرح فعالیت‌های انجام‌شده در این روز را وارد کنید..."
                       className="w-full rounded-2xl border border-neutral-300 bg-white px-3 py-2 text-sm text-right text-neutral-900 outline-none transition focus:ring-2 focus:ring-neutral-300 disabled:cursor-not-allowed disabled:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:focus:ring-neutral-600/50 dark:disabled:bg-neutral-800"
