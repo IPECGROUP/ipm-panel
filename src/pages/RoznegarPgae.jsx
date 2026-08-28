@@ -1577,7 +1577,7 @@ export default function RoznegarPgae() {
                     />
                   </div>
 
-                  <div className="-mt-2 md:col-span-12 min-w-0">
+                  <div className="!mt-1 md:col-span-12 min-w-0">
                     <div className={labelCls}>برچسب‌ها</div>
                     <div className="w-full min-w-0 flex flex-wrap items-center gap-2">
                       {selectedTags.map((tag) => (
