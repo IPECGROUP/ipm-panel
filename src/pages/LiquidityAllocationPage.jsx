@@ -10,14 +10,6 @@ import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 const PAGE_ICON = "/images/icons/modiriat-nagdinegi.svg";
 const HISTORY_QUICK_FILTERS = [["week", "هفته قبل"], ["2w", "2 هفته قبل"], ["1m", "یک ماه قبل"], ["3m", "3 ماه قبل"], ["6m", "6 ماه قبل"]];
 
-const LIQUIDITY_SOURCES = [
-  "کارکرد پروژه‌ها",
-  "وام بانکی",
-  "آورده شرکا و سهامداران",
-  "فروش دارایی",
-  "سایر",
-];
-
 const inputClass =
   "h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-right text-sm text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-neutral-100 dark:placeholder:text-neutral-500";
 
@@ -93,7 +85,8 @@ export default function LiquidityAllocationPage() {
   const [batchId, setBatchId] = useState("");
   const [form, setForm] = useState(emptyAllocationForm);
   const [reserveAdjustment, setReserveAdjustment] = useState("");
-  const [customSource, setCustomSource] = useState(false);
+  const [liquiditySources, setLiquiditySources] = useState([]);
+  const [liquiditySourcesLoading, setLiquiditySourcesLoading] = useState(true);
   const [rows, setRows] = useState([]);
   const [projects, setProjects] = useState([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
@@ -133,7 +126,25 @@ export default function LiquidityAllocationPage() {
     }
   }, [user?.id]);
 
+  const loadLiquiditySources = useCallback(async () => {
+    setLiquiditySourcesLoading(true);
+    try {
+      const response = await fetch("/api/base/financial-options?category=liquidity", {
+        credentials: "include",
+        headers: user?.id != null ? { "x-user-id": String(user.id) } : {},
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error || "liquidity_sources_failed");
+      setLiquiditySources(Array.isArray(data?.items) ? data.items : []);
+    } catch {
+      setLiquiditySources([]);
+    } finally {
+      setLiquiditySourcesLoading(false);
+    }
+  }, [user?.id]);
+
   useEffect(() => { loadProjects(); }, [loadProjects]);
+  useEffect(() => { loadLiquiditySources(); }, [loadLiquiditySources]);
   useEffect(() => {
     if (!projects.length) return;
     setRows((current) => projects.map((project) => {
@@ -282,7 +293,6 @@ export default function LiquidityAllocationPage() {
       setSubmitMessage("تخصیص نقدینگی ثبت شد.");
       await loadSummary();
       setForm(emptyAllocationForm());
-      setCustomSource(false);
       setBatchId("");
       setShowValidation(false);
       setFormOpen(false);
@@ -343,7 +353,6 @@ export default function LiquidityAllocationPage() {
                 setFormOpen(false);
                 setBatchId("");
                 setForm(emptyAllocationForm());
-                setCustomSource(false);
                 setReserveAdjustment("");
                 setShowValidation(false);
                 setRows((current) => current.map((row) => ({ ...row, newAllocation: "" })));
@@ -395,23 +404,15 @@ export default function LiquidityAllocationPage() {
 
           <div className="min-w-0">
             <span className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">منبع نقدینگی <span className="text-red-600">*</span></span>
-            {customSource ? (
-              <input value={form.source} onChange={(event) => updateForm("source", event.target.value)} placeholder="منبع نقدینگی را وارد کنید" className={inputClass + (sourceMissing ? " !border-red-500 focus:!border-red-500" : "")} autoFocus />
-            ) : (
-              <select
-                value={form.source}
-                onChange={(event) => {
-                  if (event.target.value === "سایر") {
-                    setCustomSource(true);
-                    updateForm("source", "");
-                  } else updateForm("source", event.target.value);
-                }}
-                className={inputClass + (sourceMissing ? " !border-red-500 focus:!border-red-500" : "")}
-              >
-                <option value="">انتخاب کنید</option>
-                {LIQUIDITY_SOURCES.map((source) => <option key={source} value={source}>{source}</option>)}
-              </select>
-            )}
+            <select
+              value={liquiditySources.some((option) => String(option.title) === form.source) ? form.source : ""}
+              onChange={(event) => updateForm("source", event.target.value)}
+              disabled={liquiditySourcesLoading}
+              className={inputClass + (sourceMissing ? " !border-red-500 focus:!border-red-500" : "")}
+            >
+              <option value="">{liquiditySourcesLoading ? "در حال دریافت..." : "انتخاب کنید"}</option>
+              {liquiditySources.map((option) => <option key={option.id} value={option.title}>{option.title}</option>)}
+            </select>
           </div>
 
           <label className="min-w-0">
