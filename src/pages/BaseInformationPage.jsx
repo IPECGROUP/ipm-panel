@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Card from "../components/ui/Card.jsx";
 import BaseCurrenciesPage from "./BaseCurrenciesPage.jsx";
+import DocumentClassesSection from "./DocumentClassesSection.jsx";
 
 const tabs = [
   { id: "documents", label: "مدیریت اسناد" },
@@ -45,7 +46,7 @@ export default function BaseInformationPage() {
         </div>
 
         <section role="tabpanel" className="rounded-2xl border border-black/10 p-4 dark:border-white/10">
-          {activeTab === "finance" ? <BaseCurrenciesPage embedded /> : <h2 className="text-sm font-bold">{tabs.find((tab) => tab.id === activeTab)?.label}</h2>}
+          {activeTab === "documents" ? <DocumentClassesSection /> : activeTab === "finance" ? <BaseCurrenciesPage embedded /> : <h2 className="text-sm font-bold">{tabs.find((tab) => tab.id === activeTab)?.label}</h2>}
         </section>
       </Card>
     </div>
