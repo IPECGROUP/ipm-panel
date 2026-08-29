@@ -53,7 +53,7 @@ const today = () => todayJalaliYmd().replaceAll("-", "/");
 const emptyForm = () => ({
   dateJalali: today(), scope: "projects", projectId: "", budgetCode: "", title: "", description: "",
   amount: "", exchangeRate: "1", cashAmount: "", cashDateJalali: "", creditPay: "", beneficiaryName: "", bankInfo: "",
-  docId: "pre_invoice", docOther: "", docNumber: "", docDateJalali: "",
+  docId: "", docOther: "", docNumber: "", docDateJalali: "",
   currencyTypeId: "", currencySourceId: "", attachments: [], relatedLetterIds: [], hasSupplyRequest: "no", supplyRequestId: "", targetAssigneeUserId: "",
 });
 const formFromItem = (item = {}) => ({
@@ -71,7 +71,7 @@ const formFromItem = (item = {}) => ({
   creditPay: item.creditPay || "",
   beneficiaryName: item.beneficiaryName || "",
   bankInfo: item.bankInfo || "",
-  docId: item.docId || "pre_invoice",
+  docId: item.docId || "",
   docOther: item.docOther || "",
   docNumber: item.docNumber || "",
   docDateJalali: item.docDateJalali || item.docDate || "",
@@ -416,6 +416,7 @@ export default function PaymentRequestPage() {
   const [lettersLoading, setLettersLoading] = useState(false);
   const [currencyTypes, setCurrencyTypes] = useState([]);
   const [currencySources, setCurrencySources] = useState([]);
+  const [financialDocumentTypes, setFinancialDocumentTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -591,7 +592,12 @@ export default function PaymentRequestPage() {
     };
   }, [tableMenuOpen]);
   useEffect(() => {
-    Promise.allSettled([api("/projects?isActive=true"), api("/base/currencies/types"), api("/base/currencies/sources")]).then(([pr, t, s]) => {
+    Promise.allSettled([
+      api("/projects?isActive=true"),
+      api("/base/currencies/types"),
+      api("/base/currencies/sources"),
+      api("/base/financial-options?category=document"),
+    ]).then(([pr, t, s, documents]) => {
       if (pr.status === "fulfilled") {
         const mainProjects = (Array.isArray(pr.value.items) ? pr.value.items : pr.value.projects || [])
           .filter((project) => isActiveProject(project) && isMainProject(project))
@@ -600,6 +606,8 @@ export default function PaymentRequestPage() {
       } else setProjects([]);
       if (t.status === "fulfilled") setCurrencyTypes(uniqueCurrencyTypes(t.value.items));
       if (s.status === "fulfilled") setCurrencySources(s.value.items || []);
+      if (documents.status === "fulfilled") setFinancialDocumentTypes(Array.isArray(documents.value?.items) ? documents.value.items : []);
+      else setFinancialDocumentTypes([]);
     });
   }, [api]);
   useEffect(() => {
@@ -942,7 +950,7 @@ export default function PaymentRequestPage() {
       const currentUnitOf = (item) => WAITING_UNIT_LABELS[item.currentStepRoleKey || item.stage] || statusOf(item);
       const docNameOf = (item) => item.docId === "other"
         ? (item.docOther || "سایر")
-        : (DOC_OPTIONS.find(([id]) => id === item.docId)?.[1] || "—");
+        : (DOC_OPTIONS.find(([id]) => id === item.docId)?.[1] || String(item.docId || "").trim() || "—");
       const formatIsoDate = (value) => {
         if (!value) return "—";
         const date = new Date(value);
@@ -1235,14 +1243,10 @@ export default function PaymentRequestPage() {
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(180px,1.1fr)_minmax(110px,0.55fr)_minmax(112px,0.55fr)_auto_auto_minmax(135px,0.65fr)_minmax(165px,1.2fr)]">
             <Field label="نوع سند">
-              {form.docId === "other" ? (
-                <input className={inputClass} value={form.docOther} onChange={(e) => setField("docOther", e.target.value)} placeholder="نوع سند را وارد کنید" autoFocus />
-              ) : (
-                <select className={inputClass} value={form.docId} onChange={(e) => {
-                  const value = e.target.value;
-                  setForm((old) => ({ ...old, docId: value, docOther: value === "other" ? "" : old.docOther }));
-                }}>{DOC_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
-              )}
+              <select className={inputClass} value={financialDocumentTypes.some((option) => String(option.title) === String(form.docId)) ? form.docId : ""} onChange={(event) => setForm((old) => ({ ...old, docId: event.target.value, docOther: "" }))}>
+                <option value="">انتخاب کنید</option>
+                {financialDocumentTypes.map((option) => <option key={option.id} value={option.title}>{option.title}</option>)}
+              </select>
             </Field>
             <Field label="شماره سند"><input className={inputClass} value={form.docNumber} onChange={(e) => setField("docNumber", e.target.value)} /></Field>
             <Field label="تاریخ سند"><JalaliPopupDatePicker value={form.docDateJalali} onChange={(value) => setField("docDateJalali", value)} /></Field>
@@ -1366,6 +1370,7 @@ export default function PaymentRequestPage() {
       supplyRequests={supplyRequests}
       currencyTypes={currencyTypes}
       currencySources={currencySources}
+      documentTypes={financialDocumentTypes}
       userId={user?.id}
       api={api}
       actionNote={actionNote}
@@ -1943,13 +1948,13 @@ function TenkhahPreview({ item, onClose }) {
   </div>, document.body);
 }
 
-function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes, currencySources, userId, api, actionNote, setActionNote, actionBusy, actionError, onAction, onResubmit, onEdit, onClose }) {
+function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes, currencySources, documentTypes, userId, api, actionNote, setActionNote, actionBusy, actionError, onAction, onResubmit, onEdit, onClose }) {
   const project = projects.find((row) => String(row.id) === String(item.projectId));
   const currency = currencyTypes.find((row) => String(row.id) === String(item.currencyTypeId));
   const source = currencySources.find((row) => String(row.id) === String(item.currencySourceId));
   const currencyName = currency ? itemLabel(currency) : "ریال";
   const showCurrencyDecimals = currency ? currencyOptionKey(currency) !== "rial" : Boolean(item.currencyTypeId);
-  const docName = item.docId === "other" ? (item.docOther || "سایر") : (DOC_OPTIONS.find(([value]) => value === item.docId)?.[1] || "—");
+  const docName = item.docId === "other" ? (item.docOther || "سایر") : (DOC_OPTIONS.find(([value]) => value === item.docId)?.[1] || String(item.docId || "").trim() || "—");
   const attachments = Array.isArray(item.attachments) ? item.attachments : [];
   const relatedLetterIds = Array.isArray(item.relatedLetterIds) ? item.relatedLetterIds.map(String) : [];
   const relatedLetters = relatedLetterIds.map((id) => {
@@ -2570,8 +2575,10 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
                   <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="نوع سند" value={canEditRequest ? (
                   <div className="space-y-2">
-                    <select className={inputClass} value={editForm.docId} onChange={(event) => setEditForm((old) => ({ ...old, docId: event.target.value, docOther: event.target.value === "other" ? old.docOther : "" }))}>{DOC_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
-                    {editForm.docId === "other" && <input className={inputClass} value={editForm.docOther} onChange={(event) => setEditField("docOther", event.target.value)} placeholder="نوع سند را وارد کنید" />}
+                    <select className={inputClass} value={(documentTypes || []).some((option) => String(option.title) === String(editForm.docId)) ? editForm.docId : ""} onChange={(event) => setEditForm((old) => ({ ...old, docId: event.target.value, docOther: "" }))}>
+                      <option value="">انتخاب کنید</option>
+                      {(documentTypes || []).map((option) => <option key={option.id} value={option.title}>{option.title}</option>)}
+                    </select>
                   </div>
                 ) : docName} />
                   <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="شماره سند" value={canEditRequest ? <input className={inputClass} value={editForm.docNumber} onChange={(event) => setEditField("docNumber", event.target.value)} /> : (item.docNumber || "—")} />
