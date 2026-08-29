@@ -95,6 +95,10 @@ function money(value) {
   // MAX_SAFE_INTEGER and were changing long sequences entered by the user.
   return digits && BigInt(digits) > 0n ? BigInt(digits).toLocaleString("en-US") : "";
 }
+function hasPositiveAmount(value) {
+  const digits = amountDigits(value);
+  return Boolean(digits) && BigInt(digits) > 0n;
+}
 function decimalMoney(value, fixed = false) {
   const normalized = toEnglishDigits(String(value ?? ""))
     .replace(/[\u0660-\u0669]/g, (digit) => String(digit.charCodeAt(0) - 0x0660))
@@ -1840,7 +1844,10 @@ function TenkhahPreviewV4({ item, userId, api, onRefresh, onClose }) {
     if (!canAct || item.stage !== "finance") return;
     api("/base/currencies/types").then((data) => setCurrencyTypes(uniqueCurrencyTypes(data.items))).catch(() => setCurrencyTypes([]));
   }, [api, canAct, item.stage]);
-  const hasFinalPayment = Number(money(cashPaymentAmount || "0")) > 0 || Number(money(creditPaymentAmount || "0")) > 0;
+  // `money` adds thousand separators, so Number(money("10000000")) is NaN.
+  // Validate the raw normalized digits instead to keep the submit button
+  // enabled for any positive payment amount.
+  const hasFinalPayment = hasPositiveAmount(cashPaymentAmount) || hasPositiveAmount(creditPaymentAmount);
   const submit = async () => {
     if (choice === "approve" && item.stage === "project_manager" && !nextUserId) return setError("کاربر مرحله بعد را انتخاب کنید.");
     setBusy(true); setError("");
