@@ -4963,8 +4963,8 @@ export default function ContractInformation() {
                   <col style={{ width: 180 }} />
                   <col />
                   <col style={{ width: 135 }} />
-                  <col style={{ width: 180 }} />
-                  <col style={{ width: 300 }} />
+                  <col style={{ width: 140 }} />
+                  <col style={{ width: 190 }} />
                 </colgroup>
                 <thead>
                   <tr className={contractsTableHeadRowCls}>
@@ -5028,7 +5028,7 @@ export default function ContractInformation() {
                             <div className="mt-1 truncate text-xs text-black/50 dark:text-neutral-400" title={typeText}>{typeText}</div>
                           </td>
                           <td className={`px-3 ${divider}`}>
-                            <div className="mx-auto max-w-[260px] truncate" title={row.general?.contractSubject || ""}>
+                            <div className="w-full truncate text-right" title={row.general?.contractSubject || ""}>
                               {row.general?.contractSubject || "ثبت نشده"}
                             </div>
                           </td>
