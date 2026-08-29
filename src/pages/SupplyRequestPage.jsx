@@ -1385,9 +1385,45 @@ function SupplyRequestEditForm({ item, projects, currencyTypes, busy, error, onS
     description: item.description || "",
     attachments: Array.isArray(item.attachments) ? item.attachments : [],
   }));
+  const [budgetItems, setBudgetItems] = useState([]);
+  const [budgetLoading, setBudgetLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const setField = (name, value) => setForm((current) => ({ ...current, [name]: value }));
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!form.projectId) {
+      setBudgetItems([]);
+      return undefined;
+    }
+
+    const project = projects.find((row) => String(row.id) === String(form.projectId));
+    const projectCode = normalizeBudgetCode(project?.code);
+    setBudgetLoading(true);
+    fetch(`/api/cost-breakdown?project_id=${encodeURIComponent(form.projectId)}`, { credentials: "include" })
+      .then((response) => (response.ok ? response.json() : { items: [] }))
+      .then((data) => {
+        if (cancelled) return;
+        const byCode = new Map();
+        (Array.isArray(data?.items) ? data.items : []).forEach((budgetItem) => {
+          const code = budgetCodeForProject(budgetItem?.budgetCode ?? budgetItem?.budget_code ?? budgetItem?.code, projectCode);
+          if (!code) return;
+          byCode.set(code, { ...budgetItem, code });
+        });
+        if (form.budgetCode && !byCode.has(form.budgetCode)) byCode.set(form.budgetCode, { code: form.budgetCode });
+        setBudgetItems(Array.from(byCode.values()).sort((a, b) => String(a.code).localeCompare(String(b.code), "fa", { numeric: true })));
+      })
+      .catch(() => {
+        if (!cancelled) setBudgetItems(form.budgetCode ? [{ code: form.budgetCode }] : []);
+      })
+      .finally(() => {
+        if (!cancelled) setBudgetLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [form.projectId, projects]);
+
   const uploadFiles = async (fileList) => {
     const files = Array.from(fileList || []);
     if (!files.length) return;
@@ -1418,10 +1454,10 @@ function SupplyRequestEditForm({ item, projects, currencyTypes, busy, error, onS
   const removeAttachment = (index) => setForm((current) => ({ ...current, attachments: current.attachments.filter((_, itemIndex) => itemIndex !== index) }));
 
   return <form dir="rtl" onSubmit={async (event) => { event.preventDefault(); if (await onSave(item, form)) onCancel(); }} className="space-y-4 py-4">
-        <div className="flex items-center justify-between gap-3"><h2 className="text-base font-bold">ویرایش درخواست تامین</h2><button type="button" onClick={onCancel} disabled={busy} className="grid h-9 w-9 place-items-center rounded-xl border border-black/10 transition hover:bg-black/[0.04] dark:border-white/10 dark:hover:bg-white/10" aria-label="انصراف"><img src="/images/icons/bastan.svg" alt="" className="h-4 w-4 dark:invert" /></button></div>
+        <div className="flex items-center justify-between gap-3"><h2 className="text-base font-bold">ویرایش درخواست تامین</h2></div>
         <div className="grid gap-3 md:grid-cols-2">
-          <Field label="پروژه"><select className={inputCls} value={form.projectId} onChange={(event) => setField("projectId", event.target.value)}><option value="">انتخاب پروژه</option>{projects.map((project) => <option key={project.id} value={project.id}>{projectLabel(project)}</option>)}</select></Field>
-          <Field label="کد بودجه"><input className={inputCls} value={form.budgetCode} onChange={(event) => setField("budgetCode", event.target.value)} /></Field>
+          <Field label="پروژه"><select className={inputCls} value={form.projectId} onChange={(event) => setForm((current) => ({ ...current, projectId: event.target.value, budgetCode: "" }))}><option value="">انتخاب پروژه</option>{projects.map((project) => <option key={project.id} value={project.id}>{projectLabel(project)}</option>)}</select></Field>
+          <Field label="کد بودجه"><select dir="rtl" className={inputCls} value={form.budgetCode} onChange={(event) => setField("budgetCode", event.target.value)} disabled={!form.projectId || budgetLoading}><option value="">{!form.projectId ? "ابتدا پروژه را انتخاب کنید" : budgetLoading ? "در حال دریافت..." : "انتخاب کنید"}</option>{budgetItems.map((budgetItem) => { const code = normalizeBudgetCode(budgetItem.code ?? budgetItem.budgetCode ?? budgetItem.budget_code ?? budgetItem.center_code); const name = budgetNameOf(budgetItem); return <option key={budgetItem.id || code} value={code}>{toFaDigits(code)}{name ? ` - ${name}` : ""}</option>; })}</select></Field>
           <Field label="موضوع"><input className={inputCls} value={form.title} onChange={(event) => setField("title", event.target.value)} /></Field>
           <Field label="برآورد هزینه"><div className="relative"><select value={form.currencyTypeId} onChange={(event) => setField("currencyTypeId", event.target.value)} className="absolute left-1 top-1 z-10 h-9 w-16 cursor-pointer appearance-auto rounded-lg border border-neutral-200 bg-neutral-100 px-1 text-center text-xs font-semibold text-neutral-700 shadow-sm outline-none transition hover:bg-neutral-200 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-900/10 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/[.15] dark:focus:border-white/30 dark:focus:ring-white/10"><option value="">ریال</option>{(currencyTypes || []).filter((currency) => !isRialCurrency(currency)).map((currency) => <option key={currency.id} value={currency.id}>{currency.title}</option>)}</select><input dir="ltr" inputMode="numeric" className={`${inputCls} pl-[72px] text-left font-sans tabular-nums`} value={toFaDigits(form.amount)} onChange={(event) => setField("amount", formatMoney(event.target.value))} /></div></Field>
           <Field label="تاریخ نیاز"><JalaliPopupDatePicker value={form.needDateJalali} onChange={(value) => setField("needDateJalali", value)} /></Field>
