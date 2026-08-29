@@ -1,72 +1,26 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const inputClass = "h-11 w-full rounded-xl border border-black/10 bg-white px-4 text-sm outline-none focus:border-neutral-400 dark:border-white/15 dark:bg-white/5";
 
 export default function DocumentClassesSection() {
-  const [items, setItems] = useState([]);
-  const [title, setTitle] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  const load = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch("/api/base/document-classes", { credentials: "include" });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || "دریافت کلاس‌های سند انجام نشد.");
-      setItems(Array.isArray(data.items) ? data.items : []);
-    } catch (err) {
-      setError(err.message || "دریافت کلاس‌های سند انجام نشد.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  const [items, setItems] = useState([]), [title, setTitle] = useState(""), [loading, setLoading] = useState(true), [saving, setSaving] = useState(false), [error, setError] = useState("");
+  const [selectedIds, setSelectedIds] = useState(new Set()), [menuOpen, setMenuOpen] = useState(false), [editingItem, setEditingItem] = useState(null), [editTitle, setEditTitle] = useState(""), [deleteOpen, setDeleteOpen] = useState(false);
+  const menuRef = useRef(null);
+  const request = async (options = {}) => { const response = await fetch("/api/base/document-classes", { credentials: "include", ...options, headers: { "Content-Type": "application/json", ...(options.headers || {}) } }); const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.error || "عملیات انجام نشد."); return data; };
+  const load = async () => { setLoading(true); try { setItems((await request()).items || []); } catch (err) { setError(err.message); } finally { setLoading(false); } };
   useEffect(() => { load(); }, []);
-
-  const add = async (event) => {
-    event.preventDefault();
-    const value = title.trim();
-    if (!value) return setError("عنوان کلاس سند را وارد کنید.");
-
-    setSaving(true);
-    setError("");
-    try {
-      const response = await fetch("/api/base/document-classes", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: value }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error === "title_exists" ? "این کلاس سند قبلاً ثبت شده است." : data.error || "ثبت کلاس سند انجام نشد.");
-      setItems((previous) => [...previous, data.item]);
-      setTitle("");
-    } catch (err) {
-      setError(err.message || "ثبت کلاس سند انجام نشد.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <section className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900">
-      <h2 className="mb-4 text-sm font-bold">کلاس سند</h2>
-      <form onSubmit={add} className="flex items-center gap-3">
-        <input value={title} onChange={(event) => setTitle(event.target.value)} className={inputClass} placeholder="کلاس سند..." />
-        <button type="submit" disabled={saving} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/15 text-3xl font-light leading-none transition hover:bg-black/[.04] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/15 dark:hover:bg-white/10" aria-label="افزودن کلاس سند" title="افزودن کلاس سند">+</button>
-      </form>
-      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
-
-      <div className="mt-4 overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
-        <table className="w-full text-sm">
-          <thead className="bg-neutral-200 dark:bg-white/10"><tr><th className="w-20 px-4 py-3 text-right">#</th><th className="px-4 py-3 text-right">عنوان</th><th className="w-14 px-4 py-3"><input type="checkbox" aria-label="انتخاب همه" /></th></tr></thead>
-          <tbody>
-            {loading ? <tr><td colSpan="3" className="px-4 py-6 text-center text-neutral-500">در حال دریافت...</td></tr> : items.length ? items.map((item, index) => <tr key={item.id} className="border-t border-black/10 dark:border-white/10"><td className="px-4 py-3">{index + 1}</td><td className="px-4 py-3">{item.title}</td><td className="px-4 py-3 text-center"><input type="checkbox" aria-label={`انتخاب ${item.title}`} /></td></tr>) : <tr><td colSpan="3" className="px-4 py-6 text-center text-neutral-500">هنوز کلاسی ثبت نشده است.</td></tr>}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
+  useEffect(() => { if (!menuOpen) return undefined; const close = (event) => { if (!menuRef.current?.contains(event.target)) setMenuOpen(false); }; const escape = (event) => { if (event.key === "Escape") setMenuOpen(false); }; document.addEventListener("mousedown", close); document.addEventListener("keydown", escape); return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", escape); }; }, [menuOpen]);
+  const add = async (event) => { event.preventDefault(); const value = title.trim(); if (!value) return setError("عنوان کلاس سند را وارد کنید."); setSaving(true); setError(""); try { const data = await request({ method: "POST", body: JSON.stringify({ title: value }) }); setItems((previous) => [...previous, data.item]); setTitle(""); } catch (err) { setError(err.message === "title_exists" ? "این کلاس سند قبلاً ثبت شده است." : err.message); } finally { setSaving(false); } };
+  const toggleSelected = (id) => setSelectedIds((previous) => { const next = new Set(previous), key = String(id); next.has(key) ? next.delete(key) : next.add(key); return next; });
+  const allSelected = items.length > 0 && items.every((item) => selectedIds.has(String(item.id)));
+  const toggleAll = () => setSelectedIds(allSelected ? new Set() : new Set(items.map((item) => String(item.id))));
+  const selectedItem = selectedIds.size === 1 ? items.find((item) => selectedIds.has(String(item.id))) : null;
+  const saveEdit = async (event) => { event.preventDefault(); const value = editTitle.trim(); if (!value || !editingItem) return; setSaving(true); setError(""); try { const data = await request({ method: "PATCH", body: JSON.stringify({ id: editingItem.id, title: value }) }); setItems((previous) => previous.map((item) => item.id === data.item.id ? data.item : item)); setEditingItem(null); } catch (err) { setError(err.message === "title_exists" ? "این کلاس سند قبلاً ثبت شده است." : err.message); } finally { setSaving(false); } };
+  const removeSelected = async () => { setSaving(true); setError(""); try { await request({ method: "DELETE", body: JSON.stringify({ ids: [...selectedIds] }) }); setItems((previous) => previous.filter((item) => !selectedIds.has(String(item.id)))); setSelectedIds(new Set()); setDeleteOpen(false); } catch (err) { setError(err.message); } finally { setSaving(false); } };
+  return <section className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900"><h2 className="mb-4 text-sm font-bold">کلاس سند</h2><form onSubmit={add} className="flex items-center gap-3"><input value={title} onChange={(event) => setTitle(event.target.value)} className={inputClass} placeholder="کلاس سند..." /><button type="submit" disabled={saving} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/15 text-3xl font-light leading-none transition hover:bg-black/[.04] disabled:opacity-50 dark:border-white/15 dark:hover:bg-white/10" aria-label="افزودن کلاس سند">+</button></form>{error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+    <div className="mt-4 overflow-hidden rounded-2xl border border-neutral-300 dark:border-neutral-700"><div className="relative overflow-x-auto" dir="ltr"><table dir="rtl" className="w-full min-w-[540px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2"><colgroup><col style={{ width: 40 }} /><col style={{ width: 90 }} /><col /></colgroup><thead><tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100"><th className="bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allSelected} onChange={toggleAll} aria-label="انتخاب همه" /></th><th className="bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800">#</th><th className="relative bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800">عنوان <div ref={menuRef} className="absolute left-2 top-1/2 z-20 -translate-y-1/2" dir="rtl"><button type="button" onClick={() => setMenuOpen((open) => !open)} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="عملیات" aria-label="عملیات" aria-expanded={menuOpen}><img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform ${menuOpen ? "scale-110" : ""} dark:invert`} /></button>{menuOpen && <div className="absolute left-0 top-[calc(100%+8px)] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100"><div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500">{selectedIds.size ? `${selectedIds.size} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div><button type="button" disabled={!selectedItem} onClick={() => { setEditingItem(selectedItem); setEditTitle(selectedItem.title); setMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:opacity-45 dark:hover:bg-amber-500/10"><span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-100 dark:bg-amber-500/15">✎</span><span className="flex-1 text-sm font-semibold">ویرایش کلاس سند</span></button><button type="button" disabled={!selectedIds.size} onClick={() => { setDeleteOpen(true); setMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 place-items-center rounded-lg bg-red-100 dark:bg-red-500/15">×</span><span className="flex-1 text-sm font-semibold">حذف موارد انتخاب‌شده</span></button></div>}</div></th></tr></thead><tbody className="text-[13px] text-black [&>tr]:h-9 [&>tr>td]:!py-0 dark:text-neutral-100">{loading ? <tr><td colSpan="3" className="py-8 text-neutral-500">در حال دریافت...</td></tr> : items.length ? items.map((item, index) => <tr key={item.id} className="bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"><td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label={`انتخاب ${item.title}`} /></td><td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{index + 1}</td><td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700">{item.title}</td></tr>) : <tr><td colSpan="3" className="py-8 text-neutral-500">هنوز کلاسی ثبت نشده است.</td></tr>}</tbody></table></div></div>
+    {editingItem && <Modal title="ویرایش کلاس سند" onClose={() => setEditingItem(null)}><form onSubmit={saveEdit}><input autoFocus value={editTitle} onChange={(event) => setEditTitle(event.target.value)} className={inputClass} /><Actions onCancel={() => setEditingItem(null)} saving={saving} label="ذخیره" /></form></Modal>}{deleteOpen && <Modal title="حذف کلاس سند" onClose={() => setDeleteOpen(false)}><p className="text-sm text-neutral-600 dark:text-neutral-300">آیا از حذف {selectedIds.size} مورد انتخاب‌شده مطمئن هستید؟</p><Actions onCancel={() => setDeleteOpen(false)} saving={saving} label="حذف" onClick={removeSelected} danger /></Modal>}
+  </section>;
 }
+function Modal({ title, children, onClose }) { return <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/45 p-4" dir="rtl"><div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl dark:bg-neutral-900"><div className="mb-4 flex items-center justify-between"><b>{title}</b><button type="button" onClick={onClose} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-black/[.06]" aria-label="بستن">×</button></div>{children}</div></div>; }
+function Actions({ onCancel, saving, label, onClick, danger = false }) { return <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={onCancel} className="h-10 rounded-xl border border-black/10 px-4 text-sm dark:border-white/10">انصراف</button><button type={onClick ? "button" : "submit"} onClick={onClick} disabled={saving} className={`h-10 rounded-xl px-4 text-sm font-bold text-white disabled:opacity-50 ${danger ? "bg-red-600" : "bg-black dark:bg-white dark:text-black"}`}>{saving ? "در حال ثبت..." : label}</button></div>; }
