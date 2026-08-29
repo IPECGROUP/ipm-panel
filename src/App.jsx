@@ -15,6 +15,7 @@ import DefineBudgetCentersPage from "./pages/DefineBudgetCentersPage.jsx";
 import UnitsPage from "./pages/UnitsPage.jsx";
 import AccessManagementPage from "./pages/AccessManagementPage.jsx";
 import BaseCurrenciesPage from "./pages/BaseCurrenciesPage.jsx";
+import BaseInformationPage from "./pages/BaseInformationPage.jsx";
 import DailyReportPage from "./pages/DailyReportPage.jsx";
 import FinancialWorksheetPage from "./pages/FinancialWorksheetPage.jsx";
 import CostBreakdownPage from "./pages/CostBreakdownPage.jsx";
@@ -138,6 +139,7 @@ export default function App() {
         <Route path="/base/access-management" element={<AccessManagementPage />} />
         <Route path="/base/currencies" element={<BaseCurrenciesPage />} />
         <Route path="/base/tags" element={<TagsPage />} />
+        <Route path="/base/information" element={<BaseInformationPage />} />
         <Route
           path="/base/budget-codes"
           element={
