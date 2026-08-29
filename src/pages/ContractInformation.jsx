@@ -2104,15 +2104,7 @@ export default function ContractInformation() {
     const ids = new Set([...selectedAppendixIds].map(String));
     setAppendixTableMenuOpen(false);
     const financial = normalizeFinancial(form.financial || {});
-    const nextForm = {
-      ...form,
-      financial: {
-        ...financial,
-        appendices: financial.appendices.filter((row) => !ids.has(String(row.id))),
-      },
-      lastSavedSection: "appendices",
-      updatedAt: new Date().toISOString(),
-    };
+    const nextForm = { ...form, financial: { ...financial, appendices: financial.appendices.filter((row) => !ids.has(String(row.id))) } };
     const isPersistedContract = String(form.id || "") && rowById.has(String(form.id));
 
     if (!isPersistedContract) {
@@ -2128,8 +2120,8 @@ export default function ContractInformation() {
     setFinalSavingSection("appendices");
     try {
       const savedPayload = await fetchJson("/contracts", {
-        method: "POST",
-        body: JSON.stringify(nextForm),
+        method: "PATCH",
+        body: JSON.stringify({ id: form.id, action: "delete_appendices", appendixIds: [...ids], lastSavedSection: "appendices" }),
       });
       const savedId = String(savedPayload?.item?.id || form.id);
       const verifiedPayload = await fetchJson(`/contracts?id=${encodeURIComponent(savedId)}`);
@@ -4829,7 +4821,7 @@ export default function ContractInformation() {
                         </div>
                       </div>
 
-                      <div>
+                      <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
                         <div className="max-xl:overflow-x-auto">
                           <table className={`w-full min-w-[900px] text-sm ${financialTablePreset.table}`}>
                             <thead className={financialTablePreset.headRow}>
@@ -4846,7 +4838,7 @@ export default function ContractInformation() {
                                 </th>
                               </tr>
                             </thead>
-                            <tbody className={financialTablePreset.body}>{financialForm.appendices.length ? financialForm.appendices.map((row, index) => { const selected = selectedAppendixIds.has(String(row.id)); return <tr key={row.id} className={`${hoverSelectableRowPreset.rowBase} ${selected ? hoverSelectableRowPreset.rowSelected : hoverSelectableRowPreset.rowIdle}`}><td className="px-2 py-3 text-center"><input type="checkbox" className={hoverSelectableRowPreset.checkbox} checked={selected} onChange={() => toggleAppendixSelection(row.id)} aria-label={`انتخاب الحاقیه ${toFaDigits(index + 1)}`} /></td><td className="px-3 py-3 text-center">{toFaDigits(index + 1)}</td><td className="px-3 py-3 text-center">{toFaDigits(row.fromDate || "—")}</td><td className="px-3 py-3 text-center">{toFaDigits(row.toDate || "—")}</td><td className="px-3 py-3 text-center">{formatFinancialAmount(parseFinancialAmount(row.amount))}</td><td className="px-3 py-3 text-center">{row.currencyLabel || row.currencyId || "—"}</td><td className="px-3 py-3 text-center">{row.sourceLabel || row.sourceId || "—"}</td><td className="max-w-[260px] truncate px-3 py-3 text-right">{row.workScope || "—"}</td><td /></tr>; }) : <tr><td colSpan={9} className={financialTablePreset.emptyRow}>الحاقیه‌ای ثبت نشده است.</td></tr>}</tbody>
+                            <tbody className={financialTablePreset.body}>{financialForm.appendices.length ? financialForm.appendices.map((row, index) => { const selected = selectedAppendixIds.has(String(row.id)); return <tr key={row.id} className={`${hoverSelectableRowPreset.rowBase} ${selected ? "!bg-black/[0.035] dark:!bg-white/[0.07]" : hoverSelectableRowPreset.rowIdle}`}><td className="px-2 py-3 text-center"><input type="checkbox" className={hoverSelectableRowPreset.checkbox} checked={selected} onChange={() => toggleAppendixSelection(row.id)} aria-label={`انتخاب الحاقیه ${toFaDigits(index + 1)}`} /></td><td className="px-3 py-3 text-center">{toFaDigits(index + 1)}</td><td className="px-3 py-3 text-center">{toFaDigits(row.fromDate || "—")}</td><td className="px-3 py-3 text-center">{toFaDigits(row.toDate || "—")}</td><td className="px-3 py-3 text-center">{formatFinancialAmount(parseFinancialAmount(row.amount))}</td><td className="px-3 py-3 text-center">{row.currencyLabel || row.currencyId || "—"}</td><td className="px-3 py-3 text-center">{row.sourceLabel || row.sourceId || "—"}</td><td className="max-w-[260px] truncate px-3 py-3 text-right">{row.workScope || "—"}</td><td /></tr>; }) : <tr><td colSpan={9} className={financialTablePreset.emptyRow}>الحاقیه‌ای ثبت نشده است.</td></tr>}</tbody>
                           </table>
                         </div>
                       </div>
