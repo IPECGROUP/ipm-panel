@@ -25,7 +25,6 @@ const IcLetter = () => <NavIcon src="/images/icons/nameha.svg" />;
 const IcProjects = () => <NavIcon src="/images/icons/modiriat-projects.svg" />;
 const IcBudget = () => <NavIcon src="/images/icons/modiriat-mali.svg" />;
 const IcBase = () => <NavIcon src="/images/icons/atelaatpaye.svg" />;
-const IcCurrency = () => <NavIcon src="/images/icons/arz.svg" />;
 const IcContract = () => <NavIcon src="/images/icons/gharadad.svg" />;
 const IcTags = () => <NavIcon src="/images/icons/tags.svg" />;
 const IcBaseInformation = () => <NavIcon src="/images/icons/etelaat-paye.svg" />;
@@ -329,7 +328,6 @@ function RightNav() {
             { to: "/base/units", label: "ساختار سازمانی", hint: "واحدها، نقش ها و کاربران", icon: <NavIcon src="/images/icons/unit.svg" /> },
             { to: "/base/access-management", label: "دسترسی‌ها", icon: <NavIcon src="/images/icons/dastresiha.svg" /> },
             { to: "/centers/projects", label: "پروژه ها", hint: "تعریف و ویرایش پروژه ها", icon: <IcProjects /> },
-            { to: "/base/currencies", label: "ارزها", hint: "نرخ ها و واحدهای پولی", icon: <IcCurrency /> },
             { to: "/base/tags", label: "برچسب ها", hint: "دسته بندی داده ها", icon: <IcTags /> },
             { to: "/base/information", label: "اطلاعات پایه", hint: "مدیریت اطلاعات پایه سامانه", icon: <IcBaseInformation /> },
           ],

@@ -6,7 +6,7 @@ import { TableWrap, THead, TH, TD } from "../components/ui/Table.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 import { baseCurrenciesTablePreset as tablePreset, hoverSelectableRowPreset } from "../components/ui/tablePresets.js";
 
-function BaseCurrenciesPage() {
+function BaseCurrenciesPage({ embedded = false }) {
   const [types, setTypes] = React.useState([]);
   const [sources, setSources] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
@@ -588,12 +588,12 @@ function BaseCurrenciesPage() {
 
   return (
     <>
-      <Card className="rounded-2xl border bg-white text-black border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-        <div className="mb-4 text-base md:text-lg">
+      <Card className={embedded ? "!border-0 !bg-transparent !p-0 !shadow-none dark:!bg-transparent" : "rounded-2xl border bg-white text-black border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800"}>
+        {!embedded && <div className="mb-4 text-base md:text-lg">
           <span className="text-black/70 dark:text-neutral-300">تنظیمات</span>
           <span className="mx-2 text-black/50 dark:text-neutral-400">›</span>
           <span className="font-semibold text-black dark:text-neutral-100">ارزها</span>
-        </div>
+        </div>}
 
         <div className="mb-6">
           <Section

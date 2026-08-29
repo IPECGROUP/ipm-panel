@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Card from "../components/ui/Card.jsx";
+import BaseCurrenciesPage from "./BaseCurrenciesPage.jsx";
 
 const tabs = [
   { id: "documents", label: "مدیریت اسناد" },
@@ -23,8 +24,8 @@ export default function BaseInformationPage() {
           </div>
         </div>
 
-        <div className="mt-6 border-b border-black/10 dark:border-white/10">
-          <div className="flex overflow-x-auto" role="tablist" aria-label="بخش‌های اطلاعات پایه">
+        <div className="mt-6">
+          <div className="mx-auto flex w-full max-w-[1040px] overflow-x-auto" role="tablist" aria-label="بخش‌های اطلاعات پایه">
             {tabs.map((tab) => {
               const active = activeTab === tab.id;
               return (
@@ -34,7 +35,7 @@ export default function BaseInformationPage() {
                   role="tab"
                   aria-selected={active}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`min-w-[220px] flex-1 border border-b-0 px-5 py-3 text-sm font-bold transition first:rounded-tr-2xl last:rounded-tl-2xl ${active ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white text-neutral-800 hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-white/5"}`}
+                  className={`min-w-[220px] flex-1 border px-5 py-3 text-sm font-bold transition first:rounded-tr-2xl last:rounded-tl-2xl ${active ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white text-neutral-800 hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-white/5"}`}
                 >
                   {tab.label}
                 </button>
@@ -43,8 +44,8 @@ export default function BaseInformationPage() {
           </div>
         </div>
 
-        <section role="tabpanel" className="min-h-36 rounded-b-2xl border border-t-0 border-black/10 p-5 dark:border-white/10">
-          <h2 className="text-sm font-bold">{tabs.find((tab) => tab.id === activeTab)?.label}</h2>
+        <section role="tabpanel" className="rounded-2xl border border-black/10 p-4 dark:border-white/10">
+          {activeTab === "finance" ? <BaseCurrenciesPage embedded /> : <h2 className="text-sm font-bold">{tabs.find((tab) => tab.id === activeTab)?.label}</h2>}
         </section>
       </Card>
     </div>
