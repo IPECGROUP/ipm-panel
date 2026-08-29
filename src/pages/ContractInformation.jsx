@@ -4823,7 +4823,7 @@ export default function ContractInformation() {
 
                       <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
                         <div className="max-xl:overflow-x-auto">
-                          <table className={`w-full min-w-[1050px] text-sm ${financialTablePreset.table}`}>
+                          <table className={`w-full min-w-[1050px] text-sm ${financialTablePreset.table} [&_th:nth-child(8)]:!min-w-[300px] [&_td:nth-child(8)]:!min-w-[300px] [&_td:nth-child(8)]:!max-w-none [&_td:nth-child(8)]:!whitespace-normal [&_th:nth-child(9)]:!w-[155px] [&_th:nth-child(9)]:!min-w-[155px] [&_td:nth-child(9)]:!w-[155px] [&_td:nth-child(9)_div]:!max-w-none [&_td:nth-child(9)_div]:!flex-col [&_td:nth-child(9)_div]:!flex-nowrap [&_td:nth-child(9)_button]:!block [&_td:nth-child(9)_button]:!w-full`}>
                             <thead className={financialTablePreset.headRow}>
                               <tr>
                                 <th className="w-12 px-2"><input type="checkbox" className={hoverSelectableRowPreset.checkbox} checked={financialForm.appendices.length > 0 && financialForm.appendices.every((row) => selectedAppendixIds.has(String(row.id)))} onChange={(event) => setSelectedAppendixIds(event.target.checked ? new Set(financialForm.appendices.map((row) => String(row.id))) : new Set())} aria-label="انتخاب همه الحاقیه‌ها" /></th>
