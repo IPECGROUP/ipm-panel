@@ -318,8 +318,10 @@ export default function TenkhahPage({ embedded = false, active = true }) {
     selected &&
     (selected.canAct === true || Number(selected.currentAssigneeUserId) === Number(user?.id)) &&
     selected.status === "pending";
-  const hasFinalPaymentAmount = [selected?.cashPaymentAmount, selected?.creditPaymentAmount]
-    .some((value) => Number(toEnglishDigits(String(value || "")).replace(/[^\d]/g, "")) > 0);
+  const hasCashPayment = Number(toEnglishDigits(String(selected?.cashPaymentAmount || "")).replace(/[^\d]/g, "")) > 0;
+  const hasCreditPayment = Number(toEnglishDigits(String(selected?.creditPaymentAmount || "")).replace(/[^\d]/g, "")) > 0;
+  // A final payment may be cash-only, credit-only, or a combination of both.
+  const hasFinalPaymentAmount = hasCashPayment || hasCreditPayment;
   useEffect(() => {
     if (!selected || !incoming || selected.stage !== "project_manager") return;
     loadWorkflowRecipients("management").catch((e) => setError(e.message));
