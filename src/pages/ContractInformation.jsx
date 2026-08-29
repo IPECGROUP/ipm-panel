@@ -3443,7 +3443,7 @@ export default function ContractInformation() {
             </button>}
           </div>
 
-          <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
+          {!formOpen ? <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
             <div className="flex flex-wrap items-end gap-2">
               <div className="w-full sm:min-w-[260px] sm:flex-1">
                 <div className={labelCls}>جست و جو</div>
@@ -3494,7 +3494,7 @@ export default function ContractInformation() {
                 <img src="/images/icons/reset.svg" alt="" className="w-5 h-5 dark:invert" />
               </button>
             </div>
-          </div>
+          </div> : null}
 
           {loadError ? <div className="mt-3 text-sm text-red-600 dark:text-red-400">{loadError}</div> : null}
           {rowsError ? <div className="mt-3 text-sm text-red-600 dark:text-red-400">{rowsError}</div> : null}
@@ -4977,31 +4977,32 @@ export default function ContractInformation() {
             <div dir="ltr" className="hidden md:block relative max-h-[55vh] overflow-y-auto overflow-x-auto">
               <table
                 dir="rtl"
-                className="w-full min-w-[900px] table-fixed text-xs sm:min-w-[1120px] sm:text-sm [&_th]:text-center [&_td]:text-center [&_th]:py-2 [&_td]:py-2 [&_th]:whitespace-nowrap [&_td]:min-w-0"
+                className="w-full min-w-[1100px] table-fixed text-xs sm:text-sm [&_th]:whitespace-nowrap [&_th]:py-2 [&_th]:text-center [&_td]:min-w-0 [&_td]:py-2 [&_td]:text-center"
               >
                 <colgroup>
+                  <col style={{ width: 70 }} />
                   <col style={{ width: 260 }} />
-                  <col style={{ width: 150 }} />
-                  <col style={{ width: 160 }} />
+                  <col style={{ width: 180 }} />
                   <col />
-                  <col style={{ width: 220 }} />
-                  <col style={{ width: 130 }} />
+                  <col style={{ width: 135 }} />
+                  <col style={{ width: 180 }} />
+                  <col style={{ width: 210 }} />
                 </colgroup>
                 <thead>
                   <tr className={contractsTableHeadRowCls}>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">مرکز/پروژه</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">شماره قرارداد</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">نوع قرارداد</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">موضوع قرارداد</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">شرکت</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-white/10">عملیات</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800">ردیف</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800">پروژه</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800">سطح / نوع</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800">موضوع قرارداد</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800">تاریخ</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800">مبلغ</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800">آخرین وضعیت</th>
                   </tr>
                 </thead>
                 <tbody className={contractsTableBodyCls}>
                   {contractsPageRows.length ? (
                     contractsPageRows.map((row, index) => {
                       const project = projectById.get(String(row.projectId));
-                      const contractNo = contractNoForRow(row, rowById);
                       const id = String(row.id);
                       const childRows = childRowsByParentId.get(id) || [];
                       const hasChildren = childRows.length > 0;
@@ -5010,11 +5011,17 @@ export default function ContractInformation() {
                       const isLast = index === contractsPageRows.length - 1;
                       const divider = isLast ? "" : contractsRowDividerCls;
                       const projectLabel = project?.label || "بدون پروژه";
-                      const companyText = contractCompanyForRow(row) || "ثبت نشده";
-                      const companyRole = contractCompanyRoleForRow(row);
+                      const levelText = documentTypeLabel(row.documentType);
+                      const typeText = row.general?.contractType || "ثبت نشده";
+                      const dateText = row.calendar?.startDate || row.calendar?.notifyDate || row.calendar?.endDate || "";
+                      const amountRow = normalizeFinancial(row.financial || {}).contractAmounts.find((item) => hasFinancialAmount(item.amount));
+                      const amountText = amountRow ? formatFinancialAmount(parseFinancialAmount(amountRow.amount)) : "—";
+                      const currencyText = amountRow?.currencyLabel || amountRow?.currencyId || "—";
+                      const statusText = row.insurance?.lastStatus || "ثبت نشده";
 
                       return (
-                        <tr key={row.id} className={`group bg-white transition-colors hover:bg-black/[0.04] dark:bg-neutral-900 dark:hover:bg-white/10 ${depth ? "bg-black/[0.025] dark:bg-white/[0.035]" : ""}`}>
+                        <tr key={row.id} onDoubleClick={() => setPreviewContractId(id)} className={`group bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10 ${depth ? "!bg-black/[0.035] dark:!bg-white/[0.07]" : ""}`}>
+                          <td className={`px-3 font-semibold ${divider}`}>{toFaDigits(contractsStartIdx + index + 1)}</td>
                           <td className={`px-3 ${divider}`}>
                             <div className={`flex items-center gap-2 ${depth ? "pr-7" : ""}`}>
                               {hasChildren ? (
@@ -5033,10 +5040,9 @@ export default function ContractInformation() {
                               <span className="block truncate text-right" title={projectLabel}>{projectLabel}</span>
                             </div>
                           </td>
-                          <td className={`px-3 font-semibold ${divider}`}>{contractNo ? toFaDigits(contractNo) : "ثبت نشده"}</td>
                           <td className={`px-3 ${divider}`}>
-                            <div className="truncate font-semibold">{row.general?.contractType || "ثبت نشده"}</div>
-                            <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{documentTypeLabel(row.documentType)}</div>
+                            <div className="truncate font-semibold">{levelText}</div>
+                            <div className="mt-1 truncate text-xs text-black/50 dark:text-neutral-400" title={typeText}>{typeText}</div>
                           </td>
                           <td className={`px-3 ${divider}`}>
                             <div className="mx-auto max-w-[260px] truncate" title={row.general?.contractSubject || ""}>
@@ -5044,15 +5050,19 @@ export default function ContractInformation() {
                             </div>
                           </td>
                           <td className={`px-3 ${divider}`}>
-                            <div className="mx-auto max-w-[220px] truncate font-semibold" title={companyText}>
-                              {companyText}
-                            </div>
-                            <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{companyRole}</div>
+                            {dateText ? toFaDigits(String(dateText).replaceAll("-", "/")) : "—"}
                           </td>
                           <td className={`px-3 ${divider}`}>
-                            <div className={centeredRowActionsCls}>
+                            <div className="font-semibold tabular-nums">{amountText}</div>
+                            <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{currencyText}</div>
+                          </td>
+                          <td className={`px-3 ${divider}`}>
+                            <div className="relative flex min-h-[38px] items-center justify-center px-16">
+                              <span className="max-w-full truncate rounded-full bg-black/[0.05] px-3 py-1 text-xs font-semibold dark:bg-white/10" title={statusText}>{statusText}</span>
+                              <div className="absolute left-0 top-1/2 flex -translate-y-1/2 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                               {canContract("پیش‌نمایش") && <RowActionIconBtn icon="/images/icons/namayeshname.svg" title="پیش نمایش" onClick={() => setPreviewContractId(id)} size={34} iconSize={16} />}
                               {canContract("ویرایش") && <RowActionIconBtn action="edit" onClick={() => openEditForm(row)} size={34} iconSize={15} />}
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -5060,7 +5070,7 @@ export default function ContractInformation() {
                     })
                   ) : (
                     <tr>
-                      <td colSpan={6} className="px-3 py-8 text-center text-black/55 dark:text-neutral-400">
+                      <td colSpan={7} className="px-3 py-8 text-center text-black/55 dark:text-neutral-400">
                         قراردادی برای نمایش وجود ندارد.
                       </td>
                     </tr>
