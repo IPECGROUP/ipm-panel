@@ -2382,6 +2382,8 @@ export default function ContractInformation() {
     const nextTab = CONTRACT_SECTION_TABS.some((tab) => tab.id === draftSection) ? draftSection : CONTRACT_SECTION_TABS[0].id;
 
     setForm(next);
+    setAppendixDraft(makeAppendixRow());
+    setEditingAppendixId("");
     setRelatedPickQuery("");
     setRelatedPickTarget("contract");
     setActiveContractTab(next.documentType === "appendix" && ["general", "insurance"].includes(nextTab) ? "calendar" : nextTab);
@@ -2396,6 +2398,8 @@ export default function ContractInformation() {
   const openEditForm = (row) => {
     const next = normalizeContractRow(row);
     setForm(next);
+    setAppendixDraft(makeAppendixRow());
+    setEditingAppendixId("");
     setRelatedPickQuery("");
     setRelatedPickTarget("contract");
     setActiveContractTab(next.documentType === "appendix" ? "calendar" : CONTRACT_SECTION_TABS[0].id);
@@ -2414,6 +2418,8 @@ export default function ContractInformation() {
     // id, so always remove both local and server-side draft data.
     void deleteContractDraft();
     setForm(emptyForm());
+    setAppendixDraft(makeAppendixRow());
+    setEditingAppendixId("");
     setRelatedPickQuery("");
     setRelatedPickTarget("contract");
     setActiveContractTab(CONTRACT_SECTION_TABS[0].id);
@@ -4694,13 +4700,13 @@ export default function ContractInformation() {
                     <div className="space-y-4 p-3 sm:p-4">
                       {currencyError ? <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">{currencyError}</div> : null}
                       <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(140px,1fr)_minmax(140px,1fr)_minmax(120px,1fr)_minmax(130px,1fr)_minmax(130px,1fr)_minmax(220px,2fr)]">
                           <div><div className={labelCls}>از *</div><ContractDatePicker value={appendixDraft.fromDate} onChange={(value) => updateAppendixDraft("fromDate", value)} /></div>
                           <div><div className={labelCls}>تا *</div><ContractDatePicker value={appendixDraft.toDate} onChange={(value) => updateAppendixDraft("toDate", value)} /></div>
                           <div><div className={labelCls}>مبلغ *</div><input value={formatAmountInput(appendixDraft.amount)} onChange={(e) => updateAppendixDraft("amount", e.target.value)} className={inputCls} type="text" inputMode="decimal" dir="ltr" placeholder="0" /></div>
                           <div><div className={labelCls}>ارز *</div><select value={appendixDraft.currencyId} onChange={(e) => updateAppendixDraft("currencyId", e.target.value)} className={inputCls} disabled={currencyLoading}><option value="">{currencyLoading ? "در حال بارگذاری..." : "انتخاب ارز"}</option>{currencyItems.map((item) => { const id = readItemId(item); return id ? <option key={id} value={id}>{readItemLabel(item) || id}</option> : null; })}</select></div>
                           <div><div className={labelCls}>منشأ *</div><select value={appendixDraft.sourceId} onChange={(e) => updateAppendixDraft("sourceId", e.target.value)} className={inputCls} disabled={currencyLoading}><option value="">{currencyLoading ? "در حال بارگذاری..." : "انتخاب منشأ"}</option>{currencySourceItems.map((item) => { const id = readItemId(item); return id ? <option key={id} value={id}>{readItemLabel(item) || id}</option> : null; })}</select></div>
-                          <div className="md:col-span-2 xl:col-span-3"><div className={labelCls}>دامنه کار *</div><input value={appendixDraft.workScope} onChange={(e) => updateAppendixDraft("workScope", e.target.value)} className={inputCls} type="text" /></div>
+                          <div><div className={labelCls}>دامنه کار *</div><input value={appendixDraft.workScope} onChange={(e) => updateAppendixDraft("workScope", e.target.value)} className={inputCls} type="text" /></div>
                         </div>
                         <div className="mt-3 flex flex-wrap items-end gap-2">
                           <div className="min-w-[220px] flex-1"><div className={labelCls}>اسناد مرتبط</div><div className="flex min-h-11 flex-wrap items-center gap-1 rounded-xl border border-black/10 bg-black/[0.02] px-2 py-1 dark:border-neutral-700 dark:bg-white/[0.03]">{normalizeIdList(appendixDraft.relatedLetterIds).length ? normalizeIdList(appendixDraft.relatedLetterIds).map((id) => <span key={id} className="rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10">{toFaDigits(secretariatNoOf(letterById.get(id)) || letterNoOf(letterById.get(id)) || id)}</span>) : <span className="px-1 text-xs text-black/50 dark:text-neutral-400">سندی انتخاب نشده است</span>}</div></div>
