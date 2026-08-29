@@ -1225,7 +1225,9 @@ export default function ContractInformation() {
   const [editingAppendixId, setEditingAppendixId] = React.useState("");
   const [selectedAppendixIds, setSelectedAppendixIds] = React.useState(() => new Set());
   const [appendixTableMenuOpen, setAppendixTableMenuOpen] = React.useState(false);
+  const [appendixTableMenuPosition, setAppendixTableMenuPosition] = React.useState({ top: 0, left: 0 });
   const appendixTableMenuRef = React.useRef(null);
+  const appendixTablePopoverRef = React.useRef(null);
   const draftSaveTimerRef = React.useRef(null);
   const draftStatusTimerRef = React.useRef(null);
   const lastDraftSignatureRef = React.useRef("");
@@ -2096,29 +2098,94 @@ export default function ContractInformation() {
     setAppendixTableMenuOpen(false);
   };
 
-  const deleteSelectedAppendices = () => {
+  const deleteSelectedAppendices = async () => {
     if (!selectedAppendixIds.size) return;
     if (!window.confirm(`آیا ${toFaDigits(selectedAppendixIds.size)} الحاقیه انتخاب‌شده حذف شود؟`)) return;
     const ids = new Set([...selectedAppendixIds].map(String));
-    setForm((prev) => {
-      const financial = normalizeFinancial(prev.financial || {});
-      return { ...prev, financial: { ...financial, appendices: financial.appendices.filter((row) => !ids.has(String(row.id))) } };
-    });
-    if (ids.has(String(editingAppendixId))) {
-      setAppendixDraft(makeAppendixRow());
-      setEditingAppendixId("");
-    }
-    setSelectedAppendixIds(new Set());
     setAppendixTableMenuOpen(false);
+    const financial = normalizeFinancial(form.financial || {});
+    const nextForm = {
+      ...form,
+      financial: {
+        ...financial,
+        appendices: financial.appendices.filter((row) => !ids.has(String(row.id))),
+      },
+      lastSavedSection: "appendices",
+      updatedAt: new Date().toISOString(),
+    };
+    const isPersistedContract = String(form.id || "") && rowById.has(String(form.id));
+
+    if (!isPersistedContract) {
+      setForm(nextForm);
+      if (ids.has(String(editingAppendixId))) {
+        setAppendixDraft(makeAppendixRow());
+        setEditingAppendixId("");
+      }
+      setSelectedAppendixIds(new Set());
+      return;
+    }
+
+    setFinalSavingSection("appendices");
+    try {
+      const savedPayload = await fetchJson("/contracts", {
+        method: "POST",
+        body: JSON.stringify(nextForm),
+      });
+      const savedId = String(savedPayload?.item?.id || form.id);
+      const verifiedPayload = await fetchJson(`/contracts?id=${encodeURIComponent(savedId)}`);
+      const verifiedRow = normalizeContractRow(verifiedPayload?.item || {});
+      const persistedAppendixIds = new Set(normalizeFinancial(verifiedRow.financial || {}).appendices.map((row) => String(row.id)));
+      if ([...ids].some((id) => persistedAppendixIds.has(id))) throw new Error("appendix_delete_not_persisted");
+
+      const refreshedRows = await fetchContractRows();
+      setRows(refreshedRows);
+      setForm(verifiedRow);
+      if (ids.has(String(editingAppendixId))) {
+        setAppendixDraft(makeAppendixRow());
+        setEditingAppendixId("");
+      }
+      setSelectedAppendixIds(new Set());
+      finalSavedDraftSignatureRef.current = contractDraftSignature(contractDraftPayloadFromForm(verifiedRow, "appendices"));
+      lastDraftSignatureRef.current = finalSavedDraftSignatureRef.current;
+      await deleteContractDraft();
+      showFinalSaveMessage("appendices", "الحاقیه‌های انتخاب‌شده حذف شدند");
+      setRowsError("");
+    } catch (error) {
+      alert(error?.message === "appendix_delete_not_persisted" ? "حذف الحاقیه در سرور تایید نشد؛ دوباره تلاش کنید." : error?.message || "خطا در حذف الحاقیه");
+    } finally {
+      setFinalSavingSection((current) => (current === "appendices" ? "" : current));
+    }
+  };
+
+  const toggleAppendixTableMenu = () => {
+    if (appendixTableMenuOpen) {
+      setAppendixTableMenuOpen(false);
+      return;
+    }
+    const rect = appendixTableMenuRef.current?.getBoundingClientRect();
+    if (rect) {
+      setAppendixTableMenuPosition({
+        top: Math.min(rect.bottom + 8, window.innerHeight - 190),
+        left: Math.max(8, Math.min(rect.left, window.innerWidth - 248)),
+      });
+    }
+    setAppendixTableMenuOpen(true);
   };
 
   React.useEffect(() => {
     if (!appendixTableMenuOpen) return undefined;
     const closeMenu = (event) => {
-      if (!appendixTableMenuRef.current?.contains(event.target)) setAppendixTableMenuOpen(false);
+      if (!appendixTableMenuRef.current?.contains(event.target) && !appendixTablePopoverRef.current?.contains(event.target)) setAppendixTableMenuOpen(false);
     };
     document.addEventListener("mousedown", closeMenu);
-    return () => document.removeEventListener("mousedown", closeMenu);
+    const closeOnViewportChange = () => setAppendixTableMenuOpen(false);
+    window.addEventListener("resize", closeOnViewportChange);
+    window.addEventListener("scroll", closeOnViewportChange, true);
+    return () => {
+      document.removeEventListener("mousedown", closeMenu);
+      window.removeEventListener("resize", closeOnViewportChange);
+      window.removeEventListener("scroll", closeOnViewportChange, true);
+    };
   }, [appendixTableMenuOpen]);
 
   const setFinancialField = (field, value) => {
@@ -3125,7 +3192,7 @@ export default function ContractInformation() {
   };
 
   const renderSaveButton = (sectionId) => {
-    const isDraftSection = sectionId !== "financial";
+    const isDraftSection = !["financial", "appendices"].includes(sectionId);
     const isFinalSaving = finalSavingSection === sectionId;
     const showFinalStatus = finalSaveStatus.sectionId === sectionId && finalSaveStatus.message;
     const showDraftStatus = isDraftSection && draftSaveStatus.sectionId === sectionId && draftSaveStatus.state;
@@ -3140,7 +3207,7 @@ export default function ContractInformation() {
           : "text-black/50 dark:text-neutral-400";
 
     return (
-      <div className="relative flex items-center justify-center">
+      <div className="flex min-h-11 items-center justify-center gap-2">
         <button
           type="button"
           onClick={() => saveContractSection(sectionId)}
@@ -3153,8 +3220,8 @@ export default function ContractInformation() {
         </button>
         <div
           className={[
-            "pointer-events-none absolute top-full left-1/2 mt-1 h-4 -translate-x-1/2 whitespace-nowrap text-[10px] font-semibold leading-4 transition-all duration-200",
-            isFinalSaving || showFinalStatus || showDraftStatus ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0",
+            "pointer-events-none max-w-40 whitespace-normal text-right text-[10px] font-semibold leading-4 transition-opacity duration-200",
+            isFinalSaving || showFinalStatus || showDraftStatus ? "opacity-100" : "opacity-0",
             !showFinalStatus && draftSaveStatus.state === "saving" ? "animate-pulse" : "",
             isFinalSaving || showFinalStatus ? "text-emerald-600 dark:text-emerald-400" : draftStatusCls,
           ].join(" ")}
@@ -4762,20 +4829,20 @@ export default function ContractInformation() {
                         </div>
                       </div>
 
-                      <div className="rounded-2xl border border-black/10 bg-white dark:border-neutral-800 dark:bg-neutral-900">
-                        <div className="overflow-visible rounded-2xl max-xl:overflow-x-auto">
+                      <div>
+                        <div className="max-xl:overflow-x-auto">
                           <table className={`w-full min-w-[900px] text-sm ${financialTablePreset.table}`}>
                             <thead className={financialTablePreset.headRow}>
                               <tr>
                                 <th className="w-12 px-2"><input type="checkbox" className={hoverSelectableRowPreset.checkbox} checked={financialForm.appendices.length > 0 && financialForm.appendices.every((row) => selectedAppendixIds.has(String(row.id)))} onChange={(event) => setSelectedAppendixIds(event.target.checked ? new Set(financialForm.appendices.map((row) => String(row.id))) : new Set())} aria-label="انتخاب همه الحاقیه‌ها" /></th>
                                 <th className={`${financialTablePreset.th} px-3`}>الحاقیه</th><th className={`${financialTablePreset.th} px-3`}>از</th><th className={`${financialTablePreset.th} px-3`}>تا</th><th className={`${financialTablePreset.th} px-3`}>مبلغ</th><th className={`${financialTablePreset.th} px-3`}>ارز</th><th className={`${financialTablePreset.th} px-3`}>منشأ</th><th className={`${financialTablePreset.th} px-3 !text-right`}>دامنه کار</th>
-                                <th className="relative w-14 px-2" ref={appendixTableMenuRef}>
-                                  <button type="button" onClick={() => setAppendixTableMenuOpen((open) => !open)} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت الحاقیه‌ها" aria-label="مدیریت الحاقیه‌ها" aria-expanded={appendixTableMenuOpen}><img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${appendixTableMenuOpen ? "scale-110" : ""} dark:invert`} /></button>
-                                  {appendixTableMenuOpen ? <div className="table-menu-popover absolute left-0 top-[calc(100%+8px)] z-50 w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
+                                <th className="w-14 px-2">
+                                  <button ref={appendixTableMenuRef} type="button" onClick={toggleAppendixTableMenu} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت الحاقیه‌ها" aria-label="مدیریت الحاقیه‌ها" aria-expanded={appendixTableMenuOpen}><img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${appendixTableMenuOpen ? "scale-110" : ""} dark:invert`} /></button>
+                                  {appendixTableMenuOpen ? createPortal(<div ref={appendixTablePopoverRef} dir="rtl" style={{ top: appendixTableMenuPosition.top, left: appendixTableMenuPosition.left }} className="table-menu-popover fixed z-[10020] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
                                     <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedAppendixIds.size ? `${toFaDigits(selectedAppendixIds.size)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
                                     <button type="button" disabled={selectedAppendixIds.size !== 1} onClick={editSelectedAppendix} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="min-w-0 flex-1 text-sm font-semibold">ویرایش الحاقیه</span></button>
                                     <button type="button" disabled={!selectedAppendixIds.size} onClick={deleteSelectedAppendices} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 transition group-hover:scale-105 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span><span className="min-w-0 flex-1 text-sm font-semibold">حذف موارد انتخاب‌شده</span></button>
-                                  </div> : null}
+                                  </div>, document.body) : null}
                                 </th>
                               </tr>
                             </thead>
