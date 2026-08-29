@@ -4700,7 +4700,7 @@ export default function ContractInformation() {
                     <div className="space-y-4 p-3 sm:p-4">
                       {currencyError ? <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">{currencyError}</div> : null}
                       <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[105px_105px_110px_120px_120px_minmax(230px,2fr)_94px]">
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[105px_105px_140px_120px_150px_minmax(190px,1.5fr)_94px]">
                           <div><div className={labelCls}>از *</div><ContractDatePicker value={appendixDraft.fromDate} onChange={(value) => updateAppendixDraft("fromDate", value)} /></div>
                           <div><div className={labelCls}>تا *</div><ContractDatePicker value={appendixDraft.toDate} onChange={(value) => updateAppendixDraft("toDate", value)} /></div>
                           <div><div className={labelCls}>مبلغ *</div><input value={formatAmountInput(appendixDraft.amount)} onChange={(e) => updateAppendixDraft("amount", e.target.value)} className={inputCls} type="text" inputMode="decimal" dir="ltr" placeholder="0" /></div>
