@@ -126,6 +126,7 @@ const EMPTY_FORM = {
   relatedLetterId: "",
   relatedLetterIds: [],
   general: {
+    registrationType: "official",
     contractType: "",
     customContractType: false,
     contractSubject: "",
@@ -3225,16 +3226,15 @@ export default function ContractInformation() {
     <div dir="rtl" className="ipm-contract-information mx-auto w-full max-w-[1400px] px-2 font-sans text-[13px] sm:px-0 sm:text-sm">
       <Card className="!p-0 rounded-xl border overflow-hidden border-black/10 bg-white text-black sm:rounded-2xl dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
         <div className="p-2.5 sm:p-3 md:p-4">
-          <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="mb-5 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
                 <img src="/images/icons/gharadad.svg" alt="" className="h-6 w-6 dark:invert" />
               </span>
-              <div className="text-base md:text-lg">
-                <span className="text-neutral-700 dark:text-neutral-300">پروژه‌ها</span>
-                <span className="mx-2 text-neutral-500 dark:text-neutral-400">›</span>
-                <span className="font-semibold text-neutral-900 dark:text-neutral-100">قراردادها</span>
-              </div>
+              <span className="min-w-0">
+                <span className="block truncate text-base font-bold md:text-lg">قراردادها</span>
+                <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">پروژه‌ها</span>
+              </span>
             </div>
             {canContract("افزودن") && <button
               type="button"
@@ -3310,7 +3310,7 @@ export default function ContractInformation() {
 
           {formOpen ? (
             <div className="mt-4 rounded-2xl border border-black/10 bg-black/[0.02] p-2.5 sm:p-3 dark:border-neutral-800 dark:bg-white/[0.03]">
-              <div className="flex flex-wrap items-end gap-2">
+              <div className="hidden">
                 <div className="w-full sm:min-w-[260px] sm:flex-1">
                   <div className={labelCls}>مرکز/پروژه *</div>
                   <select
@@ -3498,7 +3498,49 @@ export default function ContractInformation() {
                 <div className={tabbedPanelClass}>
                   {activeContractTab === "general" ? (
                     <div className="space-y-4 p-3 sm:p-4">
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-[220px_minmax(360px,1fr)]">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                        <div className="min-w-0">
+                          <div className={labelCls}>پروژه *</div>
+                          <select
+                            value={form.projectId}
+                            onChange={(e) => setField("projectId", e.target.value)}
+                            className={inputCls}
+                            disabled={projectsLoading}
+                          >
+                            <option value="">{projectsLoading ? "در حال بارگذاری پروژه‌ها..." : "انتخاب پروژه فعال"}</option>
+                            {projects.map((project) => (
+                              <option key={project.id} value={project.id}>
+                                {project.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className={labelCls}>سطح</div>
+                          <select value={form.documentType} onChange={(e) => setField("documentType", e.target.value)} className={inputCls}>
+                            {CONTRACT_DOCUMENT_TYPES.filter((item) => item.id === "main" || item.id === "sub").map((item) => (
+                              <option key={item.id} value={item.id} disabled={item.id === "main" && projectAlreadyHasMainContract}>
+                                {item.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className={labelCls}>ثبت</div>
+                          <select
+                            value={form.general?.registrationType || "official"}
+                            onChange={(e) => setGeneralField("registrationType", e.target.value)}
+                            className={inputCls}
+                          >
+                            <option value="official">رسمی</option>
+                            <option value="unofficial">غیر رسمی</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                         <div className="min-w-0">
                           <div className={labelCls}>نوع قرارداد *</div>
                           {form.general?.customContractType ? (
@@ -3527,13 +3569,99 @@ export default function ContractInformation() {
                         </div>
 
                         <div className="min-w-0">
-                          <div className={labelCls}>موضوع قرارداد *</div>
+                          <div className={labelCls}>شماره قرارداد *</div>
+                          {form.documentType === "main" ? (
+                            <input
+                              value={form.contractNo}
+                              onChange={(e) => setField("contractNo", e.target.value)}
+                              className={inputCls}
+                              type="text"
+                              disabled={mainContractBlockedForProject}
+                            />
+                          ) : (
+                            <select
+                              value={form.parentContractId}
+                              onChange={(e) => setField("parentContractId", e.target.value)}
+                              className={inputCls}
+                            >
+                              <option value="">
+                                {form.projectId
+                                  ? projectContractOptions.length
+                                    ? "انتخاب شماره قرارداد"
+                                    : "موردی برای این پروژه ثبت نشده است"
+                                  : "ابتدا پروژه را انتخاب کنید"}
+                              </option>
+                              {projectContractOptions.map((contract) => (
+                                <option key={contract.id} value={contract.id}>
+                                  {contractNoForRow(contract, rowById)} - {documentTypeLabel(contract.documentType)}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                          {mainContractBlockedForProject ? (
+                            <div className="mt-1 text-xs font-semibold text-red-600 dark:text-red-400">
+                              برای این پروژه قبلا قرارداد اصلی ثبت شده است؛ فقط قرارداد فرعی قابل ثبت است.
+                            </div>
+                          ) : null}
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className={labelCls}>موضوع *</div>
                           <input
                             value={form.general?.contractSubject || ""}
                             onChange={(e) => setGeneralField("contractSubject", e.target.value)}
                             className={inputCls}
                             type="text"
                           />
+                        </div>
+                      </div>
+
+                      {form.documentType === "sub" ? (
+                        <div className="max-w-md min-w-0">
+                          <div className={labelCls}>شماره قرارداد فرعی *</div>
+                          <input
+                            value={form.subContractNo || ""}
+                            onChange={(e) => setField("subContractNo", e.target.value)}
+                            className={inputCls}
+                            type="text"
+                          />
+                        </div>
+                      ) : null}
+
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-[44px_minmax(0,1fr)] md:items-end">
+                        <div>
+                          <div className={labelCls}>اسناد مرتبط</div>
+                          <button
+                            type="button"
+                            onClick={() => openRelatedPicker("contract")}
+                            className={`${iconBtnCls} !h-11 !w-11`}
+                            aria-label="انتخاب اسناد مرتبط"
+                            title="انتخاب اسناد مرتبط"
+                          >
+                            <img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" />
+                          </button>
+                        </div>
+                        <div className="flex min-h-11 flex-wrap items-center gap-1 rounded-xl border border-black/10 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-800">
+                          {selectedRelatedLetterSummaryItems.length ? (
+                            selectedRelatedLetterSummaryItems.map((item) => (
+                              <span key={item.id} className="inline-flex items-center gap-1 rounded-lg border border-black/10 bg-black/[0.03] px-2 py-1 text-xs font-semibold dark:border-white/10 dark:bg-white/[0.06]">
+                                <button type="button" onClick={() => setRelatedLetterPreviewId(item.id)} className="underline decoration-black/20 underline-offset-4">
+                                  {item.label}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => removeRelatedLetter(item.id)}
+                                  className="grid h-4 w-4 place-items-center rounded-full text-red-600 dark:text-red-300"
+                                  aria-label={`حذف ${item.label}`}
+                                  title="حذف"
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-xs text-black/50 dark:text-neutral-400">سندی انتخاب نشده است</span>
+                          )}
                         </div>
                       </div>
 
