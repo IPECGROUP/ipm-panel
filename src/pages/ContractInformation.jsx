@@ -1191,10 +1191,14 @@ export default function ContractInformation() {
   const [rowsError, setRowsError] = React.useState("");
   const [contractsPage, setContractsPage] = React.useState(0);
   const [contractsRowsPerPage, setContractsRowsPerPage] = React.useState(10);
+  const [selectedContractIds, setSelectedContractIds] = React.useState(() => new Set());
+  const [contractTableMenuOpen, setContractTableMenuOpen] = React.useState(false);
+  const [contractTableMenuPosition, setContractTableMenuPosition] = React.useState({ top: 0, left: 0 });
+  const contractTableMenuRef = React.useRef(null);
+  const contractTablePopoverRef = React.useRef(null);
   const [formOpen, setFormOpen] = React.useState(false);
   const [form, setForm] = React.useState(() => emptyForm());
   const [activeContractTab, setActiveContractTab] = React.useState(CONTRACT_SECTION_TABS[0].id);
-  const [expandedContractIds, setExpandedContractIds] = React.useState(() => new Set());
   const [previewContractId, setPreviewContractId] = React.useState("");
   const [previewFileIndex, setPreviewFileIndex] = React.useState(0);
   const [relatedLetterPreviewId, setRelatedLetterPreviewId] = React.useState("");
@@ -1519,18 +1523,6 @@ export default function ContractInformation() {
     return map;
   }, [rows]);
 
-  const childRowsByParentId = React.useMemo(() => {
-    const map = new Map();
-    rows.forEach((row) => {
-      const parentId = String(row?.parentContractId || "");
-      if (!parentId) return;
-      const list = map.get(parentId) || [];
-      list.push(row);
-      map.set(parentId, list);
-    });
-    return map;
-  }, [rows]);
-
   const letterById = React.useMemo(() => {
     const map = new Map();
     letters.forEach((letter) => map.set(String(letterIdOf(letter)), letter));
@@ -1709,33 +1701,7 @@ export default function ContractInformation() {
     setContractsPage(0);
   }, [filterDocType, filterProjectId, filterQuery, contractsRowsPerPage]);
 
-  const contractsDisplayRows = React.useMemo(() => {
-    const filteredIds = new Set(filteredRows.map((row) => String(row.id)));
-    const usedIds = new Set();
-    const list = [];
-
-    filteredRows.forEach((row) => {
-      const id = String(row.id || "");
-      if (!id || usedIds.has(id)) return;
-      const parentId = String(row.parentContractId || "");
-      if (parentId && filteredIds.has(parentId)) return;
-
-      list.push({ ...row, __depth: parentId ? 1 : 0 });
-      usedIds.add(id);
-
-      const children = childRowsByParentId.get(id) || [];
-      if (expandedContractIds.has(id)) {
-        children.forEach((child) => {
-          const childId = String(child.id || "");
-          if (!childId || usedIds.has(childId)) return;
-          list.push({ ...child, __depth: 1 });
-          usedIds.add(childId);
-        });
-      }
-    });
-
-    return list;
-  }, [childRowsByParentId, expandedContractIds, filteredRows]);
+  const contractsDisplayRows = filteredRows;
 
   const contractsTotal = contractsDisplayRows.length;
   const contractsPageCount = Math.max(1, Math.ceil(contractsTotal / Math.max(1, contractsRowsPerPage)));
@@ -1747,38 +1713,6 @@ export default function ContractInformation() {
   React.useEffect(() => {
     if (contractsPage !== safeContractsPage) setContractsPage(safeContractsPage);
   }, [contractsPage, safeContractsPage]);
-
-  React.useEffect(() => {
-    const parentIds = new Set(
-      rows
-        .map((row) => String(row?.parentContractId || ""))
-        .filter(Boolean)
-    );
-    if (!parentIds.size) return;
-
-    setExpandedContractIds((prev) => {
-      let changed = false;
-      const next = new Set(prev);
-      parentIds.forEach((id) => {
-        if (!next.has(id)) {
-          next.add(id);
-          changed = true;
-        }
-      });
-      return changed ? next : prev;
-    });
-  }, [rows]);
-
-  const toggleContractChildren = (id) => {
-    const sid = String(id || "");
-    if (!sid) return;
-    setExpandedContractIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(sid)) next.delete(sid);
-      else next.add(sid);
-      return next;
-    });
-  };
 
   const showFinalSaveMessage = (sectionId, message) => {
     if (finalSaveStatusTimerRef.current) {
@@ -2788,6 +2722,66 @@ export default function ContractInformation() {
       alert(error?.message || "خطا در حذف قرارداد");
     }
   };
+
+  const toggleContractSelection = (id) => {
+    const sid = String(id);
+    setSelectedContractIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(sid)) next.delete(sid);
+      else next.add(sid);
+      return next;
+    });
+  };
+
+  const editSelectedContract = () => {
+    if (selectedContractIds.size !== 1) return;
+    const row = rowById.get(String([...selectedContractIds][0]));
+    if (row) openEditForm(row);
+    setContractTableMenuOpen(false);
+  };
+
+  const deleteSelectedContracts = async () => {
+    if (!selectedContractIds.size) return;
+    if (!window.confirm(`آیا ${toFaDigits(selectedContractIds.size)} قرارداد انتخاب‌شده حذف شود؟`)) return;
+    const selectedRows = [...selectedContractIds].map((id) => rowById.get(String(id))).filter(Boolean);
+    const selectedSet = new Set(selectedRows.map((row) => String(row.id)));
+    const targets = selectedRows.filter((row) => !selectedSet.has(String(row.parentContractId || "")));
+    try {
+      await Promise.all(targets.map((row) => fetchJson(`/contracts?id=${encodeURIComponent(row.id)}`, { method: "DELETE" })));
+      setRows(await fetchContractRows());
+      setSelectedContractIds(new Set());
+      setContractTableMenuOpen(false);
+      setRowsError("");
+    } catch (error) {
+      alert(error?.message || "خطا در حذف قراردادهای انتخاب‌شده");
+    }
+  };
+
+  const toggleContractTableMenu = () => {
+    if (contractTableMenuOpen) {
+      setContractTableMenuOpen(false);
+      return;
+    }
+    const rect = contractTableMenuRef.current?.getBoundingClientRect();
+    if (rect) setContractTableMenuPosition({ top: Math.min(rect.bottom + 8, window.innerHeight - 190), left: Math.max(8, Math.min(rect.left, window.innerWidth - 248)) });
+    setContractTableMenuOpen(true);
+  };
+
+  React.useEffect(() => {
+    if (!contractTableMenuOpen) return undefined;
+    const closeMenu = (event) => {
+      if (!contractTableMenuRef.current?.contains(event.target) && !contractTablePopoverRef.current?.contains(event.target)) setContractTableMenuOpen(false);
+    };
+    const closeOnViewportChange = () => setContractTableMenuOpen(false);
+    document.addEventListener("mousedown", closeMenu);
+    window.addEventListener("resize", closeOnViewportChange);
+    window.addEventListener("scroll", closeOnViewportChange, true);
+    return () => {
+      document.removeEventListener("mousedown", closeMenu);
+      window.removeEventListener("resize", closeOnViewportChange);
+      window.removeEventListener("scroll", closeOnViewportChange, true);
+    };
+  }, [contractTableMenuOpen]);
 
   const inputCls =
     "w-full h-11 rounded-xl px-3 bg-white text-black border border-black/15 outline-none transition focus:border-black/35 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:focus:border-neutral-500";
@@ -4869,10 +4863,6 @@ export default function ContractInformation() {
                     const relatedLetter = row.relatedLetterId ? letterById.get(String(row.relatedLetterId)) : null;
                     const contractNo = contractNoForRow(row, rowById);
                     const id = String(row.id);
-                    const childRows = childRowsByParentId.get(id) || [];
-                    const hasChildren = childRows.length > 0;
-                    const isExpanded = expandedContractIds.has(id);
-                    const depth = Number(row.__depth || 0);
                     const projectLabel = project?.label || "بدون پروژه";
                     const docLabel = documentTypeLabel(row.documentType);
                     const typeText = row.general?.contractType || "ثبت نشده";
@@ -4891,44 +4881,31 @@ export default function ContractInformation() {
                     return (
                       <div
                         key={row.id}
-                        className={`border-r-4 bg-white p-3 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100 ${depth ? "mr-4 bg-black/[0.02] dark:bg-white/[0.03]" : ""}`}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setPreviewContractId(id)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            setPreviewContractId(id);
+                          }
+                        }}
+                        className="cursor-pointer border-r-4 bg-white p-3 text-neutral-900 transition-colors hover:bg-black/[0.025] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-black/30 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-white/[0.04]"
                         style={{ borderRightColor: docColor }}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
                             <div className="flex min-w-0 items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => openEditForm(row)}
-                                className="min-w-0 truncate text-right text-sm font-bold underline-offset-4 hover:underline"
-                                title="ویرایش"
-                                aria-label="ویرایش"
-                              >
+                              <span className="min-w-0 truncate text-right text-sm font-bold">
                                 {contractNo ? toFaDigits(contractNo) : "ثبت نشده"}
-                              </button>
+                              </span>
                               <span className="shrink-0 rounded-full bg-black/[0.05] px-2 py-0.5 text-[11px] text-neutral-700 dark:bg-white/10 dark:text-white/80">
                                 {docLabel}
                               </span>
                             </div>
                             <div className="mt-1 flex items-center gap-2 text-xs text-black/55 dark:text-neutral-400">
-                              {hasChildren ? (
-                                <button
-                                  type="button"
-                                  onClick={() => toggleContractChildren(id)}
-                                  className="grid h-5 w-5 shrink-0 place-items-center rounded-md border border-black/15 bg-white text-sm font-bold leading-none dark:border-neutral-700 dark:bg-neutral-900"
-                                  aria-label={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
-                                  title={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
-                                >
-                                  {isExpanded ? "−" : "+"}
-                                </button>
-                              ) : null}
                               <span className="truncate">{projectLabel}</span>
                             </div>
-                          </div>
-
-                          <div className="flex shrink-0 items-center gap-1">
-                            {canContract("پیش‌نمایش") && <RowActionIconBtn icon="/images/icons/namayeshname.svg" title="پیش نمایش" onClick={() => setPreviewContractId(id)} size={34} iconSize={16} />}
-                            {canContract("ویرایش") && <RowActionIconBtn action="edit" onClick={() => openEditForm(row)} size={34} iconSize={15} />}
                           </div>
                         </div>
 
@@ -4977,26 +4954,28 @@ export default function ContractInformation() {
             <div dir="ltr" className="hidden md:block relative max-h-[55vh] overflow-y-auto overflow-x-auto">
               <table
                 dir="rtl"
-                className="w-full min-w-[1100px] table-fixed text-xs sm:text-sm [&_th]:whitespace-nowrap [&_th]:py-2 [&_th]:text-center [&_td]:min-w-0 [&_td]:py-2 [&_td]:text-center"
+                className="w-full min-w-[1200px] table-fixed text-xs sm:text-sm [&_th]:whitespace-nowrap [&_th]:py-2 [&_th]:text-center [&_td]:min-w-0 [&_td]:py-2 [&_td]:text-center"
               >
                 <colgroup>
+                  <col style={{ width: 48 }} />
                   <col style={{ width: 70 }} />
                   <col style={{ width: 260 }} />
                   <col style={{ width: 180 }} />
                   <col />
                   <col style={{ width: 135 }} />
                   <col style={{ width: 180 }} />
-                  <col style={{ width: 210 }} />
+                  <col style={{ width: 300 }} />
                 </colgroup>
                 <thead>
                   <tr className={contractsTableHeadRowCls}>
+                    <th className="sticky top-0 z-40 bg-neutral-200 dark:bg-neutral-800"><input type="checkbox" className={hoverSelectableRowPreset.checkbox} checked={contractsPageRows.length > 0 && contractsPageRows.every((row) => selectedContractIds.has(String(row.id)))} onChange={(event) => setSelectedContractIds(event.target.checked ? new Set(contractsPageRows.map((row) => String(row.id))) : new Set())} aria-label="انتخاب همه قراردادهای صفحه" /></th>
                     <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800">ردیف</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800">پروژه</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800">سطح / نوع</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800">موضوع قرارداد</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800">تاریخ</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800">مبلغ</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800">آخرین وضعیت</th>
+                    <th className="sticky top-0 z-40 bg-neutral-200 !pl-10 text-[14px] font-semibold dark:bg-neutral-800"><span>آخرین وضعیت</span><span className="absolute left-2 top-1/2 -translate-y-1/2"><button ref={contractTableMenuRef} type="button" onClick={toggleContractTableMenu} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت قراردادها" aria-label="مدیریت قراردادها" aria-expanded={contractTableMenuOpen}><img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${contractTableMenuOpen ? "scale-110" : ""} dark:invert`} /></button></span>{contractTableMenuOpen ? createPortal(<div ref={contractTablePopoverRef} dir="rtl" style={{ top: contractTableMenuPosition.top, left: contractTableMenuPosition.left }} className="table-menu-popover fixed z-[10020] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100"><div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedContractIds.size ? `${toFaDigits(selectedContractIds.size)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div><button type="button" disabled={selectedContractIds.size !== 1 || !canContract("ویرایش")} onClick={editSelectedContract} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="min-w-0 flex-1 text-sm font-semibold">ویرایش قرارداد</span></button><button type="button" disabled={!selectedContractIds.size || !canContract("حذف")} onClick={deleteSelectedContracts} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 transition group-hover:scale-105 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span><span className="min-w-0 flex-1 text-sm font-semibold">حذف موارد انتخاب‌شده</span></button></div>, document.body) : null}</th>
                   </tr>
                 </thead>
                 <tbody className={contractsTableBodyCls}>
@@ -5004,10 +4983,7 @@ export default function ContractInformation() {
                     contractsPageRows.map((row, index) => {
                       const project = projectById.get(String(row.projectId));
                       const id = String(row.id);
-                      const childRows = childRowsByParentId.get(id) || [];
-                      const hasChildren = childRows.length > 0;
-                      const isExpanded = expandedContractIds.has(id);
-                      const depth = Number(row.__depth || 0);
+                      const selected = selectedContractIds.has(id);
                       const isLast = index === contractsPageRows.length - 1;
                       const divider = isLast ? "" : contractsRowDividerCls;
                       const projectLabel = project?.label || "بدون پروژه";
@@ -5020,23 +4996,30 @@ export default function ContractInformation() {
                       const statusText = row.insurance?.lastStatus || "ثبت نشده";
 
                       return (
-                        <tr key={row.id} onDoubleClick={() => setPreviewContractId(id)} className={`group bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10 ${depth ? "!bg-black/[0.035] dark:!bg-white/[0.07]" : ""}`}>
+                        <tr
+                          key={row.id}
+                          tabIndex={0}
+                          onClick={() => setPreviewContractId(id)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              setPreviewContractId(id);
+                            }
+                          }}
+                          className={`group cursor-pointer transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-black/30 ${selected ? "bg-black/[0.055] hover:bg-black/[0.07] dark:bg-white/[0.09] dark:hover:bg-white/[0.12]" : "bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"}`}
+                        >
+                          <td className={`px-2 ${divider}`} onClick={(event) => event.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              className={hoverSelectableRowPreset.checkbox}
+                              checked={selected}
+                              onChange={() => toggleContractSelection(id)}
+                              aria-label={`انتخاب قرارداد ${toFaDigits(contractsStartIdx + index + 1)}`}
+                            />
+                          </td>
                           <td className={`px-3 font-semibold ${divider}`}>{toFaDigits(contractsStartIdx + index + 1)}</td>
                           <td className={`px-3 ${divider}`}>
-                            <div className={`flex items-center gap-2 ${depth ? "pr-7" : ""}`}>
-                              {hasChildren ? (
-                                <button
-                                  type="button"
-                                  onClick={() => toggleContractChildren(id)}
-                                  className="grid h-5 w-5 shrink-0 place-items-center rounded-md border border-black/15 bg-white text-sm font-bold leading-none dark:border-neutral-700 dark:bg-neutral-900"
-                                  aria-label={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
-                                  title={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}
-                                >
-                                  {isExpanded ? "−" : "+"}
-                                </button>
-                              ) : (
-                                <span className="h-5 w-5 shrink-0" />
-                              )}
+                            <div className="flex items-center">
                               <span className="block truncate text-right" title={projectLabel}>{projectLabel}</span>
                             </div>
                           </td>
@@ -5057,12 +5040,8 @@ export default function ContractInformation() {
                             <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{currencyText}</div>
                           </td>
                           <td className={`px-3 ${divider}`}>
-                            <div className="relative flex min-h-[38px] items-center justify-center px-16">
-                              <span className="max-w-full truncate rounded-full bg-black/[0.05] px-3 py-1 text-xs font-semibold dark:bg-white/10" title={statusText}>{statusText}</span>
-                              <div className="absolute left-0 top-1/2 flex -translate-y-1/2 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                              {canContract("پیش‌نمایش") && <RowActionIconBtn icon="/images/icons/namayeshname.svg" title="پیش نمایش" onClick={() => setPreviewContractId(id)} size={34} iconSize={16} />}
-                              {canContract("ویرایش") && <RowActionIconBtn action="edit" onClick={() => openEditForm(row)} size={34} iconSize={15} />}
-                              </div>
+                            <div className="flex min-h-[38px] items-center justify-center">
+                              <span className="block max-w-full break-words rounded-full bg-black/[0.05] px-3 py-1 text-xs font-semibold leading-5 dark:bg-white/10" title={statusText}>{statusText}</span>
                             </div>
                           </td>
                         </tr>
@@ -5070,7 +5049,7 @@ export default function ContractInformation() {
                     })
                   ) : (
                     <tr>
-                      <td colSpan={7} className="px-3 py-8 text-center text-black/55 dark:text-neutral-400">
+                      <td colSpan={8} className="px-3 py-8 text-center text-black/55 dark:text-neutral-400">
                         قراردادی برای نمایش وجود ندارد.
                       </td>
                     </tr>
