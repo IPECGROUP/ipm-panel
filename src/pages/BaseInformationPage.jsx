@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Card from "../components/ui/Card.jsx";
 import BaseCurrenciesPage from "./BaseCurrenciesPage.jsx";
-import DocumentClassesSection from "./DocumentClassesSection.jsx";
+import BaseOptionsTable from "./BaseOptionsTable.jsx";
 import ContractManagementSection from "./ContractManagementSection.jsx";
 import FinancialManagementSection from "./FinancialManagementSection.jsx";
 
@@ -48,7 +48,7 @@ export default function BaseInformationPage() {
         </div>
 
         <section role="tabpanel" className="rounded-2xl border border-black/10 p-4 dark:border-white/10">
-          {activeTab === "documents" ? <DocumentClassesSection /> : activeTab === "contracts" ? <ContractManagementSection /> : <FinancialManagementSection />}
+          {activeTab === "documents" ? <BaseOptionsTable title="کلاس سند" endpoint="/api/base/document-classes" /> : activeTab === "contracts" ? <ContractManagementSection /> : <FinancialManagementSection />}
         </section>
       </Card>
     </div>
