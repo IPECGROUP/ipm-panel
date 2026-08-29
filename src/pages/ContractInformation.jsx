@@ -19,6 +19,7 @@ const CONTRACT_SECTION_TABS = [
   { id: "technical", label: "دامنه کار" },
   { id: "financial", label: "مالی و تضامین" },
   { id: "insurance", label: "تامین اجتماعی" },
+  { id: "appendices", label: "الحاقیه" },
 ];
 
 const CONTRACT_DRAFT_STORAGE_KEY = "ipm_contract_information_form_draft_v1";
@@ -69,6 +70,19 @@ const EMPTY_FINANCIAL_ROW = {
   currencyLabel: "",
   sourceId: "",
   sourceLabel: "",
+};
+
+const EMPTY_APPENDIX_ROW = {
+  id: "",
+  fromDate: "",
+  toDate: "",
+  amount: "",
+  currencyId: "",
+  currencyLabel: "",
+  sourceId: "",
+  sourceLabel: "",
+  workScope: "",
+  relatedLetterIds: [],
 };
 
 const GUARANTEE_NAME_OPTIONS = ["پیش پرداخت", "انجام تعهدات", "علی الحساب", "سایر"];
@@ -306,6 +320,15 @@ function makeFinancialRow() {
   };
 }
 
+function makeAppendixRow(row = {}) {
+  return {
+    ...EMPTY_APPENDIX_ROW,
+    ...row,
+    id: String(row?.id || `${Date.now()}_${Math.random().toString(16).slice(2)}`),
+    relatedLetterIds: normalizeIdList(row?.relatedLetterIds ?? row?.related_letter_ids),
+  };
+}
+
 function makeGuaranteeRow(row = {}) {
   return {
     ...EMPTY_GUARANTEE_ROW,
@@ -341,7 +364,7 @@ function normalizeFinancial(financial = {}) {
   return {
     ...(financial || {}),
     contractAmounts: normalizeFinancialRows(financial?.contractAmounts),
-    appendices: normalizeFinancialRows(financial?.appendices),
+    appendices: Array.isArray(financial?.appendices) ? financial.appendices.map(makeAppendixRow) : [],
     paymentTerms: String(financial?.paymentTerms ?? ""),
     advancePayment: String(financial?.advancePayment ?? ""),
     capitalDeposit: String(financial?.capitalDeposit ?? ""),
@@ -1198,6 +1221,8 @@ export default function ContractInformation() {
   const insuranceUploadInputRef = React.useRef(null);
   const [editingGuaranteeId, setEditingGuaranteeId] = React.useState("");
   const [editingGuaranteeDraft, setEditingGuaranteeDraft] = React.useState(() => ({ ...EMPTY_GUARANTEE_ROW }));
+  const [appendixDraft, setAppendixDraft] = React.useState(() => makeAppendixRow());
+  const [editingAppendixId, setEditingAppendixId] = React.useState("");
   const draftSaveTimerRef = React.useRef(null);
   const draftStatusTimerRef = React.useRef(null);
   const lastDraftSignatureRef = React.useRef("");
@@ -1591,6 +1616,8 @@ export default function ContractInformation() {
     const selectedIds =
       relatedPickTarget === "insurance"
         ? normalizeIdList(insuranceForm.relatedLetterId ? [insuranceForm.relatedLetterId] : [])
+        : relatedPickTarget === "appendix"
+          ? normalizeIdList(appendixDraft.relatedLetterIds)
         : selectedRelatedLetterIds;
     const selectedSet = new Set(selectedIds.map(String));
     const filtered = q ? list.filter((letter) => {
@@ -1616,7 +1643,7 @@ export default function ContractInformation() {
       })
       .slice(0, q ? filtered.length : 80)
       .map((item) => item.letter);
-  }, [insuranceForm.relatedLetterId, letters, relatedPickQuery, relatedPickTarget, selectedRelatedLetterIds]);
+  }, [appendixDraft.relatedLetterIds, insuranceForm.relatedLetterId, letters, relatedPickQuery, relatedPickTarget, selectedRelatedLetterIds]);
 
   const filteredRows = React.useMemo(() => {
     const q = toEnDigits(filterQuery).trim().toLowerCase();
@@ -1994,6 +2021,60 @@ export default function ContractInformation() {
     });
   };
 
+  const updateAppendixDraft = (field, value) => {
+    setAppendixDraft((prev) => {
+      if (field === "currencyId") {
+        const item = currencyById.get(String(value));
+        return { ...prev, currencyId: String(value || ""), currencyLabel: item ? readItemLabel(item) : "" };
+      }
+      if (field === "sourceId") {
+        const item = currencySourceById.get(String(value));
+        return { ...prev, sourceId: String(value || ""), sourceLabel: item ? readItemLabel(item) : "" };
+      }
+      return { ...prev, [field]: field === "amount" ? cleanFinancialAmountInput(value) : value };
+    });
+  };
+
+  const saveAppendixRow = () => {
+    const draft = makeAppendixRow(appendixDraft);
+    const missing = [];
+    if (!draft.fromDate) missing.push("از");
+    if (!draft.toDate) missing.push("تا");
+    if (!hasFinancialAmount(draft.amount)) missing.push("مبلغ");
+    if (!draft.currencyId) missing.push("ارز");
+    if (!draft.sourceId) missing.push("منشأ");
+    if (!draft.workScope.trim()) missing.push("دامنه کار");
+    if (missing.length) {
+      alert(`فیلدهای اجباری الحاقیه: ${missing.join("، ")}`);
+      return;
+    }
+    setForm((prev) => {
+      const financial = normalizeFinancial(prev.financial || {});
+      const appendices = editingAppendixId
+        ? financial.appendices.map((row) => (String(row.id) === String(editingAppendixId) ? { ...draft, id: String(editingAppendixId) } : row))
+        : [...financial.appendices, draft];
+      return { ...prev, financial: { ...financial, appendices } };
+    });
+    setAppendixDraft(makeAppendixRow());
+    setEditingAppendixId("");
+  };
+
+  const editAppendixRow = (row) => {
+    setAppendixDraft(makeAppendixRow(row));
+    setEditingAppendixId(String(row.id));
+  };
+
+  const removeAppendixRow = (rowId) => {
+    setForm((prev) => {
+      const financial = normalizeFinancial(prev.financial || {});
+      return { ...prev, financial: { ...financial, appendices: financial.appendices.filter((row) => String(row.id) !== String(rowId)) } };
+    });
+    if (String(editingAppendixId) === String(rowId)) {
+      setAppendixDraft(makeAppendixRow());
+      setEditingAppendixId("");
+    }
+  };
+
   const setFinancialField = (field, value) => {
     setForm((prev) => {
       const financial = normalizeFinancial(prev.financial || {});
@@ -2342,7 +2423,7 @@ export default function ContractInformation() {
   };
 
   const saveContractSection = async (sectionId = activeContractTab) => {
-    if (sectionId !== "financial") {
+    if (sectionId !== "financial" && sectionId !== "appendices") {
       await saveContractDraft({ sectionId, immediate: true });
       return;
     }
@@ -2996,7 +3077,7 @@ export default function ContractInformation() {
     const isFinalSaving = finalSavingSection === sectionId;
     const showFinalStatus = finalSaveStatus.sectionId === sectionId && finalSaveStatus.message;
     const showDraftStatus = isDraftSection && draftSaveStatus.sectionId === sectionId && draftSaveStatus.state;
-    const buttonTitle = sectionId === "financial" ? "ثبت نهایی قرارداد" : "ذخیره پیش‌نویس";
+    const buttonTitle = ["financial", "appendices"].includes(sectionId) ? "ثبت نهایی قرارداد" : "ذخیره پیش‌نویس";
     const draftStatusText =
       draftSaveStatus.state === "saving" ? "در حال ذخیره پیش‌نویس..." : draftSaveStatus.state === "saved" ? "پیش‌نویس ذخیره شد" : "خطا در ذخیره پیش‌نویس";
     const draftStatusCls =
@@ -4609,6 +4690,33 @@ export default function ContractInformation() {
                         {renderSaveButton("insurance")}
                       </div>
                     </div>
+                  ) : activeContractTab === "appendices" ? (
+                    <div className="space-y-4 p-3 sm:p-4">
+                      {currencyError ? <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">{currencyError}</div> : null}
+                      <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                          <div><div className={labelCls}>از *</div><ContractDatePicker value={appendixDraft.fromDate} onChange={(value) => updateAppendixDraft("fromDate", value)} /></div>
+                          <div><div className={labelCls}>تا *</div><ContractDatePicker value={appendixDraft.toDate} onChange={(value) => updateAppendixDraft("toDate", value)} /></div>
+                          <div><div className={labelCls}>مبلغ *</div><input value={formatAmountInput(appendixDraft.amount)} onChange={(e) => updateAppendixDraft("amount", e.target.value)} className={inputCls} type="text" inputMode="decimal" dir="ltr" placeholder="0" /></div>
+                          <div><div className={labelCls}>ارز *</div><select value={appendixDraft.currencyId} onChange={(e) => updateAppendixDraft("currencyId", e.target.value)} className={inputCls} disabled={currencyLoading}><option value="">{currencyLoading ? "در حال بارگذاری..." : "انتخاب ارز"}</option>{currencyItems.map((item) => { const id = readItemId(item); return id ? <option key={id} value={id}>{readItemLabel(item) || id}</option> : null; })}</select></div>
+                          <div><div className={labelCls}>منشأ *</div><select value={appendixDraft.sourceId} onChange={(e) => updateAppendixDraft("sourceId", e.target.value)} className={inputCls} disabled={currencyLoading}><option value="">{currencyLoading ? "در حال بارگذاری..." : "انتخاب منشأ"}</option>{currencySourceItems.map((item) => { const id = readItemId(item); return id ? <option key={id} value={id}>{readItemLabel(item) || id}</option> : null; })}</select></div>
+                          <div className="md:col-span-2 xl:col-span-3"><div className={labelCls}>دامنه کار *</div><input value={appendixDraft.workScope} onChange={(e) => updateAppendixDraft("workScope", e.target.value)} className={inputCls} type="text" /></div>
+                        </div>
+                        <div className="mt-3 flex flex-wrap items-end gap-2">
+                          <div className="min-w-[220px] flex-1"><div className={labelCls}>اسناد مرتبط</div><div className="flex min-h-11 flex-wrap items-center gap-1 rounded-xl border border-black/10 bg-black/[0.02] px-2 py-1 dark:border-neutral-700 dark:bg-white/[0.03]">{normalizeIdList(appendixDraft.relatedLetterIds).length ? normalizeIdList(appendixDraft.relatedLetterIds).map((id) => <span key={id} className="rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10">{toFaDigits(secretariatNoOf(letterById.get(id)) || letterNoOf(letterById.get(id)) || id)}</span>) : <span className="px-1 text-xs text-black/50 dark:text-neutral-400">سندی انتخاب نشده است</span>}</div></div>
+                          <button type="button" onClick={() => openRelatedPicker("appendix")} className={`${iconBtnCls} !h-11 !w-11`} aria-label="انتخاب اسناد مرتبط" title="انتخاب اسناد مرتبط"><img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" /></button>
+                          <button type="button" onClick={saveAppendixRow} className={`${iconBtnCls} !h-11 !w-11`} aria-label={editingAppendixId ? "ذخیره ویرایش الحاقیه" : "افزودن الحاقیه"} title={editingAppendixId ? "ذخیره ویرایش" : "افزودن الحاقیه"}><img src={editingAppendixId ? "/images/icons/check.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" /></button>
+                        </div>
+                      </div>
+
+                      <div className="overflow-x-auto rounded-2xl border border-black/10 dark:border-neutral-800">
+                        <table className={`w-full min-w-[900px] text-sm ${financialTablePreset.table}`}>
+                          <thead className={financialTablePreset.headRow}><tr><th className={`${financialTablePreset.th} px-3`}>الحاقیه</th><th className={`${financialTablePreset.th} px-3`}>از</th><th className={`${financialTablePreset.th} px-3`}>تا</th><th className={`${financialTablePreset.th} px-3`}>مبلغ</th><th className={`${financialTablePreset.th} px-3`}>ارز</th><th className={`${financialTablePreset.th} px-3`}>منشأ</th><th className={`${financialTablePreset.th} px-3 !text-right`}>دامنه کار</th><th className="w-14 px-2 py-3" /></tr></thead>
+                          <tbody className={financialTablePreset.body}>{financialForm.appendices.length ? financialForm.appendices.map((row, index) => <tr key={row.id} className={`${hoverSelectableRowPreset.rowBase} ${hoverSelectableRowPreset.rowIdle}`}><td className="px-3 py-3 text-center">{toFaDigits(index + 1)}</td><td className="px-3 py-3 text-center">{toFaDigits(row.fromDate || "—")}</td><td className="px-3 py-3 text-center">{toFaDigits(row.toDate || "—")}</td><td className="px-3 py-3 text-center">{formatFinancialAmount(parseFinancialAmount(row.amount))}</td><td className="px-3 py-3 text-center">{row.currencyLabel || row.currencyId || "—"}</td><td className="px-3 py-3 text-center">{row.sourceLabel || row.sourceId || "—"}</td><td className="max-w-[260px] truncate px-3 py-3 text-right">{row.workScope || "—"}</td><td className="px-2 py-2"><details className="relative"><summary className={`${iconBtnCls} !h-9 !w-9 list-none cursor-pointer`} title="عملیات"><img src="/images/icons/sayer.svg" alt="" className="h-4 w-4 dark:invert" /></summary><div className="absolute left-0 z-20 mt-1 w-28 rounded-xl border border-black/10 bg-white p-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"><button type="button" onClick={() => editAppendixRow(row)} className="w-full rounded-lg px-2 py-1.5 text-right text-xs hover:bg-black/[0.04] dark:hover:bg-white/10">ویرایش</button><button type="button" onClick={() => removeAppendixRow(row.id)} className="w-full rounded-lg px-2 py-1.5 text-right text-xs text-red-600 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-500/10">حذف</button></div></details></td></tr>) : <tr><td colSpan={8} className={financialTablePreset.emptyRow}>الحاقیه‌ای ثبت نشده است.</td></tr>}</tbody>
+                        </table>
+                      </div>
+                      <div className="flex items-center justify-end pt-2">{renderSaveButton("appendices")}</div>
+                    </div>
                   ) : (
                     <div className="flex min-h-[160px] flex-col justify-between gap-4 p-3 sm:min-h-[180px] sm:p-4">
                       <div className="rounded-xl border border-black/10 bg-black/[0.02] px-4 py-3 text-sm text-black/60 dark:border-neutral-700 dark:bg-white/[0.03] dark:text-neutral-300">
@@ -5349,6 +5457,8 @@ export default function ContractInformation() {
                     const checked =
                       relatedPickTarget === "insurance"
                         ? String(currentRelatedLetterId || "") === id
+                        : relatedPickTarget === "appendix"
+                          ? normalizeIdList(appendixDraft.relatedLetterIds).includes(id)
                         : selectedRelatedLetterIds.includes(id);
                     const no = letterNoOf(letter) || id;
                     const secretariatNo = secretariatNoOf(letter);
@@ -5361,6 +5471,11 @@ export default function ContractInformation() {
                           if (relatedPickTarget === "insurance") {
                             setInsuranceField("relatedLetterId", checked ? "" : id);
                             setRelatedPickOpen(false);
+                          } else if (relatedPickTarget === "appendix") {
+                            setAppendixDraft((prev) => {
+                              const current = normalizeIdList(prev.relatedLetterIds);
+                              return { ...prev, relatedLetterIds: current.includes(id) ? current.filter((item) => item !== id) : [...current, id] };
+                            });
                           } else {
                             setForm((prev) => {
                               const current = normalizeIdList(prev.relatedLetterIds?.length ? prev.relatedLetterIds : prev.relatedLetterId ? [prev.relatedLetterId] : []);
