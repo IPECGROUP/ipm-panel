@@ -1223,6 +1223,9 @@ export default function ContractInformation() {
   const [editingGuaranteeDraft, setEditingGuaranteeDraft] = React.useState(() => ({ ...EMPTY_GUARANTEE_ROW }));
   const [appendixDraft, setAppendixDraft] = React.useState(() => makeAppendixRow());
   const [editingAppendixId, setEditingAppendixId] = React.useState("");
+  const [selectedAppendixIds, setSelectedAppendixIds] = React.useState(() => new Set());
+  const [appendixTableMenuOpen, setAppendixTableMenuOpen] = React.useState(false);
+  const appendixTableMenuRef = React.useRef(null);
   const draftSaveTimerRef = React.useRef(null);
   const draftStatusTimerRef = React.useRef(null);
   const lastDraftSignatureRef = React.useRef("");
@@ -2074,6 +2077,49 @@ export default function ContractInformation() {
       setEditingAppendixId("");
     }
   };
+
+  const toggleAppendixSelection = (rowId) => {
+    const id = String(rowId);
+    setSelectedAppendixIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const editSelectedAppendix = () => {
+    if (selectedAppendixIds.size !== 1) return;
+    const id = [...selectedAppendixIds][0];
+    const row = financialForm.appendices.find((item) => String(item.id) === String(id));
+    if (row) editAppendixRow(row);
+    setAppendixTableMenuOpen(false);
+  };
+
+  const deleteSelectedAppendices = () => {
+    if (!selectedAppendixIds.size) return;
+    if (!window.confirm(`آیا ${toFaDigits(selectedAppendixIds.size)} الحاقیه انتخاب‌شده حذف شود؟`)) return;
+    const ids = new Set([...selectedAppendixIds].map(String));
+    setForm((prev) => {
+      const financial = normalizeFinancial(prev.financial || {});
+      return { ...prev, financial: { ...financial, appendices: financial.appendices.filter((row) => !ids.has(String(row.id))) } };
+    });
+    if (ids.has(String(editingAppendixId))) {
+      setAppendixDraft(makeAppendixRow());
+      setEditingAppendixId("");
+    }
+    setSelectedAppendixIds(new Set());
+    setAppendixTableMenuOpen(false);
+  };
+
+  React.useEffect(() => {
+    if (!appendixTableMenuOpen) return undefined;
+    const closeMenu = (event) => {
+      if (!appendixTableMenuRef.current?.contains(event.target)) setAppendixTableMenuOpen(false);
+    };
+    document.addEventListener("mousedown", closeMenu);
+    return () => document.removeEventListener("mousedown", closeMenu);
+  }, [appendixTableMenuOpen]);
 
   const setFinancialField = (field, value) => {
     setForm((prev) => {
@@ -4716,11 +4762,26 @@ export default function ContractInformation() {
                         </div>
                       </div>
 
-                      <div className="overflow-x-auto rounded-2xl border border-black/10 dark:border-neutral-800">
-                        <table className={`w-full min-w-[900px] text-sm ${financialTablePreset.table}`}>
-                          <thead className={financialTablePreset.headRow}><tr><th className={`${financialTablePreset.th} px-3`}>الحاقیه</th><th className={`${financialTablePreset.th} px-3`}>از</th><th className={`${financialTablePreset.th} px-3`}>تا</th><th className={`${financialTablePreset.th} px-3`}>مبلغ</th><th className={`${financialTablePreset.th} px-3`}>ارز</th><th className={`${financialTablePreset.th} px-3`}>منشأ</th><th className={`${financialTablePreset.th} px-3 !text-right`}>دامنه کار</th><th className="w-14 px-2 py-3" /></tr></thead>
-                          <tbody className={financialTablePreset.body}>{financialForm.appendices.length ? financialForm.appendices.map((row, index) => <tr key={row.id} className={`${hoverSelectableRowPreset.rowBase} ${hoverSelectableRowPreset.rowIdle}`}><td className="px-3 py-3 text-center">{toFaDigits(index + 1)}</td><td className="px-3 py-3 text-center">{toFaDigits(row.fromDate || "—")}</td><td className="px-3 py-3 text-center">{toFaDigits(row.toDate || "—")}</td><td className="px-3 py-3 text-center">{formatFinancialAmount(parseFinancialAmount(row.amount))}</td><td className="px-3 py-3 text-center">{row.currencyLabel || row.currencyId || "—"}</td><td className="px-3 py-3 text-center">{row.sourceLabel || row.sourceId || "—"}</td><td className="max-w-[260px] truncate px-3 py-3 text-right">{row.workScope || "—"}</td><td className="px-2 py-2"><details className="relative"><summary className={`${iconBtnCls} !h-9 !w-9 list-none cursor-pointer`} title="عملیات"><img src="/images/icons/sayer.svg" alt="" className="h-4 w-4 dark:invert" /></summary><div className="absolute left-0 z-20 mt-1 w-28 rounded-xl border border-black/10 bg-white p-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"><button type="button" onClick={() => editAppendixRow(row)} className="w-full rounded-lg px-2 py-1.5 text-right text-xs hover:bg-black/[0.04] dark:hover:bg-white/10">ویرایش</button><button type="button" onClick={() => removeAppendixRow(row.id)} className="w-full rounded-lg px-2 py-1.5 text-right text-xs text-red-600 hover:bg-red-50 dark:text-red-300 dark:hover:bg-red-500/10">حذف</button></div></details></td></tr>) : <tr><td colSpan={8} className={financialTablePreset.emptyRow}>الحاقیه‌ای ثبت نشده است.</td></tr>}</tbody>
-                        </table>
+                      <div className="rounded-2xl border border-black/10 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+                        <div className="overflow-visible rounded-2xl max-xl:overflow-x-auto">
+                          <table className={`w-full min-w-[900px] text-sm ${financialTablePreset.table}`}>
+                            <thead className={financialTablePreset.headRow}>
+                              <tr>
+                                <th className="w-12 px-2"><input type="checkbox" className={hoverSelectableRowPreset.checkbox} checked={financialForm.appendices.length > 0 && financialForm.appendices.every((row) => selectedAppendixIds.has(String(row.id)))} onChange={(event) => setSelectedAppendixIds(event.target.checked ? new Set(financialForm.appendices.map((row) => String(row.id))) : new Set())} aria-label="انتخاب همه الحاقیه‌ها" /></th>
+                                <th className={`${financialTablePreset.th} px-3`}>الحاقیه</th><th className={`${financialTablePreset.th} px-3`}>از</th><th className={`${financialTablePreset.th} px-3`}>تا</th><th className={`${financialTablePreset.th} px-3`}>مبلغ</th><th className={`${financialTablePreset.th} px-3`}>ارز</th><th className={`${financialTablePreset.th} px-3`}>منشأ</th><th className={`${financialTablePreset.th} px-3 !text-right`}>دامنه کار</th>
+                                <th className="relative w-14 px-2" ref={appendixTableMenuRef}>
+                                  <button type="button" onClick={() => setAppendixTableMenuOpen((open) => !open)} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت الحاقیه‌ها" aria-label="مدیریت الحاقیه‌ها" aria-expanded={appendixTableMenuOpen}><img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${appendixTableMenuOpen ? "scale-110" : ""} dark:invert`} /></button>
+                                  {appendixTableMenuOpen ? <div className="table-menu-popover absolute left-0 top-[calc(100%+8px)] z-50 w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
+                                    <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedAppendixIds.size ? `${toFaDigits(selectedAppendixIds.size)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
+                                    <button type="button" disabled={selectedAppendixIds.size !== 1} onClick={editSelectedAppendix} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="min-w-0 flex-1 text-sm font-semibold">ویرایش الحاقیه</span></button>
+                                    <button type="button" disabled={!selectedAppendixIds.size} onClick={deleteSelectedAppendices} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 transition group-hover:scale-105 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span><span className="min-w-0 flex-1 text-sm font-semibold">حذف موارد انتخاب‌شده</span></button>
+                                  </div> : null}
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className={financialTablePreset.body}>{financialForm.appendices.length ? financialForm.appendices.map((row, index) => { const selected = selectedAppendixIds.has(String(row.id)); return <tr key={row.id} className={`${hoverSelectableRowPreset.rowBase} ${selected ? hoverSelectableRowPreset.rowSelected : hoverSelectableRowPreset.rowIdle}`}><td className="px-2 py-3 text-center"><input type="checkbox" className={hoverSelectableRowPreset.checkbox} checked={selected} onChange={() => toggleAppendixSelection(row.id)} aria-label={`انتخاب الحاقیه ${toFaDigits(index + 1)}`} /></td><td className="px-3 py-3 text-center">{toFaDigits(index + 1)}</td><td className="px-3 py-3 text-center">{toFaDigits(row.fromDate || "—")}</td><td className="px-3 py-3 text-center">{toFaDigits(row.toDate || "—")}</td><td className="px-3 py-3 text-center">{formatFinancialAmount(parseFinancialAmount(row.amount))}</td><td className="px-3 py-3 text-center">{row.currencyLabel || row.currencyId || "—"}</td><td className="px-3 py-3 text-center">{row.sourceLabel || row.sourceId || "—"}</td><td className="max-w-[260px] truncate px-3 py-3 text-right">{row.workScope || "—"}</td><td /></tr>; }) : <tr><td colSpan={9} className={financialTablePreset.emptyRow}>الحاقیه‌ای ثبت نشده است.</td></tr>}</tbody>
+                          </table>
+                        </div>
                       </div>
                       <div className="flex items-center justify-end pt-2">{renderSaveButton("appendices")}</div>
                     </div>
