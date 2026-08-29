@@ -727,7 +727,7 @@ subject: incomingForm.subject,
     },
 
     outgoing: {
-      category: outgoingForm.category,
+      category: documentClasses.some((item) => item.title === outgoingForm.category) ? outgoingForm.category : "",
       projectId: outgoingForm.projectId,
       letterDate: outgoingForm.letterDate,
       fromName: outgoingForm.fromName,
@@ -906,7 +906,7 @@ const [_formTagIds, _setFormTagIds] = useState([]);
 
 // ✅ فرم‌ها جدا (برای جلوگیری از قاطی شدن بین تب‌ها)
 const [incomingForm, setIncomingForm] = useState({
-  category: "نامه",
+  category: "",
   classification: "عادی",
   projectId: "",
   letterNo: "",
@@ -918,7 +918,7 @@ const [incomingForm, setIncomingForm] = useState({
 });
 
 const [outgoingForm, setOutgoingForm] = useState({
-category: "نامه",
+category: "",
   classification: "عادی",
   projectId: "",
     letterNo: "",
@@ -930,7 +930,7 @@ category: "نامه",
 });
 
 const [internalForm, setInternalForm] = useState({
-  category: "نامه",
+  category: "",
   classification: "عادی",
   projectId: "",     
   letterNo: "",      
@@ -1170,24 +1170,28 @@ useEffect(() => {
   }, [uploadOpen, uploadFor]);
 
 
-// کلاس سند (گزینه‌های ثابت)
-const DOC_CLASS_BASE = [
-  "نامه",
-  "ترنسمیتال",
-  "مستندات داخلی",
-  "قرارداد",
-  "پیشنهاد (فنی - مالی)",
-  "اسناد فنی و مهندسی",
-  "اسناد خرید و بازرگانی",
-  "اسناد پروژه ای",
-  "اسناد مالی",
-  "اسناد ثبتی و حقوقی",
-];
+// کلاس‌های سند از تنظیمات ← اطلاعات پایه ← مدیریت اسناد خوانده می‌شوند.
+const [documentClasses, setDocumentClasses] = useState([]);
+const [documentClassesLoading, setDocumentClassesLoading] = useState(true);
+useEffect(() => {
+  let active = true;
+  setDocumentClassesLoading(true);
+  api("/base/document-classes")
+    .then((data) => {
+      if (!active) return;
+      setDocumentClasses(Array.isArray(data?.items) ? data.items : []);
+    })
+    .catch(() => {
+      if (active) setDocumentClasses([]);
+    })
+    .finally(() => {
+      if (active) setDocumentClassesLoading(false);
+    });
+  return () => { active = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
 
-// گزینه‌های سفارشی (وقتی کاربر «سایر» می‌زند)
-const [docClassExtras, _setDocClassExtras] = useState([]);
-
-// پاپ‌آپ «سایر»
+// برای سازگاری با کنترل بسته‌شدن پاپ‌آپ‌های قدیمی صفحه.
 const [docClassOtherOpen] = useState(false);
 const [_docClassOtherText, _setDocClassOtherText] = useState("");
 
@@ -3952,7 +3956,7 @@ useLayoutEffect(() => {
 
  const resetForm = () => {
  setIncomingForm({
-  category: "نامه",
+  category: "",
   classification: "عادی",
   projectId: "",
   letterNo: "",
@@ -3964,7 +3968,7 @@ useLayoutEffect(() => {
 });
 
   setOutgoingForm({
-    category: "نامه",
+    category: "",
     classification: "عادی",
     projectId: "",
     letterNo: "",
@@ -3976,7 +3980,7 @@ useLayoutEffect(() => {
   });
 
   setInternalForm({
-  category: "نامه",
+  category: "",
   classification: "عادی",
      projectId: "",      
   letterNo: "",  
@@ -4363,7 +4367,9 @@ const payload = {
   kind,
 
   // ✅ category + classification از فرم درست
-  category: String(getForm(kind)?.category || "نامه").trim() || "نامه",
+  category: documentClasses.some((item) => item.title === String(getForm(kind)?.category || "").trim())
+    ? String(getForm(kind)?.category || "").trim()
+    : "",
 
   classification:
     String(getForm(kind)?.classification || "عادی").trim() || "عادی",
@@ -5260,18 +5266,19 @@ useEffect(() => {
 
   <FieldWrap>
     <select
-      value={getForm(formKind).category || "نامه"}
+      value={documentClasses.some((item) => item.title === getForm(formKind).category) ? getForm(formKind).category : ""}
 onChange={(e) => {
   setForm(formKind, { category: e.target.value });
   clearFieldError(formKind, "category");
 }}
+      disabled={documentClassesLoading}
       className={inputWithError(inputSmCls, formKind, "category")}
 aria-invalid={fieldHasError(formKind, "category") ? true : undefined}
     >
-      {([...DOC_CLASS_BASE, ...(Array.isArray(docClassExtras) ? docClassExtras : [])]).map((lab) => (
-        <option key={lab} value={lab}>{lab}</option>
+      <option value="">{documentClassesLoading ? "در حال دریافت..." : "انتخاب کنید"}</option>
+      {documentClasses.map((item) => (
+        <option key={item.id} value={item.title}>{item.title}</option>
       ))}
-      <option value="سایر">سایر</option>
     </select>
 
     <ErrorTextAbs kind={formKind} k="category" />
