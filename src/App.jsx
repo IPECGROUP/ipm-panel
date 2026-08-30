@@ -29,6 +29,7 @@ import SupplyRequestPage from "./pages/SupplyRequestPage.jsx";
 import RoznegarPgae from "./pages/RoznegarPgae.jsx";
 import QualityManagementPage from "./pages/QualityManagementPage.jsx";
 import NavPlaceholderPage from "./pages/NavPlaceholderPage.jsx";
+import TrainingResourcesPage from "./pages/TrainingResourcesPage.jsx";
 
 import BudgetCodesPage, {
   OfficePage,
@@ -115,7 +116,7 @@ export default function App() {
         <Route path="/knowledge-management/template-library" element={<NavPlaceholderPage title="بانک الگوها" />} />
         <Route path="/knowledge-management/project-lessons-learned" element={<NavPlaceholderPage title="درس‌آموخته‌های پروژه‌ها" />} />
         <Route path="/knowledge-management/equipment-library" element={<NavPlaceholderPage title="کتابخانه ماشین‌آلات و تجهیزات" />} />
-        <Route path="/knowledge-management/training-resources" element={<NavPlaceholderPage title="منابع آموزشی" />} />
+        <Route path="/knowledge-management/training-resources" element={<TrainingResourcesPage />} />
 
         {/* بودجه‌بندی */}
         <Route path="/budget/centers" element={<DefineBudgetCentersPage />} />
