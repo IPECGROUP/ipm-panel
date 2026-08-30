@@ -56,7 +56,9 @@ function FileTypeIcon({ file }) {
 export default function TrainingResourcesPage() {
   const { user, loading: authLoading } = useAuth();
   const fileRef = useRef(null);
+  const tableMenuRef = useRef(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState("");
   const [form, setForm] = useState({ title: "", category: "", link: "", relatedLetterIds: [], files: [] });
   const [items, setItems] = useState([]);
   const [letters, setLetters] = useState([]);
@@ -70,6 +72,9 @@ export default function TrainingResourcesPage() {
   const [pickerQuery, setPickerQuery] = useState("");
   const [pickerIds, setPickerIds] = useState([]);
   const [copiedId, setCopiedId] = useState("");
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [tableMenuOpen, setTableMenuOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const requestHeaders = useMemo(() => user?.id != null ? { "x-user-id": String(user.id) } : {}, [user?.id]);
 
@@ -89,6 +94,21 @@ export default function TrainingResourcesPage() {
   useEffect(() => { loadItems(); }, [loadItems]);
 
   useEffect(() => {
+    if (!tableMenuOpen) return undefined;
+    const closeMenu = (event) => {
+      if (event.type === "keydown" && event.key !== "Escape") return;
+      if (event.type === "mousedown" && tableMenuRef.current?.contains(event.target)) return;
+      setTableMenuOpen(false);
+    };
+    document.addEventListener("mousedown", closeMenu);
+    document.addEventListener("keydown", closeMenu);
+    return () => {
+      document.removeEventListener("mousedown", closeMenu);
+      document.removeEventListener("keydown", closeMenu);
+    };
+  }, [tableMenuOpen]);
+
+  useEffect(() => {
     if (authLoading) return;
     api("/letters/mine", { headers: requestHeaders })
       .then((data) => setLetters(Array.isArray(data?.items) ? data.items : []))
@@ -102,8 +122,49 @@ export default function TrainingResourcesPage() {
 
   const closeForm = () => {
     setFormOpen(false);
+    setEditingId("");
     setForm({ title: "", category: "", link: "", relatedLetterIds: [], files: [] });
     setError("");
+  };
+
+  const openFreshForm = () => {
+    setEditingId("");
+    setForm({ title: "", category: "", link: "", relatedLetterIds: [], files: [] });
+    setFormOpen(true);
+    setError("");
+    setNotice("");
+  };
+
+  const editSelected = () => {
+    if (selectedIds.size !== 1) return;
+    const item = items.find((row) => selectedIds.has(String(row.id)));
+    if (!item) return;
+    setEditingId(String(item.id));
+    setForm({ title: item.title || "", category: item.category || "", link: item.link || "", relatedLetterIds: Array.isArray(item.relatedLetterIds) ? item.relatedLetterIds.map(String) : [], files: Array.isArray(item.files) ? item.files : [] });
+    setFormOpen(true);
+    setTableMenuOpen(false);
+    setError("");
+    setNotice("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const deleteSelected = async () => {
+    if (!selectedIds.size || deleting) return;
+    if (!window.confirm(`${toFaDigits(selectedIds.size)} مورد انتخاب‌شده حذف شود؟`)) return;
+    setDeleting(true);
+    setError("");
+    try {
+      await api("/training-resources", { method: "DELETE", headers: requestHeaders, body: JSON.stringify({ ids: [...selectedIds] }) });
+      setItems((previous) => previous.filter((item) => !selectedIds.has(String(item.id))));
+      setSelectedIds(new Set());
+      setTableMenuOpen(false);
+      setNotice("موارد انتخاب‌شده با موفقیت حذف شدند.");
+      if (editingId && selectedIds.has(editingId)) closeForm();
+    } catch (err) {
+      setError(err.message || "حذف موارد انتخاب‌شده انجام نشد.");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const uploadFiles = async (fileList) => {
@@ -137,10 +198,13 @@ export default function TrainingResourcesPage() {
     try { new URL(normalizedUrl(form.link)); } catch { return setError("لینک واردشده معتبر نیست."); }
     setSaving(true);
     try {
-      const data = await api("/training-resources", { method: "POST", headers: requestHeaders, body: JSON.stringify(form) });
-      setItems((previous) => [data.item, ...previous]);
+      const data = await api("/training-resources", { method: editingId ? "PATCH" : "POST", headers: requestHeaders, body: JSON.stringify(editingId ? { ...form, id: editingId } : form) });
+      setItems((previous) => editingId ? previous.map((item) => String(item.id) === editingId ? data.item : item) : [data.item, ...previous]);
       setForm({ title: "", category: "", link: "", relatedLetterIds: [], files: [] });
-      setNotice("منبع آموزشی با موفقیت به جدول افزوده شد.");
+      setNotice(editingId ? "منبع آموزشی با موفقیت ویرایش شد." : "منبع آموزشی با موفقیت به جدول افزوده شد.");
+      setEditingId("");
+      setFormOpen(false);
+      setSelectedIds(new Set());
     } catch (err) {
       setError(err.message || "ثبت منبع آموزشی انجام نشد.");
     } finally {
@@ -158,6 +222,15 @@ export default function TrainingResourcesPage() {
     }
   };
 
+  const allSelected = items.length > 0 && items.every((item) => selectedIds.has(String(item.id)));
+  const toggleSelected = (id) => setSelectedIds((previous) => {
+    const next = new Set(previous);
+    const key = String(id);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+  const toggleAll = () => setSelectedIds(allSelected ? new Set() : new Set(items.map((item) => String(item.id))));
+
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
       <Card className="overflow-hidden rounded-3xl border border-black/10 bg-white p-0 shadow-[0_18px_50px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-neutral-900">
@@ -169,10 +242,10 @@ export default function TrainingResourcesPage() {
               </span>
               <span className="min-w-0">
                 <span className="block truncate text-base font-bold tracking-tight md:text-lg">منابع آموزشی</span>
-                <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت دانش و محتوای آموزشی</span>
+                <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت دانش</span>
               </span>
             </div>
-            <button type="button" onClick={() => formOpen ? closeForm() : setFormOpen(true)} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/15 bg-white transition hover:bg-black/5 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={formOpen ? "بستن فرم" : "افزودن"} aria-label={formOpen ? "بستن فرم" : "افزودن"}>
+            <button type="button" onClick={() => formOpen ? closeForm() : openFreshForm()} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/15 bg-white transition hover:bg-black/5 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={formOpen ? "بستن فرم" : "افزودن"} aria-label={formOpen ? "بستن فرم" : "افزودن"}>
               <img src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" />
             </button>
           </div>
@@ -185,7 +258,7 @@ export default function TrainingResourcesPage() {
                 <Field label="لینک" className="min-w-[260px] flex-[1.5]"><input dir="ltr" value={form.link} onChange={(event) => setForm((old) => ({ ...old, link: event.target.value }))} className={`${inputClass} text-left`} placeholder="https://example.com/training-resource" /></Field>
                 <Field label="اسناد مرتبط" className="shrink-0"><button type="button" onClick={() => { setPickerIds(form.relatedLetterIds.map(String)); setPickerQuery(""); setPickerOpen(true); }} className="relative grid h-11 w-14 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب از مدیریت اسناد"><img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" />{form.relatedLetterIds.length > 0 && <CountBadge value={form.relatedLetterIds.length} />}</button></Field>
                 <Field label="بارگذاری" className="shrink-0"><button type="button" onClick={() => setUploadOpen(true)} className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="بارگذاری فایل"><img src="/images/icons/Uplod.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse" : ""}`} />{form.files.length > 0 && <CountBadge value={form.files.length} />}</button></Field>
-                <button type="button" onClick={submit} disabled={saving || uploading} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-white text-2xl leading-none transition hover:bg-black/[.04] disabled:opacity-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="افزودن به جدول" aria-label="افزودن به جدول">+</button>
+                <button type="button" onClick={submit} disabled={saving || uploading} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-white text-2xl leading-none transition hover:bg-black/[.04] disabled:opacity-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={editingId ? "ذخیره ویرایش" : "افزودن به جدول"} aria-label={editingId ? "ذخیره ویرایش" : "افزودن به جدول"}>{editingId ? <img src="/images/icons/check.svg" alt="" className="h-4 w-4 dark:invert" /> : "+"}</button>
               </div>
             </div>
           )}
@@ -196,19 +269,23 @@ export default function TrainingResourcesPage() {
           <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
             <div className="hidden max-h-[58vh] overflow-auto md:block" dir="ltr">
               <table dir="rtl" className="w-full min-w-[900px] table-fixed text-sm [&_td]:text-center [&_th]:whitespace-nowrap [&_th]:text-center">
-                <colgroup><col style={{ width: 70 }} /><col style={{ width: 130 }} /><col style={{ width: 230 }} /><col style={{ width: 160 }} /><col /><col style={{ width: 170 }} /></colgroup>
+                <colgroup><col style={{ width: 48 }} /><col style={{ width: 70 }} /><col style={{ width: 130 }} /><col style={{ width: 220 }} /><col style={{ width: 150 }} /><col /><col style={{ width: 150 }} /><col style={{ width: 125 }} /></colgroup>
                 <thead><tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100">
+                  <th className="sticky top-0 z-20 bg-neutral-200 px-3 py-2 dark:bg-neutral-800"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allSelected} onChange={toggleAll} aria-label="انتخاب همه" /></th>
                   {['ردیف', 'تاریخ', 'عنوان', 'دسته‌بندی', 'لینک', 'فایل'].map((heading) => <th key={heading} className="sticky top-0 z-10 bg-neutral-200 px-3 py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">{heading}</th>)}
+                  <th className="sticky top-0 z-20 bg-neutral-200 px-3 py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><span>وضعیت</span><ResourceTableMenu menuRef={tableMenuRef} open={tableMenuOpen} setOpen={setTableMenuOpen} selectedCount={selectedIds.size} onEdit={editSelected} onDelete={deleteSelected} deleting={deleting} /></th>
                 </tr></thead>
                 <tbody className="text-[13px]">
                   {loading ? <EmptyRow text="در حال دریافت..." /> : items.length === 0 ? <EmptyRow text="هنوز منبع آموزشی ثبت نشده است." /> : items.map((item, index) => (
                     <tr key={item.id} className="h-11 bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
+                      <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label={`انتخاب ${item.title}`} /></td>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFaDigits(index + 1)}</td>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{jalaliDate(item.createdAt)}</td>
                       <td className="border-b border-neutral-300 px-3 text-center dark:border-neutral-700"><span className="block truncate text-center font-medium" title={item.title}>{item.title}</span></td>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{item.category || "—"}</td>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><div className="flex min-w-0 items-center justify-center gap-1.5"><a href={normalizedUrl(item.link)} target="_blank" rel="noreferrer" dir="ltr" className="min-w-0 truncate text-sky-700 underline-offset-4 hover:underline dark:text-sky-400" title={item.link}>{shortenedLink(item.link)}</a><button type="button" onClick={() => copyLink(item)} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg transition hover:bg-black/[.06] dark:hover:bg-white/10" title={copiedId === String(item.id) ? "کپی شد" : "کپی لینک"} aria-label="کپی لینک"><Copy className="h-3.5 w-3.5" /></button><ExternalLink className="h-3.5 w-3.5 shrink-0 text-neutral-400" /></div></td>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><FileLinks files={item.files} /></td>
+                      <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">ثبت‌شده</span></td>
                     </tr>
                   ))}
                 </tbody>
@@ -229,8 +306,31 @@ export default function TrainingResourcesPage() {
 
 function Field({ label, className = "", children }) { return <div className={className}><div className={labelClass}>{label}</div>{children}</div>; }
 function CountBadge({ value }) { return <span className="absolute -left-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-neutral-900 px-1 text-[10px] text-white dark:bg-white dark:text-black">{toFaDigits(value)}</span>; }
-function EmptyRow({ text }) { return <tr><td colSpan={6} className="py-8 text-black/60 dark:text-neutral-400">{text}</td></tr>; }
+function EmptyRow({ text }) { return <tr><td colSpan={8} className="py-8 text-black/60 dark:text-neutral-400">{text}</td></tr>; }
 function FileLinks({ files }) { const list = Array.isArray(files) ? files : []; return <div className="flex items-center justify-center gap-1.5">{list.length ? list.map((file, index) => <a key={file.url || index} href={file.url} target="_blank" rel="noreferrer" download className="grid h-8 w-8 place-items-center rounded-lg border border-black/10 bg-white transition hover:-translate-y-0.5 hover:shadow-sm dark:border-white/15 dark:bg-white/5" title={file.name || `فایل ${index + 1}`}><FileTypeIcon file={file} /></a>) : <span>—</span>}</div>; }
+
+function ResourceTableMenu({ menuRef, open, setOpen, selectedCount, onEdit, onDelete, deleting }) {
+  return (
+    <div ref={menuRef} className="absolute left-2 top-1/2 z-50 -translate-y-1/2" dir="rtl">
+      <button type="button" onClick={() => setOpen((value) => !value)} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[.08] dark:hover:bg-white/10" title="مدیریت موارد" aria-label="مدیریت موارد" aria-expanded={open}>
+        <img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 dark:invert" />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-[calc(100%+8px)] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
+          <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedCount ? `${toFaDigits(selectedCount)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
+          <button type="button" disabled={selectedCount !== 1} onClick={onEdit} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span>
+            <span className="text-sm font-semibold">ویرایش منبع آموزشی</span>
+          </button>
+          <button type="button" disabled={!selectedCount || deleting} onClick={onDelete} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span>
+            <span className="text-sm font-semibold">{deleting ? "در حال حذف..." : "حذف موارد انتخاب‌شده"}</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function LetterPicker({ query, setQuery, letters, selectedIds, setSelectedIds, onClose, onConfirm }) {
   return createPortal(<div className="fixed inset-0 z-[9999] flex items-center justify-center p-4"><div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} /><div dir="rtl" className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-xl dark:border-white/10 dark:bg-neutral-900 dark:text-white"><ModalHeader title={`انتخاب اسناد مرتبط${selectedIds.length ? ` (${toFaDigits(selectedIds.length)})` : ""}`} onClose={onClose} /><div className="px-4 pb-3"><input value={query} onChange={(event) => setQuery(event.target.value)} className={`${inputClass} h-10`} placeholder="جستجو با شماره، موضوع یا تاریخ نامه..." autoFocus /></div><div className="h-px bg-black/10 dark:bg-white/10" /><div className="max-h-[55vh] overflow-auto p-2">{letters.length ? letters.map((letter) => { const id = letterIdOf(letter); const checked = selectedIds.includes(id); return <button key={id} type="button" onClick={() => setSelectedIds((old) => old.includes(id) ? old.filter((value) => value !== id) : [...old, id])} className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-right transition hover:bg-black/[.04] dark:hover:bg-white/10"><span className="min-w-0"><span className="font-semibold">{toFaDigits(letterNoOf(letter) || id)}</span>{letterDateOf(letter) && <span className="mr-2 text-xs text-neutral-500">{toFaDigits(letterDateOf(letter))}</span>}<span className="mt-1 block truncate text-xs text-neutral-500">{letterSubjectOf(letter) || "—"}</span></span><span className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border ${checked ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/15 dark:border-white/15"}`}>{checked ? "✓" : ""}</span></button>; }) : <div className="p-6 text-center text-sm text-neutral-500">موردی پیدا نشد.</div>}</div><div className="flex justify-end border-t border-black/10 p-4 dark:border-white/10"><button type="button" onClick={onConfirm} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black" title="تأیید"><img src="/images/icons/check.svg" alt="" className="h-5 w-5 invert dark:invert-0" /></button></div></div></div>, document.body);
