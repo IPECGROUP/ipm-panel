@@ -97,7 +97,7 @@ export default function TrainingResourcesPage() {
     if (!tableMenuOpen) return undefined;
     const closeMenu = (event) => {
       if (event.type === "keydown" && event.key !== "Escape") return;
-      if (event.type === "mousedown" && tableMenuRef.current?.contains(event.target)) return;
+      if (event.type === "mousedown" && (tableMenuRef.current?.contains(event.target) || event.target.closest?.("[data-resource-table-menu]"))) return;
       setTableMenuOpen(false);
     };
     document.addEventListener("mousedown", closeMenu);
@@ -269,11 +269,11 @@ export default function TrainingResourcesPage() {
           <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
             <div className="hidden max-h-[58vh] overflow-auto md:block" dir="ltr">
               <table dir="rtl" className="w-full min-w-[900px] table-fixed text-sm [&_td]:text-center [&_th]:whitespace-nowrap [&_th]:text-center">
-                <colgroup><col style={{ width: 48 }} /><col style={{ width: 70 }} /><col style={{ width: 130 }} /><col style={{ width: 220 }} /><col style={{ width: 150 }} /><col /><col style={{ width: 150 }} /><col style={{ width: 125 }} /></colgroup>
+                <colgroup><col style={{ width: 48 }} /><col style={{ width: 70 }} /><col style={{ width: 130 }} /><col style={{ width: 220 }} /><col style={{ width: 150 }} /><col /><col style={{ width: 170 }} /></colgroup>
                 <thead><tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100">
                   <th className="sticky top-0 z-20 bg-neutral-200 px-3 py-2 dark:bg-neutral-800"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allSelected} onChange={toggleAll} aria-label="انتخاب همه" /></th>
-                  {['ردیف', 'تاریخ', 'عنوان', 'دسته‌بندی', 'لینک', 'فایل'].map((heading) => <th key={heading} className="sticky top-0 z-10 bg-neutral-200 px-3 py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">{heading}</th>)}
-                  <th className="sticky top-0 z-20 bg-neutral-200 px-3 py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><span>وضعیت</span><ResourceTableMenu menuRef={tableMenuRef} open={tableMenuOpen} setOpen={setTableMenuOpen} selectedCount={selectedIds.size} onEdit={editSelected} onDelete={deleteSelected} deleting={deleting} /></th>
+                  {['ردیف', 'تاریخ', 'عنوان', 'دسته‌بندی', 'لینک'].map((heading) => <th key={heading} className="sticky top-0 z-10 bg-neutral-200 px-3 py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">{heading}</th>)}
+                  <th className="sticky top-0 z-20 bg-neutral-200 px-3 py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><span>فایل</span><ResourceTableMenu menuRef={tableMenuRef} open={tableMenuOpen} setOpen={setTableMenuOpen} selectedCount={selectedIds.size} onEdit={editSelected} onDelete={deleteSelected} deleting={deleting} /></th>
                 </tr></thead>
                 <tbody className="text-[13px]">
                   {loading ? <EmptyRow text="در حال دریافت..." /> : items.length === 0 ? <EmptyRow text="هنوز منبع آموزشی ثبت نشده است." /> : items.map((item, index) => (
@@ -285,7 +285,6 @@ export default function TrainingResourcesPage() {
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{item.category || "—"}</td>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><div className="flex min-w-0 items-center justify-center gap-1.5"><a href={normalizedUrl(item.link)} target="_blank" rel="noreferrer" dir="ltr" className="min-w-0 truncate text-sky-700 underline-offset-4 hover:underline dark:text-sky-400" title={item.link}>{shortenedLink(item.link)}</a><button type="button" onClick={() => copyLink(item)} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg transition hover:bg-black/[.06] dark:hover:bg-white/10" title={copiedId === String(item.id) ? "کپی شد" : "کپی لینک"} aria-label="کپی لینک"><Copy className="h-3.5 w-3.5" /></button><ExternalLink className="h-3.5 w-3.5 shrink-0 text-neutral-400" /></div></td>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><FileLinks files={item.files} /></td>
-                      <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">ثبت‌شده</span></td>
                     </tr>
                   ))}
                 </tbody>
@@ -306,28 +305,44 @@ export default function TrainingResourcesPage() {
 
 function Field({ label, className = "", children }) { return <div className={className}><div className={labelClass}>{label}</div>{children}</div>; }
 function CountBadge({ value }) { return <span className="absolute -left-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-neutral-900 px-1 text-[10px] text-white dark:bg-white dark:text-black">{toFaDigits(value)}</span>; }
-function EmptyRow({ text }) { return <tr><td colSpan={8} className="py-8 text-black/60 dark:text-neutral-400">{text}</td></tr>; }
+function EmptyRow({ text }) { return <tr><td colSpan={7} className="py-8 text-black/60 dark:text-neutral-400">{text}</td></tr>; }
 function FileLinks({ files }) { const list = Array.isArray(files) ? files : []; return <div className="flex items-center justify-center gap-1.5">{list.length ? list.map((file, index) => <a key={file.url || index} href={file.url} target="_blank" rel="noreferrer" download className="grid h-8 w-8 place-items-center rounded-lg border border-black/10 bg-white transition hover:-translate-y-0.5 hover:shadow-sm dark:border-white/15 dark:bg-white/5" title={file.name || `فایل ${index + 1}`}><FileTypeIcon file={file} /></a>) : <span>—</span>}</div>; }
 
 function ResourceTableMenu({ menuRef, open, setOpen, selectedCount, onEdit, onDelete, deleting }) {
+  const [position, setPosition] = useState({ top: 0, left: 8 });
+  const toggleMenu = (event) => {
+    if (!open) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      const width = 240;
+      const estimatedHeight = 150;
+      setPosition({
+        left: Math.min(Math.max(8, rect.right - width), window.innerWidth - width - 8),
+        top: rect.bottom + 8 + estimatedHeight > window.innerHeight ? Math.max(8, rect.top - estimatedHeight - 8) : rect.bottom + 8,
+      });
+    }
+    setOpen((value) => !value);
+  };
+  const popover = open ? createPortal(
+    <div data-resource-table-menu dir="rtl" style={{ top: position.top, left: position.left }} className="fixed z-[10000] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,.22)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
+      <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedCount ? `${toFaDigits(selectedCount)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
+      <button type="button" disabled={selectedCount !== 1} onClick={onEdit} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span>
+        <span className="text-sm font-semibold">ویرایش منبع آموزشی</span>
+      </button>
+      <button type="button" disabled={!selectedCount || deleting} onClick={onDelete} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span>
+        <span className="text-sm font-semibold">{deleting ? "در حال حذف..." : "حذف موارد انتخاب‌شده"}</span>
+      </button>
+    </div>,
+    document.body
+  ) : null;
+
   return (
     <div ref={menuRef} className="absolute left-2 top-1/2 z-50 -translate-y-1/2" dir="rtl">
-      <button type="button" onClick={() => setOpen((value) => !value)} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[.08] dark:hover:bg-white/10" title="مدیریت موارد" aria-label="مدیریت موارد" aria-expanded={open}>
+      <button type="button" onClick={toggleMenu} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[.08] dark:hover:bg-white/10" title="مدیریت موارد" aria-label="مدیریت موارد" aria-expanded={open}>
         <img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 dark:invert" />
       </button>
-      {open && (
-        <div className="absolute left-0 top-[calc(100%+8px)] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
-          <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedCount ? `${toFaDigits(selectedCount)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
-          <button type="button" disabled={selectedCount !== 1} onClick={onEdit} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span>
-            <span className="text-sm font-semibold">ویرایش منبع آموزشی</span>
-          </button>
-          <button type="button" disabled={!selectedCount || deleting} onClick={onDelete} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span>
-            <span className="text-sm font-semibold">{deleting ? "در حال حذف..." : "حذف موارد انتخاب‌شده"}</span>
-          </button>
-        </div>
-      )}
+      {popover}
     </div>
   );
 }
