@@ -9,6 +9,7 @@ const tabs = [
   { id: "documents", label: "مدیریت اسناد" },
   { id: "contracts", label: "مدیریت قرارداد ها" },
   { id: "finance", label: "مدیریت مالی" },
+  { id: "trainingResources", label: "منابع آموزشی" },
 ];
 
 export default function BaseInformationPage() {
@@ -48,7 +49,7 @@ export default function BaseInformationPage() {
         </div>
 
         <section role="tabpanel" className="rounded-2xl border border-black/10 p-4 dark:border-white/10">
-          {activeTab === "documents" ? <BaseOptionsTable title="کلاس سند" endpoint="/api/base/document-classes" /> : activeTab === "contracts" ? <ContractManagementSection /> : <FinancialManagementSection />}
+          {activeTab === "documents" ? <BaseOptionsTable title="کلاس سند" endpoint="/api/base/document-classes" /> : activeTab === "contracts" ? <ContractManagementSection /> : activeTab === "finance" ? <FinancialManagementSection /> : <BaseOptionsTable title="دسته‌بندی" endpoint="/api/base/training-resource-categories" />}
         </section>
       </Card>
     </div>

@@ -62,6 +62,7 @@ export default function TrainingResourcesPage() {
   const [form, setForm] = useState({ title: "", category: "", link: "", relatedLetterIds: [], files: [] });
   const [items, setItems] = useState([]);
   const [letters, setLetters] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -113,6 +114,13 @@ export default function TrainingResourcesPage() {
     api("/letters/mine", { headers: requestHeaders })
       .then((data) => setLetters(Array.isArray(data?.items) ? data.items : []))
       .catch(() => setLetters([]));
+  }, [authLoading, requestHeaders]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    api("/base/training-resource-categories", { headers: requestHeaders })
+      .then((data) => setCategories(Array.isArray(data?.items) ? data.items : []))
+      .catch(() => setCategories([]));
   }, [authLoading, requestHeaders]);
 
   const filteredLetters = useMemo(() => {
@@ -254,7 +262,7 @@ export default function TrainingResourcesPage() {
             <div className="mb-4 overflow-x-auto rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03]">
               <div className="flex min-w-[1040px] items-end gap-3">
                 <Field label="عنوان" className="min-w-[190px] flex-[1.2]"><input value={form.title} onChange={(event) => setForm((old) => ({ ...old, title: event.target.value }))} className={inputClass} placeholder="عنوان منبع آموزشی" /></Field>
-                <Field label="دسته‌بندی" className="w-[155px] shrink-0"><select value={form.category} onChange={(event) => setForm((old) => ({ ...old, category: event.target.value }))} className={inputClass}><option value="">انتخاب کنید</option></select></Field>
+                <Field label="دسته‌بندی" className="w-[155px] shrink-0"><select value={form.category} onChange={(event) => setForm((old) => ({ ...old, category: event.target.value }))} className={inputClass}><option value="">انتخاب کنید</option>{form.category && !categories.some((item) => item.title === form.category) ? <option value={form.category}>{form.category}</option> : null}{categories.map((item) => <option key={item.id} value={item.title}>{item.title}</option>)}</select></Field>
                 <Field label="لینک" className="min-w-[260px] flex-[1.5]"><input dir="ltr" value={form.link} onChange={(event) => setForm((old) => ({ ...old, link: event.target.value }))} className={`${inputClass} text-left`} placeholder="https://example.com/training-resource" /></Field>
                 <Field label="اسناد مرتبط" className="shrink-0"><button type="button" onClick={() => { setPickerIds(form.relatedLetterIds.map(String)); setPickerQuery(""); setPickerOpen(true); }} className="relative grid h-11 w-14 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب از مدیریت اسناد"><img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" />{form.relatedLetterIds.length > 0 && <CountBadge value={form.relatedLetterIds.length} />}</button></Field>
                 <Field label="بارگذاری" className="shrink-0"><button type="button" onClick={() => setUploadOpen(true)} className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="بارگذاری فایل"><img src="/images/icons/Uplod.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse" : ""}`} />{form.files.length > 0 && <CountBadge value={form.files.length} />}</button></Field>
