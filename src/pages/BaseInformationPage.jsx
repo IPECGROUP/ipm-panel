@@ -30,7 +30,7 @@ export default function BaseInformationPage() {
         </div>
 
         <div className="mt-6">
-          <div className="mx-auto flex w-full max-w-[1040px] overflow-x-auto" role="tablist" aria-label="بخش‌های اطلاعات پایه">
+          <div className="mx-auto grid w-full max-w-[1280px] grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" role="tablist" aria-label="بخش‌های اطلاعات پایه">
             {tabs.map((tab) => {
               const active = activeTab === tab.id;
               return (
@@ -40,7 +40,7 @@ export default function BaseInformationPage() {
                   role="tab"
                   aria-selected={active}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`min-w-[220px] flex-1 border px-5 py-3 text-sm font-bold transition first:rounded-tr-2xl last:rounded-tl-2xl ${active ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white text-neutral-800 hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-white/5"}`}
+                  className={`min-w-0 rounded-xl border px-3 py-3 text-sm font-bold transition md:px-5 ${active ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white text-neutral-800 hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-white/5"}`}
                 >
                   {tab.label}
                 </button>
