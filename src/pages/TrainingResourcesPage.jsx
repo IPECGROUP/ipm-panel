@@ -53,13 +53,15 @@ function FileTypeIcon({ file }) {
   return <File className="h-5 w-5 text-neutral-500" />;
 }
 
-export default function TrainingResourcesPage() {
+export default function TrainingResourcesPage({ variant = "training" }) {
+  const isLibrary = variant === "library";
   const { user, loading: authLoading } = useAuth();
   const fileRef = useRef(null);
   const tableMenuRef = useRef(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState("");
-  const [form, setForm] = useState({ title: "", category: "", link: "", relatedLetterIds: [], files: [] });
+  const emptyForm = () => ({ title: "", category: "", link: "", libraryId: "", relatedLetterIds: [], files: [] });
+  const [form, setForm] = useState(emptyForm);
   const [items, setItems] = useState([]);
   const [letters, setLetters] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -83,14 +85,14 @@ export default function TrainingResourcesPage() {
     if (authLoading) return;
     setLoading(true);
     try {
-      const data = await api("/training-resources", { headers: requestHeaders });
+      const data = await api(isLibrary ? "/library-items" : "/training-resources", { headers: requestHeaders });
       setItems(Array.isArray(data?.items) ? data.items : []);
     } catch (err) {
-      setError(err.message || "دریافت منابع آموزشی انجام نشد.");
+      setError(err.message || `دریافت ${isLibrary ? "اطلاعات کتابخانه" : "منابع آموزشی"} انجام نشد.`);
     } finally {
       setLoading(false);
     }
-  }, [authLoading, requestHeaders]);
+  }, [authLoading, isLibrary, requestHeaders]);
 
   useEffect(() => { loadItems(); }, [loadItems]);
 
@@ -118,10 +120,10 @@ export default function TrainingResourcesPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    api("/base/training-resource-categories", { headers: requestHeaders })
+    api(isLibrary ? "/base/libraries" : "/base/training-resource-categories", { headers: requestHeaders })
       .then((data) => setCategories(Array.isArray(data?.items) ? data.items : []))
       .catch(() => setCategories([]));
-  }, [authLoading, requestHeaders]);
+  }, [authLoading, isLibrary, requestHeaders]);
 
   const filteredLetters = useMemo(() => {
     const query = pickerQuery.trim().toLowerCase();
@@ -131,13 +133,13 @@ export default function TrainingResourcesPage() {
   const closeForm = () => {
     setFormOpen(false);
     setEditingId("");
-    setForm({ title: "", category: "", link: "", relatedLetterIds: [], files: [] });
+    setForm(emptyForm());
     setError("");
   };
 
   const openFreshForm = () => {
     setEditingId("");
-    setForm({ title: "", category: "", link: "", relatedLetterIds: [], files: [] });
+    setForm(emptyForm());
     setFormOpen(true);
     setError("");
     setNotice("");
@@ -148,7 +150,7 @@ export default function TrainingResourcesPage() {
     const item = items.find((row) => selectedIds.has(String(row.id)));
     if (!item) return;
     setEditingId(String(item.id));
-    setForm({ title: item.title || "", category: item.category || "", link: item.link || "", relatedLetterIds: Array.isArray(item.relatedLetterIds) ? item.relatedLetterIds.map(String) : [], files: Array.isArray(item.files) ? item.files : [] });
+    setForm({ title: item.title || "", category: item.category || "", link: item.link || "", libraryId: item.libraryId == null ? "" : String(item.libraryId), relatedLetterIds: Array.isArray(item.relatedLetterIds) ? item.relatedLetterIds.map(String) : [], files: Array.isArray(item.files) ? item.files : [] });
     setFormOpen(true);
     setTableMenuOpen(false);
     setError("");
@@ -162,7 +164,7 @@ export default function TrainingResourcesPage() {
     setDeleting(true);
     setError("");
     try {
-      await api("/training-resources", { method: "DELETE", headers: requestHeaders, body: JSON.stringify({ ids: [...selectedIds] }) });
+      await api(isLibrary ? "/library-items" : "/training-resources", { method: "DELETE", headers: requestHeaders, body: JSON.stringify({ ids: [...selectedIds] }) });
       setItems((previous) => previous.filter((item) => !selectedIds.has(String(item.id))));
       setSelectedIds(new Set());
       setTableMenuOpen(false);
@@ -185,7 +187,7 @@ export default function TrainingResourcesPage() {
       for (const file of selected) {
         const body = new FormData();
         body.append("file", file);
-        const response = await fetch("/api/training-resources/upload", { method: "POST", credentials: "include", headers: requestHeaders, body });
+        const response = await fetch(isLibrary ? "/api/library-items/upload" : "/api/training-resources/upload", { method: "POST", credentials: "include", headers: requestHeaders, body });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error === "unsupported_file_type" ? "فقط فایل‌های اکسل، ورد و PDF مجاز هستند." : data.error || "بارگذاری فایل انجام نشد.");
         uploaded.push(data.file);
@@ -202,19 +204,20 @@ export default function TrainingResourcesPage() {
     setError("");
     setNotice("");
     if (!form.title.trim()) return setError("عنوان را وارد کنید.");
-    if (!form.link.trim()) return setError("لینک را وارد کنید.");
-    try { new URL(normalizedUrl(form.link)); } catch { return setError("لینک واردشده معتبر نیست."); }
+    if (isLibrary && !form.libraryId) return setError("کتابخانه را انتخاب کنید.");
+    if (!isLibrary && !form.link.trim()) return setError("لینک را وارد کنید.");
+    if (!isLibrary) try { new URL(normalizedUrl(form.link)); } catch { return setError("لینک واردشده معتبر نیست."); }
     setSaving(true);
     try {
-      const data = await api("/training-resources", { method: editingId ? "PATCH" : "POST", headers: requestHeaders, body: JSON.stringify(editingId ? { ...form, id: editingId } : form) });
+      const data = await api(isLibrary ? "/library-items" : "/training-resources", { method: editingId ? "PATCH" : "POST", headers: requestHeaders, body: JSON.stringify(editingId ? { ...form, id: editingId } : form) });
       setItems((previous) => editingId ? previous.map((item) => String(item.id) === editingId ? data.item : item) : [data.item, ...previous]);
-      setForm({ title: "", category: "", link: "", relatedLetterIds: [], files: [] });
-      setNotice(editingId ? "منبع آموزشی با موفقیت ویرایش شد." : "منبع آموزشی با موفقیت به جدول افزوده شد.");
+      setForm(emptyForm());
+      setNotice(editingId ? `${isLibrary ? "مورد کتابخانه" : "منبع آموزشی"} با موفقیت ویرایش شد.` : `${isLibrary ? "مورد کتابخانه" : "منبع آموزشی"} با موفقیت به جدول افزوده شد.`);
       setEditingId("");
       setFormOpen(false);
       setSelectedIds(new Set());
     } catch (err) {
-      setError(err.message || "ثبت منبع آموزشی انجام نشد.");
+      setError(err.message || `ثبت ${isLibrary ? "مورد کتابخانه" : "منبع آموزشی"} انجام نشد.`);
     } finally {
       setSaving(false);
     }
@@ -246,10 +249,10 @@ export default function TrainingResourcesPage() {
           <div className="mb-5 flex min-w-0 items-center justify-between gap-3 border-b border-black/[0.07] pb-4 dark:border-white/10">
             <div className="flex min-w-0 items-center gap-3">
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-black/10 bg-gradient-to-br from-neutral-50 to-neutral-200/70 shadow-sm dark:border-white/10 dark:from-white/[0.12] dark:to-white/[0.04]">
-                <img src="/images/icons/manabeamozeshi.svg" alt="" className="h-6 w-6 dark:invert" />
+                <img src={isLibrary ? "/images/icons/ketabkhane.svg" : "/images/icons/manabeamozeshi.svg"} alt="" className="h-6 w-6 dark:invert" />
               </span>
               <span className="min-w-0">
-                <span className="block truncate text-base font-bold tracking-tight md:text-lg">منابع آموزشی</span>
+                <span className="block truncate text-base font-bold tracking-tight md:text-lg">{isLibrary ? "کتابخانه‌ها" : "منابع آموزشی"}</span>
                 <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت دانش</span>
               </span>
             </div>
@@ -260,10 +263,9 @@ export default function TrainingResourcesPage() {
 
           {formOpen && (
             <div className="mb-4 overflow-x-auto rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03]">
-              <div className="flex min-w-[1040px] items-end gap-3">
-                <Field label="عنوان" className="min-w-[190px] flex-[1.2]"><input value={form.title} onChange={(event) => setForm((old) => ({ ...old, title: event.target.value }))} className={inputClass} placeholder="عنوان منبع آموزشی" /></Field>
-                <Field label="دسته‌بندی" className="w-[155px] shrink-0"><select value={form.category} onChange={(event) => setForm((old) => ({ ...old, category: event.target.value }))} className={inputClass}><option value="">انتخاب کنید</option>{form.category && !categories.some((item) => item.title === form.category) ? <option value={form.category}>{form.category}</option> : null}{categories.map((item) => <option key={item.id} value={item.title}>{item.title}</option>)}</select></Field>
-                <Field label="لینک" className="min-w-[260px] flex-[1.5]"><input dir="ltr" value={form.link} onChange={(event) => setForm((old) => ({ ...old, link: event.target.value }))} className={`${inputClass} text-left`} placeholder="https://example.com/training-resource" /></Field>
+              <div className={`flex items-end gap-3 ${isLibrary ? "min-w-[720px]" : "min-w-[1040px]"}`}>
+                <Field label="عنوان" className="min-w-[190px] flex-[1.2]"><input value={form.title} onChange={(event) => setForm((old) => ({ ...old, title: event.target.value }))} className={inputClass} placeholder={isLibrary ? "عنوان" : "عنوان منبع آموزشی"} /></Field>
+                {isLibrary ? <Field label="کتابخانه" className="min-w-[210px] flex-1"><select value={form.libraryId} onChange={(event) => setForm((old) => ({ ...old, libraryId: event.target.value }))} className={inputClass}><option value="">انتخاب کنید</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></Field> : <><Field label="دسته‌بندی" className="w-[155px] shrink-0"><select value={form.category} onChange={(event) => setForm((old) => ({ ...old, category: event.target.value }))} className={inputClass}><option value="">انتخاب کنید</option>{form.category && !categories.some((item) => item.title === form.category) ? <option value={form.category}>{form.category}</option> : null}{categories.map((item) => <option key={item.id} value={item.title}>{item.title}</option>)}</select></Field><Field label="لینک" className="min-w-[260px] flex-[1.5]"><input dir="ltr" value={form.link} onChange={(event) => setForm((old) => ({ ...old, link: event.target.value }))} className={`${inputClass} text-left`} placeholder="https://example.com/training-resource" /></Field></>}
                 <Field label="اسناد مرتبط" className="shrink-0"><button type="button" onClick={() => { setPickerIds(form.relatedLetterIds.map(String)); setPickerQuery(""); setPickerOpen(true); }} className="relative grid h-11 w-14 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب از مدیریت اسناد"><img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" />{form.relatedLetterIds.length > 0 && <CountBadge value={form.relatedLetterIds.length} />}</button></Field>
                 <Field label="بارگذاری" className="shrink-0"><button type="button" onClick={() => setUploadOpen(true)} className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="بارگذاری فایل"><img src="/images/icons/Uplod.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse" : ""}`} />{form.files.length > 0 && <CountBadge value={form.files.length} />}</button></Field>
                 <button type="button" onClick={submit} disabled={saving || uploading} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-white text-2xl leading-none transition hover:bg-black/[.04] disabled:opacity-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={editingId ? "ذخیره ویرایش" : "افزودن به جدول"} aria-label={editingId ? "ذخیره ویرایش" : "افزودن به جدول"}>{editingId ? <img src="/images/icons/check.svg" alt="" className="h-4 w-4 dark:invert" /> : "+"}</button>
@@ -277,21 +279,21 @@ export default function TrainingResourcesPage() {
           <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
             <div className="hidden max-h-[58vh] overflow-auto md:block" dir="ltr">
               <table dir="rtl" className="w-full min-w-[900px] table-fixed text-sm [&_td]:text-center [&_th]:whitespace-nowrap [&_th]:text-center">
-                <colgroup><col style={{ width: 48 }} /><col style={{ width: 70 }} /><col style={{ width: 130 }} /><col style={{ width: 220 }} /><col style={{ width: 150 }} /><col /><col style={{ width: 170 }} /></colgroup>
+                {isLibrary ? <colgroup><col style={{ width: 48 }} /><col style={{ width: 70 }} /><col style={{ width: 140 }} /><col /><col style={{ width: 240 }} /><col style={{ width: 190 }} /></colgroup> : <colgroup><col style={{ width: 48 }} /><col style={{ width: 70 }} /><col style={{ width: 130 }} /><col style={{ width: 220 }} /><col style={{ width: 150 }} /><col /><col style={{ width: 170 }} /></colgroup>}
                 <thead><tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100">
                   <th className="sticky top-0 z-20 bg-neutral-200 px-3 py-2 dark:bg-neutral-800"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allSelected} onChange={toggleAll} aria-label="انتخاب همه" /></th>
-                  {['ردیف', 'تاریخ', 'عنوان', 'دسته‌بندی', 'لینک'].map((heading) => <th key={heading} className="sticky top-0 z-10 bg-neutral-200 px-3 py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">{heading}</th>)}
-                  <th className="sticky top-0 z-20 bg-neutral-200 px-3 py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><span>فایل</span><ResourceTableMenu menuRef={tableMenuRef} open={tableMenuOpen} setOpen={setTableMenuOpen} selectedCount={selectedIds.size} onEdit={editSelected} onDelete={deleteSelected} deleting={deleting} /></th>
+                  {(isLibrary ? ['ردیف', 'تاریخ', 'عنوان', 'کتابخانه'] : ['ردیف', 'تاریخ', 'عنوان', 'دسته‌بندی', 'لینک']).map((heading) => <th key={heading} className="sticky top-0 z-10 bg-neutral-200 px-3 py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">{heading}</th>)}
+                  <th className="sticky top-0 z-20 bg-neutral-200 px-3 py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><span>فایل</span><ResourceTableMenu entityLabel={isLibrary ? "مورد کتابخانه" : "منبع آموزشی"} menuRef={tableMenuRef} open={tableMenuOpen} setOpen={setTableMenuOpen} selectedCount={selectedIds.size} onEdit={editSelected} onDelete={deleteSelected} deleting={deleting} /></th>
                 </tr></thead>
                 <tbody className="text-[13px]">
-                  {loading ? <EmptyRow text="در حال دریافت..." /> : items.length === 0 ? <EmptyRow text="هنوز منبع آموزشی ثبت نشده است." /> : items.map((item, index) => (
+                  {loading ? <EmptyRow colSpan={isLibrary ? 6 : 7} text="در حال دریافت..." /> : items.length === 0 ? <EmptyRow colSpan={isLibrary ? 6 : 7} text={isLibrary ? "هنوز موردی در کتابخانه ثبت نشده است." : "هنوز منبع آموزشی ثبت نشده است."} /> : items.map((item, index) => (
                     <tr key={item.id} className="h-11 bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label={`انتخاب ${item.title}`} /></td>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFaDigits(index + 1)}</td>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{jalaliDate(item.createdAt)}</td>
                       <td className="border-b border-neutral-300 px-3 text-center dark:border-neutral-700"><span className="block truncate text-center font-medium" title={item.title}>{item.title}</span></td>
-                      <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{item.category || "—"}</td>
-                      <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><div className="flex min-w-0 items-center justify-center gap-1.5"><a href={normalizedUrl(item.link)} target="_blank" rel="noreferrer" dir="ltr" className="min-w-0 truncate text-sky-700 underline-offset-4 hover:underline dark:text-sky-400" title={item.link}>{shortenedLink(item.link)}</a><button type="button" onClick={() => copyLink(item)} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg transition hover:bg-black/[.06] dark:hover:bg-white/10" title={copiedId === String(item.id) ? "کپی شد" : "کپی لینک"} aria-label="کپی لینک"><Copy className="h-3.5 w-3.5" /></button><ExternalLink className="h-3.5 w-3.5 shrink-0 text-neutral-400" /></div></td>
+                      <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{isLibrary ? item.libraryTitle || "—" : item.category || "—"}</td>
+                      {!isLibrary && <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><div className="flex min-w-0 items-center justify-center gap-1.5"><a href={normalizedUrl(item.link)} target="_blank" rel="noreferrer" dir="ltr" className="min-w-0 truncate text-sky-700 underline-offset-4 hover:underline dark:text-sky-400" title={item.link}>{shortenedLink(item.link)}</a><button type="button" onClick={() => copyLink(item)} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg transition hover:bg-black/[.06] dark:hover:bg-white/10" title={copiedId === String(item.id) ? "کپی شد" : "کپی لینک"} aria-label="کپی لینک"><Copy className="h-3.5 w-3.5" /></button><ExternalLink className="h-3.5 w-3.5 shrink-0 text-neutral-400" /></div></td>}
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><FileLinks files={item.files} /></td>
                     </tr>
                   ))}
@@ -299,24 +301,24 @@ export default function TrainingResourcesPage() {
               </table>
             </div>
             <div className="grid gap-3 p-3 md:hidden">
-              {loading ? <div className="py-6 text-center text-sm text-neutral-500">در حال دریافت...</div> : items.length === 0 ? <div className="py-6 text-center text-sm text-neutral-500">هنوز منبع آموزشی ثبت نشده است.</div> : items.map((item, index) => <div key={item.id} className="rounded-xl border border-black/10 p-3 dark:border-white/10"><div className="flex items-center justify-between gap-2"><b className="truncate">{toFaDigits(index + 1)}. {item.title}</b><span className="shrink-0 text-xs text-neutral-500">{jalaliDate(item.createdAt)}</span></div><div className="mt-3 flex items-center justify-between gap-3"><a href={normalizedUrl(item.link)} target="_blank" rel="noreferrer" dir="ltr" className="min-w-0 truncate text-xs text-sky-700 dark:text-sky-400">{shortenedLink(item.link)}</a><FileLinks files={item.files} /></div></div>)}
+              {loading ? <div className="py-6 text-center text-sm text-neutral-500">در حال دریافت...</div> : items.length === 0 ? <div className="py-6 text-center text-sm text-neutral-500">{isLibrary ? "هنوز موردی در کتابخانه ثبت نشده است." : "هنوز منبع آموزشی ثبت نشده است."}</div> : items.map((item, index) => <div key={item.id} className="rounded-xl border border-black/10 p-3 dark:border-white/10"><div className="flex items-center justify-between gap-2"><b className="truncate">{toFaDigits(index + 1)}. {item.title}</b><span className="shrink-0 text-xs text-neutral-500">{jalaliDate(item.createdAt)}</span></div><div className="mt-3 flex items-center justify-between gap-3">{isLibrary ? <span className="min-w-0 truncate text-xs text-neutral-500">{item.libraryTitle || "—"}</span> : <a href={normalizedUrl(item.link)} target="_blank" rel="noreferrer" dir="ltr" className="min-w-0 truncate text-xs text-sky-700 dark:text-sky-400">{shortenedLink(item.link)}</a>}<FileLinks files={item.files} /></div></div>)}
             </div>
           </div>
         </div>
       </Card>
 
       {pickerOpen && <LetterPicker query={pickerQuery} setQuery={setPickerQuery} letters={filteredLetters} selectedIds={pickerIds} setSelectedIds={setPickerIds} onClose={() => setPickerOpen(false)} onConfirm={() => { setForm((old) => ({ ...old, relatedLetterIds: pickerIds })); setPickerOpen(false); }} />}
-      {uploadOpen && <UploadModal fileRef={fileRef} files={form.files} uploading={uploading} onUpload={uploadFiles} onRemove={(index) => setForm((old) => ({ ...old, files: old.files.filter((_, position) => position !== index) }))} onClose={() => setUploadOpen(false)} />}
+      {uploadOpen && <UploadModal title={isLibrary ? "بارگذاری فایل‌های کتابخانه" : "بارگذاری فایل‌های منبع آموزشی"} fileRef={fileRef} files={form.files} uploading={uploading} onUpload={uploadFiles} onRemove={(index) => setForm((old) => ({ ...old, files: old.files.filter((_, position) => position !== index) }))} onClose={() => setUploadOpen(false)} />}
     </div>
   );
 }
 
 function Field({ label, className = "", children }) { return <div className={className}><div className={labelClass}>{label}</div>{children}</div>; }
 function CountBadge({ value }) { return <span className="absolute -left-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-neutral-900 px-1 text-[10px] text-white dark:bg-white dark:text-black">{toFaDigits(value)}</span>; }
-function EmptyRow({ text }) { return <tr><td colSpan={7} className="py-8 text-black/60 dark:text-neutral-400">{text}</td></tr>; }
+function EmptyRow({ text, colSpan = 7 }) { return <tr><td colSpan={colSpan} className="py-8 text-black/60 dark:text-neutral-400">{text}</td></tr>; }
 function FileLinks({ files }) { const list = Array.isArray(files) ? files : []; return <div className="flex items-center justify-center gap-1.5">{list.length ? list.map((file, index) => <a key={file.url || index} href={file.url} target="_blank" rel="noreferrer" download className="grid h-8 w-8 place-items-center rounded-lg border border-black/10 bg-white transition hover:-translate-y-0.5 hover:shadow-sm dark:border-white/15 dark:bg-white/5" title={file.name || `فایل ${index + 1}`}><FileTypeIcon file={file} /></a>) : <span>—</span>}</div>; }
 
-function ResourceTableMenu({ menuRef, open, setOpen, selectedCount, onEdit, onDelete, deleting }) {
+function ResourceTableMenu({ entityLabel, menuRef, open, setOpen, selectedCount, onEdit, onDelete, deleting }) {
   const [position, setPosition] = useState({ top: 0, left: 8 });
   const toggleMenu = (event) => {
     if (!open) {
@@ -335,7 +337,7 @@ function ResourceTableMenu({ menuRef, open, setOpen, selectedCount, onEdit, onDe
       <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedCount ? `${toFaDigits(selectedCount)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
       <button type="button" disabled={selectedCount !== 1} onClick={onEdit} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10">
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span>
-        <span className="text-sm font-semibold">ویرایش منبع آموزشی</span>
+        <span className="text-sm font-semibold">ویرایش {entityLabel}</span>
       </button>
       <button type="button" disabled={!selectedCount || deleting} onClick={onDelete} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10">
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span>
@@ -361,7 +363,7 @@ function LetterPicker({ query, setQuery, letters, selectedIds, setSelectedIds, o
 
 function ModalHeader({ title, onClose }) { return <div className="flex items-center justify-between gap-3 p-4"><div className="truncate text-sm font-bold">{title}</div><button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black" aria-label="بستن"><img src="/images/icons/bastan.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button></div>; }
 
-function UploadModal({ fileRef, files, uploading, onUpload, onRemove, onClose }) {
+function UploadModal({ title, fileRef, files, uploading, onUpload, onRemove, onClose }) {
   const handleDrop = (event) => { event.preventDefault(); if (event.dataTransfer?.files?.length) onUpload(event.dataTransfer.files); };
-  return createPortal(<div className="fixed inset-0 z-[9999]"><div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} /><div className="absolute inset-0 flex items-center justify-center p-3"><div dir="rtl" className="relative flex max-h-[calc(100dvh-24px)] w-[min(720px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-xl dark:border-white/10 dark:bg-neutral-900 dark:text-white"><ModalHeader title="بارگذاری فایل‌های منبع آموزشی" onClose={onClose} /><div className="h-px bg-black/10 dark:bg-white/10" /><div className="overflow-y-auto p-4"><div className="mb-2 text-xs font-medium text-neutral-600 dark:text-neutral-300">فایل‌های انتخاب‌شده</div><div className="space-y-2">{files.length ? files.map((file, index) => <div key={file.url || index} className="flex items-center gap-3 rounded-xl border border-black/10 px-3 py-2 dark:border-white/10"><FileTypeIcon file={file} /><span className="min-w-0 flex-1 truncate text-sm font-semibold">{file.name}</span><a href={file.url} target="_blank" rel="noreferrer" className="text-xs hover:underline">باز کردن</a><button type="button" onClick={() => onRemove(index)} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10" title="حذف"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></button></div>) : <div className="py-5 text-center text-sm text-neutral-500">فایلی انتخاب نشده است.</div>}</div><div onDrop={handleDrop} onDragOver={(event) => event.preventDefault()} className="mt-3 rounded-2xl border border-dashed border-black/15 bg-black/[.01] px-4 py-8 text-center dark:border-white/15 dark:bg-white/[.03]"><div className="text-sm font-semibold">فایل را اینجا رها کنید</div><div className="mt-1 text-xs text-neutral-500">فایل‌های مجاز: PDF، Word و Excel</div><button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-black px-4 text-sm text-white disabled:opacity-50 dark:bg-white dark:text-black"><img src="/images/icons/upload.svg" alt="" className="h-5 w-5 invert dark:invert-0" />{uploading ? "در حال بارگذاری..." : "انتخاب فایل"}</button><input ref={fileRef} type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.xlsm,.csv,.rtf" className="hidden" onChange={(event) => { onUpload(event.target.files); event.target.value = ""; }} /></div><div className="mt-4 flex justify-end"><button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black" title="تأیید"><img src="/images/icons/check.svg" alt="" className="h-5 w-5 invert dark:invert-0" /></button></div></div></div></div></div>, document.body);
+  return createPortal(<div className="fixed inset-0 z-[9999]"><div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} /><div className="absolute inset-0 flex items-center justify-center p-3"><div dir="rtl" className="relative flex max-h-[calc(100dvh-24px)] w-[min(720px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-xl dark:border-white/10 dark:bg-neutral-900 dark:text-white"><ModalHeader title={title} onClose={onClose} /><div className="h-px bg-black/10 dark:bg-white/10" /><div className="overflow-y-auto p-4"><div className="mb-2 text-xs font-medium text-neutral-600 dark:text-neutral-300">فایل‌های انتخاب‌شده</div><div className="space-y-2">{files.length ? files.map((file, index) => <div key={file.url || index} className="flex items-center gap-3 rounded-xl border border-black/10 px-3 py-2 dark:border-white/10"><FileTypeIcon file={file} /><span className="min-w-0 flex-1 truncate text-sm font-semibold">{file.name}</span><a href={file.url} target="_blank" rel="noreferrer" className="text-xs hover:underline">باز کردن</a><button type="button" onClick={() => onRemove(index)} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10" title="حذف"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></button></div>) : <div className="py-5 text-center text-sm text-neutral-500">فایلی انتخاب نشده است.</div>}</div><div onDrop={handleDrop} onDragOver={(event) => event.preventDefault()} className="mt-3 rounded-2xl border border-dashed border-black/15 bg-black/[.01] px-4 py-8 text-center dark:border-white/15 dark:bg-white/[.03]"><div className="text-sm font-semibold">فایل را اینجا رها کنید</div><div className="mt-1 text-xs text-neutral-500">فایل‌های مجاز: PDF، Word و Excel</div><button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-black px-4 text-sm text-white disabled:opacity-50 dark:bg-white dark:text-black"><img src="/images/icons/upload.svg" alt="" className="h-5 w-5 invert dark:invert-0" />{uploading ? "در حال بارگذاری..." : "انتخاب فایل"}</button><input ref={fileRef} type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.xlsm,.csv,.rtf" className="hidden" onChange={(event) => { onUpload(event.target.files); event.target.value = ""; }} /></div><div className="mt-4 flex justify-end"><button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black" title="تأیید"><img src="/images/icons/check.svg" alt="" className="h-5 w-5 invert dark:invert-0" /></button></div></div></div></div></div>, document.body);
 }
