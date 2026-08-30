@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Copy, ExternalLink, File, FileSpreadsheet, FileText, Link2 } from "lucide-react";
+import { Copy, ExternalLink, File } from "lucide-react";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { api } from "../utils/api.js";
@@ -44,11 +44,41 @@ function fileKind(file) {
 
 function FileTypeIcon({ file }) {
   const kind = fileKind(file);
-  const common = "h-5 w-5";
-  if (kind === "excel") return <FileSpreadsheet className={`${common} text-emerald-600 dark:text-emerald-400`} />;
-  if (kind === "word") return <FileText className={`${common} text-blue-600 dark:text-blue-400`} />;
-  if (kind === "pdf") return <FileText className={`${common} text-red-600 dark:text-red-400`} />;
-  return <File className={`${common} text-neutral-500`} />;
+  if (kind === "excel") return <OfficeFileLogo type="excel" />;
+  if (kind === "word") return <OfficeFileLogo type="word" />;
+  if (kind === "pdf") return <OfficeFileLogo type="pdf" />;
+  return <File className="h-5 w-5 text-neutral-500" />;
+}
+
+function OfficeFileLogo({ type }) {
+  if (type === "word") {
+    return (
+      <svg viewBox="0 0 32 32" className="h-6 w-6" role="img" aria-label="Word">
+        <rect x="10" y="3" width="19" height="26" rx="2.5" fill="#2B579A" />
+        <path d="M14 8h11M14 12h11M14 16h8M14 20h10M14 24h7" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" opacity=".9" />
+        <rect x="3" y="7" width="15" height="18" rx="2.5" fill="#185ABD" />
+        <path d="m6.4 11.2 2.2 9.2h2.1l1.3-5.7 1.3 5.7h2.1l2.2-9.2h-2l-1.3 6.3-1.4-6.3h-1.8l-1.4 6.3-1.3-6.3Z" fill="#fff" />
+      </svg>
+    );
+  }
+  if (type === "excel") {
+    return (
+      <svg viewBox="0 0 32 32" className="h-6 w-6" role="img" aria-label="Excel">
+        <rect x="10" y="3" width="19" height="26" rx="2.5" fill="#107C41" />
+        <path d="M13 9h13M13 14h13M13 19h13M13 24h13M18 6v21M23 6v21" stroke="#fff" strokeWidth="1.1" opacity=".75" />
+        <rect x="3" y="7" width="15" height="18" rx="2.5" fill="#185C37" />
+        <path d="m7 11 2.7 4.5L6.8 21h2.7l1.7-3.5 1.8 3.5h2.8l-3-5.5 2.7-4.5h-2.6l-1.5 2.8L9.9 11Z" fill="#fff" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 32 32" className="h-6 w-6" role="img" aria-label="PDF">
+      <path d="M7 2.5h12l7 7V28a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4.5a2 2 0 0 1 2-2Z" fill="#E5252A" />
+      <path d="M19 2.5v7h7" fill="#FF777A" />
+      <path d="M9.2 22.5c4.7-2.1 8.1-6.1 8.5-10.7-.3 4.5 1.7 8 5.2 9.3-4.9-1.2-9.7-1.1-13.7 1.4Z" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <text x="16" y="27.2" fill="#fff" fontSize="5.5" fontWeight="700" textAnchor="middle" fontFamily="Arial, sans-serif">PDF</text>
+    </svg>
+  );
 }
 
 export default function TrainingResourcesPage() {
@@ -203,7 +233,7 @@ export default function TrainingResourcesPage() {
                     <tr key={item.id} className="h-11 bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFaDigits(index + 1)}</td>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{jalaliDate(item.createdAt)}</td>
-                      <td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><span className="block truncate font-medium" title={item.title}>{item.title}</span></td>
+                      <td className="border-b border-neutral-300 px-3 text-center dark:border-neutral-700"><span className="block truncate text-center font-medium" title={item.title}>{item.title}</span></td>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{item.category || "—"}</td>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><div className="flex min-w-0 items-center justify-center gap-1.5"><a href={normalizedUrl(item.link)} target="_blank" rel="noreferrer" dir="ltr" className="min-w-0 truncate text-sky-700 underline-offset-4 hover:underline dark:text-sky-400" title={item.link}>{shortenedLink(item.link)}</a><button type="button" onClick={() => copyLink(item)} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg transition hover:bg-black/[.06] dark:hover:bg-white/10" title={copiedId === String(item.id) ? "کپی شد" : "کپی لینک"} aria-label="کپی لینک"><Copy className="h-3.5 w-3.5" /></button><ExternalLink className="h-3.5 w-3.5 shrink-0 text-neutral-400" /></div></td>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><FileLinks files={item.files} /></td>
