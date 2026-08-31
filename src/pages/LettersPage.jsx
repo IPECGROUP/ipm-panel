@@ -161,10 +161,13 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
   const years = useMemo(() => {
     const base = nowParts.jy || 1400;
     const arr = [];
-    const maxY = disableFuture ? base : base + 10;
-    for (let y = base - 10; y <= maxY; y++) arr.push(y);
+    // نامه‌ها ممکن است مربوط به سال‌های گذشته یا آینده باشند. بازهٔ وسیع
+    // انتخاب سال، محدودیت قبلیِ ده‌ساله را حذف می‌کند.
+    const minY = Math.min(1200, base - 100);
+    const maxY = Math.max(1600, base + 100);
+    for (let y = minY; y <= maxY; y++) arr.push(y);
     return arr;
-  }, [disableFuture, nowParts.jy]);
+  }, [nowParts.jy]);
 
   const months = useMemo(() => {
     const maxM = maxMonthForYear(jy);
@@ -5387,7 +5390,6 @@ onChange={(v) => {
   setForm(formKind, { letterDate: v });
   clearFieldError(formKind, "letterDate");
 }}
-disableFuture={formKind === "incoming" || formKind === "internal"}
 buttonClassName={inputWithError(inputSmCls + " flex items-center justify-between", formKind, "letterDate")}
     />
 <ErrorTextAbs kind={formKind} k="letterDate" />
@@ -6025,7 +6027,6 @@ aria-invalid={fieldHasError(formKind, "subject")}
               else if (formKind === "outgoing") setOutgoingSecretariatDate(v);
               else setInternalSecretariatDate(v);
             }}
-            disableFuture={formKind === "incoming" || formKind === "internal"}
             theme={theme}
             buttonClassName={secretariatPickerBtnCls(
               formKind === "incoming" ? incomingSecretariatDate : formKind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate
