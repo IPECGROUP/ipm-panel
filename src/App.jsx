@@ -124,7 +124,7 @@ export default function App() {
         <Route path="/budget-allocation" element={<BudgetAllocationPage />} />
         <Route path="/budget/reports" element={<ReportsPage />} />
         <Route path="/finance/payment-request" element={<PaymentRequestPage />} />
-        <Route path="/finance/tenkhah" element={<Navigate to="/finance/payment-request" replace />} />
+        <Route path="/finance/tenkhah" element={<NavPlaceholderPage title="تنخواه گردان" />} />
         <Route path="/finance/liquidity-allocation" element={<LiquidityAllocationPage />} />
         <Route path="/finance/cash-flow-forecast" element={<CashFlowForecastPage />} />
         <Route path="/finance/financial-management-dashboard" element={<FinancialManagementDashboardPage />} />
