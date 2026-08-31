@@ -35,6 +35,7 @@ const IcCostBreakdown = () => <NavIcon src="/images/icons/sakhtar-shekast.svg" /
 const IcFinancialCommitments = () => <NavIcon src="/images/icons/masaref-mali.svg" />;
 const IcProjectDashboard = () => <NavIcon src="/images/icons/dashboard-modirirat.svg" />;
 const IcPaymentRequest = () => <NavIcon src="/images/icons/darkhast-pardakht.svg" />;
+const IcTenkhahGardan = () => <NavIcon src="/images/icons/tankhah-gardan.svg" />;
 const IcLiquidity = () => <NavIcon src="/images/icons/modiriat-nagdinegi.svg" />;
 const IcCashForecast = () => <NavIcon src="/images/icons/pishbini-naghdi.svg" />;
 const IcSupply = () => <NavIcon src="/images/icons/modirat-taminposhtibami.svg" />;
@@ -201,6 +202,7 @@ function RightNav() {
           active: budgetParentActive,
           items: [
             { to: "/finance/payment-request", label: "درخواست پرداخت", hint: "ثبت و پیگیری درخواست پرداخت", icon: <IcPaymentRequest /> },
+            { to: "/finance/tenkhah", label: "تنخواه گردان", hint: "ثبت و پیگیری تنخواه گردان", icon: <IcTenkhahGardan /> },
           ],
         },
         {
@@ -259,6 +261,7 @@ function RightNav() {
           active: budgetParentActive,
           items: [
             { to: "/finance/payment-request", label: "درخواست پرداخت", hint: "ثبت و پیگیری درخواست پرداخت", icon: <IcPaymentRequest /> },
+            { to: "/finance/tenkhah", label: "تنخواه گردان", hint: "ثبت و پیگیری تنخواه گردان", icon: <IcTenkhahGardan /> },
             { to: "/finance/liquidity-allocation", label: "تخصیص نقدینگی", hint: "مدیریت و توزیع نقدینگی", icon: <IcLiquidity /> },
             { to: "/finance/cash-flow-forecast", label: "پیش بینی جریان نقدی", hint: "برآورد جریان نقدی آینده", icon: <IcCashForecast /> },
             { to: "/finance/financial-management-dashboard", label: "داشبورد مدیریت مالی", hint: "نمای کلی شاخص های مالی", icon: <IcProjectDashboard /> },
