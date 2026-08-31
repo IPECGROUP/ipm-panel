@@ -145,11 +145,11 @@ export default function TrainingResourcesPage({ variant = "training" }) {
   }, [authLoading, isLibrary, requestHeaders]);
 
   useEffect(() => {
-    if (authLoading || isLibrary) return;
+    if (authLoading) return;
     api("/tags", { headers: requestHeaders })
       .then((data) => setTags(Array.isArray(data?.items) ? data.items : []))
       .catch(() => setTags([]));
-  }, [authLoading, isLibrary, requestHeaders]);
+  }, [authLoading, requestHeaders]);
 
   const filteredLetters = useMemo(() => {
     const query = pickerQuery.trim().toLowerCase();
@@ -169,6 +169,14 @@ export default function TrainingResourcesPage({ variant = "training" }) {
     setForm(emptyForm());
     setUploadOpen(false);
     setPickerOpen(false);
+    setTagPickerOpen(false);
+    setFilterQuery("");
+    setFilterFromDate("");
+    setFilterToDate("");
+    setFilterTagIds([]);
+    setSelectedIds(new Set());
+    setTableMenuOpen(false);
+    setItems([]);
   }, [variant]);
 
   const openFreshForm = () => {
@@ -344,13 +352,13 @@ export default function TrainingResourcesPage({ variant = "training" }) {
             </button>
           </div>
 
-          {!formOpen && <ResourceFilterBar query={filterQuery} setQuery={setFilterQuery} fromDate={filterFromDate} setFromDate={setFilterFromDate} toDate={filterToDate} setToDate={setFilterToDate} onExport={exportFilteredItems} canExport={filteredItems.length > 0} showTags={!isLibrary} tags={tags} selectedTagIds={filterTagIds} onOpenTags={() => openTagPicker("filter")} />}
+          {!formOpen && <ResourceFilterBar query={filterQuery} setQuery={setFilterQuery} fromDate={filterFromDate} setFromDate={setFilterFromDate} toDate={filterToDate} setToDate={setFilterToDate} onExport={exportFilteredItems} canExport={filteredItems.length > 0} showTags tags={tags} selectedTagIds={filterTagIds} onOpenTags={() => openTagPicker("filter")} />}
 
           {formOpen && (
             <div className="mb-4 overflow-x-auto rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03]">
               <div className={`flex items-end gap-3 ${isLibrary ? "min-w-[720px]" : "min-w-[1040px]"}`}>
                 <Field label="عنوان" className="min-w-[190px] flex-[1.2]"><input value={form.title} onChange={(event) => setForm((old) => ({ ...old, title: event.target.value }))} className={inputClass} placeholder={isLibrary ? "عنوان" : "عنوان منبع آموزشی"} /></Field>
-                {isLibrary ? <Field label="کتابخانه" className="min-w-[210px] flex-1"><select value={form.libraryId} onChange={(event) => setForm((old) => ({ ...old, libraryId: event.target.value }))} className={inputClass}><option value="">انتخاب کنید</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></Field> : <><Field label="دسته‌بندی" className="w-[155px] shrink-0"><select value={form.category} onChange={(event) => setForm((old) => ({ ...old, category: event.target.value }))} className={inputClass}><option value="">انتخاب کنید</option>{form.category && !categories.some((item) => item.title === form.category) ? <option value={form.category}>{form.category}</option> : null}{categories.map((item) => <option key={item.id} value={item.title}>{item.title}</option>)}</select></Field><Field label="لینک" className="min-w-[185px] flex-[0.9]"><input dir="ltr" value={form.link} onChange={(event) => setForm((old) => ({ ...old, link: event.target.value }))} className={`${inputClass} text-left placeholder:text-left`} placeholder="https://example.com/training-resource" /></Field><Field label="برچسب‌ها" className="shrink-0"><button type="button" onClick={() => openTagPicker("form")} className="relative grid h-11 w-14 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب برچسب"><span className="text-lg leading-none">•••</span>{form.tagIds.length > 0 && <CountBadge value={form.tagIds.length} />}</button></Field></>}
+                {isLibrary ? <><Field label="کتابخانه" className="min-w-[210px] flex-1"><select value={form.libraryId} onChange={(event) => setForm((old) => ({ ...old, libraryId: event.target.value }))} className={inputClass}><option value="">انتخاب کنید</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></Field><Field label="برچسب‌ها" className="shrink-0"><button type="button" onClick={() => openTagPicker("form")} className="relative grid h-11 w-14 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب برچسب"><span className="text-lg leading-none">•••</span>{form.tagIds.length > 0 && <CountBadge value={form.tagIds.length} />}</button></Field></> : <><Field label="دسته‌بندی" className="w-[155px] shrink-0"><select value={form.category} onChange={(event) => setForm((old) => ({ ...old, category: event.target.value }))} className={inputClass}><option value="">انتخاب کنید</option>{form.category && !categories.some((item) => item.title === form.category) ? <option value={form.category}>{form.category}</option> : null}{categories.map((item) => <option key={item.id} value={item.title}>{item.title}</option>)}</select></Field><Field label="لینک" className="min-w-[185px] flex-[0.9]"><input dir="ltr" value={form.link} onChange={(event) => setForm((old) => ({ ...old, link: event.target.value }))} className={`${inputClass} text-left placeholder:text-left`} placeholder="https://example.com/training-resource" /></Field><Field label="برچسب‌ها" className="shrink-0"><button type="button" onClick={() => openTagPicker("form")} className="relative grid h-11 w-14 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب برچسب"><span className="text-lg leading-none">•••</span>{form.tagIds.length > 0 && <CountBadge value={form.tagIds.length} />}</button></Field></>}
                 <Field label="اسناد مرتبط" className="shrink-0"><button type="button" onClick={() => { setPickerIds(form.relatedLetterIds.map(String)); setPickerQuery(""); setPickerOpen(true); }} className="relative grid h-11 w-14 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب از مدیریت اسناد"><img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" />{form.relatedLetterIds.length > 0 && <CountBadge value={form.relatedLetterIds.length} />}</button></Field>
                 <Field label="بارگذاری" className="shrink-0"><button type="button" onClick={() => setUploadOpen(true)} className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="بارگذاری فایل"><img src="/images/icons/Uplod.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse" : ""}`} />{form.files.length > 0 && <CountBadge value={form.files.length} />}</button></Field>
                 <button type="button" onClick={submit} disabled={saving || uploading} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.04] disabled:opacity-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={editingId ? "ذخیره ویرایش" : "افزودن به جدول"} aria-label={editingId ? "ذخیره ویرایش" : "افزودن به جدول"}><img src={editingId ? "/images/icons/check.svg" : "/images/icons/afzodan.svg"} alt="" className="h-4 w-4 dark:invert" /></button>
