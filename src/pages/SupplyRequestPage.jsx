@@ -8,6 +8,7 @@ import { useAuth } from "../components/AuthProvider.jsx";
 import { SupplyActionsPanel } from "./SupplyActionsPage.jsx";
 import { todayJalaliYmd } from "../utils/date.js";
 import { toEnglishDigits } from "../utils/format.js";
+import DocumentPreviewModal from "../components/DocumentPreviewModal.jsx";
 
 const PAGE_ICON = "/images/icons/darkhast-tamin.svg";
 const REQUEST_DOC_ID = "supply_request";
@@ -1330,6 +1331,7 @@ export default function SupplyRequestPage() {
       {submitNotice && <RegistrationNotice info={submitNotice} onClose={() => setSubmitNotice(null)} />}
       {relatedPickOpen && (
         <RelatedLettersPicker
+          api={api}
           query={relatedPickQuery}
           setQuery={setRelatedPickQuery}
           letters={relatedPickList}
@@ -2481,7 +2483,8 @@ function RegistrationNotice({ info, onClose }) {
   );
 }
 
-function RelatedLettersPicker({ query, setQuery, letters, selectedIds, setSelectedIds, onClose, onConfirm }) {
+function RelatedLettersPicker({ api, query, setQuery, letters, selectedIds, setSelectedIds, onClose, onConfirm }) {
+  const [previewLetter, setPreviewLetter] = useState(null);
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
@@ -2510,16 +2513,17 @@ function RelatedLettersPicker({ query, setQuery, letters, selectedIds, setSelect
               const date = letterDateOf(letter);
               const checked = selectedIds.includes(id);
               return (
-                <button key={id} type="button" onClick={() => setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]))} className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-right transition hover:bg-black/[0.04] dark:hover:bg-white/10">
-                  <span className="min-w-0 flex-1">
+                <div key={id} className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-right transition hover:bg-black/[0.04] dark:hover:bg-white/10">
+                  <button type="button" onClick={() => setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]))} className="min-w-0 flex-1 text-right">
                     <span className="flex items-center gap-2">
                       <span className="font-semibold">{toFaDigits(no)}</span>
                       {date ? <span className="text-xs text-neutral-600 dark:text-white/60">{toFaDigits(date)}</span> : null}
                     </span>
                     <span className="mt-0.5 block truncate text-xs text-neutral-600 dark:text-white/60">{subject || "—"}</span>
-                  </span>
-                  <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border ${checked ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/15 dark:border-white/15"}`}>{checked ? "✓" : ""}</span>
-                </button>
+                  </button>
+                  <button type="button" onClick={() => setPreviewLetter(letter)} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg transition hover:bg-black/10 dark:hover:bg-white/15" title="پیش‌نمایش نامه" aria-label="پیش‌نمایش نامه"><img src="/images/icons/namayeshname.svg" alt="" className="h-4 w-4 dark:invert" /></button>
+                  <button type="button" onClick={() => setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]))} className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border ${checked ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/15 dark:border-white/15"}`} aria-label="انتخاب نامه">{checked ? "✓" : ""}</button>
+                </div>
               );
             })
           )}
@@ -2531,6 +2535,7 @@ function RelatedLettersPicker({ query, setQuery, letters, selectedIds, setSelect
           </button>
         </div>
       </div>
+      {previewLetter && <DocumentPreviewModal letter={previewLetter} api={api} onClose={() => setPreviewLetter(null)} />}
     </div>,
     document.body
   );

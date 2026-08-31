@@ -8,6 +8,7 @@ import { todayJalaliYmd } from "../utils/date";
 import { toEnglishDigits } from "../utils/format";
 import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 import TenkhahPage from "./TenkhahPage.jsx";
+import DocumentPreviewModal from "../components/DocumentPreviewModal.jsx";
 
 const DOC_OPTIONS = [
   ["pre_invoice", "پیش فاکتور"], ["invoice", "فاکتور"],
@@ -1308,6 +1309,7 @@ export default function PaymentRequestPage() {
           onClose={() => setSupplyPickerOpen(false)}
         />}
         {letterPickerOpen && <LetterChoiceModal
+          api={api}
           query={letterPickerQuery}
           onQueryChange={setLetterPickerQuery}
           loading={lettersLoading}
@@ -1651,7 +1653,8 @@ function RequestChoiceModal({ title, query, onQueryChange, loading, items, selec
   </ChoiceModal>;
 }
 
-function LetterChoiceModal({ query, onQueryChange, loading, items, selectedIds, onToggle, onClose }) {
+function LetterChoiceModal({ api, query, onQueryChange, loading, items, selectedIds, onToggle, onClose }) {
+  const [previewLetter, setPreviewLetter] = useState(null);
   const normalizedQuery = normalizeDigits(query).trim().toLowerCase();
   const rows = (Array.isArray(items) ? items : []).filter((item) => !normalizedQuery || [item.letterNo, item.letter_no, item.secretariatNo, item.secretariat_no, item.subject, item.title, item.organization, item.companyName].map((value) => normalizeDigits(value).toLowerCase()).join(" ").includes(normalizedQuery));
   return <ChoiceModal title="انتخاب نامه مرتبط" query={query} onQueryChange={onQueryChange} loading={loading} onClose={onClose}>
@@ -1659,8 +1662,9 @@ function LetterChoiceModal({ query, onQueryChange, loading, items, selectedIds, 
       const id = String(item.id);
       const checked = selectedIds.includes(id);
       const number = item.secretariatNo || item.secretariat_no || item.letterNo || item.letter_no || `#${id}`;
-      return <button key={id} type="button" onClick={() => onToggle(id)} className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-3 text-right transition ${checked ? "bg-black text-white dark:bg-white dark:text-black" : "hover:bg-black/[0.04] dark:hover:bg-white/10"}`}><span className="min-w-0"><span className="block font-bold">{toFa(number)}</span><span className={`mt-1 block truncate text-xs ${checked ? "text-white/70 dark:text-black/60" : "text-neutral-500 dark:text-neutral-400"}`}>{item.subject || item.title || "بدون موضوع"}</span></span><span className={`grid h-5 w-5 place-items-center rounded border ${checked ? "border-current" : "border-neutral-300 dark:border-neutral-600"}`}>{checked ? "✓" : ""}</span></button>;
+      return <div key={id} className={`flex w-full items-center gap-2 rounded-xl px-3 py-3 text-right transition ${checked ? "bg-black text-white dark:bg-white dark:text-black" : "hover:bg-black/[0.04] dark:hover:bg-white/10"}`}><button type="button" onClick={() => onToggle(id)} className="min-w-0 flex-1 text-right"><span className="block font-bold">{toFa(number)}</span><span className={`mt-1 block truncate text-xs ${checked ? "text-white/70 dark:text-black/60" : "text-neutral-500 dark:text-neutral-400"}`}>{item.subject || item.title || "بدون موضوع"}</span></button><button type="button" onClick={() => setPreviewLetter(item)} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg transition hover:bg-black/10 dark:hover:bg-white/15" title="پیش‌نمایش نامه" aria-label="پیش‌نمایش نامه"><img src="/images/icons/namayeshname.svg" alt="" className={`h-4 w-4 ${checked ? "invert dark:invert-0" : "dark:invert"}`} /></button><button type="button" onClick={() => onToggle(id)} className={`grid h-5 w-5 shrink-0 place-items-center rounded border ${checked ? "border-current" : "border-neutral-300 dark:border-neutral-600"}`} aria-label="انتخاب نامه">{checked ? "✓" : ""}</button></div>;
     })}</div> : <div className="p-5 text-center text-sm text-neutral-500">نامه‌ای پیدا نشد.</div>}
+    {previewLetter && <DocumentPreviewModal letter={previewLetter} api={api} onClose={() => setPreviewLetter(null)} />}
   </ChoiceModal>;
 }
 
