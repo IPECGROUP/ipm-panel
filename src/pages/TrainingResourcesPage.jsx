@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom";
 import { Copy, ExternalLink, File } from "lucide-react";
 import Card from "../components/ui/Card.jsx";
+import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { api } from "../utils/api.js";
 import { dayjs } from "../utils/date.js";
@@ -18,6 +19,15 @@ const letterDateOf = (letter) => String(letter?.letterDateJalali ?? letter?.date
 function jalaliDate(value) {
   const parsed = dayjs(value);
   return parsed.isValid() ? toFaDigits(parsed.calendar("jalali").locale("fa").format("YYYY/MM/DD")) : "—";
+}
+
+function jalaliDateKey(value) {
+  const parsed = dayjs(value);
+  return parsed.isValid() ? parsed.calendar("jalali").format("YYYY/MM/DD") : "";
+}
+
+function normalizedDate(value) {
+  return String(value || "").replace(/[\u06F0-\u06F9]/g, (digit) => String(digit.charCodeAt(0) - 0x06F0)).replace(/[\u0660-\u0669]/g, (digit) => String(digit.charCodeAt(0) - 0x0660)).replaceAll("-", "/").trim();
 }
 
 function shortenedLink(value) {
@@ -78,6 +88,9 @@ export default function TrainingResourcesPage({ variant = "training" }) {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [tableMenuOpen, setTableMenuOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [filterQuery, setFilterQuery] = useState("");
+  const [filterFromDate, setFilterFromDate] = useState("");
+  const [filterToDate, setFilterToDate] = useState("");
 
   const requestHeaders = useMemo(() => user?.id != null ? { "x-user-id": String(user.id) } : {}, [user?.id]);
 
@@ -136,6 +149,14 @@ export default function TrainingResourcesPage({ variant = "training" }) {
     setForm(emptyForm());
     setError("");
   };
+
+  useEffect(() => {
+    setFormOpen(false);
+    setEditingId("");
+    setForm(emptyForm());
+    setUploadOpen(false);
+    setPickerOpen(false);
+  }, [variant]);
 
   const openFreshForm = () => {
     setEditingId("");
@@ -233,14 +254,48 @@ export default function TrainingResourcesPage({ variant = "training" }) {
     }
   };
 
-  const allSelected = items.length > 0 && items.every((item) => selectedIds.has(String(item.id)));
+  const filteredItems = useMemo(() => {
+    const query = filterQuery.trim().toLowerCase();
+    const fromDate = normalizedDate(filterFromDate);
+    const toDate = normalizedDate(filterToDate);
+    return items.filter((item) => {
+      const date = jalaliDateKey(item.createdAt);
+      if (fromDate && (!date || date < fromDate)) return false;
+      if (toDate && (!date || date > toDate)) return false;
+      return !query || [item.title, item.category, item.libraryTitle, item.link].join(" ").toLowerCase().includes(query);
+    });
+  }, [items, filterFromDate, filterQuery, filterToDate]);
+
+  const exportFilteredItems = async () => {
+    if (!filteredItems.length) return;
+    const XLSX = await import("xlsx");
+    const rows = filteredItems.map((item, index) => isLibrary ? {
+      "ردیف": index + 1,
+      "تاریخ": jalaliDate(item.createdAt),
+      "عنوان": item.title || "",
+      "کتابخانه": item.libraryTitle || "",
+    } : {
+      "ردیف": index + 1,
+      "تاریخ": jalaliDate(item.createdAt),
+      "عنوان": item.title || "",
+      "دسته‌بندی": item.category || "",
+      "لینک": item.link || "",
+    });
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    workbook.Workbook = { Views: [{ RTL: true }] };
+    XLSX.utils.book_append_sheet(workbook, worksheet, isLibrary ? "Libraries" : "Training resources");
+    XLSX.writeFile(workbook, `${isLibrary ? "libraries" : "training-resources"}.xlsx`);
+  };
+
+  const allSelected = filteredItems.length > 0 && filteredItems.every((item) => selectedIds.has(String(item.id)));
   const toggleSelected = (id) => setSelectedIds((previous) => {
     const next = new Set(previous);
     const key = String(id);
     if (next.has(key)) next.delete(key); else next.add(key);
     return next;
   });
-  const toggleAll = () => setSelectedIds(allSelected ? new Set() : new Set(items.map((item) => String(item.id))));
+  const toggleAll = () => setSelectedIds(allSelected ? new Set() : new Set(filteredItems.map((item) => String(item.id))));
 
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
@@ -261,6 +316,8 @@ export default function TrainingResourcesPage({ variant = "training" }) {
             </button>
           </div>
 
+          {!formOpen && <ResourceFilterBar query={filterQuery} setQuery={setFilterQuery} fromDate={filterFromDate} setFromDate={setFilterFromDate} toDate={filterToDate} setToDate={setFilterToDate} onExport={exportFilteredItems} canExport={filteredItems.length > 0} />}
+
           {formOpen && (
             <div className="mb-4 overflow-x-auto rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03]">
               <div className={`flex items-end gap-3 ${isLibrary ? "min-w-[720px]" : "min-w-[1040px]"}`}>
@@ -268,7 +325,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
                 {isLibrary ? <Field label="کتابخانه" className="min-w-[210px] flex-1"><select value={form.libraryId} onChange={(event) => setForm((old) => ({ ...old, libraryId: event.target.value }))} className={inputClass}><option value="">انتخاب کنید</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></Field> : <><Field label="دسته‌بندی" className="w-[155px] shrink-0"><select value={form.category} onChange={(event) => setForm((old) => ({ ...old, category: event.target.value }))} className={inputClass}><option value="">انتخاب کنید</option>{form.category && !categories.some((item) => item.title === form.category) ? <option value={form.category}>{form.category}</option> : null}{categories.map((item) => <option key={item.id} value={item.title}>{item.title}</option>)}</select></Field><Field label="لینک" className="min-w-[260px] flex-[1.5]"><input dir="ltr" value={form.link} onChange={(event) => setForm((old) => ({ ...old, link: event.target.value }))} className={`${inputClass} text-left`} placeholder="https://example.com/training-resource" /></Field></>}
                 <Field label="اسناد مرتبط" className="shrink-0"><button type="button" onClick={() => { setPickerIds(form.relatedLetterIds.map(String)); setPickerQuery(""); setPickerOpen(true); }} className="relative grid h-11 w-14 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب از مدیریت اسناد"><img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" />{form.relatedLetterIds.length > 0 && <CountBadge value={form.relatedLetterIds.length} />}</button></Field>
                 <Field label="بارگذاری" className="shrink-0"><button type="button" onClick={() => setUploadOpen(true)} className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="بارگذاری فایل"><img src="/images/icons/Uplod.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse" : ""}`} />{form.files.length > 0 && <CountBadge value={form.files.length} />}</button></Field>
-                <button type="button" onClick={submit} disabled={saving || uploading} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-white text-2xl leading-none transition hover:bg-black/[.04] disabled:opacity-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={editingId ? "ذخیره ویرایش" : "افزودن به جدول"} aria-label={editingId ? "ذخیره ویرایش" : "افزودن به جدول"}>{editingId ? <img src="/images/icons/check.svg" alt="" className="h-4 w-4 dark:invert" /> : "+"}</button>
+                <button type="button" onClick={submit} disabled={saving || uploading} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.04] disabled:opacity-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={editingId ? "ذخیره ویرایش" : "افزودن به جدول"} aria-label={editingId ? "ذخیره ویرایش" : "افزودن به جدول"}><img src={editingId ? "/images/icons/check.svg" : "/images/icons/afzodan.svg"} alt="" className="h-4 w-4 dark:invert" /></button>
               </div>
             </div>
           )}
@@ -286,7 +343,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
                   <th className="sticky top-0 z-20 bg-neutral-200 px-3 py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><span>فایل</span><ResourceTableMenu entityLabel={isLibrary ? "مورد کتابخانه" : "منبع آموزشی"} menuRef={tableMenuRef} open={tableMenuOpen} setOpen={setTableMenuOpen} selectedCount={selectedIds.size} onEdit={editSelected} onDelete={deleteSelected} deleting={deleting} /></th>
                 </tr></thead>
                 <tbody className="text-[13px]">
-                  {loading ? <EmptyRow colSpan={isLibrary ? 6 : 7} text="در حال دریافت..." /> : items.length === 0 ? <EmptyRow colSpan={isLibrary ? 6 : 7} text={isLibrary ? "هنوز موردی در کتابخانه ثبت نشده است." : "هنوز منبع آموزشی ثبت نشده است."} /> : items.map((item, index) => (
+                  {loading ? <EmptyRow colSpan={isLibrary ? 6 : 7} text="در حال دریافت..." /> : filteredItems.length === 0 ? <EmptyRow colSpan={isLibrary ? 6 : 7} text={items.length ? "موردی مطابق فیلتر پیدا نشد." : isLibrary ? "هنوز موردی در کتابخانه ثبت نشده است." : "هنوز منبع آموزشی ثبت نشده است."} /> : filteredItems.map((item, index) => (
                     <tr key={item.id} className="h-11 bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label={`انتخاب ${item.title}`} /></td>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFaDigits(index + 1)}</td>
@@ -301,7 +358,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
               </table>
             </div>
             <div className="grid gap-3 p-3 md:hidden">
-              {loading ? <div className="py-6 text-center text-sm text-neutral-500">در حال دریافت...</div> : items.length === 0 ? <div className="py-6 text-center text-sm text-neutral-500">{isLibrary ? "هنوز موردی در کتابخانه ثبت نشده است." : "هنوز منبع آموزشی ثبت نشده است."}</div> : items.map((item, index) => <div key={item.id} className="rounded-xl border border-black/10 p-3 dark:border-white/10"><div className="flex items-center justify-between gap-2"><b className="truncate">{toFaDigits(index + 1)}. {item.title}</b><span className="shrink-0 text-xs text-neutral-500">{jalaliDate(item.createdAt)}</span></div><div className="mt-3 flex items-center justify-between gap-3">{isLibrary ? <span className="min-w-0 truncate text-xs text-neutral-500">{item.libraryTitle || "—"}</span> : <a href={normalizedUrl(item.link)} target="_blank" rel="noreferrer" dir="ltr" className="min-w-0 truncate text-xs text-sky-700 dark:text-sky-400">{shortenedLink(item.link)}</a>}<FileLinks files={item.files} /></div></div>)}
+              {loading ? <div className="py-6 text-center text-sm text-neutral-500">در حال دریافت...</div> : filteredItems.length === 0 ? <div className="py-6 text-center text-sm text-neutral-500">{items.length ? "موردی مطابق فیلتر پیدا نشد." : isLibrary ? "هنوز موردی در کتابخانه ثبت نشده است." : "هنوز منبع آموزشی ثبت نشده است."}</div> : filteredItems.map((item, index) => <div key={item.id} className="rounded-xl border border-black/10 p-3 dark:border-white/10"><div className="flex items-center justify-between gap-2"><b className="truncate">{toFaDigits(index + 1)}. {item.title}</b><span className="shrink-0 text-xs text-neutral-500">{jalaliDate(item.createdAt)}</span></div><div className="mt-3 flex items-center justify-between gap-3">{isLibrary ? <span className="min-w-0 truncate text-xs text-neutral-500">{item.libraryTitle || "—"}</span> : <a href={normalizedUrl(item.link)} target="_blank" rel="noreferrer" dir="ltr" className="min-w-0 truncate text-xs text-sky-700 dark:text-sky-400">{shortenedLink(item.link)}</a>}<FileLinks files={item.files} /></div></div>)}
             </div>
           </div>
         </div>
@@ -309,6 +366,30 @@ export default function TrainingResourcesPage({ variant = "training" }) {
 
       {pickerOpen && <LetterPicker query={pickerQuery} setQuery={setPickerQuery} letters={filteredLetters} selectedIds={pickerIds} setSelectedIds={setPickerIds} onClose={() => setPickerOpen(false)} onConfirm={() => { setForm((old) => ({ ...old, relatedLetterIds: pickerIds })); setPickerOpen(false); }} />}
       {uploadOpen && <UploadModal title={isLibrary ? "بارگذاری فایل‌های کتابخانه" : "بارگذاری فایل‌های منبع آموزشی"} fileRef={fileRef} files={form.files} uploading={uploading} onUpload={uploadFiles} onRemove={(index) => setForm((old) => ({ ...old, files: old.files.filter((_, position) => position !== index) }))} onClose={() => setUploadOpen(false)} />}
+    </div>
+  );
+}
+
+function ResourceFilterBar({ query, setQuery, fromDate, setFromDate, toDate, setToDate, onExport, canExport }) {
+  return (
+    <div className="mb-4 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="w-full md:min-w-[280px] md:flex-1">
+          <div className={labelClass}>جست و جو</div>
+          <input value={query} onChange={(event) => setQuery(event.target.value)} className={inputClass} placeholder="جستجو در عنوان، دسته‌بندی، لینک و ..." />
+        </div>
+        <div className="w-[calc(50%-0.25rem)] md:w-auto md:min-w-[140px]">
+          <div className={labelClass}>از</div>
+          <JalaliPopupDatePicker value={fromDate} onChange={setFromDate} buttonClassName={`${inputClass} flex items-center justify-between gap-2`} />
+        </div>
+        <div className="w-[calc(50%-0.25rem)] md:w-auto md:min-w-[140px]">
+          <div className={labelClass}>تا</div>
+          <JalaliPopupDatePicker value={toDate} onChange={setToDate} buttonClassName={`${inputClass} flex items-center justify-between gap-2`} />
+        </div>
+        <button type="button" onClick={onExport} disabled={!canExport} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-white shadow-sm transition hover:-translate-y-0.5 hover:bg-neutral-50 hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="خروجی اکسل" aria-label="خروجی اکسل">
+          <img src="/images/icons8-excel-50.png" alt="" className="h-5 w-5" />
+        </button>
+      </div>
     </div>
   );
 }
