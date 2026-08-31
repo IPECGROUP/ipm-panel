@@ -2521,7 +2521,7 @@ function RelatedLettersPicker({ api, query, setQuery, letters, selectedIds, setS
                     </span>
                     <span className="mt-0.5 block truncate text-xs text-neutral-600 dark:text-white/60">{subject || "—"}</span>
                   </button>
-                  <button type="button" onClick={() => setPreviewLetter(letter)} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg transition hover:bg-black/10 dark:hover:bg-white/15" title="پیش‌نمایش نامه" aria-label="پیش‌نمایش نامه"><img src="/images/icons/namayeshname.svg" alt="" className="h-4 w-4 dark:invert" /></button>
+                  <button type="button" onClick={() => setPreviewLetter(letter)} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg transition hover:bg-black/10 dark:hover:bg-white/15" title="پیش‌نمایش نامه" aria-label="پیش‌نمایش نامه"><img src="/images/icons/namayesh.svg" alt="" className="h-4 w-4 dark:invert" /></button>
                   <button type="button" onClick={() => setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]))} className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border ${checked ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/15 dark:border-white/15"}`} aria-label="انتخاب نامه">{checked ? "✓" : ""}</button>
                 </div>
               );
