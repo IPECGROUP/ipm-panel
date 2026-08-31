@@ -9,12 +9,17 @@ const tabs = [
   { id: "documents", label: "مدیریت اسناد" },
   { id: "contracts", label: "مدیریت قرارداد ها" },
   { id: "finance", label: "مدیریت مالی" },
+  { id: "knowledge", label: "مدیریت دانش" },
+];
+
+const knowledgeTabs = [
   { id: "trainingResources", label: "منابع آموزشی" },
   { id: "libraries", label: "کتابخانه‌ها" },
 ];
 
 export default function BaseInformationPage() {
   const [activeTab, setActiveTab] = useState("documents");
+  const [activeKnowledgeTab, setActiveKnowledgeTab] = useState("trainingResources");
 
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
@@ -50,7 +55,29 @@ export default function BaseInformationPage() {
         </div>
 
         <section role="tabpanel" className="rounded-2xl border border-black/10 p-4 dark:border-white/10">
-          {activeTab === "documents" ? <BaseOptionsTable title="کلاس سند" endpoint="/api/base/document-classes" /> : activeTab === "contracts" ? <ContractManagementSection /> : activeTab === "finance" ? <FinancialManagementSection /> : activeTab === "trainingResources" ? <BaseOptionsTable title="دسته‌بندی" endpoint="/api/base/training-resource-categories" /> : <BaseOptionsTable title="کتابخانه" endpoint="/api/base/libraries" />}
+          {activeTab === "documents" ? <BaseOptionsTable title="کلاس سند" endpoint="/api/base/document-classes" /> : activeTab === "contracts" ? <ContractManagementSection /> : activeTab === "finance" ? <FinancialManagementSection /> : (
+            <div>
+              <div className="mx-auto mb-5 flex w-full max-w-[720px] rounded-2xl border border-black/10 bg-neutral-50 p-1 dark:border-white/10 dark:bg-white/5" role="tablist" aria-label="گزینه‌های مدیریت دانش">
+                {knowledgeTabs.map((tab) => {
+                  const active = activeKnowledgeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setActiveKnowledgeTab(tab.id)}
+                      className={`flex-1 rounded-xl px-3 py-3 text-xs font-bold transition md:text-sm ${active ? "bg-white text-black shadow-sm dark:bg-neutral-900 dark:text-white" : "text-neutral-600 hover:bg-black/[.03] dark:text-neutral-300 dark:hover:bg-white/5"}`}
+                    >
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {activeKnowledgeTab === "trainingResources" ? <BaseOptionsTable title="دسته‌بندی" endpoint="/api/base/training-resource-categories" /> : <BaseOptionsTable title="کتابخانه" endpoint="/api/base/libraries" />}
+            </div>
+          )}
         </section>
       </Card>
     </div>
