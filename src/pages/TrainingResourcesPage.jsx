@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Copy, ExternalLink, File } from "lucide-react";
+import { Copy, File } from "lucide-react";
 import Card from "../components/ui/Card.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
@@ -70,7 +70,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
   const tableMenuRef = useRef(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState("");
-  const emptyForm = () => ({ title: "", category: "", link: "", libraryId: "", relatedLetterIds: [], files: [] });
+  const emptyForm = () => ({ title: "", category: "", link: "", libraryId: "", relatedLetterIds: [], tagIds: [], files: [] });
   const [form, setForm] = useState(emptyForm);
   const [items, setItems] = useState([]);
   const [letters, setLetters] = useState([]);
@@ -91,6 +91,12 @@ export default function TrainingResourcesPage({ variant = "training" }) {
   const [filterQuery, setFilterQuery] = useState("");
   const [filterFromDate, setFilterFromDate] = useState("");
   const [filterToDate, setFilterToDate] = useState("");
+  const [tags, setTags] = useState([]);
+  const [filterTagIds, setFilterTagIds] = useState([]);
+  const [tagPickerOpen, setTagPickerOpen] = useState(false);
+  const [tagPickerFor, setTagPickerFor] = useState("form");
+  const [tagPickerDraftIds, setTagPickerDraftIds] = useState([]);
+  const [tagPickerQuery, setTagPickerQuery] = useState("");
 
   const requestHeaders = useMemo(() => user?.id != null ? { "x-user-id": String(user.id) } : {}, [user?.id]);
 
@@ -138,6 +144,13 @@ export default function TrainingResourcesPage({ variant = "training" }) {
       .catch(() => setCategories([]));
   }, [authLoading, isLibrary, requestHeaders]);
 
+  useEffect(() => {
+    if (authLoading || isLibrary) return;
+    api("/tags", { headers: requestHeaders })
+      .then((data) => setTags(Array.isArray(data?.items) ? data.items : []))
+      .catch(() => setTags([]));
+  }, [authLoading, isLibrary, requestHeaders]);
+
   const filteredLetters = useMemo(() => {
     const query = pickerQuery.trim().toLowerCase();
     return letters.filter((letter) => !query || [letterNoOf(letter), letterSubjectOf(letter), letterDateOf(letter)].join(" ").toLowerCase().includes(query)).slice(0, 300);
@@ -171,7 +184,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
     const item = items.find((row) => selectedIds.has(String(row.id)));
     if (!item) return;
     setEditingId(String(item.id));
-    setForm({ title: item.title || "", category: item.category || "", link: item.link || "", libraryId: item.libraryId == null ? "" : String(item.libraryId), relatedLetterIds: Array.isArray(item.relatedLetterIds) ? item.relatedLetterIds.map(String) : [], files: Array.isArray(item.files) ? item.files : [] });
+    setForm({ title: item.title || "", category: item.category || "", link: item.link || "", libraryId: item.libraryId == null ? "" : String(item.libraryId), relatedLetterIds: Array.isArray(item.relatedLetterIds) ? item.relatedLetterIds.map(String) : [], tagIds: Array.isArray(item.tagIds) ? item.tagIds.map(String) : [], files: Array.isArray(item.files) ? item.files : [] });
     setFormOpen(true);
     setTableMenuOpen(false);
     setError("");
@@ -254,6 +267,20 @@ export default function TrainingResourcesPage({ variant = "training" }) {
     }
   };
 
+  const openTagPicker = (target) => {
+    setTagPickerFor(target);
+    setTagPickerDraftIds(target === "form" ? form.tagIds.map(String) : filterTagIds.map(String));
+    setTagPickerQuery("");
+    setTagPickerOpen(true);
+  };
+
+  const applyTagPicker = () => {
+    const ids = [...new Set(tagPickerDraftIds.map(String))];
+    if (tagPickerFor === "form") setForm((previous) => ({ ...previous, tagIds: ids }));
+    else setFilterTagIds(ids);
+    setTagPickerOpen(false);
+  };
+
   const filteredItems = useMemo(() => {
     const query = filterQuery.trim().toLowerCase();
     const fromDate = normalizedDate(filterFromDate);
@@ -262,9 +289,10 @@ export default function TrainingResourcesPage({ variant = "training" }) {
       const date = jalaliDateKey(item.createdAt);
       if (fromDate && (!date || date < fromDate)) return false;
       if (toDate && (!date || date > toDate)) return false;
+      if (filterTagIds.length && !filterTagIds.some((id) => (Array.isArray(item.tagIds) ? item.tagIds : []).map(String).includes(String(id)))) return false;
       return !query || [item.title, item.category, item.libraryTitle, item.link].join(" ").toLowerCase().includes(query);
     });
-  }, [items, filterFromDate, filterQuery, filterToDate]);
+  }, [filterTagIds, items, filterFromDate, filterQuery, filterToDate]);
 
   const exportFilteredItems = async () => {
     if (!filteredItems.length) return;
@@ -316,13 +344,13 @@ export default function TrainingResourcesPage({ variant = "training" }) {
             </button>
           </div>
 
-          {!formOpen && <ResourceFilterBar query={filterQuery} setQuery={setFilterQuery} fromDate={filterFromDate} setFromDate={setFilterFromDate} toDate={filterToDate} setToDate={setFilterToDate} onExport={exportFilteredItems} canExport={filteredItems.length > 0} />}
+          {!formOpen && <ResourceFilterBar query={filterQuery} setQuery={setFilterQuery} fromDate={filterFromDate} setFromDate={setFilterFromDate} toDate={filterToDate} setToDate={setFilterToDate} onExport={exportFilteredItems} canExport={filteredItems.length > 0} showTags={!isLibrary} tags={tags} selectedTagIds={filterTagIds} onOpenTags={() => openTagPicker("filter")} />}
 
           {formOpen && (
             <div className="mb-4 overflow-x-auto rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03]">
               <div className={`flex items-end gap-3 ${isLibrary ? "min-w-[720px]" : "min-w-[1040px]"}`}>
                 <Field label="عنوان" className="min-w-[190px] flex-[1.2]"><input value={form.title} onChange={(event) => setForm((old) => ({ ...old, title: event.target.value }))} className={inputClass} placeholder={isLibrary ? "عنوان" : "عنوان منبع آموزشی"} /></Field>
-                {isLibrary ? <Field label="کتابخانه" className="min-w-[210px] flex-1"><select value={form.libraryId} onChange={(event) => setForm((old) => ({ ...old, libraryId: event.target.value }))} className={inputClass}><option value="">انتخاب کنید</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></Field> : <><Field label="دسته‌بندی" className="w-[155px] shrink-0"><select value={form.category} onChange={(event) => setForm((old) => ({ ...old, category: event.target.value }))} className={inputClass}><option value="">انتخاب کنید</option>{form.category && !categories.some((item) => item.title === form.category) ? <option value={form.category}>{form.category}</option> : null}{categories.map((item) => <option key={item.id} value={item.title}>{item.title}</option>)}</select></Field><Field label="لینک" className="min-w-[260px] flex-[1.5]"><input dir="ltr" value={form.link} onChange={(event) => setForm((old) => ({ ...old, link: event.target.value }))} className={`${inputClass} text-left`} placeholder="https://example.com/training-resource" /></Field></>}
+                {isLibrary ? <Field label="کتابخانه" className="min-w-[210px] flex-1"><select value={form.libraryId} onChange={(event) => setForm((old) => ({ ...old, libraryId: event.target.value }))} className={inputClass}><option value="">انتخاب کنید</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></Field> : <><Field label="دسته‌بندی" className="w-[155px] shrink-0"><select value={form.category} onChange={(event) => setForm((old) => ({ ...old, category: event.target.value }))} className={inputClass}><option value="">انتخاب کنید</option>{form.category && !categories.some((item) => item.title === form.category) ? <option value={form.category}>{form.category}</option> : null}{categories.map((item) => <option key={item.id} value={item.title}>{item.title}</option>)}</select></Field><Field label="لینک" className="min-w-[185px] flex-[0.9]"><input dir="ltr" value={form.link} onChange={(event) => setForm((old) => ({ ...old, link: event.target.value }))} className={`${inputClass} text-left placeholder:text-left`} placeholder="https://example.com/training-resource" /></Field><Field label="برچسب‌ها" className="shrink-0"><button type="button" onClick={() => openTagPicker("form")} className="relative grid h-11 w-14 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب برچسب"><span className="text-lg leading-none">•••</span>{form.tagIds.length > 0 && <CountBadge value={form.tagIds.length} />}</button></Field></>}
                 <Field label="اسناد مرتبط" className="shrink-0"><button type="button" onClick={() => { setPickerIds(form.relatedLetterIds.map(String)); setPickerQuery(""); setPickerOpen(true); }} className="relative grid h-11 w-14 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب از مدیریت اسناد"><img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" />{form.relatedLetterIds.length > 0 && <CountBadge value={form.relatedLetterIds.length} />}</button></Field>
                 <Field label="بارگذاری" className="shrink-0"><button type="button" onClick={() => setUploadOpen(true)} className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="بارگذاری فایل"><img src="/images/icons/Uplod.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse" : ""}`} />{form.files.length > 0 && <CountBadge value={form.files.length} />}</button></Field>
                 <button type="button" onClick={submit} disabled={saving || uploading} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.04] disabled:opacity-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={editingId ? "ذخیره ویرایش" : "افزودن به جدول"} aria-label={editingId ? "ذخیره ویرایش" : "افزودن به جدول"}><img src={editingId ? "/images/icons/check.svg" : "/images/icons/afzodan.svg"} alt="" className="h-4 w-4 dark:invert" /></button>
@@ -350,7 +378,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{jalaliDate(item.createdAt)}</td>
                       <td className="border-b border-neutral-300 px-3 text-center dark:border-neutral-700"><span className="block truncate text-center font-medium" title={item.title}>{item.title}</span></td>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{isLibrary ? item.libraryTitle || "—" : item.category || "—"}</td>
-                      {!isLibrary && <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><div className="flex min-w-0 items-center justify-center gap-1.5"><a href={normalizedUrl(item.link)} target="_blank" rel="noreferrer" dir="ltr" className="min-w-0 truncate text-sky-700 underline-offset-4 hover:underline dark:text-sky-400" title={item.link}>{shortenedLink(item.link)}</a><button type="button" onClick={() => copyLink(item)} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg transition hover:bg-black/[.06] dark:hover:bg-white/10" title={copiedId === String(item.id) ? "کپی شد" : "کپی لینک"} aria-label="کپی لینک"><Copy className="h-3.5 w-3.5" /></button><ExternalLink className="h-3.5 w-3.5 shrink-0 text-neutral-400" /></div></td>}
+                      {!isLibrary && <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><div className="flex min-w-0 items-center justify-center gap-1.5"><a href={normalizedUrl(item.link)} target="_blank" rel="noreferrer" dir="ltr" className="min-w-0 truncate text-sky-700 underline-offset-4 hover:underline dark:text-sky-400" title={item.link}>{shortenedLink(item.link)}</a><button type="button" onClick={() => copyLink(item)} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg transition hover:bg-black/[.06] dark:hover:bg-white/10" title={copiedId === String(item.id) ? "کپی شد" : "کپی لینک"} aria-label="کپی لینک"><Copy className="h-3.5 w-3.5" /></button></div></td>}
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><FileLinks files={item.files} /></td>
                     </tr>
                   ))}
@@ -365,12 +393,13 @@ export default function TrainingResourcesPage({ variant = "training" }) {
       </Card>
 
       {pickerOpen && <LetterPicker query={pickerQuery} setQuery={setPickerQuery} letters={filteredLetters} selectedIds={pickerIds} setSelectedIds={setPickerIds} onClose={() => setPickerOpen(false)} onConfirm={() => { setForm((old) => ({ ...old, relatedLetterIds: pickerIds })); setPickerOpen(false); }} />}
+      {tagPickerOpen && <TagPicker tags={tags} query={tagPickerQuery} setQuery={setTagPickerQuery} selectedIds={tagPickerDraftIds} setSelectedIds={setTagPickerDraftIds} onClose={() => setTagPickerOpen(false)} onConfirm={applyTagPicker} />}
       {uploadOpen && <UploadModal title={isLibrary ? "بارگذاری فایل‌های کتابخانه" : "بارگذاری فایل‌های منبع آموزشی"} fileRef={fileRef} files={form.files} uploading={uploading} onUpload={uploadFiles} onRemove={(index) => setForm((old) => ({ ...old, files: old.files.filter((_, position) => position !== index) }))} onClose={() => setUploadOpen(false)} />}
     </div>
   );
 }
 
-function ResourceFilterBar({ query, setQuery, fromDate, setFromDate, toDate, setToDate, onExport, canExport }) {
+function ResourceFilterBar({ query, setQuery, fromDate, setFromDate, toDate, setToDate, onExport, canExport, showTags, tags, selectedTagIds, onOpenTags }) {
   return (
     <div className="mb-4 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
       <div className="flex flex-wrap items-end gap-2">
@@ -390,6 +419,16 @@ function ResourceFilterBar({ query, setQuery, fromDate, setFromDate, toDate, set
           <img src="/images/icons8-excel-50.png" alt="" className="h-5 w-5" />
         </button>
       </div>
+      {showTags && <div className="mt-2">
+        <div className={labelClass}>برچسب‌ها</div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={onOpenTags} className="relative grid h-9 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب برچسب برای فیلتر" aria-label="انتخاب برچسب برای فیلتر"><span className="text-lg leading-none">•••</span>{selectedTagIds.length > 0 && <CountBadge value={selectedTagIds.length} />}</button>
+          {selectedTagIds.map((id) => {
+            const tag = tags.find((item) => String(item.id) === String(id));
+            return tag ? <span key={id} className="rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs dark:border-white/15 dark:bg-white/5">{tag.label}</span> : null;
+          })}
+        </div>
+      </div>}
     </div>
   );
 }
@@ -398,6 +437,26 @@ function Field({ label, className = "", children }) { return <div className={cla
 function CountBadge({ value }) { return <span className="absolute -left-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-neutral-900 px-1 text-[10px] text-white dark:bg-white dark:text-black">{toFaDigits(value)}</span>; }
 function EmptyRow({ text, colSpan = 7 }) { return <tr><td colSpan={colSpan} className="py-8 text-black/60 dark:text-neutral-400">{text}</td></tr>; }
 function FileLinks({ files }) { const list = Array.isArray(files) ? files : []; return <div className="flex items-center justify-center gap-1.5">{list.length ? list.map((file, index) => <a key={file.url || index} href={file.url} target="_blank" rel="noreferrer" download className="grid h-8 w-8 place-items-center rounded-lg border border-black/10 bg-white transition hover:-translate-y-0.5 hover:shadow-sm dark:border-white/15 dark:bg-white/5" title={file.name || `فایل ${index + 1}`}><FileTypeIcon file={file} /></a>) : <span>—</span>}</div>; }
+
+function TagPicker({ tags, query, setQuery, selectedIds, setSelectedIds, onClose, onConfirm }) {
+  const selected = new Set(selectedIds.map(String));
+  const filteredTags = tags.filter((tag) => !query.trim() || String(tag.label || "").toLowerCase().includes(query.trim().toLowerCase()));
+  const toggleTag = (id) => setSelectedIds((previous) => previous.map(String).includes(String(id)) ? previous.map(String).filter((value) => value !== String(id)) : [...previous.map(String), String(id)]);
+  return createPortal(
+    <div className="fixed inset-0 z-[9999]" dir="rtl">
+      <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 flex items-center justify-center p-3 md:p-6">
+        <div className="flex h-[min(78vh,720px)] w-[min(980px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white">
+          <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3 dark:border-white/10"><div className="text-sm font-bold">انتخاب برچسب</div><button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 bg-white transition hover:bg-black/[.04] dark:border-white/15 dark:bg-white/5" title="بستن"><img src="/images/icons/bastan.svg" alt="" className="h-5 w-5 dark:invert" /></button></div>
+          <div className="p-4"><div className={labelClass}>جستجو</div><input value={query} onChange={(event) => setQuery(event.target.value)} className={inputClass} placeholder="جستجو در برچسب‌ها..." autoFocus /></div>
+          <div className="flex-1 overflow-auto px-4 pb-4">{filteredTags.length ? <div className="flex flex-wrap gap-2">{filteredTags.map((tag) => <button key={tag.id} type="button" onClick={() => toggleTag(tag.id)} className={`h-10 rounded-full border px-4 text-xs transition ${selected.has(String(tag.id)) ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>{tag.label}</button>)}</div> : <div className="py-10 text-center text-sm text-neutral-500">برچسبی پیدا نشد.</div>}</div>
+          <div className="flex justify-end border-t border-black/10 p-4 dark:border-white/10"><button type="button" onClick={onConfirm} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black" title="تأیید"><img src="/images/icons/check.svg" alt="" className="h-5 w-5 invert dark:invert-0" /></button></div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
 
 function ResourceTableMenu({ entityLabel, menuRef, open, setOpen, selectedCount, onEdit, onDelete, deleting }) {
   const [position, setPosition] = useState({ top: 0, left: 8 });

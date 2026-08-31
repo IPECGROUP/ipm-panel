@@ -308,8 +308,8 @@ function RightNav() {
           icon: <IcQuality />,
           active: knowledgeParentActive,
           items: [
-            { to: "/knowledge-management/equipment-library", label: "کتابخانه‌ها", hint: "کتابخانه‌ها", icon: <NavIcon src="/images/icons/ketabkhane.svg" /> },
             { to: "/knowledge-management/project-lessons-learned", label: "درس آموخته‌ها", hint: "درس آموخته‌ها", icon: <NavIcon src="/images/icons/darsamokhteha.svg" /> },
+            { to: "/knowledge-management/equipment-library", label: "کتابخانه‌ها", hint: "کتابخانه‌ها", icon: <NavIcon src="/images/icons/ketabkhane.svg" /> },
             { to: "/knowledge-management/training-resources", label: "منابع آموزشی", hint: "محتوا و منابع آموزشی", icon: <span className="scale-[1.16]"><NavIcon src="/images/icons/manabeamozeshi.svg" /></span> },
           ],
         },
