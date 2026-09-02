@@ -1,161 +1,1317 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BarChart3, BriefcaseBusiness, Check, Download, Grid2X2, Lightbulb, Paperclip, Star, Tag, TriangleAlert, X } from "lucide-react";
+import {
+  BarChart3,
+  BriefcaseBusiness,
+  Check,
+  Download,
+  Grid2X2,
+  Lightbulb,
+  Paperclip,
+  Star,
+  Tag,
+  TriangleAlert,
+} from "lucide-react";
 import Card from "../components/ui/Card.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
+import LessonReviewModal from "../components/project-lessons/LessonReviewModal.jsx";
+import LessonsTable from "../components/project-lessons/LessonsTable.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { api } from "../utils/api.js";
 import { dayjs } from "../utils/date.js";
 
-const input = "h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-right text-sm outline-none transition placeholder:text-neutral-400 focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-neutral-100";
+const input =
+  "h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-right text-sm outline-none transition placeholder:text-neutral-400 focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-neutral-100";
 const label = "mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300";
-const empty = () => ({ projectId: "", category: "", challenge: "", solution: "", importance: "", impacts: [], tagIds: [], files: [] });
-const impacts = [["time", "زمان"], ["cost", "هزینه"], ["quality", "کیفیت"], ["satisfaction", "رضایت کارفرما"]];
-const importance = [["low", "کم"], ["medium", "متوسط"], ["high", "زیاد"]];
-const fa = (value = "") => String(value ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
-const dateKey = (value) => { const parsed = dayjs(value); return parsed.isValid() ? parsed.calendar("jalali").format("YYYY/MM/DD") : ""; };
-const normalizeDate = (value) => String(value || "").replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06F0)).replaceAll("-", "/").trim();
 
-export default function ProjectLessonsLearnedPage() {
-  const { user, loading: authLoading } = useAuth(); const fileRef = useRef(null);
-  const [items, setItems] = useState([]), [projects, setProjects] = useState([]), [tags, setTags] = useState([]), [loading, setLoading] = useState(true), [formOpen, setFormOpen] = useState(false), [form, setForm] = useState(empty), [editingId, setEditingId] = useState(""), [saving, setSaving] = useState(false), [uploading, setUploading] = useState(false), [uploadOpen, setUploadOpen] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState("");
-  const [query, setQuery] = useState(""), [from, setFrom] = useState(""), [to, setTo] = useState(""), [filterTagIds, setFilterTagIds] = useState([]), [tagOpen, setTagOpen] = useState(false), [tagFor, setTagFor] = useState("form"), [tagDraft, setTagDraft] = useState([]), [tagQuery, setTagQuery] = useState("");
-  const [selectedIds, setSelectedIds] = useState(new Set()), [tableMenuOpen, setTableMenuOpen] = useState(false), [viewItem, setViewItem] = useState(null), [authorInfoItem, setAuthorInfoItem] = useState(null), [deleting, setDeleting] = useState(false), [canReview, setCanReview] = useState(false);
-  const headers = useMemo(() => user?.id != null ? { "x-user-id": String(user.id) } : {}, [user?.id]);
-  useEffect(() => { if (authLoading) return; setLoading(true); api("/project-lessons", { headers }).then((d) => { setItems(Array.isArray(d.items) ? d.items : []); setCanReview(d.canReview === true); }).catch((e) => setError(e.message || "دریافت درس‌آموخته‌ها انجام نشد.")).finally(() => setLoading(false)); }, [authLoading, headers]);
-  useEffect(() => { if (authLoading) return; Promise.all([api("/projects?isActive=true", { headers }), api("/tags", { headers })]).then(([p, t]) => { const list = Array.isArray(p.items) ? p.items : []; setProjects(list.filter((project) => /^\d{3}$/.test(String(project.code || "").trim()) && (project.isActive === true || project.is_active === true || project.isActive === "true" || project.is_active === "true"))); setTags(Array.isArray(t.items) ? t.items : []); }).catch(() => {}); }, [authLoading, headers]);
-  const filtered = useMemo(() => { const q = query.trim().toLowerCase(), a = normalizeDate(from), b = normalizeDate(to); return items.filter((item) => { const d = dateKey(item.createdAt); if (a && (!d || d < a)) return false; if (b && (!d || d > b)) return false; if (filterTagIds.length && !filterTagIds.some((id) => item.tagIds?.map(String).includes(String(id)))) return false; return !q || [item.projectName, item.projectCode, item.category, item.challenge, item.solution].join(" ").toLowerCase().includes(q); }); }, [items, query, from, to, filterTagIds]);
-  const openTags = (target) => { setTagFor(target); setTagDraft((target === "form" ? form.tagIds : filterTagIds).map(String)); setTagQuery(""); setTagOpen(true); };
-  const reset = () => { setFormOpen(false); setUploadOpen(false); setForm(empty()); setEditingId(""); setError(""); };
-  const submit = async () => { setError(""); setNotice(""); if (!form.projectId || !form.category.trim() || !form.challenge.trim() || !form.solution.trim() || !form.importance || !form.impacts.length || !form.tagIds.length) return setError("همه فیلدها به‌جز بارگذاری اجباری هستند."); setSaving(true); try { const data = await api("/project-lessons", { method: editingId ? "PATCH" : "POST", headers, body: JSON.stringify(editingId ? { ...form, id: editingId } : form) }); if (editingId && data.item) setItems((old) => old.map((item) => item.id === editingId ? { ...item, ...data.item, authorName: data.item.authorName && data.item.authorName !== "—" ? data.item.authorName : item.authorName, authorPostCount: data.item.authorPostCount || item.authorPostCount } : item)); reset(); setSelectedIds(new Set()); setNotice(editingId ? "درس‌آموخته با موفقیت ویرایش شد." : "درس‌آموخته برای بررسی به اعضای واحد مدیریت ارسال شد."); } catch (e) { setError(e.message || "ثبت درس‌آموخته انجام نشد."); } finally { setSaving(false); } };
-  const toggleSelected = (id) => setSelectedIds((old) => { const next = new Set(old); const key = String(id); next.has(key) ? next.delete(key) : next.add(key); return next; });
-  const allSelected = filtered.length > 0 && filtered.every((item) => selectedIds.has(String(item.id)));
-  const editSelected = () => { if (selectedIds.size !== 1) return; const item = items.find((row) => selectedIds.has(String(row.id))); if (!item) return; setForm({ projectId: String(item.projectId), category: item.category, challenge: item.challenge, solution: item.solution, importance: item.importance, impacts: item.impacts || [], tagIds: item.tagIds || [], files: item.files || [] }); setEditingId(item.id); setFormOpen(true); setTableMenuOpen(false); };
-  const deleteSelected = async () => { if (!selectedIds.size || deleting || !window.confirm("موارد انتخاب‌شده حذف شوند؟")) return; setDeleting(true); try { await api("/project-lessons", { method: "DELETE", headers, body: JSON.stringify({ ids: [...selectedIds] }) }); setItems((old) => old.filter((item) => !selectedIds.has(String(item.id)))); setSelectedIds(new Set()); setTableMenuOpen(false); } catch (e) { setError(e.message || "حذف انجام نشد."); } finally { setDeleting(false); } };
-  const openView = async (item) => { setViewItem(item); try { const data = await api("/project-lessons/views", { method: "POST", headers, body: JSON.stringify({ id: item.id }) }); setItems((old) => old.map((row) => row.id === item.id ? { ...row, viewCount: data.viewCount, isUnread: false } : row)); setViewItem((old) => old?.id === item.id ? { ...old, viewCount: data.viewCount, isUnread: false } : old); } catch {} };
-  const decideReview = async (item, action, draft) => { setError(""); const data = await api("/project-lessons", { method: "PATCH", headers, body: JSON.stringify({ ...draft, id: item.id, action }) }); if (action === "reject") { setItems((old) => old.filter((row) => row.id !== item.id)); setNotice("درس‌آموخته رد شد و در جدول ذخیره نشد."); } else { setItems((old) => old.map((row) => row.id === item.id ? { ...row, ...data.item, status: "approved", isUnread: false } : row)); setNotice("درس‌آموخته تأیید شد و اکنون در جدول اصلی نمایش داده می‌شود."); } setViewItem(null); };
-  const upload = async (files) => { const list = Array.from(files || []); if (!list.length) return; setUploading(true); try { const added = []; for (const file of list) { const body = new FormData(); body.append("file", file); const response = await fetch("/api/project-lessons/upload", { method: "POST", credentials: "include", headers, body }); const data = await response.json(); if (!response.ok) throw new Error(data.error || "upload_failed"); added.push(data.file); } setForm((old) => ({ ...old, files: [...old.files, ...added] })); } catch (e) { setError(e.message || "بارگذاری فایل انجام نشد."); } finally { setUploading(false); } };
-  const exportExcel = async () => { if (!filtered.length) return; const XLSX = await import("xlsx"); const sheet = XLSX.utils.json_to_sheet(filtered.map((item, index) => ({ "ردیف": index + 1, "تاریخ": fa(dateKey(item.createdAt)), "دسته‌بندی": item.category, "دانش‌آفرین": item.authorName, "اهمیت": importance.find(([id]) => id === item.importance)?.[1] || "", "اثر": item.impacts.map((id) => impacts.find(([key]) => key === id)?.[1]).filter(Boolean).join("، "), "بازدید": item.viewCount || 0 }))); const book = XLSX.utils.book_new(); book.Workbook = { Views: [{ RTL: true }] }; XLSX.utils.book_append_sheet(book, sheet, "Lessons"); XLSX.writeFile(book, "project-lessons.xlsx"); };
-  return <div dir="rtl" className="mx-auto max-w-[1400px]"><Card className="overflow-hidden rounded-3xl border border-black/10 bg-white p-0 shadow-[0_18px_50px_rgba(15,23,42,.08)] dark:border-white/10 dark:bg-neutral-900"><div className="p-3 md:p-4"><div className="mb-5 flex items-center justify-between gap-3 border-b border-black/[.07] pb-4 dark:border-white/10"><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl border border-black/10 bg-neutral-50 dark:border-white/10 dark:bg-white/5"><img src="/images/icons/darsamokhteha.svg" alt="" className="h-6 w-6 dark:invert" /></span><span><span className="block text-base font-bold md:text-lg">درس‌آموخته‌ها</span><span className="mt-0.5 block text-xs text-neutral-500">مدیریت دانش</span></span></div><button type="button" onClick={() => formOpen ? reset() : setFormOpen(true)} className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 bg-white dark:border-white/15 dark:bg-white/5" title={formOpen ? "بستن فرم" : "افزودن"}><img src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" /></button></div>
-  {!formOpen && <FilterBar query={query} setQuery={setQuery} from={from} setFrom={setFrom} to={to} setTo={setTo} tags={tags} selected={filterTagIds} openTags={() => openTags("filter")} onExport={exportExcel} canExport={filtered.length > 0} />}
-  {formOpen && <div className="mb-4 rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03]"><div className="grid grid-cols-1 gap-3 md:grid-cols-3"><Field text="پروژه" required><select value={form.projectId} onChange={(e) => setForm((x) => ({ ...x, projectId: e.target.value }))} className={input}><option value="">انتخاب کنید</option>{projects.map((p) => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}</select></Field><Field text="دسته‌بندی درس‌آموخته" required><input value={form.category} onChange={(e) => setForm((x) => ({ ...x, category: e.target.value }))} className={input} /></Field><Field text="اهمیت" required><div className="flex h-11 items-center gap-2 rounded-xl border border-black/10 bg-white px-3 dark:border-white/15 dark:bg-white/5">{importance.map(([id, name]) => <label key={id} className="flex items-center gap-1 text-xs"><input type="radio" name="importance" checked={form.importance === id} onChange={() => setForm((x) => ({ ...x, importance: id }))} />{name}</label>)}</div></Field><Field text="چالش" required><textarea value={form.challenge} onChange={(e) => setForm((x) => ({ ...x, challenge: e.target.value }))} className={`${input} min-h-24 py-3`} placeholder="چه اتفاقی افتاد" /></Field><Field text="راهکار" required><textarea value={form.solution} onChange={(e) => setForm((x) => ({ ...x, solution: e.target.value }))} className={`${input} min-h-24 py-3`} /></Field><Field text="اثر" required><div className="flex min-h-11 flex-wrap items-center gap-3 rounded-xl border border-black/10 bg-white px-3 py-2 dark:border-white/15 dark:bg-white/5">{impacts.map(([id, name]) => <label key={id} className="flex items-center gap-1 text-xs"><input type="checkbox" checked={form.impacts.includes(id)} onChange={() => setForm((x) => ({ ...x, impacts: x.impacts.includes(id) ? x.impacts.filter((v) => v !== id) : [...x.impacts, id] }))} />{name}</label>)}</div></Field></div><div className="mt-3 flex flex-wrap items-end gap-3"><Field text="برچسب‌ها" required><TagButton count={form.tagIds.length} onClick={() => openTags("form")} /></Field><Field text="بارگذاری"><button type="button" onClick={() => setUploadOpen(true)} className="relative grid h-11 w-14 place-items-center rounded-xl border border-black/10 bg-white dark:border-white/15 dark:bg-white/5"><img src="/images/icons/Uplod.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse" : ""}`} />{form.files.length > 0 && <Badge value={form.files.length} />}</button></Field><button type="button" onClick={submit} disabled={saving || uploading} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white disabled:opacity-50 dark:border-white/15 dark:bg-white/5" title="افزودن به جدول"><img src="/images/icons/afzodan.svg" alt="" className="h-4 w-4 dark:invert" /></button></div></div>}
-  {error && <div className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}{notice && <div className="mb-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{notice}</div>}
-  <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"><div className="overflow-auto" dir="ltr"><table dir="rtl" className="w-full min-w-[700px] table-fixed text-sm [&_td]:text-center [&_th]:text-center"><colgroup><col style={{ width: 52 }} /><col style={{ width: 70 }} /><col style={{ width: 135 }} /><col /><col style={{ width: 220 }} /><col style={{ width: 150 }} /></colgroup><thead><tr className="border-b border-neutral-300 bg-neutral-200 dark:border-neutral-700 dark:bg-neutral-800"><th className="px-3 py-3"><input type="checkbox" checked={allSelected} onChange={() => setSelectedIds(allSelected ? new Set() : new Set(filtered.map((item) => String(item.id))))} /></th><th className="px-3 py-3">ردیف</th><th className="px-3 py-3">تاریخ</th><th className="px-3 py-3">دسته‌بندی</th><th className="px-3 py-3">دانش‌آفرین</th><th className="relative px-3 py-3"><span>اهمیت</span>{canReview && <LessonTableMenu open={tableMenuOpen} setOpen={setTableMenuOpen} selectedCount={selectedIds.size} onEdit={editSelected} onDelete={deleteSelected} deleting={deleting} />}</th></tr></thead><tbody>{loading ? <Row text="در حال دریافت..." colSpan={6} /> : !filtered.length ? <Row colSpan={6} text={items.length ? "موردی مطابق فیلتر پیدا نشد." : "هنوز درس‌آموخته‌ای ثبت نشده است."} /> : filtered.map((item, i) => <tr key={item.id} onClick={() => openView(item)} className={`h-12 cursor-pointer border-t border-neutral-200 transition hover:bg-black/[.04] dark:border-neutral-700 dark:hover:bg-white/[.08] ${item.status === "pending" ? "bg-sky-50/60 dark:bg-sky-500/[.06]" : "bg-black/[.01] dark:bg-white/[.03]"}`}><td className="relative px-3" onClick={(event) => event.stopPropagation()}>{item.isUnread && <span className="absolute left-1 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-sky-500 shadow-[0_0_0_3px_rgba(14,165,233,.13)]" title="جدید و خوانده‌نشده" />}<input type="checkbox" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} /></td><td className="px-3">{fa(i + 1)}</td><td className="px-3">{fa(dateKey(item.createdAt))}</td><td className="truncate px-3" title={item.category}><span>{item.category}</span>{item.status === "pending" && <span className="mr-2 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-700 dark:bg-sky-500/15 dark:text-sky-300">در انتظار بررسی</span>}</td><td className="px-3"><span className="inline-flex items-center justify-center gap-1.5"><span>{item.authorName}</span><button type="button" onClick={(event) => { event.stopPropagation(); const rect = event.currentTarget.getBoundingClientRect(); setAuthorInfoItem({ item, top: rect.bottom + 7, left: Math.max(8, Math.min(rect.left - 120, window.innerWidth - 292)) }); }} className="inline-grid h-5 w-5 place-items-center rounded-full border border-black/20 bg-white text-[11px] font-bold text-neutral-600 transition hover:bg-neutral-100 dark:border-white/20 dark:bg-white/5 dark:text-neutral-200" title="اطلاعات دانش‌آفرین">i</button></span></td><td className="px-3">{importance.find(([id]) => id === item.importance)?.[1] || "—"}</td></tr>)}</tbody></table></div></div></div></Card>{tagOpen && <TagPicker tags={tags} query={tagQuery} setQuery={setTagQuery} selected={tagDraft} setSelected={setTagDraft} onClose={() => setTagOpen(false)} onConfirm={() => { const ids = [...new Set(tagDraft.map(String))]; tagFor === "form" ? setForm((x) => ({ ...x, tagIds: ids })) : setFilterTagIds(ids); setTagOpen(false); }} />}{uploadOpen && <LessonUploadModal fileRef={fileRef} files={form.files} uploading={uploading} onUpload={upload} onRemove={(index) => setForm((old) => ({ ...old, files: old.files.filter((_, position) => position !== index) }))} onClose={() => setUploadOpen(false)} />}{viewItem && (viewItem.status === "pending" && canReview ? <LessonReviewModal item={viewItem} projects={projects} tags={tags} headers={headers} onClose={() => setViewItem(null)} onDecision={decideReview} /> : <LessonDetailModal item={viewItem} tags={tags} onClose={() => setViewItem(null)} />)}{authorInfoItem && <AuthorPopover data={authorInfoItem} onClose={() => setAuthorInfoItem(null)} />}</div>;
+const impacts = [
+  ["time", "زمان"],
+  ["cost", "هزینه"],
+  ["quality", "کیفیت"],
+  ["satisfaction", "رضایت کارفرما"],
+];
+
+const importance = [
+  ["low", "کم"],
+  ["medium", "متوسط"],
+  ["high", "زیاد"],
+];
+
+const empty = () => ({
+  projectId: "",
+  category: "",
+  challenge: "",
+  solution: "",
+  importance: "",
+  impacts: [],
+  tagIds: [],
+  files: [],
+});
+
+const fa = (value = "") =>
+  String(value ?? "").replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
+
+const dateKey = (value) => {
+  const parsed = dayjs(value);
+  return parsed.isValid() ? parsed.calendar("jalali").format("YYYY/MM/DD") : "";
+};
+
+const normalizeDate = (value) =>
+  String(value || "")
+    .replace(/[\u06F0-\u06F9]/g, (digit) =>
+      String(digit.charCodeAt(0) - 0x06f0),
+    )
+    .replaceAll("-", "/")
+    .trim();
+
+function isSelectableProject(project) {
+  const hasThreeDigitCode = /^\d{3}$/.test(String(project.code || "").trim());
+  const active =
+    project.isActive === true ||
+    project.is_active === true ||
+    project.isActive === "true" ||
+    project.is_active === "true";
+  return hasThreeDigitCode && active;
 }
 
-function Field({ text, required, children }) { return <div><div className={label}>{text}{required && <span className="mr-1 text-red-600">*</span>}</div>{children}</div>; }
-function Badge({ value }) { return <span className="absolute -left-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-black px-1 text-[10px] text-white">{fa(value)}</span>; }
-function TagButton({ count, onClick }) { return <button type="button" onClick={onClick} className="relative grid h-11 w-14 place-items-center rounded-xl border border-black/10 bg-white dark:border-white/15 dark:bg-white/5" title="انتخاب برچسب"><span className="text-lg">•••</span>{count > 0 && <Badge value={count} />}</button>; }
-function Row({ text, colSpan = 8 }) { return <tr><td colSpan={colSpan} className="p-8 text-center text-neutral-500">{text}</td></tr>; }
-function LessonTableMenu({ open, setOpen, selectedCount, onEdit, onDelete, deleting }) { const [position, setPosition] = useState({ top: 0, left: 8 }); const toggle = (event) => { if (!open) { const rect = event.currentTarget.getBoundingClientRect(); setPosition({ top: rect.bottom + 8, left: Math.max(8, Math.min(rect.right - 220, window.innerWidth - 228)) }); } setOpen((value) => !value); }; return <div className="absolute left-2 top-1/2 -translate-y-1/2"><button type="button" onClick={toggle} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[.08] dark:hover:bg-white/10" title="مدیریت موارد"><img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 dark:invert" /></button>{open && createPortal(<><button type="button" className="fixed inset-0 z-[9998] cursor-default" onClick={() => setOpen(false)} aria-label="بستن منو" /><div dir="rtl" style={{ top: position.top, left: position.left }} className="fixed z-[9999] w-[220px] rounded-2xl border border-black/10 bg-white p-1.5 text-right shadow-[0_18px_45px_rgba(0,0,0,.22)] dark:border-white/10 dark:bg-neutral-900"><div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500">{selectedCount ? `${fa(selectedCount)} مورد انتخاب شده` : "ابتدا مورد موردنظر را انتخاب کنید"}</div><button type="button" disabled={selectedCount !== 1} onClick={onEdit} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-semibold transition hover:bg-amber-50 disabled:opacity-40 dark:hover:bg-amber-500/10"><span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-100 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span>ویرایش</button><button type="button" disabled={!selectedCount || deleting} onClick={onDelete} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-40 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 place-items-center rounded-lg bg-red-100 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span>{deleting ? "در حال حذف..." : "حذف"}</button></div></>, document.body)}</div>; }
+function matchesFilters(item, query, from, to, selectedTagIds) {
+  const createdAt = dateKey(item.createdAt);
+  if (from && (!createdAt || createdAt < from)) return false;
+  if (to && (!createdAt || createdAt > to)) return false;
 
-function LessonReviewModal({ item, projects, tags, headers, onClose, onDecision }) {
-  const [draft, setDraft] = useState({ projectId: String(item.projectId), category: item.category, challenge: item.challenge, solution: item.solution, importance: item.importance, impacts: item.impacts || [], tagIds: (item.tagIds || []).map(String), files: item.files || [] });
-  const [saving, setSaving] = useState(false), [uploading, setUploading] = useState(false), [error, setError] = useState("");
-  const fileInput = useRef(null);
-  const valid = draft.projectId && draft.category.trim() && draft.challenge.trim() && draft.solution.trim() && draft.importance && draft.impacts.length && draft.tagIds.length;
-  const decide = async (action) => {
-    if (action === "approve" && !valid) return setError("همه فیلدها به‌جز بارگذاری اجباری هستند.");
-    if (action === "reject" && !window.confirm("این درس‌آموخته رد شود؟ مورد ردشده در جدول ذخیره نخواهد شد.")) return;
-    setSaving(true); setError("");
-    try { await onDecision(item, action, draft); } catch (e) { setError(e.message || "انجام عملیات ممکن نشد."); setSaving(false); }
-  };
-  const uploadFiles = async (selected) => {
-    const selectedFiles = Array.from(selected || []); if (!selectedFiles.length) return;
-    setUploading(true); setError("");
-    try {
-      const added = [];
-      for (const file of selectedFiles) {
-        const body = new FormData(); body.append("file", file);
-        const response = await fetch("/api/project-lessons/upload", { method: "POST", credentials: "include", headers, body });
-        const data = await response.json(); if (!response.ok) throw new Error(data.error || "upload_failed"); added.push(data.file);
-      }
-      setDraft((old) => ({ ...old, files: [...old.files, ...added] }));
-    } catch (e) { setError(e.message || "بارگذاری فایل انجام نشد."); } finally { setUploading(false); }
-  };
-  return createPortal(
-    <div className="fixed inset-0 z-[9999]" dir="rtl">
-      <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" onClick={saving ? undefined : onClose} />
-      <div className="absolute inset-0 flex items-center justify-center p-3 md:p-6">
-        <article className="relative flex max-h-[calc(100dvh-24px)] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-sky-200 bg-white text-neutral-900 shadow-[0_30px_90px_rgba(15,23,42,.4)] dark:border-sky-500/20 dark:bg-neutral-900 dark:text-white">
-          <header className="flex items-start justify-between gap-4 border-b border-black/[.07] px-5 py-5 dark:border-white/10 md:px-7">
-            <div className="flex items-start gap-3"><span className="mt-1 h-2.5 w-2.5 rounded-full bg-sky-500 shadow-[0_0_0_4px_rgba(14,165,233,.13)]" /><div><h2 className="text-base font-extrabold md:text-lg">بررسی درس‌آموخته جدید</h2><p className="mt-1 text-xs text-neutral-500">تمام فیلدها قابل ویرایش هستند؛ پس از بازبینی تأیید یا رد کنید.</p></div></div>
-            <button type="button" onClick={onClose} disabled={saving} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-white dark:text-black" aria-label="بستن"><X className="h-5 w-5" /></button>
-          </header>
-          <div className="overflow-y-auto px-5 py-5 md:px-7">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <Field text="پروژه" required><select value={draft.projectId} onChange={(e) => setDraft((old) => ({ ...old, projectId: e.target.value }))} className={input}><option value="">انتخاب کنید</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.code} - {project.name}</option>)}</select></Field>
-              <Field text="دسته‌بندی درس‌آموخته" required><input value={draft.category} onChange={(e) => setDraft((old) => ({ ...old, category: e.target.value }))} className={input} /></Field>
-              <Field text="اهمیت" required><div className="flex h-11 items-center gap-3 rounded-xl border border-black/10 bg-white px-3 dark:border-white/15 dark:bg-white/5">{importance.map(([id, name]) => <label key={id} className="flex items-center gap-1.5 text-xs"><input type="radio" name="review-importance" checked={draft.importance === id} onChange={() => setDraft((old) => ({ ...old, importance: id }))} />{name}</label>)}</div></Field>
-              <div className="md:col-span-3 grid gap-4 md:grid-cols-2"><Field text="چالش" required><textarea value={draft.challenge} onChange={(e) => setDraft((old) => ({ ...old, challenge: e.target.value }))} className={`${input} min-h-32 py-3`} /></Field><Field text="راهکار" required><textarea value={draft.solution} onChange={(e) => setDraft((old) => ({ ...old, solution: e.target.value }))} className={`${input} min-h-32 py-3`} /></Field></div>
-              <Field text="اثر" required><div className="flex min-h-11 flex-wrap items-center gap-3 rounded-xl border border-black/10 bg-white px-3 py-2 dark:border-white/15 dark:bg-white/5">{impacts.map(([id, name]) => <label key={id} className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={draft.impacts.includes(id)} onChange={() => setDraft((old) => ({ ...old, impacts: old.impacts.includes(id) ? old.impacts.filter((value) => value !== id) : [...old.impacts, id] }))} />{name}</label>)}</div></Field>
-              <div className="md:col-span-2"><Field text="برچسب‌ها" required><div className="flex min-h-11 flex-wrap gap-2 rounded-xl border border-black/10 bg-white p-2 dark:border-white/15 dark:bg-white/5">{tags.map((tag) => { const selected = draft.tagIds.includes(String(tag.id)); return <button key={tag.id} type="button" onClick={() => setDraft((old) => ({ ...old, tagIds: selected ? old.tagIds.filter((id) => id !== String(tag.id)) : [...old.tagIds, String(tag.id)] }))} className={`rounded-full border px-3 py-1 text-xs transition ${selected ? "border-sky-600 bg-sky-600 text-white" : "border-black/10 hover:border-sky-300 dark:border-white/15"}`}>{tag.label}</button>; })}</div></Field></div>
-            </div>
-            <section className="mt-4 rounded-2xl border border-black/10 p-3 dark:border-white/10"><div className="flex items-center justify-between gap-3"><h3 className="text-xs font-bold">فایل‌های مرتبط</h3><button type="button" onClick={() => fileInput.current?.click()} disabled={uploading || saving} className="h-9 rounded-xl border border-black/10 px-3 text-xs font-semibold disabled:opacity-50 dark:border-white/15">{uploading ? "در حال بارگذاری..." : "افزودن فایل"}</button><input ref={fileInput} type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.xlsm,.csv,.rtf" className="hidden" onChange={(event) => { uploadFiles(event.target.files); event.target.value = ""; }} /></div><div className="mt-3 flex flex-wrap gap-2">{draft.files.length ? draft.files.map((file, index) => <span key={file.url || index} className="inline-flex items-center gap-2 rounded-xl bg-neutral-100 px-3 py-2 text-xs dark:bg-white/5"><Paperclip className="h-4 w-4" /><span className="max-w-52 truncate">{file.name}</span><button type="button" onClick={() => setDraft((old) => ({ ...old, files: old.files.filter((_, position) => position !== index) }))} className="text-red-600" aria-label={`حذف ${file.name}`}><X className="h-4 w-4" /></button></span>) : <span className="text-xs text-neutral-400">فایلی بارگذاری نشده است.</span>}</div></section>
-            {error && <div className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{error}</div>}
-          </div>
-          <footer className="flex items-center justify-end gap-3 border-t border-black/10 px-5 py-4 dark:border-white/10 md:px-7">
-            <button type="button" onClick={() => decide("reject")} disabled={saving || uploading} className="inline-flex h-11 items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-5 text-sm font-bold text-red-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-red-100 disabled:translate-y-0 disabled:opacity-50 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"><X className="h-5 w-5" />رد</button>
-            <button type="button" onClick={() => decide("approve")} disabled={saving || uploading} className="inline-flex h-11 items-center gap-2 rounded-xl bg-emerald-600 px-5 text-sm font-bold text-white shadow-[0_8px_22px_rgba(5,150,105,.25)] transition hover:-translate-y-0.5 hover:bg-emerald-700 disabled:translate-y-0 disabled:opacity-50"><Check className="h-5 w-5" />{saving ? "در حال ثبت..." : "تأیید"}</button>
-          </footer>
-        </article>
-      </div>
-    </div>, document.body
+  const itemTagIds = (item.tagIds || []).map(String);
+  const matchesTags =
+    !selectedTagIds.length ||
+    selectedTagIds.some((id) => itemTagIds.includes(String(id)));
+  if (!matchesTags) return false;
+
+  const searchableText = [
+    item.projectName,
+    item.projectCode,
+    item.category,
+    item.challenge,
+    item.solution,
+  ]
+    .join(" ")
+    .toLowerCase();
+  return !query || searchableText.includes(query);
+}
+
+function isFormComplete(form) {
+  return Boolean(
+    form.projectId &&
+    form.category.trim() &&
+    form.challenge.trim() &&
+    form.solution.trim() &&
+    form.importance &&
+    form.impacts.length &&
+    form.tagIds.length,
   );
 }
 
+function createFormFromItem(item) {
+  return {
+    projectId: String(item.projectId),
+    category: item.category,
+    challenge: item.challenge,
+    solution: item.solution,
+    importance: item.importance,
+    impacts: item.impacts || [],
+    tagIds: item.tagIds || [],
+    files: item.files || [],
+  };
+}
+
+function canDisplayLesson(item, canReview) {
+  return item.status === "approved" || (canReview && item.status === "pending");
+}
+
+export default function ProjectLessonsLearnedPage() {
+  const { user, loading: authLoading } = useAuth();
+  const fileRef = useRef(null);
+
+  const [items, setItems] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [tags, setTags] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [canReview, setCanReview] = useState(false);
+
+  const [form, setForm] = useState(empty);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
+
+  const [query, setQuery] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [filterTagIds, setFilterTagIds] = useState([]);
+  const [tagOpen, setTagOpen] = useState(false);
+  const [tagFor, setTagFor] = useState("form");
+  const [tagDraft, setTagDraft] = useState([]);
+  const [tagQuery, setTagQuery] = useState("");
+
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [viewItem, setViewItem] = useState(null);
+  const [authorInfoItem, setAuthorInfoItem] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  const headers = useMemo(
+    () => (user?.id != null ? { "x-user-id": String(user.id) } : {}),
+    [user?.id],
+  );
+
+  useEffect(() => {
+    if (authLoading) return;
+
+    // Never keep another user's review queue visible while the new session is
+    // being loaded or if that request fails.
+    setItems([]);
+    setCanReview(false);
+    setSelectedIds(new Set());
+    setViewItem(null);
+    setLoading(true);
+    api("/project-lessons", { headers })
+      .then((data) => {
+        setItems(Array.isArray(data.items) ? data.items : []);
+        setCanReview(data.canReview === true);
+      })
+      .catch((requestError) => {
+        setError(requestError.message || "دریافت درس‌آموخته‌ها انجام نشد.");
+      })
+      .finally(() => setLoading(false));
+  }, [authLoading, headers]);
+
+  useEffect(() => {
+    if (authLoading) return;
+
+    Promise.all([
+      api("/projects?isActive=true", { headers }),
+      api("/tags", { headers }),
+    ])
+      .then(([projectData, tagData]) => {
+        const allProjects = Array.isArray(projectData.items)
+          ? projectData.items
+          : [];
+        setProjects(allProjects.filter(isSelectableProject));
+        setTags(Array.isArray(tagData.items) ? tagData.items : []);
+      })
+      .catch(() => {});
+  }, [authLoading, headers]);
+
+  const filtered = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    const fromDate = normalizeDate(from);
+    const toDate = normalizeDate(to);
+    const authorizedItems = items.filter((item) =>
+      canDisplayLesson(item, canReview),
+    );
+
+    return authorizedItems.filter((item) =>
+      matchesFilters(item, normalizedQuery, fromDate, toDate, filterTagIds),
+    );
+  }, [items, canReview, query, from, to, filterTagIds]);
+
+  const allSelected =
+    filtered.length > 0 &&
+    filtered.every((item) => selectedIds.has(String(item.id)));
+
+  const openTags = (target) => {
+    const selectedTags = target === "form" ? form.tagIds : filterTagIds;
+    setTagFor(target);
+    setTagDraft(selectedTags.map(String));
+    setTagQuery("");
+    setTagOpen(true);
+  };
+
+  const reset = () => {
+    setFormOpen(false);
+    setUploadOpen(false);
+    setForm(empty());
+    setEditingId("");
+    setError("");
+  };
+
+  const submit = async () => {
+    setError("");
+    setNotice("");
+    if (!isFormComplete(form)) {
+      setError("همه فیلدها به‌جز بارگذاری اجباری هستند.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload = editingId ? { ...form, id: editingId } : form;
+      const data = await api("/project-lessons", {
+        method: editingId ? "PATCH" : "POST",
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      if (!editingId && data.pending !== true) {
+        throw new Error(
+          "پاسخ سرور معتبر نیست؛ مورد برای بازبینی ثبت نشده است.",
+        );
+      }
+      if (editingId && data.item) updateEditedItem(data.item);
+      reset();
+      setSelectedIds(new Set());
+      setNotice(
+        editingId
+          ? "درس‌آموخته با موفقیت ویرایش شد."
+          : "درس‌آموخته برای بررسی به اعضای واحد مدیریت ارسال شد.",
+      );
+    } catch (requestError) {
+      setError(requestError.message || "ثبت درس‌آموخته انجام نشد.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateEditedItem = (updatedItem) => {
+    setItems((currentItems) =>
+      currentItems.map((item) => {
+        if (item.id !== editingId) return item;
+        return {
+          ...item,
+          ...updatedItem,
+          authorName:
+            updatedItem.authorName && updatedItem.authorName !== "—"
+              ? updatedItem.authorName
+              : item.authorName,
+          authorPostCount: updatedItem.authorPostCount || item.authorPostCount,
+        };
+      }),
+    );
+  };
+
+  const toggleSelected = (id) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      const key = String(id);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const editSelected = () => {
+    if (selectedIds.size !== 1) return;
+    const item = items.find((row) => selectedIds.has(String(row.id)));
+    if (!item) return;
+
+    setForm(createFormFromItem(item));
+    setEditingId(item.id);
+    setFormOpen(true);
+  };
+
+  const deleteSelected = async () => {
+    const confirmed =
+      selectedIds.size &&
+      !deleting &&
+      window.confirm("موارد انتخاب‌شده حذف شوند؟");
+    if (!confirmed) return;
+
+    setDeleting(true);
+    try {
+      await api("/project-lessons", {
+        method: "DELETE",
+        headers,
+        body: JSON.stringify({ ids: [...selectedIds] }),
+      });
+      setItems((current) =>
+        current.filter((item) => !selectedIds.has(String(item.id))),
+      );
+      setSelectedIds(new Set());
+    } catch (requestError) {
+      setError(requestError.message || "حذف انجام نشد.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const openView = async (item) => {
+    setViewItem(item);
+    try {
+      const data = await api("/project-lessons/views", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ id: item.id }),
+      });
+      const viewedItem = { viewCount: data.viewCount, isUnread: false };
+      setItems((current) =>
+        current.map((row) =>
+          row.id === item.id ? { ...row, ...viewedItem } : row,
+        ),
+      );
+      setViewItem((current) =>
+        current?.id === item.id ? { ...current, ...viewedItem } : current,
+      );
+    } catch {
+      // Opening the detail should not fail if updating the read receipt fails.
+    }
+  };
+
+  const decideReview = async (item, action, draft) => {
+    setError("");
+    const data = await api("/project-lessons", {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ ...draft, id: item.id, action }),
+    });
+
+    if (action === "reject") {
+      setItems((current) => current.filter((row) => row.id !== item.id));
+      setNotice("درس‌آموخته رد شد و در جدول ذخیره نشد.");
+    } else {
+      setItems((current) =>
+        current.map((row) =>
+          row.id === item.id
+            ? { ...row, ...data.item, status: "approved", isUnread: false }
+            : row,
+        ),
+      );
+      setNotice("درس‌آموخته تأیید شد و اکنون در جدول اصلی نمایش داده می‌شود.");
+    }
+    setViewItem(null);
+  };
+
+  const upload = async (files) => {
+    const selectedFiles = Array.from(files || []);
+    if (!selectedFiles.length) return;
+
+    setUploading(true);
+    try {
+      const uploadedFiles = [];
+      for (const file of selectedFiles) {
+        const body = new FormData();
+        body.append("file", file);
+        const response = await fetch("/api/project-lessons/upload", {
+          method: "POST",
+          credentials: "include",
+          headers,
+          body,
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "upload_failed");
+        uploadedFiles.push(data.file);
+      }
+      setForm((current) => ({
+        ...current,
+        files: [...current.files, ...uploadedFiles],
+      }));
+    } catch (uploadError) {
+      setError(uploadError.message || "بارگذاری فایل انجام نشد.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const exportExcel = async () => {
+    if (!filtered.length) return;
+    const XLSX = await import("xlsx");
+    const rows = filtered.map((item, index) => ({
+      ردیف: index + 1,
+      تاریخ: fa(dateKey(item.createdAt)),
+      دسته‌بندی: item.category,
+      دانش‌آفرین: item.authorName,
+      اهمیت: importance.find(([id]) => id === item.importance)?.[1] || "",
+      اثر: item.impacts
+        .map((id) => impacts.find(([key]) => key === id)?.[1])
+        .filter(Boolean)
+        .join("، "),
+      بازدید: item.viewCount || 0,
+    }));
+    const sheet = XLSX.utils.json_to_sheet(rows);
+    const book = XLSX.utils.book_new();
+    book.Workbook = { Views: [{ RTL: true }] };
+    XLSX.utils.book_append_sheet(book, sheet, "Lessons");
+    XLSX.writeFile(book, "project-lessons.xlsx");
+  };
+  return (
+    <div dir="rtl" className="mx-auto max-w-[1400px]">
+      <Card className="overflow-hidden rounded-3xl border border-black/10 bg-white p-0 shadow-[0_18px_50px_rgba(15,23,42,.08)] dark:border-white/10 dark:bg-neutral-900">
+        <div className="p-3 md:p-4">
+          <div className="mb-5 flex items-center justify-between gap-3 border-b border-black/[.07] pb-4 dark:border-white/10">
+            <div className="flex items-center gap-3">
+              <span className="grid h-11 w-11 place-items-center rounded-2xl border border-black/10 bg-neutral-50 dark:border-white/10 dark:bg-white/5">
+                <img
+                  src="/images/icons/darsamokhteha.svg"
+                  alt=""
+                  className="h-6 w-6 dark:invert"
+                />
+              </span>
+              <span>
+                <span className="block text-base font-bold md:text-lg">
+                  درس‌آموخته‌ها
+                </span>
+                <span className="mt-0.5 block text-xs text-neutral-500">
+                  مدیریت دانش
+                </span>
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => (formOpen ? reset() : setFormOpen(true))}
+              className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 bg-white dark:border-white/15 dark:bg-white/5"
+              title={formOpen ? "بستن فرم" : "افزودن"}
+            >
+              <img
+                src={
+                  formOpen
+                    ? "/images/icons/listdarkhast.svg"
+                    : "/images/icons/afzodan.svg"
+                }
+                alt=""
+                className="h-5 w-5 dark:invert"
+              />
+            </button>
+          </div>
+          {!formOpen && (
+            <FilterBar
+              query={query}
+              setQuery={setQuery}
+              from={from}
+              setFrom={setFrom}
+              to={to}
+              setTo={setTo}
+              tags={tags}
+              selected={filterTagIds}
+              openTags={() => openTags("filter")}
+              onExport={exportExcel}
+              canExport={filtered.length > 0}
+            />
+          )}
+          {formOpen && (
+            <div className="mb-4 rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03]">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <Field text="پروژه" required>
+                  <select
+                    value={form.projectId}
+                    onChange={(e) =>
+                      setForm((x) => ({ ...x, projectId: e.target.value }))
+                    }
+                    className={input}
+                  >
+                    <option value="">انتخاب کنید</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.code} - {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field text="دسته‌بندی درس‌آموخته" required>
+                  <input
+                    value={form.category}
+                    onChange={(e) =>
+                      setForm((x) => ({ ...x, category: e.target.value }))
+                    }
+                    className={input}
+                  />
+                </Field>
+                <Field text="اهمیت" required>
+                  <div className="flex h-11 items-center gap-2 rounded-xl border border-black/10 bg-white px-3 dark:border-white/15 dark:bg-white/5">
+                    {importance.map(([id, name]) => (
+                      <label
+                        key={id}
+                        className="flex items-center gap-1 text-xs"
+                      >
+                        <input
+                          type="radio"
+                          name="importance"
+                          checked={form.importance === id}
+                          onChange={() =>
+                            setForm((x) => ({ ...x, importance: id }))
+                          }
+                        />
+                        {name}
+                      </label>
+                    ))}
+                  </div>
+                </Field>
+                <Field text="چالش" required>
+                  <textarea
+                    value={form.challenge}
+                    onChange={(e) =>
+                      setForm((x) => ({ ...x, challenge: e.target.value }))
+                    }
+                    className={`${input} min-h-24 py-3`}
+                    placeholder="چه اتفاقی افتاد"
+                  />
+                </Field>
+                <Field text="راهکار" required>
+                  <textarea
+                    value={form.solution}
+                    onChange={(e) =>
+                      setForm((x) => ({ ...x, solution: e.target.value }))
+                    }
+                    className={`${input} min-h-24 py-3`}
+                  />
+                </Field>
+                <Field text="اثر" required>
+                  <div className="flex min-h-11 flex-wrap items-center gap-3 rounded-xl border border-black/10 bg-white px-3 py-2 dark:border-white/15 dark:bg-white/5">
+                    {impacts.map(([id, name]) => (
+                      <label
+                        key={id}
+                        className="flex items-center gap-1 text-xs"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={form.impacts.includes(id)}
+                          onChange={() =>
+                            setForm((x) => ({
+                              ...x,
+                              impacts: x.impacts.includes(id)
+                                ? x.impacts.filter((v) => v !== id)
+                                : [...x.impacts, id],
+                            }))
+                          }
+                        />
+                        {name}
+                      </label>
+                    ))}
+                  </div>
+                </Field>
+              </div>
+              <div className="mt-3 flex flex-wrap items-end gap-3">
+                <Field text="برچسب‌ها" required>
+                  <TagButton
+                    count={form.tagIds.length}
+                    onClick={() => openTags("form")}
+                  />
+                </Field>
+                <Field text="بارگذاری">
+                  <button
+                    type="button"
+                    onClick={() => setUploadOpen(true)}
+                    className="relative grid h-11 w-14 place-items-center rounded-xl border border-black/10 bg-white dark:border-white/15 dark:bg-white/5"
+                  >
+                    <img
+                      src="/images/icons/Uplod.svg"
+                      alt=""
+                      className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse" : ""}`}
+                    />
+                    {form.files.length > 0 && (
+                      <Badge value={form.files.length} />
+                    )}
+                  </button>
+                </Field>
+                <button
+                  type="button"
+                  onClick={submit}
+                  disabled={saving || uploading}
+                  className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white disabled:opacity-50 dark:border-white/15 dark:bg-white/5"
+                  title="افزودن به جدول"
+                >
+                  <img
+                    src="/images/icons/afzodan.svg"
+                    alt=""
+                    className="h-4 w-4 dark:invert"
+                  />
+                </button>
+              </div>
+            </div>
+          )}
+          {error && (
+            <div className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+          {notice && (
+            <div className="mb-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+              {notice}
+            </div>
+          )}
+          <LessonsTable
+            items={filtered}
+            hasUnfilteredItems={items.some((item) =>
+              canDisplayLesson(item, canReview),
+            )}
+            loading={loading}
+            canReview={canReview}
+            selectedIds={selectedIds}
+            allSelected={allSelected}
+            deleting={deleting}
+            onToggleAll={() =>
+              setSelectedIds(
+                allSelected
+                  ? new Set()
+                  : new Set(filtered.map((item) => String(item.id))),
+              )
+            }
+            onToggleSelected={toggleSelected}
+            onOpenItem={openView}
+            onEditSelected={editSelected}
+            onDeleteSelected={deleteSelected}
+            onOpenAuthorInfo={(item, rect) =>
+              setAuthorInfoItem({
+                item,
+                top: rect.bottom + 7,
+                left: Math.max(
+                  8,
+                  Math.min(rect.left - 120, window.innerWidth - 292),
+                ),
+              })
+            }
+          />
+        </div>
+      </Card>
+      {tagOpen && (
+        <TagPicker
+          tags={tags}
+          query={tagQuery}
+          setQuery={setTagQuery}
+          selected={tagDraft}
+          setSelected={setTagDraft}
+          onClose={() => setTagOpen(false)}
+          onConfirm={() => {
+            const ids = [...new Set(tagDraft.map(String))];
+            tagFor === "form"
+              ? setForm((x) => ({ ...x, tagIds: ids }))
+              : setFilterTagIds(ids);
+            setTagOpen(false);
+          }}
+        />
+      )}
+      {uploadOpen && (
+        <LessonUploadModal
+          fileRef={fileRef}
+          files={form.files}
+          uploading={uploading}
+          onUpload={upload}
+          onRemove={(index) =>
+            setForm((old) => ({
+              ...old,
+              files: old.files.filter((_, position) => position !== index),
+            }))
+          }
+          onClose={() => setUploadOpen(false)}
+        />
+      )}
+      {viewItem &&
+        (viewItem.status === "pending" && canReview ? (
+          <LessonReviewModal
+            item={viewItem}
+            projects={projects}
+            tags={tags}
+            headers={headers}
+            onClose={() => setViewItem(null)}
+            onDecision={decideReview}
+          />
+        ) : (
+          <LessonDetailModal
+            item={viewItem}
+            tags={tags}
+            onClose={() => setViewItem(null)}
+          />
+        ))}
+      {authorInfoItem && (
+        <AuthorPopover
+          data={authorInfoItem}
+          onClose={() => setAuthorInfoItem(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function Field({ text, required, children }) {
+  return (
+    <div>
+      <div className={label}>
+        {text}
+        {required && <span className="mr-1 text-red-600">*</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+function Badge({ value }) {
+  return (
+    <span className="absolute -left-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-black px-1 text-[10px] text-white">
+      {fa(value)}
+    </span>
+  );
+}
+function TagButton({ count, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="relative grid h-11 w-14 place-items-center rounded-xl border border-black/10 bg-white dark:border-white/15 dark:bg-white/5"
+      title="انتخاب برچسب"
+    >
+      <span className="text-lg">•••</span>
+      {count > 0 && <Badge value={count} />}
+    </button>
+  );
+}
 function LessonDetailModal({ item, tags, onClose }) {
   const tagMap = new Map(tags.map((tag) => [String(tag.id), tag.label]));
-  const importanceLabel = importance.find(([id]) => id === item.importance)?.[1] || "—";
-  const importanceTone = item.importance === "high" ? "bg-red-50 text-red-700 ring-red-200 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/20" : item.importance === "medium" ? "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/20" : "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/20";
-  const fileSize = (value) => { const size = Number(value || 0); if (!size) return ""; return size >= 1024 * 1024 ? `${(size / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(size / 1024))} KB`; };
+  const importanceLabel =
+    importance.find(([id]) => id === item.importance)?.[1] || "—";
+  const importanceTone =
+    item.importance === "high"
+      ? "bg-red-50 text-red-700 ring-red-200 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/20"
+      : item.importance === "medium"
+        ? "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/20"
+        : "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/20";
+  const fileSize = (value) => {
+    const size = Number(value || 0);
+    if (!size) return "";
+    return size >= 1024 * 1024
+      ? `${(size / 1024 / 1024).toFixed(1)} MB`
+      : `${Math.max(1, Math.round(size / 1024))} KB`;
+  };
   return createPortal(
     <div className="fixed inset-0 z-[9999]" dir="rtl">
-      <div className="absolute inset-0 bg-slate-950/55 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-slate-950/55 backdrop-blur-sm"
+        onClick={onClose}
+      />
       <div className="absolute inset-0 flex items-center justify-center p-3 md:p-6">
         <article className="relative flex max-h-[calc(100dvh-24px)] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-black/10 bg-white text-neutral-900 shadow-[0_30px_90px_rgba(15,23,42,.35)] dark:border-white/10 dark:bg-neutral-900 dark:text-white">
           <header className="flex items-start justify-between gap-4 px-5 pb-4 pt-5 md:px-7 md:pt-6">
             <div className="flex min-w-0 items-start gap-3">
-              <span className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"><Check className="h-4 w-4" />ثبت‌شده</span>
-              <div className="min-w-0"><h2 className="text-base font-extrabold md:text-lg">مشاهده درس‌آموخته</h2><p className="mt-1 text-xs text-neutral-500">جزئیات ثبت‌شده این مورد</p></div>
+              <span className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                <Check className="h-4 w-4" />
+                ثبت‌شده
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-base font-extrabold md:text-lg">
+                  مشاهده درس‌آموخته
+                </h2>
+                <p className="mt-1 text-xs text-neutral-500">
+                  جزئیات ثبت‌شده این مورد
+                </p>
+              </div>
             </div>
-            <button type="button" onClick={onClose} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-neutral-900 text-white shadow-sm transition hover:bg-black dark:bg-white dark:text-black dark:hover:bg-neutral-100" aria-label="بستن"><img src="/images/icons/bastan.svg" alt="" className="h-5 w-5 invert dark:invert-0" /></button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-neutral-900 text-white shadow-sm transition hover:bg-black dark:bg-white dark:text-black dark:hover:bg-neutral-100"
+              aria-label="بستن"
+            >
+              <img
+                src="/images/icons/bastan.svg"
+                alt=""
+                className="h-5 w-5 invert dark:invert-0"
+              />
+            </button>
           </header>
 
           <div className="overflow-y-auto px-5 pb-5 md:px-7 md:pb-6">
             <section className="grid overflow-hidden rounded-2xl border border-black/10 bg-neutral-50/40 md:grid-cols-3 dark:border-white/10 dark:bg-white/[.025]">
-              <SummaryItem icon={<BriefcaseBusiness className="h-5 w-5" />} label="پروژه" value={`${item.projectCode || ""}${item.projectCode && item.projectName ? " - " : ""}${item.projectName || "—"}`} />
-              <SummaryItem icon={<Grid2X2 className="h-5 w-5" />} label="دسته‌بندی درس‌آموخته" value={<span className="inline-flex rounded-xl bg-blue-50 px-4 py-2 text-sm font-bold text-blue-700 ring-1 ring-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:ring-blue-500/20">{item.category}</span>} bordered />
-              <SummaryItem icon={<Star className="h-5 w-5" />} label="اهمیت" value={<span className={`inline-flex rounded-xl px-4 py-2 text-sm font-bold ring-1 ${importanceTone}`}>{importanceLabel}</span>} bordered />
+              <SummaryItem
+                icon={<BriefcaseBusiness className="h-5 w-5" />}
+                label="پروژه"
+                value={`${item.projectCode || ""}${item.projectCode && item.projectName ? " - " : ""}${item.projectName || "—"}`}
+              />
+              <SummaryItem
+                icon={<Grid2X2 className="h-5 w-5" />}
+                label="دسته‌بندی درس‌آموخته"
+                value={
+                  <span className="inline-flex rounded-xl bg-blue-50 px-4 py-2 text-sm font-bold text-blue-700 ring-1 ring-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:ring-blue-500/20">
+                    {item.category}
+                  </span>
+                }
+                bordered
+              />
+              <SummaryItem
+                icon={<Star className="h-5 w-5" />}
+                label="اهمیت"
+                value={
+                  <span
+                    className={`inline-flex rounded-xl px-4 py-2 text-sm font-bold ring-1 ${importanceTone}`}
+                  >
+                    {importanceLabel}
+                  </span>
+                }
+                bordered
+              />
             </section>
 
             <div className="mt-5 grid gap-4 md:grid-cols-2">
-              <LessonTextCard icon={<TriangleAlert className="h-6 w-6 text-amber-500" />} title="چالش" text={item.challenge} />
-              <LessonTextCard icon={<Lightbulb className="h-6 w-6 text-blue-600 dark:text-blue-400" />} title="راهکار" text={item.solution} />
+              <LessonTextCard
+                icon={<TriangleAlert className="h-6 w-6 text-amber-500" />}
+                title="چالش"
+                text={item.challenge}
+              />
+              <LessonTextCard
+                icon={
+                  <Lightbulb className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                }
+                title="راهکار"
+                text={item.solution}
+              />
             </div>
 
             <div className="mt-5 grid gap-5 md:grid-cols-2">
-              <section><h3 className="flex items-center gap-2 text-sm font-bold"><BarChart3 className="h-5 w-5 text-blue-600 dark:text-blue-400" />اثر</h3><div className="mt-3 flex flex-wrap gap-2">{item.impacts?.length ? item.impacts.map((id) => <span key={id} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 ring-1 ring-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:ring-blue-500/20"><Check className="h-3.5 w-3.5" />{impacts.find(([key]) => key === id)?.[1] || id}</span>) : <span className="text-sm text-neutral-400">—</span>}</div></section>
-              <section><h3 className="flex items-center gap-2 text-sm font-bold"><Tag className="h-5 w-5" />برچسب‌ها</h3><div className="mt-3 flex flex-wrap gap-2">{item.tagIds?.length ? item.tagIds.map((id) => <span key={id} className="rounded-lg border border-black/10 bg-neutral-50 px-3 py-2 text-xs dark:border-white/10 dark:bg-white/5">{tagMap.get(String(id)) || id}</span>) : <span className="text-sm text-neutral-400">—</span>}</div></section>
+              <section>
+                <h3 className="flex items-center gap-2 text-sm font-bold">
+                  <BarChart3 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  اثر
+                </h3>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {item.impacts?.length ? (
+                    item.impacts.map((id) => (
+                      <span
+                        key={id}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 ring-1 ring-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:ring-blue-500/20"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                        {impacts.find(([key]) => key === id)?.[1] || id}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-sm text-neutral-400">—</span>
+                  )}
+                </div>
+              </section>
+              <section>
+                <h3 className="flex items-center gap-2 text-sm font-bold">
+                  <Tag className="h-5 w-5" />
+                  برچسب‌ها
+                </h3>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {item.tagIds?.length ? (
+                    item.tagIds.map((id) => (
+                      <span
+                        key={id}
+                        className="rounded-lg border border-black/10 bg-neutral-50 px-3 py-2 text-xs dark:border-white/10 dark:bg-white/5"
+                      >
+                        {tagMap.get(String(id)) || id}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-sm text-neutral-400">—</span>
+                  )}
+                </div>
+              </section>
             </div>
 
-            {item.files?.length > 0 && <section className="mt-5"><h3 className="flex items-center gap-2 text-sm font-bold"><Paperclip className="h-5 w-5 text-blue-600 dark:text-blue-400" />فایل‌های مرتبط</h3><div className="mt-3 grid gap-3 md:grid-cols-2">{item.files.map((file, index) => { const extension = String(file.name || "").split(".").pop()?.toUpperCase() || "FILE"; return <a key={file.url || index} href={file.url} target="_blank" rel="noreferrer" download className="flex items-center gap-3 rounded-2xl border border-black/10 bg-white p-3 transition hover:-translate-y-0.5 hover:shadow-md dark:border-white/10 dark:bg-white/[.03]"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-blue-50 text-[10px] font-extrabold text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">{extension}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{file.name}</span><span className="mt-1 block text-[11px] text-neutral-500">{[extension, fileSize(file.size)].filter(Boolean).join(" • ")}</span></span><Download className="h-5 w-5 shrink-0 text-neutral-500" /></a>; })}</div></section>}
+            {item.files?.length > 0 && (
+              <section className="mt-5">
+                <h3 className="flex items-center gap-2 text-sm font-bold">
+                  <Paperclip className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  فایل‌های مرتبط
+                </h3>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  {item.files.map((file, index) => {
+                    const extension =
+                      String(file.name || "")
+                        .split(".")
+                        .pop()
+                        ?.toUpperCase() || "FILE";
+                    return (
+                      <a
+                        key={file.url || index}
+                        href={file.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        download
+                        className="flex items-center gap-3 rounded-2xl border border-black/10 bg-white p-3 transition hover:-translate-y-0.5 hover:shadow-md dark:border-white/10 dark:bg-white/[.03]"
+                      >
+                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-blue-50 text-[10px] font-extrabold text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
+                          {extension}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold">
+                            {file.name}
+                          </span>
+                          <span className="mt-1 block text-[11px] text-neutral-500">
+                            {[extension, fileSize(file.size)]
+                              .filter(Boolean)
+                              .join(" • ")}
+                          </span>
+                        </span>
+                        <Download className="h-5 w-5 shrink-0 text-neutral-500" />
+                      </a>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
           </div>
 
           <footer className="flex items-center justify-end gap-3 border-t border-black/10 px-5 py-4 dark:border-white/10 md:px-7">
-            <button type="button" onClick={onClose} className="h-10 rounded-xl bg-blue-600 px-7 text-xs font-bold text-white transition hover:bg-blue-700">مشاهده کردم</button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-10 rounded-xl bg-blue-600 px-7 text-xs font-bold text-white transition hover:bg-blue-700"
+            >
+              مشاهده کردم
+            </button>
           </footer>
         </article>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }
-function SummaryItem({ icon, label: title, value, bordered = false }) { return <div className={`flex min-h-24 flex-col items-center justify-center px-5 py-4 text-center ${bordered ? "border-t border-black/10 md:border-r md:border-t-0 dark:border-white/10" : ""}`}><div className="flex items-center gap-2 text-xs text-neutral-500">{icon}{title}</div><div className="mt-2 max-w-full text-sm font-bold">{value}</div></div>; }
-function LessonTextCard({ icon, title, text }) { return <section className="min-h-44 rounded-2xl border border-black/10 bg-white p-5 shadow-[0_4px_16px_rgba(15,23,42,.04)] dark:border-white/10 dark:bg-white/[.025]"><h3 className="flex items-center gap-2 text-base font-bold">{icon}{title}</h3><p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-neutral-700 dark:text-neutral-200">{text || "—"}</p></section>; }
-function DetailStat({ label: title, value }) { return <div className="rounded-2xl border border-black/10 bg-neutral-50/70 p-3 dark:border-white/10 dark:bg-white/[.04]"><div className="text-[11px] text-neutral-500">{title}</div><div className="mt-1 truncate text-sm font-semibold" title={String(value || "")}>{value || "—"}</div></div>; }
-function DetailText({ title, text }) { return <section className="min-h-36 rounded-2xl border border-black/10 bg-neutral-50/50 p-4 dark:border-white/10 dark:bg-white/[.03]"><h3 className="text-xs font-bold text-neutral-600 dark:text-neutral-300">{title}</h3><p className="mt-3 whitespace-pre-wrap text-sm leading-7">{text || "—"}</p></section>; }
-function LessonUploadModal({ fileRef, files, uploading, onUpload, onRemove, onClose }) { const drop = (event) => { event.preventDefault(); if (event.dataTransfer?.files?.length) onUpload(event.dataTransfer.files); }; return createPortal(<div className="fixed inset-0 z-[9999]" dir="rtl"><div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} /><div className="absolute inset-0 flex items-center justify-center p-3"><div className="relative flex max-h-[calc(100dvh-24px)] w-[min(720px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-xl dark:border-white/10 dark:bg-neutral-900 dark:text-white"><header className="flex items-center justify-between gap-3 border-b border-black/10 p-4 dark:border-white/10"><div className="text-sm font-bold">بارگذاری فایل‌های درس‌آموخته</div><button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black" aria-label="بستن"><img src="/images/icons/bastan.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button></header><div className="overflow-y-auto p-4"><div className="mb-2 text-xs font-medium text-neutral-600 dark:text-neutral-300">فایل‌های انتخاب‌شده</div><div className="space-y-2">{files.length ? files.map((file, index) => <div key={file.url || index} className="flex items-center gap-3 rounded-xl border border-black/10 px-3 py-2 dark:border-white/10"><img src="/images/icons/Uplod.svg" alt="" className="h-5 w-5 dark:invert" /><span className="min-w-0 flex-1 truncate text-sm font-semibold">{file.name}</span><button type="button" onClick={() => onRemove(index)} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10" title="حذف"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></button></div>) : <div className="py-5 text-center text-sm text-neutral-500">فایلی انتخاب نشده است.</div>}</div><div onDrop={drop} onDragOver={(event) => event.preventDefault()} className="mt-3 rounded-2xl border border-dashed border-black/15 bg-black/[.01] px-4 py-8 text-center dark:border-white/15 dark:bg-white/[.03]"><div className="text-sm font-semibold">فایل را اینجا رها کنید</div><div className="mt-1 text-xs text-neutral-500">فایل‌های مجاز: PDF، Word و Excel</div><button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-black px-4 text-sm text-white disabled:opacity-50 dark:bg-white dark:text-black"><img src="/images/icons/upload.svg" alt="" className="h-5 w-5 invert dark:invert-0" />{uploading ? "در حال بارگذاری..." : "انتخاب فایل"}</button><input ref={fileRef} type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.xlsm,.csv,.rtf" className="hidden" onChange={(event) => { onUpload(event.target.files); event.target.value = ""; }} /></div><div className="mt-4 flex justify-end"><button type="button" onClick={onClose} disabled={uploading} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white disabled:opacity-50 dark:bg-white dark:text-black" title="تأیید"><img src="/images/icons/check.svg" alt="" className="h-5 w-5 invert dark:invert-0" /></button></div></div></div></div></div>, document.body); }
-function AuthorPopover({ data, onClose }) { const { item, top, left } = data; return createPortal(<><button type="button" onClick={onClose} className="fixed inset-0 z-[9998] cursor-default" aria-label="بستن اطلاعات دانش‌آفرین" /><div dir="rtl" style={{ top, left }} className="fixed z-[9999] w-[284px] rounded-2xl border border-black/10 bg-white p-3.5 text-sm shadow-[0_14px_36px_rgba(0,0,0,.18)] dark:border-white/10 dark:bg-neutral-900"><div className="flex items-center justify-between"><b>{item.authorName}</b><button type="button" onClick={onClose} className="grid h-7 w-7 place-items-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10">×</button></div><div className="mt-3 space-y-2 text-xs text-neutral-700 dark:text-neutral-200"><p>تعداد بازدید این مورد: <b>{fa(item.viewCount || 0)}</b></p><p>موارد ثبت‌شده توسط کاربر: <b>{fa(item.authorPostCount || 0)}</b></p></div></div></>, document.body); }
-function FilterBar({ query, setQuery, from, setFrom, to, setTo, tags, selected, openTags, onExport, canExport }) { return <div className="mb-4 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[.06]"><div className="flex flex-wrap items-end gap-2"><div className="w-full md:min-w-[280px] md:flex-1"><div className={label}>جست و جو</div><input value={query} onChange={(e) => setQuery(e.target.value)} className={input} placeholder="جستجو در پروژه، دسته‌بندی، چالش و راهکار..." /></div><div className="w-[calc(50%-0.25rem)] md:w-auto md:min-w-[140px]"><div className={label}>از</div><JalaliPopupDatePicker value={from} onChange={setFrom} buttonClassName={`${input} flex items-center justify-between gap-2`} /></div><div className="w-[calc(50%-0.25rem)] md:w-auto md:min-w-[140px]"><div className={label}>تا</div><JalaliPopupDatePicker value={to} onChange={setTo} buttonClassName={`${input} flex items-center justify-between gap-2`} /></div><button type="button" onClick={onExport} disabled={!canExport} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-white shadow-sm transition hover:-translate-y-0.5 hover:bg-neutral-50 hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="خروجی اکسل" aria-label="خروجی اکسل"><img src="/images/icons8-excel-50.png" alt="" className="h-5 w-5" /></button></div><div className="mt-2"><div className={label}>برچسب‌ها</div><div className="flex flex-wrap items-center gap-2"><TagButton count={selected.length} onClick={openTags} />{selected.map((id) => tags.find((t) => String(t.id) === String(id))).filter(Boolean).map((tag) => <span key={tag.id} className="rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs dark:border-white/15 dark:bg-white/5">{tag.label}</span>)}</div></div></div>; }
-function TagPicker({ tags, query, setQuery, selected, setSelected, onClose, onConfirm }) { const current = new Set(selected.map(String)); const list = tags.filter((t) => String(t.label || "").toLowerCase().includes(query.toLowerCase())); return createPortal(<div className="fixed inset-0 z-[9999]" dir="rtl"><div className="absolute inset-0 bg-black/55" onClick={onClose} /><div className="absolute inset-0 flex items-center justify-center p-4"><div className="flex h-[min(75vh,680px)] w-full max-w-4xl flex-col rounded-2xl bg-white p-4 shadow-2xl dark:bg-neutral-900"><div className="mb-3 flex items-center justify-between"><b>انتخاب برچسب</b><button type="button" onClick={onClose}>×</button></div><input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} className={input} placeholder="جستجو در برچسب‌ها..." /><div className="mt-4 flex flex-1 flex-wrap content-start gap-2 overflow-auto">{list.map((tag) => <button key={tag.id} type="button" onClick={() => setSelected((old) => current.has(String(tag.id)) ? old.filter((id) => String(id) !== String(tag.id)) : [...old, String(tag.id)])} className={`h-10 rounded-full border px-4 text-xs ${current.has(String(tag.id)) ? "border-black bg-black text-white" : "border-black/10"}`}>{tag.label}</button>)}</div><div className="mt-3 flex justify-end"><button type="button" onClick={onConfirm} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white">✓</button></div></div></div></div>, document.body); }
+function SummaryItem({ icon, label: title, value, bordered = false }) {
+  return (
+    <div
+      className={`flex min-h-24 flex-col items-center justify-center px-5 py-4 text-center ${bordered ? "border-t border-black/10 md:border-r md:border-t-0 dark:border-white/10" : ""}`}
+    >
+      <div className="flex items-center gap-2 text-xs text-neutral-500">
+        {icon}
+        {title}
+      </div>
+      <div className="mt-2 max-w-full text-sm font-bold">{value}</div>
+    </div>
+  );
+}
+function LessonTextCard({ icon, title, text }) {
+  return (
+    <section className="min-h-44 rounded-2xl border border-black/10 bg-white p-5 shadow-[0_4px_16px_rgba(15,23,42,.04)] dark:border-white/10 dark:bg-white/[.025]">
+      <h3 className="flex items-center gap-2 text-base font-bold">
+        {icon}
+        {title}
+      </h3>
+      <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-neutral-700 dark:text-neutral-200">
+        {text || "—"}
+      </p>
+    </section>
+  );
+}
+function DetailStat({ label: title, value }) {
+  return (
+    <div className="rounded-2xl border border-black/10 bg-neutral-50/70 p-3 dark:border-white/10 dark:bg-white/[.04]">
+      <div className="text-[11px] text-neutral-500">{title}</div>
+      <div
+        className="mt-1 truncate text-sm font-semibold"
+        title={String(value || "")}
+      >
+        {value || "—"}
+      </div>
+    </div>
+  );
+}
+function DetailText({ title, text }) {
+  return (
+    <section className="min-h-36 rounded-2xl border border-black/10 bg-neutral-50/50 p-4 dark:border-white/10 dark:bg-white/[.03]">
+      <h3 className="text-xs font-bold text-neutral-600 dark:text-neutral-300">
+        {title}
+      </h3>
+      <p className="mt-3 whitespace-pre-wrap text-sm leading-7">
+        {text || "—"}
+      </p>
+    </section>
+  );
+}
+function LessonUploadModal({
+  fileRef,
+  files,
+  uploading,
+  onUpload,
+  onRemove,
+  onClose,
+}) {
+  const drop = (event) => {
+    event.preventDefault();
+    if (event.dataTransfer?.files?.length) onUpload(event.dataTransfer.files);
+  };
+  return createPortal(
+    <div className="fixed inset-0 z-[9999]" dir="rtl">
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="absolute inset-0 flex items-center justify-center p-3">
+        <div className="relative flex max-h-[calc(100dvh-24px)] w-[min(720px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-xl dark:border-white/10 dark:bg-neutral-900 dark:text-white">
+          <header className="flex items-center justify-between gap-3 border-b border-black/10 p-4 dark:border-white/10">
+            <div className="text-sm font-bold">
+              بارگذاری فایل‌های درس‌آموخته
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black"
+              aria-label="بستن"
+            >
+              <img
+                src="/images/icons/bastan.svg"
+                alt=""
+                className="h-4 w-4 invert dark:invert-0"
+              />
+            </button>
+          </header>
+          <div className="overflow-y-auto p-4">
+            <div className="mb-2 text-xs font-medium text-neutral-600 dark:text-neutral-300">
+              فایل‌های انتخاب‌شده
+            </div>
+            <div className="space-y-2">
+              {files.length ? (
+                files.map((file, index) => (
+                  <div
+                    key={file.url || index}
+                    className="flex items-center gap-3 rounded-xl border border-black/10 px-3 py-2 dark:border-white/10"
+                  >
+                    <img
+                      src="/images/icons/Uplod.svg"
+                      alt=""
+                      className="h-5 w-5 dark:invert"
+                    />
+                    <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+                      {file.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onRemove(index)}
+                      className="grid h-8 w-8 place-items-center rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10"
+                      title="حذف"
+                    >
+                      <img
+                        src="/images/icons/hazf.svg"
+                        alt=""
+                        className="h-4 w-4"
+                      />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className="py-5 text-center text-sm text-neutral-500">
+                  فایلی انتخاب نشده است.
+                </div>
+              )}
+            </div>
+            <div
+              onDrop={drop}
+              onDragOver={(event) => event.preventDefault()}
+              className="mt-3 rounded-2xl border border-dashed border-black/15 bg-black/[.01] px-4 py-8 text-center dark:border-white/15 dark:bg-white/[.03]"
+            >
+              <div className="text-sm font-semibold">
+                فایل را اینجا رها کنید
+              </div>
+              <div className="mt-1 text-xs text-neutral-500">
+                فایل‌های مجاز: PDF، Word و Excel
+              </div>
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-black px-4 text-sm text-white disabled:opacity-50 dark:bg-white dark:text-black"
+              >
+                <img
+                  src="/images/icons/upload.svg"
+                  alt=""
+                  className="h-5 w-5 invert dark:invert-0"
+                />
+                {uploading ? "در حال بارگذاری..." : "انتخاب فایل"}
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                multiple
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.xlsm,.csv,.rtf"
+                className="hidden"
+                onChange={(event) => {
+                  onUpload(event.target.files);
+                  event.target.value = "";
+                }}
+              />
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={uploading}
+                className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white disabled:opacity-50 dark:bg-white dark:text-black"
+                title="تأیید"
+              >
+                <img
+                  src="/images/icons/check.svg"
+                  alt=""
+                  className="h-5 w-5 invert dark:invert-0"
+                />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+function AuthorPopover({ data, onClose }) {
+  const { item, top, left } = data;
+  return createPortal(
+    <>
+      <button
+        type="button"
+        onClick={onClose}
+        className="fixed inset-0 z-[9998] cursor-default"
+        aria-label="بستن اطلاعات دانش‌آفرین"
+      />
+      <div
+        dir="rtl"
+        style={{ top, left }}
+        className="fixed z-[9999] w-[284px] rounded-2xl border border-black/10 bg-white p-3.5 text-sm shadow-[0_14px_36px_rgba(0,0,0,.18)] dark:border-white/10 dark:bg-neutral-900"
+      >
+        <div className="flex items-center justify-between">
+          <b>{item.authorName}</b>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-7 w-7 place-items-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10"
+          >
+            ×
+          </button>
+        </div>
+        <div className="mt-3 space-y-2 text-xs text-neutral-700 dark:text-neutral-200">
+          <p>
+            تعداد بازدید این مورد: <b>{fa(item.viewCount || 0)}</b>
+          </p>
+          <p>
+            موارد ثبت‌شده توسط کاربر: <b>{fa(item.authorPostCount || 0)}</b>
+          </p>
+        </div>
+      </div>
+    </>,
+    document.body,
+  );
+}
+function FilterBar({
+  query,
+  setQuery,
+  from,
+  setFrom,
+  to,
+  setTo,
+  tags,
+  selected,
+  openTags,
+  onExport,
+  canExport,
+}) {
+  return (
+    <div className="mb-4 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[.06]">
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="w-full md:min-w-[280px] md:flex-1">
+          <div className={label}>جست و جو</div>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className={input}
+            placeholder="جستجو در پروژه، دسته‌بندی، چالش و راهکار..."
+          />
+        </div>
+        <div className="w-[calc(50%-0.25rem)] md:w-auto md:min-w-[140px]">
+          <div className={label}>از</div>
+          <JalaliPopupDatePicker
+            value={from}
+            onChange={setFrom}
+            buttonClassName={`${input} flex items-center justify-between gap-2`}
+          />
+        </div>
+        <div className="w-[calc(50%-0.25rem)] md:w-auto md:min-w-[140px]">
+          <div className={label}>تا</div>
+          <JalaliPopupDatePicker
+            value={to}
+            onChange={setTo}
+            buttonClassName={`${input} flex items-center justify-between gap-2`}
+          />
+        </div>
+        <button
+          type="button"
+          onClick={onExport}
+          disabled={!canExport}
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-white shadow-sm transition hover:-translate-y-0.5 hover:bg-neutral-50 hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
+          title="خروجی اکسل"
+          aria-label="خروجی اکسل"
+        >
+          <img src="/images/icons8-excel-50.png" alt="" className="h-5 w-5" />
+        </button>
+      </div>
+      <div className="mt-2">
+        <div className={label}>برچسب‌ها</div>
+        <div className="flex flex-wrap items-center gap-2">
+          <TagButton count={selected.length} onClick={openTags} />
+          {selected
+            .map((id) => tags.find((t) => String(t.id) === String(id)))
+            .filter(Boolean)
+            .map((tag) => (
+              <span
+                key={tag.id}
+                className="rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs dark:border-white/15 dark:bg-white/5"
+              >
+                {tag.label}
+              </span>
+            ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+function TagPicker({
+  tags,
+  query,
+  setQuery,
+  selected,
+  setSelected,
+  onClose,
+  onConfirm,
+}) {
+  const current = new Set(selected.map(String));
+  const list = tags.filter((t) =>
+    String(t.label || "")
+      .toLowerCase()
+      .includes(query.toLowerCase()),
+  );
+  return createPortal(
+    <div className="fixed inset-0 z-[9999]" dir="rtl">
+      <div className="absolute inset-0 bg-black/55" onClick={onClose} />
+      <div className="absolute inset-0 flex items-center justify-center p-4">
+        <div className="flex h-[min(75vh,680px)] w-full max-w-4xl flex-col rounded-2xl bg-white p-4 shadow-2xl dark:bg-neutral-900">
+          <div className="mb-3 flex items-center justify-between">
+            <b>انتخاب برچسب</b>
+            <button type="button" onClick={onClose}>
+              ×
+            </button>
+          </div>
+          <input
+            autoFocus
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className={input}
+            placeholder="جستجو در برچسب‌ها..."
+          />
+          <div className="mt-4 flex flex-1 flex-wrap content-start gap-2 overflow-auto">
+            {list.map((tag) => (
+              <button
+                key={tag.id}
+                type="button"
+                onClick={() =>
+                  setSelected((old) =>
+                    current.has(String(tag.id))
+                      ? old.filter((id) => String(id) !== String(tag.id))
+                      : [...old, String(tag.id)],
+                  )
+                }
+                className={`h-10 rounded-full border px-4 text-xs ${current.has(String(tag.id)) ? "border-black bg-black text-white" : "border-black/10"}`}
+              >
+                {tag.label}
+              </button>
+            ))}
+          </div>
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              onClick={onConfirm}
+              className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white"
+            >
+              ✓
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
