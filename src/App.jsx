@@ -26,6 +26,7 @@ import BudgetAllocationPage from "./pages/BudgetAllocationPage.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
 import LettersPage from "./pages/LettersPage.jsx";
 import SupplyRequestPage from "./pages/SupplyRequestPage.jsx";
+import PettyCashPage from "./pages/PettyCashPage.jsx";
 import RoznegarPgae from "./pages/RoznegarPgae.jsx";
 import QualityManagementPage from "./pages/QualityManagementPage.jsx";
 import NavPlaceholderPage from "./pages/NavPlaceholderPage.jsx";
@@ -124,7 +125,7 @@ export default function App() {
         <Route path="/budget-allocation" element={<BudgetAllocationPage />} />
         <Route path="/budget/reports" element={<ReportsPage />} />
         <Route path="/finance/payment-request" element={<PaymentRequestPage />} />
-        <Route path="/finance/tenkhah" element={<NavPlaceholderPage title="تنخواه گردان" />} />
+        <Route path="/finance/tenkhah" element={<PettyCashPage />} />
         <Route path="/finance/liquidity-allocation" element={<LiquidityAllocationPage />} />
         <Route path="/finance/cash-flow-forecast" element={<CashFlowForecastPage />} />
         <Route path="/finance/financial-management-dashboard" element={<FinancialManagementDashboardPage />} />
