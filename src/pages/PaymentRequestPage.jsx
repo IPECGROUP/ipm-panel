@@ -54,7 +54,7 @@ const today = () => todayJalaliYmd().replaceAll("-", "/");
 const emptyForm = () => ({
   dateJalali: today(), scope: "projects", projectId: "", budgetCode: "", title: "", description: "",
   amount: "", exchangeRate: "1", cashAmount: "", cashDateJalali: "", creditPay: "", beneficiaryName: "", bankInfo: "",
-  docId: "", docOther: "", docNumber: "", docDateJalali: "", docDatesJalali: [],
+  docId: "", docOther: "", docNumber: "", docDateJalali: "",
   currencyTypeId: "", currencySourceId: "", attachments: [], relatedLetterIds: [], hasSupplyRequest: "no", supplyRequestId: "", targetAssigneeUserId: "",
 });
 const formFromItem = (item = {}) => ({
@@ -76,7 +76,6 @@ const formFromItem = (item = {}) => ({
   docOther: item.docOther || "",
   docNumber: item.docNumber || "",
   docDateJalali: item.docDateJalali || item.docDate || "",
-  docDatesJalali: documentDatesOf(item),
   currencyTypeId: item.currencyTypeId != null ? String(item.currencyTypeId) : "",
   currencySourceId: item.currencySourceId != null ? String(item.currencySourceId) : "",
   attachments: Array.isArray(item.attachments) ? item.attachments : [],
@@ -158,13 +157,6 @@ function budgetCodeForProject(value = "", projectCode = "") {
   return `${prefix}-${code}`;
 }
 function normalizeDigits(value = "") { return toEnglishDigits(String(value ?? "")).replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660)); }
-function documentDatesOf(item = {}) {
-  const raw = Array.isArray(item.docDatesJalali) ? item.docDatesJalali : (Array.isArray(item.docDates) ? item.docDates : []);
-  const dates = raw.map((date) => normalizeDigits(date).replaceAll("-", "/")).filter(Boolean);
-  const legacy = normalizeDigits(item.docDateJalali || item.docDate || "").replaceAll("-", "/");
-  return [...new Set(dates.length ? dates : (legacy ? [legacy] : []))];
-}
-function documentDatesLabel(item = {}) { return documentDatesOf(item).join("، ") || "—"; }
 function jalaliYY(value = today()) {
   const year = normalizeDigits(value).match(/^(\d{4})/)?.[1] || "1400";
   return year.slice(-2);
@@ -320,7 +312,7 @@ function clientRegistrationInfo() {
   };
 }
 
-function JalaliPopupDatePicker({ value, onChange, disablePast = false, compact = false }) {
+function JalaliPopupDatePicker({ value, onChange, disablePast = false }) {
   const [open, setOpen] = useState(false);
   const buttonRef = useRef(null);
   const popupRef = useRef(null);
@@ -363,9 +355,9 @@ function JalaliPopupDatePicker({ value, onChange, disablePast = false, compact =
     setOpen(false);
   };
   return <>
-    <button ref={buttonRef} type="button" onClick={() => setOpen((old) => !old)} className={compact ? "grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-black/10 bg-white text-lg transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" : `${inputClass} flex items-center justify-between text-right`} aria-label="افزودن تاریخ" title="افزودن تاریخ">
-      {compact ? "+" : <><span className={value ? "" : "text-neutral-400"}>{value ? toFa(value) : "انتخاب تاریخ..."}</span>
-      <img src="/images/icons/calendar.svg" alt="" className="h-5 w-5 dark:invert" /></>}
+    <button ref={buttonRef} type="button" onClick={() => setOpen((old) => !old)} className={`${inputClass} flex items-center justify-between text-right`}>
+      <span className={value ? "" : "text-neutral-400"}>{value ? toFa(value) : "انتخاب تاریخ..."}</span>
+      <img src="/images/icons/calendar.svg" alt="" className="h-5 w-5 dark:invert" />
     </button>
     {open && createPortal(
       <div ref={popupRef} dir="rtl" style={{ top: position.top, right: position.right }} className="fixed z-[9999] w-[min(420px,calc(100vw-24px))] rounded-2xl border border-black/10 bg-white p-4 text-neutral-900 shadow-xl dark:border-white/10 dark:bg-neutral-900 dark:text-white">
@@ -382,22 +374,6 @@ function JalaliPopupDatePicker({ value, onChange, disablePast = false, compact =
       </div>, document.body
     )}
   </>;
-}
-
-function JalaliMultiDatePicker({ value, onChange }) {
-  const dates = Array.isArray(value) ? value : [];
-  const addDate = (date) => {
-    if (date && !dates.includes(date)) onChange([...dates, date]);
-  };
-  const removeDate = (index) => onChange(dates.filter((_, currentIndex) => currentIndex !== index));
-  return <div className="flex min-h-11 flex-wrap items-center gap-1.5 rounded-xl border border-black/10 bg-white p-1.5 dark:border-white/15 dark:bg-white/5">
-    {dates.map((date, index) => <span key={`${date}-${index}`} className="inline-flex h-8 items-center gap-1 rounded-lg bg-black/[0.04] px-2 text-xs text-neutral-700 dark:bg-white/10 dark:text-neutral-100">
-      {toFa(date)}
-      <button type="button" onClick={() => removeDate(index)} className="grid h-5 w-5 place-items-center rounded hover:bg-black/10 dark:hover:bg-white/15" title="حذف تاریخ" aria-label={`حذف تاریخ ${toFa(date)}`}>×</button>
-    </span>)}
-    <JalaliPopupDatePicker value="" onChange={addDate} compact />
-    {!dates.length && <span className="text-xs text-neutral-400">انتخاب تاریخ</span>}
-  </div>;
 }
 
 function DateSelect({ label, value, onChange, items }) {
@@ -1051,7 +1027,7 @@ export default function PaymentRequestPage() {
           item.creditPay || "—",
           isTenkhah ? "—" : docNameOf(item),
           item.docNumber || "—",
-          documentDatesLabel(item),
+          item.docDate || item.docDateJalali || "—",
           item.hasSupplyRequest === "yes" || item.supplyRequestId ? (item.supplyRequestId ? `شماره ${item.supplyRequestId}` : "دارد") : "ندارد",
           statusOf(item),
           currentUnitOf(item),
@@ -1278,7 +1254,7 @@ export default function PaymentRequestPage() {
               </select>
             </Field>
             <Field label="شماره سند"><input className={inputClass} value={form.docNumber} onChange={(e) => setField("docNumber", e.target.value)} /></Field>
-            <Field label="تاریخ سند"><JalaliMultiDatePicker value={form.docDatesJalali} onChange={(values) => setForm((old) => ({ ...old, docDatesJalali: values, docDateJalali: values[0] || "" }))} /></Field>
+            <Field label="تاریخ سند"><JalaliPopupDatePicker value={form.docDateJalali} onChange={(value) => setField("docDateJalali", value)} /></Field>
             <Field label="بارگذاری">
               <div className="isolate flex items-center"><button type="button" onClick={() => setUploadOpen(true)} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={uploading ? "در حال آپلود" : "بارگذاری"} aria-label={uploading ? "در حال آپلود" : "بارگذاری"}>
                 <img src="/images/icons/Uplod.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse opacity-60" : ""}`} />
@@ -2460,7 +2436,7 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
       <div class="info-grid">
         ${infoCard("نوع سند", docName)}
         ${infoCard("شماره سند", item.docNumber)}
-        ${infoCard("تاریخ سند", toFa(documentDatesLabel(item)))}
+        ${infoCard("تاریخ سند", toFa(item.docDate || item.docDateJalali || "—"))}
       </div>
     </section>
 
@@ -2614,7 +2590,7 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
                   </div>
                 ) : docName} />
                   <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="شماره سند" value={canEditRequest ? <input className={inputClass} value={editForm.docNumber} onChange={(event) => setEditField("docNumber", event.target.value)} /> : (item.docNumber || "—")} />
-                  <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="تاریخ سند" value={canEditRequest ? <JalaliMultiDatePicker value={editForm.docDatesJalali} onChange={(values) => setEditForm((old) => ({ ...old, docDatesJalali: values, docDateJalali: values[0] || "" }))} /> : toFa(documentDatesLabel(item))} />
+                  <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="تاریخ سند" value={canEditRequest ? <JalaliPopupDatePicker value={editForm.docDateJalali} onChange={(value) => setEditField("docDateJalali", value)} /> : toFa(item.docDate || item.docDateJalali || "—")} />
                 </div>
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[1.15fr_1fr_1fr] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
                   <PreviewRow compact editing={canEditRequest} colon valueClassName={!canEditRequest ? "whitespace-nowrap" : ""} label="درخواست تامین" value={supplyRequestControl} />
