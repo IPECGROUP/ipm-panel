@@ -1,89 +1,42 @@
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Card from "../components/ui/Card.jsx";
+import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
+import { useAuth } from "../components/AuthProvider.jsx";
+import { todayJalaliYmd } from "../utils/date.js";
+import { format3, toEnglishDigits } from "../utils/format.js";
 
 const PAGE_ICON = "/images/icons/tenkhah.svg";
-
 const tabs = ["تنخواه‌های من", "ثبت هزینه‌ها", "گزارش تسویه تنخواه"];
+const inputClass = "h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-right text-sm text-neutral-900 outline-none transition focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-white";
+const toFa = (value) => String(value ?? "").replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[digit]);
+const today = () => todayJalaliYmd().replaceAll("-", "/");
+const emptyExpense = () => ({ expenseDate: today(), description: "", budgetCode: "", amount: "" });
 
-/**
- * Initial UI shell for petty cash. Data aggregation will be connected when the
- * expense-registration tab is implemented.
- */
 export default function PettyCashPage() {
-  const [activeTab, setActiveTab] = React.useState(0);
-
-  return (
-    <div dir="rtl" className="mx-auto max-w-[1400px]">
-      <Card className="rounded-2xl border border-black/10 bg-white p-0 shadow-sm dark:border-white/10 dark:bg-neutral-900">
-        <div className="p-3 md:p-4">
-          <header className="mb-5 flex min-w-0 items-center gap-3 border-b border-black/[0.07] pb-4 dark:border-white/10">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-black/10 bg-gradient-to-br from-neutral-50 to-neutral-200/70 shadow-sm dark:border-white/10 dark:from-white/[0.12] dark:to-white/[0.04]">
-              <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
-            </span>
-            <span className="min-w-0">
-              <h1 className="truncate text-base font-bold tracking-tight md:text-lg">تنخواه گردان</h1>
-              <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت مالی</span>
-            </span>
-          </header>
-
-          <nav className="mb-0 grid grid-cols-3 overflow-hidden rounded-t-2xl border border-black/10 dark:border-white/10" aria-label="بخش‌های تنخواه گردان">
-            {tabs.map((tab, index) => {
-              const isActive = activeTab === index;
-              return (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setActiveTab(index)}
-                  className={`min-w-0 border-r border-black/10 px-3 py-3 text-sm font-semibold transition first:border-r-0 dark:border-white/10 md:px-5 ${
-                    isActive
-                      ? "bg-black text-white dark:bg-white dark:text-black"
-                      : "bg-white text-neutral-900 hover:bg-neutral-50 dark:bg-neutral-900 dark:text-white dark:hover:bg-white/[.04]"
-                  }`}
-                  aria-current={isActive ? "page" : undefined}
-                >
-                  {tab}
-                </button>
-              );
-            })}
-          </nav>
-
-          {activeTab === 0 && <MyPettyCashTable />}
-        </div>
-      </Card>
-    </div>
-  );
+  const [activeTab, setActiveTab] = useState(0);
+  return <div dir="rtl" className="mx-auto max-w-[1400px]"><Card className="rounded-2xl border border-black/10 bg-white p-0 shadow-sm dark:border-white/10 dark:bg-neutral-900"><div className="p-3 md:p-4"><header className="mb-5 flex min-w-0 items-center gap-3 border-b border-black/[0.07] pb-4 dark:border-white/10"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-black/10 bg-gradient-to-br from-neutral-50 to-neutral-200/70 shadow-sm dark:border-white/10 dark:from-white/[0.12] dark:to-white/[0.04]"><img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" /></span><span className="min-w-0"><h1 className="truncate text-base font-bold tracking-tight md:text-lg">تنخواه گردان</h1><span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت مالی</span></span></header><nav className="mb-0 grid grid-cols-3 overflow-hidden rounded-t-2xl border border-black/10 dark:border-white/10" aria-label="بخش‌های تنخواه گردان">{tabs.map((tab, index) => <button key={tab} type="button" onClick={() => setActiveTab(index)} className={`min-w-0 border-r border-black/10 px-3 py-3 text-sm font-semibold transition first:border-r-0 dark:border-white/10 md:px-5 ${activeTab === index ? "bg-black text-white dark:bg-white dark:text-black" : "bg-white text-neutral-900 hover:bg-neutral-50 dark:bg-neutral-900 dark:text-white dark:hover:bg-white/[.04]"}`}>{tab}</button>)}</nav>{activeTab === 0 && <MyPettyCashTable />}{activeTab === 1 && <ExpenseRegistrationTab />}</div></Card></div>;
 }
 
-function MyPettyCashTable() {
-  return (
-    <section className="overflow-hidden rounded-b-2xl border-x border-b border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
-      <div className="relative hidden max-h-[55vh] overflow-y-auto overflow-x-hidden md:block" dir="ltr">
-        <table dir="rtl" className="w-full min-w-[920px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2">
-          <colgroup>
-            <col style={{ width: "6%" }} />
-            <col style={{ width: "24%" }} />
-            <col style={{ width: "23%" }} />
-            <col style={{ width: "23.5%" }} />
-            <col style={{ width: "23.5%" }} />
-          </colgroup>
-          <thead>
-            <tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100">
-              <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">ردیف</th>
-              <th className="sticky top-0 z-30 bg-neutral-200 !text-right text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">پروژه</th>
-              <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">مجموع تنخواه دریافت‌شده</th>
-              <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">
-                <span className="block">مجموع هزینه‌های ثبت‌شده</span>
-                <span className="mt-0.5 block text-[11px] font-normal text-neutral-600 dark:text-neutral-300">باقی‌مانده هزینه‌های ثبت‌شده</span>
-              </th>
-              <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">
-                <span className="block">مجموع هزینه‌های تأییدشده</span>
-                <span className="mt-0.5 block text-[11px] font-normal text-neutral-600 dark:text-neutral-300">باقی‌مانده هزینه‌های تأییدنشده</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="text-[13px] text-black [&>tr]:h-9 [&>tr>td]:!py-0 dark:text-neutral-100" />
-        </table>
-      </div>
-    </section>
-  );
+function MyPettyCashTable() { return <section className="overflow-hidden rounded-b-2xl border-x border-b border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"><div className="relative hidden max-h-[55vh] overflow-y-auto overflow-x-hidden md:block" dir="ltr"><table dir="rtl" className="w-full min-w-[920px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2"><colgroup><col style={{ width: "6%" }} /><col style={{ width: "24%" }} /><col style={{ width: "23%" }} /><col style={{ width: "23.5%" }} /><col style={{ width: "23.5%" }} /></colgroup><thead><tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100"><Header>ردیف</Header><Header right>پروژه</Header><Header>مجموع تنخواه دریافت‌شده</Header><Header><span className="block">مجموع هزینه‌های ثبت‌شده</span><span className="mt-0.5 block text-[11px] font-normal text-neutral-600 dark:text-neutral-300">باقی‌مانده هزینه‌های ثبت‌شده</span></Header><Header><span className="block">مجموع هزینه‌های تأییدشده</span><span className="mt-0.5 block text-[11px] font-normal text-neutral-600 dark:text-neutral-300">باقی‌مانده هزینه‌های تأییدنشده</span></Header></tr></thead><tbody /></table></div></section>; }
+
+function ExpenseRegistrationTab() {
+  const { user } = useAuth();
+  const [projects, setProjects] = useState([]), [budgetItems, setBudgetItems] = useState([]), [items, setItems] = useState([]), [viewer, setViewer] = useState({}), [projectId, setProjectId] = useState(""), [formOpen, setFormOpen] = useState(false), [form, setForm] = useState(emptyExpense), [saving, setSaving] = useState(false), [error, setError] = useState(""), [managers, setManagers] = useState([]), [approval, setApproval] = useState(null), [selectedManagerId, setSelectedManagerId] = useState("");
+  const api = useCallback(async (path, options = {}) => { const response = await fetch(`/api${path}`, { credentials: "include", ...options, headers: { "Content-Type": "application/json", ...(user?.id ? { "x-user-id": String(user.id) } : {}), ...(options.headers || {}) } }); const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.error || "خطا در انجام عملیات"); return data; }, [user?.id]);
+  const loadExpenses = useCallback(async (nextProjectId = projectId) => { try { const data = await api(`/petty-cash-expenses${nextProjectId ? `?projectId=${encodeURIComponent(nextProjectId)}` : ""}`); setItems(Array.isArray(data.items) ? data.items : []); setViewer(data.viewer || {}); } catch (reason) { setError(reason.message); } }, [api, projectId]);
+  useEffect(() => { api("/projects?isActive=true").then((data) => setProjects((data.items || data.projects || []).filter((project) => project.isActive !== false))).catch((reason) => setError(reason.message)); }, [api]);
+  useEffect(() => { loadExpenses(); }, [loadExpenses]);
+  const selectProject = async (value) => { setProjectId(value); setForm(emptyExpense()); setBudgetItems([]); setError(""); if (!value) return loadExpenses(""); try { const [budgets] = await Promise.all([api(`/cost-breakdown?project_id=${encodeURIComponent(value)}`), loadExpenses(value)]); setBudgetItems(budgets.items || []); } catch (reason) { setError(reason.message); } };
+  const addExpense = async () => { if (!projectId) return setError("ابتدا پروژه را انتخاب کنید."); if (!form.expenseDate || !form.description.trim() || !form.budgetCode || !toEnglishDigits(form.amount).replace(/[^\d]/g, "")) return setError("تمام فیلدهای هزینه را تکمیل کنید."); setSaving(true); setError(""); try { await api("/petty-cash-expenses", { method: "POST", body: JSON.stringify({ projectId, ...form }) }); setForm(emptyExpense()); setFormOpen(false); await loadExpenses(projectId); } catch (reason) { setError(reason.message); } finally { setSaving(false); } };
+  const openPlanningApproval = async (item) => { setError(""); try { const data = await api("/petty-cash-expenses?recipients=project_manager"); setManagers(data.users || []); setSelectedManagerId(""); setApproval(item); } catch (reason) { setError(reason.message); } };
+  const decide = async (id, decision, projectManagerId) => { setSaving(true); setError(""); try { await api("/petty-cash-expenses", { method: "PATCH", body: JSON.stringify({ id, decision, ...(projectManagerId ? { projectManagerId } : {}) }) }); setApproval(null); await loadExpenses(projectId); } catch (reason) { setError(reason.message); } finally { setSaving(false); } };
+  const showManagerColumn = viewer.isProjectManager && !viewer.isPlanning, showPlanningColumn = viewer.isPlanning || showManagerColumn;
+  return <section className="rounded-b-2xl border-x border-b border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900 md:p-4"><div className="mb-4 flex flex-wrap items-end gap-3"><Field label="پروژه" className="w-full sm:w-[22rem]"><select value={projectId} onChange={(event) => selectProject(event.target.value)} className={inputClass}><option value="">انتخاب کنید</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.code} - {project.name}</option>)}</select></Field><button type="button" onClick={() => { setError(""); setFormOpen((open) => !open); }} className="grid h-11 w-11 place-items-center rounded-xl border border-black/15 bg-white text-2xl leading-none transition hover:bg-black/5 dark:border-white/15 dark:bg-white/5" title="افزودن هزینه">+</button></div>{formOpen && <div className="mb-4 grid grid-cols-1 items-end gap-3 rounded-2xl border border-black/10 bg-neutral-50/70 p-3 dark:border-white/10 dark:bg-white/[.03] md:grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_170px_44px]"><Field label="تاریخ"><JalaliPopupDatePicker value={form.expenseDate} onChange={(expenseDate) => setForm((current) => ({ ...current, expenseDate }))} buttonClassName={`${inputClass} flex items-center justify-between`} /></Field><Field label="شرح"><input value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} className={inputClass} /></Field><Field label="کد بودجه"><select value={form.budgetCode} onChange={(event) => setForm((current) => ({ ...current, budgetCode: event.target.value }))} className={inputClass} disabled={!projectId}><option value="">{projectId ? "انتخاب کنید" : "ابتدا پروژه را انتخاب کنید"}</option>{budgetItems.map((item) => <option key={item.id} value={item.budgetCode}>{item.budgetCode}{item.budgetName ? ` - ${item.budgetName}` : ""}</option>)}</select></Field><Field label="مبلغ (ریال)"><input dir="ltr" inputMode="numeric" value={toFa(form.amount)} onChange={(event) => setForm((current) => ({ ...current, amount: format3(toEnglishDigits(event.target.value).replace(/[^\d]/g, "")) }))} className={`${inputClass} text-left font-sans tabular-nums`} /></Field><button type="button" onClick={addExpense} disabled={saving} className="grid h-11 w-11 place-items-center rounded-xl bg-neutral-900 text-2xl leading-none text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900" title="ثبت هزینه">+</button></div>}{error && <div className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{error}</div>}<ExpenseTable items={items} showPlanningColumn={showPlanningColumn} showManagerColumn={showManagerColumn} viewer={viewer} onPlanningApprove={openPlanningApproval} onPlanningReject={(item) => decide(item.id, "reject")} onManagerApprove={(item) => decide(item.id, "approve")} onManagerReject={(item) => decide(item.id, "reject")} saving={saving} />{approval && <ManagerModal item={approval} managers={managers} selectedManagerId={selectedManagerId} setSelectedManagerId={setSelectedManagerId} onClose={() => setApproval(null)} onConfirm={() => decide(approval.id, "approve", selectedManagerId)} saving={saving} />}</section>;
 }
+
+function ExpenseTable({ items, showPlanningColumn, showManagerColumn, viewer, onPlanningApprove, onPlanningReject, onManagerApprove, onManagerReject, saving }) { const colSpan = 5 + Number(showPlanningColumn) + Number(showManagerColumn); return <div className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="overflow-x-auto" dir="ltr"><table dir="rtl" className="w-full min-w-[850px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2"><thead><tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100"><Header>ردیف</Header><Header>تاریخ</Header><Header right>شرح هزینه</Header><Header>کد بودجه</Header><Header>مبلغ (ریال)</Header>{showPlanningColumn && <Header>برنامه‌ریزی</Header>}{showManagerColumn && <Header>مدیر پروژه</Header>}</tr></thead><tbody className="text-[13px] text-black [&>tr]:h-10 dark:text-neutral-100">{items.length ? items.map((item, index) => <tr key={item.id} className="bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"><Cell>{toFa(index + 1)}</Cell><Cell>{toFa(item.expenseDate)}</Cell><Cell right>{item.description}</Cell><Cell dir="ltr">{toFa(item.budgetCode)}</Cell><Cell dir="ltr" className="font-sans tabular-nums">{toFa(format3(item.amount))}</Cell>{showPlanningColumn && <Cell><WorkflowCell status={item.planningStatus} canAct={viewer.isPlanning && item.stage === "planning"} onApprove={() => onPlanningApprove(item)} onReject={() => onPlanningReject(item)} disabled={saving} /></Cell>}{showManagerColumn && <Cell><WorkflowCell status={item.projectManagerStatus} canAct={item.stage === "project_manager" && Number(item.projectManagerId) === Number(viewer.userId)} onApprove={() => onManagerApprove(item)} onReject={() => onManagerReject(item)} disabled={saving} /></Cell>}</tr>) : <tr><td colSpan={colSpan} className="p-8" /></tr>}</tbody></table></div></div>; }
+function WorkflowCell({ status, canAct, onApprove, onReject, disabled }) { if (status === "approved") return <span className="inline-grid h-7 w-7 place-items-center rounded-full bg-emerald-100 font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">✓</span>; if (status === "rejected") return <span className="inline-grid h-7 w-7 place-items-center rounded-full bg-red-100 font-bold text-red-700 dark:bg-red-500/15 dark:text-red-300">×</span>; if (!canAct) return <span className="text-neutral-400">—</span>; return <span className="inline-flex items-center justify-center gap-1"><button type="button" disabled={disabled} onClick={onApprove} className="grid h-7 w-7 place-items-center rounded-lg bg-emerald-600 font-bold text-white disabled:opacity-50" title="تأیید">✓</button><button type="button" disabled={disabled} onClick={onReject} className="grid h-7 w-7 place-items-center rounded-lg bg-red-600 font-bold text-white disabled:opacity-50" title="رد">×</button></span>; }
+function ManagerModal({ item, managers, selectedManagerId, setSelectedManagerId, onClose, onConfirm, saving }) { return <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 p-4"><div className="w-full max-w-md rounded-2xl border border-black/10 bg-white p-5 shadow-2xl dark:border-white/10 dark:bg-neutral-900"><h2 className="text-base font-bold">ارسال به مدیر پروژه</h2><p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">مدیر پروژهٔ مسئول برای هزینه «{item.description}» را انتخاب کنید.</p><Field label="مدیر پروژه" className="mt-4"><select value={selectedManagerId} onChange={(event) => setSelectedManagerId(event.target.value)} className={inputClass}><option value="">انتخاب کنید</option>{managers.map((manager) => <option key={manager.id} value={manager.id}>{manager.name || manager.username || `کاربر ${manager.id}`}</option>)}</select></Field><div className="mt-5 flex items-center justify-end gap-2"><button type="button" onClick={onClose} className="h-10 rounded-xl border border-black/10 px-4 text-sm font-semibold dark:border-white/15">انصراف</button><button type="button" disabled={!selectedManagerId || saving} onClick={onConfirm} className="h-10 rounded-xl bg-neutral-900 px-4 text-sm font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900">تأیید و ارسال</button></div></div></div>; }
+function Field({ label, children, className = "" }) { return <label className={`block ${className}`}><span className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">{label}</span>{children}</label>; }
+function Header({ children, right = false }) { return <th className={`bg-neutral-200 px-3 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px] ${right ? "!text-right" : ""}`}>{children}</th>; }
+function Cell({ children, right = false, className = "", ...props }) { return <td {...props} className={`border-b border-neutral-300 px-3 dark:border-neutral-700 ${right ? "!text-right" : ""} ${className}`}>{children}</td>; }
