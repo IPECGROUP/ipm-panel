@@ -26,7 +26,7 @@ export default function PettyCashPage() {
             </span>
           </header>
 
-          <nav className="mb-4 grid grid-cols-3 overflow-hidden rounded-t-2xl border border-b-0 border-black/10 dark:border-white/10" aria-label="بخش‌های تنخواه گردان">
+          <nav className="mb-0 grid grid-cols-3 overflow-hidden rounded-t-2xl border border-black/10 dark:border-white/10" aria-label="بخش‌های تنخواه گردان">
             {tabs.map((tab, index) => {
               const isActive = activeTab === index;
               return (
@@ -56,15 +56,15 @@ export default function PettyCashPage() {
 
 function MyPettyCashTable() {
   return (
-    <section className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
+    <section className="overflow-hidden rounded-b-2xl border-x border-b border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
       <div className="relative hidden max-h-[55vh] overflow-y-auto overflow-x-hidden md:block" dir="ltr">
         <table dir="rtl" className="w-full min-w-[920px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2">
           <colgroup>
-            <col style={{ width: 72 }} />
-            <col />
-            <col style={{ width: 190 }} />
-            <col style={{ width: 210 }} />
-            <col style={{ width: 210 }} />
+            <col style={{ width: "6%" }} />
+            <col style={{ width: "24%" }} />
+            <col style={{ width: "23%" }} />
+            <col style={{ width: "23.5%" }} />
+            <col style={{ width: "23.5%" }} />
           </colgroup>
           <thead>
             <tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100">
