@@ -26,7 +26,7 @@ export default function PettyCashPage() {
             </span>
           </header>
 
-          <nav className="mb-4 flex items-end gap-1 overflow-x-auto border-b border-neutral-300 dark:border-neutral-700" aria-label="بخش‌های تنخواه گردان">
+          <nav className="mb-4 grid grid-cols-3 overflow-hidden rounded-t-2xl border border-b-0 border-black/10 dark:border-white/10" aria-label="بخش‌های تنخواه گردان">
             {tabs.map((tab, index) => {
               const isActive = activeTab === index;
               return (
@@ -34,21 +34,20 @@ export default function PettyCashPage() {
                   key={tab}
                   type="button"
                   onClick={() => setActiveTab(index)}
-                  className={`relative shrink-0 px-4 py-2.5 text-sm font-semibold transition md:px-5 ${
+                  className={`min-w-0 border-r border-black/10 px-3 py-3 text-sm font-semibold transition first:border-r-0 dark:border-white/10 md:px-5 ${
                     isActive
-                      ? "text-neutral-950 dark:text-white"
-                      : "text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200"
+                      ? "bg-black text-white dark:bg-white dark:text-black"
+                      : "bg-white text-neutral-900 hover:bg-neutral-50 dark:bg-neutral-900 dark:text-white dark:hover:bg-white/[.04]"
                   }`}
                   aria-current={isActive ? "page" : undefined}
                 >
                   {tab}
-                  {isActive && <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-neutral-900 dark:bg-white" />}
                 </button>
               );
             })}
           </nav>
 
-          {activeTab === 0 ? <MyPettyCashTable /> : <UpcomingTab label={tabs[activeTab]} />}
+          {activeTab === 0 && <MyPettyCashTable />}
         </div>
       </Card>
     </div>
@@ -82,27 +81,9 @@ function MyPettyCashTable() {
               </th>
             </tr>
           </thead>
-          <tbody className="text-[13px] text-black dark:text-neutral-100">
-            <tr className="bg-black/[0.02] dark:bg-white/5">
-              <td colSpan={5} className="px-3 py-10 text-center text-neutral-500 dark:text-neutral-400">
-                اطلاعات تنخواه پس از ثبت هزینه‌ها در این بخش نمایش داده می‌شود.
-              </td>
-            </tr>
-          </tbody>
+          <tbody className="text-[13px] text-black [&>tr]:h-9 [&>tr>td]:!py-0 dark:text-neutral-100" />
         </table>
       </div>
-
-      <div className="p-8 text-center text-sm text-neutral-500 dark:text-neutral-400 md:hidden">
-        اطلاعات تنخواه پس از ثبت هزینه‌ها در این بخش نمایش داده می‌شود.
-      </div>
     </section>
-  );
-}
-
-function UpcomingTab({ label }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-black/15 px-4 py-12 text-center text-sm text-neutral-500 dark:border-white/15 dark:text-neutral-400">
-      بخش «{label}» در مرحلهٔ بعد تکمیل می‌شود.
-    </div>
   );
 }
