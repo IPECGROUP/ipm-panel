@@ -127,6 +127,10 @@ function decimalRequestValue(value) {
   if (!match) return "";
   return `${BigInt(match[1]).toString()}.${String(match[2] || "").padEnd(2, "0")}`;
 }
+
+function paymentActionAmount(value, currencyTypeId) {
+  return currencyTypeId ? decimalRequestValue(value) : amountDigits(value);
+}
 function minorUnitsToDecimal(minorUnits) {
   const value = BigInt(minorUnits || 0);
   const whole = value / 100n;
@@ -2184,8 +2188,12 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
     onAction(status, note, {
       targetAssigneeUserId: targetAssigneeUserId || null,
       ...(finalAccounting ? {
-        cashAmount: parseAmount(cashPayAmount),
-        creditAmount: parseAmount(creditPayAmount),
+        cashAmount: paymentActionAmount(cashPayAmount, cashPayCurrencyId),
+        cashCurrencyTypeId: cashPayCurrencyId || null,
+        paymentMethod,
+        creditAmount: paymentActionAmount(creditPayAmount, creditPayCurrencyId),
+        creditCurrencyTypeId: creditPayCurrencyId || null,
+        creditDescription: creditPayDesc,
       } : {}),
     });
   };
@@ -2685,7 +2693,7 @@ function WorkflowPanel({
         <div className="rounded-xl border border-black/10 p-3 dark:border-white/10">
           <div className="mb-3 text-sm font-semibold">پرداخت نقدی</div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <Field label="مبلغ"><MoneyInput value={cashPayAmount} onChange={setCashPayAmount} /></Field>
+            <Field label="مبلغ"><MoneyInput decimals={cashPayCurrencyId ? 2 : 0} value={cashPayAmount} onChange={setCashPayAmount} /></Field>
             <Field label="ارز"><CurrencySelect value={cashPayCurrencyId} onChange={setCashPayCurrencyId} currencyTypes={currencyTypes} /></Field>
             <Field label="روش پرداخت"><select className={inputClass} value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}>{PAYMENT_METHOD_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}</select></Field>
           </div>
@@ -2693,7 +2701,7 @@ function WorkflowPanel({
         <div className="rounded-xl border border-black/10 p-3 dark:border-white/10">
           <div className="mb-3 text-sm font-semibold">پرداخت اعتباری</div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <Field label="مبلغ"><MoneyInput value={creditPayAmount} onChange={setCreditPayAmount} /></Field>
+            <Field label="مبلغ"><MoneyInput decimals={creditPayCurrencyId ? 2 : 0} value={creditPayAmount} onChange={setCreditPayAmount} /></Field>
             <Field label="ارز"><CurrencySelect value={creditPayCurrencyId} onChange={setCreditPayCurrencyId} currencyTypes={currencyTypes} /></Field>
           </div>
           <div className="mt-3"><Field label="شرح پرداخت"><textarea className={`${inputClass} min-h-24 py-3`} value={creditPayDesc} onChange={(event) => setCreditPayDesc(event.target.value)} /></Field></div>
