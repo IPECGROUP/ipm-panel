@@ -4067,10 +4067,10 @@ export default function ContractInformation() {
                       ) : (
                       <>
                       <div className={calendarCardCls}>
-                        <div className="grid grid-cols-1 lg:grid-cols-[minmax(170px,0.8fr)_minmax(170px,0.8fr)_minmax(170px,0.8fr)_minmax(260px,1.5fr)] gap-3 lg:items-start">
+                        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[repeat(3,minmax(0,1fr))_minmax(240px,1.2fr)] lg:items-start">
                           <div className="min-w-0">
                             <div className={labelCls}>تاریخ ابلاغ کار *</div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-end gap-2">
                               <div className="flex-1">
                                 <ContractDatePicker
                                   value={form.calendar?.notifyDate || ""}
@@ -4111,8 +4111,8 @@ export default function ContractInformation() {
                             </div>
                           </div>
 
-                          <div className="flex items-center pt-6 text-base font-semibold text-black dark:text-neutral-100">
-                            مدت اولیه قرارداد: <span className="mr-1">{calendarTotals.baseDays ? `${toFaDigits(calendarTotals.baseDays)} روز` : "محاسبه نشده"}</span>
+                          <div className="flex items-center pt-6 text-sm font-medium text-black/75 dark:text-neutral-200">
+                            مدت اولیه قرارداد: <span className="mr-1 font-semibold text-black dark:text-neutral-100">{calendarTotals.baseDays ? `${toFaDigits(calendarTotals.baseDays)} روز` : "محاسبه نشده"}</span>
                           </div>
                         </div>
                       </div>
