@@ -3194,16 +3194,6 @@ export default function ContractInformation() {
 
     return (
       <div className="flex min-h-11 items-center justify-center gap-2">
-        <button
-          type="button"
-          onClick={() => saveContractSection(sectionId)}
-          disabled={isFinalSaving}
-          className={saveIconBtnCls}
-          title={buttonTitle}
-          aria-label={buttonTitle}
-        >
-          <img src="/images/icons/check.svg" alt="" className="w-4 h-4 invert md:w-5 md:h-5" />
-        </button>
         <div
           className={[
             "pointer-events-none max-w-40 whitespace-normal text-right text-[10px] font-semibold leading-4 transition-opacity duration-200",
@@ -3214,6 +3204,16 @@ export default function ContractInformation() {
         >
           {isFinalSaving ? "در حال ثبت نهایی..." : showFinalStatus ? finalSaveStatus.message : showDraftStatus ? draftStatusText : ""}
         </div>
+        <button
+          type="button"
+          onClick={() => saveContractSection(sectionId)}
+          disabled={isFinalSaving}
+          className={saveIconBtnCls}
+          title={buttonTitle}
+          aria-label={buttonTitle}
+        >
+          <img src="/images/icons/check.svg" alt="" className="w-4 h-4 invert md:w-5 md:h-5" />
+        </button>
       </div>
     );
   };
@@ -4187,9 +4187,9 @@ export default function ContractInformation() {
                         </div>
                       ) : (
                       <>
-                      <div className="space-y-4">
+                      <div className="space-y-4 rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
                         <div className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2 items-start">
-                          <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
+                          <div>
                             <div className="mb-3 text-sm font-semibold text-black dark:text-neutral-100">شرح خدمات *</div>
                             <textarea
                               value={form.technical?.serviceScope || ""}
@@ -4198,7 +4198,7 @@ export default function ContractInformation() {
                             />
                           </div>
 
-                          <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
+                          <div>
                             <div className="mb-3 text-sm font-semibold text-black dark:text-neutral-100">مسئولیت و تعهدات</div>
                             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                               {TECHNICAL_SUPPORT_FIELDS.map((item) => (
@@ -4216,7 +4216,7 @@ export default function ContractInformation() {
                           </div>
                         </div>
 
-                        <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
+                        <div>
                             <div className={labelCls}>برچسب ها *</div>
                             <div className="flex flex-wrap items-center gap-2">
                               {technicalTagIds.map((id) => {
@@ -4249,7 +4249,7 @@ export default function ContractInformation() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-end pt-2">
+                      <div className="flex items-center justify-end border-t border-black/10 pt-4 dark:border-neutral-800">
                         {renderSaveButton("technical")}
                       </div>
                       </>
