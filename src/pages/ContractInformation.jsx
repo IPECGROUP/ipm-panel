@@ -688,6 +688,11 @@ function documentTypeLabel(type) {
   return CONTRACT_DOCUMENT_TYPES.find((item) => item.id === type)?.label || "اصلی";
 }
 
+function RelatedDocumentCountBadge({ value }) {
+  if (!value) return null;
+  return <span className="absolute -left-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-neutral-900 px-1 text-[10px] text-white dark:bg-white dark:text-black">{toFaDigits(value)}</span>;
+}
+
 function resolveContractDocumentType(item = {}) {
   const parentContractId = String(item.parentContractId ?? item.parent_contract_id ?? "").trim();
   const subContractNo = String(item.subContractNo ?? item.sub_contract_no ?? "").trim();
@@ -3921,24 +3926,13 @@ export default function ContractInformation() {
                         </div>
 
                         <div className="flex w-11 flex-col items-center gap-1">
-                          <div className="whitespace-nowrap text-center text-[11px] font-semibold text-black/55 dark:text-neutral-400">{toFaDigits(selectedRelatedLetterSummaryItems.length)} مورد</div>
-                          <button type="button" onClick={() => openRelatedPicker("contract")} className={`${iconBtnCls} !h-11 !w-11 shrink-0`} aria-label="انتخاب اسناد مرتبط" title="انتخاب اسناد مرتبط">
+                          <div className="whitespace-nowrap text-center text-[11px] font-semibold text-black/55 dark:text-neutral-400">انتخاب اسناد مرتبط</div>
+                          <button type="button" onClick={() => openRelatedPicker("contract")} className={`${iconBtnCls} relative !h-11 !w-11 shrink-0`} aria-label="انتخاب اسناد مرتبط" title="انتخاب اسناد مرتبط">
                             <img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" />
+                            <RelatedDocumentCountBadge value={selectedRelatedLetterSummaryItems.length} />
                           </button>
                         </div>
                       </div>
-
-                      {form.documentType === "sub" ? (
-                        <div className="max-w-md min-w-0">
-                          <div className={labelCls}>شماره قرارداد فرعی *</div>
-                          <input
-                            value={form.subContractNo || ""}
-                            onChange={(e) => setField("subContractNo", e.target.value)}
-                            className={inputCls}
-                            type="text"
-                          />
-                        </div>
-                      ) : null}
 
                       <div className="hidden">
                         <div>
@@ -3978,6 +3972,12 @@ export default function ContractInformation() {
                       </div>
 
                       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                        {form.documentType === "sub" ? (
+                          <div className="min-w-0">
+                            <div className={labelCls}>شماره قرارداد فرعی *</div>
+                            <input value={form.subContractNo || ""} onChange={(e) => setField("subContractNo", e.target.value)} className={inputCls} type="text" />
+                          </div>
+                        ) : null}
                         {form.documentType !== "sub" ? (
                           <div className="min-w-0">
                             <div className={labelCls}>کارفرمای اصلی</div>
