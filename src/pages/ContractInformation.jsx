@@ -4111,7 +4111,7 @@ export default function ContractInformation() {
                             </div>
                           </div>
 
-                          <div className="flex items-center pt-6 text-sm font-medium text-black/75 dark:text-neutral-200">
+                          <div className="flex items-center pt-0 text-sm font-medium text-black/75 dark:text-neutral-200">
                             مدت اولیه قرارداد: <span className="mr-1 font-semibold text-black dark:text-neutral-100">{calendarTotals.baseDays ? `${toFaDigits(calendarTotals.baseDays)} روز` : "محاسبه نشده"}</span>
                           </div>
                         </div>
