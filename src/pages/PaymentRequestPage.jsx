@@ -1391,10 +1391,10 @@ export default function PaymentRequestPage() {
                   <div className="mt-3 line-clamp-2 min-h-10 text-sm font-medium leading-5">{item.title || "بدون موضوع"}</div>
                   <div className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 border-t border-black/[0.07] pt-3 text-xs dark:border-white/10">
                     <span className="text-neutral-400">پروژه</span><span className="truncate text-left text-neutral-600 dark:text-neutral-300">{projectLabel(projects.find((row) => String(row.id) === String(item.projectId))) || item.projectName || item.projectCode || "—"}</span>
-                    <span className="text-neutral-400">مبلغ</span><span dir="ltr" className="truncate text-left font-medium tabular-nums text-neutral-700 dark:text-neutral-200">{toFa(item.requestType === "tenkhah" ? (money(item.amount) || "0") : paymentRequestAmount(item.amount, Boolean(item.currencyTypeId)))} {itemCurrency}</span>
+                    <span className="text-neutral-400">مبلغ</span><span dir="ltr" className="flex min-w-0 items-center justify-start gap-1 truncate text-left font-medium tabular-nums text-neutral-700 dark:text-neutral-200"><span>{itemCurrency}</span><span>{toFa(item.requestType === "tenkhah" ? (money(item.amount) || "0") : paymentRequestAmount(item.amount, Boolean(item.currencyTypeId)))}</span></span>
                     <span className="text-neutral-400">تاریخ</span><span className="text-left text-neutral-600 dark:text-neutral-300">{toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))}</span>
                   </div>
-                  <div className="mt-3 flex items-center justify-between gap-2"><WaitingUnitCell item={item} /><StatusBadge status={item.displayStatus || item.status} /></div>
+                  <div className="mt-3 flex items-center justify-end"><WaitingUnitCell item={item} /></div>
                 </button>
               </article>;
             })}
