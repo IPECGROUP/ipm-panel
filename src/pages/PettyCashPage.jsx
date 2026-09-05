@@ -142,6 +142,46 @@ export default function PettyCashPage() {
 }
 
 function MyPettyCashTable() {
+  const { user } = useAuth();
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let active = true;
+    setLoading(true);
+    setError("");
+    fetch("/api/petty-cash-expenses?summary=mine", {
+      credentials: "include",
+      headers: { "x-user-id": String(user.id) },
+    })
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok)
+          throw new Error(data.error || "خطا در دریافت اطلاعات تنخواه");
+        return data;
+      })
+      .then((data) => {
+        if (active) setItems(Array.isArray(data.items) ? data.items : []);
+      })
+      .catch((reason) => {
+        if (active) setError(reason.message);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
+
+  const money = (value) => {
+    const amount = BigInt(value || "0");
+    const absolute = amount < 0n ? -amount : amount;
+    return `${amount < 0n ? "−" : ""}${toFa(format3(absolute.toString()))}`;
+  };
+
   return (
     <section className="overflow-hidden rounded-b-2xl border-x border-b border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
       <div
@@ -178,10 +218,95 @@ function MyPettyCashTable() {
               </Header>
             </tr>
           </thead>
-          <tbody />
+          <tbody>
+            {items.map((item, index) => (
+              <tr
+                key={item.projectId}
+                className="border-b border-black/[0.07] last:border-b-0 dark:border-white/10"
+              >
+                <td>{toFa(index + 1)}</td>
+                <td className="!text-right">
+                  <span className="block font-semibold">
+                    {normalizeDigits(item.projectCode)} - {item.projectName}
+                  </span>
+                </td>
+                <td className="font-sans tabular-nums">
+                  {money(item.receivedAmount)}
+                </td>
+                <td className="font-sans tabular-nums">
+                  <span className="block font-semibold">
+                    {money(item.registeredExpenses)}
+                  </span>
+                  <span className="mt-1 block text-xs text-neutral-500 dark:text-neutral-400">
+                    {money(item.registeredBalance)}
+                  </span>
+                </td>
+                <td className="font-sans tabular-nums">
+                  <span className="block font-semibold">
+                    {money(item.approvedExpenses)}
+                  </span>
+                  <span className="mt-1 block text-xs text-neutral-500 dark:text-neutral-400">
+                    {money(item.unapprovedBalance)}
+                  </span>
+                </td>
+              </tr>
+            ))}
+            {!loading && !error && items.length === 0 && (
+              <tr>
+                <td colSpan="5" className="px-3 py-8 text-neutral-500">
+                  هنوز تنخواه یا هزینه‌ای برای شما ثبت نشده است.
+                </td>
+              </tr>
+            )}
+            {loading && (
+              <tr>
+                <td colSpan="5" className="px-3 py-8 text-neutral-500">
+                  در حال دریافت اطلاعات...
+                </td>
+              </tr>
+            )}
+            {error && (
+              <tr>
+                <td colSpan="5" className="px-3 py-8 text-red-600 dark:text-red-400">
+                  {error}
+                </td>
+              </tr>
+            )}
+          </tbody>
         </table>
       </div>
+      <div className="space-y-3 p-3 md:hidden">
+        {items.map((item, index) => (
+          <article
+            key={item.projectId}
+            className="rounded-xl border border-black/10 p-3 dark:border-white/10"
+          >
+            <div className="mb-3 font-semibold">
+              {toFa(index + 1)}. {normalizeDigits(item.projectCode)} - {item.projectName}
+            </div>
+            <div className="grid grid-cols-1 gap-2 text-sm">
+              <SummaryAmount label="مجموع تنخواه دریافت‌شده" value={money(item.receivedAmount)} />
+              <SummaryAmount label="مجموع هزینه‌های ثبت‌شده" value={money(item.registeredExpenses)} />
+              <SummaryAmount label="باقی‌مانده هزینه‌های ثبت‌شده" value={money(item.registeredBalance)} />
+              <SummaryAmount label="مجموع هزینه‌های تأییدشده" value={money(item.approvedExpenses)} />
+              <SummaryAmount label="باقی‌مانده هزینه‌های تأییدنشده" value={money(item.unapprovedBalance)} />
+            </div>
+          </article>
+        ))}
+        {loading && <div className="py-6 text-center text-sm text-neutral-500">در حال دریافت اطلاعات...</div>}
+        {!loading && !error && items.length === 0 && <div className="py-6 text-center text-sm text-neutral-500">هنوز تنخواه یا هزینه‌ای برای شما ثبت نشده است.</div>}
+        {error && <div className="py-6 text-center text-sm text-red-600 dark:text-red-400">{error}</div>}
+      </div>
     </section>
+  );
+}
+
+function SummaryAmount({ label, value }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg bg-neutral-50 px-3 py-2 dark:bg-white/[.04]">
+      <span className="text-neutral-600 dark:text-neutral-300">{label}</span>
+      <span className="shrink-0 font-sans font-semibold tabular-nums">{value}</span>
+    </div>
   );
 }
 
