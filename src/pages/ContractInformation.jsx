@@ -142,14 +142,14 @@ const PERSIAN_MONTHS = [
 const EMPTY_FORM = {
   id: "",
   projectId: "",
-  documentType: "main",
+  documentType: "",
   contractNo: "",
   subContractNo: "",
   parentContractId: "",
   relatedLetterId: "",
   relatedLetterIds: [],
   general: {
-    registrationType: "official",
+    registrationType: "",
     contractType: "",
     customContractType: false,
     contractSubject: "",
@@ -1218,6 +1218,7 @@ export default function ContractInformation() {
   const [filterFromDate, setFilterFromDate] = React.useState("");
   const [filterToDate, setFilterToDate] = React.useState("");
   const [filterStatus, setFilterStatus] = React.useState("");
+  const [contractTypeOptions, setContractTypeOptions] = React.useState({ main: [], sub: [] });
   const [relatedPickOpen, setRelatedPickOpen] = React.useState(false);
   const [relatedPickQuery, setRelatedPickQuery] = React.useState("");
   const [relatedPickTarget, setRelatedPickTarget] = React.useState("contract");
@@ -1351,6 +1352,20 @@ export default function ContractInformation() {
     if (!formOpen) return;
     ensureContractTags();
   }, [ensureContractTags, formOpen]);
+
+  React.useEffect(() => {
+    if (!formOpen) return;
+    let alive = true;
+    Promise.all([
+      fetchJson("/base/contract-options?category=main").catch(() => ({ items: [] })),
+      fetchJson("/base/contract-options?category=sub").catch(() => ({ items: [] })),
+    ]).then(([mainResponse, subResponse]) => {
+      if (!alive) return;
+      const labels = (response) => listFromPayload(response, "items").map(readItemLabel).filter(Boolean);
+      setContractTypeOptions({ main: labels(mainResponse), sub: labels(subResponse) });
+    });
+    return () => { alive = false; };
+  }, [formOpen]);
 
   const ensureCurrencies = React.useCallback(async () => {
     if (currencyItems.length || currencySourceItems.length || currencyLoading) return;
@@ -3734,7 +3749,7 @@ export default function ContractInformation() {
                 <div className={tabbedPanelClass}>
                   {activeContractTab === "general" ? (
                     <div className="space-y-4 p-3 sm:p-4">
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(280px,2fr)_minmax(150px,1fr)_minmax(150px,1fr)_minmax(180px,1.2fr)]">
                         <div className="min-w-0">
                           <div className={labelCls}>پروژه *</div>
                           <select
@@ -3755,6 +3770,7 @@ export default function ContractInformation() {
                         <div className="min-w-0">
                           <div className={labelCls}>سطح</div>
                           <select value={form.documentType} onChange={(e) => setField("documentType", e.target.value)} className={inputCls}>
+                            <option value="">انتخاب کنید</option>
                             {CONTRACT_DOCUMENT_TYPES.filter((item) => item.id === "main" || item.id === "sub").map((item) => (
                               <option key={item.id} value={item.id} disabled={item.id === "main" && projectAlreadyHasMainContract}>
                                 {item.label}
@@ -3766,10 +3782,11 @@ export default function ContractInformation() {
                         <div className="min-w-0">
                           <div className={labelCls}>ثبت</div>
                           <select
-                            value={form.general?.registrationType || "official"}
+                            value={form.general?.registrationType || ""}
                             onChange={(e) => setGeneralField("registrationType", e.target.value)}
                             className={inputCls}
                           >
+                            <option value="">انتخاب کنید</option>
                             <option value="official">رسمی</option>
                             <option value="unofficial">غیر رسمی</option>
                           </select>
@@ -3793,7 +3810,7 @@ export default function ContractInformation() {
                               className={inputCls}
                             >
                               <option value="">انتخاب کنید</option>
-                              {GENERAL_CONTRACT_TYPES.map((item) => (
+                              {(contractTypeOptions[form.documentType] || []).map((item) => (
                                 <option key={item} value={item}>
                                   {item}
                                 </option>
@@ -3802,42 +3819,6 @@ export default function ContractInformation() {
                           )}
                         </div>
 
-                        <div className="min-w-0">
-                          <div className={labelCls}>شماره قرارداد *</div>
-                          {form.documentType === "main" ? (
-                            <input
-                              value={form.contractNo}
-                              onChange={(e) => setField("contractNo", e.target.value)}
-                              className={inputCls}
-                              type="text"
-                              disabled={mainContractBlockedForProject}
-                            />
-                          ) : (
-                            <select
-                              value={form.parentContractId}
-                              onChange={(e) => setField("parentContractId", e.target.value)}
-                              className={inputCls}
-                            >
-                              <option value="">
-                                {form.projectId
-                                  ? projectContractOptions.length
-                                    ? "انتخاب شماره قرارداد"
-                                    : "موردی برای این پروژه ثبت نشده است"
-                                  : "ابتدا پروژه را انتخاب کنید"}
-                              </option>
-                              {projectContractOptions.map((contract) => (
-                                <option key={contract.id} value={contract.id}>
-                                  {contractNoForRow(contract, rowById)} - {documentTypeLabel(contract.documentType)}
-                                </option>
-                              ))}
-                            </select>
-                          )}
-                          {mainContractBlockedForProject ? (
-                            <div className="mt-1 text-xs font-semibold text-red-600 dark:text-red-400">
-                              برای این پروژه قبلا قرارداد اصلی ثبت شده است؛ فقط قرارداد فرعی قابل ثبت است.
-                            </div>
-                          ) : null}
-                        </div>
                       </div>
 
                       <div className="hidden">
@@ -3916,7 +3897,19 @@ export default function ContractInformation() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,7fr)_minmax(0,3fr)] md:items-end">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(190px,0.85fr)_minmax(0,3fr)_auto] md:items-end">
+                        <div className="min-w-0">
+                          <div className={labelCls}>شماره قرارداد *</div>
+                          {form.documentType === "sub" ? (
+                            <select value={form.parentContractId} onChange={(e) => setField("parentContractId", e.target.value)} className={inputCls} disabled={!form.documentType}>
+                              <option value="">{form.projectId ? projectContractOptions.length ? "انتخاب شماره قرارداد" : "موردی برای این پروژه ثبت نشده است" : "ابتدا پروژه را انتخاب کنید"}</option>
+                              {projectContractOptions.map((contract) => <option key={contract.id} value={contract.id}>{contractNoForRow(contract, rowById)} - {documentTypeLabel(contract.documentType)}</option>)}
+                            </select>
+                          ) : (
+                            <input value={form.contractNo} onChange={(e) => setField("contractNo", e.target.value)} className={inputCls} type="text" disabled={!form.documentType || mainContractBlockedForProject} />
+                          )}
+                          {mainContractBlockedForProject ? <div className="mt-1 text-xs font-semibold text-red-600 dark:text-red-400">برای این پروژه قبلا قرارداد اصلی ثبت شده است؛ فقط قرارداد فرعی قابل ثبت است.</div> : null}
+                        </div>
                         <div className="min-w-0">
                           <div className={labelCls}>موضوع *</div>
                           <input
@@ -3927,41 +3920,11 @@ export default function ContractInformation() {
                           />
                         </div>
 
-                        <div className="min-w-0">
-                          <div className={labelCls}>اسناد مرتبط</div>
-                          <div className="flex min-h-11 items-center gap-2 rounded-xl border border-black/10 bg-white px-2 py-1 dark:border-neutral-700 dark:bg-neutral-800">
-                            <button
-                              type="button"
-                              onClick={() => openRelatedPicker("contract")}
-                              className={`${iconBtnCls} !h-9 !w-9 shrink-0`}
-                              aria-label="انتخاب اسناد مرتبط"
-                              title="انتخاب اسناد مرتبط"
-                            >
-                              <img src="/images/icons/sayer.svg" alt="" className="h-4 w-4 dark:invert" />
-                            </button>
-                            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
-                              {selectedRelatedLetterSummaryItems.length ? (
-                                selectedRelatedLetterSummaryItems.map((item) => (
-                                  <span key={item.id} className="inline-flex max-w-full items-center gap-1 rounded-lg border border-black/10 bg-black/[0.03] px-2 py-1 text-xs font-semibold dark:border-white/10 dark:bg-white/[0.06]">
-                                    <button type="button" onClick={() => setRelatedLetterPreviewId(item.id)} className="truncate underline decoration-black/20 underline-offset-4">
-                                      {item.label}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => removeRelatedLetter(item.id)}
-                                      className="grid h-4 w-4 shrink-0 place-items-center rounded-full text-red-600 dark:text-red-300"
-                                      aria-label={`حذف ${item.label}`}
-                                      title="حذف"
-                                    >
-                                      ×
-                                    </button>
-                                  </span>
-                                ))
-                              ) : (
-                                <span className="text-xs text-black/50 dark:text-neutral-400">سندی انتخاب نشده است</span>
-                              )}
-                            </div>
-                          </div>
+                        <div className="flex w-11 flex-col items-center gap-1">
+                          <div className="whitespace-nowrap text-center text-[11px] font-semibold text-black/55 dark:text-neutral-400">{toFaDigits(selectedRelatedLetterSummaryItems.length)} مورد</div>
+                          <button type="button" onClick={() => openRelatedPicker("contract")} className={`${iconBtnCls} !h-11 !w-11 shrink-0`} aria-label="انتخاب اسناد مرتبط" title="انتخاب اسناد مرتبط">
+                            <img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" />
+                          </button>
                         </div>
                       </div>
 
