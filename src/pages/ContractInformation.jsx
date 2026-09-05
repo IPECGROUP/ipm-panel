@@ -115,6 +115,14 @@ function isSocialInsuranceClearanceStatus(value) {
   return [SOCIAL_INSURANCE_CLEARANCE_STATUS, SOCIAL_INSURANCE_OLD_CLEARANCE_STATUS].includes(String(value || ""));
 }
 
+function effectiveContractEndDate(row) {
+  const appendixEndDates = (Array.isArray(row?.financial?.appendices) ? row.financial.appendices : [])
+    .map((item) => normalizeJalaliYmd(item?.toDate))
+    .filter(Boolean)
+    .sort();
+  return appendixEndDates.at(-1) || normalizeJalaliYmd(row?.calendar?.endDate);
+}
+
 const PERSIAN_MONTHS = [
   "فروردین",
   "اردیبهشت",
@@ -1204,8 +1212,10 @@ export default function ContractInformation() {
   const [relatedLetterPreviewId, setRelatedLetterPreviewId] = React.useState("");
   const [finalSaveStatus, setFinalSaveStatus] = React.useState({ sectionId: "", message: "" });
   const [filterQuery, setFilterQuery] = React.useState("");
-  const [filterProjectId, setFilterProjectId] = React.useState("");
   const [filterDocType, setFilterDocType] = React.useState("");
+  const [filterFromDate, setFilterFromDate] = React.useState("");
+  const [filterToDate, setFilterToDate] = React.useState("");
+  const [filterStatus, setFilterStatus] = React.useState("");
   const [relatedPickOpen, setRelatedPickOpen] = React.useState(false);
   const [relatedPickQuery, setRelatedPickQuery] = React.useState("");
   const [relatedPickTarget, setRelatedPickTarget] = React.useState("contract");
@@ -1690,16 +1700,20 @@ export default function ContractInformation() {
         .map((item) => toEnDigits(item).toLowerCase())
         .join(" ");
 
-      if (filterProjectId && String(row.projectId) !== String(filterProjectId)) return false;
       if (filterDocType && String(row.documentType) !== String(filterDocType)) return false;
+      if (filterStatus && String(row.insurance?.lastStatus || "") !== filterStatus) return false;
+      const startDate = normalizeJalaliYmd(row.calendar?.startDate);
+      const endDate = effectiveContractEndDate(row);
+      if (filterFromDate && (!startDate || startDate < filterFromDate)) return false;
+      if (filterToDate && (!endDate || endDate > filterToDate)) return false;
       if (q && !haystack.includes(q)) return false;
       return true;
     });
-  }, [filterDocType, filterProjectId, filterQuery, letterById, projectById, rowById, rows]);
+  }, [filterDocType, filterFromDate, filterQuery, filterStatus, filterToDate, letterById, projectById, rowById, rows]);
 
   React.useEffect(() => {
     setContractsPage(0);
-  }, [filterDocType, filterProjectId, filterQuery, contractsRowsPerPage]);
+  }, [filterDocType, filterFromDate, filterQuery, filterStatus, filterToDate, contractsRowsPerPage]);
 
   const contractsDisplayRows = filteredRows;
 
@@ -1709,6 +1723,39 @@ export default function ContractInformation() {
   const contractsStartIdx = safeContractsPage * contractsRowsPerPage;
   const contractsEndIdx = Math.min(contractsTotal, contractsStartIdx + contractsRowsPerPage);
   const contractsPageRows = contractsDisplayRows.slice(contractsStartIdx, contractsEndIdx);
+
+  const exportContractsExcel = async () => {
+    if (!filteredRows.length) return;
+    const xlsxMod = await import("xlsx");
+    const XLSX = xlsxMod?.default || xlsxMod;
+    const exportRows = [
+      ["قراردادها - خروجی جدول"],
+      [""],
+      ["ردیف", "پروژه", "سطح", "نوع قرارداد", "واگذارنده / کارفرما", "موضوع قرارداد", "تاریخ شروع", "تاریخ پایان", "مبلغ", "آخرین وضعیت"],
+      ...filteredRows.map((row, index) => {
+        const amount = normalizeFinancial(row.financial || {}).contractAmounts.find((item) => hasFinancialAmount(item.amount));
+        return [
+          toFaDigits(index + 1),
+          projectById.get(String(row.projectId))?.label || "بدون پروژه",
+          documentTypeLabel(row.documentType),
+          row.general?.contractType || "",
+          row.general?.employerAssignor || "",
+          row.general?.contractSubject || "",
+          toFaDigits(String(row.calendar?.startDate || "").replaceAll("-", "/")),
+          toFaDigits(String(effectiveContractEndDate(row) || "").replaceAll("-", "/")),
+          amount ? formatFinancialAmount(parseFinancialAmount(amount.amount)) : "",
+          row.insurance?.lastStatus || "",
+        ];
+      }),
+    ];
+    const sheet = XLSX.utils.aoa_to_sheet(exportRows);
+    sheet["!cols"] = [8, 24, 12, 24, 28, 38, 15, 15, 18, 32].map((wch) => ({ wch }));
+    sheet["!rtl"] = true;
+    const workbook = XLSX.utils.book_new();
+    workbook.Workbook = { Views: [{ RTL: true }] };
+    XLSX.utils.book_append_sheet(workbook, sheet, "Contracts");
+    XLSX.writeFile(workbook, "contracts.xlsx");
+  };
 
   React.useEffect(() => {
     if (contractsPage !== safeContractsPage) setContractsPage(safeContractsPage);
@@ -3437,56 +3484,48 @@ export default function ContractInformation() {
             </button>}
           </div>
 
-          {!formOpen ? <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
+          {!formOpen ? <div className="mb-4 space-y-2 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
             <div className="flex flex-wrap items-end gap-2">
-              <div className="w-full sm:min-w-[260px] sm:flex-1">
+              <div className="w-full md:min-w-[280px] md:flex-1">
                 <div className={labelCls}>جست و جو</div>
                 <input
                   value={filterQuery}
                   onChange={(e) => setFilterQuery(e.target.value)}
                   className={inputCls}
                   type="text"
-                  placeholder="جستجو در مرکز/پروژه، قرارداد، نوع قرارداد و شماره ثبت دبیرخانه"
+                  placeholder="جستجو در شماره، موضوع، تاریخ، پروژه و ..."
                 />
               </div>
-
-              <div className="w-full sm:w-auto sm:min-w-[220px]">
-                <div className={labelCls}>مرکز/پروژه</div>
-                <select value={filterProjectId} onChange={(e) => setFilterProjectId(e.target.value)} className={inputCls}>
-                  <option value="">همه پروژه‌ها</option>
-                  {projects.map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.label}
-                    </option>
-                  ))}
-                </select>
+              <div className="w-[calc(50%-0.25rem)] md:w-auto md:min-w-[140px]">
+                <div className={labelCls}>از</div>
+                <ContractDatePicker value={filterFromDate} onChange={setFilterFromDate} />
               </div>
-
-              <div className="w-full sm:w-auto sm:min-w-[160px]">
-                <div className={labelCls}>سند قراردادی</div>
-                <select value={filterDocType} onChange={(e) => setFilterDocType(e.target.value)} className={inputCls}>
-                  <option value="">همه</option>
-                  {CONTRACT_DOCUMENT_TYPES.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
+              <div className="w-[calc(50%-0.25rem)] md:w-auto md:min-w-[140px]">
+                <div className={labelCls}>تا</div>
+                <ContractDatePicker value={filterToDate} onChange={setFilterToDate} />
               </div>
-
               <button
                 type="button"
-                className={`${iconBtnCls} !h-11 !w-11`}
-                onClick={() => {
-                  setFilterQuery("");
-                  setFilterProjectId("");
-                  setFilterDocType("");
-                }}
-                aria-label="پاک کردن فیلتر"
-                title="پاک کردن فیلتر"
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-white shadow-sm transition hover:-translate-y-0.5 hover:bg-neutral-50 hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
+                onClick={exportContractsExcel}
+                disabled={!filteredRows.length}
+                aria-label="خروجی اکسل"
+                title="خروجی اکسل"
               >
-                <img src="/images/icons/reset.svg" alt="" className="w-5 h-5 dark:invert" />
+                <img src="/images/icons8-excel-50.png" alt="" className="h-5 w-5" />
               </button>
+            </div>
+            <div>
+              <div className={labelCls}>برچسب ها</div>
+              <div className="flex flex-wrap items-center gap-2">
+                {[{ id: "main", label: "اصلی", active: "bg-emerald-600 text-white ring-emerald-600 dark:bg-emerald-500 dark:ring-emerald-500" }, { id: "sub", label: "فرعی", active: "bg-sky-600 text-white ring-sky-600 dark:bg-sky-500 dark:ring-sky-500" }].map((item) => (
+                  <button key={item.id} type="button" onClick={() => setFilterDocType((value) => value === item.id ? "" : item.id)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${filterDocType === item.id ? item.active : "bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200/80 text-neutral-700 ring-neutral-200 hover:from-neutral-200 hover:to-neutral-300 dark:from-white/10 dark:via-white/[0.07] dark:to-white/[0.13] dark:text-neutral-200 dark:ring-white/10"}`}>{item.label}</button>
+                ))}
+                <select value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)} className="h-8 rounded-full border border-black/10 bg-white px-3 text-xs font-medium text-neutral-700 outline-none transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10">
+                  <option value="">آخرین وضعیت قرارداد</option>
+                  {SOCIAL_INSURANCE_STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
+                </select>
+              </div>
             </div>
           </div> : null}
 
@@ -4866,7 +4905,6 @@ export default function ContractInformation() {
                     const docLabel = documentTypeLabel(row.documentType);
                     const typeText = row.general?.contractType || "ثبت نشده";
                     const companyText = contractCompanyForRow(row) || "ثبت نشده";
-                    const companyRole = contractCompanyRoleForRow(row);
                     const relatedNo = relatedLetter
                       ? secretariatNoOf(relatedLetter) || letterNoOf(relatedLetter) || row.relatedLetterId
                       : "";
@@ -4914,15 +4952,10 @@ export default function ContractInformation() {
                             <div className="line-clamp-2 break-words leading-6 font-semibold">{typeText}</div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="min-w-0">
-                              <div className="text-[11px] text-black/45 dark:text-neutral-500">موضوع قرارداد</div>
-                              <div className="truncate">{row.general?.contractSubject || "ثبت نشده"}</div>
-                            </div>
-                            <div className="min-w-0">
-                              <div className="text-[11px] text-black/45 dark:text-neutral-500">شرکت ({companyRole})</div>
-                              <div className="truncate font-semibold">{companyText}</div>
-                            </div>
+                          <div className="min-w-0">
+                            <div className="text-[11px] text-black/45 dark:text-neutral-500">واگذارنده / کارفرما</div>
+                            <div className="truncate font-semibold">{row.general?.employerAssignor || companyText}</div>
+                            <div className="mt-1 truncate text-black/60 dark:text-neutral-400">{row.general?.contractSubject || "ثبت نشده"}</div>
                           </div>
 
                           <div>
@@ -4957,11 +4990,11 @@ export default function ContractInformation() {
               >
                 <colgroup>
                   <col style={{ width: 48 }} />
+                  <col style={{ width: 46 }} />
                   <col style={{ width: 70 }} />
-                  <col style={{ width: 100 }} />
-                  <col style={{ width: 180 }} />
+                  <col style={{ width: 120 }} />
                   <col />
-                  <col style={{ width: 135 }} />
+                  <col style={{ width: 150 }} />
                   <col style={{ width: 140 }} />
                   <col style={{ width: 190 }} />
                 </colgroup>
@@ -4989,7 +5022,8 @@ export default function ContractInformation() {
                       const projectCode = project?.code ? toFaDigits(project.code) : "—";
                       const levelText = documentTypeLabel(row.documentType);
                       const typeText = row.general?.contractType || "ثبت نشده";
-                      const dateText = row.calendar?.startDate || row.calendar?.notifyDate || row.calendar?.endDate || "";
+                      const startDate = normalizeJalaliYmd(row.calendar?.startDate);
+                      const endDate = effectiveContractEndDate(row);
                       const amountRow = normalizeFinancial(row.financial || {}).contractAmounts.find((item) => hasFinancialAmount(item.amount));
                       const amountText = amountRow ? formatFinancialAmount(parseFinancialAmount(amountRow.amount)) : "—";
                       const currencyText = amountRow?.currencyLabel || amountRow?.currencyId || "—";
@@ -5024,16 +5058,22 @@ export default function ContractInformation() {
                             </div>
                           </td>
                           <td className={`px-3 ${divider}`}>
-                            <div className="truncate font-semibold">{levelText}</div>
+                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${row.documentType === "main" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300" : row.documentType === "sub" ? "bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-300" : "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300"}`}>{levelText}</span>
                             <div className="mt-1 truncate text-xs text-black/50 dark:text-neutral-400" title={typeText}>{typeText}</div>
                           </td>
                           <td className={`px-3 ${divider}`}>
-                            <div className="w-full truncate text-right" title={row.general?.contractSubject || ""}>
+                            <div className="w-full truncate text-right font-semibold" title={row.general?.employerAssignor || ""}>
+                              {row.general?.employerAssignor || "ثبت نشده"}
+                            </div>
+                            <div className="mt-1 w-full truncate text-right text-xs text-black/55 dark:text-neutral-400" title={row.general?.contractSubject || ""}>
                               {row.general?.contractSubject || "ثبت نشده"}
                             </div>
                           </td>
                           <td className={`px-3 ${divider}`}>
-                            {dateText ? toFaDigits(String(dateText).replaceAll("-", "/")) : "—"}
+                            <div className="space-y-1 text-xs leading-5">
+                              <div><span className="text-black/50 dark:text-neutral-400">شروع: </span>{startDate ? toFaDigits(startDate.replaceAll("-", "/")) : "—"}</div>
+                              <div><span className="text-black/50 dark:text-neutral-400">پایان: </span>{endDate ? toFaDigits(endDate.replaceAll("-", "/")) : "—"}</div>
+                            </div>
                           </td>
                           <td className={`px-3 ${divider}`}>
                             <div className="font-semibold tabular-nums">{amountText}</div>
