@@ -4077,15 +4077,18 @@ export default function ContractInformation() {
                                   onChange={(value) => setCalendarField("notifyDate", value)}
                                 />
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => openRelatedPicker("contract")}
-                                className={`${iconBtnCls} !h-11 !w-11`}
-                                aria-label="انتخاب اسناد مرتبط"
-                                title="انتخاب اسناد مرتبط"
-                              >
-                                <img src="/images/icons/sayer.svg" alt="" className="w-5 h-5 dark:invert" />
-                              </button>
+                              <div className="flex flex-col items-center gap-1">
+                                <div className="whitespace-nowrap text-[11px] font-medium text-black/55 dark:text-neutral-400">اسناد مرتبط</div>
+                                <button
+                                  type="button"
+                                  onClick={() => openRelatedPicker("contract")}
+                                  className={`${iconBtnCls} !h-11 !w-11`}
+                                  aria-label="انتخاب اسناد مرتبط"
+                                  title="انتخاب اسناد مرتبط"
+                                >
+                                  <img src="/images/icons/sayer.svg" alt="" className="w-5 h-5 dark:invert" />
+                                </button>
+                              </div>
                             </div>
                             <div className="mt-2 text-xs text-black/55 dark:text-neutral-400">
                               میلادی: <span className="font-semibold text-black dark:text-neutral-100">{jalaliToGregorianLabel(form.calendar?.notifyDate) || "انتخاب نشده"}</span>
@@ -4108,11 +4111,8 @@ export default function ContractInformation() {
                             </div>
                           </div>
 
-                          <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
-                            <div className={labelCls}>مدت قرارداد</div>
-                            <div className="h-11 rounded-xl border border-black/10 bg-black/[0.03] px-3 text-sm font-bold flex items-center dark:border-neutral-700 dark:bg-white/[0.04]">
-                              {calendarTotals.baseDays ? `${toFaDigits(calendarTotals.baseDays)} روز` : "محاسبه نشده"}
-                            </div>
+                          <div className="flex items-center pt-6 text-sm font-semibold text-black dark:text-neutral-100">
+                            مدت اولیه قرارداد: <span className="mr-1">{calendarTotals.baseDays ? `${toFaDigits(calendarTotals.baseDays)} روز` : "محاسبه نشده"}</span>
                           </div>
                         </div>
                       </div>
@@ -4178,7 +4178,7 @@ export default function ContractInformation() {
                       </>
                       )}
 
-                      <div className="flex items-center justify-end pt-2">
+                      <div className="flex items-center justify-end border-t border-black/10 pt-4 dark:border-neutral-800">
                         {renderSaveButton("calendar")}
                       </div>
                     </div>
