@@ -344,7 +344,7 @@ function JalaliPopupDatePicker({ value, onChange, disablePast = false }) {
     if (!open || !buttonRef.current) return undefined;
     const place = () => {
       const rect = buttonRef.current.getBoundingClientRect();
-      setPosition({ top: Math.min(rect.bottom + 8, window.innerHeight - 330), right: Math.max(8, window.innerWidth - rect.right) });
+      setPosition({ top: Math.max(8, Math.min(rect.bottom + 8, window.innerHeight - 330)), right: Math.max(8, window.innerWidth - rect.right) });
     };
     place();
     window.addEventListener("resize", place);
@@ -1197,13 +1197,13 @@ export default function PaymentRequestPage() {
     }
   };
 
-  return <div dir="rtl" className="mx-auto max-w-[1400px]">
-    <Card className="overflow-hidden rounded-3xl border border-black/10 bg-white p-0 shadow-[0_18px_50px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-neutral-900">
-      <div className="p-3 md:p-4">
-        <div className="mb-5 flex min-w-0 items-center justify-between gap-3 border-b border-black/[0.07] pb-4 dark:border-white/10">
+  return <div dir="rtl" className="mx-auto min-w-0 max-w-[1400px]">
+    <Card className="overflow-hidden rounded-2xl border border-black/10 bg-white p-0 shadow-[0_10px_30px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-neutral-900 sm:rounded-3xl sm:shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
+      <div className="p-2.5 sm:p-3 md:p-4">
+        <div className="mb-4 flex min-w-0 items-center justify-between gap-2 border-b border-black/[0.07] px-0.5 pb-3 dark:border-white/10 sm:mb-5 sm:gap-3 sm:pb-4">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-black/10 bg-gradient-to-br from-neutral-50 to-neutral-200/70 shadow-sm dark:border-white/10 dark:from-white/[0.12] dark:to-white/[0.04]">
-              <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/10 bg-gradient-to-br from-neutral-50 to-neutral-200/70 shadow-sm dark:border-white/10 dark:from-white/[0.12] dark:to-white/[0.04] sm:h-11 sm:w-11 sm:rounded-2xl">
+              <img src={PAGE_ICON} alt="" className="h-5 w-5 dark:invert sm:h-6 sm:w-6" />
             </span>
             <span className="min-w-0">
               <span className="block truncate text-base font-bold tracking-tight md:text-lg">درخواست پرداخت</span>
@@ -1217,22 +1217,22 @@ export default function PaymentRequestPage() {
           </div>
         </div>
 
-        {showForm && <div className="mb-5 w-fit rounded-2xl border border-black/10 bg-neutral-100/80 p-1.5 shadow-inner shadow-black/[0.03] dark:border-white/10 dark:bg-white/[.06]">
-          <div className="flex items-center gap-1" role="tablist" aria-label="نوع درخواست پرداخت">
-            {[['normal', 'عادی'], ['tenkhah', 'تنخواه']].map(([value, label]) => <button key={value} type="button" role="tab" aria-selected={requestType === value} onClick={() => setRequestType(value)} className={`h-9 rounded-xl px-4 text-sm font-semibold transition-all duration-200 ${requestType === value ? "bg-white text-neutral-950 shadow-sm ring-1 ring-black/[0.06] dark:bg-white dark:text-neutral-900" : "text-neutral-500 hover:bg-white/70 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-white/[.08] dark:hover:text-white"}`}>{label}</button>)}
+        {showForm && <div className="mb-4 w-full rounded-2xl border border-black/10 bg-neutral-100/80 p-1.5 shadow-inner shadow-black/[0.03] dark:border-white/10 dark:bg-white/[.06] sm:mb-5 sm:w-fit">
+          <div className="grid grid-cols-2 items-center gap-1 sm:flex" role="tablist" aria-label="نوع درخواست پرداخت">
+            {[['normal', 'عادی'], ['tenkhah', 'تنخواه']].map(([value, label]) => <button key={value} type="button" role="tab" aria-selected={requestType === value} onClick={() => setRequestType(value)} className={`h-10 rounded-xl px-4 text-sm font-semibold transition-all duration-200 sm:h-9 ${requestType === value ? "bg-white text-neutral-950 shadow-sm ring-1 ring-black/[0.06] dark:bg-white dark:text-neutral-900" : "text-neutral-500 hover:bg-white/70 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-white/[.08] dark:hover:text-white"}`}>{label}</button>)}
           </div>
         </div>}
 
         {showForm && <div className={requestType === "tenkhah" ? "" : "hidden"}><TenkhahPage embedded active={requestType === "tenkhah"} /></div>}
 
-        {showForm && <form onSubmit={submit} className={`mb-5 space-y-4 rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03] md:p-5 ${requestType === "normal" ? "" : "hidden"}`}>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(260px,1fr)_minmax(220px,1fr)_minmax(210px,0.8fr)]">
+        {showForm && <form onSubmit={submit} className={`mb-5 space-y-4 rounded-2xl border border-black/10 bg-neutral-50/70 p-3 dark:border-white/10 dark:bg-white/[.03] sm:p-4 lg:p-5 ${requestType === "normal" ? "" : "hidden"}`}>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_minmax(220px,1fr)_minmax(210px,0.8fr)]">
             <Field label="پروژه" required><select className={inputClass} value={form.projectId} onChange={(e) => setForm((old) => ({ ...old, projectId: e.target.value, budgetCode: "", targetAssigneeUserId: "" }))}><option value="">انتخاب پروژه</option>{projects.map((item) => <option key={item.id} value={item.id}>{projectLabel(item)}</option>)}</select></Field>
             <Field label="کد بودجه" required><button type="button" disabled={!form.projectId} onClick={() => { setBudgetPickerQuery(""); setBudgetPickerOpen(true); }} className={`${inputClass} flex items-center justify-between gap-3 text-right disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400 dark:disabled:bg-white/5 dark:disabled:text-neutral-500`}><span className={form.budgetCode ? "min-w-0 truncate" : "text-neutral-400"}>{form.budgetCode ? (() => { const item = budgetItems.find((row) => normalizeBudgetCode(row.code || row.center_code) === form.budgetCode); const description = item?.center_desc || item?.last_desc || item?.name || item?.description || ""; return `${form.budgetCode}${description ? ` - ${description}` : ""}`; })() : (form.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید")}</span><span className="shrink-0 text-lg leading-none">⌄</span></button></Field>
-            <div className="flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">باقی‌مانده نقدینگی پروژه: <span className="mr-1 font-medium tabular-nums">{projectLiquidityLoading ? "در حال دریافت..." : `${exactRialMoney(projectLiquidityRemaining)} ریال`}</span></div>
+            <div className="flex min-h-11 flex-wrap items-center rounded-xl bg-black/[0.035] px-3 py-2 text-xs leading-6 text-neutral-700 dark:bg-white/[0.05] dark:text-neutral-200 sm:col-span-2 sm:text-sm xl:col-span-1 xl:items-end xl:bg-transparent xl:px-0">باقی‌مانده نقدینگی پروژه: <span className="mr-1 font-medium tabular-nums">{projectLiquidityLoading ? "در حال دریافت..." : `${exactRialMoney(projectLiquidityRemaining)} ریال`}</span></div>
           </div>
 
-          <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.05fr)_minmax(210px,0.82fr)_minmax(96px,0.38fr)_minmax(260px,1.1fr)]">
+          <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1.05fr)_minmax(210px,0.82fr)_minmax(96px,0.38fr)_minmax(260px,1.1fr)]">
             <Field label="موضوع درخواست" required><input className={`${inputClass} h-12 text-[15px]`} value={form.title} onChange={(e) => setField("title", e.target.value)} /></Field>
             <Field label="مبلغ درخواست" required>
               <div className="relative min-w-0">
@@ -1245,12 +1245,12 @@ export default function PaymentRequestPage() {
             <Field label="نرخ">
               <MoneyInput value={form.exchangeRate} onChange={(value) => setField("exchangeRate", value)} disabled={isRialCurrency} className={isRialCurrency ? "cursor-not-allowed bg-neutral-100 text-neutral-400 dark:bg-white/5 dark:text-neutral-500" : ""} />
             </Field>
-            <div className="mt-5 flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">مبلغ درخواست: <span className="mr-1 inline-flex flex-row-reverse items-center gap-1 font-medium tabular-nums" dir="ltr"><span>{toFa(exactRialMoney(rialAmount))}</span><span dir="ltr">ریال</span></span></div>
+            <div className="flex min-h-11 flex-wrap items-center rounded-xl bg-black/[0.035] px-3 py-2 text-xs text-neutral-700 dark:bg-white/[0.05] dark:text-neutral-200 sm:mt-5 sm:text-sm xl:items-end xl:bg-transparent xl:px-0 xl:pb-2">مبلغ درخواست: <span className="mr-1 inline-flex flex-row-reverse items-center gap-1 font-medium tabular-nums" dir="ltr"><span>{toFa(exactRialMoney(rialAmount))}</span><span dir="ltr">ریال</span></span></div>
           </div>
 
           <Field label="شرح درخواست"><textarea className={`${inputClass} min-h-24 py-2 leading-7`} value={form.description} onChange={(e) => setField("description", e.target.value)} /></Field>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(180px,1.1fr)_minmax(110px,0.55fr)_minmax(112px,0.55fr)_auto_auto_minmax(135px,0.65fr)_minmax(165px,1.2fr)]">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-[minmax(180px,1.1fr)_minmax(110px,0.55fr)_minmax(112px,0.55fr)_auto_auto_minmax(135px,0.65fr)_minmax(165px,1.2fr)]">
             <Field label="نوع سند">
               <select className={inputClass} value={financialDocumentTypes.some((option) => String(option.title) === String(form.docId)) ? form.docId : ""} onChange={(event) => setForm((old) => ({ ...old, docId: event.target.value, docOther: "" }))}>
                 <option value="">انتخاب کنید</option>
@@ -1269,8 +1269,8 @@ export default function PaymentRequestPage() {
               <div className="isolate flex items-center"><button type="button" onClick={() => setLetterPickerOpen(true)} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white text-lg transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب نامه" aria-label="انتخاب نامه">•••</button></div>
               {!!form.relatedLetterIds.length && <div className="mt-1 text-[11px] font-medium text-neutral-600 dark:text-neutral-300">{toFa(form.relatedLetterIds.length)} نامه مرتبط انتخاب شده</div>}
             </Field>
-            <div className="flex min-w-0 items-start gap-2 md:col-span-2">
-              <Field label="درخواست تامین" className="w-[135px] shrink-0">
+            <div className="flex min-w-0 flex-col items-stretch gap-2 sm:col-span-2 sm:flex-row sm:items-start lg:col-span-4 xl:col-span-2">
+              <Field label="درخواست تامین" className="w-full shrink-0 sm:w-[135px]">
                 <div className="flex h-11 items-center gap-3 whitespace-nowrap px-1">
                   {[["no", "ندارد"], ["yes", "دارد"]].map(([value, label]) => {
                     const checked = form.hasSupplyRequest === value;
@@ -1299,7 +1299,7 @@ export default function PaymentRequestPage() {
                 {createRecipients.users.map((recipient) => <option key={recipient.id} value={recipient.id}>{recipient.name || recipient.username || recipient.email || `کاربر #${recipient.id}`}</option>)}
               </select>
             </Field>}
-            <button type="submit" disabled={submitting || uploading} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-neutral-900 text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-neutral-800 hover:shadow-md disabled:translate-y-0 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90" title="ثبت" aria-label="ثبت"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button>
+            <button type="submit" disabled={submitting || uploading} className="flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-neutral-900 px-5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-neutral-800 hover:shadow-md disabled:translate-y-0 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 sm:w-auto" title="ثبت" aria-label="ثبت"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /><span className="sm:hidden">ثبت درخواست</span></button>
           </div>
           {(error || success) && <div className={`rounded-xl px-3 py-2 text-sm ${error ? "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300" : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"}`}>{error || success}</div>}
         </form>}
@@ -1338,6 +1338,16 @@ export default function PaymentRequestPage() {
         {!showForm && <RequestFilterBar query={filterQuery} setQuery={setFilterQuery} quick={filterQuick} setQuick={setFilterQuick} ownership={filterOwnership} setOwnership={setFilterOwnership} status={filterStatus} setStatus={setFilterStatus} unread={filterUnread} setUnread={setFilterUnread} fromDate={filterFromDate} setFromDate={setFilterFromDate} toDate={filterToDate} setToDate={setFilterToDate} onExportExcel={exportFilteredExcel} exportingExcel={exportingExcel} exportDisabled={!sortedItems.length} tags={tags} pinnedTagIds={pinnedFilterTagIds} setPinnedTagIds={setPinnedFilterTagIds} activeTagIds={filterTagIds} setActiveTagIds={setFilterTagIds} tagPickOpen={tagPickOpen} setTagPickOpen={setTagPickOpen} tagPickSearch={tagPickSearch} setTagPickSearch={setTagPickSearch} />}
 
         <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
+          <div className="relative flex min-h-12 items-center justify-between gap-3 border-b border-black/10 bg-neutral-50 px-3 py-2 dark:border-white/10 dark:bg-white/[0.04] md:hidden">
+            <label className="inline-flex min-h-10 items-center gap-2 text-xs font-medium text-neutral-600 dark:text-neutral-300">
+              <input ref={selectAllRef} type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allVisibleSelected} onChange={toggleSelectAll} />
+              انتخاب همه
+            </label>
+            <div className="flex items-center gap-3 pl-10 text-xs text-neutral-500 dark:text-neutral-400">
+              <span>{selectedIds.size ? `${toFa(selectedIds.size)} انتخاب` : `${toFa(total)} درخواست`}</span>
+              <ReadingStatusMenu tableMenuRef={tableMenuRef} tableMenuOpen={tableMenuOpen} setTableMenuOpen={setTableMenuOpen} selectedIds={selectedIds} setSelectedReadStatus={setSelectedReadStatus} canEditSelectedRequest={canEditSelectedRequest} editSelectedRequest={editSelectedRequest} deletingSelected={deletingSelected} deleteSelectedRequests={deleteSelectedRequests} />
+            </div>
+          </div>
           <div className="relative hidden max-h-[55vh] overflow-y-auto overflow-x-hidden pb-0 md:block" dir="ltr">
             <table dir="rtl" className="w-full min-w-full table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:min-w-0 [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2">
             <colgroup><col style={{ width: 40 }} /><col style={{ width: 18 }} /><col style={{ width: 90 }} /><col style={{ width: 100 }} /><col style={{ width: 205 }} /><col /><col style={{ width: 165 }} /><col style={{ width: 130 }} /><col style={{ width: 140 }} /></colgroup>
@@ -1365,10 +1375,33 @@ export default function PaymentRequestPage() {
               </tr>)}
             </tbody>
           </table></div>
-          <div className="grid gap-3 p-3 md:hidden">{pageItems.map((item) => <button key={item.id} type="button" onClick={() => item.requestType === "tenkhah" ? setSelectedTenkhah(item) : openPreview(item)} className={`rounded-xl border p-3 text-right ${item.requestType === "tenkhah" ? "border-violet-200 bg-violet-50 dark:border-violet-400/20 dark:bg-violet-500/10" : "border-black/10 dark:border-white/10"}`}><div className="flex items-center justify-between gap-2"><b>{item.requestType === "tenkhah" ? item.serial : displayPaymentSerial(item, projects)}</b><StatusBadge status={item.displayStatus || item.status} /></div><div className="mt-2 truncate text-sm">{item.title || "—"}</div><div className="mt-2 text-xs text-neutral-500">مبلغ: {toFa(item.requestType === "tenkhah" ? (money(item.amount) || "0") : paymentRequestAmount(item.amount, Boolean(item.currencyTypeId)))} {item.requestType === "tenkhah" ? item.currencyName : currencyNameOf(item.currencyTypeId, currencyTypes)}</div><div className="mt-1 text-xs text-neutral-500">{toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))}</div></button>)}</div>
-          <div className="border-t border-neutral-300 px-3 py-2 dark:border-neutral-800"><div className="flex flex-col items-stretch gap-2 md:flex-row md:flex-wrap md:items-center md:justify-between">
+          <div className="grid gap-2.5 p-2.5 sm:grid-cols-2 sm:p-3 md:hidden">
+            {loading ? <div className="col-span-full py-10 text-center text-sm text-black/60 dark:text-neutral-400">در حال دریافت...</div> : pageItems.length === 0 ? <div className="col-span-full py-10 text-center text-sm text-black/60 dark:text-neutral-400">هنوز درخواستی ثبت نشده است.</div> : pageItems.map((item) => {
+              const itemId = String(item.id);
+              const itemCurrency = item.requestType === "tenkhah" ? item.currencyName : currencyNameOf(item.currencyTypeId, currencyTypes);
+              return <article key={item.id} className={`relative overflow-hidden rounded-2xl border transition ${selectedIds.has(itemId) ? "ring-2 ring-neutral-900/15 dark:ring-white/20" : ""} ${item.requestType === "tenkhah" ? "border-violet-200 bg-violet-50/80 dark:border-violet-400/20 dark:bg-violet-500/10" : "border-black/10 bg-white dark:border-white/10 dark:bg-white/[0.025]"}`}>
+                <label className="absolute left-2.5 top-2.5 z-10 grid h-10 w-10 cursor-pointer place-items-center rounded-xl bg-white/90 shadow-sm ring-1 ring-black/10 dark:bg-neutral-800/90 dark:ring-white/10" title="انتخاب درخواست">
+                  <input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(itemId)} onChange={() => toggleSelected(item.id)} aria-label={`انتخاب درخواست ${item.requestType === "tenkhah" ? item.serial : displayPaymentSerial(item, projects)}`} />
+                </label>
+                <button type="button" onClick={() => item.requestType === "tenkhah" ? setSelectedTenkhah(item) : openPreview(item)} className="block w-full p-3.5 pl-14 text-right">
+                  <div className="flex min-w-0 items-center gap-2">
+                    {isUnreadForUser(item) && <span className="h-2 w-2 shrink-0 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="خوانده‌نشده" />}
+                    <b className="min-w-0 truncate text-sm">{toFa(item.requestType === "tenkhah" ? item.serial : displayPaymentSerial(item, projects))}</b>
+                  </div>
+                  <div className="mt-3 line-clamp-2 min-h-10 text-sm font-medium leading-5">{item.title || "بدون موضوع"}</div>
+                  <div className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 border-t border-black/[0.07] pt-3 text-xs dark:border-white/10">
+                    <span className="text-neutral-400">پروژه</span><span className="truncate text-left text-neutral-600 dark:text-neutral-300">{projectLabel(projects.find((row) => String(row.id) === String(item.projectId))) || item.projectName || item.projectCode || "—"}</span>
+                    <span className="text-neutral-400">مبلغ</span><span dir="ltr" className="truncate text-left font-medium tabular-nums text-neutral-700 dark:text-neutral-200">{toFa(item.requestType === "tenkhah" ? (money(item.amount) || "0") : paymentRequestAmount(item.amount, Boolean(item.currencyTypeId)))} {itemCurrency}</span>
+                    <span className="text-neutral-400">تاریخ</span><span className="text-left text-neutral-600 dark:text-neutral-300">{toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))}</span>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-2"><WaitingUnitCell item={item} /><StatusBadge status={item.displayStatus || item.status} /></div>
+                </button>
+              </article>;
+            })}
+          </div>
+          <div className="border-t border-neutral-300 px-2.5 py-2.5 dark:border-neutral-800 sm:px-3"><div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="flex items-center justify-between gap-2 text-sm md:justify-start"><div className="flex items-center gap-2"><button type="button" onClick={() => setPage((old) => Math.max(0, old - 1))} disabled={safePage <= 0} className="inline-grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.04] disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="صفحه قبل"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 18l6-6-6-6" /></svg></button><button type="button" onClick={() => setPage((old) => Math.min(pageCount - 1, old + 1))} disabled={safePage >= pageCount - 1} className="inline-grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.04] disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="صفحه بعد"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M15 18l-6-6 6-6" /></svg></button></div><div className="whitespace-nowrap text-black/70 dark:text-neutral-400">{total === 0 ? "۰ از ۰" : `${toFa(startIndex + 1)}–${toFa(endIndex)} از ${toFa(total)}`}</div></div>
-            <div className="flex items-center justify-between gap-2 text-sm md:justify-start"><span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span><div className="inline-flex h-9 overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">{[10, 25, 100].map((count) => <button key={count} type="button" onClick={() => { setRowsPerPage(count); setPage(0); }} className={`min-w-10 px-3 text-sm font-semibold transition ${rowsPerPage === count ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-700 hover:bg-black/[0.04] dark:text-white/75 dark:hover:bg-white/10"}`}>{toFa(count)}</button>)}</div></div>
+            <div className="flex items-center justify-between gap-2 text-xs sm:text-sm md:justify-start"><span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span><div className="inline-flex h-9 overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">{[10, 25, 100].map((count) => <button key={count} type="button" onClick={() => { setRowsPerPage(count); setPage(0); }} className={`min-w-10 px-2.5 text-sm font-semibold transition sm:px-3 ${rowsPerPage === count ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-700 hover:bg-black/[0.04] dark:text-white/75 dark:hover:bg-white/10"}`}>{toFa(count)}</button>)}</div></div>
           </div></div>
         </div>
       </div>
@@ -1498,7 +1531,7 @@ function RequestFilterBar({ query, setQuery, quick, setQuick, ownership, setOwne
     });
   };
 
-  return <div className="mb-4 space-y-2 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
+  return <div className="mb-3 space-y-2 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-2.5 shadow-sm dark:border-white/10 dark:bg-white/[0.06] sm:mb-4 sm:p-3">
     <div className="flex flex-wrap items-end gap-2">
       <div className="w-full md:min-w-[280px] md:flex-1">
         <div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">جست و جو</div>
@@ -1512,7 +1545,7 @@ function RequestFilterBar({ query, setQuery, quick, setQuick, ownership, setOwne
     </div>
     <div>
       <div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">برچسب ها</div>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="-mx-1 flex flex-nowrap items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
         <button type="button" onClick={() => setOwnership(ownership === "mine" ? "" : "mine")} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(ownership === "mine")}`}>درخواست‌های من</button>
         <button type="button" onClick={() => setOwnership(ownership === "incoming" ? "" : "incoming")} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(ownership === "incoming")}`}>موارد ارسال‌شده به من</button>
         {[['pending', 'در انتظار تأیید'], ['approved', 'پرداخت شد'], ['returned', 'برگشت خورد'], ['rejected', 'رد شد'], ['tenkhah', 'تنخواه']].map(([key, label]) => <button key={key} type="button" onClick={() => setStatus(status === key ? "" : key)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition ${statusBadgeClass(key)} ${status === key ? "ring-2 ring-black/20 dark:ring-white/25" : "hover:brightness-95"}`}>{label}</button>)}
@@ -2532,17 +2565,17 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
 
   return createPortal(<div className="fixed inset-0 z-[9999]">
     <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
-    <div className="absolute inset-0 flex items-center justify-center p-3 md:p-6">
-      <div dir="rtl" className="flex h-[min(90vh,860px)] w-[min(1180px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
-        <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3 dark:border-white/10">
-          <div className="flex items-center gap-2">
+    <div className="absolute inset-0 flex items-end justify-center sm:items-center sm:p-3 md:p-6">
+      <div dir="rtl" className="flex h-[calc(100dvh-env(safe-area-inset-top,0px))] w-full flex-col overflow-hidden rounded-t-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white sm:h-[min(90vh,860px)] sm:w-[min(1180px,calc(100vw-20px))] sm:rounded-2xl" onClick={(event) => event.stopPropagation()}>
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-black/10 px-3 py-2.5 dark:border-white/10 sm:gap-3 sm:px-4 sm:py-3">
+          <div className="flex min-w-0 items-center gap-2">
             <div className="text-sm font-bold">اقدامات پرداخت</div>
-            <button type="button" onClick={openPdfPreview} className="inline-flex h-9 items-center gap-2 rounded-lg border border-black/10 px-3 text-xs font-semibold transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10" title="مشاهده PDF" aria-label="مشاهده PDF"><img src="/images/icons/print.svg" alt="" className="h-4 w-4 dark:invert" /><span>مشاهده PDF</span></button>
+            <button type="button" onClick={openPdfPreview} className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-black/10 px-2.5 text-xs font-semibold transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10 sm:px-3" title="مشاهده PDF" aria-label="مشاهده PDF"><img src="/images/icons/print.svg" alt="" className="h-4 w-4 dark:invert" /><span className="hidden min-[360px]:inline">مشاهده PDF</span></button>
           </div>
           <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-800 text-white shadow-sm transition hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200" aria-label="بستن" title="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
         </div>
-        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(300px,0.72fr)_minmax(0,1.55fr)]">
-          <aside className="flex items-start border-b border-black/10 p-4 dark:border-white/10 lg:border-b-0 lg:border-l">
+        <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(300px,0.72fr)_minmax(0,1.55fr)] lg:overflow-hidden">
+          <aside className="flex items-start border-b border-black/10 p-3 dark:border-white/10 sm:p-4 lg:border-b-0 lg:border-l">
             <section className="w-full self-start overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
               <div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">فرآیند پرداخت</div>
               <div className="px-4">
@@ -2550,7 +2583,7 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
               </div>
             </section>
           </aside>
-          <main className="min-h-0 overflow-y-auto p-4 md:p-5">
+          <main className="min-h-0 overflow-visible p-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:p-4 md:p-5 lg:overflow-y-auto">
             <div className="space-y-4">
               <PreviewSection title="جزئیات درخواست پرداخت" flush>
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
@@ -2874,7 +2907,7 @@ function PaymentWorkflowTimeline({ history, item }) {
 }
 
 function PreviewSection({ title, children, flush = false }) { return <section className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">{title}</div><div className={`divide-y divide-black/10 dark:divide-white/10 ${flush ? "" : "px-4"}`}>{children}</div></section>; }
-function PreviewRow({ label, value, ltr, compact = false, valueClassName = "", colon = false, fixedLabel = false, editing = false }) { return <div className={`min-w-0 ${compact ? `grid items-start gap-2 px-3 py-3 text-xs ${fixedLabel ? "grid-cols-[92px_minmax(0,1fr)]" : "grid-cols-[auto_minmax(0,1fr)]"}` : "grid grid-cols-[135px_1fr] gap-3 px-4 py-2.5 text-sm"} ${editing ? "[&_input]:h-8 [&_select]:h-8 [&_input]:rounded-lg [&_select]:rounded-lg [&_textarea]:rounded-lg [&_input]:border-transparent [&_select]:border-transparent [&_textarea]:border-transparent [&_input]:bg-neutral-50 [&_select]:bg-neutral-50 [&_textarea]:bg-neutral-50 [&_input]:px-2 [&_select]:px-2 focus-within:[&_input]:border-black/20 focus-within:[&_select]:border-black/20 focus-within:[&_textarea]:border-black/20 dark:[&_input]:bg-white/5 dark:[&_select]:bg-white/5 dark:[&_textarea]:bg-white/5" : ""}`}><div className={`text-neutral-500 dark:text-neutral-400 ${compact ? "whitespace-nowrap" : ""}`}>{label}{colon ? ":" : ""}</div><div dir={ltr ? "ltr" : "rtl"} className={`min-w-0 break-words font-medium ${ltr ? "text-left" : "text-right"} ${valueClassName}`}>{value}</div></div>; }
+function PreviewRow({ label, value, ltr, compact = false, valueClassName = "", colon = false, fixedLabel = false, editing = false }) { return <div className={`min-w-0 ${compact ? `grid items-start gap-2 px-3 py-3 text-xs ${fixedLabel ? "grid-cols-[minmax(74px,92px)_minmax(0,1fr)]" : "grid-cols-[auto_minmax(0,1fr)]"}` : "grid grid-cols-1 gap-1.5 px-3 py-2.5 text-sm sm:grid-cols-[135px_1fr] sm:gap-3 sm:px-4"} ${editing ? "[&_input]:h-8 [&_select]:h-8 [&_input]:rounded-lg [&_select]:rounded-lg [&_textarea]:rounded-lg [&_input]:border-transparent [&_select]:border-transparent [&_textarea]:border-transparent [&_input]:bg-neutral-50 [&_select]:bg-neutral-50 [&_textarea]:bg-neutral-50 [&_input]:px-2 [&_select]:px-2 focus-within:[&_input]:border-black/20 focus-within:[&_select]:border-black/20 focus-within:[&_textarea]:border-black/20 dark:[&_input]:bg-white/5 dark:[&_select]:bg-white/5 dark:[&_textarea]:bg-white/5" : ""}`}><div className={`text-neutral-500 dark:text-neutral-400 ${compact ? "whitespace-nowrap" : ""}`}>{label}{colon ? ":" : ""}</div><div dir={ltr ? "ltr" : "rtl"} className={`min-w-0 break-words font-medium ${ltr ? "text-left" : "text-right"} ${valueClassName}`}>{value}</div></div>; }
 function historyLabel(value) { return ({ created: "ثبت درخواست", approved: "تأیید", rejected: "رد", returned: "برگشت", edited: "ویرایش" })[value] || value || "—"; }
 function formatDateTime(value) { if (!value) return "—"; try { return new Intl.DateTimeFormat("fa-IR-u-ca-persian", { dateStyle: "short", timeStyle: "short" }).format(new Date(value)); } catch { return "—"; } }
 
