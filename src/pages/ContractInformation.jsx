@@ -4069,16 +4069,16 @@ export default function ContractInformation() {
                       <div className={calendarCardCls}>
                         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[repeat(3,minmax(0,1fr))_minmax(240px,1.2fr)] lg:items-start">
                           <div className="min-w-0">
-                            <div className={labelCls}>تاریخ ابلاغ کار *</div>
                             <div className="flex items-start gap-2">
                               <div className="flex-1">
+                                <div className={labelCls}>تاریخ ابلاغ کار *</div>
                                 <ContractDatePicker
                                   value={form.calendar?.notifyDate || ""}
                                   onChange={(value) => setCalendarField("notifyDate", value)}
                                 />
                               </div>
-                              <div className="flex flex-col items-center gap-1">
-                                <div className="whitespace-nowrap text-[11px] font-medium text-black/55 dark:text-neutral-400">اسناد مرتبط</div>
+                              <div className="flex shrink-0 flex-col items-center">
+                                <div className={`${labelCls} whitespace-nowrap text-[11px] font-medium`}>اسناد مرتبط</div>
                                 <button
                                   type="button"
                                   onClick={() => openRelatedPicker("contract")}
@@ -4111,7 +4111,7 @@ export default function ContractInformation() {
                             </div>
                           </div>
 
-                          <div className="flex items-center pt-0 text-sm font-medium text-black/75 dark:text-neutral-200">
+                          <div className="flex items-center text-sm font-medium text-black/75 dark:text-neutral-200">
                             مدت اولیه قرارداد: <span className="mr-1 font-semibold text-black dark:text-neutral-100">{calendarTotals.baseDays ? `${toFaDigits(calendarTotals.baseDays)} روز` : "محاسبه نشده"}</span>
                           </div>
                         </div>
