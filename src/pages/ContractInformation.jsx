@@ -4070,7 +4070,7 @@ export default function ContractInformation() {
                         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[repeat(3,minmax(0,1fr))_minmax(240px,1.2fr)] lg:items-start">
                           <div className="min-w-0">
                             <div className={labelCls}>تاریخ ابلاغ کار *</div>
-                            <div className="flex items-end gap-2">
+                            <div className="flex items-start gap-2">
                               <div className="flex-1">
                                 <ContractDatePicker
                                   value={form.calendar?.notifyDate || ""}
