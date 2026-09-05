@@ -69,12 +69,12 @@ export default function MobileNav({ groups, user, logout, isActive }) {
         <div className="mobile-menu-sheet">
           <div className="mobile-sheet-handle" aria-hidden="true" />
           <header className="mobile-menu-heading">
-            <div><span className="mobile-menu-eyebrow">دسترسی سریع</span><h2 id="mobile-menu-title">{section?.label || "میانبرهای من"}</h2><p>{section ? "بخش مورد نظر خود را انتخاب کنید." : "بخش‌های پرکاربرد، همیشه در دسترس شما"}</p></div>
+            <div><span className="mobile-menu-eyebrow">دسترسی سریع</span><h2 id="mobile-menu-title">{section?.label || "میانبرهای من"}</h2>{section && <p>بخش مورد نظر خود را انتخاب کنید.</p>}</div>
             <button type="button" className="mobile-round-button" onClick={close} aria-label="بستن منو" autoFocus><X size={20} /></button>
           </header>
           <div className="mobile-menu-scroll">
             {panel === "more" && <>
-              <div className="mobile-shortcut-heading"><span>فضای کار شما</span><button type="button" onClick={() => { setEditing(!editing); setQuery(""); }}>{editing ? <Check size={15} /> : <Pencil size={15} />}{editing ? "انجام شد" : "ویرایش"}</button></div>
+              <div className="mobile-shortcut-heading"><span aria-hidden="true" /><button type="button" onClick={() => { setEditing(!editing); setQuery(""); }}>{editing ? <Check size={15} /> : <Pencil size={15} />}{editing ? "انجام شد" : "ویرایش"}</button></div>
               {!editing && <div className="mobile-shortcuts">{shortcuts.map((item) => link(item, "mobile-shortcut"))}{shortcuts.length < 6 && <button type="button" className="mobile-shortcut mobile-shortcut-add" onClick={() => setEditing(true)}><Plus size={25} /><span>افزودن میانبر</span></button>}</div>}
               {editing && <p className="mobile-edit-hint">تا ۶ میانبر انتخاب کنید. برای حذف، دوباره روی گزینه بزنید.</p>}
               <label className="mobile-menu-search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="جستجو در بخش‌ها…" aria-label="جستجو در بخش‌ها" />{query && <button type="button" onClick={() => setQuery("")} aria-label="پاک کردن جستجو"><X size={16} /></button>}</label>

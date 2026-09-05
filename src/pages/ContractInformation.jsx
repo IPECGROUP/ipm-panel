@@ -3926,7 +3926,7 @@ export default function ContractInformation() {
                         </div>
 
                         <div className="flex w-11 flex-col items-center gap-1">
-                          <div className="whitespace-nowrap text-center text-[11px] font-semibold text-black/55 dark:text-neutral-400">انتخاب اسناد مرتبط</div>
+                          <div className="whitespace-nowrap text-center text-[11px] font-semibold text-black/55 dark:text-neutral-400">اسناد مرتبط</div>
                           <button type="button" onClick={() => openRelatedPicker("contract")} className={`${iconBtnCls} relative !h-11 !w-11 shrink-0`} aria-label="انتخاب اسناد مرتبط" title="انتخاب اسناد مرتبط">
                             <img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" />
                             <RelatedDocumentCountBadge value={selectedRelatedLetterSummaryItems.length} />
@@ -3971,7 +3971,7 @@ export default function ContractInformation() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(115px,0.75fr)_minmax(135px,0.9fr)_repeat(3,minmax(150px,1fr))]">
                         {form.documentType === "sub" ? (
                           <div className="min-w-0">
                             <div className={labelCls}>شماره قرارداد فرعی *</div>
