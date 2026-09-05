@@ -83,6 +83,7 @@ const EMPTY_APPENDIX_ROW = {
   sourceLabel: "",
   workScope: "",
   relatedLetterIds: [],
+  files: [],
 };
 
 const GUARANTEE_NAME_OPTIONS = ["پیش پرداخت", "انجام تعهدات", "علی الحساب", "سایر"];
@@ -334,6 +335,7 @@ function makeAppendixRow(row = {}) {
     ...row,
     id: String(row?.id || `${Date.now()}_${Math.random().toString(16).slice(2)}`),
     relatedLetterIds: normalizeIdList(row?.relatedLetterIds ?? row?.related_letter_ids),
+    files: Array.isArray(row?.files) ? row.files : [],
   };
 }
 
@@ -1233,6 +1235,7 @@ export default function ContractInformation() {
   const [currencyError, setCurrencyError] = React.useState("");
   const financialUploadInputRef = React.useRef(null);
   const insuranceUploadInputRef = React.useRef(null);
+  const appendixUploadInputRef = React.useRef(null);
   const [editingGuaranteeId, setEditingGuaranteeId] = React.useState("");
   const [editingGuaranteeDraft, setEditingGuaranteeDraft] = React.useState(() => ({ ...EMPTY_GUARANTEE_ROW }));
   const [appendixDraft, setAppendixDraft] = React.useState(() => makeAppendixRow());
@@ -2011,7 +2014,7 @@ export default function ContractInformation() {
     setAppendixDraft((prev) => {
       if (field === "currencyId") {
         const item = currencyById.get(String(value));
-        return { ...prev, currencyId: String(value || ""), currencyLabel: item ? readItemLabel(item) : "" };
+        return { ...prev, currencyId: String(value || ""), currencyLabel: item ? readItemLabel(item) : "", sourceId: "", sourceLabel: "" };
       }
       if (field === "sourceId") {
         const item = currencySourceById.get(String(value));
@@ -2021,17 +2024,25 @@ export default function ContractInformation() {
     });
   };
 
+  const addAppendixFiles = async (fileList) => {
+    let incoming = [];
+    try {
+      incoming = await uploadContractFiles(fileList);
+    } catch (error) {
+      alert(error?.message || "خطا در بارگذاری فایل");
+      return;
+    }
+    if (incoming.length) setAppendixDraft((prev) => ({ ...prev, files: [...(prev.files || []), ...incoming] }));
+  };
+
+  const removeAppendixFile = (fileId) => {
+    setAppendixDraft((prev) => ({ ...prev, files: (prev.files || []).filter((file) => String(file?.id) !== String(fileId)) }));
+  };
+
   const saveAppendixRow = () => {
     const draft = makeAppendixRow(appendixDraft);
-    const missing = [];
-    if (!draft.fromDate) missing.push("از");
-    if (!draft.toDate) missing.push("تا");
-    if (!hasFinancialAmount(draft.amount)) missing.push("مبلغ");
-    if (!draft.currencyId) missing.push("ارز");
-    if (!draft.sourceId) missing.push("منشأ");
-    if (!draft.workScope.trim()) missing.push("دامنه کار");
-    if (missing.length) {
-      alert(`فیلدهای اجباری الحاقیه: ${missing.join("، ")}`);
+    if (!draft.files.length) {
+      alert("بارگذاری فایل الحاقیه الزامی است.");
       return;
     }
     setForm((prev) => {
@@ -4837,15 +4848,16 @@ export default function ContractInformation() {
                     <div className="space-y-4 p-3 sm:p-4">
                       {currencyError ? <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">{currencyError}</div> : null}
                       <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[105px_105px_140px_120px_150px_minmax(190px,1.5fr)_94px]">
-                          <div><div className={labelCls}>از *</div><ContractDatePicker value={appendixDraft.fromDate} onChange={(value) => updateAppendixDraft("fromDate", value)} /></div>
-                          <div><div className={labelCls}>تا *</div><ContractDatePicker value={appendixDraft.toDate} onChange={(value) => updateAppendixDraft("toDate", value)} /></div>
-                          <div><div className={labelCls}>مبلغ *</div><input value={formatAmountInput(appendixDraft.amount)} onChange={(e) => updateAppendixDraft("amount", e.target.value)} className={inputCls} type="text" inputMode="decimal" dir="ltr" placeholder="0" /></div>
-                          <div><div className={labelCls}>ارز *</div><select value={appendixDraft.currencyId} onChange={(e) => updateAppendixDraft("currencyId", e.target.value)} className={inputCls} disabled={currencyLoading}><option value="">{currencyLoading ? "در حال بارگذاری..." : "انتخاب ارز"}</option>{currencyItems.map((item) => { const id = readItemId(item); return id ? <option key={id} value={id}>{readItemLabel(item) || id}</option> : null; })}</select></div>
-                          <div><div className={labelCls}>منشأ *</div><select value={appendixDraft.sourceId} onChange={(e) => updateAppendixDraft("sourceId", e.target.value)} className={inputCls} disabled={currencyLoading}><option value="">{currencyLoading ? "در حال بارگذاری..." : "انتخاب منشأ"}</option>{currencySourceItems.map((item) => { const id = readItemId(item); return id ? <option key={id} value={id}>{readItemLabel(item) || id}</option> : null; })}</select></div>
-                          <div><div className={labelCls}>دامنه کار *</div><input value={appendixDraft.workScope} onChange={(e) => updateAppendixDraft("workScope", e.target.value)} className={inputCls} type="text" /></div>
-                          <div className="flex items-end gap-2"><button type="button" onClick={() => openRelatedPicker("appendix")} className={`${iconBtnCls} !h-11 !w-11 shrink-0`} aria-label="انتخاب اسناد مرتبط" title="انتخاب اسناد مرتبط"><img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" /></button><button type="button" onClick={saveAppendixRow} className={`${iconBtnCls} !h-11 !w-11 shrink-0`} aria-label={editingAppendixId ? "ذخیره ویرایش الحاقیه" : "افزودن الحاقیه"} title={editingAppendixId ? "ذخیره ویرایش" : "افزودن الحاقیه"}><img src={editingAppendixId ? "/images/icons/check.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" /></button></div>
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[135px_135px_180px_120px_150px_minmax(130px,1fr)_140px]">
+                          <div><div className={labelCls}>از</div><ContractDatePicker value={appendixDraft.fromDate} onChange={(value) => updateAppendixDraft("fromDate", value)} /></div>
+                          <div><div className={labelCls}>تا</div><ContractDatePicker value={appendixDraft.toDate} onChange={(value) => updateAppendixDraft("toDate", value)} /></div>
+                          <div><div className={labelCls}>مبلغ</div><input value={formatAmountInput(appendixDraft.amount)} onChange={(e) => updateAppendixDraft("amount", e.target.value)} className={inputCls} type="text" inputMode="decimal" dir="ltr" placeholder="0" /></div>
+                          <div><div className={labelCls}>ارز</div><select value={appendixDraft.currencyId} onChange={(e) => updateAppendixDraft("currencyId", e.target.value)} className={inputCls} disabled={currencyLoading}><option value="">{currencyLoading ? "در حال بارگذاری..." : "انتخاب ارز"}</option>{currencyItems.map((item) => { const id = readItemId(item); return id ? <option key={id} value={id}>{readItemLabel(item) || id}</option> : null; })}</select></div>
+                          <div><div className={labelCls}>منشأ</div><select value={appendixDraft.sourceId} onChange={(e) => updateAppendixDraft("sourceId", e.target.value)} className={inputCls} disabled={currencyLoading || Boolean(appendixDraft.currencyId)}><option value="">{currencyLoading ? "در حال بارگذاری..." : appendixDraft.currencyId ? "با انتخاب ارز غیرفعال است" : "انتخاب منشأ"}</option>{currencySourceItems.map((item) => { const id = readItemId(item); return id ? <option key={id} value={id}>{readItemLabel(item) || id}</option> : null; })}</select></div>
+                          <div><div className={`${labelCls} text-[11px]`}>توضیحات</div><input value={appendixDraft.workScope} onChange={(e) => updateAppendixDraft("workScope", e.target.value)} className={`${inputCls} h-10 text-xs`} type="text" /></div>
+                          <div className="flex items-end gap-2"><button type="button" onClick={() => openRelatedPicker("appendix")} className={`${iconBtnCls} !h-11 !w-11 shrink-0`} aria-label="انتخاب اسناد مرتبط" title="انتخاب اسناد مرتبط"><img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" /></button><button type="button" onClick={() => appendixUploadInputRef.current?.click()} className={`${iconBtnCls} !h-11 !w-11 shrink-0`} aria-label="بارگذاری فایل الحاقیه" title="بارگذاری فایل الحاقیه"><img src="/images/icons/upload.svg" alt="" className="h-5 w-5 dark:invert" /></button><input ref={appendixUploadInputRef} type="file" multiple accept=".pdf,image/*,.xls,.xlsx,.doc,.docx" className="hidden" onChange={(e) => { addAppendixFiles(e.target.files); e.target.value = ""; }} /><button type="button" onClick={saveAppendixRow} className={`${iconBtnCls} !h-11 !w-11 shrink-0`} aria-label={editingAppendixId ? "ذخیره ویرایش الحاقیه" : "افزودن الحاقیه"} title={editingAppendixId ? "ذخیره ویرایش" : "افزودن الحاقیه"}><img src={editingAppendixId ? "/images/icons/check.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" /></button></div>
                         </div>
+                        {appendixDraft.files.length ? <div className="mt-3 flex flex-wrap gap-2">{appendixDraft.files.map((file, index) => <div key={file.id || `${file.name}_${index}`} className="flex max-w-full items-center gap-2 rounded-xl border border-black/10 bg-black/[0.02] px-3 py-2 text-xs dark:border-neutral-700 dark:bg-white/[0.03]"><span className="max-w-[220px] truncate font-semibold">{file.name || `فایل ${toFaDigits(index + 1)}`}</span><button type="button" onClick={() => removeAppendixFile(file.id)} className="text-red-600 dark:text-red-300" aria-label="حذف فایل" title="حذف فایل">×</button></div>)}</div> : null}
                         <div className="hidden">
                           <div className="min-w-[220px] flex-1"><div className={labelCls}>اسناد مرتبط</div><div className="flex min-h-11 flex-wrap items-center gap-1 rounded-xl border border-black/10 bg-black/[0.02] px-2 py-1 dark:border-neutral-700 dark:bg-white/[0.03]">{normalizeIdList(appendixDraft.relatedLetterIds).length ? normalizeIdList(appendixDraft.relatedLetterIds).map((id) => <span key={id} className="rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10">{toFaDigits(secretariatNoOf(letterById.get(id)) || letterNoOf(letterById.get(id)) || id)}</span>) : <span className="px-1 text-xs text-black/50 dark:text-neutral-400">سندی انتخاب نشده است</span>}</div></div>
                           <button type="button" onClick={() => openRelatedPicker("appendix")} className={`${iconBtnCls} !h-11 !w-11`} aria-label="انتخاب اسناد مرتبط" title="انتخاب اسناد مرتبط"><img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" /></button>
@@ -4855,11 +4867,11 @@ export default function ContractInformation() {
 
                       <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
                         <div className="max-xl:overflow-x-auto">
-                          <table className={`w-full min-w-[1050px] text-sm ${financialTablePreset.table} [&_th:nth-child(8)]:!min-w-[300px] [&_td:nth-child(8)]:!min-w-[300px] [&_td:nth-child(8)]:!max-w-none [&_td:nth-child(8)]:!whitespace-normal [&_th:nth-child(9)]:!w-[155px] [&_th:nth-child(9)]:!min-w-[155px] [&_td:nth-child(9)]:!w-[155px] [&_td:nth-child(9)_div]:!max-w-none [&_td:nth-child(9)_div]:!flex-col [&_td:nth-child(9)_div]:!flex-nowrap [&_td:nth-child(9)_button]:!block [&_td:nth-child(9)_button]:!w-full`}>
+                          <table className={`w-full min-w-[1050px] text-center text-sm ${financialTablePreset.table} [&_th:nth-child(8)]:!min-w-[300px] [&_td:nth-child(8)]:!min-w-[300px] [&_td:nth-child(8)]:!max-w-none [&_td:nth-child(8)]:!whitespace-normal [&_th:nth-child(9)]:!w-[155px] [&_th:nth-child(9)]:!min-w-[155px] [&_td:nth-child(9)]:!w-[155px] [&_td:nth-child(9)_div]:!max-w-none [&_td:nth-child(9)_div]:!flex-col [&_td:nth-child(9)_div]:!flex-nowrap [&_td:nth-child(9)_button]:!block [&_td:nth-child(9)_button]:!w-full`}>
                             <thead className={financialTablePreset.headRow}>
                               <tr>
                                 <th className="w-12 px-2"><input type="checkbox" className={hoverSelectableRowPreset.checkbox} checked={financialForm.appendices.length > 0 && financialForm.appendices.every((row) => selectedAppendixIds.has(String(row.id)))} onChange={(event) => setSelectedAppendixIds(event.target.checked ? new Set(financialForm.appendices.map((row) => String(row.id))) : new Set())} aria-label="انتخاب همه الحاقیه‌ها" /></th>
-                                <th className={`${financialTablePreset.th} px-3`}>الحاقیه</th><th className={`${financialTablePreset.th} px-3`}>از</th><th className={`${financialTablePreset.th} px-3`}>تا</th><th className={`${financialTablePreset.th} px-3`}>مبلغ</th><th className={`${financialTablePreset.th} px-3`}>ارز</th><th className={`${financialTablePreset.th} px-3`}>منشأ</th><th className={`${financialTablePreset.th} px-3 !text-right`}>دامنه کار</th><th className={`${financialTablePreset.th} min-w-[190px] px-3 !text-right`}>اسناد مرتبط</th>
+                                <th className={`${financialTablePreset.th} px-3`}>الحاقیه</th><th className={`${financialTablePreset.th} px-3`}>از</th><th className={`${financialTablePreset.th} px-3`}>تا</th><th className={`${financialTablePreset.th} px-3`}>مبلغ</th><th className={`${financialTablePreset.th} px-3`}>ارز</th><th className={`${financialTablePreset.th} px-3`}>منشأ</th><th className={`${financialTablePreset.th} px-3`}>توضیحات</th><th className={`${financialTablePreset.th} min-w-[190px] px-3`}>اسناد مرتبط</th>
                                 <th className="w-14 px-2">
                                   <button ref={appendixTableMenuRef} type="button" onClick={toggleAppendixTableMenu} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت الحاقیه‌ها" aria-label="مدیریت الحاقیه‌ها" aria-expanded={appendixTableMenuOpen}><img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${appendixTableMenuOpen ? "scale-110" : ""} dark:invert`} /></button>
                                   {appendixTableMenuOpen ? createPortal(<div ref={appendixTablePopoverRef} dir="rtl" style={{ top: appendixTableMenuPosition.top, left: appendixTableMenuPosition.left }} className="table-menu-popover fixed z-[10020] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
@@ -4870,11 +4882,11 @@ export default function ContractInformation() {
                                 </th>
                               </tr>
                             </thead>
-                            <tbody className={financialTablePreset.body}>{financialForm.appendices.length ? financialForm.appendices.map((row, index) => { const selected = selectedAppendixIds.has(String(row.id)); return <tr key={row.id} className={`${hoverSelectableRowPreset.rowBase} ${selected ? "!bg-black/[0.035] dark:!bg-white/[0.07]" : hoverSelectableRowPreset.rowIdle}`}><td className="px-2 py-3 text-center"><input type="checkbox" className={hoverSelectableRowPreset.checkbox} checked={selected} onChange={() => toggleAppendixSelection(row.id)} aria-label={`انتخاب الحاقیه ${toFaDigits(index + 1)}`} /></td><td className="px-3 py-3 text-center">{toFaDigits(index + 1)}</td><td className="px-3 py-3 text-center">{toFaDigits(row.fromDate || "—")}</td><td className="px-3 py-3 text-center">{toFaDigits(row.toDate || "—")}</td><td className="px-3 py-3 text-center">{formatFinancialAmount(parseFinancialAmount(row.amount))}</td><td className="px-3 py-3 text-center">{row.currencyLabel || row.currencyId || "—"}</td><td className="px-3 py-3 text-center">{row.sourceLabel || row.sourceId || "—"}</td><td className="max-w-[260px] truncate px-3 py-3 text-right">{row.workScope || "—"}</td><td className="px-3 py-2 text-right"><div className="flex max-w-[260px] flex-wrap gap-1">{normalizeIdList(row.relatedLetterIds).length ? normalizeIdList(row.relatedLetterIds).flatMap((letterId) => { const letter = letterById.get(String(letterId)); const files = letterAttachmentsOf(letter); const labels = files.length ? files.map((file, fileIndex) => letterAttachmentNameOf(file) || `فایل ${toFaDigits(fileIndex + 1)}`) : [toFaDigits(secretariatNoOf(letter) || letterNoOf(letter) || letterId)]; return labels.map((label, fileIndex) => <button key={`${letterId}_${fileIndex}`} type="button" onClick={() => setRelatedLetterPreviewId(String(letterId))} className="max-w-full truncate rounded-lg bg-black/[0.04] px-2 py-1 text-xs font-semibold underline decoration-black/20 underline-offset-4 transition hover:bg-black/[0.08] dark:bg-white/[0.07] dark:hover:bg-white/[0.12]" title={String(label)}>{label}</button>); }) : <span className="text-black/40 dark:text-white/40">—</span>}</div></td><td /></tr>; }) : <tr><td colSpan={10} className={financialTablePreset.emptyRow}>الحاقیه‌ای ثبت نشده است.</td></tr>}</tbody>
+                            <tbody className={financialTablePreset.body}>{financialForm.appendices.length ? financialForm.appendices.map((row, index) => { const selected = selectedAppendixIds.has(String(row.id)); return <tr key={row.id} className={`${hoverSelectableRowPreset.rowBase} ${selected ? "!bg-black/[0.035] dark:!bg-white/[0.07]" : hoverSelectableRowPreset.rowIdle}`}><td className="px-2 py-3 text-center"><input type="checkbox" className={hoverSelectableRowPreset.checkbox} checked={selected} onChange={() => toggleAppendixSelection(row.id)} aria-label={`انتخاب الحاقیه ${toFaDigits(index + 1)}`} /></td><td className="px-3 py-3 text-center">{toFaDigits(index + 1)}</td><td className="px-3 py-3 text-center">{toFaDigits(row.fromDate || "—")}</td><td className="px-3 py-3 text-center">{toFaDigits(row.toDate || "—")}</td><td className="px-3 py-3 text-center">{formatFinancialAmount(parseFinancialAmount(row.amount))}</td><td className="px-3 py-3 text-center">{row.currencyLabel || row.currencyId || "—"}</td><td className="px-3 py-3 text-center">{row.sourceLabel || row.sourceId || "—"}</td><td className="max-w-[260px] truncate px-3 py-3 text-center">{row.workScope || "—"}</td><td className="px-3 py-2 text-center"><div className="flex max-w-[260px] flex-wrap justify-center gap-1">{normalizeIdList(row.relatedLetterIds).length ? normalizeIdList(row.relatedLetterIds).flatMap((letterId) => { const letter = letterById.get(String(letterId)); const files = letterAttachmentsOf(letter); const labels = files.length ? files.map((file, fileIndex) => letterAttachmentNameOf(file) || `فایل ${toFaDigits(fileIndex + 1)}`) : [toFaDigits(secretariatNoOf(letter) || letterNoOf(letter) || letterId)]; return labels.map((label, fileIndex) => <button key={`${letterId}_${fileIndex}`} type="button" onClick={() => setRelatedLetterPreviewId(String(letterId))} className="max-w-full truncate rounded-lg bg-black/[0.04] px-2 py-1 text-xs font-semibold underline decoration-black/20 underline-offset-4 transition hover:bg-black/[0.08] dark:bg-white/[0.07] dark:hover:bg-white/[0.12]" title={String(label)}>{label}</button>); }) : <span className="text-black/40 dark:text-white/40">—</span>}</div></td><td /></tr>; }) : <tr><td colSpan={10} className={financialTablePreset.emptyRow}>الحاقیه‌ای ثبت نشده است.</td></tr>}</tbody>
                           </table>
                         </div>
                       </div>
-                      <div className="flex items-center justify-end pt-2">{renderSaveButton("appendices")}</div>
+                      <div className="flex items-center justify-end border-t border-black/10 pt-4 dark:border-neutral-800">{renderSaveButton("appendices")}</div>
                     </div>
                   ) : (
                     <div className="flex min-h-[160px] flex-col justify-between gap-4 p-3 sm:min-h-[180px] sm:p-4">
@@ -5027,6 +5039,7 @@ export default function ContractInformation() {
                       const amountRow = normalizeFinancial(row.financial || {}).contractAmounts.find((item) => hasFinancialAmount(item.amount));
                       const amountText = amountRow ? formatFinancialAmount(parseFinancialAmount(amountRow.amount)) : "—";
                       const currencyText = amountRow?.currencyLabel || amountRow?.currencyId || "—";
+                      const sourceText = amountRow?.sourceLabel || amountRow?.sourceId || "—";
                       const statusText = row.insurance?.lastStatus || "ثبت نشده";
 
                       return (
@@ -5077,7 +5090,7 @@ export default function ContractInformation() {
                           </td>
                           <td className={`px-3 ${divider}`}>
                             <div className="font-semibold tabular-nums">{amountText}</div>
-                            <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{currencyText}</div>
+                            <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{amountRow ? `${currencyText} - ${sourceText}` : "—"}</div>
                           </td>
                           <td className={`px-3 ${divider}`}>
                             <div className="flex min-h-[38px] items-center justify-center">
