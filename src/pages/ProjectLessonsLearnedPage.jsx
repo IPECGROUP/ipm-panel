@@ -133,6 +133,7 @@ export default function ProjectLessonsLearnedPage() {
   const [items, setItems] = useState([]);
   const [projects, setProjects] = useState([]);
   const [tags, setTags] = useState([]);
+  const [tagCatalog, setTagCatalog] = useState({ projects: { categories: [], tags: [] }, letters: { categories: [], tags: [] }, execution: { categories: [], tags: [] } });
   const [lessonCategories, setLessonCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [canReview, setCanReview] = useState(false);
@@ -191,15 +192,23 @@ export default function ProjectLessonsLearnedPage() {
 
     Promise.all([
       api("/projects?isActive=true", { headers }),
-      api("/tags", { headers }),
+      api("/tags?scope=projects", { headers }),
+      api("/tags?scope=letters", { headers }),
+      api("/tags?scope=execution", { headers }),
       api("/base/project-lesson-categories", { headers }),
     ])
-      .then(([projectData, tagData, categoryData]) => {
+      .then(([projectData, projectTags, letterTags, executionTags, categoryData]) => {
         const allProjects = Array.isArray(projectData.items)
           ? projectData.items
           : [];
         setProjects(allProjects.filter(isSelectableProject));
-        setTags(Array.isArray(tagData.items) ? tagData.items : []);
+        const nextCatalog = {
+          projects: { categories: Array.isArray(projectTags.categories) ? projectTags.categories : [], tags: Array.isArray(projectTags.tags) ? projectTags.tags : [] },
+          letters: { categories: Array.isArray(letterTags.categories) ? letterTags.categories : [], tags: Array.isArray(letterTags.tags) ? letterTags.tags : [] },
+          execution: { categories: Array.isArray(executionTags.categories) ? executionTags.categories : [], tags: Array.isArray(executionTags.tags) ? executionTags.tags : [] },
+        };
+        setTagCatalog(nextCatalog);
+        setTags(Object.values(nextCatalog).flatMap((item) => item.tags));
         setLessonCategories(
           Array.isArray(categoryData.items) ? categoryData.items : [],
         );
@@ -493,7 +502,7 @@ export default function ProjectLessonsLearnedPage() {
           )}
           {formOpen && (
             <div className="mb-4 rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03]">
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                 <Field text="پروژه" required>
                   <select
                     value={form.projectId}
@@ -546,7 +555,17 @@ export default function ProjectLessonsLearnedPage() {
                     ))}
                   </div>
                 </Field>
-                <Field text="چالش" required>
+                <Field text="اثر" required>
+                  <div className="flex min-h-11 flex-wrap items-center gap-3 rounded-xl border border-black/10 bg-white px-3 py-2 dark:border-white/15 dark:bg-white/5">
+                    {impacts.map(([id, name]) => (
+                      <label key={id} className="flex items-center gap-1 text-xs">
+                        <input type="checkbox" checked={form.impacts.includes(id)} onChange={() => setForm((x) => ({ ...x, impacts: x.impacts.includes(id) ? x.impacts.filter((v) => v !== id) : [...x.impacts, id] }))} />
+                        {name}
+                      </label>
+                    ))}
+                  </div>
+                </Field>
+                <Field text="چالش" required className="md:col-span-2">
                   <textarea
                     value={form.challenge}
                     onChange={(e) =>
@@ -556,7 +575,7 @@ export default function ProjectLessonsLearnedPage() {
                     placeholder="چه اتفاقی افتاد"
                   />
                 </Field>
-                <Field text="راهکار" required>
+                <Field text="راهکار" required className="md:col-span-2">
                   <textarea
                     value={form.solution}
                     onChange={(e) =>
@@ -564,30 +583,6 @@ export default function ProjectLessonsLearnedPage() {
                     }
                     className={`${input} min-h-24 py-3`}
                   />
-                </Field>
-                <Field text="اثر" required>
-                  <div className="flex min-h-11 flex-wrap items-center gap-3 rounded-xl border border-black/10 bg-white px-3 py-2 dark:border-white/15 dark:bg-white/5">
-                    {impacts.map(([id, name]) => (
-                      <label
-                        key={id}
-                        className="flex items-center gap-1 text-xs"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={form.impacts.includes(id)}
-                          onChange={() =>
-                            setForm((x) => ({
-                              ...x,
-                              impacts: x.impacts.includes(id)
-                                ? x.impacts.filter((v) => v !== id)
-                                : [...x.impacts, id],
-                            }))
-                          }
-                        />
-                        {name}
-                      </label>
-                    ))}
-                  </div>
                 </Field>
               </div>
               <div className="mt-3 flex flex-wrap items-end gap-3">
@@ -617,7 +612,7 @@ export default function ProjectLessonsLearnedPage() {
                   type="button"
                   onClick={submit}
                   disabled={saving || uploading}
-                  className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white disabled:opacity-50 dark:border-white/15 dark:bg-white/5"
+                  className="mr-auto grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white disabled:opacity-50 dark:border-white/15 dark:bg-white/5"
                   title="افزودن به جدول"
                 >
                   <img
@@ -675,7 +670,7 @@ export default function ProjectLessonsLearnedPage() {
       </Card>
       {tagOpen && (
         <TagPicker
-          tags={tags}
+          catalog={tagCatalog}
           query={tagQuery}
           setQuery={setTagQuery}
           selected={tagDraft}
@@ -733,9 +728,9 @@ export default function ProjectLessonsLearnedPage() {
   );
 }
 
-function Field({ text, required, children }) {
+function Field({ text, required, children, className = "" }) {
   return (
-    <div>
+    <div className={className}>
       <div className={label}>
         {text}
         {required && <span className="mr-1 text-red-600">*</span>}
@@ -1263,7 +1258,7 @@ function FilterBar({
   );
 }
 function TagPicker({
-  tags,
+  catalog,
   query,
   setQuery,
   selected,
@@ -1272,30 +1267,27 @@ function TagPicker({
   onConfirm,
 }) {
   const current = new Set(selected.map(String));
-  const list = tags.filter((t) =>
-    String(t.label || "")
-      .toLowerCase()
-      .includes(query.toLowerCase()),
-  );
+  const [kind, setKind] = useState("letters");
+  const [categoryId, setCategoryId] = useState("");
+  const tabs = [["projects", "پروژه‌ها"], ["letters", "نامه‌ها و مستندات"], ["execution", "اجرای پروژه‌ها"]];
+  const activeGroup = catalog[kind] || { categories: [], tags: [] };
+  const list = activeGroup.tags.filter((tag) => (!categoryId || String(tag.category_id) === String(categoryId)) && String(tag.label || "").toLowerCase().includes(query.toLowerCase()));
   return createPortal(
     <div className="fixed inset-0 z-[9999]" dir="rtl">
-      <div className="absolute inset-0 bg-black/55" onClick={onClose} />
-      <div className="absolute inset-0 flex items-center justify-center p-4">
-        <div className="flex h-[min(75vh,680px)] w-full max-w-4xl flex-col rounded-2xl bg-white p-4 shadow-2xl dark:bg-neutral-900">
-          <div className="mb-3 flex items-center justify-between">
-            <b>انتخاب برچسب</b>
-            <button type="button" onClick={onClose}>
-              ×
+      <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 flex items-center justify-center p-3 md:p-6">
+        <div className="flex h-[min(78vh,760px)] w-[min(980px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white">
+          <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3 dark:border-white/10">
+            <b className="text-sm">انتخاب برچسب</b>
+            <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 bg-white transition hover:bg-black/5 dark:border-white/15 dark:bg-white/5" title="بستن"><img src="/images/icons/bastan.svg" alt="" className="h-5 w-5 dark:invert" />
             </button>
           </div>
-          <input
-            autoFocus
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className={input}
-            placeholder="جستجو در برچسب‌ها..."
-          />
-          <div className="mt-4 flex flex-1 flex-wrap content-start gap-2 overflow-auto">
+          <div className="px-4 pt-3">
+            <div className="flex flex-wrap items-center gap-2">{tabs.map(([id, title]) => <button key={id} type="button" onClick={() => { setKind(id); setCategoryId(""); setQuery(""); }} className={`h-10 rounded-xl border px-4 text-sm font-semibold transition ${kind === id ? "border-black bg-black text-white" : "border-black/15 bg-white hover:bg-black/[.02] dark:border-white/15 dark:bg-transparent dark:hover:bg-white/5"}`}>{title}</button>)}</div>
+            {kind !== "projects" && activeGroup.categories.length > 0 && <div className="mt-3"><div className={label}>دسته‌بندی‌ها</div><div className="flex flex-wrap items-center gap-2"><button type="button" onClick={() => setCategoryId("")} className={`h-10 rounded-full border px-4 text-xs ${!categoryId ? "border-black bg-black text-white" : "border-black/15 dark:border-white/15"}`}>همه</button>{activeGroup.categories.map((category) => <button key={category.id} type="button" onClick={() => setCategoryId(String(category.id))} className={`h-10 rounded-full border px-4 text-xs ${String(categoryId) === String(category.id) ? "border-black bg-black text-white" : "border-black/15 dark:border-white/15"}`}>{category.label}</button>)}</div></div>}
+            <div className="mt-3"><div className={label}>جستجو</div><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} className={input} placeholder="جستجو در برچسب‌ها..." /></div>
+          </div>
+          <div className="flex flex-1 flex-wrap content-start gap-2 overflow-auto px-4 py-3">
             {list.map((tag) => (
               <button
                 key={tag.id}
@@ -1307,13 +1299,13 @@ function TagPicker({
                       : [...old, String(tag.id)],
                   )
                 }
-                className={`h-10 rounded-full border px-4 text-xs ${current.has(String(tag.id)) ? "border-black bg-black text-white" : "border-black/10"}`}
+                className={`h-10 rounded-full border px-4 text-xs ${current.has(String(tag.id)) ? "border-black bg-black text-white" : "border-black/15 hover:bg-black/[.02] dark:border-white/15 dark:hover:bg-white/5"}`}
               >
                 {tag.label}
               </button>
             ))}
           </div>
-          <div className="mt-3 flex justify-end">
+          <div className="flex justify-end border-t border-black/10 px-4 py-3 dark:border-white/10">
             <button
               type="button"
               onClick={onConfirm}
