@@ -62,6 +62,7 @@ export default function LessonReviewModal({
   item,
   projects,
   tags,
+  lessonCategories,
   headers,
   onClose,
   onDecision,
@@ -173,6 +174,7 @@ export default function LessonReviewModal({
               draft={draft}
               projects={projects}
               tags={tags}
+              lessonCategories={lessonCategories}
               updateDraft={updateDraft}
               toggleImpact={toggleImpact}
               toggleTag={toggleTag}
@@ -239,6 +241,7 @@ function LessonFields({
   draft,
   projects,
   tags,
+  lessonCategories,
   updateDraft,
   toggleImpact,
   toggleTag,
@@ -261,11 +264,18 @@ function LessonFields({
       </Field>
 
       <Field label="دسته‌بندی درس‌آموخته" required>
-        <input
+        <select
           value={draft.category}
           onChange={(event) => updateDraft({ category: event.target.value })}
           className={INPUT_CLASS}
-        />
+        >
+          <option value="">انتخاب کنید</option>
+          {(lessonCategories || []).map((category) => (
+            <option key={category.id} value={category.title}>
+              {category.title}
+            </option>
+          ))}
+        </select>
       </Field>
 
       <Field label="اهمیت" required>

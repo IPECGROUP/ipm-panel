@@ -133,6 +133,7 @@ export default function ProjectLessonsLearnedPage() {
   const [items, setItems] = useState([]);
   const [projects, setProjects] = useState([]);
   const [tags, setTags] = useState([]);
+  const [lessonCategories, setLessonCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [canReview, setCanReview] = useState(false);
 
@@ -191,13 +192,17 @@ export default function ProjectLessonsLearnedPage() {
     Promise.all([
       api("/projects?isActive=true", { headers }),
       api("/tags", { headers }),
+      api("/base/project-lesson-categories", { headers }),
     ])
-      .then(([projectData, tagData]) => {
+      .then(([projectData, tagData, categoryData]) => {
         const allProjects = Array.isArray(projectData.items)
           ? projectData.items
           : [];
         setProjects(allProjects.filter(isSelectableProject));
         setTags(Array.isArray(tagData.items) ? tagData.items : []);
+        setLessonCategories(
+          Array.isArray(categoryData.items) ? categoryData.items : [],
+        );
       })
       .catch(() => {});
   }, [authLoading, headers]);
@@ -506,13 +511,20 @@ export default function ProjectLessonsLearnedPage() {
                   </select>
                 </Field>
                 <Field text="دسته‌بندی درس‌آموخته" required>
-                  <input
+                  <select
                     value={form.category}
                     onChange={(e) =>
                       setForm((x) => ({ ...x, category: e.target.value }))
                     }
                     className={input}
-                  />
+                  >
+                    <option value="">انتخاب کنید</option>
+                    {lessonCategories.map((category) => (
+                      <option key={category.id} value={category.title}>
+                        {category.title}
+                      </option>
+                    ))}
+                  </select>
                 </Field>
                 <Field text="اهمیت" required>
                   <div className="flex h-11 items-center gap-2 rounded-xl border border-black/10 bg-white px-3 dark:border-white/15 dark:bg-white/5">
@@ -699,6 +711,7 @@ export default function ProjectLessonsLearnedPage() {
             item={viewItem}
             projects={projects}
             tags={tags}
+            lessonCategories={lessonCategories}
             headers={headers}
             onClose={() => setViewItem(null)}
             onDecision={decideReview}

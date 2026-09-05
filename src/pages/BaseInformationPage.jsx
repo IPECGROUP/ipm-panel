@@ -13,6 +13,7 @@ const tabs = [
 ];
 
 const knowledgeTabs = [
+  { id: "projectLessons", label: "درس آموخته‌ها" },
   { id: "trainingResources", label: "منابع آموزشی" },
   { id: "libraries", label: "کتابخانه‌ها" },
 ];
@@ -77,7 +78,13 @@ export default function BaseInformationPage() {
                 </div>
               </div>
 
-              {activeKnowledgeTab === "trainingResources" ? <BaseOptionsTable title="دسته‌بندی" endpoint="/api/base/training-resource-categories" /> : <BaseOptionsTable title="کتابخانه" endpoint="/api/base/libraries" />}
+              {activeKnowledgeTab === "projectLessons" ? (
+                <BaseOptionsTable title="دسته‌بندی درس‌آموخته" endpoint="/api/base/project-lesson-categories" />
+              ) : activeKnowledgeTab === "trainingResources" ? (
+                <BaseOptionsTable title="دسته‌بندی" endpoint="/api/base/training-resource-categories" />
+              ) : (
+                <BaseOptionsTable title="کتابخانه" endpoint="/api/base/libraries" />
+              )}
             </div>
           )}
         </section>
