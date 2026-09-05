@@ -4653,8 +4653,8 @@ export default function ContractInformation() {
                     </div>
                   ) : activeContractTab === "insurance" ? (
                     <div className="space-y-4 p-3 sm:p-4">
-                      <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                      <div>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
                           <div className="min-w-0">
                             <div className={labelCls}>ردیف پیمان *</div>
                             <input
@@ -4674,9 +4674,7 @@ export default function ContractInformation() {
                               type="text"
                             />
                           </div>
-                        </div>
-
-                        <div className="mt-4">
+                          <div className="min-w-0">
                           <div className={labelCls}>آخرین وضعیت قرارداد *</div>
                           <select
                             value={insuranceForm.lastStatus || ""}
@@ -4705,6 +4703,7 @@ export default function ContractInformation() {
                               </option>
                             ))}
                           </select>
+                          </div>
                         </div>
 
                         {isSocialInsuranceClearanceStatus(insuranceForm.lastStatus) ? (
@@ -4791,7 +4790,7 @@ export default function ContractInformation() {
                         ) : null}
                       </div>
 
-                      <div className="flex items-center justify-end pt-2">
+                      <div className="flex items-center justify-end border-t border-black/10 pt-4 dark:border-neutral-800">
                         {renderSaveButton("insurance")}
                       </div>
                     </div>
