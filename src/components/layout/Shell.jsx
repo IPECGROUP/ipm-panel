@@ -329,7 +329,7 @@ export default function Shell() {
       <main className="relative min-h-[calc(100dvh-64px)] md:min-h-[calc(100dvh-80px)]">
         <div
           dir="ltr"
-          className="px-2 sm:px-3 md:px-6 pt-3 md:pt-6 pb-28 lg:pb-6 lg:pr-[var(--right-nav-space)] lg:pl-8"
+          className="px-2 sm:px-3 md:px-6 pt-3 md:pt-6 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] lg:pb-6 lg:pr-[var(--right-nav-space)] lg:pl-8"
         >
           <div dir="rtl" className="mx-auto max-w-[1400px]">
             {/* اینجا روت‌های داخلی رندر می‌شن */}

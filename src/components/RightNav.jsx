@@ -1,9 +1,10 @@
 // src/components/RightNav.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { ChevronLeft, ChevronRight, LogOut, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, LogOut } from "lucide-react";
+import MobileNav from "./MobileNav";
 import { useAuth } from "./AuthProvider";
-import { Btn, LinkBtn } from "./ui/Button";
+import { LinkBtn } from "./ui/Button";
 import { canOpenPage, hasLimitedPageAccess } from "../utils/pageAccess";
 
 const iconMaskCls = "nav-icon block h-5 w-5 shrink-0 bg-white pointer-events-none select-none";
@@ -41,14 +42,12 @@ const IcCashForecast = () => <NavIcon src="/images/icons/pishbini-naghdi.svg" />
 const IcSupply = () => <NavIcon src="/images/icons/modirat-taminposhtibami.svg" />;
 const IcSupplyRequest = () => <NavIcon src="/images/icons/darkhast-tamin.svg" />;
 const IcOperations = () => <NavIcon src="/images/icons/modriat-amaliat.svg" />;
-const IcClose = () => <X className="h-5 w-5" strokeWidth={2.4} />;
 
 function RightNav() {
   const auth = useAuth() || {};
   const { user, logout } = auth;
   const { pathname } = useLocation();
   const navRef = useRef(null);
-  const mobileNavRef = useRef(null);
 
   const clean = (p) => (p || "").replace(/\/+$/, "") || "/";
   const base = (import.meta?.env?.BASE_URL || "/").replace(/\/+$/, "");
@@ -115,7 +114,7 @@ function RightNav() {
     if (!expanded && !hasOpenMenu) return undefined;
 
     const closeOnOutsideClick = (event) => {
-      if (navRef.current?.contains(event.target) || mobileNavRef.current?.contains(event.target)) return;
+      if (navRef.current?.contains(event.target)) return;
       localStorage.setItem("nav_open", "{}");
       setOpen({});
       if (expanded) {
@@ -339,21 +338,6 @@ function RightNav() {
     },
   ];
 
-  const mobileMenuKey = open.projects
-    ? "projects"
-    : open.contracts
-      ? "contracts"
-    : open.budget
-      ? "budget"
-      : open.supply
-        ? "supply"
-        : open.operations
-          ? "operations"
-          : open.base
-            ? "base"
-            : open.knowledge
-              ? "knowledge"
-            : null;
   const visibleNavGroups = navGroups
     .map((group) => ({
       ...group,
@@ -366,16 +350,6 @@ function RightNav() {
         .filter((item) => item.type === "section" ? item.items.length > 0 : canOpenPage(user, item.to)),
     }))
     .filter((group) => group.items.length > 0);
-
-  const mobileMenu = visibleNavGroups
-    .flatMap((group) => group.items)
-    .find((item) => item.type === "section" && item.key === mobileMenuKey);
-
-  const closeMobileMenu = () =>
-    setOpen(() => {
-      localStorage.setItem("nav_open", "{}");
-      return {};
-    });
 
   const displayName = user?.name || user?.username || user?.email || "کاربر";
   const displayRole = user?.role ? String(user.role) : "کاربر سامانه";
@@ -405,28 +379,6 @@ function RightNav() {
         ? "!border-[#DB843D]/[0.55] !bg-[#DB843D]/[0.16] !text-white !ring-1 !ring-inset !ring-[#DB843D]/25 before:absolute before:right-0 before:top-2 before:bottom-2 before:w-[3px] before:rounded-full before:bg-[#DB843D]"
         : "!text-white/[0.72] hover:!bg-white/[0.07] hover:!text-white",
     ].join(" ");
-
-  const mobileHeaderPanelCls =
-    "relative w-full overflow-hidden rounded-2xl border border-white/10 bg-[#24211F]/[0.95] p-1.5 shadow-[0_14px_36px_rgba(15,23,42,0.24)] backdrop-blur-xl transition-all duration-300";
-
-  const mobileButtonSurface = (active) =>
-    active
-      ? "!border-[#DB843D]/[0.45] !bg-[#DB843D]/[0.16] !text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),0_6px_16px_rgba(219,132,61,0.14)]"
-      : "!border-white/10 !bg-white/[0.05] !text-white/[0.75] shadow-[0_5px_14px_rgba(15,23,42,0.14)] hover:!bg-white/[0.08] hover:!text-white";
-
-  const mobileDockBtn = (active) =>
-    [
-      "!h-[3.25rem] sm:!h-[3.55rem] !w-full !min-w-0 !rounded-xl !p-0",
-      "!flex !flex-col !items-center !justify-center gap-1 !border transition-all duration-200",
-      "[&_svg]:!text-current",
-      "active:scale-[0.97]",
-      mobileButtonSurface(active),
-    ].join(" ");
-
-  const mobileSubItemCls =
-    "!grid !grid-cols-[2.55rem_minmax(0,1fr)] sm:!grid-cols-[2.75rem_minmax(0,1fr)] !items-center gap-2.5 " +
-    "!min-h-[3.35rem] !rounded-xl !border !border-transparent !bg-transparent !px-2 !py-2 !text-right " +
-    "!text-white/80 !shadow-none hover:!bg-white/[0.07] hover:!text-white focus:!ring-2 focus:!ring-[#DB843D]/25 transition-all duration-200 active:scale-[0.985]";
 
   const renderIcon = (icon, active) => <span className={iconShellCls(active)}>{icon}</span>;
 
@@ -611,157 +563,7 @@ function RightNav() {
         </div>
       </aside>
 
-      {mobileMenu && (
-        <button
-          type="button"
-          className="fixed inset-0 z-40 bg-black/[0.03] lg:hidden"
-          aria-label="بستن منو"
-          onClick={closeMobileMenu}
-        />
-      )}
-
-      <nav
-        ref={mobileNavRef}
-        dir="rtl"
-        className="fixed inset-x-0 bottom-0 z-[200] lg:hidden pointer-events-none px-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4"
-        aria-label="منوی اصلی"
-      >
-        <div className="pointer-events-auto mx-auto flex max-w-[29rem] flex-col items-center gap-2 sm:max-w-[35rem] md:max-w-[40rem]">
-          {mobileMenu && (
-            <div className={`${mobileHeaderPanelCls} max-h-[min(58dvh,390px)]`}>
-              <div className="relative z-[3] grid max-h-[min(48dvh,310px)] grid-cols-1 gap-0.5 overflow-y-auto rounded-xl sm:grid-cols-2 sm:gap-x-2">
-                {mobileMenu.items.map((item) => (
-                  <LinkBtn
-                    key={item.to}
-                    to={item.to}
-                    onClick={closeMobileMenu}
-                    className={[mobileSubItemCls, isActive(item.to) ? "!border-[#DB843D]/[0.45] !bg-[#DB843D]/[0.16] !text-white !ring-1 !ring-inset !ring-[#DB843D]/25" : ""].join(" ")}
-                  >
-                    <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/[0.06]">
-                      {item.icon}
-                    </span>
-                    <span className="relative min-w-0">
-                      <span className="block truncate text-sm font-bold leading-5 text-current sm:text-[15px]">
-                        {item.label}
-                      </span>
-                      <span className="mt-0.5 block truncate text-[11px] leading-4 text-white/[0.45] sm:text-xs">
-                        {item.hint}
-                      </span>
-                    </span>
-                  </LinkBtn>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className={mobileHeaderPanelCls}>
-            <div className="relative z-[3] grid grid-cols-4 items-center gap-1.5 sm:gap-2">
-              <LinkBtn to="/" onClick={closeMobileMenu} className={mobileDockBtn(dashboardActive)} aria-label="داشبورد">
-                <IcDashboard />
-                <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
-                  داشبورد
-                </span>
-              </LinkBtn>
-
-              <LinkBtn
-                to="/letters"
-                onClick={closeMobileMenu}
-                className={mobileDockBtn(isActive("/letters"))}
-                aria-label="مدیریت اسناد"
-              >
-                <IcLetter />
-                <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
-                  مدیریت اسناد
-                </span>
-              </LinkBtn>
-
-              <Btn
-                type="button"
-                className={mobileDockBtn(contractsParentActive)}
-                onClick={() => toggle("contracts")}
-                aria-label="مدیریت قراردادها"
-              >
-                {open.contracts ? <IcClose /> : <IcContract />}
-                <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
-                  قراردادها
-                </span>
-              </Btn>
-
-              <Btn
-                type="button"
-                className={mobileDockBtn(projectsParentActive)}
-                onClick={() => toggle("projects")}
-                aria-label="مدیریت پروژه ها"
-              >
-                {open.projects ? <IcClose /> : <IcProjects />}
-                <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
-                  پروژه ها
-                </span>
-              </Btn>
-
-              <Btn
-                type="button"
-                className={mobileDockBtn(budgetParentActive)}
-                onClick={() => toggle("budget")}
-                aria-label="مدیریت مالی"
-              >
-                {open.budget ? <IcClose /> : <IcBudget />}
-                <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
-                  مالی
-                </span>
-              </Btn>
-
-              <Btn
-                type="button"
-                className={mobileDockBtn(supplyParentActive)}
-                onClick={() => toggle("supply")}
-                aria-label="مدیریت تامین"
-              >
-                {open.supply ? <IcClose /> : <IcSupply />}
-                <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
-                  تامین
-                </span>
-              </Btn>
-
-              <Btn
-                type="button"
-                className={mobileDockBtn(operationsParentActive)}
-                onClick={() => toggle("operations")}
-                aria-label="مدیریت عملیات"
-              >
-                {open.operations ? <IcClose /> : <IcOperations />}
-                <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
-                  عملیات
-                </span>
-              </Btn>
-
-              <Btn
-                type="button"
-                className={mobileDockBtn(knowledgeParentActive)}
-                onClick={() => toggle("knowledge")}
-                aria-label="مدیریت دانش"
-              >
-                {open.knowledge ? <IcClose /> : <IcQuality />}
-                <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
-                  مدیریت دانش
-                </span>
-              </Btn>
-
-              <Btn
-                type="button"
-                className={mobileDockBtn(baseParentActive)}
-                onClick={() => toggle("base")}
-                aria-label="تنظیمات"
-              >
-                {open.base ? <IcClose /> : <IcBase />}
-                <span className="max-w-full truncate px-0.5 text-[9px] font-medium leading-none text-current sm:text-[11px]">
-                  تنظیمات
-                </span>
-              </Btn>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <MobileNav key={`${user?.id || user?.username || "guest"}:${pathname}`} groups={visibleNavGroups} user={user} logout={logout} isActive={isActive} />
 
       {canHover && tip.show && (
         <div
