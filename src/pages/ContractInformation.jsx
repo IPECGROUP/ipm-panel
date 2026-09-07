@@ -189,6 +189,7 @@ const EMPTY_FORM = {
     performanceBond: "",
     performanceBondAmount: "",
     breakdownFiles: [],
+    paymentTermsFiles: [],
     guaranteeDraft: { ...EMPTY_GUARANTEE_ROW },
     guarantees: [],
   },
@@ -382,9 +383,14 @@ function normalizeFinancial(financial = {}) {
     performanceBond: String(financial?.performanceBond ?? ""),
     performanceBondAmount: String(financial?.performanceBondAmount ?? ""),
     breakdownFiles: Array.isArray(financial?.breakdownFiles) ? financial.breakdownFiles : [],
+    paymentTermsFiles: Array.isArray(financial?.paymentTermsFiles) ? financial.paymentTermsFiles : [],
     guaranteeDraft: makeGuaranteeRow({ ...(financial?.guaranteeDraft || {}), id: "" }),
     guarantees: Array.isArray(financial?.guarantees) ? financial.guarantees.map(makeGuaranteeRow) : [],
   };
+}
+
+function isRialCurrency(row = {}) {
+  return /^(ریال|ريال)$/.test(String(row?.currencyLabel || "").trim());
 }
 
 function normalizeInsurance(insurance = {}) {
@@ -1240,6 +1246,7 @@ export default function ContractInformation() {
   const [currencyLoading, setCurrencyLoading] = React.useState(false);
   const [currencyError, setCurrencyError] = React.useState("");
   const financialUploadInputRef = React.useRef(null);
+  const paymentTermsUploadInputRef = React.useRef(null);
   const insuranceUploadInputRef = React.useRef(null);
   const appendixUploadInputRef = React.useRef(null);
   const [editingGuaranteeId, setEditingGuaranteeId] = React.useState("");
@@ -1985,10 +1992,12 @@ export default function ContractInformation() {
 
         if (field === "currencyId") {
           const item = currencyById.get(String(value));
+          const currencyLabel = item ? readItemLabel(item) : "";
           return {
             ...row,
             currencyId: String(value || ""),
-            currencyLabel: item ? readItemLabel(item) : "",
+            currencyLabel,
+            ...(isRialCurrency({ currencyLabel }) ? { sourceId: "", sourceLabel: "" } : {}),
           };
         }
 
@@ -2252,6 +2261,31 @@ export default function ContractInformation() {
           ...financial,
           breakdownFiles: financial.breakdownFiles.filter((file) => String(file?.id) !== String(fileId)),
         },
+      };
+    });
+  };
+
+  const addPaymentTermsFiles = async (fileList) => {
+    let incoming = [];
+    try {
+      incoming = await uploadContractFiles(fileList);
+    } catch (error) {
+      alert(error?.message || "خطا در بارگذاری فایل");
+      return;
+    }
+    if (!incoming.length) return;
+    setForm((prev) => {
+      const financial = normalizeFinancial(prev.financial || {});
+      return { ...prev, financial: { ...financial, paymentTermsFiles: [...financial.paymentTermsFiles, ...incoming] } };
+    });
+  };
+
+  const removePaymentTermsFile = (fileId) => {
+    setForm((prev) => {
+      const financial = normalizeFinancial(prev.financial || {});
+      return {
+        ...prev,
+        financial: { ...financial, paymentTermsFiles: financial.paymentTermsFiles.filter((file) => String(file?.id) !== String(fileId)) },
       };
     });
   };
@@ -2640,7 +2674,6 @@ export default function ContractInformation() {
       const financial = normalizeFinancial(form.financial || {});
       const missing = [];
       if (documentType !== "appendix") {
-        if (!String(financial.paymentTerms || "").trim()) missing.push("شرایط پرداخت");
         if (!String(financial.advancePayment || "").trim()) missing.push("پیش پرداخت");
         if (!String(financial.capitalDeposit || "").trim()) missing.push("سپرده بیمه");
         if (financial.capitalDeposit === "has" && !hasFinancialAmount(financial.capitalDepositAmount)) missing.push("درصد سپرده بیمه");
@@ -2652,10 +2685,14 @@ export default function ContractInformation() {
         return;
       }
       const invalidAmountRow = financial.contractAmounts.find(
-        (row) => !hasFinancialAmount(row.amount) || !String(row.currencyId || "").trim() || !String(row.sourceId || "").trim()
+        (row) => !hasFinancialAmount(row.amount) || !String(row.currencyId || "").trim() || (!isRialCurrency(row) && !String(row.sourceId || "").trim())
       );
       if (invalidAmountRow) {
-        alert("در بخش مبلغ قرارداد، مبلغ، ارز و منشأ اجباری هستند.");
+        alert("در بخش مبلغ قرارداد، مبلغ و ارز اجباری هستند و برای ارزهای غیرریالی، منشأ نیز اجباری است.");
+        return;
+      }
+      if (documentType !== "appendix" && !financial.breakdownFiles.length) {
+        alert("بارگذاری جدول شکست مبلغ قرارداد الزامی است.");
         return;
       }
       if (documentType !== "appendix") {
@@ -2969,10 +3006,11 @@ export default function ContractInformation() {
 
     return [
       ...(Array.isArray(previewFinancial.breakdownFiles) ? previewFinancial.breakdownFiles.map((file) => normalizeFile(file, "جدول شکست مبلغ")) : []),
+      ...(Array.isArray(previewFinancial.paymentTermsFiles) ? previewFinancial.paymentTermsFiles.map((file) => normalizeFile(file, "شرایط پرداخت")) : []),
       ...(Array.isArray(previewInsurance.clearanceFiles) ? previewInsurance.clearanceFiles.map((file) => normalizeFile(file, "مفاصا حساب")) : []),
       ...(Array.isArray(previewLetterAttachments) ? previewLetterAttachments.map((file) => normalizeFile(file, "سند مرتبط")) : []),
     ];
-  }, [previewFinancial.breakdownFiles, previewInsurance.clearanceFiles, previewLetterAttachments]);
+  }, [previewFinancial.breakdownFiles, previewFinancial.paymentTermsFiles, previewInsurance.clearanceFiles, previewLetterAttachments]);
   const activePreviewFile = previewFiles[Math.min(Math.max(0, previewFileIndex), Math.max(0, previewFiles.length - 1))] || null;
   const resolvePreviewFileUrl = (file) => {
     return resolvePublicUrl(file?.url || "");
@@ -3218,7 +3256,7 @@ export default function ContractInformation() {
     ]))}
     ${section("مبلغ قرارداد", table(["#", "مبلغ", "ارز", "منشأ"], amountRows))}
     ${section("شرایط پرداخت", infoGrid([
-      ["شرایط پرداخت", previewFinancial.paymentTerms],
+      ["شرایط پرداخت", previewFileNames(previewFinancial.paymentTermsFiles) || previewFinancial.paymentTerms],
       ["پیش پرداخت", previewPaymentStatus(previewFinancial.advancePayment)],
       ["سپرده بیمه", previewPaymentStatus(previewFinancial.capitalDeposit)],
       ["درصد سپرده بیمه", previewFinancial.capitalDeposit === "has" ? `${toFaDigits(previewFinancial.capitalDepositAmount || 0)}%` : ""],
@@ -3328,7 +3366,7 @@ export default function ContractInformation() {
       <div className="mb-3 text-sm font-semibold text-black dark:text-neutral-100">{title}</div>
       <div className="space-y-2">
         {rows.map((row, index) => (
-          <div key={row.id} className="grid grid-cols-1 md:grid-cols-[minmax(180px,1fr)_190px_190px] gap-2 md:items-end">
+          <div key={row.id} className="grid grid-cols-1 md:grid-cols-[minmax(100px,0.3fr)_190px_190px_auto] gap-2 md:items-end">
             <div>
               <div className={labelCls}>{amountLabel} *</div>
               <input
@@ -3362,14 +3400,14 @@ export default function ContractInformation() {
               </select>
             </div>
             <div>
-              <div className={labelCls}>منشأ *</div>
+              <div className={labelCls}>منشأ {isRialCurrency(row) ? "" : "*"}</div>
               <select
                 value={row.sourceId || ""}
                 onChange={(e) => updateFinancialRow(sectionKey, row.id, "sourceId", e.target.value)}
                 className={inputCls}
-                disabled={currencyLoading}
+                disabled={currencyLoading || isRialCurrency(row)}
               >
-                <option value="">{currencyLoading ? "در حال بارگذاری..." : "انتخاب منشأ"}</option>
+                <option value="">{isRialCurrency(row) ? "برای ریال نیاز نیست" : currencyLoading ? "در حال بارگذاری..." : "انتخاب منشأ"}</option>
                 {currencySourceItems.map((item) => {
                   const id = readItemId(item);
                   if (!id) return null;
@@ -3381,6 +3419,15 @@ export default function ContractInformation() {
                 })}
               </select>
             </div>
+            {sectionKey === "contractAmounts" ? (
+              <div className="md:justify-self-start">
+                <div className={labelCls}>پیش پرداخت *</div>
+                <div className="flex h-11 flex-wrap items-center gap-2">
+                  {renderPaymentOption("advancePayment", "has", "دارد")}
+                  {renderPaymentOption("advancePayment", "none", "ندارد")}
+                </div>
+              </div>
+            ) : null}
             {showFinancialRowDelete ? <button
               type="button"
               onClick={() => removeFinancialRow(sectionKey, row.id)}
@@ -3414,34 +3461,34 @@ export default function ContractInformation() {
     );
   };
 
-  const renderFinancialBreakdownFiles = () => (
+  const renderFinancialFileField = ({ label, files, inputRef, onAdd, onRemove, required = false }) => (
     <div className="mt-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="text-sm font-normal text-black dark:text-neutral-100">جدول شکست مبلغ قرارداد</div>
+        <div className="text-sm font-normal text-black dark:text-neutral-100">{label}{required ? " *" : ""}</div>
         <button
           type="button"
-          onClick={() => financialUploadInputRef.current?.click()}
+          onClick={() => inputRef.current?.click()}
           className="h-11 rounded-xl border border-black/15 bg-white px-3 text-sm font-semibold transition inline-flex items-center gap-2 hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
         >
           <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
           بارگذاری اسناد
         </button>
         <input
-          ref={financialUploadInputRef}
+          ref={inputRef}
           type="file"
           multiple
           accept=".pdf,image/*,.xls,.xlsx,.doc,.docx"
           className="hidden"
           onChange={(e) => {
-            addFinancialBreakdownFiles(e.target.files);
+            onAdd(e.target.files);
             e.target.value = "";
           }}
         />
       </div>
 
-      {financialForm.breakdownFiles.length ? (
+      {files.length ? (
         <div className="mt-3 grid grid-cols-1 gap-2">
-          {financialForm.breakdownFiles.map((file, index) => (
+          {files.map((file, index) => (
             <div
               key={file.id || `${file.name}_${index}`}
               className="flex items-center justify-between gap-2 rounded-xl border border-black/10 bg-black/[0.02] px-3 py-2 dark:border-neutral-700 dark:bg-white/[0.03]"
@@ -3452,7 +3499,7 @@ export default function ContractInformation() {
               </div>
               <button
                 type="button"
-                onClick={() => removeFinancialBreakdownFile(file.id)}
+                onClick={() => onRemove(file.id)}
                 className={`${iconBtnCls} !h-11 !w-11`}
                 aria-label="حذف فایل"
                 title="حذف فایل"
@@ -4285,28 +4332,10 @@ export default function ContractInformation() {
 
                         {!isAppendixDocument ? (
                           <React.Fragment>
-                        <div className="mt-4 grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-[minmax(280px,0.95fr)_minmax(360px,1.05fr)] items-start">
-                          <div>
-                            <div className="mb-2 text-sm font-semibold text-black dark:text-neutral-100">شرایط پرداخت *</div>
-                            <textarea
-                              value={financialForm.paymentTerms || ""}
-                              onChange={(e) => setFinancialField("paymentTerms", e.target.value)}
-                              className={`${textareaCls} !h-[170px] !min-h-[170px] !resize-none sm:!h-[240px] sm:!min-h-[240px]`}
-                            />
-                          </div>
-
-                          <div className="space-y-3">
+                        <div className="mt-4">
                           <div className="mt-2 rounded-xl border border-black/10 bg-black/[0.02] p-3 lg:mt-6 dark:border-neutral-700 dark:bg-white/[0.03]">
                             <div className="grid grid-cols-1 gap-3">
-                              <div className="grid grid-cols-1 sm:grid-cols-[116px_1fr] gap-2 sm:items-center">
-                                <div className="text-sm font-semibold text-black/75 dark:text-neutral-200">پیش پرداخت *</div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                  {renderPaymentOption("advancePayment", "has", "دارد")}
-                                  {renderPaymentOption("advancePayment", "none", "ندارد")}
-                                </div>
-                              </div>
-
-                              <div className="border-t border-black/10 pt-3 dark:border-neutral-700">
+                              <div>
                                 <div className="mb-2 text-sm font-semibold text-black/70 dark:text-neutral-200">کسور</div>
                                 <div className="space-y-3">
                                   <div className="grid grid-cols-1 sm:grid-cols-[116px_1fr] gap-2 sm:items-center">
@@ -4354,58 +4383,23 @@ export default function ContractInformation() {
                                   </div>
                                 </div>
                               </div>
+                              {renderFinancialFileField({
+                                label: "جدول شکست مبلغ قرارداد",
+                                required: true,
+                                files: financialForm.breakdownFiles,
+                                inputRef: financialUploadInputRef,
+                                onAdd: addFinancialBreakdownFiles,
+                                onRemove: removeFinancialBreakdownFile,
+                              })}
+                              {renderFinancialFileField({
+                                label: "شرایط پرداخت",
+                                files: financialForm.paymentTermsFiles,
+                                inputRef: paymentTermsUploadInputRef,
+                                onAdd: addPaymentTermsFiles,
+                                onRemove: removePaymentTermsFile,
+                              })}
                             </div>
                           </div>
-                          {renderFinancialBreakdownFiles()}
-                        </div>
-                        <div className="hidden">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <div className="text-sm font-semibold text-black dark:text-neutral-100">جدول شکست مبلغ قرارداد</div>
-                            <button
-                              type="button"
-                              onClick={() => financialUploadInputRef.current?.click()}
-                              className="h-10 rounded-xl border border-black/15 bg-white px-3 text-sm font-semibold transition inline-flex items-center gap-2 hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
-                            >
-                              <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
-                              بارگذاری اسناد
-                            </button>
-                            <input
-                              type="file"
-                              multiple
-                              accept=".pdf,image/*,.xls,.xlsx,.doc,.docx"
-                              className="hidden"
-                              onChange={(e) => {
-                                addFinancialBreakdownFiles(e.target.files);
-                                e.target.value = "";
-                              }}
-                            />
-                          </div>
-
-                          {financialForm.breakdownFiles.length ? (
-                            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
-                              {financialForm.breakdownFiles.map((file, index) => (
-                                <div
-                                  key={file.id || `${file.name}_${index}`}
-                                  className="flex items-center justify-between gap-2 rounded-xl border border-black/10 bg-black/[0.02] px-3 py-2 dark:border-neutral-700 dark:bg-white/[0.03]"
-                                >
-                                  <div className="min-w-0">
-                                    <div className="truncate text-sm font-semibold">{file.name || `فایل ${toFaDigits(index + 1)}`}</div>
-                                    <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{toFaDigits(formatBytes(file.size || 0))}</div>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => removeFinancialBreakdownFile(file.id)}
-                                    className={iconBtnCls}
-                                    aria-label="حذف فایل"
-                                    title="حذف فایل"
-                                  >
-                                    <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5 dark:invert" />
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          ) : null}
-                        </div>
                         </div>
                           </React.Fragment>
                         ) : null}
@@ -4417,7 +4411,7 @@ export default function ContractInformation() {
                         <div className="mb-3 text-sm font-semibold text-black dark:text-neutral-100">تضامین</div>
 
                         <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
-                          <div className="grid grid-cols-1 md:grid-cols-[140px_140px_minmax(190px,1.05fr)_minmax(240px,1.45fr)_120px_48px] gap-2 md:items-end">
+                          <div className="grid grid-cols-1 md:grid-cols-[154px_154px_minmax(300px,2.3fr)_minmax(96px,0.6fr)_120px_48px] gap-2 md:items-end">
                             <div>
                               <div className={labelCls}>نام تضمین *</div>
                               {financialForm.guaranteeDraft?.customName ? (
@@ -4514,11 +4508,11 @@ export default function ContractInformation() {
                             <div className="overflow-x-auto">
                               <table className={`${financialTablePreset.table} min-w-[760px] text-xs sm:min-w-[900px] sm:text-sm`} dir="rtl">
                                 <colgroup>
-                                  <col className="w-[18%]" />
+                                  <col className="w-[20%]" />
+                                  <col className="w-[15%]" />
+                                  <col className="w-[40%]" />
+                                  <col className="w-[11%]" />
                                   <col className="w-[14%]" />
-                                  <col className="w-[24%]" />
-                                  <col className="w-[28%]" />
-                                  <col className="w-[16%]" />
                                 </colgroup>
                                 <thead>
                                   <tr className={financialTablePreset.headRow}>
@@ -4660,7 +4654,7 @@ export default function ContractInformation() {
                         </>
                       ) : null}
 
-                      <div className="flex items-center justify-end pt-2">
+                      <div className="flex items-center justify-end border-t border-black/10 pt-4 dark:border-neutral-800">
                         {renderSaveButton("financial")}
                       </div>
                     </div>
@@ -5294,7 +5288,7 @@ export default function ContractInformation() {
                 {renderPreviewSectionTitle("مالی و تضامین")}
                 {renderPreviewFinancialRows(previewFinancial.contractAmounts)}
                 <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
-                  {renderPreviewInfo("شرایط پرداخت", previewFinancial.paymentTerms)}
+                  {renderPreviewInfo("شرایط پرداخت", previewFileNames(previewFinancial.paymentTermsFiles) || previewFinancial.paymentTerms)}
                   {renderPreviewInfo("پیش پرداخت", previewPaymentStatus(previewFinancial.advancePayment))}
                   {renderPreviewInfo("سپرده بیمه", previewPaymentStatus(previewFinancial.capitalDeposit))}
                   {renderPreviewInfo("درصد سپرده بیمه", previewFinancial.capitalDeposit === "has" ? `${toFaDigits(previewFinancial.capitalDepositAmount || 0)}%` : "")}
