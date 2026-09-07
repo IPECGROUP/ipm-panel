@@ -432,7 +432,7 @@ export default function LiquidityAllocationPage() {
           <thead className="bg-neutral-100 text-neutral-700 dark:bg-white/[0.08] dark:text-neutral-100">
             <tr>
               {["پروژه", "کل تخصیص", "مصرف", "مانده", "تخصیص جدید", "نقدینگی"].map((title) => (
-                <th key={title} className={`h-12 border-b border-l border-black/10 px-2 font-semibold dark:border-white/10 ${title === "پروژه" ? "text-right" : "text-center"}`}>{title}</th>
+                <th key={title} className={`h-12 border-b border-l border-black/10 px-2 font-semibold dark:border-white/10 ${title === "پروژه" ? "text-right" : "text-center"} ${title === "کل تخصیص" ? "bg-sky-100 text-sky-950 dark:bg-sky-500/20 dark:text-sky-100" : title === "مانده" ? "bg-orange-100 text-orange-950 dark:bg-orange-500/20 dark:text-orange-100" : title === "نقدینگی" ? "bg-emerald-100 text-emerald-950 dark:bg-emerald-500/20 dark:text-emerald-100" : ""}`}>{title}</th>
               ))}
             </tr>
           </thead>
@@ -447,27 +447,27 @@ export default function LiquidityAllocationPage() {
               return (
                 <tr key={row.id} className="bg-white transition-colors hover:bg-neutral-50 dark:bg-neutral-900 dark:hover:bg-white/[0.03]">
                   <td className={tableCellClass + " truncate text-right font-medium"} title={row.label}>{row.label}</td>
-                  <td className={tableCellClass}>{displayMoney(totalBudget)}</td>
+                  <td className={tableCellClass + " bg-sky-50/80 font-medium text-sky-950 dark:bg-sky-500/[0.08] dark:text-sky-100"}>{displayMoney(totalBudget)}</td>
                   <td className={tableCellClass}>{displayMoney(consumed)}</td>
-                  <td className={tableCellClass}>{displayMoney(budgetRemaining)}</td>
+                  <td className={tableCellClass + " bg-orange-50/80 font-medium text-orange-950 dark:bg-orange-500/[0.08] dark:text-orange-100"}>{displayMoney(budgetRemaining)}</td>
                   <td className={tableCellClass}>
                     <input value={row.newAllocation} onChange={(event) => updateRow(row.id, event.target.value)} inputMode="numeric" placeholder="۰" className={inputClass + " !h-9 !rounded-lg ltr text-left"} aria-label={`مبلغ تخصیص ${row.label}`} />
                   </td>
-                  <td className={tableCellClass}>{displayMoney(budgetRemaining + allocationAmount)}</td>
+                  <td className={tableCellClass + " bg-emerald-50/80 font-medium text-emerald-950 dark:bg-emerald-500/[0.08] dark:text-emerald-100"}>{displayMoney(budgetRemaining + allocationAmount)}</td>
                 </tr>
               );
             })}
             <tr className="bg-neutral-100/80 dark:bg-white/[0.06]">
               <td className={tableCellClass + " font-medium"}>جمع</td>
-              <td className={tableCellClass}>{displayMoney(projectTotalBudget)}</td>
+              <td className={tableCellClass + " bg-sky-100/80 font-semibold text-sky-950 dark:bg-sky-500/[0.15] dark:text-sky-100"}>{displayMoney(projectTotalBudget)}</td>
               <td className={tableCellClass}>{displayMoney(rows.reduce((total, row) => total + money(summary.allocations[String(row.projectId)]) - money(summary.committed[String(row.projectId)]), 0))}</td>
-              <td className={tableCellClass}>{displayMoney(projectBudgetRemaining)}</td>
+              <td className={tableCellClass + " bg-orange-100/80 font-semibold text-orange-950 dark:bg-orange-500/[0.15] dark:text-orange-100"}>{displayMoney(projectBudgetRemaining)}</td>
               <td className={tableCellClass}>{displayMoney(projectAllocationTotal)}</td>
-              <td className={tableCellClass}>{displayMoney(projectBudgetRemaining + projectAllocationTotal)}</td>
+              <td className={tableCellClass + " bg-emerald-100/80 font-semibold text-emerald-950 dark:bg-emerald-500/[0.15] dark:text-emerald-100"}>{displayMoney(projectBudgetRemaining + projectAllocationTotal)}</td>
             </tr>
           </tbody>
         </table>
-        <div className="flex items-center justify-end border-t-2 border-neutral-200 px-3 py-3 dark:border-white/15 dark:border-neutral-700">
+        <div className="mt-4 flex items-center justify-end border-t-2 border-neutral-300 px-3 pt-4 pb-3 dark:border-white/20 dark:border-neutral-600">
           <button type="button" onClick={saveAllocation} disabled={submitting || !!allocationError || projectsLoading} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-900 text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-neutral-900" title="ثبت تخصیص" aria-label="ثبت تخصیص">
             {submitting ? <span className="text-xs">...</span> : <img src="/images/icons/check.svg" alt="" className="h-5 w-5 invert dark:invert-0" />}
           </button>
@@ -586,7 +586,7 @@ export default function LiquidityAllocationPage() {
             <div className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
             <table className="w-full min-w-[860px] table-fixed border-collapse text-xs sm:text-sm">
               <thead className="bg-neutral-100 text-neutral-700 dark:bg-white/[0.08] dark:text-neutral-100">
-                <tr>{["پروژه", "کل تخصیص", "مصرف", "مانده", "تخصیص جدید", "نقدینگی"].map((title) => <th key={title} className={`h-12 border-b border-l border-black/10 px-2 font-semibold dark:border-white/10 ${title === "پروژه" ? "text-right" : "text-center"}`}>{title}</th>)}</tr>
+                <tr>{["پروژه", "کل تخصیص", "مصرف", "مانده", "تخصیص جدید", "نقدینگی"].map((title) => <th key={title} className={`h-12 border-b border-l border-black/10 px-2 font-semibold dark:border-white/10 ${title === "پروژه" ? "text-right" : "text-center"} ${title === "کل تخصیص" ? "bg-sky-100 text-sky-950 dark:bg-sky-500/20 dark:text-sky-100" : title === "مانده" ? "bg-orange-100 text-orange-950 dark:bg-orange-500/20 dark:text-orange-100" : title === "نقدینگی" ? "bg-emerald-100 text-emerald-950 dark:bg-emerald-500/20 dark:text-emerald-100" : ""}`}>{title}</th>)}</tr>
               </thead>
               <tbody>
                 {(previewAllocation.details || []).map((detail, index) => {
@@ -599,23 +599,23 @@ export default function LiquidityAllocationPage() {
                   const label = detail.project ? projectLabel(detail.project) : "پروژه حذف‌شده";
                   return <tr key={`${key}-${index}`} className="bg-white dark:bg-neutral-900">
                     <td className={tableCellClass + " truncate text-right font-medium"} title={label}>{label}</td>
-                    <td className={tableCellClass}>{displayMoney(totalBudget)}</td>
+                    <td className={tableCellClass + " bg-sky-50/80 font-medium text-sky-950 dark:bg-sky-500/[0.08] dark:text-sky-100"}>{displayMoney(totalBudget)}</td>
                     <td className={tableCellClass}>{displayMoney(consumed)}</td>
-                    <td className={tableCellClass}>{displayMoney(budgetRemaining)}</td>
+                    <td className={tableCellClass + " bg-orange-50/80 font-medium text-orange-950 dark:bg-orange-500/[0.08] dark:text-orange-100"}>{displayMoney(budgetRemaining)}</td>
                     <td className={tableCellClass}>{displayMoney(projectAmount)}</td>
-                    <td className={tableCellClass}>{displayMoney(budgetRemaining)}</td>
+                    <td className={tableCellClass + " bg-emerald-50/80 font-medium text-emerald-950 dark:bg-emerald-500/[0.08] dark:text-emerald-100"}>{displayMoney(budgetRemaining)}</td>
                   </tr>;
                 })}
                 <tr className="bg-neutral-100/80 dark:bg-white/[0.06]">
                   <td className={tableCellClass + " font-medium"}>جمع</td>
-                  <td className={tableCellClass}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => total + money(summary.allocations[String(detail.projectId)]), 0))}</td>
-                  <td className={tableCellClass}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => {
+                  <td className={tableCellClass + " bg-sky-100/80 font-semibold text-sky-950 dark:bg-sky-500/[0.15] dark:text-sky-100"}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => total + money(summary.allocations[String(detail.projectId)]), 0))}</td>
+                  <td className={tableCellClass + " bg-orange-100/80 font-semibold text-orange-950 dark:bg-orange-500/[0.15] dark:text-orange-100"}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => {
                     const key = String(detail.projectId);
                     const totalAllocation = money(summary.allocations[key]);
                     const consumption = totalAllocation - money(summary.committed[key]);
                     return total + totalAllocation - consumption;
                   }, 0))}</td>
-                  <td className={tableCellClass}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => {
+                  <td className={tableCellClass + " bg-emerald-100/80 font-semibold text-emerald-950 dark:bg-emerald-500/[0.15] dark:text-emerald-100"}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => {
                     const key = String(detail.projectId);
                     return total + money(summary.allocations[key]) - money(summary.committed[key]);
                   }, 0))}</td>
