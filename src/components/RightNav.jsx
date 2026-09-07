@@ -25,13 +25,19 @@ const IcDashboard = () => <NavIcon src="/images/icons/dashbaord.svg" />;
 const IcLetter = () => <NavIcon src="/images/icons/nameha.svg" />;
 const IcProjects = () => <NavIcon src="/images/icons/modiriat-projects.svg" />;
 const IcBudget = () => <NavIcon src="/images/icons/modiriat-mali.svg" />;
-const IcBase = () => <NavIcon src="/images/icons/atelaatpaye.svg" />;
+const IcBase = () => <NavIcon src="/images/icons/tanzimat.svg" />;
 const IcContract = () => <NavIcon src="/images/icons/gharadad.svg" />;
 const IcTags = () => <NavIcon src="/images/icons/tags.svg" />;
 const IcBaseInformation = () => <NavIcon src="/images/icons/etelaat-paye.svg" />;
 const IcWorksheet = () => <NavIcon src="/images/icons/karbarg-mali.svg" />;
 const IcDaily = () => <NavIcon src="/images/icons/roznegar.svg" />;
-const IcQuality = () => <NavIcon src="/images/icons/modiritkeyfiat.svg" />;
+// This icon's source artwork has noticeably finer strokes than the rest of the
+// navigation set. A small optical-size adjustment keeps its visual weight aligned.
+const IcQuality = () => (
+  <span className="scale-[1.08]">
+    <NavIcon src="/images/icons/modiritkeyfiat.svg" />
+  </span>
+);
 const IcCostBreakdown = () => <NavIcon src="/images/icons/sakhtar-shekast.svg" />;
 const IcFinancialCommitments = () => <NavIcon src="/images/icons/masaref-mali.svg" />;
 const IcProjectDashboard = () => <NavIcon src="/images/icons/dashboard-modirirat.svg" />;
