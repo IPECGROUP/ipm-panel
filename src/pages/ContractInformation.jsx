@@ -3437,7 +3437,7 @@ export default function ContractInformation() {
                 disabled={currencyLoading || isRialCurrencyRow(row)}
                 aria-disabled={currencyLoading || isRialCurrencyRow(row)}
               >
-                <option value="">{isRialCurrencyRow(row) ? "برای ریال نیاز نیست" : currencyLoading ? "در حال بارگذاری..." : "انتخاب منشأ"}</option>
+                <option value="">{isRialCurrencyRow(row) ? "" : currencyLoading ? "در حال بارگذاری..." : "انتخاب منشأ"}</option>
                 {currencySourceItems.map((item) => {
                   const id = readItemId(item);
                   if (!id) return null;
