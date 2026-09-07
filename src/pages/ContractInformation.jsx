@@ -390,7 +390,7 @@ function normalizeFinancial(financial = {}) {
 }
 
 function isRialCurrency(row = {}) {
-  return /^(ریال|ريال)$/.test(String(row?.currencyLabel || "").trim());
+  return /ریال|ريال/.test(String(row?.currencyLabel || "").trim());
 }
 
 function normalizeInsurance(insurance = {}) {
@@ -1646,6 +1646,10 @@ export default function ContractInformation() {
     });
     return map;
   }, [currencySourceItems]);
+  const isRialCurrencyRow = React.useCallback(
+    (row) => isRialCurrency({ currencyLabel: row?.currencyLabel || readItemLabel(currencyById.get(String(row?.currencyId || ""))) }),
+    [currencyById]
+  );
   const financialForm = React.useMemo(() => normalizeFinancial(form.financial || {}), [form.financial]);
   const filteredLetters = React.useMemo(() => {
     const q = toEnDigits(relatedPickQuery).trim().toLowerCase();
@@ -2685,7 +2689,7 @@ export default function ContractInformation() {
         return;
       }
       const invalidAmountRow = financial.contractAmounts.find(
-        (row) => !hasFinancialAmount(row.amount) || !String(row.currencyId || "").trim() || (!isRialCurrency(row) && !String(row.sourceId || "").trim())
+        (row) => !hasFinancialAmount(row.amount) || !String(row.currencyId || "").trim() || (!isRialCurrencyRow(row) && !String(row.sourceId || "").trim())
       );
       if (invalidAmountRow) {
         alert("در بخش مبلغ قرارداد، مبلغ و ارز اجباری هستند و برای ارزهای غیرریالی، منشأ نیز اجباری است.");
@@ -3366,7 +3370,7 @@ export default function ContractInformation() {
       <div className="mb-3 text-sm font-semibold text-black dark:text-neutral-100">{title}</div>
       <div className="space-y-2">
         {rows.map((row, index) => (
-          <div key={row.id} className="grid grid-cols-1 md:grid-cols-[minmax(100px,0.3fr)_190px_190px_auto] gap-2 md:items-end">
+          <div key={row.id} className="grid grid-cols-1 md:grid-cols-[minmax(120px,0.36fr)_171px_171px_auto] gap-2 md:items-end">
             <div>
               <div className={labelCls}>{amountLabel} *</div>
               <input
@@ -3400,14 +3404,14 @@ export default function ContractInformation() {
               </select>
             </div>
             <div>
-              <div className={labelCls}>منشأ {isRialCurrency(row) ? "" : "*"}</div>
+              <div className={labelCls}>منشأ {isRialCurrencyRow(row) ? "" : "*"}</div>
               <select
                 value={row.sourceId || ""}
                 onChange={(e) => updateFinancialRow(sectionKey, row.id, "sourceId", e.target.value)}
                 className={inputCls}
-                disabled={currencyLoading || isRialCurrency(row)}
+                disabled={currencyLoading || isRialCurrencyRow(row)}
               >
-                <option value="">{isRialCurrency(row) ? "برای ریال نیاز نیست" : currencyLoading ? "در حال بارگذاری..." : "انتخاب منشأ"}</option>
+                <option value="">{isRialCurrencyRow(row) ? "برای ریال نیاز نیست" : currencyLoading ? "در حال بارگذاری..." : "انتخاب منشأ"}</option>
                 {currencySourceItems.map((item) => {
                   const id = readItemId(item);
                   if (!id) return null;
@@ -3462,54 +3466,52 @@ export default function ContractInformation() {
   };
 
   const renderFinancialFileField = ({ label, files, inputRef, onAdd, onRemove, required = false }) => (
-    <div className="mt-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="text-sm font-normal text-black dark:text-neutral-100">{label}{required ? " *" : ""}</div>
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          className="h-11 rounded-xl border border-black/15 bg-white px-3 text-sm font-semibold transition inline-flex items-center gap-2 hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
-        >
-          <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
-          بارگذاری اسناد
-        </button>
-        <input
-          ref={inputRef}
-          type="file"
-          multiple
-          accept=".pdf,image/*,.xls,.xlsx,.doc,.docx"
-          className="hidden"
-          onChange={(e) => {
-            onAdd(e.target.files);
-            e.target.value = "";
-          }}
-        />
+    <div className="grid grid-cols-1 gap-3 border-t border-black/10 pt-5 first:border-t-0 first:pt-0 lg:grid-cols-[minmax(250px,0.95fr)_auto_minmax(320px,1.2fr)] lg:items-center dark:border-neutral-700">
+      <div className="text-right">
+        <div className="text-base font-bold text-black dark:text-neutral-100">{label}{required ? <span className="mr-1 text-orange-500">*</span> : null}</div>
+        <div className="mt-1 text-sm text-black/50 dark:text-neutral-400">فایل {label} را بارگذاری کنید.</div>
       </div>
-
-      {files.length ? (
-        <div className="mt-3 grid grid-cols-1 gap-2">
-          {files.map((file, index) => (
-            <div
-              key={file.id || `${file.name}_${index}`}
-              className="flex items-center justify-between gap-2 rounded-xl border border-black/10 bg-black/[0.02] px-3 py-2 dark:border-neutral-700 dark:bg-white/[0.03]"
-            >
-              <div className="min-w-0">
-                <div className="truncate text-sm font-semibold">{file.name || `فایل ${toFaDigits(index + 1)}`}</div>
-                <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{toFaDigits(formatBytes(file.size || 0))}</div>
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        className="h-14 min-w-[190px] rounded-2xl border border-orange-400 bg-white px-5 text-sm font-bold text-orange-500 transition inline-flex items-center justify-center gap-2 hover:bg-orange-50 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+      >
+        <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 opacity-70 dark:invert" />
+        بارگذاری اسناد
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        multiple
+        accept=".pdf,image/*,.xls,.xlsx,.doc,.docx"
+        className="hidden"
+        onChange={(e) => {
+          onAdd(e.target.files);
+          e.target.value = "";
+        }}
+      />
+      <div className="min-h-[104px] rounded-2xl border border-dashed border-black/20 bg-white/70 p-3 dark:border-neutral-600 dark:bg-neutral-900/40">
+        {files.length ? (
+          <div className="grid grid-cols-1 gap-2">
+            {files.map((file, index) => (
+              <div key={file.id || `${file.name}_${index}`} className="flex items-center justify-between gap-3 rounded-xl bg-black/[0.03] px-3 py-2 dark:bg-white/[0.06]">
+                <button type="button" onClick={() => onRemove(file.id)} className={`${iconBtnCls} !h-10 !w-10 shrink-0`} aria-label="حذف فایل" title="حذف فایل">
+                  <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5 dark:invert" />
+                </button>
+                <div className="min-w-0 text-left">
+                  <div className="truncate text-sm font-semibold" dir="ltr">{file.name || `فایل ${toFaDigits(index + 1)}`}</div>
+                  <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{toFaDigits(formatBytes(file.size || 0))}</div>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => onRemove(file.id)}
-                className={`${iconBtnCls} !h-11 !w-11`}
-                aria-label="حذف فایل"
-                title="حذف فایل"
-              >
-                <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5 dark:invert" />
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : null}
+            ))}
+          </div>
+        ) : (
+          <div className="flex h-[78px] items-center justify-center gap-3 text-sm font-semibold text-black/40 dark:text-neutral-500">
+            <img src="/images/icons/Uplod.svg" alt="" className="h-9 w-9 opacity-60 dark:invert" />
+            فایلی انتخاب نشده است.
+          </div>
+        )}
+      </div>
     </div>
   );
 
@@ -4411,7 +4413,7 @@ export default function ContractInformation() {
                         <div className="mb-3 text-sm font-semibold text-black dark:text-neutral-100">تضامین</div>
 
                         <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
-                          <div className="grid grid-cols-1 md:grid-cols-[154px_154px_minmax(300px,2.3fr)_minmax(96px,0.6fr)_120px_48px] gap-2 md:items-end">
+                          <div className="grid grid-cols-1 md:grid-cols-[154px_154px_minmax(240px,1.8fr)_minmax(115px,0.85fr)_120px_48px] gap-2 md:items-end">
                             <div>
                               <div className={labelCls}>نام تضمین *</div>
                               {financialForm.guaranteeDraft?.customName ? (
@@ -4510,8 +4512,8 @@ export default function ContractInformation() {
                                 <colgroup>
                                   <col className="w-[20%]" />
                                   <col className="w-[15%]" />
-                                  <col className="w-[40%]" />
-                                  <col className="w-[11%]" />
+                                  <col className="w-[32%]" />
+                                  <col className="w-[19%]" />
                                   <col className="w-[14%]" />
                                 </colgroup>
                                 <thead>
