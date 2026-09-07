@@ -1905,14 +1905,12 @@ const formSelectedTagIds =
   const [viewOpen, setViewOpen] = useState(false);
   const [viewLetter, setViewLetter] = useState(null);
   const [viewAttIdx, setViewAttIdx] = useState(0);
-  const [viewPreviewEnabled, setViewPreviewEnabled] = useState(false);
 
   
   const closeView = () => setViewOpen(false);
   const openView = async (l) => {
     setViewLetter(l || null);
     setViewAttIdx(0);
-    setViewPreviewEnabled(false);
     setViewOpen(true);
 
     const id = String(letterIdOf(l) || "").trim();
@@ -6919,10 +6917,7 @@ const rowBg = normalRowBg;
                                   <button
                                     key={String(i)}
                                     type="button"
-                                    onClick={() => {
-                                      setViewAttIdx(i);
-                                      setViewPreviewEnabled(false);
-                                    }}
+                                    onClick={() => setViewAttIdx(i)}
                                     className={
                                       "h-10 px-3 rounded-xl border transition text-sm " +
                                       (active
@@ -6952,7 +6947,7 @@ const rowBg = normalRowBg;
 
                           <div className="flex-1 p-3 overflow-hidden flex flex-col">
                             <div className={"flex-1 rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")}>
-                              {currentViewUrl && viewPreviewEnabled ? (
+                              {currentViewUrl ? (
                                 isPdfView ? (
                                 <object
                                   key={currentViewUrl}
@@ -6992,33 +6987,12 @@ const rowBg = normalRowBg;
                                 )
                               ) : (
                                 <div className="h-full w-full grid place-items-center p-6">
-                                  <div className={theme === "dark" ? "text-white/60 text-sm text-center" : "text-neutral-600 text-sm text-center"}>
-                                    {currentViewUrl
-                                      ? "برای بارگیری پیش‌نمایش، دکمه «نمایش پیش‌نمایش» را بزنید."
-                                      : "فایلی برای پیش‌نمایش موجود نیست."}
-                                  </div>
+                                  <div className={theme === "dark" ? "text-white/60 text-sm" : "text-neutral-600 text-sm"}>{"\u0641\u0627\u06cc\u0644\u06cc \u0628\u0631\u0627\u06cc \u067e\u06cc\u0634\u200c\u0646\u0645\u0627\u06cc\u0634 \u0645\u0648\u062c\u0648\u062f \u0646\u06cc\u0633\u062a."}</div>
                                 </div>
                               )}
                             </div>
 
                             <div className="mt-2 flex flex-col gap-2">
-                              <button
-                                type="button"
-                                onClick={() => setViewPreviewEnabled(true)}
-                                disabled={!currentViewUrl}
-                                className={
-                                  "h-11 rounded-xl inline-flex items-center justify-center gap-2 transition " +
-                                  (currentViewUrl
-                                    ? theme === "dark"
-                                      ? "bg-white/10 text-white hover:bg-white/15"
-                                      : "bg-black/10 text-black hover:bg-black/15"
-                                    : theme === "dark"
-                                    ? "bg-white/10 text-white/40 cursor-not-allowed"
-                                    : "bg-black/10 text-black/40 cursor-not-allowed")
-                                }
-                              >
-                                <span className="text-sm font-semibold">نمایش پیش‌نمایش</span>
-                              </button>
                               <a
                                 href={currentViewUrl || "#"}
                                 target="_blank"
