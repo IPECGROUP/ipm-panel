@@ -5,6 +5,7 @@ const options = [
   { id: "main", label: "انواع قرارداد های اصلی" },
   { id: "sub", label: "انواع قرارداد های فرعی" },
   { id: "status", label: "آخرین وضعیت قرارداد" },
+  { id: "guarantee", label: "تضمین" },
 ];
 
 export default function ContractManagementSection() {

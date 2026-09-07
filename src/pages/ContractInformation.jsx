@@ -68,6 +68,7 @@ const EMPTY_FINANCIAL_ROW = {
   amount: "",
   currencyId: "",
   currencyLabel: "",
+  currencyIsRial: false,
   sourceId: "",
   sourceLabel: "",
 };
@@ -85,8 +86,6 @@ const EMPTY_APPENDIX_ROW = {
   relatedLetterIds: [],
   files: [],
 };
-
-const GUARANTEE_NAME_OPTIONS = ["پیش پرداخت", "انجام تعهدات", "علی الحساب", "سایر"];
 
 const EMPTY_GUARANTEE_ROW = {
   id: "",
@@ -365,6 +364,7 @@ function normalizeFinancialRows(rows) {
         amount: String(row?.amount ?? ""),
         currencyId: String(row?.currencyId ?? row?.currency_id ?? ""),
         currencyLabel: String(row?.currencyLabel ?? row?.currency_label ?? ""),
+        currencyIsRial: Boolean(row?.currencyIsRial) || isRialCurrency({ currencyLabel: row?.currencyLabel ?? row?.currency_label }),
         sourceId: String(row?.sourceId ?? row?.currencySourceId ?? row?.source_id ?? row?.currency_source_id ?? ""),
         sourceLabel: String(row?.sourceLabel ?? row?.currencySourceLabel ?? row?.source_label ?? row?.currency_source_label ?? ""),
       }))
@@ -1230,6 +1230,7 @@ export default function ContractInformation() {
   const [filterToDate, setFilterToDate] = React.useState("");
   const [filterStatus, setFilterStatus] = React.useState("");
   const [contractTypeOptions, setContractTypeOptions] = React.useState({ main: [], sub: [] });
+  const [guaranteeNameOptions, setGuaranteeNameOptions] = React.useState([]);
   const [relatedPickOpen, setRelatedPickOpen] = React.useState(false);
   const [relatedPickQuery, setRelatedPickQuery] = React.useState("");
   const [relatedPickTarget, setRelatedPickTarget] = React.useState("contract");
@@ -1371,10 +1372,12 @@ export default function ContractInformation() {
     Promise.all([
       fetchJson("/base/contract-options?category=main").catch(() => ({ items: [] })),
       fetchJson("/base/contract-options?category=sub").catch(() => ({ items: [] })),
-    ]).then(([mainResponse, subResponse]) => {
+      fetchJson("/base/contract-options?category=guarantee").catch(() => ({ items: [] })),
+    ]).then(([mainResponse, subResponse, guaranteeResponse]) => {
       if (!alive) return;
       const labels = (response) => listFromPayload(response, "items").map(readItemLabel).filter(Boolean);
       setContractTypeOptions({ main: labels(mainResponse), sub: labels(subResponse) });
+      setGuaranteeNameOptions(labels(guaranteeResponse));
     });
     return () => { alive = false; };
   }, [formOpen]);
@@ -1647,7 +1650,7 @@ export default function ContractInformation() {
     return map;
   }, [currencySourceItems]);
   const isRialCurrencyRow = React.useCallback(
-    (row) => isRialCurrency({ currencyLabel: readItemLabel(currencyById.get(String(row?.currencyId || ""))) || row?.currencyLabel }),
+    (row) => Boolean(row?.currencyIsRial) || isRialCurrency({ currencyLabel: readItemLabel(currencyById.get(String(row?.currencyId || ""))) || row?.currencyLabel }),
     [currencyById]
   );
   const financialForm = React.useMemo(() => normalizeFinancial(form.financial || {}), [form.financial]);
@@ -1988,7 +1991,7 @@ export default function ContractInformation() {
     });
   };
 
-  const updateFinancialRow = (sectionKey, rowId, field, value) => {
+  const updateFinancialRow = (sectionKey, rowId, field, value, selectedLabel = "") => {
     setForm((prev) => {
       const financial = normalizeFinancial(prev.financial || {});
       const rows = financial[sectionKey].map((row) => {
@@ -1996,12 +1999,14 @@ export default function ContractInformation() {
 
         if (field === "currencyId") {
           const item = currencyById.get(String(value));
-          const currencyLabel = item ? readItemLabel(item) : "";
+          const currencyLabel = String(selectedLabel || (item ? readItemLabel(item) : "")).trim();
+          const currencyIsRial = isRialCurrency({ currencyLabel });
           return {
             ...row,
             currencyId: String(value || ""),
             currencyLabel,
-            ...(isRialCurrency({ currencyLabel }) ? { sourceId: "", sourceLabel: "" } : {}),
+            currencyIsRial,
+            ...(currencyIsRial ? { sourceId: "", sourceLabel: "" } : {}),
           };
         }
 
@@ -3387,7 +3392,7 @@ export default function ContractInformation() {
               <div className={labelCls}>ارز *</div>
               <select
                 value={row.currencyId || ""}
-                onChange={(e) => updateFinancialRow(sectionKey, row.id, "currencyId", e.target.value)}
+                onChange={(e) => updateFinancialRow(sectionKey, row.id, "currencyId", e.target.value, e.currentTarget.selectedOptions?.[0]?.textContent || "")}
                 className={inputCls}
                 disabled={currencyLoading}
               >
@@ -4432,7 +4437,7 @@ export default function ContractInformation() {
                                   className={inputCls}
                                 >
                                   <option value="">انتخاب کنید</option>
-                                  {GUARANTEE_NAME_OPTIONS.map((item) => (
+                                  {guaranteeNameOptions.map((item) => (
                                     <option key={item} value={item}>
                                       {item}
                                     </option>
@@ -4549,7 +4554,7 @@ export default function ContractInformation() {
                                                     className="w-full max-w-[220px] rounded-xl border border-black/15 bg-white px-2 py-1 text-right text-black outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                                                   >
                                                     <option value="">انتخاب کنید</option>
-                                                    {GUARANTEE_NAME_OPTIONS.map((item) => (
+                                                    {guaranteeNameOptions.map((item) => (
                                                       <option key={item} value={item}>
                                                         {item}
                                                       </option>
