@@ -438,14 +438,15 @@ export default function LiquidityAllocationPage() {
             {rows.map((row) => {
               const key = String(row.projectId);
               const totalBudget = money(summary.allocations[key]);
-              const spent = money(summary.spent[key]);
-              const budgetRemaining = totalBudget - money(summary.committed[key]);
+              const committed = money(summary.committed[key]);
+              const consumed = totalBudget - committed;
+              const budgetRemaining = totalBudget - committed;
               const allocationAmount = money(row.newAllocation);
               return (
                 <tr key={row.id} className="bg-white transition-colors hover:bg-neutral-50 dark:bg-neutral-900 dark:hover:bg-white/[0.03]">
                   <td className={tableCellClass + " truncate text-right font-medium"} title={row.label}>{row.label}</td>
                   <td className={tableCellClass}>{displayMoney(totalBudget)}</td>
-                  <td className={tableCellClass}>{displayMoney(spent)}</td>
+                  <td className={tableCellClass}>{displayMoney(consumed)}</td>
                   <td className={tableCellClass}>{displayMoney(budgetRemaining)}</td>
                   <td className={tableCellClass}>
                     <input value={row.newAllocation} onChange={(event) => updateRow(row.id, event.target.value)} inputMode="numeric" placeholder="۰" className={inputClass + " !h-9 !rounded-lg ltr text-left"} aria-label={`مبلغ تخصیص ${row.label}`} />
@@ -457,7 +458,7 @@ export default function LiquidityAllocationPage() {
             <tr className="bg-neutral-100/80 dark:bg-white/[0.06]">
               <td className={tableCellClass + " font-medium"}>جمع</td>
               <td className={tableCellClass}>{displayMoney(projectTotalBudget)}</td>
-              <td className={tableCellClass}>{displayMoney(rows.reduce((total, row) => total + money(summary.spent[String(row.projectId)]), 0))}</td>
+              <td className={tableCellClass}>{displayMoney(rows.reduce((total, row) => total + money(summary.allocations[String(row.projectId)]) - money(summary.committed[String(row.projectId)]), 0))}</td>
               <td className={tableCellClass}>{displayMoney(projectBudgetRemaining)}</td>
               <td className={tableCellClass}>{displayMoney(projectAllocationTotal)}</td>
               <td className={tableCellClass}>{displayMoney(projectBudgetRemaining + projectAllocationTotal)}</td>
@@ -589,14 +590,15 @@ export default function LiquidityAllocationPage() {
                 {(previewAllocation.details || []).map((detail, index) => {
                   const key = String(detail.projectId);
                   const totalBudget = money(summary.allocations[key]);
-                  const spent = money(summary.spent[key]);
-                  const budgetRemaining = totalBudget - money(summary.committed[key]);
+                  const committed = money(summary.committed[key]);
+                  const consumed = totalBudget - committed;
+                  const budgetRemaining = totalBudget - committed;
                   const projectAmount = money(detail.amount);
                   const label = detail.project ? projectLabel(detail.project) : "پروژه حذف‌شده";
                   return <tr key={`${key}-${index}`} className="bg-white dark:bg-neutral-900">
                     <td className={tableCellClass + " truncate text-right font-medium"} title={label}>{label}</td>
                     <td className={tableCellClass}>{displayMoney(totalBudget)}</td>
-                    <td className={tableCellClass}>{displayMoney(spent)}</td>
+                    <td className={tableCellClass}>{displayMoney(consumed)}</td>
                     <td className={tableCellClass}>{displayMoney(budgetRemaining)}</td>
                     <td className={tableCellClass}>{displayMoney(projectAmount)}</td>
                     <td className={tableCellClass}>{displayMoney(budgetRemaining)}</td>
@@ -605,7 +607,10 @@ export default function LiquidityAllocationPage() {
                 <tr className="bg-neutral-100/80 dark:bg-white/[0.06]">
                   <td className={tableCellClass + " font-medium"}>جمع</td>
                   <td className={tableCellClass}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => total + money(summary.allocations[String(detail.projectId)]), 0))}</td>
-                  <td className={tableCellClass}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => total + money(summary.spent[String(detail.projectId)]), 0))}</td>
+                  <td className={tableCellClass}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => {
+                    const key = String(detail.projectId);
+                    return total + money(summary.allocations[key]) - money(summary.committed[key]);
+                  }, 0))}</td>
                   <td className={tableCellClass}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => {
                     const key = String(detail.projectId);
                     return total + money(summary.allocations[key]) - money(summary.committed[key]);
