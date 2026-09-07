@@ -6232,7 +6232,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
                         ? "text-white/50"
                         : "text-neutral-500";
                       const kindLabel = TABS.find((x) => x.id === kind)?.label || "";
-                      const hasRealAttachment = !!(l?.has_attachment ?? l?.hasAttachment);
+                      const hasRealAttachment = attachmentsOf(l).length > 0;
 
                       return (
                         <div key={id} className={"border-r-4 p-3 " + cardBg + (isConf ? " " + CONFIDENTIAL_TEXT_CLS : "")} style={{ borderRightColor: activeColor }}>
@@ -6503,7 +6503,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
         const kindLabel = TABS.find((tab) => tab.id === kind)?.label || "—";
         const isLast = idx === pageItems.length - 1;
         const divider = isLast ? "" : rowDividerCls;
-        const hasRealAttachment = !!(l?.has_attachment ?? l?.hasAttachment);
+        const hasRealAttachment = attachmentsOf(l).length > 0;
         const isConf = isConfidentialLetter(l);
 
 const normalRowBg = theme === "dark"
