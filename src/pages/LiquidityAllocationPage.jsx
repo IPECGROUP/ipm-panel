@@ -447,7 +447,7 @@ export default function LiquidityAllocationPage() {
               const allocationAmount = money(row.newAllocation);
               return (
                 <tr key={row.id} className="bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
-                  <td className={tableCellClass + " truncate text-right font-medium"} title={row.label}>{row.label}</td>
+                  <td className={tableCellClass + " truncate !text-right font-medium"} title={row.label}>{row.label}</td>
                   <td className={tableCellClass + " bg-sky-50/80 font-medium text-sky-950 dark:bg-sky-500/[0.08] dark:text-sky-100"}>{displayMoney(totalBudget)}</td>
                   <td className={tableCellClass}>{displayMoney(consumed)}</td>
                   <td className={tableCellClass + " bg-orange-50/80 font-medium text-orange-950 dark:bg-orange-500/[0.08] dark:text-orange-100"}>{displayMoney(budgetRemaining)}</td>
@@ -603,7 +603,7 @@ export default function LiquidityAllocationPage() {
                   const projectAmount = money(detail.amount);
                   const label = detail.project ? projectLabel(detail.project) : "پروژه حذف‌شده";
                   return <tr key={`${key}-${index}`} className="bg-white dark:bg-neutral-900">
-                    <td className={tableCellClass + " truncate text-right font-medium"} title={label}>{label}</td>
+                    <td className={tableCellClass + " truncate !text-right font-medium"} title={label}>{label}</td>
                     <td className={tableCellClass + " bg-sky-50/80 font-medium text-sky-950 dark:bg-sky-500/[0.08] dark:text-sky-100"}>{displayMoney(totalBudget)}</td>
                     <td className={tableCellClass}>{displayMoney(consumed)}</td>
                     <td className={tableCellClass + " bg-orange-50/80 font-medium text-orange-950 dark:bg-orange-500/[0.08] dark:text-orange-100"}>{displayMoney(budgetRemaining)}</td>
