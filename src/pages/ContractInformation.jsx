@@ -1666,9 +1666,9 @@ export default function ContractInformation() {
       const contractAmounts = financial.contractAmounts.map((row) => {
         const currencyLabel = readItemLabel(currencyById.get(String(row.currencyId || ""))) || row.currencyLabel;
         const currencyIsRial = isRialCurrency({ currencyLabel });
-        if (currencyIsRial === Boolean(row.currencyIsRial) && (!currencyIsRial || (!row.sourceId && !row.sourceLabel))) return row;
+        if (currencyIsRial === Boolean(row.currencyIsRial) && currencyLabel === row.currencyLabel) return row;
         changed = true;
-        return { ...row, currencyLabel, currencyIsRial, ...(currencyIsRial ? { sourceId: "", sourceLabel: "" } : {}) };
+        return { ...row, currencyLabel, currencyIsRial };
       });
       return changed ? { ...prev, financial: { ...financial, contractAmounts } } : prev;
     });
@@ -2025,7 +2025,6 @@ export default function ContractInformation() {
             currencyId: String(value || ""),
             currencyLabel,
             currencyIsRial,
-            ...(currencyIsRial ? { sourceId: "", sourceLabel: "" } : {}),
           };
         }
 
