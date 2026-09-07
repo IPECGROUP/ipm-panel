@@ -89,7 +89,7 @@ export default function LiquidityAllocationPage() {
   const [rows, setRows] = useState([]);
   const [projects, setProjects] = useState([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
-  const [summary, setSummary] = useState({ allocations: {}, spent: {}, committed: {}, consumed: {} });
+  const [summary, setSummary] = useState({ allocations: {}, spent: {}, committed: {} });
   const [history, setHistory] = useState([]);
   const [historyQuery, setHistoryQuery] = useState("");
   const [historyFromDate, setHistoryFromDate] = useState("");
@@ -160,7 +160,7 @@ export default function LiquidityAllocationPage() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data?.error || "summary_failed");
-      setSummary({ allocations: data.allocations || {}, spent: data.spent || {}, committed: data.committed || {}, consumed: data.consumed || {} });
+      setSummary({ allocations: data.allocations || {}, spent: data.spent || {}, committed: data.committed || {} });
       setHistory(Array.isArray(data?.history) ? data.history : []);
       const selectedProjects = projects.length ? projects : (Array.isArray(data?.projects) ? data.projects : []);
       setRows((current) => selectedProjects.map((project) => {
@@ -168,7 +168,7 @@ export default function LiquidityAllocationPage() {
         return existing || { id: `project-${project.id}`, projectId: project.id, label: projectLabel(project), newAllocation: "" };
       }));
     } catch {
-      setSummary({ allocations: {}, spent: {}, committed: {}, consumed: {} });
+      setSummary({ allocations: {}, spent: {}, committed: {} });
       setHistory([]);
     }
   }, [projects, user?.id]);
@@ -219,9 +219,9 @@ export default function LiquidityAllocationPage() {
   const projectBudgetRemaining = useMemo(
     () => rows.reduce((total, row) => {
       const key = String(row.projectId);
-      return total + money(summary.allocations[key]) - money(summary.consumed[key]);
+      return total + money(summary.allocations[key]) - money(summary.committed[key]);
     }, 0),
-    [rows, summary.allocations, summary.consumed],
+    [rows, summary.allocations, summary.committed],
   );
   const newAllocationTotal = projectAllocationTotal;
   const availableAmount = money(form.amount);
@@ -230,7 +230,7 @@ export default function LiquidityAllocationPage() {
   const hasPendingAllocation = rows.some((row) => money(row.newAllocation) !== 0);
   const hasBudgetUnderflow = rows.some((row) => {
     const key = String(row.projectId);
-    const budgetRemaining = money(summary.allocations[key]) - money(summary.consumed[key]);
+    const budgetRemaining = money(summary.allocations[key]) - money(summary.committed[key]);
     return money(row.newAllocation) < 0 && budgetRemaining + money(row.newAllocation) < 0;
   });
   const allocationError = newAllocationTotal > availableAmount
@@ -305,7 +305,7 @@ export default function LiquidityAllocationPage() {
         label: projectLabel(project),
         newAllocation: "",
       })));
-      setSummary({ allocations: {}, spent: {}, committed: {}, consumed: {} });
+      setSummary({ allocations: {}, spent: {}, committed: {} });
       setHistory([]);
       setPreviewAllocation(null);
       await loadSummary();
@@ -438,14 +438,14 @@ export default function LiquidityAllocationPage() {
             {rows.map((row) => {
               const key = String(row.projectId);
               const totalBudget = money(summary.allocations[key]);
-              const consumed = money(summary.consumed[key]);
-              const budgetRemaining = totalBudget - consumed;
+              const spent = money(summary.spent[key]);
+              const budgetRemaining = totalBudget - money(summary.committed[key]);
               const allocationAmount = money(row.newAllocation);
               return (
                 <tr key={row.id} className="bg-white transition-colors hover:bg-neutral-50 dark:bg-neutral-900 dark:hover:bg-white/[0.03]">
                   <td className={tableCellClass + " truncate text-right font-medium"} title={row.label}>{row.label}</td>
                   <td className={tableCellClass}>{displayMoney(totalBudget)}</td>
-                  <td className={tableCellClass}>{displayMoney(consumed)}</td>
+                  <td className={tableCellClass}>{displayMoney(spent)}</td>
                   <td className={tableCellClass}>{displayMoney(budgetRemaining)}</td>
                   <td className={tableCellClass}>
                     <input value={row.newAllocation} onChange={(event) => updateRow(row.id, event.target.value)} inputMode="numeric" placeholder="۰" className={inputClass + " !h-9 !rounded-lg ltr text-left"} aria-label={`مبلغ تخصیص ${row.label}`} />
@@ -457,7 +457,7 @@ export default function LiquidityAllocationPage() {
             <tr className="bg-neutral-100/80 dark:bg-white/[0.06]">
               <td className={tableCellClass + " font-medium"}>جمع</td>
               <td className={tableCellClass}>{displayMoney(projectTotalBudget)}</td>
-              <td className={tableCellClass}>{displayMoney(rows.reduce((total, row) => total + money(summary.consumed[String(row.projectId)]), 0))}</td>
+              <td className={tableCellClass}>{displayMoney(rows.reduce((total, row) => total + money(summary.spent[String(row.projectId)]), 0))}</td>
               <td className={tableCellClass}>{displayMoney(projectBudgetRemaining)}</td>
               <td className={tableCellClass}>{displayMoney(projectAllocationTotal)}</td>
               <td className={tableCellClass}>{displayMoney(projectBudgetRemaining + projectAllocationTotal)}</td>
@@ -589,14 +589,14 @@ export default function LiquidityAllocationPage() {
                 {(previewAllocation.details || []).map((detail, index) => {
                   const key = String(detail.projectId);
                   const totalBudget = money(summary.allocations[key]);
-                  const consumed = money(summary.consumed[key]);
-                  const budgetRemaining = totalBudget - consumed;
+                  const spent = money(summary.spent[key]);
+                  const budgetRemaining = totalBudget - money(summary.committed[key]);
                   const projectAmount = money(detail.amount);
                   const label = detail.project ? projectLabel(detail.project) : "پروژه حذف‌شده";
                   return <tr key={`${key}-${index}`} className="bg-white dark:bg-neutral-900">
                     <td className={tableCellClass + " truncate text-right font-medium"} title={label}>{label}</td>
                     <td className={tableCellClass}>{displayMoney(totalBudget)}</td>
-                    <td className={tableCellClass}>{displayMoney(consumed)}</td>
+                    <td className={tableCellClass}>{displayMoney(spent)}</td>
                     <td className={tableCellClass}>{displayMoney(budgetRemaining)}</td>
                     <td className={tableCellClass}>{displayMoney(projectAmount)}</td>
                     <td className={tableCellClass}>{displayMoney(budgetRemaining)}</td>
@@ -605,15 +605,15 @@ export default function LiquidityAllocationPage() {
                 <tr className="bg-neutral-100/80 dark:bg-white/[0.06]">
                   <td className={tableCellClass + " font-medium"}>جمع</td>
                   <td className={tableCellClass}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => total + money(summary.allocations[String(detail.projectId)]), 0))}</td>
-                  <td className={tableCellClass}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => total + money(summary.consumed[String(detail.projectId)]), 0))}</td>
+                  <td className={tableCellClass}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => total + money(summary.spent[String(detail.projectId)]), 0))}</td>
                   <td className={tableCellClass}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => {
                     const key = String(detail.projectId);
-                    return total + money(summary.allocations[key]) - money(summary.consumed[key]);
+                    return total + money(summary.allocations[key]) - money(summary.committed[key]);
                   }, 0))}</td>
                   <td className={tableCellClass}>{displayMoney(money(previewAllocation.allocatedAmount))}</td>
                   <td className={tableCellClass}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => {
                     const key = String(detail.projectId);
-                    return total + money(summary.allocations[key]) - money(summary.consumed[key]) + money(detail.amount);
+                    return total + money(summary.allocations[key]) - money(summary.committed[key]) + money(detail.amount);
                   }, 0))}</td>
                 </tr>
               </tbody>
