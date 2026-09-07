@@ -219,7 +219,9 @@ export default function LiquidityAllocationPage() {
   const projectBudgetRemaining = useMemo(
     () => rows.reduce((total, row) => {
       const key = String(row.projectId);
-      return total + money(summary.allocations[key]) - money(summary.committed[key]);
+      const totalAllocation = money(summary.allocations[key]);
+      const consumption = totalAllocation - money(summary.committed[key]);
+      return total + totalAllocation - consumption;
     }, 0),
     [rows, summary.allocations, summary.committed],
   );
@@ -440,7 +442,7 @@ export default function LiquidityAllocationPage() {
               const totalBudget = money(summary.allocations[key]);
               const committed = money(summary.committed[key]);
               const consumed = totalBudget - committed;
-              const budgetRemaining = totalBudget - committed;
+              const budgetRemaining = totalBudget - consumed;
               const allocationAmount = money(row.newAllocation);
               return (
                 <tr key={row.id} className="bg-white transition-colors hover:bg-neutral-50 dark:bg-neutral-900 dark:hover:bg-white/[0.03]">
@@ -592,7 +594,7 @@ export default function LiquidityAllocationPage() {
                   const totalBudget = money(summary.allocations[key]);
                   const committed = money(summary.committed[key]);
                   const consumed = totalBudget - committed;
-                  const budgetRemaining = totalBudget - committed;
+                  const budgetRemaining = totalBudget - consumed;
                   const projectAmount = money(detail.amount);
                   const label = detail.project ? projectLabel(detail.project) : "پروژه حذف‌شده";
                   return <tr key={`${key}-${index}`} className="bg-white dark:bg-neutral-900">
@@ -609,7 +611,9 @@ export default function LiquidityAllocationPage() {
                   <td className={tableCellClass}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => total + money(summary.allocations[String(detail.projectId)]), 0))}</td>
                   <td className={tableCellClass}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => {
                     const key = String(detail.projectId);
-                    return total + money(summary.allocations[key]) - money(summary.committed[key]);
+                    const totalAllocation = money(summary.allocations[key]);
+                    const consumption = totalAllocation - money(summary.committed[key]);
+                    return total + totalAllocation - consumption;
                   }, 0))}</td>
                   <td className={tableCellClass}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => {
                     const key = String(detail.projectId);
@@ -618,7 +622,9 @@ export default function LiquidityAllocationPage() {
                   <td className={tableCellClass}>{displayMoney(money(previewAllocation.allocatedAmount))}</td>
                   <td className={tableCellClass}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => {
                     const key = String(detail.projectId);
-                    return total + money(summary.allocations[key]) - money(summary.committed[key]) + money(detail.amount);
+                    const totalAllocation = money(summary.allocations[key]);
+                    const consumption = totalAllocation - money(summary.committed[key]);
+                    return total + totalAllocation - consumption + money(detail.amount);
                   }, 0))}</td>
                 </tr>
               </tbody>
