@@ -2223,6 +2223,7 @@ const resetAllFilters = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
   const [letterNoSortDir, setLetterNoSortDir] = useState(null); // null | asc | desc
+  const [letterDateSortDir, setLetterDateSortDir] = useState(null); // null | asc | desc
   const [kbdAbsIdx, setKbdAbsIdx] = useState(-1);
   const tableRowRefs = useRef(new Map());
 
@@ -3351,13 +3352,15 @@ const mergeAttachmentLists = (primary, fallback) => {
     return true;
   });
   const baseSorted = out.slice().sort(compareLettersByNewest);
-  if (!letterNoSortDir) return baseSorted;
+  if (!letterNoSortDir && !letterDateSortDir) return baseSorted;
 
   const sorted = baseSorted.slice();
 
   sorted.sort((a, b) => {
-    const cmp = compareLetterNo(a, b);
-    if (cmp !== 0) return letterNoSortDir === "asc" ? cmp : -cmp;
+    const cmp = letterDateSortDir
+      ? normalizeYmd(letterDateOf(a)).localeCompare(normalizeYmd(letterDateOf(b)))
+      : compareLetterNo(a, b);
+    if (cmp !== 0) return (letterDateSortDir || letterNoSortDir) === "asc" ? cmp : -cmp;
     return compareLettersByNewest(a, b);
   });
 
@@ -3371,12 +3374,13 @@ const mergeAttachmentLists = (primary, fallback) => {
   filterToDate,
   canSeeConfidential, // ✅ اضافه شد
   letterNoSortDir,
+  letterDateSortDir,
 ]);
 
 useEffect(() => {
     setSelectedIds(new Set());
     setPage(0);
-}, [filterTab, rowsPerPage, filterQuick, filterFromDate, filterToDate, filterTagIds, filterQuery, letterNoSortDir]);
+}, [filterTab, rowsPerPage, filterQuick, filterFromDate, filterToDate, filterTagIds, filterQuery, letterNoSortDir, letterDateSortDir]);
 
   const total = filteredLetters.length;
   const pageCount = Math.max(1, Math.ceil(total / Math.max(1, rowsPerPage)));
@@ -6400,7 +6404,10 @@ aria-invalid={fieldHasError(formKind, "subject")}
       <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
         <button
           type="button"
-          onClick={() => setLetterNoSortDir((prev) => (prev === "asc" ? "desc" : "asc"))}
+          onClick={() => {
+            setLetterDateSortDir(null);
+            setLetterNoSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+          }}
           className="mx-auto inline-flex items-center gap-1 hover:opacity-90"
           aria-label={letterNoSortDir === "desc" ? "مرتب سازی شماره از بزرگ به کوچک" : "مرتب سازی شماره از کوچک به بزرگ"}
           title={letterNoSortDir === "desc" ? "مرتب سازی شماره از بزرگ به کوچک" : "مرتب سازی شماره از کوچک به بزرگ"}
@@ -6415,7 +6422,23 @@ aria-invalid={fieldHasError(formKind, "subject")}
       </th>
 
       <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
-        تاریخ
+        <button
+          type="button"
+          onClick={() => {
+            setLetterNoSortDir(null);
+            setLetterDateSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+          }}
+          className="mx-auto inline-flex items-center gap-1 hover:opacity-90"
+          aria-label={letterDateSortDir === "desc" ? "مرتب سازی تاریخ از بزرگ به کوچک" : "مرتب سازی تاریخ از کوچک به بزرگ"}
+          title={letterDateSortDir === "desc" ? "مرتب سازی تاریخ از بزرگ به کوچک" : "مرتب سازی تاریخ از کوچک به بزرگ"}
+        >
+          <span>تاریخ</span>
+          <img
+            src={letterDateSortDir === "desc" ? "/images/icons/bozorgbekochik.svg" : "/images/icons/kochikbebozorg.svg"}
+            alt=""
+            className={"w-4 h-4 " + (theme === "dark" ? "invert" : "")}
+          />
+        </button>
       </th>
 
       <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
