@@ -1647,7 +1647,7 @@ export default function ContractInformation() {
     return map;
   }, [currencySourceItems]);
   const isRialCurrencyRow = React.useCallback(
-    (row) => isRialCurrency({ currencyLabel: row?.currencyLabel || readItemLabel(currencyById.get(String(row?.currencyId || ""))) }),
+    (row) => isRialCurrency({ currencyLabel: readItemLabel(currencyById.get(String(row?.currencyId || ""))) || row?.currencyLabel }),
     [currencyById]
   );
   const financialForm = React.useMemo(() => normalizeFinancial(form.financial || {}), [form.financial]);
@@ -3427,8 +3427,8 @@ export default function ContractInformation() {
               <div className="md:justify-self-start">
                 <div className={labelCls}>پیش پرداخت *</div>
                 <div className="flex h-11 flex-wrap items-center gap-2">
-                  {renderPaymentOption("advancePayment", "has", "دارد")}
                   {renderPaymentOption("advancePayment", "none", "ندارد")}
+                  {renderPaymentOption("advancePayment", "has", "دارد")}
                 </div>
               </div>
             ) : null}
@@ -4343,8 +4343,8 @@ export default function ContractInformation() {
                                   <div className="grid grid-cols-1 sm:grid-cols-[116px_1fr] gap-2 sm:items-center">
                                     <div className="text-sm text-black/70 dark:text-neutral-300">سپرده بیمه *</div>
                                     <div className="flex flex-wrap items-center gap-2">
-                                      {renderPaymentOption("capitalDeposit", "has", "دارد")}
                                       {renderPaymentOption("capitalDeposit", "none", "ندارد")}
+                                      {renderPaymentOption("capitalDeposit", "has", "دارد")}
                                       {financialForm.capitalDeposit === "has" ? (
                                         <div className="relative">
                                           <input
@@ -4365,8 +4365,8 @@ export default function ContractInformation() {
                                   <div className="grid grid-cols-1 sm:grid-cols-[116px_1fr] gap-2 sm:items-center">
                                     <div className="text-sm text-black/70 dark:text-neutral-300">حسن انجام کار *</div>
                                     <div className="flex flex-wrap items-center gap-2">
-                                      {renderPaymentOption("performanceBond", "has", "دارد")}
                                       {renderPaymentOption("performanceBond", "none", "ندارد")}
+                                      {renderPaymentOption("performanceBond", "has", "دارد")}
                                       {financialForm.performanceBond === "has" ? (
                                         <div className="relative">
                                           <input
@@ -4409,7 +4409,7 @@ export default function ContractInformation() {
 
                       {!isAppendixDocument ? (
                         <>
-                      <div className="border-t border-black/10 pt-4 dark:border-neutral-800">
+                      <div className="pt-1">
                         <div className="mb-3 text-sm font-semibold text-black dark:text-neutral-100">تضامین</div>
 
                         <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
