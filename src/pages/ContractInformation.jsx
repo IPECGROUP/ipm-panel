@@ -390,7 +390,11 @@ function normalizeFinancial(financial = {}) {
 }
 
 function isRialCurrency(row = {}) {
-  return /ریال|ريال/.test(String(row?.currencyLabel || "").trim());
+  const value = String(row?.currencyLabel || "")
+    .normalize("NFKC")
+    .replace(/[\s\u200c\u200d]/g, "")
+    .toLowerCase();
+  return value.includes("ریال") || value.includes("ريال") || value.includes("rial");
 }
 
 function normalizeInsurance(insurance = {}) {
@@ -1654,6 +1658,21 @@ export default function ContractInformation() {
     [currencyById]
   );
   const financialForm = React.useMemo(() => normalizeFinancial(form.financial || {}), [form.financial]);
+  React.useEffect(() => {
+    if (!currencyItems.length) return;
+    setForm((prev) => {
+      const financial = normalizeFinancial(prev.financial || {});
+      let changed = false;
+      const contractAmounts = financial.contractAmounts.map((row) => {
+        const currencyLabel = readItemLabel(currencyById.get(String(row.currencyId || ""))) || row.currencyLabel;
+        const currencyIsRial = isRialCurrency({ currencyLabel });
+        if (currencyIsRial === Boolean(row.currencyIsRial) && (!currencyIsRial || (!row.sourceId && !row.sourceLabel))) return row;
+        changed = true;
+        return { ...row, currencyLabel, currencyIsRial, ...(currencyIsRial ? { sourceId: "", sourceLabel: "" } : {}) };
+      });
+      return changed ? { ...prev, financial: { ...financial, contractAmounts } } : prev;
+    });
+  }, [currencyById, currencyItems.length]);
   const filteredLetters = React.useMemo(() => {
     const q = toEnDigits(relatedPickQuery).trim().toLowerCase();
     const list = Array.isArray(letters) ? letters : [];
@@ -3412,9 +3431,12 @@ export default function ContractInformation() {
               <div className={labelCls}>منشأ {isRialCurrencyRow(row) ? "" : "*"}</div>
               <select
                 value={row.sourceId || ""}
-                onChange={(e) => updateFinancialRow(sectionKey, row.id, "sourceId", e.target.value)}
-                className={inputCls}
+                onChange={(e) => {
+                  if (!isRialCurrencyRow(row)) updateFinancialRow(sectionKey, row.id, "sourceId", e.target.value);
+                }}
+                className={`${inputCls} ${isRialCurrencyRow(row) ? "pointer-events-none cursor-not-allowed bg-black/[0.06] text-black/40 dark:bg-white/[0.08] dark:text-neutral-500" : ""}`}
                 disabled={currencyLoading || isRialCurrencyRow(row)}
+                aria-disabled={currencyLoading || isRialCurrencyRow(row)}
               >
                 <option value="">{isRialCurrencyRow(row) ? "برای ریال نیاز نیست" : currencyLoading ? "در حال بارگذاری..." : "انتخاب منشأ"}</option>
                 {currencySourceItems.map((item) => {
