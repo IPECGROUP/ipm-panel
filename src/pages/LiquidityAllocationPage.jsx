@@ -28,7 +28,7 @@ function createBatchId() {
 
 function formatAmount(value) {
   const digits = toEnglishDigits(String(value ?? "")).replace(/[^\d]/g, "");
-  return digits ? Number(digits).toLocaleString("en-US") : "";
+  return digits ? toFaDigits(Number(digits).toLocaleString("en-US")) : "";
 }
 
 function toFaDigits(value) {
@@ -40,7 +40,7 @@ function formatSignedAmount(value) {
   const negative = normalized.trim().startsWith("-");
   const digits = normalized.replace(/[^\d]/g, "");
   if (!digits) return negative ? "-" : "";
-  return `${negative ? "-" : ""}${Number(digits).toLocaleString("en-US")}`;
+  return `${negative ? "-" : ""}${toFaDigits(Number(digits).toLocaleString("en-US"))}`;
 }
 
 function activeProject(project) {
@@ -89,7 +89,7 @@ export default function LiquidityAllocationPage() {
   const [rows, setRows] = useState([]);
   const [projects, setProjects] = useState([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
-  const [summary, setSummary] = useState({ allocations: {}, spent: {}, committed: {} });
+  const [summary, setSummary] = useState({ allocations: {}, spent: {}, committed: {}, consumed: {} });
   const [history, setHistory] = useState([]);
   const [historyQuery, setHistoryQuery] = useState("");
   const [historyFromDate, setHistoryFromDate] = useState("");
@@ -160,7 +160,7 @@ export default function LiquidityAllocationPage() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data?.error || "summary_failed");
-      setSummary({ allocations: data.allocations || {}, spent: data.spent || {}, committed: data.committed || {} });
+      setSummary({ allocations: data.allocations || {}, spent: data.spent || {}, committed: data.committed || {}, consumed: data.consumed || {} });
       setHistory(Array.isArray(data?.history) ? data.history : []);
       const selectedProjects = projects.length ? projects : (Array.isArray(data?.projects) ? data.projects : []);
       setRows((current) => selectedProjects.map((project) => {
@@ -168,7 +168,7 @@ export default function LiquidityAllocationPage() {
         return existing || { id: `project-${project.id}`, projectId: project.id, label: projectLabel(project), newAllocation: "" };
       }));
     } catch {
-      setSummary({ allocations: {}, spent: {}, committed: {} });
+      setSummary({ allocations: {}, spent: {}, committed: {}, consumed: {} });
       setHistory([]);
     }
   }, [projects, user?.id]);
@@ -210,7 +210,7 @@ export default function LiquidityAllocationPage() {
     if (!/^-?\d+(?:\.\d{1,2})?$/.test(normalized)) return 0;
     return Number(normalized) || 0;
   };
-  const displayMoney = (value) => value ? Number(value).toLocaleString("en-US", { maximumFractionDigits: 2 }) : "—";
+  const displayMoney = (value) => value ? toFaDigits(Number(value).toLocaleString("en-US", { maximumFractionDigits: 2 })) : "—";
   const projectAllocationTotal = useMemo(() => rows.reduce((total, row) => total + money(row.newAllocation), 0), [rows]);
   const projectTotalBudget = useMemo(
     () => rows.reduce((total, row) => total + money(summary.allocations[String(row.projectId)]), 0),
@@ -219,9 +219,9 @@ export default function LiquidityAllocationPage() {
   const projectBudgetRemaining = useMemo(
     () => rows.reduce((total, row) => {
       const key = String(row.projectId);
-      return total + money(summary.allocations[key]) - money(summary.committed[key]);
+      return total + money(summary.allocations[key]) - money(summary.consumed[key]);
     }, 0),
-    [rows, summary.allocations, summary.committed],
+    [rows, summary.allocations, summary.consumed],
   );
   const newAllocationTotal = projectAllocationTotal;
   const availableAmount = money(form.amount);
@@ -230,7 +230,7 @@ export default function LiquidityAllocationPage() {
   const hasPendingAllocation = rows.some((row) => money(row.newAllocation) !== 0);
   const hasBudgetUnderflow = rows.some((row) => {
     const key = String(row.projectId);
-    const budgetRemaining = money(summary.allocations[key]) - money(summary.committed[key]);
+    const budgetRemaining = money(summary.allocations[key]) - money(summary.consumed[key]);
     return money(row.newAllocation) < 0 && budgetRemaining + money(row.newAllocation) < 0;
   });
   const allocationError = newAllocationTotal > availableAmount
@@ -305,7 +305,7 @@ export default function LiquidityAllocationPage() {
         label: projectLabel(project),
         newAllocation: "",
       })));
-      setSummary({ allocations: {}, spent: {}, committed: {} });
+      setSummary({ allocations: {}, spent: {}, committed: {}, consumed: {} });
       setHistory([]);
       setPreviewAllocation(null);
       await loadSummary();
@@ -357,7 +357,7 @@ export default function LiquidityAllocationPage() {
       </div>
 
       {formOpen && <div className="rounded-2xl border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.03]" dir="rtl">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(150px,0.8fr)_minmax(230px,1.2fr)_minmax(210px,1fr)_minmax(260px,1.5fr)]">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(150px,0.8fr)_minmax(190px,0.96fr)_minmax(210px,1fr)_minmax(300px,1.74fr)]">
           <label className="min-w-0">
             <span className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">تاریخ تخصیص</span>
             <JalaliPopupDatePicker
@@ -370,7 +370,7 @@ export default function LiquidityAllocationPage() {
           </label>
 
           <label className="min-w-0">
-            <span className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">مبلغ قابل تخصیص <span className="text-red-600">*</span></span>
+            <span className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300">نقدینگی قابل تخصیص <span className="text-red-600">*</span></span>
             <div className="relative">
               <input
                 value={form.amount}
@@ -381,7 +381,7 @@ export default function LiquidityAllocationPage() {
                 inputMode="numeric"
                 placeholder="۰"
                 className={inputClass + " pl-14 ltr text-left" + (amountMissing ? " !border-red-500 focus:!border-red-500" : "")}
-                aria-label="مبلغ قابل تخصیص به ریال"
+                aria-label="نقدینگی قابل تخصیص به ریال"
               />
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-neutral-500 dark:text-neutral-400">ریال</span>
             </div>
@@ -413,24 +413,24 @@ export default function LiquidityAllocationPage() {
 
       </div>}
 
-      {formOpen && <div className="mt-3 flex items-center justify-between gap-3 text-xs" dir="rtl">
+      {formOpen && <div className="mt-3 flex items-center gap-3 text-xs" dir="rtl">
         {allocationError && <span className="text-red-600 dark:text-red-300">{allocationError}</span>}
-        <span className="text-neutral-500 dark:text-neutral-400">جمع مبلغ تخصیص: {displayMoney(newAllocationTotal)} ریال</span>
       </div>}
 
       {formOpen ? <div className="mt-5 overflow-x-auto rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900" dir="rtl">
-        <table className="w-full min-w-[720px] table-fixed border-collapse text-xs text-neutral-800 dark:text-neutral-100 sm:text-sm">
+        <table className="w-full min-w-[860px] table-fixed border-collapse text-xs text-neutral-800 dark:text-neutral-100 sm:text-sm">
           <colgroup>
-            <col className="w-[34%]" />
-            <col className="w-[16.5%]" />
-            <col className="w-[16.5%]" />
-            <col className="w-[16.5%]" />
-            <col className="w-[16.5%]" />
+            <col className="w-[30%]" />
+            <col className="w-[14%]" />
+            <col className="w-[14%]" />
+            <col className="w-[14%]" />
+            <col className="w-[14%]" />
+            <col className="w-[14%]" />
           </colgroup>
           <thead className="bg-neutral-100 text-neutral-700 dark:bg-white/[0.08] dark:text-neutral-100">
             <tr>
-              {["مرکز/پروژه", "کل بودجه", "مانده بودجه", "مبلغ تخصیص", "نقدینگی"].map((title) => (
-                <th key={title} className={`h-12 border-b border-l border-black/10 px-2 font-semibold dark:border-white/10 ${title === "مرکز/پروژه" ? "text-right" : "text-center"}`}>{title}</th>
+              {["پروژه", "کل تخصیص", "مصرف", "مانده", "تخصیص جدید", "نقدینگی"].map((title) => (
+                <th key={title} className={`h-12 border-b border-l border-black/10 px-2 font-semibold dark:border-white/10 ${title === "پروژه" ? "text-right" : "text-center"}`}>{title}</th>
               ))}
             </tr>
           </thead>
@@ -438,12 +438,14 @@ export default function LiquidityAllocationPage() {
             {rows.map((row) => {
               const key = String(row.projectId);
               const totalBudget = money(summary.allocations[key]);
-              const budgetRemaining = totalBudget - money(summary.committed[key]);
+              const consumed = money(summary.consumed[key]);
+              const budgetRemaining = totalBudget - consumed;
               const allocationAmount = money(row.newAllocation);
               return (
                 <tr key={row.id} className="bg-white transition-colors hover:bg-neutral-50 dark:bg-neutral-900 dark:hover:bg-white/[0.03]">
                   <td className={tableCellClass + " truncate text-right font-medium"} title={row.label}>{row.label}</td>
                   <td className={tableCellClass}>{displayMoney(totalBudget)}</td>
+                  <td className={tableCellClass}>{displayMoney(consumed)}</td>
                   <td className={tableCellClass}>{displayMoney(budgetRemaining)}</td>
                   <td className={tableCellClass}>
                     <input value={row.newAllocation} onChange={(event) => updateRow(row.id, event.target.value)} inputMode="numeric" placeholder="۰" className={inputClass + " !h-9 !rounded-lg ltr text-left"} aria-label={`مبلغ تخصیص ${row.label}`} />
@@ -455,13 +457,14 @@ export default function LiquidityAllocationPage() {
             <tr className="bg-neutral-100/80 dark:bg-white/[0.06]">
               <td className={tableCellClass + " font-medium"}>جمع</td>
               <td className={tableCellClass}>{displayMoney(projectTotalBudget)}</td>
+              <td className={tableCellClass}>{displayMoney(rows.reduce((total, row) => total + money(summary.consumed[String(row.projectId)]), 0))}</td>
               <td className={tableCellClass}>{displayMoney(projectBudgetRemaining)}</td>
               <td className={tableCellClass}>{displayMoney(projectAllocationTotal)}</td>
               <td className={tableCellClass}>{displayMoney(projectBudgetRemaining + projectAllocationTotal)}</td>
             </tr>
           </tbody>
         </table>
-        <div className="flex items-center justify-end border-t border-black/10 px-3 py-3 dark:border-white/10">
+        <div className="flex items-center justify-end border-t-2 border-neutral-200 px-3 py-3 dark:border-white/15 dark:border-neutral-700">
           <button type="button" onClick={saveAllocation} disabled={submitting || !!allocationError || projectsLoading} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-900 text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-neutral-900" title="ثبت تخصیص" aria-label="ثبت تخصیص">
             {submitting ? <span className="text-xs">...</span> : <img src="/images/icons/check.svg" alt="" className="h-5 w-5 invert dark:invert-0" />}
           </button>
@@ -573,25 +576,27 @@ export default function LiquidityAllocationPage() {
           <div className="max-h-[70vh] overflow-auto p-4 sm:p-5">
             <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
               {[
-                ["مبلغ قابل تخصیص", money(previewAllocation.availableAmount), "text-neutral-900 dark:text-white"],
+                ["نقدینگی قابل تخصیص", money(previewAllocation.availableAmount), "text-neutral-900 dark:text-white"],
                 ["جمع مبلغ تخصیص", money(previewAllocation.allocatedAmount), "text-sky-700 dark:text-sky-300"],
               ].map(([label, value, color]) => <div key={label} className="rounded-2xl border border-black/10 bg-neutral-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.04]"><div className="text-xs text-neutral-500 dark:text-neutral-400">{label}</div><div className={`mt-1 text-base font-bold ${color}`}>{displayMoney(value)} <span className="text-xs font-normal">ریال</span></div></div>)}
             </div>
             <div className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
-            <table className="w-full min-w-[720px] table-fixed border-collapse text-xs sm:text-sm">
+            <table className="w-full min-w-[860px] table-fixed border-collapse text-xs sm:text-sm">
               <thead className="bg-neutral-100 text-neutral-700 dark:bg-white/[0.08] dark:text-neutral-100">
-                <tr>{["مرکز/پروژه", "کل بودجه", "مانده بودجه", "مبلغ تخصیص", "نقدینگی"].map((title) => <th key={title} className={`h-12 border-b border-l border-black/10 px-2 font-semibold dark:border-white/10 ${title === "مرکز/پروژه" ? "text-right" : "text-center"}`}>{title}</th>)}</tr>
+                <tr>{["پروژه", "کل تخصیص", "مصرف", "مانده", "تخصیص جدید", "نقدینگی"].map((title) => <th key={title} className={`h-12 border-b border-l border-black/10 px-2 font-semibold dark:border-white/10 ${title === "پروژه" ? "text-right" : "text-center"}`}>{title}</th>)}</tr>
               </thead>
               <tbody>
                 {(previewAllocation.details || []).map((detail, index) => {
                   const key = String(detail.projectId);
                   const totalBudget = money(summary.allocations[key]);
-                  const budgetRemaining = totalBudget - money(summary.committed[key]);
+                  const consumed = money(summary.consumed[key]);
+                  const budgetRemaining = totalBudget - consumed;
                   const projectAmount = money(detail.amount);
                   const label = detail.project ? projectLabel(detail.project) : "پروژه حذف‌شده";
                   return <tr key={`${key}-${index}`} className="bg-white dark:bg-neutral-900">
                     <td className={tableCellClass + " truncate text-right font-medium"} title={label}>{label}</td>
                     <td className={tableCellClass}>{displayMoney(totalBudget)}</td>
+                    <td className={tableCellClass}>{displayMoney(consumed)}</td>
                     <td className={tableCellClass}>{displayMoney(budgetRemaining)}</td>
                     <td className={tableCellClass}>{displayMoney(projectAmount)}</td>
                     <td className={tableCellClass}>{displayMoney(budgetRemaining)}</td>
@@ -600,14 +605,15 @@ export default function LiquidityAllocationPage() {
                 <tr className="bg-neutral-100/80 dark:bg-white/[0.06]">
                   <td className={tableCellClass + " font-medium"}>جمع</td>
                   <td className={tableCellClass}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => total + money(summary.allocations[String(detail.projectId)]), 0))}</td>
+                  <td className={tableCellClass}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => total + money(summary.consumed[String(detail.projectId)]), 0))}</td>
                   <td className={tableCellClass}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => {
                     const key = String(detail.projectId);
-                    return total + money(summary.allocations[key]) - money(summary.committed[key]);
+                    return total + money(summary.allocations[key]) - money(summary.consumed[key]);
                   }, 0))}</td>
                   <td className={tableCellClass}>{displayMoney(money(previewAllocation.allocatedAmount))}</td>
                   <td className={tableCellClass}>{displayMoney((previewAllocation.details || []).reduce((total, detail) => {
                     const key = String(detail.projectId);
-                    return total + money(summary.allocations[key]) - money(summary.committed[key]) + money(detail.amount);
+                    return total + money(summary.allocations[key]) - money(summary.consumed[key]) + money(detail.amount);
                   }, 0))}</td>
                 </tr>
               </tbody>
