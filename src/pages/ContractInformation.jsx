@@ -3466,17 +3466,17 @@ export default function ContractInformation() {
   };
 
   const renderFinancialFileField = ({ label, files, inputRef, onAdd, onRemove, required = false }) => (
-    <div className="grid grid-cols-1 gap-3 border-t border-black/10 pt-5 first:border-t-0 first:pt-0 lg:grid-cols-[minmax(250px,0.95fr)_auto_minmax(320px,1.2fr)] lg:items-center dark:border-neutral-700">
+    <div className="grid grid-cols-1 gap-2 border-t border-black/10 py-3 first:border-t-0 first:pt-0 lg:grid-cols-[minmax(210px,0.8fr)_auto_minmax(280px,1.2fr)] lg:items-center dark:border-neutral-700">
       <div className="text-right">
-        <div className="text-base font-bold text-black dark:text-neutral-100">{label}{required ? <span className="mr-1 text-orange-500">*</span> : null}</div>
-        <div className="mt-1 text-sm text-black/50 dark:text-neutral-400">فایل {label} را بارگذاری کنید.</div>
+        <div className="text-sm font-semibold text-black dark:text-neutral-100">{label}{required ? <span className="mr-1 text-orange-500">*</span> : null}</div>
+        <div className="mt-0.5 text-xs text-black/50 dark:text-neutral-400">فایل {label} را بارگذاری کنید.</div>
       </div>
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        className="h-14 min-w-[190px] rounded-2xl border border-orange-400 bg-white px-5 text-sm font-bold text-orange-500 transition inline-flex items-center justify-center gap-2 hover:bg-orange-50 dark:bg-neutral-900 dark:hover:bg-neutral-800"
+        className="h-10 min-w-[150px] rounded-xl border border-black/15 bg-white px-3 text-xs font-semibold text-black transition inline-flex items-center justify-center gap-2 hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800"
       >
-        <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 opacity-70 dark:invert" />
+        <img src="/images/icons/upload.svg" alt="" className="h-4 w-4 dark:invert" />
         بارگذاری اسناد
       </button>
       <input
@@ -3490,13 +3490,13 @@ export default function ContractInformation() {
           e.target.value = "";
         }}
       />
-      <div className="min-h-[104px] rounded-2xl border border-dashed border-black/20 bg-white/70 p-3 dark:border-neutral-600 dark:bg-neutral-900/40">
+      <div className="min-h-[64px] rounded-xl border border-dashed border-black/20 bg-white/70 p-2 dark:border-neutral-600 dark:bg-neutral-900/40">
         {files.length ? (
           <div className="grid grid-cols-1 gap-2">
             {files.map((file, index) => (
-              <div key={file.id || `${file.name}_${index}`} className="flex items-center justify-between gap-3 rounded-xl bg-black/[0.03] px-3 py-2 dark:bg-white/[0.06]">
-                <button type="button" onClick={() => onRemove(file.id)} className={`${iconBtnCls} !h-10 !w-10 shrink-0`} aria-label="حذف فایل" title="حذف فایل">
-                  <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5 dark:invert" />
+              <div key={file.id || `${file.name}_${index}`} className="flex items-center justify-between gap-3 rounded-lg bg-black/[0.03] px-2.5 py-1.5 dark:bg-white/[0.06]">
+                <button type="button" onClick={() => onRemove(file.id)} className={`${iconBtnCls} !h-8 !w-8 shrink-0`} aria-label="حذف فایل" title="حذف فایل">
+                  <img src="/images/icons/hazf.svg" alt="" className="h-4 w-4 dark:invert" />
                 </button>
                 <div className="min-w-0 text-left">
                   <div className="truncate text-sm font-semibold" dir="ltr">{file.name || `فایل ${toFaDigits(index + 1)}`}</div>
@@ -3506,8 +3506,8 @@ export default function ContractInformation() {
             ))}
           </div>
         ) : (
-          <div className="flex h-[78px] items-center justify-center gap-3 text-sm font-semibold text-black/40 dark:text-neutral-500">
-            <img src="/images/icons/Uplod.svg" alt="" className="h-9 w-9 opacity-60 dark:invert" />
+          <div className="flex h-[44px] items-center justify-center gap-2 text-xs font-medium text-black/40 dark:text-neutral-500">
+            <img src="/images/icons/Uplod.svg" alt="" className="h-6 w-6 opacity-60 dark:invert" />
             فایلی انتخاب نشده است.
           </div>
         )}
