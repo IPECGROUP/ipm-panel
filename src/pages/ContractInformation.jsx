@@ -200,6 +200,7 @@ const EMPTY_FORM = {
     clearanceFiles: [],
     relatedLetterId: "",
     lastStatus: "",
+    description: "",
   },
 };
 
@@ -411,6 +412,7 @@ function normalizeInsurance(insurance = {}) {
     clearanceFiles: Array.isArray(insurance?.clearanceFiles) ? insurance.clearanceFiles : [],
     relatedLetterId: String(insurance?.relatedLetterId ?? insurance?.related_letter_id ?? ""),
     lastStatus: rawLastStatus || (branchLooksLikeOldStatus ? rawBranchStatus : ""),
+    description: String(insurance?.description ?? ""),
   };
 }
 
@@ -3298,6 +3300,7 @@ export default function ContractInformation() {
       ["مفاصا حساب بیمه تامین اجتماعی", previewFileNames(previewInsurance.clearanceFiles)],
       ["سند مرتبط تامین اجتماعی", previewInsuranceLetterLabel],
       ["آخرین وضعیت قرارداد", previewInsurance.lastStatus],
+      ["توضیحات", previewInsurance.description],
     ]))}
     ${section("اسناد مرتبط", table(["#", "شماره سند", "موضوع", "نوع سند", "تاریخ"], relatedLetterRows))}
     ${section("فایل‌ها و پیوست‌ها", `${table(["#", "گروه", "نام فایل", "حجم", "آدرس"], fileRows)}${imagePreviews.length ? `<div class="image-grid">${imagePreviews.map((file) => `<div class="image-card"><div>${text(`${file.group || "پیوست"} - ${file.name || "فایل"}`)}</div><img src="${escapeHtml(file.url)}" alt="" /></div>`).join("")}</div>` : ""}`)}
@@ -4689,7 +4692,7 @@ export default function ContractInformation() {
                   ) : activeContractTab === "insurance" ? (
                     <div className="space-y-4 p-3 sm:p-4">
                       <div>
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(140px,0.5fr)_minmax(170px,0.5fr)_minmax(220px,0.8fr)_minmax(280px,1.2fr)]">
                           <div className="min-w-0">
                             <div className={labelCls}>ردیف پیمان *</div>
                             <input
@@ -4738,6 +4741,15 @@ export default function ContractInformation() {
                               </option>
                             ))}
                           </select>
+                          </div>
+                          <div className="min-w-0">
+                            <div className={labelCls}>توضیحات</div>
+                            <input
+                              value={insuranceForm.description || ""}
+                              onChange={(e) => setInsuranceField("description", e.target.value)}
+                              className={inputCls}
+                              type="text"
+                            />
                           </div>
                         </div>
 
@@ -5361,6 +5373,7 @@ export default function ContractInformation() {
                   {renderPreviewInfo("مفاصا حساب بیمه تامین اجتماعی", previewFileNames(previewInsurance.clearanceFiles))}
                   {renderPreviewInfo("سند مرتبط تامین اجتماعی", previewInsuranceLetterLabel)}
                   {renderPreviewInfo("آخرین وضعیت قرارداد", previewInsurance.lastStatus)}
+                  {renderPreviewInfo("توضیحات", previewInsurance.description)}
                 </div>
                   </div>
 
