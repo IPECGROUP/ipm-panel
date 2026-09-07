@@ -74,7 +74,7 @@ function quickHistoryStartDate(key) {
   return toEnglishDigits(new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit" }).format(date));
 }
 
-const tableCellClass = "h-14 border-b border-l border-black/10 px-2 text-center align-middle dark:border-white/10";
+const tableCellClass = "h-12 border-b border-l border-neutral-300 px-3 text-center align-middle dark:border-neutral-700";
 const historyTableCellClass = "h-11 border-b border-l border-neutral-300 px-3 text-center align-middle dark:border-white/10";
 const paginationIconBtnCls = "grid h-9 w-9 place-items-center rounded-lg border border-black/10 text-neutral-700 transition hover:bg-black/[0.04] disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:text-neutral-100 dark:hover:bg-white/10";
 
@@ -419,8 +419,9 @@ export default function LiquidityAllocationPage() {
         {allocationError && <span className="text-red-600 dark:text-red-300">{allocationError}</span>}
       </div>}
 
-      {formOpen ? <div className="mt-5 overflow-x-auto rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900" dir="rtl">
-        <table className="w-full min-w-[860px] table-fixed border-collapse text-xs text-neutral-800 dark:text-neutral-100 sm:text-sm">
+      {formOpen ? <div className="mt-5 overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100" dir="rtl">
+        <div className="relative max-h-[55vh] overflow-y-auto overflow-x-auto" dir="ltr">
+        <table dir="rtl" className="w-full min-w-[860px] table-fixed border-collapse text-sm text-neutral-800 [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:min-w-0 [&_td]:text-center dark:text-neutral-100">
           <colgroup>
             <col className="w-[30%]" />
             <col className="w-[14%]" />
@@ -429,14 +430,14 @@ export default function LiquidityAllocationPage() {
             <col className="w-[14%]" />
             <col className="w-[14%]" />
           </colgroup>
-          <thead className="bg-neutral-100 text-neutral-700 dark:bg-white/[0.08] dark:text-neutral-100">
+          <thead className="text-neutral-700 dark:text-neutral-100">
             <tr>
               {["پروژه", "کل تخصیص", "مصرف", "مانده", "تخصیص جدید", "نقدینگی"].map((title) => (
-                <th key={title} className={`h-12 border-b border-l border-black/10 px-2 font-semibold dark:border-white/10 ${title === "پروژه" ? "text-right" : "text-center"} ${title === "کل تخصیص" ? "bg-sky-100 text-sky-950 dark:bg-sky-500/20 dark:text-sky-100" : title === "مانده" ? "bg-orange-100 text-orange-950 dark:bg-orange-500/20 dark:text-orange-100" : title === "نقدینگی" ? "bg-emerald-100 text-emerald-950 dark:bg-emerald-500/20 dark:text-emerald-100" : ""}`}>{title}</th>
+                <th key={title} className={`sticky top-0 z-10 h-11 border-b border-l border-neutral-300 bg-neutral-200 px-3 text-[14px] font-semibold dark:border-neutral-700 dark:bg-neutral-800 md:text-[15px] ${title === "پروژه" ? "!text-right" : "text-center"} ${title === "کل تخصیص" ? "bg-sky-100 text-sky-950 dark:bg-sky-500/20 dark:text-sky-100" : title === "مانده" ? "bg-orange-100 text-orange-950 dark:bg-orange-500/20 dark:text-orange-100" : title === "نقدینگی" ? "bg-emerald-100 text-emerald-950 dark:bg-emerald-500/20 dark:text-emerald-100" : ""}`}>{title}</th>
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="text-[13px] text-black dark:text-neutral-100">
             {rows.map((row) => {
               const key = String(row.projectId);
               const totalBudget = money(summary.allocations[key]);
@@ -445,7 +446,7 @@ export default function LiquidityAllocationPage() {
               const budgetRemaining = totalBudget - consumed;
               const allocationAmount = money(row.newAllocation);
               return (
-                <tr key={row.id} className="bg-white transition-colors hover:bg-neutral-50 dark:bg-neutral-900 dark:hover:bg-white/[0.03]">
+                <tr key={row.id} className="bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
                   <td className={tableCellClass + " truncate text-right font-medium"} title={row.label}>{row.label}</td>
                   <td className={tableCellClass + " bg-sky-50/80 font-medium text-sky-950 dark:bg-sky-500/[0.08] dark:text-sky-100"}>{displayMoney(totalBudget)}</td>
                   <td className={tableCellClass}>{displayMoney(consumed)}</td>
@@ -457,7 +458,7 @@ export default function LiquidityAllocationPage() {
                 </tr>
               );
             })}
-            <tr className="bg-neutral-100/80 dark:bg-white/[0.06]">
+            <tr className="bg-neutral-100 dark:bg-white/[0.08]">
               <td className={tableCellClass + " font-medium"}>جمع</td>
               <td className={tableCellClass + " bg-sky-100/80 font-semibold text-sky-950 dark:bg-sky-500/[0.15] dark:text-sky-100"}>{displayMoney(projectTotalBudget)}</td>
               <td className={tableCellClass}>{displayMoney(rows.reduce((total, row) => total + money(summary.allocations[String(row.projectId)]) - money(summary.committed[String(row.projectId)]), 0))}</td>
@@ -467,6 +468,7 @@ export default function LiquidityAllocationPage() {
             </tr>
           </tbody>
         </table>
+        </div>
         <div className="mt-4 px-3 pb-3">
           <div className="mx-1 h-px bg-neutral-200 dark:bg-white/15" />
           <div className="mt-4 flex items-center justify-end">
