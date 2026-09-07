@@ -25,7 +25,13 @@ const IcDashboard = () => <NavIcon src="/images/icons/dashbaord.svg" />;
 const IcLetter = () => <NavIcon src="/images/icons/nameha.svg" />;
 const IcProjects = () => <NavIcon src="/images/icons/modiriat-projects.svg" />;
 const IcBudget = () => <NavIcon src="/images/icons/modiriat-mali.svg" />;
-const IcBase = () => <NavIcon src="/images/icons/tanzimat.svg" />;
+// The gear artwork has extra whitespace in its viewBox, so it needs a small
+// optical-size adjustment to match the other menu icons.
+const IcBase = () => (
+  <span className="scale-[1.10]">
+    <NavIcon src="/images/icons/tanzimat.svg" />
+  </span>
+);
 const IcContract = () => <NavIcon src="/images/icons/gharadad.svg" />;
 const IcTags = () => <NavIcon src="/images/icons/tags.svg" />;
 const IcBaseInformation = () => <NavIcon src="/images/icons/etelaat-paye.svg" />;
