@@ -467,10 +467,13 @@ export default function LiquidityAllocationPage() {
             </tr>
           </tbody>
         </table>
-        <div className="mt-4 flex items-center justify-end border-t-2 border-neutral-300 px-3 pt-4 pb-3 dark:border-white/20 dark:border-neutral-600">
-          <button type="button" onClick={saveAllocation} disabled={submitting || !!allocationError || projectsLoading} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-900 text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-neutral-900" title="ثبت تخصیص" aria-label="ثبت تخصیص">
-            {submitting ? <span className="text-xs">...</span> : <img src="/images/icons/check.svg" alt="" className="h-5 w-5 invert dark:invert-0" />}
-          </button>
+        <div className="mt-4 px-3 pb-3">
+          <div className="mx-1 h-px bg-neutral-200 dark:bg-white/15" />
+          <div className="mt-4 flex items-center justify-end">
+            <button type="button" onClick={saveAllocation} disabled={submitting || !!allocationError || projectsLoading} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-900 text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-neutral-900" title="ثبت تخصیص" aria-label="ثبت تخصیص">
+              {submitting ? <span className="text-xs">...</span> : <img src="/images/icons/check.svg" alt="" className="h-5 w-5 invert dark:invert-0" />}
+            </button>
+          </div>
         </div>
       </div> : <>
         <div className="mt-5 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]" dir="rtl">
