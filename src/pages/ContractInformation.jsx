@@ -101,7 +101,7 @@ const EMPTY_GUARANTEE_ROW = {
 const SOCIAL_INSURANCE_CLEARANCE_STATUS = "مفاصا حساب دریافت شده و خاتمه قرارداد";
 const SOCIAL_INSURANCE_OLD_CLEARANCE_STATUS = "مفاصا حساب";
 
-const SOCIAL_INSURANCE_STATUS_OPTIONS = [
+const LEGACY_SOCIAL_INSURANCE_STATUS_OPTIONS = [
   "قرارداد درحال انجام است",
   "در انتظار نتیجه رسیدگی شعبه به نام مبانی محاسباتی",
   "اعتراض ثبت شده در انتظار جلسه هیات",
@@ -401,7 +401,7 @@ function isRialCurrency(row = {}) {
 function normalizeInsurance(insurance = {}) {
   const rawBranchStatus = String(insurance?.branchStatus ?? insurance?.branch_status ?? "");
   const rawLastStatus = String(insurance?.lastStatus ?? insurance?.last_status ?? "");
-  const branchLooksLikeOldStatus = !rawLastStatus && SOCIAL_INSURANCE_STATUS_OPTIONS.includes(rawBranchStatus);
+  const branchLooksLikeOldStatus = !rawLastStatus && LEGACY_SOCIAL_INSURANCE_STATUS_OPTIONS.includes(rawBranchStatus);
   return {
     ...(EMPTY_FORM.insurance || {}),
     ...(insurance || {}),
@@ -1237,6 +1237,7 @@ export default function ContractInformation() {
   const [filterToDate, setFilterToDate] = React.useState("");
   const [filterStatus, setFilterStatus] = React.useState("");
   const [contractTypeOptions, setContractTypeOptions] = React.useState({ main: [], sub: [] });
+  const [contractStatusOptions, setContractStatusOptions] = React.useState([]);
   const [guaranteeNameOptions, setGuaranteeNameOptions] = React.useState([]);
   const [relatedPickOpen, setRelatedPickOpen] = React.useState(false);
   const [relatedPickQuery, setRelatedPickQuery] = React.useState("");
@@ -1388,6 +1389,21 @@ export default function ContractInformation() {
     });
     return () => { alive = false; };
   }, [formOpen]);
+
+  React.useEffect(() => {
+    let alive = true;
+    fetchJson("/base/contract-options?category=status")
+      .then((response) => {
+        if (!alive) return;
+        setContractStatusOptions(listFromPayload(response, "items").map(readItemLabel).filter(Boolean));
+      })
+      .catch(() => {
+        if (alive) setContractStatusOptions([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const ensureCurrencies = React.useCallback(async () => {
     if (currencyItems.length || currencySourceItems.length || currencyLoading) return;
@@ -3389,6 +3405,39 @@ export default function ContractInformation() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [previewContractId, relatedLetterPreviewId]);
 
+  const renderDeductionFields = () => (
+    <div className="min-w-0 rounded-xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-700 dark:bg-white/[0.03]">
+      <div className="mb-2 text-sm font-semibold text-black/70 dark:text-neutral-200">کسور</div>
+      <div className="space-y-2">
+        {[
+          { field: "capitalDeposit", amountField: "capitalDepositAmount", label: "سپرده بیمه *" },
+          { field: "performanceBond", amountField: "performanceBondAmount", label: "حسن انجام کار *" },
+        ].map((item) => (
+          <div key={item.field} className="grid grid-cols-[104px_minmax(0,1fr)_80px] items-center gap-2">
+            <div className="text-sm text-black/70 dark:text-neutral-300">{item.label}</div>
+            <div className="flex flex-wrap items-center gap-2">
+              {renderPaymentOption(item.field, "none", "ندارد")}
+              {renderPaymentOption(item.field, "has", "دارد")}
+            </div>
+            <div className="relative">
+              <input
+                value={financialForm[item.amountField] || ""}
+                onChange={(e) => setFinancialField(item.amountField, cleanFinancialAmountInput(e.target.value))}
+                className={`${inputCls} !h-8 !w-20 !pl-7 !pr-2 text-center`}
+                type="text"
+                inputMode="decimal"
+                dir="ltr"
+                placeholder="0"
+                disabled={financialForm[item.field] !== "has"}
+              />
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-black/55 dark:text-neutral-300">%</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   const renderFinancialRows = (title, sectionKey, rows, options = {}) => {
     const showFinancialRowDelete = Boolean(options.showDelete);
     const { bordered = true, showAdd = true, amountLabel = "عدد" } = options;
@@ -3397,7 +3446,7 @@ export default function ContractInformation() {
       <div className="mb-3 text-sm font-semibold text-black dark:text-neutral-100">{title}</div>
       <div className="space-y-2">
         {rows.map((row, index) => (
-          <div key={row.id} className="grid grid-cols-1 md:grid-cols-[minmax(120px,0.36fr)_171px_171px_auto] gap-2 md:items-end">
+          <div key={row.id} className="grid grid-cols-1 gap-2 md:grid-cols-[minmax(120px,0.36fr)_120px_171px_auto_minmax(320px,1fr)] md:items-end">
             <div>
               <div className={labelCls}>{amountLabel} *</div>
               <input
@@ -3462,6 +3511,7 @@ export default function ContractInformation() {
                 </div>
               </div>
             ) : null}
+            {sectionKey === "contractAmounts" ? renderDeductionFields() : null}
             {showFinancialRowDelete ? <button
               type="button"
               onClick={() => removeFinancialRow(sectionKey, row.id)}
@@ -3628,13 +3678,19 @@ export default function ContractInformation() {
             <div>
               <div className={labelCls}>برچسب ها</div>
               <div className="flex flex-wrap items-center gap-2">
-                {[{ id: "main", label: "اصلی", active: "bg-emerald-600 text-white ring-emerald-600 dark:bg-emerald-500 dark:ring-emerald-500" }, { id: "sub", label: "فرعی", active: "bg-sky-600 text-white ring-sky-600 dark:bg-sky-500 dark:ring-sky-500" }].map((item) => (
-                  <button key={item.id} type="button" onClick={() => setFilterDocType((value) => value === item.id ? "" : item.id)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${filterDocType === item.id ? item.active : "bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200/80 text-neutral-700 ring-neutral-200 hover:from-neutral-200 hover:to-neutral-300 dark:from-white/10 dark:via-white/[0.07] dark:to-white/[0.13] dark:text-neutral-200 dark:ring-white/10"}`}>{item.label}</button>
+                {[{ id: "main", label: "اصلی", base: "bg-emerald-100 text-emerald-800 ring-emerald-200 hover:bg-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-500/30", active: "bg-emerald-600 text-white ring-emerald-600 dark:bg-emerald-500 dark:ring-emerald-500" }, { id: "sub", label: "فرعی", base: "bg-sky-100 text-sky-800 ring-sky-200 hover:bg-sky-200 dark:bg-sky-500/20 dark:text-sky-300 dark:ring-sky-500/30", active: "bg-sky-600 text-white ring-sky-600 dark:bg-sky-500 dark:ring-sky-500" }].map((item) => (
+                  <button key={item.id} type="button" onClick={() => setFilterDocType((value) => value === item.id ? "" : item.id)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${filterDocType === item.id ? item.active : item.base}`}>{item.label}</button>
                 ))}
-                <select value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)} className="h-8 rounded-full border border-black/10 bg-white px-3 text-xs font-medium text-neutral-700 outline-none transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10">
-                  <option value="">آخرین وضعیت قرارداد</option>
-                  {SOCIAL_INSURANCE_STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
-                </select>
+                {contractStatusOptions.map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => setFilterStatus((value) => value === status ? "" : status)}
+                    className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${filterStatus === status ? "bg-neutral-800 text-white ring-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:ring-neutral-100" : "bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200/80 text-neutral-700 ring-neutral-200 hover:from-neutral-200 hover:to-neutral-300 dark:from-white/10 dark:via-white/[0.07] dark:to-white/[0.13] dark:text-neutral-200 dark:ring-white/10"}`}
+                  >
+                    {status}
+                  </button>
+                ))}
               </div>
             </div>
           </div> : null}
@@ -4367,54 +4423,6 @@ export default function ContractInformation() {
                         <div className="mt-4">
                           <div className="mt-2 rounded-xl border border-black/10 bg-black/[0.02] p-3 lg:mt-6 dark:border-neutral-700 dark:bg-white/[0.03]">
                             <div className="grid grid-cols-1 gap-3">
-                              <div>
-                                <div className="mb-2 text-sm font-semibold text-black/70 dark:text-neutral-200">کسور</div>
-                                <div className="space-y-3">
-                                  <div className="grid grid-cols-1 sm:grid-cols-[116px_1fr] gap-2 sm:items-center">
-                                    <div className="text-sm text-black/70 dark:text-neutral-300">سپرده بیمه *</div>
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      {renderPaymentOption("capitalDeposit", "none", "ندارد")}
-                                      {renderPaymentOption("capitalDeposit", "has", "دارد")}
-                                      {financialForm.capitalDeposit === "has" ? (
-                                        <div className="relative">
-                                          <input
-                                            value={financialForm.capitalDepositAmount || ""}
-                                            onChange={(e) => setFinancialField("capitalDepositAmount", cleanFinancialAmountInput(e.target.value))}
-                                            className={`${inputCls} !h-8 !w-20 !pl-7 !pr-2 text-center`}
-                                            type="text"
-                                            inputMode="decimal"
-                                            dir="ltr"
-                                            placeholder="0"
-                                          />
-                                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-black/55 dark:text-neutral-300">%</span>
-                                        </div>
-                                      ) : null}
-                                    </div>
-                                  </div>
-
-                                  <div className="grid grid-cols-1 sm:grid-cols-[116px_1fr] gap-2 sm:items-center">
-                                    <div className="text-sm text-black/70 dark:text-neutral-300">حسن انجام کار *</div>
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      {renderPaymentOption("performanceBond", "none", "ندارد")}
-                                      {renderPaymentOption("performanceBond", "has", "دارد")}
-                                      {financialForm.performanceBond === "has" ? (
-                                        <div className="relative">
-                                          <input
-                                            value={financialForm.performanceBondAmount || ""}
-                                            onChange={(e) => setFinancialField("performanceBondAmount", cleanFinancialAmountInput(e.target.value))}
-                                            className={`${inputCls} !h-8 !w-20 !pl-7 !pr-2 text-center`}
-                                            type="text"
-                                            inputMode="decimal"
-                                            dir="ltr"
-                                            placeholder="0"
-                                          />
-                                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-black/55 dark:text-neutral-300">%</span>
-                                        </div>
-                                      ) : null}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
                               {renderFinancialFileField({
                                 label: "جدول شکست مبلغ قرارداد",
                                 required: true,
@@ -4736,7 +4744,7 @@ export default function ContractInformation() {
                             className={inputCls}
                           >
                             <option value="">انتخاب وضعیت</option>
-                            {SOCIAL_INSURANCE_STATUS_OPTIONS.map((item) => (
+                            {contractStatusOptions.map((item) => (
                               <option key={item} value={item}>
                                 {item}
                               </option>
