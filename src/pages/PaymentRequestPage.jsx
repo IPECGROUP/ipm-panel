@@ -161,6 +161,14 @@ function budgetCodeForProject(value = "", projectCode = "") {
   return `${prefix}-${code}`;
 }
 function normalizeDigits(value = "") { return toEnglishDigits(String(value ?? "")).replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660)); }
+// Older payment requests stored the letter's previous/internal number instead
+// of its database id.  Keep both forms resolvable so historic records point to
+// the same letter as the document-management search.
+function letterLookupKeys(letter) {
+  return [letter?.id, letter?.letterNo, letter?.letter_no, letter?.secretariatNo, letter?.secretariat_no]
+    .map((value) => normalizeDigits(value).trim())
+    .filter(Boolean);
+}
 function jalaliYY(value = today()) {
   const year = normalizeDigits(value).match(/^(\d{4})/)?.[1] || "1400";
   return year.slice(-2);
@@ -2007,17 +2015,19 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
   const relatedLetterIdKey = relatedLetterIds.join("|");
   useEffect(() => {
     let live = true;
-    const cachedIds = new Set((Array.isArray(letters) ? letters : []).map((letter) => String(letter?.id)));
-    const missingIds = relatedLetterIds.filter((id) => !cachedIds.has(id) && !relatedLetterDetails[id]);
+    const cachedIds = new Set((Array.isArray(letters) ? letters : []).flatMap(letterLookupKeys));
+    const missingIds = relatedLetterIds.filter((id) => !cachedIds.has(normalizeDigits(id).trim()) && !relatedLetterDetails[id]);
     if (!missingIds.length || !api) return () => { live = false; };
     // Use the same list endpoint as the related-documents search.  In some
     // deployments the nested `/letters/:id` route is not exposed by the
     // reverse proxy, which left the preview with only its internal id.
     api("/letters").then((response) => {
       if (!live) return;
-      const byId = new Map((Array.isArray(response?.items) ? response.items : Array.isArray(response) ? response : [])
-        .map((letter) => [String(letter?.id), letter]));
-      const resolved = missingIds.map((id) => [id, byId.get(id)]).filter(([, letter]) => letter);
+      const byId = new Map();
+      (Array.isArray(response?.items) ? response.items : Array.isArray(response) ? response : []).forEach((letter) => {
+        letterLookupKeys(letter).forEach((key) => byId.set(key, letter));
+      });
+      const resolved = missingIds.map((id) => [id, byId.get(normalizeDigits(id).trim())]).filter(([, letter]) => letter);
       if (resolved.length) {
         const resolvedById = Object.fromEntries(resolved);
         setRelatedLetterDetails((current) => ({ ...current, ...resolvedById }));
@@ -2029,12 +2039,15 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
     }).catch(() => {});
     return () => { live = false; };
   }, [api, letters, relatedLetterIdKey]);
-  const relatedLetterById = useMemo(() => new Map([
-    ...(Array.isArray(letters) ? letters : []),
-    ...Object.values(relatedLetterDetails),
-  ].filter(Boolean).map((letter) => [String(letter.id), letter])), [letters, relatedLetterDetails]);
+  const relatedLetterById = useMemo(() => {
+    const lookup = new Map();
+    [...(Array.isArray(letters) ? letters : []), ...Object.values(relatedLetterDetails)].filter(Boolean).forEach((letter) => {
+      letterLookupKeys(letter).forEach((key) => lookup.set(key, letter));
+    });
+    return lookup;
+  }, [letters, relatedLetterDetails]);
   const relatedLetters = relatedLetterIds.map((id) => {
-    const letter = relatedLetterById.get(id);
+    const letter = relatedLetterById.get(normalizeDigits(id).trim());
     const number = letter?.secretariatNo || letter?.secretariat_no || letter?.letterNo || letter?.letter_no;
     return { id, label: number ? toFa(number) : `نامه #${toFa(id)}`, subject: letter?.subject || letter?.title, letter };
   });
