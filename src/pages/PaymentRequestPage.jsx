@@ -165,7 +165,7 @@ function normalizeDigits(value = "") { return toEnglishDigits(String(value ?? ""
 // of its database id.  Keep both forms resolvable so historic records point to
 // the same letter as the document-management search.
 function letterLookupKeys(letter) {
-  return [letter?.id, letter?.letterNo, letter?.letter_no, letter?.secretariatNo, letter?.secretariat_no]
+  return [letter?.relationRef, letter?.relation_ref, letter?.id, letter?.letterNo, letter?.letter_no, letter?.secretariatNo, letter?.secretariat_no]
     .map((value) => normalizeDigits(value).trim())
     .filter(Boolean);
 }
@@ -2010,12 +2010,13 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
   const docName = item.docId === "other" ? (item.docOther || "سایر") : (DOC_OPTIONS.find(([value]) => value === item.docId)?.[1] || String(item.docId || "").trim() || "—");
   const attachments = Array.isArray(item.attachments) ? item.attachments : [];
   const relatedLetterIds = Array.isArray(item.relatedLetterIds) ? item.relatedLetterIds.map(String) : [];
+  const embeddedRelatedLetters = useMemo(() => Array.isArray(item.relatedLetters) ? item.relatedLetters : [], [item.relatedLetters]);
   const [relatedLetterDetails, setRelatedLetterDetails] = useState({});
   const [relatedLetterPreview, setRelatedLetterPreview] = useState(null);
   const relatedLetterIdKey = relatedLetterIds.join("|");
   useEffect(() => {
     let live = true;
-    const cachedIds = new Set((Array.isArray(letters) ? letters : []).flatMap(letterLookupKeys));
+    const cachedIds = new Set([...(Array.isArray(letters) ? letters : []), ...embeddedRelatedLetters].flatMap(letterLookupKeys));
     const missingIds = relatedLetterIds.filter((id) => !cachedIds.has(normalizeDigits(id).trim()) && !relatedLetterDetails[id]);
     if (!missingIds.length || !api) return () => { live = false; };
     (async () => {
@@ -2060,14 +2061,14 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
       setRelatedLetterPreview((current) => resolvedById[String(current?.id)] ? { ...current, ...resolvedById[String(current.id)] } : current);
     })().catch(() => {});
     return () => { live = false; };
-  }, [api, letters, relatedLetterIdKey]);
+  }, [api, letters, embeddedRelatedLetters, relatedLetterIdKey]);
   const relatedLetterById = useMemo(() => {
     const lookup = new Map();
-    [...(Array.isArray(letters) ? letters : []), ...Object.values(relatedLetterDetails)].filter(Boolean).forEach((letter) => {
+    [...embeddedRelatedLetters, ...(Array.isArray(letters) ? letters : []), ...Object.values(relatedLetterDetails)].filter(Boolean).forEach((letter) => {
       letterLookupKeys(letter).forEach((key) => lookup.set(key, letter));
     });
     return lookup;
-  }, [letters, relatedLetterDetails]);
+  }, [embeddedRelatedLetters, letters, relatedLetterDetails]);
   const relatedLetters = relatedLetterIds.map((id) => {
     const letter = relatedLetterById.get(normalizeDigits(id).trim());
     const number = letter?.secretariatNo || letter?.secretariat_no || letter?.letterNo || letter?.letter_no;
