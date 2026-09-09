@@ -2010,17 +2010,23 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
     const cachedIds = new Set((Array.isArray(letters) ? letters : []).map((letter) => String(letter?.id)));
     const missingIds = relatedLetterIds.filter((id) => !cachedIds.has(id) && !relatedLetterDetails[id]);
     if (!missingIds.length || !api) return () => { live = false; };
-    Promise.all(missingIds.map(async (id) => {
-      try {
-        const response = await api(`/letters/${encodeURIComponent(id)}`);
-        return [id, response?.item || response];
-      } catch {
-        return [id, null];
-      }
-    })).then((entries) => {
+    // Use the same list endpoint as the related-documents search.  In some
+    // deployments the nested `/letters/:id` route is not exposed by the
+    // reverse proxy, which left the preview with only its internal id.
+    api("/letters").then((response) => {
       if (!live) return;
-      setRelatedLetterDetails((current) => ({ ...current, ...Object.fromEntries(entries.filter(([, letter]) => letter)) }));
-    });
+      const byId = new Map((Array.isArray(response?.items) ? response.items : Array.isArray(response) ? response : [])
+        .map((letter) => [String(letter?.id), letter]));
+      const resolved = missingIds.map((id) => [id, byId.get(id)]).filter(([, letter]) => letter);
+      if (resolved.length) {
+        const resolvedById = Object.fromEntries(resolved);
+        setRelatedLetterDetails((current) => ({ ...current, ...resolvedById }));
+        // If the user clicked while the number was still loading, replace
+        // the id-only placeholder in the open preview with the same letter
+        // record that the related-documents search returned.
+        setRelatedLetterPreview((current) => resolvedById[String(current?.id)] ? { ...current, ...resolvedById[String(current.id)] } : current);
+      }
+    }).catch(() => {});
     return () => { live = false; };
   }, [api, letters, relatedLetterIdKey]);
   const relatedLetterById = useMemo(() => new Map([
