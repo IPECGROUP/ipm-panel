@@ -1,5 +1,5 @@
 // تنخواه گردان
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
@@ -473,7 +473,10 @@ function ExpenseRegistrationTab({ onReportCreated }) {
     [selectedIds, setSelectedIds] = useState(() => new Set()),
     [confirmingReport, setConfirmingReport] = useState(false),
     [budgetPickerOpen, setBudgetPickerOpen] = useState(false),
-    [budgetPickerQuery, setBudgetPickerQuery] = useState("");
+    [budgetPickerQuery, setBudgetPickerQuery] = useState(""),
+    [editingExpense, setEditingExpense] = useState(null),
+    [tableMenuOpen, setTableMenuOpen] = useState(false);
+  const tableMenuRef = useRef(null);
   const api = useCallback(
     async (path, options = {}) => {
       const response = await fetch(`/api${path}`, {
@@ -493,6 +496,12 @@ function ExpenseRegistrationTab({ onReportCreated }) {
   );
   const loadExpenses = useCallback(
     async (nextProjectId = projectId) => {
+      if (!nextProjectId) {
+        setItems([]);
+        setSelectedIds(new Set());
+        setViewer({});
+        return;
+      }
       try {
         const data = await api(
           `/petty-cash-expenses${nextProjectId ? `?projectId=${encodeURIComponent(nextProjectId)}` : ""}`,
@@ -532,6 +541,12 @@ function ExpenseRegistrationTab({ onReportCreated }) {
   useEffect(() => {
     loadExpenses();
   }, [loadExpenses]);
+  useEffect(() => {
+    if (!tableMenuOpen) return undefined;
+    const close = (event) => { if (!tableMenuRef.current?.contains(event.target)) setTableMenuOpen(false); };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [tableMenuOpen]);
   const selectProject = async (value) => {
     setProjectId(value);
     setForm(emptyExpense());
@@ -561,10 +576,11 @@ function ExpenseRegistrationTab({ onReportCreated }) {
     setError("");
     try {
       await api("/petty-cash-expenses", {
-        method: "POST",
-        body: JSON.stringify({ projectId, ...form }),
+        method: editingExpense ? "PATCH" : "POST",
+        body: JSON.stringify(editingExpense ? { action: "update", id: editingExpense.id, projectId, ...form } : { projectId, ...form }),
       });
       setForm(emptyExpense());
+      setEditingExpense(null);
       setFormOpen(false);
       await loadExpenses(projectId);
     } catch (reason) {
@@ -644,7 +660,7 @@ function ExpenseRegistrationTab({ onReportCreated }) {
   const selectableItems = items.filter(isSettlementEligible);
   const selectedTotal = useMemo(() => selectedItemsTotal(items, selectedIds), [items, selectedIds]);
   const toggleItem = (id) => {
-    if (!isSettlementEligible(items.find((item) => item.id === id))) return;
+    if (items.find((item) => item.id === id)?.settlementReportId) return;
     setSelectedIds((current) => {
       const next = new Set(current);
       if (next.has(id)) next.delete(id);
@@ -659,6 +675,21 @@ function ExpenseRegistrationTab({ onReportCreated }) {
     setSelectedIds(
       allSelected ? new Set() : new Set(selectableItems.map((item) => item.id)),
     );
+  const selectedItems = items.filter((item) => selectedIds.has(item.id));
+  const editSelectedExpense = () => {
+    if (selectedItems.length !== 1 || selectedItems[0].stage !== "planning") return;
+    const item = selectedItems[0];
+    setProjectId(String(item.projectId));
+    setForm({ expenseDate: item.expenseDate, description: item.description, budgetCode: item.budgetCode, amount: format3(item.amount) });
+    setEditingExpense(item); setFormOpen(true); setTableMenuOpen(false);
+  };
+  const deleteSelectedExpenses = async () => {
+    if (!selectedItems.length || !window.confirm(`آیا ${toFa(selectedItems.length)} ردیف انتخاب‌شده حذف شود؟`)) return;
+    setSaving(true); setError("");
+    try { await api("/petty-cash-expenses", { method: "DELETE", body: JSON.stringify({ ids: [...selectedIds] }) }); setSelectedIds(new Set()); await loadExpenses(projectId); }
+    catch (reason) { setError(reason.message); }
+    finally { setSaving(false); setTableMenuOpen(false); }
+  };
   return (
     <section className="rounded-b-2xl border-x border-b border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900 md:p-4">
       <div className="mb-4 flex w-full items-end justify-between gap-4">
@@ -761,9 +792,16 @@ function ExpenseRegistrationTab({ onReportCreated }) {
         onManagerApprove={(item) => decide(item.id, "approve")}
         onManagerReject={(item) => decide(item.id, "reject")}
         onDetails={setDetails}
+        tableMenuRef={tableMenuRef}
+        tableMenuOpen={tableMenuOpen}
+        setTableMenuOpen={setTableMenuOpen}
+        selectedCount={selectedItems.length}
+        canEditSelected={selectedItems.length === 1 && selectedItems[0].stage === "planning"}
+        onEditSelected={editSelectedExpense}
+        onDeleteSelected={deleteSelectedExpenses}
         saving={saving}
       />
-      {selectedIds.size > 0 && (
+      {selectedItems.filter(isSettlementEligible).length > 0 && (
         <div className="mt-3 flex justify-end">
           <button
             type="button"
@@ -779,8 +817,8 @@ function ExpenseRegistrationTab({ onReportCreated }) {
       )}
       {confirmingReport && (
         <SettlementConfirmationModal
-          count={selectedIds.size}
-          total={selectedTotal}
+          count={selectedItems.filter(isSettlementEligible).length}
+          total={selectedItemsTotal(selectedItems.filter(isSettlementEligible), selectedIds)}
           saving={saving}
           onCancel={() => setConfirmingReport(false)}
           onConfirm={createSettlementReport}
@@ -841,9 +879,16 @@ function ExpenseTable({
   onManagerApprove,
   onManagerReject,
   onDetails,
+  tableMenuRef,
+  tableMenuOpen,
+  setTableMenuOpen,
+  selectedCount,
+  canEditSelected,
+  onEditSelected,
+  onDeleteSelected,
   saving,
 }) {
-  const colSpan = 8 + Number(showPlanningColumn) + Number(showManagerColumn);
+  const colSpan = 7 + Number(showPlanningColumn) + Number(showManagerColumn);
   return (
     <div className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
       <div className="overflow-x-auto" dir="ltr">
@@ -868,12 +913,9 @@ function ExpenseTable({
               <Header right>شرح هزینه</Header>
               <Header>کد بودجه</Header>
               <Header>مبلغ (ریال)</Header>
-              <Header>وضعیت</Header>
               {showPlanningColumn && <Header>برنامه‌ریزی</Header>}
               {showManagerColumn && <Header>مدیر پروژه</Header>}
-              <Header>
-                <span className="sr-only">اطلاعات تأیید</span>
-              </Header>
+              <Header><ExpenseTableMenu tableMenuRef={tableMenuRef} tableMenuOpen={tableMenuOpen} setTableMenuOpen={setTableMenuOpen} selectedCount={selectedCount} canEditSelected={canEditSelected} onEditSelected={onEditSelected} onDeleteSelected={onDeleteSelected} saving={saving} /></Header>
             </tr>
           </thead>
           <tbody className="text-[13px] text-black [&>tr]:h-10 dark:text-neutral-100">
@@ -881,12 +923,12 @@ function ExpenseTable({
               items.map((item, index) => (
                 <tr
                   key={item.id}
-                  className={`bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10 ${item.settlementReportId ? "text-neutral-500 dark:text-neutral-400" : ""}`}
+                  className={`bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10 ${item.stage === "rejected" ? "text-red-600 dark:text-red-400" : item.settlementReportId ? "text-neutral-500 dark:text-neutral-400" : ""}`}
                 >
                   <Cell>
                     {item.settlementReportId ? (
                       <LockIcon reportNumber={item.settlementReportNumber} />
-                    ) : isSettlementEligible(item) ? (
+                    ) : (
                       <input
                         type="checkbox"
                         checked={selectedIds.has(item.id)}
@@ -894,13 +936,6 @@ function ExpenseTable({
                         className="h-4 w-4 rounded border-neutral-400 align-middle accent-neutral-900 dark:accent-white"
                         aria-label={`انتخاب ردیف ${toFa(index + 1)}`}
                       />
-                    ) : (
-                      <span
-                        className="text-neutral-300 dark:text-neutral-600"
-                        title="پس از تأیید مدیر پروژه قابل انتخاب است"
-                      >
-                        —
-                      </span>
                     )}
                   </Cell>
                   <Cell>{toFa(index + 1)}</Cell>
@@ -911,13 +946,6 @@ function ExpenseTable({
                   </Cell>
                   <Cell dir="ltr" className="font-sans tabular-nums">
                     {toFa(format3(item.amount))}
-                  </Cell>
-                  <Cell>
-                    <span
-                      className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${item.stage === "completed" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" : item.stage === "rejected" ? "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300" : "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"}`}
-                    >
-                      {expenseWorkflowStatus(item)}
-                    </span>
                   </Cell>
                   {showPlanningColumn && (
                     <Cell>
@@ -968,6 +996,12 @@ function ExpenseTable({
       </div>
     </div>
   );
+}
+function ExpenseTableMenu({ tableMenuRef, tableMenuOpen, setTableMenuOpen, selectedCount, canEditSelected, onEditSelected, onDeleteSelected, saving }) {
+  return <div ref={tableMenuRef} className="relative mx-auto w-8" dir="rtl">
+    <button type="button" onClick={() => setTableMenuOpen((open) => !open)} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت ردیف‌ها" aria-label="مدیریت ردیف‌ها"><img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 dark:invert" /></button>
+    {tableMenuOpen && <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-56 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100"><div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedCount ? `${toFa(selectedCount)} مورد انتخاب شده` : "ابتدا ردیف موردنظر را انتخاب کنید"}</div><button type="button" disabled={!canEditSelected || saving} onClick={onEditSelected} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10"><span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-100 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="text-sm font-semibold">ویرایش ردیف</span></button><button type="button" disabled={!selectedCount || saving} onClick={onDeleteSelected} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 place-items-center rounded-lg bg-red-100 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span><span className="text-sm font-semibold">حذف ردیف‌ها</span></button></div>}
+  </div>;
 }
 function WorkflowCell({ status, canAct, onApprove, onReject, disabled }) {
   if (status === "approved")
