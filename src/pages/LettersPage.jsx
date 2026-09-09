@@ -6530,8 +6530,8 @@ aria-invalid={fieldHasError(formKind, "subject")}
         const isConf = isConfidentialLetter(l);
 
 const normalRowBg = theme === "dark"
-  ? "bg-neutral-900 hover:bg-neutral-800/80"
-  : "bg-white hover:bg-neutral-50";
+  ? "bg-white/5 hover:bg-white/10"
+  : "bg-black/[0.02] hover:bg-black/[0.04]";
 
 // ✅ محرمانه: نمایش با آیکن، بدون بک‌گراند جداگانه
 const rowBg = normalRowBg;
