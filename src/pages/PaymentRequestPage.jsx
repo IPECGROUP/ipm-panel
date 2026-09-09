@@ -9,6 +9,7 @@ import { toEnglishDigits } from "../utils/format";
 import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 import TenkhahPage from "./TenkhahPage.jsx";
 import DocumentPreviewModal from "../components/DocumentPreviewModal.jsx";
+import BudgetTreePickerModal from "../components/BudgetTreePickerModal.jsx";
 
 const DOC_OPTIONS = [
   ["pre_invoice", "پیش فاکتور"], ["invoice", "فاکتور"],
@@ -1571,7 +1572,7 @@ function RequestFilterBar({ query, setQuery, quick, setQuick, ownership, setOwne
   </div>;
 }
 
-function BudgetTreePickerModal({ items, selectedCode, query, onQueryChange, onSelect, onClose }) {
+function LegacyBudgetTreePickerModal({ items, selectedCode, query, onQueryChange, onSelect, onClose }) {
   const [expandedCodes, setExpandedCodes] = useState(() => new Set());
   const rows = useMemo(() => {
     const byCode = new Map();

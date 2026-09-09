@@ -1,11 +1,12 @@
 // تنخواه گردان
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { todayJalaliYmd } from "../utils/date.js";
 import { format3, toEnglishDigits } from "../utils/format.js";
+import BudgetTreePickerModal from "../components/BudgetTreePickerModal.jsx";
 
 const PAGE_ICON = "/images/icons/tenkhah.svg";
 const tabs = ["تنخواه‌های من", "ثبت هزینه‌ها", "گزارش تسویه تنخواه"];
@@ -42,6 +43,14 @@ function displayBudgetCode(projectCode = "", budgetCode = "") {
     return budget;
   const separator = budget.includes(".") && !budget.includes("-") ? "." : "-";
   return `${project}${separator}${budget}`;
+}
+
+function selectedItemsTotal(items, selectedIds) {
+  return (Array.isArray(items) ? items : []).reduce((total, item) => {
+    if (!selectedIds.has(item.id)) return total;
+    const digits = toEnglishDigits(String(item.amount ?? "")).replace(/[^\d]/g, "");
+    return total + (digits ? BigInt(digits) : 0n);
+  }, 0n);
 }
 
 function isSettlementEligible(item) {
@@ -462,7 +471,9 @@ function ExpenseRegistrationTab({ onReportCreated }) {
     [selectedManagerId, setSelectedManagerId] = useState(""),
     [details, setDetails] = useState(null),
     [selectedIds, setSelectedIds] = useState(() => new Set()),
-    [confirmingReport, setConfirmingReport] = useState(false);
+    [confirmingReport, setConfirmingReport] = useState(false),
+    [budgetPickerOpen, setBudgetPickerOpen] = useState(false),
+    [budgetPickerQuery, setBudgetPickerQuery] = useState("");
   const api = useCallback(
     async (path, options = {}) => {
       const response = await fetch(`/api${path}`, {
@@ -594,7 +605,7 @@ function ExpenseRegistrationTab({ onReportCreated }) {
     }
   };
   const createSettlementReport = async () => {
-    if (selectedIds.size < 2) return;
+    if (!selectedIds.size) return;
     setConfirmingReport(false);
     setSaving(true);
     setError("");
@@ -617,7 +628,7 @@ function ExpenseRegistrationTab({ onReportCreated }) {
           "حداقل یکی از ردیف‌ها قبلاً وارد گزارش تسویه شده است.",
         expenses_not_project_manager_approved:
           "فقط ردیف‌های تأییدشده توسط مدیر پروژه قابل ارسال هستند.",
-        at_least_two_expenses_required: "حداقل دو ردیف را انتخاب کنید.",
+        at_least_one_expense_required: "حداقل یک ردیف را انتخاب کنید.",
         not_allowed: "اجازه ایجاد گزارش از این ردیف‌ها را ندارید.",
       };
       setError(messages[reason.message] || reason.message);
@@ -631,6 +642,7 @@ function ExpenseRegistrationTab({ onReportCreated }) {
     (project) => String(project.id) === String(projectId),
   );
   const selectableItems = items.filter(isSettlementEligible);
+  const selectedTotal = useMemo(() => selectedItemsTotal(items, selectedIds), [items, selectedIds]);
   const toggleItem = (id) => {
     if (!isSettlementEligible(items.find((item) => item.id === id))) return;
     setSelectedIds((current) => {
@@ -701,29 +713,7 @@ function ExpenseRegistrationTab({ onReportCreated }) {
               className={inputClass}
             />
           </Field>
-          <Field label="کد بودجه">
-            <select
-              value={form.budgetCode}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  budgetCode: event.target.value,
-                }))
-              }
-              className={inputClass}
-              disabled={!projectId}
-            >
-              <option value="">
-                {projectId ? "انتخاب کنید" : "ابتدا پروژه را انتخاب کنید"}
-              </option>
-              {budgetItems.map((item) => (
-                <option key={item.id} value={item.budgetCode}>
-                  {displayBudgetCode(selectedProject?.code, item.budgetCode)}
-                  {item.budgetName ? ` - ${item.budgetName}` : ""}
-                </option>
-              ))}
-            </select>
-          </Field>
+          <Field label="کد بودجه"><button type="button" disabled={!projectId} onClick={() => { setBudgetPickerQuery(""); setBudgetPickerOpen(true); }} className={`${inputClass} flex items-center justify-between gap-3 text-right disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-neutral-400 dark:disabled:bg-white/5 dark:disabled:text-neutral-500`}><span className={form.budgetCode ? "min-w-0 truncate" : "text-neutral-400"}>{form.budgetCode ? `${displayBudgetCode(selectedProject?.code, form.budgetCode)}${budgetItems.find((item) => String(item.budgetCode) === String(form.budgetCode))?.budgetName ? ` - ${budgetItems.find((item) => String(item.budgetCode) === String(form.budgetCode)).budgetName}` : ""}` : (projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید")}</span><span className="shrink-0 text-lg leading-none">⌄</span></button></Field>
           <Field label="مبلغ (ریال)">
             <input
               dir="ltr"
@@ -773,7 +763,7 @@ function ExpenseRegistrationTab({ onReportCreated }) {
         onDetails={setDetails}
         saving={saving}
       />
-      {selectedIds.size > 1 && (
+      {selectedIds.size > 0 && (
         <div className="mt-3 flex justify-end">
           <button
             type="button"
@@ -790,11 +780,13 @@ function ExpenseRegistrationTab({ onReportCreated }) {
       {confirmingReport && (
         <SettlementConfirmationModal
           count={selectedIds.size}
+          total={selectedTotal}
           saving={saving}
           onCancel={() => setConfirmingReport(false)}
           onConfirm={createSettlementReport}
         />
       )}
+      {budgetPickerOpen && <BudgetTreePickerModal items={budgetItems.map((item) => ({ code: displayBudgetCode(selectedProject?.code, item.budgetCode), value: item.budgetCode, center_desc: item.budgetName }))} selectedCode={form.budgetCode} query={budgetPickerQuery} onQueryChange={setBudgetPickerQuery} onSelect={(budgetCode) => { setForm((current) => ({ ...current, budgetCode })); setBudgetPickerOpen(false); }} onClose={() => setBudgetPickerOpen(false)} />}
       {approval && (
         <ManagerModal
           item={approval}
@@ -1065,7 +1057,7 @@ function ManagerModal({
     </div>
   );
 }
-function SettlementConfirmationModal({ count, saving, onCancel, onConfirm }) {
+function SettlementConfirmationModal({ count, total, saving, onCancel, onConfirm }) {
   return createPortal(
     <div
       className="fixed inset-0 z-[1150] flex items-center justify-center bg-black/45 p-4"
@@ -1085,7 +1077,7 @@ function SettlementConfirmationModal({ count, saving, onCancel, onConfirm }) {
           تأیید ارسال
         </h2>
         <p className="mt-3 text-sm leading-7 text-neutral-600 dark:text-neutral-300">
-          شما {toFa(count)} ردیف انتخاب کرده‌اید. از ارسال آن‌ها مطمئن هستید؟
+          شما {toFa(count)} ردیف را برای گزارش تسویه انتخاب کرده‌اید. جمع کل مبالغ انتخاب‌شده {toFa(format3(total.toString()))} ریال است. آیا از ارسال این گزارش مطمئن هستید؟
         </p>
         <div className="mt-5 flex items-center justify-center gap-3">
           <button
