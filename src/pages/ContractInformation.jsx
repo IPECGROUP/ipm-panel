@@ -3408,29 +3408,32 @@ export default function ContractInformation() {
   const renderDeductionFields = () => (
     <div className="min-w-0 rounded-xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-700 dark:bg-white/[0.03]">
       <div className="mb-2 text-sm font-semibold text-black/70 dark:text-neutral-200">کسور</div>
-      <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         {[
           { field: "capitalDeposit", amountField: "capitalDepositAmount", label: "سپرده بیمه *" },
           { field: "performanceBond", amountField: "performanceBondAmount", label: "حسن انجام کار *" },
         ].map((item) => (
-          <div key={item.field} className="grid grid-cols-[104px_minmax(0,1fr)_80px] items-center gap-2">
+          <div key={item.field} className="flex items-center gap-2 whitespace-nowrap">
             <div className="text-sm text-black/70 dark:text-neutral-300">{item.label}</div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
               {renderPaymentOption(item.field, "none", "ندارد")}
               {renderPaymentOption(item.field, "has", "دارد")}
             </div>
-            <div className="relative">
-              <input
-                value={financialForm[item.amountField] || ""}
-                onChange={(e) => setFinancialField(item.amountField, cleanFinancialAmountInput(e.target.value))}
-                className={`${inputCls} !h-8 !w-20 !pl-7 !pr-2 text-center`}
-                type="text"
-                inputMode="decimal"
-                dir="ltr"
-                placeholder="0"
-                disabled={financialForm[item.field] !== "has"}
-              />
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-black/55 dark:text-neutral-300">%</span>
+            <div className="w-20">
+              {financialForm[item.field] === "has" && (
+                <div className="relative">
+                  <input
+                    value={financialForm[item.amountField] || ""}
+                    onChange={(e) => setFinancialField(item.amountField, cleanFinancialAmountInput(e.target.value))}
+                    className={`${inputCls} !h-8 !w-20 !pl-7 !pr-2 text-center`}
+                    type="text"
+                    inputMode="decimal"
+                    dir="ltr"
+                    placeholder="0"
+                  />
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-black/55 dark:text-neutral-300">%</span>
+                </div>
+              )}
             </div>
           </div>
         ))}

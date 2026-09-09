@@ -573,7 +573,10 @@ export default function RoznegarPgae() {
     dayjs(todayJalaliYmd(), { jalali: true }).calendar("jalali").startOf("month")
   );
   const [entriesByDate, setEntriesByDate] = useState({});
-  const [savedEntryCount, setSavedEntryCount] = useState(0);
+  const savedEntryCount = useMemo(
+    () => Object.values(entriesByDate || {}).filter(hasEntryDetails).length,
+    [entriesByDate]
+  );
 
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState("");
@@ -767,7 +770,6 @@ export default function RoznegarPgae() {
     async (pid) => {
       const p = String(pid || "").trim();
       if (authLoading) return false;
-      setSavedEntryCount(0);
       if (!p) {
         setEntriesByDate({});
         return true;
@@ -803,7 +805,6 @@ export default function RoznegarPgae() {
           if (entry?.dateYmd) next[entry.dateYmd] = entry;
         });
         setEntriesByDate(next);
-        setSavedEntryCount(Object.keys(next).length);
         setSyncState((prev) => (prev?.type === "success" ? prev : { type: "", text: "" }));
         return true;
       } catch (e) {
