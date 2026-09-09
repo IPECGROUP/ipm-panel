@@ -1341,6 +1341,7 @@ function SettlementReportPreview({ data, onClose }) {
           onClick={printSettlementReport}
           className="h-11 rounded-xl bg-sky-800 px-5 text-sm font-bold text-white shadow-sm"
         >
+          <img src="/images/icons/exportpdf.svg" alt="" className="ml-2 inline-block h-5 w-5 align-middle invert" />
           خروجی PDF
         </button>
         <button

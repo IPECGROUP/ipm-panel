@@ -1115,7 +1115,7 @@ export default function SupplyRequestPage() {
                       title="اسناد مرتبط"
                       aria-label="اسناد مرتبط"
                     >
-                      <img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" />
+                      <img src="/images/icons/asnad-mortabet.svg" alt="" className="h-5 w-5 dark:invert" />
                     </button>
                     {selectedRelatedLetters.length > 0 && (
                       <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs">
@@ -1733,7 +1733,7 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], lette
             <div className="flex min-w-0 items-center gap-2">
               <div className="text-base font-bold md:text-lg">اقدامات تامین</div>
               <button type="button" onClick={openPdfPreview} className="inline-flex h-9 items-center gap-2 rounded-lg border border-black/10 px-3 text-xs font-semibold transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10" title="مشاهده PDF" aria-label="مشاهده PDF">
-                <img src="/images/icons/print.svg" alt="" className="h-4 w-4 dark:invert" />
+                <img src="/images/icons/exportpdf.svg" alt="" className="h-4 w-4 dark:invert" />
                 <span>مشاهده PDF</span>
               </button>
             </div>

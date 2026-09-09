@@ -361,7 +361,7 @@ function JalaliPopupDatePicker({ value, onChange, disablePast = false }) {
   return <>
     <button ref={buttonRef} type="button" onClick={() => setOpen((old) => !old)} className={`${inputClass} flex items-center justify-between text-right`}>
       <span className={value ? "" : "text-neutral-400"}>{value ? toFa(value) : "انتخاب تاریخ..."}</span>
-      <img src="/images/icons/calendar.svg" alt="" className="h-5 w-5 dark:invert" />
+      <img src="/images/icons/tarikh.svg" alt="" className="h-5 w-5 dark:invert" />
     </button>
     {open && createPortal(
       <div ref={popupRef} dir="rtl" style={{ top: position.top, right: position.right }} className="fixed z-[9999] w-[min(420px,calc(100vw-24px))] rounded-2xl border border-black/10 bg-white p-4 text-neutral-900 shadow-xl dark:border-white/10 dark:bg-neutral-900 dark:text-white">
@@ -1266,7 +1266,7 @@ export default function PaymentRequestPage() {
               {!!form.attachments.length && <div className="mt-1 text-[11px] text-neutral-500">{toFa(form.attachments.length)} فایل ضمیمه شده</div>}
             </Field>
             <Field label="اسناد مرتبط">
-              <div className="isolate flex items-center"><button type="button" onClick={() => setLetterPickerOpen(true)} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white text-lg transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب نامه" aria-label="انتخاب نامه">•••</button></div>
+              <div className="isolate flex items-center"><button type="button" onClick={() => setLetterPickerOpen(true)} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب نامه" aria-label="انتخاب نامه"><img src="/images/icons/asnad-mortabet.svg" alt="" className="h-5 w-5 dark:invert" /></button></div>
               {!!form.relatedLetterIds.length && <div className="mt-1 text-[11px] font-medium text-neutral-600 dark:text-neutral-300">{toFa(form.relatedLetterIds.length)} نامه مرتبط انتخاب شده</div>}
             </Field>
             <div className="flex min-w-0 flex-col items-stretch gap-2 sm:col-span-2 sm:flex-row sm:items-start lg:col-span-4 xl:col-span-2">
@@ -2570,7 +2570,7 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-black/10 px-3 py-2.5 dark:border-white/10 sm:gap-3 sm:px-4 sm:py-3">
           <div className="flex min-w-0 items-center gap-2">
             <div className="text-sm font-bold">اقدامات پرداخت</div>
-            <button type="button" onClick={openPdfPreview} className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-black/10 px-2.5 text-xs font-semibold transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10 sm:px-3" title="مشاهده PDF" aria-label="مشاهده PDF"><img src="/images/icons/print.svg" alt="" className="h-4 w-4 dark:invert" /><span className="hidden min-[360px]:inline">مشاهده PDF</span></button>
+            <button type="button" onClick={openPdfPreview} className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-black/10 px-2.5 text-xs font-semibold transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10 sm:px-3" title="مشاهده PDF" aria-label="مشاهده PDF"><img src="/images/icons/exportpdf.svg" alt="" className="h-4 w-4 dark:invert" /><span className="hidden min-[360px]:inline">مشاهده PDF</span></button>
           </div>
           <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-800 text-white shadow-sm transition hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200" aria-label="بستن" title="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
         </div>

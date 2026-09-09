@@ -270,19 +270,7 @@ function JalaliPopupDatePicker({ value, onChange, theme, buttonClassName, hideIc
 
         {!hideIcon && (
           <span className={theme === "dark" ? "text-white/50" : "text-neutral-500"}>
-            <svg
-              viewBox="0 0 24 24"
-              width="18"
-              height="18"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="3" y="4" width="18" height="18" rx="2" />
-              <path d="M16 2v4M8 2v4M3 10h18" />
-            </svg>
+            <img src="/images/icons/tarikh.svg" alt="" className="h-[18px] w-[18px] dark:invert" />
           </span>
         )}
       </button>
@@ -5698,7 +5686,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
           title="انتخاب اسناد مرتبط"
         >
           <img
-            src="/images/icons/sayer.svg"
+            src="/images/icons/asnad-mortabet.svg"
             alt=""
             className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
           />
@@ -5733,7 +5721,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
           title="انتخاب اسناد مرتبط"
         >
           <img
-            src="/images/icons/sayer.svg"
+            src="/images/icons/asnad-mortabet.svg"
             alt=""
             className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
           />

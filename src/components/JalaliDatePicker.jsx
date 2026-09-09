@@ -77,14 +77,17 @@ export function JalaliDatePicker({ value, onChange }) {
 
   return (
     <>
-      <input
-        ref={inputRef}
-        readOnly
-        value={label}
-        placeholder="انتخاب تاریخ (شمسی)"
-        onClick={openCal}
-        className="w-full border border-black/15 rounded-xl px-2 py-1 ltr cursor-pointer bg-white"
-      />
+      <div className="relative">
+        <input
+          ref={inputRef}
+          readOnly
+          value={label}
+          placeholder="انتخاب تاریخ (شمسی)"
+          onClick={openCal}
+          className="w-full cursor-pointer rounded-xl border border-black/15 bg-white px-2 py-1 pl-8 ltr"
+        />
+        <img src="/images/icons/tarikh.svg" alt="" className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2" />
+      </div>
       {open && (
         <Portal>
           <div

@@ -179,7 +179,7 @@ function LessonRow({
             className="inline-grid h-5 w-5 place-items-center rounded-full border border-black/20 bg-white text-[11px] font-bold text-neutral-600 transition hover:bg-neutral-100 dark:border-white/20 dark:bg-white/5 dark:text-neutral-200"
             title="اطلاعات دانش‌آفرین"
           >
-            i
+            <img src="/images/icons/i.svg" alt="" className="h-3 w-3 dark:invert" />
           </button>
         </span>
       </td>

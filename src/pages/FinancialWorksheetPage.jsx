@@ -253,10 +253,7 @@ function JalaliPopupDatePicker({ value, onChange }) {
         className="w-full h-11 px-3 rounded-xl border text-right flex items-center justify-between gap-2 border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02] dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
       >
         <span className={value ? "" : "text-neutral-400 dark:text-white/50"}>{value ? toFaDigits(value) : "انتخاب تاریخ"}</span>
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-500 dark:text-white/50">
-          <rect x="3" y="4" width="18" height="18" rx="2" />
-          <path d="M16 2v4M8 2v4M3 10h18" />
-        </svg>
+        <img src="/images/icons/tarikh.svg" alt="" className="h-[18px] w-[18px] dark:invert" />
       </button>
 
       {open && (
@@ -1682,7 +1679,7 @@ export default function FinancialWorksheetPage() {
                 <div className="max-h-[78vh] overflow-y-auto p-4 space-y-4">
                   <div className="rounded-2xl border border-black/10 dark:border-white/10 p-3 space-y-3">
                     <div className="flex items-center justify-between gap-3">
-                      <div className="text-sm font-semibold text-neutral-700 dark:text-white/80">اسناد مرتبط</div>
+                      <div className="flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-white/80"><img src="/images/icons/asnad-mortabet.svg" alt="" className="h-5 w-5 dark:invert" />اسناد مرتبط</div>
                       <div className="rounded-full bg-black/[0.06] px-2 py-0.5 text-xs font-semibold dark:bg-white/10">
                         {toFaDigits(uploadDraftLetterIds.length)}
                       </div>

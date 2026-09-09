@@ -1103,9 +1103,10 @@ function ContractDatePicker({ value, onChange }) {
         ref={btnRef}
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="h-11 w-full rounded-xl border border-black/15 bg-white px-3 text-right text-black outline-none transition hover:bg-black/[0.02] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+        className="flex h-11 w-full items-center justify-between rounded-xl border border-black/15 bg-white px-3 text-right text-black outline-none transition hover:bg-black/[0.02] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
       >
         {display ? toFaDigits(display) : <span className="text-black/40 dark:text-neutral-400">انتخاب تاریخ</span>}
+        <img src="/images/icons/tarikh.svg" alt="" className="h-5 w-5 dark:invert" />
       </button>
 
       {open &&
@@ -3734,7 +3735,7 @@ export default function ContractInformation() {
                     aria-label="انتخاب اسناد مرتبط"
                     title="انتخاب اسناد مرتبط"
                   >
-                    <img src="/images/icons/sayer.svg" alt="" className="w-5 h-5 dark:invert" />
+                    <img src="/images/icons/asnad-mortabet.svg" alt="" className="w-5 h-5 dark:invert" />
                   </button>
                 </div>
 
@@ -4006,7 +4007,7 @@ export default function ContractInformation() {
                         <div className="flex w-11 flex-col items-center gap-1">
                           <div className="whitespace-nowrap text-center text-[11px] font-semibold text-black/55 dark:text-neutral-400">اسناد مرتبط</div>
                           <button type="button" onClick={() => openRelatedPicker("contract")} className={`${iconBtnCls} relative !h-11 !w-11 shrink-0`} aria-label="انتخاب اسناد مرتبط" title="انتخاب اسناد مرتبط">
-                            <img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" />
+                            <img src="/images/icons/asnad-mortabet.svg" alt="" className="h-5 w-5 dark:invert" />
                             <RelatedDocumentCountBadge value={selectedRelatedLetterSummaryItems.length} />
                           </button>
                         </div>
@@ -4022,7 +4023,7 @@ export default function ContractInformation() {
                             aria-label="انتخاب اسناد مرتبط"
                             title="انتخاب اسناد مرتبط"
                           >
-                            <img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" />
+                            <img src="/images/icons/asnad-mortabet.svg" alt="" className="h-5 w-5 dark:invert" />
                           </button>
                         </div>
                         <div className="flex min-h-11 flex-wrap items-center gap-1 rounded-xl border border-black/10 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-800">
@@ -4164,7 +4165,7 @@ export default function ContractInformation() {
                                   aria-label="انتخاب اسناد مرتبط"
                                   title="انتخاب اسناد مرتبط"
                                 >
-                                  <img src="/images/icons/sayer.svg" alt="" className="w-5 h-5 dark:invert" />
+                                  <img src="/images/icons/asnad-mortabet.svg" alt="" className="w-5 h-5 dark:invert" />
                                 </button>
                               </div>
                             </div>
@@ -4792,7 +4793,7 @@ export default function ContractInformation() {
                                     aria-label="انتخاب سند مرتبط"
                                     title="انتخاب سند مرتبط"
                                   >
-                                    <img src="/images/icons/sayer.svg" alt="" className="w-5 h-5 dark:invert" />
+                                    <img src="/images/icons/asnad-mortabet.svg" alt="" className="w-5 h-5 dark:invert" />
                                   </button>
                                   <input
                                     ref={insuranceUploadInputRef}
@@ -4852,12 +4853,12 @@ export default function ContractInformation() {
                           <div><div className={labelCls}>ارز</div><select value={appendixDraft.currencyId} onChange={(e) => updateAppendixDraft("currencyId", e.target.value)} className={inputCls} disabled={currencyLoading}><option value="">{currencyLoading ? "در حال بارگذاری..." : "انتخاب ارز"}</option>{currencyItems.map((item) => { const id = readItemId(item); return id ? <option key={id} value={id}>{readItemLabel(item) || id}</option> : null; })}</select></div>
                           <div><div className={labelCls}>منشأ</div><select value={appendixDraft.sourceId} onChange={(e) => updateAppendixDraft("sourceId", e.target.value)} className={inputCls} disabled={currencyLoading || Boolean(appendixDraft.currencyId)}><option value="">{currencyLoading ? "در حال بارگذاری..." : appendixDraft.currencyId ? "با انتخاب ارز غیرفعال است" : "انتخاب منشأ"}</option>{currencySourceItems.map((item) => { const id = readItemId(item); return id ? <option key={id} value={id}>{readItemLabel(item) || id}</option> : null; })}</select></div>
                           <div><div className={`${labelCls} text-[11px]`}>توضیحات</div><input value={appendixDraft.workScope} onChange={(e) => updateAppendixDraft("workScope", e.target.value)} className={`${inputCls} h-10 text-xs`} type="text" /></div>
-                          <div className="flex items-end gap-2"><button type="button" onClick={() => openRelatedPicker("appendix")} className={`${iconBtnCls} !h-11 !w-11 shrink-0`} aria-label="انتخاب اسناد مرتبط" title="انتخاب اسناد مرتبط"><img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" /></button><button type="button" onClick={() => appendixUploadInputRef.current?.click()} className={`${iconBtnCls} !h-11 !w-11 shrink-0`} aria-label="بارگذاری فایل الحاقیه" title="بارگذاری فایل الحاقیه"><img src="/images/icons/upload.svg" alt="" className="h-5 w-5 dark:invert" /></button><input ref={appendixUploadInputRef} type="file" multiple accept=".pdf,image/*,.xls,.xlsx,.doc,.docx" className="hidden" onChange={(e) => { addAppendixFiles(e.target.files); e.target.value = ""; }} /><button type="button" onClick={saveAppendixRow} className={`${iconBtnCls} !h-11 !w-11 shrink-0`} aria-label={editingAppendixId ? "ذخیره ویرایش الحاقیه" : "افزودن الحاقیه"} title={editingAppendixId ? "ذخیره ویرایش" : "افزودن الحاقیه"}><img src={editingAppendixId ? "/images/icons/check.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" /></button></div>
+                          <div className="flex items-end gap-2"><button type="button" onClick={() => openRelatedPicker("appendix")} className={`${iconBtnCls} !h-11 !w-11 shrink-0`} aria-label="انتخاب اسناد مرتبط" title="انتخاب اسناد مرتبط"><img src="/images/icons/asnad-mortabet.svg" alt="" className="h-5 w-5 dark:invert" /></button><button type="button" onClick={() => appendixUploadInputRef.current?.click()} className={`${iconBtnCls} !h-11 !w-11 shrink-0`} aria-label="بارگذاری فایل الحاقیه" title="بارگذاری فایل الحاقیه"><img src="/images/icons/upload.svg" alt="" className="h-5 w-5 dark:invert" /></button><input ref={appendixUploadInputRef} type="file" multiple accept=".pdf,image/*,.xls,.xlsx,.doc,.docx" className="hidden" onChange={(e) => { addAppendixFiles(e.target.files); e.target.value = ""; }} /><button type="button" onClick={saveAppendixRow} className={`${iconBtnCls} !h-11 !w-11 shrink-0`} aria-label={editingAppendixId ? "ذخیره ویرایش الحاقیه" : "افزودن الحاقیه"} title={editingAppendixId ? "ذخیره ویرایش" : "افزودن الحاقیه"}><img src={editingAppendixId ? "/images/icons/check.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" /></button></div>
                         </div>
                         {appendixDraft.files.length ? <div className="mt-3 flex flex-wrap gap-2">{appendixDraft.files.map((file, index) => <div key={file.id || `${file.name}_${index}`} className="flex max-w-full items-center gap-2 rounded-xl border border-black/10 bg-black/[0.02] px-3 py-2 text-xs dark:border-neutral-700 dark:bg-white/[0.03]"><span className="max-w-[220px] truncate font-semibold">{file.name || `فایل ${toFaDigits(index + 1)}`}</span><button type="button" onClick={() => removeAppendixFile(file.id)} className="text-red-600 dark:text-red-300" aria-label="حذف فایل" title="حذف فایل">×</button></div>)}</div> : null}
                         <div className="hidden">
                           <div className="min-w-[220px] flex-1"><div className={labelCls}>اسناد مرتبط</div><div className="flex min-h-11 flex-wrap items-center gap-1 rounded-xl border border-black/10 bg-black/[0.02] px-2 py-1 dark:border-neutral-700 dark:bg-white/[0.03]">{normalizeIdList(appendixDraft.relatedLetterIds).length ? normalizeIdList(appendixDraft.relatedLetterIds).map((id) => <span key={id} className="rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10">{toFaDigits(secretariatNoOf(letterById.get(id)) || letterNoOf(letterById.get(id)) || id)}</span>) : <span className="px-1 text-xs text-black/50 dark:text-neutral-400">سندی انتخاب نشده است</span>}</div></div>
-                          <button type="button" onClick={() => openRelatedPicker("appendix")} className={`${iconBtnCls} !h-11 !w-11`} aria-label="انتخاب اسناد مرتبط" title="انتخاب اسناد مرتبط"><img src="/images/icons/sayer.svg" alt="" className="h-5 w-5 dark:invert" /></button>
+                          <button type="button" onClick={() => openRelatedPicker("appendix")} className={`${iconBtnCls} !h-11 !w-11`} aria-label="انتخاب اسناد مرتبط" title="انتخاب اسناد مرتبط"><img src="/images/icons/asnad-mortabet.svg" alt="" className="h-5 w-5 dark:invert" /></button>
                           <button type="button" onClick={saveAppendixRow} className={`${iconBtnCls} !h-11 !w-11`} aria-label={editingAppendixId ? "ذخیره ویرایش الحاقیه" : "افزودن الحاقیه"} title={editingAppendixId ? "ذخیره ویرایش" : "افزودن الحاقیه"}><img src={editingAppendixId ? "/images/icons/check.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" /></button>
                         </div>
                       </div>
