@@ -2002,10 +2002,35 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
   const docName = item.docId === "other" ? (item.docOther || "سایر") : (DOC_OPTIONS.find(([value]) => value === item.docId)?.[1] || String(item.docId || "").trim() || "—");
   const attachments = Array.isArray(item.attachments) ? item.attachments : [];
   const relatedLetterIds = Array.isArray(item.relatedLetterIds) ? item.relatedLetterIds.map(String) : [];
+  const [relatedLetterDetails, setRelatedLetterDetails] = useState({});
+  const [relatedLetterPreview, setRelatedLetterPreview] = useState(null);
+  const relatedLetterIdKey = relatedLetterIds.join("|");
+  useEffect(() => {
+    let live = true;
+    const cachedIds = new Set((Array.isArray(letters) ? letters : []).map((letter) => String(letter?.id)));
+    const missingIds = relatedLetterIds.filter((id) => !cachedIds.has(id) && !relatedLetterDetails[id]);
+    if (!missingIds.length || !api) return () => { live = false; };
+    Promise.all(missingIds.map(async (id) => {
+      try {
+        const response = await api(`/letters/${encodeURIComponent(id)}`);
+        return [id, response?.item || response];
+      } catch {
+        return [id, null];
+      }
+    })).then((entries) => {
+      if (!live) return;
+      setRelatedLetterDetails((current) => ({ ...current, ...Object.fromEntries(entries.filter(([, letter]) => letter)) }));
+    });
+    return () => { live = false; };
+  }, [api, letters, relatedLetterIdKey]);
+  const relatedLetterById = useMemo(() => new Map([
+    ...(Array.isArray(letters) ? letters : []),
+    ...Object.values(relatedLetterDetails),
+  ].filter(Boolean).map((letter) => [String(letter.id), letter])), [letters, relatedLetterDetails]);
   const relatedLetters = relatedLetterIds.map((id) => {
-    const letter = (Array.isArray(letters) ? letters : []).find((row) => String(row.id) === id);
+    const letter = relatedLetterById.get(id);
     const number = letter?.secretariatNo || letter?.secretariat_no || letter?.letterNo || letter?.letter_no;
-    return { id, label: number ? `نامه ${toFa(number)}` : `نامه #${toFa(id)}`, subject: letter?.subject || letter?.title };
+    return { id, label: number ? toFa(number) : `نامه #${toFa(id)}`, subject: letter?.subject || letter?.title, letter };
   });
   const history = Array.isArray(item.historyJson) ? item.historyJson : Array.isArray(item.history_json) ? item.history_json : [];
   const currentStepRoleKey = item.currentStepRoleKey || "";
@@ -2019,9 +2044,6 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
   const isOwner = item.canEdit === true || Number(item.createdById) === Number(userId);
   const [isEditing, setIsEditing] = useState(!!item.__editing);
   const canEditRequest = isOwner && isEditing;
-  const [relatedLetterPreview, setRelatedLetterPreview] = useState(null);
-  const [relatedLetterLoading, setRelatedLetterLoading] = useState(false);
-  const [relatedLetterAttachmentIndex, setRelatedLetterAttachmentIndex] = useState(0);
   const currentStepIndex = Number(item.currentStepIndex || 0);
   const finalAccounting = currentStepRoleKey === "accounting" && currentStepIndex >= 5;
   const [editForm, setEditForm] = useState(() => formFromItem(item));
@@ -2245,37 +2267,6 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
       {editForm.hasSupplyRequest === "yes" && <select className={inputClass} value={editForm.supplyRequestId} onChange={(event) => setEditField("supplyRequestId", event.target.value)}><option value="">انتخاب کنید</option>{supplyRequests.map((row) => <option key={row.id} value={row.id}>{row.serial || `#${row.id}`}{row.title ? ` - ${row.title}` : ""}</option>)}</select>}
     </div>
   ) : (item.hasSupplyRequest === "yes" ? (supplyRequests.find((row) => String(row.id) === String(item.supplyRequestId))?.serial || `#${item.supplyRequestId || "—"}`) : "ندارد");
-
-  const openRelatedLetterPreview = async (letter) => {
-    setRelatedLetterPreview(letter);
-    setRelatedLetterAttachmentIndex(0);
-    const id = String(letter?.id || "").trim();
-    if (!id || !api) return;
-    setRelatedLetterLoading(true);
-    try {
-      const response = await api(`/letters/${encodeURIComponent(id)}`);
-      const fresh = response?.item || response;
-      if (fresh) setRelatedLetterPreview((current) => ({ ...current, ...fresh }));
-    } catch {
-      // The list row still contains enough data for a useful preview.
-    } finally {
-      setRelatedLetterLoading(false);
-    }
-  };
-  const relatedPreviewAttachments = (() => {
-    const raw = relatedLetterPreview?.attachments ?? relatedLetterPreview?.attachment ?? relatedLetterPreview?.files ?? relatedLetterPreview?.files_json;
-    if (Array.isArray(raw)) return raw;
-    if (typeof raw === "string") { try { const parsed = JSON.parse(raw); return Array.isArray(parsed) ? parsed : []; } catch { return []; } }
-    return Array.isArray(raw?.items) ? raw.items : [];
-  })();
-  const relatedPreviewFile = relatedPreviewAttachments[relatedLetterAttachmentIndex] || relatedPreviewAttachments[0];
-  const relatedPreviewRawUrl = String(relatedPreviewFile?.url ?? relatedPreviewFile?.href ?? relatedPreviewFile?.path ?? relatedPreviewFile?.publicUrl ?? relatedPreviewFile?.public_url ?? "");
-  const relatedPreviewFileId = String(relatedPreviewFile?.fileId ?? relatedPreviewFile?.file_id ?? relatedPreviewFile?.serverId ?? "").trim();
-  const relatedPreviewUrl = relatedPreviewRawUrl || (/^\d+$/.test(relatedPreviewFileId) ? `/api/files/${relatedPreviewFileId}` : (/^\d+$/.test(String(relatedLetterPreview?.id || "")) ? `/api/letter-attachments/${relatedLetterPreview.id}/${relatedLetterAttachmentIndex}` : ""));
-  const relatedPreviewName = String(relatedPreviewFile?.name ?? relatedPreviewFile?.filename ?? relatedPreviewFile?.fileName ?? relatedPreviewFile?.originalName ?? "");
-  const relatedPreviewProject = projects.find((row) => String(row.id) === String(relatedLetterPreview?.projectId ?? relatedLetterPreview?.project_id));
-  const relatedPreviewKind = String(relatedLetterPreview?.kind ?? relatedLetterPreview?.type ?? relatedLetterPreview?.letterType ?? "").toLowerCase();
-  const relatedPreviewKindLabel = relatedPreviewKind === "incoming" ? "وارده" : relatedPreviewKind === "outgoing" ? "صادره" : relatedPreviewKind === "internal" ? "داخلی" : (relatedLetterPreview?.type || "—");
 
   const openPdfPreview = () => {
     const pdfWindow = window.open("", "_blank", "width=1150,height=850");
@@ -2647,7 +2638,7 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
                     </label>
                   </div>
                 ) : (attachments.length ? <div className="flex flex-wrap justify-end gap-2">{attachments.map((file, index) => <a key={file.id || file.serverId || index} href={file.url || "#"} target="_blank" rel="noreferrer" className="rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFa(index + 1)}`}</a>)}</div> : "—")} />
-                  <PreviewRow compact colon leader label="اسناد مرتبط" value={relatedLetters.length ? <div className="flex flex-wrap justify-end gap-2">{relatedLetters.map((letter) => <button key={letter.id} type="button" onClick={() => openRelatedLetterPreview(letter)} className="rounded-lg border border-black/10 px-2 py-1 text-xs font-semibold underline underline-offset-4 transition hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10" title={letter.subject || "پیش‌نمایش نامه"}>{letter.label}</button>)}</div> : "—"} />
+                  <PreviewRow compact colon leader label="اسناد مرتبط" value={relatedLetters.length ? <div className="flex flex-wrap justify-end gap-2">{relatedLetters.map((letter) => <button key={letter.id} type="button" onClick={() => setRelatedLetterPreview(letter.letter || { id: letter.id })} className="rounded-lg border border-black/10 px-2 py-1 text-xs font-semibold underline underline-offset-4 transition hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10" title={letter.subject || "پیش‌نمایش نامه"}>{letter.label}</button>)}</div> : "—"} />
                 </div>
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[1fr_0.78fr_1.22fr] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
                   <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="شرایط پرداخت" value={canEditRequest ? <input className={inputClass} value={editForm.creditPay} onChange={(event) => setEditField("creditPay", event.target.value)} /> : (item.creditPay || "—")} />
@@ -2696,15 +2687,7 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
               {!canDecide && !canEditRequest && !isOwner && <div className="rounded-2xl border border-black/10 p-4 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">در این مرحله اقدامی برای شما فعال نیست.</div>}
             </div>
           </main>
-          {relatedLetterPreview && <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/55 p-3" onClick={() => setRelatedLetterPreview(null)}>
-            <section className="flex h-[min(84vh,760px)] w-[min(1160px,calc(100vw-28px))] flex-col overflow-hidden rounded-2xl bg-white text-neutral-900 shadow-2xl dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
-              <header className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10"><div className="font-bold text-sm">نمایش نامه — {toFa(relatedLetterPreview.secretariatNo || relatedLetterPreview.secretariat_no || relatedLetterPreview.letterNo || relatedLetterPreview.letter_no || "")}</div><button type="button" onClick={() => setRelatedLetterPreview(null)} className="grid h-9 w-9 place-items-center rounded-lg bg-neutral-800 text-lg text-white dark:bg-white dark:text-neutral-900" aria-label="بستن">×</button></header>
-              <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(380px,1.05fr)_minmax(0,.95fr)]">
-                <div className="overflow-y-auto border-b border-black/10 p-4 dark:border-white/10 lg:border-b-0 lg:border-l">{relatedLetterLoading ? <div className="p-4 text-sm text-neutral-500">در حال دریافت اطلاعات نامه...</div> : <section className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="border-b border-black/10 px-4 py-3 text-sm font-bold dark:border-white/10">مشخصات نامه</div><dl className="divide-y divide-black/10 text-sm dark:divide-white/10">{[["نوع", relatedPreviewKindLabel], ["کلاس سند", relatedLetterPreview.documentClass || relatedLetterPreview.document_class || relatedLetterPreview.category || relatedLetterPreview.categoryName || "—"], ["پروژه", relatedPreviewProject ? projectLabel(relatedPreviewProject) : (relatedLetterPreview.projectName || relatedLetterPreview.project_name || "—")], [relatedPreviewKind === "incoming" ? "از" : "از / به", [relatedLetterPreview.fromName || relatedLetterPreview.from_name || relatedLetterPreview.from, relatedLetterPreview.toName || relatedLetterPreview.to_name || relatedLetterPreview.to].filter(Boolean).join(" - ") || "—"], ["موضوع", relatedLetterPreview.subject || relatedLetterPreview.title || "—"], ["برچسب", Array.isArray(relatedLetterPreview.tags) ? relatedLetterPreview.tags.map((tag) => tag.title || tag.name || tag.label).filter(Boolean).join("، ") : (relatedLetterPreview.tagsLabel || relatedLetterPreview.tagNames || "—")], ["ضمیمه", relatedPreviewAttachments.length ? "دارد" : "ندارد"], [relatedPreviewKind === "incoming" ? "نامه های مرتبط" : "پیرو", Array.isArray(relatedLetterPreview.piroIds || relatedLetterPreview.piro_ids) && (relatedLetterPreview.piroIds || relatedLetterPreview.piro_ids).length ? (relatedLetterPreview.piroIds || relatedLetterPreview.piro_ids).map(String).join("، ") : "—"], ["تاریخ ثبت دبیرخانه", toFa(String(relatedLetterPreview.secretariatDate || relatedLetterPreview.secretariat_date || "—").replaceAll("-", "/"))], ["شماره ثبت دبیرخانه", relatedLetterPreview.secretariatNo || relatedLetterPreview.secretariat_no || "—"], ["مسئول دبیرخانه", relatedLetterPreview.receiverName || relatedLetterPreview.receiver_name || "—"]].map(([label, value]) => <div key={label} className="grid grid-cols-[145px_minmax(0,1fr)] gap-3 px-4 py-2.5"><dt className="font-semibold text-neutral-600 dark:text-neutral-300">{label}</dt><dd className="min-w-0 break-words">{value || "—"}</dd></div>)}</dl></section>}</div>
-                <div className="flex min-h-0 flex-col bg-neutral-50 p-3 dark:bg-white/[.03]"><div className="mb-3 text-sm font-semibold">پیش‌نمایش</div>{relatedPreviewAttachments.length > 1 && <div className="mb-3 flex flex-wrap gap-2">{relatedPreviewAttachments.map((file, index) => <button key={file.id || file.fileId || file.url || index} type="button" onClick={() => setRelatedLetterAttachmentIndex(index)} className={`rounded-lg border px-3 py-2 text-xs ${index === relatedLetterAttachmentIndex ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "border-black/10 dark:border-white/10"}`}>{file.name || file.filename || `فایل ${toFa(index + 1)}`}</button>)}</div>}<div className="min-h-0 flex-1">{relatedPreviewUrl ? <iframe title="پیش‌نمایش نامه مرتبط" src={relatedPreviewUrl} className="h-full min-h-[300px] w-full rounded-xl border border-black/10 bg-white dark:border-white/10 dark:bg-neutral-950" /> : <div className="grid h-full min-h-[260px] place-items-center rounded-xl border border-dashed border-black/15 text-sm text-neutral-500 dark:border-white/15">فایل قابل پیش‌نمایش برای این نامه ثبت نشده است.</div>}</div>{relatedPreviewUrl && <a href={relatedPreviewUrl} target="_blank" rel="noreferrer" className="mt-2 block truncate text-xs text-blue-600 underline dark:text-blue-300">{relatedPreviewName || "باز کردن فایل نامه"}</a>}</div>
-              </div>
-            </section>
-          </div>}
+          {relatedLetterPreview && <DocumentPreviewModal letter={relatedLetterPreview} api={api} onClose={() => setRelatedLetterPreview(null)} />}
         </div>
       </div>
     </div>
