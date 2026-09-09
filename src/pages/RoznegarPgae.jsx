@@ -1736,7 +1736,7 @@ export default function RoznegarPgae() {
               type="button"
               disabled={editorDisabled || confirmSaving || filesUploading}
               onClick={handlePreviewConfirm}
-              className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
+              className="mr-auto flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
               title="ذخیره تغییرات"
               aria-label="ذخیره تغییرات"
             >
