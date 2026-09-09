@@ -2018,25 +2018,47 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
     const cachedIds = new Set((Array.isArray(letters) ? letters : []).flatMap(letterLookupKeys));
     const missingIds = relatedLetterIds.filter((id) => !cachedIds.has(normalizeDigits(id).trim()) && !relatedLetterDetails[id]);
     if (!missingIds.length || !api) return () => { live = false; };
-    // This is the exact endpoint used by Document Management.  `/letters`
-    // and `/letters/mine` have different legacy visibility rules, so using
-    // the former made old request references unresolvable here.
-    api("/letters/mine").then((response) => {
-      if (!live) return;
-      const byId = new Map();
-      (Array.isArray(response?.items) ? response.items : Array.isArray(response) ? response : []).forEach((letter) => {
-        letterLookupKeys(letter).forEach((key) => byId.set(key, letter));
-      });
-      const resolved = missingIds.map((id) => [id, byId.get(normalizeDigits(id).trim())]).filter(([, letter]) => letter);
-      if (resolved.length) {
-        const resolvedById = Object.fromEntries(resolved);
-        setRelatedLetterDetails((current) => ({ ...current, ...resolvedById }));
-        // If the user clicked while the number was still loading, replace
-        // the id-only placeholder in the open preview with the same letter
-        // record that the related-documents search returned.
-        setRelatedLetterPreview((current) => resolvedById[String(current?.id)] ? { ...current, ...resolvedById[String(current.id)] } : current);
+    (async () => {
+      const resolvedById = {};
+
+      // Current records store the database id. Fetching each referenced
+      // letter directly also includes its attachments for the preview.
+      const directResults = await Promise.all(missingIds.map(async (id) => {
+        if (!/^\d+$/.test(normalizeDigits(id).trim())) return [id, null];
+        try {
+          const response = await api(`/letters/${encodeURIComponent(normalizeDigits(id).trim())}`);
+          const letter = response?.item || null;
+          return [id, letter?.id != null ? letter : null];
+        } catch {
+          return [id, null];
+        }
+      }));
+      directResults.forEach(([id, letter]) => { if (letter) resolvedById[id] = letter; });
+
+      // Historic records may contain a former letter number instead of its
+      // database id. Resolve those against the exact list used by Document
+      // Management, matching every known number field.
+      const unresolvedIds = missingIds.filter((id) => !resolvedById[id]);
+      if (unresolvedIds.length) {
+        try {
+          const response = await api("/letters/mine");
+          const byKey = new Map();
+          (Array.isArray(response?.items) ? response.items : Array.isArray(response) ? response : []).forEach((letter) => {
+            letterLookupKeys(letter).forEach((key) => byKey.set(key, letter));
+          });
+          unresolvedIds.forEach((id) => {
+            const letter = byKey.get(normalizeDigits(id).trim());
+            if (letter) resolvedById[id] = letter;
+          });
+        } catch {}
       }
-    }).catch(() => {});
+
+      if (!live || !Object.keys(resolvedById).length) return;
+      setRelatedLetterDetails((current) => ({ ...current, ...resolvedById }));
+      // If the user clicked while the number was still loading, replace
+      // the id-only placeholder in the open preview with the resolved row.
+      setRelatedLetterPreview((current) => resolvedById[String(current?.id)] ? { ...current, ...resolvedById[String(current.id)] } : current);
+    })().catch(() => {});
     return () => { live = false; };
   }, [api, letters, relatedLetterIdKey]);
   const relatedLetterById = useMemo(() => {
