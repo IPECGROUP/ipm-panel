@@ -1466,8 +1466,9 @@ export default function RoznegarPgae() {
                     const dateYmd = cursor.date(dayNo).calendar("jalali").format("YYYY-MM-DD");
                     const isSelected = dateYmd === selectedDate;
                     const isToday = dateYmd === todayJalaliYmd();
-                    const hasDetails = hasEntryDetails(entriesByDate[dateYmd]);
-                    const hasSavedData = Boolean(entriesByDate[dateYmd]?.confirmed) || hasDetails;
+                    // A confirmed record may be edited back to an empty entry. In that
+                    // case it should look like every other empty day in the calendar.
+                    const hasSavedData = hasEntryDetails(entriesByDate[dateYmd]);
                     const gDay = (() => {
                       try {
                         return dayjs(dateYmd, { jalali: true }).toDate().getDate();
@@ -1514,6 +1515,16 @@ export default function RoznegarPgae() {
                     );
                   })}
                 </div>
+              </div>
+              <div className="mt-5 min-h-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs md:text-sm">
+                <span className="font-semibold text-neutral-700 dark:text-neutral-200 md:text-base">
+                  مجموع روزنگارها: {toFaDigits(savedEntryCount)}
+                </span>
+                {syncState?.text ? (
+                  <span className={syncState.type === "error" ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}>
+                    {syncState.text}
+                  </span>
+                ) : null}
               </div>
             </section>
 
@@ -1716,41 +1727,25 @@ export default function RoznegarPgae() {
                     </div>
                   </div>
 
-                  <div className="mt-5 border-t border-black/[0.08] pt-4 dark:border-white/10 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-h-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs md:text-sm">
-                      <span className="font-semibold text-neutral-700 dark:text-neutral-200 md:text-base">
-                        مجموع روزنگارها: {toFaDigits(savedEntryCount)}
-                      </span>
-                      {syncState?.text ? (
-                        <span className={syncState.type === "error" ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}>
-                          {syncState.text}
-                        </span>
-                      ) : null}
-                    </div>
-                    <button
-                      type="button"
-                      disabled={editorDisabled || confirmSaving || filesUploading}
-                      onClick={handlePreviewConfirm}
-                      className={
-                        "h-10 w-10 shrink-0 inline-flex items-center justify-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 " +
-                        (theme === "dark"
-                          ? ""
-                          : "")
-                      }
-                      title="ذخیره تغییرات"
-                      aria-label="ذخیره تغییرات"
-                    >
-                      <img
-                        src="/images/icons/check.svg"
-                        alt=""
-                        className="w-4 h-4 md:w-5 md:h-5 invert dark:invert"
-                      />
-                    </button>
-                  </div>
-
                 </div>
               </div>
             </section>
+          </div>
+          <div className="mt-5 border-t border-black/[0.08] pt-4 dark:border-white/10">
+            <button
+              type="button"
+              disabled={editorDisabled || confirmSaving || filesUploading}
+              onClick={handlePreviewConfirm}
+              className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
+              title="ذخیره تغییرات"
+              aria-label="ذخیره تغییرات"
+            >
+              <img
+                src="/images/icons/check.svg"
+                alt=""
+                className="w-4 h-4 md:w-5 md:h-5 invert dark:invert"
+              />
+            </button>
           </div>
           </div>
             </>
