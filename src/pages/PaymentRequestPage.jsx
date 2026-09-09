@@ -644,7 +644,7 @@ export default function PaymentRequestPage() {
   useEffect(() => {
     if (!letterPickerOpen || letters.length || lettersLoading) return;
     setLettersLoading(true);
-    api("/letters")
+    api("/letters/mine")
       .then((data) => setLetters(Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : []))
       .catch(() => setLetters([]))
       .finally(() => setLettersLoading(false));
@@ -2018,10 +2018,10 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
     const cachedIds = new Set((Array.isArray(letters) ? letters : []).flatMap(letterLookupKeys));
     const missingIds = relatedLetterIds.filter((id) => !cachedIds.has(normalizeDigits(id).trim()) && !relatedLetterDetails[id]);
     if (!missingIds.length || !api) return () => { live = false; };
-    // Use the same list endpoint as the related-documents search.  In some
-    // deployments the nested `/letters/:id` route is not exposed by the
-    // reverse proxy, which left the preview with only its internal id.
-    api("/letters").then((response) => {
+    // This is the exact endpoint used by Document Management.  `/letters`
+    // and `/letters/mine` have different legacy visibility rules, so using
+    // the former made old request references unresolvable here.
+    api("/letters/mine").then((response) => {
       if (!live) return;
       const byId = new Map();
       (Array.isArray(response?.items) ? response.items : Array.isArray(response) ? response : []).forEach((letter) => {
