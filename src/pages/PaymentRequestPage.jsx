@@ -18,7 +18,7 @@ const DOC_OPTIONS = [
   ["internal_list", "لیست پرداخت داخلی"], ["gov_salary", "فیش بدهی دولتی"], ["other", "سایر"],
 ];
 const MONTHS = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
-const STATUS_LABELS = { pending: "در انتظار تأیید", approved: "پرداخت شد", rejected: "رد شد", returned: "برگشت خورد", tenkhah_pending: "در انتظار تأیید", tenkhah_charged: "پرداخت شد" };
+const STATUS_LABELS = { pending: "در انتظار تأیید", awaiting_payment: "در انتظار پرداخت", approved: "پرداخت شد", rejected: "رد شد", returned: "برگشت خورد", tenkhah_pending: "در انتظار تأیید", tenkhah_charged: "پرداخت شد" };
 const STEP_LABELS = {
   requester: "درخواست‌کننده",
   project_control: "برنامه‌ریزی و کنترل پروژه",
@@ -1508,6 +1508,13 @@ function itemDateKey(item) {
   return normalizeDigits(String(item?.dateFa || item?.dateJalali || item?.date_jalali || "")).replaceAll("-", "/");
 }
 
+function isAwaitingPayment(item) {
+  return item?.requestType !== "tenkhah"
+    && item?.status === "pending"
+    && (item?.currentStepRoleKey || item?.stage) === "accounting"
+    && Number(item?.currentStepIndex) >= 5;
+}
+
 function filterRequestRows(rows, { query, quick, tagIds, ownership, status, fromDate, toDate, userId }) {
   const q = normalizeDigits(query).trim().toLowerCase();
   const start = quickStartDate(quick);
@@ -1525,7 +1532,8 @@ function filterRequestRows(rows, { query, quick, tagIds, ownership, status, from
     if (to && itemDateKey(item) > to) return false;
     const itemStatus = item.displayStatus || item.status;
     if (status === "tenkhah" && !isTenkhah) return false;
-    if (status === "pending" ? !["pending", "tenkhah_pending"].includes(itemStatus) : status && status !== "tenkhah" && itemStatus !== status) return false;
+    if (status === "awaiting_payment" && !isAwaitingPayment(item)) return false;
+    if (status === "pending" ? !["pending", "tenkhah_pending"].includes(itemStatus) : status && !["tenkhah", "awaiting_payment"].includes(status) && itemStatus !== status) return false;
     if (selectedTags.length) {
       const itemTags = tagIdListOf(item);
       if (!selectedTags.some((id) => itemTags.includes(id))) return false;
@@ -1578,7 +1586,7 @@ function RequestFilterBar({ query, setQuery, quick, setQuick, ownership, setOwne
       <div className="-mx-1 flex flex-nowrap items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
         <button type="button" onClick={() => setOwnership(ownership === "mine" ? "" : "mine")} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(ownership === "mine")}`}>درخواست‌های من</button>
         <button type="button" onClick={() => setOwnership(ownership === "incoming" ? "" : "incoming")} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(ownership === "incoming")}`}>موارد ارسال‌شده به من</button>
-        {[['pending', 'در انتظار تأیید'], ['approved', 'پرداخت شد'], ['returned', 'برگشت خورد'], ['rejected', 'رد شد'], ['tenkhah', 'تنخواه']].map(([key, label]) => <button key={key} type="button" onClick={() => setStatus(status === key ? "" : key)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition ${statusBadgeClass(key)} ${status === key ? "ring-2 ring-black/20 dark:ring-white/25" : "hover:brightness-95"}`}>{label}</button>)}
+        {[['pending', 'در انتظار تأیید'], ['awaiting_payment', 'در انتظار پرداخت'], ['approved', 'پرداخت شد'], ['returned', 'برگشت خورد'], ['rejected', 'رد شد'], ['tenkhah', 'تنخواه']].map(([key, label]) => <button key={key} type="button" onClick={() => setStatus(status === key ? "" : key)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition ${statusBadgeClass(key)} ${status === key ? "ring-2 ring-black/20 dark:ring-white/25" : "hover:brightness-95"}`}>{label}</button>)}
         {QUICK_FILTERS.map(([key, label]) => (
           <button key={key} type="button" onClick={() => setQuick(quick === key ? "" : key)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(quick === key)}`}>{label}</button>
         ))}
@@ -1819,7 +1827,7 @@ function paymentTagClass(active) {
 }
 
 function statusBadgeClass(status) {
-  return status === "approved" || status === "tenkhah_charged" ? "border border-emerald-200/90 bg-emerald-100 text-emerald-700 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-500/15 dark:text-emerald-300" : status === "tenkhah" ? "border border-violet-200/90 bg-violet-100 text-violet-700 shadow-sm dark:border-violet-400/20 dark:bg-violet-500/15 dark:text-violet-300" : status === "pending" || status === "tenkhah_pending" ? "border border-sky-200/90 bg-sky-100 text-sky-700 shadow-sm dark:border-sky-400/20 dark:bg-sky-500/15 dark:text-sky-300" : status === "rejected" ? "border border-red-200/90 bg-red-100 text-red-700 shadow-sm dark:border-red-400/20 dark:bg-red-500/15 dark:text-red-300" : status === "returned" ? "border border-amber-200/90 bg-amber-100 text-amber-700 shadow-sm dark:border-amber-400/20 dark:bg-amber-500/15 dark:text-amber-300" : "border border-neutral-200 bg-neutral-100 text-neutral-700 shadow-sm dark:border-white/10 dark:bg-white/10 dark:text-neutral-200";
+  return status === "approved" || status === "tenkhah_charged" ? "border border-emerald-200/90 bg-emerald-100 text-emerald-700 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-500/15 dark:text-emerald-300" : status === "tenkhah" ? "border border-violet-200/90 bg-violet-100 text-violet-700 shadow-sm dark:border-violet-400/20 dark:bg-violet-500/15 dark:text-violet-300" : status === "awaiting_payment" ? "border border-teal-200/90 bg-[#F3E9DC] text-teal-800 shadow-sm dark:border-teal-400/20 dark:bg-teal-500/15 dark:text-teal-200" : status === "pending" || status === "tenkhah_pending" ? "border border-sky-200/90 bg-sky-100 text-sky-700 shadow-sm dark:border-sky-400/20 dark:bg-sky-500/15 dark:text-sky-300" : status === "rejected" ? "border border-red-200/90 bg-red-100 text-red-700 shadow-sm dark:border-red-400/20 dark:bg-red-500/15 dark:text-red-300" : status === "returned" ? "border border-amber-200/90 bg-amber-100 text-amber-700 shadow-sm dark:border-amber-400/20 dark:bg-amber-500/15 dark:text-amber-300" : "border border-neutral-200 bg-neutral-100 text-neutral-700 shadow-sm dark:border-white/10 dark:bg-white/10 dark:text-neutral-200";
 }
 
 function StatusBadge({ status }) {
