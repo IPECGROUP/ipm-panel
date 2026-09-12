@@ -188,7 +188,8 @@ function MyPettyCashTable() {
   const money = (value) => {
     const amount = BigInt(value || "0");
     const absolute = amount < 0n ? -amount : amount;
-    return `${amount < 0n ? "−" : ""}${toFa(format3(absolute.toString()))}`;
+    const formatted = toFa(format3(absolute.toString()));
+    return amount < 0n ? `(${formatted})` : formatted;
   };
 
   return (
@@ -475,7 +476,8 @@ function ExpenseRegistrationTab({ onReportCreated }) {
     [budgetPickerOpen, setBudgetPickerOpen] = useState(false),
     [budgetPickerQuery, setBudgetPickerQuery] = useState(""),
     [editingExpense, setEditingExpense] = useState(null),
-    [tableMenuOpen, setTableMenuOpen] = useState(false);
+    [tableMenuOpen, setTableMenuOpen] = useState(false),
+    [projectBalance, setProjectBalance] = useState({ unsettledBalance: "0" });
   const tableMenuRef = useRef(null);
   const tableMenuPopoverRef = useRef(null);
   const api = useCallback(
@@ -528,6 +530,14 @@ function ExpenseRegistrationTab({ onReportCreated }) {
     },
     [api, projectId],
   );
+  const loadProjectBalance = useCallback(async (nextProjectId = projectId) => {
+    if (!nextProjectId || !user?.id) {
+      setProjectBalance({ unsettledBalance: "0" });
+      return;
+    }
+    const data = await api(`/tenkhah?projectBalances=${encodeURIComponent(nextProjectId)}&beneficiaryId=${encodeURIComponent(user.id)}`);
+    setProjectBalance(data || { unsettledBalance: "0" });
+  }, [api, projectId, user?.id]);
   useEffect(() => {
     api("/projects?isActive=true")
       .then((data) =>
@@ -558,11 +568,15 @@ function ExpenseRegistrationTab({ onReportCreated }) {
     setForm(emptyExpense());
     setBudgetItems([]);
     setError("");
-    if (!value) return loadExpenses("");
+    if (!value) {
+      setProjectBalance({ unsettledBalance: "0" });
+      return loadExpenses("");
+    }
     try {
       const [budgets] = await Promise.all([
         api(`/cost-breakdown?project_id=${encodeURIComponent(value)}`),
         loadExpenses(value),
+        loadProjectBalance(value),
       ]);
       setBudgetItems(budgets.items || []);
     } catch (reason) {
@@ -588,7 +602,7 @@ function ExpenseRegistrationTab({ onReportCreated }) {
       setForm(emptyExpense());
       setEditingExpense(null);
       setFormOpen(false);
-      await loadExpenses(projectId);
+      await Promise.all([loadExpenses(projectId), loadProjectBalance(projectId)]);
     } catch (reason) {
       setError(reason.message);
     } finally {
@@ -663,6 +677,22 @@ function ExpenseRegistrationTab({ onReportCreated }) {
   const selectedProject = projects.find(
     (project) => String(project.id) === String(projectId),
   );
+  const pendingExpenseTotal = useMemo(
+    () => items.reduce((total, item) => {
+      const isCurrentUsersItem = Number(item.createdById) === Number(user?.id);
+      const isPending = item.stage !== "completed" && item.stage !== "rejected";
+      if (!isCurrentUsersItem || !isPending) return total;
+      return total + BigInt(toEnglishDigits(String(item.amount ?? "")).replace(/[^\d]/g, "") || "0");
+    }, 0n),
+    [items, user?.id],
+  );
+  const unsettledBalanceAfterPending = BigInt(projectBalance.unsettledBalance || "0") - pendingExpenseTotal;
+  const displayMoney = (value) => {
+    const amount = BigInt(value || "0");
+    const absolute = amount < 0n ? -amount : amount;
+    const formatted = toFa(format3(absolute.toString()));
+    return amount < 0n ? `(${formatted})` : formatted;
+  };
   const selectableItems = items.filter(isSettlementEligible);
   const selectedTotal = useMemo(() => selectedItemsTotal(items, selectedIds), [items, selectedIds]);
   const toggleItem = (id) => {
@@ -713,6 +743,18 @@ function ExpenseRegistrationTab({ onReportCreated }) {
             ))}
           </select>
         </Field>
+        <div className="flex min-w-0 flex-1 flex-wrap items-end justify-end gap-3">
+          <Field label="مانده تنخواه تسویه‌نشده:" className="min-w-[12rem] flex-1 sm:max-w-[16rem]">
+            <div dir="ltr" className={`${inputClass} flex items-center justify-end font-sans tabular-nums`}>
+              {displayMoney(unsettledBalanceAfterPending)}
+            </div>
+          </Field>
+          <Field label="باقی‌مانده هزینه‌های تأییدنشده" className="min-w-[12rem] flex-1 sm:max-w-[16rem]">
+            <div dir="ltr" className={`${inputClass} flex items-center justify-end font-sans tabular-nums`}>
+              {displayMoney(pendingExpenseTotal)}
+            </div>
+          </Field>
+        </div>
         <button
           type="button"
           onClick={() => {
