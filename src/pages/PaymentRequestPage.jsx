@@ -1829,7 +1829,7 @@ function WaitingUnitCell({ item }) {
   const unitName = isFinalPaymentWaiting ? "در انتظار پرداخت" : WAITING_UNIT_LABELS[roleKey];
 
   if (unitName) {
-    return <span className={`inline-flex max-w-full truncate rounded-full px-2.5 py-1 text-xs ${isFinalPaymentWaiting ? "bg-[#E6FFFB] text-teal-800" : statusBadgeClass("pending")}`} title={unitName}>{unitName}</span>;
+    return <span className={`inline-flex max-w-full truncate rounded-full px-2.5 py-1 text-xs ${isFinalPaymentWaiting ? "bg-[#FFF7D6] text-teal-800" : statusBadgeClass("pending")}`} title={unitName}>{unitName}</span>;
   }
 
   return <StatusBadge status={item?.displayStatus || item?.status} />;
