@@ -3423,7 +3423,7 @@ export default function ContractInformation() {
   }, [previewContractId, relatedLetterPreviewId]);
 
   const renderDeductionFields = () => (
-    <div className="min-w-0 rounded-xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-700 dark:bg-white/[0.03]">
+    <div className="min-w-0">
       <div className="mb-2 text-sm font-semibold text-black/70 dark:text-neutral-200">کسور</div>
       <div className="flex flex-row-reverse flex-nowrap items-center gap-x-4 gap-y-2 overflow-x-auto">
         {[
@@ -4409,7 +4409,7 @@ export default function ContractInformation() {
                           <React.Fragment>
                         <div className="mt-4">
                           <div className="mt-2 rounded-xl border border-black/10 bg-black/[0.02] p-3 lg:mt-6 dark:border-neutral-700 dark:bg-white/[0.03]">
-                            <div className="grid grid-cols-1 gap-3">
+                            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-x-4 lg:[&>div]:border-t-0 lg:[&>div]:pt-0">
                               {renderFinancialFileField({
                                 label: "جدول شکست مبلغ قرارداد",
                                 required: true,
