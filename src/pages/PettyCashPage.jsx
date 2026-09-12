@@ -477,6 +477,7 @@ function ExpenseRegistrationTab({ onReportCreated }) {
     [editingExpense, setEditingExpense] = useState(null),
     [tableMenuOpen, setTableMenuOpen] = useState(false);
   const tableMenuRef = useRef(null);
+  const tableMenuPopoverRef = useRef(null);
   const api = useCallback(
     async (path, options = {}) => {
       const response = await fetch(`/api${path}`, {
@@ -543,7 +544,12 @@ function ExpenseRegistrationTab({ onReportCreated }) {
   }, [loadExpenses]);
   useEffect(() => {
     if (!tableMenuOpen) return undefined;
-    const close = (event) => { if (!tableMenuRef.current?.contains(event.target)) setTableMenuOpen(false); };
+    const close = (event) => {
+      if (
+        !tableMenuRef.current?.contains(event.target) &&
+        !tableMenuPopoverRef.current?.contains(event.target)
+      ) setTableMenuOpen(false);
+    };
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, [tableMenuOpen]);
@@ -793,28 +799,20 @@ function ExpenseRegistrationTab({ onReportCreated }) {
         onManagerReject={(item) => decide(item.id, "reject")}
         onDetails={setDetails}
         tableMenuRef={tableMenuRef}
+        tableMenuPopoverRef={tableMenuPopoverRef}
         tableMenuOpen={tableMenuOpen}
         setTableMenuOpen={setTableMenuOpen}
         selectedCount={selectedItems.length}
         canEditSelected={selectedItems.length === 1 && selectedItems[0].stage === "planning"}
+        canCreateSettlementReport={selectedItems.some(isSettlementEligible)}
         onEditSelected={editSelectedExpense}
         onDeleteSelected={deleteSelectedExpenses}
+        onCreateSettlementReport={() => {
+          setTableMenuOpen(false);
+          setConfirmingReport(true);
+        }}
         saving={saving}
       />
-      {selectedItems.filter(isSettlementEligible).length > 0 && (
-        <div className="mt-3 flex justify-end">
-          <button
-            type="button"
-            onClick={() => setConfirmingReport(true)}
-            disabled={saving}
-            className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-900 text-lg font-bold text-white shadow-sm disabled:opacity-50 dark:bg-white dark:text-neutral-900"
-            title="ایجاد گزارش تسویه از موارد انتخاب‌شده"
-            aria-label="ایجاد گزارش تسویه از موارد انتخاب‌شده"
-          >
-            ✓
-          </button>
-        </div>
-      )}
       {confirmingReport && (
         <SettlementConfirmationModal
           count={selectedItems.filter(isSettlementEligible).length}
@@ -880,12 +878,15 @@ function ExpenseTable({
   onManagerReject,
   onDetails,
   tableMenuRef,
+  tableMenuPopoverRef,
   tableMenuOpen,
   setTableMenuOpen,
   selectedCount,
   canEditSelected,
+  canCreateSettlementReport,
   onEditSelected,
   onDeleteSelected,
+  onCreateSettlementReport,
   saving,
 }) {
   const colSpan = 7 + Number(showPlanningColumn) + Number(showManagerColumn);
@@ -915,7 +916,21 @@ function ExpenseTable({
               <Header>مبلغ (ریال)</Header>
               {showPlanningColumn && <Header>برنامه‌ریزی</Header>}
               {showManagerColumn && <Header>مدیر پروژه</Header>}
-              <Header><ExpenseTableMenu tableMenuRef={tableMenuRef} tableMenuOpen={tableMenuOpen} setTableMenuOpen={setTableMenuOpen} selectedCount={selectedCount} canEditSelected={canEditSelected} onEditSelected={onEditSelected} onDeleteSelected={onDeleteSelected} saving={saving} /></Header>
+              <th className="bg-neutral-200 px-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]" dir="ltr">
+                <ExpenseTableMenu
+                  tableMenuRef={tableMenuRef}
+                  tableMenuPopoverRef={tableMenuPopoverRef}
+                  tableMenuOpen={tableMenuOpen}
+                  setTableMenuOpen={setTableMenuOpen}
+                  selectedCount={selectedCount}
+                  canEditSelected={canEditSelected}
+                  canCreateSettlementReport={canCreateSettlementReport}
+                  onEditSelected={onEditSelected}
+                  onDeleteSelected={onDeleteSelected}
+                  onCreateSettlementReport={onCreateSettlementReport}
+                  saving={saving}
+                />
+              </th>
             </tr>
           </thead>
           <tbody className="text-[13px] text-black [&>tr]:h-10 dark:text-neutral-100">
@@ -997,11 +1012,25 @@ function ExpenseTable({
     </div>
   );
 }
-function ExpenseTableMenu({ tableMenuRef, tableMenuOpen, setTableMenuOpen, selectedCount, canEditSelected, onEditSelected, onDeleteSelected, saving }) {
-  return <div ref={tableMenuRef} className="relative mx-auto w-8" dir="rtl">
-    <button type="button" onClick={() => setTableMenuOpen((open) => !open)} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت ردیف‌ها" aria-label="مدیریت ردیف‌ها"><img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 dark:invert" /></button>
-    {tableMenuOpen && <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-56 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100"><div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedCount ? `${toFa(selectedCount)} مورد انتخاب شده` : "ابتدا ردیف موردنظر را انتخاب کنید"}</div><button type="button" disabled={!canEditSelected || saving} onClick={onEditSelected} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10"><span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-100 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="text-sm font-semibold">ویرایش ردیف</span></button><button type="button" disabled={!selectedCount || saving} onClick={onDeleteSelected} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 place-items-center rounded-lg bg-red-100 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span><span className="text-sm font-semibold">حذف ردیف‌ها</span></button></div>}
-  </div>;
+function ExpenseTableMenu({ tableMenuRef, tableMenuPopoverRef, tableMenuOpen, setTableMenuOpen, selectedCount, canEditSelected, canCreateSettlementReport, onEditSelected, onDeleteSelected, onCreateSettlementReport, saving }) {
+  const [position, setPosition] = useState(null);
+  const toggle = (event) => {
+    if (!tableMenuOpen) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      setPosition({ top: rect.bottom + 8, left: rect.left });
+    }
+    setTableMenuOpen((open) => !open);
+  };
+  const menu = tableMenuOpen && position ? createPortal(
+    <div ref={tableMenuPopoverRef} className="fixed z-[1200] w-56 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100" style={position} dir="rtl">
+      <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedCount ? `${toFa(selectedCount)} مورد انتخاب شده` : "ابتدا ردیف موردنظر را انتخاب کنید"}</div>
+      <button type="button" disabled={!canEditSelected || saving} onClick={onEditSelected} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10"><span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-100 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="text-sm font-semibold">ویرایش ردیف</span></button>
+      <button type="button" disabled={!selectedCount || saving} onClick={onDeleteSelected} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 place-items-center rounded-lg bg-red-100 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span><span className="text-sm font-semibold">حذف ردیف‌ها</span></button>
+      {canCreateSettlementReport && <><div className="my-1.5 border-t border-black/10 dark:border-white/10" /><button type="button" disabled={saving} onClick={onCreateSettlementReport} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-emerald-300 dark:hover:bg-emerald-500/10"><span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-100 font-bold dark:bg-emerald-500/15">✓</span><span className="text-sm font-semibold">ارسال برای گزارش تسویه</span></button></>}
+    </div>,
+    document.body,
+  ) : null;
+  return <div ref={tableMenuRef} className="w-8" dir="ltr"><button type="button" onClick={toggle} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت ردیف‌ها" aria-label="مدیریت ردیف‌ها" aria-expanded={tableMenuOpen}><img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 dark:invert" /></button>{menu}</div>;
 }
 function WorkflowCell({ status, canAct, onApprove, onReject, disabled }) {
   if (status === "approved")
