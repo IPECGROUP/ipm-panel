@@ -3425,7 +3425,7 @@ export default function ContractInformation() {
   const renderDeductionFields = () => (
     <div className="min-w-0 rounded-xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-700 dark:bg-white/[0.03]">
       <div className="mb-2 text-sm font-semibold text-black/70 dark:text-neutral-200">کسور</div>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div className="flex flex-row-reverse flex-wrap items-center gap-x-4 gap-y-2">
         {[
           { field: "capitalDeposit", amountField: "capitalDepositAmount", label: "سپرده بیمه *" },
           { field: "performanceBond", amountField: "performanceBondAmount", label: "حسن انجام کار *" },
@@ -3466,7 +3466,7 @@ export default function ContractInformation() {
       <div className="mb-3 text-sm font-semibold text-black dark:text-neutral-100">{title}</div>
       <div className="space-y-2">
         {rows.map((row, index) => (
-          <div key={row.id} className="grid grid-cols-1 gap-2 md:grid-cols-[minmax(120px,0.36fr)_120px_171px_auto_minmax(320px,1fr)] md:items-end">
+          <div key={row.id} className="grid grid-cols-1 gap-2 md:grid-cols-[minmax(108px,0.324fr)_108px_154px_auto_minmax(320px,1fr)] md:items-end">
             <div>
               <div className={labelCls}>{amountLabel} *</div>
               <input
