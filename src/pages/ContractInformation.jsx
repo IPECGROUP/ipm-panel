@@ -3423,7 +3423,7 @@ export default function ContractInformation() {
   }, [previewContractId, relatedLetterPreviewId]);
 
   const renderDeductionFields = () => (
-    <div className="min-w-0">
+    <div className="min-w-0 xl:-translate-y-1">
       <div className="mb-2 text-sm font-semibold text-black/70 dark:text-neutral-200">کسور</div>
       <div className="flex flex-row-reverse flex-nowrap items-center gap-x-4 gap-y-2 overflow-x-auto">
         {[
@@ -3565,22 +3565,28 @@ export default function ContractInformation() {
     );
   };
 
-  const renderFinancialFileField = ({ label, onOpen, required = false }) => (
-    <div className="flex flex-wrap items-center gap-2 border-t border-black/10 py-3 first:border-t-0 first:pt-0 dark:border-neutral-700">
-      <div className="text-right">
-        <div className="text-sm font-semibold text-black dark:text-neutral-100">{label}{required ? <span className="mr-1 text-orange-500">*</span> : null}</div>
-      </div>
+  const renderFinancialFileField = ({ label, onOpen, required = false }) => {
+    const tone = required
+      ? "border-red-200 bg-red-50/40 text-red-700 hover:bg-red-50 dark:border-red-500/30 dark:bg-red-500/[0.06] dark:text-red-300"
+      : "border-indigo-200 bg-indigo-50/40 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-400/30 dark:bg-indigo-400/[0.06] dark:text-indigo-300";
+    const iconFilter = required
+      ? "brightness(0) saturate(100%) invert(47%) sepia(98%) saturate(3309%) hue-rotate(337deg) brightness(103%) contrast(92%)"
+      : "brightness(0) saturate(100%) invert(31%) sepia(100%) saturate(2252%) hue-rotate(230deg) brightness(92%) contrast(94%)";
+
+    return (
       <button
         type="button"
         onClick={onOpen}
-        className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/15 bg-white text-black transition hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800"
+        className={`flex min-h-[138px] w-full flex-col items-center justify-center rounded-2xl border border-dashed px-4 py-5 text-center transition ${tone}`}
         aria-label={`بارگذاری ${label}`}
         title={`بارگذاری ${label}`}
       >
-        <img src="/images/icons/upload.svg" alt="" className="h-5 w-5 dark:invert" />
+        <img src="/images/icons/upload.svg" alt="" className="mb-2 h-8 w-8" style={{ filter: iconFilter }} />
+        <span className="text-sm font-bold text-neutral-900 dark:text-neutral-100">{label}{required ? <span className="mr-1">*</span> : null}</span>
+        <span className="mt-1 text-xs font-medium opacity-70">فایل را اینجا بکشید یا کلیک کنید</span>
       </button>
-    </div>
-  );
+    );
+  };
 
   const renderPaymentOption = (field, value, label) => (
     <label className="inline-flex h-8 items-center gap-2 rounded-lg border border-black/10 bg-white px-2.5 text-xs font-semibold transition hover:bg-black/[0.03] dark:border-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-700">
