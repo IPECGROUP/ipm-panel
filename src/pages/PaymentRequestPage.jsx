@@ -459,9 +459,7 @@ export default function PaymentRequestPage() {
   const actionInFlightRef = useRef(false);
   const [seenIncomingIds, setSeenIncomingIds] = useState(() => new Set());
   const [manualUnreadIds, setManualUnreadIds] = useState(() => new Set());
-  const [tableMenuOpen, setTableMenuOpen] = useState(false);
   const [deletingSelected, setDeletingSelected] = useState(false);
-  const tableMenuRef = useRef(null);
   const [createRecipients, setCreateRecipients] = useState({ targetRoleKey: null, users: [] });
   const [createRecipientsLoading, setCreateRecipientsLoading] = useState(false);
   const selectedProject = useMemo(
@@ -590,21 +588,6 @@ export default function PaymentRequestPage() {
     if (!user?.id) return;
     try { localStorage.setItem(`payment_request_manual_unread:u${user.id}`, JSON.stringify([...manualUnreadIds])); } catch {}
   }, [manualUnreadIds, user?.id]);
-  useEffect(() => {
-    if (!tableMenuOpen) return undefined;
-    const closeOnOutsideClick = (event) => {
-      if (!tableMenuRef.current?.contains(event.target)) setTableMenuOpen(false);
-    };
-    const closeOnEscape = (event) => {
-      if (event.key === "Escape") setTableMenuOpen(false);
-    };
-    document.addEventListener("mousedown", closeOnOutsideClick);
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.removeEventListener("mousedown", closeOnOutsideClick);
-      document.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [tableMenuOpen]);
   useEffect(() => {
     Promise.allSettled([
       api("/projects?isActive=true"),
@@ -1153,14 +1136,12 @@ export default function PaymentRequestPage() {
     }
 
     setSelectedIds(new Set());
-    setTableMenuOpen(false);
   };
 
   const editSelectedRequest = () => {
     if (!canEditSelectedRequest) return;
     openPreview({ ...selectedEditableRequest, __editing: true });
     setSelectedIds(new Set());
-    setTableMenuOpen(false);
   };
 
   const deleteSelectedRequests = async () => {
@@ -1202,7 +1183,6 @@ export default function PaymentRequestPage() {
       }
     } finally {
       setDeletingSelected(false);
-      setTableMenuOpen(false);
     }
   };
 
@@ -1354,7 +1334,7 @@ export default function PaymentRequestPage() {
             </label>
             <div className="flex items-center gap-3 pl-10 text-xs text-neutral-500 dark:text-neutral-400">
               <span>{selectedIds.size ? `${toFa(selectedIds.size)} انتخاب` : `${toFa(total)} درخواست`}</span>
-              <ReadingStatusMenu tableMenuRef={tableMenuRef} tableMenuOpen={tableMenuOpen} setTableMenuOpen={setTableMenuOpen} selectedIds={selectedIds} setSelectedReadStatus={setSelectedReadStatus} canEditSelectedRequest={canEditSelectedRequest} editSelectedRequest={editSelectedRequest} deletingSelected={deletingSelected} deleteSelectedRequests={deleteSelectedRequests} />
+              <ReadingStatusMenu selectedIds={selectedIds} setSelectedReadStatus={setSelectedReadStatus} canEditSelectedRequest={canEditSelectedRequest} editSelectedRequest={editSelectedRequest} deletingSelected={deletingSelected} deleteSelectedRequests={deleteSelectedRequests} />
             </div>
           </div>
           <div className="relative hidden max-h-[55vh] overflow-y-auto overflow-x-hidden pb-0 md:block" dir="ltr">
@@ -1368,7 +1348,7 @@ export default function PaymentRequestPage() {
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 !text-right text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">موضوع</th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">مبلغ</th>
               <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">درخواست‌کننده</th>
-              <th className="sticky top-0 z-40 bg-neutral-200 !py-2 !pl-4 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><span>در انتظار</span><ReadingStatusMenu tableMenuRef={tableMenuRef} tableMenuOpen={tableMenuOpen} setTableMenuOpen={setTableMenuOpen} selectedIds={selectedIds} setSelectedReadStatus={setSelectedReadStatus} canEditSelectedRequest={canEditSelectedRequest} editSelectedRequest={editSelectedRequest} deletingSelected={deletingSelected} deleteSelectedRequests={deleteSelectedRequests} /></th>
+              <th className="sticky top-0 z-40 bg-neutral-200 !py-2 !pl-4 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><span>در انتظار</span><ReadingStatusMenu selectedIds={selectedIds} setSelectedReadStatus={setSelectedReadStatus} canEditSelectedRequest={canEditSelectedRequest} editSelectedRequest={editSelectedRequest} deletingSelected={deletingSelected} deleteSelectedRequests={deleteSelectedRequests} /></th>
             </tr></thead>
             <tbody className="text-[13px] text-black [&>tr]:h-9 [&>tr>td]:!py-0 dark:text-neutral-100">
               {loading ? <tr><td colSpan={9} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td></tr> : pageItems.length === 0 ? <tr><td colSpan={9} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواستی ثبت نشده است.</td></tr> : pageItems.map((item) => <tr key={item.id} onClick={() => item.requestType === "tenkhah" ? setSelectedTenkhah(item) : openPreview(item)} className={`group cursor-pointer transition-colors ${item.requestType === "tenkhah" ? "bg-violet-50/90 hover:bg-violet-100/80 dark:bg-violet-500/[0.12] dark:hover:bg-violet-500/[0.18]" : "bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"}`}>
@@ -1445,18 +1425,53 @@ export default function PaymentRequestPage() {
   </div>;
 }
 
-function ReadingStatusMenu({ tableMenuRef, tableMenuOpen, setTableMenuOpen, selectedIds, setSelectedReadStatus, canEditSelectedRequest, editSelectedRequest, deletingSelected, deleteSelectedRequests }) {
-  return <div ref={tableMenuRef} className="absolute left-2 top-1/2 z-50 -translate-y-1/2" dir="rtl">
-    <button type="button" onClick={() => setTableMenuOpen((open) => !open)} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت وضعیت خواندن" aria-label="مدیریت وضعیت خواندن" aria-expanded={tableMenuOpen}>
-      <img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${tableMenuOpen ? "scale-110" : ""} dark:invert`} />
+function ReadingStatusMenu({ selectedIds, setSelectedReadStatus, canEditSelectedRequest, editSelectedRequest, deletingSelected, deleteSelectedRequests }) {
+  const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState(null);
+  const triggerRef = useRef(null);
+  const popoverRef = useRef(null);
+  const updatePosition = useCallback(() => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setPosition({ left: Math.max(8, Math.min(rect.left, window.innerWidth - 248)), top: rect.bottom + 8 });
+  }, []);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const closeOnOutsideClick = (event) => {
+      if (!triggerRef.current?.contains(event.target) && !popoverRef.current?.contains(event.target)) setOpen(false);
+    };
+    const closeOnEscape = (event) => { if (event.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open, updatePosition]);
+
+  const toggleMenu = () => {
+    if (open) setOpen(false);
+    else { updatePosition(); setOpen(true); }
+  };
+
+  const closeAnd = (action) => () => { action(); setOpen(false); };
+
+  return <div className="absolute left-2 top-1/2 z-50 -translate-y-1/2" dir="rtl">
+    <button ref={triggerRef} type="button" onClick={toggleMenu} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت وضعیت خواندن" aria-label="مدیریت وضعیت خواندن" aria-expanded={open}>
+      <img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${open ? "scale-110" : ""} dark:invert`} />
     </button>
-    {tableMenuOpen && <div className="table-menu-popover absolute left-0 top-[calc(100%+8px)] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
+    {open && position && createPortal(<div ref={popoverRef} className="table-menu-popover fixed z-[100] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100" style={position}>
       <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedIds.size ? `${toFa(selectedIds.size)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
-      <button type="button" disabled={!selectedIds.size} onClick={() => setSelectedReadStatus(false)} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-emerald-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-100 text-emerald-700 transition group-hover:scale-105 dark:bg-emerald-500/15 dark:text-emerald-300">✓</span><span className="min-w-0 flex-1 text-sm font-semibold">خوانده شده</span></button>
-      <button type="button" disabled={!selectedIds.size} onClick={() => setSelectedReadStatus(true)} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-sky-500/10"><span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-100 text-sky-700 transition group-hover:scale-105 dark:bg-sky-500/15 dark:text-sky-300"><span className="h-2.5 w-2.5 rounded-full bg-sky-500 ring-2 ring-sky-200 dark:ring-sky-400/30" /></span><span className="min-w-0 flex-1 text-sm font-semibold">خوانده نشده</span></button>
-      <button type="button" disabled={!canEditSelectedRequest} onClick={editSelectedRequest} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10" title={canEditSelectedRequest ? "ویرایش درخواست انتخاب‌شده" : "برای ویرایش، یک درخواست متعلق به خودتان را انتخاب کنید"}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="min-w-0 flex-1 text-sm font-semibold">ویرایش درخواست</span></button>
-      <button type="button" disabled={!selectedIds.size || deletingSelected} onClick={deleteSelectedRequests} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 transition group-hover:scale-105 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span><span className="min-w-0 flex-1 text-sm font-semibold">{deletingSelected ? "در حال حذف..." : "حذف موارد انتخاب‌شده"}</span></button>
-    </div>}
+      <button type="button" disabled={!selectedIds.size} onClick={closeAnd(() => setSelectedReadStatus(false))} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-emerald-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-100 text-emerald-700 transition group-hover:scale-105 dark:bg-emerald-500/15 dark:text-emerald-300">✓</span><span className="min-w-0 flex-1 text-sm font-semibold">خوانده شده</span></button>
+      <button type="button" disabled={!selectedIds.size} onClick={closeAnd(() => setSelectedReadStatus(true))} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-sky-500/10"><span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-100 text-sky-700 transition group-hover:scale-105 dark:bg-sky-500/15 dark:text-sky-300"><span className="h-2.5 w-2.5 rounded-full bg-sky-500 ring-2 ring-sky-200 dark:ring-sky-400/30" /></span><span className="min-w-0 flex-1 text-sm font-semibold">خوانده نشده</span></button>
+      <button type="button" disabled={!canEditSelectedRequest} onClick={closeAnd(editSelectedRequest)} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10" title={canEditSelectedRequest ? "ویرایش درخواست انتخاب‌شده" : "برای ویرایش، یک درخواست متعلق به خودتان را انتخاب کنید"}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="min-w-0 flex-1 text-sm font-semibold">ویرایش درخواست</span></button>
+      <button type="button" disabled={!selectedIds.size || deletingSelected} onClick={closeAnd(deleteSelectedRequests)} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 transition group-hover:scale-105 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span><span className="min-w-0 flex-1 text-sm font-semibold">{deletingSelected ? "در حال حذف..." : "حذف موارد انتخاب‌شده"}</span></button>
+    </div>, document.body)}
   </div>;
 }
 
