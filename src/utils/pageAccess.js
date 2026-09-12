@@ -14,6 +14,9 @@ const ROUTE_PERMISSION_PAGES = [
   ["/finance/cash-flow-forecast", "پیش‌بینی جریان نقدی"],
   ["/supply/request", "درخواست تأمین"],
   ["/supply/actions", "درخواست تأمین"],
+  ["/knowledge-management/project-lessons-learned", "درس‌آموخته‌ها"],
+  ["/knowledge-management/equipment-library", "کتابخانه‌ها"],
+  ["/knowledge-management/training-resources", "منابع آموزشی"],
 ];
 
 const PAGE_INDEX = {
@@ -27,6 +30,9 @@ const PAGE_INDEX = {
   "تخصیص نقدینگی": 10,
   "پیش‌بینی جریان نقدی": 11,
   "درخواست تأمین": 13,
+  "درس‌آموخته‌ها": 14,
+  "کتابخانه‌ها": 15,
+  "منابع آموزشی": 16,
 };
 
 export function hasLimitedPageAccess(user) {

@@ -3577,13 +3577,12 @@ export default function ContractInformation() {
       <button
         type="button"
         onClick={onOpen}
-        className={`flex min-h-[138px] w-full flex-col items-center justify-center rounded-2xl border border-dashed px-4 py-5 text-center transition ${tone}`}
+        className={`flex min-h-[122px] w-full flex-col items-center justify-center rounded-2xl border border-dashed px-4 py-4 text-center transition ${tone}`}
         aria-label={`بارگذاری ${label}`}
         title={`بارگذاری ${label}`}
       >
         <img src="/images/icons/upload.svg" alt="" className="mb-2 h-8 w-8" style={{ filter: iconFilter }} />
         <span className="text-sm font-bold text-neutral-900 dark:text-neutral-100">{label}{required ? <span className="mr-1">*</span> : null}</span>
-        <span className="mt-1 text-xs font-medium opacity-70">فایل را اینجا بکشید یا کلیک کنید</span>
       </button>
     );
   };
