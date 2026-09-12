@@ -2367,13 +2367,9 @@ const resetAllFilters = () => {
     const targetLetterId = String(uploadTargetLetterId || "").trim();
 
     for (const rawFile of list) {
-      const isImg = rawFile.type && rawFile.type.startsWith("image/");
-
       try {
         const preparedFile = await ensureLetterUploadableFile(rawFile);
         const id = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
-        const previewSource = isImg ? preparedFile : rawFile;
-        const previewUrl = previewSource ? URL.createObjectURL(previewSource) : null;
 
         setDocFilesFor(which, (prev) => [
           ...prev,
@@ -2387,7 +2383,6 @@ const resetAllFilters = () => {
             error: "",
             serverId: null,
             url: null,
-            previewUrl,
             file: rawFile,
             optimizedFile: preparedFile,
           },
@@ -2432,33 +2427,9 @@ const resetAllFilters = () => {
 
   const removeDocFile = (which, id) => {
     setDocFilesFor(which, (prev) => {
-      const target = prev.find((x) => x.id === id);
-      if (target?.previewUrl) {
-        try {
-          URL.revokeObjectURL(target.previewUrl);
-        } catch {}
-      }
       return prev.filter((x) => x.id !== id);
     });
   };
-
-  useEffect(() => {
-    return () => {
-      const all = [
-        ...(Array.isArray(docFilesByType?.incoming) ? docFilesByType.incoming : []),
-        ...(Array.isArray(docFilesByType?.outgoing) ? docFilesByType.outgoing : []),
-        ...(Array.isArray(docFilesByType?.internal) ? docFilesByType.internal : []),
-      ];
-      all.forEach((f) => {
-        if (f?.previewUrl) {
-          try {
-            URL.revokeObjectURL(f.previewUrl);
-          } catch {}
-        }
-      });
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const refetchLetters = async () => {
     const r = await api("/letters/mine");
@@ -7372,7 +7343,7 @@ const rowBg = normalRowBg;
                                   <div className="text-[11px] mt-1 text-red-500">{f.error}</div>
                                 ) : null}
 
-                                {(() => {
+                                {false && (() => {
                                   const previewSrc = f.previewUrl || resolveFileUrl(f.url);
                                   const fileType = String(f.type || "").toLowerCase();
                                   const canPreviewPdf = !!previewSrc && (fileType.includes("pdf") || isPdfUrl(previewSrc, f.name));
@@ -7402,7 +7373,7 @@ const rowBg = normalRowBg;
                               </div>
 
                               <div className="flex items-center justify-end gap-2 self-end sm:self-center shrink-0">
-                                {(f.previewUrl || f.url) ? (
+                                {false && (f.previewUrl || f.url) ? (
                                   <a
                                     href={f.previewUrl || resolveFileUrl(f.url)}
                                     target="_blank"
