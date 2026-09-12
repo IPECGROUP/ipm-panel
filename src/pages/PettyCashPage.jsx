@@ -815,8 +815,8 @@ function ExpenseRegistrationTab({ onReportCreated }) {
       />
       {confirmingReport && (
         <SettlementConfirmationModal
-          count={selectedItems.filter(isSettlementEligible).length}
-          total={selectedItemsTotal(selectedItems.filter(isSettlementEligible), selectedIds)}
+          count={selectedItems.length}
+          total={selectedItemsTotal(selectedItems, selectedIds)}
           saving={saving}
           onCancel={() => setConfirmingReport(false)}
           onConfirm={createSettlementReport}
