@@ -531,7 +531,14 @@ function RightNav() {
           </button>
         )}
 
-        <div className={["mt-5 min-h-0 flex-1 space-y-4", expanded ? "ipm-right-nav-scroll overflow-y-auto overflow-x-visible px-0.5" : "overflow-visible"].join(" ")}>
+        <div
+          className={[
+            "mt-5 min-h-0 flex-1",
+            expanded
+              ? "ipm-right-nav-scroll space-y-4 overflow-y-auto overflow-x-visible px-0.5"
+              : "space-y-1.5 overflow-visible",
+          ].join(" ")}
+        >
           {visibleNavGroups.map((group) => (
             <div key={group.title} className="space-y-1.5">
               <div className={["space-y-1.5", expanded ? "" : "flex flex-col items-center"].join(" ")}>
