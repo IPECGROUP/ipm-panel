@@ -3466,7 +3466,7 @@ export default function ContractInformation() {
       <div className="mb-3 text-sm font-semibold text-black dark:text-neutral-100">{title}</div>
       <div className="space-y-2">
         {rows.map((row, index) => (
-          <div key={row.id} className="grid grid-cols-1 gap-2 md:grid-cols-[minmax(108px,0.324fr)_108px_139px_auto_minmax(335px,1fr)] md:items-end">
+          <div key={row.id} className="grid grid-cols-1 gap-2 xl:grid-cols-[minmax(97px,0.291fr)_108px_142px_auto_minmax(343px,1fr)] xl:items-end">
             <div>
               <div className={labelCls}>{amountLabel} *</div>
               <input
@@ -3566,18 +3566,18 @@ export default function ContractInformation() {
   };
 
   const renderFinancialFileField = ({ label, onOpen, required = false }) => (
-    <div className="grid grid-cols-1 gap-2 border-t border-black/10 py-3 first:border-t-0 first:pt-0 lg:grid-cols-[minmax(210px,1fr)_auto] lg:items-center dark:border-neutral-700">
+    <div className="flex flex-wrap items-center gap-2 border-t border-black/10 py-3 first:border-t-0 first:pt-0 dark:border-neutral-700">
       <div className="text-right">
         <div className="text-sm font-semibold text-black dark:text-neutral-100">{label}{required ? <span className="mr-1 text-orange-500">*</span> : null}</div>
-        <div className="mt-0.5 text-xs text-black/50 dark:text-neutral-400">فایل {label} را بارگذاری کنید.</div>
       </div>
       <button
         type="button"
         onClick={onOpen}
-        className="h-10 min-w-[150px] rounded-xl border border-black/15 bg-white px-3 text-xs font-semibold text-black transition inline-flex items-center justify-center gap-2 hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800"
+        className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/15 bg-white text-black transition hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800"
+        aria-label={`بارگذاری ${label}`}
+        title={`بارگذاری ${label}`}
       >
-        <img src="/images/icons/upload.svg" alt="" className="h-4 w-4 dark:invert" />
-        بارگذاری اسناد
+        <img src="/images/icons/upload.svg" alt="" className="h-5 w-5 dark:invert" />
       </button>
     </div>
   );
