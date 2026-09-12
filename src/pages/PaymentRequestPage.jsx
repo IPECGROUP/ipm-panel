@@ -1212,7 +1212,7 @@ export default function PaymentRequestPage() {
           </div>
         </div>}
 
-        {showForm && <div className={requestType === "tenkhah" ? "" : "hidden"}><TenkhahPage embedded active={requestType === "tenkhah"} /></div>}
+        {showForm && <div className={requestType === "tenkhah" ? "" : "hidden"}><TenkhahPage embedded active={requestType === "tenkhah"} onRequestCreated={async () => { setRequestType("normal"); setShowForm(false); await loadItems(); }} /></div>}
 
         {showForm && <form onSubmit={submit} className={`mb-5 space-y-4 rounded-2xl border border-black/10 bg-neutral-50/70 p-3 dark:border-white/10 dark:bg-white/[.03] sm:p-4 lg:p-5 ${requestType === "normal" ? "" : "hidden"}`}>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_minmax(220px,1fr)_minmax(210px,0.8fr)]">
