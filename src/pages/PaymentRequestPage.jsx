@@ -796,6 +796,9 @@ export default function PaymentRequestPage() {
         unitName: STEP_LABELS[actionItem.currentStepRoleKey] || "واحد مربوطه",
         roleName: status === "approved" ? "تایید کننده" : status === "returned" ? "ارجاع دهنده" : "رد کننده",
       });
+      window.dispatchEvent(new CustomEvent("request-notification-completed", {
+        detail: { notificationTarget: actionItem.requestType === "tenkhah" ? "tenkhah" : "payment_request", id: actionItem.id },
+      }));
       await loadItems();
       setSelected(null);
       return data;
@@ -846,6 +849,9 @@ export default function PaymentRequestPage() {
         unitName: "درخواست کننده",
         roleName: "ارسال کننده مجدد",
       });
+      window.dispatchEvent(new CustomEvent("request-notification-completed", {
+        detail: { notificationTarget: item.requestType === "tenkhah" ? "tenkhah" : "payment_request", id: item.id },
+      }));
       await loadItems();
     } catch (err) {
       setActionError(err?.message === "forbidden" ? "شما اجازه انجام این اقدام را ندارید." : "ارسال مجدد درخواست انجام نشد.");

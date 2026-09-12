@@ -70,14 +70,31 @@ export default function Shell() {
     loadNotifications();
     const interval = setInterval(() => loadNotifications({ quiet: true }), 30000);
     const refresh = () => loadNotifications({ quiet: true });
+    const completeNotification = (event) => {
+      const item = event.detail;
+      if (!item?.notificationTarget || item.id == null) return;
+
+      const key = notificationKey(item);
+      try {
+        const storageKey = notificationStorageKey(user.id);
+        const readNotifications = new Set(JSON.parse(localStorage.getItem(storageKey) || "[]"));
+        readNotifications.add(key);
+        localStorage.setItem(storageKey, JSON.stringify([...readNotifications]));
+      } catch {}
+
+      setNotifications((current) => current.filter((notification) => notificationKey(notification) !== key));
+      loadNotifications({ quiet: true });
+    };
     window.addEventListener("focus", refresh);
     window.addEventListener("supply-notifications-refresh", refresh);
     window.addEventListener("tenkhah-notifications-refresh", refresh);
+    window.addEventListener("request-notification-completed", completeNotification);
     return () => {
       clearInterval(interval);
       window.removeEventListener("focus", refresh);
       window.removeEventListener("supply-notifications-refresh", refresh);
       window.removeEventListener("tenkhah-notifications-refresh", refresh);
+      window.removeEventListener("request-notification-completed", completeNotification);
     };
   }, [loadNotifications]);
 
@@ -91,13 +108,6 @@ export default function Shell() {
   }, [notificationsOpen]);
 
   const openNotification = (item) => {
-    if (user?.id) {
-      const storageKey = notificationStorageKey(user.id);
-      const readNotifications = new Set(JSON.parse(localStorage.getItem(storageKey) || "[]"));
-      readNotifications.add(notificationKey(item));
-      localStorage.setItem(storageKey, JSON.stringify([...readNotifications]));
-      setNotifications((current) => current.filter((notification) => notificationKey(notification) !== notificationKey(item)));
-    }
     setNotificationsOpen(false);
     const target = item.notificationTarget === "payment_request" || item.notificationTarget === "tenkhah" ? "/finance/payment-request" : "/supply/request";
     const key = "request";

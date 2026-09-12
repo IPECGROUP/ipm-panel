@@ -743,6 +743,9 @@ export default function SupplyRequestPage() {
       setSubmitNotice({
         message: `در تاریخ ${toFaDigits(normalizeDigits(new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())))} ساعت ${toFaDigits(normalizeDigits(new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date())))} توسط ${user?.name || user?.username || "کاربر"} ${actionMessage}`,
       });
+      window.dispatchEvent(new CustomEvent("request-notification-completed", {
+        detail: { notificationTarget: "supply_request", id: selected.id },
+      }));
       await loadItems();
     } catch (ex) {
       const message = String(ex?.message || "");

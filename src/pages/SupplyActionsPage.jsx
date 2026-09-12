@@ -181,6 +181,11 @@ export default function SupplyActionsPage({ embedded = false, requestId: embedde
       });
       replaceItem(data?.item);
       setEditingIds((prev) => ({ ...prev, [key]: false }));
+      if (action.status && action.status !== "in_progress") {
+        window.dispatchEvent(new CustomEvent("request-notification-completed", {
+          detail: { notificationTarget: "supply_actions", id: requestId },
+        }));
+      }
     } catch {
       setError("ذخیره اقدام تامین انجام نشد.");
     } finally {
