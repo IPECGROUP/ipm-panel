@@ -92,7 +92,6 @@ function SettlementEntryEditor({ form, setForm, budgetItems, busy, onSave, onUpl
 export default function TenkhahPage({ embedded = false, active = true, onRequestCreated = null }) {
   const { user } = useAuth();
   const [items, setItems] = useState([]),
-    [activeListTab, setActiveListTab] = useState("mine"),
     [form, setForm] = useState(empty),
     [open, setOpen] = useState(false),
     [projects, setProjects] = useState([]),
@@ -320,11 +319,6 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
     selected &&
     (selected.canAct === true || Number(selected.currentAssigneeUserId) === Number(user?.id)) &&
     selected.status === "pending";
-  const myTenkhahItems = useMemo(
-    () => items.filter((item) => Number(item.beneficiaryUserId) === Number(user?.id)),
-    [items, user?.id],
-  );
-  const displayedItems = activeListTab === "mine" ? myTenkhahItems : items;
   const hasCashPayment = Number(toEnglishDigits(String(selected?.cashPaymentAmount || "")).replace(/[^\d]/g, "")) > 0;
   const hasCreditPayment = Number(toEnglishDigits(String(selected?.creditPaymentAmount || "")).replace(/[^\d]/g, "")) > 0;
   // A final payment may be cash-only, credit-only, or a combination of both.
@@ -457,22 +451,6 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
           </div>
         )}
         {!embedded && <section className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
-          <div className="flex gap-1 border-b border-black/10 p-2 dark:border-white/10">
-            <button
-              type="button"
-              onClick={() => setActiveListTab("mine")}
-              className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${activeListTab === "mine" ? "bg-black text-white dark:bg-white dark:text-black" : "text-neutral-500 hover:bg-black/[.04] dark:text-neutral-400 dark:hover:bg-white/10"}`}
-            >
-              تنخواه‌های من{myTenkhahItems.length ? ` (${fa(myTenkhahItems.length)})` : ""}
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveListTab("all")}
-              className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${activeListTab === "all" ? "bg-black text-white dark:bg-white dark:text-black" : "text-neutral-500 hover:bg-black/[.04] dark:text-neutral-400 dark:hover:bg-white/10"}`}
-            >
-              همه درخواست‌ها
-            </button>
-          </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] text-sm">
               <thead className="bg-neutral-200 dark:bg-white/10">
@@ -493,8 +471,8 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
                 </tr>
               </thead>
               <tbody>
-                {displayedItems.length ? (
-                  displayedItems.map((x) => (
+                {items.length ? (
+                  items.map((x) => (
                     <tr
                       className="border-t border-black/10 dark:border-white/10"
                       key={x.id}
