@@ -61,6 +61,12 @@ function isSettlementEligible(item) {
   );
 }
 
+function isUnapprovedExpense(item) {
+  // A rejected expense is still an unapproved expense.  It leaves this total
+  // only after the project manager has given final approval.
+  return !(item.stage === "completed" && item.projectManagerStatus === "approved");
+}
+
 function expenseWorkflowStatus(item) {
   if (item.settlementReportId) return "ثبت‌شده در گزارش تسویه";
   if (item.stage === "completed" && item.projectManagerStatus === "approved")
@@ -680,7 +686,7 @@ function ExpenseRegistrationTab({ onReportCreated }) {
   const pendingExpenseTotal = useMemo(
     () => items.reduce((total, item) => {
       const isCurrentUsersItem = Number(item.createdById) === Number(user?.id);
-      const isPending = item.stage !== "completed" && item.stage !== "rejected";
+      const isPending = isUnapprovedExpense(item);
       if (!isCurrentUsersItem || !isPending) return total;
       return total + BigInt(toEnglishDigits(String(item.amount ?? "")).replace(/[^\d]/g, "") || "0");
     }, 0n),
@@ -691,8 +697,7 @@ function ExpenseRegistrationTab({ onReportCreated }) {
   );
   const editingPendingAmount = editingExpense &&
     Number(editingExpense.createdById) === Number(user?.id) &&
-    editingExpense.stage !== "completed" &&
-    editingExpense.stage !== "rejected"
+    isUnapprovedExpense(editingExpense)
     ? BigInt(toEnglishDigits(String(editingExpense.amount ?? "")).replace(/[^\d]/g, "") || "0")
     : 0n;
   // Show the effect of the amount being entered before it is saved.  When an
