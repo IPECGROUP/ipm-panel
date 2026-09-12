@@ -2,6 +2,7 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
+import DocumentUploadModal from "../components/DocumentUploadModal.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 import { baseCurrenciesTablePreset as financialTablePreset, hoverSelectableRowPreset } from "../components/ui/tablePresets.js";
 import { dayjs, isJalaliYmd } from "../utils/date";
@@ -1256,6 +1257,8 @@ export default function ContractInformation() {
   const [currencyError, setCurrencyError] = React.useState("");
   const financialUploadInputRef = React.useRef(null);
   const paymentTermsUploadInputRef = React.useRef(null);
+  const [financialUploadKind, setFinancialUploadKind] = React.useState("");
+  const [financialUploadBusy, setFinancialUploadBusy] = React.useState(false);
   const insuranceUploadInputRef = React.useRef(null);
   const appendixUploadInputRef = React.useRef(null);
   const [editingGuaranteeId, setEditingGuaranteeId] = React.useState("");
@@ -2335,6 +2338,20 @@ export default function ContractInformation() {
       };
     });
   };
+
+  const addFinancialUploadFiles = async (fileList) => {
+    setFinancialUploadBusy(true);
+    try {
+      if (financialUploadKind === "breakdown") await addFinancialBreakdownFiles(fileList);
+      if (financialUploadKind === "paymentTerms") await addPaymentTermsFiles(fileList);
+    } finally {
+      setFinancialUploadBusy(false);
+    }
+  };
+
+  const financialUploadConfig = financialUploadKind === "breakdown"
+    ? { title: "بارگذاری اسناد — جدول شکست مبلغ قرارداد", files: financialForm.breakdownFiles, fileRef: financialUploadInputRef, onRemove: removeFinancialBreakdownFile }
+    : { title: "بارگذاری اسناد — شرایط پرداخت", files: financialForm.paymentTermsFiles, fileRef: paymentTermsUploadInputRef, onRemove: removePaymentTermsFile };
 
   const updateGuaranteeDraft = (field, value) => {
     setForm((prev) => {
@@ -3548,7 +3565,7 @@ export default function ContractInformation() {
     );
   };
 
-  const renderFinancialFileField = ({ label, files, inputRef, onAdd, onRemove, required = false }) => (
+  const renderFinancialFileField = ({ label, files, onOpen, onRemove, required = false }) => (
     <div className="grid grid-cols-1 gap-2 border-t border-black/10 py-3 first:border-t-0 first:pt-0 lg:grid-cols-[minmax(210px,0.8fr)_auto_minmax(280px,1.2fr)] lg:items-center dark:border-neutral-700">
       <div className="text-right">
         <div className="text-sm font-semibold text-black dark:text-neutral-100">{label}{required ? <span className="mr-1 text-orange-500">*</span> : null}</div>
@@ -3556,23 +3573,12 @@ export default function ContractInformation() {
       </div>
       <button
         type="button"
-        onClick={() => inputRef.current?.click()}
+        onClick={onOpen}
         className="h-10 min-w-[150px] rounded-xl border border-black/15 bg-white px-3 text-xs font-semibold text-black transition inline-flex items-center justify-center gap-2 hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800"
       >
         <img src="/images/icons/upload.svg" alt="" className="h-4 w-4 dark:invert" />
         بارگذاری اسناد
       </button>
-      <input
-        ref={inputRef}
-        type="file"
-        multiple
-        accept=".pdf,image/*,.xls,.xlsx,.doc,.docx"
-        className="hidden"
-        onChange={(e) => {
-          onAdd(e.target.files);
-          e.target.value = "";
-        }}
-      />
       <div className="min-h-[64px] rounded-xl border border-dashed border-black/20 bg-white/70 p-2 dark:border-neutral-600 dark:bg-neutral-900/40">
         {files.length ? (
           <div className="grid grid-cols-1 gap-2">
@@ -4430,15 +4436,13 @@ export default function ContractInformation() {
                                 label: "جدول شکست مبلغ قرارداد",
                                 required: true,
                                 files: financialForm.breakdownFiles,
-                                inputRef: financialUploadInputRef,
-                                onAdd: addFinancialBreakdownFiles,
+                                onOpen: () => setFinancialUploadKind("breakdown"),
                                 onRemove: removeFinancialBreakdownFile,
                               })}
                               {renderFinancialFileField({
                                 label: "شرایط پرداخت",
                                 files: financialForm.paymentTermsFiles,
-                                inputRef: paymentTermsUploadInputRef,
-                                onAdd: addPaymentTermsFiles,
+                                onOpen: () => setFinancialUploadKind("paymentTerms"),
                                 onRemove: removePaymentTermsFile,
                               })}
                             </div>
@@ -5824,6 +5828,14 @@ export default function ContractInformation() {
           </div>,
           document.body
         )}
+      {financialUploadKind ? (
+        <DocumentUploadModal
+          {...financialUploadConfig}
+          uploading={financialUploadBusy}
+          onUpload={addFinancialUploadFiles}
+          onClose={() => setFinancialUploadKind("")}
+        />
+      ) : null}
     </div>
   );
 }
