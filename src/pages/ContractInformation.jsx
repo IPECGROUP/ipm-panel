@@ -3425,7 +3425,7 @@ export default function ContractInformation() {
   const renderDeductionFields = () => (
     <div className="min-w-0 rounded-xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-700 dark:bg-white/[0.03]">
       <div className="mb-2 text-sm font-semibold text-black/70 dark:text-neutral-200">کسور</div>
-      <div className="flex flex-row-reverse flex-wrap items-center gap-x-4 gap-y-2">
+      <div className="flex flex-row-reverse flex-nowrap items-center gap-x-4 gap-y-2 overflow-x-auto">
         {[
           { field: "capitalDeposit", amountField: "capitalDepositAmount", label: "سپرده بیمه *" },
           { field: "performanceBond", amountField: "performanceBondAmount", label: "حسن انجام کار *" },
@@ -3466,7 +3466,7 @@ export default function ContractInformation() {
       <div className="mb-3 text-sm font-semibold text-black dark:text-neutral-100">{title}</div>
       <div className="space-y-2">
         {rows.map((row, index) => (
-          <div key={row.id} className="grid grid-cols-1 gap-2 md:grid-cols-[minmax(108px,0.324fr)_108px_154px_auto_minmax(320px,1fr)] md:items-end">
+          <div key={row.id} className="grid grid-cols-1 gap-2 md:grid-cols-[minmax(108px,0.324fr)_108px_139px_auto_minmax(335px,1fr)] md:items-end">
             <div>
               <div className={labelCls}>{amountLabel} *</div>
               <input
@@ -3565,8 +3565,8 @@ export default function ContractInformation() {
     );
   };
 
-  const renderFinancialFileField = ({ label, files, onOpen, onRemove, required = false }) => (
-    <div className="grid grid-cols-1 gap-2 border-t border-black/10 py-3 first:border-t-0 first:pt-0 lg:grid-cols-[minmax(210px,0.8fr)_auto_minmax(280px,1.2fr)] lg:items-center dark:border-neutral-700">
+  const renderFinancialFileField = ({ label, onOpen, required = false }) => (
+    <div className="grid grid-cols-1 gap-2 border-t border-black/10 py-3 first:border-t-0 first:pt-0 lg:grid-cols-[minmax(210px,1fr)_auto] lg:items-center dark:border-neutral-700">
       <div className="text-right">
         <div className="text-sm font-semibold text-black dark:text-neutral-100">{label}{required ? <span className="mr-1 text-orange-500">*</span> : null}</div>
         <div className="mt-0.5 text-xs text-black/50 dark:text-neutral-400">فایل {label} را بارگذاری کنید.</div>
@@ -3579,28 +3579,6 @@ export default function ContractInformation() {
         <img src="/images/icons/upload.svg" alt="" className="h-4 w-4 dark:invert" />
         بارگذاری اسناد
       </button>
-      <div className="min-h-[64px] rounded-xl border border-dashed border-black/20 bg-white/70 p-2 dark:border-neutral-600 dark:bg-neutral-900/40">
-        {files.length ? (
-          <div className="grid grid-cols-1 gap-2">
-            {files.map((file, index) => (
-              <div key={file.id || `${file.name}_${index}`} className="flex items-center justify-between gap-3 rounded-lg bg-black/[0.03] px-2.5 py-1.5 dark:bg-white/[0.06]">
-                <button type="button" onClick={() => onRemove(file.id)} className={`${iconBtnCls} !h-8 !w-8 shrink-0`} aria-label="حذف فایل" title="حذف فایل">
-                  <img src="/images/icons/hazf.svg" alt="" className="h-4 w-4 dark:invert" />
-                </button>
-                <div className="min-w-0 text-left">
-                  <div className="truncate text-sm font-semibold" dir="ltr">{file.name || `فایل ${toFaDigits(index + 1)}`}</div>
-                  <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{toFaDigits(formatBytes(file.size || 0))}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="flex h-[44px] items-center justify-center gap-2 text-xs font-medium text-black/40 dark:text-neutral-500">
-            <img src="/images/icons/Uplod.svg" alt="" className="h-6 w-6 opacity-60 dark:invert" />
-            فایلی انتخاب نشده است.
-          </div>
-        )}
-      </div>
     </div>
   );
 
@@ -4435,15 +4413,11 @@ export default function ContractInformation() {
                               {renderFinancialFileField({
                                 label: "جدول شکست مبلغ قرارداد",
                                 required: true,
-                                files: financialForm.breakdownFiles,
                                 onOpen: () => setFinancialUploadKind("breakdown"),
-                                onRemove: removeFinancialBreakdownFile,
                               })}
                               {renderFinancialFileField({
                                 label: "شرایط پرداخت",
-                                files: financialForm.paymentTermsFiles,
                                 onOpen: () => setFinancialUploadKind("paymentTerms"),
-                                onRemove: removePaymentTermsFile,
                               })}
                             </div>
                           </div>
