@@ -33,7 +33,7 @@ const WAITING_UNIT_LABELS = {
   // These are unit names, not workflow-step descriptions. Keep the queue
   // label identical to the unit the request is actually waiting for.
   project_control: "برنامه ریزی",
-  project_manager: "مدیریت پروژه ها",
+  project_manager: "مدیریت پروژه",
   accounting: "مالی",
   management: "مدیریت",
   finance_manager: "مدیریت مالی",
@@ -1822,7 +1822,11 @@ function StatusBadge({ status }) {
 
 function WaitingUnitCell({ item }) {
   const roleKey = item?.currentStepRoleKey || item?.stage;
-  const unitName = WAITING_UNIT_LABELS[roleKey];
+  const isFinalPaymentWaiting = item?.requestType !== "tenkhah"
+    && roleKey === "accounting"
+    && Number(item?.currentStepIndex) >= 5
+    && item?.status === "pending";
+  const unitName = isFinalPaymentWaiting ? "در انتظار پرداخت" : WAITING_UNIT_LABELS[roleKey];
 
   if (unitName) {
     return <span className={`inline-flex max-w-full truncate rounded-full px-2.5 py-1 text-xs ${statusBadgeClass("pending")}`} title={unitName}>{unitName}</span>;
