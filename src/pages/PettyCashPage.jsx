@@ -686,7 +686,20 @@ function ExpenseRegistrationTab({ onReportCreated }) {
     }, 0n),
     [items, user?.id],
   );
-  const unsettledBalanceAfterPending = BigInt(projectBalance.unsettledBalance || "0") - pendingExpenseTotal;
+  const draftExpenseAmount = BigInt(
+    toEnglishDigits(String(form.amount ?? "")).replace(/[^\d]/g, "") || "0",
+  );
+  const editingPendingAmount = editingExpense &&
+    Number(editingExpense.createdById) === Number(user?.id) &&
+    editingExpense.stage !== "completed" &&
+    editingExpense.stage !== "rejected"
+    ? BigInt(toEnglishDigits(String(editingExpense.amount ?? "")).replace(/[^\d]/g, "") || "0")
+    : 0n;
+  // Show the effect of the amount being entered before it is saved.  When an
+  // existing pending expense is edited, only its amount difference is applied.
+  const draftPendingDelta = formOpen ? draftExpenseAmount - editingPendingAmount : 0n;
+  const pendingExpenseWithDraft = pendingExpenseTotal + draftPendingDelta;
+  const unsettledBalanceAfterPending = BigInt(projectBalance.unsettledBalance || "0") - pendingExpenseWithDraft;
   const displayMoney = (value) => {
     const amount = BigInt(value || "0");
     const absolute = amount < 0n ? -amount : amount;
@@ -751,7 +764,7 @@ function ExpenseRegistrationTab({ onReportCreated }) {
           </Field>
           <Field label="باقی‌مانده هزینه‌های تأییدنشده" className="min-w-[12rem] flex-1 sm:max-w-[16rem]">
             <div dir="ltr" className={`${inputClass} flex items-center justify-end font-sans tabular-nums`}>
-              {displayMoney(pendingExpenseTotal)}
+              {displayMoney(pendingExpenseWithDraft)}
             </div>
           </Field>
         </div>
