@@ -64,6 +64,15 @@ html, body {
   font-family: Vazir, system-ui, -apple-system, "Segoe UI", sans-serif !important;
 }
 
+/* Keep Persian numerals on the liquidity-allocation page in the Vazir typeface. */
+.liquidity-allocation-page,
+.liquidity-allocation-page input,
+.liquidity-allocation-page select,
+.liquidity-allocation-page button {
+  font-family: Vazir, system-ui, -apple-system, "Segoe UI", sans-serif !important;
+  font-variant-numeric: normal;
+}
+
 .ipm-right-nav-scroll {
   scrollbar-width: none;
   -ms-overflow-style: none;
