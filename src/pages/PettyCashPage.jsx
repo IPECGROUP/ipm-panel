@@ -739,6 +739,28 @@ function ExpenseRegistrationTab({ onReportCreated }) {
     catch (reason) { setError(reason.message); }
     finally { setSaving(false); setTableMenuOpen(false); }
   };
+  const clearPettyCashPageData = async () => {
+    if (!window.confirm("همه هزینه‌ها و گزارش‌های تسویه تنخواهِ شما در این صفحه حذف می‌شود. اطلاعات درخواست پرداخت و تنخواه‌های ثبت‌شده حذف نخواهند شد. ادامه می‌دهید؟")) return;
+    setSaving(true);
+    setError("");
+    try {
+      await api("/petty-cash-expenses", {
+        method: "DELETE",
+        body: JSON.stringify({ action: "clear_petty_cash_page_data" }),
+      });
+      setItems([]);
+      setSelectedIds(new Set());
+      setEditingExpense(null);
+      setForm(emptyExpense());
+      setFormOpen(false);
+      setTableMenuOpen(false);
+      await loadProjectBalance(projectId);
+    } catch (reason) {
+      setError(reason.message);
+    } finally {
+      setSaving(false);
+    }
+  };
   return (
     <section className="rounded-b-2xl border-x border-b border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900 md:p-4">
       <div className="mb-4 flex w-full items-end justify-between gap-4">
@@ -768,19 +790,30 @@ function ExpenseRegistrationTab({ onReportCreated }) {
             </div>
           </Field>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setError("");
-            setFormOpen((open) => !open);
-          }}
-          className="relative grid h-11 w-11 shrink-0 place-items-center rounded-[13px] border border-neutral-300 bg-white text-neutral-500 shadow-sm transition hover:border-neutral-400 hover:bg-neutral-50 dark:border-white/20 dark:bg-white/5 dark:text-neutral-300"
-          title="افزودن هزینه"
-          aria-label="افزودن هزینه"
-        >
-          <span className="absolute h-px w-5 bg-current" />
-          <span className="absolute h-5 w-px bg-current" />
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={clearPettyCashPageData}
+            disabled={saving}
+            className="h-11 rounded-xl border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-400/25 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
+            title="حذف همه داده‌های تنخواه گردان"
+          >
+            حذف کلی
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setError("");
+              setFormOpen((open) => !open);
+            }}
+            className="relative grid h-11 w-11 place-items-center rounded-[13px] border border-neutral-300 bg-white text-neutral-500 shadow-sm transition hover:border-neutral-400 hover:bg-neutral-50 dark:border-white/20 dark:bg-white/5 dark:text-neutral-300"
+            title="افزودن هزینه"
+            aria-label="افزودن هزینه"
+          >
+            <span className="absolute h-px w-5 bg-current" />
+            <span className="absolute h-5 w-px bg-current" />
+          </button>
+        </div>
       </div>
       {formOpen && (
         <div className="mb-4 grid grid-cols-1 items-end gap-3 rounded-2xl border border-black/10 bg-neutral-50/70 p-3 dark:border-white/10 dark:bg-white/[.03] md:grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_170px_44px]">
