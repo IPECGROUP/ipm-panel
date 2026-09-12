@@ -1846,7 +1846,10 @@ function TenkhahActionOption({ kind, checked, onClick, label, children }) {
     return: { icon: "↶", iconClass: "bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300", selected: "border-amber-300 bg-amber-50/60 shadow-[0_0_0_2px_rgba(245,158,11,.12)] dark:border-amber-400/40 dark:bg-amber-500/10", description: "بازگشت برای اصلاح" },
     reject: { icon: "×", iconClass: "bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300", selected: "border-rose-300 bg-rose-50/60 shadow-[0_0_0_2px_rgba(244,63,94,.12)] dark:border-rose-400/40 dark:bg-rose-500/10", description: "رد درخواست و پایان فرایند" },
   }[kind];
-  return <div role="button" tabIndex={0} onClick={onClick} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onClick(); }} className={`min-h-[154px] cursor-pointer rounded-2xl border p-4 text-center transition ${checked ? appearance.selected : "border-black/10 bg-white hover:border-black/20 hover:shadow-sm dark:border-white/10 dark:bg-white/[.03] dark:hover:border-white/20"}`}><div className={`mx-auto grid h-10 w-10 place-items-center rounded-full text-2xl font-bold ${appearance.iconClass}`}>{appearance.icon}</div><div className="mt-2 text-sm font-bold text-neutral-800 dark:text-neutral-100">{label}</div><p className="mt-1 text-[11px] leading-5 text-neutral-500 dark:text-neutral-400">{appearance.description}</p>{checked && children && <div className="mt-2 text-right" onClick={(event) => event.stopPropagation()}>{children}</div>}</div>;
+  // Tenkhah workflow stages are unit queues. Selecting one person here would
+  // wrongly turn the management stage into an individual assignment.
+  const visibleChildren = children?.type === "select" ? null : children;
+  return <div role="button" tabIndex={0} onClick={onClick} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onClick(); }} className={`min-h-[154px] cursor-pointer rounded-2xl border p-4 text-center transition ${checked ? appearance.selected : "border-black/10 bg-white hover:border-black/20 hover:shadow-sm dark:border-white/10 dark:bg-white/[.03] dark:hover:border-white/20"}`}><div className={`mx-auto grid h-10 w-10 place-items-center rounded-full text-2xl font-bold ${appearance.iconClass}`}>{appearance.icon}</div><div className="mt-2 text-sm font-bold text-neutral-800 dark:text-neutral-100">{label}</div><p className="mt-1 text-[11px] leading-5 text-neutral-500 dark:text-neutral-400">{appearance.description}</p>{checked && visibleChildren && <div className="mt-2 text-right" onClick={(event) => event.stopPropagation()}>{visibleChildren}</div>}</div>;
 }
 
 function TenkhahDetailCards({ details }) {
@@ -1896,7 +1899,7 @@ function TenkhahPreviewV4({ item, userId, api, onRefresh, onClose }) {
   const [choice, setChoice] = useState("approve");
   const [note, setNote] = useState("");
   const [nextUserId, setNextUserId] = useState("");
-  const [recipients, setRecipients] = useState([]);
+  const [recipients] = useState([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [currencyTypes, setCurrencyTypes] = useState([]);
@@ -1911,10 +1914,6 @@ function TenkhahPreviewV4({ item, userId, api, onRefresh, onClose }) {
   const activeStep = item.stage === "finance" ? 4 : item.stage === "management" ? 3 : 2;
   const details = [["شماره درخواست", item.serial || item.requestNumber || "—"], ["تاریخ درخواست", toFa(String(item.dateFa || item.requestDate || "—").replaceAll("-", "/"))], ["پروژه", `${item.projectCode || ""}${item.projectName ? ` - ${item.projectName}` : ""}` || "—"], ["درخواست‌کننده", item.createdByName || item.requesterName || "—"], ["ذینفع", item.beneficiaryName || item.beneficiaryUsername || "—"], ["مبلغ تنخواه", `${toFa(money(item.amount || item.requestedAmount || "0"))} ${item.currencyName || item.currency || "ریال"}`]];
   useEffect(() => {
-    if (!canAct || item.stage !== "project_manager") return;
-    api(`/tenkhah?recipients=${item.stage === "project_manager" ? "management" : "finance"}`).then((data) => setRecipients(data.users || [])).catch(() => setRecipients([]));
-  }, [api, canAct, item.stage]);
-  useEffect(() => {
     if (!canAct || item.stage !== "finance") return;
     api("/base/currencies/types").then((data) => setCurrencyTypes(uniqueCurrencyTypes(data.items))).catch(() => setCurrencyTypes([]));
   }, [api, canAct, item.stage]);
@@ -1923,11 +1922,10 @@ function TenkhahPreviewV4({ item, userId, api, onRefresh, onClose }) {
   // enabled for any positive payment amount.
   const hasFinalPayment = hasPositiveAmount(cashPaymentAmount) || hasPositiveAmount(creditPaymentAmount);
   const submit = async () => {
-    if (choice === "approve" && item.stage === "project_manager" && !nextUserId) return setError("کاربر مرحله بعد را انتخاب کنید.");
     setBusy(true); setError("");
     try {
       const payload = { id: item.sourceId || item.id, action: choice, note };
-      if (choice === "approve" && item.stage === "project_manager") Object.assign(payload, { managementUserId: nextUserId, approvedDate: today() });
+      if (choice === "approve" && item.stage === "project_manager") Object.assign(payload, { approvedDate: today() });
       if (choice === "approve" && item.stage === "finance") Object.assign(payload, { chargedDate: today(), chargedAmount: item.chargedAmount || item.requestedAmount || item.amount, cashPaymentAmount, cashPaymentCurrency, cashPaymentMethod, creditPaymentAmount, creditPaymentCurrency, creditPaymentDescription });
       await api("/tenkhah", { method: "PATCH", body: JSON.stringify(payload) });
       await onRefresh(); onClose();
