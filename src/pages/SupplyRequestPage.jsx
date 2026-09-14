@@ -1736,7 +1736,7 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], lette
             <div className="flex min-w-0 items-center gap-2">
               <div className="text-base font-bold md:text-lg">اقدامات تامین</div>
               <button type="button" onClick={openPdfPreview} className="inline-flex h-9 items-center gap-2 rounded-lg border border-black/10 px-3 text-xs font-semibold transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10" title="مشاهده PDF" aria-label="مشاهده PDF">
-                <img src="/images/icons/exportpdf.svg" alt="" className="h-4 w-4 dark:invert" />
+                <img src="/images/icons/pdf.svg" alt="" className="h-4 w-4 dark:invert" />
                 <span>مشاهده PDF</span>
               </button>
             </div>
@@ -2043,7 +2043,7 @@ function ActionOptionRow({ kind, checked, disabled, onClick, label, showNote, no
   }[kind] || {};
   return (
     <div role="button" tabIndex={disabled ? -1 : 0} onClick={() => !disabled && onClick()} onKeyDown={(event) => { if (!disabled && (event.key === "Enter" || event.key === " ")) onClick(); }} className={`relative min-h-[168px] cursor-pointer rounded-2xl border p-4 text-center transition ${checked ? appearance.ring : "border-black/10 bg-white hover:border-black/20 hover:shadow-sm dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-white/20"} ${disabled ? "cursor-not-allowed opacity-55" : ""}`}>
-      <div className={`mx-auto grid h-10 w-10 place-items-center rounded-full text-2xl font-bold ${appearance.iconClass}`}>{appearance.icon}</div>
+      <div className={`mx-auto grid h-10 w-10 place-items-center rounded-full text-2xl font-bold ${appearance.iconClass}`}>{kind === "approve" || kind === "reject" ? <img src={kind === "approve" ? "/images/icons/finishing-check.svg" : "/images/icons/rad.svg"} alt="" className="h-5 w-5" /> : appearance.icon}</div>
       <div className="mt-2 text-sm font-bold text-neutral-800 dark:text-neutral-100">{label}</div>
       <p className="mt-1 min-h-8 text-[11px] leading-5 text-neutral-500 dark:text-neutral-400">{appearance.description}</p>
       {showNote && (
