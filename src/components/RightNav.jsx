@@ -46,7 +46,7 @@ const IcQuality = () => (
 );
 const IcCostBreakdown = () => <NavIcon src="/images/icons/sakhtar-shekast.svg" />;
 const IcFinancialCommitments = () => <NavIcon src="/images/icons/masaref-mali.svg" />;
-const IcProjectDashboard = () => <NavIcon src="/images/icons/dashboard 12.svg" />;
+const IcProjectDashboard = () => <NavIcon src="/images/icons/dashboard-12.svg" />;
 const IcPaymentRequest = () => <NavIcon src="/images/icons/darkhast-pardakht.svg" />;
 const IcTenkhahGardan = () => <NavIcon src="/images/icons/tankhah-gardan.svg" />;
 const IcLiquidity = () => <NavIcon src="/images/icons/modiriat-nagdinegi.svg" />;

@@ -2665,7 +2665,7 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-black/10 px-3 py-2.5 dark:border-white/10 sm:gap-3 sm:px-4 sm:py-3">
           <div className="flex min-w-0 items-center gap-2">
             <div className="text-sm font-bold">اقدامات پرداخت</div>
-            <button type="button" onClick={openPdfPreview} className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-black/10 px-2.5 text-xs font-semibold transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10 sm:px-3" title="مشاهده PDF" aria-label="مشاهده PDF"><img src="/images/icons/pdf.svg" alt="" className="h-4 w-4 dark:invert" /><span className="hidden min-[360px]:inline">مشاهده PDF</span></button>
+            <button type="button" onClick={openPdfPreview} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-black/10 text-xs font-semibold transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10" title="مشاهده PDF" aria-label="مشاهده PDF"><img src="/images/icons/pdf.svg" alt="" className="h-4 w-4" /></button>
           </div>
           <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-800 text-white shadow-sm transition hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200" aria-label="بستن" title="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
         </div>
