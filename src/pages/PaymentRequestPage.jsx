@@ -2746,17 +2746,15 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
                     </label>
                   </div>
                 ) : (attachments.length ? <div className="flex flex-wrap justify-end gap-2">{attachments.map((file, index) => <a key={file.id || file.serverId || index} href={file.url || "#"} target="_blank" rel="noreferrer" className="rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFa(index + 1)}`}</a>)}</div> : "—")} />
-                  <PreviewRow compact colon leader label="اسناد مرتبط" value={relatedLetters.length ? <div className="flex flex-wrap justify-end gap-2">{relatedLetters.map((letter) => <button key={letter.id} type="button" onClick={() => setRelatedLetterPreview(letter.letter || { id: letter.id })} className="rounded-lg border border-black/10 px-2 py-1 text-xs font-semibold underline underline-offset-4 transition hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10" title={letter.subject || "پیش‌نمایش نامه"}>{letter.label}</button>)}</div> : "—"} />
-                </div>
-                {canEditRelatedDocuments && <div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10">
-                  <PreviewRow compact editing colon label="اسناد مرتبط" value={
+                  <PreviewRow compact editing={canEditRelatedDocuments} colon leader={!canEditRelatedDocuments} label="اسناد مرتبط" value={canEditRelatedDocuments ? <div className="flex flex-wrap items-center justify-end gap-2">
                     <button type="button" onClick={() => { setEditLetterPickerQuery(""); setEditLetterPickerOpen(true); }} className="inline-flex min-h-8 items-center gap-2 rounded-lg border border-black/10 bg-white px-2 py-1 text-xs font-semibold transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب اسناد مرتبط">
                       <img src="/images/icons/asnad-mortabet.svg" alt="" className="h-4 w-4 dark:invert" />
                       <span>انتخاب اسناد</span>
                       {editForm.relatedLetterIds.length > 0 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-neutral-900 px-1 text-[10px] text-white dark:bg-white dark:text-neutral-900">{toFa(editForm.relatedLetterIds.length)}</span>}
                     </button>
-                  } />
-                </div>}
+                    {relatedLetters.map((letter) => <button key={letter.id} type="button" onClick={() => setRelatedLetterPreview(letter.letter || { id: letter.id })} className="rounded-lg border border-black/10 px-2 py-1 text-xs font-semibold underline underline-offset-4 transition hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10" title={letter.subject || "پیش‌نمایش نامه"}>{letter.label}</button>)}
+                  </div> : (relatedLetters.length ? <div className="flex flex-wrap justify-end gap-2">{relatedLetters.map((letter) => <button key={letter.id} type="button" onClick={() => setRelatedLetterPreview(letter.letter || { id: letter.id })} className="rounded-lg border border-black/10 px-2 py-1 text-xs font-semibold underline underline-offset-4 transition hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10" title={letter.subject || "پیش‌نمایش نامه"}>{letter.label}</button>)}</div> : "—")} />
+                </div>
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[1fr_0.78fr_1.22fr] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
                   <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="شرایط پرداخت" value={canEditRequest ? <input className={inputClass} value={editForm.creditPay} onChange={(event) => setEditField("creditPay", event.target.value)} /> : (item.creditPay || "—")} />
                   <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="نام ذینفع" value={canEditRequest ? <input className={inputClass} value={editForm.beneficiaryName} onChange={(event) => setEditField("beneficiaryName", event.target.value)} /> : (item.beneficiaryName || "—")} />
