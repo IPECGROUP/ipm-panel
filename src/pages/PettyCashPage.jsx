@@ -1506,18 +1506,12 @@ function SettlementReportPreview({ data, onClose }) {
           className="mx-auto min-h-[297mm] w-[210mm] max-w-full bg-white px-5 py-7 text-slate-900 shadow-2xl md:px-10 md:py-10"
         >
           <header className="grid min-h-24 grid-cols-1 overflow-hidden rounded-2xl border border-slate-800 md:grid-cols-[1fr_2.3fr_1fr]">
-            <div className="flex items-center justify-center gap-2 border-b border-slate-300 p-4 md:border-b-0 md:border-l">
-              <span className="grid h-11 w-11 place-items-center rounded-xl bg-sky-800">
-                <img src={PAGE_ICON} alt="" className="h-6 w-6 invert" />
-              </span>
-              <div>
-                <div className="text-xs font-bold">
-                  سامانه فرآیندهای یکپارچه
-                </div>
-                <div className="mt-1 text-[10px] text-orange-600">
-                  مدیریت مالی و پروژه
-                </div>
-              </div>
+            <div className="flex items-center justify-center border-b border-slate-300 p-4 md:border-b-0 md:border-l">
+              <img
+                src="/images/light%20mode.png"
+                alt="شرکت ایده پویان انرژی IPEC"
+                className="h-auto w-32 max-w-full object-contain"
+              />
             </div>
             <div className="flex flex-col items-center justify-center border-b border-slate-300 p-4 text-center md:border-b-0 md:border-l">
               <h2 id="settlement-report-title" className="text-xl font-black">

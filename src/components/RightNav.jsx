@@ -173,11 +173,16 @@ function RightNav() {
       return "contracts";
     }
 
+    if (path === "/letters" || path.startsWith("/documents/")) {
+      return "documents";
+    }
+
     return null;
   };
 
   const activeSection = sectionFromPath(pNow);
   const dashboardActive = isActive("/") || isActive("/dashboard");
+  const documentsParentActive = !!open.documents || activeSection === "documents";
   const projectsParentActive = !!open.projects || activeSection === "projects";
   const contractsParentActive = !!open.contracts || activeSection === "contracts";
   const budgetParentActive = !!open.budget || activeSection === "budget";
@@ -233,7 +238,17 @@ function RightNav() {
       title: "اصلی",
       items: [
         { type: "link", to: "/", label: "داشبورد", icon: <IcDashboard />, active: dashboardActive },
-        { type: "link", to: "/letters", label: "مدیریت اسناد", icon: <IcLetter />, active: isActive("/letters") },
+        {
+          type: "section",
+          key: "documents",
+          label: "مدیریت اسناد",
+          icon: <IcLetter />,
+          active: documentsParentActive,
+          items: [
+            { to: "/letters", label: "مدیریت اسناد", hint: "ثبت و پیگیری اسناد", icon: <IcLetter /> },
+            { to: "/documents/management-dashboard", label: "داشبورد مدیریت اسناد", hint: "نمای کلی وضعیت اسناد", icon: <IcProjectDashboard /> },
+          ],
+        },
         {
           type: "section",
           key: "contracts",

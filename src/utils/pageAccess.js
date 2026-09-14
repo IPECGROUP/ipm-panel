@@ -2,6 +2,7 @@ const LIMITED_USERNAMES = new Set(["maali", "chamanara"]);
 
 const ROUTE_PERMISSION_PAGES = [
   ["/letters", "مدیریت اسناد"],
+  ["/documents/management-dashboard", "مدیریت اسناد"],
   ["/contracts/info", "قراردادها"],
   ["/projects/daily-log", "روزنگار پروژه"],
   ["/projects/cost-breakdown", "ساختار شکست هزینه‌ها"],
