@@ -672,6 +672,7 @@ function ExpenseRegistrationTab({ onReportCreated }) {
           "فقط ردیف‌های تأییدشده توسط مدیر پروژه قابل ارسال هستند.",
         at_least_one_expense_required: "حداقل یک ردیف را انتخاب کنید.",
         not_allowed: "اجازه ایجاد گزارش از این ردیف‌ها را ندارید.",
+        internal_error: "ثبت گزارش با خطا مواجه شد. لطفاً دوباره تلاش کنید.",
       };
       setError(messages[reason.message] || reason.message);
     } finally {
@@ -714,7 +715,8 @@ function ExpenseRegistrationTab({ onReportCreated }) {
   const selectableItems = items.filter(isSettlementEligible);
   const selectedTotal = useMemo(() => selectedItemsTotal(items, selectedIds), [items, selectedIds]);
   const toggleItem = (id) => {
-    if (items.find((item) => item.id === id)?.settlementReportId) return;
+    const item = items.find((current) => current.id === id);
+    if (!isSettlementEligible(item)) return;
     setSelectedIds((current) => {
       const next = new Set(current);
       if (next.has(id)) next.delete(id);
@@ -893,6 +895,7 @@ function ExpenseRegistrationTab({ onReportCreated }) {
         onManagerApprove={(item) => decide(item.id, "approve")}
         onManagerReject={(item) => decide(item.id, "reject")}
         onDetails={setDetails}
+        isItemSelectable={isSettlementEligible}
         tableMenuRef={tableMenuRef}
         tableMenuPopoverRef={tableMenuPopoverRef}
         tableMenuOpen={tableMenuOpen}
@@ -972,6 +975,7 @@ function ExpenseTable({
   onManagerApprove,
   onManagerReject,
   onDetails,
+  isItemSelectable,
   tableMenuRef,
   tableMenuPopoverRef,
   tableMenuOpen,
@@ -1043,8 +1047,10 @@ function ExpenseTable({
                         type="checkbox"
                         checked={selectedIds.has(item.id)}
                         onChange={() => onToggleItem(item.id)}
-                        className="h-4 w-4 rounded border-neutral-400 align-middle accent-neutral-900 dark:accent-white"
+                        disabled={!isItemSelectable(item)}
+                        className="h-4 w-4 rounded border-neutral-400 align-middle accent-neutral-900 disabled:cursor-not-allowed disabled:opacity-35 dark:accent-white"
                         aria-label={`انتخاب ردیف ${toFa(index + 1)}`}
+                        title={isItemSelectable(item) ? "انتخاب برای گزارش تسویه" : "پس از تأیید مدیر پروژه قابل ارسال است"}
                       />
                     )}
                   </Cell>
@@ -1121,7 +1127,7 @@ function ExpenseTableMenu({ tableMenuRef, tableMenuPopoverRef, tableMenuOpen, se
       <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedCount ? `${toFa(selectedCount)} مورد انتخاب شده` : "ابتدا ردیف موردنظر را انتخاب کنید"}</div>
       <button type="button" disabled={!canEditSelected || saving} onClick={onEditSelected} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10"><span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-100 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="text-sm font-semibold">ویرایش ردیف</span></button>
       <button type="button" disabled={!selectedCount || saving} onClick={onDeleteSelected} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 place-items-center rounded-lg bg-red-100 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span><span className="text-sm font-semibold">حذف ردیف‌ها</span></button>
-      {canCreateSettlementReport && <><div className="my-1.5 border-t border-black/10 dark:border-white/10" /><button type="button" disabled={saving} onClick={onCreateSettlementReport} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-emerald-300 dark:hover:bg-emerald-500/10"><span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-100 font-bold dark:bg-emerald-500/15">✓</span><span className="text-sm font-semibold">ارسال</span></button></>}
+      {canCreateSettlementReport && <><div className="my-1.5 border-t border-black/10 dark:border-white/10" /><button type="button" disabled={saving} onClick={onCreateSettlementReport} className="flex w-full items-center gap-2 rounded-xl bg-emerald-50 px-2.5 py-2 text-right text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-45 dark:bg-emerald-500/15 dark:text-emerald-200 dark:hover:bg-emerald-500/25"><span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-200 font-bold dark:bg-emerald-500/25">✓</span><span className="text-sm font-semibold">ارسال</span></button></>}
     </div>,
     document.body,
   ) : null;
