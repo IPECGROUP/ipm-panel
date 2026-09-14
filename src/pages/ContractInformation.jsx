@@ -51,6 +51,14 @@ const GENERAL_CONTRACT_TYPES = [
   "سایر",
 ];
 
+const PROPERTY_AND_BUILDING_LEASE_CONTRACT_TYPE = "اجاره ملک و ساختمان";
+
+function isPropertyAndBuildingLeaseContract(contractType) {
+  return String(contractType || "")
+    .normalize("NFKC")
+    .replace(/[\s\u200c\u200d]/g, "") === PROPERTY_AND_BUILDING_LEASE_CONTRACT_TYPE.replace(/[\s\u200c\u200d]/g, "");
+}
+
 const FIXED_SUB_ASSIGNOR = "شرکت ایده پویان انرژی IPEC";
 
 const TECHNICAL_SUPPORT_FIELDS = [
@@ -2395,10 +2403,11 @@ export default function ContractInformation() {
     setForm((prev) => {
       const financial = normalizeFinancial(prev.financial || {});
       const draft = makeGuaranteeRow(financial.guaranteeDraft || {});
+      const guaranteeNameIsRequired = !isPropertyAndBuildingLeaseContract(prev.general?.contractType);
       const hasAnyValue = [draft.name, draft.type, draft.bankNo, draft.amount, draft.currencyId].some((item) => String(item || "").trim());
       if (!hasAnyValue) return prev;
       const missing = [];
-      if (!String(draft.name || "").trim()) missing.push("نام تضمین");
+      if (guaranteeNameIsRequired && !String(draft.name || "").trim()) missing.push("نام تضمین");
       if (!String(draft.type || "").trim()) missing.push("نوع");
       if (!String(draft.bankNo || "").trim()) missing.push("عهده بانک/شماره");
       if (!hasFinancialAmount(draft.amount)) missing.push("مبلغ");
@@ -2476,7 +2485,7 @@ export default function ContractInformation() {
     if (!id) return;
     const draft = makeGuaranteeRow(editingGuaranteeDraft || {});
     const missing = [];
-    if (!String(draft.name || "").trim()) missing.push("نام تضمین");
+    if (!isPropertyAndBuildingLeaseContract(form.general?.contractType) && !String(draft.name || "").trim()) missing.push("نام تضمین");
     if (!String(draft.type || "").trim()) missing.push("نوع");
     if (!String(draft.bankNo || "").trim()) missing.push("عهده بانک/شماره");
     if (!hasFinancialAmount(draft.amount)) missing.push("مبلغ");
@@ -2713,7 +2722,7 @@ export default function ContractInformation() {
       if (documentType === "appendix") {
         if (!String(form.calendar?.endDate || "").trim()) missing.push("تمدید مدت قرارداد تا تاریخ");
       } else {
-        if (!String(form.calendar?.notifyDate || "").trim()) missing.push("تاریخ ابلاغ کار");
+        if (!isPropertyAndBuildingLeaseContract(form.general?.contractType) && !String(form.calendar?.notifyDate || "").trim()) missing.push("تاریخ ابلاغ کار");
         if (!String(form.calendar?.startDate || "").trim()) missing.push("تاریخ شروع قرارداد");
         if (!String(form.calendar?.endDate || "").trim()) missing.push("تاریخ پایان قرارداد");
       }
@@ -2754,14 +2763,14 @@ export default function ContractInformation() {
         alert("در بخش مبلغ قرارداد، مبلغ و ارز اجباری هستند و برای ارزهای غیرریالی، منشأ نیز اجباری است.");
         return;
       }
-      if (documentType !== "appendix" && !financial.breakdownFiles.length) {
+      if (documentType !== "appendix" && !isPropertyAndBuildingLeaseContract(form.general?.contractType) && !financial.breakdownFiles.length) {
         alert("بارگذاری جدول شکست مبلغ قرارداد الزامی است.");
         return;
       }
       if (documentType !== "appendix") {
         const invalidGuarantee = financial.guarantees.find(
           (row) =>
-            !String(row.name || "").trim() ||
+            (!isPropertyAndBuildingLeaseContract(form.general?.contractType) && !String(row.name || "").trim()) ||
             !String(row.type || "").trim() ||
             !String(row.bankNo || "").trim() ||
             !hasFinancialAmount(row.amount) ||
@@ -3006,6 +3015,7 @@ export default function ContractInformation() {
     "rounded-2xl border border-black/10 bg-white p-3 sm:min-h-[114px] dark:border-neutral-800 dark:bg-neutral-900";
   const calendarTotals = calculateCalendarDays(form.calendar || {});
   const isAppendixDocument = form.documentType === "appendix";
+  const isPropertyAndBuildingLease = isPropertyAndBuildingLeaseContract(form.general?.contractType);
   const showCalendarExtraDates = isAppendixDocument;
   const visibleContractTabs = React.useMemo(
     () => CONTRACT_SECTION_TABS.filter(
@@ -4198,7 +4208,7 @@ export default function ContractInformation() {
                           <div className="min-w-0">
                             <div className="flex items-start gap-2">
                               <div className="flex-1">
-                                <div className={labelCls}>تاریخ ابلاغ کار *</div>
+                                <div className={labelCls}>تاریخ ابلاغ کار{isPropertyAndBuildingLease ? "" : " *"}</div>
                                 <ContractDatePicker
                                   value={form.calendar?.notifyDate || ""}
                                   onChange={(value) => setCalendarField("notifyDate", value)}
@@ -4417,7 +4427,7 @@ export default function ContractInformation() {
                             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-x-4 lg:[&>div]:border-t-0 lg:[&>div]:pt-0">
                               {renderFinancialFileField({
                                 label: "جدول شکست مبلغ قرارداد",
-                                required: true,
+                                required: !isPropertyAndBuildingLease,
                                 onOpen: () => setFinancialUploadKind("breakdown"),
                               })}
                               {renderFinancialFileField({
@@ -4439,7 +4449,7 @@ export default function ContractInformation() {
                         <div className="rounded-2xl border border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
                           <div className="grid grid-cols-1 md:grid-cols-[154px_154px_minmax(240px,1.8fr)_minmax(115px,0.85fr)_120px_48px] gap-2 md:items-end">
                             <div>
-                              <div className={labelCls}>نام تضمین *</div>
+                              <div className={labelCls}>نام تضمین{isPropertyAndBuildingLease ? "" : " *"}</div>
                               {financialForm.guaranteeDraft?.customName ? (
                                 <input
                                   value={financialForm.guaranteeDraft?.name || ""}
@@ -4689,7 +4699,7 @@ export default function ContractInformation() {
                       <div>
                         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(140px,0.5fr)_minmax(170px,0.5fr)_minmax(220px,0.8fr)_minmax(280px,1.2fr)]">
                           <div className="min-w-0">
-                            <div className={labelCls}>ردیف پیمان *</div>
+                            <div className={labelCls}>ردیف پیمان{isPropertyAndBuildingLease ? "" : " *"}</div>
                             <input
                               value={insuranceForm.contractRow || ""}
                               onChange={(e) => setInsuranceField("contractRow", e.target.value)}
@@ -4699,7 +4709,7 @@ export default function ContractInformation() {
                           </div>
 
                           <div className="min-w-0">
-                            <div className={labelCls}>شعبه سازمان تامین اجتماعی *</div>
+                            <div className={labelCls}>شعبه سازمان تامین اجتماعی{isPropertyAndBuildingLease ? "" : " *"}</div>
                             <input
                               value={insuranceForm.branchStatus || ""}
                               onChange={(e) => setInsuranceField("branchStatus", e.target.value)}
@@ -4708,7 +4718,7 @@ export default function ContractInformation() {
                             />
                           </div>
                           <div className="min-w-0">
-                          <div className={labelCls}>آخرین وضعیت قرارداد *</div>
+                          <div className={labelCls}>آخرین وضعیت قرارداد{isPropertyAndBuildingLease ? "" : " *"}</div>
                           <select
                             value={insuranceForm.lastStatus || ""}
                             onChange={(e) => {
@@ -4752,7 +4762,7 @@ export default function ContractInformation() {
                           <div className="mt-4 rounded-2xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-700 dark:bg-white/[0.03]">
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:items-end">
                               <div className="min-w-0">
-                                <div className={labelCls}>کارکرد ناخالص نهایی قرارداد *</div>
+                                <div className={labelCls}>کارکرد ناخالص نهایی قرارداد{isPropertyAndBuildingLease ? "" : " *"}</div>
                                 <div className="relative">
                                   <input
                                     value={formatAmountInput(insuranceForm.finalGrossPerformance || "")}
@@ -4770,7 +4780,7 @@ export default function ContractInformation() {
                               </div>
 
                               <div className="min-w-0">
-                                <div className={labelCls}>مفاصا حساب بیمه تامین اجتماعی *</div>
+                                <div className={labelCls}>مفاصا حساب بیمه تامین اجتماعی{isPropertyAndBuildingLease ? "" : " *"}</div>
                                 <div className="flex flex-wrap items-center gap-2">
                                   <button
                                     type="button"

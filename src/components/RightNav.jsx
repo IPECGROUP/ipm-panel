@@ -53,7 +53,7 @@ const IcLiquidity = () => <NavIcon src="/images/icons/modiriat-nagdinegi.svg" />
 const IcCashForecast = () => <NavIcon src="/images/icons/pishbini-naghdi.svg" />;
 const IcSupply = () => <NavIcon src="/images/icons/modirat-taminposhtibami.svg" />;
 const IcSupplyRequest = () => <NavIcon src="/images/icons/darkhast-tamin.svg" />;
-const IcOperations = () => <NavIcon src="/images/icons/modriat-amaliat.svg" />;
+const IcOperations = () => <NavIcon src="/images/icons/modriat-agra.svg" />;
 
 function RightNav() {
   const auth = useAuth() || {};
