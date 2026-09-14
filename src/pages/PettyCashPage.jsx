@@ -783,17 +783,19 @@ function ExpenseRegistrationTab({ onReportCreated }) {
             ))}
           </select>
         </Field>
-        <div className="flex min-w-0 flex-1 flex-wrap items-end justify-end gap-3">
-          <Field label="مانده تنخواه تسویه‌نشده:" className="min-w-[12rem] flex-1 sm:max-w-[16rem]">
-            <div dir="ltr" className={`${inputClass} flex items-center justify-end font-sans tabular-nums`}>
+        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-x-6 gap-y-2 self-end pb-3 text-sm">
+          <div className="inline-flex items-center gap-1 whitespace-nowrap">
+            <span className="font-medium text-neutral-600 dark:text-neutral-300">مانده تنخواه تسویه‌نشده:</span>
+            <span dir="ltr" className="font-sans font-semibold tabular-nums text-neutral-900 dark:text-white">
               {displayMoney(unsettledBalanceAfterPending)}
-            </div>
-          </Field>
-          <Field label="باقی‌مانده هزینه‌های تأییدنشده" className="min-w-[12rem] flex-1 sm:max-w-[16rem]">
-            <div dir="ltr" className={`${inputClass} flex items-center justify-end font-sans tabular-nums`}>
+            </span>
+          </div>
+          <div className="inline-flex items-center gap-1 whitespace-nowrap">
+            <span className="font-medium text-neutral-600 dark:text-neutral-300">باقی‌مانده هزینه‌های تأییدنشده:</span>
+            <span dir="ltr" className="font-sans font-semibold tabular-nums text-neutral-900 dark:text-white">
               {displayMoney(pendingExpenseWithDraft)}
-            </div>
-          </Field>
+            </span>
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <button
