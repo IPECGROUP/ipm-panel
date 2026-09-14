@@ -258,10 +258,10 @@ function MyPettyCashTable() {
                   </span>
                 </td>
                 <td className="font-sans tabular-nums">
-                  <span className="block font-semibold">
+                  <span className="mx-auto block w-fit rounded-lg bg-emerald-100 px-3 py-1 font-semibold text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200">
                     {money(item.approvedExpenses)}
                   </span>
-                  <span className="mt-1 block text-xs text-neutral-500 dark:text-neutral-400">
+                  <span className="mx-auto mt-1 block w-fit rounded-lg bg-red-100 px-3 py-1 text-xs font-semibold text-red-700 dark:bg-red-500/20 dark:text-red-200">
                     {money(item.unapprovedBalance)}
                   </span>
                 </td>
@@ -304,8 +304,8 @@ function MyPettyCashTable() {
               <SummaryAmount label="مجموع تنخواه دریافت‌شده" value={money(item.receivedAmount)} />
               <SummaryAmount label="مجموع هزینه‌های ثبت‌شده" value={money(item.registeredExpenses)} />
               <SummaryAmount label="باقی‌مانده هزینه‌های ثبت‌شده" value={money(item.registeredBalance)} />
-              <SummaryAmount label="مجموع هزینه‌های تأییدشده" value={money(item.approvedExpenses)} />
-              <SummaryAmount label="باقی‌مانده هزینه‌های تأییدنشده" value={money(item.unapprovedBalance)} />
+              <SummaryAmount label="مجموع هزینه‌های تأییدشده" value={money(item.approvedExpenses)} tone="approved" />
+              <SummaryAmount label="باقی‌مانده هزینه‌های تأییدنشده" value={money(item.unapprovedBalance)} tone="unapproved" />
             </div>
           </article>
         ))}
@@ -317,10 +317,15 @@ function MyPettyCashTable() {
   );
 }
 
-function SummaryAmount({ label, value }) {
+function SummaryAmount({ label, value, tone = "" }) {
+  const toneClass = tone === "approved"
+    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200"
+    : tone === "unapproved"
+      ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-200"
+      : "bg-neutral-50 dark:bg-white/[.04]";
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg bg-neutral-50 px-3 py-2 dark:bg-white/[.04]">
-      <span className="text-neutral-600 dark:text-neutral-300">{label}</span>
+    <div className={`flex items-center justify-between gap-3 rounded-lg px-3 py-2 ${toneClass}`}>
+      <span className={tone ? "font-medium" : "text-neutral-600 dark:text-neutral-300"}>{label}</span>
       <span className="shrink-0 font-sans font-semibold tabular-nums">{value}</span>
     </div>
   );
