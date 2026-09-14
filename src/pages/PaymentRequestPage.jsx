@@ -2119,9 +2119,9 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
   const isOwner = item.canEdit === true || Number(item.createdById) === Number(userId);
   const [isEditing, setIsEditing] = useState(!!item.__editing);
   const canEditRequest = isOwner && isEditing;
-  // Users who have the current workflow action may update only the related
-  // documents while recording that action. Other request fields remain read-only.
-  const canEditRelatedDocuments = canEditRequest || canDecide;
+  // Related documents belong to the requester. Even an administrator may not
+  // change another user's references from this dialog.
+  const canEditRelatedDocuments = Number(item.createdById) === Number(userId) && isEditing;
   const currentStepIndex = Number(item.currentStepIndex || 0);
   const finalAccounting = currentStepRoleKey === "accounting" && currentStepIndex >= 5;
   const [editForm, setEditForm] = useState(() => formFromItem(item));
@@ -2350,7 +2350,6 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
     const status = finalAccounting ? "approved" : choice === "reject" || choice === "stop" ? "rejected" : choice === "return" ? "returned" : "approved";
     onAction(status, note, {
       targetAssigneeUserId: targetAssigneeUserId || null,
-      relatedLetterIds: editForm.relatedLetterIds,
       ...(finalAccounting ? {
         cashAmount: paymentActionAmount(cashPayAmount, cashPayCurrencyId),
         cashCurrencyTypeId: cashPayCurrencyId || null,
