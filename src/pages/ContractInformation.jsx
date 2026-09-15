@@ -1635,6 +1635,19 @@ export default function ContractInformation() {
       ) || null
     );
   }, [form.id, form.projectId, rows]);
+  const existingMainContractForNumber = React.useMemo(() => {
+    const contractNo = String(form.contractNo || "").trim();
+    const currentId = String(form.id || "");
+    if (!contractNo) return null;
+    return (
+      rows.find(
+        (row) =>
+          row?.documentType === "main" &&
+          String(row.contractNo || "").trim() === contractNo &&
+          String(row.id || "") !== currentId
+      ) || null
+    );
+  }, [form.contractNo, form.id, rows]);
   const projectAlreadyHasMainContract = Boolean(existingMainContractForProject);
   const mainContractBlockedForProject = form.documentType === "main" && projectAlreadyHasMainContract;
 
@@ -2692,6 +2705,11 @@ export default function ContractInformation() {
       return;
     }
 
+    if (documentType === "main" && existingMainContractForNumber) {
+      alert(`شماره قرارداد «${toFaDigits(contractNo)}» قبلاً در سامانه ثبت شده است. برای ویرایش، همان قرارداد را از فهرست باز کنید یا شماره جدیدی وارد کنید.`);
+      return;
+    }
+
     if (documentType !== "main" && !parentContractId) {
       alert("شماره قرارداد اصلی را انتخاب کنید.");
       return;
@@ -2886,6 +2904,8 @@ export default function ContractInformation() {
       alert(
         error?.message === "main_contract_exists_for_project"
           ? "برای این پروژه قبلا قرارداد اصلی ثبت شده است. برای این پروژه فقط می‌توانید قرارداد فرعی یا الحاقیه ثبت کنید."
+          : ["duplicate_contract_no", "duplicate_contact_no"].includes(error?.message)
+            ? "این شماره قرارداد قبلاً در سامانه ثبت شده است. برای ویرایش، همان قرارداد را از فهرست باز کنید یا شماره جدیدی وارد کنید."
           : String(error?.message || "").startsWith("contract_save_not_persisted")
             ? `ثبت قرارداد در سرور تایید نشد. جزئیات: ${String(error?.message || "").replace("contract_save_not_persisted:", "")}`
           : error?.message === "contract_saved_but_not_listed"
