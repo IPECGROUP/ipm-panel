@@ -5,6 +5,7 @@ import { Portal } from "../components/Portal";
 import { dayjs, todayJalaliYmd } from "../utils/date";
 import { useAuth } from "../components/AuthProvider";
 import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
+import RelatedLettersPickerModal from "../components/RelatedLettersPickerModal.jsx";
 
 const PERSIAN_MONTHS = [
   "فروردین",
@@ -241,6 +242,9 @@ function normalizeRoznegarEntryFromApi(item) {
     }))
     .filter((f) => f.name);
   return {
+    id: item?.id != null ? Number(item.id) : null,
+    userId: item?.user_id ?? item?.userId ?? null,
+    userName: String(item?.user_name ?? item?.userName ?? "").trim(),
     dateYmd,
     dayName: String(item?.day_name ?? item?.dayName ?? dayNameFromJalali(dateYmd)).trim(),
     activity: String(item?.activity || "").trim(),
@@ -573,6 +577,7 @@ export default function RoznegarPgae() {
     dayjs(todayJalaliYmd(), { jalali: true }).calendar("jalali").startOf("month")
   );
   const [entriesByDate, setEntriesByDate] = useState({});
+  const [allEntries, setAllEntries] = useState([]);
   const savedEntryCount = useMemo(
     () => Object.values(entriesByDate || {}).filter(hasEntryDetails).length,
     [entriesByDate]
@@ -772,6 +777,7 @@ export default function RoznegarPgae() {
       if (authLoading) return false;
       if (!p) {
         setEntriesByDate({});
+        setAllEntries([]);
         return true;
       }
       if (!isValidProjectId(p)) {
@@ -799,12 +805,14 @@ export default function RoznegarPgae() {
         }
         const data = await res.json();
         const items = Array.isArray(data?.items) ? data.items : [];
+        const normalizedItems = items.map(normalizeRoznegarEntryFromApi).filter(Boolean);
         const next = {};
-        items.forEach((raw) => {
-          const entry = normalizeRoznegarEntryFromApi(raw);
-          if (entry?.dateYmd) next[entry.dateYmd] = entry;
+        normalizedItems.forEach((entry) => {
+          if (Number(entry.userId) !== Number(authUser?.id)) return;
+          if (entry.dateYmd) next[entry.dateYmd] = entry;
         });
         setEntriesByDate(next);
+        setAllEntries(normalizedItems);
         setSyncState((prev) => (prev?.type === "success" ? prev : { type: "", text: "" }));
         return true;
       } catch (e) {
@@ -851,6 +859,10 @@ export default function RoznegarPgae() {
   };
 
   const activeEntry = entriesByDate[selectedDate] || makeEntry(selectedDate);
+  const peerEntriesForSelectedDate = useMemo(
+    () => allEntries.filter((entry) => entry.dateYmd === selectedDate && Number(entry.userId) !== Number(authUser?.id)),
+    [allEntries, authUser?.id, selectedDate]
+  );
   const activeProject = activeProjects.find((p) => String(p.id) === String(projectId));
   const editorDisabled = !activeProject;
 
@@ -936,16 +948,6 @@ export default function RoznegarPgae() {
         ""
     ).trim();
 
-  const docDateOf = (l) =>
-    String(
-      l?.letter_date ??
-        l?.letterDate ??
-        l?.secretariat_date ??
-        l?.secretariatDate ??
-        l?.date ??
-        ""
-    ).trim();
-
   const docTitleOf = (l) =>
     String(
       l?.subject ??
@@ -964,16 +966,6 @@ export default function RoznegarPgae() {
     });
   }, [tagSearch, tagPickKind, tagPickCategory]);
 
-  const relatedPickList = useMemo(() => {
-    const base = Array.isArray(relatedDocsPool) && relatedDocsPool.length ? relatedDocsPool : MOCK_RELATED_DOCS;
-    const q = String(relatedPickQuery || "").trim().toLowerCase();
-    if (!q) return (Array.isArray(base) ? base : []).slice(0, 200);
-    return (Array.isArray(base) ? base : []).filter((d) => {
-      const text = `${docNoOf(d)} ${docTitleOf(d)} ${d?.type || d?.kind || ""} ${docDateOf(d)} ${docIdOf(d)}`.toLowerCase();
-      return text.includes(q);
-    });
-  }, [relatedPickQuery, relatedDocsPool]);
-
   const letterById = useMemo(
     () =>
       new Map(
@@ -984,10 +976,6 @@ export default function RoznegarPgae() {
       ),
     [relatedDocsPool]
   );
-
-  const selectedRelatedDocs = useMemo(() => {
-    return relatedSelectedIds.map((id) => letterById.get(String(id))).filter(Boolean);
-  }, [relatedSelectedIds, letterById]);
 
   const tagById = useMemo(() => {
     return new Map((Array.isArray(MOCK_TAGS) ? MOCK_TAGS : []).map((t) => [String(t.id), t]));
@@ -1002,9 +990,9 @@ export default function RoznegarPgae() {
       }
     };
 
-    const raw = Object.entries(entriesByDate || {})
-      .map(([dateYmd, entry]) => {
-        const row = entry || makeEntry(dateYmd);
+    const raw = (Array.isArray(allEntries) ? allEntries : [])
+      .map((row) => {
+        const dateYmd = row.dateYmd;
         if (row?.confirmed !== true) return null;
         const tags = (Array.isArray(row.tagIds) ? row.tagIds : [])
           .map((id) => tagById.get(String(id))?.label || "")
@@ -1028,6 +1016,7 @@ export default function RoznegarPgae() {
           dateLabel,
           row.dayName || "",
           row.activity || "",
+          row.userName || "",
           tags.join(" "),
           docs.join(" "),
           fileNames.join(" "),
@@ -1039,6 +1028,8 @@ export default function RoznegarPgae() {
 
         return {
           dateYmd,
+          userId: row.userId,
+          userName: row.userName || `کاربر #${row.userId || "—"}`,
           dateLabel,
           dayName: row.dayName || "",
           activity: String(row.activity || "").trim(),
@@ -1075,7 +1066,7 @@ export default function RoznegarPgae() {
     }
 
     return rows;
-  }, [entriesByDate, tableFilter, tableFilterTagIds, tagById, letterById, activeProject]);
+  }, [allEntries, tableFilter, tableFilterTagIds, tagById, letterById, activeProject]);
 
   const tableTotal = filteredTableRows.length;
   const tablePageCount = Math.max(1, Math.ceil(tableTotal / tableRowsPerPage));
@@ -1125,6 +1116,19 @@ export default function RoznegarPgae() {
     setRelatedPickOpen(false);
     setRelatedPickQuery("");
   };
+
+  const relatedLettersApi = useCallback(async (path) => {
+    const uid = authUser?.id != null ? String(authUser.id) : "";
+    const response = await fetch(`/api${path}`, {
+      credentials: "include",
+      headers: uid ? { "x-user-id": uid } : {},
+    });
+    const text = await response.text();
+    let data = {};
+    try { data = text ? JSON.parse(text) : {}; } catch {}
+    if (!response.ok) throw new Error(data?.error || data?.message || "request_failed");
+    return data;
+  }, [authUser?.id]);
 
   const openUpload = () => setUploadOpen(true);
   const closeUpload = () => setUploadOpen(false);
@@ -1808,6 +1812,11 @@ export default function RoznegarPgae() {
             </div>
             ) : null}
 
+            {peerEntriesForSelectedDate.length > 0 && <section className={"mb-4 rounded-2xl border p-4 " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
+              <div className="mb-3 text-sm font-bold">ثبت‌های سایر کاربران در این روز</div>
+              <div className="space-y-2">{peerEntriesForSelectedDate.map((entry) => <article key={entry.id || `${entry.userId}_${entry.dateYmd}`} className={"rounded-xl px-3 py-2.5 text-sm " + (theme === "dark" ? "bg-white/5" : "bg-black/[0.03]")}><div className="font-semibold">{entry.userName || `کاربر #${entry.userId}`}</div><div className="mt-1 whitespace-pre-wrap text-xs leading-5 text-neutral-700 dark:text-neutral-300">{entry.activity || "—"}</div></article>)}</div>
+            </section>}
+
             <div className={"rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
               <div className="md:hidden">
                 {!pagedTableRows.length ? (
@@ -1833,6 +1842,7 @@ export default function RoznegarPgae() {
                               <div className={theme === "dark" ? "mt-1 truncate text-[11px] text-white/60" : "mt-1 truncate text-[11px] text-neutral-500"} title={projectLabel}>
                                 {projectLabel}
                               </div>
+                              <div className={theme === "dark" ? "mt-1 text-[11px] text-white/60" : "mt-1 text-[11px] text-neutral-500"}>ثبت‌کننده: {r.userName}</div>
                             </div>
                             <div className={theme === "dark" ? "shrink-0 rounded-xl border border-white/10 px-2.5 py-1 text-center text-[11px] text-white/70" : "shrink-0 rounded-xl border border-black/10 px-2.5 py-1 text-center text-[11px] text-neutral-600"}>
                               <div>{toFaDigits(r.filesCount || 0)}</div>
@@ -1890,12 +1900,13 @@ export default function RoznegarPgae() {
               </div>
 
               <div dir="ltr" className="hidden max-h-[min(58vh,520px)] overflow-auto md:block">
-                <table dir="rtl" className="w-full min-w-[980px] table-fixed text-center text-sm">
+                <table dir="rtl" className="w-full min-w-[1080px] table-fixed text-center text-sm">
                   <colgroup>
                     <col style={{ width: 64 }} />
                     <col style={{ width: 180 }} />
                     <col style={{ width: 112 }} />
                     <col style={{ width: 88 }} />
+                    <col style={{ width: 130 }} />
                     <col />
                     <col style={{ width: 170 }} />
                     <col style={{ width: 190 }} />
@@ -1908,6 +1919,7 @@ export default function RoznegarPgae() {
                       <th className="sticky top-0 z-10 bg-neutral-100 px-3 py-2 text-center text-xs font-semibold dark:bg-neutral-800">پروژه</th>
                       <th className="sticky top-0 z-10 bg-neutral-100 px-3 py-2 text-center text-xs font-semibold dark:bg-neutral-800">تاریخ</th>
                       <th className="sticky top-0 z-10 bg-neutral-100 px-3 py-2 text-center text-xs font-semibold dark:bg-neutral-800">روز</th>
+                      <th className="sticky top-0 z-10 bg-neutral-100 px-3 py-2 text-center text-xs font-semibold dark:bg-neutral-800">ثبت‌کننده</th>
                       <th className="sticky top-0 z-10 bg-neutral-100 px-3 py-2 text-center text-xs font-semibold dark:bg-neutral-800">شرح فعالیت‌ها</th>
                       <th className="sticky top-0 z-10 bg-neutral-100 px-3 py-2 text-center text-xs font-semibold dark:bg-neutral-800">برچسب‌ها</th>
                       <th className="sticky top-0 z-10 bg-neutral-100 px-3 py-2 text-center text-xs font-semibold dark:bg-neutral-800">مستندات مرتبط</th>
@@ -1919,7 +1931,7 @@ export default function RoznegarPgae() {
                     {!pagedTableRows.length ? (
                       <tr>
                         <td
-                          colSpan={9}
+                          colSpan={10}
                           className={theme === "dark" ? "px-3 py-6 text-center text-xs text-white/60" : "px-3 py-6 text-center text-xs text-neutral-500"}
                         >
                           موردی برای نمایش وجود ندارد.
@@ -1936,6 +1948,7 @@ export default function RoznegarPgae() {
                           </td>
                           <td className="px-3 py-2 align-middle text-xs text-center whitespace-nowrap">{toFaDigits(r.dateLabel || "")}</td>
                           <td className="px-3 py-2 align-middle text-xs text-center whitespace-nowrap">{r.dayName || "-"}</td>
+                          <td className="px-3 py-2 align-middle text-xs text-center"><span className="mx-auto block truncate" title={r.userName}>{r.userName}</span></td>
                           <td className="px-3 py-2 align-middle text-xs text-center">
                             <span className="mx-auto block truncate" title={r.activity || "-"}>{r.activity || "-"}</span>
                           </td>
@@ -2278,7 +2291,18 @@ export default function RoznegarPgae() {
         </Portal>
       )}
 
-      {relatedPickOpen &&
+      {relatedPickOpen && <RelatedLettersPickerModal
+        api={relatedLettersApi}
+        query={relatedPickQuery}
+        onQueryChange={setRelatedPickQuery}
+        loading={relatedDocsLoading}
+        items={relatedDocsPool}
+        selectedIds={relatedPickIds}
+        onToggle={(id) => setRelatedPickIds((previous) => previous.includes(String(id)) ? previous.filter((value) => value !== String(id)) : [...previous, String(id)])}
+        onClose={closeRelatedPicker}
+      />}
+
+      {/*
         createPortal(
           <div className="fixed inset-0 z-[9999]" dir="rtl">
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeRelatedPicker} />
@@ -2411,6 +2435,7 @@ export default function RoznegarPgae() {
           </div>,
           document.body
         )}
+      */}
 
       {uploadOpen &&
         createPortal(

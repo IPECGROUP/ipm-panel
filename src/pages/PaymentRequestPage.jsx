@@ -10,6 +10,7 @@ import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 import TenkhahPage from "./TenkhahPage.jsx";
 import DocumentPreviewModal from "../components/DocumentPreviewModal.jsx";
 import BudgetTreePickerModal from "../components/BudgetTreePickerModal.jsx";
+import RelatedLettersPickerModal from "../components/RelatedLettersPickerModal.jsx";
 
 const DOC_OPTIONS = [
   ["pre_invoice", "پیش فاکتور"], ["invoice", "فاکتور"],
@@ -1311,7 +1312,7 @@ export default function PaymentRequestPage() {
           onSelect={(item) => { setField("supplyRequestId", String(item.id)); setSupplyPickerOpen(false); }}
           onClose={() => setSupplyPickerOpen(false)}
         />}
-        {letterPickerOpen && <LetterChoiceModal
+        {letterPickerOpen && <RelatedLettersPickerModal
           api={api}
           query={letterPickerQuery}
           onQueryChange={setLetterPickerQuery}
@@ -1729,22 +1730,6 @@ function RequestChoiceModal({ title, query, onQueryChange, loading, items, selec
         <span className="min-w-0"><span className="block font-bold">{toFa(item.serial || `#${item.id}`)}</span><span className={`mt-1 block truncate text-xs ${selected ? "text-white/70 dark:text-black/60" : "text-neutral-500 dark:text-neutral-400"}`}>{item.title || item.description || "بدون موضوع"}</span></span><span className="text-sm">{selected ? "✓" : ""}</span>
       </button>;
     })}{hasMore && <button type="button" onClick={onLoadMore} className="mx-auto mt-2 block rounded-xl border border-black/10 px-4 py-2 text-sm font-semibold transition hover:bg-black/[0.04] dark:border-white/10 dark:hover:bg-white/10">نمایش موارد بیشتر</button>}</div> : <div className="p-5 text-center text-sm text-neutral-500">درخواستی پیدا نشد.</div>}
-  </ChoiceModal>;
-}
-
-function LetterChoiceModal({ api, query, onQueryChange, loading, items, selectedIds, onToggle, onClose }) {
-  const [previewLetter, setPreviewLetter] = useState(null);
-  const normalizedQuery = normalizeDigits(query).trim().toLowerCase();
-  const rows = (Array.isArray(items) ? items : []).filter((item) => !normalizedQuery || [item.letterNo, item.letter_no, item.secretariatNo, item.secretariat_no, item.subject, item.title, item.organization, item.companyName].map((value) => normalizeDigits(value).toLowerCase()).join(" ").includes(normalizedQuery));
-  const visibleRows = rows.slice(0, 200);
-  return <ChoiceModal title="انتخاب نامه مرتبط" query={query} onQueryChange={onQueryChange} loading={loading} onClose={onClose}>
-    {rows.length ? <div className="space-y-1">{visibleRows.map((item) => {
-      const id = String(item.id);
-      const checked = selectedIds.includes(id);
-      const number = item.secretariatNo || item.secretariat_no || item.letterNo || item.letter_no || `#${id}`;
-      return <div key={id} className={`flex w-full items-center gap-2 rounded-xl border px-3 py-2.5 text-right transition ${checked ? "border-emerald-200 bg-emerald-50 text-emerald-950 shadow-sm dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-100" : "border-transparent hover:bg-black/[0.04] dark:hover:bg-white/10"}`}><button type="button" onClick={() => onToggle(id)} className="min-w-0 flex-1 text-right"><span className="block font-bold">{toFa(number)}</span><span className={`mt-1 block truncate text-xs ${checked ? "text-emerald-700/80 dark:text-emerald-200/80" : "text-neutral-500 dark:text-neutral-400"}`}>{item.subject || item.title || "بدون موضوع"}</span></button><button type="button" onClick={() => setPreviewLetter(item)} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg transition hover:bg-emerald-100/80 dark:hover:bg-emerald-400/15" title="پیش‌نمایش نامه" aria-label="پیش‌نمایش نامه"><img src="/images/icons/namayesh.svg" alt="" className="h-4 w-4 dark:invert" /></button><button type="button" onClick={() => onToggle(id)} className={`grid h-5 w-5 shrink-0 place-items-center rounded border text-xs font-bold ${checked ? "border-emerald-600 bg-emerald-600 text-white dark:border-emerald-300 dark:bg-emerald-300 dark:text-emerald-950" : "border-neutral-300 dark:border-neutral-600"}`} aria-label="انتخاب نامه">{checked ? "✓" : ""}</button></div>;
-    })}{rows.length > visibleRows.length && <div className="px-3 py-2 text-center text-xs text-neutral-500 dark:text-neutral-400">۲۰۰ مورد نخست نمایش داده شده است؛ برای یافتن سایر اسناد، شماره یا موضوع را جستجو کنید.</div>}</div> : <div className="p-5 text-center text-sm text-neutral-500">نامه‌ای پیدا نشد.</div>}
-    {previewLetter && <DocumentPreviewModal letter={previewLetter} api={api} onClose={() => setPreviewLetter(null)} />}
   </ChoiceModal>;
 }
 
@@ -2803,7 +2788,7 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
             </div>
           </main>
           {relatedLetterPreview && <DocumentPreviewModal letter={relatedLetterPreview} api={api} onClose={() => setRelatedLetterPreview(null)} />}
-          {editLetterPickerOpen && <LetterChoiceModal
+          {editLetterPickerOpen && <RelatedLettersPickerModal
             api={api}
             query={editLetterPickerQuery}
             onQueryChange={setEditLetterPickerQuery}
