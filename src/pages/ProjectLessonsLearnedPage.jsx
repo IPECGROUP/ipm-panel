@@ -591,6 +591,7 @@ export default function ProjectLessonsLearnedPage() {
                     count={form.tagIds.length}
                     onClick={() => openTags("form")}
                   />
+                  {form.importance && <span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ring-1 ${form.importance === "low" ? "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-400/20" : form.importance === "medium" ? "bg-orange-50 text-orange-700 ring-orange-200 dark:bg-orange-500/10 dark:text-orange-200 dark:ring-orange-400/20" : "bg-red-50 text-red-700 ring-red-200 dark:bg-red-500/10 dark:text-red-200 dark:ring-red-400/20"}`}>{importance.find(([id]) => id === form.importance)?.[1]}</span>}
                 </Field>
                 <Field text="بارگذاری">
                   <button

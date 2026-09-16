@@ -161,11 +161,6 @@ function LessonRow({
       <td className="truncate px-3" title={`${item.projectCode || ""} ${item.projectName || ""}`}>{item.projectCode ? `${item.projectCode} - ` : ""}{item.projectName || "—"}</td>
       <td className="truncate px-3" title={item.category}>
         <span>{item.category}</span>
-        {pending && (
-          <span className="mr-2 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-700 dark:bg-sky-500/15 dark:text-sky-300">
-            در انتظار بررسی
-          </span>
-        )}
       </td>
 
       <td className="px-3">
@@ -180,7 +175,7 @@ function LessonRow({
                 event.currentTarget.getBoundingClientRect(),
               );
             }}
-            className="inline-grid h-5 w-5 place-items-center rounded-full border border-black/20 bg-white text-[11px] font-bold text-neutral-600 transition hover:bg-neutral-100 dark:border-white/20 dark:bg-white/5 dark:text-neutral-200"
+            className="inline-grid h-5 w-5 place-items-center text-[11px] font-bold text-neutral-600 transition hover:opacity-70 dark:text-neutral-200"
             title="اطلاعات دانش‌آفرین"
           >
             <Info className="h-3.5 w-3.5 text-neutral-700 dark:text-neutral-100" strokeWidth={2.2} />
