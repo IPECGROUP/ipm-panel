@@ -367,14 +367,16 @@ function FileEditor({
 }) {
   return (
     <section className="mt-4 rounded-2xl border border-black/10 p-3 dark:border-white/10">
-      <div className="flex items-center justify-between gap-3">
-        <UploadButton
-          count={files.length}
-          uploading={uploading}
-          disabled={disabled}
-          onClick={() => fileInputRef.current?.click()}
-        />
-        <h3 className="text-xs font-bold">فایل‌های مرتبط</h3>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col items-start gap-2">
+          <h3 className="text-xs font-bold">فایل‌های مرتبط</h3>
+          <UploadButton
+            count={files.length}
+            uploading={uploading}
+            disabled={disabled}
+            onClick={() => fileInputRef.current?.click()}
+          />
+        </div>
         <input
           ref={fileInputRef}
           type="file"
