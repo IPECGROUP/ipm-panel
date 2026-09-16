@@ -16,6 +16,7 @@ import Card from "../components/ui/Card.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import LessonReviewModal from "../components/project-lessons/LessonReviewModal.jsx";
 import LessonsTable from "../components/project-lessons/LessonsTable.jsx";
+import { TagButton, TagPicker, UploadButton } from "../components/project-lessons/LessonFormControls.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { api } from "../utils/api.js";
 import { dayjs } from "../utils/date.js";
@@ -556,7 +557,7 @@ export default function ProjectLessonsLearnedPage() {
                   </div>
                 </Field>
                 <Field text="اثر" required>
-                  <div className="flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 dark:border-white/15 dark:bg-white/5">
+                  <div className="flex min-h-11 flex-wrap items-center justify-around gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 dark:border-white/15 dark:bg-white/5">
                     {impacts.map(([id, name]) => (
                       <label key={id} className="flex items-center gap-1 text-xs">
                         <input type="checkbox" checked={form.impacts.includes(id)} onChange={() => setForm((x) => ({ ...x, impacts: x.impacts.includes(id) ? x.impacts.filter((v) => v !== id) : [...x.impacts, id] }))} />
@@ -594,20 +595,11 @@ export default function ProjectLessonsLearnedPage() {
                   {form.importance && <span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ring-1 ${form.importance === "low" ? "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-400/20" : form.importance === "medium" ? "bg-orange-50 text-orange-700 ring-orange-200 dark:bg-orange-500/10 dark:text-orange-200 dark:ring-orange-400/20" : "bg-red-50 text-red-700 ring-red-200 dark:bg-red-500/10 dark:text-red-200 dark:ring-red-400/20"}`}>{importance.find(([id]) => id === form.importance)?.[1]}</span>}
                 </Field>
                 <Field text="بارگذاری">
-                  <button
-                    type="button"
+                  <UploadButton
+                    count={form.files.length}
+                    uploading={uploading}
                     onClick={() => setUploadOpen(true)}
-                    className="relative grid h-11 w-14 place-items-center rounded-xl border border-black/10 bg-white dark:border-white/15 dark:bg-white/5"
-                  >
-                    <img
-                      src="/images/icons/Uplod.svg"
-                      alt=""
-                      className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse" : ""}`}
-                    />
-                    {form.files.length > 0 && (
-                      <Badge value={form.files.length} />
-                    )}
-                  </button>
+                  />
                 </Field>
               </div>
               <div className="mt-4 flex justify-end border-t border-black/10 pt-4 dark:border-white/10">
@@ -709,6 +701,7 @@ export default function ProjectLessonsLearnedPage() {
             item={viewItem}
             projects={projects}
             tags={tags}
+            tagCatalog={tagCatalog}
             lessonCategories={lessonCategories}
             headers={headers}
             onClose={() => setViewItem(null)}
@@ -740,26 +733,6 @@ function Field({ text, required, children, className = "" }) {
       </div>
       {children}
     </div>
-  );
-}
-function Badge({ value }) {
-  return (
-    <span className="absolute -left-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-black px-1 text-[10px] text-white">
-      {fa(value)}
-    </span>
-  );
-}
-function TagButton({ count, onClick }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="relative grid h-11 w-14 place-items-center rounded-xl border border-black/10 bg-white dark:border-white/15 dark:bg-white/5"
-      title="انتخاب برچسب"
-    >
-      <span className="text-lg">•••</span>
-      {count > 0 && <Badge value={count} />}
-    </button>
   );
 }
 function LessonDetailModal({ item, tags, onClose }) {
@@ -1260,7 +1233,7 @@ function FilterBar({
     </div>
   );
 }
-function TagPicker({
+function LegacyTagPicker({
   catalog,
   query,
   setQuery,

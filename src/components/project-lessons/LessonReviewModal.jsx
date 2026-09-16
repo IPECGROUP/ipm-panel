@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, Paperclip, X } from "lucide-react";
+import { TagButton, TagPicker, UploadButton } from "./LessonFormControls.jsx";
 
 const INPUT_CLASS = [
   "h-11 w-full rounded-xl border border-black/10 bg-white px-3",
@@ -62,6 +63,7 @@ export default function LessonReviewModal({
   item,
   projects,
   tags,
+  tagCatalog,
   lessonCategories,
   headers,
   onClose,
@@ -72,6 +74,8 @@ export default function LessonReviewModal({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [tagPickerOpen, setTagPickerOpen] = useState(false);
+  const [tagDraft, setTagDraft] = useState([]);
+  const [tagQuery, setTagQuery] = useState("");
   const fileInputRef = useRef(null);
 
   const updateDraft = (changes) => {
@@ -83,14 +87,6 @@ export default function LessonReviewModal({
       ? draft.impacts.filter((id) => id !== impactId)
       : [...draft.impacts, impactId];
     updateDraft({ impacts: nextImpacts });
-  };
-
-  const toggleTag = (tagId) => {
-    const normalizedId = String(tagId);
-    const nextTagIds = draft.tagIds.includes(normalizedId)
-      ? draft.tagIds.filter((id) => id !== normalizedId)
-      : [...draft.tagIds, normalizedId];
-    updateDraft({ tagIds: nextTagIds });
   };
 
   const removeFile = (fileIndex) => {
@@ -178,8 +174,11 @@ export default function LessonReviewModal({
               lessonCategories={lessonCategories}
               updateDraft={updateDraft}
               toggleImpact={toggleImpact}
-              toggleTag={toggleTag}
-              onOpenTagPicker={() => setTagPickerOpen(true)}
+              onOpenTagPicker={() => {
+                setTagDraft(draft.tagIds);
+                setTagQuery("");
+                setTagPickerOpen(true);
+              }}
             />
 
             <FileEditor
@@ -190,7 +189,20 @@ export default function LessonReviewModal({
               onSelectFiles={uploadFiles}
               onRemoveFile={removeFile}
             />
-            {tagPickerOpen && <ReviewTagPicker tags={tags} selectedIds={draft.tagIds} onToggle={toggleTag} onClose={() => setTagPickerOpen(false)} />}
+            {tagPickerOpen && (
+              <TagPicker
+                catalog={tagCatalog}
+                query={tagQuery}
+                setQuery={setTagQuery}
+                selected={tagDraft}
+                setSelected={setTagDraft}
+                onClose={() => setTagPickerOpen(false)}
+                onConfirm={() => {
+                  updateDraft({ tagIds: [...new Set(tagDraft.map(String))] });
+                  setTagPickerOpen(false);
+                }}
+              />
+            )}
 
             {error && (
               <div className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
@@ -247,7 +259,6 @@ function LessonFields({
   lessonCategories,
   updateDraft,
   toggleImpact,
-  toggleTag,
   onOpenTagPicker,
 }) {
   return (
@@ -283,7 +294,7 @@ function LessonFields({
       </Field>
 
       <Field label="اهمیت" required>
-        <div className="flex h-11 items-center gap-3 rounded-xl border border-black/10 bg-white px-3 dark:border-white/15 dark:bg-white/5">
+        <div className="flex h-11 items-center justify-around rounded-xl border border-black/10 bg-white px-3 dark:border-white/15 dark:bg-white/5">
           {IMPORTANCE_OPTIONS.map(([id, name]) => (
             <label key={id} className="flex items-center gap-1.5 text-xs">
               <input
@@ -316,7 +327,7 @@ function LessonFields({
       </div>
 
       <Field label="اثر" required>
-        <div className="flex min-h-11 flex-wrap items-center gap-3 rounded-xl border border-black/10 bg-white px-3 py-2 dark:border-white/15 dark:bg-white/5">
+        <div className="flex min-h-11 flex-wrap items-center justify-around gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 dark:border-white/15 dark:bg-white/5">
           {IMPACT_OPTIONS.map(([id, name]) => (
             <label key={id} className="flex items-center gap-1.5 text-xs">
               <input
@@ -334,7 +345,7 @@ function LessonFields({
         <Field label="برچسب‌ها" required>
           <div className="flex min-h-11 flex-wrap items-center gap-2 rounded-xl border border-black/10 bg-white p-2 dark:border-white/15 dark:bg-white/5">
             {tags.filter((tag) => draft.tagIds.includes(String(tag.id))).map((tag) => <span key={tag.id} className="rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700 dark:bg-sky-500/15 dark:text-sky-200">{tag.label}</span>)}
-            <button type="button" onClick={onOpenTagPicker} className="grid h-8 w-8 place-items-center rounded-lg border border-black/10 text-lg transition hover:bg-black/[.04] dark:border-white/15 dark:hover:bg-white/10" title="ویرایش برچسب‌ها">+</button>
+            <TagButton count={draft.tagIds.length} onClick={onOpenTagPicker} />
           </div>
         </Field>
       </div>
@@ -357,15 +368,13 @@ function FileEditor({
   return (
     <section className="mt-4 rounded-2xl border border-black/10 p-3 dark:border-white/10">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-xs font-bold">فایل‌های مرتبط</h3>
-        <button
-          type="button"
+        <UploadButton
+          count={files.length}
+          uploading={uploading}
+          disabled={disabled}
           onClick={() => fileInputRef.current?.click()}
-          disabled={uploading || disabled}
-          className="h-9 rounded-xl border border-black/10 px-3 text-xs font-semibold disabled:opacity-50 dark:border-white/15"
-        >
-          {uploading ? "در حال بارگذاری..." : "افزودن فایل"}
-        </button>
+        />
+        <h3 className="text-xs font-bold">فایل‌های مرتبط</h3>
         <input
           ref={fileInputRef}
           type="file"
