@@ -366,7 +366,7 @@ function FileEditor({
   onRemoveFile,
 }) {
   return (
-    <section className="mt-4 rounded-2xl border border-black/10 p-3 dark:border-white/10">
+    <section className="relative mt-4 min-h-[76px] rounded-2xl border border-black/10 p-3 dark:border-white/10">
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-col items-start gap-2">
           <h3 className="text-xs font-bold">فایل‌های مرتبط</h3>
@@ -390,7 +390,7 @@ function FileEditor({
         />
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="absolute left-3 right-20 top-3 flex max-w-[calc(100%-6rem)] flex-nowrap gap-2 overflow-x-auto pb-1">
         {files.length ? (
           files.map((file, index) => (
             <span
