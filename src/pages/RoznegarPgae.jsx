@@ -993,7 +993,6 @@ export default function RoznegarPgae() {
     const raw = (Array.isArray(allEntries) ? allEntries : [])
       .map((row) => {
         const dateYmd = row.dateYmd;
-        if (row?.confirmed !== true) return null;
         const tags = (Array.isArray(row.tagIds) ? row.tagIds : [])
           .map((id) => tagById.get(String(id))?.label || "")
           .filter(Boolean);
@@ -1010,7 +1009,7 @@ export default function RoznegarPgae() {
         const files = Array.isArray(row.files) ? row.files : [];
         const fileNames = files.map((f) => String(f?.name || "")).filter(Boolean);
         const dateLabel = toDateLabel(dateYmd);
-        const statusText = "تایید شده";
+        const statusText = row.confirmed ? "تایید شده" : "ثبت شده";
         const searchText = [
           activeProject ? `${activeProject.code || ""} ${activeProject.name || ""}` : "",
           dateLabel,
@@ -1473,7 +1472,7 @@ export default function RoznegarPgae() {
                     const isToday = dateYmd === todayJalaliYmd();
                     // A confirmed record may be edited back to an empty entry. In that
                     // case it should look like every other empty day in the calendar.
-                    const hasSavedData = hasEntryDetails(entriesByDate[dateYmd]);
+                    const hasSavedData = allEntries.some((entry) => entry.dateYmd === dateYmd && hasEntryDetails(entry));
                     const gDay = (() => {
                       try {
                         return dayjs(dateYmd, { jalali: true }).toDate().getDate();
@@ -1486,7 +1485,7 @@ export default function RoznegarPgae() {
                       <button
                         key={dateYmd}
                         type="button"
-                        title={hasSavedData ? "دارای اطلاعات ذخیره‌شده؛ برای ویرایش انتخاب کنید" : undefined}
+                        title={hasSavedData ? "دارای اطلاعات ذخیره‌شده" : undefined}
                         onClick={() => {
                           jumpToDate(dateYmd);
                         }}
@@ -1814,7 +1813,7 @@ export default function RoznegarPgae() {
 
             {peerEntriesForSelectedDate.length > 0 && <section className={"mb-4 rounded-2xl border p-4 " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
               <div className="mb-3 text-sm font-bold">ثبت‌های سایر کاربران در این روز</div>
-              <div className="space-y-2">{peerEntriesForSelectedDate.map((entry) => <article key={entry.id || `${entry.userId}_${entry.dateYmd}`} className={"rounded-xl px-3 py-2.5 text-sm " + (theme === "dark" ? "bg-white/5" : "bg-black/[0.03]")}><div className="font-semibold">{entry.userName || `کاربر #${entry.userId}`}</div><div className="mt-1 whitespace-pre-wrap text-xs leading-5 text-neutral-700 dark:text-neutral-300">{entry.activity || "—"}</div></article>)}</div>
+              <div className="space-y-2">{peerEntriesForSelectedDate.map((entry) => <article key={entry.id || `${entry.userId}_${entry.dateYmd}`} className={"rounded-xl px-3 py-2.5 text-sm " + (theme === "dark" ? "bg-white/5" : "bg-black/[0.03]")}><div className="font-semibold">{entry.userName || `کاربر #${entry.userId}`}</div><div className="mt-1 whitespace-pre-wrap text-xs leading-5 text-neutral-700 dark:text-neutral-300">{entry.activity || "—"}</div>{entry.relatedDocIds.length > 0 && <div className="mt-2 text-xs text-neutral-600 dark:text-neutral-300">{toFaDigits(entry.relatedDocIds.length)} سند مرتبط</div>}{entry.files.length > 0 && <div className="mt-1 text-xs text-neutral-600 dark:text-neutral-300">{toFaDigits(entry.files.length)} پیوست</div>}</article>)}</div>
             </section>}
 
             <div className={"rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
