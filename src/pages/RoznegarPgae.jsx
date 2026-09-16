@@ -830,6 +830,15 @@ export default function RoznegarPgae() {
 
   const updateActiveEntry = (updater) => {
     setSyncState((prev) => (prev?.type === "success" ? { type: "", text: "" } : prev));
+    if (isViewingPeerEntry && activeEntry?.id != null) {
+      setAllEntries((previous) => previous.map((entry) => {
+        if (Number(entry.id) !== Number(activeEntry.id)) return entry;
+        const nextRaw = typeof updater === "function" ? updater(entry) : { ...entry, ...updater };
+        const changed = String(nextRaw?.dayName || "") !== String(entry?.dayName || "") || String(nextRaw?.activity || "") !== String(entry?.activity || "") || !sameStringArray(nextRaw?.tagIds, entry?.tagIds) || !sameStringArray(nextRaw?.relatedDocIds, entry?.relatedDocIds) || !sameFilesArray(nextRaw?.files, entry?.files);
+        return changed ? { ...nextRaw, confirmed: false, confirmedAt: null } : nextRaw;
+      }));
+      return;
+    }
     setEntriesByDate((prev) => {
       const current = prev[selectedDate] || makeEntry(selectedDate);
       const nextRaw = typeof updater === "function" ? updater(current) : { ...current, ...updater };
@@ -866,7 +875,7 @@ export default function RoznegarPgae() {
   const isViewingPeerEntry = !hasEntryDetails(ownActiveEntry) && peerEntriesForSelectedDate.length > 0;
   const activeEntry = isViewingPeerEntry ? peerEntriesForSelectedDate[0] : ownActiveEntry;
   const activeProject = activeProjects.find((p) => String(p.id) === String(projectId));
-  const editorDisabled = !activeProject || isViewingPeerEntry;
+  const editorDisabled = !activeProject;
 
   const daysInMonth = cursor.daysInMonth();
   const startPad = (cursor.startOf("month").day() + 1) % 7;
@@ -1290,7 +1299,7 @@ export default function RoznegarPgae() {
     setConfirmSaving(true);
     setSyncState({ type: "", text: "" });
     try {
-      const curr = entriesByDate[selectedDate] || makeEntry(selectedDate);
+      const curr = activeEntry;
       const filesPayload = (Array.isArray(curr.files) ? curr.files : [])
         .map((f) => ({
           serverId: Number(f?.serverId || f?.server_id || 0) || null,
@@ -1304,6 +1313,7 @@ export default function RoznegarPgae() {
 
       const uid = authUser?.id != null ? String(authUser.id) : "";
       const payload = {
+        ...(curr.id != null ? { id: curr.id } : {}),
         projectId: projectIdNum,
         dateYmd: String(selectedDate || "").trim(),
         dayName: String(curr.dayName || "").trim(),
@@ -1315,7 +1325,7 @@ export default function RoznegarPgae() {
       };
 
       const res = await fetch("/api/roznegar", {
-        method: "POST",
+        method: curr.id != null ? "PATCH" : "POST",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
@@ -1335,7 +1345,6 @@ export default function RoznegarPgae() {
       const saved = normalizeRoznegarEntryFromApi(data?.item || null);
       if (!saved?.dateYmd) throw new Error("roznegar_save_invalid");
 
-      setEntriesByDate((prev) => ({ ...prev, [saved.dateYmd]: saved }));
       const synced = await fetchRoznegarEntries(String(projectIdNum));
       if (!synced) throw new Error("roznegar_sync_after_save_failed");
       setSyncState({ type: "success", text: "با موفقیت ذخیره شد." });
@@ -1553,7 +1562,7 @@ export default function RoznegarPgae() {
                       ابتدا پروژه فعال را انتخاب کنید.
                     </span>
                   ) : null}
-                  {isViewingPeerEntry ? <span className="rounded-lg bg-sky-50 px-2.5 py-1 text-xs text-sky-700 dark:bg-sky-500/15 dark:text-sky-200">نمایش فقط‌خواندنی روزنگار {activeEntry.userName || "کاربر دیگر"}</span> : null}
+                  {isViewingPeerEntry ? <span className="rounded-lg bg-sky-50 px-2.5 py-1 text-xs text-sky-700 dark:bg-sky-500/15 dark:text-sky-200">روزنگار ثبت‌شده توسط: {activeEntry.userName || "کاربر دیگر"}</span> : null}
                 </div>
 
                 <div className="space-y-4" aria-disabled={editorDisabled}>
@@ -2486,6 +2495,15 @@ export default function RoznegarPgae() {
                                   {formatSize(f.size)}
                                 </div>
                               </div>
+
+                              <button
+                                type="button"
+                                onClick={() => openFilePreview(f)}
+                                className="h-9 px-3 rounded-xl border border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02] text-[11px] md:text-xs dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+                                title="مشاهده فایل"
+                              >
+                                مشاهده
+                              </button>
 
                               <button
                                 type="button"
