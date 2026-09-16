@@ -1231,7 +1231,6 @@ function FilterBar({
       <div className="mt-2">
         <div className={label}>برچسب‌ها</div>
         <div className="flex flex-wrap items-center gap-2">
-          <TagButton count={selected.length} onClick={openTags} />
           {[
             ["low", "کم", "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-400/20"],
             ["medium", "متوسط", "bg-orange-50 text-orange-700 ring-orange-200 dark:bg-orange-500/10 dark:text-orange-200 dark:ring-orange-400/20"],
@@ -1261,6 +1260,7 @@ function FilterBar({
                 {tag.label}
               </span>
             ))}
+          <TagButton count={selected.length} onClick={openTags} />
         </div>
       </div>
     </div>
