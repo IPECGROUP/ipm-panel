@@ -1553,6 +1553,14 @@ export default function RoznegarPgae() {
                   ) : null}
                 </div>
 
+                {peerEntriesForSelectedDate.length > 0 && <section className={"mb-4 rounded-2xl border p-4 " + (theme === "dark" ? "border-sky-400/20 bg-sky-500/10" : "border-sky-200 bg-sky-50/70")}>
+                  <div className="mb-3 text-sm font-bold">روزنگار ثبت‌شده توسط سایر کاربران</div>
+                  <div className="space-y-3">{peerEntriesForSelectedDate.map((entry) => {
+                    const relatedLetters = entry.relatedDocIds.map((id) => letterById.get(String(id))).filter(Boolean);
+                    return <article key={entry.id || `${entry.userId}_${entry.dateYmd}`} className={"rounded-xl border p-3 " + (theme === "dark" ? "border-white/10 bg-black/10" : "border-sky-100 bg-white")}><div className="font-semibold">{entry.userName || `کاربر #${entry.userId}`}</div><div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-neutral-800 dark:text-neutral-100">{entry.activity || "شرح فعالیتی ثبت نشده است."}</div>{relatedLetters.length > 0 && <div className="mt-3"><div className="text-xs text-neutral-500 dark:text-neutral-400">اسناد مرتبط</div><div className="mt-1 flex flex-wrap gap-2">{relatedLetters.map((letter) => <span key={docIdOf(letter)} className="rounded-lg border border-black/10 px-2 py-1 text-xs font-semibold dark:border-white/10">{toFaDigits(docNoOf(letter) || docIdOf(letter))}{docTitleOf(letter) ? ` — ${docTitleOf(letter)}` : ""}</span>)}</div></div>}{entry.files.length > 0 && <div className="mt-3"><div className="text-xs text-neutral-500 dark:text-neutral-400">پیوست‌ها</div><div className="mt-1 flex flex-wrap gap-2">{entry.files.map((file, index) => <button key={`${file.name}_${index}`} type="button" onClick={() => openFilePreview(file)} className="max-w-full truncate rounded-lg border border-black/10 px-2 py-1 text-xs underline underline-offset-4 dark:border-white/10">{file.name || `فایل ${toFaDigits(index + 1)}`}</button>)}</div></div>}</article>;
+                  })}</div>
+                </section>}
+
                 <div className="space-y-4" aria-disabled={editorDisabled}>
                   <div>
                     <div className="mb-1 flex items-center justify-between gap-2">
@@ -1810,11 +1818,6 @@ export default function RoznegarPgae() {
               </div>
             </div>
             ) : null}
-
-            {peerEntriesForSelectedDate.length > 0 && <section className={"mb-4 rounded-2xl border p-4 " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
-              <div className="mb-3 text-sm font-bold">ثبت‌های سایر کاربران در این روز</div>
-              <div className="space-y-2">{peerEntriesForSelectedDate.map((entry) => <article key={entry.id || `${entry.userId}_${entry.dateYmd}`} className={"rounded-xl px-3 py-2.5 text-sm " + (theme === "dark" ? "bg-white/5" : "bg-black/[0.03]")}><div className="font-semibold">{entry.userName || `کاربر #${entry.userId}`}</div><div className="mt-1 whitespace-pre-wrap text-xs leading-5 text-neutral-700 dark:text-neutral-300">{entry.activity || "—"}</div>{entry.relatedDocIds.length > 0 && <div className="mt-2 text-xs text-neutral-600 dark:text-neutral-300">{toFaDigits(entry.relatedDocIds.length)} سند مرتبط</div>}{entry.files.length > 0 && <div className="mt-1 text-xs text-neutral-600 dark:text-neutral-300">{toFaDigits(entry.files.length)} پیوست</div>}</article>)}</div>
-            </section>}
 
             <div className={"rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
               <div className="md:hidden">
