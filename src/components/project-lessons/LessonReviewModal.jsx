@@ -390,7 +390,7 @@ function FileEditor({
         />
       </div>
 
-      <div className="absolute left-3 right-20 top-3 flex max-w-[calc(100%-6rem)] flex-nowrap gap-2 overflow-x-auto pb-1">
+      <div className="absolute left-3 right-20 top-9 flex max-w-[calc(100%-6rem)] flex-nowrap gap-2 overflow-x-auto pb-1">
         {files.length ? (
           files.map((file, index) => (
             <span
