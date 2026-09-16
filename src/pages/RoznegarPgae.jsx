@@ -858,13 +858,15 @@ export default function RoznegarPgae() {
     setCursor(dayjs(next, { jalali: true }).calendar("jalali").startOf("month"));
   };
 
-  const activeEntry = entriesByDate[selectedDate] || makeEntry(selectedDate);
+  const ownActiveEntry = entriesByDate[selectedDate] || makeEntry(selectedDate);
   const peerEntriesForSelectedDate = useMemo(
     () => allEntries.filter((entry) => entry.dateYmd === selectedDate && Number(entry.userId) !== Number(authUser?.id)),
     [allEntries, authUser?.id, selectedDate]
   );
+  const isViewingPeerEntry = !hasEntryDetails(ownActiveEntry) && peerEntriesForSelectedDate.length > 0;
+  const activeEntry = isViewingPeerEntry ? peerEntriesForSelectedDate[0] : ownActiveEntry;
   const activeProject = activeProjects.find((p) => String(p.id) === String(projectId));
-  const editorDisabled = !activeProject;
+  const editorDisabled = !activeProject || isViewingPeerEntry;
 
   const daysInMonth = cursor.daysInMonth();
   const startPad = (cursor.startOf("month").day() + 1) % 7;
@@ -1551,15 +1553,8 @@ export default function RoznegarPgae() {
                       ابتدا پروژه فعال را انتخاب کنید.
                     </span>
                   ) : null}
+                  {isViewingPeerEntry ? <span className="rounded-lg bg-sky-50 px-2.5 py-1 text-xs text-sky-700 dark:bg-sky-500/15 dark:text-sky-200">نمایش فقط‌خواندنی روزنگار {activeEntry.userName || "کاربر دیگر"}</span> : null}
                 </div>
-
-                {peerEntriesForSelectedDate.length > 0 && <section className={"mb-4 rounded-2xl border p-4 " + (theme === "dark" ? "border-sky-400/20 bg-sky-500/10" : "border-sky-200 bg-sky-50/70")}>
-                  <div className="mb-3 text-sm font-bold">روزنگار ثبت‌شده توسط سایر کاربران</div>
-                  <div className="space-y-3">{peerEntriesForSelectedDate.map((entry) => {
-                    const relatedLetters = entry.relatedDocIds.map((id) => letterById.get(String(id))).filter(Boolean);
-                    return <article key={entry.id || `${entry.userId}_${entry.dateYmd}`} className={"rounded-xl border p-3 " + (theme === "dark" ? "border-white/10 bg-black/10" : "border-sky-100 bg-white")}><div className="font-semibold">{entry.userName || `کاربر #${entry.userId}`}</div><div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-neutral-800 dark:text-neutral-100">{entry.activity || "شرح فعالیتی ثبت نشده است."}</div>{relatedLetters.length > 0 && <div className="mt-3"><div className="text-xs text-neutral-500 dark:text-neutral-400">اسناد مرتبط</div><div className="mt-1 flex flex-wrap gap-2">{relatedLetters.map((letter) => <span key={docIdOf(letter)} className="rounded-lg border border-black/10 px-2 py-1 text-xs font-semibold dark:border-white/10">{toFaDigits(docNoOf(letter) || docIdOf(letter))}{docTitleOf(letter) ? ` — ${docTitleOf(letter)}` : ""}</span>)}</div></div>}{entry.files.length > 0 && <div className="mt-3"><div className="text-xs text-neutral-500 dark:text-neutral-400">پیوست‌ها</div><div className="mt-1 flex flex-wrap gap-2">{entry.files.map((file, index) => <button key={`${file.name}_${index}`} type="button" onClick={() => openFilePreview(file)} className="max-w-full truncate rounded-lg border border-black/10 px-2 py-1 text-xs underline underline-offset-4 dark:border-white/10">{file.name || `فایل ${toFaDigits(index + 1)}`}</button>)}</div></div>}</article>;
-                  })}</div>
-                </section>}
 
                 <div className="space-y-4" aria-disabled={editorDisabled}>
                   <div>
