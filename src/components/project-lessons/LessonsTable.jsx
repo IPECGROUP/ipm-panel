@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
+import { Info } from "lucide-react";
 import { dayjs } from "../../utils/date.js";
 
 const IMPORTANCE_LABELS = new Map([
@@ -24,7 +25,7 @@ function formatJalaliDate(value) {
 function EmptyRow({ children }) {
   return (
     <tr>
-      <td colSpan={6} className="p-8 text-center text-neutral-500">
+      <td colSpan={7} className="p-8 text-center text-neutral-500">
         {children}
       </td>
     </tr>
@@ -57,6 +58,7 @@ export default function LessonsTable({
             <col style={{ width: 52 }} />
             <col style={{ width: 70 }} />
             <col style={{ width: 135 }} />
+            <col style={{ width: 180 }} />
             <col />
             <col style={{ width: 220 }} />
             <col style={{ width: 150 }} />
@@ -73,6 +75,7 @@ export default function LessonsTable({
               </th>
               <th className="px-3 py-3">ردیف</th>
               <th className="px-3 py-3">تاریخ</th>
+              <th className="px-3 py-3">پروژه</th>
               <th className="px-3 py-3">دسته‌بندی</th>
               <th className="px-3 py-3">دانش‌آفرین</th>
               <th className="relative px-3 py-3">
@@ -155,6 +158,7 @@ function LessonRow({
 
       <td className="px-3">{toPersianDigits(index + 1)}</td>
       <td className="px-3">{formatJalaliDate(item.createdAt)}</td>
+      <td className="truncate px-3" title={`${item.projectCode || ""} ${item.projectName || ""}`}>{item.projectCode ? `${item.projectCode} - ` : ""}{item.projectName || "—"}</td>
       <td className="truncate px-3" title={item.category}>
         <span>{item.category}</span>
         {pending && (
@@ -179,12 +183,12 @@ function LessonRow({
             className="inline-grid h-5 w-5 place-items-center rounded-full border border-black/20 bg-white text-[11px] font-bold text-neutral-600 transition hover:bg-neutral-100 dark:border-white/20 dark:bg-white/5 dark:text-neutral-200"
             title="اطلاعات دانش‌آفرین"
           >
-            <img src="/images/icons/i.svg" alt="" className="h-3 w-3 dark:invert" />
+            <Info className="h-3.5 w-3.5 text-neutral-700 dark:text-neutral-100" strokeWidth={2.2} />
           </button>
         </span>
       </td>
 
-      <td className="px-3">{IMPORTANCE_LABELS.get(item.importance) || "—"}</td>
+      <td className="px-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${item.importance === "low" ? "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200" : item.importance === "medium" ? "bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-200" : item.importance === "high" ? "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-200" : "bg-neutral-100 text-neutral-600"}`}>{IMPORTANCE_LABELS.get(item.importance) || "—"}</span></td>
     </tr>
   );
 }
