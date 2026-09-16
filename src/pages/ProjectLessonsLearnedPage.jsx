@@ -75,7 +75,7 @@ function isSelectableProject(project) {
   return hasThreeDigitCode && active;
 }
 
-function matchesFilters(item, query, from, to, selectedTagIds) {
+function matchesFilters(item, query, from, to, selectedTagIds, selectedImportances) {
   const createdAt = dateKey(item.createdAt);
   if (from && (!createdAt || createdAt < from)) return false;
   if (to && (!createdAt || createdAt > to)) return false;
@@ -85,6 +85,10 @@ function matchesFilters(item, query, from, to, selectedTagIds) {
     !selectedTagIds.length ||
     selectedTagIds.some((id) => itemTagIds.includes(String(id)));
   if (!matchesTags) return false;
+
+  if (selectedImportances.length && !selectedImportances.includes(item.importance)) {
+    return false;
+  }
 
   const searchableText = [
     item.projectName,
@@ -150,6 +154,7 @@ export default function ProjectLessonsLearnedPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [filterTagIds, setFilterTagIds] = useState([]);
+  const [filterImportances, setFilterImportances] = useState([]);
   const [tagOpen, setTagOpen] = useState(false);
   const [tagFor, setTagFor] = useState("form");
   const [tagDraft, setTagDraft] = useState([]);
@@ -226,9 +231,9 @@ export default function ProjectLessonsLearnedPage() {
     );
 
     return authorizedItems.filter((item) =>
-      matchesFilters(item, normalizedQuery, fromDate, toDate, filterTagIds),
+      matchesFilters(item, normalizedQuery, fromDate, toDate, filterTagIds, filterImportances),
     );
-  }, [items, canReview, query, from, to, filterTagIds]);
+  }, [items, canReview, query, from, to, filterTagIds, filterImportances]);
 
   const allSelected =
     filtered.length > 0 &&
@@ -496,6 +501,14 @@ export default function ProjectLessonsLearnedPage() {
               setTo={setTo}
               tags={tags}
               selected={filterTagIds}
+              selectedImportances={filterImportances}
+              onToggleImportance={(id) =>
+                setFilterImportances((current) =>
+                  current.includes(id)
+                    ? current.filter((value) => value !== id)
+                    : [...current, id],
+                )
+              }
               openTags={() => openTags("filter")}
               onExport={exportExcel}
               canExport={filtered.length > 0}
@@ -1170,6 +1183,8 @@ function FilterBar({
   setTo,
   tags,
   selected,
+  selectedImportances,
+  onToggleImportance,
   openTags,
   onExport,
   canExport,
@@ -1217,6 +1232,24 @@ function FilterBar({
         <div className={label}>برچسب‌ها</div>
         <div className="flex flex-wrap items-center gap-2">
           <TagButton count={selected.length} onClick={openTags} />
+          {[
+            ["low", "کم", "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-400/20"],
+            ["medium", "متوسط", "bg-orange-50 text-orange-700 ring-orange-200 dark:bg-orange-500/10 dark:text-orange-200 dark:ring-orange-400/20"],
+            ["high", "زیاد", "bg-red-50 text-red-700 ring-red-200 dark:bg-red-500/10 dark:text-red-200 dark:ring-red-400/20"],
+          ].map(([id, title, tone]) => {
+            const active = selectedImportances.includes(id);
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => onToggleImportance(id)}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition ${tone} ${active ? "ring-2 ring-black/70 dark:ring-white/70" : "opacity-75 hover:opacity-100"}`}
+                aria-pressed={active}
+              >
+                {title}
+              </button>
+            );
+          })}
           {selected
             .map((id) => tags.find((t) => String(t.id) === String(id)))
             .filter(Boolean)
