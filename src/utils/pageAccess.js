@@ -1,5 +1,3 @@
-const LIMITED_USERNAMES = new Set(["maali", "chamanara"]);
-
 const ROUTE_PERMISSION_PAGES = [
   ["/letters", "مدیریت اسناد"],
   ["/documents/management-dashboard", "مدیریت اسناد", "داشبورد مدیریت اسناد"],
@@ -43,8 +41,7 @@ const PAGE_INDEX = {
 };
 
 export function hasLimitedPageAccess(user) {
-  const username = String(user?.username || "").trim().toLowerCase();
-  return LIMITED_USERNAMES.has(username);
+  return false;
 }
 
 export function canOpenPage(user, pathname) {
@@ -58,16 +55,5 @@ export function canOpenPage(user, pathname) {
     if (!access.has(`page-access:${PAGE_INDEX[page]}:همه`) && !access.has(`page-access:${PAGE_INDEX[page]}:${requiredAccess}`)) return false;
   }
 
-  if (!hasLimitedPageAccess(user)) return true;
-
-  return [
-    "/",
-    "/dashboard",
-    "/requests",
-    "/payment",
-    "/finance/payment-request",
-    "/finance/tenkhah",
-    "/supply/request",
-    "/supply/actions",
-  ].includes(path) || path.startsWith("/requests/");
+  return true;
 }

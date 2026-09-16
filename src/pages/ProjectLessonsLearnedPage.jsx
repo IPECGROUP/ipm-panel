@@ -535,12 +535,12 @@ export default function ProjectLessonsLearnedPage() {
                     ))}
                   </select>
                 </Field>
-                <Field text="اهمیت" required className="md:col-span-2">
-                  <div className="grid h-11 grid-cols-3 items-center rounded-xl border border-black/10 bg-white px-3 dark:border-white/15 dark:bg-white/5">
+                <Field text="اهمیت" required>
+                  <div className="flex h-11 items-center justify-around rounded-xl border border-black/10 bg-white px-3 dark:border-white/15 dark:bg-white/5">
                     {importance.map(([id, name]) => (
                       <label
                         key={id}
-                        className="flex items-center justify-center gap-1 text-xs"
+                        className="flex items-center gap-1 text-xs"
                       >
                         <input
                           type="radio"
@@ -555,10 +555,10 @@ export default function ProjectLessonsLearnedPage() {
                     ))}
                   </div>
                 </Field>
-                <Field text="اثر" required className="md:col-span-2">
-                  <div className="grid min-h-11 grid-cols-2 items-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 sm:grid-cols-4 dark:border-white/15 dark:bg-white/5">
+                <Field text="اثر" required>
+                  <div className="flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 dark:border-white/15 dark:bg-white/5">
                     {impacts.map(([id, name]) => (
-                      <label key={id} className="flex items-center justify-center gap-1 text-xs">
+                      <label key={id} className="flex items-center gap-1 text-xs">
                         <input type="checkbox" checked={form.impacts.includes(id)} onChange={() => setForm((x) => ({ ...x, impacts: x.impacts.includes(id) ? x.impacts.filter((v) => v !== id) : [...x.impacts, id] }))} />
                         {name}
                       </label>

@@ -188,7 +188,7 @@ function LessonRow({
         </span>
       </td>
 
-      <td className="px-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${item.importance === "low" ? "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200" : item.importance === "medium" ? "bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-200" : item.importance === "high" ? "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-200" : "bg-neutral-100 text-neutral-600"}`}>{IMPORTANCE_LABELS.get(item.importance) || "—"}</span></td>
+      <td className="px-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ring-1 ${item.importance === "low" ? "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-400/20" : item.importance === "medium" ? "bg-orange-50 text-orange-700 ring-orange-200 dark:bg-orange-500/10 dark:text-orange-200 dark:ring-orange-400/20" : item.importance === "high" ? "bg-red-50 text-red-700 ring-red-200 dark:bg-red-500/10 dark:text-red-200 dark:ring-red-400/20" : "bg-neutral-50 text-neutral-600 ring-neutral-200"}`}>{IMPORTANCE_LABELS.get(item.importance) || "—"}</span></td>
     </tr>
   );
 }
