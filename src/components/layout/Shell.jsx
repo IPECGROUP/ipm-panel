@@ -5,12 +5,23 @@ import RightNav from "../RightNav.jsx";
 import { useAuth } from "../AuthProvider.jsx";
 
 const notificationStorageKey = (userId) => `ipm-read-notifications:${userId}`;
-const notificationKey = (item) => `${item.notificationTarget}:${item.id}`;
+const notificationBaseKey = (item) => `${item.notificationTarget}:${item.id}`;
+// A request can return to an earlier actor more than once.  Read state must
+// therefore belong to the current workflow version, rather than permanently
+// hide every notification for the request id.
+const notificationKey = (item) => {
+  const latestHistoryAt = Array.isArray(item?.historyJson)
+    ? item.historyJson[item.historyJson.length - 1]?.at
+    : "";
+  const version = item?.updatedAt || item?.updated_at || latestHistoryAt || item?.workflowStatus || "initial";
+  return `${notificationBaseKey(item)}:${String(version)}`;
+};
 
 export default function Shell() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const notificationsRef = React.useRef(null);
+  const notificationsStateRef = React.useRef([]);
   const [notifications, setNotifications] = React.useState([]);
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
   const [notificationsLoading, setNotificationsLoading] = React.useState(false);
@@ -22,6 +33,10 @@ export default function Shell() {
     if (theme === "dark") root.classList.add("dark");
     else root.classList.remove("dark");
   }, [theme]);
+
+  React.useEffect(() => {
+    notificationsStateRef.current = notifications;
+  }, [notifications]);
 
   const loadNotifications = React.useCallback(async ({ quiet = false } = {}) => {
     if (authLoading || !user?.id) return;
@@ -80,15 +95,21 @@ export default function Shell() {
       const item = event.detail;
       if (!item?.notificationTarget || item.id == null) return;
 
-      const key = notificationKey(item);
+      const baseKey = notificationBaseKey(item);
+      // Events only need the request id. Resolve it to the exact version that
+      // was visible before the action, so a later returned workflow version is
+      // not marked as read as well.
+      const completedKeys = notificationsStateRef.current
+        .filter((notification) => notificationBaseKey(notification) === baseKey)
+        .map(notificationKey);
       try {
         const storageKey = notificationStorageKey(user.id);
         const readNotifications = new Set(JSON.parse(localStorage.getItem(storageKey) || "[]"));
-        readNotifications.add(key);
+        completedKeys.forEach((key) => readNotifications.add(key));
         localStorage.setItem(storageKey, JSON.stringify([...readNotifications]));
       } catch {}
 
-      setNotifications((current) => current.filter((notification) => notificationKey(notification) !== key));
+      setNotifications((current) => current.filter((notification) => notificationBaseKey(notification) !== baseKey));
       loadNotifications({ quiet: true });
     };
     window.addEventListener("focus", refresh);
