@@ -1004,6 +1004,16 @@ function ExpenseTable({
           <thead>
             <tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100">
               <Header>ردیف</Header>
+              <Header>
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={onToggleAll}
+                  disabled={!selectableCount}
+                  className="h-4 w-4 rounded border-neutral-400 align-middle accent-neutral-900 disabled:opacity-40 dark:accent-white"
+                  aria-label="انتخاب همه ردیف‌های تأییدشده"
+                />
+              </Header>
               <Header>درخواست‌کننده</Header>
               <Header>تاریخ</Header>
               <Header right>شرح هزینه</Header>
@@ -1026,16 +1036,6 @@ function ExpenseTable({
                   saving={saving}
                 />
               </th>
-              <Header>
-                <input
-                  type="checkbox"
-                  checked={allSelected}
-                  onChange={onToggleAll}
-                  disabled={!selectableCount}
-                  className="h-4 w-4 rounded border-neutral-400 align-middle accent-neutral-900 disabled:opacity-40 dark:accent-white"
-                  aria-label="انتخاب همه ردیف‌های تأییدشده"
-                />
-              </Header>
             </tr>
           </thead>
           <tbody className="text-[13px] text-black [&>tr]:h-10 dark:text-neutral-100">
@@ -1046,6 +1046,21 @@ function ExpenseTable({
                   className={`bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10 ${item.stage === "rejected" ? "text-red-600 dark:text-red-400" : item.settlementReportId ? "text-neutral-500 dark:text-neutral-400" : ""}`}
                 >
                   <Cell>{toFa(index + 1)}</Cell>
+                  <Cell>
+                    {item.settlementReportId ? (
+                      <LockIcon reportNumber={item.settlementReportNumber} />
+                    ) : (
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(item.id)}
+                        onChange={() => onToggleItem(item.id)}
+                        disabled={!isItemSelectable(item)}
+                        className="h-4 w-4 rounded border-neutral-400 align-middle accent-neutral-900 disabled:cursor-not-allowed disabled:opacity-35 dark:accent-white"
+                        aria-label={`انتخاب ردیف ${toFa(index + 1)}`}
+                        title={isItemSelectable(item) ? "انتخاب برای گزارش تسویه" : "پس از تأیید مدیر پروژه قابل ارسال است"}
+                      />
+                    )}
+                  </Cell>
                   <Cell>{item.createdByName || item.createdByUsername || `کاربر #${toFa(item.createdById || "—")}`}</Cell>
                   <Cell>{toFa(item.expenseDate)}</Cell>
                   <Cell right>{item.description}</Cell>
@@ -1091,21 +1106,6 @@ function ExpenseTable({
                     >
                       i
                     </button>
-                  </Cell>
-                  <Cell>
-                    {item.settlementReportId ? (
-                      <LockIcon reportNumber={item.settlementReportNumber} />
-                    ) : (
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(item.id)}
-                        onChange={() => onToggleItem(item.id)}
-                        disabled={!isItemSelectable(item)}
-                        className="h-4 w-4 rounded border-neutral-400 align-middle accent-neutral-900 disabled:cursor-not-allowed disabled:opacity-35 dark:accent-white"
-                        aria-label={`انتخاب ردیف ${toFa(index + 1)}`}
-                        title={isItemSelectable(item) ? "انتخاب برای گزارش تسویه" : "پس از تأیید مدیر پروژه قابل ارسال است"}
-                      />
-                    )}
                   </Cell>
                 </tr>
               ))
