@@ -2,7 +2,7 @@
 import { createPortal } from "react-dom";
 import { Card } from "../components/ui/Card";
 import { Portal } from "../components/Portal";
-import { dayjs, todayJalaliYmd } from "../utils/date";
+import { todayJalaliYmd } from "../utils/date";
 import { useAuth } from "../components/AuthProvider";
 import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 import RelatedLettersPickerModal from "../components/RelatedLettersPickerModal.jsx";
@@ -170,19 +170,70 @@ function pad2(n) {
   return x < 10 ? `0${x}` : String(x);
 }
 
+const PERSIAN_DATE_FORMATTER = new Intl.DateTimeFormat("en-US-u-ca-persian-nu-latn", {
+  year: "numeric",
+  month: "numeric",
+  day: "numeric",
+  timeZone: "Asia/Tehran",
+});
+const JALALI_TO_GREGORIAN_CACHE = new Map();
+
 function getJalaliPartsFromDate(d) {
   try {
-    const y = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric" }).format(d);
-    const m = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { month: "numeric" }).format(d);
-    const day = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { day: "numeric" }).format(d);
+    const values = Object.fromEntries(
+      PERSIAN_DATE_FORMATTER.formatToParts(d)
+        .filter((part) => ["year", "month", "day"].includes(part.type))
+        .map((part) => [part.type, part.value])
+    );
     return {
-      jy: Number(toEnDigits(y)) || 1400,
-      jm: Number(toEnDigits(m)) || 1,
-      jd: Number(toEnDigits(day)) || 1,
+      jy: Number(values.year) || 1400,
+      jm: Number(values.month) || 1,
+      jd: Number(values.day) || 1,
     };
   } catch {
     return { jy: 1400, jm: 1, jd: 1 };
   }
+}
+
+function parseJalaliYmd(value) {
+  const match = String(value || "").trim().match(/^(\d{4})[-/](\d{2})[-/](\d{2})$/);
+  if (!match) return null;
+  return { jy: Number(match[1]), jm: Number(match[2]), jd: Number(match[3]) };
+}
+
+function jalaliYmd({ jy, jm, jd }) {
+  return `${jy}-${pad2(jm)}-${pad2(jd)}`;
+}
+
+// Finds the Gregorian day by its Persian-calendar parts.  Using Intl here avoids
+// jalaliday's daysInMonth/startOf edge case that affected dates such as 1402/11.
+function dateFromJalaliParts(jy, jm, jd) {
+  const target = `${Number(jy)}/${Number(jm)}/${Number(jd)}`;
+  const cached = JALALI_TO_GREGORIAN_CACHE.get(target);
+  if (cached) return new Date(cached);
+  const candidate = new Date(Date.UTC(Number(jy) + 621, 2, 15, 12));
+  for (let offset = 0; offset <= 380; offset += 1) {
+    const date = new Date(candidate);
+    date.setUTCDate(candidate.getUTCDate() + offset);
+    const parts = getJalaliPartsFromDate(date);
+    if (`${parts.jy}/${parts.jm}/${parts.jd}` === target) {
+      JALALI_TO_GREGORIAN_CACHE.set(target, date.getTime());
+      return date;
+    }
+  }
+  return null;
+}
+
+function jalaliMonthDays(jy, jm) {
+  const next = jm === 12 ? { jy: jy + 1, jm: 1 } : { jy, jm: jm + 1 };
+  const start = dateFromJalaliParts(jy, jm, 1);
+  const afterMonth = dateFromJalaliParts(next.jy, next.jm, 1);
+  return start && afterMonth ? Math.round((afterMonth - start) / 86400000) : 30;
+}
+
+function shiftJalaliMonth({ jy, jm }, delta) {
+  const absoluteMonth = jy * 12 + (jm - 1) + delta;
+  return { jy: Math.floor(absoluteMonth / 12), jm: (absoluteMonth % 12) + 1 };
 }
 
 function formatSize(size) {
@@ -193,7 +244,9 @@ function formatSize(size) {
 
 function dayNameFromJalali(dateYmd) {
   try {
-    const jsDay = dayjs(dateYmd, { jalali: true }).calendar("jalali").day();
+    const parts = parseJalaliYmd(dateYmd);
+    const date = parts && dateFromJalaliParts(parts.jy, parts.jm, parts.jd);
+    const jsDay = date?.getUTCDay();
     return WEEKDAY_BY_JS_DAY[jsDay] || "شنبه";
   } catch {
     return "شنبه";
@@ -573,9 +626,10 @@ export default function RoznegarPgae() {
     }
   });
   const [selectedDate, setSelectedDate] = useState(() => todayJalaliYmd());
-  const [cursor, setCursor] = useState(() =>
-    dayjs(todayJalaliYmd(), { jalali: true }).calendar("jalali").startOf("month")
-  );
+  const [cursor, setCursor] = useState(() => {
+    const { jy, jm } = getJalaliPartsFromDate(new Date());
+    return { jy, jm };
+  });
   const [entriesByDate, setEntriesByDate] = useState({});
   const [allEntries, setAllEntries] = useState([]);
   const savedEntryCount = useMemo(
@@ -862,9 +916,10 @@ export default function RoznegarPgae() {
 
   const jumpToDate = (dateYmd) => {
     const next = String(dateYmd || "").trim();
-    if (!next) return;
+    const parts = parseJalaliYmd(next);
+    if (!parts) return;
     setSelectedDate(next);
-    setCursor(dayjs(next, { jalali: true }).calendar("jalali").startOf("month"));
+    setCursor({ jy: parts.jy, jm: parts.jm });
   };
 
   const ownActiveEntry = entriesByDate[selectedDate] || makeEntry(selectedDate);
@@ -877,8 +932,9 @@ export default function RoznegarPgae() {
   const activeProject = activeProjects.find((p) => String(p.id) === String(projectId));
   const editorDisabled = !activeProject;
 
-  const daysInMonth = cursor.daysInMonth();
-  const startPad = (cursor.startOf("month").day() + 1) % 7;
+  const daysInMonth = jalaliMonthDays(cursor.jy, cursor.jm);
+  const firstDayOfMonth = dateFromJalaliParts(cursor.jy, cursor.jm, 1);
+  const startPad = firstDayOfMonth ? (firstDayOfMonth.getUTCDay() + 1) % 7 : 0;
   const monthCells = useMemo(() => {
     const cells = [];
     for (let i = 0; i < startPad; i += 1) cells.push(null);
@@ -886,11 +942,12 @@ export default function RoznegarPgae() {
     return cells;
   }, [startPad, daysInMonth]);
 
-  const monthName = PERSIAN_MONTHS[Math.max(0, Number(cursor.format("M")) - 1)] || "";
+  const monthName = PERSIAN_MONTHS[Math.max(0, cursor.jm - 1)] || "";
   const gregorianMonthLabel = useMemo(() => {
     try {
-      const start = cursor.startOf("month").toDate();
-      const end = cursor.endOf("month").toDate();
+      const start = dateFromJalaliParts(cursor.jy, cursor.jm, 1);
+      const end = dateFromJalaliParts(cursor.jy, cursor.jm, daysInMonth);
+      if (!start || !end) return "";
       const fmtFull = new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" });
       const fmtMonth = new Intl.DateTimeFormat("en-US", { month: "short" });
       const sameMonthYear = start.getFullYear() === end.getFullYear() && start.getMonth() === end.getMonth();
@@ -901,28 +958,22 @@ export default function RoznegarPgae() {
     } catch {
       return "";
     }
-  }, [cursor]);
-  const monthYearLabel = `${monthName} ${toFaDigits(cursor.format("YYYY"))}${gregorianMonthLabel ? ` (${gregorianMonthLabel})` : ""}`;
+  }, [cursor.jy, cursor.jm, daysInMonth]);
+  const monthYearLabel = `${monthName} ${toFaDigits(cursor.jy)}${gregorianMonthLabel ? ` (${gregorianMonthLabel})` : ""}`;
 
   const selectedDateLabel = useMemo(() => {
-    try {
-      return dayjs(selectedDate, { jalali: true }).calendar("jalali").format("YYYY/MM/DD");
-    } catch {
-      return selectedDate;
-    }
+    const parts = parseJalaliYmd(selectedDate);
+    return parts ? `${parts.jy}/${pad2(parts.jm)}/${pad2(parts.jd)}` : selectedDate;
   }, [selectedDate]);
 
   const selectedDateHeader = useMemo(() => {
-    try {
-      const jalali = dayjs(selectedDate, { jalali: true }).calendar("jalali");
-      const gregorian = jalali.toDate();
-      return {
-        jalali: `${toFaDigits(jalali.format("D"))} ${PERSIAN_MONTHS[Math.max(0, Number(jalali.format("M")) - 1)] || ""} ${toFaDigits(jalali.format("YYYY"))}`,
-        gregorian: `${pad2(gregorian.getDate())}/${pad2(gregorian.getMonth() + 1)}/${gregorian.getFullYear()}`,
-      };
-    } catch {
-      return { jalali: toFaDigits(selectedDateLabel), gregorian: "" };
-    }
+    const parts = parseJalaliYmd(selectedDate);
+    const gregorian = parts && dateFromJalaliParts(parts.jy, parts.jm, parts.jd);
+    if (!parts || !gregorian) return { jalali: toFaDigits(selectedDateLabel), gregorian: "" };
+    return {
+      jalali: `${toFaDigits(parts.jd)} ${PERSIAN_MONTHS[Math.max(0, parts.jm - 1)] || ""} ${toFaDigits(parts.jy)}`,
+      gregorian: `${pad2(gregorian.getUTCDate())}/${pad2(gregorian.getUTCMonth() + 1)}/${gregorian.getUTCFullYear()}`,
+    };
   }, [selectedDate, selectedDateLabel]);
 
   const selectedTags = useMemo(() => {
@@ -1445,7 +1496,7 @@ export default function RoznegarPgae() {
                 <div className="mb-4 flex items-center justify-between">
                   <button
                     type="button"
-                    onClick={() => setCursor((c) => c.subtract(1, "month"))}
+                    onClick={() => setCursor((c) => shiftJalaliMonth(c, -1))}
                     className="h-10 w-10 rounded-xl border border-neutral-300 text-2xl leading-none text-neutral-700 transition hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
                     aria-label="ماه قبل"
                   >
@@ -1456,7 +1507,7 @@ export default function RoznegarPgae() {
 
                   <button
                     type="button"
-                    onClick={() => setCursor((c) => c.add(1, "month"))}
+                    onClick={() => setCursor((c) => shiftJalaliMonth(c, 1))}
                     className="h-10 w-10 rounded-xl border border-neutral-300 text-2xl leading-none text-neutral-700 transition hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
                     aria-label="ماه بعد"
                   >
@@ -1478,19 +1529,13 @@ export default function RoznegarPgae() {
                       return <div key={`empty-${idx}`} className="aspect-square min-h-10 rounded-lg bg-transparent sm:h-12 sm:aspect-auto" />;
                     }
 
-                    const dateYmd = cursor.date(dayNo).calendar("jalali").format("YYYY-MM-DD");
+                    const dateYmd = jalaliYmd({ ...cursor, jd: dayNo });
                     const isSelected = dateYmd === selectedDate;
                     const isToday = dateYmd === todayJalaliYmd();
                     // A confirmed record may be edited back to an empty entry. In that
                     // case it should look like every other empty day in the calendar.
                     const hasSavedData = allEntries.some((entry) => entry.dateYmd === dateYmd && hasEntryDetails(entry));
-                    const gDay = (() => {
-                      try {
-                        return dayjs(dateYmd, { jalali: true }).toDate().getDate();
-                      } catch {
-                        return "";
-                      }
-                    })();
+                    const gDay = dateFromJalaliParts(cursor.jy, cursor.jm, dayNo)?.getUTCDate() || "";
 
                     return (
                       <button
