@@ -2401,7 +2401,7 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
         <td>${value(step.label)}</td>
         <td><span class="status status-${escapePdfHtml(state.kind)}">${value(stateLabel)}</span></td>
         <td>${state.entry ? value(paymentHistoryActorName(state.entry, item)) : "—"}</td>
-        <td>${state.entry?.at ? value(formatDateTime(state.entry.at)) : "—"}</td>
+        <td>${state.entry?.at ? value(formatPdfDateTime(state.entry.at)) : "—"}</td>
       </tr>`;
     }).join("");
     const attachmentPreviewPages = attachments.map((file, index) => {
@@ -3003,6 +3003,21 @@ function PreviewSection({ title, children, flush = false }) { return <section cl
 function PreviewRow({ label, value, ltr, compact = false, valueClassName = "", colon = false, fixedLabel = false, editing = false }) { return <div className={`min-w-0 ${compact ? `grid items-start gap-2 px-3 py-3 text-xs ${fixedLabel ? "grid-cols-[minmax(74px,92px)_minmax(0,1fr)]" : "grid-cols-[auto_minmax(0,1fr)]"}` : "grid grid-cols-1 gap-1.5 px-3 py-2.5 text-sm sm:grid-cols-[135px_1fr] sm:gap-3 sm:px-4"} ${editing ? "[&_input]:h-8 [&_select]:h-8 [&_input]:rounded-lg [&_select]:rounded-lg [&_textarea]:rounded-lg [&_input]:border-transparent [&_select]:border-transparent [&_textarea]:border-transparent [&_input]:bg-neutral-50 [&_select]:bg-neutral-50 [&_textarea]:bg-neutral-50 [&_input]:px-2 [&_select]:px-2 focus-within:[&_input]:border-black/20 focus-within:[&_select]:border-black/20 focus-within:[&_textarea]:border-black/20 dark:[&_input]:bg-white/5 dark:[&_select]:bg-white/5 dark:[&_textarea]:bg-white/5" : ""}`}><div className={`text-neutral-500 dark:text-neutral-400 ${compact ? "whitespace-nowrap" : ""}`}>{label}{colon ? ":" : ""}</div><div dir={ltr ? "ltr" : "rtl"} className={`min-w-0 break-words font-medium ${ltr ? "text-left" : "text-right"} ${valueClassName}`}>{value}</div></div>; }
 function historyLabel(value) { return ({ created: "ثبت درخواست", approved: "تأیید", rejected: "رد", returned: "برگشت", edited: "ویرایش" })[value] || value || "—"; }
 function formatDateTime(value) { if (!value) return "—"; try { return new Intl.DateTimeFormat("fa-IR-u-ca-persian", { dateStyle: "short", timeStyle: "short" }).format(new Date(value)); } catch { return "—"; } }
+function formatPdfDateTime(value) {
+  if (!value) return "—";
+  try {
+    const date = new Date(value);
+    const dateText = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+      year: "numeric", month: "numeric", day: "numeric",
+    }).format(date).replaceAll("-", "/");
+    const timeText = new Intl.DateTimeFormat("fa-IR", {
+      hour: "2-digit", minute: "2-digit", hour12: false,
+    }).format(date);
+    return `${timeText} - ${dateText}`;
+  } catch {
+    return "—";
+  }
+}
 
 function RegistrationNotice({ info, onClose }) {
   return createPortal(<div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/20 px-3" onClick={onClose}>
