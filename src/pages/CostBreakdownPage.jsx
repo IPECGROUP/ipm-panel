@@ -657,6 +657,16 @@ export default function CostBreakdownPage() {
             <span className="block truncate text-base font-bold md:text-lg">ساختار شکست هزینه ها</span>
             <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت پروژه</span>
           </span>
+          <button
+            type="button"
+            onClick={exportExcel}
+            disabled={!rows.length}
+            className="mr-auto inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-45 dark:border-emerald-400/25 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/20"
+            title="خروجی اکسل"
+          >
+            <img src="/images/icons8-excel-50.png" alt="" className="h-5 w-5" />
+            خروجی اکسل
+          </button>
         </div>
 
       <div className="rounded-2xl border border-black/10 bg-white overflow-hidden dark:bg-neutral-900 dark:border-neutral-800">
@@ -950,12 +960,6 @@ export default function CostBreakdownPage() {
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="mt-4 flex justify-end">
-        <button type="button" onClick={exportExcel} disabled={!rows.length} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-900 shadow-sm transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10" title="خروجی اکسل" aria-label="خروجی اکسل">
-          <img src="/images/icons8-excel-50.png" alt="" className="h-5 w-5" />
-        </button>
       </div>
 
       {err && <div className="mt-3 text-center text-sm text-red-600 dark:text-red-400">{err}</div>}
