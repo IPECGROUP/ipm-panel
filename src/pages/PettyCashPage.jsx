@@ -210,16 +210,14 @@ function MyPettyCashTable() {
         >
           <colgroup>
             <col style={{ width: "6%" }} />
-            <col style={{ width: "17%" }} />
-            <col style={{ width: "19%" }} />
-            <col style={{ width: "19%" }} />
-            <col style={{ width: "19.5%" }} />
-            <col style={{ width: "19.5%" }} />
+            <col style={{ width: "24%" }} />
+            <col style={{ width: "23%" }} />
+            <col style={{ width: "23.5%" }} />
+            <col style={{ width: "23.5%" }} />
           </colgroup>
           <thead>
             <tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100">
               <Header>ردیف</Header>
-              <Header>درخواست‌کننده</Header>
               <Header right>پروژه</Header>
               <Header>مجموع تنخواه دریافت‌شده</Header>
               <Header>
@@ -243,7 +241,6 @@ function MyPettyCashTable() {
                 className="border-b border-black/[0.07] last:border-b-0 dark:border-white/10"
               >
                 <td>{toFa(index + 1)}</td>
-                <td className="font-medium">{item.requesterName || "—"}</td>
                 <td className="!text-right">
                   <span className="block font-semibold">
                     {normalizeDigits(item.projectCode)} - {item.projectName}
@@ -272,21 +269,21 @@ function MyPettyCashTable() {
             ))}
             {!loading && !error && items.length === 0 && (
               <tr>
-                <td colSpan="6" className="px-3 py-8 text-neutral-500">
+                <td colSpan="5" className="px-3 py-8 text-neutral-500">
                   هنوز تنخواه یا هزینه‌ای برای شما ثبت نشده است.
                 </td>
               </tr>
             )}
             {loading && (
               <tr>
-                <td colSpan="6" className="px-3 py-8 text-neutral-500">
+                <td colSpan="5" className="px-3 py-8 text-neutral-500">
                   در حال دریافت اطلاعات...
                 </td>
               </tr>
             )}
             {error && (
               <tr>
-                <td colSpan="6" className="px-3 py-8 text-red-600 dark:text-red-400">
+                <td colSpan="5" className="px-3 py-8 text-red-600 dark:text-red-400">
                   {error}
                 </td>
               </tr>
@@ -304,7 +301,6 @@ function MyPettyCashTable() {
               {toFa(index + 1)}. {normalizeDigits(item.projectCode)} - {item.projectName}
             </div>
             <div className="grid grid-cols-1 gap-2 text-sm">
-              <SummaryAmount label="درخواست‌کننده" value={item.requesterName || "—"} />
               <SummaryAmount label="مجموع تنخواه دریافت‌شده" value={money(item.receivedAmount)} />
               <SummaryAmount label="مجموع هزینه‌های ثبت‌شده" value={money(item.registeredExpenses)} />
               <SummaryAmount label="باقی‌مانده هزینه‌های ثبت‌شده" value={money(item.registeredBalance)} />
@@ -997,16 +993,24 @@ function ExpenseTable({
   onCreateSettlementReport,
   saving,
 }) {
-  const colSpan = 7 + Number(showPlanningColumn) + Number(showManagerColumn);
+  const colSpan = 8 + Number(showPlanningColumn) + Number(showManagerColumn);
   return (
     <div className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
       <div className="overflow-x-auto" dir="ltr">
         <table
           dir="rtl"
-          className="w-full min-w-[1050px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2"
+          className="w-full min-w-[1180px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2"
         >
           <thead>
             <tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100">
+              <Header>ردیف</Header>
+              <Header>درخواست‌کننده</Header>
+              <Header>تاریخ</Header>
+              <Header right>شرح هزینه</Header>
+              <Header>کد بودجه</Header>
+              <Header>مبلغ (ریال)</Header>
+              {showPlanningColumn && <Header>برنامه‌ریزی</Header>}
+              {showManagerColumn && <Header>مدیر پروژه</Header>}
               <Header>
                 <input
                   type="checkbox"
@@ -1017,13 +1021,6 @@ function ExpenseTable({
                   aria-label="انتخاب همه ردیف‌های تأییدشده"
                 />
               </Header>
-              <Header>ردیف</Header>
-              <Header>تاریخ</Header>
-              <Header right>شرح هزینه</Header>
-              <Header>کد بودجه</Header>
-              <Header>مبلغ (ریال)</Header>
-              {showPlanningColumn && <Header>برنامه‌ریزی</Header>}
-              {showManagerColumn && <Header>مدیر پروژه</Header>}
               <th className="bg-neutral-200 px-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]" dir="ltr">
                 <ExpenseTableMenu
                   tableMenuRef={tableMenuRef}
@@ -1048,22 +1045,8 @@ function ExpenseTable({
                   key={item.id}
                   className={`bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10 ${item.stage === "rejected" ? "text-red-600 dark:text-red-400" : item.settlementReportId ? "text-neutral-500 dark:text-neutral-400" : ""}`}
                 >
-                  <Cell>
-                    {item.settlementReportId ? (
-                      <LockIcon reportNumber={item.settlementReportNumber} />
-                    ) : (
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(item.id)}
-                        onChange={() => onToggleItem(item.id)}
-                        disabled={!isItemSelectable(item)}
-                        className="h-4 w-4 rounded border-neutral-400 align-middle accent-neutral-900 disabled:cursor-not-allowed disabled:opacity-35 dark:accent-white"
-                        aria-label={`انتخاب ردیف ${toFa(index + 1)}`}
-                        title={isItemSelectable(item) ? "انتخاب برای گزارش تسویه" : "پس از تأیید مدیر پروژه قابل ارسال است"}
-                      />
-                    )}
-                  </Cell>
                   <Cell>{toFa(index + 1)}</Cell>
+                  <Cell>{item.createdByName || item.createdByUsername || `کاربر #${toFa(item.createdById || "—")}`}</Cell>
                   <Cell>{toFa(item.expenseDate)}</Cell>
                   <Cell right>{item.description}</Cell>
                   <Cell dir="ltr">
@@ -1098,6 +1081,21 @@ function ExpenseTable({
                       />
                     </Cell>
                   )}
+                  <Cell>
+                    {item.settlementReportId ? (
+                      <LockIcon reportNumber={item.settlementReportNumber} />
+                    ) : (
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(item.id)}
+                        onChange={() => onToggleItem(item.id)}
+                        disabled={!isItemSelectable(item)}
+                        className="h-4 w-4 rounded border-neutral-400 align-middle accent-neutral-900 disabled:cursor-not-allowed disabled:opacity-35 dark:accent-white"
+                        aria-label={`انتخاب ردیف ${toFa(index + 1)}`}
+                        title={isItemSelectable(item) ? "انتخاب برای گزارش تسویه" : "پس از تأیید مدیر پروژه قابل ارسال است"}
+                      />
+                    )}
+                  </Cell>
                   <Cell>
                     <button
                       type="button"
