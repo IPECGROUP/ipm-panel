@@ -1003,7 +1003,6 @@ function ExpenseTable({
         >
           <thead>
             <tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100">
-              <Header>ردیف</Header>
               <Header>
                 <input
                   type="checkbox"
@@ -1014,6 +1013,7 @@ function ExpenseTable({
                   aria-label="انتخاب همه ردیف‌های تأییدشده"
                 />
               </Header>
+              <Header>ردیف</Header>
               <Header>درخواست‌کننده</Header>
               <Header>تاریخ</Header>
               <Header right>شرح هزینه</Header>
@@ -1045,7 +1045,6 @@ function ExpenseTable({
                   key={item.id}
                   className={`bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10 ${item.stage === "rejected" ? "text-red-600 dark:text-red-400" : item.settlementReportId ? "text-neutral-500 dark:text-neutral-400" : ""}`}
                 >
-                  <Cell>{toFa(index + 1)}</Cell>
                   <Cell>
                     {item.settlementReportId ? (
                       <LockIcon reportNumber={item.settlementReportNumber} />
@@ -1061,6 +1060,7 @@ function ExpenseTable({
                       />
                     )}
                   </Cell>
+                  <Cell>{toFa(index + 1)}</Cell>
                   <Cell>{item.createdByName || item.createdByUsername || `کاربر #${toFa(item.createdById || "—")}`}</Cell>
                   <Cell>{toFa(item.expenseDate)}</Cell>
                   <Cell right>{item.description}</Cell>
