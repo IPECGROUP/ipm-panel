@@ -1703,15 +1703,22 @@ export default function ContractInformation() {
   const financialForm = React.useMemo(() => normalizeFinancial(form.financial || {}), [form.financial]);
   React.useEffect(() => {
     if (!currencyItems.length) return;
+    const rialItem = currencyItems.find((item) => isRialCurrency({ currencyLabel: readItemLabel(item) }));
+    const rialCurrencyId = readItemId(rialItem);
+    const rialCurrencyLabel = readItemLabel(rialItem);
     setForm((prev) => {
       const financial = normalizeFinancial(prev.financial || {});
       let changed = false;
       const contractAmounts = financial.contractAmounts.map((row) => {
-        const currencyLabel = readItemLabel(currencyById.get(String(row.currencyId || ""))) || row.currencyLabel;
+        const shouldUseDefaultRial = Boolean(rialCurrencyId) && !String(row.currencyId || "").trim() && !String(row.currencyLabel || "").trim();
+        const currencyId = shouldUseDefaultRial ? rialCurrencyId : String(row.currencyId || "");
+        const currencyLabel = shouldUseDefaultRial
+          ? rialCurrencyLabel
+          : readItemLabel(currencyById.get(currencyId)) || row.currencyLabel;
         const currencyIsRial = isRialCurrency({ currencyLabel });
-        if (currencyIsRial === Boolean(row.currencyIsRial) && currencyLabel === row.currencyLabel) return row;
+        if (currencyId === String(row.currencyId || "") && currencyIsRial === Boolean(row.currencyIsRial) && currencyLabel === row.currencyLabel) return row;
         changed = true;
-        return { ...row, currencyLabel, currencyIsRial };
+        return { ...row, currencyId, currencyLabel, currencyIsRial };
       });
       return changed ? { ...prev, financial: { ...financial, contractAmounts } } : prev;
     });
@@ -2099,11 +2106,18 @@ export default function ContractInformation() {
   const addFinancialRow = (sectionKey) => {
     setForm((prev) => {
       const financial = normalizeFinancial(prev.financial || {});
+      const rialItem = currencyItems.find((item) => isRialCurrency({ currencyLabel: readItemLabel(item) }));
+      const rialCurrencyId = readItemId(rialItem);
+      const rialCurrencyLabel = readItemLabel(rialItem);
+      const newRow = {
+        ...makeFinancialRow(),
+        ...(rialCurrencyId ? { currencyId: rialCurrencyId, currencyLabel: rialCurrencyLabel, currencyIsRial: true } : {}),
+      };
       return {
         ...prev,
         financial: {
           ...financial,
-          [sectionKey]: [...financial[sectionKey], makeFinancialRow()],
+          [sectionKey]: [...financial[sectionKey], newRow],
         },
       };
     });
