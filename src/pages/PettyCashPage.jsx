@@ -1003,7 +1003,7 @@ function ExpenseTable({
         >
           <thead>
             <tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100">
-              <Header>
+              <Header className="w-11 !px-1">
                 <input
                   type="checkbox"
                   checked={allSelected}
@@ -1013,10 +1013,10 @@ function ExpenseTable({
                   aria-label="انتخاب همه ردیف‌های تأییدشده"
                 />
               </Header>
-              <Header>ردیف</Header>
+              <Header className="w-12 !px-1">ردیف</Header>
               <Header>درخواست‌کننده</Header>
               <Header>تاریخ</Header>
-              <Header right>شرح هزینه</Header>
+              <Header right className="w-[22%]">شرح هزینه</Header>
               <Header>کد بودجه</Header>
               <Header>مبلغ (ریال)</Header>
               {showPlanningColumn && <Header>برنامه‌ریزی</Header>}
@@ -1045,7 +1045,7 @@ function ExpenseTable({
                   key={item.id}
                   className={`bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10 ${item.stage === "rejected" ? "text-red-600 dark:text-red-400" : item.settlementReportId ? "text-neutral-500 dark:text-neutral-400" : ""}`}
                 >
-                  <Cell>
+                  <Cell className="w-11 !px-1">
                     {item.settlementReportId ? (
                       <LockIcon reportNumber={item.settlementReportNumber} />
                     ) : (
@@ -1060,7 +1060,7 @@ function ExpenseTable({
                       />
                     )}
                   </Cell>
-                  <Cell>{toFa(index + 1)}</Cell>
+                  <Cell className="w-12 !px-1">{toFa(index + 1)}</Cell>
                   <Cell>{item.createdByName || item.createdByUsername || `کاربر #${toFa(item.createdById || "—")}`}</Cell>
                   <Cell>{toFa(item.expenseDate)}</Cell>
                   <Cell right>{item.description}</Cell>
@@ -1598,10 +1598,10 @@ function Field({ label, children, className = "" }) {
     </label>
   );
 }
-function Header({ children, right = false }) {
+function Header({ children, right = false, className = "" }) {
   return (
     <th
-      className={`bg-neutral-200 px-3 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px] ${right ? "!text-right" : ""}`}
+      className={`bg-neutral-200 px-3 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px] ${right ? "!text-right" : ""} ${className}`}
     >
       {children}
     </th>
