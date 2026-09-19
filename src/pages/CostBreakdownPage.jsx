@@ -661,11 +661,10 @@ export default function CostBreakdownPage() {
             type="button"
             onClick={exportExcel}
             disabled={!rows.length}
-            className="mr-auto inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-45 dark:border-emerald-400/25 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/20"
+            className="mr-auto inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 shadow-sm transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-45 dark:border-emerald-400/25 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/20"
             title="خروجی اکسل"
           >
             <img src="/images/icons8-excel-50.png" alt="" className="h-5 w-5" />
-            خروجی اکسل
           </button>
         </div>
 
