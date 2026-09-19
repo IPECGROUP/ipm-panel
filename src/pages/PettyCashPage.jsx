@@ -1011,16 +1011,6 @@ function ExpenseTable({
               <Header>مبلغ (ریال)</Header>
               {showPlanningColumn && <Header>برنامه‌ریزی</Header>}
               {showManagerColumn && <Header>مدیر پروژه</Header>}
-              <Header>
-                <input
-                  type="checkbox"
-                  checked={allSelected}
-                  onChange={onToggleAll}
-                  disabled={!selectableCount}
-                  className="h-4 w-4 rounded border-neutral-400 align-middle accent-neutral-900 disabled:opacity-40 dark:accent-white"
-                  aria-label="انتخاب همه ردیف‌های تأییدشده"
-                />
-              </Header>
               <th className="bg-neutral-200 px-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]" dir="ltr">
                 <ExpenseTableMenu
                   tableMenuRef={tableMenuRef}
@@ -1036,6 +1026,16 @@ function ExpenseTable({
                   saving={saving}
                 />
               </th>
+              <Header>
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={onToggleAll}
+                  disabled={!selectableCount}
+                  className="h-4 w-4 rounded border-neutral-400 align-middle accent-neutral-900 disabled:opacity-40 dark:accent-white"
+                  aria-label="انتخاب همه ردیف‌های تأییدشده"
+                />
+              </Header>
             </tr>
           </thead>
           <tbody className="text-[13px] text-black [&>tr]:h-10 dark:text-neutral-100">
@@ -1082,6 +1082,17 @@ function ExpenseTable({
                     </Cell>
                   )}
                   <Cell>
+                    <button
+                      type="button"
+                      onClick={() => onDetails(item)}
+                      className="mx-auto grid h-7 w-7 place-items-center rounded-full border border-neutral-400 bg-white font-serif text-sm font-bold italic text-neutral-600 transition hover:border-neutral-700 hover:text-neutral-900 dark:border-neutral-500 dark:bg-white/5 dark:text-neutral-300"
+                      title="جزئیات تأییدها"
+                      aria-label="نمایش جزئیات تأییدها"
+                    >
+                      i
+                    </button>
+                  </Cell>
+                  <Cell>
                     {item.settlementReportId ? (
                       <LockIcon reportNumber={item.settlementReportNumber} />
                     ) : (
@@ -1095,17 +1106,6 @@ function ExpenseTable({
                         title={isItemSelectable(item) ? "انتخاب برای گزارش تسویه" : "پس از تأیید مدیر پروژه قابل ارسال است"}
                       />
                     )}
-                  </Cell>
-                  <Cell>
-                    <button
-                      type="button"
-                      onClick={() => onDetails(item)}
-                      className="mx-auto grid h-7 w-7 place-items-center rounded-full border border-neutral-400 bg-white font-serif text-sm font-bold italic text-neutral-600 transition hover:border-neutral-700 hover:text-neutral-900 dark:border-neutral-500 dark:bg-white/5 dark:text-neutral-300"
-                      title="جزئیات تأییدها"
-                      aria-label="نمایش جزئیات تأییدها"
-                    >
-                      i
-                    </button>
                   </Cell>
                 </tr>
               ))
