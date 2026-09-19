@@ -452,12 +452,10 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
         )}
         {!embedded && <section className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1040px] text-sm">
+            <table className="w-full min-w-[900px] text-sm">
               <thead className="bg-neutral-200 dark:bg-white/10">
                 <tr>
                   {[
-                    "ردیف",
-                    "درخواست‌کننده",
                     "شماره درخواست",
                     "تاریخ درخواست",
                     "پروژه",
@@ -474,13 +472,11 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
               </thead>
               <tbody>
                 {items.length ? (
-                  items.map((x, index) => (
+                  items.map((x) => (
                     <tr
                       className="border-t border-black/10 dark:border-white/10"
                       key={x.id}
                     >
-                      <td className="p-3 text-center tabular-nums">{fa(index + 1)}</td>
-                      <td className="p-3 text-center">{x.requesterName || x.requesterUsername || `کاربر #${fa(x.createdById || "—")}`}</td>
                       <td className="p-3 text-center">{x.requestNumber}</td>
                       <td className="p-3 text-center">{fa(x.requestDate)}</td>
                       <td className="p-3 text-center">
@@ -528,7 +524,7 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
                 ) : (
                   <tr>
                     <td
-                      colSpan="9"
+                      colSpan="8"
                       className="p-10 text-center text-neutral-500"
                     >
                       هنوز درخواست تنخواهی ثبت نشده است.

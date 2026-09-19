@@ -210,14 +210,16 @@ function MyPettyCashTable() {
         >
           <colgroup>
             <col style={{ width: "6%" }} />
-            <col style={{ width: "24%" }} />
-            <col style={{ width: "23%" }} />
-            <col style={{ width: "23.5%" }} />
-            <col style={{ width: "23.5%" }} />
+            <col style={{ width: "17%" }} />
+            <col style={{ width: "19%" }} />
+            <col style={{ width: "19%" }} />
+            <col style={{ width: "19.5%" }} />
+            <col style={{ width: "19.5%" }} />
           </colgroup>
           <thead>
             <tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100">
               <Header>ردیف</Header>
+              <Header>درخواست‌کننده</Header>
               <Header right>پروژه</Header>
               <Header>مجموع تنخواه دریافت‌شده</Header>
               <Header>
@@ -241,6 +243,7 @@ function MyPettyCashTable() {
                 className="border-b border-black/[0.07] last:border-b-0 dark:border-white/10"
               >
                 <td>{toFa(index + 1)}</td>
+                <td className="font-medium">{item.requesterName || "—"}</td>
                 <td className="!text-right">
                   <span className="block font-semibold">
                     {normalizeDigits(item.projectCode)} - {item.projectName}
@@ -269,21 +272,21 @@ function MyPettyCashTable() {
             ))}
             {!loading && !error && items.length === 0 && (
               <tr>
-                <td colSpan="5" className="px-3 py-8 text-neutral-500">
+                <td colSpan="6" className="px-3 py-8 text-neutral-500">
                   هنوز تنخواه یا هزینه‌ای برای شما ثبت نشده است.
                 </td>
               </tr>
             )}
             {loading && (
               <tr>
-                <td colSpan="5" className="px-3 py-8 text-neutral-500">
+                <td colSpan="6" className="px-3 py-8 text-neutral-500">
                   در حال دریافت اطلاعات...
                 </td>
               </tr>
             )}
             {error && (
               <tr>
-                <td colSpan="5" className="px-3 py-8 text-red-600 dark:text-red-400">
+                <td colSpan="6" className="px-3 py-8 text-red-600 dark:text-red-400">
                   {error}
                 </td>
               </tr>
@@ -301,6 +304,7 @@ function MyPettyCashTable() {
               {toFa(index + 1)}. {normalizeDigits(item.projectCode)} - {item.projectName}
             </div>
             <div className="grid grid-cols-1 gap-2 text-sm">
+              <SummaryAmount label="درخواست‌کننده" value={item.requesterName || "—"} />
               <SummaryAmount label="مجموع تنخواه دریافت‌شده" value={money(item.receivedAmount)} />
               <SummaryAmount label="مجموع هزینه‌های ثبت‌شده" value={money(item.registeredExpenses)} />
               <SummaryAmount label="باقی‌مانده هزینه‌های ثبت‌شده" value={money(item.registeredBalance)} />
