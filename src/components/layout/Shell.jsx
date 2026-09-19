@@ -48,8 +48,14 @@ export default function Shell() {
             .filter((item) => Number(item.currentAssigneeUserId) === Number(user.id) && item.workflowStatus === "in_progress")
             .map((item) => ({ ...item, notificationTarget: "supply_actions" }))
         : [];
+      // `/api/requests?view=inbox` also contains requests on which the user
+      // has acted before, so the payment cartable can show its history. Those
+      // rows are not pending work and must never recreate a header
+      // notification after the user has completed an action.
       const paymentItems = paymentResponse.ok && Array.isArray(paymentData?.items)
-        ? paymentData.items.map((item) => ({ ...item, notificationTarget: "payment_request" }))
+        ? paymentData.items
+            .filter((item) => item.canAct)
+            .map((item) => ({ ...item, notificationTarget: "payment_request" }))
         : [];
       const tenkhahItems = tenkhahResponse.ok && Array.isArray(tenkhahData?.items)
         ? tenkhahData.items.map((item) => ({ ...item, notificationTarget: "tenkhah" })) : [];
