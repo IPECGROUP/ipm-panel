@@ -19,7 +19,7 @@ const CONTRACT_SECTION_TABS = [
   { id: "calendar", label: "تقویم قرارداد" },
   { id: "technical", label: "دامنه کار" },
   { id: "financial", label: "مالی و تضامین" },
-  { id: "insurance", label: "تامین اجتماعی" },
+  { id: "insurance", label: "تأمین اجتماعی" },
   { id: "appendices", label: "الحاقیه" },
 ];
 
