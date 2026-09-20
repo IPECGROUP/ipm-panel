@@ -1857,12 +1857,24 @@ function TenkhahActionOption({ kind, checked, onClick, label, children }) {
 }
 
 function TenkhahDetailCards({ details }) {
+  const detailRows = details.reduce((rows, detail, index) => {
+    const rowIndex = Math.floor(index / 3);
+    if (!rows[rowIndex]) rows[rowIndex] = [];
+    rows[rowIndex].push(detail);
+    return rows;
+  }, []);
+
   return <section className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-neutral-900">
     <div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">جزئیات درخواست تنخواه</div>
-    <div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15">
-      {details.slice(0, 3).map(([label, value]) => <PreviewRow key={label} compact fixedLabel colon leader label={label} value={value || "—"} />)}
-      <div className="col-span-full hidden h-px bg-black/10 md:block dark:bg-white/10" aria-hidden="true" />
-      {details.slice(3).map(([label, value]) => <PreviewRow key={label} compact fixedLabel colon leader label={label} value={value || "—"} />)}
+    <div>
+      {detailRows.map((row, rowIndex) => <div key={rowIndex} className={`grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 ${rowIndex < detailRows.length - 1 ? "border-b border-black/10 dark:border-white/10" : ""}`}>
+        {row.map(([label, value]) => <div key={label} className="min-w-0 px-3 py-3 text-xs leading-6">
+          <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+            <span className="shrink-0 whitespace-nowrap text-neutral-500 dark:text-neutral-400">{label}:</span>
+            <span className="min-w-0 break-words font-medium text-neutral-900 dark:text-neutral-100">{value || "—"}</span>
+          </div>
+        </div>)}
+      </div>)}
     </div>
   </section>;
 }
