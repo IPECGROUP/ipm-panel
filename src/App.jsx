@@ -33,6 +33,7 @@ import NavPlaceholderPage from "./pages/NavPlaceholderPage.jsx";
 import TrainingResourcesPage from "./pages/TrainingResourcesPage.jsx";
 import ProjectLessonsLearnedPage from "./pages/ProjectLessonsLearnedPage.jsx";
 import SecurityAuditPage from "./pages/SecurityAuditPage.jsx";
+import DocumentsManagementDashboardPage from "./pages/DocumentsManagementDashboardPage.jsx";
 
 import BudgetCodesPage, {
   OfficePage,
@@ -113,7 +114,7 @@ export default function App() {
         <Route path="/projects/project-management-dashboard" element={<NavPlaceholderPage title="داشبورد مدیریت پروژه" icon="/images/icons/dashboard-12.svg" />} />
         <Route path="/projects/daily-log" element={<RoznegarPgae />} />
         <Route path="/letters" element={<LettersPage />} />
-        <Route path="/documents/management-dashboard" element={<NavPlaceholderPage title="داشبورد مدیریت اسناد" icon="/images/icons/dashboard-12.svg" />} />
+        <Route path="/documents/management-dashboard" element={<DocumentsManagementDashboardPage />} />
         <Route path="/quality-management" element={<QualityManagementPage />} />
         <Route path="/knowledge-management/organizational-documents" element={<NavPlaceholderPage title="مستندات سازمانی" />} />
         <Route path="/knowledge-management/technical-standards" element={<NavPlaceholderPage title="استانداردهای فنی" />} />
