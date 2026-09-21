@@ -53,7 +53,7 @@ function BudgetAllocationPage() {
 
   const { me, loading: accessLoading, canAccessPage, allowedTabs } = usePageAccess(PAGE_KEY, ALLOC_TABS);
   const isDeleteAllAdmin = useMemo(
-    () => String(me?.username || "").trim().toLowerCase() === "marandi",
+    () => String(me?.role || "").trim().toLowerCase() === "admin",
     [me]
   );
 
@@ -735,10 +735,8 @@ setProjects(Array.from(byId.values()));
     beginSaving();
     try {
       setErr("");
-      const basic = window.btoa("marandi:1234");
       const res = await api("/budget-allocations", {
         method: "DELETE",
-        headers: { Authorization: `Basic ${basic}` },
       });
 
       const deletedCount = Number(res?.deleted || 0);

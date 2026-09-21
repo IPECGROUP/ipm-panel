@@ -8,6 +8,9 @@ function mapError(data, fallback = "request_failed") {
   if (e === "username_password_required") return "نام کاربری و رمز را وارد کنید";
   if (e === "user_has_no_password") return "برای این کاربر رمز ثبت نشده است";
   if (e === "user_expired") return "اعتبار این کاربر منقضی شده است";
+  if (e === "user_inactive") return "این حساب کاربری غیرفعال است";
+  if (e === "too_many_login_attempts") return "تلاش‌های ورود بیش از حد است؛ ۱۵ دقیقه بعد دوباره امتحان کنید";
+  if (e === "protected_super_admin") return "حساب سوپرادمین محافظت شده و قابل تغییر نیست";
   if (e === "user_in_use") return "این کاربر در سوابق سیستم استفاده شده و قابل حذف کامل نیست";
   if (e === "not_found") return "سرویس مورد نظر روی سرور پیدا نشد";
 

@@ -58,6 +58,7 @@ const IcOperations = () => <NavIcon src="/images/icons/modriat-agra.svg" />;
 function RightNav() {
   const auth = useAuth() || {};
   const { user, logout } = auth;
+  const isAdmin = String(user?.role || "").toLowerCase() === "admin";
   const { pathname } = useLocation();
   const navRef = useRef(null);
 
@@ -359,6 +360,7 @@ function RightNav() {
             { to: "/centers/projects", label: "پروژه ها", hint: "تعریف و ویرایش پروژه ها", icon: <IcProjects /> },
             { to: "/base/tags", label: "برچسب ها", hint: "دسته بندی داده ها", icon: <IcTags /> },
             { to: "/base/information", label: "اطلاعات پایه", hint: "مدیریت اطلاعات پایه سامانه", icon: <IcBaseInformation /> },
+            ...(isAdmin ? [{ to: "/admin/security-audit", label: "گزارش امنیتی", hint: "لاگ ورود و تغییرات مهم", icon: <NavIcon src="/images/icons/gozareshha.svg" /> }] : []),
           ],
         },
       ],

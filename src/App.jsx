@@ -32,6 +32,7 @@ import QualityManagementPage from "./pages/QualityManagementPage.jsx";
 import NavPlaceholderPage from "./pages/NavPlaceholderPage.jsx";
 import TrainingResourcesPage from "./pages/TrainingResourcesPage.jsx";
 import ProjectLessonsLearnedPage from "./pages/ProjectLessonsLearnedPage.jsx";
+import SecurityAuditPage from "./pages/SecurityAuditPage.jsx";
 
 import BudgetCodesPage, {
   OfficePage,
@@ -141,6 +142,7 @@ export default function App() {
         {/* اطلاعات پایه */}
         <Route path="/base/units" element={<UnitsPage />} />
         <Route path="/base/access-management" element={<AccessManagementPage />} />
+        <Route path="/admin/security-audit" element={<SecurityAuditPage />} />
         <Route path="/base/currencies" element={<BaseCurrenciesPage />} />
         <Route path="/base/tags" element={<TagsPage />} />
         <Route path="/base/information" element={<BaseInformationPage />} />

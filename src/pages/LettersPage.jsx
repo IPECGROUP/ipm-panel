@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useRef, useState, useLayoutEffect } from "re
 import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider";
-import { isMainAdminUser } from "../utils/auth";
 import { useFeatureAccess, useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 
 const PAGE_ICON = "/images/icons/nameha.svg";
@@ -16,27 +15,6 @@ const TAB_ACTIVE_BG = {
 };
 
 const CONFIDENTIAL_TEXT_CLS = "text-red-600 dark:text-red-500";
-
-const MAIN_ADMIN_USER = "marandi";
-const MAIN_ADMIN_PASS = "1234";
-const ADMIN_FLAG_KEY = "main_admin_ok";
-
-function askMainAdminEnable(setIsMainAdmin) {
-  const u = window.prompt("نام کاربری ادمین اصلی:");
-  if (String(u || "").trim() !== MAIN_ADMIN_USER) {
-    alert("نام کاربری اشتباه است.");
-    return;
-  }
-
-  const p = window.prompt("رمز ادمین اصلی:");
-  if (String(p || "").trim() !== MAIN_ADMIN_PASS) {
-    alert("رمز اشتباه است.");
-    return;
-  }
-
-  localStorage.setItem(ADMIN_FLAG_KEY, "1");
-  setIsMainAdmin(true);
-}
 
 const LETTERS_CACHE_KEY = "letters_mine_cache_v1";
 const LETTERS_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -767,13 +745,6 @@ useEffect(() => {
 }, [relatedPickQuery, relatedPickOpen]);
   const [filterQuery, setFilterQuery] = useState("");
   const { user } = useAuth();
-  const [isMainAdmin, setIsMainAdmin] = useState(false);
-
-  useEffect(() => {
-    setIsMainAdmin(localStorage.getItem(ADMIN_FLAG_KEY) === "1");
-  }, []);
-
-  const canSeeMainAdminLogin = useMemo(() => isMainAdminUser(user), [user]);
  const [filterTab, setFilterTab] = useState("all"); // اول این
  const [filterTagIds, setFilterTagIds] = useState([]); // ✅ global
   const tableScrollRef = useRef(null);
@@ -6442,25 +6413,6 @@ aria-invalid={fieldHasError(formKind, "subject")}
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span>
           <span className="min-w-0 flex-1 text-sm font-semibold">ویرایش سند</span>
         </button>
-        {!isMainAdmin && canSeeMainAdminLogin ? (
-          <button
-            type="button"
-            onClick={() => {
-              setTableMenuOpen(false);
-              askMainAdminEnable(setIsMainAdmin);
-            }}
-            className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-neutral-100 dark:hover:bg-white/10"
-          >
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-neutral-100 text-neutral-700 transition group-hover:scale-105 dark:bg-white/10 dark:text-neutral-200">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M12 17v-2" />
-                <path d="M8 10V8a4 4 0 0 1 8 0v2" />
-                <rect x="7" y="10" width="10" height="10" rx="2" />
-              </svg>
-            </span>
-            <span className="min-w-0 flex-1 text-sm font-semibold">ورود ادمین</span>
-          </button>
-        ) : null}
       </div>,
       document.body
     ) : null}
