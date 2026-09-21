@@ -5730,7 +5730,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
   title="بارگذاری اسناد"
 >
   <img
-    src="/images/icons/Uplod.svg"
+    src="/images/icons/upload.svg"
     alt=""
     className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
   />
@@ -6218,7 +6218,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
                                   title="بارگذاری پیوست"
                                 >
                                   <img
-                                    src="/images/icons/Uplod.svg"
+                                    src="/images/icons/upload.svg"
                                     alt=""
                                     className={"w-5 h-5 " + (theme === "dark" ? "invert" : "")}
                                   />
@@ -6540,8 +6540,8 @@ const rowBg = normalRowBg;
                       aria-hidden="true"
                       style={{
                         backgroundColor: theme === "dark" ? "#fff" : "#111827",
-                        WebkitMask: "url('/images/icons/Uplod.svg') center / contain no-repeat",
-                        mask: "url('/images/icons/Uplod.svg') center / contain no-repeat",
+                        WebkitMask: "url('/images/icons/upload.svg') center / contain no-repeat",
+                        mask: "url('/images/icons/upload.svg') center / contain no-repeat",
                       }}
                     />
                   </button>
@@ -7387,7 +7387,7 @@ const rowBg = normalRowBg;
                                   : "border-black/15 bg-black text-white hover:bg-black/90")
                               }
                             >
-                              <img src="/images/icons/Uplod.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")} />
+                              <img src="/images/icons/upload.svg" alt="" className={"w-5 h-5 " + (theme === "dark" ? "" : "invert")} />
                               انتخاب فایل
                             </button>
                             <input

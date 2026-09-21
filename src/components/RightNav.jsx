@@ -211,7 +211,7 @@ function RightNav() {
     {
       title: "اصلی",
       items: [
-        { type: "link", to: "/", label: "داشبورد", icon: <IcDashboard />, active: dashboardActive },
+        { type: "link", to: "/", label: "خانه", icon: <IcDashboard />, active: dashboardActive },
         {
           type: "section",
           key: "budget",
@@ -239,7 +239,7 @@ function RightNav() {
     {
       title: "اصلی",
       items: [
-        { type: "link", to: "/", label: "داشبورد", icon: <IcDashboard />, active: dashboardActive },
+        { type: "link", to: "/", label: "خانه", icon: <IcDashboard />, active: dashboardActive },
         {
           type: "section",
           key: "documents",
