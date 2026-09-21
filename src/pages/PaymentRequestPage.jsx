@@ -419,6 +419,7 @@ export default function PaymentRequestPage() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedRequestId = searchParams.get("request") || "";
+  const requestedNotificationTarget = searchParams.get("notificationTarget") || "";
   const openedRequestRef = useRef("");
   const [form, setForm] = useState(emptyForm);
   const [showForm, setShowForm] = useState(false);
@@ -536,10 +537,14 @@ export default function PaymentRequestPage() {
   useEffect(() => {
     if (!requestedRequestId || loading || openedRequestRef.current === requestedRequestId) return;
     const requested = items.find((item) => String(item.id) === String(requestedRequestId));
-    if (!requested) return;
+    const requestedTenkhah = requestedNotificationTarget === "tenkhah"
+      ? tenkhahItems.find((item) => String(item.id) === String(requestedRequestId))
+      : null;
+    if (!requested && !requestedTenkhah) return;
     openedRequestRef.current = requestedRequestId;
-    openPreview(requested);
-  }, [items, loading, requestedRequestId]);
+    if (requestedTenkhah) setSelectedTenkhah(tenkhahTableRow(requestedTenkhah));
+    else openPreview(requested);
+  }, [items, loading, requestedNotificationTarget, requestedRequestId, tenkhahItems]);
   useEffect(() => {
     let cancelled = false;
     setCreateRecipientsLoading(true);

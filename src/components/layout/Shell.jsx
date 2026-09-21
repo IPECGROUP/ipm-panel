@@ -17,6 +17,14 @@ const notificationKey = (item) => {
   return `${notificationBaseKey(item)}:${String(version)}`;
 };
 
+const notificationTitle = (item) => String(
+  item?.title || item?.purpose || item?.subject || item?.description || ""
+).trim();
+
+const notificationSerial = (item) => String(
+  item?.serial || item?.requestNumber || item?.request_number || ""
+).trim();
+
 export default function Shell() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -137,8 +145,11 @@ export default function Shell() {
   const openNotification = (item) => {
     setNotificationsOpen(false);
     const target = item.notificationTarget === "payment_request" || item.notificationTarget === "tenkhah" ? "/finance/payment-request" : "/supply/request";
-    const key = "request";
-    navigate(`${target}?${key}=${encodeURIComponent(item.id)}`);
+    const params = new URLSearchParams({
+      request: String(item.id),
+      notificationTarget: String(item.notificationTarget || ""),
+    });
+    navigate(`${target}?${params.toString()}`);
   };
 
   const markAllNotificationsAsRead = () => {
@@ -313,15 +324,15 @@ export default function Shell() {
                       <div className="py-8 text-center text-xs text-neutral-500">در حال دریافت اعلان‌ها...</div>
                     ) : notifications.length ? (
                       notifications.map((item) => (
-                        <button key={item.id} type="button" onClick={() => openNotification(item)} className="group flex w-full gap-3 rounded-xl p-3 text-right transition hover:bg-black/[0.04] dark:hover:bg-white/[0.07]">
+                        <button key={notificationBaseKey(item)} type="button" onClick={() => openNotification(item)} className="group flex w-full gap-3 rounded-xl p-3 text-right transition hover:bg-black/[0.04] dark:hover:bg-white/[0.07]">
                           <span className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-50 dark:bg-amber-500/10">
                             <img src={item.notificationTarget === "payment_request" ? "/images/icons/darkhast-pardakht.svg" : item.notificationTarget === "tenkhah" ? "/images/icons/tenkhah.svg" : "/images/icons/darkhast-tamin.svg"} alt="" className="h-5 w-5 dark:invert" />
                           </span>
                           <span className="min-w-0 flex-1">
                             <span className="block text-xs font-semibold">{item.notificationTarget === "supply_actions" ? "کار جدید در انتظار انجام" : item.notificationTarget === "payment_request" ? "درخواست پرداخت جدید در انتظار بررسی" : item.notificationTarget === "tenkhah" ? "درخواست تنخواه جدید در انتظار بررسی" : "درخواست تأمین جدید در انتظار بررسی"}</span>
-                            <span className="mt-1 block truncate text-xs text-neutral-600 dark:text-neutral-300">{item.title || "بدون موضوع"}</span>
+                            <span className="mt-1 block truncate text-xs text-neutral-600 dark:text-neutral-300">{notificationTitle(item) || "بدون موضوع"}</span>
                             <span className="mt-1.5 flex items-center justify-between gap-2 text-[10px] text-neutral-400">
-                              <span dir="ltr" className="font-sans tabular-nums">{item.serial || "—"}</span>
+                              <span dir="ltr" className="font-sans tabular-nums">{notificationSerial(item) || "—"}</span>
                               <span className="transition group-hover:text-neutral-700 dark:group-hover:text-neutral-200">مشاهده جزئیات ←</span>
                             </span>
                           </span>

@@ -29,7 +29,8 @@ function formatDate(value) {
 
 export default function SecurityAuditPage() {
   const { user } = useAuth();
-  const isAdmin = String(user?.role || "").toLowerCase() === "admin";
+  const isAli = String(user?.username || "").trim().toLowerCase() === "ali" &&
+    Array.isArray(user?.access) && user.access.includes("system:super-admin");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -52,8 +53,8 @@ export default function SecurityAuditPage() {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { if (isAdmin) load(); }, [query, isAdmin]);
-  if (!isAdmin) return <Navigate to="/dashboard" replace />;
+  useEffect(() => { if (isAli) load(); }, [query, isAli]);
+  if (!isAli) return <Navigate to="/dashboard" replace />;
 
   return (
     <div dir="rtl" className="space-y-4">
