@@ -133,6 +133,22 @@ function decimalRequestValue(value) {
 function paymentActionAmount(value, currencyTypeId) {
   return currencyTypeId ? decimalRequestValue(value) : amountDigits(value);
 }
+function paymentRequestCreateErrorMessage(code) {
+  const messages = {
+    project_required: "پروژه را انتخاب کنید.",
+    budget_code_required: "کد بودجه را انتخاب کنید.",
+    title_required: "موضوع درخواست را وارد کنید.",
+    amount_must_be_positive: "مبلغ درخواست باید بیشتر از صفر باشد.",
+    exchange_rate_required: "نرخ ارز را وارد کنید.",
+    amount_exceeds_project_liquidity: "مبلغ درخواست نمی‌تواند بیشتر از مانده نقدینگی پروژه باشد.",
+    workflow_unit_users_not_found: "برای واحد بعدیِ گردش کار، کاربر فعالی تعیین نشده است. ابتدا کاربر آن واحد را در مدیریت دسترسی‌ها تعیین کنید.",
+    target_assignee_required: "گیرنده درخواست پرداخت را انتخاب کنید.",
+    target_assignee_invalid: "کاربر انتخاب‌شده گیرنده معتبر این مرحله نیست. فهرست را به‌روزرسانی و دوباره انتخاب کنید.",
+    serial_generation_failed: "شماره درخواست تولید نشد. از فعال‌بودن کد پروژه اطمینان بگیرید.",
+    invalid_doc_type: "نوع سند انتخاب‌شده برای درخواست پرداخت معتبر نیست.",
+  };
+  return messages[code] || "ثبت درخواست انجام نشد. لطفاً دوباره تلاش کنید.";
+}
 function minorUnitsToDecimal(minorUnits) {
   const value = BigInt(minorUnits || 0);
   const whole = value / 100n;
@@ -744,9 +760,11 @@ export default function PaymentRequestPage() {
       setSubmitNotice(data?.item?.registrationInfo || null);
       setForm(emptyForm()); setSuccess("درخواست با موفقیت ثبت شد."); setShowForm(false); await loadItems();
     } catch (submitError) {
-      setError(submitError?.message === "amount_exceeds_project_liquidity"
-        ? "مبلغ درخواست نمی‌تواند بیشتر از مانده نقدینگی پروژه باشد."
-        : "ثبت درخواست انجام نشد.");
+      // The API returns a stable validation code.  Showing its Persian
+      // equivalent prevents a 400 response from looking like an unexplained
+      // registration failure, especially when workflow assignments are not
+      // configured yet.
+      setError(paymentRequestCreateErrorMessage(submitError?.message));
     }
     finally { setSubmitting(false); }
   };
