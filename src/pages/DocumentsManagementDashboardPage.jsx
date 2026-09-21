@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Card from "../components/ui/Card.jsx";
 import StatisticsPanel from "../components/dashboard/StatisticsPanel.jsx";
+import { AveragePanel, ProjectDocumentsPanel, RankingPanel } from "../components/dashboard/DashboardDataPanels.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 
 const PAGE_ICON = "/images/icons/dashboard-12.svg";
@@ -60,6 +61,21 @@ function summarize(items) {
   return metricLabels.map(([key, label]) => ({ key, label, value: summary[key] }));
 }
 
+function recipientOf(item) {
+  return String(item?.to_name || item?.toName || item?.receiver_name || item?.receiverName || item?.org_name || item?.orgName || "").trim();
+}
+
+function tagIdsOf(item) {
+  const value = item?.tag_ids ?? item?.tagIds ?? [];
+  return Array.isArray(value) ? value.map((id) => String(typeof id === "object" ? id?.id ?? id?.tagId : id)).filter(Boolean) : [];
+}
+
+function rankValues(values, limit) {
+  const counts = new Map();
+  values.filter(Boolean).forEach((value) => counts.set(value, (counts.get(value) || 0) + 1));
+  return [...counts.entries()].map(([label, value]) => ({ key: label, label, value })).sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "fa")).slice(0, limit);
+}
+
 function PlaceholderBox({ number, className = "", label = "" }) {
   return (
     <Card className={`relative min-h-[130px] overflow-hidden rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800 ${className}`}>
@@ -78,6 +94,8 @@ function PlaceholderBox({ number, className = "", label = "" }) {
 export default function DocumentsManagementDashboardPage() {
   const { user } = useAuth();
   const [letters, setLetters] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [tags, setTags] = useState([]);
 
   useEffect(() => {
     if (!user?.id) return undefined;
@@ -85,15 +103,19 @@ export default function DocumentsManagementDashboardPage() {
     // The document-management registry is shared. This endpoint returns the
     // page's complete visible registry, not a list limited to records created
     // by the signed-in user.
-    fetch("/api/letters", {
-      credentials: "include",
-      headers: { "x-user-id": String(user.id) },
-    })
-      .then((response) => response.ok ? response.json() : { items: [] })
-      .then((data) => {
-        if (!cancelled) setLetters(Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : []);
+    const options = { credentials: "include", headers: { "x-user-id": String(user.id) } };
+    Promise.all([
+      fetch("/api/letters", options).then((response) => response.ok ? response.json() : { items: [] }),
+      fetch("/api/projects?isActive=true", options).then((response) => response.ok ? response.json() : { items: [] }),
+      fetch("/api/tags?scope=letters", options).then((response) => response.ok ? response.json() : { tags: [] }),
+    ])
+      .then(([lettersData, projectsData, tagsData]) => {
+        if (cancelled) return;
+        setLetters(Array.isArray(lettersData?.items) ? lettersData.items : Array.isArray(lettersData) ? lettersData : []);
+        setProjects(Array.isArray(projectsData?.items) ? projectsData.items : Array.isArray(projectsData?.projects) ? projectsData.projects : []);
+        setTags(Array.isArray(tagsData?.tags) ? tagsData.tags : Array.isArray(tagsData?.items) ? tagsData.items : []);
       })
-      .catch(() => { if (!cancelled) setLetters([]); });
+      .catch(() => { if (!cancelled) { setLetters([]); setProjects([]); setTags([]); } });
     return () => { cancelled = true; };
   }, [user?.id]);
 
@@ -117,6 +139,30 @@ export default function DocumentsManagementDashboardPage() {
     };
   }, [letters]);
 
+  const dashboardData = useMemo(() => {
+    const all = Array.isArray(letters) ? letters : [];
+    const dates = all.map(createdAt).filter(Boolean).map((date) => date.getTime());
+    const spanDays = dates.length ? Math.max(1, Math.ceil((Date.now() - Math.min(...dates)) / 86400000) + 1) : 1;
+    const projectCounts = new Map();
+    all.forEach((item) => {
+      const projectId = String(item?.project_id ?? item?.projectId ?? "");
+      if (!projectId) return;
+      const current = projectCounts.get(projectId) || { incoming: 0, outgoing: 0, internal: 0 };
+      current[letterKind(item)] += 1;
+      projectCounts.set(projectId, current);
+    });
+    const tagLabelById = new Map((Array.isArray(tags) ? tags : []).map((tag) => [String(tag.id), tag.label || tag.name || `برچسب ${tag.id}`]));
+    return {
+      recipients: rankValues(all.map(recipientOf), 5),
+      averages: { month: all.length / (spanDays / 30.4375), week: all.length / (spanDays / 7), day: all.length / spanDays },
+      projects: (Array.isArray(projects) ? projects : []).map((project) => {
+        const counts = projectCounts.get(String(project.id)) || { incoming: 0, outgoing: 0, internal: 0 };
+        return { id: project.id, label: `${project.code ? `${project.code} - ` : ""}${project.name || project.title || "پروژه بدون نام"}`, ...counts, total: counts.incoming + counts.outgoing + counts.internal };
+      }),
+      tags: rankValues(all.flatMap(tagIdsOf).map((id) => tagLabelById.get(id) || `برچسب ${id}`), 10),
+    };
+  }, [letters, projects, tags]);
+
   return (
     <div className="mx-auto w-full max-w-[1440px] text-neutral-900 dark:text-neutral-100" dir="rtl">
       <Card className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-none dark:border-neutral-800 dark:bg-neutral-900 sm:p-5">
@@ -136,11 +182,17 @@ export default function DocumentsManagementDashboardPage() {
           <StatisticsPanel title="باکس ۳" caption="اسناد ثبت‌شده در هفته قبل" items={statistics.previousWeek} />
         </div>
 
-        <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-12">
-          <PlaceholderBox number={6} className="xl:col-span-4 min-h-[250px]" />
-          <PlaceholderBox number={7} className="xl:col-span-4 min-h-[250px]" />
-          <PlaceholderBox number={8} className="xl:col-span-4 min-h-[250px]" />
+        <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-2">
+          <RankingPanel number={4} title="گیرندگان و شرکت‌های پرمکاتبه" subtitle="۵ نام با بیشترین تعداد سند" rows={dashboardData.recipients} />
+          <AveragePanel number={5} averages={dashboardData.averages} />
         </div>
+
+        <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-12">
+          <ProjectDocumentsPanel rows={dashboardData.projects} className="xl:col-span-8" />
+          <div className="xl:col-span-4"><RankingPanel number={7} title="برچسب‌های پرکاربرد" subtitle="۱۰ برچسب با بیشترین استفاده" rows={dashboardData.tags} /></div>
+        </div>
+
+        <div className="mt-3"><PlaceholderBox number={8} className="min-h-[180px]" /></div>
 
         <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-12">
           <PlaceholderBox number={9} className="xl:col-span-4 min-h-[210px]" />
