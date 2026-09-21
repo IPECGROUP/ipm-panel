@@ -131,9 +131,9 @@ export default function DocumentsManagementDashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
-          <StatisticsPanel title="باکس ۱" caption="آمار کل اسناد" items={statistics.all} tone="indigo" />
-          <StatisticsPanel title="باکس ۲" caption="اسناد ثبت‌شده در ماه قبل" items={statistics.previousMonth} tone="emerald" />
-          <StatisticsPanel title="باکس ۳" caption="اسناد ثبت‌شده در هفته قبل" items={statistics.previousWeek} tone="amber" />
+          <StatisticsPanel title="باکس ۱" caption="آمار کل اسناد" items={statistics.all} />
+          <StatisticsPanel title="باکس ۲" caption="اسناد ثبت‌شده در ماه قبل" items={statistics.previousMonth} />
+          <StatisticsPanel title="باکس ۳" caption="اسناد ثبت‌شده در هفته قبل" items={statistics.previousWeek} />
         </div>
 
         <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-12">
