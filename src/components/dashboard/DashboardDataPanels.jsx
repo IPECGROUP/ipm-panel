@@ -6,11 +6,11 @@ const faNumber = (value, digits = 0) => Number(value || 0).toLocaleString("fa-IR
   maximumFractionDigits: digits,
 });
 
-export function RankingPanel({ number, title, subtitle, rows = [], emptyText = "داده‌ای برای نمایش وجود ندارد" }) {
+export function RankingPanel({ title, subtitle, rows = [], emptyText = "داده‌ای برای نمایش وجود ندارد" }) {
   return (
     <Card className="min-h-[250px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
       <div className="mb-4 flex items-start justify-between gap-3">
-        <span><span className="block text-sm font-bold">باکس {faNumber(number)} · {title}</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">{subtitle}</span></span>
+        <span><span className="block text-sm font-bold">{title}</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">{subtitle}</span></span>
         <span className="grid h-8 w-8 place-items-center rounded-lg bg-violet-50 text-xs font-bold text-violet-600 dark:bg-violet-500/10 dark:text-violet-300">{faNumber(rows.length)}</span>
       </div>
       <div className="space-y-2">
@@ -26,12 +26,12 @@ export function RankingPanel({ number, title, subtitle, rows = [], emptyText = "
   );
 }
 
-export function AveragePanel({ number, averages }) {
+export function AveragePanel({ averages }) {
   const items = [["ماه", averages?.month], ["هفته", averages?.week], ["روز", averages?.day]];
   return (
-    <Card className="min-h-[250px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
-      <div className="mb-4"><span className="block text-sm font-bold">باکس {faNumber(number)} · میانگین ثبت اسناد</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">بر اساس کل دورهٔ ثبت اسناد</span></div>
-      <div className="grid grid-cols-3 gap-2">
+    <Card className="min-h-[250px] rounded-2xl border-neutral-200 p-4 text-center shadow-none dark:border-neutral-800">
+      <div className="mb-4"><span className="block text-sm font-bold">میانگین ثبت اسناد</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">بر اساس کل دورهٔ ثبت اسناد</span></div>
+      <div className="mx-auto grid max-w-md grid-cols-3 gap-2">
         {items.map(([label, value], index) => <div key={label} className="rounded-2xl border border-black/[0.06] bg-neutral-50 px-2 py-5 text-center dark:border-white/[0.08] dark:bg-white/[0.045]"><span className={`mx-auto mb-3 block h-1.5 w-9 rounded-full ${["bg-indigo-500", "bg-emerald-500", "bg-amber-500"][index]}`} /><span className="block text-xl font-bold tabular-nums">{faNumber(value, 1)}</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">در {label}</span></div>)}
       </div>
     </Card>
@@ -40,9 +40,9 @@ export function AveragePanel({ number, averages }) {
 
 export function ProjectDocumentsPanel({ rows = [], className = "" }) {
   return (
-    <Card className={`min-h-[285px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800 ${className}`}>
-      <div className="mb-4"><span className="block text-sm font-bold">باکس ۶ · اسناد پروژه‌های فعال</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">تفکیک اسناد وارده، صادره و داخلی</span></div>
-      <div className="max-h-[240px] overflow-auto rounded-xl border border-black/[0.07] dark:border-white/[0.08]"><table className="w-full min-w-[490px] text-right text-xs"><thead className="sticky top-0 bg-neutral-50 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-300"><tr><th className="px-3 py-2.5 font-medium">پروژه</th><th className="px-3 py-2.5 text-center font-medium">وارده</th><th className="px-3 py-2.5 text-center font-medium">صادره</th><th className="px-3 py-2.5 text-center font-medium">داخلی</th><th className="px-3 py-2.5 text-center font-medium">کل</th></tr></thead><tbody>{rows.length ? rows.map((row) => <tr key={row.id} className="border-t border-black/[0.06] dark:border-white/[0.08]"><td className="max-w-[260px] truncate px-3 py-3 font-medium">{row.label}</td><td className="px-3 py-3 text-center tabular-nums">{faNumber(row.incoming)}</td><td className="px-3 py-3 text-center tabular-nums">{faNumber(row.outgoing)}</td><td className="px-3 py-3 text-center tabular-nums">{faNumber(row.internal)}</td><td className="px-3 py-3 text-center font-bold tabular-nums">{faNumber(row.total)}</td></tr>) : <tr><td colSpan="5" className="px-3 py-12 text-center text-neutral-400">پروژهٔ فعالی برای نمایش وجود ندارد</td></tr>}</tbody></table></div>
+    <Card className={`min-h-[420px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800 ${className}`}>
+      <div className="mb-4"><span className="block text-sm font-bold">اسناد پروژه‌های فعال</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">تفکیک اسناد وارده، صادره و داخلی</span></div>
+      <div className="max-h-[370px] overflow-auto rounded-xl border border-black/[0.07] dark:border-white/[0.08]"><table className="w-full min-w-[490px] text-right text-xs"><thead className="sticky top-0 bg-neutral-50 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-300"><tr><th className="px-3 py-2.5 font-medium">پروژه</th><th className="px-3 py-2.5 text-center font-medium">وارده</th><th className="px-3 py-2.5 text-center font-medium">صادره</th><th className="px-3 py-2.5 text-center font-medium">داخلی</th><th className="px-3 py-2.5 text-center font-medium">کل</th></tr></thead><tbody>{rows.length ? rows.map((row) => <tr key={row.id} className="border-t border-black/[0.06] dark:border-white/[0.08]"><td className="max-w-[260px] truncate px-3 py-3 font-medium">{row.label}</td><td className="px-3 py-3 text-center tabular-nums">{faNumber(row.incoming)}</td><td className="px-3 py-3 text-center tabular-nums">{faNumber(row.outgoing)}</td><td className="px-3 py-3 text-center tabular-nums">{faNumber(row.internal)}</td><td className="px-3 py-3 text-center font-bold tabular-nums">{faNumber(row.total)}</td></tr>) : <tr><td colSpan="5" className="px-3 py-20 text-center text-neutral-400">پروژهٔ فعالی برای نمایش وجود ندارد</td></tr>}</tbody></table></div>
     </Card>
   );
 }

@@ -76,21 +76,6 @@ function rankValues(values, limit) {
   return [...counts.entries()].map(([label, value]) => ({ key: label, label, value })).sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "fa")).slice(0, limit);
 }
 
-function PlaceholderBox({ number, className = "", label = "" }) {
-  return (
-    <Card className={`relative min-h-[130px] overflow-hidden rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800 ${className}`}>
-      <span className="absolute left-4 top-3 text-[11px] font-medium text-neutral-400 dark:text-neutral-500">
-        {label || "باکس"}
-      </span>
-      <div className="flex h-full min-h-[96px] items-center justify-center" aria-label={`باکس ${number}`}>
-        <span className="select-none text-5xl font-bold leading-none text-neutral-300 dark:text-neutral-700 sm:text-6xl">
-          {number}
-        </span>
-      </div>
-    </Card>
-  );
-}
-
 export default function DocumentsManagementDashboardPage() {
   const { user } = useAuth();
   const [letters, setLetters] = useState([]);
@@ -155,7 +140,10 @@ export default function DocumentsManagementDashboardPage() {
     return {
       recipients: rankValues(all.map(recipientOf), 5),
       averages: { month: all.length / (spanDays / 30.4375), week: all.length / (spanDays / 7), day: all.length / spanDays },
-      projects: (Array.isArray(projects) ? projects : []).map((project) => {
+      projects: (Array.isArray(projects) ? projects : []).filter((project) => {
+        const isActive = project?.isActive === true || project?.isActive === 1 || String(project?.isActive).toLowerCase() === "true" || String(project?.isActive) === "1";
+        return isActive && /^\d{3}$/.test(normalizeDigits(String(project?.code || "")).trim());
+      }).map((project) => {
         const counts = projectCounts.get(String(project.id)) || { incoming: 0, outgoing: 0, internal: 0 };
         return { id: project.id, label: `${project.code ? `${project.code} - ` : ""}${project.name || project.title || "پروژه بدون نام"}`, ...counts, total: counts.incoming + counts.outgoing + counts.internal };
       }),
@@ -177,40 +165,20 @@ export default function DocumentsManagementDashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
-          <StatisticsPanel title="باکس ۱" caption="آمار کل اسناد" items={statistics.all} />
-          <StatisticsPanel title="باکس ۲" caption="اسناد ثبت‌شده در ماه قبل" items={statistics.previousMonth} />
-          <StatisticsPanel title="باکس ۳" caption="اسناد ثبت‌شده در هفته قبل" items={statistics.previousWeek} />
+          <StatisticsPanel title="آمار کل اسناد" items={statistics.all} />
+          <StatisticsPanel title="اسناد ثبت‌شده در ماه قبل" items={statistics.previousMonth} />
+          <StatisticsPanel title="اسناد ثبت‌شده در هفته قبل" items={statistics.previousWeek} />
         </div>
 
         <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-2">
-          <RankingPanel number={4} title="گیرندگان و شرکت‌های پرمکاتبه" subtitle="۵ نام با بیشترین تعداد سند" rows={dashboardData.recipients} />
-          <AveragePanel number={5} averages={dashboardData.averages} />
+          <RankingPanel title="گیرندگان و شرکت‌های پرمکاتبه" subtitle="بیشترین تعداد سند" rows={dashboardData.recipients} />
+          <AveragePanel averages={dashboardData.averages} />
         </div>
 
         <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-12">
           <ProjectDocumentsPanel rows={dashboardData.projects} className="xl:col-span-8" />
-          <div className="xl:col-span-4"><RankingPanel number={7} title="برچسب‌های پرکاربرد" subtitle="۱۰ برچسب با بیشترین استفاده" rows={dashboardData.tags} /></div>
+          <div className="xl:col-span-4"><RankingPanel title="برچسب‌های پرکاربرد" subtitle="بیشترین استفاده" rows={dashboardData.tags} /></div>
         </div>
-
-        <div className="mt-3"><PlaceholderBox number={8} className="min-h-[180px]" /></div>
-
-        <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-12">
-          <PlaceholderBox number={9} className="xl:col-span-4 min-h-[210px]" />
-          <PlaceholderBox number={10} className="xl:col-span-4 min-h-[210px]" />
-          <PlaceholderBox number={11} className="xl:col-span-4 min-h-[210px]" />
-        </div>
-
-        <Card className="mt-3 rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
-          <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm font-bold">باکس ۱۲</span>
-            <span className="text-xs text-neutral-400">ناحیهٔ تقویم</span>
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            {[13, 14, 15, 16, 17, 18].map((number) => (
-              <PlaceholderBox key={number} number={number} className="min-h-[116px]" />
-            ))}
-          </div>
-        </Card>
       </Card>
     </div>
   );
