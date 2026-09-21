@@ -11,7 +11,6 @@ export function RankingPanel({ title, subtitle, rows = [], emptyText = "داده
     <Card className="min-h-[250px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
       <div className="mb-4 flex items-start justify-between gap-3">
         <span><span className="block text-sm font-bold">{title}</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">{subtitle}</span></span>
-        <span className="grid h-8 w-8 place-items-center rounded-lg bg-violet-50 text-xs font-bold text-violet-600 dark:bg-violet-500/10 dark:text-violet-300">{faNumber(rows.length)}</span>
       </div>
       <div className="space-y-2">
         {rows.length ? rows.map((row, index) => (
@@ -29,9 +28,9 @@ export function RankingPanel({ title, subtitle, rows = [], emptyText = "داده
 export function AveragePanel({ averages }) {
   const items = [["ماه", averages?.month], ["هفته", averages?.week], ["روز", averages?.day]];
   return (
-    <Card className="min-h-[250px] rounded-2xl border-neutral-200 p-4 text-center shadow-none dark:border-neutral-800">
-      <div className="mb-4"><span className="block text-sm font-bold">میانگین ثبت اسناد</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">بر اساس کل دورهٔ ثبت اسناد</span></div>
-      <div className="mx-auto grid max-w-md grid-cols-3 gap-2">
+    <Card className="relative min-h-[250px] rounded-2xl border-neutral-200 p-4 text-right shadow-none dark:border-neutral-800">
+      <div><span className="block text-sm font-bold">میانگین ثبت اسناد</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">بر اساس کل دورهٔ ثبت اسناد</span></div>
+      <div className="absolute inset-x-4 top-1/2 mx-auto grid max-w-md -translate-y-1/2 grid-cols-3 gap-2">
         {items.map(([label, value], index) => <div key={label} className="rounded-2xl border border-black/[0.06] bg-neutral-50 px-2 py-5 text-center dark:border-white/[0.08] dark:bg-white/[0.045]"><span className={`mx-auto mb-3 block h-1.5 w-9 rounded-full ${["bg-indigo-500", "bg-emerald-500", "bg-amber-500"][index]}`} /><span className="block text-xl font-bold tabular-nums">{faNumber(value, 1)}</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">در {label}</span></div>)}
       </div>
     </Card>
