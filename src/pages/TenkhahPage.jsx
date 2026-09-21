@@ -152,7 +152,11 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
     if (rial) setForm((current) => current.currency === currencyTitle(rial) ? current : { ...current, currency: currencyTitle(rial) });
   }, [currencies]);
   const loadOptions = async () => {
-    const [p, c, financeState, projectManagement, seniorManagement, employeeData] = await Promise.all([
+    // Some supplementary option endpoints (notably the admin-only role
+    // assignments endpoint) are not available to ordinary requesters.  Do
+    // not let one of those optional calls discard the projects and currencies
+    // that the requester is allowed to use.
+    const results = await Promise.allSettled([
       api("/projects?isActive=true"),
       api("/base/currencies/types"),
       api("/tenkhah?currentUserFinance=1"),
@@ -160,6 +164,14 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
       api("/tenkhah?recipients=management"),
       api("/base/user-role-assignments"),
     ]);
+    const valueAt = (index, fallback) =>
+      results[index]?.status === "fulfilled" ? results[index].value : fallback;
+    const p = valueAt(0, { items: [], projects: [] });
+    const c = valueAt(1, { items: [] });
+    const financeState = valueAt(2, { isFinance: false });
+    const projectManagement = valueAt(3, { users: [] });
+    const seniorManagement = valueAt(4, { users: [] });
+    const employeeData = valueAt(5, { items: [] });
     setProjects(
       (p.items || p.projects || []).filter((x) => x.isActive !== false && /^\d{3}$/.test(String(x.code || "").trim())),
     );
@@ -178,7 +190,15 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
     });
     setUserIsFinance(Boolean(financeState.isFinance));
     setWorkflowRecipients({ project_manager: projectManagement.users || [], management: seniorManagement.users || [] });
-    setBeneficiaries((employeeData.items || []).map((person) => ({ id: person.id, name: person.name, username: person.username, email: person.email, isActive: person.isActive })).sort((a, b) => name(a).localeCompare(name(b), "fa")));
+    const employeeItems = Array.isArray(employeeData.items) ? employeeData.items : [];
+    // A normal requester cannot read the admin assignment list, but can
+    // always create a petty-cash request for themself.
+    const beneficiaryItems = employeeItems.length
+      ? employeeItems
+      : user?.id != null
+        ? [{ id: user.id, name: user.name, username: user.username, email: user.email, isActive: true }]
+        : [];
+    setBeneficiaries(beneficiaryItems.map((person) => ({ id: person.id, name: person.name, username: person.username, email: person.email, isActive: person.isActive })).sort((a, b) => name(a).localeCompare(name(b), "fa")));
     return uniqueCurrencies;
   };
   const add = async () => {
