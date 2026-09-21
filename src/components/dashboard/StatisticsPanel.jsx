@@ -24,13 +24,21 @@ function donutBackground(items) {
   return `conic-gradient(${stops.join(", ")})`;
 }
 
+function confidentialRingBackground(confidential, total) {
+  if (!total || !confidential) return "conic-gradient(#e5e7eb 0deg 360deg)";
+  const end = Math.min(360, (confidential / total) * 360);
+  return `conic-gradient(${METRIC_COLORS.confidential} 0deg ${end}deg, #e5e7eb ${end}deg 360deg)`;
+}
+
 /**
  * Reusable dashboard statistic panel. Its consumer supplies only the metric
  * data; the right-aligned legend and donut presentation are shared.
  */
 export default function StatisticsPanel({ title, caption, items = [], className = "" }) {
   const total = Number(items.find((item) => item.key === "total")?.value || 0);
+  const confidential = Number(items.find((item) => item.key === "confidential")?.value || 0);
   const donut = useMemo(() => donutBackground(items), [items]);
+  const confidentialRing = useMemo(() => confidentialRingBackground(confidential, total), [confidential, total]);
 
   return (
     <Card className={`min-h-[250px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800 ${className}`}>
@@ -58,12 +66,14 @@ export default function StatisticsPanel({ title, caption, items = [], className 
           })}
         </div>
 
-        <div className="relative grid h-36 w-36 shrink-0 place-items-center rounded-full" style={{ background: donut }} role="img" aria-label={`${title}: ${total.toLocaleString("fa-IR")} سند`}>
-          <div className="grid h-[92px] w-[92px] place-items-center rounded-full bg-white text-center shadow-inner dark:bg-neutral-900">
-            <span>
-              <span className="block text-2xl font-bold leading-none tabular-nums">{total.toLocaleString("fa-IR")}</span>
-              <span className="mt-1 block text-[10px] text-neutral-500 dark:text-neutral-400">سند</span>
-            </span>
+        <div className="relative grid h-36 w-36 shrink-0 place-items-center rounded-full p-1.5" style={{ background: confidentialRing }} role="img" aria-label={`${title}: ${total.toLocaleString("fa-IR")} سند، ${confidential.toLocaleString("fa-IR")} محرمانه`}>
+          <div className="grid h-full w-full place-items-center rounded-full" style={{ background: donut }}>
+            <div className="grid h-[88px] w-[88px] place-items-center rounded-full bg-white text-center shadow-inner dark:bg-neutral-900">
+              <span>
+                <span className="block text-2xl font-bold leading-none tabular-nums">{total.toLocaleString("fa-IR")}</span>
+                <span className="mt-1 block text-[10px] text-neutral-500 dark:text-neutral-400">سند</span>
+              </span>
+            </div>
           </div>
         </div>
       </div>
