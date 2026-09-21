@@ -3,6 +3,7 @@ import React from "react";
 import { Link, Outlet, useNavigate } from "react-router-dom";
 import RightNav from "../RightNav.jsx";
 import { useAuth } from "../AuthProvider.jsx";
+import { canOpenPage } from "../../utils/pageAccess.js";
 
 const notificationStorageKey = (userId) => `ipm-read-notifications:${userId}`;
 const notificationBaseKey = (item) => `${item.notificationTarget}:${item.id}`;
@@ -51,19 +52,20 @@ export default function Shell() {
     if (!quiet) setNotificationsLoading(true);
     try {
       const requestOptions = { credentials: "include", headers: { "x-user-id": String(user.id) } };
+      const canReadSupplyCartable = canOpenPage(user, "/supply/request");
       const [cartableResponse, actionsResponse, paymentResponse, tenkhahResponse] = await Promise.all([
-        fetch("/api/supply-requests?cartable=1", requestOptions),
+        canReadSupplyCartable ? fetch("/api/supply-requests?cartable=1", requestOptions) : Promise.resolve(null),
         fetch("/api/supply-actions", requestOptions),
         fetch("/api/requests?view=inbox", requestOptions),
         fetch("/api/tenkhah?inbox=1", requestOptions),
       ]);
       const [cartableData, actionsData, paymentData, tenkhahData] = await Promise.all([
-        cartableResponse.json().catch(() => ({})),
+        cartableResponse ? cartableResponse.json().catch(() => ({})) : Promise.resolve({}),
         actionsResponse.json().catch(() => ({})),
         paymentResponse.json().catch(() => ({})),
         tenkhahResponse.json().catch(() => ({})),
       ]);
-      const dashboardItems = cartableResponse.ok && Array.isArray(cartableData?.items)
+      const dashboardItems = cartableResponse?.ok && Array.isArray(cartableData?.items)
         ? cartableData.items.map((item) => ({ ...item, notificationTarget: "supply_request" }))
         : [];
       const actionItems = actionsResponse.ok && Array.isArray(actionsData?.items)
@@ -93,7 +95,7 @@ export default function Shell() {
     } finally {
       if (!quiet) setNotificationsLoading(false);
     }
-  }, [authLoading, user?.id]);
+  }, [authLoading, user]);
 
   React.useEffect(() => {
     loadNotifications();

@@ -548,23 +548,12 @@ export default function PaymentRequestPage() {
   useEffect(() => {
     let cancelled = false;
     setCreateRecipientsLoading(true);
-    Promise.all([
-      api(`/requests?nextRecipientsForCreate=1&projectId=${encodeURIComponent(form.projectId || "")}`).catch(() => ({})),
-      api("/base/unit-roles").catch(() => ({ items: [] })),
-      api("/base/user-role-assignments").catch(() => ({ items: [] })),
-    ])
-      .then(([workflowData, unitRoleData, assignmentData]) => {
+    api(`/requests?nextRecipientsForCreate=1&projectId=${encodeURIComponent(form.projectId || "")}`)
+      .then((workflowData) => {
         if (cancelled) return;
-        const unitRoleItems = Array.isArray(unitRoleData?.items) ? unitRoleData.items : [];
-        const assignments = Array.isArray(assignmentData?.items) ? assignmentData.items : [];
-        const currentAssignment = assignments.find((candidate) => Number(candidate?.id) === Number(user?.id));
-        const financeRoleIds = roleIdsForWorkflowUnit(unitRoleItems, "accounting");
-        const currentUserIsFinance = (currentAssignment?.roles || []).some((role) => financeRoleIds.has(String(role?.id)));
-        const targetRoleKey = workflowData?.targetRoleKey || (currentUserIsFinance ? "management" : "project_control");
+        const targetRoleKey = workflowData?.targetRoleKey || "project_control";
         const apiUsers = Array.isArray(workflowData?.users) ? workflowData.users : [];
-        const derivedUsers = usersForWorkflowUnit(unitRoleItems, assignments, targetRoleKey)
-          .filter((candidate) => Number(candidate.id) !== Number(user?.id));
-        setCreateRecipients({ targetRoleKey, users: apiUsers.length ? apiUsers : derivedUsers });
+        setCreateRecipients({ targetRoleKey, users: apiUsers });
       })
       .catch(() => { if (!cancelled) setCreateRecipients({ targetRoleKey: "project_control", users: [] }); })
       .finally(() => { if (!cancelled) setCreateRecipientsLoading(false); });
