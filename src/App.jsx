@@ -34,6 +34,7 @@ import TrainingResourcesPage from "./pages/TrainingResourcesPage.jsx";
 import ProjectLessonsLearnedPage from "./pages/ProjectLessonsLearnedPage.jsx";
 import SecurityAuditPage from "./pages/SecurityAuditPage.jsx";
 import DocumentsManagementDashboardPage from "./pages/DocumentsManagementDashboardPage.jsx";
+import ContractsManagementDashboardPage from "./pages/ContractsManagementDashboardPage.jsx";
 
 import BudgetCodesPage, {
   OfficePage,
@@ -99,7 +100,7 @@ export default function App() {
         <Route path="/requests/:id" element={<RequestDetailPage />} />
         <Route path="/contracts/info" element={<ContractInformation />} />
         <Route path="/centers/contract-info" element={<ContractInformation />} />
-        <Route path="/contracts/management-dashboard" element={<NavPlaceholderPage title="داشبورد مدیریت قراردادها" icon="/images/icons/dashboard-12.svg" />} />
+        <Route path="/contracts/management-dashboard" element={<ContractsManagementDashboardPage />} />
 
         {/* پروژه‌ها */}
         <Route path="/projects/simple" element={<Projects2Page />} />
