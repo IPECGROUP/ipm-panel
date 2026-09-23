@@ -178,6 +178,60 @@ function RequestStatsPanel({ title, subtitle, metrics, labels }) {
   return <Card className="min-h-[280px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">{title}</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">{subtitle}</span></div><div className="flex min-h-[180px] flex-col-reverse items-center gap-5 sm:flex-row sm:justify-between"><div className="w-full space-y-1.5 sm:min-w-0 sm:flex-1">{labels.map((label, index) => { const value = Number(values[index] || 0); const share = values[0] ? Math.round((value / values[0]) * 100) : 0; return <div key={label} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs"><span className="flex min-w-0 items-center gap-2 text-neutral-600 dark:text-neutral-300"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: colors[index] }} /><span className="truncate">{label}</span></span><span className="shrink-0 whitespace-nowrap font-bold tabular-nums">{faNumber(value)} <span className="text-[10px] font-medium text-neutral-400">({faNumber(share)}٪)</span></span></div>; })}</div><div className="relative grid h-36 w-36 shrink-0 place-items-center rounded-full p-1.5" style={{ background: outerChart }}><div className="grid h-full w-full place-items-center rounded-full" style={{ background: innerChart }}><div className="grid h-[88px] w-[88px] place-items-center rounded-full bg-white text-center shadow-inner dark:bg-neutral-900"><span><span className="block text-2xl font-bold leading-none tabular-nums">{faNumber(values[0])}</span><span className="mt-1 block text-[10px] text-neutral-500 dark:text-neutral-400">درخواست</span></span></div></div></div></div></Card>;
 }
 
+function timestampOf(entry) {
+  const time = Date.parse(String(entry?.at || entry?.createdAt || ""));
+  return Number.isFinite(time) ? time : null;
+}
+
+function firstApprovalAt(history, roleKey, predicate = () => true) {
+  const event = (Array.isArray(history) ? history : []).find((entry) =>
+    entry?.type === "approved" && entry?.roleKey === roleKey && predicate(entry)
+  );
+  return timestampOf(event);
+}
+
+function durationOf(start, end) {
+  return Number.isFinite(start) && Number.isFinite(end) && end >= start ? end - start : null;
+}
+
+function stageDurations(item) {
+  const history = historyOf(item);
+  const createdAt = timestampOf(history.find((entry) => entry?.type === "created")) ?? timestampOf({ createdAt: item?.createdAt });
+  const projectControlAt = firstApprovalAt(history, "project_control");
+  const projectManagerAt = firstApprovalAt(history, "project_manager");
+  const managementAt = firstApprovalAt(history, "management");
+  const finalAccountingAt = firstApprovalAt(history, "accounting", (entry) => Number(entry?.index) >= 5);
+  return [
+    durationOf(createdAt, projectControlAt),
+    durationOf(projectControlAt, projectManagerAt),
+    durationOf(projectManagerAt, managementAt),
+    durationOf(managementAt, finalAccountingAt),
+  ];
+}
+
+function formatDuration(milliseconds) {
+  if (!Number.isFinite(milliseconds)) return "—";
+  const totalHours = Math.round(milliseconds / 3600000);
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+  return days ? `${faNumber(days)} روز${hours ? ` و ${faNumber(hours)} ساعت` : ""}` : `${faNumber(hours)} ساعت`;
+}
+
+function TimingPanel({ timings }) {
+  const stages = [
+    "برنامه‌ریزی و کنترل پروژه",
+    "مدیر پروژه",
+    "مدیریت / دستور پرداخت",
+    "مالی و تأیید نهایی",
+  ];
+  const values = stages.map((label, index) => ({
+    label,
+    average: timings[index]?.length ? timings[index].reduce((sum, value) => sum + value, 0) / timings[index].length : null,
+    maximum: timings[index]?.length ? Math.max(...timings[index]) : null,
+  }));
+  return <Card className="min-h-[410px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">مدت زمان بررسی درخواست‌ها</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">بر اساس زمان ثبت‌شده در گردش‌کار درخواست‌های عادی</span></div><div className="grid gap-2 sm:grid-cols-2">{values.map((stage, index) => <div key={stage.label} className="rounded-xl bg-neutral-50 p-3 dark:bg-white/[0.045]"><span className="flex items-center gap-2 text-xs font-semibold"><span className={`h-2.5 w-2.5 rounded-full ${["bg-sky-500", "bg-amber-500", "bg-violet-500", "bg-emerald-500"][index]}`} />{stage.label}</span><div className="mt-3 flex items-end justify-between gap-2"><span className="text-[11px] text-neutral-500 dark:text-neutral-400">میانگین</span><span className="text-sm font-bold tabular-nums">{formatDuration(stage.average)}</span></div><div className="mt-2 flex items-end justify-between gap-2 border-t border-black/[0.06] pt-2 dark:border-white/[0.08]"><span className="text-[11px] text-neutral-500 dark:text-neutral-400">بیشترین</span><span className="text-sm font-bold tabular-nums">{formatDuration(stage.maximum)}</span></div></div>)}</div></Card>;
+}
+
 function EmptyPanel() {
   return <Card className="min-h-[180px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800" />;
 }
@@ -205,8 +259,15 @@ export default function FinancialManagementDashboardPage() {
 
   const normalMetrics = useMemo(() => requestMetrics(normalRequests, "normal"), [normalRequests]);
   const tenkhahMetrics = useMemo(() => requestMetrics(tenkhahRequests, "tenkhah"), [tenkhahRequests]);
+  const operationTimings = useMemo(() => {
+    const timingGroups = [[], [], [], []];
+    normalRequests.forEach((request) => stageDurations(request).forEach((duration, index) => {
+      if (duration != null) timingGroups[index].push(duration);
+    }));
+    return timingGroups;
+  }, [normalRequests]);
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] text-neutral-900 dark:text-neutral-100" dir="rtl"><Card className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-none dark:border-neutral-800 dark:bg-neutral-900 sm:p-5"><div className="mb-5 flex min-w-0 items-center gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]"><img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" /></span><span className="min-w-0"><span className="block truncate text-base font-bold md:text-lg">داشبورد مدیریت مالی</span><span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">نمای کلی درخواست‌های مالی و تنخواه</span></span></div><div className="grid grid-cols-1 gap-3 xl:grid-cols-2"><RequestStatsPanel title="درخواست‌های عادی" subtitle="وضعیت درخواست‌های پرداخت عادی" metrics={normalMetrics} labels={["کل درخواست‌ها", "اتمام‌نیافته", "تأییدشده", "ردشده", "اتمام‌یافته"]} /><RequestStatsPanel title="درخواست‌های تنخواه" subtitle="وضعیت درخواست‌های تنخواه" metrics={tenkhahMetrics} labels={["کل درخواست‌ها", "در دست بررسی", "تأییدشده", "ردشده", "اتمام‌یافته"]} /></div><div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-2"><EmptyPanel /><EmptyPanel /><EmptyPanel /><EmptyPanel /><EmptyPanel /><EmptyPanel /></div></Card></div>
+    <div className="mx-auto w-full max-w-[1440px] text-neutral-900 dark:text-neutral-100" dir="rtl"><Card className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-none dark:border-neutral-800 dark:bg-neutral-900 sm:p-5"><div className="mb-5 flex min-w-0 items-center gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]"><img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" /></span><span className="min-w-0"><span className="block truncate text-base font-bold md:text-lg">داشبورد مدیریت مالی</span><span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">نمای کلی درخواست‌های مالی و تنخواه</span></span></div><div className="grid grid-cols-1 gap-3 xl:grid-cols-2"><RequestStatsPanel title="درخواست‌های عادی" subtitle="وضعیت درخواست‌های پرداخت عادی" metrics={normalMetrics} labels={["کل درخواست‌ها", "اتمام‌نیافته", "تأییدشده", "ردشده", "اتمام‌یافته"]} /><RequestStatsPanel title="درخواست‌های تنخواه" subtitle="وضعیت درخواست‌های تنخواه" metrics={tenkhahMetrics} labels={["کل درخواست‌ها", "در دست بررسی", "تأییدشده", "ردشده", "اتمام‌یافته"]} /></div><div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-2"><TimingPanel timings={operationTimings} /><EmptyPanel /><EmptyPanel /><EmptyPanel /><EmptyPanel /><EmptyPanel /></div></Card></div>
   );
 }
