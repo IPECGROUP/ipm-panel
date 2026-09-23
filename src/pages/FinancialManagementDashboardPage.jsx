@@ -162,9 +162,18 @@ function requestMetrics(items, kind) {
 }
 
 function RequestStatsPanel({ title, subtitle, metrics, labels }) {
-  const colors = ["bg-slate-500", "bg-sky-500", "bg-emerald-500", "bg-red-500", "bg-violet-500"];
+  const colors = ["#64748b", "#3b82f6", "#22c55e", "#ef4444", "#8b5cf6"];
   const values = [metrics.total, metrics.active, metrics.approved, metrics.rejected, metrics.completed];
-  return <Card className="min-h-[330px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-5"><span className="block text-sm font-bold">{title}</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">{subtitle}</span></div><div className="space-y-2">{labels.map((label, index) => <div key={label} className="flex items-center justify-between gap-3 rounded-xl bg-neutral-50 px-3 py-3 dark:bg-white/[0.045]"><span className="flex min-w-0 items-center gap-2 text-xs text-neutral-600 dark:text-neutral-300"><span className={`h-2.5 w-2.5 shrink-0 rounded-full ${colors[index]}`} /><span className="truncate">{label}</span></span><span className="shrink-0 text-base font-bold tabular-nums">{faNumber(values[index])}</span></div>)}</div></Card>;
+  const chartValues = values.slice(1);
+  const chartTotal = chartValues.reduce((sum, value) => sum + Number(value || 0), 0);
+  let cursor = 0;
+  const chart = chartTotal ? `conic-gradient(${chartValues.map((value, index) => {
+    const next = cursor + (Number(value || 0) / chartTotal) * 360;
+    const segment = `${colors[index + 1]} ${cursor}deg ${next}deg`;
+    cursor = next;
+    return segment;
+  }).join(", ")})` : "conic-gradient(#e5e7eb 0deg 360deg)";
+  return <Card className="min-h-[280px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">{title}</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">{subtitle}</span></div><div className="flex min-h-[180px] flex-col-reverse items-center gap-5 sm:flex-row sm:justify-between"><div className="w-full space-y-1.5 sm:min-w-0 sm:flex-1">{labels.map((label, index) => { const value = Number(values[index] || 0); const share = values[0] ? Math.round((value / values[0]) * 100) : 0; return <div key={label} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs"><span className="flex min-w-0 items-center gap-2 text-neutral-600 dark:text-neutral-300"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: colors[index] }} /><span className="truncate">{label}</span></span><span className="shrink-0 whitespace-nowrap font-bold tabular-nums">{faNumber(value)} <span className="text-[10px] font-medium text-neutral-400">({faNumber(share)}٪)</span></span></div>; })}</div><div className="grid h-36 w-36 shrink-0 place-items-center rounded-full p-1.5" style={{ background: chart }}><div className="grid h-full w-full place-items-center rounded-full bg-white text-center shadow-inner dark:bg-neutral-900"><span><span className="block text-2xl font-bold leading-none tabular-nums">{faNumber(values[0])}</span><span className="mt-1 block text-[10px] text-neutral-500 dark:text-neutral-400">درخواست</span></span></div></div></div></Card>;
 }
 
 function EmptyPanel() {
