@@ -5,6 +5,12 @@ import { useAuth } from "../components/AuthProvider.jsx";
 const PAGE_ICON = "/images/icons/dashboard-12.svg";
 const faNumber = (value) => Number(value || 0).toLocaleString("fa-IR");
 const listOf = (value, key) => Array.isArray(value) ? value : Array.isArray(value?.[key]) ? value[key] : Array.isArray(value?.items) ? value.items : [];
+const unitsOf = (entry) => {
+  const units = Array.isArray(entry?.user_units ?? entry?.userUnits) ? (entry.user_units ?? entry.userUnits) : [];
+  const names = [...new Set(units.map((unit) => String(unit ?? "").trim()).filter(Boolean))];
+  return names.length ? names : [String(entry?.user_department ?? entry?.userDepartment ?? "بدون واحد").trim() || "بدون واحد"];
+};
+const unitLabelOf = (entry) => unitsOf(entry).join("، ");
 
 function projectName(project, fallbackId) {
   if (!project) return `پروژه #${fallbackId}`;
@@ -56,10 +62,11 @@ export default function ProjectManagementDashboardPage() {
     const userMap = new Map();
     entries.forEach((entry) => {
       const projectId = String(entry.project_id ?? entry.projectId ?? "");
-      const unit = String(entry.user_department ?? entry.userDepartment ?? "بدون واحد").trim() || "بدون واحد";
+      const units = unitsOf(entry);
+      const unit = units.join("، ");
       const project = projectMap.get(projectId) || { id: projectId, label: projectName(projectById.get(projectId), projectId), total: 0, units: new Map() };
       project.total += 1;
-      project.units.set(unit, (project.units.get(unit) || 0) + 1);
+      units.forEach((unitName) => project.units.set(unitName, (project.units.get(unitName) || 0) + 1));
       projectMap.set(projectId, project);
       const userId = String(entry.user_id ?? entry.userId ?? entry.user_name ?? "");
       const userName = String(entry.user_name ?? entry.userName ?? `کاربر #${userId}`).trim();
@@ -78,7 +85,7 @@ export default function ProjectManagementDashboardPage() {
     const term = query.trim().toLocaleLowerCase("fa");
     if (!term) return entries;
     return entries.filter((entry) => [
-      entry.user_name, entry.user_department, entry.date_ymd, entry.day_name, entry.activity,
+      entry.user_name, unitLabelOf(entry), entry.date_ymd, entry.day_name, entry.activity,
       projectName(data.projectById.get(String(entry.project_id ?? entry.projectId ?? "")), entry.project_id ?? entry.projectId),
     ].some((value) => String(value ?? "").toLocaleLowerCase("fa").includes(term)));
   }, [data.projectById, entries, query]);
@@ -107,7 +114,7 @@ export default function ProjectManagementDashboardPage() {
 
         <Card className="mt-3 min-h-[420px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><span><span className="block text-sm font-bold">همه روزنگارها</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">نمایش و جست‌وجوی تمام روزنگارهای ثبت‌شده</span></span><input value={query} onChange={(event) => setQuery(event.target.value)} className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm outline-none transition placeholder:text-neutral-400 focus:border-indigo-400 dark:border-white/10 dark:bg-neutral-900 sm:w-80" placeholder="جست‌وجو در پروژه، کاربر، واحد یا متن..." /></div>
-          <div className="max-h-[350px] overflow-auto rounded-xl border border-black/[0.07] dark:border-white/[0.08]"><table className="w-full min-w-[820px] text-right text-xs"><thead className="sticky top-0 bg-neutral-50 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-300"><tr><th className="px-3 py-2.5 font-medium">تاریخ</th><th className="px-3 py-2.5 font-medium">پروژه</th><th className="px-3 py-2.5 font-medium">کاربر</th><th className="px-3 py-2.5 font-medium">واحد</th><th className="px-3 py-2.5 font-medium">شرح فعالیت</th></tr></thead><tbody>{filteredEntries.length ? filteredEntries.map((entry) => <tr key={entry.id} className="border-t border-black/[0.06] dark:border-white/[0.08]"><td className="whitespace-nowrap px-3 py-3 tabular-nums">{entry.date_ymd || "—"}</td><td className="max-w-[190px] truncate px-3 py-3 font-medium">{projectName(data.projectById.get(String(entry.project_id ?? entry.projectId ?? "")), entry.project_id ?? entry.projectId)}</td><td className="px-3 py-3">{entry.user_name || "—"}</td><td className="px-3 py-3">{entry.user_department || "بدون واحد"}</td><td className="max-w-[420px] truncate px-3 py-3 text-neutral-600 dark:text-neutral-300">{entry.activity || "—"}</td></tr>) : <tr><td colSpan="5" className="px-3 py-20 text-center text-neutral-400">{loading ? "در حال دریافت اطلاعات..." : "موردی یافت نشد."}</td></tr>}</tbody></table></div>
+          <div className="max-h-[350px] overflow-auto rounded-xl border border-black/[0.07] dark:border-white/[0.08]"><table className="w-full min-w-[820px] text-right text-xs"><thead className="sticky top-0 bg-neutral-50 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-300"><tr><th className="px-3 py-2.5 font-medium">تاریخ</th><th className="px-3 py-2.5 font-medium">پروژه</th><th className="px-3 py-2.5 font-medium">کاربر</th><th className="px-3 py-2.5 font-medium">واحد</th><th className="px-3 py-2.5 font-medium">شرح فعالیت</th></tr></thead><tbody>{filteredEntries.length ? filteredEntries.map((entry) => <tr key={entry.id} className="border-t border-black/[0.06] dark:border-white/[0.08]"><td className="whitespace-nowrap px-3 py-3 tabular-nums">{entry.date_ymd || "—"}</td><td className="max-w-[190px] truncate px-3 py-3 font-medium">{projectName(data.projectById.get(String(entry.project_id ?? entry.projectId ?? "")), entry.project_id ?? entry.projectId)}</td><td className="px-3 py-3">{entry.user_name || "—"}</td><td className="px-3 py-3">{unitLabelOf(entry)}</td><td className="max-w-[420px] truncate px-3 py-3 text-neutral-600 dark:text-neutral-300">{entry.activity || "—"}</td></tr>) : <tr><td colSpan="5" className="px-3 py-20 text-center text-neutral-400">{loading ? "در حال دریافت اطلاعات..." : "موردی یافت نشد."}</td></tr>}</tbody></table></div>
         </Card>
 
         <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-2"><EmptyPanel /><EmptyPanel /></div>
