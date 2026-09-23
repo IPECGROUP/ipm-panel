@@ -745,6 +745,9 @@ useEffect(() => {
 }, [relatedPickQuery, relatedPickOpen]);
   const [filterQuery, setFilterQuery] = useState("");
   const { user } = useAuth();
+  // The server enforces this as well; this only controls the visibility of the UI action.
+  const canDeleteLetters = String(user?.username || "").trim().toLowerCase() === "ali" &&
+    Array.isArray(user?.access) && user.access.includes("system:super-admin");
  const [filterTab, setFilterTab] = useState("all"); // اول این
  const [filterTagIds, setFilterTagIds] = useState([]); // ✅ global
   const tableScrollRef = useRef(null);
@@ -3748,6 +3751,25 @@ useLayoutEffect(() => {
     startEdit(selectedMenuLetter);
   };
 
+  const deleteSelectedLetters = async () => {
+    if (!canDeleteLetters || selectedIds.size === 0) return;
+    const ids = [...selectedIds];
+    const message = ids.length === 1
+      ? "آیا از حذف این نامه مطمئن هستید؟ این عمل قابل بازگشت نیست."
+      : `آیا از حذف ${toFaDigits(ids.length)} نامه انتخاب‌شده مطمئن هستید؟ این عمل قابل بازگشت نیست.`;
+    if (!window.confirm(message)) return;
+
+    try {
+      await Promise.all(ids.map((id) => api(`/letters/${encodeURIComponent(id)}`, { method: "DELETE" })));
+      setTableMenuOpen(false);
+      setSelectedIds(new Set());
+      if (ids.includes(String(letterIdOf(viewLetter)))) closeView();
+      await refetchLetters();
+    } catch (e) {
+      alert("خطا در حذف نامه: " + (e?.message || "request_failed"));
+    }
+  };
+
   const saveLetterDraftNow = (payload) => {
     if (!hasLetterDraftContent(payload)) return "";
     const key = letterDraftKeyFromPayload(payload);
@@ -6413,6 +6435,12 @@ aria-invalid={fieldHasError(formKind, "subject")}
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span>
           <span className="min-w-0 flex-1 text-sm font-semibold">ویرایش سند</span>
         </button>
+        {canDeleteLetters ? (
+          <button type="button" disabled={!selectedIds.size} onClick={deleteSelectedLetters} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 transition group-hover:scale-105 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span>
+            <span className="min-w-0 flex-1 text-sm font-semibold">حذف نامه‌های انتخاب‌شده</span>
+          </button>
+        ) : null}
       </div>,
       document.body
     ) : null}

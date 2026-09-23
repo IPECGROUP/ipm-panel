@@ -35,23 +35,19 @@ export default function ProjectManagementDashboardPage() {
     let cancelled = false;
     const options = { credentials: "include", headers: { "x-user-id": String(user.id) } };
     setLoading(true);
-    // The daily-log screen reads entries one project at a time. Keep the same
-    // request shape here so this dashboard works with the existing API too.
-    fetch("/api/projects?isActive=true", options)
-      .then((response) => response.ok ? response.json() : { items: [] })
-      .then(async (projectsData) => {
+    // Fetch all rows once, alongside the project list. The former code made
+    // one additional request per project (N+1), which caused long dashboard
+    // loads while returning the same data.
+    Promise.all([
+      fetch("/api/projects?isActive=true", options).then((response) => response.ok ? response.json() : { items: [] }),
+      fetch("/api/roznegar?activeProjects=true", options).then((response) => response.ok ? response.json() : { items: [] }),
+    ])
+      .then(([projectsData, entriesData]) => {
         const visibleProjects = listOf(projectsData, "projects").filter((project) => Number(project?.id) > 0);
-        const entryResponses = await Promise.all(visibleProjects.map(async (project) => {
-          try {
-            const response = await fetch(`/api/roznegar?projectId=${encodeURIComponent(project.id)}`, options);
-            return response.ok ? await response.json() : { items: [] };
-          } catch {
-            return { items: [] };
-          }
-        }));
+        const visibleProjectIds = new Set(visibleProjects.map((project) => String(project.id)));
         if (cancelled) return;
         setProjects(visibleProjects);
-        setEntries(entryResponses.flatMap((data) => listOf(data, "items")));
+        setEntries(listOf(entriesData, "items").filter((entry) => visibleProjectIds.has(String(entry?.project_id ?? entry?.projectId ?? ""))));
       })
       .catch(() => { if (!cancelled) { setEntries([]); setProjects([]); } })
       .finally(() => { if (!cancelled) setLoading(false); });
