@@ -122,6 +122,7 @@ export default function App() {
         <Route path="/knowledge-management/organizational-documents" element={<NavPlaceholderPage title="مستندات سازمانی" />} />
         <Route path="/knowledge-management/technical-standards" element={<NavPlaceholderPage title="استانداردهای فنی" />} />
         <Route path="/knowledge-management/template-library" element={<NavPlaceholderPage title="بانک الگوها" />} />
+        <Route path="/knowledge-management/dashboard" element={<NavPlaceholderPage title="داشبورد مدیریت دانش" icon="/images/icons/dashboard-12.svg" />} />
         <Route path="/knowledge-management/project-lessons-learned" element={<ProjectLessonsLearnedPage />} />
         <Route path="/knowledge-management/equipment-library" element={<TrainingResourcesPage variant="library" />} />
         <Route path="/knowledge-management/training-resources" element={<TrainingResourcesPage />} />

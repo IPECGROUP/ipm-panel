@@ -18,6 +18,7 @@ const ROUTE_PERMISSION_PAGES = [
   ["/supply/request", "درخواست تأمین"],
   ["/supply/actions", "درخواست تأمین"],
   ["/supply/dashboard", "درخواست تأمین", "داشبورد مدیریت تأمین"],
+  ["/knowledge-management/dashboard", "درس‌آموخته‌ها"],
   ["/knowledge-management/project-lessons-learned", "درس‌آموخته‌ها"],
   ["/knowledge-management/equipment-library", "کتابخانه‌ها"],
   ["/knowledge-management/training-resources", "منابع آموزشی"],
