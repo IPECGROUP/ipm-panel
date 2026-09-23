@@ -2364,6 +2364,13 @@ export default function RoznegarPgae() {
         items={relatedDocsPool}
         selectedIds={relatedPickIds}
         onToggle={(id) => setRelatedPickIds((previous) => previous.includes(String(id)) ? previous.filter((value) => value !== String(id)) : [...previous, String(id)])}
+        onConfirm={() => {
+          const clean = (Array.isArray(relatedPickIds) ? relatedPickIds : [])
+            .map((id) => String(id || "").trim())
+            .filter(Boolean);
+          updateActiveEntry((current) => ({ ...current, relatedDocIds: clean }));
+          closeRelatedPicker();
+        }}
         onClose={closeRelatedPicker}
       />}
 
