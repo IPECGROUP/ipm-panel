@@ -30,6 +30,7 @@ import PettyCashPage from "./pages/PettyCashPage.jsx";
 import RoznegarPgae from "./pages/RoznegarPgae.jsx";
 import QualityManagementPage from "./pages/QualityManagementPage.jsx";
 import NavPlaceholderPage from "./pages/NavPlaceholderPage.jsx";
+import KnowledgeManagementDashboardPage from "./pages/KnowledgeManagementDashboardPage.jsx";
 import TrainingResourcesPage from "./pages/TrainingResourcesPage.jsx";
 import ProjectLessonsLearnedPage from "./pages/ProjectLessonsLearnedPage.jsx";
 import SecurityAuditPage from "./pages/SecurityAuditPage.jsx";
@@ -122,7 +123,7 @@ export default function App() {
         <Route path="/knowledge-management/organizational-documents" element={<NavPlaceholderPage title="مستندات سازمانی" />} />
         <Route path="/knowledge-management/technical-standards" element={<NavPlaceholderPage title="استانداردهای فنی" />} />
         <Route path="/knowledge-management/template-library" element={<NavPlaceholderPage title="بانک الگوها" />} />
-        <Route path="/knowledge-management/dashboard" element={<NavPlaceholderPage title="داشبورد مدیریت دانش" icon="/images/icons/dashboard-12.svg" />} />
+        <Route path="/knowledge-management/dashboard" element={<KnowledgeManagementDashboardPage />} />
         <Route path="/knowledge-management/project-lessons-learned" element={<ProjectLessonsLearnedPage />} />
         <Route path="/knowledge-management/equipment-library" element={<TrainingResourcesPage variant="library" />} />
         <Route path="/knowledge-management/training-resources" element={<TrainingResourcesPage />} />

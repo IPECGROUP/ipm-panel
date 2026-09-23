@@ -116,6 +116,11 @@ export default function TrainingResourcesPage({ variant = "training" }) {
   useEffect(() => { loadItems(); }, [loadItems]);
 
   useEffect(() => {
+    if (authLoading || !user?.id || isLibrary) return;
+    api("/knowledge-dashboard", { method: "POST", headers: requestHeaders, body: JSON.stringify({ page: "training" }) }).catch(() => {});
+  }, [authLoading, user?.id, isLibrary, requestHeaders]);
+
+  useEffect(() => {
     if (!tableMenuOpen) return undefined;
     const closeMenu = (event) => {
       if (event.type === "keydown" && event.key !== "Escape") return;
