@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
 import { Card } from "../components/ui/Card";
 import { Portal } from "../components/Portal";
-import { todayJalaliYmd } from "../utils/date";
+import { dayjs, todayJalaliYmd } from "../utils/date";
 import { useAuth } from "../components/AuthProvider";
 import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 import RelatedLettersPickerModal from "../components/RelatedLettersPickerModal.jsx";
