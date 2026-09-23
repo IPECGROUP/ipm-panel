@@ -36,6 +36,7 @@ import SecurityAuditPage from "./pages/SecurityAuditPage.jsx";
 import DocumentsManagementDashboardPage from "./pages/DocumentsManagementDashboardPage.jsx";
 import ContractsManagementDashboardPage from "./pages/ContractsManagementDashboardPage.jsx";
 import ProjectManagementDashboardPage from "./pages/ProjectManagementDashboardPage.jsx";
+import SupplyManagementDashboardPage from "./pages/SupplyManagementDashboardPage.jsx";
 
 import BudgetCodesPage, {
   OfficePage,
@@ -137,7 +138,7 @@ export default function App() {
 
         <Route path="/supply/request" element={<SupplyRequestPage />} />
         <Route path="/supply/actions" element={<SupplyActionsRedirect />} />
-        <Route path="/supply/dashboard" element={<NavPlaceholderPage title="داشبورد مدیریت تامین" icon="/images/icons/dashboard-12.svg" />} />
+        <Route path="/supply/dashboard" element={<SupplyManagementDashboardPage />} />
 
         <Route path="/operations/equipment" element={<NavPlaceholderPage title="ماشین آلات و تجهیزات" />} />
         <Route path="/operations/history" element={<NavPlaceholderPage title="سوابق عملیات" />} />
