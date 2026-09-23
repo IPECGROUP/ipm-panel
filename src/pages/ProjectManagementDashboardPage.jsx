@@ -27,14 +27,23 @@ export default function ProjectManagementDashboardPage() {
     let cancelled = false;
     const options = { credentials: "include", headers: { "x-user-id": String(user.id) } };
     setLoading(true);
-    Promise.all([
-      fetch("/api/roznegar", options).then((response) => response.ok ? response.json() : { items: [] }),
-      fetch("/api/projects?isActive=true", options).then((response) => response.ok ? response.json() : { items: [] }),
-    ])
-      .then(([entriesData, projectsData]) => {
+    // The daily-log screen reads entries one project at a time. Keep the same
+    // request shape here so this dashboard works with the existing API too.
+    fetch("/api/projects?isActive=true", options)
+      .then((response) => response.ok ? response.json() : { items: [] })
+      .then(async (projectsData) => {
+        const visibleProjects = listOf(projectsData, "projects").filter((project) => Number(project?.id) > 0);
+        const entryResponses = await Promise.all(visibleProjects.map(async (project) => {
+          try {
+            const response = await fetch(`/api/roznegar?projectId=${encodeURIComponent(project.id)}`, options);
+            return response.ok ? await response.json() : { items: [] };
+          } catch {
+            return { items: [] };
+          }
+        }));
         if (cancelled) return;
-        setEntries(listOf(entriesData, "items"));
-        setProjects(listOf(projectsData, "projects"));
+        setProjects(visibleProjects);
+        setEntries(entryResponses.flatMap((data) => listOf(data, "items")));
       })
       .catch(() => { if (!cancelled) { setEntries([]); setProjects([]); } })
       .finally(() => { if (!cancelled) setLoading(false); });
