@@ -1,9 +1,15 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React from "react";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 
 const PAGE_ICON = "/images/icons/dashboard-12.svg";
 
+/*
+ * Legacy financial dashboard
+ * --------------------------
+ * This implementation is intentionally kept as a comment at the user's
+ * request. Remove these comment markers to restore it later.
+ *
 const COLUMNS = [
   "ردیف",
   "پروژه",
@@ -124,6 +130,23 @@ export default function FinancialManagementDashboardPage() {
             </tr>}
           </tbody>
         </table>
+      </div>
+    </Card>
+  );
+}
+*/
+
+export default function FinancialManagementDashboardPage() {
+  return (
+    <Card className="rounded-2xl border border-neutral-200 bg-white p-4 text-neutral-900 shadow-none dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100 sm:p-5" dir="rtl">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
+          <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
+        </span>
+        <span className="min-w-0">
+          <span className="block truncate text-base font-bold md:text-lg">داشبورد مدیریت مالی</span>
+          <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">نمای کلی شاخص‌های مالی</span>
+        </span>
       </div>
     </Card>
   );
