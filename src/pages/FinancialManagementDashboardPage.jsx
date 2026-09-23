@@ -162,18 +162,20 @@ function requestMetrics(items, kind) {
 }
 
 function RequestStatsPanel({ title, subtitle, metrics, labels }) {
-  const colors = ["#64748b", "#3b82f6", "#22c55e", "#ef4444", "#8b5cf6"];
+  const colors = ["#64748b", "#3b82f6", "#f59e0b", "#22c55e", "#ef4444"];
   const values = [metrics.total, metrics.active, metrics.approved, metrics.rejected, metrics.completed];
-  const chartValues = values.slice(1);
+  const chartValues = values.slice(1, 4);
   const chartTotal = chartValues.reduce((sum, value) => sum + Number(value || 0), 0);
   let cursor = 0;
-  const chart = chartTotal ? `conic-gradient(${chartValues.map((value, index) => {
+  const innerChart = chartTotal ? `conic-gradient(${chartValues.map((value, index) => {
     const next = cursor + (Number(value || 0) / chartTotal) * 360;
     const segment = `${colors[index + 1]} ${cursor}deg ${next}deg`;
     cursor = next;
     return segment;
   }).join(", ")})` : "conic-gradient(#e5e7eb 0deg 360deg)";
-  return <Card className="min-h-[280px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">{title}</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">{subtitle}</span></div><div className="flex min-h-[180px] flex-col-reverse items-center gap-5 sm:flex-row sm:justify-between"><div className="w-full space-y-1.5 sm:min-w-0 sm:flex-1">{labels.map((label, index) => { const value = Number(values[index] || 0); const share = values[0] ? Math.round((value / values[0]) * 100) : 0; return <div key={label} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs"><span className="flex min-w-0 items-center gap-2 text-neutral-600 dark:text-neutral-300"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: colors[index] }} /><span className="truncate">{label}</span></span><span className="shrink-0 whitespace-nowrap font-bold tabular-nums">{faNumber(value)} <span className="text-[10px] font-medium text-neutral-400">({faNumber(share)}٪)</span></span></div>; })}</div><div className="grid h-36 w-36 shrink-0 place-items-center rounded-full p-1.5" style={{ background: chart }}><div className="grid h-full w-full place-items-center rounded-full bg-white text-center shadow-inner dark:bg-neutral-900"><span><span className="block text-2xl font-bold leading-none tabular-nums">{faNumber(values[0])}</span><span className="mt-1 block text-[10px] text-neutral-500 dark:text-neutral-400">درخواست</span></span></div></div></div></Card>;
+  const completedShare = values[0] ? Math.min(360, (Number(values[4] || 0) / Number(values[0])) * 360) : 0;
+  const outerChart = completedShare ? `conic-gradient(${colors[4]} 0deg ${completedShare}deg, #e5e7eb ${completedShare}deg 360deg)` : "conic-gradient(#e5e7eb 0deg 360deg)";
+  return <Card className="min-h-[280px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">{title}</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">{subtitle}</span></div><div className="flex min-h-[180px] flex-col-reverse items-center gap-5 sm:flex-row sm:justify-between"><div className="w-full space-y-1.5 sm:min-w-0 sm:flex-1">{labels.map((label, index) => { const value = Number(values[index] || 0); const share = values[0] ? Math.round((value / values[0]) * 100) : 0; return <div key={label} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs"><span className="flex min-w-0 items-center gap-2 text-neutral-600 dark:text-neutral-300"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: colors[index] }} /><span className="truncate">{label}</span></span><span className="shrink-0 whitespace-nowrap font-bold tabular-nums">{faNumber(value)} <span className="text-[10px] font-medium text-neutral-400">({faNumber(share)}٪)</span></span></div>; })}</div><div className="relative grid h-36 w-36 shrink-0 place-items-center rounded-full p-1.5" style={{ background: outerChart }}><div className="grid h-full w-full place-items-center rounded-full" style={{ background: innerChart }}><div className="grid h-[88px] w-[88px] place-items-center rounded-full bg-white text-center shadow-inner dark:bg-neutral-900"><span><span className="block text-2xl font-bold leading-none tabular-nums">{faNumber(values[0])}</span><span className="mt-1 block text-[10px] text-neutral-500 dark:text-neutral-400">درخواست</span></span></div></div></div></div></Card>;
 }
 
 function EmptyPanel() {
