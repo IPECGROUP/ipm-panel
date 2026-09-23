@@ -1,5 +1,6 @@
 ﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useLocation } from "react-router-dom";
 import { Card } from "../components/ui/Card";
 import { Portal } from "../components/Portal";
 import { todayJalaliYmd } from "../utils/date";
@@ -603,6 +604,16 @@ function JalaliPopupDatePicker({ value, onChange, theme = "light", buttonClassNa
 export default function RoznegarPgae() {
   useFeatureVisibility("روزنگار پروژه", { "افزودن": "افزودن" });
   const { user: authUser, loading: authLoading } = useAuth();
+  const location = useLocation();
+  const dashboardTarget = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const projectId = String(params.get("projectId") || params.get("project_id") || "").trim();
+    const dateYmd = String(params.get("dateYmd") || params.get("date_ymd") || "").trim();
+    return {
+      projectId: isValidProjectId(projectId) ? projectId : "",
+      dateYmd: /^\d{4}\/\d{2}\/\d{2}$/.test(dateYmd) ? dateYmd : "",
+    };
+  }, [location.search]);
   const [activeProjects, setActiveProjects] = useState([]);
   const [projectsLoading, setProjectsLoading] = useState(true);
   const sortedActiveProjects = useMemo(() => {
@@ -618,6 +629,7 @@ export default function RoznegarPgae() {
 
   const [mounted, setMounted] = useState(false);
   const [projectId, setProjectId] = useState(() => {
+    if (dashboardTarget.projectId) return dashboardTarget.projectId;
     try {
       const raw = String(localStorage.getItem(ROZNEGAR_PROJECT_STORAGE_KEY) || "").trim();
       return isValidProjectId(raw) ? raw : "";
@@ -625,7 +637,7 @@ export default function RoznegarPgae() {
       return "";
     }
   });
-  const [selectedDate, setSelectedDate] = useState(() => todayJalaliYmd());
+  const [selectedDate, setSelectedDate] = useState(() => dashboardTarget.dateYmd || todayJalaliYmd());
   const [cursor, setCursor] = useState(() => {
     const { jy, jm } = getJalaliPartsFromDate(new Date());
     return { jy, jm };

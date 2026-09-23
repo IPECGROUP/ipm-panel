@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 
@@ -23,6 +24,7 @@ function EmptyPanel() {
 
 export default function ProjectManagementDashboardPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [entries, setEntries] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -90,6 +92,13 @@ export default function ProjectManagementDashboardPage() {
     ].some((value) => String(value ?? "").toLocaleLowerCase("fa").includes(term)));
   }, [data.projectById, entries, query]);
 
+  const openDailyLog = (entry) => {
+    const projectId = String(entry?.project_id ?? entry?.projectId ?? "").trim();
+    const dateYmd = String(entry?.date_ymd ?? entry?.dateYmd ?? "").trim();
+    if (!projectId) return;
+    navigate(`/projects/daily-log?projectId=${encodeURIComponent(projectId)}${dateYmd ? `&dateYmd=${encodeURIComponent(dateYmd)}` : ""}`);
+  };
+
   return (
     <div className="mx-auto w-full max-w-[1440px] text-neutral-900 dark:text-neutral-100" dir="rtl">
       <Card className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-none dark:border-neutral-800 dark:bg-neutral-900 sm:p-5">
@@ -114,7 +123,7 @@ export default function ProjectManagementDashboardPage() {
 
         <Card className="mt-3 min-h-[420px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><span><span className="block text-sm font-bold">همه روزنگارها</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">نمایش و جست‌وجوی تمام روزنگارهای ثبت‌شده</span></span><input value={query} onChange={(event) => setQuery(event.target.value)} className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm outline-none transition placeholder:text-neutral-400 focus:border-indigo-400 dark:border-white/10 dark:bg-neutral-900 sm:w-80" placeholder="جست‌وجو در پروژه، کاربر، واحد یا متن..." /></div>
-          <div className="max-h-[350px] overflow-auto rounded-xl border border-black/[0.07] dark:border-white/[0.08]"><table className="w-full min-w-[820px] text-right text-xs"><thead className="sticky top-0 bg-neutral-50 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-300"><tr><th className="px-3 py-2.5 font-medium">تاریخ</th><th className="px-3 py-2.5 font-medium">پروژه</th><th className="px-3 py-2.5 font-medium">کاربر</th><th className="px-3 py-2.5 font-medium">واحد</th><th className="px-3 py-2.5 font-medium">شرح فعالیت</th></tr></thead><tbody>{filteredEntries.length ? filteredEntries.map((entry) => <tr key={entry.id} className="border-t border-black/[0.06] dark:border-white/[0.08]"><td className="whitespace-nowrap px-3 py-3 tabular-nums">{entry.date_ymd || "—"}</td><td className="max-w-[190px] truncate px-3 py-3 font-medium">{projectName(data.projectById.get(String(entry.project_id ?? entry.projectId ?? "")), entry.project_id ?? entry.projectId)}</td><td className="px-3 py-3">{entry.user_name || "—"}</td><td className="px-3 py-3">{unitLabelOf(entry)}</td><td className="max-w-[420px] truncate px-3 py-3 text-neutral-600 dark:text-neutral-300">{entry.activity || "—"}</td></tr>) : <tr><td colSpan="5" className="px-3 py-20 text-center text-neutral-400">{loading ? "در حال دریافت اطلاعات..." : "موردی یافت نشد."}</td></tr>}</tbody></table></div>
+          <div className="max-h-[350px] overflow-auto rounded-xl border border-black/[0.07] dark:border-white/[0.08]"><table className="w-full min-w-[820px] text-right text-xs"><thead className="sticky top-0 bg-neutral-50 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-300"><tr><th className="px-3 py-2.5 font-medium">تاریخ</th><th className="px-3 py-2.5 font-medium">پروژه</th><th className="px-3 py-2.5 font-medium">کاربر</th><th className="px-3 py-2.5 font-medium">واحد</th><th className="px-3 py-2.5 font-medium">شرح فعالیت</th></tr></thead><tbody>{filteredEntries.length ? filteredEntries.map((entry) => <tr key={entry.id} onClick={() => openDailyLog(entry)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDailyLog(entry); } }} tabIndex={0} className="cursor-pointer border-t border-black/[0.06] transition hover:bg-indigo-50/70 focus:outline-none focus-visible:bg-indigo-50 dark:border-white/[0.08] dark:hover:bg-indigo-500/10 dark:focus-visible:bg-indigo-500/10" title="نمایش در روزنگار پروژه"><td className="whitespace-nowrap px-3 py-3 tabular-nums">{entry.date_ymd || "—"}</td><td className="max-w-[190px] truncate px-3 py-3 font-medium">{projectName(data.projectById.get(String(entry.project_id ?? entry.projectId ?? "")), entry.project_id ?? entry.projectId)}</td><td className="px-3 py-3">{entry.user_name || "—"}</td><td className="px-3 py-3">{unitLabelOf(entry)}</td><td className="max-w-[420px] truncate px-3 py-3 text-neutral-600 dark:text-neutral-300">{entry.activity || "—"}</td></tr>) : <tr><td colSpan="5" className="px-3 py-20 text-center text-neutral-400">{loading ? "در حال دریافت اطلاعات..." : "موردی یافت نشد."}</td></tr>}</tbody></table></div>
         </Card>
 
         <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-2"><EmptyPanel /><EmptyPanel /></div>
