@@ -232,6 +232,40 @@ function TimingPanel({ timings }) {
   return <Card className="min-h-[410px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">مدت زمان بررسی درخواست‌ها</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">بر اساس زمان ثبت‌شده در گردش‌کار درخواست‌های عادی</span></div><div className="grid gap-2 sm:grid-cols-2">{values.map((stage, index) => <div key={stage.label} className="rounded-xl bg-neutral-50 p-3 dark:bg-white/[0.045]"><span className="flex items-center gap-2 text-xs font-semibold"><span className={`h-2.5 w-2.5 rounded-full ${["bg-sky-500", "bg-amber-500", "bg-violet-500", "bg-emerald-500"][index]}`} />{stage.label}</span><div className="mt-3 flex items-end justify-between gap-2"><span className="text-[11px] text-neutral-500 dark:text-neutral-400">میانگین</span><span className="text-sm font-bold tabular-nums">{formatDuration(stage.average)}</span></div><div className="mt-2 flex items-end justify-between gap-2 border-t border-black/[0.06] pt-2 dark:border-white/[0.08]"><span className="text-[11px] text-neutral-500 dark:text-neutral-400">بیشترین</span><span className="text-sm font-bold tabular-nums">{formatDuration(stage.maximum)}</span></div></div>)}</div></Card>;
 }
 
+function amountOf(value) {
+  const normalized = String(value ?? "").replace(/[٬,\s]/g, "");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function tenkhahRankings(items) {
+  const people = new Map();
+  (Array.isArray(items) ? items : []).forEach((item) => {
+    const key = String(item?.beneficiaryUserId ?? item?.createdById ?? item?.beneficiaryName ?? item?.requesterName ?? "");
+    if (!key) return;
+    const current = people.get(key) || {
+      key,
+      label: String(item?.beneficiaryName ?? item?.requesterName ?? item?.beneficiaryUsername ?? `کاربر #${key}`).trim(),
+      received: 0,
+      unregistered: 0,
+      unsettled: 0,
+    };
+    current.received += amountOf(item?.chargedAmount ?? item?.requestedAmount);
+    current.unregistered += amountOf(item?.unregisteredBalance);
+    current.unsettled += amountOf(item?.unsettledBalance);
+    people.set(key, current);
+  });
+  const rows = [...people.values()];
+  return {
+    unregistered: rows.filter((person) => person.unregistered > 0).sort((a, b) => b.received - a.received).slice(0, 5),
+    unsettled: rows.filter((person) => person.unsettled > 0).sort((a, b) => b.unsettled - a.unsettled).slice(0, 5),
+  };
+}
+
+function TenkhahRankingPanel({ title, subtitle, rows, valueKey, valueLabel, primaryKey = "received" }) {
+  return <Card className="min-h-[330px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">{title}</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">{subtitle}</span></div><div className="space-y-2">{rows.length ? rows.map((person, index) => <div key={person.key} className="flex items-center gap-3 rounded-xl bg-neutral-50 px-3 py-3 dark:bg-white/[0.045]"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-xs font-bold text-neutral-500 shadow-sm dark:bg-neutral-800 dark:text-neutral-300">{faNumber(index + 1)}</span><span className="min-w-0 flex-1"><span className="block truncate text-xs font-medium">{person.label}</span><span className="mt-1 block text-[10px] text-neutral-500 dark:text-neutral-400">{valueLabel}: {faNumber(person[valueKey])} ریال</span></span><span className="shrink-0 text-sm font-bold tabular-nums">{faNumber(person[primaryKey])} <span className="text-[10px] font-medium text-neutral-400">ریال</span></span></div>) : <div className="py-24 text-center text-xs text-neutral-400">موردی برای نمایش وجود ندارد.</div>}</div></Card>;
+}
+
 function EmptyPanel() {
   return <Card className="min-h-[180px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800" />;
 }
@@ -266,8 +300,9 @@ export default function FinancialManagementDashboardPage() {
     }));
     return timingGroups;
   }, [normalRequests]);
+  const rankedTenkhah = useMemo(() => tenkhahRankings(tenkhahRequests), [tenkhahRequests]);
 
   return (
-    <div className="mx-auto w-full max-w-[1440px] text-neutral-900 dark:text-neutral-100" dir="rtl"><Card className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-none dark:border-neutral-800 dark:bg-neutral-900 sm:p-5"><div className="mb-5 flex min-w-0 items-center gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]"><img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" /></span><span className="min-w-0"><span className="block truncate text-base font-bold md:text-lg">داشبورد مدیریت مالی</span><span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">نمای کلی درخواست‌های مالی و تنخواه</span></span></div><div className="grid grid-cols-1 gap-3 xl:grid-cols-2"><RequestStatsPanel title="درخواست‌های عادی" subtitle="وضعیت درخواست‌های پرداخت عادی" metrics={normalMetrics} labels={["کل درخواست‌ها", "اتمام‌نیافته", "تأییدشده", "ردشده", "اتمام‌یافته"]} /><RequestStatsPanel title="درخواست‌های تنخواه" subtitle="وضعیت درخواست‌های تنخواه" metrics={tenkhahMetrics} labels={["کل درخواست‌ها", "در دست بررسی", "تأییدشده", "ردشده", "اتمام‌یافته"]} /></div><div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-2"><TimingPanel timings={operationTimings} /><EmptyPanel /><EmptyPanel /><EmptyPanel /><EmptyPanel /><EmptyPanel /></div></Card></div>
+    <div className="mx-auto w-full max-w-[1440px] text-neutral-900 dark:text-neutral-100" dir="rtl"><Card className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-none dark:border-neutral-800 dark:bg-neutral-900 sm:p-5"><div className="mb-5 flex min-w-0 items-center gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]"><img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" /></span><span className="min-w-0"><span className="block truncate text-base font-bold md:text-lg">داشبورد مدیریت مالی</span><span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">نمای کلی درخواست‌های مالی و تنخواه</span></span></div><div className="grid grid-cols-1 gap-3 xl:grid-cols-2"><RequestStatsPanel title="درخواست‌های عادی" subtitle="وضعیت درخواست‌های پرداخت عادی" metrics={normalMetrics} labels={["کل درخواست‌ها", "اتمام‌نیافته", "تأییدشده", "ردشده", "اتمام‌یافته"]} /><RequestStatsPanel title="درخواست‌های تنخواه" subtitle="وضعیت درخواست‌های تنخواه" metrics={tenkhahMetrics} labels={["کل درخواست‌ها", "در دست بررسی", "تأییدشده", "ردشده", "اتمام‌یافته"]} /></div><div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-2"><TimingPanel timings={operationTimings} /><TenkhahRankingPanel title="تنخواه‌های دریافت‌شده و ثبت‌نشده" subtitle="۵ نفر اول بر اساس بیشترین مجموع تنخواه دریافتی" rows={rankedTenkhah.unregistered} valueKey="unregistered" valueLabel="مانده ثبت‌نشده" /><TenkhahRankingPanel title="مانده‌های تسویه‌نشدهٔ تنخواه" subtitle="۵ نفر اول بر اساس بیشترین ماندهٔ تسویه‌نشده" rows={rankedTenkhah.unsettled} valueKey="unsettled" valueLabel="مانده تسویه‌نشده" primaryKey="unsettled" /><EmptyPanel /><EmptyPanel /><EmptyPanel /></div></Card></div>
   );
 }
