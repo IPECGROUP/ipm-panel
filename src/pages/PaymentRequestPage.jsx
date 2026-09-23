@@ -313,6 +313,19 @@ function pdfAttachmentLabel(value) {
   return String(value ?? "").replace(/\.pdf$/i, "pdf");
 }
 
+function isHeicAttachment(file) {
+  const type = String(file?.type || file?.mimeType || "").toLowerCase();
+  const name = String(file?.name || file?.originalName || file?.filename || file?.url || file?.path || "");
+  return /image\/hei[cf]/.test(type) || /\.hei[cf](?:[?#]|$)/i.test(name);
+}
+
+function attachmentViewUrl(file) {
+  const rawUrl = String(file?.url || file?.path || "").trim();
+  if (!isHeicAttachment(file) || !rawUrl) return rawUrl;
+  const name = rawUrl.split(/[?#]/, 1)[0].split("/").pop();
+  return name ? `/api/upload/payment-doc/preview?name=${encodeURIComponent(name)}` : rawUrl;
+}
+
 function registrationMessage(info) {
   if (!info) return "";
   const date = info.dateJalali || info.date || "";
@@ -1783,7 +1796,7 @@ function PaymentUploadModal({ files, uploading, onUpload, onRemove, onClose }) {
                       <img src="/images/icons/Uplod.svg" alt="" className="h-5 w-5 invert dark:invert-0" />
                       {uploading ? "در حال بارگذاری..." : "انتخاب فایل"}
                     </button>
-                    <input ref={inputRef} type="file" multiple accept="image/*,.pdf" className="hidden" onChange={(event) => { handleFiles(event.target.files); event.target.value = ""; }} />
+                    <input ref={inputRef} type="file" multiple accept="image/*,.heic,.heif,.pdf" className="hidden" onChange={(event) => { handleFiles(event.target.files); event.target.value = ""; }} />
                   </div>
                 </div>
               </div>
@@ -2439,7 +2452,8 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
         url = "";
       }
       const type = String(file?.type || file?.mimeType || "").toLowerCase();
-      const isImage = type.startsWith("image/") || /\.(png|jpe?g|webp|gif|bmp|svg)(?:\?|#|$)/i.test(rawUrl);
+      const isImage = type.startsWith("image/") || /\.(png|jpe?g|webp|gif|bmp|svg|hei[cf])(?:\?|#|$)/i.test(rawUrl);
+      if (isHeicAttachment(file)) url = attachmentViewUrl(file);
       const isPdf = type.includes("pdf") || /\.pdf(?:\?|#|$)/i.test(rawUrl) || /\.pdf$/i.test(name);
       const preview = !url
         ? `<div class="no-preview">آدرس فایل برای پیش‌نمایش در دسترس نیست.</div>`
@@ -2746,15 +2760,15 @@ function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes
                   <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="پیوست‌ها" value={canEditRequest ? (
                   <div className="flex flex-wrap justify-end gap-2">
                     {editAttachments.map((file, index) => <span key={file.id || file.serverId || file.url || index} className="inline-flex max-w-full items-center gap-2 rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10">
-                      <a href={file.url || "#"} target="_blank" rel="noreferrer" className="max-w-[220px] truncate hover:underline">{file.name || `فایل ${toFa(index + 1)}`}</a>
+                      <a href={attachmentViewUrl(file) || "#"} target="_blank" rel="noreferrer" className="max-w-[220px] truncate hover:underline">{file.name || `فایل ${toFa(index + 1)}`}</a>
                       <button type="button" onClick={() => removeEditAttachment(index)} className="grid h-6 w-6 place-items-center rounded-md hover:bg-black/5 dark:hover:bg-white/10" aria-label="حذف پیوست" title="حذف پیوست">×</button>
                     </span>)}
                     <label className="grid h-9 w-9 cursor-pointer place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={editUploading ? "در حال آپلود" : "بارگذاری"} aria-label={editUploading ? "در حال آپلود" : "بارگذاری"}>
                       <img src="/images/icons/Uplod.svg" alt="" className={`h-4 w-4 dark:invert ${editUploading ? "animate-pulse opacity-60" : ""}`} />
-                      <input type="file" multiple accept="image/*,.pdf" className="hidden" onChange={(event) => uploadEditFiles(event.target.files)} />
+                      <input type="file" multiple accept="image/*,.heic,.heif,.pdf" className="hidden" onChange={(event) => uploadEditFiles(event.target.files)} />
                     </label>
                   </div>
-                ) : (attachments.length ? <div className="flex flex-wrap justify-end gap-2">{attachments.map((file, index) => <a key={file.id || file.serverId || index} href={file.url || "#"} target="_blank" rel="noreferrer" className="rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFa(index + 1)}`}</a>)}</div> : "—")} />
+                ) : (attachments.length ? <div className="flex flex-wrap justify-end gap-2">{attachments.map((file, index) => <a key={file.id || file.serverId || index} href={attachmentViewUrl(file) || "#"} target="_blank" rel="noreferrer" className="rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFa(index + 1)}`}</a>)}</div> : "—")} />
                   <PreviewRow compact editing={canEditRelatedDocuments} colon leader={!canEditRelatedDocuments} label="اسناد مرتبط" value={canEditRelatedDocuments ? <div className="flex flex-wrap items-center justify-end gap-2">
                     <button type="button" onClick={() => { setEditLetterPickerQuery(""); setEditLetterPickerOpen(true); }} className="inline-flex min-h-8 items-center gap-2 rounded-lg border border-black/10 bg-white px-2 py-1 text-xs font-semibold transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب اسناد مرتبط">
                       <img src="/images/icons/asnad-mortabet.svg" alt="" className="h-4 w-4 dark:invert" />
