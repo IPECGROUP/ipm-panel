@@ -35,6 +35,7 @@ import ProjectLessonsLearnedPage from "./pages/ProjectLessonsLearnedPage.jsx";
 import SecurityAuditPage from "./pages/SecurityAuditPage.jsx";
 import DocumentsManagementDashboardPage from "./pages/DocumentsManagementDashboardPage.jsx";
 import ContractsManagementDashboardPage from "./pages/ContractsManagementDashboardPage.jsx";
+import ProjectManagementDashboardPage from "./pages/ProjectManagementDashboardPage.jsx";
 
 import BudgetCodesPage, {
   OfficePage,
@@ -112,7 +113,7 @@ export default function App() {
           path="/projects/financial-worksheet"
           element={<FinancialWorksheetPage />}
         />
-        <Route path="/projects/project-management-dashboard" element={<NavPlaceholderPage title="داشبورد مدیریت پروژه" icon="/images/icons/dashboard-12.svg" />} />
+        <Route path="/projects/project-management-dashboard" element={<ProjectManagementDashboardPage />} />
         <Route path="/projects/daily-log" element={<RoznegarPgae />} />
         <Route path="/letters" element={<LettersPage />} />
         <Route path="/documents/management-dashboard" element={<DocumentsManagementDashboardPage />} />
