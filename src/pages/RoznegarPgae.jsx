@@ -611,7 +611,7 @@ export default function RoznegarPgae() {
     const dateYmd = String(params.get("dateYmd") || params.get("date_ymd") || "").trim();
     return {
       projectId: isValidProjectId(projectId) ? projectId : "",
-      dateYmd: /^\d{4}\/\d{2}\/\d{2}$/.test(dateYmd) ? dateYmd : "",
+      dateYmd: /^\d{4}[-/]\d{2}[-/]\d{2}$/.test(dateYmd) ? dateYmd : "",
     };
   }, [location.search]);
   const [activeProjects, setActiveProjects] = useState([]);
