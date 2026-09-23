@@ -639,6 +639,8 @@ export default function RoznegarPgae() {
   });
   const [selectedDate, setSelectedDate] = useState(() => dashboardTarget.dateYmd || todayJalaliYmd());
   const [cursor, setCursor] = useState(() => {
+    const targetDate = parseJalaliYmd(dashboardTarget.dateYmd);
+    if (targetDate) return { jy: targetDate.jy, jm: targetDate.jm };
     const { jy, jm } = getJalaliPartsFromDate(new Date());
     return { jy, jm };
   });
@@ -726,15 +728,15 @@ export default function RoznegarPgae() {
           .map(normalizeProject)
           .filter((p) => p && p.id != null)
           .filter((p) => p.isActive === true)
-          .filter((p) => isTopProjectCode(p.code));
+          // When opened from the dashboard, retain the exact project that
+          // owns the selected entry even when it is not a top-level project.
+          .filter((p) => isTopProjectCode(p.code) || String(p.id) === dashboardTarget.projectId);
 
-        const byCode = new Map();
+        const byId = new Map();
         clean.forEach((p) => {
-          const k = String(p.code || "");
-          if (!k) return;
-          if (!byCode.has(k)) byCode.set(k, p);
+          if (!byId.has(p.id)) byId.set(p.id, p);
         });
-        setActiveProjects(Array.from(byCode.values()));
+        setActiveProjects(Array.from(byId.values()));
       } catch {
         if (!alive) return;
       } finally {
@@ -1201,7 +1203,7 @@ export default function RoznegarPgae() {
     try { data = text ? JSON.parse(text) : {}; } catch {}
     if (!response.ok) throw new Error(data?.error || data?.message || "request_failed");
     return data;
-  }, [authUser?.id]);
+  }, [authUser?.id, dashboardTarget.projectId]);
 
   const openUpload = () => setUploadOpen(true);
   const closeUpload = () => setUploadOpen(false);
