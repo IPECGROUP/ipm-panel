@@ -66,6 +66,19 @@ const createEmptyUserForm = () => ({
   positions: [],
 });
 
+function passwordStrength(password) {
+  if (!password) return null;
+  let score = password.length >= 8 ? 1 : 0;
+  if (password.length >= 12) score++;
+  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+  if (/\d/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+  if (score <= 1) return { label: "ضعیف", color: "bg-red-500", width: "w-1/4" };
+  if (score <= 3) return { label: "متوسط", color: "bg-amber-500", width: "w-2/4" };
+  if (score === 4) return { label: "خوب", color: "bg-blue-500", width: "w-3/4" };
+  return { label: "قوی", color: "bg-emerald-500", width: "w-full" };
+}
+
 function toFaDigits(s) {
   return String(s || "").replace(/[0-9]/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
 }
@@ -684,16 +697,17 @@ function UsersTab({ embedded = false }) {
 
                 <div className="flex flex-col gap-1">
                   <label className="text-sm text-black/70 dark:text-neutral-300">
-                    {editId !== null ? "کلمه عبور جدید (اختیاری، حداکثر ۸)" : "کلمه عبور* (حداکثر ۸)"}
+                    {editId !== null ? "کلمه عبور جدید (اختیاری)" : "کلمه عبور*"}
                   </label>
+                  {passwordStrength(addForm.password) && <div className="flex items-center gap-2 text-xs text-black/60 dark:text-neutral-300"><span>قدرت رمز: {passwordStrength(addForm.password).label}</span><span className="h-1.5 flex-1 overflow-hidden rounded bg-black/10 dark:bg-white/15"><span className={`block h-full rounded ${passwordStrength(addForm.password).width} ${passwordStrength(addForm.password).color}`} /></span></div>}
                   <input
                     type="password"
-                    maxLength={8}
+                    maxLength={72}
                     className={inputCls + " text-left"}
                     dir="ltr"
                     required={editId === null}
                     value={addForm.password}
-                    onChange={(e) => setAddForm((s) => ({ ...s, password: e.target.value.slice(0, 8) }))}
+                    onChange={(e) => setAddForm((s) => ({ ...s, password: e.target.value }))}
                   />
                 </div>
 
