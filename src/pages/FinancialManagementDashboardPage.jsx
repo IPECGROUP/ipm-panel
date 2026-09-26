@@ -448,6 +448,52 @@ function tenkhahProjects(items) {
   );
 }
 
+function buildTenkhahHolderRows(items) {
+  const holders = new Map();
+  (Array.isArray(items) ? items : []).forEach((item) => {
+    const received = amountOf(item?.chargedAmount);
+    if (received <= 0) return;
+
+    const beneficiaryId = String(
+      item?.beneficiaryUserId ?? item?.createdById ?? item?.beneficiaryName ?? "",
+    );
+    const projectId = String(item?.projectId ?? item?.project_id ?? "");
+    if (!beneficiaryId || !projectId) return;
+
+    const key = `${beneficiaryId}-${projectId}`;
+    const current = holders.get(key) || {
+      key,
+      beneficiary: String(
+        item?.beneficiaryName ??
+          item?.beneficiaryUsername ??
+          item?.requesterName ??
+          `کاربر #${beneficiaryId}`,
+      ).trim(),
+      project: `${item?.projectCode ? `${item.projectCode} - ` : ""}${item?.projectName || `پروژه #${projectId}`}`,
+      received: 0,
+      unregistered: 0,
+      unsettled: 0,
+      registered: 0,
+      settled: 0,
+    };
+    const unregistered = Math.min(received, amountOf(item?.unregisteredBalance));
+    const unsettled = Math.min(received, amountOf(item?.unsettledBalance));
+    current.received += received;
+    current.unregistered += unregistered;
+    current.unsettled += unsettled;
+    current.registered += received - unregistered;
+    current.settled += received - unsettled;
+    holders.set(key, current);
+  });
+
+  return [...holders.values()].sort(
+    (a, b) =>
+      b.received - a.received ||
+      a.beneficiary.localeCompare(b.beneficiary, "fa") ||
+      a.project.localeCompare(b.project, "fa"),
+  );
+}
+
 function MoneyByProjectPanel({
   title,
   subtitle,
@@ -510,6 +556,68 @@ function MoneyByProjectPanel({
             )}
           </tbody>
         </table>
+      </div>
+    </Card>
+  );
+}
+
+function TenkhahHoldersPanel({ rows }) {
+  return (
+    <Card className="min-h-[420px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
+      <div className="mb-4">
+        <span className="block text-sm font-bold">گزارش دارندگان تنخواه</span>
+        <span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">
+          مبالغ تنخواه دریافت‌شده به تفکیک ذی‌نفع و پروژه
+        </span>
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-black/[0.07] dark:border-white/[0.08]">
+        <div className="max-h-[55vh] overflow-auto">
+          <table className="w-full min-w-[1060px] text-right text-xs">
+            <thead className="sticky top-0 z-10 bg-neutral-50 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
+              <tr>
+                <th className="px-3 py-3 font-medium">ذی‌نفع</th>
+                <th className="px-3 py-3 font-medium">پروژه</th>
+                <th className="px-3 py-3 text-center font-medium">دریافت‌شده</th>
+                <th className="px-3 py-3 text-center font-medium">ثبت‌نشده</th>
+                <th className="px-3 py-3 text-center font-medium">تسویه‌نشده</th>
+                <th className="px-3 py-3 text-center font-medium">ثبت‌شده</th>
+                <th className="px-3 py-3 text-center font-medium">تسویه‌شده</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length ? (
+                rows.map((row) => (
+                  <tr
+                    key={row.key}
+                    className="border-t border-black/[0.06] dark:border-white/[0.08]"
+                  >
+                    <td className="px-3 py-3 font-medium">{row.beneficiary}</td>
+                    <td className="px-3 py-3">{row.project}</td>
+                    {["received", "unregistered", "unsettled", "registered", "settled"].map(
+                      (key) => (
+                        <td
+                          key={key}
+                          className="whitespace-nowrap px-3 py-3 text-center tabular-nums"
+                        >
+                          {faNumber(row[key])} ریال
+                        </td>
+                      ),
+                    )}
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan="7"
+                    className="h-28 px-3 text-center text-neutral-400"
+                  >
+                    تنخواه دریافت‌شده‌ای برای نمایش وجود ندارد.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </Card>
   );
@@ -920,6 +1028,10 @@ export default function FinancialManagementDashboardPage() {
     () => tenkhahProjects(tenkhahRequests),
     [tenkhahRequests],
   );
+  const tenkhahHolderRows = useMemo(
+    () => buildTenkhahHolderRows(tenkhahRequests),
+    [tenkhahRequests],
+  );
   const liquidityProjectRows = useMemo(
     () =>
       (Array.isArray(liquidityProjects) ? liquidityProjects : [])
@@ -1031,6 +1143,9 @@ export default function FinancialManagementDashboardPage() {
             projects={projects}
             userId={user?.id}
           />
+        </div>
+        <div className="mt-3">
+          <TenkhahHoldersPanel rows={tenkhahHolderRows} />
         </div>
       </Card>
     </div>
