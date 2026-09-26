@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
+import { PaymentPreview, TenkhahPreviewV4 } from "./PaymentRequestPage.jsx";
 
 const PAGE_ICON = "/images/icons/dashboard-12.svg";
 
@@ -638,7 +639,7 @@ function ReportRequestPreview({ item, onClose }) {
   ];
   return createPortal(<div className="fixed inset-0 z-[9999]" dir="rtl"><div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} /><div className="absolute inset-0 flex items-center justify-center p-3 md:p-6"><div className="flex max-h-[88vh] w-[min(1040px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}><div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10"><b>جزئیات {item.kind === "tenkhah" ? "درخواست تنخواه" : "درخواست پرداخت"}</b><button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-lg text-white dark:bg-white dark:text-black" aria-label="بستن">×</button></div><div className="grid min-h-0 gap-4 overflow-y-auto p-4 md:grid-cols-[260px_minmax(0,1fr)] md:p-5"><section className="self-start overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-bold dark:border-white/10 dark:bg-white/5">وضعیت درخواست</div><div className="p-4"><span className={`inline-flex max-w-full truncate rounded-full px-2.5 py-1 text-xs ${reportBadgeClass(waiting.tone)}`}>{waiting.label}</span><p className="mt-3 text-xs leading-6 text-neutral-500 dark:text-neutral-400">این پنجره در حالت گزارش و فقط برای مشاهده اطلاعات است.</p></div></section><section className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-bold dark:border-white/10 dark:bg-white/5">جزئیات درخواست</div><div className="grid grid-cols-1 divide-y divide-black/10 sm:grid-cols-2 sm:divide-x sm:divide-y-0 dark:divide-white/10">{rows.map(([label, value]) => <div key={label} className="min-w-0 px-4 py-3 text-xs"><span className="block text-neutral-500 dark:text-neutral-400">{label}</span><span className="mt-1 block break-words font-medium">{value || "—"}</span></div>)}</div></section></div></div></div></div>, document.body);
 }
-function FinancialReportPanel({ normalRequests, tenkhahRequests, projects }) {
+function FinancialReportPanel({ normalRequests, tenkhahRequests, projects, userId }) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(null);
   const rows = useMemo(
@@ -808,7 +809,7 @@ function FinancialReportPanel({ normalRequests, tenkhahRequests, projects }) {
           </table>
         </div>
       </div>
-      {selected && <ReportRequestPreview item={selected} onClose={() => setSelected(null)} />}
+      {selected?.kind === "payment" ? <PaymentPreview item={{ ...selected, status: selected.status?.status || selected.status, canAct: false, canEdit: false, canDelete: false }} projects={projects} letters={[]} supplyRequests={[]} currencyTypes={[]} currencySources={[]} documentTypes={[]} userId={userId} api={null} actionNote="" setActionNote={() => {}} actionBusy={false} actionError="" onAction={() => {}} onResubmit={() => {}} onEdit={() => {}} onClose={() => setSelected(null)} /> : selected?.kind === "tenkhah" ? <TenkhahPreviewV4 item={{ ...selected, status: selected.status?.status || selected.status, canAct: false }} userId={userId} api={null} onRefresh={() => {}} onClose={() => setSelected(null)} /> : selected ? <ReportRequestPreview item={selected} onClose={() => setSelected(null)} /> : null}
     </Card>
   );
 }
@@ -1048,6 +1049,7 @@ export default function FinancialManagementDashboardPage() {
             normalRequests={reportNormalRequests}
             tenkhahRequests={reportTenkhahRequests}
             projects={projects}
+            userId={user?.id}
           />
         </div>
       </Card>

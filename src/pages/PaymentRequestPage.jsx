@@ -1936,7 +1936,7 @@ function TenkhahFinalPaymentForm({
   </section>;
 }
 
-function TenkhahPreviewV4({ item, userId, api, onRefresh, onClose }) {
+export function TenkhahPreviewV4({ item, userId, api, onRefresh, onClose }) {
   const [choice, setChoice] = useState("approve");
   const [note, setNote] = useState("");
   const [nextUserId, setNextUserId] = useState("");
@@ -2056,7 +2056,7 @@ function TenkhahPreview({ item, onClose }) {
   </div>, document.body);
 }
 
-function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes, currencySources, documentTypes, userId, api, actionNote, setActionNote, actionBusy, actionError, onAction, onResubmit, onEdit, onClose }) {
+export function PaymentPreview({ item, projects, letters, supplyRequests, currencyTypes, currencySources, documentTypes, userId, api, actionNote, setActionNote, actionBusy, actionError, onAction, onResubmit, onEdit, onClose }) {
   const project = projects.find((row) => String(row.id) === String(item.projectId));
   const currency = currencyTypes.find((row) => String(row.id) === String(item.currencyTypeId));
   const source = currencySources.find((row) => String(row.id) === String(item.currencySourceId));
