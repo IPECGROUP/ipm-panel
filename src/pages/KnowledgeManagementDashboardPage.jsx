@@ -24,10 +24,10 @@ export function KnowledgeDashboardWidgets({ data }) {
     <Panel title="درس‌آموخته‌ها به تفکیک پروژه"><Rows rows={lessons.byProject} /></Panel>
     <Panel title="درس‌آموخته‌ها بر اساس دسته‌بندی"><Rows rows={lessons.byCategory} /></Panel>
     <Panel title="درس‌آموخته‌ها بر اساس اهمیت"><Rows rows={lessons.byImportance} transform={(row) => importanceLabels[row.label] || row.label} /></Panel>
-    <Panel title="۳ کاربر برتر مراجعه به درس‌آموخته‌ها" subtitle="با اولین باز کردن هر درس‌آموخته ثبت می‌شود"><TopUsers rows={lessonVisits} /></Panel>
+    <Panel title="۳ کاربر برتر مراجعه به درس‌آموخته‌ها"><TopUsers rows={lessonVisits} /></Panel>
     <Panel title="مستندات به تفکیک کتابخانه"><Rows rows={data?.libraries} /></Panel>
     <Panel title="منابع آموزشی بر اساس دسته‌بندی" subtitle={`مجموع مراجعه به منابع آموزشی: ${fa(maxTrainingVisits)}`}><Rows rows={resources.byCategory} /></Panel>
-    <Panel title="۳ کاربر برتر مراجعه به منابع آموزشی" subtitle="پس از ورود، فقط اولین باز کردن یا کپی لینک و باز کردن فایل ثبت می‌شود"><TopUsers rows={resourceVisits} /></Panel>
+    <Panel title="۳ کاربر برتر مراجعه به منابع آموزشی"><TopUsers rows={resourceVisits} /></Panel>
   </div>;
 }
 
@@ -56,10 +56,10 @@ export default function KnowledgeManagementDashboardPage() {
       <Panel title="درس‌آموخته‌ها به تفکیک پروژه"><Rows rows={lessons.byProject} /></Panel>
       <Panel title="درس‌آموخته‌ها بر اساس دسته‌بندی"><Rows rows={lessons.byCategory} /></Panel>
       <Panel title="درس‌آموخته‌ها بر اساس اهمیت"><Rows rows={lessons.byImportance} transform={(row) => importanceLabels[row.label] || row.label} /></Panel>
-      <Panel title="۳ کاربر برتر مراجعه به درس‌آموخته‌ها" subtitle="با اولین باز کردن هر درس‌آموخته ثبت می‌شود"><TopUsers rows={lessonVisits} /></Panel>
+      <Panel title="۳ کاربر برتر مراجعه به درس‌آموخته‌ها"><TopUsers rows={lessonVisits} /></Panel>
       <Panel title="مستندات به تفکیک کتابخانه"><Rows rows={data?.libraries} /></Panel>
       <Panel title="منابع آموزشی بر اساس دسته‌بندی" subtitle={`مجموع مراجعه به منابع آموزشی: ${fa(maxTrainingVisits)}`}><Rows rows={resources.byCategory} /></Panel>
-      <Panel title="۳ کاربر برتر مراجعه به منابع آموزشی" subtitle="پس از ورود، فقط اولین باز کردن یا کپی لینک و باز کردن فایل ثبت می‌شود"><TopUsers rows={resourceVisits} /></Panel>
+      <Panel title="۳ کاربر برتر مراجعه به منابع آموزشی"><TopUsers rows={resourceVisits} /></Panel>
     </div>
   </Card></div>;
 }
