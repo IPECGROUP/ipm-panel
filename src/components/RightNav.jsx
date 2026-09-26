@@ -96,10 +96,6 @@ function RightNav() {
     }
   });
 
-  useEffect(() => {
-    document.documentElement.style.setProperty("--right-nav-space", "96px");
-  }, []);
-
   const toggleExpanded = () =>
     setExpanded((curr) => {
       const next = !curr;
@@ -123,6 +119,16 @@ function RightNav() {
     });
 
   const hasOpenMenu = Object.values(open).some(Boolean);
+
+  // Keep the header and page content clear of the desktop navigation.  The
+  // expanded sidebar is 280px wide and sits 16px from the edge, so reserving
+  // 312px also leaves a small visual gap beside it.
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--right-nav-space",
+      expanded ? "312px" : "96px",
+    );
+  }, [expanded]);
 
   useEffect(() => {
     if (!expanded && !hasOpenMenu) return undefined;
