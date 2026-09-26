@@ -159,7 +159,7 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
       api("/base/currencies/types"),
       api("/tenkhah?currentUserFinance=1"),
       api("/tenkhah?recipients=project_manager"),
-      api("/tenkhah?recipients=management"),
+      api("/tenkhah?recipients=finance_request_management"),
       api("/tenkhah?beneficiaries=1"),
     ]);
     const valueAt = (index, fallback) =>
@@ -436,7 +436,7 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
                   className={input}
                 >
                   <option value="">انتخاب کنید</option>
-                  {workflowRecipients.project_manager.map((u) => (
+                  {(userIsFinance ? workflowRecipients.management : workflowRecipients.project_manager).map((u) => (
                     <option value={u.id} key={u.id}>
                       {name(u)}
                     </option>

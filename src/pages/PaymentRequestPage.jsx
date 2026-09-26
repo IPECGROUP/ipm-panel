@@ -1126,8 +1126,9 @@ export default function PaymentRequestPage() {
     ? tableItems.find((item) => selectedIds.has(String(item.id)))
     : null;
   const canEditSelectedRequest = Boolean(selectedEditableRequest)
-    && selectedEditableRequest.requestType !== "tenkhah"
-    && (selectedEditableRequest.canEdit === true || Number(selectedEditableRequest.createdById) === Number(user?.id));
+    && (selectedEditableRequest.requestType === "tenkhah"
+      ? selectedEditableRequest.canEdit === true
+      : (selectedEditableRequest.canEdit === true || Number(selectedEditableRequest.createdById) === Number(user?.id)));
   const selectAllRef = useRef(null);
   useEffect(() => { if (selectAllRef.current) selectAllRef.current.indeterminate = someVisibleSelected; }, [someVisibleSelected]);
   useEffect(() => { if (page !== safePage) setPage(safePage); }, [page, safePage]);
@@ -1172,7 +1173,8 @@ export default function PaymentRequestPage() {
 
   const editSelectedRequest = () => {
     if (!canEditSelectedRequest) return;
-    openPreview({ ...selectedEditableRequest, __editing: true });
+    if (selectedEditableRequest.requestType === "tenkhah") setSelectedTenkhah({ ...selectedEditableRequest, __editing: true });
+    else openPreview({ ...selectedEditableRequest, __editing: true });
     setSelectedIds(new Set());
   };
 
@@ -1936,7 +1938,60 @@ function TenkhahFinalPaymentForm({
   </section>;
 }
 
+function TenkhahEditModal({ item, api, onRefresh, onClose }) {
+  const [form, setForm] = useState(() => ({
+    requestDate: item.requestDate || item.dateFa || "",
+    projectId: String(item.projectId || ""),
+    beneficiaryUserId: String(item.beneficiaryUserId || ""),
+    amount: money(item.requestedAmount || item.amount || ""),
+    purpose: item.purpose || "",
+    currency: item.currency || "ریال",
+  }));
+  const [projects, setProjects] = useState([]);
+  const [beneficiaries, setBeneficiaries] = useState([]);
+  const [currencies, setCurrencies] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      api("/projects?isActive=true"),
+      api("/tenkhah?beneficiaries=1"),
+      api("/base/currencies/types"),
+    ]).then(([projectData, beneficiaryData, currencyData]) => {
+      if (cancelled) return;
+      setProjects(Array.isArray(projectData?.items) ? projectData.items : projectData?.projects || []);
+      setBeneficiaries(Array.isArray(beneficiaryData?.users) ? beneficiaryData.users : []);
+      setCurrencies(uniqueCurrencyTypes(currencyData?.items));
+    }).catch(() => { if (!cancelled) setError("دریافت گزینه‌های ویرایش انجام نشد."); });
+    return () => { cancelled = true; };
+  }, [api]);
+
+  const save = async () => {
+    if (!form.requestDate || !form.projectId || !form.beneficiaryUserId || !form.amount || !form.purpose.trim()) {
+      setError("همه فیلدهای الزامی را تکمیل کنید.");
+      return;
+    }
+    setBusy(true); setError("");
+    try {
+      await api("/tenkhah", { method: "PATCH", body: JSON.stringify({ action: "edit_request", id: item.sourceId || item.id, ...form }) });
+      await onRefresh();
+      onClose();
+    } catch (err) { setError(err?.message === "forbidden" ? "شما اجازه ویرایش این درخواست را ندارید." : "ویرایش درخواست تنخواه انجام نشد."); }
+    finally { setBusy(false); }
+  };
+
+  return createPortal(<div className="fixed inset-0 z-[9999]" dir="rtl"><div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} /><div className="absolute inset-0 flex items-center justify-center p-3 md:p-6"><section className="flex max-h-[88vh] w-[min(720px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white"><header className="flex items-center justify-between border-b border-black/10 px-5 py-4 dark:border-white/10"><b>ویرایش درخواست تنخواه</b><button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-800 text-white dark:bg-white dark:text-neutral-900" aria-label="بستن">×</button></header><div className="grid gap-4 overflow-y-auto p-5 md:grid-cols-2"><label className="text-sm"><span className="mb-1 block">تاریخ درخواست</span><input className={inputClass} value={form.requestDate} onChange={(event) => setForm((old) => ({ ...old, requestDate: event.target.value }))} /></label><label className="text-sm"><span className="mb-1 block">مبلغ</span><input inputMode="numeric" className={inputClass} value={toFa(form.amount)} onChange={(event) => setForm((old) => ({ ...old, amount: money(event.target.value) }))} /></label><label className="text-sm"><span className="mb-1 block">پروژه</span><select className={inputClass} value={form.projectId} onChange={(event) => setForm((old) => ({ ...old, projectId: event.target.value }))}><option value="">انتخاب کنید</option>{projects.map((project) => <option key={project.id} value={project.id}>{projectLabel(project)}</option>)}</select></label><label className="text-sm"><span className="mb-1 block">ذی‌نفع</span><select className={inputClass} value={form.beneficiaryUserId} onChange={(event) => setForm((old) => ({ ...old, beneficiaryUserId: event.target.value }))}><option value="">انتخاب کنید</option>{beneficiaries.map((person) => <option key={person.id} value={person.id}>{person.name || person.username || person.email}</option>)}</select></label><label className="text-sm"><span className="mb-1 block">ارز</span><select className={inputClass} value={form.currency} onChange={(event) => setForm((old) => ({ ...old, currency: event.target.value }))}><option value={form.currency}>{form.currency}</option>{currencies.map((currency) => <option key={currency.id} value={itemLabel(currency)}>{itemLabel(currency)}</option>)}</select></label><label className="text-sm md:col-span-2"><span className="mb-1 block">بابت</span><textarea className={`${inputClass} min-h-24 py-2`} value={form.purpose} onChange={(event) => setForm((old) => ({ ...old, purpose: event.target.value }))} /></label>{error && <p className="md:col-span-2 text-sm text-red-600">{error}</p>}</div><footer className="flex justify-end gap-2 border-t border-black/10 px-5 py-4 dark:border-white/10"><button type="button" onClick={onClose} className="h-10 rounded-xl px-4 text-sm hover:bg-black/5 dark:hover:bg-white/10">انصراف</button><button type="button" disabled={busy} onClick={save} className="h-10 rounded-xl bg-black px-4 text-sm font-bold text-white disabled:opacity-50 dark:bg-white dark:text-black">{busy ? "در حال ذخیره..." : "ذخیره"}</button></footer></section></div></div>, document.body);
+}
+
 export function TenkhahPreviewV4({ item, userId, api, onRefresh, onClose }) {
+  return item.__editing
+    ? <TenkhahEditModal item={item} api={api} onRefresh={onRefresh} onClose={onClose} />
+    : <TenkhahPreviewV4View item={item} userId={userId} api={api} onRefresh={onRefresh} onClose={onClose} />;
+}
+
+function TenkhahPreviewV4View({ item, userId, api, onRefresh, onClose }) {
   const [choice, setChoice] = useState("approve");
   const [note, setNote] = useState("");
   const [nextUserId, setNextUserId] = useState("");
