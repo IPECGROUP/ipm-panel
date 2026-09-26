@@ -83,7 +83,9 @@ export default function Shell() {
             .map((item) => ({ ...item, notificationTarget: "payment_request" }))
         : [];
       const tenkhahItems = tenkhahResponse.ok && Array.isArray(tenkhahData?.items)
-        ? tenkhahData.items.map((item) => ({ ...item, notificationTarget: "tenkhah" })) : [];
+        ? tenkhahData.items
+            .filter((item) => item.canAct === true)
+            .map((item) => ({ ...item, notificationTarget: "tenkhah" })) : [];
       const readNotifications = new Set(
         JSON.parse(localStorage.getItem(notificationStorageKey(user.id)) || "[]")
       );
@@ -146,7 +148,11 @@ export default function Shell() {
 
   const openNotification = (item) => {
     setNotificationsOpen(false);
-    const target = item.notificationTarget === "payment_request" || item.notificationTarget === "tenkhah" ? "/finance/payment-request" : "/supply/request";
+    const target = item.notificationTarget === "tenkhah"
+      ? "/finance/tenkhah"
+      : item.notificationTarget === "payment_request"
+        ? "/finance/payment-request"
+        : "/supply/request";
     const params = new URLSearchParams({
       request: String(item.id),
       notificationTarget: String(item.notificationTarget || ""),

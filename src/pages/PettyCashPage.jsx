@@ -1,12 +1,14 @@
 // تنخواه گردان
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useSearchParams } from "react-router-dom";
 import Card from "../components/ui/Card.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { todayJalaliYmd } from "../utils/date.js";
 import { format3, toEnglishDigits } from "../utils/format.js";
 import BudgetTreePickerModal from "../components/BudgetTreePickerModal.jsx";
+import TenkhahPage from "./TenkhahPage.jsx";
 
 const PAGE_ICON = "/images/icons/tenkhah.svg";
 const tabs = ["تنخواه‌های من", "ثبت هزینه‌ها", "گزارش تسویه تنخواه"];
@@ -112,7 +114,10 @@ function printSettlementReport() {
 }
 
 export default function PettyCashPage() {
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(0);
+  const focusedRequestId = searchParams.get("notificationTarget") === "tenkhah" ? searchParams.get("request") || "" : "";
+  if (focusedRequestId) return <TenkhahPage focusRequestId={focusedRequestId} />;
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
       <Card className="rounded-2xl border border-black/10 bg-white p-0 shadow-sm dark:border-white/10 dark:bg-neutral-900">
