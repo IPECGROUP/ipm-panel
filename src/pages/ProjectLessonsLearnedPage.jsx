@@ -194,11 +194,6 @@ export default function ProjectLessonsLearnedPage() {
   }, [authLoading, headers]);
 
   useEffect(() => {
-    if (authLoading || !user?.id) return;
-    api("/knowledge-dashboard", { method: "POST", headers, body: JSON.stringify({ page: "lessons" }) }).catch(() => {});
-  }, [authLoading, user?.id, headers]);
-
-  useEffect(() => {
     if (authLoading) return;
 
     Promise.all([

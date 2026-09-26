@@ -115,10 +115,14 @@ export default function TrainingResourcesPage({ variant = "training" }) {
 
   useEffect(() => { loadItems(); }, [loadItems]);
 
-  useEffect(() => {
-    if (authLoading || !user?.id || isLibrary) return;
-    api("/knowledge-dashboard", { method: "POST", headers: requestHeaders, body: JSON.stringify({ page: "training" }) }).catch(() => {});
-  }, [authLoading, user?.id, isLibrary, requestHeaders]);
+  const recordTrainingInteraction = useCallback(() => {
+    if (!user?.id || isLibrary) return;
+    api("/knowledge-dashboard", {
+      method: "POST",
+      headers: requestHeaders,
+      body: JSON.stringify({ page: "training_interaction" }),
+    }).catch(() => {});
+  }, [isLibrary, requestHeaders, user?.id]);
 
   useEffect(() => {
     if (!tableMenuOpen) return undefined;
@@ -273,6 +277,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
   const copyLink = async (item) => {
     try {
       await navigator.clipboard.writeText(item.link);
+      recordTrainingInteraction();
       setCopiedId(String(item.id));
       window.setTimeout(() => setCopiedId(""), 1600);
     } catch {
@@ -391,15 +396,15 @@ export default function TrainingResourcesPage({ variant = "training" }) {
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{jalaliDate(item.createdAt)}</td>
                       <td className="border-b border-neutral-300 px-3 text-center dark:border-neutral-700"><span className="block truncate text-center font-medium" title={item.title}>{item.title}</span></td>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{isLibrary ? item.libraryTitle || "—" : item.category || "—"}</td>
-                      {!isLibrary && <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><div className="flex min-w-0 items-center justify-center gap-1.5"><a href={normalizedUrl(item.link)} target="_blank" rel="noreferrer" dir="ltr" className="min-w-0 truncate text-sky-700 underline-offset-4 hover:underline dark:text-sky-400" title={item.link}>{shortenedLink(item.link)}</a><button type="button" onClick={() => copyLink(item)} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg transition hover:bg-black/[.06] dark:hover:bg-white/10" title={copiedId === String(item.id) ? "کپی شد" : "کپی لینک"} aria-label="کپی لینک"><Copy className="h-3.5 w-3.5" /></button></div></td>}
-                      <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><FileLinks files={item.files} /></td>
+                      {!isLibrary && <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><div className="flex min-w-0 items-center justify-center gap-1.5"><a href={normalizedUrl(item.link)} target="_blank" rel="noreferrer" dir="ltr" onClick={recordTrainingInteraction} className="min-w-0 truncate text-sky-700 underline-offset-4 hover:underline dark:text-sky-400" title={item.link}>{shortenedLink(item.link)}</a><button type="button" onClick={() => copyLink(item)} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg transition hover:bg-black/[.06] dark:hover:bg-white/10" title={copiedId === String(item.id) ? "کپی شد" : "کپی لینک"} aria-label="کپی لینک"><Copy className="h-3.5 w-3.5" /></button></div></td>}
+                      <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><FileLinks files={item.files} onOpen={isLibrary ? undefined : recordTrainingInteraction} /></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
             <div className="grid gap-3 p-3 md:hidden">
-              {loading ? <div className="py-6 text-center text-sm text-neutral-500">در حال دریافت...</div> : filteredItems.length === 0 ? <div className="py-6 text-center text-sm text-neutral-500">{items.length ? "موردی مطابق فیلتر پیدا نشد." : isLibrary ? "هنوز موردی در کتابخانه ثبت نشده است." : "هنوز منبع آموزشی ثبت نشده است."}</div> : filteredItems.map((item, index) => <div key={item.id} className="rounded-xl border border-black/10 p-3 dark:border-white/10"><div className="flex items-center justify-between gap-2"><b className="truncate">{toFaDigits(index + 1)}. {item.title}</b><span className="shrink-0 text-xs text-neutral-500">{jalaliDate(item.createdAt)}</span></div><div className="mt-3 flex items-center justify-between gap-3">{isLibrary ? <span className="min-w-0 truncate text-xs text-neutral-500">{item.libraryTitle || "—"}</span> : <a href={normalizedUrl(item.link)} target="_blank" rel="noreferrer" dir="ltr" className="min-w-0 truncate text-xs text-sky-700 dark:text-sky-400">{shortenedLink(item.link)}</a>}<FileLinks files={item.files} /></div></div>)}
+              {loading ? <div className="py-6 text-center text-sm text-neutral-500">در حال دریافت...</div> : filteredItems.length === 0 ? <div className="py-6 text-center text-sm text-neutral-500">{items.length ? "موردی مطابق فیلتر پیدا نشد." : isLibrary ? "هنوز موردی در کتابخانه ثبت نشده است." : "هنوز منبع آموزشی ثبت نشده است."}</div> : filteredItems.map((item, index) => <div key={item.id} className="rounded-xl border border-black/10 p-3 dark:border-white/10"><div className="flex items-center justify-between gap-2"><b className="truncate">{toFaDigits(index + 1)}. {item.title}</b><span className="shrink-0 text-xs text-neutral-500">{jalaliDate(item.createdAt)}</span></div><div className="mt-3 flex items-center justify-between gap-3">{isLibrary ? <span className="min-w-0 truncate text-xs text-neutral-500">{item.libraryTitle || "—"}</span> : <a href={normalizedUrl(item.link)} target="_blank" rel="noreferrer" dir="ltr" onClick={recordTrainingInteraction} className="min-w-0 truncate text-xs text-sky-700 dark:text-sky-400">{shortenedLink(item.link)}</a>}<FileLinks files={item.files} onOpen={isLibrary ? undefined : recordTrainingInteraction} /></div></div>)}
             </div>
           </div>
         </div>
@@ -449,7 +454,7 @@ function ResourceFilterBar({ query, setQuery, fromDate, setFromDate, toDate, set
 function Field({ label, className = "", children }) { return <div className={className}><div className={labelClass}>{label}</div>{children}</div>; }
 function CountBadge({ value }) { return <span className="absolute -left-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-neutral-900 px-1 text-[10px] text-white dark:bg-white dark:text-black">{toFaDigits(value)}</span>; }
 function EmptyRow({ text, colSpan = 7 }) { return <tr><td colSpan={colSpan} className="py-8 text-black/60 dark:text-neutral-400">{text}</td></tr>; }
-function FileLinks({ files }) { const list = Array.isArray(files) ? files : []; return <div className="flex items-center justify-center gap-1.5">{list.length ? list.map((file, index) => <a key={file.url || index} href={file.url} target="_blank" rel="noreferrer" download className="grid h-8 w-8 place-items-center rounded-lg border border-black/10 bg-white transition hover:-translate-y-0.5 hover:shadow-sm dark:border-white/15 dark:bg-white/5" title={file.name || `فایل ${index + 1}`}><FileTypeIcon file={file} /></a>) : <span>—</span>}</div>; }
+function FileLinks({ files, onOpen }) { const list = Array.isArray(files) ? files : []; return <div className="flex items-center justify-center gap-1.5">{list.length ? list.map((file, index) => <a key={file.url || index} href={file.url} target="_blank" rel="noreferrer" download onClick={onOpen} className="grid h-8 w-8 place-items-center rounded-lg border border-black/10 bg-white transition hover:-translate-y-0.5 hover:shadow-sm dark:border-white/15 dark:bg-white/5" title={file.name || `فایل ${index + 1}`}><FileTypeIcon file={file} /></a>) : <span>—</span>}</div>; }
 
 function TagPicker({ tags, query, setQuery, selectedIds, setSelectedIds, onClose, onConfirm }) {
   const selected = new Set(selectedIds.map(String));
